@@ -18,6 +18,7 @@ import {
   Wallet,
 } from "lucide-react";
 
+import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useMissionControlData } from "@/hooks/use-mission-control-data";
@@ -36,11 +37,12 @@ type CommandPaletteProviderProps = {
 export function CommandPaletteProvider({ children }: CommandPaletteProviderProps) {
   const router = useRouter();
   const { profile } = useAuth();
+  const { isPro } = useBillingGate();
   const companyId = normalizeCompanyId(profile?.companyId);
   const uid = profile?.id ?? "";
   const [open, setOpen] = useState(false);
 
-  const data = useMissionControlData({ profile, uid, companyId });
+  const data = useMissionControlData({ profile, uid, companyId, isPro });
   const categories = useSpecificCategoriesRealtime(specificCategoryRepository, companyId, Boolean(companyId));
 
   useEffect(() => {
@@ -74,7 +76,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
     return data.employees.slice(0, 20).map((employee) => ({
       id: employee.uid,
       label: `${employee.fullName || employee.email} · ${employee.role}`,
-      href: "/settings?section=employees",
+      href: "/settings?section=company",
     }));
   }, [data.employees]);
 
@@ -167,7 +169,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
                 </Command.Group>
               ) : null}
 
-              {can(profile, "employee_manage") ? (
+              {isPro && can(profile, "employee_manage") ? (
                 <Command.Group heading="Команда">
                   <CommandItem icon={UserPlus} onSelect={() => navigate(deepActionRoutes.invite())}>
                     Пригласить сотрудника
@@ -195,7 +197,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
                 </Command.Group>
               ) : null}
 
-              {employeeHits.length > 0 ? (
+              {isPro && employeeHits.length > 0 ? (
                 <Command.Group heading="Сотрудники">
                   {employeeHits.map((item) => (
                     <CommandItem key={item.id} icon={UserPlus} onSelect={() => navigate(item.href)}>

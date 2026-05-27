@@ -24,7 +24,15 @@ copy "$NATIVE/AppIcon.appiconset/icon_512x512.png" "$WEB/assets/icons/app-icon.p
 copy "$NATIVE/AppIcon.appiconset/icon_512x512_dark.png" "$WEB/assets/icons/app-icon-dark.png"
 copy "$NATIVE/LoginLogo.imageset/login-transparent.png" "$WEB/assets/branding/login-logo-transparent.png"
 copy "$NATIVE/LoginLogo.imageset/login.png" "$WEB/assets/branding/login-logo.png"
-copy "$NATIVE/LoginLogo.imageset/login-transparent.png" "$WEB/assets/meta/apple-touch-icon.png"
-copy "$NATIVE/AppIcon.appiconset/icon_512x512.png" "$WEB/assets/meta/favicon.png"
+
+if [[ -f "$WEB/assets/branding/login-logo.png" ]]; then
+  echo "  → generating favicon / touch icon from login-logo.png"
+  sips -z 32 32 "$WEB/assets/branding/login-logo.png" --out "$WEB/assets/meta/favicon.png" >/dev/null
+  sips -z 180 180 "$WEB/assets/branding/login-logo.png" --out "$WEB/assets/meta/apple-touch-icon.png" >/dev/null
+  sips -z 512 512 "$WEB/assets/branding/login-logo.png" --out "$WEB/assets/icons/app-icon.png" >/dev/null
+  cp "$WEB/assets/icons/app-icon.png" "$WEB/assets/icons/app-icon-dark.png"
+  cp "$WEB/assets/meta/favicon.png" "$WEB/public/favicon.png"
+  echo "  ✓ favicon.png, apple-touch-icon.png, app-icon.png"
+fi
 
 echo "Done."

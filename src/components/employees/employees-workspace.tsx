@@ -5,6 +5,8 @@ import { Copy, Trash2 } from "lucide-react";
 
 import { canManageEmployees, canViewEmployees } from "@/lib/auth/permissions";
 import { useAuth } from "@/components/providers/auth-provider";
+import { ProFeatureGate } from "@/components/billing/pro-feature-gate";
+import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { useDeepAction } from "@/hooks/use-deep-action";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { CompanyEmployee, InviteDocument } from "@/domain/rbac";
@@ -65,7 +67,8 @@ export function EmployeesWorkspace() {
 
   const canView = canViewEmployees(profile);
   const canManage = canManageEmployees(profile);
-  const subscriptionsEnabled = Boolean(companyId && companyId !== "default" && canView);
+  const { requirePro, isPro } = useBillingGate();
+  const subscriptionsEnabled = Boolean(companyId && canView);
 
   useEffect(() => {
     if (!subscriptionsEnabled) return;
@@ -110,20 +113,17 @@ export function EmployeesWorkspace() {
   );
 
   function openInviteDialog() {
-    setGeneratedCode(null);
-    setInviteRole("employee");
-    setInviteTtlHours(72);
-    setInviteOpen(true);
-  }
-
-  useDeepAction({
-    expectedAction: "invite",
-    onAction: useCallback(() => {
+    requirePro("invite", () => {
       setGeneratedCode(null);
       setInviteRole("employee");
       setInviteTtlHours(72);
       setInviteOpen(true);
-    }, []),
+    });
+  }
+
+  useDeepAction({
+    expectedAction: "invite",
+    onAction: openInviteDialog,
   });
 
   function openPermissions(employee: CompanyEmployee) {
@@ -212,6 +212,19 @@ export function EmployeesWorkspace() {
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Не удалось сохранить права");
     }
+  }
+
+
+  if (!isPro) {
+    return (
+      <ProFeatureGate
+        feature="invite"
+        title="Команда доступна на Pro"
+        description="Управление сотрудниками и приглашениями включается на тарифе Pro."
+      >
+        <></>
+      </ProFeatureGate>
+    );
   }
 
   if (!canView) {

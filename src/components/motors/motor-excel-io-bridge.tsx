@@ -55,7 +55,7 @@ export function useMotorExcelIoBridge({
         separateByEngine: true,
       });
 
-      if (companyId && companyId !== "default") {
+      if (companyId) {
         try {
           const activity = createActivityLogRepository();
           await activity.append(companyId, {

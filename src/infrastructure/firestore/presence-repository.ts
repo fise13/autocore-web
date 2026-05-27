@@ -7,7 +7,7 @@ export function createPresenceRepository() {
 
   return {
     async touchLastActive(companyId: string, uid: string): Promise<void> {
-      if (!companyId || !uid || companyId === "default") return;
+      if (!companyId || !uid) return;
       await updateDoc(doc(db, "companies", companyId, "employees", uid), {
         lastActiveAt: serverTimestamp(),
       });

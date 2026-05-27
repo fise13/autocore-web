@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { LayoutGrid, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import { sellMotorWithFinancialOperationUseCase } from "@/application/use-cases/sell-motor-with-financial-operation";
 import { unsellMotorWithFinancialOperationUseCase } from "@/application/use-cases/unsell-motor-with-financial-operation";
@@ -14,7 +14,7 @@ import { MotorsExcelGrid } from "@/components/motors/motors-excel-grid";
 import { MotorsGridSkeleton } from "@/components/motors/motors-grid-skeleton";
 import { SellMotorDialog } from "@/components/motors/sell-motor-dialog";
 import { useAuth } from "@/components/providers/auth-provider";
-import { EmptyState } from "@/components/ui/empty-state";
+import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { Button } from "@/components/ui/button";
 import { MotorEntity } from "@/domain/motor";
 import { useDeepAction } from "@/hooks/use-deep-action";
@@ -24,7 +24,7 @@ import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { can } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { userCopy } from "@/lib/user-copy";
-import { deepActionRoutes, type DeepAction } from "@/lib/navigation/deep-actions";
+import { type DeepAction } from "@/lib/navigation/deep-actions";
 import { MotorExcelImportResult } from "@/lib/motors/excel-types";
 import { readExcelSheets } from "@/lib/motors/excel-import";
 import type { ExcelSheetData } from "@/lib/motors/excel-types";
@@ -42,6 +42,7 @@ const specificCategoryRepository = createSpecificCategoryRepository();
 
 export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
   const { profile } = useAuth();
+  const { requirePro } = useBillingGate();
   const workspace = useWorkspace();
   const [sellDialog, setSellDialog] = useState<{ motor: MotorEntity; mode: "sell" | "unsell" } | null>(
     null,
@@ -133,30 +134,42 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
     setCounts(motorCount, motorCount);
   }, [motorCount, setCounts]);
 
+  useEffect(() => {
+    if (isGridReady && !soldOnly && rowData.length === 0) {
+      setAddHintVisible(true);
+    }
+  }, [isGridReady, rowData.length, soldOnly]);
+
   const handleDeepAction = useCallback(
     async (action: DeepAction) => {
       setDeepActionError(null);
 
       switch (action) {
         case "import": {
-          if (!triggerMotorImportPicker()) {
-            setDeepActionError("Импорт недоступен на этой странице");
-          }
+          requirePro("import", () => {
+            if (!triggerMotorImportPicker()) {
+              setDeepActionError("Импорт недоступен на этой странице");
+            }
+          });
           break;
         }
         case "export": {
-          try {
-            await triggerMotorExport();
-          } catch (error) {
-            setDeepActionError(error instanceof Error ? error.message : "Не удалось экспортировать");
-          }
+          requirePro("export", async () => {
+            try {
+              await triggerMotorExport();
+            } catch (error) {
+              setDeepActionError(error instanceof Error ? error.message : "Не удалось экспортировать");
+            }
+          });
           break;
         }
         case "sync": {
-          const synced = await triggerSync();
-          if (!synced) {
-            setDeepActionError("Дождитесь загрузки таблицы моторов");
-          }
+          requirePro("sync", async () => {
+            const synced = await triggerSync();
+            if (!synced) {
+              setDeepActionError("Дождитесь загрузки таблицы моторов");
+            }
+          });
           break;
         }
         case "sell":
@@ -169,7 +182,7 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
           break;
       }
     },
-    [triggerMotorExport, triggerMotorImportPicker, triggerSync],
+    [requirePro, triggerMotorExport, triggerMotorImportPicker, triggerSync],
   );
 
   useDeepAction({ onAction: handleDeepAction });
@@ -262,8 +275,6 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
     );
   }
 
-  const showMotorsEmptyState = !soldOnly && isGridReady && rowData.length === 0;
-
   if (soldOnly && isGridReady && rowData.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
@@ -315,47 +326,28 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
         </div>
       ) : null}
       {motorsQuery.isBootstrapping ? <MotorsGridSkeleton /> : null}
-      {showMotorsEmptyState ? (
-        <div className="flex flex-1 flex-col p-6">
-          <EmptyState
-            icon={LayoutGrid}
-            title="Моторов пока нет"
-            description="Импортируйте Excel или синхронизируйте данные с Mac, чтобы начать работу с таблицей."
-            primaryAction={{
-              label: "Импорт из Excel",
-              href: deepActionRoutes.import(),
-            }}
-            secondaryAction={{
-              label: "Синхронизировать с Mac",
-              href: deepActionRoutes.sync(),
-              variant: "outline",
-            }}
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 flex-col transition-[opacity,transform] duration-500 ease-out motion-reduce:transition-none",
+          isGridReady ? "opacity-100 translate-y-0" : "pointer-events-none absolute inset-0 opacity-0 translate-y-1",
+        )}
+      >
+        {isGridReady ? (
+          <MotorsExcelGrid
+            motors={rowData}
+            companyId={companyId}
+            uid={uid}
+            canEdit={canEdit}
+            soldOnly={soldOnly}
+            repository={motorRepository}
+            onCloudPendingChange={setCloudPending}
+            onSell={(motor) => setSellDialog({ motor, mode: "sell" })}
+            onUnsell={(motor) => setSellDialog({ motor, mode: "unsell" })}
+            onBatchSell={(motors) => void batchSellMotors(motors)}
+            onBatchUnsell={(motors) => void batchUnsellMotors(motors)}
           />
-        </div>
-      ) : (
-        <div
-          className={cn(
-            "flex min-h-0 flex-1 flex-col transition-[opacity,transform] duration-500 ease-out motion-reduce:transition-none",
-            isGridReady ? "opacity-100 translate-y-0" : "pointer-events-none absolute inset-0 opacity-0 translate-y-1",
-          )}
-        >
-          {isGridReady ? (
-            <MotorsExcelGrid
-              motors={rowData}
-              companyId={companyId}
-              uid={uid}
-              canEdit={canEdit}
-              soldOnly={soldOnly}
-              repository={motorRepository}
-              onCloudPendingChange={setCloudPending}
-              onSell={(motor) => setSellDialog({ motor, mode: "sell" })}
-              onUnsell={(motor) => setSellDialog({ motor, mode: "unsell" })}
-              onBatchSell={(motors) => void batchSellMotors(motors)}
-              onBatchUnsell={(motors) => void batchUnsellMotors(motors)}
-            />
-          ) : null}
-        </div>
-      )}
+        ) : null}
+      </div>
 
       <SellMotorDialog
         motor={sellDialog?.motor ?? null}

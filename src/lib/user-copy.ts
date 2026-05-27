@@ -61,9 +61,120 @@ export const userCopy = {
       "Компания «Моя бухгалтерия» уже создана другим пользователем. Присоединитесь по коду приглашения.",
   },
 
+  billing: {
+    title: "Подписка",
+    description: "Тариф компании для облачной синхронизации, экспорта и команды.",
+    planFree: "Free",
+    planPro: "Pro",
+    loading: "Загрузка тарифа…",
+    loadError: "Не удалось загрузить тариф. Обновите страницу.",
+    pastDue: "Оплата просрочена",
+    renewsAt: (date: string) => `Следующее списание: ${date}`,
+    upgradeMonthly: "Pro — $15 / мес",
+    upgradeYearly: "Pro — $150 / год",
+    manageButton: "Управлять подпиской",
+    checkoutError: "Не удалось открыть оплату Stripe",
+    checkoutUnavailable:
+      "Сервис оплаты временно недоступен. Проверьте, что Firebase Functions задеплоены и Stripe настроен.",
+    stripeNotConfigured:
+      "Stripe не настроен на сервере. Добавьте STRIPE_SECRET_KEY в Firebase Functions и перезапустите.",
+    notConfigured: "Stripe не настроен. Добавьте Price ID в .env.local.",
+    proActiveHint: "Pro активен — доступны синхронизация, экспорт и команда.",
+    freeActiveHint: "Free — базовый доступ. Pro открывает облако и команду.",
+    viewPlans: "Выбрать тариф",
+    openSettings: "Открыть подписку",
+    askAdmin: "Обратитесь к владельцу или администратору компании для оформления Pro.",
+    paywallTitle: "Нужен тариф Pro",
+    paywallFooter: "Безопасная оплата через Stripe · отмена в любой момент",
+    nextChargeLabel: "Следующее списание",
+    nextChargeUnknown: "Дата списания появится после синхронизации со Stripe",
+    planComparison: {
+      title: "Сравнение тарифов",
+      featureColumn: "Возможность",
+      monthly: "Месяц",
+      yearly: "Год",
+      billingInterval: "Интервал",
+      currentPlan: "Текущий план",
+      proMonthlyPrice: "$15 / мес",
+      proYearlyPrice: "$150 / год",
+      yearlySave: "−17%",
+      yearlyHint: "Экономия $30 в год по сравнению с помесячной оплатой",
+      upgradeCta: "Перейти на Pro",
+      hidePlans: "Скрыть тарифы",
+      rows: [
+        { label: "Базовый доступ к каталогу", free: true, pro: true },
+        { label: "Облачная синхронизация", free: false, pro: true },
+        { label: "Импорт и экспорт Excel", free: false, pro: true },
+        { label: "Команда и роли", free: false, pro: true },
+        { label: "«Моя бухгалтерия» в облаке", free: false, pro: true },
+      ],
+    },
+    paywall: {
+      export: {
+        title: "Экспорт в Excel — Pro",
+        description: "Экспорт моторов в Excel доступен на тарифе Pro.",
+      },
+      import: {
+        title: "Импорт из Excel — Pro",
+        description: "Импорт моторов из Excel доступен на тарифе Pro.",
+      },
+      sync: {
+        title: "Синхронизация — Pro",
+        description: "Облачная синхронизация моторов доступна на тарифе Pro.",
+      },
+      invite: {
+        title: "Приглашения — Pro",
+        description: "Приглашение сотрудников доступно на тарифе Pro.",
+      },
+      cloud_sync: {
+        title: "Облако — Pro",
+        description: "Подключение облачной «Моей бухгалтерии» и sync — на Pro.",
+      },
+    },
+    features: [
+      "Pro: облачная синхронизация и экспорт",
+      "Pro: приглашение сотрудников",
+      "Free: базовый доступ без Pro-функций",
+    ],
+    proActivation: {
+      activatingTitle: "Активируем Pro…",
+      activatingHint: "Подтверждаем оплату — это займёт несколько секунд.",
+      celebrationTitle: "Добро пожаловать в Pro",
+      celebrationSubtitle: "Облако, экспорт и команда — всё уже доступно вашей компании.",
+      startButton: "Начать работу",
+      benefits: [
+        {
+          title: "Облачная синхронизация",
+          description: "Моторы и данные синхронизируются между web и Mac.",
+        },
+        {
+          title: "Импорт и экспорт Excel",
+          description: "Загружайте и выгружайте каталог без ограничений.",
+        },
+        {
+          title: "Экспорт в один клик",
+          description: "Выгрузка моторов из таблицы в Excel на тарифе Pro.",
+        },
+        {
+          title: "Команда и приглашения",
+          description: "Добавляйте сотрудников и управляйте ролями.",
+        },
+        {
+          title: "«Моя бухгалтерия» в облаке",
+          description: "Подключение облачной синхронизации и расширенных настроек.",
+        },
+      ],
+    },
+  },
+
   settings: {
     title: "Настройки",
     subtitle: "Профиль, команда, синхронизация и управление данными.",
+    subtitleAccount: "Профиль, безопасность и краткий статус подписки.",
+    subtitleCompany: "Название компании, подписка и команда на Pro.",
+    subtitleAccounting: "Бухгалтерия, списки сотрудников и импорт/экспорт.",
+    subtitleSync: "Синхронизация моторов и поведение списка.",
+    subtitleDataCleanup: "Безвозвратное удаление данных компании из облака.",
     account: "Аккаунт",
     employees: "Сотрудники",
     roles: "Роли",
@@ -72,6 +183,18 @@ export const userCopy = {
     importExport: "Импорт и экспорт",
     workflow: "Поведение",
     dataCleanup: "Удаление данных",
+    companyDescription: "Название рабочего пространства и управление подпиской компании.",
+    companyNameSave: "Обновить название",
+    companyNameUpdated: "Название компании обновлено",
+    companyNameError: "Не удалось обновить название компании",
+    companyStatsTitle: "Статистика компании",
+    companyStatsDescription: "Краткий обзор активности вашего рабочего пространства.",
+    companyProHint: "Pro открывает команду, облачную синхронизацию и расширенный экспорт.",
+    companyTeamTitle: "Команда",
+    companyTeamDescription: "Сотрудники и роли доступны на тарифе Pro.",
+    statMotors: "Моторы на складе",
+    statBalance: "Баланс",
+    statChangesToday: "Изменений сегодня",
     dataCleanupDescription:
       "Безвозвратное удаление данных компании из облака. Перед очисткой убедитесь, что нужные данные экспортированы.",
     dataCleanupNoAccess: "У вас нет прав на удаление данных компании.",
@@ -99,6 +222,7 @@ export const userCopy = {
       count > 0 ? `Специфичные удалены: ${count} записей` : "Специфичные уже были пустыми",
     macOnly: "Настраивается в приложении для Mac",
     macOnlyHint: "Внешний вид, резервные копии и расширенные параметры доступны в приложении AutoCore для Mac.",
+    billing: "Подписка",
     role: "Роль",
     company: "Компания",
   },
@@ -248,6 +372,7 @@ export function formatPermission(permission: string | undefined | null): string 
 
 export type AuthErrorContext = {
   provider?: "apple" | "google" | "email";
+  surface?: "onboarding" | "sync";
 };
 
 export function mapAuthError(error: unknown, context?: AuthErrorContext): string {
@@ -296,12 +421,18 @@ export function mapAuthError(error: unknown, context?: AuthErrorContext): string
       if (error instanceof Error && error.message.includes("Не удалось")) {
         return error.message;
       }
+      if (context?.surface === "onboarding") {
+        return "Не удалось выполнить действие. Обновите страницу и попробуйте снова.";
+      }
       return "Недостаточно прав для синхронизации. Обновите страницу. Если ошибка повторится — проверьте роль в «Сотрудники» или подключите «Мою бухгалтерию» в настройках.";
     case "auth/credential-already-in-use":
       return "Этот Apple ID или Google-аккаунт уже привязан к другому пользователю.";
     default:
       if (error instanceof Error && error.message) {
         if (/missing or insufficient permissions/i.test(error.message)) {
+          if (context?.surface === "onboarding") {
+            return "Не удалось выполнить действие. Обновите страницу и попробуйте снова.";
+          }
           return "Недостаточно прав для синхронизации. Обновите страницу. Если ошибка повторится — проверьте роль в «Сотрудники» или подключите «Мою бухгалтерию» в настройках.";
         }
         if (error.message.includes("Не удалось")) {

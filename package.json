@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "migrate:rbac": "tsx scripts/migrate-rbac.ts",
+    "migrate:billing": "tsx scripts/backfill-billing-subscriptions.ts",
+    "deploy:billing-functions": "bash scripts/deploy-billing-functions.sh",
     "assets:sync-from-native": "bash scripts/sync-brand-assets-from-native.sh"
   },
   "dependencies": {

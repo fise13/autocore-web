@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Download, Plus, RefreshCw, Upload, UserPlus, Wallet, Zap } from "lucide-react";
 
+import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { useAuth } from "@/components/providers/auth-provider";
 import { can } from "@/lib/auth/permissions";
 import { deepActionRoutes } from "@/lib/navigation/deep-actions";
@@ -29,6 +30,7 @@ const actions = [
     icon: UserPlus,
     permission: "employee_manage" as const,
     shortcut: "I",
+    proOnly: true,
   },
   {
     href: deepActionRoutes.import(),
@@ -52,8 +54,9 @@ const actions = [
 
 export function QuickActionsPanel() {
   const { profile } = useAuth();
+  const { isPro } = useBillingGate();
 
-  const visible = actions.filter((action) => can(profile, action.permission));
+  const visible = actions.filter((action) => can(profile, action.permission) && (!action.proOnly || isPro));
   if (visible.length === 0) return null;
 
   return (

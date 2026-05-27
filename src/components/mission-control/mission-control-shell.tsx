@@ -8,16 +8,18 @@ import { ModuleGrid } from "@/components/mission-control/module-grid";
 import { OverviewBar } from "@/components/mission-control/overview-bar";
 import { QuickActionsPanel } from "@/components/mission-control/quick-actions/quick-actions-panel";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { useMissionControlData } from "@/hooks/use-mission-control-data";
 import { usePresenceHeartbeat } from "@/hooks/use-presence-heartbeat";
 import { normalizeCompanyId } from "@/lib/company-id";
 
 export function MissionControlShell() {
   const { profile } = useAuth();
+  const { isPro } = useBillingGate();
   const companyId = normalizeCompanyId(profile?.companyId);
   const uid = profile?.id ?? "";
 
-  const data = useMissionControlData({ profile, uid, companyId });
+  const data = useMissionControlData({ profile, uid, companyId, isPro });
   usePresenceHeartbeat(companyId, uid, Boolean(profile?.companyId));
 
   const todayLabel = new Date().toLocaleDateString("ru-RU", {
@@ -55,7 +57,7 @@ export function MissionControlShell() {
               </div>
             </div>
             <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
-              Операционный центр · состояние склада, финансов и команды в одном экране
+              Операционный центр · состояние склада и финансов в одном экране
             </p>
           </div>
 
@@ -87,7 +89,9 @@ export function MissionControlShell() {
             <div className="flex items-center justify-between border-b border-border/50 px-4 py-3">
               <div>
                 <h2 className="text-sm font-semibold tracking-tight">Журнал активности</h2>
-                <p className="text-xs text-muted-foreground">Изменения команды в realtime</p>
+                <p className="text-xs text-muted-foreground">
+                  {data.permissions.canEmployees ? "Изменения команды в realtime" : "Склад и бухгалтерия"}
+                </p>
               </div>
               <span className="mc-live-badge py-1 text-[10px]">
                 <span className="size-1.5 rounded-full bg-emerald-500" />

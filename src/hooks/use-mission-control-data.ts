@@ -20,13 +20,14 @@ type UseMissionControlDataParams = {
   profile: UserEntity | null;
   uid: string;
   companyId: string;
+  isPro: boolean;
 };
 
-export function useMissionControlData({ profile, uid, companyId }: UseMissionControlDataParams) {
+export function useMissionControlData({ profile, uid, companyId, isPro }: UseMissionControlDataParams) {
   const canAccounting = can(profile, "accounting_view");
   const canInventory = can(profile, "inventory_view");
-  const canEmployees = canViewEmployees(profile);
-  const enabled = Boolean(uid && companyId && companyId !== "default");
+  const canEmployees = isPro && canViewEmployees(profile);
+  const enabled = Boolean(uid && companyId);
 
   const motorsQuery = useMotorsRealtime(motorRepository, {
     uid,

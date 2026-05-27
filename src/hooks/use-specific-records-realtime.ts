@@ -14,7 +14,7 @@ export function useSpecificRecordsRealtime(
   category: SpecificCategoryEntity | null,
   allCategories: SpecificCategoryEntity[],
 ) {
-  const enabled = Boolean(companyId && companyId !== "default" && category);
+  const enabled = Boolean(companyId && category);
   const [records, setRecords] = useState<SpecificRecordEntity[]>([]);
   const [readyCategoryKey, setReadyCategoryKey] = useState<string | null>(null);
 

@@ -13,7 +13,7 @@ export function useSpecificCategoriesRealtime(
   enabled = true,
 ) {
   const [categories, setCategories] = useState<SpecificCategoryEntity[]>([]);
-  const canSubscribe = Boolean(enabled && companyId && companyId !== "default");
+  const canSubscribe = Boolean(enabled && companyId);
 
   useEffect(() => {
     if (!canSubscribe) return;

@@ -55,7 +55,7 @@ export const EmployeesModule = memo(function EmployeesModule({
         icon={Users}
         title="Команда"
         description="Кто онлайн и что менял"
-        href="/settings?section=employees"
+        href="/settings?section=company"
         accent="violet"
       />
       <div className="mc-module-body space-y-4">

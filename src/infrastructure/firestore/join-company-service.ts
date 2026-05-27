@@ -14,6 +14,7 @@ import { FirebaseError } from "firebase/app";
 
 import { UserRole, USER_ROLES } from "@/domain/user";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
+import { canSwitchCompanyViaInvite } from "@/lib/company-id";
 
 function normalizeRole(role: string): UserRole {
   const normalized = role === "viewer" ? "employee" : role;
@@ -72,10 +73,10 @@ export async function joinCompanyWithInviteCode(uid: string, rawCode: string): P
   const userData = userSnap.data() ?? {};
   const existingCompanyId = String(userData.companyId ?? "").trim();
 
-  if (existingCompanyId && existingCompanyId === companyId) {
+  if (existingCompanyId === companyId) {
     return;
   }
-  if (existingCompanyId && existingCompanyId !== companyId) {
+  if (!canSwitchCompanyViaInvite(existingCompanyId)) {
     throw new Error("Вы уже привязаны к другой компании. Выйдите и войдите другим аккаунтом.");
   }
 

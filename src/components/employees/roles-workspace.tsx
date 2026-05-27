@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 
+import { ProFeatureGate } from "@/components/billing/pro-feature-gate";
+import { useBillingGate } from "@/components/billing/billing-gate-provider";
+
 import { canManageEmployees, canViewEmployees } from "@/lib/auth/permissions";
 import { useAuth } from "@/components/providers/auth-provider";
 import { normalizeCompanyId } from "@/lib/company-id";
@@ -17,6 +20,7 @@ const employeeRepository = createEmployeeRbacRepository();
 
 export function RolesWorkspace() {
   const { profile } = useAuth();
+  const { isPro } = useBillingGate();
   const companyId = normalizeCompanyId(profile?.companyId);
   const [roles, setRoles] = useState<RoleDefinition[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -25,7 +29,7 @@ export function RolesWorkspace() {
 
   const canView = canViewEmployees(profile);
   const canManage = canManageEmployees(profile);
-  const subscriptionsEnabled = Boolean(companyId && companyId !== "default" && canView);
+  const subscriptionsEnabled = Boolean(companyId && canView);
 
   useEffect(() => {
     if (!subscriptionsEnabled) return;
@@ -57,6 +61,19 @@ export function RolesWorkspace() {
   }
 
   const roleById = new Map(roles.map((role) => [role.id, role]));
+
+
+  if (!isPro) {
+    return (
+      <ProFeatureGate
+        feature="invite"
+        title="Роли доступны на Pro"
+        description="Гибкая ролевая модель сотрудников доступна только на тарифе Pro."
+      >
+        <></>
+      </ProFeatureGate>
+    );
+  }
 
   if (!canView) {
     return (

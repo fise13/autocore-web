@@ -14,7 +14,7 @@ export function useActivityLogRealtime(companyId: string, enabled: boolean) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!enabled || !companyId || companyId === "default") {
+    if (!enabled || !companyId) {
       setEntries([]);
       setIsLoading(false);
       return;

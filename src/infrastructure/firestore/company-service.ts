@@ -10,9 +10,9 @@ import {
 
 import { ROLE_PERMISSIONS, UserRole } from "@/domain/user";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
+import { DEFAULT_COMPANY_ID } from "@/lib/company-id";
 import { userCopy } from "@/lib/user-copy";
-
-const DEFAULT_COMPANY_ID = "default";
+import { seedFreeCompanyBilling } from "@/infrastructure/firestore/billing-repository";
 
 function rethrowStep(step: string, error: unknown): never {
   if (error instanceof FirebaseError) {
@@ -142,6 +142,7 @@ export async function createCompany(ownerId: string, name: string): Promise<stri
   const profile = await readOwnerProfile(ownerId);
   await upsertOwnerEmployee(companyRef.id, ownerId, profile);
   await linkUserToCompany(ownerId, companyRef.id, "owner");
+  await seedFreeCompanyBilling(companyRef.id);
 
   return companyRef.id;
 }
@@ -170,8 +171,13 @@ export async function ensureDefaultCompany(ownerId: string) {
     const profile = await readOwnerProfile(ownerId);
     await upsertOwnerEmployee(DEFAULT_COMPANY_ID, ownerId, profile);
     await linkUserToCompany(ownerId, DEFAULT_COMPANY_ID, "owner");
+    await seedFreeCompanyBilling(DEFAULT_COMPANY_ID);
   } catch (error) {
-    if (!companyDocReady) {
+    if (
+      !companyDocReady
+      && error instanceof FirebaseError
+      && error.code === "permission-denied"
+    ) {
       throw new Error(`${userCopy.company.defaultTaken} Или создайте новую команду ниже.`);
     }
     rethrowStep("Не удалось подключить «Мою бухгалтерию»", error);

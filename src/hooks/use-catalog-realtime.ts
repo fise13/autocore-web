@@ -31,7 +31,7 @@ export function useCatalogRealtime(
   });
 
   useEffect(() => {
-    if (!companyId || companyId === "default" || !enabled) return;
+    if (!companyId || !enabled) return;
     const unsubscribe = repository.subscribeBrands(companyId, (brands) => {
       queryClient.setQueryData(brandsKey, brands);
     });
@@ -39,7 +39,7 @@ export function useCatalogRealtime(
   }, [repository, companyId, enabled, queryClient, brandsKey]);
 
   useEffect(() => {
-    if (!companyId || companyId === "default" || !enabled) return;
+    if (!companyId || !enabled) return;
     const unsubscribe = repository.subscribeEngines(companyId, (engines) => {
       queryClient.setQueryData(enginesKey, engines);
     });

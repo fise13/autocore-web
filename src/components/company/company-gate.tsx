@@ -43,7 +43,7 @@ export function CompanyGate({ children }: CompanyGateProps) {
     try {
       await action();
     } catch (e) {
-      setError(mapAuthError(e));
+      setError(mapAuthError(e, { surface: "onboarding" }));
       setIsSubmitting(false);
       setSubmitMessage(null);
     }

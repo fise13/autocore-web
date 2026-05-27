@@ -13,7 +13,7 @@ export function useEmployeesRealtime(companyId: string, enabled: boolean) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!enabled || !companyId || companyId === "default") {
+    if (!enabled || !companyId) {
       setEmployees([]);
       setIsLoading(false);
       return;

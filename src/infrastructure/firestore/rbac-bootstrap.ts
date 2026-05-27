@@ -21,7 +21,7 @@ export async function ensureRbacBootstrap(uid: string): Promise<void> {
 
     const userData = userSnap.data() as BootstrapUserDoc;
     const companyId = userData.companyId?.trim();
-    if (!companyId || companyId === "default") return;
+    if (!companyId) return;
 
     const role = userData.role ?? "employee";
     const employeeRef = doc(db, "companies", companyId, "employees", uid);

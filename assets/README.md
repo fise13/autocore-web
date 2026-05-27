@@ -10,10 +10,10 @@
 ```
 assets/
   icons/
-    app-icon.png          — иконка (светлая тема)
-    app-icon-dark.png     — иконка (тёмная тема)
+    app-icon.png          — копия login-logo (512×512, для совместимости)
+    app-icon-dark.png
   branding/
-    login-logo.png
+    login-logo.png        — **основная иконка web** (AppLogo, favicon)
     login-logo-transparent.png
     logo.jpg              — доп. логотип (legacy)
   meta/
@@ -27,8 +27,7 @@ assets/
 import { brandAssets } from "@/lib/brand-assets";
 ```
 
-- `AppLogo` — `@/components/brand/app-logo`
-- Favicon / Apple Touch — `src/app/layout.tsx` через `brandAssets.meta`
+- `AppLogo` и favicon — из `login-logo.png` (`brandAssets.logo`, `brandAssets.meta`)
 
 ## Native (iOS / macOS)
 

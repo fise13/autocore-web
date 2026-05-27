@@ -11,7 +11,7 @@ export function useAllSpecificRecordsRealtime(
   repository: SpecificCategoryRepository,
   companyId: string,
 ) {
-  const enabled = Boolean(companyId && companyId !== "default");
+  const enabled = Boolean(companyId);
   const [records, setRecords] = useState<SpecificRecordEntity[]>([]);
   const [ready, setReady] = useState(!enabled);
 

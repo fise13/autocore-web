@@ -371,7 +371,7 @@ export function SpecificExcelGrid({
   }, [flushEditor, saveLocalOnly]);
 
   const pushToCloud = useCallback(async () => {
-    if (!companyId || companyId === "default" || !canEdit) return;
+    if (!companyId || !canEdit) return;
     if (dirtyRowsRef.current.size === 0) {
       setSaveStatus("idle");
       return;
@@ -450,7 +450,7 @@ export function SpecificExcelGrid({
   }, [registerSyncHandler, syncNow]);
 
   useEffect(() => {
-    if (!canEdit || !companyId || companyId === "default") return;
+    if (!canEdit || !companyId) return;
     if (dirtyRowsRef.current.size === 0) return;
     if (editor) return;
 

@@ -4,43 +4,42 @@ import { ReactNode, useMemo, useState } from "react";
 import {
   Building2,
   Cloud,
-  Download,
   Laptop,
   Settings2,
-  Shield,
   Trash2,
   UserCircle,
-  Users,
-  Workflow,
 } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
-import { can, canViewEmployees } from "@/lib/auth/permissions";
+import { can } from "@/lib/auth/permissions";
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
 
 export type SettingsSectionId =
   | "account"
-  | "employees"
-  | "roles"
+  | "company"
   | "accounting"
   | "sync"
-  | "importExport"
-  | "workflow"
   | "dataCleanup"
   | "macOnly";
 
 const allSections: { id: SettingsSectionId; label: string; icon: typeof UserCircle }[] = [
   { id: "account", label: userCopy.settings.account, icon: UserCircle },
-  { id: "employees", label: userCopy.settings.employees, icon: Users },
-  { id: "roles", label: userCopy.settings.roles, icon: Shield },
+  { id: "company", label: userCopy.settings.company, icon: Building2 },
   { id: "accounting", label: userCopy.settings.accounting, icon: Building2 },
   { id: "sync", label: userCopy.settings.sync, icon: Cloud },
-  { id: "importExport", label: userCopy.settings.importExport, icon: Download },
-  { id: "workflow", label: userCopy.settings.workflow, icon: Workflow },
   { id: "dataCleanup", label: userCopy.settings.dataCleanup, icon: Trash2 },
   { id: "macOnly", label: "Mac", icon: Laptop },
 ];
+
+const sectionSubtitles: Record<SettingsSectionId, string> = {
+  account: userCopy.settings.subtitleAccount,
+  company: userCopy.settings.subtitleCompany,
+  accounting: userCopy.settings.subtitleAccounting,
+  sync: userCopy.settings.subtitleSync,
+  dataCleanup: userCopy.settings.subtitleDataCleanup,
+  macOnly: userCopy.settings.macOnlyHint,
+};
 
 type SettingsShellProps = {
   children: (section: SettingsSectionId) => ReactNode;
@@ -49,17 +48,17 @@ type SettingsShellProps = {
 
 export function SettingsShell({ children, initialSection = "account" }: SettingsShellProps) {
   const { profile } = useAuth();
-  const canViewTeam = canViewEmployees(profile);
+  const hasCompany = Boolean(profile?.companyId?.trim());
   const canCleanupData =
     can(profile, "accounting_delete") || can(profile, "inventory_delete");
   const sections = useMemo(
     () =>
       allSections.filter((section) => {
-        if (section.id === "employees" || section.id === "roles") return canViewTeam;
+        if (section.id === "company") return hasCompany;
         if (section.id === "dataCleanup") return canCleanupData;
         return true;
       }),
-    [canCleanupData, canViewTeam],
+    [canCleanupData, hasCompany],
   );
   const resolvedInitialSection = sections.some((section) => section.id === initialSection)
     ? initialSection
@@ -105,7 +104,7 @@ export function SettingsShell({ children, initialSection = "account" }: Settings
             <Settings2 className="size-5 text-primary" />
             <h2 className="text-2xl font-semibold tracking-tight">{userCopy.settings.title}</h2>
           </div>
-          <p className="text-sm text-muted-foreground">{userCopy.settings.subtitle}</p>
+          <p className="text-sm text-muted-foreground">{sectionSubtitles[activeSection]}</p>
         </header>
         <div key={sectionEpoch} className="animate-tab-enter space-y-5 motion-reduce:animate-none">
           {children(activeSection)}

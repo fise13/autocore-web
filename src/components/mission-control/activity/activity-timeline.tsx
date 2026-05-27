@@ -2,7 +2,6 @@
 
 import { memo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { motion, AnimatePresence } from "framer-motion";
 import { Activity } from "lucide-react";
 
 import { ActivityLogEntry } from "@/domain/rbac";
@@ -64,22 +63,21 @@ export const ActivityTimeline = memo(function ActivityTimeline({
   return (
     <div ref={parentRef} className="mc-timeline-rail max-h-[min(70vh,680px)] overflow-auto pl-1">
       <div className="relative w-full" style={{ height: `${virtualizer.getTotalSize()}px` }}>
-        <AnimatePresence initial={false}>
-          {virtualizer.getVirtualItems().map((virtualRow) => {
-            const entry = entries[virtualRow.index];
-            return (
-              <motion.div
-                key={entry.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="absolute left-0 top-0 w-full pb-2 pl-3"
-                style={{ transform: `translateY(${virtualRow.start}px)` }}
-              >
-                <ActivityItem entry={entry} isNew={virtualRow.index === 0} />
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+        {virtualizer.getVirtualItems().map((virtualRow) => {
+          const entry = entries[virtualRow.index];
+          return (
+            <div
+              key={entry.id}
+              className="absolute left-0 top-0 w-full pb-2 pl-3"
+              style={{
+                height: `${virtualRow.size}px`,
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+            >
+              <ActivityItem entry={entry} isNew={virtualRow.index === 0} />
+            </div>
+          );
+        })}
       </div>
     </div>
   );

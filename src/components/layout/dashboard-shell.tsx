@@ -9,6 +9,7 @@ import { ReactNode, useCallback, useEffect, useMemo } from "react";
 import { deleteBrandUseCase } from "@/application/use-cases/delete-brand";
 import { renameBrandUseCase } from "@/application/use-cases/rename-brand";
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { BillingGateProvider } from "@/components/billing/billing-gate-provider";
 import { DashboardLayoutProvider } from "@/components/layout/dashboard-layout-context";
 import { CommandPaletteProvider } from "@/components/mission-control/command-palette/command-palette-provider";
 import { ResizableSidebar } from "@/components/layout/resizable-sidebar";
@@ -139,6 +140,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
   }, [toggleVisible]);
 
   return (
+    <BillingGateProvider companyId={companyId}>
     <DashboardLayoutProvider sidebarVisible={visible} toggleSidebar={toggleVisible}>
       <CommandPaletteProvider>
       <div className="flex h-screen overflow-hidden bg-background">
@@ -171,7 +173,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
           ) : (
             <header className="relative z-30 flex h-14 shrink-0 items-center justify-between border-b bg-card/95 px-4 backdrop-blur-sm">
               <div className="flex items-center gap-2.5">
-                <AppLogo size={24} variant="icon" className="rounded-md" alt="AutoCore" />
+                <AppLogo size={24} className="rounded-md" alt="AutoCore" />
                 <span className="text-sm font-semibold tracking-tight">AutoCore</span>
               </div>
               <div className="flex items-center gap-2">
@@ -214,6 +216,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
       </div>
       </CommandPaletteProvider>
     </DashboardLayoutProvider>
+    </BillingGateProvider>
   );
 }
 

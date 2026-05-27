@@ -67,11 +67,11 @@ export const ActivityItem = memo(function ActivityItem({ entry, isNew }: Activit
         <div className="min-w-0 flex-1 space-y-1.5">
           <p className="text-sm leading-snug">
             <span className="font-medium">{actorName}</span>
-            {roleLabel ? <span className="text-muted-foreground"> · {roleLabel}</span> : null}{" "}
-            <span className="text-foreground/90">{resolved.label}</span>
-            {entry.targetName ? (
-              <span className="text-muted-foreground"> · {entry.targetName}</span>
-            ) : null}
+            {roleLabel ? <span className="text-muted-foreground"> · {roleLabel}</span> : null}
+          </p>
+          <p className="text-sm leading-snug text-foreground/90">
+            {resolved.label}
+            {entry.targetName ? <span className="text-muted-foreground"> · {entry.targetName}</span> : null}
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <span

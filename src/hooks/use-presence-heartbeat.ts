@@ -9,7 +9,7 @@ const HEARTBEAT_MS = 5 * 60 * 1000;
 
 export function usePresenceHeartbeat(companyId: string, uid: string, enabled: boolean) {
   useEffect(() => {
-    if (!enabled || !companyId || !uid || companyId === "default") return;
+    if (!enabled || !companyId || !uid) return;
 
     const touch = () => {
       void presenceRepository.touchLastActive(companyId, uid).catch(() => undefined);

@@ -18,6 +18,7 @@ import { AccountMenu } from "@/components/account/account-menu";
 import { useDashboardLayout } from "@/components/layout/dashboard-layout-context";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useWorkspace } from "@/components/layout/workspace-context";
+import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { can } from "@/lib/auth/permissions";
@@ -48,6 +49,7 @@ export function WorkspaceToolbar() {
     triggerMotorImport,
     registerMotorImportPicker,
   } = useWorkspace();
+  const { requirePro, isPro } = useBillingGate();
 
   const importInputRef = useRef<HTMLInputElement>(null);
   const [excelError, setExcelError] = useState<string | null>(null);
@@ -68,7 +70,6 @@ export function WorkspaceToolbar() {
   const exportBusy = motorExcelIo.busy === "export";
   const importBusy = motorExcelIo.busy === "import";
   const canExport = motorExcelIo.canExport;
-  const canImport = motorExcelIo.canImport && canEdit;
 
   useEffect(() => {
     if (!isMotorRoute) {
@@ -83,6 +84,10 @@ export function WorkspaceToolbar() {
 
   async function handleExport() {
     setExcelError(null);
+    if (!requirePro("export", () => void runExport())) return;
+  }
+
+  async function runExport() {
     try {
       await triggerMotorExport();
     } catch (error) {
@@ -90,8 +95,17 @@ export function WorkspaceToolbar() {
     }
   }
 
+  function handleImportClick() {
+    setExcelError(null);
+    requirePro("import", () => importInputRef.current?.click());
+  }
+
   async function handleImportFile(file: File) {
     setExcelError(null);
+    requirePro("import", () => void runImport(file));
+  }
+
+  async function runImport(file: File) {
     try {
       await triggerMotorImport(file);
     } catch (error) {
@@ -101,6 +115,10 @@ export function WorkspaceToolbar() {
 
   async function handleSync() {
     setSyncError(null);
+    requirePro("sync", () => void runSync());
+  }
+
+  async function runSync() {
     const synced = await triggerSync();
     if (!synced) {
       setSyncError(
@@ -195,20 +213,28 @@ export function WorkspaceToolbar() {
             <Button
               variant="ghost"
               size="icon-sm"
-              disabled={!canImport || importBusy}
-              title="Импорт из Excel"
-              onClick={() => importInputRef.current?.click()}
+              disabled={!canEdit || importBusy}
+              title={isPro ? userCopy.motors.importExcel : userCopy.billing.paywall.import.title}
+              onClick={handleImportClick}
+              className={cn("relative", !isPro && "text-primary/80")}
             >
               <Download className="size-4" />
+              {!isPro ? (
+                <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-primary ring-2 ring-card" />
+              ) : null}
             </Button>
             <Button
               variant="ghost"
               size="icon-sm"
-              disabled={!canExport || exportBusy}
-              title="Экспорт в Excel"
+              disabled={exportBusy || !canEdit || (isPro && !canExport)}
+              title={isPro ? "Экспорт в Excel" : userCopy.billing.paywall.export.title}
               onClick={() => void handleExport()}
+              className={cn("relative", !isPro && "text-primary/80")}
             >
               <Upload className="size-4" />
+              {!isPro ? (
+                <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-primary ring-2 ring-card" />
+              ) : null}
             </Button>
             <input
               ref={importInputRef}

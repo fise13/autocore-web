@@ -18,8 +18,12 @@ export const metadata: Metadata = {
   title: "AutoCore",
   description: "Рабочее пространство AutoCore",
   icons: {
-    icon: brandAssets.meta.favicon.src,
+    icon: [
+      { url: brandAssets.meta.favicon.src, sizes: "32x32", type: "image/png" },
+      { url: brandAssets.meta.appleTouchIcon.src, sizes: "180x180", type: "image/png" },
+    ],
     apple: brandAssets.meta.appleTouchIcon.src,
+    shortcut: brandAssets.meta.favicon.src,
   },
 };
 
