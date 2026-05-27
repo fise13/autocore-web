@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { ACCOUNTING_CATEGORY_SUGGESTIONS } from "@/components/accounting/accounting-categories";
 import { filterAccountingCategorySuggestions } from "@/components/accounting/accounting-category-suggestions";
@@ -50,18 +50,34 @@ type NewOperationDialogProps = {
     comment?: string | null;
   }) => Promise<void>;
   disabled?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  defaultType?: OperationType;
+  hideTrigger?: boolean;
 };
 
 export function NewOperationDialog({
   categorySuggestions = [...ACCOUNTING_CATEGORY_SUGGESTIONS],
   onCreate,
   disabled = false,
+  open: openProp,
+  onOpenChange,
+  defaultType = "expense",
+  hideTrigger = false,
 }: NewOperationDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = openProp ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [type, setType] = useState<OperationType>("expense");
+  const [type, setType] = useState<OperationType>(defaultType);
+
+  useEffect(() => {
+    if (open) {
+      setType(defaultType);
+    }
+  }, [defaultType, open]);
   const [amount, setAmount] = useState("0");
   const [account, setAccount] = useState<OperationAccount>("cashbox");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
@@ -114,7 +130,9 @@ export function NewOperationDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button disabled={disabled}>Новая операция</Button>} />
+      {hideTrigger ? null : (
+        <DialogTrigger render={<Button disabled={disabled}>Новая операция</Button>} />
+      )}
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Новая операция</DialogTitle>

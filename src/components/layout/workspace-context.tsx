@@ -56,6 +56,8 @@ type WorkspaceContextValue = {
   motorExcelIo: MotorExcelIoState;
   triggerMotorExport: () => Promise<void>;
   triggerMotorImport: (file: File) => Promise<void>;
+  registerMotorImportPicker: (handler: (() => void) | null) => void;
+  triggerMotorImportPicker: () => boolean;
 };
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -80,6 +82,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const motorImportRef = useRef<(file: File) => Promise<void>>(async () => {
     throw new Error("Импорт недоступен");
   });
+  const motorImportPickerRef = useRef<(() => void) | null>(null);
   const [motorExcelIo, setMotorExcelIo] = useState<MotorExcelIoState>({
     canExport: false,
     canImport: false,
@@ -190,6 +193,18 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     await motorImportRef.current(file);
   }, [motorExcelIo.canImport]);
 
+  const registerMotorImportPicker = useCallback((handler: (() => void) | null) => {
+    motorImportPickerRef.current = handler;
+  }, []);
+
+  const triggerMotorImportPicker = useCallback((): boolean => {
+    if (!motorImportPickerRef.current) {
+      return false;
+    }
+    motorImportPickerRef.current();
+    return true;
+  }, []);
+
   const value = useMemo(
     () => ({
       search,
@@ -222,6 +237,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       motorExcelIo,
       triggerMotorExport,
       triggerMotorImport,
+      registerMotorImportPicker,
+      triggerMotorImportPicker,
     }),
     [
       search,
@@ -246,6 +263,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       motorExcelIo,
       triggerMotorExport,
       triggerMotorImport,
+      registerMotorImportPicker,
+      triggerMotorImportPicker,
     ],
   );
 

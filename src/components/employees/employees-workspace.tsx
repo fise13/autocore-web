@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Copy, Trash2 } from "lucide-react";
 
 import { canManageEmployees, canViewEmployees } from "@/lib/auth/permissions";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useDeepAction } from "@/hooks/use-deep-action";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { CompanyEmployee, InviteDocument } from "@/domain/rbac";
 import { PERMISSIONS, Permission, USER_ROLES, UserRole } from "@/domain/user";
@@ -114,6 +115,16 @@ export function EmployeesWorkspace() {
     setInviteTtlHours(72);
     setInviteOpen(true);
   }
+
+  useDeepAction({
+    expectedAction: "invite",
+    onAction: useCallback(() => {
+      setGeneratedCode(null);
+      setInviteRole("employee");
+      setInviteTtlHours(72);
+      setInviteOpen(true);
+    }, []),
+  });
 
   function openPermissions(employee: CompanyEmployee) {
     setSelectedEmployee(employee);

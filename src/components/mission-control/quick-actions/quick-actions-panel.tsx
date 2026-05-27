@@ -5,44 +5,45 @@ import { Download, Plus, RefreshCw, Upload, UserPlus, Wallet, Zap } from "lucide
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { can } from "@/lib/auth/permissions";
+import { deepActionRoutes } from "@/lib/navigation/deep-actions";
 import { cn } from "@/lib/utils";
 
 const actions = [
   {
-    href: "/motors",
+    href: deepActionRoutes.add(),
     label: "Добавить мотор",
     icon: Plus,
     permission: "inventory_edit" as const,
     shortcut: "M",
   },
   {
-    href: "/accounting?action=expense",
+    href: deepActionRoutes.expense(),
     label: "Добавить расход",
     icon: Wallet,
     permission: "accounting_edit" as const,
     shortcut: "E",
   },
   {
-    href: "/settings?section=employees",
+    href: deepActionRoutes.invite(),
     label: "Пригласить",
     icon: UserPlus,
     permission: "employee_manage" as const,
     shortcut: "I",
   },
   {
-    href: "/motors",
+    href: deepActionRoutes.import(),
     label: "Импорт Excel",
     icon: Upload,
     permission: "import_data" as const,
   },
   {
-    href: "/motors",
+    href: deepActionRoutes.export(),
     label: "Экспорт",
     icon: Download,
     permission: "export_data" as const,
   },
   {
-    href: "/motors",
+    href: deepActionRoutes.sync(),
     label: "Синхронизация",
     icon: RefreshCw,
     permission: "inventory_edit" as const,

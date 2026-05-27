@@ -35,6 +35,20 @@ export const userCopy = {
   },
 
   company: {
+    welcomeTitle: "Добро пожаловать в AutoCore Web",
+    welcomeDescription: "Подключите существующие данные или создайте новое рабочее пространство.",
+    macQuestion: "У вас уже есть AutoCore на Mac?",
+    macDescription:
+      "Подключите «Мою бухгалтерию», чтобы видеть те же моторы и операции, что в приложении AutoCore.",
+    macButton: "Подключить «Мою бухгалтерию»",
+    newTeamTitle: "Новая команда?",
+    newTeamDescription: "Создайте отдельное рабочее пространство для новой компании.",
+    companyNameLabel: "Название компании",
+    companyNamePlaceholder: "Например: МоторЛенд",
+    createButton: "Создать компанию",
+    inviteLink: "Есть код приглашения?",
+    inviteTitle: "Присоединиться по приглашению",
+    inviteDescription: "Введите код, который вам отправил администратор компании.",
     connectTitle: "Подключение к данным",
     connectDescription:
       "Чтобы видеть те же моторы и бухгалтерию, что в приложении AutoCore, подключите «Мою бухгалтерию».",
@@ -43,6 +57,8 @@ export const userCopy = {
     createDescription: "Отдельное рабочее пространство для новой команды.",
     joinTitle: "Присоединиться по приглашению",
     inviteLabel: "Код приглашения",
+    defaultTaken:
+      "Компания «Моя бухгалтерия» уже создана другим пользователем. Присоединитесь по коду приглашения.",
   },
 
   settings: {

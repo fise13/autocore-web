@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import {
   CloudUpload,
   Download,
@@ -46,6 +46,7 @@ export function WorkspaceToolbar() {
     motorExcelIo,
     triggerMotorExport,
     triggerMotorImport,
+    registerMotorImportPicker,
   } = useWorkspace();
 
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -68,6 +69,17 @@ export function WorkspaceToolbar() {
   const importBusy = motorExcelIo.busy === "import";
   const canExport = motorExcelIo.canExport;
   const canImport = motorExcelIo.canImport && canEdit;
+
+  useEffect(() => {
+    if (!isMotorRoute) {
+      registerMotorImportPicker(null);
+      return;
+    }
+    registerMotorImportPicker(() => {
+      importInputRef.current?.click();
+    });
+    return () => registerMotorImportPicker(null);
+  }, [isMotorRoute, registerMotorImportPicker]);
 
   async function handleExport() {
     setExcelError(null);

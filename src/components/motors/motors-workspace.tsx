@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { LayoutGrid, X } from "lucide-react";
 
 import { sellMotorWithFinancialOperationUseCase } from "@/application/use-cases/sell-motor-with-financial-operation";
 import { unsellMotorWithFinancialOperationUseCase } from "@/application/use-cases/unsell-motor-with-financial-operation";
@@ -13,13 +14,17 @@ import { MotorsExcelGrid } from "@/components/motors/motors-excel-grid";
 import { MotorsGridSkeleton } from "@/components/motors/motors-grid-skeleton";
 import { SellMotorDialog } from "@/components/motors/sell-motor-dialog";
 import { useAuth } from "@/components/providers/auth-provider";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
 import { MotorEntity } from "@/domain/motor";
+import { useDeepAction } from "@/hooks/use-deep-action";
 import { useEffectiveCatalog } from "@/hooks/use-effective-catalog";
 import { useMotorsRealtime } from "@/hooks/use-motors-realtime";
 import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { can } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { userCopy } from "@/lib/user-copy";
+import { deepActionRoutes, type DeepAction } from "@/lib/navigation/deep-actions";
 import { MotorExcelImportResult } from "@/lib/motors/excel-types";
 import { readExcelSheets } from "@/lib/motors/excel-import";
 import type { ExcelSheetData } from "@/lib/motors/excel-types";
@@ -47,11 +52,19 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
   const [importWizardOpen, setImportWizardOpen] = useState(false);
   const [importSheets, setImportSheets] = useState<ExcelSheetData[]>([]);
   const [importLoadError, setImportLoadError] = useState<string | null>(null);
+  const [sellHintVisible, setSellHintVisible] = useState(false);
+  const [addHintVisible, setAddHintVisible] = useState(false);
+  const [deepActionError, setDeepActionError] = useState<string | null>(null);
 
   const companyId = normalizeCompanyId(profile?.companyId);
   const uid = profile?.id ?? "";
   const canEdit = can(profile, "inventory_edit");
   const { preferences } = useUserPreferences(uid);
+  const {
+    triggerMotorExport,
+    triggerMotorImportPicker,
+    triggerSync,
+  } = useWorkspace();
 
   const { brands, engines } = useEffectiveCatalog(catalogRepository, motorRepository, uid, companyId, {
     loadMotorsForCatalog: true,
@@ -119,6 +132,47 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
   useEffect(() => {
     setCounts(motorCount, motorCount);
   }, [motorCount, setCounts]);
+
+  const handleDeepAction = useCallback(
+    async (action: DeepAction) => {
+      setDeepActionError(null);
+
+      switch (action) {
+        case "import": {
+          if (!triggerMotorImportPicker()) {
+            setDeepActionError("Импорт недоступен на этой странице");
+          }
+          break;
+        }
+        case "export": {
+          try {
+            await triggerMotorExport();
+          } catch (error) {
+            setDeepActionError(error instanceof Error ? error.message : "Не удалось экспортировать");
+          }
+          break;
+        }
+        case "sync": {
+          const synced = await triggerSync();
+          if (!synced) {
+            setDeepActionError("Дождитесь загрузки таблицы моторов");
+          }
+          break;
+        }
+        case "sell":
+          setSellHintVisible(true);
+          break;
+        case "add":
+          setAddHintVisible(true);
+          break;
+        default:
+          break;
+      }
+    },
+    [triggerMotorExport, triggerMotorImportPicker, triggerSync],
+  );
+
+  useDeepAction({ onAction: handleDeepAction });
 
   async function confirmSellOperation(payload: {
     amount: number;
@@ -208,6 +262,8 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
     );
   }
 
+  const showMotorsEmptyState = !soldOnly && isGridReady && rowData.length === 0;
+
   if (soldOnly && isGridReady && rowData.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
@@ -221,29 +277,85 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
 
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col">
+      {sellHintVisible ? (
+        <div className="mx-3 mt-3 flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
+          <p className="flex-1 text-muted-foreground">
+            Выберите мотор в таблице и отметьте продажу через контекстное меню.
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setSellHintVisible(false)}
+            aria-label="Закрыть подсказку"
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+      ) : null}
+      {addHintVisible ? (
+        <div className="mx-3 mt-3 flex items-start gap-3 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm">
+          <p className="flex-1 text-muted-foreground">
+            Начните ввод в первой пустой строке таблицы — новый мотор сохранится автоматически.
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setAddHintVisible(false)}
+            aria-label="Закрыть подсказку"
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+      ) : null}
+      {deepActionError ? (
+        <div className="mx-3 mt-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          {deepActionError}
+        </div>
+      ) : null}
       {motorsQuery.isBootstrapping ? <MotorsGridSkeleton /> : null}
-      <div
-        className={cn(
-          "flex min-h-0 flex-1 flex-col transition-[opacity,transform] duration-500 ease-out motion-reduce:transition-none",
-          isGridReady ? "opacity-100 translate-y-0" : "pointer-events-none absolute inset-0 opacity-0 translate-y-1",
-        )}
-      >
-        {isGridReady ? (
-          <MotorsExcelGrid
-            motors={rowData}
-            companyId={companyId}
-            uid={uid}
-            canEdit={canEdit}
-            soldOnly={soldOnly}
-            repository={motorRepository}
-            onCloudPendingChange={setCloudPending}
-            onSell={(motor) => setSellDialog({ motor, mode: "sell" })}
-            onUnsell={(motor) => setSellDialog({ motor, mode: "unsell" })}
-            onBatchSell={(motors) => void batchSellMotors(motors)}
-            onBatchUnsell={(motors) => void batchUnsellMotors(motors)}
+      {showMotorsEmptyState ? (
+        <div className="flex flex-1 flex-col p-6">
+          <EmptyState
+            icon={LayoutGrid}
+            title="Моторов пока нет"
+            description="Импортируйте Excel или синхронизируйте данные с Mac, чтобы начать работу с таблицей."
+            primaryAction={{
+              label: "Импорт из Excel",
+              href: deepActionRoutes.import(),
+            }}
+            secondaryAction={{
+              label: "Синхронизировать с Mac",
+              href: deepActionRoutes.sync(),
+              variant: "outline",
+            }}
           />
-        ) : null}
-      </div>
+        </div>
+      ) : (
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col transition-[opacity,transform] duration-500 ease-out motion-reduce:transition-none",
+            isGridReady ? "opacity-100 translate-y-0" : "pointer-events-none absolute inset-0 opacity-0 translate-y-1",
+          )}
+        >
+          {isGridReady ? (
+            <MotorsExcelGrid
+              motors={rowData}
+              companyId={companyId}
+              uid={uid}
+              canEdit={canEdit}
+              soldOnly={soldOnly}
+              repository={motorRepository}
+              onCloudPendingChange={setCloudPending}
+              onSell={(motor) => setSellDialog({ motor, mode: "sell" })}
+              onUnsell={(motor) => setSellDialog({ motor, mode: "unsell" })}
+              onBatchSell={(motors) => void batchSellMotors(motors)}
+              onBatchUnsell={(motors) => void batchUnsellMotors(motors)}
+            />
+          ) : null}
+        </div>
+      )}
 
       <SellMotorDialog
         motor={sellDialog?.motor ?? null}

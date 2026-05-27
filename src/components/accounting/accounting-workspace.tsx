@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Cloud, Plus } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { Cloud, Plus, Receipt } from "lucide-react";
 
 import { calculateCashBalanceUseCase } from "@/application/use-cases/calculate-cash-balance";
 import { createExpenseOperationUseCase } from "@/application/use-cases/create-expense-operation";
@@ -21,13 +21,15 @@ import {
 } from "@/lib/accounting/advances";
 import { OperationsTable } from "@/components/accounting/operations-table";
 import { useAuth } from "@/components/providers/auth-provider";
+import { EmptyState } from "@/components/ui/empty-state";
 import { AnimatedTabsPanel } from "@/components/ui/animated-tabs-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CreateFinancialOperationInput } from "@/domain/financial-operation";
+import { CreateFinancialOperationInput, OperationType } from "@/domain/financial-operation";
 import { useAccountingPreferences } from "@/hooks/use-accounting-preferences";
+import { useDeepAction } from "@/hooks/use-deep-action";
 import { userCopy } from "@/lib/user-copy";
 import { useOperationsRealtime } from "@/hooks/use-operations-realtime";
 import { can } from "@/lib/auth/permissions";
@@ -49,6 +51,8 @@ export function AccountingWorkspace() {
   const [activeTab, setActiveTab] = useState("overview");
   const [tabEpoch, setTabEpoch] = useState(0);
   const [advanceDirection, setAdvanceDirection] = useState<AdvanceDirection>("all");
+  const [operationDialogOpen, setOperationDialogOpen] = useState(false);
+  const [operationDialogType, setOperationDialogType] = useState<OperationType>("expense");
   const companyId = normalizeCompanyId(profile?.companyId);
   const { preferences } = useAccountingPreferences(profile?.id ?? "");
   const categorySuggestions = useMemo(
@@ -73,6 +77,23 @@ export function AccountingWorkspace() {
     [advanceDirection, operations],
   );
   const canEdit = can(profile, "accounting_edit");
+
+  const openExpenseDialog = useCallback(() => {
+    setOperationDialogType("expense");
+    setOperationDialogOpen(true);
+  }, []);
+
+  useDeepAction({
+    expectedAction: "expense",
+    onAction: openExpenseDialog,
+  });
+
+  const showEmptyState =
+    Boolean(companyId) &&
+    !isLoading &&
+    !operationsQuery.isError &&
+    !operationsQuery.isLoading &&
+    operations.length === 0;
 
   async function onCreateOperation(
     payload: Pick<
@@ -145,9 +166,24 @@ export function AccountingWorkspace() {
             disabled={!canEdit || !companyId}
             categorySuggestions={categorySuggestions}
             onCreate={onCreateOperation}
+            open={operationDialogOpen}
+            onOpenChange={setOperationDialogOpen}
+            defaultType={operationDialogType}
           />
         </div>
       </header>
+
+      {showEmptyState ? (
+        <EmptyState
+          icon={Receipt}
+          title="Операций пока нет"
+          description="Добавьте первую финансовую операцию — расход, приход или продажу."
+          primaryAction={{
+            label: "Добавить первую операцию",
+            onClick: openExpenseDialog,
+          }}
+        />
+      ) : null}
 
       {operationsQuery.isError ? (
         <Card className="border-destructive/40 bg-destructive/5">

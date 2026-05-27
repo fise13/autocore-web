@@ -4,15 +4,18 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Command } from "cmdk";
 import {
+  Download,
   Folder,
   LayoutGrid,
   Package,
   Plus,
   Receipt,
+  RefreshCw,
   Search,
   Settings,
   Upload,
   UserPlus,
+  Wallet,
 } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
@@ -21,6 +24,7 @@ import { useMissionControlData } from "@/hooks/use-mission-control-data";
 import { useSpecificCategoriesRealtime } from "@/hooks/use-specific-categories-realtime";
 import { can } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { deepActionRoutes } from "@/lib/navigation/deep-actions";
 import { createSpecificCategoryRepository } from "@/infrastructure/firestore/specific-category-repository";
 
 const specificCategoryRepository = createSpecificCategoryRepository();
@@ -137,18 +141,27 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
 
               {can(profile, "inventory_edit") ? (
                 <Command.Group heading="Действия">
-                  <CommandItem icon={Plus} onSelect={() => navigate("/motors")}>
+                  <CommandItem icon={Plus} onSelect={() => navigate(deepActionRoutes.add())}>
                     Добавить мотор
                   </CommandItem>
-                  <CommandItem icon={Upload} onSelect={() => navigate("/motors")}>
+                  <CommandItem icon={Upload} onSelect={() => navigate(deepActionRoutes.import())}>
                     Импорт Excel
+                  </CommandItem>
+                  <CommandItem icon={Download} onSelect={() => navigate(deepActionRoutes.export())}>
+                    Экспорт Excel
+                  </CommandItem>
+                  <CommandItem icon={RefreshCw} onSelect={() => navigate(deepActionRoutes.sync())}>
+                    Синхронизация
+                  </CommandItem>
+                  <CommandItem icon={Receipt} onSelect={() => navigate(deepActionRoutes.sell())}>
+                    Продать мотор
                   </CommandItem>
                 </Command.Group>
               ) : null}
 
               {can(profile, "accounting_edit") ? (
                 <Command.Group heading="Бухгалтерия">
-                  <CommandItem icon={Plus} onSelect={() => navigate("/accounting?action=expense")}>
+                  <CommandItem icon={Wallet} onSelect={() => navigate(deepActionRoutes.expense())}>
                     Добавить расход
                   </CommandItem>
                 </Command.Group>
@@ -156,7 +169,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
 
               {can(profile, "employee_manage") ? (
                 <Command.Group heading="Команда">
-                  <CommandItem icon={UserPlus} onSelect={() => navigate("/settings?section=employees")}>
+                  <CommandItem icon={UserPlus} onSelect={() => navigate(deepActionRoutes.invite())}>
                     Пригласить сотрудника
                   </CommandItem>
                 </Command.Group>

@@ -14,7 +14,7 @@ import {
   updateEmail,
   updatePassword,
 } from "firebase/auth";
-import { collection, doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import {
   ReactNode,
@@ -27,9 +27,11 @@ import {
   useState,
 } from "react";
 
-import { CompanyEntity } from "@/domain/company";
-import { Permission, ROLE_PERMISSIONS, UserEntity, UserRole } from "@/domain/user";
-import { ensureDefaultCompany as assignDefaultCompany } from "@/infrastructure/firestore/company-service";
+import { Permission, UserEntity, UserRole } from "@/domain/user";
+import {
+  createCompany as createCompanyRecord,
+  ensureDefaultCompany as assignDefaultCompany,
+} from "@/infrastructure/firestore/company-service";
 import { joinCompanyWithInviteCode } from "@/infrastructure/firestore/join-company-service";
 import { ensureRbacBootstrap } from "@/infrastructure/firestore/rbac-bootstrap";
 import { signInWithAppleLikeMacOS } from "@/lib/auth/sign-in-with-apple-credential";
@@ -377,79 +379,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       async createCompany(name) {
         if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));
         const auth = getFirebaseAuth();
-        const db = getFirestoreDb();
         if (!auth.currentUser) throw new Error(mapAuthError(new Error("auth/invalid-credential")));
-        const companyRef = doc(collection(db, "companies"));
-        const companyPayload: CompanyEntity = {
-          id: companyRef.id,
-          name: name.trim(),
-          ownerId: auth.currentUser.uid,
-        };
-        try {
-          await setDoc(companyRef, {
-            ...companyPayload,
-            createdAt: serverTimestamp(),
-          });
-        } catch (error) {
-          throw new Error(
-            error instanceof Error ? error.message : "Не удалось создать компанию",
-          );
-        }
-
-        try {
-          await setDoc(
-            doc(db, "companies", companyRef.id, "employees", auth.currentUser.uid),
-            {
-              uid: auth.currentUser.uid,
-              companyId: companyRef.id,
-              email: auth.currentUser.email ?? "",
-              fullName: auth.currentUser.displayName ?? "",
-              role: "owner",
-              permissions: [],
-              invitedBy: auth.currentUser.uid,
-              isActive: true,
-              createdAt: serverTimestamp(),
-              lastActiveAt: serverTimestamp(),
-            },
-            { merge: false },
-          );
-        } catch (error) {
-          throw new Error(
-            error instanceof Error ? error.message : "Не удалось создать профиль владельца",
-          );
-        }
-
-        try {
-          await updateDoc(doc(db, "users", auth.currentUser.uid), {
-            companyId: companyRef.id,
-            role: "owner",
-            permissions: [],
-            isActive: true,
-          });
-        } catch (error) {
-          throw new Error(
-            error instanceof Error ? error.message : "Не удалось привязать аккаунт к компании",
-          );
-        }
-
-        try {
-          for (const role of Object.keys(ROLE_PERMISSIONS) as UserRole[]) {
-            await setDoc(
-              doc(db, "companies", companyRef.id, "roles", role),
-              {
-                companyId: companyRef.id,
-                role,
-                permissions: ROLE_PERMISSIONS[role],
-                isSystem: true,
-                updatedAt: serverTimestamp(),
-              },
-              { merge: true },
-            );
-          }
-        } catch (error) {
-          console.error("Failed to seed default roles during onboarding", error);
-        }
-
+        await createCompanyRecord(auth.currentUser.uid, name);
+        await auth.currentUser.getIdToken(true);
         await refreshProfile();
       },
       async joinCompanyWithInvite(code) {
