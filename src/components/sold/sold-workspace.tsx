@@ -1,0 +1,11 @@
+"use client";
+
+import { MotorsWorkspace } from "@/components/motors/motors-workspace";
+
+export function SoldWorkspace() {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <MotorsWorkspace soldOnly />
+    </div>
+  );
+}
