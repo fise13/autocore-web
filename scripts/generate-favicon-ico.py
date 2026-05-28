@@ -3,7 +3,10 @@
 
 from pathlib import Path
 
-from PIL import Image
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "assets" / "meta" / "favicon.png"
@@ -16,6 +19,14 @@ TARGETS = [
 def main() -> None:
     if not SRC.is_file():
         raise SystemExit(f"Missing source icon: {SRC}")
+
+    if Image is None:
+        if all(target.is_file() for target in TARGETS):
+            print("  ⚠ Pillow not installed; using committed favicon.ico")
+            return
+        raise SystemExit(
+            "Missing Pillow. Install it locally (pip install Pillow) or commit favicon.ico files."
+        )
 
     image = Image.open(SRC)
     for target in TARGETS:
