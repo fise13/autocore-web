@@ -24,7 +24,7 @@ export function getAppleWebSetupHint(): string {
     `   Domain: autocore-6066c.firebaseapp.com (без https://)`,
     `   Return URL: ${firebaseHandler} (точное совпадение, без слэша в конце)`,
     "2. Firebase → Authentication → Apple → Services ID + Team ID + Key ID + .p8 (OAuth code flow).",
-    "3. Firebase → Authorized domains → localhost.",
+    "3. Firebase → Authorized domains → добавьте localhost и autocore-web.vercel.app.",
   ].join("\n");
 }
 

@@ -485,7 +485,7 @@ export function mapAuthError(error: unknown, context?: AuthErrorContext): string
     case "auth/operation-not-allowed":
       return "Этот способ входа временно недоступен.";
     case "auth/unauthorized-domain":
-      return "Этот домен не разрешён для входа. Добавьте localhost в Firebase Authentication → Settings → Authorized domains.";
+      return "Этот домен не разрешён для входа. Добавьте autocore-web.vercel.app и localhost в Firebase Authentication → Settings → Authorized domains.";
     case "auth/invalid-oauth-client-id":
     case "auth/invalid-oauth-provider":
       return "Apple OAuth не настроен: проверьте Services ID и OAuth code flow (Team ID, Key ID, .p8) в Firebase.";

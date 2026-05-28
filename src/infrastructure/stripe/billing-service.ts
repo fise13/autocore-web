@@ -1,6 +1,7 @@
 import { httpsCallable } from "firebase/functions";
 
 import { getFirebaseFunctions } from "@/infrastructure/firebase/client";
+import { getAppOrigin } from "@/lib/app-url";
 import { mapBillingCallableError } from "@/lib/stripe/billing-errors";
 import { StripeBillingInterval, stripePriceIdForInterval } from "@/lib/stripe/prices";
 
@@ -11,13 +12,14 @@ export async function startProCheckout(companyId: string, interval: StripeBillin
   try {
     const functions = getFirebaseFunctions();
     const createCheckoutSession = httpsCallable<
-      { companyId: string; priceId: string },
+      { companyId: string; priceId: string; returnOrigin?: string },
       CheckoutResponse
     >(functions, "createCheckoutSession");
 
     const result = await createCheckoutSession({
       companyId,
       priceId: stripePriceIdForInterval(interval),
+      returnOrigin: getAppOrigin(),
     });
 
     const url = result.data?.url?.trim();
@@ -33,12 +35,15 @@ export async function startProCheckout(companyId: string, interval: StripeBillin
 export async function openBillingPortal(companyId: string): Promise<string> {
   try {
     const functions = getFirebaseFunctions();
-    const createBillingPortalSession = httpsCallable<{ companyId: string }, PortalResponse>(
-      functions,
-      "createBillingPortalSession",
-    );
+    const createBillingPortalSession = httpsCallable<
+      { companyId: string; returnOrigin?: string },
+      PortalResponse
+    >(functions, "createBillingPortalSession");
 
-    const result = await createBillingPortalSession({ companyId });
+    const result = await createBillingPortalSession({
+      companyId,
+      returnOrigin: getAppOrigin(),
+    });
     const url = result.data?.url?.trim();
     if (!url) {
       throw new Error("Stripe Portal не вернул ссылку");
