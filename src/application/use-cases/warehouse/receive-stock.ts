@@ -26,6 +26,9 @@ export async function receiveStockUseCase(
     createExpense?: boolean;
     account?: OperationAccount;
     paymentMethod?: PaymentMethod;
+    referenceType?: "purchase" | "import" | "manual";
+    referenceId?: string;
+    idempotencyKey?: string;
   },
 ) {
   const warehouse =
@@ -51,10 +54,11 @@ export async function receiveStockUseCase(
       type: "receipt",
       quantity: params.quantity,
       unitCost,
-      referenceType: "purchase",
-      referenceId: params.supplierId,
+      referenceType: params.referenceType ?? "purchase",
+      referenceId: params.referenceId ?? params.supplierId,
       reason: params.reason ?? "Приход на склад",
       actorUserId: params.actorUserId,
+      idempotencyKey: params.idempotencyKey,
     },
   );
 

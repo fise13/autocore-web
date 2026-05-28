@@ -8,8 +8,10 @@ import { unsellMotorWithFinancialOperationUseCase } from "@/application/use-case
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { useMotorSyncBridge } from "@/components/motors/motor-sync-bridge";
 import { useMotorExcelIoBridge } from "@/components/motors/motor-excel-io-bridge";
-import { MotorExcelImportResultDialog } from "@/components/motors/motor-excel-import-result-dialog";
-import { MotorExcelImportWizard } from "@/components/motors/motor-excel-import-wizard";
+import { applyMotorImportJobUseCase } from "@/application/use-cases/motors/apply-motor-import-job";
+import { createMotorImportJobUseCase } from "@/application/use-cases/motors/create-motor-import-job";
+import { MotorImportHistoryPanel } from "@/components/motors/import/motor-import-history-panel";
+import { MotorImportWizard } from "@/components/motors/import/motor-import-wizard";
 import { MotorsExcelGrid } from "@/components/motors/motors-excel-grid";
 import { MotorsGridSkeleton } from "@/components/motors/motors-grid-skeleton";
 import { SellMotorDialog } from "@/components/motors/sell-motor-dialog";
@@ -25,7 +27,10 @@ import { can } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { userCopy } from "@/lib/user-copy";
 import { type DeepAction } from "@/lib/navigation/deep-actions";
+import { MotorExcelImportResultDialog } from "@/components/motors/motor-excel-import-result-dialog";
 import { MotorExcelImportResult } from "@/lib/motors/excel-types";
+import { MotorImportPreviewResult } from "@/lib/motors/import/types";
+import { createMotorImportRepository } from "@/infrastructure/firestore/motor-import-repository";
 import { readExcelSheets } from "@/lib/motors/excel-import";
 import type { ExcelSheetData } from "@/lib/motors/excel-types";
 import { cn } from "@/lib/utils";
@@ -39,6 +44,7 @@ const motorRepository = createMotorRepository();
 const financialRepository = createFinancialOperationRepository();
 const catalogRepository = createCatalogRepository();
 const specificCategoryRepository = createSpecificCategoryRepository();
+const motorImportRepository = createMotorImportRepository();
 
 export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
   const { profile } = useAuth();
@@ -51,7 +57,13 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
   const [importResult, setImportResult] = useState<MotorExcelImportResult | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importWizardOpen, setImportWizardOpen] = useState(false);
+  const [importHistoryOpen, setImportHistoryOpen] = useState(false);
   const [importSheets, setImportSheets] = useState<ExcelSheetData[]>([]);
+  const [importSourceFileName, setImportSourceFileName] = useState<string | undefined>();
+  const [importResumeSession, setImportResumeSession] = useState<{
+    jobId: string;
+    preview: MotorImportPreviewResult;
+  } | null>(null);
   const [importLoadError, setImportLoadError] = useState<string | null>(null);
   const [sellHintVisible, setSellHintVisible] = useState(false);
   const [addHintVisible, setAddHintVisible] = useState(false);
@@ -123,6 +135,8 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
       try {
         const sheets = await readExcelSheets(file);
         setImportSheets(sheets);
+        setImportSourceFileName(file.name);
+        setImportResumeSession(null);
         setImportWizardOpen(true);
       } catch (error) {
         setImportLoadError(error instanceof Error ? error.message : "Не удалось прочитать Excel");
@@ -365,27 +379,77 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
         </div>
       ) : null}
 
-      <MotorExcelImportWizard
-        key={importSheets.map((sheet) => sheet.name).join("|")}
+      <MotorImportWizard
+        key={importResumeSession?.jobId ?? importSheets.map((sheet) => sheet.name).join("|")}
         sheets={importSheets}
+        sourceFileName={importSourceFileName}
         open={importWizardOpen}
         onOpenChange={(open) => {
           setImportWizardOpen(open);
-          if (!open) setImportSheets([]);
+          if (!open) {
+            setImportSheets([]);
+            setImportSourceFileName(undefined);
+            setImportResumeSession(null);
+          }
         }}
-        uid={uid}
-        companyId={companyId}
-        repository={motorRepository}
-        catalogRepository={catalogRepository}
-        specificCategoryRepository={specificCategoryRepository}
-        existingMotors={allMotorsQuery.data ?? []}
-        existingBrands={brands}
-        existingEngines={engines}
-        existingSpecificCategories={specificCategories}
+        useAi
+        resumeSession={importResumeSession}
+        onOpenHistory={() => {
+          setImportHistoryOpen(true);
+        }}
+        onAnalyze={async (input) =>
+          createMotorImportJobUseCase(motorImportRepository, {
+            companyId,
+            sourceFileName: input.sourceFileName ?? importSourceFileName,
+            sheets: input.sheets,
+            existingMotors: allMotorsQuery.data ?? [],
+            existingBrands: brands,
+            existingEngines: engines,
+            createdByUserId: uid,
+            useAi: true,
+            onProgress: input.onProgress,
+          })
+        }
+        onApply={async (input) => {
+          const sheetConfigs = Object.values(input.preview.sheetMappings).map((item) => item.config);
+          const columnMappings = Object.fromEntries(
+            Object.entries(input.preview.sheetMappings).map(([id, item]) => [id, item.columnMapping]),
+          );
+          return applyMotorImportJobUseCase(motorImportRepository, {
+            companyId,
+            jobId: input.jobId,
+            uid,
+            sheets: input.preview.sheets.length > 0 ? input.preview.sheets : importSheets,
+            sheetConfigs,
+            columnMappings,
+            engineRows: input.preview.engineRows,
+            repository: motorRepository,
+            catalogRepository,
+            specificCategoryRepository,
+            existingMotors: allMotorsQuery.data ?? [],
+            existingBrands: brands,
+            existingEngines: engines,
+            existingSpecificCategories: specificCategories,
+            actorUserId: uid,
+            onProgress: input.onProgress,
+            shouldCancel: input.shouldCancel,
+          });
+        }}
         onComplete={async (result) => {
           setImportResult(result);
           setImportDialogOpen(true);
           await workspace.triggerSync();
+        }}
+      />
+
+      <MotorImportHistoryPanel
+        open={importHistoryOpen}
+        onOpenChange={(open) => setImportHistoryOpen(open)}
+        companyId={companyId}
+        importRepository={motorImportRepository}
+        onResume={(jobId, preview) => {
+          setImportResumeSession({ jobId, preview });
+          setImportWizardOpen(true);
         }}
       />
 

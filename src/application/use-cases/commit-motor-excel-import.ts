@@ -4,7 +4,8 @@ import { MotorEntity } from "@/domain/motor";
 import { buildEngineRowsFromSheet, buildSpecificRowsFromSheet } from "@/lib/motors/excel-import-engine-rows";
 import { SheetColumnMapping } from "@/lib/motors/excel-column-mapping";
 import { effectiveBrand, effectiveEngineCode, SheetImportConfig } from "@/lib/motors/excel-sheet-config";
-import { ExcelSheetData, MotorExcelImportResult } from "@/lib/motors/excel-types";
+import { ExcelSheetData, MotorExcelImportResult, ParsedImportMotorRow } from "@/lib/motors/excel-types";
+import { MotorImportPreviewRow } from "@/lib/motors/import/types";
 import {
   BrandEntity,
   CatalogRepository,
@@ -34,7 +35,15 @@ export async function commitMotorExcelImport(params: {
   sheets: ExcelSheetData[];
   sheetConfigs: SheetImportConfig[];
   columnMappings: Record<string, SheetColumnMapping>;
-}): Promise<MotorExcelImportResult> {
+  selectedEngineRows?: MotorImportPreviewRow[];
+  onProgress?: (progress: { applied: number; total: number; percent: number }) => void;
+  shouldCancel?: () => boolean;
+}): Promise<
+  MotorExcelImportResult & {
+    createdMotorIds: string[];
+    updatedMotorIds: string[];
+  }
+> {
   const bySerial = new Map<string, MotorEntity>();
   for (const motor of params.existingMotors) {
     if (!motor.serialCode.trim()) continue;
@@ -52,6 +61,38 @@ export async function commitMotorExcelImport(params: {
   let workingSpecificCategories = [...params.existingSpecificCategories];
   let specificRecordsImported = 0;
   let specificCategoriesUpdated = 0;
+  const createdMotorIds: string[] = [];
+  const updatedMotorIds: string[] = [];
+
+  const selectedKeys = new Set((params.selectedEngineRows ?? []).filter((row) => row.selected).map((row) => row.rowKey));
+  const useSelection = selectedKeys.size > 0;
+  const selectedTotal = useSelection ? selectedKeys.size : 0;
+  let processedSelected = 0;
+
+  function previewRowToParsed(row: MotorImportPreviewRow): ParsedImportMotorRow {
+    return {
+      sheetName: row.sheetName,
+      serialCode: row.serialCode,
+      configuration: row.configuration,
+      notes: row.notes,
+      quantity: row.quantity,
+      transmission: row.transmission,
+      arrivalDate: row.arrivalDate,
+      soldDate: row.soldDate,
+      brandName: row.brandName,
+      engineCode: row.engineCode,
+    };
+  }
+
+  function reportProgress() {
+    if (!params.onProgress) return;
+    const total = useSelection ? selectedTotal : imported + updated + skipped + 1;
+    params.onProgress({
+      applied: imported + updated,
+      total: Math.max(total, 1),
+      percent: total === 0 ? 100 : Math.round((processedSelected / Math.max(total, 1)) * 100),
+    });
+  }
 
   for (const config of params.sheetConfigs) {
     if (config.importType !== "engines") continue;
@@ -87,9 +128,21 @@ export async function commitMotorExcelImport(params: {
       }
 
       processedSheets.add(config.sheetName);
-      const rows = buildEngineRowsFromSheet(sheet, config, mapping);
+      const rows = params.selectedEngineRows
+        ? params.selectedEngineRows
+            .filter((row) => row.sheetConfigId === config.id && row.selected)
+            .map(previewRowToParsed)
+        : buildEngineRowsFromSheet(sheet, config, mapping);
 
       for (const row of rows) {
+        if (params.shouldCancel?.()) break;
+        if (useSelection) {
+          const previewRow = params.selectedEngineRows?.find(
+            (item) => item.sheetConfigId === config.id && item.serialCode === row.serialCode,
+          );
+          if (previewRow && !selectedKeys.has(previewRow.rowKey)) continue;
+        }
+
         const serialKey = normalizeSerial(row.serialCode);
         if (!serialKey) {
           skipped += 1;
@@ -118,6 +171,7 @@ export async function commitMotorExcelImport(params: {
               localId: existing.localId ?? Number(existing.id),
             });
             updated += 1;
+            updatedMotorIds.push(existing.id);
           } else {
             const id = await createMotorUseCase(params.repository, params.uid, payload, workingMotors);
             const created: MotorEntity = {
@@ -138,12 +192,15 @@ export async function commitMotorExcelImport(params: {
             workingMotors = [...workingMotors, created];
             bySerial.set(serialKey, created);
             imported += 1;
+            createdMotorIds.push(id);
           }
         } catch (error) {
           skipped += 1;
           const message = error instanceof Error ? error.message : "Неизвестная ошибка";
           errors.push(`${config.sheetName}: ${row.serialCode} — ${message}`);
         }
+        processedSelected += 1;
+        reportProgress();
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Неизвестная ошибка";
@@ -228,5 +285,7 @@ export async function commitMotorExcelImport(params: {
     specificRecordsImported,
     specificCategoriesUpdated,
     errors,
+    createdMotorIds,
+    updatedMotorIds,
   };
 }

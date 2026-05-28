@@ -12,7 +12,9 @@
     "migrate:billing": "tsx scripts/backfill-billing-subscriptions.ts",
     "deploy:billing-functions": "bash scripts/deploy-billing-functions.sh",
     "assets:sync-from-native": "bash scripts/sync-brand-assets-from-native.sh",
-    "assets:generate-favicon": "python3 scripts/generate-favicon-ico.py"
+    "assets:generate-favicon": "python3 scripts/generate-favicon-ico.py",
+    "test:import": "node --import tsx --test src/lib/warehouse/import/preprocessor.test.ts src/lib/warehouse/import/validation.test.ts",
+    "test:import-motors": "node --import tsx --test src/lib/motors/import/sheet-mapper.test.ts src/lib/motors/import/ai-mapper.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

@@ -14,7 +14,9 @@ import { MotorsGridSkeleton } from "@/components/motors/motors-grid-skeleton";
 import { WarehouseAdjustmentDialog } from "@/components/warehouse/warehouse-adjustment-dialog";
 import { WarehouseBarcodePanel } from "@/components/warehouse/warehouse-barcode-panel";
 import { WarehouseExcelGrid } from "@/components/warehouse/warehouse-excel-grid";
-import { WarehouseImportDialog } from "@/components/warehouse/warehouse-import-dialog";
+import { WarehouseImportWizard } from "@/components/warehouse/import/warehouse-import-wizard";
+import { WarehouseImportHistoryPanel } from "@/components/warehouse/import/warehouse-import-history-panel";
+import { InventoryImportJob } from "@/domain/inventory-import";
 import { WarehouseMovementDrawer } from "@/components/warehouse/warehouse-movement-drawer";
 import { WarehouseReceiptDialog } from "@/components/warehouse/warehouse-receipt-dialog";
 import { WarehouseSaleDialog } from "@/components/warehouse/warehouse-sale-dialog";
@@ -48,7 +50,7 @@ const barcodeRepository = createBarcodeMappingRepository();
 const importRepository = createInventoryImportRepository();
 const presenceRepository = createWarehousePresenceRepository();
 
-type DialogKind = "receipt" | "adjust" | "sale" | "transfer" | "history" | "barcode" | "import";
+type DialogKind = "receipt" | "adjust" | "sale" | "transfer" | "history" | "barcode" | "import" | "import-history";
 
 export function WarehouseWorkspace() {
   const { profile } = useAuth();
@@ -72,6 +74,13 @@ export function WarehouseWorkspace() {
   const { warehouses, defaultWarehouse } = useWarehousesRealtime(warehouseRepository, companyId, canView);
   const [activeItem, setActiveItem] = useState<InventoryItem | null>(null);
   const [dialog, setDialog] = useState<DialogKind | null>(null);
+  const [importResumeSession, setImportResumeSession] = useState<{
+    jobId: string;
+    rows: InventoryImportJob["rows"];
+    columnMapping: Record<string, string>;
+    sourceFileName?: string;
+    stats: InventoryImportJob["stats"];
+  } | null>(null);
   const [ioBusy, setIoBusy] = useState<"export" | "import" | null>(null);
   const { movements, loading: movementsLoading } = useInventoryMovementsRealtime(
     movementRepository,
@@ -414,25 +423,32 @@ export function WarehouseWorkspace() {
         onFound={(item) => setActiveItem(item)}
       />
 
-      <WarehouseImportDialog
+      <WarehouseImportWizard
         open={dialog === "import"}
-        onOpenChange={(open) => !open && setDialog(null)}
-        onPreview={async (input) => {
-          const preview = await createImportJobUseCase(importRepository, itemRepository, {
-            companyId,
-            ...input,
-            createdByUserId: actorUserId,
-          });
-          return { rows: preview.rows, stats: preview.stats };
+        onOpenChange={(open) => {
+          if (!open) {
+            setImportResumeSession(null);
+            setDialog(null);
+          }
         }}
-        onApply={async (rows) => {
-          const job = await createImportJobUseCase(importRepository, itemRepository, {
+        useAi
+        resumeSession={importResumeSession}
+        onOpenHistory={() => setDialog("import-history")}
+        onAnalyze={async (input) =>
+          createImportJobUseCase(importRepository, itemRepository, {
             companyId,
-            headers: [],
-            rows: rows.map((row) => row.raw),
+            file: input.file,
+            selectedSheetName: input.selectedSheetName,
+            manualColumnMapping: input.manualColumnMapping,
+            useAi: true,
+            existingItems: items,
             createdByUserId: actorUserId,
-          });
-          return applyImportJobUseCase(
+            onProgress: input.onProgress,
+            sourceFileName: input.file.name,
+          })
+        }
+        onApply={async (input) =>
+          applyImportJobUseCase(
             importRepository,
             itemRepository,
             stockLevelRepository,
@@ -441,12 +457,38 @@ export function WarehouseWorkspace() {
             financialRepository,
             {
               companyId,
-              jobId: job.jobId,
-              rows,
+              jobId: input.jobId,
+              rows: input.rows,
               actorUserId,
               defaultWarehouseId: defaultWarehouse?.id,
+              sourceFileName: input.sourceFileName,
+              applyOptions: input.applyOptions,
+              onProgress: input.onProgress,
+              shouldCancel: input.shouldCancel,
             },
-          );
+          )
+        }
+      />
+
+      <WarehouseImportHistoryPanel
+        open={dialog === "import-history"}
+        onOpenChange={(open) => setDialog(open ? "import-history" : "import")}
+        companyId={companyId}
+        actorUserId={actorUserId}
+        importRepository={importRepository}
+        itemRepository={itemRepository}
+        stockLevelRepository={stockLevelRepository}
+        movementRepository={movementRepository}
+        financialRepository={financialRepository}
+        onResume={(job, rows) => {
+          setImportResumeSession({
+            jobId: job.id,
+            rows,
+            columnMapping: job.columnMapping,
+            sourceFileName: job.sourceFileName,
+            stats: job.stats,
+          });
+          setDialog("import");
         }}
       />
     </div>
