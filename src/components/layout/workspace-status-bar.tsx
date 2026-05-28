@@ -3,10 +3,13 @@
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
+import { usePathname } from "next/navigation";
 
 export function WorkspaceStatusBar() {
   const { shownCount, totalCount, saveStatus, saveError, triggerSave, motorSyncState, triggerSync } =
     useWorkspace();
+  const pathname = usePathname();
+  const isWarehouse = pathname?.startsWith("/warehouse");
 
   const hasUnsaved = saveStatus === "pending";
   const isSaving = saveStatus === "saving";
@@ -35,6 +38,35 @@ export function WorkspaceStatusBar() {
           : motorSyncState.remotePending
             ? userCopy.sync.remoteUpdates
             : userCopy.sync.synced;
+
+  if (isWarehouse) {
+    return (
+      <footer className="flex h-10 shrink-0 items-center gap-2 border-t bg-card px-3 text-xs text-muted-foreground">
+        <span>
+          {shownCount} / {totalCount}
+        </span>
+        <span aria-hidden>•</span>
+        <span
+          className={cn(
+            "transition-colors duration-300",
+            hasUnsaved && "text-amber-600",
+            saveStatus === "saving" && "text-sky-600",
+            saveStatus === "error" && "text-destructive",
+          )}
+        >
+          {saveStatusText}
+        </span>
+        <button
+          type="button"
+          onClick={triggerSave}
+          disabled={!hasUnsaved || isSaving}
+          className="text-primary transition hover:text-primary/80 disabled:pointer-events-none disabled:opacity-40"
+        >
+          {userCopy.sync.saveLocal}
+        </button>
+      </footer>
+    );
+  }
 
   return (
     <footer className="flex h-10 shrink-0 items-center gap-2 border-t bg-card px-3 text-xs text-muted-foreground">

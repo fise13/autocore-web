@@ -1,0 +1,454 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+import { adjustStockUseCase } from "@/application/use-cases/warehouse/adjust-stock";
+import { applyImportJobUseCase, createImportJobUseCase } from "@/application/use-cases/warehouse/apply-import-job";
+import { ensureDefaultWarehouseUseCase } from "@/application/use-cases/warehouse/ensure-default-warehouse";
+import { issueStockSaleUseCase } from "@/application/use-cases/warehouse/issue-stock-sale";
+import { lookupBarcodeUseCase } from "@/application/use-cases/warehouse/lookup-barcode";
+import { receiveStockUseCase } from "@/application/use-cases/warehouse/receive-stock";
+import { transferStockUseCase } from "@/application/use-cases/warehouse/transfer-stock";
+import { useWorkspace } from "@/components/layout/workspace-context";
+import { MotorsGridSkeleton } from "@/components/motors/motors-grid-skeleton";
+import { WarehouseAdjustmentDialog } from "@/components/warehouse/warehouse-adjustment-dialog";
+import { WarehouseBarcodePanel } from "@/components/warehouse/warehouse-barcode-panel";
+import { WarehouseExcelGrid } from "@/components/warehouse/warehouse-excel-grid";
+import { WarehouseImportDialog } from "@/components/warehouse/warehouse-import-dialog";
+import { WarehouseMovementDrawer } from "@/components/warehouse/warehouse-movement-drawer";
+import { WarehouseReceiptDialog } from "@/components/warehouse/warehouse-receipt-dialog";
+import { WarehouseSaleDialog } from "@/components/warehouse/warehouse-sale-dialog";
+import { WarehouseTransferDialog } from "@/components/warehouse/warehouse-transfer-dialog";
+import { useAuth } from "@/components/providers/auth-provider";
+import { InventoryItem } from "@/domain/inventory";
+import { useInventoryMovementsRealtime } from "@/hooks/use-inventory-movements-realtime";
+import { useInventoryRealtime } from "@/hooks/use-inventory-realtime";
+import { useWarehousesRealtime } from "@/hooks/use-warehouses-realtime";
+import { can } from "@/lib/auth/permissions";
+import { normalizeCompanyId } from "@/lib/company-id";
+import { filterWarehouseItems } from "@/lib/warehouse/warehouse-grid-data-store";
+import { cn } from "@/lib/utils";
+import { createBarcodeMappingRepository } from "@/infrastructure/firestore/barcode-mapping-repository";
+import { createFinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
+import { createInventoryDocumentRepository } from "@/infrastructure/firestore/inventory-document-repository";
+import { createInventoryImportRepository } from "@/infrastructure/firestore/inventory-import-repository";
+import { createInventoryItemRepository } from "@/infrastructure/firestore/inventory-item-repository";
+import { createInventoryMovementRepository } from "@/infrastructure/firestore/inventory-movement-repository";
+import { createInventoryStockLevelRepository } from "@/infrastructure/firestore/inventory-stock-level-repository";
+import { createWarehousePresenceRepository } from "@/infrastructure/firestore/warehouse-presence-repository";
+import { createWarehouseRepository } from "@/infrastructure/firestore/warehouse-repository";
+
+const itemRepository = createInventoryItemRepository();
+const stockLevelRepository = createInventoryStockLevelRepository();
+const movementRepository = createInventoryMovementRepository();
+const warehouseRepository = createWarehouseRepository();
+const financialRepository = createFinancialOperationRepository();
+const documentRepository = createInventoryDocumentRepository();
+const barcodeRepository = createBarcodeMappingRepository();
+const importRepository = createInventoryImportRepository();
+const presenceRepository = createWarehousePresenceRepository();
+
+type DialogKind = "receipt" | "adjust" | "sale" | "transfer" | "history" | "barcode" | "import";
+
+export function WarehouseWorkspace() {
+  const { profile } = useAuth();
+  const workspace = useWorkspace();
+  const {
+    registerWarehouseExcelHandlers,
+    setWarehouseExcelAvailability,
+    registerWarehouseImportPicker,
+    registerWarehouseBarcodeHandler,
+    saveError,
+    setSaveError,
+  } = workspace;
+  const companyId = normalizeCompanyId(profile?.companyId);
+  const actorUserId = profile?.id ?? "";
+  const canView = can(profile, "inventory_view");
+  const canEdit = can(profile, "inventory_edit");
+  const canImport = can(profile, "inventory_import");
+  const canExport = can(profile, "inventory_export");
+
+  const itemsQuery = useInventoryRealtime(itemRepository, companyId, canView);
+  const { warehouses, defaultWarehouse } = useWarehousesRealtime(warehouseRepository, companyId, canView);
+  const [activeItem, setActiveItem] = useState<InventoryItem | null>(null);
+  const [dialog, setDialog] = useState<DialogKind | null>(null);
+  const [ioBusy, setIoBusy] = useState<"export" | "import" | null>(null);
+  const { movements, loading: movementsLoading } = useInventoryMovementsRealtime(
+    movementRepository,
+    companyId,
+    activeItem?.id,
+    dialog === "history" && Boolean(activeItem),
+  );
+
+  useEffect(() => {
+    if (!companyId || !canEdit) return;
+    void ensureDefaultWarehouseUseCase(warehouseRepository, companyId, actorUserId).catch(() => undefined);
+  }, [actorUserId, canEdit, companyId]);
+
+  useEffect(() => {
+    if (!companyId || !actorUserId || !canView) return;
+    const heartbeat = () => {
+      void presenceRepository.heartbeat({
+        companyId,
+        userId: actorUserId,
+        displayName: profile?.displayName ?? profile?.email,
+        action: dialog === "barcode" ? "scanning" : dialog === "import" ? "importing" : "viewing",
+      });
+    };
+    heartbeat();
+    const timer = window.setInterval(heartbeat, 30_000);
+    return () => {
+      window.clearInterval(timer);
+      void presenceRepository.leave(companyId, actorUserId);
+    };
+  }, [actorUserId, canView, companyId, dialog, profile?.displayName, profile?.email]);
+
+  const items = itemsQuery.data ?? [];
+  const filteredItems = useMemo(
+    () => filterWarehouseItems(items, workspace.search),
+    [items, workspace.search],
+  );
+  const isGridReady = !itemsQuery.isBootstrapping;
+
+  useEffect(() => {
+    workspace.setCounts(filteredItems.length, items.length);
+  }, [filteredItems.length, items.length, workspace]);
+
+  const exportWarehouse = useCallback(async () => {
+    setIoBusy("export");
+    try {
+      const header = [
+        "SKU",
+        "Название",
+        "Категория",
+        "Бренд",
+        "Ед.",
+        "На складе",
+        "Резерв",
+        "Доступно",
+        "Закупка",
+        "Продажа",
+        "Поставщик",
+        "Штрихкод",
+        "Место",
+        "Мин. запас",
+        "Статус",
+      ];
+      const lines = items.map((item) =>
+        [
+          item.sku,
+          item.name,
+          item.categoryPath?.join(" / ") ?? "",
+          item.brandName ?? "",
+          item.unit,
+          item.totalOnHand,
+          item.totalReserved,
+          item.totalAvailable,
+          item.purchasePrice ?? "",
+          item.sellPrice ?? "",
+          item.supplierName ?? "",
+          item.barcodes[0] ?? "",
+          item.warehouseLocation ?? "",
+          item.lowStockThreshold ?? "",
+          item.status,
+        ].join(","),
+      );
+      const blob = new Blob([[header.join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "warehouse-export.csv";
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIoBusy(null);
+    }
+  }, [items]);
+
+  const importWarehouse = useCallback(async () => {
+    setIoBusy("import");
+    try {
+      setDialog("import");
+    } finally {
+      setIoBusy(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    registerWarehouseExcelHandlers({ exportWarehouse, importWarehouse });
+    return () => registerWarehouseExcelHandlers(null);
+  }, [exportWarehouse, importWarehouse, registerWarehouseExcelHandlers]);
+
+  useEffect(() => {
+    registerWarehouseImportPicker(() => {
+      setDialog("import");
+    });
+    return () => registerWarehouseImportPicker(null);
+  }, [registerWarehouseImportPicker]);
+
+  useEffect(() => {
+    registerWarehouseBarcodeHandler(() => {
+      setDialog("barcode");
+    });
+    return () => registerWarehouseBarcodeHandler(null);
+  }, [registerWarehouseBarcodeHandler]);
+
+  useEffect(() => {
+    setWarehouseExcelAvailability({
+      canExport: canExport && items.length > 0,
+      canImport: canImport && canEdit,
+      busy: ioBusy,
+    });
+    return () => {
+      setWarehouseExcelAvailability({ canExport: false, canImport: false, busy: null });
+    };
+  }, [canEdit, canExport, canImport, ioBusy, items.length, setWarehouseExcelAvailability]);
+
+  function openDialog(kind: DialogKind, item?: InventoryItem) {
+    if (item) setActiveItem(item);
+    setDialog(kind);
+  }
+
+  if (itemsQuery.isError) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-sm">
+        <p className="text-destructive">{itemsQuery.errorMessage ?? "Не удалось загрузить склад"}</p>
+      </div>
+    );
+  }
+
+  if (!canView) {
+    return (
+      <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+        Нет доступа к складу
+      </div>
+    );
+  }
+
+  const readOnly = !canEdit;
+
+  return (
+    <div className="relative flex h-full min-h-0 flex-1 flex-col">
+      {readOnly ? (
+        <div className="border-b border-amber-500/25 bg-amber-500/10 px-4 py-2 text-center text-xs text-amber-800 dark:text-amber-200">
+          Режим просмотра — для редактирования нужна роль с правом «Редактирование инвентаря»
+        </div>
+      ) : null}
+      {saveError ? (
+        <div className="flex items-center justify-between gap-3 border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-xs text-destructive">
+          <span>{saveError}</span>
+          <button
+            type="button"
+            className="rounded px-2 py-1 text-[11px] font-medium hover:bg-destructive/10"
+            onClick={() => setSaveError(null)}
+          >
+            Скрыть
+          </button>
+        </div>
+      ) : null}
+      <div className="flex items-center justify-between gap-3 border-b bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
+        <span>
+          Основной склад:{" "}
+          <span className="font-medium text-foreground">
+            {defaultWarehouse?.name ?? "не создан"}
+          </span>
+          {warehouses.length > 1 ? ` · всего складов: ${warehouses.length}` : ""}
+        </span>
+        {canEdit && !defaultWarehouse ? (
+          <button
+            type="button"
+            className="rounded-md border px-2 py-1 text-foreground hover:bg-muted"
+            onClick={() => {
+              void ensureDefaultWarehouseUseCase(warehouseRepository, companyId, actorUserId);
+            }}
+          >
+            Создать основной склад
+          </button>
+        ) : null}
+      </div>
+      {itemsQuery.isBootstrapping ? <MotorsGridSkeleton /> : null}
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 flex-col transition-[opacity,transform] duration-500 ease-out motion-reduce:transition-none",
+          isGridReady ? "opacity-100 translate-y-0" : "pointer-events-none absolute inset-0 opacity-0 translate-y-1",
+        )}
+      >
+        {isGridReady ? (
+          <WarehouseExcelGrid
+            items={filteredItems}
+            companyId={companyId}
+            canEdit={canEdit}
+            repository={itemRepository}
+            stockLevelRepository={stockLevelRepository}
+            movementRepository={movementRepository}
+            warehouseRepository={warehouseRepository}
+            financialRepository={financialRepository}
+            defaultWarehouseId={defaultWarehouse?.id}
+            actorUserId={actorUserId}
+            onReceipt={(item) => openDialog("receipt", item)}
+            onAdjust={(item) => openDialog("adjust", item)}
+            onSale={(item) => openDialog("sale", item)}
+            onTransfer={(item) => openDialog("transfer", item)}
+            onHistory={(item) => openDialog("history", item)}
+          />
+        ) : null}
+      </div>
+
+      <WarehouseReceiptDialog
+        item={activeItem}
+        open={dialog === "receipt"}
+        onOpenChange={(open) => !open && setDialog(null)}
+        onConfirm={async (payload) => {
+          if (!activeItem) return;
+          await receiveStockUseCase(
+            itemRepository,
+            stockLevelRepository,
+            movementRepository,
+            warehouseRepository,
+            financialRepository,
+            {
+              companyId,
+              itemId: activeItem.id,
+              warehouseId: defaultWarehouse?.id,
+              quantity: payload.quantity,
+              unitCost: payload.unitCost,
+              reason: payload.reason,
+              createExpense: payload.createExpense,
+              actorUserId,
+            },
+          );
+        }}
+      />
+
+      <WarehouseAdjustmentDialog
+        item={activeItem}
+        open={dialog === "adjust"}
+        onOpenChange={(open) => !open && setDialog(null)}
+        onConfirm={async (payload) => {
+          if (!activeItem) return;
+          await adjustStockUseCase(
+            itemRepository,
+            stockLevelRepository,
+            movementRepository,
+            warehouseRepository,
+            {
+              companyId,
+              itemId: activeItem.id,
+              warehouseId: defaultWarehouse?.id,
+              quantity: payload.quantity,
+              direction: payload.direction,
+              reason: payload.reason,
+              actorUserId,
+            },
+          );
+        }}
+      />
+
+      <WarehouseSaleDialog
+        item={activeItem}
+        open={dialog === "sale"}
+        onOpenChange={(open) => !open && setDialog(null)}
+        onConfirm={async (payload) => {
+          if (!activeItem) return;
+          await issueStockSaleUseCase(
+            itemRepository,
+            stockLevelRepository,
+            movementRepository,
+            warehouseRepository,
+            financialRepository,
+            {
+              companyId,
+              itemId: activeItem.id,
+              warehouseId: defaultWarehouse?.id,
+              quantity: payload.quantity,
+              amount: payload.amount,
+              account: payload.account,
+              paymentMethod: payload.paymentMethod,
+              comment: payload.comment,
+              actorUserId,
+            },
+          );
+        }}
+      />
+
+      <WarehouseTransferDialog
+        item={activeItem}
+        warehouses={warehouses}
+        open={dialog === "transfer"}
+        onOpenChange={(open) => !open && setDialog(null)}
+        onConfirm={async (payload) => {
+          if (!activeItem) return;
+          await transferStockUseCase(
+            itemRepository,
+            stockLevelRepository,
+            movementRepository,
+            documentRepository,
+            {
+              companyId,
+              itemId: activeItem.id,
+              fromWarehouseId: payload.fromWarehouseId,
+              toWarehouseId: payload.toWarehouseId,
+              quantity: payload.quantity,
+              reason: payload.reason,
+              actorUserId,
+            },
+          );
+        }}
+      />
+
+      <WarehouseMovementDrawer
+        item={activeItem}
+        movements={movements}
+        loading={movementsLoading}
+        open={dialog === "history"}
+        onOpenChange={(open) => !open && setDialog(null)}
+      />
+
+      <WarehouseBarcodePanel
+        open={dialog === "barcode"}
+        onOpenChange={(open) => !open && setDialog(null)}
+        onLookup={async (barcode) => {
+          const result = await lookupBarcodeUseCase(barcodeRepository, itemRepository, companyId, barcode);
+          return result.item;
+        }}
+        onFound={(item) => setActiveItem(item)}
+      />
+
+      <WarehouseImportDialog
+        open={dialog === "import"}
+        onOpenChange={(open) => !open && setDialog(null)}
+        onPreview={async (input) => {
+          const preview = await createImportJobUseCase(importRepository, itemRepository, {
+            companyId,
+            ...input,
+            createdByUserId: actorUserId,
+          });
+          return { rows: preview.rows, stats: preview.stats };
+        }}
+        onApply={async (rows) => {
+          const job = await createImportJobUseCase(importRepository, itemRepository, {
+            companyId,
+            headers: [],
+            rows: rows.map((row) => row.raw),
+            createdByUserId: actorUserId,
+          });
+          return applyImportJobUseCase(
+            importRepository,
+            itemRepository,
+            stockLevelRepository,
+            movementRepository,
+            warehouseRepository,
+            financialRepository,
+            {
+              companyId,
+              jobId: job.jobId,
+              rows,
+              actorUserId,
+              defaultWarehouseId: defaultWarehouse?.id,
+            },
+          );
+        }}
+      />
+    </div>
+  );
+}

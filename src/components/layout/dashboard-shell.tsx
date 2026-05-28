@@ -52,8 +52,9 @@ function DashboardShellInner({ children }: DashboardShellProps) {
 
   const isMotorRoute = pathname === "/motors" || pathname === "/sold";
   const isSpecificRoute = pathname.startsWith("/specific/");
+  const isWarehouseRoute = pathname === "/warehouse";
   const isMissionControlRoute = pathname === "/";
-  const isWorkspaceRoute = isMotorRoute || isSpecificRoute;
+  const isWorkspaceRoute = isMotorRoute || isSpecificRoute || isWarehouseRoute;
 
   const isSoldRoute = pathname === "/sold";
 

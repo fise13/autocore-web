@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/providers/app-providers";
-import { brandAssets } from "@/lib/brand-assets";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,14 +16,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "AutoCore",
   description: "Рабочее пространство AutoCore",
-  icons: {
-    icon: [
-      { url: brandAssets.meta.favicon.src, sizes: "32x32", type: "image/png" },
-      { url: brandAssets.meta.appleTouchIcon.src, sizes: "180x180", type: "image/png" },
-    ],
-    apple: brandAssets.meta.appleTouchIcon.src,
-    shortcut: brandAssets.meta.favicon.src,
-  },
 };
 
 export default function RootLayout({

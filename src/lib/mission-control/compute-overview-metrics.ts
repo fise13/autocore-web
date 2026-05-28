@@ -1,6 +1,7 @@
 import { calculateCashBalanceUseCase } from "@/application/use-cases/calculate-cash-balance";
 import { ActivityLogEntry } from "@/domain/rbac";
 import { CompanyEmployee } from "@/domain/rbac";
+import { InventoryItem } from "@/domain/inventory";
 import { MotorEntity } from "@/domain/motor";
 import { FinancialOperation } from "@/domain/financial-operation";
 import { buildAdvanceSnapshot } from "@/lib/accounting/advances";
@@ -15,6 +16,9 @@ export type MissionControlOverviewMetrics = {
   pendingAdvances: number;
   activeInventoryCount: number;
   lowStockCount: number;
+  warehouseItemCount: number;
+  warehouseLowStockCount: number;
+  warehouseStockValue: number;
   activeEmployeesCount: number;
   onlineEmployeesCount: number;
   changesToday: number;
@@ -33,10 +37,11 @@ function startOfToday(): Date {
 export function computeOverviewMetrics(input: {
   operations: FinancialOperation[];
   motors: MotorEntity[];
+  warehouseItems?: InventoryItem[];
   employees: CompanyEmployee[];
   activityLogs: ActivityLogEntry[];
 }): MissionControlOverviewMetrics {
-  const { operations, motors, employees, activityLogs } = input;
+  const { operations, motors, warehouseItems = [], employees, activityLogs } = input;
   const balance = calculateCashBalanceUseCase(operations);
   const advances = buildAdvanceSnapshot(operations);
 
@@ -50,6 +55,13 @@ export function computeOverviewMetrics(input: {
 
   const availableMotors = motors.filter((motor) => !motor.deletedAt && !motor.soldDate);
   const lowStockCount = availableMotors.filter((motor) => (motor.quantity ?? 1) <= 1).length;
+
+  const activeWarehouseItems = warehouseItems.filter((item) => item.status === "active");
+  const warehouseLowStockCount = activeWarehouseItems.filter((item) => {
+    const threshold = item.lowStockThreshold ?? 1;
+    return item.totalAvailable <= threshold;
+  }).length;
+  const warehouseStockValue = activeWarehouseItems.reduce((sum, item) => sum + (item.stockValue ?? 0), 0);
 
   const now = Date.now();
   const activeEmployees = employees.filter((employee) => employee.isActive);
@@ -71,6 +83,9 @@ export function computeOverviewMetrics(input: {
     pendingAdvances: Math.max(0, advances.balance),
     activeInventoryCount: availableMotors.length,
     lowStockCount,
+    warehouseItemCount: activeWarehouseItems.length,
+    warehouseLowStockCount,
+    warehouseStockValue,
     activeEmployeesCount: activeEmployees.length,
     onlineEmployeesCount,
     changesToday,

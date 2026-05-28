@@ -27,6 +27,10 @@ import {
 import { buildFillOperations } from "@/lib/grid/grid-fill-engine";
 import { buildGridLayoutMetrics, cellFrame } from "@/lib/grid/grid-layout-engine";
 import { GridMutation, GridCommandBus } from "@/lib/grid/grid-command-bus";
+import { isRedoShortcut, isUndoShortcut } from "@/lib/grid/grid-keyboard-shortcuts";
+import { resolvePointerCell } from "@/lib/grid/pointer-to-cell";
+import { useGridScrollIntoView } from "@/lib/grid/scroll-into-view";
+import { handleGridRedo, handleGridUndo } from "@/lib/grid/grid-undo-redo";
 import {
   allRanges,
   clickSelection,
@@ -35,7 +39,9 @@ import {
   initialSelection,
   primaryRange,
   selectWholeColumn,
+  selectWholeColumnActiveTop,
   selectWholeRow,
+  selectWholeRowActiveStart,
 } from "@/lib/grid/selection-controller";
 import { GridCellAddress, GridRange, isCellInsideRange, normalizeRange } from "@/lib/grid/grid-types";
 import { formatMotorDate, parseMotorDateInput } from "@/lib/motor-dates";
@@ -65,6 +71,7 @@ type MotorsExcelGridProps = {
 type EditorState = {
   cell: GridCellAddress;
   value: string;
+  initialValue: string;
   selectAll: boolean;
 };
 
@@ -197,6 +204,8 @@ export function MotorsExcelGrid({
     setSaveStatus,
     setSaveError,
     registerSaveHandler,
+    registerGridUndoHandler,
+    registerGridRedoHandler,
     registerCloudPushHandler,
     gridZoom,
   } = useWorkspace();
@@ -218,6 +227,7 @@ export function MotorsExcelGrid({
   const isDraggingFillRef = useRef(false);
   const fillSourceRef = useRef<GridRange | null>(null);
   const fillTargetRef = useRef<GridRange | null>(null);
+  const dirtyStatusScheduledRef = useRef(false);
 
   const [rows, setRows] = useState<MotorGridRow[]>(() => buildGridRows(motors, companyId));
   const [selection, setSelection] = useState<GridSelectionState>(initialSelection);
@@ -284,13 +294,24 @@ export function MotorsExcelGrid({
     return { rowStart, rowEnd, colStart, colEnd };
   }, [columnWidths, layout.rowHeight, rows.length, scroll.height, scroll.left, scroll.top, scroll.width]);
 
+  const scheduleDirtyStatus = useCallback(() => {
+    if (dirtyStatusScheduledRef.current) return;
+    dirtyStatusScheduledRef.current = true;
+    queueMicrotask(() => {
+      dirtyStatusScheduledRef.current = false;
+      setDirtyVersion((current) => current + 1);
+    });
+  }, []);
+
   const markDirty = useCallback((rowId: string) => {
-    localSaveAckRef.current.delete(rowId);
+    const wasAcknowledged = localSaveAckRef.current.delete(rowId);
     if (!dirtyRowsRef.current.has(rowId)) {
       dirtyRowsRef.current.add(rowId);
-      setDirtyVersion((current) => current + 1);
+      scheduleDirtyStatus();
+    } else if (wasAcknowledged) {
+      scheduleDirtyStatus();
     }
-  }, []);
+  }, [scheduleDirtyStatus]);
 
   const setCell = useCallback((cell: GridCellAddress, newValue: string, options?: { trackUndo?: boolean; markDirty?: boolean }) => {
     setRows((current) => {
@@ -326,6 +347,18 @@ export function MotorsExcelGrid({
       markDirty: true,
     });
   }, [setCell]);
+
+  const performUndo = useCallback(() => {
+    if (!canEdit) return;
+    handleGridUndo(commandBusRef.current, applyMutation, editor, setEditor);
+    gridRef.current?.focus();
+  }, [applyMutation, canEdit, editor]);
+
+  const performRedo = useCallback(() => {
+    if (!canEdit) return;
+    handleGridRedo(commandBusRef.current, applyMutation);
+    gridRef.current?.focus();
+  }, [applyMutation, canEdit]);
 
   const ensureExpanded = useCallback((lastVisibleRow: number) => {
     setRows((current) => {
@@ -461,6 +494,20 @@ export function MotorsExcelGrid({
   }, [registerSaveHandler, runSave]);
 
   useEffect(() => {
+    if (!canEdit) {
+      registerGridUndoHandler(null);
+      registerGridRedoHandler(null);
+      return;
+    }
+    registerGridUndoHandler(performUndo);
+    registerGridRedoHandler(performRedo);
+    return () => {
+      registerGridUndoHandler(null);
+      registerGridRedoHandler(null);
+    };
+  }, [canEdit, performRedo, performUndo, registerGridRedoHandler, registerGridUndoHandler]);
+
+  useEffect(() => {
     registerCloudPushHandler(pushToCloud);
     return () => registerCloudPushHandler(null);
   }, [pushToCloud, registerCloudPushHandler]);
@@ -479,16 +526,16 @@ export function MotorsExcelGrid({
 
     function cellFromPointer(clientX: number, clientY: number): GridCellAddress | null {
       if (!bodyRef.current) return null;
-      const rect = bodyRef.current.getBoundingClientRect();
-      const x = clientX - rect.left + bodyRef.current.scrollLeft;
-      const y = clientY - rect.top + bodyRef.current.scrollTop;
-      const row = Math.floor(y / layout.rowHeight);
-      if (row < 0 || row >= rows.length) return null;
-      let column = 0;
-      while (column < layout.columns.length - 1 && layout.xOffsets[column] + layout.columns[column].width <= x) {
-        column += 1;
-      }
-      return { row, column };
+      return resolvePointerCell({
+        clientX,
+        clientY,
+        viewport: bodyRef.current,
+        rowCount: rows.length,
+        rowHeight: layout.rowHeight,
+        headerHeight: layout.headerHeight,
+        columns: layout.columns,
+        xOffsets: layout.xOffsets,
+      });
     }
 
     function onPointerMove(event: PointerEvent) {
@@ -564,7 +611,7 @@ export function MotorsExcelGrid({
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
     };
-  }, [ensureExpanded, layout.columns, layout.rowHeight, layout.xOffsets, markDirty, rows]);
+  }, [ensureExpanded, layout.columns, layout.headerHeight, layout.rowHeight, layout.xOffsets, markDirty, rows]);
 
   useEffect(() => {
     function closeContext() {
@@ -574,32 +621,29 @@ export function MotorsExcelGrid({
     return () => window.removeEventListener("click", closeContext);
   }, []);
 
-  const scrollToCell = useCallback((cell: GridCellAddress) => {
-    if (!bodyRef.current) return;
-    const frame = cellFrame(layout, cell);
-    const viewport = bodyRef.current;
-    const top = frame.y;
-    const bottom = frame.y + frame.height;
-    if (top < viewport.scrollTop) {
-      viewport.scrollTop = top;
-    } else if (bottom > viewport.scrollTop + viewport.clientHeight) {
-      viewport.scrollTop = bottom - viewport.clientHeight;
-    }
-    const left = frame.x;
-    const right = frame.x + frame.width;
-    if (left < viewport.scrollLeft) {
-      viewport.scrollLeft = left;
-    } else if (right > viewport.scrollLeft + viewport.clientWidth) {
-      viewport.scrollLeft = right - viewport.clientWidth;
-    }
-  }, [layout]);
+  const resolveScrollFrame = useCallback(
+    (cell: GridCellAddress) => cellFrame(layout, cell),
+    [layout],
+  );
+  const { scrollToCell } = useGridScrollIntoView({
+    bodyRef,
+    selection,
+    resolveFrame: resolveScrollFrame,
+    headerHeight: layout.headerHeight,
+  });
+
+  const focusGrid = useCallback(() => {
+    queueMicrotask(() => {
+      gridRef.current?.focus();
+    });
+  }, []);
 
   const beginEdit = useCallback((cell: GridCellAddress, seed?: string, selectAll = true) => {
     if (!isEditableColumn(cell.column)) return;
     const row = rows[cell.row];
     if (!row || !canEdit) return;
     const value = seed ?? valueAtCell(row, cell.column);
-    setEditor({ cell, value, selectAll });
+    setEditor({ cell, value, initialValue: value, selectAll });
     scrollToCell(cell);
   }, [canEdit, rows, scrollToCell]);
 
@@ -608,7 +652,10 @@ export function MotorsExcelGrid({
     const { cell, value } = editor;
     setCell(cell, value);
     setEditor(null);
-    if (!direction) return;
+    if (!direction) {
+      focusGrid();
+      return;
+    }
     const next = { ...cell };
     if (direction === "down") next.row += 1;
     if (direction === "up") next.row = Math.max(0, next.row - 1);
@@ -624,7 +671,8 @@ export function MotorsExcelGrid({
       cmdRanges: [],
     });
     scrollToCell(next);
-  }, [companyId, editor, layout.columns.length, rows.length, scrollToCell, setCell]);
+    focusGrid();
+  }, [companyId, editor, focusGrid, layout.columns.length, rows.length, scrollToCell, setCell]);
 
   const clearRange = useCallback((range: GridRange) => {
     setRows((current) => {
@@ -650,13 +698,13 @@ export function MotorsExcelGrid({
       }
 
       if (mutations.length > 0) {
-        setDirtyVersion((version) => version + 1);
+        scheduleDirtyStatus();
         commandBusRef.current.commit("Clear", mutations);
       }
 
       return next;
     });
-  }, []);
+  }, [scheduleDirtyStatus]);
 
   const clearPrimaryRange = useCallback(() => {
     clearRange(primaryRange(selectionRef.current));
@@ -796,11 +844,23 @@ export function MotorsExcelGrid({
   }, [layout.columns.length, rows.length]);
 
   const handleKeyDown = useCallback(async (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (editor) return;
     const key = event.key;
     const lower = key.toLowerCase();
     const cmd = event.metaKey || event.ctrlKey;
     const shift = event.shiftKey;
+
+    if (isUndoShortcut(event)) {
+      event.preventDefault();
+      performUndo();
+      return;
+    }
+    if (isRedoShortcut(event)) {
+      event.preventDefault();
+      performRedo();
+      return;
+    }
+
+    if (editor) return;
 
     if (cmd && lower === "c") {
       event.preventDefault();
@@ -816,16 +876,6 @@ export function MotorsExcelGrid({
     if (cmd && lower === "v") {
       event.preventDefault();
       await pasteAtSelection();
-      return;
-    }
-    if (cmd && lower === "z" && !shift) {
-      event.preventDefault();
-      commandBusRef.current.undo(applyMutation);
-      return;
-    }
-    if ((cmd && lower === "z" && shift) || (event.ctrlKey && lower === "y")) {
-      event.preventDefault();
-      commandBusRef.current.redo(applyMutation);
       return;
     }
     if (event.ctrlKey && key === "Enter") {
@@ -971,7 +1021,6 @@ export function MotorsExcelGrid({
       beginEdit(selection.head, key, false);
     }
   }, [
-    applyMutation,
     beginEdit,
     canEdit,
     clearPrimaryRange,
@@ -983,13 +1032,11 @@ export function MotorsExcelGrid({
     layout.columns.length,
     moveSelectionBy,
     pasteAtSelection,
+    performRedo,
+    performUndo,
     rows,
     selection,
   ]);
-
-  useEffect(() => {
-    scrollToCell(selection.head);
-  }, [scrollToCell, selection.head]);
 
   useEffect(() => {
     const viewport = bodyRef.current;
@@ -1033,6 +1080,7 @@ export function MotorsExcelGrid({
       <div
         ref={gridRef}
         tabIndex={0}
+        data-grid-root
         className="relative min-h-0 flex-1 overflow-hidden outline-none"
         onKeyDown={handleKeyDown}
       >
@@ -1093,7 +1141,7 @@ export function MotorsExcelGrid({
                     }}
                     onClick={() => {
                       if (!isEditableColumn(colIdx)) return;
-                      setSelection(selectWholeColumn(colIdx, rows.length - 1));
+                      setSelection(selectWholeColumnActiveTop(colIdx, rows.length - 1));
                     }}
                   >
                     {column.title}
@@ -1159,7 +1207,7 @@ export function MotorsExcelGrid({
                             event.preventDefault();
                             gridRef.current?.focus();
                             if (colIdx === 0) {
-                              setSelection(selectWholeRow(rowIdx, EDITABLE_COL_START, EDITABLE_COL_END));
+                              setSelection(selectWholeRowActiveStart(rowIdx, EDITABLE_COL_START, EDITABLE_COL_END));
                               return;
                             }
                             const next = clickSelection(selectionRef.current, { row: rowIdx, column: colIdx }, {
@@ -1318,12 +1366,16 @@ export function MotorsExcelGrid({
 
               {editor ? (
                 <GridEditorOverlay
+                  editorKey={`${editor.cell.row}-${editor.cell.column}`}
                   value={editor.value}
                   selectAll={editor.selectAll}
                   frame={cellFrame(layout, editor.cell)}
                   onChange={(value) => setEditor((current) => (current ? { ...current, value } : current))}
                   onCommit={(direction) => commitEditor(direction)}
-                  onCancel={() => setEditor(null)}
+                  onCancel={() => {
+                    setEditor(null);
+                    focusGrid();
+                  }}
                 />
               ) : null}
             </div>

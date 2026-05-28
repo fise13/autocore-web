@@ -14,6 +14,10 @@ import {
 } from "@/lib/grid/grid-data-region-navigation";
 import { buildFillOperations } from "@/lib/grid/grid-fill-engine";
 import { GridMutation, GridCommandBus } from "@/lib/grid/grid-command-bus";
+import { isRedoShortcut, isUndoShortcut } from "@/lib/grid/grid-keyboard-shortcuts";
+import { resolvePointerCell } from "@/lib/grid/pointer-to-cell";
+import { useGridScrollIntoView } from "@/lib/grid/scroll-into-view";
+import { handleGridRedo, handleGridUndo } from "@/lib/grid/grid-undo-redo";
 import {
   allRanges,
   clickSelection,
@@ -22,7 +26,9 @@ import {
   initialSelection,
   primaryRange,
   selectWholeColumn,
+  selectWholeColumnActiveTop,
   selectWholeRow,
+  selectWholeRowActiveStart,
 } from "@/lib/grid/selection-controller";
 import { GridCellAddress, GridRange, isCellInsideRange, normalizeRange } from "@/lib/grid/grid-types";
 import { gridPalette } from "@/lib/grid/grid-palette";
@@ -80,6 +86,7 @@ type SpecificExcelGridProps = {
 type EditorState = {
   cell: GridCellAddress;
   value: string;
+  initialValue: string;
   selectAll: boolean;
 };
 
@@ -116,6 +123,8 @@ export function SpecificExcelGrid({
     setSaveStatus,
     setSaveError,
     registerSaveHandler,
+    registerGridUndoHandler,
+    registerGridRedoHandler,
     registerCloudPushHandler,
     registerSyncHandler,
     gridZoom,
@@ -176,6 +185,7 @@ export function SpecificExcelGrid({
   const isDraggingFillRef = useRef(false);
   const fillSourceRef = useRef<GridRange | null>(null);
   const fillTargetRef = useRef<GridRange | null>(null);
+  const dirtyStatusScheduledRef = useRef(false);
 
   const [selection, setSelection] = useState<GridSelectionState>(initialSelection);
   const selectionRef = useRef(selection);
@@ -278,14 +288,25 @@ export function SpecificExcelGrid({
     scroll.width,
   ]);
 
-  const markDirty = useCallback((rowId: string) => {
-    localSaveAckRef.current.delete(rowId);
-    if (!dirtyRowsRef.current.has(rowId)) {
-      dirtyRowsRef.current.add(rowId);
+  const scheduleDirtyStatus = useCallback(() => {
+    if (dirtyStatusScheduledRef.current) return;
+    dirtyStatusScheduledRef.current = true;
+    queueMicrotask(() => {
+      dirtyStatusScheduledRef.current = false;
       setDirtyRowIdSet(new Set(dirtyRowsRef.current));
       setDirtyVersion((current) => current + 1);
-    }
+    });
   }, []);
+
+  const markDirty = useCallback((rowId: string) => {
+    const wasAcknowledged = localSaveAckRef.current.delete(rowId);
+    if (!dirtyRowsRef.current.has(rowId)) {
+      dirtyRowsRef.current.add(rowId);
+      scheduleDirtyStatus();
+    } else if (wasAcknowledged) {
+      scheduleDirtyStatus();
+    }
+  }, [scheduleDirtyStatus]);
 
   const handleSellAction = useCallback(
     (row: SpecificGridRow) => {
@@ -331,6 +352,20 @@ export function SpecificExcelGrid({
     },
     [setCell],
   );
+
+  const performUndo = useCallback(() => {
+    if (!canEdit) return;
+    const label = handleGridUndo(commandBusRef.current, applyMutation, editor, setEditor);
+    setActiveActionLabel(label);
+    gridRef.current?.focus();
+  }, [applyMutation, canEdit, editor]);
+
+  const performRedo = useCallback(() => {
+    if (!canEdit) return;
+    const label = handleGridRedo(commandBusRef.current, applyMutation);
+    setActiveActionLabel(label);
+    gridRef.current?.focus();
+  }, [applyMutation, canEdit]);
 
   const ensureExpanded = useCallback(
     (lastVisibleDisplayRow: number) => {
@@ -440,6 +475,20 @@ export function SpecificExcelGrid({
   }, [registerSaveHandler, runSave]);
 
   useEffect(() => {
+    if (!canEdit) {
+      registerGridUndoHandler(null);
+      registerGridRedoHandler(null);
+      return;
+    }
+    registerGridUndoHandler(performUndo);
+    registerGridRedoHandler(performRedo);
+    return () => {
+      registerGridUndoHandler(null);
+      registerGridRedoHandler(null);
+    };
+  }, [canEdit, performRedo, performUndo, registerGridRedoHandler, registerGridUndoHandler]);
+
+  useEffect(() => {
     registerCloudPushHandler(pushToCloud);
     return () => registerCloudPushHandler(null);
   }, [pushToCloud, registerCloudPushHandler]);
@@ -475,21 +524,17 @@ export function SpecificExcelGrid({
 
     function cellFromPointer(clientX: number, clientY: number): GridCellAddress | null {
       if (!bodyRef.current) return null;
-      const rect = bodyRef.current.getBoundingClientRect();
-      const x = clientX - rect.left + bodyRef.current.scrollLeft;
-      const y = clientY - rect.top + bodyRef.current.scrollTop;
-      const displayRow = Math.floor(y / layout.rowHeight);
-      if (displayRow < 0 || displayRow >= displayRows.length) return null;
-      const sourceRow = displayRows[displayRow]?.sourceIndex;
-      if (sourceRow == null) return null;
-      let column = 0;
-      while (
-        column < layout.columns.length - 1 &&
-        layout.xOffsets[column] + layout.columns[column].width <= x
-      ) {
-        column += 1;
-      }
-      return { row: sourceRow, column };
+      return resolvePointerCell({
+        clientX,
+        clientY,
+        viewport: bodyRef.current,
+        rowCount: displayRows.length,
+        rowHeight: layout.rowHeight,
+        headerHeight: layout.headerHeight,
+        columns: layout.columns,
+        xOffsets: layout.xOffsets,
+        mapRow: (displayRow) => displayRows[displayRow]?.sourceIndex ?? null,
+      });
     }
 
     function onPointerMove(event: PointerEvent) {
@@ -577,6 +622,7 @@ export function SpecificExcelGrid({
     ensureExpanded,
     isEditableColumn,
     layout.columns,
+    layout.headerHeight,
     layout.rowHeight,
     layout.xOffsets,
     markDirty,
@@ -584,30 +630,26 @@ export function SpecificExcelGrid({
     valueAtCell,
   ]);
 
-  const scrollToCell = useCallback(
+  const resolveScrollFrame = useCallback(
     (cell: GridCellAddress) => {
-      if (!bodyRef.current) return;
       const displayIndex = displayRows.findIndex((item) => item.sourceIndex === cell.row);
-      if (displayIndex < 0) return;
-      const frame = specificCellFrame(layout, { row: displayIndex, column: cell.column });
-      const viewport = bodyRef.current;
-      const top = frame.y;
-      const bottom = frame.y + frame.height;
-      if (top < viewport.scrollTop) {
-        viewport.scrollTop = top;
-      } else if (bottom > viewport.scrollTop + viewport.clientHeight) {
-        viewport.scrollTop = bottom - viewport.clientHeight;
-      }
-      const left = frame.x;
-      const right = frame.x + frame.width;
-      if (left < viewport.scrollLeft) {
-        viewport.scrollLeft = left;
-      } else if (right > viewport.scrollLeft + viewport.clientWidth) {
-        viewport.scrollLeft = right - viewport.clientWidth;
-      }
+      if (displayIndex < 0) return null;
+      return specificCellFrame(layout, { row: displayIndex, column: cell.column });
     },
     [displayRows, layout],
   );
+  const { scrollToCell } = useGridScrollIntoView({
+    bodyRef,
+    selection,
+    resolveFrame: resolveScrollFrame,
+    headerHeight: layout.headerHeight,
+  });
+
+  const focusGrid = useCallback(() => {
+    queueMicrotask(() => {
+      gridRef.current?.focus();
+    });
+  }, []);
 
   const beginEdit = useCallback(
     (cell: GridCellAddress, seed?: string, selectAll = true) => {
@@ -615,7 +657,7 @@ export function SpecificExcelGrid({
       const row = rows[cell.row];
       if (!row || !canEdit) return;
       const value = seed ?? valueAtCell(row, cell.column);
-      setEditor({ cell, value, selectAll });
+      setEditor({ cell, value, initialValue: value, selectAll });
       scrollToCell(cell);
     },
     [canEdit, isEditableColumn, rows, scrollToCell, valueAtCell],
@@ -627,7 +669,10 @@ export function SpecificExcelGrid({
       const { cell, value } = editor;
       setCell(cell, value);
       setEditor(null);
-      if (!direction) return;
+      if (!direction) {
+        focusGrid();
+        return;
+      }
       const next = { ...cell };
       if (direction === "down") next.row += 1;
       if (direction === "up") next.row = Math.max(0, next.row - 1);
@@ -643,8 +688,9 @@ export function SpecificExcelGrid({
         cmdRanges: [],
       });
       scrollToCell(next);
+      focusGrid();
     },
-    [editor, editableColEnd, rows.length, scrollToCell, setCell],
+    [editor, editableColEnd, focusGrid, rows.length, scrollToCell, setCell],
   );
 
   const clearRange = useCallback(
@@ -672,14 +718,14 @@ export function SpecificExcelGrid({
         }
 
         if (mutations.length > 0) {
-          setDirtyVersion((version) => version + 1);
+          scheduleDirtyStatus();
           commandBusRef.current.commit("Clear", mutations);
         }
 
         return next;
       });
     },
-    [applyCellValue, isEditableColumn, valueAtCell],
+    [applyCellValue, isEditableColumn, scheduleDirtyStatus, valueAtCell],
   );
 
   const clearPrimaryRange = useCallback(() => {
@@ -834,11 +880,23 @@ export function SpecificExcelGrid({
 
   const handleKeyDown = useCallback(
     async (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if (editor) return;
       const key = event.key;
       const lower = key.toLowerCase();
       const cmd = event.metaKey || event.ctrlKey;
       const shift = event.shiftKey;
+
+      if (isUndoShortcut(event)) {
+        event.preventDefault();
+        performUndo();
+        return;
+      }
+      if (isRedoShortcut(event)) {
+        event.preventDefault();
+        performRedo();
+        return;
+      }
+
+      if (editor) return;
 
       if (cmd && lower === "c") {
         event.preventDefault();
@@ -854,18 +912,6 @@ export function SpecificExcelGrid({
       if (cmd && lower === "v") {
         event.preventDefault();
         await pasteAtSelection();
-        return;
-      }
-      if (cmd && lower === "z" && !shift) {
-        event.preventDefault();
-        const label = commandBusRef.current.undo(applyMutation);
-        setActiveActionLabel(label);
-        return;
-      }
-      if ((cmd && lower === "z" && shift) || (event.ctrlKey && lower === "y")) {
-        event.preventDefault();
-        const label = commandBusRef.current.redo(applyMutation);
-        setActiveActionLabel(label);
         return;
       }
       if (event.ctrlKey && key === "Enter") {
@@ -1029,7 +1075,6 @@ export function SpecificExcelGrid({
       }
     },
     [
-      applyMutation,
       beginEdit,
       canEdit,
       clearPrimaryRange,
@@ -1044,14 +1089,12 @@ export function SpecificExcelGrid({
       moveSelectionBy,
       navigableColumns,
       pasteAtSelection,
+      performRedo,
+      performUndo,
       rows.length,
       selection,
     ],
   );
-
-  useEffect(() => {
-    scrollToCell(selection.head);
-  }, [scrollToCell, selection.head]);
 
   useEffect(() => {
     const viewport = bodyRef.current;
@@ -1205,6 +1248,7 @@ export function SpecificExcelGrid({
       <div
         ref={gridRef}
         tabIndex={0}
+        data-grid-root
         className="relative min-h-0 flex-1 overflow-hidden outline-none"
         onKeyDown={handleKeyDown}
       >
@@ -1270,7 +1314,7 @@ export function SpecificExcelGrid({
                     }}
                     onClick={() => {
                       if (!isEditableColumn(colIdx)) return;
-                      setSelection(selectWholeColumn(colIdx, rows.length - 1));
+                      setSelection(selectWholeColumnActiveTop(colIdx, rows.length - 1));
                     }}
                   >
                     {column.title}
@@ -1336,7 +1380,7 @@ export function SpecificExcelGrid({
                             gridRef.current?.focus();
                             if (colIdx === 0) {
                               setSelection(
-                                selectWholeRow(rowIdx, EDITABLE_COL_START, editableColEnd),
+                                selectWholeRowActiveStart(rowIdx, EDITABLE_COL_START, editableColEnd),
                               );
                               return;
                             }
@@ -1449,6 +1493,7 @@ export function SpecificExcelGrid({
 
               {editor && editorDisplayIndex != null ? (
                 <GridEditorOverlay
+                  editorKey={`${editor.cell.row}-${editor.cell.column}`}
                   value={editor.value}
                   selectAll={editor.selectAll}
                   frame={specificCellFrame(layout, {
@@ -1459,7 +1504,10 @@ export function SpecificExcelGrid({
                     setEditor((current) => (current ? { ...current, value } : current))
                   }
                   onCommit={(direction) => commitEditor(direction)}
-                  onCancel={() => setEditor(null)}
+                  onCancel={() => {
+                    setEditor(null);
+                    focusGrid();
+                  }}
                 />
               ) : null}
             </div>

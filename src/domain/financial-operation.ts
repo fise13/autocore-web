@@ -24,6 +24,10 @@ export type FinancialOperation = {
   cashReceived?: number | null;
   changeGiven?: number | null;
   relatedMotorID?: number | null;
+  relatedInventoryItemId?: string | null;
+  relatedMovementId?: string | null;
+  relatedWarehouseId?: string | null;
+  costBasis?: number | null;
   createdAt: Date;
   createdByUserId: string;
   comment?: string | null;
@@ -43,6 +47,10 @@ export type CreateFinancialOperationInput = {
   cashReceived?: number | null;
   changeGiven?: number | null;
   relatedMotorID?: number | null;
+  relatedInventoryItemId?: string | null;
+  relatedMovementId?: string | null;
+  relatedWarehouseId?: string | null;
+  costBasis?: number | null;
   comment?: string | null;
   category?: string | null;
   description?: string | null;

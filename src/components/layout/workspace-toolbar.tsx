@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef, useState, useEffect } from "react";
 import {
+  Barcode,
   CloudUpload,
   Download,
   PanelLeft,
@@ -48,6 +49,11 @@ export function WorkspaceToolbar() {
     triggerMotorExport,
     triggerMotorImport,
     registerMotorImportPicker,
+    warehouseExcelIo,
+    triggerWarehouseExport,
+    triggerWarehouseImport,
+    registerWarehouseImportPicker,
+    triggerWarehouseBarcode,
   } = useWorkspace();
   const { requirePro, isPro } = useBillingGate();
 
@@ -57,19 +63,25 @@ export function WorkspaceToolbar() {
 
   const isSpecificRoute = pathname.startsWith("/specific/");
   const isMotorRoute = pathname === "/motors" || pathname === "/sold";
+  const isWarehouseRoute = pathname === "/warehouse";
   const isSoldRoute = pathname === "/sold";
   const showAvailabilityFilter = (pathname === "/motors" || isSpecificRoute) && !isSoldRoute;
+  const showExcelIo = isMotorRoute || isWarehouseRoute;
 
   const syncBadge =
-    motorSyncState.localDirty ||
-    motorSyncState.remotePending ||
-    motorSyncState.status === "error" ||
-    saveStatus === "pending";
+    !isWarehouseRoute &&
+    (motorSyncState.localDirty ||
+      motorSyncState.remotePending ||
+      motorSyncState.status === "error" ||
+      saveStatus === "pending");
 
   const canEdit = can(profile, "inventory_edit");
-  const exportBusy = motorExcelIo.busy === "export";
-  const importBusy = motorExcelIo.busy === "import";
-  const canExport = motorExcelIo.canExport;
+  const canImportWarehouse = can(profile, "inventory_import");
+  const canExportWarehouse = can(profile, "inventory_export");
+  const exportBusy = isWarehouseRoute ? warehouseExcelIo.busy === "export" : motorExcelIo.busy === "export";
+  const importBusy = isWarehouseRoute ? warehouseExcelIo.busy === "import" : motorExcelIo.busy === "import";
+  const canExport = isWarehouseRoute ? warehouseExcelIo.canExport : motorExcelIo.canExport;
+  const canImport = isWarehouseRoute ? warehouseExcelIo.canImport : motorExcelIo.canImport;
 
   useEffect(() => {
     if (!isMotorRoute) {
@@ -82,14 +94,33 @@ export function WorkspaceToolbar() {
     return () => registerMotorImportPicker(null);
   }, [isMotorRoute, registerMotorImportPicker]);
 
+  useEffect(() => {
+    if (!isWarehouseRoute) {
+      registerWarehouseImportPicker(null);
+      return;
+    }
+    registerWarehouseImportPicker(() => {
+      void triggerWarehouseImport();
+    });
+    return () => registerWarehouseImportPicker(null);
+  }, [isWarehouseRoute, registerWarehouseImportPicker, triggerWarehouseImport]);
+
   async function handleExport() {
     setExcelError(null);
+    if (isWarehouseRoute) {
+      await runExport();
+      return;
+    }
     if (!requirePro("export", () => void runExport())) return;
   }
 
   async function runExport() {
     try {
-      await triggerMotorExport();
+      if (isWarehouseRoute) {
+        await triggerWarehouseExport();
+      } else {
+        await triggerMotorExport();
+      }
     } catch (error) {
       setExcelError(error instanceof Error ? error.message : "Не удалось экспортировать файл");
     }
@@ -97,6 +128,10 @@ export function WorkspaceToolbar() {
 
   function handleImportClick() {
     setExcelError(null);
+    if (isWarehouseRoute) {
+      void triggerWarehouseImport();
+      return;
+    }
     requirePro("import", () => importInputRef.current?.click());
   }
 
@@ -170,10 +205,13 @@ export function WorkspaceToolbar() {
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
+            data-no-grid-undo
             placeholder={
-              isSpecificRoute
-                ? "Поиск по записям..."
-                : "Поиск по номеру, бренду, комплектации..."
+              isWarehouseRoute
+                ? "Поиск по SKU, названию, бренду..."
+                : isSpecificRoute
+                  ? "Поиск по записям..."
+                  : "Поиск по номеру, бренду, комплектации..."
             }
             className="h-9 bg-muted/30 pl-9"
           />
@@ -189,64 +227,106 @@ export function WorkspaceToolbar() {
             {excelError ?? syncError}
           </span>
         ) : null}
-        <Button
-          variant={syncBadge ? "secondary" : "ghost"}
-          size="sm"
-          className="hidden gap-1.5 md:inline-flex"
-          onClick={() => void handleSync()}
-          disabled={motorSyncState.status === "syncing" || saveStatus === "saving"}
-          title={userCopy.sync.syncNow}
-        >
-          <CloudUpload className="size-4" />
-          {userCopy.sync.syncNow}
-          {syncBadge ? (
-            <span className="rounded-full bg-amber-500 px-1.5 py-0 text-[10px] font-semibold text-white">
-              !
-            </span>
-          ) : null}
-        </Button>
-        {isMotorRoute ? (
+        {!isWarehouseRoute ? (
+          <Button
+            variant={syncBadge ? "secondary" : "ghost"}
+            size="sm"
+            className="hidden gap-1.5 md:inline-flex"
+            onClick={() => void handleSync()}
+            disabled={motorSyncState.status === "syncing" || saveStatus === "saving"}
+            title={userCopy.sync.syncNow}
+          >
+            <CloudUpload className="size-4" />
+            {userCopy.sync.syncNow}
+            {syncBadge ? (
+              <span className="rounded-full bg-amber-500 px-1.5 py-0 text-[10px] font-semibold text-white">
+                !
+              </span>
+            ) : null}
+          </Button>
+        ) : null}
+        {showExcelIo ? (
           <>
-            <Button variant="ghost" size="icon-sm" disabled title="Скоро">
-              <Plus className="size-4" />
-            </Button>
+            {isWarehouseRoute ? (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                disabled={!canEdit}
+                title="Сканер штрихкода"
+                onClick={() => {
+                  if (!triggerWarehouseBarcode()) {
+                    setExcelError("Сканер склада ещё не готов");
+                  }
+                }}
+              >
+                <Barcode className="size-4" />
+              </Button>
+            ) : null}
+            {isMotorRoute ? (
+              <Button variant="ghost" size="icon-sm" disabled title="Скоро">
+                <Plus className="size-4" />
+              </Button>
+            ) : null}
             <Button
               variant="ghost"
               size="icon-sm"
-              disabled={!canEdit || importBusy}
-              title={isPro ? userCopy.motors.importExcel : userCopy.billing.paywall.import.title}
+              disabled={
+                isWarehouseRoute
+                  ? !canImportWarehouse || !canImport || importBusy
+                  : !canEdit || importBusy
+              }
+              title={
+                isWarehouseRoute
+                  ? "Импорт CSV"
+                  : isPro
+                    ? userCopy.motors.importExcel
+                    : userCopy.billing.paywall.import.title
+              }
               onClick={handleImportClick}
-              className={cn("relative", !isPro && "text-primary/80")}
+              className={cn("relative", !isPro && !isWarehouseRoute && "text-primary/80")}
             >
               <Download className="size-4" />
-              {!isPro ? (
+              {!isPro && !isWarehouseRoute ? (
                 <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-primary ring-2 ring-card" />
               ) : null}
             </Button>
             <Button
               variant="ghost"
               size="icon-sm"
-              disabled={exportBusy || !canEdit || (isPro && !canExport)}
-              title={isPro ? "Экспорт в Excel" : userCopy.billing.paywall.export.title}
+              disabled={
+                exportBusy ||
+                (isWarehouseRoute
+                  ? !canExportWarehouse || !canExport
+                  : !canEdit || (isPro && !canExport))
+              }
+              title={
+                isWarehouseRoute
+                  ? "Экспорт CSV"
+                  : isPro
+                    ? "Экспорт в Excel"
+                    : userCopy.billing.paywall.export.title
+              }
               onClick={() => void handleExport()}
-              className={cn("relative", !isPro && "text-primary/80")}
+              className={cn("relative", !isPro && !isWarehouseRoute && "text-primary/80")}
             >
               <Upload className="size-4" />
-              {!isPro ? (
+              {!isPro && !isWarehouseRoute ? (
                 <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-primary ring-2 ring-card" />
               ) : null}
             </Button>
-            <input
-              ref={importInputRef}
-              type="file"
-              accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-              className="hidden"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-                if (file) void handleImportFile(file);
-              }}
-            />
+            {isMotorRoute ? (
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (file) void handleImportFile(file);
+                }}
+              />
+            ) : null}
           </>
         ) : null}
         <Link href="/settings" title="Настройки">

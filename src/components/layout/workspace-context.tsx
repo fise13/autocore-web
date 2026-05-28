@@ -13,10 +13,17 @@ import {
 
 import { initialMotorSyncState, MotorSyncState } from "@/domain/motor-sync";
 import { MotorAvailability } from "@/infrastructure/firestore/motor-repository";
+import { isEditableExternalField, isRedoShortcut, isUndoShortcut } from "@/lib/grid/grid-keyboard-shortcuts";
 
 export type GridSaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
 
 export type MotorExcelIoState = {
+  canExport: boolean;
+  canImport: boolean;
+  busy: "export" | "import" | null;
+};
+
+export type WarehouseExcelIoState = {
   canExport: boolean;
   canImport: boolean;
   busy: "export" | "import" | null;
@@ -42,6 +49,8 @@ type WorkspaceContextValue = {
   setGridZoom: (zoom: number) => void;
   registerSaveHandler: (handler: (() => void) | null) => void;
   triggerSave: () => void;
+  registerGridUndoHandler: (handler: (() => void) | null) => void;
+  registerGridRedoHandler: (handler: (() => void) | null) => void;
   registerCloudPushHandler: (handler: (() => Promise<void>) | null) => void;
   triggerCloudPush: () => Promise<void>;
   motorSyncState: MotorSyncState;
@@ -58,6 +67,18 @@ type WorkspaceContextValue = {
   triggerMotorImport: (file: File) => Promise<void>;
   registerMotorImportPicker: (handler: (() => void) | null) => void;
   triggerMotorImportPicker: () => boolean;
+  registerWarehouseExcelHandlers: (handlers: {
+    exportWarehouse: () => Promise<void>;
+    importWarehouse: () => Promise<void>;
+  } | null) => void;
+  setWarehouseExcelAvailability: (state: WarehouseExcelIoState) => void;
+  warehouseExcelIo: WarehouseExcelIoState;
+  triggerWarehouseExport: () => Promise<void>;
+  triggerWarehouseImport: () => Promise<void>;
+  registerWarehouseImportPicker: (handler: (() => void) | null) => void;
+  triggerWarehouseImportPicker: () => boolean;
+  registerWarehouseBarcodeHandler: (handler: (() => void) | null) => void;
+  triggerWarehouseBarcode: () => boolean;
 };
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -74,6 +95,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [gridZoom, setGridZoom] = useState(1);
   const [motorSyncState, setMotorSyncState] = useState<MotorSyncState>(initialMotorSyncState);
   const saveHandlerRef = useRef<(() => void) | null>(null);
+  const undoHandlerRef = useRef<(() => void) | null>(null);
+  const redoHandlerRef = useRef<(() => void) | null>(null);
   const cloudPushHandlerRef = useRef<(() => Promise<void>) | null>(null);
   const syncHandlerRef = useRef<(() => Promise<void>) | null>(null);
   const motorExportRef = useRef<(() => Promise<void>)>(async () => {
@@ -83,7 +106,20 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     throw new Error("Импорт недоступен");
   });
   const motorImportPickerRef = useRef<(() => void) | null>(null);
+  const warehouseExportRef = useRef<(() => Promise<void>)>(async () => {
+    throw new Error("Экспорт недоступен");
+  });
+  const warehouseImportRef = useRef<(() => Promise<void>)>(async () => {
+    throw new Error("Импорт недоступен");
+  });
+  const warehouseImportPickerRef = useRef<(() => void) | null>(null);
+  const warehouseBarcodeHandlerRef = useRef<(() => void) | null>(null);
   const [motorExcelIo, setMotorExcelIo] = useState<MotorExcelIoState>({
+    canExport: false,
+    canImport: false,
+    busy: null,
+  });
+  const [warehouseExcelIo, setWarehouseExcelIo] = useState<WarehouseExcelIoState>({
     canExport: false,
     canImport: false,
     busy: null,
@@ -98,22 +134,59 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     saveHandlerRef.current = handler;
   }, []);
 
+  const registerGridUndoHandler = useCallback((handler: (() => void) | null) => {
+    undoHandlerRef.current = handler;
+  }, []);
+
+  const registerGridRedoHandler = useCallback((handler: (() => void) | null) => {
+    redoHandlerRef.current = handler;
+  }, []);
+
   const triggerSave = useCallback(() => {
     saveHandlerRef.current?.();
   }, []);
 
+  const triggerSync = useCallback(async (): Promise<boolean> => {
+    if (!syncHandlerRef.current) {
+      saveHandlerRef.current?.();
+      return Boolean(saveHandlerRef.current);
+    }
+    await syncHandlerRef.current();
+    return true;
+  }, []);
+
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "s") {
-        return;
-      }
-      if (!saveHandlerRef.current) {
+      const cmd = event.metaKey || event.ctrlKey;
+      if (!cmd) return;
+
+      if (event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        event.stopPropagation();
+        if (syncHandlerRef.current) {
+          void syncHandlerRef.current().catch((error) => {
+            console.error("Save failed:", error);
+          });
+        } else if (saveHandlerRef.current) {
+          saveHandlerRef.current();
+        }
         return;
       }
 
-      event.preventDefault();
-      event.stopPropagation();
-      saveHandlerRef.current();
+      if (isEditableExternalField(event.target)) return;
+
+      if (isUndoShortcut(event) && undoHandlerRef.current) {
+        event.preventDefault();
+        event.stopPropagation();
+        undoHandlerRef.current();
+        return;
+      }
+
+      if (isRedoShortcut(event) && redoHandlerRef.current) {
+        event.preventDefault();
+        event.stopPropagation();
+        redoHandlerRef.current();
+      }
     }
 
     window.addEventListener("keydown", onKeyDown, true);
@@ -133,14 +206,6 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const registerSyncHandler = useCallback((handler: (() => Promise<void>) | null) => {
     syncHandlerRef.current = handler;
-  }, []);
-
-  const triggerSync = useCallback(async (): Promise<boolean> => {
-    if (!syncHandlerRef.current) {
-      return false;
-    }
-    await syncHandlerRef.current();
-    return true;
   }, []);
 
   const registerMotorExcelHandlers = useCallback(
@@ -205,6 +270,80 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     return true;
   }, []);
 
+  const registerWarehouseExcelHandlers = useCallback(
+    (
+      handlers: {
+        exportWarehouse: () => Promise<void>;
+        importWarehouse: () => Promise<void>;
+      } | null,
+    ) => {
+      if (!handlers) {
+        warehouseExportRef.current = async () => {
+          throw new Error("Экспорт недоступен");
+        };
+        warehouseImportRef.current = async () => {
+          throw new Error("Импорт недоступен");
+        };
+        return;
+      }
+
+      warehouseExportRef.current = handlers.exportWarehouse;
+      warehouseImportRef.current = handlers.importWarehouse;
+    },
+    [],
+  );
+
+  const setWarehouseExcelAvailability = useCallback((state: WarehouseExcelIoState) => {
+    setWarehouseExcelIo((current) => {
+      if (
+        current.canExport === state.canExport &&
+        current.canImport === state.canImport &&
+        current.busy === state.busy
+      ) {
+        return current;
+      }
+      return state;
+    });
+  }, []);
+
+  const triggerWarehouseExport = useCallback(async () => {
+    if (!warehouseExcelIo.canExport) {
+      throw new Error("Экспорт недоступен");
+    }
+    await warehouseExportRef.current();
+  }, [warehouseExcelIo.canExport]);
+
+  const triggerWarehouseImport = useCallback(async () => {
+    if (!warehouseExcelIo.canImport) {
+      throw new Error("Импорт недоступен");
+    }
+    await warehouseImportRef.current();
+  }, [warehouseExcelIo.canImport]);
+
+  const registerWarehouseImportPicker = useCallback((handler: (() => void) | null) => {
+    warehouseImportPickerRef.current = handler;
+  }, []);
+
+  const triggerWarehouseImportPicker = useCallback((): boolean => {
+    if (!warehouseImportPickerRef.current) {
+      return false;
+    }
+    warehouseImportPickerRef.current();
+    return true;
+  }, []);
+
+  const registerWarehouseBarcodeHandler = useCallback((handler: (() => void) | null) => {
+    warehouseBarcodeHandlerRef.current = handler;
+  }, []);
+
+  const triggerWarehouseBarcode = useCallback((): boolean => {
+    if (!warehouseBarcodeHandlerRef.current) {
+      return false;
+    }
+    warehouseBarcodeHandlerRef.current();
+    return true;
+  }, []);
+
   const value = useMemo(
     () => ({
       search,
@@ -226,6 +365,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       setGridZoom,
       registerSaveHandler,
       triggerSave,
+      registerGridUndoHandler,
+      registerGridRedoHandler,
       registerCloudPushHandler,
       triggerCloudPush,
       motorSyncState,
@@ -239,6 +380,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       triggerMotorImport,
       registerMotorImportPicker,
       triggerMotorImportPicker,
+      registerWarehouseExcelHandlers,
+      setWarehouseExcelAvailability,
+      warehouseExcelIo,
+      triggerWarehouseExport,
+      triggerWarehouseImport,
+      registerWarehouseImportPicker,
+      triggerWarehouseImportPicker,
+      registerWarehouseBarcodeHandler,
+      triggerWarehouseBarcode,
     }),
     [
       search,
@@ -253,6 +403,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       gridZoom,
       registerSaveHandler,
       triggerSave,
+      registerGridUndoHandler,
+      registerGridRedoHandler,
       registerCloudPushHandler,
       triggerCloudPush,
       motorSyncState,
@@ -265,6 +417,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       triggerMotorImport,
       registerMotorImportPicker,
       triggerMotorImportPicker,
+      registerWarehouseExcelHandlers,
+      setWarehouseExcelAvailability,
+      warehouseExcelIo,
+      triggerWarehouseExport,
+      triggerWarehouseImport,
+      registerWarehouseImportPicker,
+      triggerWarehouseImportPicker,
+      registerWarehouseBarcodeHandler,
+      triggerWarehouseBarcode,
     ],
   );
 

@@ -36,6 +36,7 @@ import { joinCompanyWithInviteCode } from "@/infrastructure/firestore/join-compa
 import { ensureRbacBootstrap } from "@/infrastructure/firestore/rbac-bootstrap";
 import { signInWithAppleLikeMacOS } from "@/lib/auth/sign-in-with-apple-credential";
 import { signInWithAppleWeb } from "@/lib/auth/sign-in-with-apple-web";
+import { mergeProfileWithEmployee, EmployeeProfileSlice } from "@/lib/auth/resolve-effective-profile";
 import { mapAuthError } from "@/lib/user-copy";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
 import {
@@ -231,7 +232,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const refreshedSnap = await getDoc(userRef);
     const refreshedDoc = refreshedSnap.exists() ? (refreshedSnap.data() as UserDoc) : userDoc;
-    setProfile(mapUserDoc(currentUser.uid, currentUser, refreshedDoc));
+    const companyId = refreshedDoc?.companyId?.trim();
+    let employeeDoc: EmployeeProfileSlice | null = null;
+    let isCompanyOwner = false;
+
+    if (companyId) {
+      try {
+        const companySnap = await getDoc(doc(db, "companies", companyId));
+        if (companySnap.exists()) {
+          const ownerId = (companySnap.data() as { ownerId?: string }).ownerId;
+          isCompanyOwner = ownerId === currentUser.uid;
+        }
+      } catch (error) {
+        console.error("Failed to load company owner for RBAC", error);
+      }
+
+      try {
+        const employeeSnap = await getDoc(doc(db, "companies", companyId, "employees", currentUser.uid));
+        if (employeeSnap.exists()) {
+          const data = employeeSnap.data() as Record<string, unknown>;
+          employeeDoc = {
+            role: data.role as UserRole | undefined,
+            permissions: Array.isArray(data.permissions) ? (data.permissions as Permission[]) : undefined,
+            isActive: typeof data.isActive === "boolean" ? data.isActive : undefined,
+            fullName: typeof data.fullName === "string" ? data.fullName : undefined,
+          };
+        }
+      } catch (error) {
+        console.error("Failed to load employee profile for RBAC", error);
+      }
+    }
+
+    const mapped = mapUserDoc(currentUser.uid, currentUser, refreshedDoc);
+    setProfile({ ...mergeProfileWithEmployee(mapped, employeeDoc), isCompanyOwner });
   }, [upsertDefaultUserDoc]);
 
   const refreshProfileRef = useRef(refreshProfile);

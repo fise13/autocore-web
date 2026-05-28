@@ -1,5 +1,6 @@
 import { SpecificRecordEntity } from "@/infrastructure/firestore/specific-category-repository";
 
+import { nextEmptyRowId } from "@/lib/grid/empty-row-id";
 import {
   applySpecificSlotValue,
   buildSpecificHeaderMapping,
@@ -23,7 +24,7 @@ export type SpecificGridRow =
 export function createEmptySpecificRow(rowIndex: number): SpecificGridRow {
   return {
     rowKind: "empty",
-    rowId: `empty-${rowIndex}`,
+    rowId: nextEmptyRowId(),
     rowIndex,
     data: {},
   };
@@ -76,11 +77,17 @@ export function buildSpecificGridRows(
   records: SpecificRecordEntity[],
   emptyRows = 40,
 ): SpecificGridRow[] {
-  const saved: SpecificGridRow[] = records.map((record) => ({
-    ...record,
-    rowKind: "saved",
-    rowId: `saved-${record.id}`,
-  }));
+  const seenRecordIds = new Set<string>();
+  const saved: SpecificGridRow[] = [];
+  for (const record of records) {
+    if (seenRecordIds.has(record.id)) continue;
+    seenRecordIds.add(record.id);
+    saved.push({
+      ...record,
+      rowKind: "saved",
+      rowId: `saved-${record.id}`,
+    });
+  }
 
   const maxRowIndex = saved.reduce((acc, row) => Math.max(acc, row.rowIndex), 0);
   const nextRows: SpecificGridRow[] = [...saved];
@@ -111,7 +118,10 @@ export function reconcileSpecificRowsWithRemote(
   );
 
   const saved: SpecificGridRow[] = [];
+  const seenRecordIds = new Set<string>();
   for (const record of incomingRecords) {
+    if (seenRecordIds.has(record.id)) continue;
+    seenRecordIds.add(record.id);
     const rowId = `saved-${record.id}`;
     if (dirtyRowIds.has(rowId)) {
       const preserved = currentSavedById.get(record.id);

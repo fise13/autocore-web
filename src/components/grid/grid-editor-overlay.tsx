@@ -4,6 +4,7 @@ import { KeyboardEvent } from "react";
 
 type GridEditorOverlayProps = {
   value: string;
+  editorKey: string;
   frame: { x: number; y: number; width: number; height: number };
   onChange: (value: string) => void;
   onCommit: (direction?: "down" | "up" | "left" | "right") => void;
@@ -14,6 +15,7 @@ type GridEditorOverlayProps = {
 
 export function GridEditorOverlay({
   value,
+  editorKey,
   frame,
   onChange,
   onCommit,
@@ -48,12 +50,17 @@ export function GridEditorOverlay({
 
   return (
     <textarea
+      key={editorKey}
       autoFocus={autoFocus}
-      defaultValue={value}
+      value={value}
+      onMouseDown={(event) => event.stopPropagation()}
       onFocus={(event) => {
         if (selectAll) {
           event.currentTarget.select();
+          return;
         }
+        const cursor = event.currentTarget.value.length;
+        event.currentTarget.setSelectionRange(cursor, cursor);
       }}
       onChange={(event) => onChange(event.target.value)}
       onBlur={() => onCommit()}

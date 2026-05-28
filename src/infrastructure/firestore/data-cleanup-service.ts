@@ -125,5 +125,35 @@ export function createDataCleanupService() {
       });
       return deleted;
     },
+
+    async deleteAllWarehouse(companyId: string, actorId: string): Promise<number> {
+      const normalizedCompanyId = normalizeCompanyId(companyId);
+      const refs: Array<ReturnType<typeof doc>> = [];
+
+      for (const collectionName of [
+        "inventoryItems",
+        "inventoryMovements",
+        "inventoryStockLevels",
+        "inventoryReservations",
+        "inventoryImports",
+        "barcodeMappings",
+        "warehouses",
+        "suppliers",
+      ] as const) {
+        const snapshot = await getDocs(
+          query(collection(db, collectionName), where("companyId", "==", normalizedCompanyId)),
+        );
+        refs.push(...snapshot.docs.map((item) => item.ref));
+      }
+
+      const deleted = await deleteDocsInBatches(refs);
+      await activity.append(normalizedCompanyId, {
+        actor: actorId,
+        action: "inventory.warehouse_cleared",
+        target: `company:${normalizedCompanyId}`,
+        metadata: { deleted },
+      });
+      return deleted;
+    },
   };
 }

@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { AccountingModule } from "@/components/mission-control/modules/accounting-module";
 import { EmployeesModule } from "@/components/mission-control/modules/employees-module";
 import { InventoryModule } from "@/components/mission-control/modules/inventory-module";
+import { WarehouseModule } from "@/components/mission-control/modules/warehouse-module";
 import { OperationsStatsModule } from "@/components/mission-control/modules/operations-stats-module";
 import { useMissionControlData } from "@/hooks/use-mission-control-data";
 
@@ -14,6 +15,10 @@ export function ModuleGrid({
   latestMotors,
   recentlyModifiedMotors,
   recentOperations,
+  recentWarehouseItems,
+  lowStockWarehouseItems,
+  warehouseMovements,
+  overview,
   operations,
   employees,
   activityLogs,
@@ -40,6 +45,15 @@ export function ModuleGrid({
         <InventoryModule
           latestMotors={latestMotors}
           recentlyModified={recentlyModifiedMotors}
+          isLoading={isLoading}
+        />
+      ) : null}
+      {permissions.canInventory ? (
+        <WarehouseModule
+          recentItems={recentWarehouseItems}
+          lowStockItems={lowStockWarehouseItems}
+          recentMovements={warehouseMovements}
+          stockValue={overview.warehouseStockValue}
           isLoading={isLoading}
         />
       ) : null}

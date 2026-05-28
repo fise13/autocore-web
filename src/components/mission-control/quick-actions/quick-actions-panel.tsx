@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Download, Plus, RefreshCw, Upload, UserPlus, Wallet, Zap } from "lucide-react";
+import { Download, Package, Plus, RefreshCw, Upload, UserPlus, Wallet, Zap } from "lucide-react";
 
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -10,6 +10,12 @@ import { deepActionRoutes } from "@/lib/navigation/deep-actions";
 import { cn } from "@/lib/utils";
 
 const actions = [
+  {
+    href: "/warehouse",
+    label: "Открыть склад",
+    icon: Package,
+    permission: "inventory_view" as const,
+  },
   {
     href: deepActionRoutes.add(),
     label: "Добавить мотор",

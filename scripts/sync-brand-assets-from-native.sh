@@ -32,7 +32,10 @@ if [[ -f "$WEB/assets/branding/login-logo.png" ]]; then
   sips -z 512 512 "$WEB/assets/branding/login-logo.png" --out "$WEB/assets/icons/app-icon.png" >/dev/null
   cp "$WEB/assets/icons/app-icon.png" "$WEB/assets/icons/app-icon-dark.png"
   cp "$WEB/assets/meta/favicon.png" "$WEB/public/favicon.png"
-  echo "  ✓ favicon.png, apple-touch-icon.png, app-icon.png"
+  cp "$WEB/assets/meta/favicon.png" "$WEB/public/icon.png"
+  cp "$WEB/assets/meta/apple-touch-icon.png" "$WEB/public/apple-icon.png"
+  python3 "$WEB/scripts/generate-favicon-ico.py"
+  echo "  ✓ favicon.ico, icon/apple-icon routes, public fallbacks"
 fi
 
 echo "Done."

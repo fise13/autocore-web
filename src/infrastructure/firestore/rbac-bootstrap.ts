@@ -13,56 +13,72 @@ type BootstrapUserDoc = {
 };
 
 export async function ensureRbacBootstrap(uid: string): Promise<void> {
-  try {
-    const db = getFirestoreDb();
-    const userRef = doc(db, "users", uid);
-    const userSnap = await getDoc(userRef);
-    if (!userSnap.exists()) return;
+  const db = getFirestoreDb();
+  const userRef = doc(db, "users", uid);
+  const userSnap = await getDoc(userRef);
+  if (!userSnap.exists()) return;
 
-    const userData = userSnap.data() as BootstrapUserDoc;
-    const companyId = userData.companyId?.trim();
-    if (!companyId) return;
+  const userData = userSnap.data() as BootstrapUserDoc;
+  const companyId = userData.companyId?.trim();
+  if (!companyId) return;
 
-    const role = userData.role ?? "employee";
-    const employeeRef = doc(db, "companies", companyId, "employees", uid);
-    const employeeSnap = await getDoc(employeeRef);
+  const companySnap = await getDoc(doc(db, "companies", companyId));
+  const ownerId = companySnap.exists()
+    ? (companySnap.data() as { ownerId?: string }).ownerId
+    : undefined;
+  const isCompanyOwner = ownerId === uid;
+  const role = isCompanyOwner ? "owner" : (userData.role ?? "employee");
+  const permissions =
+    Array.isArray(userData.permissions) && userData.permissions.length > 0
+      ? userData.permissions
+      : ROLE_PERMISSIONS[role];
+  const employeeRef = doc(db, "companies", companyId, "employees", uid);
+  const employeeSnap = await getDoc(employeeRef);
 
-    if (!employeeSnap.exists()) {
-      await setDoc(
-        employeeRef,
-        {
-          uid,
-          companyId,
-          email: String(userData.email ?? ""),
-          fullName: String(userData.name ?? ""),
-          role,
-          permissions: Array.isArray(userData.permissions) ? userData.permissions : [],
-          invitedBy: uid,
-          isActive: userData.isActive !== false,
-          createdAt: serverTimestamp(),
-          lastActiveAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
-    }
+  if (!employeeSnap.exists()) {
+    await setDoc(
+      employeeRef,
+      {
+        uid,
+        companyId,
+        email: String(userData.email ?? ""),
+        fullName: String(userData.name ?? ""),
+        role,
+        permissions,
+        invitedBy: uid,
+        isActive: userData.isActive !== false,
+        createdAt: serverTimestamp(),
+        lastActiveAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+  } else if (isCompanyOwner) {
+    await setDoc(
+      employeeRef,
+      {
+        role: "owner",
+        permissions: ROLE_PERMISSIONS.owner,
+        isActive: true,
+        lastActiveAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+  }
 
-    for (const roleId of Object.keys(ROLE_PERMISSIONS) as UserRole[]) {
-      const roleRef = doc(db, "companies", companyId, "roles", roleId);
-      const roleSnap = await getDoc(roleRef);
-      if (roleSnap.exists()) continue;
-      await setDoc(
-        roleRef,
-        {
-          companyId,
-          role: roleId,
-          permissions: ROLE_PERMISSIONS[roleId],
-          isSystem: true,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
-    }
-  } catch {
-    // Bootstrap is best-effort; onboarding must not fail because of RBAC seeding.
+  for (const roleId of Object.keys(ROLE_PERMISSIONS) as UserRole[]) {
+    const roleRef = doc(db, "companies", companyId, "roles", roleId);
+    const roleSnap = await getDoc(roleRef);
+    if (roleSnap.exists()) continue;
+    await setDoc(
+      roleRef,
+      {
+        companyId,
+        role: roleId,
+        permissions: ROLE_PERMISSIONS[roleId],
+        isSystem: true,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
   }
 }

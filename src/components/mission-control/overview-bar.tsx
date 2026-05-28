@@ -87,13 +87,30 @@ export const OverviewBar = memo(function OverviewBar({
         index={3}
       />,
       <MetricCard
+        key="warehouse-items"
+        label="Позиций на складе"
+        value={metrics.warehouseItemCount}
+        suffix=""
+        icon={Package}
+        tone="blue"
+        index={4}
+      />,
+      <MetricCard
+        key="warehouse-value"
+        label="Стоимость склада"
+        value={metrics.warehouseStockValue}
+        icon={Wallet}
+        tone="blue"
+        index={5}
+      />,
+      <MetricCard
         key="low-stock"
         label="Низкий остаток"
-        value={metrics.lowStockCount}
+        value={metrics.lowStockCount + metrics.warehouseLowStockCount}
         suffix=""
         icon={AlertTriangle}
-        tone={metrics.lowStockCount > 0 ? "amber" : "default"}
-        index={4}
+        tone={metrics.lowStockCount + metrics.warehouseLowStockCount > 0 ? "amber" : "default"}
+        index={6}
       />,
     );
   }

@@ -91,3 +91,23 @@ export function selectWholeColumn(column: number, maxRow: number): GridSelection
     cmdRanges: [],
   };
 }
+
+export function selectWholeRowActiveStart(
+  row: number,
+  editableColumnStart: number,
+  editableColumnEnd: number,
+): GridSelectionState {
+  return {
+    anchor: { row, column: editableColumnEnd },
+    head: { row, column: editableColumnStart },
+    cmdRanges: [],
+  };
+}
+
+export function selectWholeColumnActiveTop(column: number, maxRow: number): GridSelectionState {
+  return {
+    anchor: { row: Math.max(0, maxRow), column },
+    head: { row: 0, column },
+    cmdRanges: [],
+  };
+}

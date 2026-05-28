@@ -11,6 +11,9 @@ export const PERMISSIONS = [
   "inventory_view",
   "inventory_edit",
   "inventory_delete",
+  "inventory_export",
+  "inventory_import",
+  "warehouse_manage",
   "accounting_view",
   "accounting_edit",
   "accounting_delete",
@@ -30,6 +33,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   manager: [
     "inventory_view",
     "inventory_edit",
+    "inventory_export",
+    "inventory_import",
     "accounting_view",
     "employee_view",
     "analytics_view",
@@ -38,6 +43,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
   accountant: [
     "inventory_view",
+    "inventory_export",
     "accounting_view",
     "accounting_edit",
     "analytics_view",
@@ -55,6 +61,8 @@ export type UserEntity = {
   companyId: string | null;
   permissions?: Permission[];
   isActive?: boolean;
+  /** True when companies/{companyId}.ownerId === user id (Firestore isOwnerOfCompany). */
+  isCompanyOwner?: boolean;
 };
 
 export function permissionSetForRole(role: UserRole): Set<Permission> {
@@ -75,6 +83,7 @@ export function hasPermission(
   permission: Permission,
 ): boolean {
   if (!user) return false;
+  if (user.isCompanyOwner) return true;
   if (user.isActive === false) return false;
   return effectivePermissions(user).has(permission);
 }

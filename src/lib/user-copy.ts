@@ -375,6 +375,78 @@ export type AuthErrorContext = {
   surface?: "onboarding" | "sync";
 };
 
+const GRID_FIELD_LABELS: Record<string, string> = {
+  sku: "SKU",
+  name: "Название",
+};
+
+function mapValidationError(error: unknown): string | null {
+  if (error instanceof Error && error.message.includes("SKU и название")) {
+    return error.message;
+  }
+
+  const zodIssues =
+    typeof error === "object" &&
+    error !== null &&
+    "issues" in error &&
+    Array.isArray((error as { issues: unknown[] }).issues)
+      ? (error as { issues: Array<{ path?: unknown[]; message?: string }> }).issues
+      : null;
+
+  if (zodIssues) {
+    const labels = [
+      ...new Set(
+        zodIssues.map((issue) => GRID_FIELD_LABELS[String(issue.path?.[0] ?? "")] ?? String(issue.path?.[0] ?? "поле")),
+      ),
+    ];
+    if (labels.length > 0) {
+      return `Заполните обязательные поля: ${labels.join(", ")}.`;
+    }
+  }
+
+  if (error instanceof Error) {
+    try {
+      const parsed = JSON.parse(error.message) as Array<{ path?: string[] }>;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const labels = [
+          ...new Set(
+            parsed.map((issue) => GRID_FIELD_LABELS[String(issue.path?.[0] ?? "")] ?? String(issue.path?.[0] ?? "поле")),
+          ),
+        ];
+        if (labels.length > 0) {
+          return `Заполните обязательные поля: ${labels.join(", ")}.`;
+        }
+      }
+    } catch {
+      // Not a JSON validation payload.
+    }
+  }
+
+  return null;
+}
+
+export function mapGridSaveError(error: unknown): string {
+  if (typeof error === "object" && error !== null && "code" in error) {
+    const code = String((error as { code?: string }).code);
+    if (code === "permission-denied") {
+      return "Недостаточно прав для сохранения. Проверьте роль в разделе «Сотрудники» — нужно право «Редактирование инвентаря».";
+    }
+    if (code === "invalid-argument") {
+      return "Не удалось сохранить: в строке есть некорректное значение. Проверьте пустые поля, цены и количество.";
+    }
+  }
+  if (error instanceof Error && /missing or insufficient permissions/i.test(error.message)) {
+    return "Недостаточно прав для сохранения. Проверьте роль в разделе «Сотрудники» — нужно право «Редактирование инвентаря».";
+  }
+  if (
+    error instanceof Error &&
+    /unsupported field value|undefined|invalid-argument/i.test(error.message)
+  ) {
+    return "Не удалось сохранить: одно из полей имеет некорректное значение. Очистите поле или заполните его заново.";
+  }
+  return mapValidationError(error) ?? mapAuthError(error, { surface: "sync" });
+}
+
 export function mapAuthError(error: unknown, context?: AuthErrorContext): string {
   const code =
     typeof error === "object" && error !== null && "code" in error

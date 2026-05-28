@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 
 import { UserEntity } from "@/domain/user";
 import { useActivityLogRealtime } from "@/hooks/use-activity-log-realtime";
@@ -10,10 +10,16 @@ import { useOperationsRealtime } from "@/hooks/use-operations-realtime";
 import { can, canViewEmployees } from "@/lib/auth/permissions";
 import { computeOverviewMetrics } from "@/lib/mission-control/compute-overview-metrics";
 import { computeOperationsStats } from "@/lib/mission-control/compute-operations-stats";
+import { useInventoryRealtime } from "@/hooks/use-inventory-realtime";
+import { useInventoryMovementsRealtime } from "@/hooks/use-inventory-movements-realtime";
 import { createMotorRepository } from "@/infrastructure/firestore/motor-repository";
+import { createInventoryItemRepository } from "@/infrastructure/firestore/inventory-item-repository";
+import { createInventoryMovementRepository } from "@/infrastructure/firestore/inventory-movement-repository";
 import { createFinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
 
 const motorRepository = createMotorRepository();
+const inventoryItemRepository = createInventoryItemRepository();
+const inventoryMovementRepository = createInventoryMovementRepository();
 const financialRepository = createFinancialOperationRepository();
 
 type UseMissionControlDataParams = {
@@ -35,6 +41,19 @@ export function useMissionControlData({ profile, uid, companyId, isPro }: UseMis
     enabled: enabled && canInventory,
   });
 
+  const warehouseItemsQuery = useInventoryRealtime(
+    inventoryItemRepository,
+    companyId,
+    enabled && canInventory,
+  );
+
+  const warehouseMovementsQuery = useInventoryMovementsRealtime(
+    inventoryMovementRepository,
+    companyId,
+    undefined,
+    enabled && canInventory,
+  );
+
   const operationsQuery = useOperationsRealtime(financialRepository, {
     companyId,
     enabled: enabled && canAccounting,
@@ -49,6 +68,8 @@ export function useMissionControlData({ profile, uid, companyId, isPro }: UseMis
     useActivityLogRealtime(companyId, enabled && canEmployees);
 
   const motors = motorsQuery.data ?? [];
+  const warehouseItems = warehouseItemsQuery.data ?? [];
+  const warehouseMovements = warehouseMovementsQuery.movements;
   const operations = operationsQuery.data ?? [];
 
   const overview = useMemo(
@@ -56,10 +77,11 @@ export function useMissionControlData({ profile, uid, companyId, isPro }: UseMis
       computeOverviewMetrics({
         operations: canAccounting ? operations : [],
         motors: canInventory ? motors : [],
+        warehouseItems: canInventory ? warehouseItems : [],
         employees: canEmployees ? employees : [],
         activityLogs: canEmployees ? activityLogs : [],
       }),
-    [activityLogs, canAccounting, canEmployees, canInventory, employees, motors, operations],
+    [activityLogs, canAccounting, canEmployees, canInventory, employees, motors, operations, warehouseItems],
   );
 
   const operationsStats = useMemo(
@@ -68,7 +90,7 @@ export function useMissionControlData({ profile, uid, companyId, isPro }: UseMis
   );
 
   const isLoading =
-    (canInventory && motorsQuery.isLoading) ||
+    (canInventory && (motorsQuery.isLoading || warehouseItemsQuery.isLoading)) ||
     (canAccounting && operationsQuery.isLoading) ||
     (canEmployees && (employeesLoading || activityLoading));
 
@@ -96,10 +118,26 @@ export function useMissionControlData({ profile, uid, companyId, isPro }: UseMis
       .slice(0, 5);
   }, [motors]);
 
+  const recentWarehouseItems = useMemo(() => {
+    return [...warehouseItems]
+      .filter((item) => item.status === "active")
+      .sort((a, b) => (b.updatedAt?.getTime() ?? 0) - (a.updatedAt?.getTime() ?? 0))
+      .slice(0, 5);
+  }, [warehouseItems]);
+
+  const lowStockWarehouseItems = useMemo(() => {
+    return warehouseItems
+      .filter((item) => item.status === "active")
+      .filter((item) => item.totalAvailable <= (item.lowStockThreshold ?? 1))
+      .slice(0, 5);
+  }, [warehouseItems]);
+
   return {
     overview,
     operationsStats,
     motors,
+    warehouseItems,
+    warehouseMovements,
     operations,
     employees,
     activityLogs,
@@ -107,6 +145,8 @@ export function useMissionControlData({ profile, uid, companyId, isPro }: UseMis
     latestMotors,
     recentOperations,
     recentlyModifiedMotors,
+    recentWarehouseItems,
+    lowStockWarehouseItems,
     isLoading,
     permissions: {
       canAccounting,

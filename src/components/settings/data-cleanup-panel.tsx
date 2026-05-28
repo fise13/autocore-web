@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, FileText, LayoutGrid, Receipt } from "lucide-react";
+import { AlertTriangle, FileText, LayoutGrid, Package, Receipt } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import { can } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { userCopy } from "@/lib/user-copy";
 
-type CleanupActionId = "accounting" | "motors" | "specifics";
+type CleanupActionId = "accounting" | "motors" | "specifics" | "warehouse";
 
 const cleanupService = createDataCleanupService();
 
@@ -73,6 +73,15 @@ export function DataCleanupPanel({ onStatus }: DataCleanupPanelProps) {
         icon: FileText,
         canRun: can(profile, "inventory_delete"),
       },
+      {
+        id: "warehouse",
+        title: "Очистить склад",
+        description: "Удалить все позиции, движения, склады и импорты компании.",
+        confirmTitle: "Очистить склад?",
+        confirmDescription: "Будут удалены inventoryItems, movements, stock levels, warehouses, suppliers и import jobs.",
+        icon: Package,
+        canRun: can(profile, "inventory_delete"),
+      },
     ],
     [profile],
   );
@@ -113,6 +122,10 @@ export function DataCleanupPanel({ onStatus }: DataCleanupPanelProps) {
         case "specifics":
           deleted = await cleanupService.deleteAllSpecifics(companyId, uid);
           onStatus?.(userCopy.settings.deleteSpecificsSuccess(deleted));
+          break;
+        case "warehouse":
+          deleted = await cleanupService.deleteAllWarehouse(companyId, uid);
+          onStatus?.(`Удалено складских документов: ${deleted}`);
           break;
       }
       setPendingAction(null);
