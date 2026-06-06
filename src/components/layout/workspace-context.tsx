@@ -29,15 +29,35 @@ export type WarehouseExcelIoState = {
   busy: "export" | "import" | null;
 };
 
+export type WarehouseImportProgressState = {
+  phase: "analyze" | "apply";
+  percent: number;
+  message: string;
+  fileName?: string;
+};
+
+export type MotorImportProgressState = WarehouseImportProgressState;
+
+export type WorkspaceSearchSuggestion = {
+  id: string;
+  label: string;
+  description?: string;
+  searchValue: string;
+};
+
 type WorkspaceContextValue = {
   search: string;
   setSearch: (value: string) => void;
+  searchSuggestions: WorkspaceSearchSuggestion[];
+  setSearchSuggestions: (suggestions: WorkspaceSearchSuggestion[]) => void;
   availability: MotorAvailability;
   setAvailability: (value: MotorAvailability) => void;
   selectedBrandLocalId: number | null;
   setSelectedBrandLocalId: (value: number | null) => void;
   selectedEngineLocalId: number | null;
   setSelectedEngineLocalId: (value: number | null) => void;
+  selectedWarehouseId: string | null;
+  setSelectedWarehouseId: (value: string | null) => void;
   shownCount: number;
   totalCount: number;
   setCounts: (shown: number, total: number) => void;
@@ -79,15 +99,47 @@ type WorkspaceContextValue = {
   triggerWarehouseImportPicker: () => boolean;
   registerWarehouseBarcodeHandler: (handler: (() => void) | null) => void;
   triggerWarehouseBarcode: () => boolean;
+  warehouseImportProgress: WarehouseImportProgressState | null;
+  setWarehouseImportProgress: (progress: WarehouseImportProgressState | null) => void;
+  registerWarehouseImportCancel: (handler: (() => void) | null) => void;
+  cancelWarehouseImport: () => void;
+  motorImportProgress: MotorImportProgressState | null;
+  setMotorImportProgress: (progress: MotorImportProgressState | null) => void;
+  registerMotorImportCancel: (handler: (() => void) | null) => void;
+  cancelMotorImport: () => void;
+  motorImportReviewPending: boolean;
+  setMotorImportReviewPending: (pending: boolean) => void;
+  registerImportIslandHandler: (handler: (() => void) | null) => void;
+  triggerImportIslandClick: () => void;
 };
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [search, setSearch] = useState("");
+  const [searchSuggestions, setSearchSuggestionsState] = useState<WorkspaceSearchSuggestion[]>([]);
+
+  const setSearchSuggestions = useCallback((suggestions: WorkspaceSearchSuggestion[]) => {
+    setSearchSuggestionsState((prev) => {
+      if (
+        prev.length === suggestions.length &&
+        prev.every(
+          (item, index) =>
+            item.id === suggestions[index]?.id &&
+            item.label === suggestions[index]?.label &&
+            item.description === suggestions[index]?.description &&
+            item.searchValue === suggestions[index]?.searchValue,
+        )
+      ) {
+        return prev;
+      }
+      return suggestions;
+    });
+  }, []);
   const [availability, setAvailability] = useState<MotorAvailability>("all");
   const [selectedBrandLocalId, setSelectedBrandLocalId] = useState<number | null>(null);
   const [selectedEngineLocalId, setSelectedEngineLocalId] = useState<number | null>(null);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null);
   const [shownCount, setShownCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const [saveStatus, setSaveStatus] = useState<GridSaveStatus>("idle");
@@ -99,6 +151,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const redoHandlerRef = useRef<(() => void) | null>(null);
   const cloudPushHandlerRef = useRef<(() => Promise<void>) | null>(null);
   const syncHandlerRef = useRef<(() => Promise<void>) | null>(null);
+  const savingRef = useRef(false);
   const motorExportRef = useRef<(() => Promise<void>)>(async () => {
     throw new Error("Экспорт недоступен");
   });
@@ -124,6 +177,38 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     canImport: false,
     busy: null,
   });
+  const [warehouseImportProgress, setWarehouseImportProgress] =
+    useState<WarehouseImportProgressState | null>(null);
+  const [motorImportProgress, setMotorImportProgress] =
+    useState<MotorImportProgressState | null>(null);
+  const warehouseImportCancelRef = useRef<(() => void) | null>(null);
+  const motorImportCancelRef = useRef<(() => void) | null>(null);
+  const importIslandHandlerRef = useRef<(() => void) | null>(null);
+  const [motorImportReviewPending, setMotorImportReviewPending] = useState(false);
+
+  const registerWarehouseImportCancel = useCallback((handler: (() => void) | null) => {
+    warehouseImportCancelRef.current = handler;
+  }, []);
+
+  const cancelWarehouseImport = useCallback(() => {
+    warehouseImportCancelRef.current?.();
+  }, []);
+
+  const registerMotorImportCancel = useCallback((handler: (() => void) | null) => {
+    motorImportCancelRef.current = handler;
+  }, []);
+
+  const cancelMotorImport = useCallback(() => {
+    motorImportCancelRef.current?.();
+  }, []);
+
+  const registerImportIslandHandler = useCallback((handler: (() => void) | null) => {
+    importIslandHandlerRef.current = handler;
+  }, []);
+
+  const triggerImportIslandClick = useCallback(() => {
+    importIslandHandlerRef.current?.();
+  }, []);
 
   const setCounts = useCallback((shown: number, total: number) => {
     setShownCount((prev) => (prev === shown ? prev : shown));
@@ -147,12 +232,22 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const triggerSync = useCallback(async (): Promise<boolean> => {
-    if (!syncHandlerRef.current) {
+    if (savingRef.current) return true;
+    savingRef.current = true;
+    try {
       saveHandlerRef.current?.();
+      if (cloudPushHandlerRef.current) {
+        await cloudPushHandlerRef.current();
+        return true;
+      }
+      if (syncHandlerRef.current) {
+        await syncHandlerRef.current();
+        return true;
+      }
       return Boolean(saveHandlerRef.current);
+    } finally {
+      savingRef.current = false;
     }
-    await syncHandlerRef.current();
-    return true;
   }, []);
 
   useEffect(() => {
@@ -160,16 +255,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const cmd = event.metaKey || event.ctrlKey;
       if (!cmd) return;
 
-      if (event.key.toLowerCase() === "s") {
+      const isSaveKey = event.code === "KeyS" || event.key.toLowerCase() === "s";
+      if (isSaveKey) {
         event.preventDefault();
         event.stopPropagation();
-        if (syncHandlerRef.current) {
-          void syncHandlerRef.current().catch((error) => {
-            console.error("Save failed:", error);
-          });
-        } else if (saveHandlerRef.current) {
-          saveHandlerRef.current();
-        }
+        void triggerSync().catch((error) => {
+          console.error("Save failed:", error);
+        });
         return;
       }
 
@@ -191,7 +283,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, []);
+  }, [triggerSync]);
 
   const registerCloudPushHandler = useCallback((handler: (() => Promise<void>) | null) => {
     cloudPushHandlerRef.current = handler;
@@ -199,7 +291,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const triggerCloudPush = useCallback(async () => {
     if (!cloudPushHandlerRef.current) {
-      throw new Error("Синхронизация недоступна: таблица ещё не готова.");
+      throw new Error("Сохранение недоступно: таблица ещё не готова.");
     }
     await cloudPushHandlerRef.current();
   }, []);
@@ -348,12 +440,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     () => ({
       search,
       setSearch,
+      searchSuggestions,
+      setSearchSuggestions,
       availability,
       setAvailability,
       selectedBrandLocalId,
       setSelectedBrandLocalId,
       selectedEngineLocalId,
       setSelectedEngineLocalId,
+      selectedWarehouseId,
+      setSelectedWarehouseId,
       shownCount,
       totalCount,
       setCounts,
@@ -389,12 +485,26 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       triggerWarehouseImportPicker,
       registerWarehouseBarcodeHandler,
       triggerWarehouseBarcode,
+      warehouseImportProgress,
+      setWarehouseImportProgress,
+      registerWarehouseImportCancel,
+      cancelWarehouseImport,
+      motorImportProgress,
+      setMotorImportProgress,
+      registerMotorImportCancel,
+      cancelMotorImport,
+      motorImportReviewPending,
+      setMotorImportReviewPending,
+      registerImportIslandHandler,
+      triggerImportIslandClick,
     }),
     [
       search,
+      searchSuggestions,
       availability,
       selectedBrandLocalId,
       selectedEngineLocalId,
+      selectedWarehouseId,
       shownCount,
       totalCount,
       setCounts,
@@ -426,6 +536,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       triggerWarehouseImportPicker,
       registerWarehouseBarcodeHandler,
       triggerWarehouseBarcode,
+      warehouseImportProgress,
+      registerWarehouseImportCancel,
+      cancelWarehouseImport,
+      motorImportProgress,
+      registerMotorImportCancel,
+      cancelMotorImport,
+      motorImportReviewPending,
+      registerImportIslandHandler,
+      triggerImportIslandClick,
     ],
   );
 

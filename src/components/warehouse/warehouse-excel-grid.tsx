@@ -33,6 +33,7 @@ import {
   selectWholeRowActiveStart,
 } from "@/lib/grid/selection-controller";
 import { GridCellAddress, GridRange, isCellInsideRange, normalizeRange } from "@/lib/grid/grid-types";
+import { resolveGridColumnAutocomplete } from "@/lib/grid/grid-column-autocomplete";
 import { gridPalette } from "@/lib/grid/grid-palette";
 import {
   applyWarehouseDraftField,
@@ -44,6 +45,7 @@ import {
   reconcileWarehouseRowsWithRemote,
   formatWarehouseUpdatedAt,
   isWarehouseRowLowStock,
+  isWarehouseRowOutOfStock,
   savedRowMetadataChanged,
   savedRowShouldArchive,
   savedRowStockChanged,
@@ -62,13 +64,13 @@ import {
   WAREHOUSE_EDITABLE_COL_START,
   WAREHOUSE_GRID_EMPTY_ROWS_EXPAND,
   WAREHOUSE_GRID_EMPTY_ROWS_THRESHOLD,
+  WAREHOUSE_READ_ONLY_COLUMNS,
   warehouseCellFrame,
 } from "@/lib/warehouse/warehouse-grid-layout-engine";
 import {
   categoryLabelFromPath,
   categoryPathFromLabel,
   normalizeBarcode,
-  parseInventoryStatus,
 } from "@/lib/warehouse/warehouse-search";
 import { InventoryItemRepository } from "@/infrastructure/firestore/inventory-item-repository";
 import { InventoryMovementRepository } from "@/infrastructure/firestore/inventory-movement-repository";
@@ -87,7 +89,7 @@ type WarehouseExcelGridProps = {
   movementRepository: InventoryMovementRepository;
   warehouseRepository: WarehouseRepository;
   financialRepository: FinancialOperationRepository;
-  defaultWarehouseId?: string;
+  activeWarehouseId?: string;
   actorUserId: string;
   onReceipt: (item: InventoryItem) => void;
   onAdjust: (item: InventoryItem) => void;
@@ -110,7 +112,7 @@ type ContextMenuState = {
   selected: InventoryItem[];
 };
 
-const NAVIGABLE_COLUMNS = [1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15];
+const NAVIGABLE_COLUMNS = [1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13, 14];
 
 function isEditableColumn(column: number): boolean {
   return isWarehouseEditableColumn(column);
@@ -140,28 +142,24 @@ function valueAtCell(row: WarehouseGridRow, column: number): string {
       case 4:
         return row.brandName ?? "";
       case 5:
-        return row.unit;
-      case 6:
         return formatOptionalGridNumber(row.totalOnHand);
-      case 7:
+      case 6:
         return formatOptionalGridNumber(row.totalReserved);
-      case 8:
+      case 7:
         return formatOptionalGridNumber(row.totalAvailable);
-      case 9:
+      case 8:
         return formatOptionalGridNumber(row.purchasePrice);
-      case 10:
+      case 9:
         return formatOptionalGridNumber(row.sellPrice);
-      case 11:
+      case 10:
         return row.supplierName ?? "";
-      case 12:
+      case 11:
         return row.barcodes[0] ?? "";
-      case 13:
+      case 12:
         return row.warehouseLocation ?? "";
-      case 14:
+      case 13:
         return formatOptionalGridNumber(row.lowStockThreshold);
-      case 15:
-        return row.status;
-      case 16:
+      case 14:
         return formatWarehouseUpdatedAt(row.updatedAt);
       default:
         return "";
@@ -177,23 +175,19 @@ function valueAtCell(row: WarehouseGridRow, column: number): string {
     case 4:
       return row.draft.brandName;
     case 5:
-      return row.draft.unit;
-    case 6:
       return row.draft.onHand;
-    case 9:
+    case 8:
       return row.draft.purchasePrice;
-    case 10:
+    case 9:
       return row.draft.sellPrice;
-    case 11:
+    case 10:
       return row.draft.supplierName;
-    case 12:
+    case 11:
       return row.draft.barcode;
-    case 13:
+    case 12:
       return row.draft.warehouseLocation;
-    case 14:
+    case 13:
       return row.draft.lowStockThreshold;
-    case 15:
-      return row.draft.status;
     default:
       return "";
   }
@@ -215,37 +209,31 @@ function applyCellValue(row: WarehouseGridRow, column: number, value: string): W
       case 4:
         next.brandName = value;
         break;
-      case 5:
-        next.unit = value.trim() || "шт";
-        break;
-      case 6: {
+      case 5: {
         const onHand = parseGridNumber(value) ?? 0;
         next.totalOnHand = onHand;
         next.totalAvailable = onHand - next.totalReserved;
         break;
       }
-      case 9:
+      case 8:
         next.purchasePrice = parseGridNumber(value);
         break;
-      case 10:
+      case 9:
         next.sellPrice = parseGridNumber(value);
         break;
-      case 11:
+      case 10:
         next.supplierName = value;
         break;
-      case 12: {
+      case 11: {
         const barcode = normalizeBarcode(value);
         next.barcodes = barcode ? [barcode] : [];
         break;
       }
-      case 13:
+      case 12:
         next.warehouseLocation = value;
         break;
-      case 14:
+      case 13:
         next.lowStockThreshold = parseGridNumber(value);
-        break;
-      case 15:
-        next.status = parseInventoryStatus(value);
         break;
       default:
         break;
@@ -262,23 +250,19 @@ function applyCellValue(row: WarehouseGridRow, column: number, value: string): W
     case 4:
       return applyWarehouseDraftField(row, "brandName", value);
     case 5:
-      return applyWarehouseDraftField(row, "unit", value);
-    case 6:
       return applyWarehouseDraftField(row, "onHand", value);
-    case 9:
+    case 8:
       return applyWarehouseDraftField(row, "purchasePrice", value);
-    case 10:
+    case 9:
       return applyWarehouseDraftField(row, "sellPrice", value);
-    case 11:
+    case 10:
       return applyWarehouseDraftField(row, "supplierName", value);
-    case 12:
+    case 11:
       return applyWarehouseDraftField(row, "barcode", value);
-    case 13:
+    case 12:
       return applyWarehouseDraftField(row, "warehouseLocation", value);
-    case 14:
+    case 13:
       return applyWarehouseDraftField(row, "lowStockThreshold", value);
-    case 15:
-      return applyWarehouseDraftField(row, "status", value);
     default:
       return row;
   }
@@ -325,7 +309,7 @@ export function WarehouseExcelGrid({
   movementRepository,
   warehouseRepository,
   financialRepository,
-  defaultWarehouseId,
+  activeWarehouseId,
   actorUserId,
   onReceipt,
   onAdjust,
@@ -458,6 +442,17 @@ export function WarehouseExcelGrid({
     return { rowStart, rowEnd, colStart, colEnd };
   }, [columnWidths, layout.rowHeight, rows.length, scroll.height, scroll.left, scroll.top, scroll.width]);
 
+  const editorAutocompleteMatch = useMemo(
+    () =>
+      resolveGridColumnAutocomplete(
+        editor,
+        rows.length,
+        (row, column) => valueAtCell(rows[row], column),
+        (column) => isEditableColumn(column) && !WAREHOUSE_READ_ONLY_COLUMNS.has(column),
+      ),
+    [editor, rows],
+  );
+
   const scheduleDirtyStatus = useCallback(() => {
     if (dirtyStatusScheduledRef.current) return;
     dirtyStatusScheduledRef.current = true;
@@ -587,7 +582,7 @@ export function WarehouseExcelGrid({
           {
             companyId,
             actorUserId,
-            warehouseId: defaultWarehouseId,
+            warehouseId: activeWarehouseId,
             row,
             baseline,
           },
@@ -636,7 +631,7 @@ export function WarehouseExcelGrid({
     actorUserId,
     canEdit,
     companyId,
-    defaultWarehouseId,
+    activeWarehouseId,
     financialRepository,
     movementRepository,
     repository,
@@ -652,8 +647,8 @@ export function WarehouseExcelGrid({
   }, [pushToCloud]);
 
   const runSave = useCallback(() => {
-    void syncNow().catch(() => undefined);
-  }, [syncNow]);
+    flushEditor();
+  }, [flushEditor]);
 
   useEffect(() => {
     registerSaveHandler(runSave);
@@ -1418,7 +1413,8 @@ export function WarehouseExcelGrid({
                       const displayValue =
                         colIdx === 0 ? String(rowIdx + 1) : valueAtCell(row, colIdx);
 
-                      const lowStock = row.rowKind === "saved" && isWarehouseRowLowStock(row);
+                      const outOfStock = row.rowKind === "saved" && isWarehouseRowOutOfStock(row);
+                      const lowStock = row.rowKind === "saved" && !outOfStock && isWarehouseRowLowStock(row);
 
                       return (
                         <div
@@ -1426,21 +1422,28 @@ export function WarehouseExcelGrid({
                           className={cn(
                             "absolute flex border-r border-b px-2 text-[13px] leading-5 whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out motion-reduce:transition-none",
                             column.align === "center" ? "items-center justify-center" : "items-center justify-start",
-                            selected && "bg-emerald-500/12",
+                            outOfStock && "bg-destructive/18 text-destructive",
+                            selected && !outOfStock && "bg-emerald-500/12",
                             focused && "z-[2] ring-2 ring-inset",
-                            saveFlashRows.has(row.rowId) && "bg-emerald-400/20",
-                            lowStock && (colIdx === 6 || colIdx === 8) && "text-amber-700 dark:text-amber-300",
-                            colIdx === 7 && "text-muted-foreground",
-                            colIdx === 16 && "text-muted-foreground text-[11px]",
+                            saveFlashRows.has(row.rowId) && !outOfStock && "bg-emerald-400/20",
+                            lowStock && (colIdx === 5 || colIdx === 7) && "text-amber-700 dark:text-amber-300",
+                            colIdx === 6 && !outOfStock && "text-muted-foreground",
+                            colIdx === 15 && "text-muted-foreground text-[11px]",
                           )}
                           style={{
                             left: cell.x,
                             top: cell.y,
                             width: cell.width,
                             height: cell.height,
-                            ...(selected ? { backgroundColor: gridPalette.selectionFill } : {}),
+                            ...(outOfStock
+                              ? { backgroundColor: "color-mix(in oklab, var(--destructive) 16%, transparent)" }
+                              : selected
+                                ? { backgroundColor: gridPalette.selectionFill }
+                                : {}),
                             ...(focused
-                              ? { boxShadow: `inset 0 0 0 2px ${gridPalette.activeBorder}` }
+                              ? {
+                                  boxShadow: `inset 0 0 0 2px ${outOfStock ? "color-mix(in oklab, var(--destructive) 70%, transparent)" : gridPalette.activeBorder}`,
+                                }
                               : {}),
                           }}
                           onPointerDown={(event) => {
@@ -1615,6 +1618,7 @@ export function WarehouseExcelGrid({
                   onChange={(value) => setEditor((current) => (current ? { ...current, value } : current))}
                   onCommit={(direction) => commitEditor(direction)}
                   onCancel={endEdit}
+                  autocompleteMatch={editorAutocompleteMatch}
                 />
               ) : null}
             </div>

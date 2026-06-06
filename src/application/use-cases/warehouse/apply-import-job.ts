@@ -25,6 +25,7 @@ export async function createImportJobUseCase(
     selectedSheetName?: string;
     manualColumnMapping?: Record<string, string>;
     useAi?: boolean;
+    magicImport?: boolean;
     existingItems?: InventoryItem[];
     createdByUserId: string;
     onProgress?: Parameters<typeof runImportPreviewPipeline>[1]["onProgress"];
@@ -36,6 +37,7 @@ export async function createImportJobUseCase(
     selectedSheetName: params.selectedSheetName,
     manualColumnMapping: params.manualColumnMapping,
     useAi: params.useAi,
+    magicImport: params.magicImport ?? params.useAi,
     existingItems: params.existingItems,
     onProgress: params.onProgress,
   });

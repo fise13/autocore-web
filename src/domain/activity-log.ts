@@ -1,6 +1,12 @@
 import { UserRole } from "@/domain/user";
 
-export type ActivityModule = "inventory" | "accounting" | "employees" | "settings" | "system";
+export type ActivityModule =
+  | "inventory"
+  | "accounting"
+  | "employees"
+  | "settings"
+  | "system"
+  | "work_orders";
 
 export type ActivitySeverity = "info" | "warning" | "critical";
 

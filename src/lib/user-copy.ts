@@ -1,17 +1,17 @@
 export const userCopy = {
   appName: "AutoCore",
-  defaultCompanyName: "Моя бухгалтерия",
+  defaultCompanyName: "AutoCore",
 
   sync: {
-    online: "Онлайн",
-    offline: "Синхронизация отключена",
-    syncing: "Синхронизация…",
-    synced: "Синхронизировано",
-    error: "Ошибка синхронизации",
-    localChanges: "Изменения не отправлены",
+    online: "Подключено",
+    offline: "Офлайн",
+    syncing: "Сохранение…",
+    synced: "Сохранено",
+    error: "Не удалось сохранить",
+    localChanges: "Есть несохранённые изменения",
     remoteUpdates: "Доступны обновления",
     needsAttention: "Требует внимания",
-    syncNow: "Синхронизировать",
+    syncNow: "Сохранить",
     saveLocal: "Сохранить (⌘S)",
     saved: "Сохранено",
     saving: "Сохранение…",
@@ -23,7 +23,7 @@ export const userCopy = {
     signUp: "Зарегистрироваться",
     signInGoogle: "Войти через Google",
     signInApple: "Войти через Apple",
-    signInEmail: "Войти по email",
+    signInEmail: "Войти по почте",
     createAccount: "Создать аккаунт",
     haveAccount: "У меня уже есть аккаунт",
     noAccount: "Нет аккаунта? Создать новый",
@@ -39,8 +39,8 @@ export const userCopy = {
     welcomeDescription: "Подключите существующие данные или создайте новое рабочее пространство.",
     macQuestion: "У вас уже есть AutoCore на Mac?",
     macDescription:
-      "Подключите «Мою бухгалтерию», чтобы видеть те же моторы и операции, что в приложении AutoCore.",
-    macButton: "Подключить «Мою бухгалтерию»",
+      "Продолжите с теми же моторами и операциями, что в приложении AutoCore на Mac.",
+    macButton: "Продолжить с Mac",
     newTeamTitle: "Новая команда?",
     newTeamDescription: "Создайте отдельное рабочее пространство для новой компании.",
     companyNameLabel: "Название компании",
@@ -51,19 +51,19 @@ export const userCopy = {
     inviteDescription: "Введите код, который вам отправил администратор компании.",
     connectTitle: "Подключение к данным",
     connectDescription:
-      "Чтобы видеть те же моторы и бухгалтерию, что в приложении AutoCore, подключите «Мою бухгалтерию».",
-    connectButton: "Использовать «Мою бухгалтерию»",
+      "Чтобы видеть те же моторы и операции, что в приложении AutoCore на Mac.",
+    connectButton: "Подключить данные с Mac",
     createTitle: "Создать компанию",
     createDescription: "Отдельное рабочее пространство для новой команды.",
     joinTitle: "Присоединиться по приглашению",
     inviteLabel: "Код приглашения",
     defaultTaken:
-      "Компания «Моя бухгалтерия» уже создана другим пользователем. Присоединитесь по коду приглашения.",
+      "Общее рабочее пространство уже занято. Присоединитесь по коду приглашения или создайте новую команду.",
   },
 
   billing: {
     title: "Подписка",
-    description: "Тариф компании для облачной синхронизации, экспорта и команды.",
+    description: "Тариф компании для облака, экспорта и команды.",
     planFree: "Free",
     planPro: "Pro",
     loading: "Загрузка тарифа…",
@@ -79,7 +79,7 @@ export const userCopy = {
     stripeNotConfigured:
       "Stripe не настроен на сервере. Добавьте STRIPE_SECRET_KEY в Firebase Functions и перезапустите.",
     notConfigured: "Stripe не настроен. Добавьте Price ID в .env.local.",
-    proActiveHint: "Pro активен — доступны синхронизация, экспорт и команда.",
+    proActiveHint: "Pro активен — доступны облако, экспорт и команда.",
     freeActiveHint: "Free — базовый доступ. Pro открывает облако и команду.",
     viewPlans: "Выбрать тариф",
     openSettings: "Открыть подписку",
@@ -87,7 +87,7 @@ export const userCopy = {
     paywallTitle: "Нужен тариф Pro",
     paywallFooter: "Безопасная оплата через Stripe · отмена в любой момент",
     nextChargeLabel: "Следующее списание",
-    nextChargeUnknown: "Дата списания появится после синхронизации со Stripe",
+    nextChargeUnknown: "Дата списания появится после подтверждения оплаты",
     planComparison: {
       title: "Сравнение тарифов",
       featureColumn: "Возможность",
@@ -103,10 +103,10 @@ export const userCopy = {
       hidePlans: "Скрыть тарифы",
       rows: [
         { label: "Базовый доступ к каталогу", free: true, pro: true },
-        { label: "Облачная синхронизация", free: false, pro: true },
+        { label: "Облачное хранение данных", free: false, pro: true },
         { label: "Импорт и экспорт Excel", free: false, pro: true },
         { label: "Команда и роли", free: false, pro: true },
-        { label: "«Моя бухгалтерия» в облаке", free: false, pro: true },
+        { label: "Доступ с Mac и web", free: false, pro: true },
       ],
     },
     paywall: {
@@ -119,8 +119,8 @@ export const userCopy = {
         description: "Импорт моторов из Excel доступен на тарифе Pro.",
       },
       sync: {
-        title: "Синхронизация — Pro",
-        description: "Облачная синхронизация моторов доступна на тарифе Pro.",
+        title: "Облако — Pro",
+        description: "Сохранение данных в облаке доступно на тарифе Pro.",
       },
       invite: {
         title: "Приглашения — Pro",
@@ -128,11 +128,11 @@ export const userCopy = {
       },
       cloud_sync: {
         title: "Облако — Pro",
-        description: "Подключение облачной «Моей бухгалтерии» и sync — на Pro.",
+        description: "Подключение облачных данных и команды — на тарифе Pro.",
       },
     },
     features: [
-      "Pro: облачная синхронизация и экспорт",
+      "Pro: облако и экспорт",
       "Pro: приглашение сотрудников",
       "Free: базовый доступ без Pro-функций",
     ],
@@ -144,8 +144,8 @@ export const userCopy = {
       startButton: "Начать работу",
       benefits: [
         {
-          title: "Облачная синхронизация",
-          description: "Моторы и данные синхронизируются между web и Mac.",
+          title: "Облачные данные",
+          description: "Моторы и операции доступны в браузере и в приложении для Mac.",
         },
         {
           title: "Импорт и экспорт Excel",
@@ -160,8 +160,8 @@ export const userCopy = {
           description: "Добавляйте сотрудников и управляйте ролями.",
         },
         {
-          title: "«Моя бухгалтерия» в облаке",
-          description: "Подключение облачной синхронизации и расширенных настроек.",
+          title: "Команда и настройки",
+          description: "Сотрудники, роли и расширенные возможности компании.",
         },
       ],
     },
@@ -169,17 +169,23 @@ export const userCopy = {
 
   settings: {
     title: "Настройки",
-    subtitle: "Профиль, команда, синхронизация и управление данными.",
+    subtitle: "Профиль, команда и управление данными.",
     subtitleAccount: "Профиль, безопасность и краткий статус подписки.",
     subtitleCompany: "Название компании, подписка и команда на Pro.",
     subtitleAccounting: "Бухгалтерия, списки сотрудников и импорт/экспорт.",
-    subtitleSync: "Синхронизация моторов и поведение списка.",
+    subtitleSync: "Поведение списка моторов.",
     subtitleDataCleanup: "Безвозвратное удаление данных компании из облака.",
+    interface: "Интерфейс",
+    subtitleInterface: "Боковая панель, порядок разделов и видимость.",
+    theme: "Тема",
+    subtitleTheme: "Светлое или тёмное оформление интерфейса.",
+    themeLight: "Светлая",
+    themeDark: "Тёмная",
     account: "Аккаунт",
     employees: "Сотрудники",
     roles: "Роли",
     accounting: "Бухгалтерия",
-    sync: "Синхронизация",
+    sync: "Поведение",
     importExport: "Импорт и экспорт",
     workflow: "Поведение",
     dataCleanup: "Удаление данных",
@@ -189,7 +195,7 @@ export const userCopy = {
     companyNameError: "Не удалось обновить название компании",
     companyStatsTitle: "Статистика компании",
     companyStatsDescription: "Краткий обзор активности вашего рабочего пространства.",
-    companyProHint: "Pro открывает команду, облачную синхронизацию и расширенный экспорт.",
+    companyProHint: "Pro открывает команду, облако и расширенный экспорт.",
     companyTeamTitle: "Команда",
     companyTeamDescription: "Сотрудники и роли доступны на тарифе Pro.",
     statMotors: "Моторы на складе",
@@ -220,7 +226,14 @@ export const userCopy = {
       count > 0 ? `Моторы удалены: ${count} записей` : "Моторы в облаке уже отсутствовали",
     deleteSpecificsSuccess: (count: number) =>
       count > 0 ? `Специфичные удалены: ${count} записей` : "Специфичные уже были пустыми",
-    macOnly: "Настраивается в приложении для Mac",
+    deleteWarehouseTitle: "Очистить склад",
+    deleteWarehouseDescription: "Удалить все позиции, движения, склады и импорты компании.",
+    deleteWarehouseConfirmTitle: "Очистить склад?",
+    deleteWarehouseConfirmDescription:
+      "Будут удалены товары, движения, остатки, склады, поставщики и история импортов. Восстановить данные будет нельзя.",
+    deleteWarehouseSuccess: (count: number) =>
+      count > 0 ? `Склад очищен: удалено ${count} записей` : "Склад уже был пустым",
+    macOnly: "Mac",
     macOnlyHint: "Внешний вид, резервные копии и расширенные параметры доступны в приложении AutoCore для Mac.",
     billing: "Подписка",
     role: "Роль",
@@ -229,22 +242,65 @@ export const userCopy = {
 
   accounting: {
     title: "Бухгалтерия",
-    syncOn: "Синхронизация: включена",
-    syncOff: "Синхронизация: выключена",
+    syncOn: "Данные: онлайн",
+    syncOff: "Данные: офлайн",
     loadError: "Не удалось загрузить операции",
     loadErrorHint: "Проверьте права доступа к компании и повторите попытку.",
   },
 
   motors: {
     accessError: "Нет доступа к данным",
-    accessHint: "Войдите тем же аккаунтом, что в приложении, и подключите «Мою бухгалтерию» в настройках.",
+    accessHint: "Войдите тем же аккаунтом, что в приложении, или присоединитесь к компании по приглашению.",
     exportExcel: "Экспорт в Excel",
     importExcel: "Импорт из Excel",
+    magicImport: "Magic Import",
+    magicImportReview: "Magic Import · на проверке",
+    magicImportDone: "Magic Import завершён",
     exportEmpty: "Нет данных для экспорта",
     importDone: "Импорт завершён",
+    emptyTitle: "У вас пока нет двигателей",
+    emptyDescription: "Добавьте первый двигатель в таблицу или импортируйте Excel со склада.",
+    emptyImport: "Импортировать Excel",
+    emptyCreate: "Создать двигатель",
+    soldEmptyTitle: "Проданных двигателей пока нет",
+    soldEmptyDescription: "Отметьте продажу в разделе «Все моторы» — запись появится здесь.",
+  },
+
+  workOrders: {
+    emptyTitle: "Заказ-нарядов пока нет",
+    emptyDescription: "Создайте первый заказ — клиент, авто и работы в одном месте.",
+    emptyCreate: "Создать заказ-наряд",
+  },
+
+  missionControl: {
+    analytics: {
+      title: "Аналитика разбора",
+      revenueLabel: "Выручка от продаж моторов",
+      salesCount: "Продажи",
+      avgCheckPrefix: "ср.",
+      avgDaysLabel: "Ср. срок продажи",
+      avgDaysHintSold: (count: number) => `по ${count} проданным`,
+      avgDaysHintEmpty: "нет продаж с датами",
+      staleLabel: "Залежалые",
+      staleHint: "более 90 дней на площадке",
+      inventoryComposition: "Состав наличия",
+      inStock: "В обороте",
+      staleShort: "Залежалые",
+      pieces: (count: number) => `${count.toLocaleString("ru-RU")} шт.`,
+      topBrands: "Топ брендов",
+      topBrandsEmpty: "Бренды появятся после загрузки моторов",
+      topEngines: "Топ двигателей",
+      topEnginesEmpty: "Коды двигателей появятся в каталоге",
+      noSalesYet:
+        "Продажи моторов пока не зафиксированы — выручка обновится после первых сделок.",
+      inventoryEmpty: "Нет моторов в наличии",
+    },
   },
 
   brands: {
+    addTitle: "Новый бренд",
+    addHint: "Бренд появится в сайдбаре и в подсказках колонки «Бренд» в таблице.",
+    addPlaceholder: "Например, Toyota",
     renameTitle: "Изменить бренд",
     renameHint: "Двойной клик по бренду открывает это окно.",
     renamePlaceholder: "Новое имя бренда",
@@ -260,23 +316,28 @@ export const userCopy = {
     description: "Профиль, способ входа и безопасность.",
     displayName: "Имя профиля",
     phone: "Телефон",
+    avatar: "Фото профиля",
+    avatarHint: "PNG, JPG, WebP или SVG · до 2 МБ",
+    avatarUploading: "Загружаем аватар…",
+    avatarSaved: "Аватар обновлён",
     saveProfile: "Сохранить профиль",
     profileSaved: "Профиль обновлён",
     signInMethod: "Способ входа",
     securityTitle: "Безопасность",
     changePassword: "Изменить пароль",
     changePasswordHint: "Для смены пароля нужно подтвердить текущий.",
-    changeEmail: "Изменить email",
-    changeEmailHint: "Новый email и текущий пароль для подтверждения.",
+    changeEmail: "Изменить почту",
+    changeEmailHint: "Новая почта и текущий пароль для подтверждения.",
     sendResetEmail: "Письмо для сброса пароля",
     resetEmailSent: "Письмо для сброса пароля отправлено",
+    emailLabel: "Email",
     passwordChanged: "Пароль обновлён",
-    emailChanged: "Email обновлён",
+    emailChanged: "Почта обновлена",
     currentPassword: "Текущий пароль",
     newPassword: "Новый пароль",
     confirmPassword: "Повторите пароль",
     savePassword: "Сохранить пароль",
-    saveEmail: "Сохранить email",
+    saveEmail: "Сохранить почту",
     passwordMismatch: "Новый пароль и подтверждение не совпадают.",
     googlePasswordHint:
       "Вход через Google. Пароль и email меняются в настройках Google-аккаунта.",
@@ -289,33 +350,7 @@ export const userCopy = {
   },
 
   onboarding: {
-    title: "Обучение",
-    loading: "Подготавливаем ваше рабочее пространство…",
-    skip: "Пропустить",
-    back: "Назад",
-    next: "Далее",
-    start: "Начать работу",
-    stepCounter: (current: number, total: number) => `Шаг ${current} из ${total}`,
-    welcomeTitle: "Добро пожаловать в AutoCore",
-    welcomeDescription:
-      "Короткий тур по веб-версии: где искать моторы, как редактировать таблицу и как данные синхронизируются с Mac и iOS.",
-    welcomeHint: "Займёт около минуты",
-    gridTitle: "Excel-таблица моторов",
-    gridDescription:
-      "Редактируйте моторы прямо в сетке: выделение, копирование, удаление и импорт из Excel — как в приложении для Mac.",
-    gridHint: "Delete очищает выделенные ячейки · ⌘S сохраняет локально",
-    sidebarTitle: "Бренды и двигатели слева",
-    sidebarDescription:
-      "Фильтруйте список по бренду и коду двигателя. Двойной клик по бренду — переименование, корзина — удаление из каталога.",
-    accountingTitle: "Бухгалтерия и продажи",
-    accountingDescription:
-      "Операции, баланс и продажи моторов связаны между устройствами. Проданные моторы — в отдельном разделе.",
-    syncTitle: "Облачная синхронизация",
-    syncDescription:
-      "Изменения отправляются в Firebase и доступны в приложении AutoCore на Mac и телефоне. Статус синхронизации — в toolbar.",
-    readyTitle: "Всё готово",
-    readyDescription:
-      "Можно работать. Настройки аккаунта и компании — через аватар в правом верхнем углу.",
+    loading: "Подготавливаем рабочее пространство…",
     appleRedirect: "Переход к Apple ID…",
     appleFailed:
       "Firebase не получил сессию после Apple. Проверьте Apple OAuth в Firebase Console и Return URL handler в Apple Developer.",
@@ -332,6 +367,10 @@ export function formatRole(role: string | undefined | null): string {
       return "Менеджер";
     case "accountant":
       return "Бухгалтер";
+    case "mechanic":
+      return "Механик";
+    case "diagnostician":
+      return "Диагност";
     case "employee":
       return "Сотрудник";
     default:
@@ -347,6 +386,20 @@ export function formatPermission(permission: string | undefined | null): string 
       return "Редактирование склада";
     case "inventory_delete":
       return "Удаление со склада";
+    case "inventory_export":
+      return "Экспорт склада";
+    case "inventory_import":
+      return "Импорт склада";
+    case "warehouse_manage":
+      return "Управление складами";
+    case "work_orders_view":
+      return "Просмотр заказ-нарядов";
+    case "work_orders_edit":
+      return "Редактирование заказ-нарядов";
+    case "clients_manage":
+      return "Управление клиентами";
+    case "vehicles_manage":
+      return "Управление автомобилями";
     case "accounting_view":
       return "Просмотр бухгалтерии";
     case "accounting_edit":
@@ -374,6 +427,25 @@ export type AuthErrorContext = {
   provider?: "apple" | "google" | "email";
   surface?: "onboarding" | "sync";
 };
+
+function extractAuthErrorCode(error: unknown): string {
+  if (typeof error === "object" && error !== null && "code" in error) {
+    const code = String((error as { code?: string }).code);
+    if (code.startsWith("auth/")) return code;
+  }
+
+  if (error instanceof Error) {
+    if (error.message.startsWith("auth/")) return error.message;
+
+    const firebaseMatch = error.message.match(/\((auth\/[^)]+)\)/i);
+    if (firebaseMatch?.[1]) return firebaseMatch[1];
+
+    const prefixedMatch = error.message.match(/(?:Firebase:\s*)?(auth\/[\w-]+)/i);
+    if (prefixedMatch?.[1]) return prefixedMatch[1];
+  }
+
+  return "";
+}
 
 const GRID_FIELD_LABELS: Record<string, string> = {
   sku: "SKU",
@@ -429,14 +501,14 @@ export function mapGridSaveError(error: unknown): string {
   if (typeof error === "object" && error !== null && "code" in error) {
     const code = String((error as { code?: string }).code);
     if (code === "permission-denied") {
-      return "Недостаточно прав для сохранения. Проверьте роль в разделе «Сотрудники» — нужно право «Редактирование инвентаря».";
+      return "Не удалось сохранить остаток на складе. Обновите страницу — если ошибка повторится, правила Firebase могут быть устаревшими.";
     }
     if (code === "invalid-argument") {
       return "Не удалось сохранить: в строке есть некорректное значение. Проверьте пустые поля, цены и количество.";
     }
   }
   if (error instanceof Error && /missing or insufficient permissions/i.test(error.message)) {
-    return "Недостаточно прав для сохранения. Проверьте роль в разделе «Сотрудники» — нужно право «Редактирование инвентаря».";
+    return "Не удалось сохранить остаток на складе. Обновите страницу — если ошибка повторится, правила Firebase могут быть устаревшими.";
   }
   if (
     error instanceof Error &&
@@ -448,12 +520,7 @@ export function mapGridSaveError(error: unknown): string {
 }
 
 export function mapAuthError(error: unknown, context?: AuthErrorContext): string {
-  const code =
-    typeof error === "object" && error !== null && "code" in error
-      ? String((error as { code?: string }).code)
-      : error instanceof Error && error.message.startsWith("auth/")
-        ? error.message
-        : "";
+  const code = extractAuthErrorCode(error);
 
   if (error instanceof Error && error.message === "popup_closed_by_user") {
     return "Apple отклонил вход. Проверьте Services ID и Return URL firebase handler в Apple Developer (см. подсказку ниже).";
@@ -473,7 +540,7 @@ export function mapAuthError(error: unknown, context?: AuthErrorContext): string
     case "auth/invalid-credential":
       return "Неверный email или пароль.";
     case "auth/email-already-in-use":
-      return "Этот email уже используется.";
+      return "Этот email уже зарегистрирован. Войдите или используйте другой адрес.";
     case "auth/weak-password":
       return "Пароль слишком короткий (минимум 6 символов).";
     case "auth/requires-recent-login":
@@ -496,7 +563,7 @@ export function mapAuthError(error: unknown, context?: AuthErrorContext): string
       if (context?.surface === "onboarding") {
         return "Не удалось выполнить действие. Обновите страницу и попробуйте снова.";
       }
-      return "Недостаточно прав для синхронизации. Обновите страницу. Если ошибка повторится — проверьте роль в «Сотрудники» или подключите «Мою бухгалтерию» в настройках.";
+      return "Недостаточно прав. Обновите страницу. Если ошибка повторится — проверьте роль в разделе «Сотрудники».";
     case "auth/credential-already-in-use":
       return "Этот Apple ID или Google-аккаунт уже привязан к другому пользователю.";
     default:
@@ -505,10 +572,10 @@ export function mapAuthError(error: unknown, context?: AuthErrorContext): string
           if (context?.surface === "onboarding") {
             return "Не удалось выполнить действие. Обновите страницу и попробуйте снова.";
           }
-          return "Недостаточно прав для синхронизации. Обновите страницу. Если ошибка повторится — проверьте роль в «Сотрудники» или подключите «Мою бухгалтерию» в настройках.";
+          return "Недостаточно прав. Обновите страницу. Если ошибка повторится — проверьте роль в разделе «Сотрудники».";
         }
         if (error.message.includes("Не удалось")) {
-          return error.message;
+          return error.message.replace(/\s*\([a-z0-9/-]+\)\s*$/i, "").trim();
         }
         return error.message;
       }

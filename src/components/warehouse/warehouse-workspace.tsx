@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { adjustStockUseCase } from "@/application/use-cases/warehouse/adjust-stock";
 import { applyImportJobUseCase, createImportJobUseCase } from "@/application/use-cases/warehouse/apply-import-job";
@@ -10,6 +11,7 @@ import { lookupBarcodeUseCase } from "@/application/use-cases/warehouse/lookup-b
 import { receiveStockUseCase } from "@/application/use-cases/warehouse/receive-stock";
 import { transferStockUseCase } from "@/application/use-cases/warehouse/transfer-stock";
 import { useWorkspace } from "@/components/layout/workspace-context";
+import { buildWarehouseSearchSuggestions } from "@/components/layout/workspace-search-field";
 import { MotorsGridSkeleton } from "@/components/motors/motors-grid-skeleton";
 import { WarehouseAdjustmentDialog } from "@/components/warehouse/warehouse-adjustment-dialog";
 import { WarehouseBarcodePanel } from "@/components/warehouse/warehouse-barcode-panel";
@@ -25,10 +27,12 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { InventoryItem } from "@/domain/inventory";
 import { useInventoryMovementsRealtime } from "@/hooks/use-inventory-movements-realtime";
 import { useInventoryRealtime } from "@/hooks/use-inventory-realtime";
+import { useStockLevelsRealtime } from "@/hooks/use-stock-levels-realtime";
 import { useWarehousesRealtime } from "@/hooks/use-warehouses-realtime";
 import { can } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { filterWarehouseItems } from "@/lib/warehouse/warehouse-grid-data-store";
+import { projectItemsForWarehouse } from "@/lib/warehouse/warehouse-stock-projection";
 import { cn } from "@/lib/utils";
 import { createBarcodeMappingRepository } from "@/infrastructure/firestore/barcode-mapping-repository";
 import { createFinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
@@ -62,7 +66,13 @@ export function WarehouseWorkspace() {
     registerWarehouseBarcodeHandler,
     saveError,
     setSaveError,
+    search,
+    setSearch,
+    setCounts,
+    setSearchSuggestions,
+    selectedWarehouseId,
   } = workspace;
+  const searchParams = useSearchParams();
   const companyId = normalizeCompanyId(profile?.companyId);
   const actorUserId = profile?.id ?? "";
   const canView = can(profile, "inventory_view");
@@ -71,7 +81,15 @@ export function WarehouseWorkspace() {
   const canExport = can(profile, "inventory_export");
 
   const itemsQuery = useInventoryRealtime(itemRepository, companyId, canView);
+  const stockLevelsQuery = useStockLevelsRealtime(stockLevelRepository, companyId, canView);
   const { warehouses, defaultWarehouse } = useWarehousesRealtime(warehouseRepository, companyId, canView);
+
+  const activeWarehouseId =
+    selectedWarehouseId && warehouses.some((warehouse) => warehouse.id === selectedWarehouseId)
+      ? selectedWarehouseId
+      : defaultWarehouse?.id ?? warehouses[0]?.id;
+
+  const activeWarehouse = warehouses.find((warehouse) => warehouse.id === activeWarehouseId) ?? null;
   const [activeItem, setActiveItem] = useState<InventoryItem | null>(null);
   const [dialog, setDialog] = useState<DialogKind | null>(null);
   const [importResumeSession, setImportResumeSession] = useState<{
@@ -113,25 +131,51 @@ export function WarehouseWorkspace() {
   }, [actorUserId, canView, companyId, dialog, profile?.displayName, profile?.email]);
 
   const items = itemsQuery.data ?? [];
+  const stockLevels = stockLevelsQuery.stockLevels;
+  const warehouseItems = useMemo(
+    () =>
+      activeWarehouseId
+        ? projectItemsForWarehouse(items, stockLevels, activeWarehouseId, warehouses)
+        : [],
+    [activeWarehouseId, items, stockLevels, warehouses],
+  );
   const filteredItems = useMemo(
-    () => filterWarehouseItems(items, workspace.search),
-    [items, workspace.search],
+    () => filterWarehouseItems(warehouseItems, search),
+    [warehouseItems, search],
   );
   const isGridReady = !itemsQuery.isBootstrapping;
+  const warehouseSearchSuggestions = useMemo(
+    () => buildWarehouseSearchSuggestions(warehouseItems),
+    [warehouseItems],
+  );
 
   useEffect(() => {
-    workspace.setCounts(filteredItems.length, items.length);
-  }, [filteredItems.length, items.length, workspace]);
+    setCounts(filteredItems.length, warehouseItems.length);
+  }, [filteredItems.length, warehouseItems.length, setCounts]);
+
+  useEffect(() => {
+    if (!canView) {
+      setSearchSuggestions([]);
+      return;
+    }
+    setSearchSuggestions(warehouseSearchSuggestions);
+  }, [canView, setSearchSuggestions, warehouseSearchSuggestions]);
+
+  useEffect(() => () => setSearchSuggestions([]), [setSearchSuggestions]);
+
+  useEffect(() => {
+    const query = searchParams.get("search")?.trim();
+    if (query) setSearch(query);
+  }, [searchParams, setSearch]);
 
   const exportWarehouse = useCallback(async () => {
     setIoBusy("export");
     try {
       const header = [
-        "SKU",
+        "Артикул",
         "Название",
         "Категория",
         "Бренд",
-        "Ед.",
         "На складе",
         "Резерв",
         "Доступно",
@@ -141,15 +185,13 @@ export function WarehouseWorkspace() {
         "Штрихкод",
         "Место",
         "Мин. запас",
-        "Статус",
       ];
-      const lines = items.map((item) =>
+      const lines = filteredItems.map((item) =>
         [
           item.sku,
           item.name,
           item.categoryPath?.join(" / ") ?? "",
           item.brandName ?? "",
-          item.unit,
           item.totalOnHand,
           item.totalReserved,
           item.totalAvailable,
@@ -159,7 +201,6 @@ export function WarehouseWorkspace() {
           item.barcodes[0] ?? "",
           item.warehouseLocation ?? "",
           item.lowStockThreshold ?? "",
-          item.status,
         ].join(","),
       );
       const blob = new Blob([[header.join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
@@ -172,7 +213,7 @@ export function WarehouseWorkspace() {
     } finally {
       setIoBusy(null);
     }
-  }, [items]);
+  }, [filteredItems]);
 
   const importWarehouse = useCallback(async () => {
     setIoBusy("import");
@@ -204,14 +245,14 @@ export function WarehouseWorkspace() {
 
   useEffect(() => {
     setWarehouseExcelAvailability({
-      canExport: canExport && items.length > 0,
+      canExport: canExport && filteredItems.length > 0,
       canImport: canImport && canEdit,
       busy: ioBusy,
     });
     return () => {
       setWarehouseExcelAvailability({ canExport: false, canImport: false, busy: null });
     };
-  }, [canEdit, canExport, canImport, ioBusy, items.length, setWarehouseExcelAvailability]);
+  }, [canEdit, canExport, canImport, filteredItems.length, ioBusy, setWarehouseExcelAvailability]);
 
   function openDialog(kind: DialogKind, item?: InventoryItem) {
     if (item) setActiveItem(item);
@@ -257,11 +298,13 @@ export function WarehouseWorkspace() {
       ) : null}
       <div className="flex items-center justify-between gap-3 border-b bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
         <span>
-          Основной склад:{" "}
+          Склад:{" "}
           <span className="font-medium text-foreground">
-            {defaultWarehouse?.name ?? "не создан"}
+            {activeWarehouse?.name ?? "выберите в меню слева"}
           </span>
-          {warehouses.length > 1 ? ` · всего складов: ${warehouses.length}` : ""}
+          {warehouses.length > 1 ? (
+            <span className="text-muted-foreground"> · остатки только этого склада</span>
+          ) : null}
         </span>
         {canEdit && !defaultWarehouse ? (
           <button
@@ -282,8 +325,9 @@ export function WarehouseWorkspace() {
           isGridReady ? "opacity-100 translate-y-0" : "pointer-events-none absolute inset-0 opacity-0 translate-y-1",
         )}
       >
-        {isGridReady ? (
+        {isGridReady && activeWarehouseId ? (
           <WarehouseExcelGrid
+            key={activeWarehouseId}
             items={filteredItems}
             companyId={companyId}
             canEdit={canEdit}
@@ -292,7 +336,7 @@ export function WarehouseWorkspace() {
             movementRepository={movementRepository}
             warehouseRepository={warehouseRepository}
             financialRepository={financialRepository}
-            defaultWarehouseId={defaultWarehouse?.id}
+            activeWarehouseId={activeWarehouseId}
             actorUserId={actorUserId}
             onReceipt={(item) => openDialog("receipt", item)}
             onAdjust={(item) => openDialog("adjust", item)}
@@ -300,6 +344,10 @@ export function WarehouseWorkspace() {
             onTransfer={(item) => openDialog("transfer", item)}
             onHistory={(item) => openDialog("history", item)}
           />
+        ) : isGridReady ? (
+          <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
+            Выберите или создайте склад в меню слева
+          </div>
         ) : null}
       </div>
 
@@ -318,7 +366,7 @@ export function WarehouseWorkspace() {
             {
               companyId,
               itemId: activeItem.id,
-              warehouseId: defaultWarehouse?.id,
+              warehouseId: activeWarehouseId,
               quantity: payload.quantity,
               unitCost: payload.unitCost,
               reason: payload.reason,
@@ -343,7 +391,7 @@ export function WarehouseWorkspace() {
             {
               companyId,
               itemId: activeItem.id,
-              warehouseId: defaultWarehouse?.id,
+              warehouseId: activeWarehouseId,
               quantity: payload.quantity,
               direction: payload.direction,
               reason: payload.reason,
@@ -368,7 +416,7 @@ export function WarehouseWorkspace() {
             {
               companyId,
               itemId: activeItem.id,
-              warehouseId: defaultWarehouse?.id,
+              warehouseId: activeWarehouseId,
               quantity: payload.quantity,
               amount: payload.amount,
               account: payload.account,
@@ -460,7 +508,7 @@ export function WarehouseWorkspace() {
               jobId: input.jobId,
               rows: input.rows,
               actorUserId,
-              defaultWarehouseId: defaultWarehouse?.id,
+              defaultWarehouseId: activeWarehouseId,
               sourceFileName: input.sourceFileName,
               applyOptions: input.applyOptions,
               onProgress: input.onProgress,

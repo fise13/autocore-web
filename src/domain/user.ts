@@ -3,6 +3,8 @@ export const USER_ROLES = [
   "admin",
   "manager",
   "accountant",
+  "mechanic",
+  "diagnostician",
   "employee",
 ] as const;
 
@@ -14,6 +16,10 @@ export const PERMISSIONS = [
   "inventory_export",
   "inventory_import",
   "warehouse_manage",
+  "work_orders_view",
+  "work_orders_edit",
+  "clients_manage",
+  "vehicles_manage",
   "accounting_view",
   "accounting_edit",
   "accounting_delete",
@@ -29,12 +35,32 @@ export type Permission = (typeof PERMISSIONS)[number];
 
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   owner: [...PERMISSIONS],
-  admin: [...PERMISSIONS],
+  admin: [
+    "inventory_view",
+    "inventory_edit",
+    "inventory_delete",
+    "inventory_export",
+    "inventory_import",
+    "warehouse_manage",
+    "work_orders_view",
+    "work_orders_edit",
+    "clients_manage",
+    "vehicles_manage",
+    "employee_view",
+    "analytics_view",
+    "settings_manage",
+    "export_data",
+    "import_data",
+  ],
   manager: [
     "inventory_view",
     "inventory_edit",
     "inventory_export",
     "inventory_import",
+    "work_orders_view",
+    "work_orders_edit",
+    "clients_manage",
+    "vehicles_manage",
     "accounting_view",
     "employee_view",
     "analytics_view",
@@ -42,21 +68,33 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "import_data",
   ],
   accountant: [
-    "inventory_view",
-    "inventory_export",
     "accounting_view",
     "accounting_edit",
+    "accounting_delete",
     "analytics_view",
     "export_data",
     "import_data",
   ],
-  employee: ["inventory_view", "accounting_view"],
+  mechanic: [
+    "work_orders_view",
+    "work_orders_edit",
+    "clients_manage",
+    "vehicles_manage",
+  ],
+  diagnostician: [
+    "work_orders_view",
+    "work_orders_edit",
+    "vehicles_manage",
+  ],
+  employee: ["inventory_view", "accounting_view", "work_orders_view"],
 };
 
 export type UserEntity = {
   id: string;
   email: string;
   displayName: string | null;
+  phone?: string | null;
+  photoURL?: string | null;
   role: UserRole;
   companyId: string | null;
   permissions?: Permission[];

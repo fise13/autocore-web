@@ -17,7 +17,7 @@ export function canExportInventory(user: UserEntity | null | undefined): boolean
 }
 
 export function canManageWarehouses(user: UserEntity | null | undefined): boolean {
-  return can(user, "warehouse_manage");
+  return can(user, "warehouse_manage") || can(user, "inventory_edit");
 }
 
 export function canManageEmployees(user: UserEntity | null | undefined): boolean {

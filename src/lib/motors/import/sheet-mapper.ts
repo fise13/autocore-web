@@ -14,6 +14,12 @@ import {
 } from "@/lib/motors/excel-sheet-config";
 import { ExcelSheetData } from "@/lib/motors/excel-types";
 import { MotorSheetResolveItem } from "@/lib/motors/import/ai-schemas";
+import { coerceBrandEnginePair } from "@/lib/motors/import/brand-engine-intelligence";
+import {
+  isLikelySpecificSheetName,
+  resolveSpecificCategoryName,
+} from "@/lib/motors/import/specific-category-intelligence";
+import { normalizeEngineCode } from "@/lib/motors/import-normalization";
 
 import { MotorSheetMappingResult } from "./types";
 
@@ -57,18 +63,77 @@ export function aiColumnRolesToMapping(
 export function applyAiSheetToConfig(
   config: SheetImportConfig,
   aiSheet: MotorSheetResolveItem,
+  existingCategoryNames: string[] = [],
 ): SheetImportConfig {
+  if (aiSheet.import_type === "specific") {
+    const categoryName = resolveSpecificCategoryName(
+      aiSheet.category_name?.trim() || config.categoryName || config.sheetName,
+      existingCategoryNames,
+    );
+    return {
+      ...config,
+      importType: "specific",
+      customBrand: "",
+      customEngineCode: "",
+      categoryName,
+    };
+  }
+
+  const coerced = coerceBrandEnginePair(
+    aiSheet.brand_name?.trim() || config.customBrand,
+    aiSheet.engine_code?.trim() || config.customEngineCode,
+    { sheetName: config.sheetName },
+  );
+
   return {
     ...config,
     importType: aiSheet.import_type,
-    customBrand: aiSheet.brand_name?.trim() || config.customBrand,
-    customEngineCode: aiSheet.engine_code?.trim() || config.customEngineCode,
+    customBrand: coerced.brand,
+    customEngineCode: coerced.engine || normalizeEngineCode(aiSheet.engine_code ?? ""),
     categoryName: aiSheet.category_name?.trim() || config.categoryName,
   };
 }
 
-export function buildRuleSheetMapping(sheet: ExcelSheetData): MotorSheetMappingResult {
-  const config = createSheetImportConfig(sheet.name, sheet.rows);
+export function finalizeSheetConfig(
+  config: SheetImportConfig,
+  existingCategoryNames: string[] = [],
+): SheetImportConfig {
+  if (config.importType !== "specific") {
+    const coerced = coerceBrandEnginePair(config.customBrand, config.customEngineCode, {
+      sheetName: config.sheetName,
+    });
+    return {
+      ...config,
+      customBrand: coerced.brand,
+      customEngineCode: coerced.engine,
+    };
+  }
+
+  return {
+    ...config,
+    customBrand: "",
+    customEngineCode: "",
+    categoryName: resolveSpecificCategoryName(config.categoryName || config.sheetName, existingCategoryNames),
+  };
+}
+
+export function buildRuleSheetMapping(
+  sheet: ExcelSheetData,
+  existingCategoryNames: string[] = [],
+): MotorSheetMappingResult {
+  let config = createSheetImportConfig(sheet.name, sheet.rows);
+
+  if (isLikelySpecificSheetName(sheet.name) && !config.customBrand && !config.customEngineCode) {
+    config = {
+      ...config,
+      importType: "specific",
+      categoryName: resolveSpecificCategoryName(sheet.name, existingCategoryNames),
+      customBrand: "",
+      customEngineCode: "",
+    };
+  }
+
+  config = finalizeSheetConfig(config, existingCategoryNames);
   const columnMapping = createSheetColumnMapping(sheet, config.importType);
   const hasSerial = mappingHasSerialColumn(columnMapping);
   const warnings: string[] = [];
@@ -103,8 +168,9 @@ export function mergeAiSheetMapping(
   sheet: ExcelSheetData,
   aiSheet: MotorSheetResolveItem,
   aiNotes?: string,
+  existingCategoryNames: string[] = [],
 ): MotorSheetMappingResult {
-  const config = applyAiSheetToConfig(base.config, aiSheet);
+  const config = finalizeSheetConfig(applyAiSheetToConfig(base.config, aiSheet, existingCategoryNames), existingCategoryNames);
   const columnMapping = aiColumnRolesToMapping(sheet, aiSheet, base.columnMapping);
   return {
     config,
@@ -129,10 +195,11 @@ export function needsAiSheetMapping(results: MotorSheetMappingResult[]): boolean
 
 export function buildSheetMappingState(
   sheets: ExcelSheetData[],
+  existingCategoryNames: string[] = [],
 ): Record<string, MotorSheetMappingResult> {
   return Object.fromEntries(
     sheets.map((sheet) => {
-      const mapping = buildRuleSheetMapping(sheet);
+      const mapping = buildRuleSheetMapping(sheet, existingCategoryNames);
       return [mapping.config.id, mapping];
     }),
   );

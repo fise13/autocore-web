@@ -1,4 +1,5 @@
 import { ImportDiffAction, InventoryImportDiffRow } from "@/lib/warehouse/import-rules-engine";
+import { PresetEnrichment } from "./format-presets";
 
 export const IMPORT_TARGET_FIELDS = [
   "sku",
@@ -29,7 +30,13 @@ export type ImportPhase =
   | "applying"
   | "done";
 
-export type ImportValueSource = "rules" | "ai" | "manual";
+export type ImportValueSource = "rules" | "ai" | "manual" | "preset";
+
+export type ImportPresetMeta = {
+  id: string;
+  label: string;
+  enrichment: PresetEnrichment;
+};
 
 export type ParsedImportSheet = {
   sheetName: string;
@@ -52,6 +59,9 @@ export type ColumnMappingResult = {
   source: ImportValueSource;
   reasoning?: string;
   warnings: string[];
+  preset?: ImportPresetMeta;
+  presetScore?: number;
+  quickImport?: boolean;
 };
 
 export type DuplicateResolution = "create" | "merge" | "skip";
@@ -119,6 +129,7 @@ export type WarehouseImportAiRequest =
         rawTitle?: string;
         rawBrand?: string;
         rawCategory?: string;
+        rawRow?: string;
       }>;
     }
   | {

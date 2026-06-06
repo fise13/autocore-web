@@ -19,13 +19,7 @@ export const InventoryModule = memo(function InventoryModule({
 }: InventoryModuleProps) {
   return (
     <article className="mc-module-card">
-      <McModuleHeader
-        icon={Package}
-        title="Склад моторов"
-        description="Последние добавления и изменения"
-        href="/motors"
-        accent="green"
-      />
+      <McModuleHeader icon={Package} title="Моторы" href="/motors" accent="green" />
       <div className="mc-module-body grid gap-4 md:grid-cols-2">
         <Section title="Новые" empty="Нет новых моторов" isLoading={isLoading}>
           {latestMotors.map((motor) => (

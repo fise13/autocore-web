@@ -59,6 +59,28 @@ export function createBarcodeMappingRepository() {
       return mapBarcode(first.id, first.data() as Record<string, unknown>);
     },
 
+    async findByBarcodes(companyId: string, barcodes: string[]): Promise<BarcodeMapping[]> {
+      const normalizedCompanyId = normalizeCompanyId(companyId);
+      const unique = [...new Set(barcodes.map((code) => normalizeBarcode(code)).filter(Boolean))];
+      if (unique.length === 0) return [];
+
+      const results: BarcodeMapping[] = [];
+      for (let offset = 0; offset < unique.length; offset += 30) {
+        const chunk = unique.slice(offset, offset + 30);
+        const snapshot = await getDocs(
+          query(
+            ref,
+            where("companyId", "==", normalizedCompanyId),
+            where("barcode", "in", chunk),
+          ),
+        );
+        for (const item of snapshot.docs) {
+          results.push(mapBarcode(item.id, item.data() as Record<string, unknown>));
+        }
+      }
+      return results;
+    },
+
     async upsert(input: {
       companyId: string;
       barcode: string;

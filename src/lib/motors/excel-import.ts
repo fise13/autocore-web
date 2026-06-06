@@ -8,6 +8,7 @@ import {
 } from "@/lib/motors/excel-column-mapping";
 import { parseExcelDateValue } from "@/lib/motors/excel-dates";
 import { ExcelSheetData, ParsedImportMotorRow } from "@/lib/motors/excel-types";
+import { coerceBrandEnginePair } from "@/lib/motors/import/brand-engine-intelligence";
 
 function cellToString(value: unknown): string {
   if (value == null) return "";
@@ -84,6 +85,12 @@ function buildImportRows(sheet: ExcelSheetData): ParsedImportMotorRow[] {
       soldDate = arrivalDate ?? new Date();
     }
 
+    const coerced = coerceBrandEnginePair(
+      brandFromRow || sheetBrandEngine?.brandName || "",
+      engineFromRow || sheetBrandEngine?.engineCode || "",
+      { serial: serialCode, sheetName: sheet.name },
+    );
+
     rows.push({
       sheetName: sheet.name,
       serialCode,
@@ -93,8 +100,8 @@ function buildImportRows(sheet: ExcelSheetData): ParsedImportMotorRow[] {
       transmission: getCell(row, columnIndexFor(mapping, "transmission")),
       arrivalDate,
       soldDate,
-      brandName: brandFromRow || sheetBrandEngine?.brandName || "Cloud",
-      engineCode: engineFromRow || sheetBrandEngine?.engineCode || "—",
+      brandName: coerced.brand || "Не указан",
+      engineCode: coerced.engine || "—",
     });
   }
 

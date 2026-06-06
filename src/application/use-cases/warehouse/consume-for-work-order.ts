@@ -33,7 +33,7 @@ export async function consumeForWorkOrderUseCase(
   let totalCost = 0;
 
   for (const line of input.lines) {
-    if (line.quantity <= 0) continue;
+    if (line.quantity <= 0 || !line.itemId?.trim()) continue;
 
     const item = await itemRepository.getById(line.itemId);
     if (!item) {

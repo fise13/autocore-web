@@ -2,11 +2,13 @@ import {
   addDoc,
   collection,
   doc,
+  getDoc,
   getDocs,
   limit,
   onSnapshot,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
 } from "firebase/firestore";
@@ -127,6 +129,91 @@ export function createWarehouseRepository() {
       return created.id;
     },
 
+    async ensureDefault(input: CreateWarehouseInput & { docId: string }): Promise<string> {
+      const normalizedCompanyId = normalizeCompanyId(input.companyId);
+      const docRef = doc(db, COLLECTION, input.docId);
+      const snapshot = await getDoc(docRef);
+      if (snapshot.exists()) {
+        return input.docId;
+      }
+
+      const existing = await this.list(normalizedCompanyId);
+      const duplicateDefault = existing.find(
+        (warehouse) => warehouse.isDefault || warehouse.code === "MAIN" || warehouse.name === input.name,
+      );
+      if (duplicateDefault) {
+        return duplicateDefault.id;
+      }
+
+      if (existing.some((warehouse) => warehouse.isDefault)) {
+        for (const warehouse of existing) {
+          if (warehouse.isDefault) {
+            await updateDoc(doc(db, COLLECTION, warehouse.id), { isDefault: false });
+          }
+        }
+      }
+
+      await setDoc(
+        docRef,
+        omitUndefinedFields({
+          companyId: normalizedCompanyId,
+          localId: input.localId,
+          name: input.name.trim(),
+          code: input.code?.trim() || undefined,
+          isDefault: true,
+          address: input.address?.trim() || undefined,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }),
+      );
+
+      if (input.actorUserId) {
+        try {
+          await activity.append(normalizedCompanyId, {
+            actor: input.actorUserId,
+            action: "inventory.warehouse_created",
+            target: `warehouse:${input.docId}`,
+            targetId: input.docId,
+            targetName: input.name,
+          });
+        } catch {
+          // Activity log is best-effort.
+        }
+      }
+
+      return input.docId;
+    },
+
+    async consolidateDuplicateMains(companyId: string, preferredId: string): Promise<void> {
+      const normalizedCompanyId = normalizeCompanyId(companyId);
+      const warehouses = await this.list(normalizedCompanyId);
+      const mains = warehouses.filter(
+        (warehouse) => warehouse.code === "MAIN" || warehouse.name.trim() === "Основной склад",
+      );
+      if (mains.length <= 1) return;
+
+      const preferred = pickPreferredMainWarehouse(mains, preferredId);
+
+      for (const warehouse of mains) {
+        const shouldBeDefault = warehouse.id === preferred.id;
+        if (warehouse.isDefault === shouldBeDefault) continue;
+        await updateDoc(doc(db, COLLECTION, warehouse.id), {
+          isDefault: shouldBeDefault,
+          updatedAt: serverTimestamp(),
+        });
+      }
+    },
+
     mapWarehouse,
   };
+}
+
+function pickPreferredMainWarehouse(candidates: Warehouse[], preferredId: string): Warehouse {
+  return (
+    candidates.find((warehouse) => warehouse.id === preferredId) ??
+    candidates.find((warehouse) => warehouse.isDefault) ??
+    [...candidates].sort(
+      (a, b) => (a.createdAt?.getTime() ?? Number.MAX_SAFE_INTEGER) - (b.createdAt?.getTime() ?? Number.MAX_SAFE_INTEGER),
+    )[0]
+  );
 }

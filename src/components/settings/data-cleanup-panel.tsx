@@ -75,10 +75,10 @@ export function DataCleanupPanel({ onStatus }: DataCleanupPanelProps) {
       },
       {
         id: "warehouse",
-        title: "Очистить склад",
-        description: "Удалить все позиции, движения, склады и импорты компании.",
-        confirmTitle: "Очистить склад?",
-        confirmDescription: "Будут удалены inventoryItems, movements, stock levels, warehouses, suppliers и import jobs.",
+        title: userCopy.settings.deleteWarehouseTitle,
+        description: userCopy.settings.deleteWarehouseDescription,
+        confirmTitle: userCopy.settings.deleteWarehouseConfirmTitle,
+        confirmDescription: userCopy.settings.deleteWarehouseConfirmDescription,
         icon: Package,
         canRun: can(profile, "inventory_delete"),
       },
@@ -125,7 +125,7 @@ export function DataCleanupPanel({ onStatus }: DataCleanupPanelProps) {
           break;
         case "warehouse":
           deleted = await cleanupService.deleteAllWarehouse(companyId, uid);
-          onStatus?.(`Удалено складских документов: ${deleted}`);
+          onStatus?.(userCopy.settings.deleteWarehouseSuccess(deleted));
           break;
       }
       setPendingAction(null);

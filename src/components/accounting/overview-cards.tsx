@@ -12,15 +12,19 @@ type OverviewCardsProps = {
 export function OverviewCards({ balance, operations }: OverviewCardsProps) {
   const today = new Date().toDateString();
 
-  const todaySales = operations
-    .filter((item) => item.type === "sale" && item.createdAt.toDateString() === today)
+  const todayIncome = operations
+    .filter(
+      (item) =>
+        (item.type === "sale" || item.type === "income") &&
+        item.createdAt.toDateString() === today,
+    )
     .reduce((acc, item) => acc + item.amount, 0);
 
   const todayExpenses = operations
     .filter((item) => item.type === "expense" && item.createdAt.toDateString() === today)
     .reduce((acc, item) => acc + item.amount, 0);
 
-  const todayNet = todaySales - todayExpenses;
+  const todayNet = todayIncome - todayExpenses;
 
   return (
     <div className="autocore-surface-group p-3">
@@ -52,7 +56,7 @@ export function OverviewCards({ balance, operations }: OverviewCardsProps) {
           icon={TrendingUp}
           tone={todayNet >= 0 ? "green" : "red"}
           index={3}
-          hint={`Продажи: ${todaySales.toLocaleString("ru-RU")} ₸ · Расходы: ${todayExpenses.toLocaleString("ru-RU")} ₸`}
+          hint={`Доход: ${todayIncome.toLocaleString("ru-RU")} ₸ · Расходы: ${todayExpenses.toLocaleString("ru-RU")} ₸`}
         />
       </div>
     </div>

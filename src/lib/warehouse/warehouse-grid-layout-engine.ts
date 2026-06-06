@@ -9,7 +9,7 @@ export const WAREHOUSE_GRID_EMPTY_ROWS_EXPAND = 120;
 export const WAREHOUSE_GRID_EMPTY_ROWS_THRESHOLD = 48;
 
 /** Read-only aggregate / audit columns in the service inventory grid. */
-export const WAREHOUSE_READ_ONLY_COLUMNS = new Set([7, 8, 16]);
+export const WAREHOUSE_READ_ONLY_COLUMNS = new Set([6, 7, 14]);
 
 const BASE_COLUMNS: GridColumnDefinition[] = [
   { id: "rowNumber", title: "#", width: 40, editable: false, align: "center" },
@@ -17,7 +17,6 @@ const BASE_COLUMNS: GridColumnDefinition[] = [
   { id: "col-2", title: "Название", width: 220, editable: true, modelField: "name" },
   { id: "col-3", title: "Категория", width: 140, editable: true, modelField: "categoryPath" },
   { id: "col-4", title: "Бренд", width: 110, editable: true, modelField: "brandName" },
-  { id: "col-5", title: "Ед.", width: 64, editable: true, align: "center", modelField: "unit" },
   {
     id: "col-6",
     title: "На складе",
@@ -75,7 +74,6 @@ const BASE_COLUMNS: GridColumnDefinition[] = [
     align: "center",
     modelField: "lowStockThreshold",
   },
-  { id: "col-15", title: "Статус", width: 96, editable: true, align: "center", modelField: "status" },
   {
     id: "col-16",
     title: "Обновлено",
@@ -122,8 +120,8 @@ export function warehouseCellFrame(layout: WarehouseGridLayoutMetrics, cell: Gri
 }
 
 export const WAREHOUSE_EDITABLE_COL_START = 1;
-export const WAREHOUSE_EDITABLE_COL_END = 15;
-export const WAREHOUSE_ACTION_COLUMN = 17;
+export const WAREHOUSE_EDITABLE_COL_END = 13;
+export const WAREHOUSE_ACTION_COLUMN = 15;
 
 export function isWarehouseReadOnlyColumn(column: number): boolean {
   return WAREHOUSE_READ_ONLY_COLUMNS.has(column);
@@ -137,6 +135,6 @@ export function isWarehouseEditableColumn(column: number): boolean {
 /** Map read-only stock columns to the editable source column when clearing cells. */
 export function resolveWarehouseClearColumn(column: number): number | null {
   if (isWarehouseEditableColumn(column)) return column;
-  if (column === 7 || column === 8) return 6;
+  if (column === 6 || column === 7) return 5;
   return null;
 }

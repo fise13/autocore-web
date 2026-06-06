@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   CREATABLE_OPERATION_TYPES,
   operationAccountLabel,
+  operationCategoryLabel,
   operationTypeLabel,
   paymentMethodLabel,
 } from "@/lib/accounting/labels";
@@ -218,7 +219,7 @@ export function NewOperationDialog({
                   className="rounded-full border bg-background px-2.5 py-1 text-xs transition hover:bg-muted"
                   onClick={() => setCategory(item)}
                 >
-                  {item}
+                  {operationCategoryLabel(item)}
                 </button>
               ))}
             </div>

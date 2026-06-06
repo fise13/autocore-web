@@ -68,6 +68,9 @@ function readLocalId(docId: string, data: Record<string, unknown>): number {
 function mapMotor(docId: string, data: Record<string, unknown>): MotorEntity | null {
   const localId = readLocalId(docId, data);
   const serialCode = String(data.serialCode ?? "").trim();
+  const soldDate = toDate(data.soldDate) ?? toDate(data.sold_date);
+  const rawStatus = typeof data.status === "string" ? data.status : "";
+  const status = rawStatus || (soldDate ? "sold" : "available");
 
   if (!serialCode && !localId) return null;
 
@@ -82,12 +85,17 @@ function mapMotor(docId: string, data: Record<string, unknown>): MotorEntity | n
     quantity: Number(data.quantity ?? 1),
     transmission: String(data.transmission ?? ""),
     arrivalDate: toDate(data.arrivalDate),
-    soldDate: toDate(data.soldDate) ?? toDate(data.sold_date),
+    soldDate,
     deletedAt: toDate(data.deletedAt),
     createdAt: toDate(data.createdAt) ?? undefined,
     updatedAt: toDate(data.updatedAt) ?? undefined,
     brandName: typeof data.brandName === "string" ? data.brandName : "",
     engineCode: typeof data.engineCode === "string" ? data.engineCode : "",
+    status: status as MotorEntity["status"],
+    reservedForWorkOrderId:
+      typeof data.reservedForWorkOrderId === "string" ? data.reservedForWorkOrderId : null,
+    installedOnVehicleId:
+      typeof data.installedOnVehicleId === "string" ? data.installedOnVehicleId : null,
   };
 }
 
@@ -208,8 +216,11 @@ export function createMotorRepository() {
       transmission: input.transmission ?? "",
       soldDate: input.soldDate ?? null,
       deletedAt: input.deletedAt ?? null,
-      brandName: (input.brandName ?? "").trim() || "Cloud",
+      brandName: (input.brandName ?? "").trim() || "Не указан",
       engineCode: (input.engineCode ?? "").trim() || "—",
+      status: input.status ?? (input.soldDate ? "sold" : "available"),
+      reservedForWorkOrderId: input.reservedForWorkOrderId ?? null,
+      installedOnVehicleId: input.installedOnVehicleId ?? null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -313,6 +324,8 @@ export function createMotorRepository() {
       if (input.soldDate === null) payload.soldDate = null;
       if (input.deletedAt === null) payload.deletedAt = deleteField();
       if (input.arrivalDate === null) payload.arrivalDate = deleteField();
+      if (input.reservedForWorkOrderId === null) payload.reservedForWorkOrderId = null;
+      if (input.installedOnVehicleId === null) payload.installedOnVehicleId = null;
 
       await updateDoc(motorDocRef(uid, motorId), payload);
     },
@@ -347,6 +360,7 @@ export function createMotorRepository() {
     async sell(uid: string, motorId: string, soldDate: Date = new Date(), companyId?: string) {
       await updateDoc(motorDocRef(uid, motorId), {
         soldDate,
+        status: "sold",
         updatedAt: serverTimestamp(),
       });
       if (companyId) {
@@ -362,6 +376,7 @@ export function createMotorRepository() {
     async unsell(uid: string, motorId: string, companyId?: string) {
       await updateDoc(motorDocRef(uid, motorId), {
         soldDate: null,
+        status: "available",
         updatedAt: serverTimestamp(),
       });
       if (companyId) {

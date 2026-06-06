@@ -1,18 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { LucideIcon } from "lucide-react";
+import { ChevronRight, LucideIcon } from "lucide-react";
 
-import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type McModuleHeaderProps = {
   icon: LucideIcon;
   title: string;
-  description: string;
+  description?: string;
   href?: string;
-  hrefLabel?: string;
   accent?: "blue" | "green" | "amber" | "violet" | "default";
+  trailing?: React.ReactNode;
 };
 
 const accentMap = {
@@ -28,33 +27,35 @@ export function McModuleHeader({
   title,
   description,
   href,
-  hrefLabel = "Открыть",
   accent = "default",
+  trailing,
 }: McModuleHeaderProps) {
   return (
     <div className="mc-module-header">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className={cn(accentMap[accent])}>
-            <Icon className="size-4" />
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className={cn(accentMap[accent], "size-8 [&_svg]:size-3.5")}>
+            <Icon className="size-3.5" />
           </div>
-          <div className="min-w-0 space-y-0.5">
-            <h3 className="text-base font-semibold tracking-tight">{title}</h3>
-            <p className="text-sm text-muted-foreground">{description}</p>
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-semibold tracking-tight">{title}</h3>
+            {description ? (
+              <p className="truncate text-xs text-muted-foreground">{description}</p>
+            ) : null}
           </div>
         </div>
-        {href ? (
-          <Link
-            href={href}
-            className={buttonVariants({
-              variant: "ghost",
-              size: "sm",
-              className: "h-8 shrink-0 text-xs text-muted-foreground hover:text-foreground",
-            })}
-          >
-            {hrefLabel}
-          </Link>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-2">
+          {trailing}
+          {href ? (
+            <Link
+              href={href}
+              aria-label={`Открыть ${title}`}
+              className="flex size-7 items-center justify-center rounded-lg border border-border/50 text-muted-foreground transition-colors hover:border-primary/25 hover:text-foreground"
+            >
+              <ChevronRight className="size-4" />
+            </Link>
+          ) : null}
+        </div>
       </div>
     </div>
   );

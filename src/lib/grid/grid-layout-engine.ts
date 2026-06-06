@@ -4,10 +4,16 @@ import {
   MOTOR_GRID_COLUMN_WIDTHS,
   scaleMotorGridDimension,
 } from "@/lib/motor-grid-layout";
-import { GridCellAddress, GridColumnDefinition } from "@/lib/grid/grid-types";
+import { GridCellAddress, GridColumnDefinition, GridColumnId } from "@/lib/grid/grid-types";
+
+export type BuildGridLayoutOptions = {
+  hiddenColumnIds?: GridColumnId[];
+};
 
 const BASE_COLUMNS: GridColumnDefinition[] = [
   { id: "rowNumber", title: "#", width: MOTOR_GRID_COLUMN_WIDTHS.rowNumber, editable: false, align: "center" },
+  { id: "brandName", title: "Бренд", width: MOTOR_GRID_COLUMN_WIDTHS.brandName, editable: true, modelField: "brandName" },
+  { id: "engineCode", title: "Двигатель", width: MOTOR_GRID_COLUMN_WIDTHS.engineCode, editable: true, modelField: "engineCode" },
   { id: "serialCode", title: "Номер двигателя", width: MOTOR_GRID_COLUMN_WIDTHS.serialCode, editable: true, modelField: "serialCode" },
   { id: "configuration", title: "Комплектация", width: MOTOR_GRID_COLUMN_WIDTHS.configuration, editable: true, modelField: "configuration" },
   { id: "notes", title: "Особые отметки", width: MOTOR_GRID_COLUMN_WIDTHS.notes, editable: true, modelField: "notes" },
@@ -26,8 +32,12 @@ export type GridLayoutMetrics = {
   xOffsets: number[];
 };
 
-export function buildGridLayoutMetrics(zoom: number): GridLayoutMetrics {
-  const columns = BASE_COLUMNS.map((column) => ({
+export function buildGridLayoutMetrics(
+  zoom: number,
+  options?: BuildGridLayoutOptions,
+): GridLayoutMetrics {
+  const hidden = new Set(options?.hiddenColumnIds ?? []);
+  const columns = BASE_COLUMNS.filter((column) => !hidden.has(column.id)).map((column) => ({
     ...column,
     width: scaleMotorGridDimension(column.width, zoom),
   }));

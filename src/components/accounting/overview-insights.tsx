@@ -6,6 +6,7 @@ import { BarChart3, PieChart, Tags } from "lucide-react";
 
 import { FinancialOperation } from "@/domain/financial-operation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { operationCategoryLabel } from "@/lib/accounting/labels";
 import { cn } from "@/lib/utils";
 import { motionStagger } from "@/lib/motion";
 
@@ -26,6 +27,11 @@ const TYPE_COLORS: Record<string, string> = {
   expense: "bg-destructive/80",
   refund: "bg-chart-3",
 };
+
+function categoryChartLabel(name: string): string {
+  if (name === "Без категории") return name;
+  return operationCategoryLabel(name);
+}
 
 function buildLast7DaysSeries(operations: FinancialOperation[]) {
   const days = Array.from({ length: 7 }, (_, index) => subDays(new Date(), 6 - index));
@@ -136,7 +142,7 @@ export function OverviewInsights({ operations }: OverviewInsightsProps) {
                 style={{ animationDelay: motionStagger(index, 65) }}
               >
                 <div className="flex items-center justify-between gap-2 text-sm">
-                  <span className="truncate font-medium">{name}</span>
+                  <span className="truncate font-medium">{categoryChartLabel(name)}</span>
                   <span className="shrink-0 tabular-nums text-muted-foreground">
                     {amount.toLocaleString("ru-RU")} ₸
                   </span>

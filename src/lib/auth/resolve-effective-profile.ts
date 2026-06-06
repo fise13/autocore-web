@@ -6,6 +6,8 @@ const ROLE_RANK: Record<UserRole, number> = {
   manager: 3,
   accountant: 2,
   employee: 1,
+  mechanic: 1,
+  diagnostician: 1,
 };
 
 export type EmployeeProfileSlice = {

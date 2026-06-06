@@ -6,6 +6,7 @@ import { Boxes } from "lucide-react";
 import { InventoryItem } from "@/domain/inventory";
 import { InventoryMovement } from "@/domain/inventory-movement";
 import { McModuleHeader } from "@/components/mission-control/mc-module-header";
+import { movementTypeLabel } from "@/lib/inventory/movement-labels";
 
 type WarehouseModuleProps = {
   recentItems: InventoryItem[];
@@ -16,7 +17,6 @@ type WarehouseModuleProps = {
 };
 
 export const WarehouseModule = memo(function WarehouseModule({
-  recentItems,
   lowStockItems,
   recentMovements,
   stockValue,
@@ -26,13 +26,13 @@ export const WarehouseModule = memo(function WarehouseModule({
     <article className="mc-module-card">
       <McModuleHeader
         icon={Boxes}
-        title="Склад запчастей"
-        description={`Стоимость остатков: ${Math.round(stockValue).toLocaleString("ru-RU")} ₸`}
+        title="Запчасти"
+        description={`${Math.round(stockValue).toLocaleString("ru-RU")} ₸`}
         href="/warehouse"
         accent="blue"
       />
-      <div className="mc-module-body grid gap-4 md:grid-cols-2">
-        <Section title="Низкий остаток" empty="Всё в норме" isLoading={isLoading}>
+      <div className="mc-module-body grid gap-3 md:grid-cols-2">
+        <Section title="Дефицит" empty="В норме" isLoading={isLoading}>
           {lowStockItems.map((item) => (
             <Row
               key={item.id}
@@ -41,21 +41,12 @@ export const WarehouseModule = memo(function WarehouseModule({
             />
           ))}
         </Section>
-        <Section title="Последние движения" empty="Движений пока нет" isLoading={isLoading}>
+        <Section title="Движения" empty="Нет движений" isLoading={isLoading}>
           {recentMovements.map((movement) => (
             <Row
               key={movement.id}
-              primary={movement.type}
+              primary={movementTypeLabel(movement.type)}
               secondary={`${movement.quantity} · ${movement.createdAt.toLocaleString("ru-RU")}`}
-            />
-          ))}
-        </Section>
-        <Section title="Недавно обновлены" empty="Изменений пока нет" isLoading={isLoading}>
-          {recentItems.map((item) => (
-            <Row
-              key={`recent-${item.id}`}
-              primary={item.sku}
-              secondary={item.updatedAt?.toLocaleString("ru-RU") ?? item.name}
             />
           ))}
         </Section>

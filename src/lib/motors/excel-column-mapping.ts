@@ -1,3 +1,5 @@
+import { resolveSheetBrandAndEngine } from "@/lib/motors/import/brand-engine-intelligence";
+
 export type EngineFieldMapping =
   | "serialCode"
   | "configuration"
@@ -135,14 +137,11 @@ export function parseSheetBrandEngine(sheetName: string): { brandName: string; e
     return null;
   }
 
-  const separator = trimmed.includes("_") ? "_" : trimmed.includes("-") ? "-" : null;
-  if (!separator) return null;
-
-  const parts = trimmed.split(separator).map((part) => part.trim()).filter(Boolean);
-  if (parts.length < 2) return null;
+  const resolved = resolveSheetBrandAndEngine(trimmed);
+  if (!resolved.brandName && !resolved.engineCode) return null;
 
   return {
-    brandName: parts[0],
-    engineCode: parts.slice(1).join(separator),
+    brandName: resolved.brandName,
+    engineCode: resolved.engineCode,
   };
 }

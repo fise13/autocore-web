@@ -33,7 +33,7 @@ function truncateSheetName(name: string): string {
 }
 
 function makeSheetName(brandName: string, engineCode: string): string {
-  const brand = (brandName || "Cloud").toUpperCase().trim();
+  const brand = (brandName || "Не указан").toUpperCase().trim();
   const engine = (engineCode || "—").toUpperCase().trim();
   return truncateSheetName(`${brand}_${engine}`);
 }
@@ -52,7 +52,7 @@ function motorEngineRow(motor: MotorEntity, dateFormat: MotorExcelExportOptions[
 
 function motorFullRow(motor: MotorEntity, dateFormat: MotorExcelExportOptions["dateFormat"]): string[] {
   return [
-    motor.brandName ?? "Cloud",
+    motor.brandName ?? "Не указан",
     motor.engineCode ?? "—",
     motor.serialCode,
     motor.configuration,
@@ -96,7 +96,7 @@ export function buildMotorExportWorkbook(
   if (options.separateByEngine) {
     const byEngine = new Map<string, MotorEntity[]>();
     for (const motor of available) {
-      const key = `${motor.brandName ?? "Cloud"}::${motor.engineCode ?? "—"}`;
+      const key = `${motor.brandName ?? "Не указан"}::${motor.engineCode ?? "—"}`;
       const bucket = byEngine.get(key) ?? [];
       bucket.push(motor);
       byEngine.set(key, bucket);

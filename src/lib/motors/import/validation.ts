@@ -6,7 +6,7 @@ export function validateMotorPreviewRow(row: MotorImportPreviewRow): MotorImport
 
   if (!row.serialCode.trim()) errors.push("Серийник обязателен");
   if (row.importType === "engines") {
-    if (!row.brandName.trim() || row.brandName === "Cloud") warnings.push("Бренд не определён");
+    if (!row.brandName.trim() || row.brandName === "Не указан") warnings.push("Бренд не определён");
     if (!row.engineCode.trim() || row.engineCode === "—") warnings.push("Код двигателя не определён");
     if (row.soldDate && !row.arrivalDate) warnings.push("Есть дата продажи без даты прихода");
   }

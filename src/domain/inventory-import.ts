@@ -22,7 +22,7 @@ export type ImportPhase =
   | "applying"
   | "done";
 
-export type ImportValueSource = "rules" | "ai" | "manual";
+export type ImportValueSource = "rules" | "ai" | "manual" | "preset";
 
 export type InventoryImportRow = {
   rowIndex: number;

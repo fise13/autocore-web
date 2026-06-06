@@ -7,20 +7,26 @@ import { useActivityLogRealtime } from "@/hooks/use-activity-log-realtime";
 import { useEmployeesRealtime } from "@/hooks/use-employees-realtime";
 import { useMotorsRealtime } from "@/hooks/use-motors-realtime";
 import { useOperationsRealtime } from "@/hooks/use-operations-realtime";
+import { canAccessMotorsArea, isNavAllowed } from "@/lib/auth/app-access";
 import { can, canViewEmployees } from "@/lib/auth/permissions";
 import { computeOverviewMetrics } from "@/lib/mission-control/compute-overview-metrics";
+import { computeInventoryAnalytics } from "@/lib/mission-control/compute-inventory-analytics";
 import { computeOperationsStats } from "@/lib/mission-control/compute-operations-stats";
+import { enrichActivityLogs } from "@/lib/mission-control/enrich-activity-logs";
 import { useInventoryRealtime } from "@/hooks/use-inventory-realtime";
 import { useInventoryMovementsRealtime } from "@/hooks/use-inventory-movements-realtime";
+import { useWorkOrdersRealtime } from "@/hooks/use-work-orders-realtime";
 import { createMotorRepository } from "@/infrastructure/firestore/motor-repository";
 import { createInventoryItemRepository } from "@/infrastructure/firestore/inventory-item-repository";
 import { createInventoryMovementRepository } from "@/infrastructure/firestore/inventory-movement-repository";
 import { createFinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
+import { createWorkOrderRepository } from "@/infrastructure/firestore/work-order-repository";
 
 const motorRepository = createMotorRepository();
 const inventoryItemRepository = createInventoryItemRepository();
 const inventoryMovementRepository = createInventoryMovementRepository();
 const financialRepository = createFinancialOperationRepository();
+const workOrderRepository = createWorkOrderRepository();
 
 type UseMissionControlDataParams = {
   profile: UserEntity | null;
@@ -32,32 +38,41 @@ type UseMissionControlDataParams = {
 export function useMissionControlData({ profile, uid, companyId, isPro }: UseMissionControlDataParams) {
   const canAccounting = can(profile, "accounting_view");
   const canInventory = can(profile, "inventory_view");
+  const canMotors = canAccessMotorsArea(profile);
+  const canWarehouse = isNavAllowed(profile, "warehouse");
+  const canWorkOrders = can(profile, "work_orders_view");
   const canEmployees = isPro && canViewEmployees(profile);
   const enabled = Boolean(uid && companyId);
 
   const motorsQuery = useMotorsRealtime(motorRepository, {
     uid,
     companyId,
-    enabled: enabled && canInventory,
+    enabled: enabled && canMotors,
   });
 
   const warehouseItemsQuery = useInventoryRealtime(
     inventoryItemRepository,
     companyId,
-    enabled && canInventory,
+    enabled && canWarehouse,
   );
 
   const warehouseMovementsQuery = useInventoryMovementsRealtime(
     inventoryMovementRepository,
     companyId,
     undefined,
-    enabled && canInventory,
+    enabled && canWarehouse,
   );
 
   const operationsQuery = useOperationsRealtime(financialRepository, {
     companyId,
     enabled: enabled && canAccounting,
   });
+
+  const workOrdersQuery = useWorkOrdersRealtime(
+    workOrderRepository,
+    companyId,
+    enabled && canWorkOrders,
+  );
 
   const { employees, isLoading: employeesLoading } = useEmployeesRealtime(
     companyId,
@@ -67,31 +82,48 @@ export function useMissionControlData({ profile, uid, companyId, isPro }: UseMis
   const { entries: activityLogs, isLoading: activityLoading, error: activityError } =
     useActivityLogRealtime(companyId, enabled && canEmployees);
 
-  const motors = motorsQuery.data ?? [];
-  const warehouseItems = warehouseItemsQuery.data ?? [];
+  const motors = useMemo(() => motorsQuery.data ?? [], [motorsQuery.data]);
+  const warehouseItems = useMemo(() => warehouseItemsQuery.data ?? [], [warehouseItemsQuery.data]);
   const warehouseMovements = warehouseMovementsQuery.movements;
-  const operations = operationsQuery.data ?? [];
+  const operations = useMemo(() => operationsQuery.data ?? [], [operationsQuery.data]);
+  const workOrders = workOrdersQuery.orders;
+
+  const enrichedActivityLogs = useMemo(
+    () => enrichActivityLogs(activityLogs, canEmployees ? employees : []),
+    [activityLogs, canEmployees, employees],
+  );
 
   const overview = useMemo(
     () =>
       computeOverviewMetrics({
         operations: canAccounting ? operations : [],
-        motors: canInventory ? motors : [],
-        warehouseItems: canInventory ? warehouseItems : [],
+        motors: canMotors ? motors : [],
+        warehouseItems: canWarehouse ? warehouseItems : [],
         employees: canEmployees ? employees : [],
-        activityLogs: canEmployees ? activityLogs : [],
+        activityLogs: canEmployees ? enrichedActivityLogs : [],
       }),
-    [activityLogs, canAccounting, canEmployees, canInventory, employees, motors, operations, warehouseItems],
+    [canAccounting, canEmployees, canMotors, canWarehouse, employees, enrichedActivityLogs, motors, operations, warehouseItems],
   );
 
   const operationsStats = useMemo(
-    () => computeOperationsStats(canEmployees ? activityLogs : []),
-    [activityLogs, canEmployees],
+    () => computeOperationsStats(canEmployees ? enrichedActivityLogs : [], employees),
+    [canEmployees, enrichedActivityLogs, employees],
+  );
+
+  const inventoryAnalytics = useMemo(
+    () =>
+      computeInventoryAnalytics({
+        motors: canMotors ? motors : [],
+        operations: canAccounting ? operations : [],
+      }),
+    [canAccounting, canMotors, motors, operations],
   );
 
   const isLoading =
-    (canInventory && (motorsQuery.isLoading || warehouseItemsQuery.isLoading)) ||
+    (canMotors && motorsQuery.isLoading) ||
+    (canWarehouse && warehouseItemsQuery.isLoading) ||
     (canAccounting && operationsQuery.isLoading) ||
+    (canWorkOrders && workOrdersQuery.isLoading) ||
     (canEmployees && (employeesLoading || activityLoading));
 
   const latestMotors = useMemo(() => {
@@ -135,12 +167,14 @@ export function useMissionControlData({ profile, uid, companyId, isPro }: UseMis
   return {
     overview,
     operationsStats,
+    inventoryAnalytics,
     motors,
     warehouseItems,
     warehouseMovements,
     operations,
+    workOrders,
     employees,
-    activityLogs,
+    activityLogs: enrichedActivityLogs,
     activityError,
     latestMotors,
     recentOperations,
@@ -151,6 +185,9 @@ export function useMissionControlData({ profile, uid, companyId, isPro }: UseMis
     permissions: {
       canAccounting,
       canInventory,
+      canMotors,
+      canWarehouse,
+      canWorkOrders,
       canEmployees,
     },
   };

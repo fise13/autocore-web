@@ -5,6 +5,7 @@ import {
   normalizeEngineCode,
   resolveBrandDisplayName,
 } from "@/lib/motors/import-normalization";
+import { coerceBrandEnginePair, resolveSheetBrandAndEngine } from "@/lib/motors/import/brand-engine-intelligence";
 
 export type SheetImportType = "engines" | "specific" | "skip";
 
@@ -30,6 +31,7 @@ function suggestImportType(sheetName: string, customBrand: string, customEngineC
 
 export function createSheetImportConfig(sheetName: string, rows: string[][]): SheetImportConfig {
   const parsed = parseSheetBrandEngine(sheetName);
+  const resolved = parsed ?? resolveSheetBrandAndEngine(sheetName);
 
   let customBrand = "";
   let customEngineCode = "";
@@ -40,6 +42,15 @@ export function createSheetImportConfig(sheetName: string, rows: string[][]): Sh
   } else {
     customBrand = detectBrandInSheetName(sheetName);
     customEngineCode = detectEngineCodeInSheetName(sheetName);
+  }
+
+  const coerced = coerceBrandEnginePair(customBrand, customEngineCode, { sheetName });
+  customBrand = coerced.brand;
+  customEngineCode = coerced.engine;
+
+  if (!customBrand && !customEngineCode && resolved.brandName) {
+    customBrand = resolved.brandName;
+    customEngineCode = resolved.engineCode;
   }
 
   return {

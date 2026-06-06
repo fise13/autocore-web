@@ -50,6 +50,12 @@ export type MotorImportPreviewRow = ParsedImportMotorRow & {
   duplicateOfMotorId?: string;
   duplicateReasons?: string[];
   conflictFields?: string[];
+  aiMeta?: {
+    confidence: number;
+    reasoning: string[];
+    warnings: string[];
+    source: MotorImportValueSource;
+  };
 };
 
 export type MotorImportPreviewResult = {
@@ -72,6 +78,7 @@ export type MotorImportPreviewResult = {
     specificSheets: number;
   };
   aiNotes?: string;
+  quickImport?: boolean;
 };
 
 export type MotorImportApplyProgress = {
@@ -82,12 +89,19 @@ export type MotorImportApplyProgress = {
   cancelled: boolean;
 };
 
+export type MotorImportAiPrompts = {
+  motorSheetResolve: string;
+  motorNormalizeBatch: string;
+};
+
 export type MotorImportAiRequest =
   | {
       kind: "motorSheetResolve";
       companyId: string;
       sheets: Array<{ sheetName: string; sampleRows: string[][] }>;
       catalog: Array<{ brandName: string; engineCode: string }>;
+      specificCategories?: string[];
+      aiPrompts?: MotorImportAiPrompts;
     }
   | {
       kind: "motorNormalizeBatch";
@@ -97,7 +111,13 @@ export type MotorImportAiRequest =
         rawSerial?: string;
         rawBrand?: string;
         rawEngine?: string;
+        rawConfiguration?: string;
+        rawTransmission?: string;
+        rawNotes?: string;
+        rawSheet?: string;
+        rawRow?: string;
       }>;
+      aiPrompts?: MotorImportAiPrompts;
     };
 
 export type AiMotorColumnRole =

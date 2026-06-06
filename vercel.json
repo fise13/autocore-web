@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "regions": ["fra1"],
+  "functions": {
+    "src/app/api/pdf/**/*.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/documents/**/*.ts": {
+      "maxDuration": 60
+    }
+  }
+}

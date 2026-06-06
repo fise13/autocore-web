@@ -97,7 +97,16 @@ export default function LoginPage() {
     );
   }
 
-  if (!authReady || isLoading || isAuthed) {
+  if (isLoading) {
+    return (
+      <>
+        <AppLoadingScreen message={userCopy.auth.completing} />
+        {showAuthDebug ? <AuthDebugPanel snapshot={debugSnapshot} /> : null}
+      </>
+    );
+  }
+
+  if (isAuthed) {
     return (
       <>
         <AppLoadingScreen message={userCopy.auth.completing} />

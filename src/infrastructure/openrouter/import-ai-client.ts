@@ -9,6 +9,7 @@ import {
   MotorSheetResolveResponse,
 } from "@/lib/motors/import/ai-schemas";
 import { MotorImportAiRequest } from "@/lib/motors/import/types";
+import { MOTOR_IMPORT_AI_PROMPTS } from "@/lib/motors/import/ai-prompts";
 import {
   ColumnMapAiResponse,
   columnMapAiResponseSchema,
@@ -67,7 +68,13 @@ export async function requestAiColumnMapping(
 
 export async function requestAiNormalizeBatch(
   companyId: string,
-  items: Array<{ rowIndex: number; rawTitle?: string; rawBrand?: string; rawCategory?: string }>,
+  items: Array<{
+    rowIndex: number;
+    rawTitle?: string;
+    rawBrand?: string;
+    rawCategory?: string;
+    rawRow?: string;
+  }>,
 ): Promise<NormalizeBatchAiResponse> {
   return callWarehouseImportAi({ kind: "normalizeBatch", companyId, items }, normalizeBatchAiResponseSchema);
 }
@@ -94,16 +101,37 @@ export async function requestAiMotorSheetResolve(
   companyId: string,
   sheets: Array<{ sheetName: string; sampleRows: string[][] }>,
   catalog: Array<{ brandName: string; engineCode: string }>,
+  specificCategories: string[] = [],
 ): Promise<MotorSheetResolveResponse> {
   return callImportAi(
-    { kind: "motorSheetResolve", companyId, sheets, catalog },
+    {
+      kind: "motorSheetResolve",
+      companyId,
+      sheets,
+      catalog,
+      specificCategories,
+      aiPrompts: MOTOR_IMPORT_AI_PROMPTS,
+    },
     motorSheetResolveResponseSchema,
   );
 }
 
 export async function requestAiMotorNormalizeBatch(
   companyId: string,
-  items: Array<{ rowKey: string; rawSerial?: string; rawBrand?: string; rawEngine?: string }>,
+  items: Array<{
+    rowKey: string;
+    rawSerial?: string;
+    rawBrand?: string;
+    rawEngine?: string;
+    rawConfiguration?: string;
+    rawTransmission?: string;
+    rawNotes?: string;
+    rawSheet?: string;
+    rawRow?: string;
+  }>,
 ): Promise<MotorNormalizeBatchResponse> {
-  return callImportAi({ kind: "motorNormalizeBatch", companyId, items }, motorNormalizeBatchResponseSchema);
+  return callImportAi(
+    { kind: "motorNormalizeBatch", companyId, items, aiPrompts: MOTOR_IMPORT_AI_PROMPTS },
+    motorNormalizeBatchResponseSchema,
+  );
 }

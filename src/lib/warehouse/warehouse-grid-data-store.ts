@@ -181,22 +181,20 @@ export function draftFieldForColumn(column: number): keyof WarehouseDraftFields 
     case 4:
       return "brandName";
     case 5:
-      return "unit";
-    case 6:
       return "onHand";
-    case 9:
+    case 8:
       return "purchasePrice";
-    case 10:
+    case 9:
       return "sellPrice";
-    case 11:
+    case 10:
       return "supplierName";
-    case 12:
+    case 11:
       return "barcode";
-    case 13:
+    case 12:
       return "warehouseLocation";
-    case 14:
+    case 13:
       return "lowStockThreshold";
-    case 15:
+    case 14:
       return "status";
     default:
       return null;
@@ -355,7 +353,11 @@ export function filterWarehouseItems(items: InventoryItem[], search: string): In
 
 export function isWarehouseRowLowStock(item: InventoryItem): boolean {
   const threshold = item.lowStockThreshold ?? 1;
-  return item.status === "active" && item.totalAvailable <= threshold;
+  return item.status === "active" && item.totalOnHand > 0 && item.totalAvailable <= threshold;
+}
+
+export function isWarehouseRowOutOfStock(item: InventoryItem): boolean {
+  return item.status === "active" && item.totalOnHand <= 0;
 }
 
 export function formatWarehouseUpdatedAt(value: Date | undefined): string {

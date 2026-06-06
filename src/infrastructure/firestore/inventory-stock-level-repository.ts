@@ -44,6 +44,24 @@ export function createInventoryStockLevelRepository() {
   const ref = collection(db, COLLECTION);
 
   return {
+    subscribe(
+      companyId: string,
+      onData: (levels: InventoryStockLevel[]) => void,
+      onError?: (error: Error) => void,
+    ) {
+      const q = query(ref, where("companyId", "==", normalizeCompanyId(companyId)));
+      return onSnapshot(
+        q,
+        (snapshot) => {
+          onData(snapshot.docs.map((item) => mapStockLevel(item.id, item.data() as Record<string, unknown>)));
+        },
+        (error) => {
+          notifyFirestoreSnapshotError(error);
+          onError?.(error);
+        },
+      );
+    },
+
     subscribeByItem(
       companyId: string,
       itemId: string,

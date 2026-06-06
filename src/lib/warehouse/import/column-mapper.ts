@@ -1,23 +1,64 @@
 import { suggestColumnMapping } from "@/lib/warehouse/import-rules-engine";
 
+import { detectImportFormatPreset } from "./format-presets";
 import { ColumnMapAiResponse } from "./ai-schemas";
 import { ColumnMappingResult, ImportTargetField, IMPORT_TARGET_FIELDS } from "./types";
 
 const REQUIRED_FIELDS: ImportTargetField[] = ["sku", "name"];
 
+const FIELD_MATCH_ORDER: ImportTargetField[] = [
+  "name",
+  "barcode",
+  "brandName",
+  "category",
+  "supplierName",
+  "warehouseLocation",
+  "unit",
+  "lowStockThreshold",
+  "purchasePrice",
+  "sellPrice",
+  "quantity",
+  "sku",
+];
+
 const HEADER_ALIASES: Record<ImportTargetField, string[]> = {
-  sku: ["sku", "артикул", "код", "article", "part", "partnumber"],
+  sku: [
+    "sku",
+    "артикул",
+    "article",
+    "partnumber",
+    "part number",
+    "код номенклатуры",
+    "оригинальный номер",
+    "номер производителя",
+  ],
   name: ["name", "название", "наименование", "товар", "product", "description"],
   category: ["category", "категория", "группа", "type"],
-  brandName: ["brand", "бренд", "марка", "manufacturer"],
+  brandName: ["brand", "бренд", "марка", "manufacturer", "производитель"],
   supplierName: ["supplier", "поставщик", "vendor"],
   barcode: ["barcode", "штрихкод", "ean", "upc", "bar code"],
   warehouseLocation: ["location", "место", "ячейка", "полка", "склад", "bin"],
-  quantity: ["qty", "quantity", "кол-во", "количество", "остаток", "stock", "count"],
-  purchasePrice: ["purchase", "закупка", "цена закупки", "cost", "buy", "buyprice"],
-  sellPrice: ["sell", "продажа", "цена продажи", "price", "retail"],
-  unit: ["unit", "ед", "единица", "uom"],
-  lowStockThreshold: ["min", "minimum", "мин", "мин. запас", "порог", "reorder"],
+  quantity: [
+    "qty",
+    "quantity",
+    "кол-во",
+    "количество",
+    "остаток",
+    "stock",
+    "count",
+    "приход",
+  ],
+  purchasePrice: ["purchase", "закупка", "цена закупки", "cost", "buy", "buyprice", "цена прихода"],
+  sellPrice: ["sell", "продажа", "цена продажи", "price", "retail", "цена: цена продажи"],
+  unit: ["unit", "ед", "единица", "uom", "единица измерения"],
+  lowStockThreshold: [
+    "minimum",
+    "мин. запас",
+    "минимальный остаток",
+    "reorder",
+    "low stock",
+    "порог",
+  ],
 };
 
 function levenshtein(a: string, b: string): number {
@@ -37,23 +78,59 @@ function levenshtein(a: string, b: string): number {
   return matrix[a.length][b.length];
 }
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function headerMatchScore(header: string, alias: string): number {
   const normalizedHeader = header.trim().toLowerCase();
   const normalizedAlias = alias.trim().toLowerCase();
   if (normalizedHeader === normalizedAlias) return 1;
-  if (normalizedHeader.includes(normalizedAlias) || normalizedAlias.includes(normalizedHeader)) return 0.85;
+
+  if (normalizedAlias.length >= 4) {
+    if (normalizedHeader.includes(normalizedAlias)) return 0.85;
+  } else {
+    const wordBoundary = new RegExp(`(^|[\\s/:-])${escapeRegex(normalizedAlias)}($|[\\s/:-])`, "i");
+    if (wordBoundary.test(normalizedHeader)) return 0.85;
+    if (normalizedHeader.startsWith(`${normalizedAlias} `)) return 0.85;
+  }
+
   const distance = levenshtein(normalizedHeader, normalizedAlias);
   if (distance <= 2) return Math.max(0.5, 0.85 - distance * 0.1);
   return 0;
 }
 
 export function suggestColumnMappingWithConfidence(headers: string[]): ColumnMappingResult {
+  const presetMatch = detectImportFormatPreset(headers);
+  if (presetMatch) {
+    const mapping = Object.fromEntries(
+      Object.entries(presetMatch.mapping).filter(([, header]) => Boolean(header)),
+    ) as Record<string, string>;
+    const fieldConfidence: Partial<Record<ImportTargetField, number>> = {};
+    for (const field of Object.keys(mapping)) {
+      fieldConfidence[field as ImportTargetField] = presetMatch.score;
+    }
+    return {
+      mapping,
+      fieldConfidence,
+      source: "preset",
+      reasoning: `Распознан формат «${presetMatch.preset.label}»`,
+      warnings: [],
+      preset: {
+        id: presetMatch.preset.id,
+        label: presetMatch.preset.label,
+        enrichment: presetMatch.enrichment,
+      },
+      presetScore: presetMatch.score,
+    };
+  }
+
   const mapping: Record<string, string> = {};
   const fieldConfidence: Partial<Record<ImportTargetField, number>> = {};
   const usedHeaders = new Set<string>();
   const warnings: string[] = [];
 
-  for (const field of IMPORT_TARGET_FIELDS) {
+  for (const field of FIELD_MATCH_ORDER) {
     let bestHeader = "";
     let bestScore = 0;
     for (const header of headers) {

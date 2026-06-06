@@ -2,14 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRef, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Barcode,
-  CloudUpload,
   Download,
   PanelLeft,
-  Plus,
-  Search,
   Settings,
   Upload,
 } from "lucide-react";
@@ -17,15 +14,25 @@ import {
 import { AccountMenu } from "@/components/account/account-menu";
 
 import { useDashboardLayout } from "@/components/layout/dashboard-layout-context";
+import { WorkspaceSearchField } from "@/components/layout/workspace-search-field";
+import { DashboardImportProgress } from "@/components/warehouse/import/shared/import-progress-host";
+import { MotorImportTriggerButton } from "@/components/motors/motor-import-trigger-button";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { can } from "@/lib/auth/permissions";
 import { cn } from "@/lib/utils";
+import { resolveSidebarMode } from "@/lib/navigation/sidebar-mode";
 import { userCopy } from "@/lib/user-copy";
 import { MotorAvailability } from "@/infrastructure/firestore/motor-repository";
+
+const WORKSPACE_TITLES: Record<string, string> = {
+  motors: "Все моторы",
+  sold: "Проданные",
+  specific: "Специфичные",
+  warehouse: "Склад",
+};
 
 const availabilityOptions: { value: MotorAvailability; label: string }[] = [
   { value: "all", label: "Все" },
@@ -38,17 +45,11 @@ export function WorkspaceToolbar() {
   const { profile } = useAuth();
   const { toggleSidebar } = useDashboardLayout();
   const {
-    search,
-    setSearch,
     availability,
     setAvailability,
-    saveStatus,
-    motorSyncState,
-    triggerSync,
     motorExcelIo,
     triggerMotorExport,
-    triggerMotorImport,
-    registerMotorImportPicker,
+    triggerMotorImportPicker,
     warehouseExcelIo,
     triggerWarehouseExport,
     triggerWarehouseImport,
@@ -57,23 +58,15 @@ export function WorkspaceToolbar() {
   } = useWorkspace();
   const { requirePro, isPro } = useBillingGate();
 
-  const importInputRef = useRef<HTMLInputElement>(null);
   const [excelError, setExcelError] = useState<string | null>(null);
-  const [syncError, setSyncError] = useState<string | null>(null);
-
+  const sidebarMode = resolveSidebarMode(pathname);
   const isSpecificRoute = pathname.startsWith("/specific/");
   const isMotorRoute = pathname === "/motors" || pathname === "/sold";
+  const workspaceTitle = WORKSPACE_TITLES[sidebarMode];
   const isWarehouseRoute = pathname === "/warehouse";
   const isSoldRoute = pathname === "/sold";
   const showAvailabilityFilter = (pathname === "/motors" || isSpecificRoute) && !isSoldRoute;
   const showExcelIo = isMotorRoute || isWarehouseRoute;
-
-  const syncBadge =
-    !isWarehouseRoute &&
-    (motorSyncState.localDirty ||
-      motorSyncState.remotePending ||
-      motorSyncState.status === "error" ||
-      saveStatus === "pending");
 
   const canEdit = can(profile, "inventory_edit");
   const canImportWarehouse = can(profile, "inventory_import");
@@ -82,17 +75,6 @@ export function WorkspaceToolbar() {
   const importBusy = isWarehouseRoute ? warehouseExcelIo.busy === "import" : motorExcelIo.busy === "import";
   const canExport = isWarehouseRoute ? warehouseExcelIo.canExport : motorExcelIo.canExport;
   const canImport = isWarehouseRoute ? warehouseExcelIo.canImport : motorExcelIo.canImport;
-
-  useEffect(() => {
-    if (!isMotorRoute) {
-      registerMotorImportPicker(null);
-      return;
-    }
-    registerMotorImportPicker(() => {
-      importInputRef.current?.click();
-    });
-    return () => registerMotorImportPicker(null);
-  }, [isMotorRoute, registerMotorImportPicker]);
 
   useEffect(() => {
     if (!isWarehouseRoute) {
@@ -132,36 +114,11 @@ export function WorkspaceToolbar() {
       void triggerWarehouseImport();
       return;
     }
-    requirePro("import", () => importInputRef.current?.click());
-  }
-
-  async function handleImportFile(file: File) {
-    setExcelError(null);
-    requirePro("import", () => void runImport(file));
-  }
-
-  async function runImport(file: File) {
-    try {
-      await triggerMotorImport(file);
-    } catch (error) {
-      setExcelError(error instanceof Error ? error.message : "Не удалось импортировать файл");
-    }
-  }
-
-  async function handleSync() {
-    setSyncError(null);
-    requirePro("sync", () => void runSync());
-  }
-
-  async function runSync() {
-    const synced = await triggerSync();
-    if (!synced) {
-      setSyncError(
-        isSpecificRoute
-          ? "Дождитесь загрузки таблицы"
-          : "Откройте «Моторы» или «Специфичные» для синхронизации",
-      );
-    }
+    requirePro("import", () => {
+      if (!triggerMotorImportPicker()) {
+        setExcelError("Импорт недоступен");
+      }
+    });
   }
 
   return (
@@ -176,10 +133,14 @@ export function WorkspaceToolbar() {
         >
           <PanelLeft className="size-4" />
         </Button>
-        <span className="hidden text-sm font-semibold tracking-tight md:block">AutoCore</span>
+        <span className="hidden text-sm font-semibold tracking-tight md:block">
+          {workspaceTitle ?? "AutoCore"}
+        </span>
       </div>
 
-      <div className="flex min-w-0 flex-1 items-center justify-center gap-3">
+      <div className="flex min-w-0 flex-1 items-center justify-center gap-3 px-1">
+        <DashboardImportProgress variant="compact" />
+
         {showAvailabilityFilter ? (
           <div className="inline-flex rounded-lg border bg-muted/40 p-0.5">
             {availabilityOptions.map((option) => (
@@ -200,50 +161,28 @@ export function WorkspaceToolbar() {
           </div>
         ) : null}
 
-        <div className="relative hidden w-full max-w-[360px] md:block">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            data-no-grid-undo
+        {(isWarehouseRoute || isMotorRoute || isSpecificRoute) ? (
+            <WorkspaceSearchField
+              className="hidden md:block"
             placeholder={
               isWarehouseRoute
-                ? "Поиск по SKU, названию, бренду..."
+                ? "Поиск по артикулу, названию, бренду..."
                 : isSpecificRoute
                   ? "Поиск по записям..."
                   : "Поиск по номеру, бренду, комплектации..."
             }
-            className="h-9 bg-muted/30 pl-9"
           />
-        </div>
+        ) : null}
       </div>
 
       <div className="flex items-center gap-1">
-        {excelError || syncError ? (
+        {excelError ? (
           <span
             className="hidden max-w-[180px] truncate text-xs text-destructive lg:inline"
-            title={excelError ?? syncError ?? undefined}
+            title={excelError}
           >
-            {excelError ?? syncError}
+            {excelError}
           </span>
-        ) : null}
-        {!isWarehouseRoute ? (
-          <Button
-            variant={syncBadge ? "secondary" : "ghost"}
-            size="sm"
-            className="hidden gap-1.5 md:inline-flex"
-            onClick={() => void handleSync()}
-            disabled={motorSyncState.status === "syncing" || saveStatus === "saving"}
-            title={userCopy.sync.syncNow}
-          >
-            <CloudUpload className="size-4" />
-            {userCopy.sync.syncNow}
-            {syncBadge ? (
-              <span className="rounded-full bg-amber-500 px-1.5 py-0 text-[10px] font-semibold text-white">
-                !
-              </span>
-            ) : null}
-          </Button>
         ) : null}
         {showExcelIo ? (
           <>
@@ -263,33 +202,18 @@ export function WorkspaceToolbar() {
               </Button>
             ) : null}
             {isMotorRoute ? (
-              <Button variant="ghost" size="icon-sm" disabled title="Скоро">
-                <Plus className="size-4" />
-              </Button>
-            ) : null}
+              <MotorImportTriggerButton size="sm" showLabel={false} variant="ghost" />
+            ) : (
             <Button
               variant="ghost"
               size="icon-sm"
-              disabled={
-                isWarehouseRoute
-                  ? !canImportWarehouse || !canImport || importBusy
-                  : !canEdit || importBusy
-              }
-              title={
-                isWarehouseRoute
-                  ? "Импорт CSV"
-                  : isPro
-                    ? userCopy.motors.importExcel
-                    : userCopy.billing.paywall.import.title
-              }
+              disabled={!canImportWarehouse || !canImport || importBusy}
+              title="Импорт CSV"
               onClick={handleImportClick}
-              className={cn("relative", !isPro && !isWarehouseRoute && "text-primary/80")}
             >
               <Download className="size-4" />
-              {!isPro && !isWarehouseRoute ? (
-                <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-primary ring-2 ring-card" />
-              ) : null}
             </Button>
+            )}
             <Button
               variant="ghost"
               size="icon-sm"
@@ -314,19 +238,6 @@ export function WorkspaceToolbar() {
                 <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-primary ring-2 ring-card" />
               ) : null}
             </Button>
-            {isMotorRoute ? (
-              <input
-                ref={importInputRef}
-                type="file"
-                accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-                className="hidden"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  event.target.value = "";
-                  if (file) void handleImportFile(file);
-                }}
-              />
-            ) : null}
           </>
         ) : null}
         <Link href="/settings" title="Настройки">

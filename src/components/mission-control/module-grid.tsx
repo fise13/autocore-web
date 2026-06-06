@@ -1,69 +1,98 @@
 "use client";
 
 import { motion } from "framer-motion";
+import type { ReactNode } from "react";
 
 import { AccountingModule } from "@/components/mission-control/modules/accounting-module";
 import { EmployeesModule } from "@/components/mission-control/modules/employees-module";
 import { InventoryModule } from "@/components/mission-control/modules/inventory-module";
+import { InventoryAnalyticsModule } from "@/components/mission-control/modules/inventory-analytics-module";
 import { WarehouseModule } from "@/components/mission-control/modules/warehouse-module";
-import { OperationsStatsModule } from "@/components/mission-control/modules/operations-stats-module";
+import { WorkOrdersModule } from "@/components/mission-control/modules/work-orders-module";
 import { useMissionControlData } from "@/hooks/use-mission-control-data";
+import { mcCardVariants, mcPageVariants } from "@/lib/motion/mission-control-motion";
 
 type ModuleGridProps = ReturnType<typeof useMissionControlData>;
+
+function ModuleSlot({ children }: { children: ReactNode }) {
+  return (
+    <motion.div variants={mcCardVariants} layout="position">
+      {children}
+    </motion.div>
+  );
+}
 
 export function ModuleGrid({
   latestMotors,
   recentlyModifiedMotors,
-  recentOperations,
   recentWarehouseItems,
   lowStockWarehouseItems,
   warehouseMovements,
   overview,
+  inventoryAnalytics,
   operations,
+  workOrders,
   employees,
   activityLogs,
-  operationsStats,
   isLoading,
   permissions,
 }: ModuleGridProps) {
   const showAnyModule =
-    permissions.canInventory ||
+    permissions.canMotors ||
+    permissions.canWarehouse ||
     permissions.canAccounting ||
-    permissions.canEmployees ||
-    true;
+    permissions.canWorkOrders ||
+    permissions.canEmployees;
 
   if (!showAnyModule) return null;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.08, duration: 0.4 }}
-      className="grid gap-4 xl:grid-cols-2"
+      variants={mcPageVariants}
+      initial="hidden"
+      animate="show"
+      className="grid gap-3.5 xl:grid-cols-2"
     >
-      {permissions.canInventory ? (
-        <InventoryModule
-          latestMotors={latestMotors}
-          recentlyModified={recentlyModifiedMotors}
-          isLoading={isLoading}
-        />
+      {permissions.canMotors ? (
+        <ModuleSlot>
+          <InventoryAnalyticsModule analytics={inventoryAnalytics} isLoading={isLoading} />
+        </ModuleSlot>
       ) : null}
-      {permissions.canInventory ? (
-        <WarehouseModule
-          recentItems={recentWarehouseItems}
-          lowStockItems={lowStockWarehouseItems}
-          recentMovements={warehouseMovements}
-          stockValue={overview.warehouseStockValue}
-          isLoading={isLoading}
-        />
+      {permissions.canMotors ? (
+        <ModuleSlot>
+          <InventoryModule
+            latestMotors={latestMotors}
+            recentlyModified={recentlyModifiedMotors}
+            isLoading={isLoading}
+          />
+        </ModuleSlot>
+      ) : null}
+      {permissions.canWarehouse ? (
+        <ModuleSlot>
+          <WarehouseModule
+            recentItems={recentWarehouseItems}
+            lowStockItems={lowStockWarehouseItems}
+            recentMovements={warehouseMovements}
+            stockValue={overview.warehouseStockValue}
+            isLoading={isLoading}
+          />
+        </ModuleSlot>
       ) : null}
       {permissions.canAccounting ? (
-        <AccountingModule operations={operations} isLoading={isLoading} />
+        <ModuleSlot>
+          <AccountingModule operations={operations} isLoading={isLoading} />
+        </ModuleSlot>
+      ) : null}
+      {permissions.canWorkOrders ? (
+        <ModuleSlot>
+          <WorkOrdersModule orders={workOrders} isLoading={isLoading} />
+        </ModuleSlot>
       ) : null}
       {permissions.canEmployees ? (
-        <EmployeesModule employees={employees} activityLogs={activityLogs} isLoading={isLoading} />
+        <ModuleSlot>
+          <EmployeesModule employees={employees} activityLogs={activityLogs} isLoading={isLoading} />
+        </ModuleSlot>
       ) : null}
-      <OperationsStatsModule stats={operationsStats} isLoading={isLoading} />
     </motion.div>
   );
 }

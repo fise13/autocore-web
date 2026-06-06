@@ -14,6 +14,7 @@ type UseMotorSyncBridgeParams = {
   repository: MotorRepository;
   motors: MotorEntity[];
   localDirty: boolean;
+  enabled?: boolean;
 };
 
 export function useMotorSyncBridge({
@@ -22,6 +23,7 @@ export function useMotorSyncBridge({
   repository,
   motors,
   localDirty,
+  enabled = true,
 }: UseMotorSyncBridgeParams) {
   const { setMotorSyncState, registerSyncHandler, triggerSave, triggerCloudPush } = useWorkspace();
   const [baselineLoaded, setBaselineLoaded] = useState(false);
@@ -65,7 +67,11 @@ export function useMotorSyncBridge({
   }, [setMotorSyncState, syncState]);
 
   useEffect(() => {
+    if (!enabled) {
+      registerSyncHandler(null);
+      return;
+    }
     registerSyncHandler(syncNow);
     return () => registerSyncHandler(null);
-  }, [registerSyncHandler, syncNow]);
+  }, [enabled, registerSyncHandler, syncNow]);
 }

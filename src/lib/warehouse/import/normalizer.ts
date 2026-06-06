@@ -8,6 +8,8 @@ import {
 
 import { cleanBrandSymbol, parseNumeric, parseQuantity } from "./preprocessor";
 import { ImportTargetField } from "./types";
+import { PresetEnrichment } from "./format-presets";
+import { resolveImportSku } from "./sku-resolver";
 
 const KNOWN_BRANDS = new Map<string, string>([
   ["bmw", "BMW"],
@@ -47,6 +49,16 @@ export function normalizeTitle(value: string | undefined, brand?: string): strin
   return title.charAt(0).toUpperCase() + title.slice(1);
 }
 
+export function normalizeUnit(value: string | undefined): string {
+  if (!value?.trim()) return "шт";
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "штука" || normalized === "шт." || normalized === "шт") return "шт";
+  if (normalized === "литр" || normalized === "л") return "л";
+  if (normalized === "килограмм" || normalized === "кг") return "кг";
+  if (normalized === "упаковка" || normalized === "уп") return "уп";
+  return value.trim();
+}
+
 export function readMappedValue(
   row: Record<string, string>,
   mapping: Record<string, string>,
@@ -64,30 +76,78 @@ export function normalizeImportRow(
     name: string;
     brandName: string;
     category: string;
+    sku: string;
+    quantity: number;
+    purchasePrice: number;
+    sellPrice: number;
+    barcode: string;
   }>,
+  presetEnrichment?: PresetEnrichment,
 ) {
-  const sku = readMappedValue(row, mapping, "sku");
   const rawName = aiOverrides?.name ?? readMappedValue(row, mapping, "name");
   const rawBrand = aiOverrides?.brandName ?? readMappedValue(row, mapping, "brandName");
   const rawCategory = aiOverrides?.category ?? readMappedValue(row, mapping, "category");
   const brandName = normalizeBrand(rawBrand);
+  const sku = aiOverrides?.sku?.trim() || resolveImportSku(row, mapping, presetEnrichment);
   const name = normalizeTitle(rawName || sku, brandName || undefined);
+
+  const barcodes = (() => {
+    const fromAi = aiOverrides?.barcode ? normalizeBarcode(aiOverrides.barcode) : "";
+    if (fromAi) return [fromAi];
+    const candidates = [
+      readMappedValue(row, mapping, "barcode"),
+      ...(presetEnrichment?.barcodeFallbackHeaders ?? []).map((header) => row[header] ?? ""),
+      presetEnrichment?.barcodeFallbackHeader ? row[presetEnrichment.barcodeFallbackHeader] ?? "" : "",
+    ];
+    for (const candidate of candidates) {
+      const barcode = normalizeBarcode(candidate);
+      if (barcode) return [barcode];
+    }
+    const skuBarcode = normalizeBarcode(sku);
+    if (skuBarcode && skuBarcode.length >= 8) return [skuBarcode];
+    return [];
+  })();
+
+  const quantity = (() => {
+    if (aiOverrides?.quantity != null && Number.isFinite(aiOverrides.quantity)) {
+      return Math.max(0, aiOverrides.quantity);
+    }
+    if (presetEnrichment?.quantityIncomingHeader || presetEnrichment?.quantityOutgoingHeader) {
+      const incoming = presetEnrichment.quantityIncomingHeader
+        ? parseQuantity(row[presetEnrichment.quantityIncomingHeader] ?? "")
+        : 0;
+      const outgoing = presetEnrichment.quantityOutgoingHeader
+        ? parseQuantity(row[presetEnrichment.quantityOutgoingHeader] ?? "")
+        : 0;
+      return Math.max(0, incoming - outgoing);
+    }
+    return parseQuantity(readMappedValue(row, mapping, "quantity"));
+  })();
+
+  const categoryPath = categoryPathFromLabel(rawCategory);
 
   return {
     sku,
     name,
-    categoryPath: categoryPathFromLabel(rawCategory),
+    ...(categoryPath ? { categoryPath } : {}),
     brandName,
     supplierName: normalizeSupplierName(readMappedValue(row, mapping, "supplierName")),
-    barcodes: (() => {
-      const barcode = normalizeBarcode(readMappedValue(row, mapping, "barcode"));
-      return barcode ? [barcode] : [];
-    })(),
+    barcodes,
     warehouseLocation: normalizeWarehouseLocation(readMappedValue(row, mapping, "warehouseLocation")),
-    quantity: parseQuantity(readMappedValue(row, mapping, "quantity")),
-    purchasePrice: parseNumeric(readMappedValue(row, mapping, "purchasePrice")),
-    sellPrice: parseNumeric(readMappedValue(row, mapping, "sellPrice")),
-    unit: readMappedValue(row, mapping, "unit") || "шт",
-    lowStockThreshold: parseNumeric(readMappedValue(row, mapping, "lowStockThreshold")),
+    quantity,
+    ...(aiOverrides?.purchasePrice != null
+      ? { purchasePrice: aiOverrides.purchasePrice }
+      : parseNumeric(readMappedValue(row, mapping, "purchasePrice")) != null
+        ? { purchasePrice: parseNumeric(readMappedValue(row, mapping, "purchasePrice")) }
+        : {}),
+    ...(aiOverrides?.sellPrice != null
+      ? { sellPrice: aiOverrides.sellPrice }
+      : parseNumeric(readMappedValue(row, mapping, "sellPrice")) != null
+        ? { sellPrice: parseNumeric(readMappedValue(row, mapping, "sellPrice")) }
+        : {}),
+    unit: normalizeUnit(readMappedValue(row, mapping, "unit")),
+    ...(parseNumeric(readMappedValue(row, mapping, "lowStockThreshold")) != null
+      ? { lowStockThreshold: parseNumeric(readMappedValue(row, mapping, "lowStockThreshold")) }
+      : {}),
   };
 }

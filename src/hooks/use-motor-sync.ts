@@ -5,11 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import { initialMotorSyncState, MotorSyncState } from "@/domain/motor-sync";
 import { MotorEntity } from "@/domain/motor";
 import { MotorRepository } from "@/infrastructure/firestore/motor-repository";
-import {
-  readMotorSyncMeta,
-  writeMotorSyncMeta,
-} from "@/infrastructure/firestore/motor-sync-meta-repository";
-import { prepareSyncAuth } from "@/lib/auth/prepare-sync-auth";
+import { writeMotorSyncMeta } from "@/infrastructure/firestore/motor-sync-meta-repository";
 import { mapAuthError } from "@/lib/user-copy";
 
 type UseMotorSyncParams = {
@@ -52,22 +48,20 @@ export function useMotorSync({
 
   const syncNow = useCallback(async () => {
     if (!uid || !companyId) {
-      throw new Error("Синхронизация недоступна: войдите и подключите компанию.");
+      throw new Error("Сохранение недоступно: войдите и выберите компанию.");
     }
     setState((current) => ({ ...current, status: "syncing", errorMessage: null }));
     try {
-      await prepareSyncAuth(uid);
       await flushLocalSave();
       if (localDirty) {
-        await writeMotorSyncMeta(uid, { lastPushedAt: new Date(), companyId });
+        void writeMotorSyncMeta(uid, { lastPushedAt: new Date(), companyId }).catch(() => undefined);
       }
-      const meta = await readMotorSyncMeta(uid);
       onRemoteApplied();
       setState({
         status: "idle",
         localDirty: false,
         remotePending: false,
-        lastSyncedAt: meta?.lastPulledAt ?? meta?.lastPushedAt ?? new Date(),
+        lastSyncedAt: new Date(),
         errorMessage: null,
       });
     } catch (error) {
@@ -82,7 +76,7 @@ export function useMotorSync({
 
   const markSynced = useCallback(async () => {
     if (!uid) return;
-    await writeMotorSyncMeta(uid, { lastPulledAt: new Date(), companyId });
+    void writeMotorSyncMeta(uid, { lastPulledAt: new Date(), companyId }).catch(() => undefined);
     setState((current) => ({
       ...current,
       lastSyncedAt: new Date(),

@@ -1,5 +1,7 @@
 import { AccountingPreferences } from "@/hooks/use-accounting-preferences";
 
+import { operationCategoryLabel } from "@/lib/accounting/labels";
+
 import { ACCOUNTING_CATEGORY_SUGGESTIONS } from "./accounting-categories";
 
 export function buildAccountingCategorySuggestions(
@@ -35,5 +37,9 @@ export function buildAccountingCategorySuggestions(
 export function filterAccountingCategorySuggestions(prefix: string, suggestions: string[]): string[] {
   const query = prefix.trim().toLowerCase();
   if (!query) return suggestions;
-  return suggestions.filter((item) => item.toLowerCase().includes(query));
+  return suggestions.filter(
+    (item) =>
+      item.toLowerCase().includes(query) ||
+      operationCategoryLabel(item).toLowerCase().includes(query),
+  );
 }

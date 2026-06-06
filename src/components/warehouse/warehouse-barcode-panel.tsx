@@ -55,7 +55,7 @@ export function WarehouseBarcodePanel({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Сканер / поиск по штрихкоду</DialogTitle>
-          <DialogDescription>Введите или отсканируйте штрихкод / SKU</DialogDescription>
+          <DialogDescription>Введите или отсканируйте штрихкод или артикул</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4">
           <div className="grid gap-2">
@@ -65,7 +65,7 @@ export function WarehouseBarcodePanel({
               autoFocus
               value={barcode}
               onChange={(event) => setBarcode(event.target.value)}
-              placeholder="EAN / SKU / QR"
+              placeholder="Штрихкод / артикул"
             />
           </div>
           {result ? (

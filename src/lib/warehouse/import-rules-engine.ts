@@ -9,18 +9,18 @@ import {
 } from "@/lib/warehouse/warehouse-search";
 
 const HEADER_ALIASES: Record<string, string[]> = {
-  sku: ["sku", "артикул", "код", "article"],
+  sku: ["sku", "артикул", "article", "код номенклатуры", "оригинальный номер"],
   name: ["name", "название", "наименование", "товар"],
   category: ["category", "категория", "группа"],
-  brandName: ["brand", "бренд", "марка"],
+  brandName: ["brand", "бренд", "марка", "производитель"],
   supplierName: ["supplier", "поставщик", "vendor"],
   barcode: ["barcode", "штрихкод", "ean", "upc"],
   warehouseLocation: ["location", "место", "ячейка", "полка", "склад"],
-  quantity: ["qty", "quantity", "кол-во", "количество", "остаток"],
-  purchasePrice: ["purchase", "закупка", "цена закупки", "cost"],
-  sellPrice: ["sell", "продажа", "цена продажи", "price"],
-  unit: ["unit", "ед", "единица"],
-  lowStockThreshold: ["min", "minimum", "мин", "мин. запас", "порог"],
+  quantity: ["qty", "quantity", "кол-во", "количество", "остаток", "приход"],
+  purchasePrice: ["purchase", "закупка", "цена закупки", "cost", "цена прихода"],
+  sellPrice: ["sell", "продажа", "цена продажи", "price", "цена: цена продажи"],
+  unit: ["unit", "ед", "единица", "единица измерения"],
+  lowStockThreshold: ["minimum", "мин. запас", "минимальный остаток", "порог"],
 };
 
 export type ImportDiffAction = "create" | "update" | "skip";

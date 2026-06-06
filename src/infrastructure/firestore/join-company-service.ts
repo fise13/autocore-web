@@ -10,11 +10,11 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
-import { FirebaseError } from "firebase/app";
 
 import { UserRole, USER_ROLES } from "@/domain/user";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 import { canSwitchCompanyViaInvite } from "@/lib/company-id";
+import { mapAuthError } from "@/lib/user-copy";
 
 function normalizeRole(role: string): UserRole {
   const normalized = role === "viewer" ? "employee" : role;
@@ -37,13 +37,57 @@ function normalizeInviteCode(input: string): string {
 }
 
 function rethrowStep(step: string, error: unknown): never {
-  if (error instanceof FirebaseError) {
-    throw new Error(`${step} (${error.code})`);
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code?: string }).code)
+      : "";
+  if (code === "permission-denied") {
+    throw new Error(step);
   }
-  if (error instanceof Error) {
-    throw new Error(`${step}: ${error.message}`);
+  const friendly = mapAuthError(error, { surface: "onboarding" });
+  if (friendly && friendly !== step && !friendly.includes("Не удалось выполнить действие")) {
+    throw new Error(friendly);
   }
   throw new Error(step);
+}
+
+async function ensureUserProfile(
+  userRef: ReturnType<typeof doc>,
+  userData: Record<string, unknown>,
+): Promise<void> {
+  const snap = await getDoc(userRef);
+  if (snap.exists()) {
+    return;
+  }
+  await setDoc(userRef, {
+    name: String(userData.name ?? ""),
+    email: String(userData.email ?? ""),
+    role: "employee",
+    companyId: "",
+    permissions: [],
+    isActive: true,
+    onboardingCompleted: true,
+    createdAt: serverTimestamp(),
+  });
+}
+
+async function linkUserProfile(
+  userRef: ReturnType<typeof doc>,
+  companyId: string,
+  role: UserRole,
+): Promise<void> {
+  const payload = {
+    companyId,
+    role,
+    permissions: [] as string[],
+    isActive: true,
+  };
+  const snap = await getDoc(userRef);
+  if (snap.exists()) {
+    await updateDoc(userRef, payload);
+    return;
+  }
+  await setDoc(userRef, payload, { merge: true });
 }
 
 export async function joinCompanyWithInviteCode(uid: string, rawCode: string): Promise<void> {
@@ -70,7 +114,8 @@ export async function joinCompanyWithInviteCode(uid: string, rawCode: string): P
 
   const userRef = doc(db, "users", uid);
   const userSnap = await getDoc(userRef);
-  const userData = userSnap.data() ?? {};
+  const userData = (userSnap.data() ?? {}) as Record<string, unknown>;
+  await ensureUserProfile(userRef, userData);
   const existingCompanyId = String(userData.companyId ?? "").trim();
 
   if (existingCompanyId === companyId) {
@@ -127,12 +172,7 @@ export async function joinCompanyWithInviteCode(uid: string, rawCode: string): P
   }
 
   try {
-    await updateDoc(userRef, {
-      companyId,
-      role,
-      permissions: [],
-      isActive: true,
-    });
+    await linkUserProfile(userRef, companyId, role);
   } catch (error) {
     rethrowStep("Не удалось привязать аккаунт к компании", error);
   }

@@ -43,7 +43,7 @@ export default function SpecificCategoryPage() {
       <div className="mx-auto flex max-w-lg flex-col gap-2 py-16 text-center">
         <h1 className="text-lg font-semibold">Категория не найдена</h1>
         <p className="text-sm text-muted-foreground">
-          Возможно, данные ещё не синхронизированы или категория была удалена.
+          Возможно, категория ещё не загружена или была удалена.
         </p>
       </div>
     );

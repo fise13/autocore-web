@@ -3,14 +3,13 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
-import { AppleIcon, GoogleIcon } from "@/components/auth/auth-brand-icons";
+import { GoogleIcon } from "@/components/auth/auth-brand-icons";
 import { useAuth } from "@/components/providers/auth-provider";
 import { AppLogo } from "@/components/brand/app-logo";
 import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { prepareAppleSignInSession, preloadAppleJs } from "@/lib/auth/apple-js-sign-in";
 import { logAuthDebug } from "@/lib/auth/auth-debug";
 import { getFirebaseAuth } from "@/infrastructure/firebase/client";
 import { mapAuthError, userCopy } from "@/lib/user-copy";
@@ -18,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 type LoginStage = "entry" | "signIn" | "signUp";
 type AuthPhase = "idle" | "submitting" | "completing";
-type PendingAuth = "google" | "apple" | "email" | null;
+type PendingAuth = "google" | "email" | null;
 
 type LoginScreenProps = {
   onAuthenticated?: () => void;
@@ -26,7 +25,7 @@ type LoginScreenProps = {
 };
 
 export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScreenProps = {}) {
-  const { signInWithApple, signInWithEmail, signInWithGoogle, signUpWithEmail } = useAuth();
+  const { signInWithEmail, signInWithGoogle, signUpWithEmail } = useAuth();
   const [stage, setStage] = useState<LoginStage>("entry");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,11 +34,6 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
   const [pendingAuth, setPendingAuth] = useState<PendingAuth>(null);
 
   const isBusy = authPhase !== "idle";
-
-  useEffect(() => {
-    void preloadAppleJs();
-    void prepareAppleSignInSession();
-  }, []);
 
   useEffect(() => {
     if (bootstrapError) {
@@ -69,7 +63,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
       logAuthDebug("login-screen", "runAuth error", e);
       setAuthPhase("idle");
       setPendingAuth(null);
-      setError(e instanceof Error ? e.message : mapAuthError(e));
+      setError(mapAuthError(e));
     }
   }
 
@@ -127,19 +121,6 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
             )}
             {userCopy.auth.signInGoogle}
           </button>
-          <button
-            type="button"
-            disabled={isBusy}
-            onClick={() => runAuth(() => signInWithApple(), "apple")}
-            className="auth-oauth-button auth-oauth-button-apple animate-autocore-auth-stagger motion-reduce:animate-none [animation-delay:150ms]"
-          >
-            {pendingAuth === "apple" ? (
-              <Loader2 className="size-5 animate-spin text-white/70" aria-hidden="true" />
-            ) : (
-              <AppleIcon className="size-5" />
-            )}
-            {userCopy.auth.signInApple}
-          </button>
           <Button
             type="button"
             className="h-11 w-full animate-autocore-auth-stagger motion-reduce:animate-none [animation-delay:210ms]"
@@ -166,7 +147,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
             onSubmit={onSubmit}
           >
             <div className="space-y-1">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{userCopy.account.emailLabel}</Label>
               <Input
                 id="email"
                 type="email"

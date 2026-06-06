@@ -162,7 +162,7 @@ export async function ensureDefaultCompany(ownerId: string) {
     companyDocReady = true;
   } catch (error) {
     if (!(error instanceof FirebaseError) || error.code !== "permission-denied") {
-      rethrowStep("Не удалось создать компанию «Моя бухгалтерия»", error);
+      rethrowStep("Не удалось создать рабочее пространство", error);
     }
   }
 
@@ -180,6 +180,6 @@ export async function ensureDefaultCompany(ownerId: string) {
     ) {
       throw new Error(`${userCopy.company.defaultTaken} Или создайте новую команду ниже.`);
     }
-    rethrowStep("Не удалось подключить «Мою бухгалтерию»", error);
+    rethrowStep("Не удалось подключить данные", error);
   }
 }

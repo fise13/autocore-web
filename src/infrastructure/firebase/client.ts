@@ -7,8 +7,9 @@ import {
   initializeAuth,
   setPersistence,
 } from "firebase/auth";
-import { Functions, getFunctions } from "firebase/functions";
 import { Firestore, getFirestore } from "firebase/firestore";
+import { FirebaseStorage, getStorage } from "firebase/storage";
+import { Functions, getFunctions } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -42,6 +43,7 @@ let appInstance: FirebaseApp | null = null;
 let authInstance: Auth | null = null;
 let dbInstance: Firestore | null = null;
 let functionsInstance: Functions | null = null;
+let storageInstance: FirebaseStorage | null = null;
 
 export function getFirebaseApp(): FirebaseApp {
   if (appInstance) return appInstance;
@@ -84,4 +86,10 @@ export function getFirebaseFunctions(): Functions {
   if (functionsInstance) return functionsInstance;
   functionsInstance = getFunctions(getFirebaseApp());
   return functionsInstance;
+}
+
+export function getFirebaseStorage(): FirebaseStorage {
+  if (storageInstance) return storageInstance;
+  storageInstance = getStorage(getFirebaseApp());
+  return storageInstance;
 }

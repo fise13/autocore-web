@@ -6,6 +6,7 @@ import {
 import { parseExcelDateValue } from "@/lib/motors/excel-dates";
 import { SheetImportConfig, effectiveBrand, effectiveEngineCode } from "@/lib/motors/excel-sheet-config";
 import { ExcelSheetData, ParsedImportMotorRow } from "@/lib/motors/excel-types";
+import { coerceBrandEnginePair } from "@/lib/motors/import/brand-engine-intelligence";
 
 function getCell(row: string[], index: number | undefined): string {
   if (index == null || index < 0 || index >= row.length) return "";
@@ -57,6 +58,13 @@ export function buildEngineRowsFromSheet(
       soldDate = arrivalDate ?? new Date();
     }
 
+    const brandFromRow = getCell(row, columnIndexFor(mapping, "brandName"));
+    const engineFromRow = getCell(row, columnIndexFor(mapping, "engineCode"));
+    const coerced = coerceBrandEnginePair(brandFromRow || sheetBrand, engineFromRow || sheetEngine, {
+      serial: serialCode,
+      sheetName: sheet.name,
+    });
+
     rows.push({
       sheetName: sheet.name,
       serialCode,
@@ -66,8 +74,8 @@ export function buildEngineRowsFromSheet(
       transmission: getCell(row, columnIndexFor(mapping, "transmission")),
       arrivalDate,
       soldDate,
-      brandName: sheetBrand || "Cloud",
-      engineCode: sheetEngine || "—",
+      brandName: coerced.brand || "Не указан",
+      engineCode: coerced.engine || "—",
     });
   }
 

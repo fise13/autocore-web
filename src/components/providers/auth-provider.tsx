@@ -33,10 +33,10 @@ import {
   ensureDefaultCompany as assignDefaultCompany,
 } from "@/infrastructure/firestore/company-service";
 import { joinCompanyWithInviteCode } from "@/infrastructure/firestore/join-company-service";
-import { ensureRbacBootstrap } from "@/infrastructure/firestore/rbac-bootstrap";
 import { signInWithAppleLikeMacOS } from "@/lib/auth/sign-in-with-apple-credential";
 import { signInWithAppleWeb } from "@/lib/auth/sign-in-with-apple-web";
 import { mergeProfileWithEmployee, EmployeeProfileSlice } from "@/lib/auth/resolve-effective-profile";
+import { markSyncAuthPrepared, prepareSyncAuth, resetSyncAuthCache } from "@/lib/auth/prepare-sync-auth";
 import { mapAuthError } from "@/lib/user-copy";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
 import {
@@ -77,6 +77,8 @@ type AuthProviderProps = {
 type UserDoc = {
   email: string;
   name?: string;
+  phone?: string;
+  photoURL?: string;
   companyId?: string;
   role?: UserRole;
   permissions?: Permission[];
@@ -87,10 +89,14 @@ type UserDoc = {
 const defaultRole: UserRole = "employee";
 
 function mapUserDoc(uid: string, user: User, userDoc: UserDoc | null): UserEntity {
+  const docPhotoURL = typeof userDoc?.photoURL === "string" ? userDoc.photoURL.trim() : "";
+  const authPhotoURL = user.photoURL?.trim() ?? "";
   return {
     id: uid,
     email: userDoc?.email ?? user.email ?? "",
     displayName: userDoc?.name ?? user.displayName,
+    phone: typeof userDoc?.phone === "string" ? userDoc.phone.trim() || null : null,
+    photoURL: docPhotoURL || authPhotoURL || null,
     role: userDoc?.role ?? defaultRole,
     companyId: userDoc?.companyId ?? null,
     permissions: Array.isArray(userDoc?.permissions) ? userDoc?.permissions : [],
@@ -178,7 +184,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         companyId: "",
         permissions: [],
         isActive: true,
-        onboardingCompleted: false,
+        onboardingCompleted: true,
         createdAt: serverTimestamp(),
       });
       return;
@@ -202,69 +208,56 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
     const auth = getFirebaseAuth();
     const db = getFirestoreDb();
-    if (!auth.currentUser) {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
       setProfile(null);
       return;
     }
-    const currentUser = auth.currentUser;
+
     await upsertDefaultUserDoc(currentUser);
 
     const userRef = doc(db, "users", currentUser.uid);
     const snap = await getDoc(userRef);
     const userDoc = snap.exists() ? (snap.data() as UserDoc) : null;
+    const companyId = userDoc?.companyId?.trim();
 
-    if (!userDoc?.companyId?.trim()) {
+    if (!companyId) {
       setProfile(mapUserDoc(currentUser.uid, currentUser, userDoc));
+      markSyncAuthPrepared(currentUser.uid);
       return;
     }
 
     try {
-      await ensureRbacBootstrap(currentUser.uid);
+      await prepareSyncAuth(currentUser.uid);
     } catch (error) {
-      console.error("Failed to ensure RBAC bootstrap", error);
+      console.warn("Auth prep skipped during profile refresh:", error);
     }
 
-    try {
-      await currentUser.getIdToken(true);
-    } catch (error) {
-      console.error("Failed to refresh auth token", error);
-    }
+    const companyRef = doc(db, "companies", companyId);
+    const employeeRef = doc(db, "companies", companyId, "employees", currentUser.uid);
 
-    const refreshedSnap = await getDoc(userRef);
-    const refreshedDoc = refreshedSnap.exists() ? (refreshedSnap.data() as UserDoc) : userDoc;
-    const companyId = refreshedDoc?.companyId?.trim();
-    let employeeDoc: EmployeeProfileSlice | null = null;
+    const [companySnap, employeeSnap] = await Promise.all([getDoc(companyRef), getDoc(employeeRef)]);
+
     let isCompanyOwner = false;
-
-    if (companyId) {
-      try {
-        const companySnap = await getDoc(doc(db, "companies", companyId));
-        if (companySnap.exists()) {
-          const ownerId = (companySnap.data() as { ownerId?: string }).ownerId;
-          isCompanyOwner = ownerId === currentUser.uid;
-        }
-      } catch (error) {
-        console.error("Failed to load company owner for RBAC", error);
-      }
-
-      try {
-        const employeeSnap = await getDoc(doc(db, "companies", companyId, "employees", currentUser.uid));
-        if (employeeSnap.exists()) {
-          const data = employeeSnap.data() as Record<string, unknown>;
-          employeeDoc = {
-            role: data.role as UserRole | undefined,
-            permissions: Array.isArray(data.permissions) ? (data.permissions as Permission[]) : undefined,
-            isActive: typeof data.isActive === "boolean" ? data.isActive : undefined,
-            fullName: typeof data.fullName === "string" ? data.fullName : undefined,
-          };
-        }
-      } catch (error) {
-        console.error("Failed to load employee profile for RBAC", error);
-      }
+    if (companySnap.exists()) {
+      const ownerId = (companySnap.data() as { ownerId?: string }).ownerId;
+      isCompanyOwner = ownerId === currentUser.uid;
     }
 
-    const mapped = mapUserDoc(currentUser.uid, currentUser, refreshedDoc);
+    let employeeDoc: EmployeeProfileSlice | null = null;
+    if (employeeSnap.exists()) {
+      const data = employeeSnap.data() as Record<string, unknown>;
+      employeeDoc = {
+        role: data.role as UserRole | undefined,
+        permissions: Array.isArray(data.permissions) ? (data.permissions as Permission[]) : undefined,
+        isActive: typeof data.isActive === "boolean" ? data.isActive : undefined,
+        fullName: typeof data.fullName === "string" ? data.fullName : undefined,
+      };
+    }
+
+    const mapped = mapUserDoc(currentUser.uid, currentUser, userDoc);
     setProfile({ ...mergeProfileWithEmployee(mapped, employeeDoc), isCompanyOwner });
+    markSyncAuthPrepared(currentUser.uid);
   }, [upsertDefaultUserDoc]);
 
   const refreshProfileRef = useRef(refreshProfile);
@@ -281,24 +274,37 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const auth = getFirebaseAuth();
     logAuthDebug("auth-provider", "mount auth listener");
 
-    const unsubscribe = onAuthStateChanged(auth, async (nextUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
       logAuthDebug("auth-provider", "onAuthStateChanged", describeFirebaseUser(nextUser));
       setFirebaseUser(nextUser);
       if (!nextUser) {
         setProfile(null);
         setIsLoading(false);
+        resetSyncAuthCache();
         return;
       }
 
-      try {
-        await refreshProfileRef.current();
-      } catch (error) {
-        logAuthDebug("auth-provider", "onAuthStateChanged refreshProfile error", error);
-        console.error("Failed to refresh profile after auth", error);
-        setProfile(mapUserDoc(nextUser.uid, nextUser, null));
-      } finally {
-        setIsLoading(false);
-      }
+      void (async () => {
+        try {
+          await upsertDefaultUserDoc(nextUser);
+          const db = getFirestoreDb();
+          const snap = await getDoc(doc(db, "users", nextUser.uid));
+          const userDoc = snap.exists() ? (snap.data() as UserDoc) : null;
+          setProfile(mapUserDoc(nextUser.uid, nextUser, userDoc));
+        } catch (error) {
+          logAuthDebug("auth-provider", "fast profile load error", error);
+          setProfile(mapUserDoc(nextUser.uid, nextUser, null));
+        } finally {
+          setIsLoading(false);
+        }
+
+        try {
+          await refreshProfileRef.current();
+        } catch (error) {
+          logAuthDebug("auth-provider", "onAuthStateChanged refreshProfile error", error);
+          console.error("Failed to refresh profile after auth", error);
+        }
+      })();
     });
 
     void auth.authStateReady().then(() => {
@@ -357,15 +363,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
       },
       async signInWithEmail(email, password) {
         if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));
-        const auth = getFirebaseAuth();
-        const result = await signInWithEmailAndPassword(auth, email, password);
-        await finalizeSignedInUser(auth, result.user, refreshProfile, setFirebaseUser, setIsLoading);
+        try {
+          const auth = getFirebaseAuth();
+          const result = await signInWithEmailAndPassword(auth, email, password);
+          await finalizeSignedInUser(auth, result.user, refreshProfile, setFirebaseUser, setIsLoading);
+        } catch (error) {
+          throw new Error(mapAuthError(error));
+        }
       },
       async signUpWithEmail(email, password) {
         if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));
-        const auth = getFirebaseAuth();
-        const result = await createUserWithEmailAndPassword(auth, email, password);
-        await finalizeSignedInUser(auth, result.user, refreshProfile, setFirebaseUser, setIsLoading);
+        try {
+          const auth = getFirebaseAuth();
+          const result = await createUserWithEmailAndPassword(auth, email, password);
+          await finalizeSignedInUser(auth, result.user, refreshProfile, setFirebaseUser, setIsLoading);
+        } catch (error) {
+          throw new Error(mapAuthError(error));
+        }
       },
       async changePassword(currentPassword, newPassword) {
         if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));
@@ -406,7 +420,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       async logout() {
         if (!isFirebaseReady) return;
         const auth = getFirebaseAuth();
+        const uid = auth.currentUser?.uid;
         await signOut(auth);
+        resetSyncAuthCache(uid);
         router.push("/login");
       },
       async createCompany(name) {
@@ -414,7 +430,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const auth = getFirebaseAuth();
         if (!auth.currentUser) throw new Error(mapAuthError(new Error("auth/invalid-credential")));
         await createCompanyRecord(auth.currentUser.uid, name);
-        await auth.currentUser.getIdToken(true);
+        await prepareSyncAuth(auth.currentUser.uid, { force: true });
         await refreshProfile();
       },
       async joinCompanyWithInvite(code) {
@@ -423,12 +439,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (!auth.currentUser) throw new Error(mapAuthError(new Error("auth/invalid-credential")));
 
         await joinCompanyWithInviteCode(auth.currentUser.uid, code);
-
-        try {
-          await auth.currentUser.getIdToken(true);
-        } catch (error) {
-          console.error("Failed to refresh auth token after join", error);
-        }
+        await prepareSyncAuth(auth.currentUser.uid, { force: true });
         await refreshProfile();
       },
       async ensureDefaultCompany() {
@@ -436,7 +447,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const auth = getFirebaseAuth();
         if (!auth.currentUser) throw new Error(mapAuthError(new Error("auth/invalid-credential")));
         await assignDefaultCompany(auth.currentUser.uid);
-        await auth.currentUser.getIdToken(true);
+        await prepareSyncAuth(auth.currentUser.uid, { force: true });
         await refreshProfile();
       },
       refreshProfile,

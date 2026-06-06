@@ -1,3 +1,16 @@
+export const MOTOR_STATUSES = ["available", "reserved", "installed", "sold"] as const;
+
+export type MotorStatus = (typeof MOTOR_STATUSES)[number];
+
+export type MotorHistoryEntry = {
+  id: string;
+  type: "reserved" | "released" | "installed" | "sold";
+  workOrderId?: string;
+  vehicleId?: string;
+  createdAt: Date;
+  actorUserId?: string;
+};
+
 export type MotorEntity = {
   id: string;
   companyId: string;
@@ -15,6 +28,12 @@ export type MotorEntity = {
   updatedAt?: Date;
   brandName?: string;
   engineCode?: string;
+  status?: MotorStatus;
+  reservedForWorkOrderId?: string | null;
+  installedOnVehicleId?: string | null;
+  installedWorkOrderId?: string | null;
+  warrantyId?: string | null;
+  motorHistory?: MotorHistoryEntry[];
 };
 
 export type UpsertMotorInput = {
@@ -31,4 +50,9 @@ export type UpsertMotorInput = {
   deletedAt?: Date | null;
   brandName?: string;
   engineCode?: string;
+  status?: MotorStatus;
+  reservedForWorkOrderId?: string | null;
+  installedOnVehicleId?: string | null;
+  installedWorkOrderId?: string | null;
+  warrantyId?: string | null;
 };

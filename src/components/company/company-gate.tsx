@@ -25,7 +25,7 @@ export function CompanyGate({ children }: CompanyGateProps) {
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (isLoading || profile === null) {
+  if (isLoading || !profile) {
     return <AppLoadingScreen message={userCopy.auth.completing} />;
   }
 
@@ -98,7 +98,7 @@ export function CompanyGate({ children }: CompanyGateProps) {
               className="w-full"
               disabled={isSubmitting}
               onClick={() =>
-                runAction(() => ensureDefaultCompany(), "Подключение к «Моей бухгалтерии»…")
+                runAction(() => ensureDefaultCompany(), "Подключение данных…")
               }
             >
               {userCopy.company.macButton}

@@ -45,7 +45,7 @@ export function SellMotorDialog({
       title={mode === "sell" ? "Продажа мотора" : "Возврат мотора"}
       description={`Мотор ${motor.serialCode}. Будет создана финансовая операция.`}
       defaultComment={
-        mode === "sell" ? `Продажа мотора ${motor.serialCode}` : `Возврат мотора ${motor.serialCode}`
+        mode === "sell" ? `Продажа · ${motor.serialCode}` : `Возврат · ${motor.serialCode}`
       }
       onOpenChange={onOpenChange}
       onConfirm={onConfirm}

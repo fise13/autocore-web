@@ -7,6 +7,7 @@ import { subDays } from "date-fns";
 import { FinancialOperation } from "@/domain/financial-operation";
 import { McModuleHeader } from "@/components/mission-control/mc-module-header";
 import { buildAdvanceSnapshot } from "@/lib/accounting/advances";
+import { operationCategoryLabel, operationTypeLabel } from "@/lib/accounting/labels";
 import { cn } from "@/lib/utils";
 
 type AccountingModuleProps = {
@@ -52,17 +53,11 @@ export const AccountingModule = memo(function AccountingModule({
 
   return (
     <article className="mc-module-card">
-      <McModuleHeader
-        icon={Receipt}
-        title="Бухгалтерия"
-        description="Операции, поток и авансы"
-        href="/accounting"
-        accent="blue"
-      />
-      <div className="mc-module-body space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <StatChip icon={TrendingUp} label="Доход сегодня" value={todayIncome} tone="text-emerald-500" />
-          <StatChip icon={TrendingDown} label="Расход сегодня" value={todayExpense} tone="text-red-400" />
+      <McModuleHeader icon={Receipt} title="Бухгалтерия" href="/accounting" accent="blue" />
+      <div className="mc-module-body space-y-3">
+        <div className="grid grid-cols-2 gap-2.5">
+          <StatChip icon={TrendingUp} label="Доход" value={todayIncome} tone="text-emerald-500" />
+          <StatChip icon={TrendingDown} label="Расход" value={todayExpense} tone="text-red-400" />
         </div>
 
         <div>
@@ -88,8 +83,10 @@ export const AccountingModule = memo(function AccountingModule({
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="mc-section-label">Последние операции</p>
-            <span className="text-xs text-muted-foreground">Авансов: {advances.totalCount}</span>
+            <p className="mc-section-label">Операции</p>
+            {advances.totalCount > 0 ? (
+              <span className="text-xs text-muted-foreground">Авансов: {advances.totalCount}</span>
+            ) : null}
           </div>
           {isLoading ? (
             <div className="space-y-2">
@@ -103,8 +100,12 @@ export const AccountingModule = memo(function AccountingModule({
             recent.map((op) => (
               <div key={op.id} className="mc-list-row flex items-center justify-between gap-3 text-sm">
                 <div className="min-w-0">
-                  <p className="truncate font-medium">{op.category || op.type}</p>
-                  <p className="truncate text-xs text-muted-foreground">{op.comment || op.description || "—"}</p>
+                  <p className="truncate font-medium">
+                    {op.category ? operationCategoryLabel(op.category) : operationTypeLabel(op.type)}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {op.description || op.comment || "—"}
+                  </p>
                 </div>
                 <span className={cn("shrink-0 tabular-nums font-medium", op.type === "expense" ? "text-red-400" : "text-emerald-400")}>
                   {op.type === "expense" ? "−" : "+"}

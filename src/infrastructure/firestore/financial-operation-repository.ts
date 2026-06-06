@@ -71,10 +71,12 @@ function mapOperation(id: string, data: Record<string, unknown>): FinancialOpera
     cashReceived: data.cashReceived == null ? null : readAmount(data.cashReceived),
     changeGiven: data.changeGiven == null ? null : readAmount(data.changeGiven),
     relatedMotorID: data.relatedMotorID == null ? null : Number(data.relatedMotorID),
+    relatedMotorId: typeof data.relatedMotorId === "string" ? data.relatedMotorId : null,
     relatedInventoryItemId:
       typeof data.relatedInventoryItemId === "string" ? data.relatedInventoryItemId : null,
     relatedMovementId: typeof data.relatedMovementId === "string" ? data.relatedMovementId : null,
     relatedWarehouseId: typeof data.relatedWarehouseId === "string" ? data.relatedWarehouseId : null,
+    relatedWorkOrderId: typeof data.relatedWorkOrderId === "string" ? data.relatedWorkOrderId : null,
     costBasis: data.costBasis == null ? null : readAmount(data.costBasis),
     createdAt,
     createdByUserId: String(data.createdByUserId ?? ""),

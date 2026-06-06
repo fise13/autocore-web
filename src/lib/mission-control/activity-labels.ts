@@ -41,6 +41,13 @@ const CATALOG: Record<string, ActivityLabel> = {
   "accounting.operation_updated": { label: "изменил операцию", module: "accounting", severity: "info" },
   "accounting.operation_deleted": { label: "удалил операцию", module: "accounting", severity: "warning" },
   "accounting.operations_cleared": { label: "очистил бухгалтерию", module: "accounting", severity: "critical" },
+  "work_order.created": { label: "создал заказ-наряд", module: "work_orders", severity: "info" },
+  "work_order.status.confirmed": { label: "подтвердил заказ-наряд", module: "work_orders", severity: "info" },
+  "work_order.status.in_progress": { label: "запустил заказ-наряд", module: "work_orders", severity: "info" },
+  "work_order.status.waiting_parts": { label: "перевёл заказ в ожидание запчастей", module: "work_orders", severity: "info" },
+  "work_order.status.completed": { label: "завершил заказ-наряд", module: "work_orders", severity: "info" },
+  "work_order.status.delivered": { label: "выдал автомобиль клиенту", module: "work_orders", severity: "info" },
+  "work_order.status.cancelled": { label: "отменил заказ-наряд", module: "work_orders", severity: "warning" },
   "employee.invited": { label: "пригласил сотрудника", module: "employees", severity: "info" },
   "employee.joined_by_invite": { label: "присоединился по приглашению", module: "employees", severity: "info" },
   "employee.role_changed": { label: "изменил роль сотрудника", module: "employees", severity: "warning" },
@@ -50,7 +57,7 @@ const CATALOG: Record<string, ActivityLabel> = {
   "employee.removed": { label: "удалил сотрудника", module: "employees", severity: "critical" },
   "roles.seeded": { label: "инициализировал роли", module: "employees", severity: "info" },
   "settings.data_cleanup": { label: "выполнил очистку данных", module: "settings", severity: "warning" },
-  "system.sync_completed": { label: "синхронизировал данные", module: "system", severity: "info" },
+  "system.sync_completed": { label: "обновил данные", module: "system", severity: "info" },
 };
 
 export function resolveActivityLabel(action: string): ActivityLabel {
@@ -58,9 +65,11 @@ export function resolveActivityLabel(action: string): ActivityLabel {
   if (known) return known;
 
   const prefix = action.split(".")[0];
-  const module: ActivityModule =
+  const activityModule: ActivityModule =
     prefix === "accounting"
       ? "accounting"
+      : prefix === "work_order"
+        ? "work_orders"
       : prefix === "employee" || prefix === "roles"
         ? "employees"
         : prefix === "settings"
@@ -71,7 +80,7 @@ export function resolveActivityLabel(action: string): ActivityLabel {
 
   return {
     label: action.replace(/\./g, " · "),
-    module,
+    module: activityModule,
     severity: "info",
   };
 }
@@ -84,6 +93,8 @@ export function moduleLabel(module: ActivityModule): string {
       return "Бухгалтерия";
     case "employees":
       return "Команда";
+    case "work_orders":
+      return "Заказ-наряды";
     case "settings":
       return "Настройки";
     case "system":

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Cloud, Plus, Receipt } from "lucide-react";
 
 import { calculateCashBalanceUseCase } from "@/application/use-cases/calculate-cash-balance";
@@ -20,6 +21,8 @@ import {
   type AdvanceDirection,
 } from "@/lib/accounting/advances";
 import { OperationsTable } from "@/components/accounting/operations-table";
+import { MotorSaleDocumentsSheet } from "@/components/accounting/motor-sale-documents-sheet";
+import { PayrollTable } from "@/components/accounting/payroll-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AnimatedTabsPanel } from "@/components/ui/animated-tabs-panel";
@@ -27,32 +30,50 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CreateFinancialOperationInput, OperationType } from "@/domain/financial-operation";
+import { CreateFinancialOperationInput, FinancialOperation, OperationType } from "@/domain/financial-operation";
+import { PayrollTransactionStatus } from "@/domain/payroll-transaction";
 import { useAccountingPreferences } from "@/hooks/use-accounting-preferences";
 import { useDeepAction } from "@/hooks/use-deep-action";
 import { userCopy } from "@/lib/user-copy";
 import { useOperationsRealtime } from "@/hooks/use-operations-realtime";
+import { usePayrollTransactionsRealtime } from "@/hooks/use-payroll-transactions-realtime";
+import { useEmployeesRealtime } from "@/hooks/use-employees-realtime";
+import { useWorkOrdersRealtime } from "@/hooks/use-work-orders-realtime";
+import { useMotorsRealtime } from "@/hooks/use-motors-realtime";
 import { can } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { createFinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
+import { createPayrollTransactionRepository } from "@/infrastructure/firestore/payroll-transaction-repository";
+import { createWorkOrderRepository } from "@/infrastructure/firestore/work-order-repository";
+import { createMotorRepository } from "@/infrastructure/firestore/motor-repository";
 
 const repository = createFinancialOperationRepository();
+const payrollRepository = createPayrollTransactionRepository();
+const workOrderRepository = createWorkOrderRepository();
+const motorRepository = createMotorRepository();
+
+const WORK_ORDER_CATEGORIES = new Set(["work_order_income", "work_order_parts_cost", "payroll"]);
 
 const TAB_ITEMS = [
   { value: "overview", label: "Обзор" },
   { value: "cashbox", label: "Касса" },
   { value: "expenses", label: "Расходы" },
   { value: "operations", label: "Операции" },
+  { value: "work_orders", label: "Заказ-наряды" },
+  { value: "payroll", label: "Зарплаты" },
   { value: "advances", label: "Авансы" },
 ] as const;
 
 export function AccountingWorkspace() {
   const { profile, isLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState("overview");
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [tabEpoch, setTabEpoch] = useState(0);
   const [advanceDirection, setAdvanceDirection] = useState<AdvanceDirection>("all");
   const [operationDialogOpen, setOperationDialogOpen] = useState(false);
   const [operationDialogType, setOperationDialogType] = useState<OperationType>("expense");
+  const [payrollUpdatingId, setPayrollUpdatingId] = useState<string | null>(null);
+  const [motorSaleOperation, setMotorSaleOperation] = useState<FinancialOperation | null>(null);
   const companyId = normalizeCompanyId(profile?.companyId);
   const { preferences } = useAccountingPreferences(profile?.id ?? "");
   const categorySuggestions = useMemo(
@@ -67,16 +88,52 @@ export function AccountingWorkspace() {
   });
 
   const operations = useMemo(() => operationsQuery.data ?? [], [operationsQuery.data]);
+  const { transactions: payrollTransactions } = usePayrollTransactionsRealtime(
+    payrollRepository,
+    companyId,
+    preferences.syncEnabled && !isLoading && can(profile, "accounting_view"),
+  );
+  const { employees } = useEmployeesRealtime(
+    companyId,
+    preferences.syncEnabled && !isLoading && can(profile, "accounting_view"),
+  );
+  const { orders: workOrders } = useWorkOrdersRealtime(
+    workOrderRepository,
+    companyId,
+    preferences.syncEnabled && !isLoading && can(profile, "accounting_view"),
+  );
+  const motorsQuery = useMotorsRealtime(motorRepository, {
+    companyId,
+    uid: profile?.id ?? "",
+    enabled: preferences.syncEnabled && !isLoading && can(profile, "accounting_view"),
+  });
+  const motors = useMemo(() => motorsQuery.data ?? [], [motorsQuery.data]);
   const balance = useMemo(() => calculateCashBalanceUseCase(operations), [operations]);
 
   const expenseRows = useMemo(() => operations.filter((item) => item.type === "expense"), [operations]);
   const cashboxRows = useMemo(() => operations.filter((item) => item.account === "cashbox"), [operations]);
+  const workOrderRows = useMemo(
+    () =>
+      operations.filter(
+        (item) =>
+          Boolean(item.relatedWorkOrderId) ||
+          WORK_ORDER_CATEGORIES.has(item.category ?? ""),
+      ),
+    [operations],
+  );
+  const payrollExpenseRows = useMemo(
+    () => operations.filter((item) => item.category === "payroll"),
+    [operations],
+  );
   const advanceSnapshot = useMemo(() => buildAdvanceSnapshot(operations), [operations]);
   const advancesRows = useMemo(
     () => filterAdvanceOperations(operations, advanceDirection),
     [advanceDirection, operations],
   );
   const canEdit = can(profile, "accounting_edit");
+
+  const activeTab =
+    TAB_ITEMS.find((tab) => tab.value === searchParams.get("tab"))?.value ?? "overview";
 
   const openExpenseDialog = useCallback(() => {
     setOperationDialogType("expense");
@@ -136,8 +193,20 @@ export function AccountingWorkspace() {
     await repository.remove(id, { companyId, actorUid: profile.id });
   }
 
+  async function onPayrollStatusChange(id: string, status: PayrollTransactionStatus) {
+    if (!canEdit || !companyId) return;
+    setPayrollUpdatingId(id);
+    try {
+      await payrollRepository.updateStatus(companyId, id, status);
+    } finally {
+      setPayrollUpdatingId(null);
+    }
+  }
+
   function onTabChange(value: string) {
-    setActiveTab(value);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", value);
+    router.replace(`/accounting?${params.toString()}`, { scroll: false });
     setTabEpoch((current) => current + 1);
   }
 
@@ -233,7 +302,7 @@ export function AccountingWorkspace() {
                   <CardDescription>Операции по счёту «Касса».</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-4">
-                  <OperationsTable rows={cashboxRows} canEdit={canEdit} onDelete={onDelete} />
+                  <OperationsTable rows={cashboxRows} canEdit={canEdit} onDelete={onDelete} onMotorSaleSelect={setMotorSaleOperation} />
                 </CardContent>
               </Card>
             </AnimatedTabsPanel>
@@ -247,7 +316,7 @@ export function AccountingWorkspace() {
                   <CardDescription>Все расходные операции компании.</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-4">
-                  <OperationsTable rows={expenseRows} canEdit={canEdit} onDelete={onDelete} />
+                  <OperationsTable rows={expenseRows} canEdit={canEdit} onDelete={onDelete} onMotorSaleSelect={setMotorSaleOperation} />
                 </CardContent>
               </Card>
             </AnimatedTabsPanel>
@@ -269,7 +338,66 @@ export function AccountingWorkspace() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-4">
-                  <OperationsTable rows={operations} canEdit={canEdit} onDelete={onDelete} />
+                  <OperationsTable rows={operations} canEdit={canEdit} onDelete={onDelete} onMotorSaleSelect={setMotorSaleOperation} />
+                </CardContent>
+              </Card>
+            </AnimatedTabsPanel>
+          </TabsContent>
+
+          <TabsContent value="work_orders" className="mt-0">
+            <AnimatedTabsPanel active={activeTab === "work_orders"} epoch={tabEpoch} className="space-y-4">
+              <Card className="overflow-hidden">
+                <CardHeader className="border-b border-border/50 bg-muted/20">
+                  <CardTitle>Заказ-наряды</CardTitle>
+                  <CardDescription>
+                    Доход, себестоимость запчастей и зарплата по заказ-нарядам.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <OperationsTable
+                    rows={workOrderRows}
+                    canEdit={canEdit}
+                    onDelete={onDelete}
+                    onMotorSaleSelect={setMotorSaleOperation}
+                    showWorkOrderColumn
+                    workOrders={workOrders}
+                  />
+                </CardContent>
+              </Card>
+            </AnimatedTabsPanel>
+          </TabsContent>
+
+          <TabsContent value="payroll" className="mt-0">
+            <AnimatedTabsPanel active={activeTab === "payroll"} epoch={tabEpoch} className="space-y-4">
+              <Card className="overflow-hidden">
+                <CardHeader className="border-b border-border/50 bg-muted/20">
+                  <CardTitle>Зарплаты</CardTitle>
+                  <CardDescription>
+                    Начисления механикам и диагностам по завершённым заказ-нарядам.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6 pt-4">
+                  <PayrollTable
+                    rows={payrollTransactions}
+                    employees={employees}
+                    workOrders={workOrders}
+                    canEdit={canEdit}
+                    onStatusChange={onPayrollStatusChange}
+                    updatingId={payrollUpdatingId}
+                  />
+                  {payrollExpenseRows.length > 0 ? (
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-medium">Расходы на зарплату в бухгалтерии</h3>
+                      <OperationsTable
+                        rows={payrollExpenseRows}
+                        canEdit={canEdit}
+                        onDelete={onDelete}
+                        onMotorSaleSelect={setMotorSaleOperation}
+                        showWorkOrderColumn
+                        workOrders={workOrders}
+                      />
+                    </div>
+                  ) : null}
                 </CardContent>
               </Card>
             </AnimatedTabsPanel>
@@ -298,13 +426,22 @@ export function AccountingWorkspace() {
                       </Button>
                     ))}
                   </div>
-                  <OperationsTable rows={advancesRows} canEdit={canEdit} onDelete={onDelete} />
+                  <OperationsTable rows={advancesRows} canEdit={canEdit} onDelete={onDelete} onMotorSaleSelect={setMotorSaleOperation} />
                 </CardContent>
               </Card>
             </AnimatedTabsPanel>
           </TabsContent>
         </Tabs>
       )}
+
+      <MotorSaleDocumentsSheet
+        operation={motorSaleOperation}
+        motors={motors}
+        open={Boolean(motorSaleOperation)}
+        onOpenChange={(open) => {
+          if (!open) setMotorSaleOperation(null);
+        }}
+      />
     </section>
   );
 }

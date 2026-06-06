@@ -1,9 +1,10 @@
 "use client";
 
-import { doc, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
+import { updateAccountProfile as updateAccountProfileRemote } from "@/infrastructure/firestore/user-profile-service";
 import { AccountingPreferences } from "@/hooks/use-accounting-preferences";
 
 export type WorkflowPreferences = {
@@ -201,14 +202,9 @@ export function useUserPreferences(uid: string) {
 
   const updateAccountProfile = useCallback(
     async (payload: { name?: string | null; phone?: string | null }) => {
-      if (!uid) return;
-      const userRef = doc(db, "users", uid);
-      await updateDoc(userRef, {
-        ...(payload.name !== undefined ? { name: payload.name ?? "" } : {}),
-        ...(payload.phone !== undefined ? { phone: payload.phone ?? "" } : {}),
-      });
+      await updateAccountProfileRemote(payload);
     },
-    [db, uid],
+    [],
   );
 
   return {

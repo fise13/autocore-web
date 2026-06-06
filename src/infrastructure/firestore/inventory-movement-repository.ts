@@ -14,6 +14,7 @@ import {
 import { InventoryMovement } from "@/domain/inventory-movement";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { omitUndefinedFields } from "@/lib/firestore/omit-undefined-fields";
 import { toDateFromFirestore } from "@/lib/firestore-timestamp";
 import { notifyFirestoreSnapshotError } from "@/lib/firestore/snapshot-errors";
 
@@ -114,11 +115,11 @@ export function createInventoryMovementRepository() {
     },
 
     buildMovementPayload(movement: Omit<InventoryMovement, "id" | "createdAt">) {
-      return {
+      return omitUndefinedFields({
         ...movement,
         companyId: normalizeCompanyId(movement.companyId),
         createdAt: serverTimestamp(),
-      };
+      });
     },
 
     collectionRef: ref,

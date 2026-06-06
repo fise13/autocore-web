@@ -227,6 +227,30 @@ export function createInventoryItemRepository() {
       return mapItem(first.id, first.data() as Record<string, unknown>);
     },
 
+    async findBySkus(companyId: string, skus: string[]): Promise<Map<string, InventoryItem>> {
+      const result = new Map<string, InventoryItem>();
+      const normalizedCompanyId = normalizeCompanyId(companyId);
+      const unique = [...new Set(skus.map((sku) => sku.trim()).filter(Boolean))];
+      if (unique.length === 0) return result;
+
+      for (let offset = 0; offset < unique.length; offset += 30) {
+        const chunk = unique.slice(offset, offset + 30);
+        const snapshot = await getDocs(
+          query(
+            ref,
+            where("companyId", "==", normalizedCompanyId),
+            where("sku", "in", chunk),
+          ),
+        );
+        for (const item of snapshot.docs) {
+          const mapped = mapItem(item.id, item.data() as Record<string, unknown>);
+          result.set(mapped.sku.trim().toLowerCase(), mapped);
+        }
+      }
+
+      return result;
+    },
+
     async upsert(input: UpsertInventoryItemInput, itemId?: string): Promise<string> {
       const normalizedCompanyId = normalizeCompanyId(input.companyId);
 

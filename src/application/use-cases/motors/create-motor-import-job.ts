@@ -15,6 +15,7 @@ export async function createMotorImportJobUseCase(
     existingMotors: MotorEntity[];
     existingBrands: BrandEntity[];
     existingEngines: EngineEntity[];
+    existingSpecificCategories?: Array<{ name: string }>;
     createdByUserId: string;
     useAi?: boolean;
     onProgress?: (progress: MotorImportProgress) => void;
@@ -26,7 +27,9 @@ export async function createMotorImportJobUseCase(
     existingMotors: params.existingMotors,
     existingBrands: params.existingBrands,
     existingEngines: params.existingEngines,
+    existingSpecificCategories: params.existingSpecificCategories,
     useAi: params.useAi,
+    magicImport: params.useAi,
     onProgress: params.onProgress,
   });
 

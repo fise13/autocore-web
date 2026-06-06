@@ -2,16 +2,18 @@
 
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Cloud, Download, Laptop, Workflow } from "lucide-react";
+import { Building2, Download, Laptop, Workflow } from "lucide-react";
 
 import { AccountSettingsPanel } from "@/components/account/account-settings-panel";
+import { SidebarSettingsCard } from "@/components/settings/sidebar-settings-card";
+import { ThemeSettingsCard } from "@/components/settings/theme-settings-card";
 import { SubscriptionStrip } from "@/components/billing/subscription-strip";
+import { BrandingSettingsCard } from "@/components/settings/branding-settings-card";
 import { CompanySettingsPanel } from "@/components/settings/company-settings-panel";
 import { DataCleanupPanel } from "@/components/settings/data-cleanup-panel";
 import { SettingsSectionId, SettingsShell } from "@/components/settings/settings-shell";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
-import { useWorkspace } from "@/components/layout/workspace-context";
 import { FadeIn } from "@/components/ui/fade-in";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,8 +34,8 @@ function resolveSection(section: string | null): SettingsSectionId {
   switch (section) {
     case "account":
     case "company":
+    case "branding":
     case "accounting":
-    case "sync":
     case "dataCleanup":
     case "macOnly":
       return section;
@@ -44,8 +46,9 @@ function resolveSection(section: string | null): SettingsSectionId {
       return "company";
     case "importExport":
       return "accounting";
+    case "sync":
     case "workflow":
-      return "sync";
+      return "accounting";
     default:
       return "account";
   }
@@ -60,9 +63,8 @@ export default function SettingsPage() {
   const showPlansInitially = searchParams.get("plans") === "1" || searchParams.get("section") === "billing";
   const initialTeamTab = searchParams.get("section") === "roles" ? "roles" : "employees";
 
-  const { profile, ensureDefaultCompany } = useAuth();
-  const { motorSyncState, triggerSync } = useWorkspace();
-  const { requirePro, isPro } = useBillingGate();
+  const { profile } = useAuth();
+  const { isPro } = useBillingGate();
   const [employeesDraft, setEmployeesDraft] = useState<string | null>(null);
   const [specificsDraft, setSpecificsDraft] = useState<string | null>(null);
   const [savingAccounting, setSavingAccounting] = useState(false);
@@ -80,16 +82,6 @@ export default function SettingsPage() {
   const employeesValue = employeesDraft ?? preferences.employees.join("\n");
   const specificsValue = specificsDraft ?? preferences.specifics.join("\n");
 
-  const syncBadge = useMemo(
-    () =>
-      preferences.syncEnabled ? (
-        <Badge variant="outline">{userCopy.accounting.syncOn}</Badge>
-      ) : (
-        <Badge variant="secondary">{userCopy.accounting.syncOff}</Badge>
-      ),
-    [preferences.syncEnabled],
-  );
-
   function renderSection(section: SettingsSectionId) {
     switch (section) {
       case "account":
@@ -97,10 +89,16 @@ export default function SettingsPage() {
           <FadeIn>
             <div className="space-y-5">
               <AccountSettingsPanel onStatus={setStatus} />
+              <ThemeSettingsCard />
+              <SidebarSettingsCard />
               <SubscriptionStrip />
             </div>
           </FadeIn>
         );
+      case "branding":
+        return profile?.companyId ? (
+          <BrandingSettingsCard companyId={profile.companyId} onStatus={setStatus} />
+        ) : null;
       case "company":
         return profile?.companyId ? (
           <CompanySettingsPanel
@@ -111,64 +109,65 @@ export default function SettingsPage() {
             onStatus={setStatus}
           />
         ) : null;
-      case "sync":
+      case "accounting":
         return (
           <FadeIn>
             <div className="space-y-5">
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2">
-                    <Cloud className="size-4 text-primary" />
-                    <CardTitle>{userCopy.settings.sync}</CardTitle>
+                    <Building2 className="size-4 text-primary" />
+                    <CardTitle>{userCopy.settings.accounting}</CardTitle>
                   </div>
-                  <CardDescription>Статус синхронизации моторов и подключение к облаку.</CardDescription>
+                  <CardDescription>Списки сотрудников и категорий для операций.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="rounded-lg border bg-muted/15 p-3 text-sm">
-                    {motorSyncState.status === "syncing"
-                      ? userCopy.sync.syncing
-                      : motorSyncState.localDirty
-                        ? userCopy.sync.localChanges
-                        : motorSyncState.remotePending
-                          ? userCopy.sync.remoteUpdates
-                          : userCopy.sync.synced}
+                  {isLoading ? <Badge variant="secondary">Загрузка…</Badge> : null}
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Сотрудники</Label>
+                      <textarea
+                        value={employeesValue}
+                        onChange={(event) => setEmployeesDraft(event.target.value)}
+                        className="min-h-28 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                        placeholder={"Саня\nВалера"}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Специфика бухгалтерии</Label>
+                      <textarea
+                        value={specificsValue}
+                        onChange={(event) => setSpecificsDraft(event.target.value)}
+                        className="min-h-28 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                        placeholder={"аванс\nлогистика"}
+                      />
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={() =>
-                        requirePro("sync", async () => {
-                          const synced = await triggerSync();
-                          setStatus(
-                            synced
-                              ? "Синхронизация запущена"
-                              : "Откройте «Моторы» или «Специфичные», чтобы синхронизировать изменения",
-                          );
-                        })
+                  <Button
+                    disabled={savingAccounting || isLoading || !uid}
+                    onClick={async () => {
+                      setSavingAccounting(true);
+                      setStatus(null);
+                      try {
+                        const employees = parseList(employeesValue);
+                        const specifics = parseList(specificsValue);
+                        await savePreferences({ employees, specifics, isConfigured: true });
+                        setEmployeesDraft(null);
+                        setSpecificsDraft(null);
+                        setStatus("Настройки бухгалтерии сохранены");
+                      } catch (error) {
+                        setStatus(
+                          error instanceof Error
+                            ? error.message
+                            : "Не удалось сохранить настройки бухгалтерии",
+                        );
+                      } finally {
+                        setSavingAccounting(false);
                       }
-                    >
-                      {userCopy.sync.syncNow}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() =>
-                        requirePro("cloud_sync", async () => {
-                          await ensureDefaultCompany();
-                          setStatus(`Подключено к «${userCopy.defaultCompanyName}»`);
-                        })
-                      }
-                    >
-                      {userCopy.company.connectButton}
-                    </Button>
-                    <Button
-                      variant={preferences.motorSyncEnabled ? "default" : "outline"}
-                      onClick={async () => {
-                        await savePreferences({ motorSyncEnabled: !preferences.motorSyncEnabled });
-                      }}
-                    >
-                      {preferences.motorSyncEnabled ? "Синхронизация моторов: вкл." : "Синхронизация моторов: выкл."}
-                    </Button>
-                  </div>
+                    }}
+                  >
+                    {savingAccounting ? "Сохраняем…" : "Сохранить настройки бухгалтерии"}
+                  </Button>
                 </CardContent>
               </Card>
 
@@ -206,93 +205,6 @@ export default function SettingsPage() {
                     }
                   >
                     Запоминать бренд: {preferences.workflow.rememberBrand ? "вкл." : "выкл."}
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </FadeIn>
-        );
-      case "accounting":
-        return (
-          <FadeIn>
-            <div className="space-y-5">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Building2 className="size-4 text-primary" />
-                    <CardTitle>{userCopy.settings.accounting}</CardTitle>
-                  </div>
-                  <CardDescription>Общие настройки бухгалтерии для Mac и браузера.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    {syncBadge}
-                    {isLoading ? <Badge variant="secondary">Загрузка…</Badge> : null}
-                  </div>
-                  <div className="grid gap-2 md:grid-cols-2">
-                    <Button
-                      variant={preferences.syncEnabled ? "default" : "outline"}
-                      onClick={async () => {
-                        await savePreferences({ syncEnabled: true });
-                        setStatus("Синхронизация бухгалтерии включена");
-                      }}
-                    >
-                      Включить синхронизацию
-                    </Button>
-                    <Button
-                      variant={!preferences.syncEnabled ? "default" : "outline"}
-                      onClick={async () => {
-                        await savePreferences({ syncEnabled: false });
-                        setStatus("Синхронизация бухгалтерии отключена");
-                      }}
-                    >
-                      Отключить синхронизацию
-                    </Button>
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Сотрудники</Label>
-                      <textarea
-                        value={employeesValue}
-                        onChange={(event) => setEmployeesDraft(event.target.value)}
-                        className="min-h-28 w-full rounded-md border bg-background px-3 py-2 text-sm"
-                        placeholder={"Саня\nВалера"}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Специфика бухгалтерии</Label>
-                      <textarea
-                        value={specificsValue}
-                        onChange={(event) => setSpecificsDraft(event.target.value)}
-                        className="min-h-28 w-full rounded-md border bg-background px-3 py-2 text-sm"
-                        placeholder={"аванс\nлогистика"}
-                      />
-                    </div>
-                  </div>
-                  <Button
-                    disabled={savingAccounting || isLoading || !uid}
-                    onClick={async () => {
-                      setSavingAccounting(true);
-                      setStatus(null);
-                      try {
-                        const employees = parseList(employeesValue);
-                        const specifics = parseList(specificsValue);
-                        await savePreferences({ employees, specifics, isConfigured: true });
-                        setEmployeesDraft(null);
-                        setSpecificsDraft(null);
-                        setStatus("Настройки бухгалтерии сохранены в облаке");
-                      } catch (error) {
-                        setStatus(
-                          error instanceof Error
-                            ? error.message
-                            : "Не удалось сохранить настройки бухгалтерии",
-                        );
-                      } finally {
-                        setSavingAccounting(false);
-                      }
-                    }}
-                  >
-                    {savingAccounting ? "Сохраняем…" : "Сохранить настройки бухгалтерии"}
                   </Button>
                 </CardContent>
               </Card>

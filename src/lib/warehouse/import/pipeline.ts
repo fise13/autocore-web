@@ -25,6 +25,9 @@ import {
   ParsedImportSheet,
 } from "./types";
 import { validateImportRows } from "./validation";
+import { isQuickImportReady } from "./format-presets";
+import { applyMagicImportDefaults, magicEnhanceImportRows } from "./magic-import";
+import { disambiguateDuplicateSkus } from "./sku-resolver";
 
 export type ImportPipelineOptions = {
   companyId: string;
@@ -32,6 +35,7 @@ export type ImportPipelineOptions = {
   selectedSheetName?: string;
   manualColumnMapping?: Record<string, string>;
   useAi?: boolean;
+  magicImport?: boolean;
   existingItems?: InventoryItem[];
   onProgress?: (progress: ImportProgress) => void;
 };
@@ -44,8 +48,9 @@ function buildRowsFromSheet(
   sheet: ParsedImportSheet,
   columnMapping: ColumnMappingResult,
 ): EnhancedImportRow[] {
+  const enrichment = columnMapping.preset?.enrichment;
   return sheet.rows.map((raw, index) => {
-    const normalized = normalizeImportRow(raw, columnMapping.mapping);
+    const normalized = normalizeImportRow(raw, columnMapping.mapping, undefined, enrichment);
     const quality = rowQualityScore(normalized);
     return {
       rowIndex: index + 1,
@@ -68,6 +73,7 @@ async function maybeEnhanceMapping(
   if (options.manualColumnMapping) {
     return applyManualColumnMapping(mapping, options.manualColumnMapping);
   }
+  if (mapping.source === "preset") return mapping;
   if (!options.useAi || !needsAiColumnMapping(mapping)) return mapping;
   try {
     emit(options.onProgress, {
@@ -80,7 +86,7 @@ async function maybeEnhanceMapping(
     const ai = await requestAiColumnMapping(
       options.companyId,
       sheet.headers,
-      sheet.rows.slice(0, 3),
+      sheet.rows.slice(0, 12),
     );
     return mergeAiColumnMapping(mapping, ai);
   } catch {
@@ -93,7 +99,7 @@ async function maybeEnhanceRowsWithAi(
   rows: EnhancedImportRow[],
   mapping: ColumnMappingResult,
 ): Promise<EnhancedImportRow[]> {
-  if (!options.useAi) return rows;
+  if (!options.useAi || mapping.source === "preset") return rows;
   const ambiguous = rows
     .filter((row) => row.confidence < 0.75)
     .slice(0, 25)
@@ -180,7 +186,19 @@ export async function runImportPreviewPipeline(
   columnMapping = await maybeEnhanceMapping(options, selectedSheet, columnMapping);
 
   let rows = buildRowsFromSheet(selectedSheet, columnMapping);
-  rows = await maybeEnhanceRowsWithAi(options, rows, columnMapping);
+  const internalIdHeader = columnMapping.preset?.enrichment.internalIdHeader;
+
+  const useMagicImport = options.magicImport ?? options.useAi ?? false;
+  if (useMagicImport) {
+    rows = await magicEnhanceImportRows(options.companyId, rows, columnMapping, {
+      onProgress: options.onProgress,
+    });
+    rows = applyMagicImportDefaults(rows);
+  } else {
+    rows = await maybeEnhanceRowsWithAi(options, rows, columnMapping);
+  }
+
+  rows = disambiguateDuplicateSkus(rows, internalIdHeader) as EnhancedImportRow[];
 
   emit(options.onProgress, {
     phase: "preview",
@@ -195,6 +213,17 @@ export async function runImportPreviewPipeline(
     rows,
     itemRepository,
     options.existingItems ?? [],
+    {
+      onProgress: (current, total) => {
+        emit(options.onProgress, {
+          phase: "preview",
+          current,
+          total,
+          percent: 70 + Math.round((current / Math.max(total, 1)) * 25),
+          message: `Поиск дубликатов… ${current}/${total}`,
+        });
+      },
+    },
   );
   rows = validateImportRows(rows);
   const diffRows = buildImportDiffRows(rows) as EnhancedImportRow[];
@@ -206,6 +235,11 @@ export async function runImportPreviewPipeline(
     errors: diffRows.filter((row) => row.errors.length > 0).length,
     warnings: diffRows.filter((row) => (row.aiMeta?.warnings.length ?? 0) > 0).length,
   };
+
+  if (columnMapping.presetScore != null) {
+    columnMapping.quickImport =
+      isQuickImportReady(columnMapping.presetScore, stats) || useMagicImport;
+  }
 
   emit(options.onProgress, {
     phase: "done",

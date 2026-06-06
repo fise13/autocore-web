@@ -16,6 +16,7 @@ import { InventoryMovementRepository } from "@/infrastructure/firestore/inventor
 import { InventoryStockLevelRepository } from "@/infrastructure/firestore/inventory-stock-level-repository";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { omitUndefinedFields } from "@/lib/firestore/omit-undefined-fields";
 import {
   applyMovementToStock,
   computeWeightedAverageCost,
@@ -136,16 +137,18 @@ export async function recordMovementUseCase(
     }
 
     const stockValue = totalOnHand * averageCost;
-    transaction.update(itemRef, {
+    const itemUpdate = omitUndefinedFields({
+      ...(String(itemData.companyId ?? "").trim() === "" ? { companyId: normalizedCompanyId } : {}),
       totalOnHand,
       totalReserved,
       totalAvailable: totalOnHand - totalReserved,
-      stockValue,
-      averageCost,
-      purchasePrice: input.type === "receipt" ? unitCost : itemData.purchasePrice,
+      stockValue: Number.isFinite(stockValue) ? stockValue : 0,
+      averageCost: Number.isFinite(averageCost) ? averageCost : 0,
+      ...(input.type === "receipt" ? { purchasePrice: unitCost } : {}),
       updatedAt: serverTimestamp(),
       updatedByUserId: input.actorUserId,
     });
+    transaction.update(itemRef, itemUpdate);
 
     return movementRef.id;
   });

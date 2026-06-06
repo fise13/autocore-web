@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "../styles/document-service-report.css";
+@import "../styles/documents-overrides.css";
+
+@source "../components/documents/**/*.tsx";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -81,6 +85,7 @@
   --sidebar-accent-foreground: #11131a;
   --sidebar-border: rgba(17, 19, 26, 0.1);
   --sidebar-ring: #66b8ff;
+  color-scheme: light;
 }
 
 .dark {
@@ -115,6 +120,7 @@
   --sidebar-accent-foreground: #f5f5f7;
   --sidebar-border: rgba(255, 255, 255, 0.08);
   --sidebar-ring: #66b8ff;
+  color-scheme: dark;
 }
 
 @layer base {
@@ -287,6 +293,24 @@
   }
 }
 
+/* Finder / iOS-style jiggle while sidebar customize mode is active */
+@keyframes autocore-sidebar-jiggle {
+  0% {
+    transform: rotate(-0.65deg);
+  }
+  50% {
+    transform: rotate(0.65deg);
+  }
+  100% {
+    transform: rotate(-0.65deg);
+  }
+}
+
+.animate-sidebar-jiggle {
+  animation: autocore-sidebar-jiggle 0.26s ease-in-out infinite;
+  transform-origin: left center;
+}
+
 @keyframes autocore-fade-in {
   from {
     opacity: 0;
@@ -451,6 +475,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .animate-sidebar-jiggle {
+    animation: none !important;
+  }
+
   .animate-shake,
   .animate-autocore-fade-in,
   .animate-tab-enter,
@@ -474,8 +502,19 @@
     transform: none;
   }
 
-  .mc-pulse-live::before {
-    animation: none !important;
+  .mc-module-card:hover {
+    transform: none;
+    box-shadow:
+      0 1px 2px color-mix(in oklab, var(--foreground) 3%, transparent),
+      inset 0 1px 0 color-mix(in oklab, white 6%, transparent);
+  }
+
+  .mc-action-tile:hover {
+    transform: none;
+  }
+
+  .mc-canvas::after {
+    opacity: 0.15;
   }
 }
 
@@ -517,7 +556,7 @@
     linear-gradient(to bottom, color-mix(in oklab, var(--border) 18%, transparent) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: linear-gradient(to bottom, black 0%, black 35%, transparent 85%);
-  opacity: 0.35;
+  opacity: 0.22;
   z-index: 0;
 }
 
@@ -562,14 +601,14 @@
   border-bottom: 1px solid var(--mc-border-subtle);
   background: linear-gradient(
     180deg,
-    color-mix(in oklab, var(--muted) 35%, transparent),
+    color-mix(in oklab, var(--muted) 28%, transparent),
     transparent
   );
-  padding: 1rem 1.125rem;
+  padding: 0.75rem 1rem;
 }
 
 .mc-module-body {
-  padding: 1rem 1.125rem 1.125rem;
+  padding: 0.75rem 1rem 0.875rem;
 }
 
 .mc-icon-badge {

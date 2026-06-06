@@ -13,10 +13,11 @@ type OperationsStatsModuleProps = {
   isLoading: boolean;
 };
 
-const MODULE_ORDER: ActivityModule[] = ["inventory", "accounting", "employees", "settings", "system"];
+const MODULE_ORDER: ActivityModule[] = ["inventory", "work_orders", "accounting", "employees", "settings", "system"];
 
 const MODULE_COLORS: Record<ActivityModule, string> = {
   inventory: "bg-chart-2",
+  work_orders: "bg-chart-3",
   accounting: "bg-chart-1",
   employees: "bg-chart-5",
   settings: "bg-chart-4",
@@ -49,7 +50,7 @@ export const OperationsStatsModule = memo(function OperationsStatsModule({
             <div className="grid grid-cols-3 gap-3">
               <MiniStat label="Изменений" value={stats.totalEditsToday} />
               <MiniStat label="Импорт/экспорт" value={stats.importExportCount} />
-              <MiniStat label="Синхронизаций" value={stats.syncEventsToday} />
+              <MiniStat label="Обновлений" value={stats.syncEventsToday} />
             </div>
 
             <div className="space-y-2.5">

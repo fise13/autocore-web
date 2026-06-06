@@ -1,5 +1,7 @@
 export type GridColumnId =
   | "rowNumber"
+  | "brandName"
+  | "engineCode"
   | "serialCode"
   | "configuration"
   | "notes"

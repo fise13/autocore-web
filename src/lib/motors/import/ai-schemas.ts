@@ -33,6 +33,11 @@ export const motorNormalizeBatchItemSchema = z.object({
   normalizedSerial: z.string().optional(),
   brand: z.string().optional(),
   engineCode: z.string().optional(),
+  configuration: z.string().optional(),
+  transmission: z.string().optional(),
+  notes: z.string().optional(),
+  arrivalDate: z.string().optional(),
+  soldDate: z.string().optional(),
   confidence: z.number().min(0).max(1),
   warnings: z.array(z.string()).default([]),
 });

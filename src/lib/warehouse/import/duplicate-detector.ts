@@ -1,8 +1,15 @@
 import { InventoryItem } from "@/domain/inventory";
-import { InventoryItemRepository } from "@/infrastructure/firestore/inventory-item-repository";
-import { createBarcodeMappingRepository } from "@/infrastructure/firestore/barcode-mapping-repository";
 
 import { EnhancedImportRow } from "./types";
+
+const FUZZY_MAX_ROWS = 80;
+const FUZZY_MAX_EXISTING = 150;
+
+type ExistingIndexes = {
+  bySku: Map<string, InventoryItem>;
+  byBarcode: Map<string, InventoryItem>;
+  byId: Map<string, InventoryItem>;
+};
 
 function levenshtein(a: string, b: string): number {
   if (a === b) return 0;
@@ -53,100 +60,145 @@ function conflictFields(existing: InventoryItem, normalized: Record<string, unkn
   return conflicts;
 }
 
-export async function enrichRowsWithDuplicates(
-  companyId: string,
-  rows: EnhancedImportRow[],
-  itemRepository: InventoryItemRepository,
-  existingItems: InventoryItem[] = [],
-): Promise<EnhancedImportRow[]> {
-  const barcodeRepository = createBarcodeMappingRepository();
-  const cache = new Map<string, InventoryItem>();
+function buildExistingIndexes(existingItems: InventoryItem[]): ExistingIndexes {
+  const bySku = new Map<string, InventoryItem>();
+  const byBarcode = new Map<string, InventoryItem>();
+  const byId = new Map<string, InventoryItem>();
 
-  async function loadItem(id: string) {
-    if (cache.has(id)) return cache.get(id)!;
-    const item = await itemRepository.getById(id);
-    if (item) cache.set(id, item);
-    return item;
+  for (const item of existingItems) {
+    byId.set(item.id, item);
+    const skuKey = item.sku.trim().toLowerCase();
+    if (skuKey) bySku.set(skuKey, item);
+    for (const code of item.barcodes) {
+      const normalized = code.trim().replace(/\s+/g, "");
+      if (normalized) byBarcode.set(normalized, item);
+    }
   }
 
-  const enriched: EnhancedImportRow[] = [];
+  return { bySku, byBarcode, byId };
+}
 
-  for (const row of rows) {
-    const normalized = row.normalized;
-    const sku = String(normalized.sku ?? "").trim();
-    const barcode = Array.isArray(normalized.barcodes) ? String(normalized.barcodes[0] ?? "") : "";
-    const title = String(normalized.name ?? sku);
-    const reasons: string[] = [];
-    let duplicateOfItemId = row.duplicateOfItemId;
-    let duplicateConfidence = row.duplicateConfidence ?? 0;
-    let conflictList = row.conflictFields ?? [];
-
-    if (barcode) {
-      const mapping = await barcodeRepository.findByBarcode(companyId, barcode);
-      if (mapping) {
-        duplicateOfItemId = mapping.itemId;
-        duplicateConfidence = Math.max(duplicateConfidence, 1);
-        reasons.push("Совпадение штрихкода");
+function findFuzzyDuplicate(
+  sku: string,
+  title: string,
+  existingItems: InventoryItem[],
+): { item: InventoryItem; score: number; reason: string } | null {
+  let best: { item: InventoryItem; score: number; reason: string } | null = null;
+  for (const item of existingItems) {
+    const skuDistance = levenshtein(sku.toLowerCase(), item.sku.toLowerCase());
+    if (skuDistance <= 2) {
+      const score = 0.75 - skuDistance * 0.05;
+      if (!best || score > best.score) {
+        best = { item, score, reason: "Похожий SKU" };
       }
     }
-
-    if (sku) {
-      const existing = await itemRepository.findBySku(companyId, sku);
-      if (existing) {
-        duplicateOfItemId = existing.id;
-        duplicateConfidence = Math.max(duplicateConfidence, 0.95);
-        reasons.push("Совпадение SKU");
-        conflictList = [...new Set([...conflictList, ...conflictFields(existing, normalized)])];
-      } else if (existingItems.length > 0) {
-        let best: { item: InventoryItem; score: number; reason: string } | null = null;
-        for (const item of existingItems) {
-          const skuDistance = levenshtein(sku.toLowerCase(), item.sku.toLowerCase());
-          if (skuDistance <= 2) {
-            const score = 0.75 - skuDistance * 0.05;
-            if (!best || score > best.score) {
-              best = { item, score, reason: "Похожий SKU" };
-            }
-          }
-          const titleScore = jaccard(tokenSet(title), tokenSet(item.name));
-          if (titleScore >= 0.65) {
-            const score = titleScore * 0.6;
-            if (!best || score > best.score) {
-              best = { item, score, reason: "Похожее название" };
-            }
-          }
-        }
-        if (best && best.score >= 0.55) {
-          duplicateOfItemId = best.item.id;
-          duplicateConfidence = Math.max(duplicateConfidence, best.score);
-          reasons.push(best.reason);
-          conflictList = [...new Set([...conflictList, ...conflictFields(best.item, normalized)])];
-        }
+    const titleScore = jaccard(tokenSet(title), tokenSet(item.name));
+    if (titleScore >= 0.65) {
+      const score = titleScore * 0.6;
+      if (!best || score > best.score) {
+        best = { item, score, reason: "Похожее название" };
       }
     }
+  }
+  if (best && best.score >= 0.55) return best;
+  return null;
+}
 
-    if (duplicateOfItemId) {
-      const existing = await loadItem(duplicateOfItemId);
-      if (existing) {
-        conflictList = [...new Set([...conflictList, ...conflictFields(existing, normalized)])];
+function enrichSingleRow(
+  row: EnhancedImportRow,
+  indexes: ExistingIndexes,
+  existingItems: InventoryItem[],
+  allowFuzzy: boolean,
+): EnhancedImportRow {
+  const normalized = row.normalized;
+  const sku = String(normalized.sku ?? "").trim();
+  const skuKey = sku.toLowerCase();
+  const barcode = Array.isArray(normalized.barcodes)
+    ? String(normalized.barcodes[0] ?? "").trim().replace(/\s+/g, "")
+    : "";
+  const title = String(normalized.name ?? sku);
+  const reasons: string[] = [];
+  let duplicateOfItemId = row.duplicateOfItemId;
+  let duplicateConfidence = row.duplicateConfidence ?? 0;
+  let conflictList = row.conflictFields ?? [];
+
+  if (barcode) {
+    const byBarcode = indexes.byBarcode.get(barcode);
+    if (byBarcode) {
+      duplicateOfItemId = byBarcode.id;
+      duplicateConfidence = Math.max(duplicateConfidence, 1);
+      reasons.push("Совпадение штрихкода");
+    }
+  }
+
+  if (sku) {
+    const bySku = indexes.bySku.get(skuKey);
+    if (bySku) {
+      duplicateOfItemId = bySku.id;
+      duplicateConfidence = Math.max(duplicateConfidence, 0.95);
+      reasons.push("Совпадение SKU");
+      conflictList = [...new Set([...conflictList, ...conflictFields(bySku, normalized)])];
+    } else if (allowFuzzy && existingItems.length > 0) {
+      const fuzzy = findFuzzyDuplicate(sku, title, existingItems);
+      if (fuzzy) {
+        duplicateOfItemId = fuzzy.item.id;
+        duplicateConfidence = Math.max(duplicateConfidence, fuzzy.score);
+        reasons.push(fuzzy.reason);
+        conflictList = [...new Set([...conflictList, ...conflictFields(fuzzy.item, normalized)])];
       }
     }
+  }
 
-    enriched.push({
-      ...row,
-      duplicateOfItemId,
-      duplicateConfidence,
-      duplicateReasons: reasons,
-      conflictFields: conflictList,
-      duplicateResolution: duplicateOfItemId
-        ? row.duplicateResolution ?? "merge"
-        : row.duplicateResolution ?? "create",
-      action: row.errors.length > 0 ? "skip" : duplicateOfItemId ? "update" : "create",
-      summary: row.errors.length > 0
+  if (duplicateOfItemId) {
+    const existing = indexes.byId.get(duplicateOfItemId);
+    if (existing) {
+      conflictList = [...new Set([...conflictList, ...conflictFields(existing, normalized)])];
+    }
+  }
+
+  return {
+    ...row,
+    duplicateOfItemId,
+    duplicateConfidence,
+    duplicateReasons: reasons,
+    conflictFields: conflictList,
+    duplicateResolution: duplicateOfItemId
+      ? (row.duplicateResolution ?? "merge")
+      : (row.duplicateResolution ?? "create"),
+    action: row.errors.length > 0 ? "skip" : duplicateOfItemId ? "update" : "create",
+    summary:
+      row.errors.length > 0
         ? row.errors[0]
         : duplicateOfItemId
           ? "Обновит существующую позицию после подтверждения"
           : "Создаст новую позицию после подтверждения",
-    });
+  };
+}
+
+export async function enrichRowsWithDuplicates(
+  _companyId: string,
+  rows: EnhancedImportRow[],
+  _itemRepository: unknown,
+  existingItems: InventoryItem[] = [],
+  options?: {
+    onProgress?: (current: number, total: number) => void;
+  },
+): Promise<EnhancedImportRow[]> {
+  if (rows.length === 0) return [];
+
+  const indexes = buildExistingIndexes(existingItems);
+  const allowFuzzy =
+    rows.length <= FUZZY_MAX_ROWS && existingItems.length <= FUZZY_MAX_EXISTING;
+  const enriched: EnhancedImportRow[] = [];
+
+  for (let index = 0; index < rows.length; index += 1) {
+    enriched.push(enrichSingleRow(rows[index], indexes, existingItems, allowFuzzy));
+    if (index % 25 === 0 || index === rows.length - 1) {
+      options?.onProgress?.(index + 1, rows.length);
+      if (index % 100 === 0 && index > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    }
   }
 
   return enriched;

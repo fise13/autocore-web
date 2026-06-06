@@ -10,7 +10,7 @@ import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { useDeepAction } from "@/hooks/use-deep-action";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { CompanyEmployee, InviteDocument } from "@/domain/rbac";
-import { PERMISSIONS, Permission, USER_ROLES, UserRole } from "@/domain/user";
+import { PERMISSIONS, Permission, ROLE_PERMISSIONS, USER_ROLES, UserRole } from "@/domain/user";
 import { createEmployeeRbacRepository } from "@/infrastructure/firestore/employee-rbac-repository";
 import { createInviteRepository } from "@/infrastructure/firestore/invite-repository";
 import { Button } from "@/components/ui/button";
@@ -32,12 +32,29 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatPermission, formatRole } from "@/lib/user-copy";
+import { formatPermission, formatRole, userCopy } from "@/lib/user-copy";
+import { cn } from "@/lib/utils";
 
 const employeeRepository = createEmployeeRbacRepository();
 const inviteRepository = createInviteRepository();
 
-const INVITE_ROLES = USER_ROLES.filter((role) => role !== "owner");
+const INVITE_ROLES: UserRole[] = [
+  "mechanic",
+  "diagnostician",
+  "manager",
+  "accountant",
+  "employee",
+  "admin",
+];
+
+const INVITE_ROLE_HINTS: Partial<Record<UserRole, string>> = {
+  mechanic: "Заказ-наряды, клиенты, авто",
+  diagnostician: "Заказ-наряды и диагностика",
+  manager: "Управление и отчёты",
+  accountant: "Бухгалтерия",
+  employee: "Базовый просмотр",
+  admin: "Полный доступ",
+};
 
 function formatInviteExpiry(expiresAt: Date): string {
   return expiresAt.toLocaleString("ru-RU", {
@@ -49,7 +66,33 @@ function formatInviteExpiry(expiresAt: Date): string {
   });
 }
 
-export function EmployeesWorkspace() {
+function mapEmployeeError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("Missing or insufficient permissions")) {
+    return "Недостаточно прав. Обновите страницу — если ошибка повторится, правила Firebase ещё не обновились.";
+  }
+  return message || "Не удалось выполнить действие";
+}
+
+function employeeDisplayName(
+  employee: CompanyEmployee,
+  self?: { id?: string; displayName?: string | null; email?: string },
+): string {
+  if (employee.fullName?.trim()) return employee.fullName.trim();
+  if (employee.uid === self?.id && self.displayName?.trim()) return self.displayName.trim();
+  if (employee.email?.includes("@")) return employee.email.split("@")[0] ?? employee.email;
+  return "Сотрудник";
+}
+
+function permissionsSummary(employee: CompanyEmployee): string {
+  const extra = employee.permissions.length;
+  if (extra === 0) return `По роли (${ROLE_PERMISSIONS[employee.role]?.length ?? 0})`;
+  return `+${extra} доп.`;
+}
+
+const ASSIGNABLE_ROLES = USER_ROLES.filter((role) => role !== "owner");
+
+export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } = {}) {
   const { profile } = useAuth();
   const companyId = normalizeCompanyId(profile?.companyId);
   const [employees, setEmployees] = useState<CompanyEmployee[]>([]);
@@ -58,7 +101,7 @@ export function EmployeesWorkspace() {
   const [invitesLoaded, setInvitesLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteRole, setInviteRole] = useState<UserRole>("employee");
+  const [inviteRole, setInviteRole] = useState<UserRole>("mechanic");
   const [inviteTtlHours, setInviteTtlHours] = useState(72);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<CompanyEmployee | null>(null);
@@ -79,7 +122,7 @@ export function EmployeesWorkspace() {
         setLoaded(true);
       },
       (nextError) => {
-        setError(nextError.message);
+        setError(mapEmployeeError(nextError));
         setLoaded(true);
       },
     );
@@ -95,7 +138,7 @@ export function EmployeesWorkspace() {
         setInvitesLoaded(true);
       },
       (nextError) => {
-        setError(nextError.message);
+        setError(mapEmployeeError(nextError));
         setInvitesLoaded(true);
       },
     );
@@ -115,7 +158,7 @@ export function EmployeesWorkspace() {
   function openInviteDialog() {
     requirePro("invite", () => {
       setGeneratedCode(null);
-      setInviteRole("employee");
+      setInviteRole("mechanic");
       setInviteTtlHours(72);
       setInviteOpen(true);
     });
@@ -145,7 +188,7 @@ export function EmployeesWorkspace() {
       });
       setGeneratedCode(invite.code);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Не удалось создать код приглашения");
+      setError(mapEmployeeError(nextError));
     } finally {
       setBusy(false);
     }
@@ -164,7 +207,7 @@ export function EmployeesWorkspace() {
     try {
       await inviteRepository.deleteInvite(invite.id);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Не удалось удалить приглашение");
+      setError(mapEmployeeError(nextError));
     }
   }
 
@@ -174,7 +217,7 @@ export function EmployeesWorkspace() {
     try {
       await employeeRepository.setEmployeeRole(companyId, profile.id, employee.uid, role);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Не удалось изменить роль");
+      setError(mapEmployeeError(nextError));
     }
   }
 
@@ -184,7 +227,7 @@ export function EmployeesWorkspace() {
     try {
       await employeeRepository.setEmployeeActive(companyId, profile.id, employee.uid, !employee.isActive);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Не удалось обновить статус");
+      setError(mapEmployeeError(nextError));
     }
   }
 
@@ -194,7 +237,7 @@ export function EmployeesWorkspace() {
     try {
       await employeeRepository.removeEmployee(companyId, profile.id, employee.uid);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Не удалось удалить сотрудника");
+      setError(mapEmployeeError(nextError));
     }
   }
 
@@ -210,7 +253,7 @@ export function EmployeesWorkspace() {
       );
       setSelectedEmployee(null);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Не удалось сохранить права");
+      setError(mapEmployeeError(nextError));
     }
   }
 
@@ -241,8 +284,8 @@ export function EmployeesWorkspace() {
   }
 
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-col gap-4">
-      <Card>
+    <section className={cn("flex w-full flex-col gap-4", !embedded && "mx-auto max-w-6xl")}>
+      <Card className={embedded ? "border-0 bg-transparent shadow-none" : undefined}>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Сотрудники</CardTitle>
@@ -262,7 +305,7 @@ export function EmployeesWorkspace() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Сотрудник</TableHead>
-                  <TableHead>Email</TableHead>
+                  <TableHead>{userCopy.account.emailLabel}</TableHead>
                   <TableHead>Роль</TableHead>
                   <TableHead>Статус</TableHead>
                   <TableHead>Права</TableHead>
@@ -274,19 +317,24 @@ export function EmployeesWorkspace() {
                   const isSelf = employee.uid === profile?.id;
                   return (
                     <TableRow key={employee.id}>
-                      <TableCell>{employee.fullName || "—"}</TableCell>
+                      <TableCell className="font-medium">
+                        {employeeDisplayName(employee, profile ?? undefined)}
+                        {isSelf ? (
+                          <span className="ml-1.5 text-xs text-muted-foreground">(вы)</span>
+                        ) : null}
+                      </TableCell>
                       <TableCell>{employee.email}</TableCell>
                       <TableCell>
-                        {canManage && !isSelf ? (
+                        {canManage && !isSelf && employee.role !== "owner" ? (
                           <Select
                             value={employee.role}
                             onValueChange={(value) => updateRole(employee, value as UserRole)}
                           >
-                            <SelectTrigger className="w-40">
-                              <SelectValue />
+                            <SelectTrigger className="w-44">
+                              <SelectValue>{formatRole(employee.role)}</SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                              {USER_ROLES.map((role) => (
+                              {ASSIGNABLE_ROLES.map((role) => (
                                 <SelectItem key={role} value={role}>
                                   {formatRole(role)}
                                 </SelectItem>
@@ -302,7 +350,7 @@ export function EmployeesWorkspace() {
                           {employee.isActive ? "Активен" : "Отключен"}
                         </Badge>
                       </TableCell>
-                      <TableCell>{employee.permissions.length}</TableCell>
+                      <TableCell className="text-muted-foreground">{permissionsSummary(employee)}</TableCell>
                       <TableCell className="text-right">
                         <div className="inline-flex items-center gap-2">
                           <Button
@@ -407,19 +455,27 @@ export function EmployeesWorkspace() {
           </DialogHeader>
           <div className="grid gap-4">
             <div className="grid gap-2">
-              <p className="text-sm font-medium">Роль</p>
-              <Select value={inviteRole} onValueChange={(value) => setInviteRole(value as UserRole)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {INVITE_ROLES.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {formatRole(role)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <p className="text-sm font-medium">Роль нового сотрудника</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {INVITE_ROLES.map((role) => (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => setInviteRole(role)}
+                    className={cn(
+                      "rounded-xl border p-3 text-left transition-colors",
+                      inviteRole === role
+                        ? "border-primary bg-primary/5 ring-1 ring-primary/25"
+                        : "border-border/60 bg-card hover:bg-muted/30",
+                    )}
+                  >
+                    <p className="text-sm font-medium">{formatRole(role)}</p>
+                    {INVITE_ROLE_HINTS[role] ? (
+                      <p className="mt-0.5 text-xs text-muted-foreground">{INVITE_ROLE_HINTS[role]}</p>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="grid gap-2">
@@ -436,12 +492,17 @@ export function EmployeesWorkspace() {
             </div>
 
             {generatedCode ? (
-              <div className="rounded-lg border bg-muted/40 p-4 text-center">
-                <p className="mb-2 text-sm text-muted-foreground">Код приглашения</p>
-                <p className="font-mono text-2xl font-bold tracking-[0.2em]">{generatedCode}</p>
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-center">
+                <p className="mb-1 text-sm text-muted-foreground">
+                  Код для роли «{formatRole(inviteRole)}»
+                </p>
+                <p className="font-mono text-3xl font-bold tracking-[0.25em]">{generatedCode}</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Действует {inviteTtlHours} ч · передайте код сотруднику при входе в AutoCore
+                </p>
                 <Button variant="outline" className="mt-3" onClick={() => void copyInviteCode()}>
                   <Copy className="mr-2 size-4" />
-                  Скопировать
+                  Скопировать код
                 </Button>
               </div>
             ) : null}

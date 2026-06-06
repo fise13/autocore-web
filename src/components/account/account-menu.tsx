@@ -27,6 +27,7 @@ export function AccountMenu({ compact = false }: AccountMenuProps) {
 
   const accountInfo = getAccountProviderInfo(firebaseUser);
   const displayName = profile?.displayName ?? accountInfo?.displayName ?? null;
+  const photoURL = profile?.photoURL ?? accountInfo?.photoURL ?? null;
   const email = profile?.email ?? accountInfo?.email ?? "";
 
   useLayoutEffect(() => {
@@ -94,7 +95,7 @@ export function AccountMenu({ compact = false }: AccountMenuProps) {
     >
       <div className="flex items-center gap-3 rounded-lg bg-muted/35 px-3 py-3">
         <UserAvatar
-          photoURL={accountInfo?.photoURL}
+          photoURL={photoURL}
           displayName={displayName}
           email={email}
           provider={accountInfo?.kind}
@@ -162,7 +163,7 @@ export function AccountMenu({ compact = false }: AccountMenuProps) {
           title={email || userCopy.account.menuTitle}
         >
           <UserAvatar
-            photoURL={accountInfo?.photoURL}
+            photoURL={photoURL}
             displayName={displayName}
             email={email}
             provider={accountInfo?.kind}

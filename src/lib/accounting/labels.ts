@@ -38,3 +38,24 @@ export function operationAccountLabel(account: OperationAccount | string): strin
 export function paymentMethodLabel(method: PaymentMethod | string): string {
   return PAYMENT_METHOD_LABELS[method as PaymentMethod] ?? String(method);
 }
+
+import { MOTOR_SALE_CATEGORY } from "@/lib/accounting/categories";
+
+export function operationCategoryLabel(category: string | null | undefined): string {
+  switch (category) {
+    case MOTOR_SALE_CATEGORY:
+      return "Продажа мотора";
+    case "work_order_income":
+      return "Доход заказ-наряда";
+    case "work_order_parts_cost":
+      return "Себестоимость запчастей";
+    case "payroll":
+      return "Зарплата";
+    case "motor_import":
+      return "Закупка моторов";
+    case "warehouse_import":
+      return "Закупка на склад";
+    default:
+      return category || "—";
+  }
+}

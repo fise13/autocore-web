@@ -1,8 +1,8 @@
 import { ReactNode } from "react";
 
+import { RequireAppAccess } from "@/components/auth/require-app-access";
 import { RequireAuth } from "@/components/auth/require-auth";
 import { CompanyGate } from "@/components/company/company-gate";
-import { OnboardingGate } from "@/components/onboarding/onboarding-gate";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 
 type DashboardLayoutProps = {
@@ -13,9 +13,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <RequireAuth>
       <CompanyGate>
-        <OnboardingGate>
+        <RequireAppAccess>
           <DashboardShell>{children}</DashboardShell>
-        </OnboardingGate>
+        </RequireAppAccess>
       </CompanyGate>
     </RequireAuth>
   );

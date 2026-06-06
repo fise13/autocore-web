@@ -3,6 +3,7 @@ import { PaymentMethod, OperationAccount } from "@/domain/financial-operation";
 import { MotorEntity } from "@/domain/motor";
 import { MotorRepository } from "@/infrastructure/firestore/motor-repository";
 import { FinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
+import { MOTOR_SALE_CATEGORY } from "@/lib/accounting/categories";
 
 export async function sellMotorWithFinancialOperationUseCase(
   motorRepository: MotorRepository,
@@ -20,6 +21,9 @@ export async function sellMotorWithFinancialOperationUseCase(
 ) {
   const relatedMotorID = params.motor.localId ?? Number(params.motor.id);
   const soldDate = new Date();
+  const motorDescription = [params.motor.brandName, params.motor.engineCode, params.motor.serialCode]
+    .filter(Boolean)
+    .join(" ");
 
   await motorRepository.upsert(params.uid, params.motor.id, {
     companyId: params.companyId,
@@ -42,7 +46,10 @@ export async function sellMotorWithFinancialOperationUseCase(
     account: params.account,
     paymentMethod: params.paymentMethod,
     relatedMotorID: Number.isFinite(relatedMotorID) ? relatedMotorID : null,
-    comment: params.comment ?? "Продажа мотора (web)",
+    relatedMotorId: params.motor.id,
+    category: MOTOR_SALE_CATEGORY,
+    description: motorDescription,
+    comment: params.comment ?? "Продажа мотора",
     createdByUserId: params.createdByUserId,
   });
 }

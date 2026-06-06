@@ -1,0 +1,1013 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -------------------------
+    // Helpers
+    // -------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userRef() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function userDoc() {
+      return isSignedIn() && exists(userRef()) ? get(userRef()).data : null;
+    }
+
+    function tokenCompanyId() {
+      return isSignedIn() ? request.auth.token.companyId : null;
+    }
+
+    function tokenRole() {
+      return isSignedIn() ? request.auth.token.role : null;
+    }
+
+    // Firestore user/employee docs are the RBAC source of truth (not JWT claims).
+    function userCompanyId() {
+      let docCompanyId = userDoc() != null ? userDoc().companyId : null;
+      return docCompanyId != null && docCompanyId != ""
+        ? docCompanyId
+        : (tokenCompanyId() != null && tokenCompanyId() != "" ? tokenCompanyId() : null);
+    }
+
+    function normalizedRole(role) {
+      return role == 'viewer' ? 'employee' : role;
+    }
+
+    function userRole() {
+      let docRole = userDoc() != null ? userDoc().role : null;
+      let resolvedRole = docRole != null && docRole != "" ? docRole : tokenRole();
+      return normalizedRole(resolvedRole);
+    }
+
+    function inRole(allowed) {
+      let role = userRole();
+      return role != null && role in allowed;
+    }
+
+    function isOwnerOrAdmin() {
+      return inRole(['owner', 'admin']);
+    }
+
+    function employeeRef(companyId, uid) {
+      return /databases/$(database)/documents/companies/$(companyId)/employees/$(uid);
+    }
+
+    function employeeDoc(companyId, uid) {
+      return companyId != null && uid != null && exists(employeeRef(companyId, uid))
+        ? get(employeeRef(companyId, uid)).data
+        : null;
+    }
+
+    function isActiveEmployee(companyId, uid) {
+      let doc = employeeDoc(companyId, uid);
+      return doc != null && doc.isActive == true;
+    }
+
+    function roleRank(role) {
+      return role == 'owner' ? 5
+        : role == 'admin' ? 4
+        : role == 'manager' ? 3
+        : role == 'accountant' ? 2
+        : 1;
+    }
+
+    function isValidMemberRole(role) {
+      return role in [
+        'owner',
+        'admin',
+        'manager',
+        'accountant',
+        'mechanic',
+        'diagnostician',
+        'employee',
+      ];
+    }
+
+    function memberRole(companyId) {
+      let doc = employeeDoc(companyId, request.auth.uid);
+      let employeeRole = doc != null && doc.role != null ? doc.role : null;
+      let fromEmployee = normalizedRole(employeeRole != null ? employeeRole : userRole());
+      let fromUser = normalizedRole(userRole());
+      return roleRank(fromUser) > roleRank(fromEmployee) ? fromUser : fromEmployee;
+    }
+
+    function canViewEmployees(companyId) {
+      return isOwnerOfCompany(companyId)
+        || (
+          canAccessCompanyDoc(companyId)
+          && hasPermission(companyId, 'employee_view')
+        );
+    }
+
+    function canManageEmployees(companyId) {
+      return isOwnerOfCompany(companyId)
+        || (
+          canAccessCompanyDoc(companyId)
+          && hasPermission(companyId, 'employee_manage')
+          && isOwnerOrAdmin()
+        );
+    }
+
+    function inviteDoc(inviteId) {
+      return /databases/$(database)/documents/invites/$(inviteId);
+    }
+
+    function hasNoCompanyYet() {
+      let doc = userDoc();
+      return doc == null
+        || doc.companyId == null
+        || doc.companyId == "";
+    }
+
+    // Empty profile or only «Моя бухгалтерия» — user may join another team via invite.
+    function canJoinCompanyViaInvite() {
+      let doc = userDoc();
+      return hasNoCompanyYet()
+        || (doc != null && doc.companyId == "default");
+    }
+
+    function isOnboardingCompanyLink(companyId) {
+      return canJoinCompanyViaInvite()
+        && companyId != null
+        && companyId != ""
+        && (
+          companyOwner(companyId) == request.auth.uid
+          || (
+            exists(employeeRef(companyId, request.auth.uid))
+            && employeeDoc(companyId, request.auth.uid).isActive == true
+          )
+        );
+    }
+
+    // Owner links their account to a company they created (works on first try and retries).
+    function canLinkSelfAsOwnerToCompany(companyId) {
+      return isSignedIn()
+        && companyId != null
+        && companyId != ""
+        && request.resource.data.role == 'owner'
+        && companyOwner(companyId) == request.auth.uid;
+    }
+
+    function inviteData(inviteId) {
+      return inviteId != null && inviteId != ""
+        && exists(inviteDoc(inviteId))
+        ? get(inviteDoc(inviteId)).data
+        : null;
+    }
+
+    function isValidInviteJoin(companyId, inviteId, role) {
+      let invite = inviteData(inviteId);
+      return invite != null
+        && invite.used != true
+        && invite.companyId == companyId
+        && normalizedRole(invite.role != null && invite.role != "" ? invite.role : 'employee')
+          == normalizedRole(role)
+        && canJoinCompanyViaInvite();
+    }
+
+    function roleAllows(role, permission) {
+      return role == 'owner'
+        || (
+          role == 'admin'
+          && permission in [
+            'inventory_view',
+            'inventory_edit',
+            'inventory_delete',
+            'inventory_export',
+            'inventory_import',
+            'warehouse_manage',
+            'work_orders_view',
+            'work_orders_edit',
+            'clients_manage',
+            'vehicles_manage',
+            'employee_view',
+            'analytics_view',
+            'settings_manage',
+            'export_data',
+            'import_data'
+          ]
+        )
+        || (
+          role == 'manager'
+          && permission in [
+            'inventory_view',
+            'inventory_edit',
+            'inventory_export',
+            'inventory_import',
+            'work_orders_view',
+            'work_orders_edit',
+            'clients_manage',
+            'vehicles_manage',
+            'accounting_view',
+            'employee_view',
+            'analytics_view',
+            'settings_manage',
+            'export_data',
+            'import_data'
+          ]
+        )
+        || (
+          role == 'accountant'
+          && permission in [
+            'accounting_view',
+            'accounting_edit',
+            'accounting_delete',
+            'analytics_view',
+            'export_data',
+            'import_data'
+          ]
+        )
+        || (
+          role == 'employee'
+          && permission in ['inventory_view', 'accounting_view', 'work_orders_view']
+        )
+        || (
+          role == 'mechanic'
+          && permission in [
+            'work_orders_view',
+            'work_orders_edit',
+            'clients_manage',
+            'vehicles_manage'
+          ]
+        )
+        || (
+          role == 'diagnostician'
+          && permission in [
+            'work_orders_view',
+            'work_orders_edit',
+            'vehicles_manage'
+          ]
+        );
+    }
+
+    function hasCustomPermission(companyId, permission) {
+      let doc = employeeDoc(companyId, request.auth.uid);
+      return doc != null && doc.permissions is list && permission in doc.permissions;
+    }
+
+    function hasPermission(companyId, permission) {
+      return canAccessCompanyDoc(companyId)
+        && (
+          isOwnerOfCompany(companyId)
+          || roleAllows(memberRole(companyId), permission)
+          || hasCustomPermission(companyId, permission)
+        );
+    }
+
+    function canWriteFinancial() {
+      return hasCompany() && hasPermission(userCompanyId(), 'accounting_edit');
+    }
+
+    function canWriteFinancialForCompany(companyId) {
+      return companyId != null
+        && (
+          hasPermission(companyId, 'accounting_edit')
+          || isOwnerOfCompany(companyId)
+        );
+    }
+
+    function hasCompany() {
+      let cid = userCompanyId();
+      return isSignedIn() && cid != null && cid != "";
+    }
+
+    function sameCompany(companyId) {
+      return hasCompany() && companyId != null && companyId == userCompanyId();
+    }
+
+    function sameCompanyDoc() {
+      return sameCompany(resource.data.companyId);
+    }
+
+    function sameCompanyRequest() {
+      return sameCompany(request.resource.data.companyId);
+    }
+
+    function companyOwner(companyId) {
+      let cref = /databases/$(database)/documents/companies/$(companyId);
+      return companyId != null && companyId != "" && exists(cref) ? get(cref).data.ownerId : null;
+    }
+
+    function isOwnerOfCompany(companyId) {
+      return isSignedIn() && companyOwner(companyId) == request.auth.uid;
+    }
+
+    // Owner onboarding: create/update own employee doc for a company you own.
+    function isSelfOwnedCompanyOwnerOnboarding(companyId) {
+      return isSignedIn()
+        && request.auth.uid == request.resource.data.uid
+        && request.resource.data.companyId == companyId
+        && request.resource.data.role == 'owner'
+        && request.resource.data.isActive is bool
+        && companyOwner(companyId) == request.auth.uid;
+    }
+
+    function canReadByCompanyDoc(companyId) {
+      // Fallback for cases when custom claims are stale but users/{uid}.companyId is already updated.
+      return isSignedIn()
+        && companyId != null
+        && exists(userRef())
+        && get(userRef()).data.companyId == companyId;
+    }
+
+    function canAccessCompanyDoc(companyId) {
+      return isOwnerOfCompany(companyId)
+        || sameCompany(companyId)
+        || canReadByCompanyDoc(companyId);
+    }
+
+    function canWriteCompanyDoc(companyId) {
+      return hasPermission(companyId, 'inventory_edit') || hasPermission(companyId, 'settings_manage');
+    }
+
+    function canInventoryRead(companyId) {
+      return isOwnerOfCompany(companyId) || hasPermission(companyId, 'inventory_view');
+    }
+
+    function canInventoryWrite(companyId) {
+      return isOwnerOfCompany(companyId) || hasPermission(companyId, 'inventory_edit');
+    }
+
+    function canInventoryImport(companyId) {
+      return isOwnerOfCompany(companyId) || hasPermission(companyId, 'inventory_import');
+    }
+
+    function canInventoryDelete(companyId) {
+      return isOwnerOfCompany(companyId) || hasPermission(companyId, 'inventory_delete');
+    }
+
+    function canInventoryReadStockLevel() {
+      return resource == null
+        ? (hasCompany() && canInventoryRead(userCompanyId()))
+        : canInventoryRead(resource.data.companyId);
+    }
+
+    function inventoryItemCompanyId() {
+      return resource.data.companyId != null && resource.data.companyId != ""
+        ? resource.data.companyId
+        : userCompanyId();
+    }
+
+    function canInventoryReadItem() {
+      return resource == null
+        ? (hasCompany() && canInventoryRead(userCompanyId()))
+        : canInventoryRead(inventoryItemCompanyId());
+    }
+
+    function canInventoryWriteItem() {
+      return canInventoryWrite(inventoryItemCompanyId());
+    }
+
+    function inventoryItemCompanyIdUnchanged() {
+      return request.resource.data.companyId == resource.data.companyId
+        || (
+          (resource.data.companyId == null || resource.data.companyId == "")
+          && (
+            request.resource.data.companyId == null
+            || request.resource.data.companyId == ""
+            || request.resource.data.companyId == userCompanyId()
+          )
+        );
+    }
+
+    function canWarehouseManage(companyId) {
+      return isOwnerOfCompany(companyId)
+        || hasPermission(companyId, 'warehouse_manage')
+        || hasPermission(companyId, 'inventory_edit');
+    }
+
+    function canWorkOrdersRead(companyId) {
+      return isOwnerOfCompany(companyId) || hasPermission(companyId, 'work_orders_view');
+    }
+
+    function canWorkOrdersWrite(companyId) {
+      return isOwnerOfCompany(companyId) || hasPermission(companyId, 'work_orders_edit');
+    }
+
+    function canClientsWrite(companyId) {
+      return canWorkOrdersWrite(companyId) || hasPermission(companyId, 'clients_manage');
+    }
+
+    function canVehiclesWrite(companyId) {
+      return canWorkOrdersWrite(companyId) || hasPermission(companyId, 'vehicles_manage');
+    }
+
+    function isCompanyMember(companyId) {
+      return companyId != null
+        && companyId != ""
+        && (
+          canAccessCompanyDoc(companyId)
+          || isOwnerOfCompany(companyId)
+          || isActiveEmployee(companyId, request.auth.uid)
+        );
+    }
+
+    function isCompanyBillingManager(companyId) {
+      return isOwnerOfCompany(companyId)
+        || (
+          isSignedIn()
+          && canAccessCompanyDoc(companyId)
+          && inRole(['owner', 'admin'])
+        )
+        || (
+          isSignedIn()
+          && isActiveEmployee(companyId, request.auth.uid)
+          && (
+            employeeDoc(companyId, request.auth.uid).role == 'owner'
+            || employeeDoc(companyId, request.auth.uid).role == 'admin'
+          )
+        );
+    }
+
+    function canWriteMotorMirror(companyId) {
+      return companyId != null
+        && (
+          canWriteCompanyDoc(companyId)
+          || isOwnerOfCompany(companyId)
+        );
+    }
+
+    function motorLocalIdValid(data) {
+      return data.localId is int || data.localId is number;
+    }
+
+    // -------------------------
+    // users/{userId}
+    // -------------------------
+    match /users/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn()
+        && request.auth.uid == userId
+        && isValidMemberRole(request.resource.data.role);
+      // Owner onboarding: link to a company you created (no recursive get() / hasNoCompanyYet required).
+      allow update: if isSignedIn()
+        && request.auth.uid == userId
+        && canLinkSelfAsOwnerToCompany(request.resource.data.companyId);
+      allow update: if isSignedIn()
+        && request.auth.uid == userId
+        && (
+          // Profile-only self update (no company/role changes).
+          (
+            request.resource.data.role == resource.data.role
+            && request.resource.data.companyId == resource.data.companyId
+            && request.resource.data.permissions == resource.data.permissions
+            && request.resource.data.isActive == resource.data.isActive
+          )
+          // Onboarding: link account to a company after company/employee docs exist.
+          || (
+            isOnboardingCompanyLink(request.resource.data.companyId)
+            && isValidMemberRole(request.resource.data.role)
+          )
+        );
+      // Web sync metadata (motorSyncMeta) — self update without touching RBAC fields.
+      allow update: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['motorSyncMeta']);
+      // Web onboarding state — self update only.
+      allow update: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'onboardingCompleted',
+          'onboardingMode',
+          'onboardingWelcomeSeen',
+          'onboardingDemoSeeded',
+          'onboardingSkipped',
+          'onboardingChecklist',
+        ]);
+      allow update: if isSignedIn()
+        && request.auth.uid != userId
+        && resource.data.companyId != null
+        && hasPermission(resource.data.companyId, 'employee_manage')
+        && isOwnerOrAdmin()
+        && request.resource.data.companyId == resource.data.companyId
+        && isValidMemberRole(request.resource.data.role);
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+
+      // Any user inside the same company can read member profiles.
+      // This is required for company members list screen.
+      allow read: if isSignedIn()
+        && resource.data.companyId != null
+        && canAccessCompanyDoc(resource.data.companyId);
+
+      // Incremental motor mirror (macOS / web → users/{uid}/motors/{localId}).
+      match /motors/{motorDocId} {
+        // Owner always reads/writes their mirror; teammates read by companyId.
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow read: if isSignedIn()
+          && resource.data.companyId != null
+          && canAccessCompanyDoc(resource.data.companyId);
+        allow create: if isSignedIn()
+          && request.auth.uid == userId
+          && request.resource.data.companyId != null
+          && motorLocalIdValid(request.resource.data)
+          && (
+            canWriteMotorMirror(request.resource.data.companyId)
+            || request.resource.data.companyId == userCompanyId()
+          );
+        allow update: if isSignedIn()
+          && request.auth.uid == userId
+          && request.resource.data.companyId != null
+          && (
+            canWriteMotorMirror(request.resource.data.companyId)
+            || request.resource.data.companyId == userCompanyId()
+          );
+        // Owner may delete own mirror even if legacy companyId on the doc is stale ("default").
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+
+    // -------------------------
+    // companies/{companyId}
+    // -------------------------
+    match /companies/{companyId} {
+      // Onboarding create (including "default"): ownerId must be current user.
+      allow create: if isSignedIn()
+        && request.resource.data.ownerId == request.auth.uid;
+
+      // IMPORTANT for first login:
+      // Non-recursive owner read — required so get(companies/…) works during onboarding rules.
+      // Guard resource != null: accessing resource.data on a missing doc errors and denies the whole get.
+      allow read: if isSignedIn() && resource != null && resource.data.ownerId == request.auth.uid;
+      allow read: if resource != null && (sameCompany(companyId) || isOwnerOfCompany(companyId));
+      // Shared "Моя бухгалтерия" id: allow get even when doc is missing (web/mac onboarding).
+      allow read: if isSignedIn() && companyId == 'default';
+
+      allow update, delete: if sameCompany(companyId) && isOwnerOrAdmin();
+      // Owner onboarding retry: company doc exists but users/{uid}.companyId is still empty.
+      allow update: if isSignedIn()
+        && resource != null
+        && resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerId == request.auth.uid;
+
+      match /employees/{employeeId} {
+        allow read: if canViewEmployees(companyId)
+          || (isSignedIn() && request.auth.uid == employeeId);
+        // Demo STO seed: owner may create placeholder staff profiles.
+        allow create: if isOwnerOfCompany(companyId)
+          && request.resource.data.companyId == companyId
+          && request.resource.data.isDemo == true
+          && request.resource.data.uid == employeeId
+          && isValidMemberRole(request.resource.data.role)
+          && request.resource.data.isActive is bool;
+        // Fast path for company owner onboarding (web + native).
+        allow create: if request.resource.data.uid == employeeId
+          && isSelfOwnedCompanyOwnerOnboarding(companyId);
+        allow update: if request.auth.uid == employeeId
+          && resource.data.companyId == companyId
+          && request.resource.data.companyId == companyId
+          && request.resource.data.uid == employeeId
+          && isSelfOwnedCompanyOwnerOnboarding(companyId);
+        allow create: if request.resource.data.uid == employeeId
+          && request.resource.data.companyId == companyId
+          && isValidMemberRole(request.resource.data.role)
+          && request.resource.data.isActive is bool
+          && (
+            // Invite join: keep this path isolated to avoid expensive RBAC checks/get() budget.
+            (
+              request.resource.data.inviteId != null
+              && request.resource.data.inviteId != ""
+              && request.auth.uid == employeeId
+              && isValidInviteJoin(
+                companyId,
+                request.resource.data.inviteId,
+                request.resource.data.role
+              )
+            )
+            || (
+              (request.resource.data.inviteId == null || request.resource.data.inviteId == "")
+              && (
+                (
+                  canManageEmployees(companyId)
+                  && (
+                    (request.auth.uid == employeeId && isOwnerOfCompany(companyId))
+                    || (isOwnerOrAdmin() && request.auth.uid != employeeId)
+                  )
+                )
+                || (
+                  request.auth.uid == employeeId
+                  && isOwnerOfCompany(companyId)
+                  && request.resource.data.role == 'owner'
+                  && hasNoCompanyYet()
+                )
+                || (
+                  request.auth.uid == employeeId
+                  && isOwnerOfCompany(companyId)
+                  && !exists(employeeRef(companyId, request.auth.uid))
+                )
+              )
+            )
+          );
+        allow update: if canManageEmployees(companyId)
+          && resource.data.companyId == companyId
+          && request.resource.data.companyId == companyId
+          && request.resource.data.uid == resource.data.uid
+          && isValidMemberRole(request.resource.data.role)
+          && request.resource.data.isActive is bool
+          && request.auth.uid != employeeId;
+        allow update: if isSignedIn()
+          && request.auth.uid == employeeId
+          && resource.data.companyId == companyId
+          && request.resource.data.companyId == companyId
+          && request.resource.data.uid == resource.data.uid
+          && isOwnerOfCompany(companyId)
+          && request.resource.data.role == 'owner';
+        allow update: if isSignedIn()
+          && request.auth.uid == employeeId
+          && resource.data.companyId == companyId
+          && request.resource.data.companyId == companyId
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActiveAt']);
+        allow delete: if canManageEmployees(companyId)
+          && request.auth.uid != employeeId;
+      }
+
+      match /roles/{roleId} {
+        allow read: if canViewEmployees(companyId)
+          || (
+            isSignedIn()
+            && exists(employeeRef(companyId, request.auth.uid))
+          );
+        allow create, update, delete: if canManageEmployees(companyId)
+          || (
+            isSignedIn()
+            && request.resource.data.isSystem == true
+            && (
+              isOwnerOfCompany(companyId)
+              || (
+                exists(employeeRef(companyId, request.auth.uid))
+                && employeeDoc(companyId, request.auth.uid).role == 'owner'
+                && hasNoCompanyYet()
+              )
+              || (
+                exists(employeeRef(companyId, request.auth.uid))
+                && employeeDoc(companyId, request.auth.uid).inviteId != null
+              )
+            )
+          );
+      }
+
+      match /activityLogs/{logId} {
+        allow read: if canViewEmployees(companyId);
+        allow create: if (canAccessCompanyDoc(companyId) || isOwnerOfCompany(companyId))
+          && request.resource.data.companyId == companyId
+          && request.resource.data.actor == request.auth.uid
+          && request.resource.data.timestamp is timestamp;
+        allow update, delete: if false;
+      }
+
+      match /billing/{docId} {
+        allow read: if docId == 'subscription' && isCompanyMember(companyId);
+        allow create: if docId == 'subscription'
+          && isCompanyBillingManager(companyId)
+          && request.resource.data.plan == 'free'
+          && request.resource.data.status == 'active'
+          && request.resource.data.provider == 'internal';
+        allow update, delete: if false;
+      }
+
+      match /meta/{metaId} {
+        allow read: if canWorkOrdersRead(companyId);
+        allow create, update: if canWorkOrdersWrite(companyId);
+        allow delete: if false;
+      }
+
+      match /workOrders/{workOrderId} {
+        allow read: if canWorkOrdersRead(companyId);
+        allow create: if canWorkOrdersWrite(companyId)
+          && request.resource.data.companyId == companyId
+          && request.resource.data.createdByUserId == request.auth.uid;
+        allow update: if canWorkOrdersWrite(companyId)
+          && request.resource.data.companyId == companyId
+          && resource.data.companyId == companyId;
+        allow delete: if false;
+      }
+
+      match /clients/{clientId} {
+        allow read: if canWorkOrdersRead(companyId);
+        allow create: if canClientsWrite(companyId)
+          && request.resource.data.companyId == companyId;
+        allow update: if canClientsWrite(companyId)
+          && request.resource.data.companyId == companyId
+          && resource.data.companyId == companyId;
+        allow delete: if false;
+      }
+
+      match /vehicles/{vehicleId} {
+        allow read: if canWorkOrdersRead(companyId);
+        allow create: if canVehiclesWrite(companyId)
+          && request.resource.data.companyId == companyId;
+        allow update: if canVehiclesWrite(companyId)
+          && request.resource.data.companyId == companyId
+          && resource.data.companyId == companyId;
+        allow delete: if false;
+
+        match /serviceHistory/{entryId} {
+          allow read: if canWorkOrdersRead(companyId);
+          allow create, update, delete: if false;
+        }
+      }
+
+      match /domainEvents/{eventId} {
+        allow read: if canWorkOrdersRead(companyId);
+        allow create: if canWorkOrdersWrite(companyId)
+          && request.resource.data.companyId == companyId
+          && request.resource.data.aggregateType == 'work_order'
+          && request.resource.data.status == 'pending';
+        allow update, delete: if false;
+      }
+
+      match /payrollTransactions/{transactionId} {
+        allow read: if canWorkOrdersRead(companyId)
+          || (isSignedIn() && resource.data.employeeId == request.auth.uid);
+        allow create, delete: if false;
+        allow update: if hasPermission(companyId, 'accounting_edit')
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paidAt'])
+          && request.resource.data.status in ['pending', 'paid', 'cancelled'];
+      }
+
+      match /workOrderDocuments/{documentId} {
+        allow read: if canWorkOrdersRead(companyId);
+        allow create, update, delete: if false;
+      }
+
+      match /warranties/{warrantyId} {
+        allow read: if canWorkOrdersRead(companyId);
+        allow create, update, delete: if false;
+      }
+
+      match /documentGenerationJobs/{jobId} {
+        allow read: if isOwnerOrAdmin() && canAccessCompanyDoc(companyId);
+        allow create, update, delete: if false;
+      }
+
+      match /documentInstances/{instanceId} {
+        allow read: if canWorkOrdersRead(companyId);
+        allow create, update, delete: if false;
+      }
+
+      match /quotes/{quoteId} {
+        allow read: if canWorkOrdersRead(companyId);
+        allow create: if canWorkOrdersWrite(companyId)
+          && request.resource.data.companyId == companyId;
+        allow update: if canWorkOrdersWrite(companyId)
+          && request.resource.data.companyId == companyId
+          && resource.data.companyId == companyId;
+        allow delete: if false;
+      }
+    }
+
+    // -------------------------
+    // tasks/{taskId}
+    // -------------------------
+    match /tasks/{taskId} {
+      allow read: if sameCompanyDoc();
+      allow create, update, delete: if sameCompanyRequest() && isOwnerOrAdmin();
+    }
+
+    // -------------------------
+    // invites/{inviteId}
+    // -------------------------
+    match /invites/{inviteId} {
+      // IMPORTANT:
+      // join flow queries invites by code (whereField("code", isEqualTo: ...)).
+      // Firestore rejects query if rules could deny any potential match.
+      // To keep invite validation working reliably, allow read for signed-in users.
+      allow read: if isSignedIn();
+
+      allow create: if request.resource.data.companyId != null
+        && canManageEmployees(request.resource.data.companyId)
+        && isValidMemberRole(request.resource.data.role)
+        && request.resource.data.used == false;
+      allow delete: if resource.data.companyId != null
+        && canManageEmployees(resource.data.companyId);
+
+      // Join flow first — cheap path; must not run canManageEmployees() before this (get() budget).
+      allow update: if isSignedIn()
+        && request.resource.data.used == true
+        && resource.data.used != true
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used'])
+        && resource.data.companyId != null
+        && exists(employeeRef(resource.data.companyId, request.auth.uid));
+      allow update: if resource.data.companyId != null
+        && canManageEmployees(resource.data.companyId);
+    }
+
+    // -------------------------
+    // Financial collections
+    // -------------------------
+    match /financialOperations/{operationId} {
+      allow read: if hasPermission(resource.data.companyId, 'accounting_view');
+      allow create: if canWriteFinancialForCompany(request.resource.data.companyId);
+      allow update: if canWriteFinancialForCompany(resource.data.companyId)
+        && request.resource.data.companyId == resource.data.companyId;
+      allow delete: if hasPermission(resource.data.companyId, 'accounting_delete');
+    }
+
+    // Keep legacy collection with same restrictions as financialOperations.
+    match /operations/{operationId} {
+      allow read: if hasPermission(resource.data.companyId, 'accounting_view');
+      allow create: if canWriteFinancialForCompany(request.resource.data.companyId);
+      allow update: if canWriteFinancialForCompany(resource.data.companyId)
+        && request.resource.data.companyId == resource.data.companyId;
+      allow delete: if hasPermission(resource.data.companyId, 'accounting_delete');
+    }
+
+    match /accounts/{accountId} {
+      allow read: if hasPermission(resource.data.companyId, 'accounting_view');
+      allow create: if hasPermission(request.resource.data.companyId, 'accounting_edit');
+      allow update: if hasPermission(request.resource.data.companyId, 'accounting_edit');
+      allow delete: if hasPermission(resource.data.companyId, 'accounting_delete');
+    }
+
+    // -------------------------
+    // Catalog / Warehouse / Docs
+    // -------------------------
+    match /engines/{engineId} {
+      allow read: if hasPermission(resource.data.companyId, 'inventory_view');
+      allow create: if hasPermission(request.resource.data.companyId, 'inventory_edit');
+      allow update: if hasPermission(request.resource.data.companyId, 'inventory_edit');
+      allow delete: if hasPermission(resource.data.companyId, 'inventory_delete');
+    }
+
+    match /motors/{motorId} {
+      allow read: if hasPermission(resource.data.companyId, 'inventory_view');
+      allow create: if hasPermission(request.resource.data.companyId, 'inventory_edit');
+      allow update: if hasPermission(request.resource.data.companyId, 'inventory_edit');
+      allow delete: if hasPermission(resource.data.companyId, 'inventory_delete');
+    }
+
+    match /brands/{brandId} {
+      allow read: if hasPermission(resource.data.companyId, 'inventory_view');
+      allow create: if hasPermission(request.resource.data.companyId, 'inventory_edit');
+      allow update: if hasPermission(request.resource.data.companyId, 'inventory_edit');
+      allow delete: if hasPermission(resource.data.companyId, 'inventory_delete');
+    }
+
+    match /inventoryItems/{itemId} {
+      allow read: if canInventoryReadItem();
+      allow create: if canInventoryWrite(request.resource.data.companyId);
+      allow update: if canInventoryWriteItem()
+        && inventoryItemCompanyIdUnchanged();
+      allow delete: if canInventoryDelete(resource.data.companyId);
+    }
+
+    match /inventoryMovements/{movementId} {
+      allow read: if canInventoryRead(resource.data.companyId);
+      allow create: if canInventoryWrite(request.resource.data.companyId);
+      allow update: if false;
+      allow delete: if canInventoryDelete(resource.data.companyId);
+    }
+
+    match /inventoryStockLevels/{levelId} {
+      allow read: if canInventoryReadStockLevel();
+      allow create: if canInventoryWrite(request.resource.data.companyId)
+        && request.resource.data.warehouseId != null
+        && request.resource.data.itemId != null;
+      allow update: if canInventoryWrite(resource.data.companyId)
+        && request.resource.data.companyId == resource.data.companyId
+        && request.resource.data.warehouseId == resource.data.warehouseId
+        && request.resource.data.itemId == resource.data.itemId;
+      allow delete: if canInventoryDelete(resource.data.companyId);
+    }
+
+    match /inventoryReservations/{reservationId} {
+      allow read: if canInventoryRead(resource.data.companyId);
+      allow create, update: if canInventoryWrite(request.resource.data.companyId);
+      allow delete: if canInventoryDelete(resource.data.companyId);
+    }
+
+    match /warehouses/{warehouseId} {
+      allow read: if canInventoryRead(resource.data.companyId);
+      allow create: if canWarehouseManage(request.resource.data.companyId)
+        && request.resource.data.companyId != null;
+      allow update: if canWarehouseManage(resource.data.companyId)
+        && request.resource.data.companyId == resource.data.companyId;
+      allow delete: if canInventoryDelete(resource.data.companyId);
+    }
+
+    match /suppliers/{supplierId} {
+      allow read: if canInventoryRead(resource.data.companyId);
+      allow create, update: if canInventoryWrite(request.resource.data.companyId);
+      allow delete: if canInventoryDelete(resource.data.companyId);
+    }
+
+    match /barcodeMappings/{mappingId} {
+      allow read: if canInventoryRead(resource.data.companyId);
+      allow create, update: if canInventoryWrite(request.resource.data.companyId);
+      allow delete: if canInventoryDelete(resource.data.companyId);
+    }
+
+    match /inventoryImports/{importId} {
+      allow read: if canInventoryRead(resource.data.companyId);
+      allow create, update: if canInventoryImport(request.resource.data.companyId);
+      allow delete: if canInventoryDelete(resource.data.companyId);
+
+      match /rows/{rowId} {
+        allow read: if canInventoryRead(get(/databases/$(database)/documents/inventoryImports/$(importId)).data.companyId);
+        allow create, update: if canInventoryImport(get(/databases/$(database)/documents/inventoryImports/$(importId)).data.companyId);
+        allow delete: if canInventoryDelete(get(/databases/$(database)/documents/inventoryImports/$(importId)).data.companyId);
+      }
+
+      match /audit/{auditId} {
+        allow read: if canInventoryRead(get(/databases/$(database)/documents/inventoryImports/$(importId)).data.companyId);
+        allow create: if canInventoryImport(get(/databases/$(database)/documents/inventoryImports/$(importId)).data.companyId);
+        allow update, delete: if false;
+      }
+    }
+
+    match /motorImports/{importId} {
+      allow read: if canInventoryRead(resource.data.companyId);
+      allow create, update: if canInventoryWrite(request.resource.data.companyId);
+      allow delete: if canInventoryDelete(resource.data.companyId);
+
+      match /rows/{rowId} {
+        allow read: if canInventoryRead(get(/databases/$(database)/documents/motorImports/$(importId)).data.companyId);
+        allow create, update: if canInventoryWrite(get(/databases/$(database)/documents/motorImports/$(importId)).data.companyId);
+        allow delete: if canInventoryDelete(get(/databases/$(database)/documents/motorImports/$(importId)).data.companyId);
+      }
+
+      match /audit/{auditId} {
+        allow read: if canInventoryRead(get(/databases/$(database)/documents/motorImports/$(importId)).data.companyId);
+        allow create: if canInventoryWrite(get(/databases/$(database)/documents/motorImports/$(importId)).data.companyId);
+        allow update, delete: if false;
+      }
+    }
+
+    match /inventoryCategories/{categoryId} {
+      allow read: if canInventoryRead(resource.data.companyId);
+      allow create, update: if canInventoryWrite(request.resource.data.companyId);
+      allow delete: if canInventoryDelete(resource.data.companyId);
+    }
+
+    match /documents/{documentId} {
+      allow read: if hasPermission(resource.data.companyId, 'inventory_view');
+      allow create: if hasPermission(request.resource.data.companyId, 'inventory_edit');
+      allow update: if hasPermission(request.resource.data.companyId, 'inventory_edit');
+      allow delete: if hasPermission(resource.data.companyId, 'inventory_delete');
+    }
+
+    match /specificCategories/{categoryId} {
+      allow read: if hasPermission(resource.data.companyId, 'inventory_view');
+      allow create: if hasPermission(request.resource.data.companyId, 'inventory_edit');
+      allow update: if hasPermission(request.resource.data.companyId, 'inventory_edit');
+      allow delete: if hasPermission(resource.data.companyId, 'inventory_delete');
+    }
+
+    match /specificRecords/{recordId} {
+      allow read: if hasPermission(resource.data.companyId, 'inventory_view');
+      allow create: if hasPermission(request.resource.data.companyId, 'inventory_edit');
+      allow update: if hasPermission(request.resource.data.companyId, 'inventory_edit');
+      allow delete: if hasPermission(resource.data.companyId, 'inventory_delete');
+    }
+
+    // -------------------------
+    // Audit log (append-only)
+    // -------------------------
+    match /auditLog/{logId} {
+      allow read: if hasPermission(resource.data.companyId, 'employee_view') || isOwnerOfCompany(resource.data.companyId);
+      allow create: if isSignedIn()
+        && request.resource.data.companyId != null
+        && canAccessCompanyDoc(request.resource.data.companyId)
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.timestamp is timestamp;
+      allow update, delete: if false;
+    }
+
+    // -------------------------
+    // Notifications
+    // -------------------------
+    match /notifications/{notifId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && isOwnerOrAdmin()
+        && request.resource.data.companyId == userCompanyId();
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn()
+        && (resource.data.userId == request.auth.uid || isOwnerOrAdmin());
+    }
+
+    // -------------------------
+    // collectionGroup("motors") — users/{uid}/motors + legacy top-level /motors
+    // -------------------------
+    match /{path=**}/motors/{motorId} {
+      allow read: if isSignedIn()
+        && resource.data.companyId != null
+        && (
+          canAccessCompanyDoc(resource.data.companyId)
+          || isOwnerOfCompany(resource.data.companyId)
+        );
+      // Writes always go through users/{uid}/motors nested rules above.
+    }
+
+    // -------------------------
+    // Default deny
+    // -------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

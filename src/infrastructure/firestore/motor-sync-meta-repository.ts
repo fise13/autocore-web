@@ -1,4 +1,4 @@
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 
 import { MotorSyncMeta } from "@/domain/motor-sync";
 import { normalizeCompanyId } from "@/lib/company-id";
@@ -30,18 +30,20 @@ export async function writeMotorSyncMeta(
   patch: Partial<{ lastPulledAt: Date; lastPushedAt: Date; companyId: string }>,
 ) {
   const db = getFirestoreDb();
-  const payload: Record<string, unknown> = {};
+  const userRef = doc(db, "users", uid);
+  const userSnap = await getDoc(userRef);
+  if (!userSnap.exists()) return;
+
+  const existing = (userSnap.data().motorSyncMeta as Record<string, unknown> | undefined) ?? {};
+  const payload: Record<string, unknown> = {
+    ...existing,
+    updatedAt: serverTimestamp(),
+  };
   if (patch.lastPulledAt) payload.lastPulledAt = patch.lastPulledAt;
   if (patch.lastPushedAt) payload.lastPushedAt = patch.lastPushedAt;
   if (patch.companyId) payload.companyId = normalizeCompanyId(patch.companyId);
-  await setDoc(
-    doc(db, "users", uid),
-    {
-      motorSyncMeta: {
-        ...payload,
-        updatedAt: serverTimestamp(),
-      },
-    },
-    { merge: true },
-  );
+
+  await updateDoc(userRef, {
+    motorSyncMeta: payload,
+  });
 }

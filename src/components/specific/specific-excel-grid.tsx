@@ -31,6 +31,7 @@ import {
   selectWholeRowActiveStart,
 } from "@/lib/grid/selection-controller";
 import { GridCellAddress, GridRange, isCellInsideRange, normalizeRange } from "@/lib/grid/grid-types";
+import { resolveGridColumnAutocomplete } from "@/lib/grid/grid-column-autocomplete";
 import { gridPalette } from "@/lib/grid/grid-palette";
 import {
   MOTOR_GRID_EMPTY_ROWS_EXPAND,
@@ -64,7 +65,6 @@ import {
   SpecificCategoryRepository,
   SpecificRecordEntity,
 } from "@/infrastructure/firestore/specific-category-repository";
-import { prepareSyncAuth } from "@/lib/auth/prepare-sync-auth";
 import { mapAuthError } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 import { getFirebaseAuth } from "@/infrastructure/firebase/client";
@@ -288,6 +288,17 @@ export function SpecificExcelGrid({
     scroll.width,
   ]);
 
+  const editorAutocompleteMatch = useMemo(
+    () =>
+      resolveGridColumnAutocomplete(
+        editor,
+        rows.length,
+        (row, column) => valueAtCell(rows[row], column),
+        (column) => isEditableColumn(column) && !isDateColumn(column),
+      ),
+    [editor, isEditableColumn, rows, valueAtCell],
+  );
+
   const scheduleDirtyStatus = useCallback(() => {
     if (dirtyStatusScheduledRef.current) return;
     dirtyStatusScheduledRef.current = true;
@@ -406,6 +417,7 @@ export function SpecificExcelGrid({
   }, [flushEditor, saveLocalOnly]);
 
   const pushToCloud = useCallback(async () => {
+    flushEditor();
     if (!companyId || !canEdit) return;
     if (dirtyRowsRef.current.size === 0) {
       setSaveStatus("idle");
@@ -458,13 +470,9 @@ export function SpecificExcelGrid({
       setSaveError(message);
       throw new Error(message);
     }
-  }, [canEdit, category, companyId, headerMapping, repository, rows, setSaveError, setSaveStatus]);
+  }, [canEdit, category, companyId, flushEditor, headerMapping, repository, rows, setSaveError, setSaveStatus]);
 
   const syncNow = useCallback(async () => {
-    const uid = getFirebaseAuth().currentUser?.uid;
-    if (uid) {
-      await prepareSyncAuth(uid);
-    }
     runSave();
     await pushToCloud();
   }, [pushToCloud, runSave]);
@@ -1508,6 +1516,7 @@ export function SpecificExcelGrid({
                     setEditor(null);
                     focusGrid();
                   }}
+                  autocompleteMatch={editorAutocompleteMatch}
                 />
               ) : null}
             </div>

@@ -1,9 +1,6 @@
 import { MotorEntity } from "@/domain/motor";
 import { BrandEntity, EngineEntity } from "@/infrastructure/firestore/catalog-repository";
-import {
-  requestAiMotorNormalizeBatch,
-  requestAiMotorSheetResolve,
-} from "@/infrastructure/openrouter/import-ai-client";
+import { requestAiMotorSheetResolve } from "@/infrastructure/openrouter/import-ai-client";
 import {
   buildEngineRowsFromSheet,
   buildSpecificRowsFromSheet,
@@ -11,11 +8,15 @@ import {
 import { ExcelSheetData } from "@/lib/motors/excel-types";
 
 import { duplicateMotorRows, enrichMotorRowsWithDuplicates } from "./duplicate-detector";
+import {
+  applyMagicMotorDefaults,
+  isMotorQuickImportReady,
+  magicEnhanceMotorRows,
+} from "./magic-import";
 import { preprocessMotorSheets, normalizeSerial } from "./preprocessor";
 import {
   buildSheetMappingState,
   mergeAiSheetMapping,
-  needsAiSheetMapping,
 } from "./sheet-mapper";
 import {
   MotorImportPreviewResult,
@@ -31,7 +32,9 @@ export type MotorImportPipelineOptions = {
   existingMotors: MotorEntity[];
   existingBrands: BrandEntity[];
   existingEngines: EngineEntity[];
+  existingSpecificCategories?: Array<{ name: string }>;
   useAi?: boolean;
+  magicImport?: boolean;
   manualSheetMappings?: Record<string, MotorSheetMappingResult>;
   onProgress?: (progress: MotorImportProgress) => void;
 };
@@ -104,15 +107,20 @@ export async function runMotorImportPreviewPipeline(
   });
 
   const sheets = preprocessMotorSheets(options.sheets);
-  let sheetMappings = options.manualSheetMappings ?? buildSheetMappingState(sheets);
+  const existingCategoryNames =
+    options.existingSpecificCategories?.map((item) => item.name).filter(Boolean) ?? [];
+  let sheetMappings = options.manualSheetMappings ?? buildSheetMappingState(sheets, existingCategoryNames);
+  let aiNotes = "";
 
-  if (options.useAi && needsAiSheetMapping(Object.values(sheetMappings))) {
+  const useMagicImport = options.magicImport ?? options.useAi ?? false;
+
+  if (options.useAi && !options.manualSheetMappings) {
     emit(options.onProgress, {
       phase: "ai",
       current: 35,
       total: 100,
       percent: 35,
-      message: "AI анализирует листы…",
+      message: "ИИ анализирует листы и колонки…",
     });
 
     try {
@@ -128,18 +136,20 @@ export async function runMotorImportPreviewPipeline(
         options.companyId,
         sheets.map((sheet) => ({
           sheetName: sheet.name,
-          sampleRows: sheet.rows.slice(0, 5),
+          sampleRows: sheet.rows.slice(0, 8),
         })),
         catalog,
+        existingCategoryNames,
       );
 
+      aiNotes = ai.notes ?? "";
       const aiByName = new Map(ai.sheets.map((item) => [item.sheet_name, item]));
       sheetMappings = Object.fromEntries(
         Object.entries(sheetMappings).map(([id, mapping]) => {
           const sheet = sheets.find((item) => item.name === mapping.config.sheetName);
           const aiSheet = aiByName.get(mapping.config.sheetName);
           if (!sheet || !aiSheet) return [id, mapping];
-          return [id, mergeAiSheetMapping(mapping, sheet, aiSheet, ai.notes)];
+          return [id, mergeAiSheetMapping(mapping, sheet, aiSheet, ai.notes, existingCategoryNames)];
         }),
       );
     } catch {
@@ -157,36 +167,11 @@ export async function runMotorImportPreviewPipeline(
 
   let engineRows = buildEnginePreviewRows(sheets, sheetMappings);
 
-  if (options.useAi) {
-    const ambiguous = engineRows.filter((row) => row.confidence < 0.75).slice(0, 25);
-    if (ambiguous.length > 0) {
-      try {
-        const ai = await requestAiMotorNormalizeBatch(
-          options.companyId,
-          ambiguous.map((row) => ({
-            rowKey: row.rowKey,
-            rawSerial: row.serialCode,
-            rawBrand: row.brandName,
-            rawEngine: row.engineCode,
-          })),
-        );
-        const byKey = new Map(ai.items.map((item) => [item.rowKey, item]));
-        engineRows = engineRows.map((row) => {
-          const suggestion = byKey.get(row.rowKey);
-          if (!suggestion) return row;
-          return {
-            ...row,
-            serialCode: suggestion.normalizedSerial ?? row.serialCode,
-            brandName: suggestion.brand ?? row.brandName,
-            engineCode: suggestion.engineCode ?? row.engineCode,
-            confidence: suggestion.confidence,
-            warnings: [...row.warnings, ...suggestion.warnings],
-          };
-        });
-      } catch {
-        // Keep rule-based rows.
-      }
-    }
+  if (useMagicImport && engineRows.length > 0) {
+    engineRows = await magicEnhanceMotorRows(options.companyId, engineRows, {
+      onProgress: options.onProgress,
+    });
+    engineRows = applyMagicMotorDefaults(engineRows);
   }
 
   engineRows = enrichMotorRowsWithDuplicates(engineRows, options.existingMotors);
@@ -202,6 +187,15 @@ export async function runMotorImportPreviewPipeline(
     specificSheets: specificSheets.length,
   };
 
+  const previewBase = {
+    sheets,
+    sheetMappings,
+    engineRows,
+    specificSheets,
+    stats,
+    aiNotes,
+  };
+
   emit(options.onProgress, {
     phase: "done",
     current: 100,
@@ -211,10 +205,7 @@ export async function runMotorImportPreviewPipeline(
   });
 
   return {
-    sheets,
-    sheetMappings,
-    engineRows,
-    specificSheets,
-    stats,
+    ...previewBase,
+    quickImport: isMotorQuickImportReady(previewBase),
   };
 }

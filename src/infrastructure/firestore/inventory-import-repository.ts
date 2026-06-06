@@ -21,6 +21,7 @@ import { normalizeCompanyId } from "@/lib/company-id";
 import { toDateFromFirestore } from "@/lib/firestore-timestamp";
 import { notifyFirestoreSnapshotError } from "@/lib/firestore/snapshot-errors";
 import { ImportPhase, ImportValueSource } from "@/lib/warehouse/import/types";
+import { sanitizeImportRowsForFirestore } from "@/lib/warehouse/import/firestore-sanitize";
 
 const COLLECTION = "inventoryImports";
 export const IMPORT_ROWS_INLINE_LIMIT = 100;
@@ -58,9 +59,10 @@ function mapImportJob(id: string, data: Record<string, unknown>): InventoryImpor
 
 async function writeRowsToSubcollection(jobId: string, rows: InventoryImportRow[]) {
   const db = getFirestoreDb();
-  for (let offset = 0; offset < rows.length; offset += ROW_BATCH_SIZE) {
+  const sanitizedRows = sanitizeImportRowsForFirestore(rows);
+  for (let offset = 0; offset < sanitizedRows.length; offset += ROW_BATCH_SIZE) {
     const batch = writeBatch(db);
-    const chunk = rows.slice(offset, offset + ROW_BATCH_SIZE);
+    const chunk = sanitizedRows.slice(offset, offset + ROW_BATCH_SIZE);
     for (const row of chunk) {
       const rowRef = doc(db, COLLECTION, jobId, "rows", String(row.rowIndex));
       batch.set(rowRef, row);
@@ -88,6 +90,7 @@ export function createInventoryImportRepository() {
     }): Promise<string> {
       const normalizedCompanyId = normalizeCompanyId(input.companyId);
       const storeInSubcollection = input.rows.length > IMPORT_ROWS_INLINE_LIMIT;
+      const sanitizedRows = sanitizeImportRowsForFirestore(input.rows);
       const created = await addDoc(ref, {
         companyId: normalizedCompanyId,
         status: "preview",
@@ -95,9 +98,9 @@ export function createInventoryImportRepository() {
         sourceFileName: input.sourceFileName,
         columnMapping: input.columnMapping,
         columnMappingSource: input.columnMappingSource ?? "rules",
-        rows: storeInSubcollection ? [] : input.rows,
+        rows: storeInSubcollection ? [] : sanitizedRows,
         rowsStoredInSubcollection: storeInSubcollection,
-        rowCount: input.rows.length,
+        rowCount: sanitizedRows.length,
         stats: input.stats,
         createdByUserId: input.createdByUserId,
         createdAt: serverTimestamp(),
@@ -105,7 +108,7 @@ export function createInventoryImportRepository() {
       });
 
       if (storeInSubcollection) {
-        await writeRowsToSubcollection(created.id, input.rows);
+        await writeRowsToSubcollection(created.id, sanitizedRows);
       }
 
       return created.id;

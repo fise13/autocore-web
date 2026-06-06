@@ -36,16 +36,16 @@ export function MetricCard({
   return (
     <div
       className={cn(
-        "autocore-metric-card animate-autocore-fade-in-up flex flex-col gap-2 p-4",
+        "autocore-metric-card animate-autocore-fade-in-up flex flex-col gap-1.5 p-3",
         className,
       )}
       style={{ animationDelay: motionStagger(index) }}
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{label}</p>
-        {Icon ? <Icon className={cn("size-4 opacity-70", toneClasses[tone])} /> : null}
+        <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{label}</p>
+        {Icon ? <Icon className={cn("size-3.5 opacity-70", toneClasses[tone])} /> : null}
       </div>
-      <p className={cn("text-2xl font-semibold tabular-nums tracking-tight", toneClasses[tone])}>
+      <p className={cn("text-xl font-semibold tabular-nums tracking-tight", toneClasses[tone])}>
         <AnimatedNumber value={value} format={(n) => `${n.toLocaleString("ru-RU")}${suffix}`} />
       </p>
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}

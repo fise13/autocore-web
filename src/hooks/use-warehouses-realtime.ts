@@ -1,22 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Warehouse } from "@/domain/warehouse";
 import { WarehouseRepository } from "@/infrastructure/firestore/warehouse-repository";
+import { defaultWarehouseDocId } from "@/lib/warehouse/default-warehouse-id";
+import { dedupeWarehousesForDisplay } from "@/lib/warehouse/dedupe-warehouses";
 
 export function useWarehousesRealtime(
   repository: WarehouseRepository,
   companyId: string,
   enabled = true,
 ) {
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [rawWarehouses, setRawWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const preferredDefaultId = companyId ? defaultWarehouseDocId(companyId) : undefined;
+
+  const warehouses = useMemo(
+    () => dedupeWarehousesForDisplay(rawWarehouses, preferredDefaultId),
+    [preferredDefaultId, rawWarehouses],
+  );
+
   useEffect(() => {
     if (!companyId || !enabled) {
-      setWarehouses([]);
+      setRawWarehouses([]);
       setLoading(false);
       return;
     }
@@ -25,7 +34,7 @@ export function useWarehousesRealtime(
     const unsubscribe = repository.subscribe(
       companyId,
       (next) => {
-        setWarehouses(next);
+        setRawWarehouses(next);
         setLoading(false);
         setErrorMessage(null);
       },

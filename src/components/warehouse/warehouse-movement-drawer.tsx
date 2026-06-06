@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import {
   Dialog,
   DialogContent,
@@ -73,7 +75,18 @@ export function WarehouseMovementDrawer({
               {movement.referenceType ? (
                 <p className="mt-1 text-xs text-muted-foreground">
                   Источник: {referenceLabels[movement.referenceType] ?? movement.referenceType}
-                  {movement.referenceId ? ` · ${movement.referenceId}` : ""}
+                  {movement.referenceId && movement.referenceType === "work_order" ? (
+                    <>
+                      {" · "}
+                      <Link href={`/work-orders/${movement.referenceId}`} className="text-primary hover:underline">
+                        {movement.referenceId}
+                      </Link>
+                    </>
+                  ) : movement.referenceId ? (
+                    ` · ${movement.referenceId}`
+                  ) : (
+                    ""
+                  )}
                 </p>
               ) : null}
               {movement.reason ? <p className="mt-1 text-xs">{movement.reason}</p> : null}

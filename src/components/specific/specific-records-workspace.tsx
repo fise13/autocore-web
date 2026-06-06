@@ -138,7 +138,7 @@ export function SpecificRecordsWorkspace({ category }: SpecificRecordsWorkspaceP
           <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
             <p className="text-sm font-medium">Специфичных данных пока нет</p>
             <p className="text-sm text-muted-foreground">
-              Импортируйте Excel на Mac или в разделе «Все моторы», затем синхронизируйте.
+              Импортируйте Excel на Mac или в разделе «Все моторы».
             </p>
           </div>
         ) : (

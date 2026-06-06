@@ -4,14 +4,21 @@ import Link from "next/link";
 import { AccountMenu } from "@/components/account/account-menu";
 import { AppLogo } from "@/components/brand/app-logo";
 import { usePathname } from "next/navigation";
-import { ReactNode, useCallback, useEffect, useMemo } from "react";
+import { ReactNode, Suspense, useCallback, useEffect, useMemo } from "react";
 
+import { createBrandUseCase } from "@/application/use-cases/create-brand";
 import { deleteBrandUseCase } from "@/application/use-cases/delete-brand";
 import { renameBrandUseCase } from "@/application/use-cases/rename-brand";
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { SidebarEditBlur } from "@/components/layout/sidebar-edit-blur";
+import { SidebarCustomizationProvider } from "@/components/providers/sidebar-customization-provider";
 import { BillingGateProvider } from "@/components/billing/billing-gate-provider";
 import { DashboardLayoutProvider } from "@/components/layout/dashboard-layout-context";
+import { DashboardImportProgress } from "@/components/warehouse/import/shared/import-progress-host";
 import { CommandPaletteProvider } from "@/components/mission-control/command-palette/command-palette-provider";
+import { DashboardRouteCache } from "@/components/layout/dashboard-route-cache";
+import { MotorImportHost } from "@/components/motors/motor-import-host";
+import { MotorImportTriggerButton } from "@/components/motors/motor-import-trigger-button";
 import { ResizableSidebar } from "@/components/layout/resizable-sidebar";
 import { WorkspaceProvider, useWorkspace } from "@/components/layout/workspace-context";
 import { WorkspaceStatusBar } from "@/components/layout/workspace-status-bar";
@@ -20,8 +27,10 @@ import { FirestoreListenerGuard } from "@/components/providers/firestore-listene
 import { useAuth } from "@/components/providers/auth-provider";
 import { useEffectiveCatalog } from "@/hooks/use-effective-catalog";
 import { useMotorsRealtime } from "@/hooks/use-motors-realtime";
+import { useSidebarCustomization } from "@/components/providers/sidebar-customization-provider";
 import { useSidebarLayout } from "@/hooks/use-sidebar-layout";
 import { useSpecificCategoriesRealtime } from "@/hooks/use-specific-categories-realtime";
+import { canAccessMotorsArea } from "@/lib/auth/app-access";
 import { can } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { cn } from "@/lib/utils";
@@ -44,10 +53,12 @@ function DashboardShellInner({ children }: DashboardShellProps) {
   const workspace = useWorkspace();
   const { setAvailability } = workspace;
   const { visible, width, setWidth, toggleVisible } = useSidebarLayout();
+  const { customization, isEditing } = useSidebarCustomization();
+  const sidebarOnRight = customization.position === "right";
   const companyId = normalizeCompanyId(profile?.companyId);
   const uid = profile?.id ?? "";
-  const canViewInventory = can(profile, "inventory_view");
-  const canManageBrands = can(profile, "inventory_edit");
+  const canViewMotors = canAccessMotorsArea(profile);
+  const canManageBrands = can(profile, "inventory_edit") && canViewMotors;
   const canSubscribe = Boolean(uid && companyId && !isLoading);
 
   const isMotorRoute = pathname === "/motors" || pathname === "/sold";
@@ -59,14 +70,14 @@ function DashboardShellInner({ children }: DashboardShellProps) {
   const isSoldRoute = pathname === "/sold";
 
   const { brands, engines } = useEffectiveCatalog(catalogRepository, motorRepository, uid, companyId, {
-    loadMotorsForCatalog: pathname === "/motors" && canSubscribe && canViewInventory,
-    enabled: canSubscribe && canViewInventory,
+    loadMotorsForCatalog: pathname === "/motors" && canSubscribe && canViewMotors,
+    enabled: canSubscribe && canViewMotors,
   });
 
   const motorsQuery = useMotorsRealtime(motorRepository, {
     uid,
     companyId,
-    enabled: pathname === "/motors" && canSubscribe && canViewInventory,
+    enabled: pathname === "/motors" && canSubscribe && canViewMotors,
   });
 
   const soldMotorsQuery = useMotorsRealtime(motorRepository, {
@@ -74,7 +85,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
     companyId,
     soldOnly: true,
     availability: "sold",
-    enabled: isSoldRoute && canSubscribe && canViewInventory,
+    enabled: isSoldRoute && canSubscribe && canViewMotors,
   });
 
   const sidebarCatalog = useMemo(() => {
@@ -94,7 +105,19 @@ function DashboardShellInner({ children }: DashboardShellProps) {
   const specificCategories = useSpecificCategoriesRealtime(
     specificCategoryRepository,
     companyId,
-    canSubscribe && canViewInventory,
+    canSubscribe && canViewMotors,
+  );
+
+  const handleAddBrand = useCallback(
+    async (name: string) => {
+      if (!companyId) return;
+      await createBrandUseCase(catalogRepository, {
+        companyId,
+        name,
+        existingBrands: brands,
+      });
+    },
+    [brands, companyId],
   );
 
   const handleRenameBrand = useCallback(
@@ -144,8 +167,21 @@ function DashboardShellInner({ children }: DashboardShellProps) {
     <BillingGateProvider companyId={companyId}>
     <DashboardLayoutProvider sidebarVisible={visible} toggleSidebar={toggleVisible}>
       <CommandPaletteProvider>
-      <div className="flex h-screen overflow-hidden bg-background">
-        <ResizableSidebar visible={visible} width={width} onWidthChange={setWidth}>
+      <Suspense fallback={null}>
+        <MotorImportHost />
+      </Suspense>
+      <div
+        className={cn(
+          "flex h-screen overflow-hidden bg-background",
+          sidebarOnRight && "flex-row-reverse",
+        )}
+      >
+        <ResizableSidebar
+          visible={visible}
+          width={width}
+          position={customization.position}
+          onWidthChange={setWidth}
+        >
           <AppSidebar
             brands={sidebarCatalog.brands}
             engines={sidebarCatalog.engines}
@@ -160,24 +196,35 @@ function DashboardShellInner({ children }: DashboardShellProps) {
             }}
             onRenameBrand={canManageBrands ? handleRenameBrand : undefined}
             onDeleteBrand={canManageBrands ? handleDeleteBrand : undefined}
+            onAddBrand={canManageBrands ? handleAddBrand : undefined}
             canManageBrands={canManageBrands}
             showBrandFilters={pathname === "/motors" || isSoldRoute}
-            hideSpecificCategories={isSoldRoute}
             brandCounts={sidebarCatalog.soldCountByBrand}
             brandsSectionTitle={isSoldRoute ? "Проданные по брендам" : undefined}
           />
         </ResizableSidebar>
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          {isWorkspaceRoute ? (
-            <WorkspaceToolbar />
-          ) : (
-            <header className="relative z-30 flex h-14 shrink-0 items-center justify-between border-b bg-card/95 px-4 backdrop-blur-sm">
-              <div className="flex items-center gap-2.5">
+        <div className={cn("relative flex min-w-0 flex-1 flex-col", isEditing && "overflow-hidden")}>
+          <SidebarEditBlur />
+          {isWorkspaceRoute ? <WorkspaceToolbar /> : (
+            <header className="relative z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-card/95 px-4 backdrop-blur-sm">
+              <div className="flex min-w-[120px] items-center gap-2.5">
                 <AppLogo size={24} className="rounded-md" alt="AutoCore" />
-                <span className="text-sm font-semibold tracking-tight">AutoCore</span>
+                <span className="hidden text-sm font-semibold tracking-tight sm:block">AutoCore</span>
               </div>
-              <div className="flex items-center gap-2">
+              {!isMissionControlRoute ? (
+                <div className="flex min-w-0 flex-1 justify-center">
+                  <DashboardImportProgress variant="compact" />
+                </div>
+              ) : (
+                <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
+                  <DashboardImportProgress variant="compact" />
+                </div>
+              )}
+              <div className="flex min-w-[120px] items-center justify-end gap-2">
+                {canViewMotors && can(profile, "inventory_edit") ? (
+                  <MotorImportTriggerButton size="sm" />
+                ) : null}
                 <Link
                   href="/settings"
                   className="rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -201,14 +248,13 @@ function DashboardShellInner({ children }: DashboardShellProps) {
             }
           >
             <div
-              key={pathname}
               className={
                 isWorkspaceRoute
                   ? "flex min-h-0 flex-1 flex-col"
-                  : "animate-autocore-page-enter"
+                  : "animate-autocore-page-enter flex min-h-0 flex-1 flex-col"
               }
             >
-              {children}
+              <DashboardRouteCache>{children}</DashboardRouteCache>
             </div>
           </main>
 
@@ -223,9 +269,11 @@ function DashboardShellInner({ children }: DashboardShellProps) {
 
 export function DashboardShell({ children }: DashboardShellProps) {
   return (
-    <WorkspaceProvider>
-      <FirestoreListenerGuard />
-      <DashboardShellInner>{children}</DashboardShellInner>
-    </WorkspaceProvider>
+    <SidebarCustomizationProvider>
+      <WorkspaceProvider>
+        <FirestoreListenerGuard />
+        <DashboardShellInner>{children}</DashboardShellInner>
+      </WorkspaceProvider>
+    </SidebarCustomizationProvider>
   );
 }

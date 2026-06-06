@@ -1,4 +1,6 @@
 import { ActivityLogEntry } from "@/domain/rbac";
+import { CompanyEmployee } from "@/domain/rbac";
+import { resolveActorDisplayName } from "@/lib/mission-control/enrich-activity-logs";
 import { ActivityModule } from "@/domain/activity-log";
 import { activityModuleFromEntry } from "@/lib/mission-control/compute-overview-metrics";
 
@@ -27,11 +29,15 @@ const EMPTY_MODULES: ModuleChangeCounts = {
   inventory: 0,
   accounting: 0,
   employees: 0,
+  work_orders: 0,
   settings: 0,
   system: 0,
 };
 
-export function computeOperationsStats(activityLogs: ActivityLogEntry[]): OperationsStats {
+export function computeOperationsStats(
+  activityLogs: ActivityLogEntry[],
+  employees: CompanyEmployee[] = [],
+): OperationsStats {
   const todayStart = startOfToday().getTime();
   const todayLogs = activityLogs.filter((entry) => (entry.timestamp?.getTime() ?? 0) >= todayStart);
 
@@ -42,13 +48,13 @@ export function computeOperationsStats(activityLogs: ActivityLogEntry[]): Operat
   let syncEventsToday = 0;
 
   for (const entry of todayLogs) {
-    const module = activityModuleFromEntry(entry) as ActivityModule;
-    if (module in editsTodayByModule) {
-      editsTodayByModule[module] += 1;
+    const activityModule = activityModuleFromEntry(entry) as ActivityModule;
+    if (activityModule in editsTodayByModule) {
+      editsTodayByModule[activityModule] += 1;
     }
 
     const actorId = entry.actor;
-    const actorName = entry.actorName?.trim() || actorId.slice(0, 8);
+    const actorName = resolveActorDisplayName(actorId, employees, entry.actorName);
     const existing = contributorMap.get(actorId);
     if (existing) {
       existing.count += 1;

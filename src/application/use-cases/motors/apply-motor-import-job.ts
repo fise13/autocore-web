@@ -33,6 +33,7 @@ export async function applyMotorImportJobUseCase(
     existingEngines: EngineEntity[];
     existingSpecificCategories: SpecificCategoryEntity[];
     actorUserId: string;
+    sourceFileName?: string;
     onProgress?: (progress: MotorImportApplyProgress) => void;
     shouldCancel?: () => boolean;
   },
@@ -90,6 +91,20 @@ export async function applyMotorImportJobUseCase(
         updatedMotorIds: result.updatedMotorIds,
       },
     );
+
+    const activity = createActivityLogRepository();
+    await activity.append(params.companyId, {
+      actor: params.actorUserId,
+      action: "inventory.motor_imported",
+      target: params.sourceFileName?.trim() || `motorImport:${params.jobId}`,
+      targetId: params.jobId,
+      metadata: {
+        imported: result.imported,
+        updated: result.updated,
+        skipped: result.skipped,
+        specificRecordsImported: result.specificRecordsImported ?? 0,
+      },
+    });
 
     if (applied % APPLY_CHUNK_YIELD_EVERY === 0) {
       await new Promise((resolve) => setTimeout(resolve, 0));

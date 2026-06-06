@@ -94,8 +94,30 @@ describe("motor sheet mapper", () => {
 
     assert.equal(merged.source, "ai");
     assert.equal(merged.config.customBrand, "Toyota");
-    assert.equal(merged.config.customEngineCode, "2AZ-FE");
+    assert.equal(merged.config.customEngineCode, "2azfe");
     assert.equal(merged.detectedSoldSheet, true);
     assert.equal(merged.reasoning, "AI определил лист двигателей");
+  });
+
+  it("corrects AI putting engine code into brand field", () => {
+    const sheet = makeEngineSheet("EJ_20X");
+    const base = buildRuleSheetMapping(sheet);
+    const merged = mergeAiSheetMapping(
+      base,
+      sheet,
+      {
+        sheet_name: sheet.name,
+        import_type: "engines",
+        brand_name: "EJ 20X",
+        engine_code: null,
+        column_roles: { "0": "serial_code", "1": "configuration", "2": "arrival_date" },
+        confidence: 0.82,
+        detected_sold_sheet: false,
+        fallback_date_columns: [],
+      },
+    );
+
+    assert.equal(merged.config.customBrand, "Subaru");
+    assert.equal(merged.config.customEngineCode, "ej20x");
   });
 });

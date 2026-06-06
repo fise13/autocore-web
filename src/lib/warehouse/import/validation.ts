@@ -10,8 +10,10 @@ export function validateImportRow(row: EnhancedImportRow): EnhancedImportRow {
   const purchasePrice = normalized.purchasePrice != null ? Number(normalized.purchasePrice) : undefined;
   const sellPrice = normalized.sellPrice != null ? Number(normalized.sellPrice) : undefined;
 
-  if (!sku) errors.push("SKU обязателен");
-  if (!name && !sku) errors.push("Название обязательно");
+  if (!sku && !name) errors.push("Не удалось определить товар");
+  if (!sku && name) {
+    warnings.push("SKU сгенерирован из названия");
+  }
   if (!Number.isFinite(quantity)) errors.push("Некорректное количество");
   if (quantity < 0) errors.push("Количество не может быть отрицательным");
   if (purchasePrice != null && !Number.isFinite(purchasePrice)) errors.push("Некорректная закупочная цена");

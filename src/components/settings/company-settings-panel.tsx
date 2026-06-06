@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { doc, updateDoc } from "firebase/firestore";
 import { Building2, CreditCard, Loader2, Users } from "lucide-react";
 
@@ -8,8 +8,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { PlanComparisonTable } from "@/components/billing/plan-comparison-table";
 import { AnimatedUpgradeCta } from "@/components/billing/animated-upgrade-cta";
-import { EmployeesWorkspace } from "@/components/employees/employees-workspace";
-import { RolesWorkspace } from "@/components/employees/roles-workspace";
+import { CompanyTeamTabs, type CompanyTeamTab } from "@/components/settings/company-team-tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,8 +23,6 @@ import { canViewEmployees } from "@/lib/auth/permissions";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 import { isStripeBillingConfigured } from "@/lib/stripe/prices";
 import { userCopy } from "@/lib/user-copy";
-
-type CompanyTeamTab = "employees" | "roles";
 
 type CompanySettingsPanelProps = {
   companyId: string;
@@ -56,7 +53,6 @@ export function CompanySettingsPanel({
   const [companyNameDraft, setCompanyNameDraft] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [showPlans, setShowPlans] = useState(showPlansInitially);
-  const [teamTab, setTeamTab] = useState<CompanyTeamTab>(initialTeamTab);
   const stripeReady = isStripeBillingConfigured();
   const renewalDate = formatNextBillingDate(subscription?.currentPeriodEnd);
   const canViewTeam = canViewEmployees(profile) && isPro;
@@ -227,31 +223,7 @@ export function CompanySettingsPanel({
               <CardDescription>{userCopy.settings.companyTeamDescription}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="inline-flex rounded-lg border bg-background p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setTeamTab("employees")}
-                  className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
-                    teamTab === "employees"
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {userCopy.settings.employees}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTeamTab("roles")}
-                  className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
-                    teamTab === "roles"
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {userCopy.settings.roles}
-                </button>
-              </div>
-              {teamTab === "employees" ? <EmployeesWorkspace /> : <RolesWorkspace />}
+              <CompanyTeamTabs initialTab={initialTeamTab} />
             </CardContent>
           </Card>
         </FadeIn>

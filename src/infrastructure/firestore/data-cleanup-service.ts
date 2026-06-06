@@ -130,12 +130,22 @@ export function createDataCleanupService() {
       const normalizedCompanyId = normalizeCompanyId(companyId);
       const refs: Array<ReturnType<typeof doc>> = [];
 
+      const importSnapshot = await getDocs(
+        query(collection(db, "inventoryImports"), where("companyId", "==", normalizedCompanyId)),
+      );
+      for (const importDoc of importSnapshot.docs) {
+        const rows = await getDocs(collection(importDoc.ref, "rows"));
+        refs.push(...rows.docs.map((item) => item.ref));
+        const audit = await getDocs(collection(importDoc.ref, "audit"));
+        refs.push(...audit.docs.map((item) => item.ref));
+        refs.push(importDoc.ref);
+      }
+
       for (const collectionName of [
         "inventoryItems",
         "inventoryMovements",
         "inventoryStockLevels",
         "inventoryReservations",
-        "inventoryImports",
         "barcodeMappings",
         "warehouses",
         "suppliers",
