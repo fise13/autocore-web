@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
-import { AccountMenu } from "@/components/account/account-menu";
-import { AppLogo } from "@/components/brand/app-logo";
 import { usePathname } from "next/navigation";
 import { ReactNode, Suspense, useCallback, useEffect, useMemo } from "react";
+
+import { useBarbaNavigation } from "@/hooks/use-barba-navigation";
+import { pathToBarbaNamespace, shouldAnimateDashboardNavigation } from "@/lib/barba/barba-navigation";
 
 import { createBrandUseCase } from "@/application/use-cases/create-brand";
 import { deleteBrandUseCase } from "@/application/use-cases/delete-brand";
@@ -14,15 +14,13 @@ import { SidebarEditBlur } from "@/components/layout/sidebar-edit-blur";
 import { SidebarCustomizationProvider } from "@/components/providers/sidebar-customization-provider";
 import { BillingGateProvider } from "@/components/billing/billing-gate-provider";
 import { DashboardLayoutProvider } from "@/components/layout/dashboard-layout-context";
-import { DashboardImportProgress } from "@/components/warehouse/import/shared/import-progress-host";
+import { DashboardTopBar } from "@/components/layout/dashboard-top-bar";
 import { CommandPaletteProvider } from "@/components/mission-control/command-palette/command-palette-provider";
 import { DashboardRouteCache } from "@/components/layout/dashboard-route-cache";
 import { MotorImportHost } from "@/components/motors/motor-import-host";
-import { MotorImportTriggerButton } from "@/components/motors/motor-import-trigger-button";
 import { ResizableSidebar } from "@/components/layout/resizable-sidebar";
 import { WorkspaceProvider, useWorkspace } from "@/components/layout/workspace-context";
 import { WorkspaceStatusBar } from "@/components/layout/workspace-status-bar";
-import { WorkspaceToolbar } from "@/components/layout/workspace-toolbar";
 import { FirestoreListenerGuard } from "@/components/providers/firestore-listener-guard";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useEffectiveCatalog } from "@/hooks/use-effective-catalog";
@@ -49,6 +47,10 @@ const specificCategoryRepository = createSpecificCategoryRepository();
 
 function DashboardShellInner({ children }: DashboardShellProps) {
   const pathname = usePathname();
+  const { wrapperRef: barbaWrapperRef, containerRef: barbaContainerRef } = useBarbaNavigation({
+    shouldAnimate: shouldAnimateDashboardNavigation,
+  });
+  const barbaNamespace = pathToBarbaNamespace(pathname);
   const { profile, isLoading } = useAuth();
   const workspace = useWorkspace();
   const { setAvailability } = workspace;
@@ -171,6 +173,8 @@ function DashboardShellInner({ children }: DashboardShellProps) {
         <MotorImportHost />
       </Suspense>
       <div
+        ref={barbaWrapperRef}
+        data-barba="wrapper"
         className={cn(
           "flex h-screen overflow-hidden bg-background",
           sidebarOnRight && "flex-row-reverse",
@@ -206,37 +210,12 @@ function DashboardShellInner({ children }: DashboardShellProps) {
 
         <div className={cn("relative flex min-w-0 flex-1 flex-col", isEditing && "overflow-hidden")}>
           <SidebarEditBlur />
-          {isWorkspaceRoute ? <WorkspaceToolbar /> : (
-            <header className="relative z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-card/95 px-4 backdrop-blur-sm">
-              <div className="flex min-w-[120px] items-center gap-2.5">
-                <AppLogo size={24} className="rounded-md" alt="AutoCore" />
-                <span className="hidden text-sm font-semibold tracking-tight sm:block">AutoCore</span>
-              </div>
-              {!isMissionControlRoute ? (
-                <div className="flex min-w-0 flex-1 justify-center">
-                  <DashboardImportProgress variant="compact" />
-                </div>
-              ) : (
-                <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
-                  <DashboardImportProgress variant="compact" />
-                </div>
-              )}
-              <div className="flex min-w-[120px] items-center justify-end gap-2">
-                {canViewMotors && can(profile, "inventory_edit") ? (
-                  <MotorImportTriggerButton size="sm" />
-                ) : null}
-                <Link
-                  href="/settings"
-                  className="rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                >
-                  Настройки
-                </Link>
-                <AccountMenu />
-              </div>
-            </header>
-          )}
+          <DashboardTopBar />
 
           <main
+            ref={barbaContainerRef}
+            data-barba="container"
+            data-barba-namespace={barbaNamespace}
             className={
               isWorkspaceRoute
                 ? "relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden"
@@ -247,13 +226,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
                   )
             }
           >
-            <div
-              className={
-                isWorkspaceRoute
-                  ? "flex min-h-0 flex-1 flex-col"
-                  : "animate-autocore-page-enter flex min-h-0 flex-1 flex-col"
-              }
-            >
+            <div className="flex min-h-0 flex-1 flex-col">
               <DashboardRouteCache>{children}</DashboardRouteCache>
             </div>
           </main>

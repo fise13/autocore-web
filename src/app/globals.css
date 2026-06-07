@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "../styles/marketing-landing.css";
 @import "../styles/document-service-report.css";
 @import "../styles/documents-overrides.css";
 
@@ -225,20 +226,6 @@
 
 .animate-autocore-page-enter {
   animation: autocore-page-enter 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes autocore-loading-bar {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(250%);
-  }
-}
-
-.autocore-loading-bar {
-  width: 45%;
-  animation: autocore-loading-bar 1.1s ease-in-out infinite;
 }
 
 .autocore-surface-group {
@@ -813,5 +800,20 @@
   50% {
     opacity: 0.7;
     box-shadow: 0 0 0 4px transparent;
+  }
+}
+
+/* Barba.js — marketing page transitions */
+[data-barba="container"] {
+  will-change: opacity, transform;
+}
+
+[data-barba="wrapper"].barba-transition-running {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-barba="container"] {
+    will-change: auto;
   }
 }

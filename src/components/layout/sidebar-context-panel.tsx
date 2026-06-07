@@ -15,6 +15,7 @@ import {
   Wallet,
 } from "lucide-react";
 
+import { AnimatedSidebarSlot } from "@/components/layout/animated-sidebar-slot";
 import { WorkOrdersSidebarContext } from "@/components/work-orders/work-orders-sidebar-context";
 import { WarehouseSidebarContext } from "@/components/warehouse/warehouse-sidebar-context";
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
@@ -80,7 +81,7 @@ function ActionButton({
   );
 }
 
-export function SidebarContextPanel({ mode }: SidebarContextPanelProps) {
+function SidebarContextContent({ mode }: SidebarContextPanelProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -102,10 +103,6 @@ export function SidebarContextPanel({ mode }: SidebarContextPanelProps) {
   const canEditAccounting = can(profile, "accounting_edit");
 
   const accountingTab = searchParams.get("tab") ?? "overview";
-
-  if (mode === "home" || mode === "other") {
-    return null;
-  }
 
   if (mode === "motors" || mode === "specific") {
     return (
@@ -263,4 +260,14 @@ export function SidebarContextPanel({ mode }: SidebarContextPanelProps) {
   }
 
   return null;
+}
+
+export function SidebarContextPanel({ mode }: SidebarContextPanelProps) {
+  const visible = mode !== "home" && mode !== "other";
+
+  return (
+    <AnimatedSidebarSlot slotKey={visible ? mode : "context-empty"}>
+      {visible ? <SidebarContextContent mode={mode} /> : null}
+    </AnimatedSidebarSlot>
+  );
 }

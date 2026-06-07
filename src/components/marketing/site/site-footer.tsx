@@ -1,34 +1,19 @@
 import Link from "next/link";
 
 import { AppLogo } from "@/components/brand/app-logo";
-import { landingCopy } from "@/components/marketing/copy/landing-copy";
+import { landingPageContent } from "@/components/marketing/content/landing-page-content";
+import { siteNavigation } from "@/components/marketing/site/site-navigation";
 import { marketingRoutes } from "@/lib/marketing-routes";
 import { appDashboardUrl, appLoginUrl, getAppUrl, getMarketingUrl } from "@/lib/site-urls";
 
 const FOOTER_SECTIONS = [
-  {
-    title: "Продукт",
-    links: [
-      { href: `${marketingRoutes.home}#graph`, label: "Карта ценности" },
-      { href: marketingRoutes.product, label: "Обзор продукта" },
-      { href: marketingRoutes.modules, label: "Каталог модулей" },
-      { href: `${marketingRoutes.home}#modules`, label: "Справочник модулей" },
-      { href: `${marketingRoutes.home}#process`, label: "Операционная цепочка" },
-    ],
-  },
-  {
-    title: "Компания",
-    links: [
-      { href: marketingRoutes.security, label: "Безопасность" },
-      { href: marketingRoutes.pricing, label: "Тарифы" },
-      { href: marketingRoutes.contact, label: "Контакты" },
-    ],
-  },
+  { title: "Продукт", links: siteNavigation.footer.product },
+  { title: "Компания", links: siteNavigation.footer.company },
   {
     title: "Приложение",
     links: [
-      { href: appLoginUrl(), label: landingCopy.nav.signIn },
-      { href: appDashboardUrl(), label: landingCopy.nav.openDashboard },
+      { href: appLoginUrl(), label: landingPageContent.nav.startFree },
+      { href: appDashboardUrl(), label: "Войти в систему" },
     ],
   },
   {
@@ -42,7 +27,7 @@ const FOOTER_SECTIONS = [
 
 export function SiteFooter() {
   const year = new Date().getFullYear();
-  const copy = landingCopy.footer;
+  const copy = landingPageContent;
 
   return (
     <footer className="border-t border-border bg-muted/30">
@@ -53,7 +38,7 @@ export function SiteFooter() {
               <AppLogo size={28} />
               <span className="font-semibold">AutoCore</span>
             </Link>
-            <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">{copy.tagline}</p>
+            <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">{copy.footer.tagline}</p>
           </div>
 
           {FOOTER_SECTIONS.map((section) => (

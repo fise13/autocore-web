@@ -68,7 +68,7 @@ export const SIDEBAR_BLOCK_META: Record<
   },
   specific: {
     label: "Специфичные",
-    description: "Категории (на странице моторов)",
+    description: "Коробки, раздатки, ЭБУ — не бренды моторов",
     icon: FileText,
   },
   brands: {

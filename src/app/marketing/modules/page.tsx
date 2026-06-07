@@ -30,26 +30,26 @@ const TONES = ["blue", "green", "amber", "blue", "green", "violet"] as const;
 
 const RELATED: Record<string, { label: string; href: string }[]> = {
   "mission-control": [
-    { label: "Склад", href: "#warehouse" },
-    { label: "Бухгалтерия", href: "#accounting" },
-    { label: "Зачем AutoCore", href: `${marketingRoutes.home}#why-business` },
+    { label: "Склад", href: `${marketingRoutes.modules}#warehouse` },
+    { label: "Бухгалтерия", href: `${marketingRoutes.modules}#accounting` },
+    { label: "Обзор продукта", href: marketingRoutes.product },
   ],
   warehouse: [
-    { label: "Заказ-наряды", href: "#work-orders" },
-    { label: "Операционная цепочка", href: `${marketingRoutes.home}#workflows` },
+    { label: "Заказ-наряды", href: `${marketingRoutes.modules}#work-orders` },
+    { label: "Один день в системе", href: `${marketingRoutes.home}#day` },
   ],
   "work-orders": [
-    { label: "Склад", href: "#warehouse" },
-    { label: "Бухгалтерия", href: "#accounting" },
+    { label: "Склад", href: `${marketingRoutes.modules}#warehouse` },
+    { label: "Бухгалтерия", href: `${marketingRoutes.modules}#accounting` },
   ],
   accounting: [
-    { label: "Mission Control", href: "#mission-control" },
+    { label: "Mission Control", href: `${marketingRoutes.modules}#mission-control` },
     { label: "Безопасность", href: marketingRoutes.security },
   ],
-  inventory: [{ label: "Склад", href: "#warehouse" }],
+  inventory: [{ label: "Склад", href: `${marketingRoutes.modules}#warehouse` }],
   employees: [
     { label: "Безопасность", href: marketingRoutes.security },
-    { label: "Журнал активности", href: `${marketingRoutes.home}#realtime` },
+    { label: "Realtime", href: `${marketingRoutes.home}#realtime` },
   ],
 };
 
@@ -116,8 +116,11 @@ export default function ModulesPage() {
                     </div>
                   ) : null}
 
-                  <Link href={mod.href} className="mt-6 inline-flex text-sm font-medium text-primary hover:underline">
-                    Смотреть на главной странице →
+                  <Link
+                    href={mod.learnMore}
+                    className="mt-6 inline-flex text-sm font-medium text-primary hover:underline"
+                  >
+                    Подробнее о модуле →
                   </Link>
                 </div>
               </div>
@@ -127,17 +130,17 @@ export default function ModulesPage() {
       </div>
 
       <nav className="mt-16 grid gap-3 border-t border-border pt-12 sm:grid-cols-2" aria-label="Другие разделы">
-        <Link href={`${marketingRoutes.home}#why-business`} className="autocore-metric-card px-5 py-4 text-sm font-medium">
-          Зачем AutoCore →
+        <Link href={marketingRoutes.product} className="landing-card landing-card-hover px-5 py-4 text-sm font-medium">
+          Обзор продукта →
         </Link>
-        <Link href={marketingRoutes.product} className="autocore-metric-card px-5 py-4 text-sm font-medium">
-          О продукте →
+        <Link href={marketingRoutes.pricing} className="landing-card landing-card-hover px-5 py-4 text-sm font-medium">
+          Тарифы →
         </Link>
-        <Link href={marketingRoutes.security} className="autocore-metric-card px-5 py-4 text-sm font-medium">
+        <Link href={marketingRoutes.security} className="landing-card landing-card-hover px-5 py-4 text-sm font-medium">
           Безопасность →
         </Link>
-        <Link href={marketingRoutes.pricing} className="autocore-metric-card px-5 py-4 text-sm font-medium">
-          Тарифы →
+        <Link href={marketingRoutes.contact} className="landing-card landing-card-hover px-5 py-4 text-sm font-medium">
+          Контакты →
         </Link>
       </nav>
     </MarketingSubpage>

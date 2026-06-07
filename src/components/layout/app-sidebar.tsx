@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { reorderList, SidebarEditItem } from "@/components/layout/sidebar-edit-item";
+import { AnimatedSidebarSlot } from "@/components/layout/animated-sidebar-slot";
 import { sidebarNavIconClass, sidebarNavRowClass } from "@/components/layout/sidebar-nav-row";
 import { SidebarCustomizeSheet } from "@/components/layout/sidebar-customize-sheet";
 import { SidebarContextPanel } from "@/components/layout/sidebar-context-panel";
@@ -28,6 +29,7 @@ import {
   showSpecificCategoriesInSidebar,
 } from "@/lib/navigation/sidebar-mode";
 import { resolveVisibleNavItems } from "@/lib/auth/app-access";
+import { isLikelyMotorCatalogName } from "@/lib/motors/import/specific-category-intelligence";
 import {
   SIDEBAR_BLOCK_META,
   SIDEBAR_NAV_META,
@@ -115,6 +117,11 @@ export function AppSidebar({
   const enabledNavIds = useMemo(
     () => resolveVisibleNavItems(profile, customization),
     [customization, profile],
+  );
+
+  const sidebarSpecificCategories = useMemo(
+    () => specificCategories.filter((category) => !isLikelyMotorCatalogName(category.name)),
+    [specificCategories],
   );
 
   const visibleBlocks = useMemo(() => {
@@ -375,7 +382,7 @@ export function AppSidebar({
             blockId,
             showDividerBefore,
             showSpecificCategories
-              ? `${specificCategories.length} категорий`
+              ? `${sidebarSpecificCategories.length} категорий`
               : "Видно на странице моторов",
             index,
           );
@@ -383,42 +390,46 @@ export function AppSidebar({
         return (
           <div key={blockId}>
             {showDividerBefore ? <SidebarDivider /> : null}
-            <div className="px-3 py-2">
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Специфичные
-                </p>
-              </div>
-              {specificCategories.length === 0 ? (
-                <p className="px-2 py-1.5 text-xs italic text-muted-foreground">Нет категорий</p>
-              ) : (
-                <div className="space-y-0.5">
-                  {specificCategories.map((category) => {
-                    const href = `/specific/${category.id}`;
-                    const active =
-                      pathname === href ||
-                      pathname.startsWith(`${href}/`) ||
-                      pathname.endsWith(`_${category.localId}`);
-                    return (
-                      <Link
-                        key={category.id}
-                        href={href}
-                        className={cn(
-                          "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all duration-200",
-                          active
-                            ? "bg-primary/12 text-primary shadow-sm"
-                            : "text-sidebar-foreground hover:bg-sidebar-accent hover:translate-x-0.5",
-                        )}
-                        title={category.name}
-                      >
-                        <FileText className="size-4 shrink-0 opacity-80" />
-                        <span className="truncate">{category.name}</span>
-                      </Link>
-                    );
-                  })}
+            <AnimatedSidebarSlot slotKey={showSpecificCategories ? `specific-${sidebarMode}` : "specific-hidden"}>
+              {showSpecificCategories ? (
+                <div className="px-3 py-2">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Специфичные
+                    </p>
+                  </div>
+                  {sidebarSpecificCategories.length === 0 ? (
+                    <p className="px-2 py-1.5 text-xs italic text-muted-foreground">Нет категорий</p>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {sidebarSpecificCategories.map((category) => {
+                        const href = `/specific/${category.id}`;
+                        const active =
+                          pathname === href ||
+                          pathname.startsWith(`${href}/`) ||
+                          pathname.endsWith(`_${category.localId}`);
+                        return (
+                          <Link
+                            key={category.id}
+                            href={href}
+                            className={cn(
+                              "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all duration-200",
+                              active
+                                ? "bg-primary/12 text-primary shadow-sm"
+                                : "text-sidebar-foreground hover:bg-sidebar-accent hover:translate-x-0.5",
+                            )}
+                            title={category.name}
+                          >
+                            <FileText className="size-4 shrink-0 opacity-80" />
+                            <span className="truncate">{category.name}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              ) : null}
+            </AnimatedSidebarSlot>
           </div>
         );
       case "brands":
@@ -433,6 +444,10 @@ export function AppSidebar({
         return (
           <div key={blockId}>
             {showDividerBefore ? <SidebarDivider /> : null}
+            <AnimatedSidebarSlot
+              slotKey={showBrandFilters ? `brands-${sidebarMode}` : "brands-hidden"}
+            >
+              {showBrandFilters ? (
             <div className="px-1 py-1">
               <div className="mb-1 flex items-center justify-between gap-2 px-3 py-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -574,6 +589,8 @@ export function AppSidebar({
                 );
               })}
             </div>
+              ) : null}
+            </AnimatedSidebarSlot>
           </div>
         );
       case "profile":

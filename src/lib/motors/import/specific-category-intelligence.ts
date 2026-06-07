@@ -1,3 +1,9 @@
+import {
+  isLikelyCarBrand,
+  isLikelyEngineCode,
+  resolveSheetBrandAndEngine,
+} from "@/lib/motors/import/brand-engine-intelligence";
+
 const SPECIFIC_CATEGORY_ALIASES: Record<string, string> = {
   коробки: "Коробки",
   коробка: "Коробки",
@@ -28,17 +34,43 @@ const SPECIFIC_CATEGORY_ALIASES: Record<string, string> = {
 const SPECIFIC_SHEET_HINTS =
   /короб|кпп|gearbox|transmission|раздат|transfer|эбу|ecu|турб|turbo|редуктор|мост|насос|акпп|mkpp/i;
 
+/** Tab names that are motor inventory (brand/model/engine), not parts-specific catalogs. */
+const MOTOR_CATALOG_TAB_NAMES =
+  /^(cruze|camry|corolla|accord|civic|forester|outback|legacy|impreza|wrx|mix|jeep|volvo|bmw|audi|honda|toyota|nissan|subaru|mazda|mitsubishi|hyundai|kia|lexus|infiniti|mercedes|land rover|range rover)$/i;
+
 function normalizeCategoryKey(value: string): string {
   return value.trim().toLocaleLowerCase("ru").replace(/\s+/g, " ");
+}
+
+function isKnownSpecificPartsName(name: string): boolean {
+  const trimmed = name.trim();
+  if (!trimmed) return false;
+  if (SPECIFIC_SHEET_HINTS.test(trimmed)) return true;
+  return normalizeCategoryKey(trimmed) in SPECIFIC_CATEGORY_ALIASES;
+}
+
+/**
+ * Sheet/category name looks like a motor brand, model line, or engine-family tab —
+ * belongs in motors inventory, NOT in «Специфичные» (Коробки, ПОСЛЕ ДЭНА, …).
+ */
+export function isLikelyMotorCatalogName(name: string): boolean {
+  const trimmed = name.trim();
+  if (!trimmed) return false;
+  if (isKnownSpecificPartsName(trimmed)) return false;
+
+  if (MOTOR_CATALOG_TAB_NAMES.test(trimmed)) return true;
+  if (isLikelyCarBrand(trimmed)) return true;
+  if (isLikelyEngineCode(trimmed)) return true;
+
+  const { brandName, engineCode } = resolveSheetBrandAndEngine(trimmed);
+  return Boolean(brandName || engineCode);
 }
 
 export function isLikelySpecificSheetName(sheetName: string): boolean {
   const trimmed = sheetName.trim();
   if (!trimmed) return false;
-  if (SPECIFIC_SHEET_HINTS.test(trimmed)) return true;
-
-  const key = normalizeCategoryKey(trimmed);
-  return key in SPECIFIC_CATEGORY_ALIASES;
+  if (isLikelyMotorCatalogName(trimmed)) return false;
+  return isKnownSpecificPartsName(trimmed);
 }
 
 export function resolveSpecificCategoryName(
@@ -88,10 +120,13 @@ export function suggestSheetImportType(
   if (/продан|sold/i.test(sheetName) || sheetName.toUpperCase() === "В НАЛИЧИИ") {
     return "engines";
   }
+  if (isLikelyMotorCatalogName(sheetName)) return "engines";
   if (hasEngineBrand && hasEngineCode && hasSerialColumn) return "engines";
   if (isLikelySpecificSheetName(sheetName)) return "specific";
   if (hasSerialColumn && (hasEngineBrand || hasEngineCode)) return "engines";
   if (!hasSerialColumn && isLikelySpecificSheetName(sheetName)) return "specific";
-  if (!hasEngineBrand && !hasEngineCode && !hasSerialColumn) return "specific";
+  if (!hasEngineBrand && !hasEngineCode && !hasSerialColumn) {
+    return isLikelySpecificSheetName(sheetName) ? "specific" : "engines";
+  }
   return "engines";
 }

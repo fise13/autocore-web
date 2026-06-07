@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  isLikelyMotorCatalogName,
   isLikelySpecificSheetName,
   resolveSpecificCategoryName,
 } from "./specific-category-intelligence.ts";
@@ -11,6 +12,16 @@ describe("specific category intelligence", () => {
     assert.equal(isLikelySpecificSheetName("КПП"), true);
     assert.equal(isLikelySpecificSheetName("Коробки"), true);
     assert.equal(isLikelySpecificSheetName("SUBARU_EJ20"), false);
+  });
+
+  it("treats car brand/model tabs as motor catalogs, not specific", () => {
+    assert.equal(isLikelyMotorCatalogName("CRUZE"), true);
+    assert.equal(isLikelyMotorCatalogName("JEEP"), true);
+    assert.equal(isLikelyMotorCatalogName("LAND ROVER"), true);
+    assert.equal(isLikelyMotorCatalogName("VOLVO"), true);
+    assert.equal(isLikelySpecificSheetName("CRUZE"), false);
+    assert.equal(isLikelySpecificSheetName("Коробки"), true);
+    assert.equal(isLikelySpecificSheetName("ПОСЛЕ ДЭНА"), false);
   });
 
   it("maps aliases to canonical category names", () => {

@@ -16,6 +16,7 @@ import { ExcelSheetData } from "@/lib/motors/excel-types";
 import { MotorSheetResolveItem } from "@/lib/motors/import/ai-schemas";
 import { coerceBrandEnginePair } from "@/lib/motors/import/brand-engine-intelligence";
 import {
+  isLikelyMotorCatalogName,
   isLikelySpecificSheetName,
   resolveSpecificCategoryName,
 } from "@/lib/motors/import/specific-category-intelligence";
@@ -66,10 +67,23 @@ export function applyAiSheetToConfig(
   existingCategoryNames: string[] = [],
 ): SheetImportConfig {
   if (aiSheet.import_type === "specific") {
-    const categoryName = resolveSpecificCategoryName(
-      aiSheet.category_name?.trim() || config.categoryName || config.sheetName,
-      existingCategoryNames,
-    );
+    const rawName = aiSheet.category_name?.trim() || config.categoryName || config.sheetName;
+    if (isLikelyMotorCatalogName(rawName)) {
+      const coerced = coerceBrandEnginePair(
+        aiSheet.brand_name?.trim() || config.customBrand,
+        aiSheet.engine_code?.trim() || config.customEngineCode,
+        { sheetName: config.sheetName },
+      );
+      return {
+        ...config,
+        importType: "engines",
+        customBrand: coerced.brand,
+        customEngineCode: coerced.engine || normalizeEngineCode(aiSheet.engine_code ?? ""),
+        categoryName: "",
+      };
+    }
+
+    const categoryName = resolveSpecificCategoryName(rawName, existingCategoryNames);
     return {
       ...config,
       importType: "specific",
@@ -98,6 +112,22 @@ export function finalizeSheetConfig(
   config: SheetImportConfig,
   existingCategoryNames: string[] = [],
 ): SheetImportConfig {
+  if (config.importType === "specific") {
+    const rawName = config.categoryName || config.sheetName;
+    if (isLikelyMotorCatalogName(rawName)) {
+      const coerced = coerceBrandEnginePair(config.customBrand, config.customEngineCode, {
+        sheetName: config.sheetName,
+      });
+      return {
+        ...config,
+        importType: "engines",
+        customBrand: coerced.brand,
+        customEngineCode: coerced.engine,
+        categoryName: "",
+      };
+    }
+  }
+
   if (config.importType !== "specific") {
     const coerced = coerceBrandEnginePair(config.customBrand, config.customEngineCode, {
       sheetName: config.sheetName,

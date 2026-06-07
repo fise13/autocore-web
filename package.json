@@ -19,12 +19,16 @@
     "test:import-motors": "node --import tsx --test src/lib/motors/import/sheet-mapper.test.ts src/lib/motors/import/ai-mapper.test.ts"
   },
   "dependencies": {
+    "@barba/core": "^2.10.3",
     "@base-ui/react": "^1.5.0",
     "@gsap/react": "^2.1.2",
     "@sparticuz/chromium": "^149.0.0",
+    "@splinetool/react-spline": "^4.1.0",
+    "@splinetool/runtime": "^1.12.97",
     "@tanstack/react-query": "^5.100.14",
     "@tanstack/react-query-devtools": "^5.100.14",
     "@tanstack/react-virtual": "^3.13.26",
+    "animejs": "^4.4.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

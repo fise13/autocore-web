@@ -1,23 +1,24 @@
 import type { Metadata } from "next";
 import { ReactNode } from "react";
 
+import { MarketingBarbaLayout } from "@/components/marketing/motion/marketing-barba-layout";
 import { getAppUrl, getMarketingUrl } from "@/lib/site-urls";
 
 export const metadata: Metadata = {
   title: {
-    default: "AutoCore — операционная система дилерского центра",
+    default: "AutoCore — программа для разборок, запчастей и СТО",
     template: "%s · AutoCore",
   },
   description:
-    "Realtime-операции дилерского центра: склад, заказ-наряды, бухгалтерия и команда — единый Mission Control.",
+    "Одна система вместо Excel и чатов: склад, заказ-наряды, продажа моторов и бухгалтерия в realtime. Для владельцев автобизнеса.",
   keywords: [
-    "ПО для автодилера",
-    "складской учёт",
-    "CRM автосервиса",
-    "управление запасами",
+    "ПО для разборки авто",
+    "учёт запчастей",
+    "складской учёт автобизнес",
+    "программа для СТО",
     "заказ-наряды",
-    "бухгалтерия дилера",
-    "операционный дашборд",
+    "продажа моторов",
+    "бухгалтерия автосервиса",
     "Mission Control",
   ],
   metadataBase: new URL(getMarketingUrl()),
@@ -25,14 +26,14 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ru_RU",
     siteName: "AutoCore",
-    title: "AutoCore — операционная система дилерского центра",
+    title: "AutoCore — программа для разборок, запчастей и СТО",
     description:
-      "Операционный центр вашего дилерского центра. Склад, заказ-наряды и бухгалтерия — синхронизированы в realtime.",
+      "Склад, цех и касса в одной системе. Без ночных сверок и «спроси у Пети на складе».",
   },
   twitter: {
     card: "summary_large_image",
-    title: "AutoCore — операционная система дилерского центра",
-    description: "Realtime ПО для дилеров. Mission Control для всего бизнеса.",
+    title: "AutoCore — программа для разборок, запчастей и СТО",
+    description: "Одна правда для склада, цеха и бухгалтерии. Mission Control для владельца.",
   },
   alternates: {
     canonical: getMarketingUrl(),
@@ -50,7 +51,7 @@ const jsonLd = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web, iOS, macOS",
   description:
-    "Операционная система нового поколения для дилерских центров: склад, заказ-наряды, бухгалтерия и координация сотрудников в realtime.",
+    "Операционная система для разборок, магазинов запчастей и СТО: склад, заказ-наряды, бухгалтерия и команда в realtime.",
   inLanguage: "ru",
   offers: {
     "@type": "Offer",
@@ -72,7 +73,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      {children}
+      <MarketingBarbaLayout>{children}</MarketingBarbaLayout>
     </>
   );
 }

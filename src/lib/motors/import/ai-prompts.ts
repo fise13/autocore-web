@@ -29,7 +29,7 @@ Brand vs engine code (CRITICAL):
 
 export const MOTOR_SPECIFIC_SHEET_RULES = `
 Specific sheets (import_type: specific) — spare-parts / misc catalogs, NOT engine inventory:
-- Examples: gearboxes (КПП, коробки), transfer cases (раздатки), ECU (ЭБУ), turbo lists, axles, misc dismantling tables.
+- Examples: gearboxes (КПП, коробки), transfer cases (раздатки), ECU (ЭБУ), turbo lists, axles, misc dismantling tables, business-specific lists ("ПОСЛЕ ДЭНА", "Коробки").
 - category_name: human-readable category title — usually the sheet tab name ("Коробки", "Раздатки") or a clear header; never an engine code.
 - brand_name and engine_code must be null/empty for specific sheets.
 - Column mapping: preserve ALL meaningful headers as dynamic record fields (model, price, notes, qty, condition, etc.).
@@ -37,10 +37,12 @@ Specific sheets (import_type: specific) — spare-parts / misc catalogs, NOT eng
 - On import, each specific category is FULLY REPLACED (all old records in that category are overwritten).
 - engines vs specific decision:
   · engines = lists of engine serial numbers with brand/engine context, arrival or sold dates, configuration, transmission.
-  · specific = heterogeneous parts tables, mixed columns, no consistent engine-serial column, or clearly non-engine parts.
+  · engines ALSO includes sheets named after car BRANDS or MODELS (CRUZE, JEEP, LAND ROVER, VOLVO, TOYOTA, SUBARU, MIX, etc.) — these are motor inventory tabs, NOT specific categories.
+  · specific = heterogeneous parts tables, mixed columns, no consistent engine-serial column, or clearly non-engine parts (КПП, коробки, раздатки, ЭБУ).
+- NEVER classify a sheet as specific when its tab name is a car manufacturer, model line, or engine-family label (CRUZE, JEEP, VOLVO, EJ20, 2JZ…). Those belong to import_type=engines.
 - Sold/history sheets with only engine serials stay engines; accessory price lists stay specific.
-- If unsure between specific and skip — prefer specific when the sheet has structured tabular data with a clear theme.
-- Match category_name to existing company specific categories when provided (same spelling/case as in app).
+- If unsure between engines and specific for a brand/model tab — choose engines.
+- Match category_name to existing company specific categories when provided (same spelling/case as in app) — only for true specific/parts sheets.
 - Sheet "КПП" / "Коробки" / "AKPP" → category "Коробки"; "Раздатки" → "Раздатки"; "ЭБУ" → "ЭБУ".
 `.trim();
 
