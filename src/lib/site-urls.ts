@@ -1,5 +1,25 @@
 export type SiteHostKind = "marketing" | "app" | "local";
 
+function normalizeHost(host: string): string {
+  return (host.split(":")[0] ?? "").toLowerCase();
+}
+
+function getUrlHost(url: string): string | null {
+  try {
+    return normalizeHost(new URL(url).host);
+  } catch {
+    return null;
+  }
+}
+
+/** App and marketing share one public host (e.g. Vercel preview or localhost). */
+export function isUnifiedSiteHost(host: string): boolean {
+  const appHost = getUrlHost(getAppUrl());
+  const marketingHost = getUrlHost(getMarketingUrl());
+  if (!appHost || !marketingHost || appHost !== marketingHost) return false;
+  return normalizeHost(host) === appHost;
+}
+
 /** Application host (Mission Control, warehouse, etc.). */
 export function getAppUrl(): string {
   const raw = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -20,8 +40,9 @@ export function getHostKind(host: string): SiteHostKind {
   if (forced === "marketing") return "marketing";
   if (forced === "app") return "app";
 
-  const normalized = (host.split(":")[0] ?? "").toLowerCase();
+  const normalized = normalizeHost(host);
   if (normalized === "localhost" || normalized === "127.0.0.1") return "local";
+  if (isUnifiedSiteHost(host)) return "local";
   if (normalized.startsWith("app.") || normalized.includes("app.autocore")) return "app";
   if (normalized === "autocore-web.vercel.app" || normalized.endsWith(".autocore-web.vercel.app")) {
     return normalized.startsWith("app.") ? "app" : "marketing";

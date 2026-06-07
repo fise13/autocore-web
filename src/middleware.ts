@@ -14,14 +14,22 @@ export function middleware(request: NextRequest) {
     }
     if (isAppRoute(pathname) && pathname !== "/marketing") {
       const target = new URL(pathname + request.nextUrl.search, getAppUrl());
-      return NextResponse.redirect(target);
+      const requestHost = (host.split(":")[0] ?? "").toLowerCase();
+      const targetHost = (target.host.split(":")[0] ?? "").toLowerCase();
+      if (requestHost !== targetHost) {
+        return NextResponse.redirect(target);
+      }
     }
     return NextResponse.next();
   }
 
   if (kind === "app" && pathname.startsWith("/marketing")) {
     const target = new URL(pathname + request.nextUrl.search, getMarketingUrl());
-    return NextResponse.redirect(target);
+    const requestHost = (host.split(":")[0] ?? "").toLowerCase();
+    const targetHost = (target.host.split(":")[0] ?? "").toLowerCase();
+    if (requestHost !== targetHost) {
+      return NextResponse.redirect(target);
+    }
   }
 
   return NextResponse.next();
