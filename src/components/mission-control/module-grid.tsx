@@ -12,7 +12,9 @@ import { WorkOrdersModule } from "@/components/mission-control/modules/work-orde
 import { useMissionControlData } from "@/hooks/use-mission-control-data";
 import { mcCardVariants, mcPageVariants } from "@/lib/motion/mission-control-motion";
 
-type ModuleGridProps = ReturnType<typeof useMissionControlData>;
+type ModuleGridProps = ReturnType<typeof useMissionControlData> & {
+  layout?: "all" | "featured" | "rest";
+};
 
 function ModuleSlot({ children }: { children: ReactNode }) {
   return (
@@ -21,6 +23,8 @@ function ModuleSlot({ children }: { children: ReactNode }) {
     </motion.div>
   );
 }
+
+const FEATURED_KEYS = new Set(["analytics", "accounting"]);
 
 export function ModuleGrid({
   latestMotors,
@@ -36,63 +40,82 @@ export function ModuleGrid({
   activityLogs,
   isLoading,
   permissions,
+  layout = "all",
 }: ModuleGridProps) {
-  const showAnyModule =
-    permissions.canMotors ||
-    permissions.canWarehouse ||
-    permissions.canAccounting ||
-    permissions.canWorkOrders ||
-    permissions.canEmployees;
+  const slots: Array<{ key: string; node: ReactNode }> = [];
 
-  if (!showAnyModule) return null;
+  if (permissions.canMotors) {
+    slots.push({
+      key: "analytics",
+      node: <InventoryAnalyticsModule analytics={inventoryAnalytics} isLoading={isLoading} />,
+    });
+    slots.push({
+      key: "inventory",
+      node: (
+        <InventoryModule
+          latestMotors={latestMotors}
+          recentlyModified={recentlyModifiedMotors}
+          isLoading={isLoading}
+        />
+      ),
+    });
+  }
+
+  if (permissions.canWarehouse) {
+    slots.push({
+      key: "warehouse",
+      node: (
+        <WarehouseModule
+          recentItems={recentWarehouseItems}
+          lowStockItems={lowStockWarehouseItems}
+          recentMovements={warehouseMovements}
+          stockValue={overview.warehouseStockValue}
+          isLoading={isLoading}
+        />
+      ),
+    });
+  }
+
+  if (permissions.canAccounting) {
+    slots.push({
+      key: "accounting",
+      node: <AccountingModule operations={operations} isLoading={isLoading} />,
+    });
+  }
+
+  if (permissions.canWorkOrders) {
+    slots.push({
+      key: "work-orders",
+      node: <WorkOrdersModule orders={workOrders} isLoading={isLoading} />,
+    });
+  }
+
+  if (permissions.canEmployees) {
+    slots.push({
+      key: "employees",
+      node: <EmployeesModule employees={employees} activityLogs={activityLogs} isLoading={isLoading} />,
+    });
+  }
+
+  const filtered =
+    layout === "featured"
+      ? slots.filter((slot) => FEATURED_KEYS.has(slot.key))
+      : layout === "rest"
+        ? slots.filter((slot) => !FEATURED_KEYS.has(slot.key))
+        : slots;
+
+  if (filtered.length === 0) return null;
 
   return (
     <motion.div
       variants={mcPageVariants}
       initial="hidden"
       animate="show"
-      className="grid gap-3.5 xl:grid-cols-2"
+      className="grid gap-4 lg:grid-cols-2"
     >
-      {permissions.canMotors ? (
-        <ModuleSlot>
-          <InventoryAnalyticsModule analytics={inventoryAnalytics} isLoading={isLoading} />
-        </ModuleSlot>
-      ) : null}
-      {permissions.canMotors ? (
-        <ModuleSlot>
-          <InventoryModule
-            latestMotors={latestMotors}
-            recentlyModified={recentlyModifiedMotors}
-            isLoading={isLoading}
-          />
-        </ModuleSlot>
-      ) : null}
-      {permissions.canWarehouse ? (
-        <ModuleSlot>
-          <WarehouseModule
-            recentItems={recentWarehouseItems}
-            lowStockItems={lowStockWarehouseItems}
-            recentMovements={warehouseMovements}
-            stockValue={overview.warehouseStockValue}
-            isLoading={isLoading}
-          />
-        </ModuleSlot>
-      ) : null}
-      {permissions.canAccounting ? (
-        <ModuleSlot>
-          <AccountingModule operations={operations} isLoading={isLoading} />
-        </ModuleSlot>
-      ) : null}
-      {permissions.canWorkOrders ? (
-        <ModuleSlot>
-          <WorkOrdersModule orders={workOrders} isLoading={isLoading} />
-        </ModuleSlot>
-      ) : null}
-      {permissions.canEmployees ? (
-        <ModuleSlot>
-          <EmployeesModule employees={employees} activityLogs={activityLogs} isLoading={isLoading} />
-        </ModuleSlot>
-      ) : null}
+      {filtered.map((slot) => (
+        <ModuleSlot key={slot.key}>{slot.node}</ModuleSlot>
+      ))}
     </motion.div>
   );
 }

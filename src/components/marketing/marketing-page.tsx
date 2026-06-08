@@ -1,30 +1,23 @@
 "use client";
 
-import { LandingAudience } from "@/components/marketing/landing/landing-audience";
-import { LandingCta, LandingMarquee } from "@/components/marketing/landing/landing-cta";
-import { LandingDayFlow } from "@/components/marketing/landing/landing-day-flow";
+import { LandingCompare } from "@/components/marketing/landing/landing-compare";
+import { LandingCta } from "@/components/marketing/landing/landing-cta";
+import { LandingDemo } from "@/components/marketing/landing/landing-demo";
+import { LandingDocuments } from "@/components/marketing/landing/landing-documents";
 import { LandingFaq } from "@/components/marketing/landing/landing-faq";
 import { LandingHero } from "@/components/marketing/landing/landing-hero";
-import { LandingModules } from "@/components/marketing/landing/landing-modules";
-import { LandingPlatforms } from "@/components/marketing/landing/landing-platforms";
-import { LandingProductShowcase } from "@/components/marketing/landing/landing-product-showcase";
-import { LandingRealtime } from "@/components/marketing/landing/landing-realtime";
-import { LandingStory } from "@/components/marketing/landing/landing-story";
+import { LandingStoryScroll } from "@/components/marketing/landing/landing-story-scroll";
 
 export function MarketingPage() {
   return (
-    <>
+    <div className="landing-page overflow-x-hidden">
       <LandingHero />
-      <LandingMarquee />
-      <LandingProductShowcase />
-      <LandingAudience />
-      <LandingStory />
-      <LandingModules />
-      <LandingDayFlow />
-      <LandingRealtime />
-      <LandingPlatforms />
+      <LandingStoryScroll />
+      <LandingDocuments />
+      <LandingDemo />
+      <LandingCompare />
       <LandingFaq />
       <LandingCta />
-    </>
+    </div>
   );
 }

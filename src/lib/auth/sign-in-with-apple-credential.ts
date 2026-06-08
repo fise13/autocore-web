@@ -6,9 +6,23 @@ import {
   updateProfile,
 } from "firebase/auth";
 
-import { AppleJsUser, clearAppleJsSession, signInWithAppleJs } from "@/lib/auth/apple-js-sign-in";
-import { logAuthDebug } from "@/lib/auth/auth-debug";
-import { mapAuthError } from "@/lib/user-copy";
+import {
+  logAppleAuthError,
+  logAppleAuthStep,
+  logAppleIdToken,
+  logAppleJs,
+  logAppleNonce,
+  logFirebaseCredential,
+  logFirebaseSignInResult,
+} from "@/lib/auth/apple-auth-log";
+import {
+  AppleJsUser,
+  AppleJsRedirectStarted,
+  bootstrapAppleJsReturn,
+  isAppleUserCancellationError,
+  resetAppleSignInSession,
+  signInWithAppleJs,
+} from "@/lib/auth/apple-js-sign-in";
 
 function buildDisplayName(user?: AppleJsUser): string | null {
   const firstName = user?.name?.firstName?.trim();
@@ -20,10 +34,15 @@ function buildDisplayName(user?: AppleJsUser): string | null {
 async function applyAppleDisplayName(user: User, appleUser?: AppleJsUser) {
   const displayName = buildDisplayName(appleUser);
   if (!displayName || user.displayName?.trim()) {
+    logFirebaseSignInResult("display-name-skipped", {
+      reason: displayName ? "already-set" : "missing-from-apple",
+      firebaseDisplayName: user.displayName,
+    });
     return;
   }
 
   await updateProfile(user, { displayName });
+  logFirebaseSignInResult("display-name-applied", { displayName });
 }
 
 export async function completeAppleCredentialSignIn(
@@ -32,43 +51,61 @@ export async function completeAppleCredentialSignIn(
   rawNonce: string,
   appleUser?: AppleJsUser,
 ) {
-  logAuthDebug("apple-credential", "completeAppleCredentialSignIn (macOS parity)", {
-    idTokenLength: idToken.trim().length,
-    rawNonceLength: rawNonce.trim().length,
-  });
-
+  const trimmedIdToken = idToken.trim();
   const trimmedNonce = rawNonce.trim();
-  if (!idToken.trim()) {
-    throw new Error("Не удалось получить безопасный токен Apple ID. Повторите попытку.");
+
+  logAppleIdToken("credential-exchange-start", { idTokenLength: trimmedIdToken.length });
+  logAppleNonce("credential-exchange-start", { rawNonceLength: trimmedNonce.length });
+
+  if (!trimmedIdToken) {
+    const error = new Error("Apple authorization response missing id_token");
+    logAppleAuthError("credential-sign-in:missing-id-token", error);
+    throw error;
   }
   if (!trimmedNonce) {
-    throw new Error("Не удалось подготовить безопасный вход через Apple. Попробуйте ещё раз.");
+    const error = new Error("Apple authorization response missing rawNonce");
+    logAppleAuthError("credential-sign-in:missing-raw-nonce", error);
+    throw error;
   }
 
   const provider = new OAuthProvider("apple.com");
   const credential = provider.credential({
-    idToken,
+    idToken: trimmedIdToken,
     rawNonce: trimmedNonce,
   });
 
-  const result = await signInWithCredential(auth, credential);
-  logAuthDebug("apple-credential", "signInWithCredential success", {
-    uid: result.user.uid,
-    email: result.user.email,
+  logFirebaseCredential("built", {
+    providerId: "apple.com",
+    idTokenLength: trimmedIdToken.length,
+    rawNonceLength: trimmedNonce.length,
   });
-  await applyAppleDisplayName(result.user, appleUser);
-  clearAppleJsSession();
-  return result;
+  logAppleAuthStep("firebase-signInWithCredential-start");
+
+  try {
+    const result = await signInWithCredential(auth, credential);
+    logFirebaseSignInResult("success", {
+      uid: result.user.uid,
+      email: result.user.email,
+      emailVerified: result.user.emailVerified,
+      isNewUser: result.user.metadata.creationTime === result.user.metadata.lastSignInTime,
+      displayName: result.user.displayName,
+      providerIds: result.user.providerData.map((p) => p.providerId),
+    });
+    await applyAppleDisplayName(result.user, appleUser);
+    resetAppleSignInSession();
+    return result;
+  } catch (error) {
+    logFirebaseSignInResult("failed", error);
+    logAppleAuthError("firebase-signInWithCredential", error);
+    resetAppleSignInSession();
+    throw error;
+  }
 }
 
 export async function signInWithAppleLikeMacOS(auth: Auth) {
-  logAuthDebug("apple-credential", "signInWithAppleLikeMacOS start");
+  logAppleJs("flow-start");
   try {
     const appleResult = await signInWithAppleJs();
-    logAuthDebug("apple-credential", "Apple returned id_token", {
-      hasUser: Boolean(appleResult.user),
-      idTokenLength: appleResult.authorization.id_token.length,
-    });
     return completeAppleCredentialSignIn(
       auth,
       appleResult.authorization.id_token,
@@ -76,17 +113,29 @@ export async function signInWithAppleLikeMacOS(auth: Auth) {
       appleResult.user,
     );
   } catch (error) {
-    clearAppleJsSession();
-    logAuthDebug("apple-credential", "signInWithAppleLikeMacOS error", error);
-    const code =
-      error && typeof error === "object" && "code" in error
-        ? String((error as { code: string }).code)
-        : "";
-
-    if (code.startsWith("auth/") || error instanceof Error) {
+    if (error instanceof AppleJsRedirectStarted) {
+      logAppleJs("redirect-navigation-started");
       throw error;
     }
-
-    throw new Error(mapAuthError(error, { provider: "apple" }));
+    if (isAppleUserCancellationError(error)) {
+      resetAppleSignInSession();
+      throw error;
+    }
+    resetAppleSignInSession();
+    logAppleAuthError("apple-js-flow", error);
+    throw error;
   }
+}
+
+/** Finish sign-in after Apple JS redirect return on /login. */
+export async function completeAppleJsReturnIfNeeded(auth: Auth) {
+  const appleResult = await bootstrapAppleJsReturn();
+  if (!appleResult) return null;
+
+  return completeAppleCredentialSignIn(
+    auth,
+    appleResult.authorization.id_token,
+    appleResult.rawNonce,
+    appleResult.user,
+  );
 }

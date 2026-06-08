@@ -5,14 +5,21 @@ import { useCallback, useState } from "react";
 export const SIDEBAR_DEFAULT_WIDTH = 240;
 export const SIDEBAR_MIN_WIDTH = 180;
 export const SIDEBAR_MAX_WIDTH = 420;
+export const SIDEBAR_COLLAPSED_WIDTH = 56;
 
 const VISIBLE_KEY = "autocore-sidebar-visible";
+const COLLAPSED_KEY = "autocore-sidebar-collapsed";
 const WIDTH_KEY = "autocore-sidebar-width";
 
 function readInitialVisible() {
   if (typeof window === "undefined") return true;
   const storedVisible = localStorage.getItem(VISIBLE_KEY);
   return storedVisible === null ? true : storedVisible === "true";
+}
+
+function readInitialCollapsed() {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(COLLAPSED_KEY) === "true";
 }
 
 function readInitialWidth() {
@@ -26,6 +33,7 @@ function readInitialWidth() {
 
 export function useSidebarLayout() {
   const [visible, setVisibleState] = useState(readInitialVisible);
+  const [collapsed, setCollapsedState] = useState(readInitialCollapsed);
   const [width, setWidthState] = useState(readInitialWidth);
 
   const setVisible = useCallback((next: boolean) => {
@@ -39,19 +47,26 @@ export function useSidebarLayout() {
     localStorage.setItem(WIDTH_KEY, String(clamped));
   }, []);
 
+  const setCollapsed = useCallback((next: boolean) => {
+    setCollapsedState(next);
+    localStorage.setItem(COLLAPSED_KEY, String(next));
+  }, []);
+
   const toggleVisible = useCallback(() => {
-    setVisibleState((current) => {
+    setCollapsedState((current) => {
       const next = !current;
-      localStorage.setItem(VISIBLE_KEY, String(next));
+      localStorage.setItem(COLLAPSED_KEY, String(next));
       return next;
     });
   }, []);
 
   return {
     visible,
+    collapsed,
     width,
     hydrated: true,
     setVisible,
+    setCollapsed,
     setWidth,
     toggleVisible,
   };

@@ -7,12 +7,12 @@ import { cn } from "@/lib/utils";
 
 /** Shared with AppSidebar links — keep edit mode visually identical. */
 export const sidebarNavRowClass =
-  "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-200";
+  "sidebar-nav-row flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-200 ease-out";
 
 export const sidebarNavIconClass = "size-4 shrink-0 opacity-80";
 
 export const sidebarSectionLabelClass =
-  "px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
+  "sidebar-section-label px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
 
 type SidebarNavRowProps = {
   icon: LucideIcon;

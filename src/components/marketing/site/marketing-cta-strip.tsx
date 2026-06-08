@@ -1,36 +1,34 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
+import { marketingSiteContent } from "@/components/marketing/content/marketing-site-content";
 import { Button } from "@/components/ui/button";
 import { marketingRoutes } from "@/lib/marketing-routes";
-import { appLoginUrl } from "@/lib/site-urls";
+import { appDemoUrl } from "@/lib/site-urls";
 
 type MarketingCtaStripProps = {
   title?: string;
   description?: string;
 };
 
+const defaults = marketingSiteContent.cta;
+
 export function MarketingCtaStrip({
-  title = "Готовы убрать хаос из Excel и чатов?",
-  description = "Начните бесплатно — склад, наряды и Mission Control в одной системе для автобизнеса.",
+  title = defaults.title,
+  description = defaults.description,
 }: MarketingCtaStripProps) {
   return (
-    <section className="border-t border-border bg-muted/20">
-      <div className="mx-auto flex max-w-7xl flex-col items-center gap-6 px-5 py-14 text-center md:px-8 md:py-16">
-        <div className="max-w-2xl space-y-3">
-          <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">{title}</h2>
-          <p className="text-muted-foreground">{description}</p>
-        </div>
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <Button size="lg" render={<Link href={appLoginUrl()} />}>
-            Начать бесплатно
+    <section className="marketing-cta-strip">
+      <div className="landing-container marketing-cta-strip-inner">
+        <h2 className="marketing-cta-strip-title">{title}</h2>
+        <p className="landing-lead mx-auto mt-4 max-w-lg text-center">{description}</p>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Button size="lg" render={<Link href={appDemoUrl()} />}>
+            {defaults.primary}
             <ArrowRight className="size-4" data-icon="inline-end" />
           </Button>
           <Button variant="outline" size="lg" render={<Link href={marketingRoutes.modules} />}>
-            Смотреть модули
-          </Button>
-          <Button variant="ghost" size="lg" render={<Link href={marketingRoutes.contact} />}>
-            Связаться с нами
+            {defaults.secondary}
           </Button>
         </div>
       </div>

@@ -4,8 +4,8 @@ import { OperationalPreview } from "@/components/marketing/ui/operational-previe
 
 export function ProductPreviewFrame() {
   return (
-    <div className="landing-card overflow-hidden p-1">
-      <OperationalPreview large />
+    <div className="marketing-product-preview-shell">
+      <OperationalPreview layout="showcase" />
     </div>
   );
 }

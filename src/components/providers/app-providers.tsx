@@ -2,6 +2,7 @@
 
 import { ReactNode } from "react";
 
+import { PageTransitionProvider } from "@/components/motion/page-transition-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -16,7 +17,9 @@ export function AppProviders({ children }: AppProvidersProps) {
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="autocore-theme">
       <QueryProvider>
         <AuthProvider>
-          <ToastProvider>{children}</ToastProvider>
+          <PageTransitionProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </PageTransitionProvider>
         </AuthProvider>
       </QueryProvider>
     </ThemeProvider>

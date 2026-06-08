@@ -19,12 +19,18 @@ export function getAppleWebSetupHint(): string {
   }
 
   return [
-    "Web входит через Firebase OAuth (как Google). macOS/iOS — нативный Sign in with Apple.",
-    `1. Apple Developer → Services ID com.wise.AutoCore.app → Sign in with Apple → Configure.`,
-    `   Domain: autocore-6066c.firebaseapp.com (без https://)`,
-    `   Return URL: ${firebaseHandler} (точное совпадение, без слэша в конце)`,
-    "2. Firebase → Authentication → Apple → Services ID + Team ID + Key ID + .p8 (OAuth code flow).",
-    "3. Firebase → Authorized domains → добавьте localhost и autocore-web.vercel.app.",
+    "Apple JS redirectURI = <APP_URL>/login (страница с appleid.auth.js).",
+    "⚠️ Apple Developer НЕ принимает «localhost» в Domains.",
+    `1. Apple Developer → Services ID com.wise.autocore.web → Sign in with Apple → Configure.`,
+    "   Локально (через /etc/hosts):",
+    "   - Domain: local.autocore.dev  (127.0.0.1 local.autocore.dev в /etc/hosts)",
+    "   - Return URL: http://local.autocore.dev:3000/login",
+    "   Prod / preview:",
+    "   - Domain: autocore-web.vercel.app (или ваш домен)",
+    "   - Return URL: https://<домен>/login",
+    `   (Legacy Firebase handler, firebase_handler mode: ${firebaseHandler})`,
+    "2. Firebase → Authentication → Apple → Services ID + Team ID + Key ID + .p8.",
+    "3. Firebase → Authorized domains → local.autocore.dev, localhost, prod-домен.",
   ].join("\n");
 }
 

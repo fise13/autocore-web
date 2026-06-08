@@ -7,17 +7,18 @@ type PageHeaderProps = {
   title: string;
   description: string;
   breadcrumbs?: Breadcrumb[];
+  eyebrow?: string;
 };
 
-export function PageHeader({ title, description, breadcrumbs }: PageHeaderProps) {
+export function PageHeader({ title, description, breadcrumbs, eyebrow }: PageHeaderProps) {
   return (
-    <header className="site-page-header border-b border-border/80 bg-muted/25">
-      <div className="mx-auto max-w-7xl px-5 py-14 md:px-8 md:py-16">
+    <header className="marketing-page-header">
+      <div className="landing-container">
         {breadcrumbs && breadcrumbs.length > 0 ? (
-          <nav className="mb-6 flex flex-wrap items-center gap-1 text-sm text-muted-foreground" aria-label="Хлебные крошки">
+          <nav className="marketing-breadcrumbs" aria-label="Хлебные крошки">
             {breadcrumbs.map((crumb, index) => (
-              <span key={crumb.label} className="inline-flex items-center gap-1">
-                {index > 0 ? <ChevronRight className="size-3.5 opacity-50" aria-hidden /> : null}
+              <span key={crumb.label} className="inline-flex items-center gap-1.5">
+                {index > 0 ? <ChevronRight className="size-3.5 opacity-40" aria-hidden /> : null}
                 {crumb.href ? (
                   <Link href={crumb.href} className="hover:text-foreground">
                     {crumb.label}
@@ -29,8 +30,9 @@ export function PageHeader({ title, description, breadcrumbs }: PageHeaderProps)
             ))}
           </nav>
         ) : null}
-        <h1 className="max-w-3xl text-3xl font-semibold tracking-tight md:text-4xl">{title}</h1>
-        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-muted-foreground">{description}</p>
+        {eyebrow ? <p className="landing-eyebrow mt-6">{eyebrow}</p> : null}
+        <h1 className="marketing-page-title">{title}</h1>
+        <p className="landing-lead mt-5 max-w-2xl">{description}</p>
       </div>
     </header>
   );

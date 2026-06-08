@@ -6,6 +6,7 @@ import { ReactNode } from "react";
 import { SiteFooter } from "@/components/marketing/site/site-footer";
 import { SiteNav } from "@/components/marketing/site/site-nav";
 import { useBarbaNavigation } from "@/hooks/use-barba-navigation";
+import { useMarketingAuthBootstrap } from "@/hooks/use-marketing-auth-bootstrap";
 import { pathToBarbaNamespace, shouldAnimateMarketingNavigation } from "@/lib/barba/barba-navigation";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +16,7 @@ type MarketingBarbaShellProps = {
 
 export function MarketingBarbaShell({ children }: MarketingBarbaShellProps) {
   const pathname = usePathname();
+  useMarketingAuthBootstrap();
   const { wrapperRef, containerRef } = useBarbaNavigation({
     shouldAnimate: shouldAnimateMarketingNavigation,
   });
@@ -25,7 +27,7 @@ export function MarketingBarbaShell({ children }: MarketingBarbaShellProps) {
     <div
       ref={wrapperRef}
       data-barba="wrapper"
-      className={cn("site-theme flex min-h-screen flex-col bg-background text-foreground")}
+      className={cn("site-theme dark flex min-h-screen flex-col bg-background text-foreground")}
     >
       <SiteNav />
       <main

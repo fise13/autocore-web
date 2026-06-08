@@ -1,3 +1,4 @@
+import "@/styles/document-pdf-template.css";
 import "@/styles/document-service-report.css";
 import "@/styles/documents-overrides.css";
 

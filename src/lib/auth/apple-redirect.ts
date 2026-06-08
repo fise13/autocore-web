@@ -1,29 +1,23 @@
 import { Auth } from "firebase/auth";
 
-import { clearAppleJsSession } from "@/lib/auth/apple-js-sign-in";
-import { getAppleWebSetupHint } from "@/lib/auth/apple-web-setup";
+import { logAppleAuthError, logAppleAuthStep } from "@/lib/auth/apple-auth-log";
+import {
+  clearAppleRedirectPending,
+  hasPendingAppleRedirect,
+} from "@/lib/auth/apple-redirect-state";
 import { consumeFirebaseRedirectResult } from "@/lib/auth/sign-in-with-apple-web";
-import { logAuthDebug } from "@/lib/auth/auth-debug";
-import { mapAuthError, userCopy } from "@/lib/user-copy";
 
-export const APPLE_REDIRECT_FLAG = "autocore.appleRedirect";
+export type AppleRedirectBootstrapResult = {
+  error: unknown | null;
+  signedIn: boolean;
+  /** True when Apple redirect finished but getRedirectResult() returned null. */
+  redirectResultNull: boolean;
+  hadPendingRedirect: boolean;
+};
 
-let redirectBootstrapPromise: Promise<string | null> | null = null;
+export { hasPendingAppleRedirect, markAppleRedirectPending } from "@/lib/auth/apple-redirect-state";
 
-function clearFirebaseAppleRedirectFlag() {
-  if (typeof window === "undefined") return;
-  sessionStorage.removeItem(APPLE_REDIRECT_FLAG);
-}
-
-export function hasPendingAppleRedirect(): boolean {
-  if (typeof window === "undefined") return false;
-  return sessionStorage.getItem(APPLE_REDIRECT_FLAG) === "1";
-}
-
-export function markAppleRedirectPending() {
-  if (typeof window === "undefined") return;
-  sessionStorage.setItem(APPLE_REDIRECT_FLAG, "1");
-}
+let redirectBootstrapPromise: Promise<AppleRedirectBootstrapResult> | null = null;
 
 function returnedFromOAuthProvider(): boolean {
   if (typeof window === "undefined") return false;
@@ -40,9 +34,9 @@ function returnedFromOAuthProvider(): boolean {
   }
 }
 
-export async function bootstrapAppleRedirect(auth: Auth): Promise<string | null> {
+export async function bootstrapAppleRedirect(auth: Auth): Promise<AppleRedirectBootstrapResult> {
   if (typeof window === "undefined") {
-    return null;
+    return { error: null, signedIn: false, redirectResultNull: false, hadPendingRedirect: false };
   }
 
   if (!redirectBootstrapPromise) {
@@ -52,48 +46,60 @@ export async function bootstrapAppleRedirect(auth: Auth): Promise<string | null>
   return redirectBootstrapPromise;
 }
 
-async function bootstrapAppleRedirectOnce(auth: Auth): Promise<string | null> {
-  const hadAppleRedirect = hasPendingAppleRedirect();
-  clearAppleJsSession();
+async function bootstrapAppleRedirectOnce(auth: Auth): Promise<AppleRedirectBootstrapResult> {
+  const hadPendingRedirect = hasPendingAppleRedirect();
 
-  logAuthDebug("redirect", "bootstrap", {
-    hadAppleRedirect,
+  logAppleAuthStep("redirect-bootstrap-start", {
+    hadPendingRedirect,
     href: window.location.href,
     referrer: document.referrer || "(empty)",
     fromOAuth: returnedFromOAuthProvider(),
   });
 
-  const result = await consumeFirebaseRedirectResult(auth);
-
-  if (result?.user) {
-    clearFirebaseAppleRedirectFlag();
-    await auth.authStateReady();
-    return null;
+  try {
+    const result = await consumeFirebaseRedirectResult(auth);
+    if (result?.user) {
+      clearAppleRedirectPending();
+      await auth.authStateReady();
+      logAppleAuthStep("redirect-bootstrap-success", { uid: result.user.uid });
+      return { error: null, signedIn: true, redirectResultNull: false, hadPendingRedirect };
+    }
+  } catch (error) {
+    clearAppleRedirectPending();
+    logAppleAuthError("redirect-bootstrap:getRedirectResult", error);
+    return { error, signedIn: false, redirectResultNull: false, hadPendingRedirect };
   }
 
   await auth.authStateReady();
 
   if (auth.currentUser) {
-    clearFirebaseAppleRedirectFlag();
-    return null;
+    clearAppleRedirectPending();
+    logAppleAuthStep("redirect-bootstrap-existing-session", { uid: auth.currentUser.uid });
+    return { error: null, signedIn: false, redirectResultNull: false, hadPendingRedirect };
   }
 
-  if (hadAppleRedirect) {
-    clearFirebaseAppleRedirectFlag();
+  if (hadPendingRedirect) {
+    clearAppleRedirectPending();
 
     if (!returnedFromOAuthProvider()) {
-      logAuthDebug("redirect", "stale redirect flag cleared");
-      return null;
+      logAppleAuthStep("redirect-bootstrap-stale-flag-cleared");
+      return { error: null, signedIn: false, redirectResultNull: false, hadPendingRedirect: true };
     }
 
-    logAuthDebug("redirect", "OAuth return but no Firebase user");
-    return [
-      userCopy.onboarding.appleFailed,
-      mapAuthError(new Error("auth/invalid-credential"), { provider: "apple" }),
-      getAppleWebSetupHint(),
-      "Если popup блокируется — разрешите всплывающие окна для localhost или попробуйте Chrome.",
-    ].join("\n\n");
+    console.warn("[APPLE AUTH] Redirect completed but Firebase returned null result", {
+      href: window.location.href,
+      referrer: document.referrer || "(empty)",
+      hadPendingRedirect,
+      currentUser: null,
+    });
+
+    return {
+      error: null,
+      signedIn: false,
+      redirectResultNull: true,
+      hadPendingRedirect: true,
+    };
   }
 
-  return null;
+  return { error: null, signedIn: false, redirectResultNull: false, hadPendingRedirect: false };
 }

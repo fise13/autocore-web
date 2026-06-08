@@ -54,12 +54,18 @@ export function appLoginUrl(): string {
   return `${getAppUrl()}/login`;
 }
 
+/** One-click demo workspace (auto sign-in). */
+export function appDemoUrl(): string {
+  return `${getAppUrl()}/demo`;
+}
+
 export function appDashboardUrl(): string {
   return `${getAppUrl()}/`;
 }
 
 export const APP_ROUTE_PREFIXES = [
   "/login",
+  "/demo",
   "/warehouse",
   "/work-orders",
   "/documents",

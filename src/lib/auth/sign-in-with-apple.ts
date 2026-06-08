@@ -8,14 +8,17 @@ import {
 } from "firebase/auth";
 
 import { getFirebaseAuth } from "@/infrastructure/firebase/client";
+import { logAppleAuthError, logAppleAuthStep } from "@/lib/auth/apple-auth-log";
 
 export async function signInWithApple(auth?: Auth): Promise<UserCredential> {
   const resolvedAuth = auth ?? getFirebaseAuth();
 
   await setPersistence(resolvedAuth, browserLocalPersistence);
 
-  console.log("APPLE AUTH PROJECT", resolvedAuth.app.options.projectId);
-  console.log("APPLE AUTH DOMAIN", resolvedAuth.app.options.authDomain);
+  logAppleAuthStep("legacy-sign-in-with-apple", {
+    projectId: resolvedAuth.app.options.projectId,
+    authDomain: resolvedAuth.app.options.authDomain,
+  });
 
   const provider = new OAuthProvider("apple.com");
   provider.addScope("email");
@@ -23,11 +26,12 @@ export async function signInWithApple(auth?: Auth): Promise<UserCredential> {
   provider.setCustomParameters({ locale: "ru" });
 
   try {
+    logAppleAuthStep("legacy-popup-start");
     const result = await signInWithPopup(resolvedAuth, provider);
-    console.log("Apple login success", result);
+    logAppleAuthStep("legacy-popup-success", { uid: result.user.uid });
     return result;
   } catch (error) {
-    console.error("Apple login failed", error);
+    logAppleAuthError("legacy-sign-in-with-apple", error);
     throw error;
   }
 }

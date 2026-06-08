@@ -21,22 +21,22 @@ export const siteNavigation = {
       {
         href: marketingRoutes.product,
         label: "Обзор продукта",
-        description: "Mission Control, процессы и платформы",
+        description: "Как устроена система и для кого",
       },
       {
         href: marketingRoutes.modules,
-        label: "Каталог модулей",
+        label: "Все модули",
         description: "Склад, наряды, бухгалтерия, команда",
       },
       {
         href: `${marketingRoutes.modules}#mission-control`,
         label: "Mission Control",
-        description: "Командный дашборд владельца",
+        description: "Дашборд владельца каждое утро",
       },
       {
         href: `${marketingRoutes.modules}#warehouse`,
         label: "Склад",
-        description: "Остатки, штрихкод, импорт",
+        description: "Остатки, штрихкод, импорт прайсов",
       },
       {
         href: `${marketingRoutes.modules}#work-orders`,
@@ -51,8 +51,9 @@ export const siteNavigation = {
     ],
   } satisfies SiteNavGroup,
   primaryLinks: [
-    { href: `${marketingRoutes.home}#for-whom`, label: "Для кого" },
+    { href: `${marketingRoutes.home}#story`, label: "Как работает" },
     { href: marketingRoutes.pricing, label: "Тарифы" },
+    { href: `${marketingRoutes.home}#faq`, label: "FAQ" },
     { href: marketingRoutes.security, label: "Безопасность" },
     { href: marketingRoutes.contact, label: "Контакты" },
   ] satisfies SiteNavLink[],
@@ -62,7 +63,7 @@ export const siteNavigation = {
       { href: marketingRoutes.modules, label: "Каталог модулей" },
       { href: `${marketingRoutes.modules}#warehouse`, label: "Склад" },
       { href: `${marketingRoutes.modules}#work-orders`, label: "Заказ-наряды" },
-      { href: `${marketingRoutes.home}#for-whom`, label: "Для кого" },
+      { href: `${marketingRoutes.home}#story`, label: "Как работает" },
     ],
     company: [
       { href: marketingRoutes.pricing, label: "Тарифы" },

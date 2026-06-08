@@ -44,6 +44,7 @@ import { BrandEntity, EngineEntity } from "@/infrastructure/firestore/catalog-re
 import { SpecificCategoryEntity } from "@/infrastructure/firestore/specific-category-repository";
 
 type AppSidebarProps = {
+  collapsed?: boolean;
   brands: BrandEntity[];
   engines: EngineEntity[];
   specificCategories: SpecificCategoryEntity[];
@@ -70,6 +71,7 @@ function SidebarDivider() {
 }
 
 export function AppSidebar({
+  collapsed = false,
   brands,
   engines,
   specificCategories,
@@ -126,6 +128,7 @@ export function AppSidebar({
 
   const visibleBlocks = useMemo(() => {
     return customization.blockOrder.filter((blockId) => {
+      if (collapsed && blockId !== "navigation") return false;
       if (!isBlockEnabled(customization, blockId)) return false;
       if (blockId === "profile") return false;
       if (blockId === "navigation") return enabledNavIds.length > 0;
@@ -140,6 +143,7 @@ export function AppSidebar({
     isEditing,
     showBrandFilters,
     showSpecificCategories,
+    collapsed,
   ]);
 
   const enginesByBrand = useMemo(() => {
@@ -349,15 +353,18 @@ export function AppSidebar({
                   <Link
                     key={navId}
                     href={item.href}
+                    title={collapsed ? item.label : undefined}
                     className={cn(
                       sidebarNavRowClass,
+                      collapsed && "justify-center px-2",
                       active
                         ? "bg-primary/12 text-primary shadow-sm"
                         : "text-sidebar-foreground hover:bg-sidebar-accent hover:translate-x-0.5",
+                      collapsed && "hover:translate-x-0",
                     )}
                   >
                     <Icon className={sidebarNavIconClass} />
-                    <span>{item.label}</span>
+                    <span className="sidebar-nav-label truncate">{item.label}</span>
                   </Link>
                 );
               })}
@@ -510,9 +517,9 @@ export function AppSidebar({
                         aria-label={expanded ? "Свернуть" : "Развернуть"}
                       >
                         {expanded ? (
-                          <ChevronDown className="size-3.5" />
+                          <ChevronDown className="size-3.5 transition-transform duration-200 ease-linear" />
                         ) : (
-                          <ChevronRight className="size-3.5" />
+                          <ChevronRight className="size-3.5 transition-transform duration-200 ease-linear" />
                         )}
                       </button>
                       <button
@@ -559,10 +566,11 @@ export function AppSidebar({
 
                     <div
                       className={cn(
-                        "overflow-hidden transition-all duration-300 ease-out",
-                        expanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0",
+                        "grid overflow-hidden transition-[grid-template-rows,opacity] duration-200 ease-linear motion-reduce:transition-none",
+                        expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
                       )}
                     >
+                      <div className="min-h-0 overflow-hidden">
                       <div className="ml-5 space-y-0.5 border-l border-sidebar-border pl-2 pt-1">
                         {brandEngines.map((engine) => (
                           <button
@@ -584,6 +592,7 @@ export function AppSidebar({
                           </button>
                         ))}
                       </div>
+                      </div>
                     </div>
                   </div>
                 );
@@ -604,7 +613,10 @@ export function AppSidebar({
 
   return (
     <>
-      <aside className="flex h-full w-full flex-col bg-sidebar">
+      <aside
+        data-collapsed={collapsed ? "true" : "false"}
+        className={cn("app-sidebar flex h-full w-full flex-col bg-sidebar", collapsed && "app-sidebar--collapsed")}
+      >
         {isEditing ? (
           <LayoutGroup id="sidebar-customize">
             <div className="flex-1 overflow-y-auto px-2 py-3">
@@ -655,8 +667,8 @@ export function AppSidebar({
             <div className="flex-1 overflow-y-auto px-2 py-3">
               {visibleBlocks.map((blockId, index) => renderBlock(blockId, index))}
             </div>
-            <div className="shrink-0 border-t border-sidebar-border/80 px-2 py-2">
-              {showProfileFooter ? (
+            <div className="shrink-0 border-t border-sidebar-border/80 px-2 py-2 transition-opacity duration-200 ease-linear">
+              {showProfileFooter && !collapsed ? (
                 <div className="px-1">
                   <p className="truncate text-xs text-muted-foreground">{profile?.email}</p>
                   <p className="text-[11px] text-muted-foreground">

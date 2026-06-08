@@ -33,8 +33,11 @@ import {
   ensureDefaultCompany as assignDefaultCompany,
 } from "@/infrastructure/firestore/company-service";
 import { joinCompanyWithInviteCode } from "@/infrastructure/firestore/join-company-service";
+import { getAppleAuthMode, isFirebaseHandlerAppleAuthMode } from "@/lib/auth/apple-auth-mode";
+import { logAppleAuthError, logAppleAuthStep, logAppleJs } from "@/lib/auth/apple-auth-log";
 import { signInWithAppleLikeMacOS } from "@/lib/auth/sign-in-with-apple-credential";
-import { signInWithAppleWeb } from "@/lib/auth/sign-in-with-apple-web";
+import { AppleJsRedirectStarted, isAppleUserCancellationError } from "@/lib/auth/apple-js-sign-in";
+import { signInWithAppleFirebase } from "@/lib/auth/sign-in-with-apple-web";
 import { mergeProfileWithEmployee, EmployeeProfileSlice } from "@/lib/auth/resolve-effective-profile";
 import { markSyncAuthPrepared, prepareSyncAuth, resetSyncAuthCache } from "@/lib/auth/prepare-sync-auth";
 import { mapAuthError } from "@/lib/user-copy";
@@ -115,21 +118,6 @@ function assertEmailProvider(user: User) {
   if (info?.kind !== "email") {
     throw new Error("Смена пароля недоступна для этого способа входа.");
   }
-}
-
-function getAuthErrorCode(error: unknown): string {
-  if (error && typeof error === "object" && "code" in error) {
-    return String((error as { code: string }).code);
-  }
-  if (error instanceof Error && error.message.startsWith("auth/")) {
-    return error.message;
-  }
-  return "";
-}
-
-function shouldFallbackToAppleJs(error: unknown): boolean {
-  const code = getAuthErrorCode(error);
-  return code === "auth/popup-blocked" || code === "auth/cancelled-popup-request";
 }
 
 async function reauthenticateEmailUser(user: User, password: string) {
@@ -335,30 +323,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
         await finalizeSignedInUser(auth, result.user, refreshProfile, setFirebaseUser, setIsLoading);
       },
       async signInWithApple() {
-        if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));
+        if (!isFirebaseReady) {
+          const error = new Error("auth/operation-not-allowed");
+          logAppleAuthError("auth-provider:not-ready", error);
+          throw error;
+        }
         const auth = getFirebaseAuth();
+        const mode = getAppleAuthMode();
+        logAppleJs("auth-provider-sign-in", { mode });
 
         try {
-          const result = await signInWithAppleWeb(auth);
-          await finalizeSignedInUser(auth, result.user, refreshProfile, setFirebaseUser, setIsLoading);
-          return;
-        } catch (error) {
-          const code = getAuthErrorCode(error);
-          if (code === "auth/popup-closed-by-user") {
-            throw new Error(mapAuthError(error, { provider: "apple" }));
-          }
-
-          if (shouldFallbackToAppleJs(error)) {
-            try {
-              const result = await signInWithAppleLikeMacOS(auth);
-              await finalizeSignedInUser(auth, result.user, refreshProfile, setFirebaseUser, setIsLoading);
+          if (isFirebaseHandlerAppleAuthMode()) {
+            const result = await signInWithAppleFirebase(auth);
+            if (!result) {
+              logAppleAuthStep("redirect-started");
               return;
-            } catch (fallbackError) {
-              throw new Error(mapAuthError(fallbackError, { provider: "apple" }));
             }
+            await finalizeSignedInUser(auth, result.user, refreshProfile, setFirebaseUser, setIsLoading);
+            return;
           }
 
-          throw new Error(mapAuthError(error, { provider: "apple" }));
+          const result = await signInWithAppleLikeMacOS(auth);
+          await finalizeSignedInUser(auth, result.user, refreshProfile, setFirebaseUser, setIsLoading);
+        } catch (error) {
+          if (error instanceof AppleJsRedirectStarted) {
+            logAppleJs("redirect-started-awaiting-return");
+            return;
+          }
+          if (isAppleUserCancellationError(error)) {
+            logAppleJs("sign-in-cancelled-by-user");
+            throw error;
+          }
+          logAppleAuthError("auth-provider:signInWithApple", error);
+          throw error;
         }
       },
       async signInWithEmail(email, password) {

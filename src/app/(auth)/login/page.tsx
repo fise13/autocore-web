@@ -15,12 +15,16 @@ import {
   logAuthDebug,
   snapshotAuthDebug,
 } from "@/lib/auth/auth-debug";
+import { formatAppleAuthErrorForUi, logAppleAuthError } from "@/lib/auth/apple-auth-log";
+import { isFirebaseHandlerAppleAuthMode } from "@/lib/auth/apple-auth-mode";
 import { bootstrapAppleRedirect } from "@/lib/auth/apple-redirect";
+import { prepareAppleSignInSession } from "@/lib/auth/apple-js-sign-in";
+import { completeAppleJsReturnIfNeeded } from "@/lib/auth/sign-in-with-apple-credential";
 import { userCopy } from "@/lib/user-copy";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { firebaseUser, profile, isLoading, isFirebaseReady } = useAuth();
+  const { firebaseUser, profile, isLoading, isFirebaseReady, refreshProfile } = useAuth();
   const [authReady, setAuthReady] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
 
@@ -30,14 +34,59 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isFirebaseReady) return;
+    if (isFirebaseHandlerAppleAuthMode()) return;
+
+    void prepareAppleSignInSession().catch((error) => {
+      logAppleAuthError("login-page:prepare-apple-session", error);
+    });
+  }, [isFirebaseReady]);
+
+  useEffect(() => {
+    if (!isFirebaseReady || isFirebaseHandlerAppleAuthMode()) return;
 
     let cancelled = false;
     const auth = getFirebaseAuth();
 
     void (async () => {
-      const redirectError = await bootstrapAppleRedirect(auth);
+      try {
+        const result = await completeAppleJsReturnIfNeeded(auth);
+        if (cancelled || !result) return;
+        await auth.authStateReady();
+        await refreshProfile();
+        if (!cancelled && auth.currentUser) {
+          logAuthDebug("login-page", "apple-js redirect complete → /");
+          router.replace("/");
+        }
+      } catch (error) {
+        if (!cancelled) {
+          logAppleAuthError("login-page:apple-js-return", error);
+          setBootstrapError(formatAppleAuthErrorForUi(error));
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isFirebaseReady, refreshProfile, router]);
+
+  useEffect(() => {
+    if (!isFirebaseReady) return;
+    if (!isFirebaseHandlerAppleAuthMode()) {
+      setAuthReady(true);
+      return;
+    }
+
+    let cancelled = false;
+    const auth = getFirebaseAuth();
+
+    void (async () => {
+      const { error: redirectError, redirectResultNull } = await bootstrapAppleRedirect(auth);
       if (!cancelled && redirectError) {
-        setBootstrapError(redirectError);
+        logAppleAuthError("login-page:bootstrap", redirectError);
+        setBootstrapError(formatAppleAuthErrorForUi(redirectError));
+      } else if (!cancelled && redirectResultNull) {
+        setBootstrapError("Redirect completed but Firebase returned null result");
       }
       await auth.authStateReady();
       if (!cancelled) {

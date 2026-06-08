@@ -3,7 +3,7 @@
 import { ReactNode, createContext, useContext } from "react";
 
 type DashboardLayoutContextValue = {
-  sidebarVisible: boolean;
+  sidebarCollapsed: boolean;
   toggleSidebar: () => void;
 };
 
@@ -11,15 +11,15 @@ const DashboardLayoutContext = createContext<DashboardLayoutContextValue | null>
 
 export function DashboardLayoutProvider({
   children,
-  sidebarVisible,
+  sidebarCollapsed,
   toggleSidebar,
 }: {
   children: ReactNode;
-  sidebarVisible: boolean;
+  sidebarCollapsed: boolean;
   toggleSidebar: () => void;
 }) {
   return (
-    <DashboardLayoutContext.Provider value={{ sidebarVisible, toggleSidebar }}>
+    <DashboardLayoutContext.Provider value={{ sidebarCollapsed, toggleSidebar }}>
       {children}
     </DashboardLayoutContext.Provider>
   );

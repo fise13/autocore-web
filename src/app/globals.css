@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "../styles/marketing-landing.css";
+@import "../styles/document-pdf-template.css";
 @import "../styles/document-service-report.css";
 @import "../styles/documents-overrides.css";
 
@@ -564,24 +565,22 @@
 
 .mc-module-card {
   overflow: hidden;
-  border: 1px solid var(--mc-border-subtle);
-  border-radius: calc(var(--radius) * 1.35);
-  background: color-mix(in oklab, var(--card) 92%, var(--mc-surface-1));
-  box-shadow:
-    0 1px 2px color-mix(in oklab, var(--foreground) 3%, transparent),
-    inset 0 1px 0 color-mix(in oklab, white 6%, transparent);
+  border: 1px solid color-mix(in oklab, var(--border) 75%, transparent);
+  border-radius: calc(var(--radius) * 1.25);
+  background: var(--card);
+  box-shadow: 0 1px 2px color-mix(in oklab, var(--foreground) 3%, transparent);
   transition:
-    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 0.22s ease;
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 200ms ease-out;
 }
 
 .mc-module-card:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in oklab, var(--primary) 22%, var(--mc-border-subtle));
+  border-color: color-mix(in oklab, var(--primary) 24%, var(--border));
   box-shadow:
-    0 12px 32px color-mix(in oklab, var(--foreground) 5%, transparent),
-    0 0 0 1px color-mix(in oklab, var(--primary) 8%, transparent);
+    0 12px 28px color-mix(in oklab, var(--foreground) 5%, transparent),
+    0 0 0 1px color-mix(in oklab, var(--primary) 10%, transparent);
 }
 
 .mc-module-header {
@@ -815,5 +814,122 @@
 @media (prefers-reduced-motion: reduce) {
   [data-barba="container"] {
     will-change: auto;
+  }
+}
+
+/* Cross-route page transitions (marketing ↔ login) */
+.page-transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  visibility: hidden;
+  overflow: hidden;
+}
+
+.page-transition-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background);
+  will-change: transform;
+}
+
+.page-transition-panel-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      ellipse 72% 56% at 72% 38%,
+      color-mix(in srgb, var(--primary) 14%, transparent),
+      transparent 68%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--primary) 8%, var(--background)),
+      var(--background) 52%
+    );
+}
+
+.page-transition-accent {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  height: 3px;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--primary),
+    color-mix(in srgb, var(--primary) 40%, transparent)
+  );
+  transform: scaleX(0);
+}
+
+.page-transition-logo {
+  position: relative;
+  z-index: 1;
+  opacity: 0;
+}
+
+[data-login-screen] {
+  will-change: opacity, transform, filter;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-transition-panel,
+  [data-login-screen] {
+    will-change: auto;
+  }
+}
+
+/* App sidebar — Efferd-style icon collapse */
+.app-sidebar-shell > div {
+  border-radius: calc(var(--radius) * 1.35);
+  border: 1px solid var(--sidebar-border);
+  box-shadow:
+    0 1px 2px color-mix(in oklab, var(--foreground) 4%, transparent),
+    0 8px 24px color-mix(in oklab, var(--foreground) 3%, transparent);
+}
+
+.app-sidebar--collapsed .sidebar-nav-label,
+.app-sidebar--collapsed .sidebar-section-label,
+.app-sidebar--collapsed [data-sidebar-hide-collapsed] {
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition:
+    opacity 200ms ease-linear,
+    max-width 200ms ease-linear;
+}
+
+.app-sidebar .sidebar-nav-label,
+.app-sidebar .sidebar-section-label {
+  max-width: 12rem;
+  opacity: 1;
+  transition:
+    opacity 200ms ease-linear,
+    max-width 200ms ease-linear;
+}
+
+.app-sidebar--collapsed .sidebar-nav-row {
+  justify-content: center;
+  padding-inline: 0.5rem;
+}
+
+.mc-dashboard-grid {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-sidebar--collapsed .sidebar-nav-label,
+  .app-sidebar .sidebar-nav-label,
+  .app-sidebar--collapsed .sidebar-section-label,
+  .app-sidebar .sidebar-section-label {
+    transition: none;
   }
 }

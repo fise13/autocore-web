@@ -2,12 +2,16 @@
 
 import { ReactNode, useCallback, useEffect, useRef } from "react";
 
+import {
+  SIDEBAR_COLLAPSED_WIDTH,
+  SIDEBAR_MIN_WIDTH,
+} from "@/hooks/use-sidebar-layout";
 import type { SidebarPosition } from "@/lib/navigation/sidebar-customization";
 import { cn } from "@/lib/utils";
 
 type ResizableSidebarProps = {
   children: ReactNode;
-  visible: boolean;
+  collapsed: boolean;
   width: number;
   position?: SidebarPosition;
   onWidthChange: (width: number) => void;
@@ -15,7 +19,7 @@ type ResizableSidebarProps = {
 
 export function ResizableSidebar({
   children,
-  visible,
+  collapsed,
   width,
   position = "left",
   onWidthChange,
@@ -26,14 +30,16 @@ export function ResizableSidebar({
   const onPointerMoveRef = useRef<(event: PointerEvent) => void>(() => {});
   const stopDraggingRef = useRef<() => void>(() => {});
 
+  const effectiveWidth = collapsed ? SIDEBAR_COLLAPSED_WIDTH : width;
+
   const onPointerMove = useCallback(
     (event: PointerEvent) => {
-      if (!draggingRef.current) return;
+      if (!draggingRef.current || collapsed) return;
       const delta = event.clientX - startXRef.current;
       const signedDelta = position === "right" ? -delta : delta;
       onWidthChange(startWidthRef.current + signedDelta);
     },
-    [onWidthChange, position],
+    [collapsed, onWidthChange, position],
   );
 
   const stopDragging = useCallback(() => {
@@ -51,6 +57,7 @@ export function ResizableSidebar({
 
   const startDragging = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
+      if (collapsed) return;
       event.preventDefault();
       draggingRef.current = true;
       startXRef.current = event.clientX;
@@ -60,36 +67,35 @@ export function ResizableSidebar({
       window.addEventListener("pointermove", onPointerMoveRef.current);
       window.addEventListener("pointerup", stopDraggingRef.current);
     },
-    [width],
+    [collapsed, width],
   );
 
   useEffect(() => () => stopDragging(), [stopDragging]);
 
   return (
     <aside
+      data-collapsed={collapsed ? "true" : "false"}
       className={cn(
-        "relative hidden h-full shrink-0 overflow-hidden bg-sidebar transition-[width,opacity,transform] duration-300 ease-in-out motion-reduce:transition-none md:flex md:flex-col",
-        position === "right" ? "border-l" : "border-r",
-        visible
-          ? "translate-x-0 opacity-100"
-          : position === "right"
-            ? "pointer-events-none translate-x-2 opacity-0"
-            : "pointer-events-none -translate-x-2 opacity-0",
+        "app-sidebar-shell relative hidden h-full shrink-0 overflow-hidden md:flex md:flex-col",
+        "transition-[width] duration-200 ease-linear motion-reduce:transition-none",
+        position === "right" ? "border-l border-sidebar-border" : "border-r border-sidebar-border",
       )}
-      style={{ width: visible ? width : 0 }}
-      aria-hidden={!visible}
+      style={{ width: effectiveWidth }}
     >
-      <div className="flex h-full min-w-[220px] flex-col" style={{ width }}>
+      <div
+        className="flex h-full flex-col bg-sidebar transition-[width] duration-200 ease-linear motion-reduce:transition-none"
+        style={{ width: collapsed ? SIDEBAR_COLLAPSED_WIDTH : Math.max(width, SIDEBAR_MIN_WIDTH) }}
+      >
         {children}
       </div>
-      {visible ? (
+      {!collapsed ? (
         <div
           role="separator"
           aria-orientation="vertical"
           aria-label="Изменить ширину боковой панели"
           onPointerDown={startDragging}
           className={cn(
-            "absolute top-0 z-20 h-full w-2 cursor-col-resize",
+            "absolute top-0 z-20 h-full w-2 cursor-col-resize opacity-0 transition-opacity duration-200 hover:opacity-100",
             position === "right" ? "-left-1" : "-right-1",
             "hover:bg-primary/10 active:bg-primary/20",
           )}

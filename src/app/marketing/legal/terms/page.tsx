@@ -1,55 +1,57 @@
 import type { Metadata } from "next";
 
-import { landingCopy } from "@/components/marketing/copy/landing-copy";
 import { MarketingSubpage } from "@/components/marketing/site/marketing-subpage";
 
-const copy = landingCopy.pages.terms;
-
 export const metadata: Metadata = {
-  title: copy.title,
-  description: copy.description,
+  title: "Условия использования",
+  description: "Правила использования сервиса AutoCore для разборок, запчастей и СТО.",
 };
 
 export default function TermsPage() {
   return (
-    <MarketingSubpage title={copy.title} description={copy.description} breadcrumbLabel="Условия">
-      <article className="prose prose-neutral max-w-3xl space-y-6 text-muted-foreground">
+    <MarketingSubpage
+      title="Условия использования"
+      description="Правила использования веб-приложения AutoCore и связанных сервисов."
+      breadcrumbLabel="Условия"
+      showCta={false}
+    >
+      <article className="marketing-legal-article">
         <section>
-          <h2 className="text-lg font-semibold text-foreground">1. Предмет соглашения</h2>
+          <h2>1. Предмет соглашения</h2>
           <p>
-            AutoCore предоставляет программное обеспечение для операционного управления дилерским центром. Условия
-            регулируют использование веб-приложения и связанных сервисов.
+            AutoCore предоставляет программное обеспечение для операционного управления автобизнесом: склад, заказ-наряды,
+            бухгалтерия и команда. Условия регулируют использование веб-приложения и связанных сервисов.
           </p>
         </section>
         <section>
-          <h2 className="text-lg font-semibold text-foreground">2. Учётная запись</h2>
+          <h2>2. Учётная запись</h2>
           <p>
             Пользователь обязан обеспечивать конфиденциальность учётных данных. Администратор компании управляет
             доступом сотрудников и несёт ответственность за действия в рамках организации.
           </p>
         </section>
         <section>
-          <h2 className="text-lg font-semibold text-foreground">3. Использование сервиса</h2>
+          <h2>3. Использование сервиса</h2>
           <p>
             Запрещается нарушать работу системы, обходить ограничения доступа, использовать сервис вне законных
             целей. Операционные данные остаются собственностью клиента.
           </p>
         </section>
         <section>
-          <h2 className="text-lg font-semibold text-foreground">4. Подписка и оплата</h2>
+          <h2>4. Подписка и оплата</h2>
           <p>
-            Платные функции активируются согласно выбранному тарифу в приложении. Условия оплаты и отмены указываются
-            при оформлении подписки.
+            Платные функции активируются согласно выбранному тарифу. Условия оплаты и отмены указываются при оформлении
+            подписки в приложении.
           </p>
         </section>
         <section>
-          <h2 className="text-lg font-semibold text-foreground">5. Ограничение ответственности</h2>
+          <h2>5. Ограничение ответственности</h2>
           <p>
             Сервис предоставляется в рамках разумных технических возможностей. Клиент обязан сверять критичные
             финансовые и складские операции согласно внутренним процедурам.
           </p>
         </section>
-        <p className="text-xs">Последнее обновление: май 2026</p>
+        <p className="marketing-legal-updated">Последнее обновление: май 2026</p>
       </article>
     </MarketingSubpage>
   );

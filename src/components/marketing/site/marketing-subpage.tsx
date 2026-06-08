@@ -10,6 +10,7 @@ type MarketingSubpageProps = {
   title: string;
   description: string;
   breadcrumbLabel: string;
+  eyebrow?: string;
   children: ReactNode;
   showCta?: boolean;
 };
@@ -18,49 +19,40 @@ export function MarketingSubpage({
   title,
   description,
   breadcrumbLabel,
+  eyebrow,
   children,
   showCta = true,
 }: MarketingSubpageProps) {
   return (
-    <>
+    <div className="marketing-subpage">
       <PageHeader
         title={title}
         description={description}
+        eyebrow={eyebrow}
         breadcrumbs={[
           { label: "AutoCore", href: marketingRoutes.home },
           { label: breadcrumbLabel },
         ]}
       />
-      <div className="mx-auto max-w-7xl px-5 py-12 md:px-8 md:py-16">{children}</div>
+      <div className="landing-container marketing-subpage-body">{children}</div>
       {showCta ? <MarketingCtaStrip /> : null}
-      <section className="border-t border-border bg-muted/25 py-10">
-        <nav
-          className="mx-auto flex max-w-7xl flex-wrap justify-center gap-x-6 gap-y-2 px-5 md:px-8"
-          aria-label="Навигация по сайту"
-        >
+      <nav className="marketing-subpage-nav" aria-label="Навигация по сайту">
+        <div className="landing-container flex flex-wrap justify-center gap-x-6 gap-y-2">
           <Link href={marketingRoutes.home} className="text-sm font-medium text-primary hover:underline">
             Главная
           </Link>
-          {siteNavigation.productGroup.items.slice(0, 2).map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground"
-            >
+          {siteNavigation.productGroup.items.slice(0, 3).map((link) => (
+            <Link key={link.href} href={link.href} className="text-sm text-muted-foreground hover:text-foreground">
               {link.label}
             </Link>
           ))}
           {siteNavigation.primaryLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground"
-            >
+            <Link key={link.href} href={link.href} className="text-sm text-muted-foreground hover:text-foreground">
               {link.label}
             </Link>
           ))}
-        </nav>
-      </section>
-    </>
+        </div>
+      </nav>
+    </div>
   );
 }

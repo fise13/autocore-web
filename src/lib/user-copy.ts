@@ -522,14 +522,6 @@ export function mapGridSaveError(error: unknown): string {
 export function mapAuthError(error: unknown, context?: AuthErrorContext): string {
   const code = extractAuthErrorCode(error);
 
-  if (error instanceof Error && error.message === "popup_closed_by_user") {
-    return "Apple отклонил вход. Проверьте Services ID и Return URL firebase handler в Apple Developer (см. подсказку ниже).";
-  }
-
-  if (code === "auth/invalid-credential" && context?.provider === "apple") {
-    return "Firebase не принял Apple OAuth. Проверьте Services ID com.wise.AutoCore.app, Team ID, Key ID и private key (.p8) в Firebase → Apple → OAuth code flow. macOS/iOS вход — другой механизм, его успех не означает, что web настроен.";
-  }
-
   switch (code) {
     case "auth/invalid-email":
       return "Некорректный email.";
@@ -555,7 +547,7 @@ export function mapAuthError(error: unknown, context?: AuthErrorContext): string
       return "Этот домен не разрешён для входа. Добавьте autocore-web.vercel.app и localhost в Firebase Authentication → Settings → Authorized domains.";
     case "auth/invalid-oauth-client-id":
     case "auth/invalid-oauth-provider":
-      return "Apple OAuth не настроен: проверьте Services ID и OAuth code flow (Team ID, Key ID, .p8) в Firebase.";
+      return code;
     case "permission-denied":
       if (error instanceof Error && error.message.includes("Не удалось")) {
         return error.message;
@@ -579,6 +571,6 @@ export function mapAuthError(error: unknown, context?: AuthErrorContext): string
         }
         return error.message;
       }
-      return userCopy.onboarding.appleFailed;
+      return code || "Unknown auth error";
   }
 }

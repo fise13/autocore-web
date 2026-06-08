@@ -7,14 +7,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AppLogo } from "@/components/brand/app-logo";
 import { landingPageContent } from "@/components/marketing/content/landing-page-content";
+import { MarketingAppleSignIn } from "@/components/marketing/site/marketing-apple-sign-in";
+import { ProductNavMenu } from "@/components/marketing/site/product-nav-menu";
 import {
   isMarketingNavActive,
   isProductNavActive,
   siteNavigation,
 } from "@/components/marketing/site/site-navigation";
 import { Button } from "@/components/ui/button";
+import { useScroll } from "@/hooks/use-scroll";
 import { marketingRoutes } from "@/lib/marketing-routes";
-import { appLoginUrl } from "@/lib/site-urls";
+import { appDemoUrl, appLoginUrl } from "@/lib/site-urls";
 import { cn } from "@/lib/utils";
 
 const copy = landingPageContent.nav;
@@ -52,6 +55,7 @@ function NavLink({
 
 export function SiteNav() {
   const pathname = usePathname();
+  const scrolled = useScroll(10);
   const [open, setOpen] = useState(false);
   const [productOpen, setProductOpen] = useState(false);
   const [mobileProductOpen, setMobileProductOpen] = useState(false);
@@ -81,14 +85,25 @@ export function SiteNav() {
   const productActive = isProductNavActive(pathname);
 
   return (
-    <header className="site-nav sticky top-0 z-50 border-b border-border/80 bg-background/95 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-5 md:px-8">
-        <Link href={marketingRoutes.home} className="flex shrink-0 items-center gap-2.5">
-          <AppLogo size={32} priority />
-          <span className="text-base font-semibold tracking-tight">AutoCore</span>
-        </Link>
+    <header
+      className={cn(
+        "site-nav sticky top-0 z-50 w-full transition-[background-color,border-color,backdrop-filter] duration-300",
+        scrolled
+          ? "border-b border-border/80 bg-background/95 backdrop-blur-md supports-backdrop-filter:bg-background/80"
+          : "border-b border-transparent bg-transparent",
+      )}
+    >
+      <div className="site-nav-inner">
+        <div className="site-nav-brand-group">
+          <Link
+            href={marketingRoutes.home}
+            className="site-nav-logo flex shrink-0 items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/60"
+          >
+            <AppLogo size={28} priority />
+            <span className="text-sm font-semibold tracking-tight md:text-base">AutoCore</span>
+          </Link>
 
-        <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Основная навигация">
+          <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Основная навигация">
           <div
             ref={productRef}
             className="relative"
@@ -116,23 +131,7 @@ export function SiteNav() {
 
             {productOpen ? (
               <div className="site-nav-dropdown absolute left-0 top-full z-50 pt-2">
-                <div className="w-[min(24rem,calc(100vw-2rem))] rounded-2xl border border-border bg-popover p-2 shadow-xl">
-                  <div className="grid gap-0.5">
-                    {productGroup.items.map((item) => (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className="site-nav-dropdown-item rounded-xl px-3 py-2.5 transition-colors hover:bg-muted"
-                        onClick={() => setProductOpen(false)}
-                      >
-                        <span className="block text-sm font-medium">{item.label}</span>
-                        {item.description ? (
-                          <span className="mt-0.5 block text-xs text-muted-foreground">{item.description}</span>
-                        ) : null}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
+                <ProductNavMenu onNavigate={() => setProductOpen(false)} />
               </div>
             ) : null}
           </div>
@@ -145,20 +144,22 @@ export function SiteNav() {
               active={isMarketingNavActive(pathname, link.href)}
             />
           ))}
-        </nav>
+          </nav>
+        </div>
 
         <div className="hidden items-center gap-2 md:flex">
+          <MarketingAppleSignIn showLabel={false} size="icon" variant="outline" className="shrink-0" />
           <Button variant="ghost" size="sm" render={<Link href={appLoginUrl()} />}>
             {copy.signIn}
           </Button>
-          <Button size="sm" render={<Link href={appLoginUrl()} />}>
+          <Button size="sm" render={<Link href={appDemoUrl()} />}>
             {copy.startFree}
           </Button>
         </div>
 
         <button
           type="button"
-          className="inline-flex size-10 items-center justify-center rounded-lg border border-border lg:hidden"
+          className="inline-flex size-9 items-center justify-center rounded-lg border border-border/80 lg:hidden"
           aria-label={open ? "Закрыть меню" : "Открыть меню"}
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
@@ -183,19 +184,32 @@ export function SiteNav() {
                 />
               </button>
               {mobileProductOpen ? (
-                <ul className="mb-2 ml-2 space-y-0.5 border-l border-border pl-3">
-                  {productGroup.items.map((item) => (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        className="block rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-                        onClick={closeAll}
-                      >
-                        {item.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+                <div className="mb-3 ml-1 space-y-2 border-l border-border pl-3">
+                  <Link
+                    href={productGroup.items[0].href}
+                    className="block rounded-lg bg-muted/50 px-3 py-2.5"
+                    onClick={closeAll}
+                  >
+                    <span className="block text-sm font-medium">{productGroup.items[0].label}</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">{productGroup.items[0].description}</span>
+                  </Link>
+                  <ul className="space-y-0.5">
+                    {productGroup.items.slice(1).map((item) => (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          className="block rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                          onClick={closeAll}
+                        >
+                          <span className="font-medium text-foreground/90">{item.label}</span>
+                          {item.description ? (
+                            <span className="mt-0.5 block text-xs opacity-80">{item.description}</span>
+                          ) : null}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ) : null}
             </li>
 
@@ -216,13 +230,16 @@ export function SiteNav() {
               </li>
             ))}
 
-            <li className="flex gap-2 pt-3">
-              <Button variant="outline" className="flex-1" render={<Link href={appLoginUrl()} onClick={closeAll} />}>
-                {copy.signIn}
-              </Button>
-              <Button className="flex-1" render={<Link href={appLoginUrl()} onClick={closeAll} />}>
-                {copy.startFree}
-              </Button>
+            <li className="space-y-2 pt-3">
+              <MarketingAppleSignIn className="w-full [&_button]:w-full" onNavigate={closeAll} />
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" render={<Link href={appLoginUrl()} onClick={closeAll} />}>
+                  {copy.signIn}
+                </Button>
+                <Button className="flex-1" render={<Link href={appDemoUrl()} onClick={closeAll} />}>
+                  {copy.startFree}
+                </Button>
+              </div>
             </li>
           </ul>
         </nav>

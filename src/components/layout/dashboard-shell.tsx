@@ -54,7 +54,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
   const { profile, isLoading } = useAuth();
   const workspace = useWorkspace();
   const { setAvailability } = workspace;
-  const { visible, width, setWidth, toggleVisible } = useSidebarLayout();
+  const { collapsed, width, setWidth, toggleVisible } = useSidebarLayout();
   const { customization, isEditing } = useSidebarCustomization();
   const sidebarOnRight = customization.position === "right";
   const companyId = normalizeCompanyId(profile?.companyId);
@@ -167,7 +167,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
 
   return (
     <BillingGateProvider companyId={companyId}>
-    <DashboardLayoutProvider sidebarVisible={visible} toggleSidebar={toggleVisible}>
+    <DashboardLayoutProvider sidebarCollapsed={collapsed} toggleSidebar={toggleVisible}>
       <CommandPaletteProvider>
       <Suspense fallback={null}>
         <MotorImportHost />
@@ -180,13 +180,20 @@ function DashboardShellInner({ children }: DashboardShellProps) {
           sidebarOnRight && "flex-row-reverse",
         )}
       >
-        <ResizableSidebar
-          visible={visible}
-          width={width}
-          position={customization.position}
-          onWidthChange={setWidth}
+        <div
+          className={cn(
+            "relative z-40 my-2 hidden h-[calc(100vh-1rem)] shrink-0 md:block",
+            sidebarOnRight ? "mr-2" : "ml-2",
+          )}
         >
-          <AppSidebar
+          <ResizableSidebar
+            collapsed={collapsed}
+            width={width}
+            position={customization.position}
+            onWidthChange={setWidth}
+          >
+            <AppSidebar
+              collapsed={collapsed}
             brands={sidebarCatalog.brands}
             engines={sidebarCatalog.engines}
             specificCategories={specificCategories}
@@ -207,6 +214,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
             brandsSectionTitle={isSoldRoute ? "Проданные по брендам" : undefined}
           />
         </ResizableSidebar>
+        </div>
 
         <div className={cn("relative flex min-w-0 flex-1 flex-col", isEditing && "overflow-hidden")}>
           <SidebarEditBlur />

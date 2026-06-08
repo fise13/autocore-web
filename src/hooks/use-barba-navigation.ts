@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 import { initBarbaRuntime, runBarbaEnter, runBarbaLeave } from "@/lib/barba/barba-runtime";
+import { peekCrossRouteTransition } from "@/lib/motion/cross-route-transition";
 
 type UseBarbaNavigationOptions = {
   shouldAnimate: (target: URL, currentPathname: string) => boolean;
@@ -31,12 +32,15 @@ export function useBarbaNavigation({ shouldAnimate }: UseBarbaNavigationOptions)
     if (isFirstRenderRef.current) {
       isFirstRenderRef.current = false;
       previousPathRef.current = pathname;
-      void runBarbaEnter(container, href);
+      if (peekCrossRouteTransition() !== "to-marketing") {
+        void runBarbaEnter(container, href);
+      }
       return;
     }
 
     if (previousPathRef.current === pathname) return;
     previousPathRef.current = pathname;
+    if (peekCrossRouteTransition() === "to-marketing") return;
     void runBarbaEnter(container, href);
   }, [pathname]);
 

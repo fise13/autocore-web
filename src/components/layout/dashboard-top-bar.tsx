@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import {
   Barcode,
   Download,
+  LayoutDashboard,
   PanelLeft,
   Settings,
   Upload,
@@ -27,6 +28,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { canAccessMotorsArea } from "@/lib/auth/app-access";
 import { can } from "@/lib/auth/permissions";
 import { cn } from "@/lib/utils";
@@ -116,7 +118,7 @@ function AnimatedSlot({
 export function DashboardTopBar() {
   const pathname = usePathname();
   const { profile } = useAuth();
-  const { toggleSidebar } = useDashboardLayout();
+  const { sidebarCollapsed, toggleSidebar } = useDashboardLayout();
   const {
     availability,
     setAvailability,
@@ -204,27 +206,39 @@ export function DashboardTopBar() {
   return (
     <header
       className={cn(
-        "relative z-30 flex h-14 shrink-0 items-center gap-3 overflow-hidden border-b px-4",
+        "relative z-30 flex h-14 shrink-0 items-center gap-3 overflow-hidden border-b px-4 md:px-5",
         workspace ? "bg-card" : "bg-card/95 backdrop-blur-sm",
       )}
     >
-      <div className="flex min-w-[88px] shrink-0 items-center">
-        <AnimatedSlot slotKey={leftKey} className="flex items-center gap-2">
+      <div className="flex min-w-0 shrink-0 items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={toggleSidebar}
+          title="Свернуть боковую панель (⌘B)"
+          className="hidden md:inline-flex"
+        >
+          <PanelLeft
+            className={cn(
+              "size-4 transition-transform duration-200 ease-linear motion-reduce:transition-none",
+              sidebarCollapsed && "rotate-180",
+            )}
+          />
+        </Button>
+        <Separator
+          orientation="vertical"
+          className="hidden h-4 md:block"
+        />
+        <AnimatedSlot slotKey={leftKey} className="flex min-w-0 items-center gap-2">
           {workspace ? (
-            <>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={toggleSidebar}
-                title="Показать/скрыть боковую панель"
-                className="hidden md:inline-flex"
-              >
-                <PanelLeft className="size-4" />
-              </Button>
-              <span className="hidden text-sm font-semibold tracking-tight md:block">
-                {workspaceTitle ?? "AutoCore"}
-              </span>
-            </>
+            <span className="hidden text-sm font-semibold tracking-tight md:block">
+              {workspaceTitle ?? "AutoCore"}
+            </span>
+          ) : isMissionControlRoute ? (
+            <div className="flex min-w-0 items-center gap-2">
+              <LayoutDashboard className="size-3.5 shrink-0 text-primary" aria-hidden />
+              <span className="truncate text-sm font-semibold tracking-tight">Mission Control</span>
+            </div>
           ) : (
             <div className="flex items-center gap-2.5">
               <AppLogo size={24} className="rounded-md" alt="AutoCore" />
