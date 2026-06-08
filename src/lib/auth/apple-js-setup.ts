@@ -25,16 +25,16 @@ export function getAppleJsLocalDevLoginUrl(port = 3000): string {
 
 /**
  * Exact Return URL sent to Apple JS SDK.
- * Prefer env override, then current browser origin (LAN / Vercel), then NEXT_PUBLIC_APP_URL.
+ * Browser origin wins (must match Apple Return URL for the host user opened).
  */
 export function getAppleJsLoginRedirectUri(): string {
+  if (typeof window !== "undefined") {
+    return `${window.location.origin.replace(/\/$/, "")}/login`;
+  }
+
   const envOverride = process.env.NEXT_PUBLIC_APPLE_JS_REDIRECT_URI?.trim();
   if (envOverride) {
     return envOverride.replace(/\/$/, "");
-  }
-
-  if (typeof window !== "undefined") {
-    return `${window.location.origin.replace(/\/$/, "")}/login`;
   }
 
   return appLoginUrl();
@@ -103,7 +103,8 @@ export function getAppleJsDeveloperChecklist(): string {
     "  ⚠️ «localhost» в Domains — нельзя (invalid domain).",
     `  • Domains: ${redirectHost} (без http://, без пути)`,
     `  • Return URL (точное совпадение): ${redirectUri}`,
-    `  • Локально через hosts: Domain ${APPLE_JS_LOCAL_DEV_HOST}, Return ${getAppleJsLocalDevLoginUrl()}`,
+    `  • Domain verification file (обязательно): https://${redirectHost}/.well-known/apple-developer-domain-association`,
+    "    Скачайте в Apple Developer → Download → положите в public/.well-known/ или env APPLE_DEVELOPER_DOMAIN_ASSOCIATION",
     firebaseHandler ? `  • firebase_handler mode only: ${firebaseHandler}` : null,
     "После сохранения подождите 5–15 минут.",
   ]
