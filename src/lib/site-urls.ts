@@ -22,8 +22,22 @@ export function isUnifiedSiteHost(host: string): boolean {
 
 /** Application host (Mission Control, warehouse, etc.). */
 export function getAppUrl(): string {
-  const raw = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  return raw.replace(/\/$/, "");
+  const fromEnv = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (fromEnv) {
+    return fromEnv.replace(/\/$/, "");
+  }
+
+  const vercelProduction = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  if (vercelProduction) {
+    return `https://${vercelProduction.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
+  }
+
+  const vercelUrl = process.env.VERCEL_URL?.trim();
+  if (vercelUrl) {
+    return `https://${vercelUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
+  }
+
+  return "http://localhost:3000";
 }
 
 /** Public marketing site host. */
