@@ -113,6 +113,14 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
     }, "email");
   }
 
+  useEffect(() => {
+    if (authPhase !== "completing") return;
+    const timer = window.setTimeout(() => {
+      window.location.assign("/");
+    }, 5000);
+    return () => window.clearTimeout(timer);
+  }, [authPhase]);
+
   if (authPhase === "completing") {
     return <AppLoadingScreen message={userCopy.auth.completing} />;
   }

@@ -35,6 +35,8 @@ yarn-error.log*
 !.env
 !.env.local
 !.env.local.example
+!.env.vercel.example
+!.env.desktop.example
 
 # Firebase service account keys (never commit)
 *-firebase-adminsdk-*.json
@@ -49,3 +51,7 @@ next-env.d.ts
 
 # apple oauth forensic artifacts
 scripts/.apple-auth-code.json
+
+# tauri desktop
+/src-tauri/target/
+/src-tauri/gen/

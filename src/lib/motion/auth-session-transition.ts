@@ -5,6 +5,7 @@ import {
   prefersReducedMotion,
   waitForTransitionTarget,
 } from "@/lib/motion/cross-route-transition";
+import { isTauriDesktop } from "@/lib/tauri/is-tauri-desktop";
 
 export const AUTH_SESSION_STORAGE_KEY = "autocore-auth-session";
 
@@ -192,7 +193,7 @@ export async function playAuthSessionEnter(kind: AuthSessionKind): Promise<void>
   enterInFlight = true;
 
   try {
-    if (prefersReducedMotion()) {
+    if (shouldSkipAuthMotion()) {
       consumeAuthSessionTransition();
       return;
     }
@@ -413,24 +414,51 @@ type AppRouter = {
 };
 
 const APP_AUTH_NAV_LOCK = "autocore-app-auth-nav";
+let authNavInFlight: Promise<void> | null = null;
+
+function shouldSkipAuthMotion(): boolean {
+  return prefersReducedMotion() || isTauriDesktop();
+}
 
 export async function navigateToAppAfterAuth(
   router: AppRouter,
   method: "push" | "replace" = "replace",
 ): Promise<void> {
-  if (typeof window !== "undefined" && sessionStorage.getItem(APP_AUTH_NAV_LOCK) === "1") {
-    return;
+  if (authNavInFlight) {
+    return authNavInFlight;
   }
 
-  if (typeof window !== "undefined") {
-    sessionStorage.setItem(APP_AUTH_NAV_LOCK, "1");
-  }
+  authNavInFlight = (async () => {
+    if (shouldSkipAuthMotion()) {
+      sessionStorage.removeItem(APP_AUTH_NAV_LOCK);
+      sessionStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
+      router[method]("/");
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(APP_AUTH_NAV_LOCK, "1");
+    }
+
+    try {
+      await Promise.race([
+        playAuthSessionLeave("sign-in"),
+        new Promise<void>((resolve) => window.setTimeout(resolve, 2500)),
+      ]);
+    } catch {
+      // Overlay may not be mounted during SSR or early bootstrap.
+    }
+
+    markAuthSessionTransition("sign-in");
+    router[method]("/");
+  })();
 
   try {
-    await playAuthSessionLeave("sign-in");
-  } catch {
-    // Overlay may not be mounted during SSR or early bootstrap.
+    await authNavInFlight;
+  } finally {
+    authNavInFlight = null;
+    if (typeof window !== "undefined") {
+      window.setTimeout(() => sessionStorage.removeItem(APP_AUTH_NAV_LOCK), 1500);
+    }
   }
-  markAuthSessionTransition("sign-in");
-  router[method]("/");
 }

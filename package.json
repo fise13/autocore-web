@@ -7,6 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
+    "dev:desktop": "node scripts/dev-desktop.mjs",
     "prebuild": "python3 scripts/generate-favicon-ico.py && node scripts/build-documents-css.mjs",
     "build": "next build",
     "start": "next start",
@@ -20,7 +21,15 @@
     "build:documents-css": "node scripts/build-documents-css.mjs",
     "generate:document-templates": "node scripts/generate-document-templates.mjs",
     "install:browser": "npx puppeteer browsers install chrome",
-    "test:import-motors": "node --import tsx --test src/lib/motors/import/sheet-mapper.test.ts src/lib/motors/import/ai-mapper.test.ts"
+    "test:import-motors": "node --import tsx --test src/lib/motors/import/sheet-mapper.test.ts src/lib/motors/import/ai-mapper.test.ts",
+    "tauri:sync-url": "node scripts/sync-tauri-app-url.mjs",
+    "tauri": "tauri",
+    "tauri:dev": "node scripts/sync-tauri-app-url.mjs && tauri dev",
+    "tauri:build": "node scripts/sync-tauri-app-url.mjs && tauri build",
+    "tauri:build:mac": "node scripts/sync-tauri-app-url.mjs && tauri build --target aarch64-apple-darwin",
+    "tauri:build:mac-intel": "node scripts/sync-tauri-app-url.mjs && tauri build --target x86_64-apple-darwin",
+    "tauri:build:win": "node scripts/sync-tauri-app-url.mjs && tauri build --target x86_64-pc-windows-msvc",
+    "tauri:publish-downloads": "node scripts/copy-tauri-downloads.mjs"
   },
   "dependencies": {
     "@barba/core": "^2.10.3",
@@ -32,6 +41,8 @@
     "@tanstack/react-query": "^5.100.14",
     "@tanstack/react-query-devtools": "^5.100.14",
     "@tanstack/react-virtual": "^3.13.26",
+    "@tauri-apps/api": "^2.11.0",
+    "@tauri-apps/plugin-shell": "^2.3.5",
     "animejs": "^4.4.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -60,6 +71,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@tauri-apps/cli": "^2.11.2",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",

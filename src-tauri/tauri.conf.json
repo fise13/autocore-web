@@ -1,0 +1,51 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "AutoCore",
+  "version": "0.1.0",
+  "identifier": "com.wise.autocore.desktop",
+  "build": {
+    "frontendDist": "../public",
+    "devUrl": "https://autocore-web.vercel.app/login",
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "node scripts/sync-tauri-app-url.mjs"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "AutoCore",
+        "create": false,
+        "width": 1400,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 700,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null,
+      "dangerousDisableAssetCspModification": true
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "12.0"
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      }
+    }
+  }
+}
