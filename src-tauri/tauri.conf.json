@@ -1,6 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "AutoCore",
+  "mainBinaryName": "AutoCore",
   "version": "0.1.0",
   "identifier": "com.wise.autocore.desktop",
   "build": {
@@ -40,7 +41,8 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "minimumSystemVersion": "12.0"
+      "minimumSystemVersion": "12.0",
+      "infoPlist": "Info.plist"
     },
     "windows": {
       "webviewInstallMode": {

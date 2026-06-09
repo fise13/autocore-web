@@ -1,5 +1,6 @@
 import { logAppleJs } from "@/lib/auth/apple-auth-log";
 import { getAppleWebClientIdMisconfigurationIssue, isAppleJsPopupEnabled } from "@/lib/auth/apple-auth-mode";
+import { isTauriDesktop } from "@/lib/tauri/is-tauri-desktop";
 
 const APPLE_JS_REDIRECT_FLAG_KEY = "autocore.appleJsRedirect";
 
@@ -147,6 +148,18 @@ export function resolveAppleJsModeDecision(options?: {
   const pendingRedirectReturn =
     typeof window !== "undefined" && sessionStorage.getItem(APPLE_JS_REDIRECT_FLAG_KEY) === "1";
   const userAgent = typeof navigator !== "undefined" ? navigator.userAgent : null;
+
+  if (isTauriDesktop()) {
+    reasons.push("Tauri desktop shell detected — popup is disabled, redirect flow is required");
+    return {
+      mode: "redirect",
+      modeLabel: "MODE=redirect",
+      reasons,
+      envPopupFlag,
+      pendingRedirectReturn,
+      userAgent,
+    };
+  }
 
   if (options?.forceRedirectReturn || pendingRedirectReturn) {
     reasons.push(

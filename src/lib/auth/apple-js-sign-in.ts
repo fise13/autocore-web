@@ -14,6 +14,7 @@ import {
   logAppleNonce,
 } from "@/lib/auth/apple-auth-log";
 import { logAuthDebug } from "@/lib/auth/auth-debug";
+import { isTauriDesktop } from "@/lib/tauri/is-tauri-desktop";
 import {
   installApplePopupMessageTap,
   invokeAppleAuthInit,
@@ -177,7 +178,13 @@ export function asAppleUserCancelledError(error: unknown): AppleUserCancelledErr
 
 export function prefersAppleJsRedirect(): boolean {
   if (typeof window === "undefined") return false;
+  if (isTauriDesktop()) return true;
   return /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent);
+}
+
+/** Popup flow is unreliable inside Tauri WebView — always use redirect there. */
+export function shouldUseAppleJsPopupFlow(): boolean {
+  return isAppleJsPopupEnabled() && !isTauriDesktop();
 }
 
 export function isPopupBlockedError(error: unknown): boolean {
@@ -523,8 +530,10 @@ export async function signInWithAppleJs(): Promise<AppleJsSignInResult> {
     resetAppleSignInSession();
   }
 
-  const usePopup = isAppleJsPopupEnabled();
-  const entryModeDecision = resolveAppleJsModeDecision();
+  const usePopup = shouldUseAppleJsPopupFlow();
+  const entryModeDecision = resolveAppleJsModeDecision(
+    isTauriDesktop() ? { initUsePopup: false } : undefined,
+  );
   logAppleJsModeDecision(entryModeDecision, "signInWithAppleJs:entry");
 
   logAppleJs("sign-in-start", {
