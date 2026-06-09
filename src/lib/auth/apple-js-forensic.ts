@@ -1,5 +1,5 @@
 import { logAppleJs } from "@/lib/auth/apple-auth-log";
-import { isAppleJsPopupEnabled } from "@/lib/auth/apple-auth-mode";
+import { getAppleWebClientIdMisconfigurationIssue, isAppleJsPopupEnabled } from "@/lib/auth/apple-auth-mode";
 
 const APPLE_JS_REDIRECT_FLAG_KEY = "autocore.appleJsRedirect";
 
@@ -258,7 +258,12 @@ export function logAppleAuthInitPayload(config: AppleAuthInitConfig, failurePoin
 
   console.log("[APPLE SDK FORENSIC]", "# AppleID.auth.init payload", safeAppleSdkJson(payload));
   console.log("[APPLE SDK FORENSIC]", "# Exact Failure Point", failurePoint);
-  logAppleSdkForensicFull("AppleID.auth.init payload", payload);
+
+  const clientIdIssue = getAppleWebClientIdMisconfigurationIssue();
+  if (clientIdIssue) {
+    console.error("[APPLE SDK FORENSIC]", "# CLIENT ID MISCONFIGURATION", clientIdIssue);
+    console.error("[APPLE SDK FORENSIC FULL]", safeAppleSdkJson({ clientIdIssue, payload }));
+  }
 
   logAppleJs("auth-init-payload", { failurePoint, mode: decision.modeLabel, ...payload });
 }
@@ -445,10 +450,18 @@ export function installApplePopupMessageTap(label: string): () => void {
   return () => window.removeEventListener("message", handler);
 }
 
+export function isAppleAuthSignInPromise(value: unknown): value is Promise<unknown> {
+  return (
+    value != null &&
+    (typeof value === "object" || typeof value === "function") &&
+    typeof (value as Promise<unknown>).then === "function"
+  );
+}
+
 export async function invokeAppleAuthSignIn(
   failurePointPrefix: string,
   mode: AppleJsRuntimeMode,
-): Promise<{ authorization: { id_token?: string; code?: string; state?: string }; user?: unknown }> {
+): Promise<{ authorization: { id_token?: string; code?: string; state?: string }; user?: unknown } | void> {
   const failurePoint = `${failurePointPrefix}:AppleID.auth.signIn()`;
   const modeLabel = mode === "popup" ? "MODE=popup" : "MODE=redirect";
 
@@ -457,14 +470,52 @@ export async function invokeAppleAuthSignIn(
 
   logAppleJs("signIn-call-start", { failurePointPrefix, failurePoint, mode, modeLabel });
 
-  const signInPromise = window.AppleID!.auth.signIn();
+  const signInReturn = window.AppleID!.auth.signIn();
+  const isPromise = isAppleAuthSignInPromise(signInReturn);
+
+  console.log(
+    "[APPLE SDK FORENSIC]",
+    "# AppleID.auth.signIn() return shape",
+    safeAppleSdkJson({
+      mode,
+      typeofReturn: typeof signInReturn,
+      isPromise,
+      returnValue: signInReturn ?? null,
+    }),
+  );
+
+  if (mode === "redirect" || !isPromise) {
+    console.log(
+      "[APPLE SDK FORENSIC]",
+      "# AppleID.auth.signIn result",
+      safeAppleSdkJson({
+        mode: "redirect",
+        note: "Redirect flow: signIn() does not return a Promise — SDK opens Apple UI / navigates",
+        typeofReturn: typeof signInReturn,
+        isPromise,
+        returnValue: signInReturn ?? null,
+      }),
+    );
+    logAppleJs("signIn-call-redirect-no-promise", {
+      failurePoint,
+      mode,
+      typeofReturn: typeof signInReturn,
+      isPromise,
+    });
+    return;
+  }
+
+  const signInPromise = signInReturn;
 
   signInPromise.catch((error) => {
     logAppleSdkForensic(`${failurePoint}:promise-reject-tap`, error, { mode, modeLabel }, "before_token_issuance");
   });
 
   try {
-    const result = await signInPromise;
+    const result = (await signInPromise) as {
+      authorization: { id_token?: string; code?: string; state?: string };
+      user?: unknown;
+    };
     const { tokenIssuancePhase } = logAppleAuthSignInResult(result, failurePoint, mode);
     logAppleJs("signIn-call-resolve", {
       failurePointPrefix,

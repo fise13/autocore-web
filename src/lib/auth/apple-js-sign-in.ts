@@ -459,6 +459,11 @@ export async function signInWithAppleJs(): Promise<AppleJsSignInResult> {
     throw new Error(setupIssue);
   }
 
+  if (hasPendingAppleJsRedirect()) {
+    logAppleJs("clearing-stale-redirect-flag-before-new-sign-in");
+    resetAppleSignInSession();
+  }
+
   const usePopup = isAppleJsPopupEnabled();
   const entryModeDecision = resolveAppleJsModeDecision();
   logAppleJsModeDecision(entryModeDecision, "signInWithAppleJs:entry");
@@ -580,6 +585,7 @@ export async function bootstrapAppleJsReturn(): Promise<AppleJsSignInResult | nu
     const timeout = window.setTimeout(() => {
       cleanup();
       logAppleJs("redirect-return-timeout");
+      resetAppleSignInSession();
       resolve(null);
     }, 15_000);
 
@@ -598,7 +604,7 @@ export async function bootstrapAppleJsReturn(): Promise<AppleJsSignInResult | nu
     const onFailure = (event: Event) => {
       const detail = (event as AppleJsFailureEvent).detail;
       cleanup();
-      sessionStorage.removeItem(APPLE_REDIRECT_FLAG);
+      resetAppleSignInSession();
       logAppleSdkEventForensic("bootstrapAppleJsReturn:AppleIDSignInOnFailure", event, {
         detailJson: safeAppleSdkJson(detail),
       });

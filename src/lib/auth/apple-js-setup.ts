@@ -1,4 +1,4 @@
-import { APPLE_WEB_CLIENT_ID } from "@/lib/auth/apple-auth-mode";
+import { APPLE_WEB_CLIENT_ID, getAppleWebClientIdMisconfigurationIssue } from "@/lib/auth/apple-auth-mode";
 import { getFirebaseAppleRedirectUrl } from "@/lib/auth/apple-web-setup";
 import { appLoginUrl } from "@/lib/site-urls";
 
@@ -54,6 +54,9 @@ function localhostAppleDeveloperHint(): string {
 
 /** User-facing blocker before starting Apple JS (config / environment). */
 export function getAppleJsSetupIssue(): string | null {
+  const clientIdIssue = getAppleWebClientIdMisconfigurationIssue();
+  if (clientIdIssue) return clientIdIssue;
+
   if (typeof window === "undefined") return null;
 
   const redirectUri = getAppleJsLoginRedirectUri();
@@ -103,8 +106,7 @@ export function getAppleJsDeveloperChecklist(): string {
     "  ⚠️ «localhost» в Domains — нельзя (invalid domain).",
     `  • Domains: ${redirectHost} (без http://, без пути)`,
     `  • Return URL (точное совпадение): ${redirectUri}`,
-    `  • Domain verification file (обязательно): https://${redirectHost}/.well-known/apple-developer-domain-association`,
-    "    Скачайте в Apple Developer → Download → положите в public/.well-known/ или env APPLE_DEVELOPER_DOMAIN_ASSOCIATION",
+    "  • Domain verification file не требуется (Apple portal-only registration с 2020+)",
     firebaseHandler ? `  • firebase_handler mode only: ${firebaseHandler}` : null,
     "После сохранения подождите 5–15 минут.",
   ]
