@@ -5,6 +5,7 @@ import {
   DocumentAccessError,
   verifyDocumentAccess,
 } from "@/lib/documents/verify-document-access";
+import { mapServerError } from "@/lib/errors/map-server-error";
 
 export const runtime = "nodejs";
 
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
     console.error("[motors/sold-effects]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to process motor sale" },
+      { error: mapServerError(error, "Не удалось оформить продажу мотора") },
       { status: 500 },
     );
   }
