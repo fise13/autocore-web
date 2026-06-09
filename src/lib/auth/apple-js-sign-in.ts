@@ -564,29 +564,29 @@ export async function signInWithAppleJs(): Promise<AppleJsSignInResult> {
   try {
     if (!usePopup) {
       await signInWithAppleJsRedirect(session);
-    }
+    } else {
+      try {
+        return await signInWithAppleJsPopup(session);
+      } catch (error) {
+        logAppleSdkForensic("signInWithAppleJs:popup-or-redirect-inner-catch", error);
+        if (isAppleUserCancellationError(error)) {
+          resetAppleSignInSession();
+          logAppleJs("sign-in-cancelled-by-user");
+          throw asAppleUserCancelledError(error);
+        }
 
-    try {
-      return await signInWithAppleJsPopup(session);
-    } catch (error) {
-      logAppleSdkForensic("signInWithAppleJs:popup-or-redirect-inner-catch", error);
-      if (isAppleUserCancellationError(error)) {
-        resetAppleSignInSession();
-        logAppleJs("sign-in-cancelled-by-user");
-        throw asAppleUserCancelledError(error);
+        if (!isPopupBlockedError(error)) {
+          throw normalizeAppleJsError(error);
+        }
+
+        logAppleJs("popup-blocked-fallback-to-redirect", { message: "popup_blocked_by_browser" });
+        logAppleJsModeDecision(
+          resolveAppleJsModeDecision({ popupBlockedFallback: true }),
+          "signInWithAppleJs:popup-blocked-fallback",
+        );
+        restorePreparedSession(session);
+        await signInWithAppleJsRedirect(session);
       }
-
-      if (!isPopupBlockedError(error)) {
-        throw normalizeAppleJsError(error);
-      }
-
-      logAppleJs("popup-blocked-fallback-to-redirect", { message: "popup_blocked_by_browser" });
-      logAppleJsModeDecision(
-        resolveAppleJsModeDecision({ popupBlockedFallback: true }),
-        "signInWithAppleJs:popup-blocked-fallback",
-      );
-      restorePreparedSession(session);
-      await signInWithAppleJsRedirect(session);
     }
   } catch (error) {
     if (error instanceof AppleJsRedirectStarted) {

@@ -87,6 +87,12 @@ export function formatAppleAuthErrorForUi(error: unknown): string {
 
   if (error instanceof Error) {
     const code = (error as FirebaseLikeError).code;
+    if (code === "auth/invalid-credential" && /identity token|apple/i.test(error.message)) {
+      return (
+        "Firebase отклонил Apple token. Для desktop-приложения добавьте App ID " +
+        "com.wise.autocore.desktop в Firebase → Authentication → Apple → OAuth code flow configuration."
+      );
+    }
     if (code) {
       return `${code}: ${error.message}`;
     }

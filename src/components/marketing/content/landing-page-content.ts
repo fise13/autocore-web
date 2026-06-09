@@ -112,6 +112,7 @@ export const landingPageContent = {
   },
   footer: {
     tagline: "AutoCore — операционная система для разборок, магазинов запчастей и СТО.",
+    desktopTitle: "Скачать приложение",
   },
   /** Контент для подстраниц (product, modules) — не на главном лендинге */
   showcase: {

@@ -6,6 +6,7 @@ import { motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 
 import { AppLogo } from "@/components/brand/app-logo";
+import { DesktopDownloadButtons } from "@/components/marketing/desktop-download-buttons";
 import { landingPageContent } from "@/components/marketing/content/landing-page-content";
 import { siteNavigation } from "@/components/marketing/site/site-navigation";
 import { marketingRoutes } from "@/lib/marketing-routes";
@@ -104,6 +105,15 @@ export function SiteFooter() {
             ))}
           </div>
         </div>
+
+        <div className="h-px w-full bg-linear-to-r from-transparent via-border to-transparent" aria-hidden />
+
+        <FooterAnimatedBlock className="w-full py-8" delay={0.35}>
+          <p className="mb-4 text-center text-xs font-medium tracking-wide text-foreground/80 uppercase">
+            {landingPageContent.footer.desktopTitle}
+          </p>
+          <DesktopDownloadButtons compact variant="marketing" className="mx-auto max-w-md text-center" />
+        </FooterAnimatedBlock>
 
         <div className="h-px w-full bg-linear-to-r from-transparent via-border to-transparent" aria-hidden />
 

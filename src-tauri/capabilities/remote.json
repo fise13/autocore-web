@@ -1,0 +1,18 @@
+{
+  "$schema": "../gen/schemas/remote-schema.json",
+  "identifier": "remote-vercel",
+  "description": "Vercel web app inside the AutoCore desktop shell",
+  "windows": ["main"],
+  "remote": {
+    "urls": [
+      "https://autocore-web.vercel.app/*",
+      "https://*.vercel.app/*"
+    ]
+  },
+  "permissions": [
+    "core:default",
+    "shell:default",
+    "opener:default",
+    "siwa:allow-get-apple-id-credential"
+  ]
+}

@@ -5,8 +5,21 @@ import {
   type AppleRedirectPayload,
 } from "@/lib/auth/apple-js-redirect-payload";
 
-function buildAppleRedirectBridgeHtml(payload: AppleRedirectPayload): string {
+function isDesktopShellUserAgent(userAgent: string): boolean {
+  return /AutoCoreDesktop\//i.test(userAgent);
+}
+
+function buildLoginReturnPath(userAgent: string): string {
+  const params = new URLSearchParams({ apple_js_return: "1" });
+  if (isDesktopShellUserAgent(userAgent)) {
+    params.set("desktop", "1");
+  }
+  return `/login?${params.toString()}`;
+}
+
+function buildAppleRedirectBridgeHtml(payload: AppleRedirectPayload, loginReturnPath: string): string {
   const serialized = JSON.stringify(payload).replace(/</g, "\\u003c");
+  const loginReturnPathJson = JSON.stringify(loginReturnPath);
 
   return `<!DOCTYPE html>
 <html lang="ru">
@@ -24,10 +37,31 @@ function buildAppleRedirectBridgeHtml(payload: AppleRedirectPayload): string {
     <script>
       (function () {
         var payload = ${serialized};
-        try {
-          sessionStorage.setItem("autocore.appleRedirectPayload", JSON.stringify(payload));
-        } catch (e) {}
-        window.location.replace("/login?apple_js_return=1");
+        var loginReturnPath = ${loginReturnPathJson};
+        var storageKey = "autocore.appleRedirectPayload";
+
+        function storePayload(target) {
+          try {
+            target.sessionStorage.setItem(storageKey, JSON.stringify(payload));
+            return true;
+          } catch (e) {
+            return false;
+          }
+        }
+
+        var opener = window.opener;
+        if (opener && opener !== window && !opener.closed) {
+          try {
+            if (storePayload(opener)) {
+              opener.location.replace(loginReturnPath);
+              window.close();
+              return;
+            }
+          } catch (e) {}
+        }
+
+        storePayload(window);
+        window.location.replace(loginReturnPath);
       })();
     </script>
   </body>
@@ -49,7 +83,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing id_token in Apple redirect POST" }, { status: 400 });
   }
 
-  return new NextResponse(buildAppleRedirectBridgeHtml(payload), {
+  const userAgent = request.headers.get("user-agent") ?? "";
+  const loginReturnPath = buildLoginReturnPath(userAgent);
+
+  return new NextResponse(buildAppleRedirectBridgeHtml(payload, loginReturnPath), {
     status: 200,
     headers: {
       "Content-Type": "text/html; charset=utf-8",

@@ -24,6 +24,8 @@ import {
   resetAppleSignInSession,
   signInWithAppleJs,
 } from "@/lib/auth/apple-js-sign-in";
+import { trySignInWithAppleTauriNative, signInWithAppleTauriNativeOrThrow } from "@/lib/auth/apple-tauri-native";
+import { isMacOsDesktopShell, isTauriDesktop } from "@/lib/tauri/is-tauri-desktop";
 
 function buildDisplayName(user?: AppleJsUser): string | null {
   const firstName = user?.name?.firstName?.trim();
@@ -120,7 +122,17 @@ export async function completeAppleCredentialSignIn(
 }
 
 export async function signInWithAppleLikeMacOS(auth: Auth) {
-  logAppleJs("flow-start");
+  logAppleJs("flow-start", { desktop: isTauriDesktop() });
+
+  if (isTauriDesktop() && isMacOsDesktopShell()) {
+    return signInWithAppleTauriNativeOrThrow(auth);
+  }
+
+  const nativeResult = await trySignInWithAppleTauriNative(auth);
+  if (nativeResult) {
+    return nativeResult;
+  }
+
   try {
     const appleResult = await signInWithAppleJs();
     return completeAppleCredentialSignIn(

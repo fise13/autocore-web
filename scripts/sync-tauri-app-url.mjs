@@ -44,7 +44,7 @@ function resolveDesktopAppUrl() {
     localEnv.NEXT_PUBLIC_DESKTOP_APP_URL?.trim();
 
   if (explicit) {
-    return `${explicit.replace(/\/$/, "")}/login`;
+    return `${explicit.replace(/\/$/, "")}/login?desktop=1`;
   }
 
   const appUrl =
@@ -55,10 +55,10 @@ function resolveDesktopAppUrl() {
     /localhost|127\.0\.0\.1|local\.autocore/i.test(appUrl);
 
   if (appUrl && !isLocalHost) {
-    return `${appUrl.replace(/\/$/, "")}/login`;
+    return `${appUrl.replace(/\/$/, "")}/login?desktop=1`;
   }
 
-  return `${DEFAULT_APP_ORIGIN}/login`;
+  return `${DEFAULT_APP_ORIGIN}/login?desktop=1`;
 }
 
 function syncTauriConf(appUrl) {
