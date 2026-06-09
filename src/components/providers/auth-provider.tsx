@@ -34,7 +34,6 @@ import {
 } from "@/infrastructure/firestore/company-service";
 import { joinCompanyWithInviteCode } from "@/infrastructure/firestore/join-company-service";
 import { getAppleAuthMode, isFirebaseHandlerAppleAuthMode } from "@/lib/auth/apple-auth-mode";
-import { isAppleDomainAssociationLive } from "@/lib/auth/apple-domain-health";
 import { logAppleAuthError, logAppleAuthStep, logAppleJs } from "@/lib/auth/apple-auth-log";
 import { signInWithAppleLikeMacOS } from "@/lib/auth/sign-in-with-apple-credential";
 import { AppleJsRedirectStarted, isAppleUserCancellationError } from "@/lib/auth/apple-js-sign-in";
@@ -335,18 +334,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         try {
           if (isFirebaseHandlerAppleAuthMode()) {
-            const result = await signInWithAppleFirebase(auth);
-            if (!result) {
-              logAppleAuthStep("redirect-started");
-              return;
-            }
-            await finalizeSignedInUser(auth, result.user, refreshProfile, setFirebaseUser, setIsLoading);
-            return;
-          }
-
-          const domainAssociationLive = await isAppleDomainAssociationLive();
-          if (!domainAssociationLive) {
-            logAppleJs("domain-association-404-fallback-firebase-oauth");
             const result = await signInWithAppleFirebase(auth);
             if (!result) {
               logAppleAuthStep("redirect-started");
