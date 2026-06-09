@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { AppLogo } from "@/components/brand/app-logo";
-import { DesktopDownloadButtons } from "@/components/marketing/desktop-download-buttons";
+import { DesktopDownloadIcons } from "@/components/marketing/desktop-download-icons";
 import { landingCopy } from "@/components/marketing/copy/landing-copy";
 import { appDashboardUrl, appLoginUrl, getAppUrl, getMarketingUrl } from "@/lib/site-urls";
 
@@ -19,6 +19,7 @@ export function MarketingFooter() {
             <span className="text-base font-semibold">AutoCore</span>
           </div>
           <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">{copy.tagline}</p>
+          <DesktopDownloadIcons />
         </div>
 
         <div className="grid gap-10 text-sm sm:grid-cols-2">
@@ -58,11 +59,6 @@ export function MarketingFooter() {
             </ul>
           </div>
         </div>
-      </div>
-
-      <div className="mx-auto mt-12 w-full max-w-7xl border-t border-border/40 px-5 pt-10 md:px-8">
-        <p className="mc-section-label mb-4">{copy.desktop}</p>
-        <DesktopDownloadButtons />
       </div>
 
       <div className="mx-auto mt-12 flex w-full max-w-7xl flex-col gap-2 border-t border-border/40 px-5 pt-8 text-xs text-muted-foreground md:flex-row md:items-center md:justify-between md:px-8">

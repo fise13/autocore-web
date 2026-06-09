@@ -7,7 +7,6 @@ import { LandingDocuments } from "@/components/marketing/landing/landing-documen
 import { LandingFaq } from "@/components/marketing/landing/landing-faq";
 import { LandingHero } from "@/components/marketing/landing/landing-hero";
 import { LandingStoryScroll } from "@/components/marketing/landing/landing-story-scroll";
-import { DesktopDownloadSection } from "@/components/marketing/sections/desktop-download-section";
 
 export function MarketingPage() {
   return (
@@ -17,7 +16,6 @@ export function MarketingPage() {
       <LandingDocuments />
       <LandingDemo />
       <LandingCompare />
-      <DesktopDownloadSection />
       <LandingFaq />
       <LandingCta />
     </div>

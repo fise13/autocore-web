@@ -112,7 +112,6 @@ export const landingPageContent = {
   },
   footer: {
     tagline: "AutoCore — программа для авторазборок и автосервисов: склад, цех и бухгалтерия в одной системе.",
-    desktopTitle: "Скачать приложение",
   },
   /** Контент для подстраниц (product, modules) — не на главном лендинге */
   showcase: {

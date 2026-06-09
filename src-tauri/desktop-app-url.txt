@@ -1,1 +1,1 @@
-https://autocore-web.vercel.app/login?desktop=1
+https://app.myautocore.com/login?desktop=1

@@ -52,7 +52,6 @@ export const siteNavigation = {
   } satisfies SiteNavGroup,
   primaryLinks: [
     { href: `${marketingRoutes.home}#story`, label: "Как работает" },
-    { href: `${marketingRoutes.home}#download`, label: "Скачать" },
     { href: marketingRoutes.pricing, label: "Тарифы" },
     { href: `${marketingRoutes.home}#faq`, label: "FAQ" },
     { href: marketingRoutes.security, label: "Безопасность" },

@@ -11,7 +11,6 @@ import {
   useState,
 } from "react";
 
-import { AppLogo } from "@/components/brand/app-logo";
 import {
   peekAuthSessionTransition,
   playAuthSessionEnter,
@@ -25,7 +24,10 @@ import {
   playCrossRouteLeave,
   prefersReducedMotion,
   resolveCrossRouteDirection,
+  resolveExternalAppAuthDirection,
+  resolveExternalMarketingDirection,
 } from "@/lib/motion/cross-route-transition";
+import { getAppUrl, getMarketingUrl } from "@/lib/site-urls";
 
 type PageTransitionContextValue = {
   isTransitioning: boolean;
@@ -87,16 +89,43 @@ export function PageTransitionProvider({ children }: PageTransitionProviderProps
       if (anchor.target === "_blank" || anchor.hasAttribute("download")) return;
       if (anchor.dataset.pageTransitionIgnore !== undefined) return;
 
-      const direction = resolveCrossRouteDirection(pathname, anchor.href);
+      const direction =
+        resolveCrossRouteDirection(pathname, anchor.href) ??
+        resolveExternalAppAuthDirection(pathname, anchor.href, getAppUrl()) ??
+        resolveExternalMarketingDirection(pathname, anchor.href, getMarketingUrl());
+
       if (!direction) return;
 
       event.preventDefault();
-      void navigateWithTransition(anchor.href, direction);
+
+      if (prefersReducedMotion()) {
+        window.location.assign(anchor.href);
+        return;
+      }
+
+      void (async () => {
+        if (isTransitioningRef.current) return;
+        isTransitioningRef.current = true;
+        setIsTransitioning(true);
+        try {
+          await playCrossRouteLeave(direction);
+          markCrossRouteTransition(direction);
+          const target = new URL(anchor.href, window.location.origin);
+          if (target.origin === window.location.origin) {
+            router.push(target.pathname + target.search + target.hash);
+          } else {
+            window.location.assign(anchor.href);
+          }
+        } finally {
+          isTransitioningRef.current = false;
+          setIsTransitioning(false);
+        }
+      })();
     };
 
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
-  }, [navigateWithTransition, pathname]);
+  }, [pathname, router]);
 
   useEffect(() => {
     const direction = peekCrossRouteTransition();
@@ -119,18 +148,8 @@ export function PageTransitionProvider({ children }: PageTransitionProviderProps
   return (
     <PageTransitionContext.Provider value={value}>
       {children}
-      <div
-        ref={mountCrossRouteOverlay}
-        className="page-transition-overlay"
-        aria-hidden
-      >
-        <div data-transition-panel className="page-transition-panel">
-          <div className="page-transition-panel-glow" aria-hidden />
-          <div data-transition-accent className="page-transition-accent" aria-hidden />
-          <div data-transition-logo className="page-transition-logo">
-            <AppLogo size={36} priority />
-          </div>
-        </div>
+      <div ref={mountCrossRouteOverlay} className="page-transition-overlay" aria-hidden>
+        <div data-transition-veil className="page-transition-veil" />
       </div>
     </PageTransitionContext.Provider>
   );

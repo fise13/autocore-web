@@ -7,7 +7,6 @@ import { ArrowRight } from "lucide-react";
 import { useRef } from "react";
 
 import { landingDemoAnchor, landingPageContent } from "@/components/marketing/content/landing-page-content";
-import { DesktopDownloadButtons } from "@/components/marketing/desktop-download-buttons";
 import { LandingHeroAppShot } from "@/components/marketing/landing/landing-hero-app-shot";
 import { useGsapSplitHero } from "@/components/marketing/motion/use-gsap-reveal";
 import { usePrefersReducedMotion } from "@/components/marketing/motion/use-landing-gsap";
@@ -77,10 +76,6 @@ export function LandingHero() {
             <Button variant="outline" size="lg" render={<Link href={landingDemoAnchor} />}>
               {copy.ctaSecondary}
             </Button>
-          </div>
-
-          <div data-hero-fade className="landing-hero-downloads">
-            <DesktopDownloadButtons compact variant="marketing" />
           </div>
         </div>
 

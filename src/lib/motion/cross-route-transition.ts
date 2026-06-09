@@ -1,52 +1,106 @@
-import { gsap } from "gsap";
+import {
+  getDissolveOverlay,
+  mountDissolveOverlay,
+  playDissolveEnter,
+  playDissolveLeave,
+  prefersReducedMotion,
+  waitForTransitionTarget,
+} from "@/lib/motion/dissolve-transition";
 
 export const CROSS_ROUTE_STORAGE_KEY = "autocore-cross-route";
+const CROSS_ROUTE_COOKIE = "autocore_cross_route";
 
 export type CrossRouteDirection = "to-auth" | "to-marketing";
 
-type OverlayElements = {
-  root: HTMLElement;
-  panel: HTMLElement;
-  logo: HTMLElement;
-  accent: HTMLElement;
-};
-
-let overlayElements: OverlayElements | null = null;
-let enterInFlight = false;
-
-export function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  );
+export function mountCrossRouteOverlay(root: HTMLElement | null): void {
+  mountDissolveOverlay(root);
 }
 
-export function mountCrossRouteOverlay(root: HTMLElement | null): void {
-  if (!root) {
-    overlayElements = null;
-    return;
+export function getCrossRouteOverlay() {
+  return getDissolveOverlay();
+}
+
+export { prefersReducedMotion, waitForTransitionTarget };
+
+function getSharedParentDomain(): string | null {
+  if (typeof window === "undefined") return null;
+  const host = window.location.hostname.toLowerCase();
+  if (host === "localhost" || host === "127.0.0.1" || host.endsWith(".local")) {
+    return null;
   }
-  const panel = root.querySelector<HTMLElement>("[data-transition-panel]");
-  const logo = root.querySelector<HTMLElement>("[data-transition-logo]");
-  const accent = root.querySelector<HTMLElement>("[data-transition-accent]");
-  if (!panel || !logo || !accent) return;
-  overlayElements = { root, panel, logo, accent };
+  const parts = host.split(".");
+  if (parts.length >= 2) {
+    return `.${parts.slice(-2).join(".")}`;
+  }
+  return null;
 }
 
 export function markCrossRouteTransition(direction: CrossRouteDirection): void {
   sessionStorage.setItem(CROSS_ROUTE_STORAGE_KEY, direction);
+  const domain = getSharedParentDomain();
+  const secure = typeof window !== "undefined" && window.location.protocol === "https:" ? "; Secure" : "";
+  if (domain) {
+    document.cookie = `${CROSS_ROUTE_COOKIE}=${direction}; path=/; max-age=30; domain=${domain}; SameSite=Lax${secure}`;
+  }
+}
+
+function readCrossRouteCookie(): CrossRouteDirection | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp(`(?:^|; )${CROSS_ROUTE_COOKIE}=([^;]*)`));
+  const value = match?.[1];
+  if (value === "to-auth" || value === "to-marketing") return value;
+  return null;
+}
+
+function clearCrossRouteCookie(): void {
+  const domain = getSharedParentDomain();
+  if (domain) {
+    document.cookie = `${CROSS_ROUTE_COOKIE}=; path=/; max-age=0; domain=${domain}; SameSite=Lax`;
+  }
+  document.cookie = `${CROSS_ROUTE_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
 }
 
 export function peekCrossRouteTransition(): CrossRouteDirection | null {
-  const value = sessionStorage.getItem(CROSS_ROUTE_STORAGE_KEY);
-  if (value === "to-auth" || value === "to-marketing") return value;
-  return null;
+  const fromSession = sessionStorage.getItem(CROSS_ROUTE_STORAGE_KEY);
+  if (fromSession === "to-auth" || fromSession === "to-marketing") {
+    return fromSession;
+  }
+  return readCrossRouteCookie();
 }
 
 export function consumeCrossRouteTransition(): CrossRouteDirection | null {
   const value = peekCrossRouteTransition();
   sessionStorage.removeItem(CROSS_ROUTE_STORAGE_KEY);
+  clearCrossRouteCookie();
   return value;
+}
+
+export function isMarketingPathname(pathname: string): boolean {
+  if (pathname === "/" || pathname === "/marketing" || pathname.startsWith("/marketing/")) {
+    return true;
+  }
+  return (
+    pathname === "/product" ||
+    pathname.startsWith("/product/") ||
+    pathname === "/modules" ||
+    pathname.startsWith("/modules/") ||
+    pathname === "/pricing" ||
+    pathname.startsWith("/pricing/") ||
+    pathname === "/security" ||
+    pathname.startsWith("/security/") ||
+    pathname === "/contact" ||
+    pathname.startsWith("/contact/") ||
+    pathname.startsWith("/legal/")
+  );
+}
+
+function isAuthPathname(pathname: string): boolean {
+  return (
+    pathname === "/login" ||
+    pathname.startsWith("/login/") ||
+    pathname === "/demo" ||
+    pathname.startsWith("/demo/")
+  );
 }
 
 export function resolveCrossRouteDirection(
@@ -57,26 +111,54 @@ export function resolveCrossRouteDirection(
 
   try {
     const target = new URL(targetHref, window.location.origin);
-    if (target.origin !== window.location.origin) return null;
-
-    const toAuth =
-      target.pathname === "/login" ||
-      target.pathname.startsWith("/login/") ||
-      target.pathname === "/demo" ||
-      target.pathname.startsWith("/demo/");
-    const toMarketing =
-      target.pathname === "/marketing" || target.pathname.startsWith("/marketing/");
-    const fromMarketing =
-      fromPathname === "/marketing" || fromPathname.startsWith("/marketing/");
-    const fromAuth =
-      fromPathname === "/login" ||
-      fromPathname.startsWith("/login/") ||
-      fromPathname === "/demo" ||
-      fromPathname.startsWith("/demo/");
+    const fromMarketing = isMarketingPathname(fromPathname);
+    const fromAuth = isAuthPathname(fromPathname);
+    const toAuth = isAuthPathname(target.pathname);
+    const toMarketing = isMarketingPathname(target.pathname);
 
     if (fromMarketing && toAuth) return "to-auth";
     if (fromAuth && toMarketing) return "to-marketing";
     return null;
+  } catch {
+    return null;
+  }
+}
+
+export function resolveExternalMarketingDirection(
+  fromPathname: string,
+  targetHref: string,
+  marketingOrigin: string,
+): CrossRouteDirection | null {
+  if (typeof window === "undefined") return null;
+  if (!isAuthPathname(fromPathname)) return null;
+
+  try {
+    const target = new URL(targetHref);
+    const marketing = new URL(marketingOrigin);
+    if (target.origin !== marketing.origin) return null;
+    if (target.origin === window.location.origin) return null;
+    if (!isMarketingPathname(target.pathname)) return null;
+    return "to-marketing";
+  } catch {
+    return null;
+  }
+}
+
+export function resolveExternalAppAuthDirection(
+  fromPathname: string,
+  targetHref: string,
+  appOrigin: string,
+): CrossRouteDirection | null {
+  if (typeof window === "undefined") return null;
+  if (!isMarketingPathname(fromPathname)) return null;
+
+  try {
+    const target = new URL(targetHref);
+    const app = new URL(appOrigin);
+    if (target.origin !== app.origin) return null;
+    if (!isAuthPathname(target.pathname)) return null;
+    if (target.origin === window.location.origin) return null;
+    return "to-auth";
   } catch {
     return null;
   }
@@ -93,110 +175,15 @@ function getEnterSelector(direction: CrossRouteDirection): string {
   return direction === "to-auth" ? "[data-login-screen]" : '[data-barba="wrapper"]';
 }
 
-export async function waitForTransitionTarget(
-  selector: string,
-  maxMs = 2200,
-): Promise<HTMLElement | null> {
-  const started = performance.now();
-  while (performance.now() - started < maxMs) {
-    const element = document.querySelector<HTMLElement>(selector);
-    if (element) return element;
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-  }
-  return null;
-}
-
-function requireOverlay(): OverlayElements {
-  if (!overlayElements) {
-    throw new Error("Cross-route overlay is not mounted.");
-  }
-  return overlayElements;
-}
-
-export function getCrossRouteOverlay(): OverlayElements | null {
-  return overlayElements;
-}
-
 export async function playCrossRouteLeave(
   direction: CrossRouteDirection,
   leaveTarget?: HTMLElement | null,
 ): Promise<void> {
-  if (prefersReducedMotion()) return;
-
-  const { root, panel, logo, accent } = requireOverlay();
   const target = leaveTarget ?? getLeaveTarget(direction);
-
-  gsap.set(root, { visibility: "visible", pointerEvents: "auto" });
-  gsap.set(panel, {
-    xPercent: direction === "to-auth" ? 100 : -100,
-    opacity: 1,
-  });
-  gsap.set(logo, { opacity: 0, scale: 0.88, y: 8 });
-  gsap.set(accent, { scaleX: 0, transformOrigin: "0% 50%" });
-
-  const timeline = gsap.timeline();
-
-  if (target) {
-    timeline.to(
-      target,
-      {
-        opacity: 0.35,
-        y: direction === "to-auth" ? -28 : 24,
-        scale: 0.985,
-        filter: "blur(8px)",
-        duration: 0.42,
-        ease: "power2.in",
-      },
-      0,
-    );
-  }
-
-  timeline.to(
-    panel,
-    {
-      xPercent: 0,
-      duration: 0.62,
-      ease: "power3.inOut",
-    },
-    0.06,
-  );
-
-  timeline.to(
-    accent,
-    {
-      scaleX: 1,
-      duration: 0.48,
-      ease: "power2.out",
-    },
-    0.18,
-  );
-
-  timeline.to(
-    logo,
-    {
-      opacity: 1,
-      scale: direction === "to-auth" ? 1.04 : 1,
-      y: 0,
-      duration: direction === "to-auth" ? 0.44 : 0.38,
-      ease: direction === "to-auth" ? "back.out(1.4)" : "power3.out",
-    },
-    0.24,
-  );
-
-  if (direction === "to-auth") {
-    timeline.to(
-      logo,
-      {
-        scale: 1,
-        duration: 0.24,
-        ease: "power2.out",
-      },
-      0.58,
-    );
-  }
-
-  await timeline;
+  await playDissolveLeave(target);
 }
+
+let enterInFlight = false;
 
 export async function playCrossRouteEnter(
   direction: CrossRouteDirection,
@@ -213,108 +200,9 @@ export async function playCrossRouteEnter(
 
     if (!peekCrossRouteTransition()) return;
 
-  const { root, panel, logo, accent } = requireOverlay();
-  const target = enterTarget ?? (await waitForTransitionTarget(getEnterSelector(direction)));
-
-  gsap.set(root, { visibility: "visible", pointerEvents: "auto" });
-  gsap.set(panel, { xPercent: 0, opacity: 1 });
-  gsap.set(logo, { opacity: 1, scale: 1, y: 0 });
-  gsap.set(accent, { scaleX: 1, transformOrigin: "100% 50%" });
-
-  if (target) {
-    gsap.set(target, {
-      opacity: 0,
-      y: direction === "to-auth" ? 32 : 24,
-      scale: 0.992,
-      filter: "blur(4px)",
-    });
-  }
-
-  const revealItems = target?.querySelectorAll<HTMLElement>("[data-page-reveal]") ?? [];
-
-  if (revealItems.length) {
-    gsap.set(revealItems, { opacity: 0, y: 18 });
-  }
-
-  const timeline = gsap.timeline();
-
-  timeline.to(
-    logo,
-    {
-      opacity: 0,
-      scale: 0.94,
-      y: direction === "to-auth" ? -10 : 10,
-      duration: 0.22,
-      ease: "power2.in",
-    },
-    0,
-  );
-
-  timeline.to(
-    accent,
-    {
-      scaleX: 0,
-      duration: 0.34,
-      ease: "power2.in",
-    },
-    0.02,
-  );
-
-  timeline.to(
-    panel,
-    {
-      xPercent: direction === "to-auth" ? -100 : 100,
-      duration: 0.68,
-      ease: "power3.inOut",
-    },
-    0.08,
-  );
-
-  if (target) {
-    timeline.to(
-      target,
-      {
-        opacity: 1,
-        y: 0,
-        scale: 1,
-        filter: "blur(0px)",
-        duration: 0.58,
-        ease: "power3.out",
-        clearProps: "filter",
-      },
-      0.22,
-    );
-  }
-
-  if (revealItems.length) {
-    timeline.to(
-      revealItems,
-      {
-        opacity: 1,
-        y: 0,
-        duration: 0.46,
-        stagger: 0.07,
-        ease: "power2.out",
-      },
-      0.34,
-    );
-  }
-
-  timeline.eventCallback("onComplete", () => {
-    gsap.set(root, { visibility: "hidden", pointerEvents: "none" });
-    gsap.set(panel, { clearProps: "transform,opacity" });
-    gsap.set(logo, { clearProps: "opacity,transform" });
-    gsap.set(accent, { clearProps: "transform" });
-    if (target) {
-      gsap.set(target, { clearProps: "opacity,transform,filter" });
-    }
-    if (revealItems.length) {
-      gsap.set(revealItems, { clearProps: "opacity,transform" });
-    }
-  });
-
-  await timeline;
-  consumeCrossRouteTransition();
+    const target = enterTarget ?? (await waitForTransitionTarget(getEnterSelector(direction)));
+    await playDissolveEnter(target);
+    consumeCrossRouteTransition();
   } finally {
     enterInFlight = false;
   }

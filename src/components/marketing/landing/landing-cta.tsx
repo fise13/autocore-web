@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useRef } from "react";
 
-import { DesktopDownloadButtons } from "@/components/marketing/desktop-download-buttons";
 import { landingPageContent } from "@/components/marketing/content/landing-page-content";
 import { useGsapSplitHeading } from "@/components/marketing/motion/use-gsap-reveal";
 import { Button } from "@/components/ui/button";
@@ -32,9 +31,6 @@ export function LandingCta() {
           <Button variant="ghost" size="lg" render={<Link href={marketingRoutes.pricing} />}>
             {copy.secondary}
           </Button>
-        </div>
-        <div className="mx-auto mt-10 max-w-xl">
-          <DesktopDownloadButtons compact variant="marketing" className="text-center" />
         </div>
       </div>
     </section>

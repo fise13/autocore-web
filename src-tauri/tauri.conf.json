@@ -6,7 +6,7 @@
   "identifier": "com.wise.autocore.desktop",
   "build": {
     "frontendDist": "../public",
-    "devUrl": "https://autocore-web.vercel.app/login",
+    "devUrl": "https://app.myautocore.com/login?desktop=1",
     "beforeDevCommand": "",
     "beforeBuildCommand": "node scripts/sync-tauri-app-url.mjs"
   },
