@@ -24,7 +24,10 @@ import {
   safeAppleSdkJson,
 } from "@/lib/auth/apple-js-forensic";
 
-export { APPLE_WEB_CLIENT_ID };
+import {
+  APPLE_REDIRECT_PAYLOAD_KEY,
+  type AppleRedirectPayload,
+} from "@/lib/auth/apple-js-redirect-payload";
 
 const APPLE_JS_URL =
   "https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js";
@@ -197,6 +200,7 @@ export function clearAppleJsSession() {
   sessionStorage.removeItem(APPLE_NONCE_STORAGE_KEY);
   sessionStorage.removeItem(APPLE_HASHED_NONCE_STORAGE_KEY);
   sessionStorage.removeItem(APPLE_REDIRECT_FLAG);
+  sessionStorage.removeItem(APPLE_REDIRECT_PAYLOAD_KEY);
 }
 
 export function resetAppleSignInSession() {
@@ -449,6 +453,58 @@ export function hasPendingAppleJsRedirect(): boolean {
   return sessionStorage.getItem(APPLE_REDIRECT_FLAG) === "1";
 }
 
+export function isAppleJsReturnLanding(): boolean {
+  if (typeof window === "undefined") return false;
+  if (hasPendingAppleJsRedirect()) return true;
+  return new URLSearchParams(window.location.search).has("apple_js_return");
+}
+
+function readAppleRedirectPayload(): AppleRedirectPayload | null {
+  if (typeof window === "undefined") return null;
+  const raw = sessionStorage.getItem(APPLE_REDIRECT_PAYLOAD_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as AppleRedirectPayload;
+    if (!parsed?.id_token?.trim()) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function clearAppleRedirectPayload() {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(APPLE_REDIRECT_PAYLOAD_KEY);
+}
+
+function stripAppleReturnQueryParam() {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has("apple_js_return")) return;
+  url.searchParams.delete("apple_js_return");
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function finalizeAppleRedirectPayload(
+  payload: AppleRedirectPayload,
+  rawNonce: string,
+): AppleJsSignInResult {
+  clearAppleRedirectPayload();
+  sessionStorage.removeItem(APPLE_REDIRECT_FLAG);
+  stripAppleReturnQueryParam();
+  return finalizeAppleJsResult(
+    {
+      authorization: {
+        id_token: payload.id_token,
+        code: payload.code,
+        state: payload.state,
+      },
+      user: payload.user as AppleJsUser | undefined,
+    },
+    rawNonce,
+  );
+}
+
 /**
  * macOS parity: rawNonce → SHA256(nonce) → Apple popup/redirect → id_token → Firebase credential.
  */
@@ -459,7 +515,7 @@ export async function signInWithAppleJs(): Promise<AppleJsSignInResult> {
     throw new Error(setupIssue);
   }
 
-  if (hasPendingAppleJsRedirect()) {
+  if (hasPendingAppleJsRedirect() && !isAppleJsReturnLanding()) {
     logAppleJs("clearing-stale-redirect-flag-before-new-sign-in");
     resetAppleSignInSession();
   }
@@ -547,7 +603,14 @@ export function clearStaleAppleAuthSession() {
 /** Complete Apple JS redirect return on /login after usePopup: false. */
 export async function bootstrapAppleJsReturn(): Promise<AppleJsSignInResult | null> {
   if (typeof window === "undefined") return null;
-  if (!hasPendingAppleJsRedirect()) return null;
+
+  const storedPayload = readAppleRedirectPayload();
+  const pendingRedirect = hasPendingAppleJsRedirect();
+  const returnLanding = isAppleJsReturnLanding();
+
+  if (!storedPayload && !pendingRedirect && !returnLanding) {
+    return null;
+  }
 
   logAppleJsModeDecision(
     resolveAppleJsModeDecision({ forceRedirectReturn: true }),
@@ -558,6 +621,30 @@ export async function bootstrapAppleJsReturn(): Promise<AppleJsSignInResult | nu
   if (!rawNonce) {
     logAppleAuthError("apple-js:bootstrap", new Error("Missing rawNonce after Apple redirect"));
     clearAppleJsSession();
+    clearAppleRedirectPayload();
+    stripAppleReturnQueryParam();
+    return null;
+  }
+
+  if (storedPayload) {
+    logAppleJs("redirect-return-payload", {
+      hasIdToken: Boolean(storedPayload.id_token),
+      hasCode: Boolean(storedPayload.code),
+      hasUser: Boolean(storedPayload.user),
+    });
+    try {
+      return finalizeAppleRedirectPayload(storedPayload, rawNonce);
+    } catch (error) {
+      logAppleAuthError("apple-js:bootstrap-payload", error);
+      clearAppleRedirectPayload();
+      resetAppleSignInSession();
+      stripAppleReturnQueryParam();
+      return null;
+    }
+  }
+
+  if (!pendingRedirect) {
+    logAppleJs("redirect-return-no-payload", { returnLanding });
     return null;
   }
 

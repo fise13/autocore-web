@@ -18,7 +18,7 @@ import {
 import { formatAppleAuthErrorForUi, logAppleAuthError } from "@/lib/auth/apple-auth-log";
 import { isFirebaseHandlerAppleAuthMode } from "@/lib/auth/apple-auth-mode";
 import { bootstrapAppleRedirect } from "@/lib/auth/apple-redirect";
-import { prepareAppleSignInSession } from "@/lib/auth/apple-js-sign-in";
+import { prepareAppleSignInSession, isAppleJsReturnLanding } from "@/lib/auth/apple-js-sign-in";
 import { completeAppleJsReturnIfNeeded } from "@/lib/auth/sign-in-with-apple-credential";
 import { userCopy } from "@/lib/user-copy";
 
@@ -27,6 +27,9 @@ export default function LoginPage() {
   const { firebaseUser, profile, isLoading, isFirebaseReady, refreshProfile } = useAuth();
   const [authReady, setAuthReady] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+  const [appleReturnPending, setAppleReturnPending] = useState(
+    () => typeof window !== "undefined" && isAppleJsReturnLanding(),
+  );
 
   useEffect(() => {
     logAuthDebug("login-page", "mounted");
@@ -50,15 +53,21 @@ export default function LoginPage() {
     void (async () => {
       try {
         const result = await completeAppleJsReturnIfNeeded(auth);
-        if (cancelled || !result) return;
+        if (cancelled) return;
+        if (!result) {
+          setAppleReturnPending(false);
+          return;
+        }
         await auth.authStateReady();
         await refreshProfile();
         if (!cancelled && auth.currentUser) {
           logAuthDebug("login-page", "apple-js redirect complete → /");
+          setAppleReturnPending(false);
           router.replace("/");
         }
       } catch (error) {
         if (!cancelled) {
+          setAppleReturnPending(false);
           logAppleAuthError("login-page:apple-js-return", error);
           setBootstrapError(formatAppleAuthErrorForUi(error));
         }
@@ -137,6 +146,15 @@ export default function LoginPage() {
   });
 
   const showAuthDebug = isAuthDebugEnabled();
+
+  if (appleReturnPending) {
+    return (
+      <>
+        <AppLoadingScreen message="Завершаем вход через Apple…" />
+        {showAuthDebug ? <AuthDebugPanel snapshot={debugSnapshot} /> : null}
+      </>
+    );
+  }
 
   if (!isFirebaseReady) {
     return (
