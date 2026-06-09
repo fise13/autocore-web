@@ -2,6 +2,7 @@ import { APPLE_WEB_CLIENT_ID, isAppleJsPopupEnabled } from "@/lib/auth/apple-aut
 import {
   getAppleJsDeveloperChecklist,
   getAppleJsLoginRedirectUri,
+  getAppleJsRedirectCallbackUri,
   getAppleJsSetupIssue,
 } from "@/lib/auth/apple-js-setup";
 import { createRandomNonce, sha256Nonce } from "@/lib/auth/apple-nonce";
@@ -147,11 +148,13 @@ export function preloadAppleJs(): Promise<void> {
   return loadAppleJs();
 }
 
-export { getAppleJsDeveloperChecklist, getAppleJsLoginRedirectUri, getAppleJsSetupIssue } from "@/lib/auth/apple-js-setup";
+export { getAppleJsDeveloperChecklist, getAppleJsLoginRedirectUri, getAppleJsRedirectCallbackUri, getAppleJsSetupIssue } from "@/lib/auth/apple-js-setup";
 
-export function getAppleWebRedirectUri(_options?: { usePopup?: boolean }): string {
-  void _options;
-  return getAppleJsLoginRedirectUri();
+export function getAppleWebRedirectUri(options?: { usePopup?: boolean }): string {
+  if (options?.usePopup) {
+    return getAppleJsLoginRedirectUri();
+  }
+  return getAppleJsRedirectCallbackUri();
 }
 
 export function isAppleUserCancellationError(error: unknown): boolean {

@@ -23,9 +23,22 @@ export function getAppleJsLocalDevLoginUrl(port = 3000): string {
   return `http://${APPLE_JS_LOCAL_DEV_HOST}:${port}/login`;
 }
 
+function resolveAppleJsOrigin(): string {
+  if (typeof window !== "undefined") {
+    return window.location.origin.replace(/\/$/, "");
+  }
+
+  const envOverride = process.env.NEXT_PUBLIC_APPLE_JS_REDIRECT_URI?.trim();
+  if (envOverride) {
+    return new URL(envOverride).origin;
+  }
+
+  return new URL(appLoginUrl()).origin;
+}
+
 /**
- * Exact Return URL sent to Apple JS SDK.
- * Browser origin wins (must match Apple Return URL for the host user opened).
+ * Popup flow Return URL (page that opens Apple JS).
+ * Must match the page where sign-in is initiated.
  */
 export function getAppleJsLoginRedirectUri(): string {
   if (typeof window !== "undefined") {
@@ -38,6 +51,14 @@ export function getAppleJsLoginRedirectUri(): string {
   }
 
   return appLoginUrl();
+}
+
+/**
+ * Redirect flow callback — Apple POSTs id_token here (usePopup:false).
+ * Separate from /login because Next.js cannot combine page.tsx and route.ts on the same segment.
+ */
+export function getAppleJsRedirectCallbackUri(): string {
+  return `${resolveAppleJsOrigin()}/api/auth/apple-redirect`;
 }
 
 function localhostAppleDeveloperHint(): string {
@@ -95,17 +116,19 @@ export function getAppleJsSetupIssue(): string | null {
 }
 
 export function getAppleJsDeveloperChecklist(): string {
-  const redirectUri = getAppleJsLoginRedirectUri();
+  const loginUri = getAppleJsLoginRedirectUri();
+  const redirectCallbackUri = getAppleJsRedirectCallbackUri();
   const firebaseHandler = getFirebaseAppleRedirectUrl();
-  const redirectHost = new URL(redirectUri).host;
+  const redirectHost = new URL(loginUri).host;
 
   return [
     `Services ID: ${APPLE_WEB_CLIENT_ID}`,
-    `Redirect URI (Apple JS): ${redirectUri}`,
+    `Return URL (popup / login page): ${loginUri}`,
+    `Return URL (redirect POST callback): ${redirectCallbackUri}`,
     "Apple Developer → Services ID → Sign in with Apple → Configure:",
     "  ⚠️ «localhost» в Domains — нельзя (invalid domain).",
     `  • Domains: ${redirectHost} (без http://, без пути)`,
-    `  • Return URL (точное совпадение): ${redirectUri}`,
+    `  • Return URLs: оба URL выше (через запятую в portal)`,
     "  • Domain verification file не требуется (Apple portal-only registration с 2020+)",
     firebaseHandler ? `  • firebase_handler mode only: ${firebaseHandler}` : null,
     "После сохранения подождите 5–15 минут.",

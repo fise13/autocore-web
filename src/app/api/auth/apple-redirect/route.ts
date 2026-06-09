@@ -34,7 +34,7 @@ function buildAppleRedirectBridgeHtml(payload: AppleRedirectPayload): string {
 </html>`;
 }
 
-/** Apple redirect mode (usePopup:false) POSTs id_token to redirectURI — bridge into client sessionStorage. */
+/** Apple redirect mode (usePopup:false) POSTs id_token here — bridge into client sessionStorage. */
 export async function POST(request: Request) {
   let formData: FormData;
 
