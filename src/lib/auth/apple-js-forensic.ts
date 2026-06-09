@@ -1,4 +1,7 @@
 import { logAppleJs } from "@/lib/auth/apple-auth-log";
+import { isAppleJsPopupEnabled } from "@/lib/auth/apple-auth-mode";
+
+const APPLE_JS_REDIRECT_FLAG_KEY = "autocore.appleJsRedirect";
 
 export type AppleAuthInitConfig = {
   clientId: string;
@@ -9,7 +12,18 @@ export type AppleAuthInitConfig = {
   usePopup: boolean;
 };
 
+export type AppleJsRuntimeMode = "popup" | "redirect";
+export type AppleJsModeLabel = "MODE=popup" | "MODE=redirect";
 export type AppleTokenIssuancePhase = "before_token_issuance" | "after_token_issuance" | "indeterminate";
+
+export type AppleJsModeDecision = {
+  mode: AppleJsRuntimeMode;
+  modeLabel: AppleJsModeLabel;
+  reasons: string[];
+  envPopupFlag: boolean;
+  pendingRedirectReturn: boolean;
+  userAgent: string | null;
+};
 
 export type AppleSdkForensicCapture = {
   failurePoint: string;
@@ -29,13 +43,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function jsonReplacer(_key: string, value: unknown): unknown {
   if (value instanceof Error) {
     const extra = value as Error & Record<string, unknown>;
-    return {
+    const serialized: Record<string, unknown> = {
       name: value.name,
       message: value.message,
       stack: value.stack,
-      code: typeof extra.code === "string" ? extra.code : undefined,
-      error: extra.error,
     };
+    for (const key of Object.getOwnPropertyNames(value)) {
+      serialized[key] = extra[key];
+    }
+    return serialized;
   }
   return value;
 }
@@ -44,8 +60,12 @@ export function safeAppleSdkJson(value: unknown): string {
   try {
     return JSON.stringify(value, jsonReplacer, 2);
   } catch {
-    return String(value);
+    return JSON.stringify({ unstringifiable: String(value) }, null, 2);
   }
+}
+
+export function logAppleSdkForensicFull(label: string, value: unknown): void {
+  console.error("[APPLE SDK FORENSIC FULL]", label, safeAppleSdkJson(value));
 }
 
 function resolveAppleSdkErrorCode(payload: Record<string, unknown>): string | null {
@@ -78,7 +98,6 @@ export function hasAppleAuthorizationToken(value: unknown): boolean {
   return typeof idToken === "string" && idToken.trim().length > 0;
 }
 
-/** Classifies whether Apple issued tokens before the SDK reported failure. */
 export function classifyAppleTokenIssuancePhase(
   value: unknown,
   context: "signIn-resolve" | "signIn-reject" | "success-event" | "failure-event" | "unknown" = "unknown",
@@ -104,8 +123,130 @@ export function classifyAppleTokenIssuancePhase(
   return "indeterminate";
 }
 
-/** Always-on: exact AppleID.auth.init() arguments passed to the SDK. */
+export function extractAppleSignInResultFields(result: unknown): Record<string, unknown> {
+  const authorization =
+    isRecord(result) && isRecord(result.authorization) ? result.authorization : ({} as Record<string, unknown>);
+  const user = isRecord(result) ? result.user : null;
+
+  return {
+    "authorization.id_token": authorization.id_token ?? null,
+    "authorization.code": authorization.code ?? null,
+    "authorization.state": authorization.state ?? null,
+    user,
+    rawResult: result,
+  };
+}
+
+export function resolveAppleJsModeDecision(options?: {
+  popupBlockedFallback?: boolean;
+  forceRedirectReturn?: boolean;
+  initUsePopup?: boolean;
+}): AppleJsModeDecision {
+  const reasons: string[] = [];
+  const envPopupFlag = isAppleJsPopupEnabled();
+  const pendingRedirectReturn =
+    typeof window !== "undefined" && sessionStorage.getItem(APPLE_JS_REDIRECT_FLAG_KEY) === "1";
+  const userAgent = typeof navigator !== "undefined" ? navigator.userAgent : null;
+
+  if (options?.forceRedirectReturn || pendingRedirectReturn) {
+    reasons.push(
+      "Redirect return bootstrap: sessionStorage key autocore.appleJsRedirect=1 (completing prior redirect flow)",
+    );
+    return {
+      mode: "redirect",
+      modeLabel: "MODE=redirect",
+      reasons,
+      envPopupFlag,
+      pendingRedirectReturn: true,
+      userAgent,
+    };
+  }
+
+  if (options?.popupBlockedFallback) {
+    reasons.push("Popup blocked by browser (error popup_blocked_by_browser)");
+    reasons.push("Falling back to redirect flow");
+    return {
+      mode: "redirect",
+      modeLabel: "MODE=redirect",
+      reasons,
+      envPopupFlag,
+      pendingRedirectReturn,
+      userAgent,
+    };
+  }
+
+  if (options?.initUsePopup === true) {
+    reasons.push("AppleID.auth.init called with usePopup: true");
+    if (envPopupFlag) {
+      reasons.push('NEXT_PUBLIC_APPLE_JS_USE_POPUP=true');
+    } else {
+      reasons.push("usePopup:true despite NEXT_PUBLIC_APPLE_JS_USE_POPUP not being true (popup-blocked fallback path)");
+    }
+    return {
+      mode: "popup",
+      modeLabel: "MODE=popup",
+      reasons,
+      envPopupFlag,
+      pendingRedirectReturn,
+      userAgent,
+    };
+  }
+
+  if (options?.initUsePopup === false) {
+    reasons.push("AppleID.auth.init called with usePopup: false");
+    if (!envPopupFlag) {
+      reasons.push('NEXT_PUBLIC_APPLE_JS_USE_POPUP is not "true" — redirect is the default runtime mode');
+    } else {
+      reasons.push("usePopup:false despite NEXT_PUBLIC_APPLE_JS_USE_POPUP=true (unexpected)");
+    }
+    return {
+      mode: "redirect",
+      modeLabel: "MODE=redirect",
+      reasons,
+      envPopupFlag,
+      pendingRedirectReturn,
+      userAgent,
+    };
+  }
+
+  if (!envPopupFlag) {
+    reasons.push('NEXT_PUBLIC_APPLE_JS_USE_POPUP is not set to "true"');
+    reasons.push("Redirect mode is the default (popup is opt-in via env flag)");
+    return {
+      mode: "redirect",
+      modeLabel: "MODE=redirect",
+      reasons,
+      envPopupFlag,
+      pendingRedirectReturn,
+      userAgent,
+    };
+  }
+
+  reasons.push('NEXT_PUBLIC_APPLE_JS_USE_POPUP=true');
+  reasons.push("Popup mode selected at sign-in entry");
+  return {
+    mode: "popup",
+    modeLabel: "MODE=popup",
+    reasons,
+    envPopupFlag,
+    pendingRedirectReturn,
+    userAgent,
+  };
+}
+
+export function logAppleJsModeDecision(decision: AppleJsModeDecision, failurePoint: string): void {
+  console.log("[APPLE SDK FORENSIC]", decision.modeLabel);
+  console.log("[APPLE SDK FORENSIC]", "# Mode decision", safeAppleSdkJson({ failurePoint, ...decision }));
+  if (decision.mode === "redirect") {
+    console.log("[APPLE SDK FORENSIC]", "# Popup bypass reason", decision.reasons.join(" → "));
+  }
+  logAppleJs("runtime-mode", { failurePoint, ...decision });
+}
+
 export function logAppleAuthInitPayload(config: AppleAuthInitConfig, failurePoint: string): void {
+  const decision = resolveAppleJsModeDecision({ initUsePopup: config.usePopup });
+  logAppleJsModeDecision(decision, failurePoint);
+
   const payload = {
     clientId: config.clientId,
     redirectURI: config.redirectURI,
@@ -115,29 +256,36 @@ export function logAppleAuthInitPayload(config: AppleAuthInitConfig, failurePoin
     usePopup: config.usePopup,
   };
 
-  console.warn("[APPLE SDK FORENSIC]");
-  console.warn("# AppleID.auth.init payload", payload);
-  console.warn("# Exact Failure Point", failurePoint);
+  console.log("[APPLE SDK FORENSIC]", "# AppleID.auth.init payload", safeAppleSdkJson(payload));
+  console.log("[APPLE SDK FORENSIC]", "# Exact Failure Point", failurePoint);
+  logAppleSdkForensicFull("AppleID.auth.init payload", payload);
 
-  logAppleJs("auth-init-payload", { failurePoint, ...payload });
+  logAppleJs("auth-init-payload", { failurePoint, mode: decision.modeLabel, ...payload });
 }
 
-/** Always-on: full AppleID.auth.signIn() resolved value. */
 export function logAppleAuthSignInResult(
   result: unknown,
   failurePoint: string,
+  mode: AppleJsRuntimeMode,
 ): { tokenIssuancePhase: AppleTokenIssuancePhase } {
   const tokenIssuancePhase = classifyAppleTokenIssuancePhase(result, "signIn-resolve");
+  const fields = extractAppleSignInResultFields(result);
 
-  console.warn("[APPLE SDK FORENSIC]");
-  console.warn("# AppleID.auth.signIn result", result);
-  console.warn("# Token issuance phase", tokenIssuancePhase);
-  console.warn("# Exact Failure Point", failurePoint);
+  console.log("[APPLE SDK FORENSIC]", mode === "popup" ? "MODE=popup" : "MODE=redirect");
+  console.log("[APPLE SDK FORENSIC]", "# AppleID.auth.signIn result", safeAppleSdkJson(fields));
+  console.log("[APPLE SDK FORENSIC]", "# authorization.id_token", fields["authorization.id_token"]);
+  console.log("[APPLE SDK FORENSIC]", "# authorization.code", fields["authorization.code"]);
+  console.log("[APPLE SDK FORENSIC]", "# authorization.state", fields["authorization.state"]);
+  console.log("[APPLE SDK FORENSIC]", "# user", safeAppleSdkJson(fields.user));
+  console.log("[APPLE SDK FORENSIC]", "# Token issuance phase", tokenIssuancePhase);
+  console.log("[APPLE SDK FORENSIC]", "# Exact Failure Point", failurePoint);
+  logAppleSdkForensicFull("AppleID.auth.signIn result", fields);
 
   logAppleJs("auth-signIn-result", {
     failurePoint,
+    mode,
     tokenIssuancePhase,
-    resultJson: safeAppleSdkJson(result),
+    fieldsJson: safeAppleSdkJson(fields),
   });
 
   return { tokenIssuancePhase };
@@ -169,12 +317,8 @@ export function captureAppleSdkError(
     payload.message = error.message;
     payload.stack = error.stack;
     const extra = error as Error & Record<string, unknown>;
-    if (extra.code !== undefined) payload.code = extra.code;
-    if (extra.error !== undefined) payload.error = extra.error;
     for (const key of Object.getOwnPropertyNames(error)) {
-      if (!(key in payload)) {
-        payload[key] = extra[key];
-      }
+      payload[key] = extra[key];
     }
   } else if (isRecord(error)) {
     Object.assign(payload, error);
@@ -191,12 +335,11 @@ export function captureAppleSdkError(
     errorField: payload.error ?? null,
     message,
     payload,
-    payloadJson: safeAppleSdkJson(payload),
+    payloadJson: safeAppleSdkJson(error),
     tokenIssuancePhase,
   };
 }
 
-/** Always-on forensic log for Apple JS SDK runtime errors (not gated by authDebug). */
 export function logAppleSdkForensic(
   failurePoint: string,
   error: unknown,
@@ -208,16 +351,17 @@ export function logAppleSdkForensic(
     ...captureAppleSdkError(error, tokenIssuancePhase),
   };
 
-  console.warn("[APPLE SDK FORENSIC]");
-  console.warn("# Apple JS SDK error object", capture.rawError);
-  console.warn("# Apple JS SDK error code", capture.errorCode ?? "(none)");
-  console.warn("# Apple JS SDK error message", capture.message ?? "(none)");
-  console.warn("# Token issuance phase", capture.tokenIssuancePhase);
-  console.warn("# Apple Error Payload", capture.payloadJson);
-  console.warn("# Exact Failure Point", capture.failurePoint);
+  console.error("[APPLE SDK FORENSIC]");
+  console.error("# Apple JS SDK error object", capture.payloadJson);
+  console.error("# Apple JS SDK error code", capture.errorCode ?? "(none)");
+  console.error("# Apple JS SDK error message", capture.message ?? "(none)");
+  console.error("# Token issuance phase", capture.tokenIssuancePhase);
+  console.error("# Exact Failure Point", capture.failurePoint);
   if (extra && Object.keys(extra).length > 0) {
-    console.warn("# Extra", safeAppleSdkJson(extra));
+    console.error("# Extra", safeAppleSdkJson(extra));
   }
+  console.error("[APPLE SDK FORENSIC FULL]", capture.payloadJson);
+  logAppleSdkForensicFull(failurePoint, { error, extra: extra ?? null, capture });
 
   logAppleJs("sdk-forensic", {
     failurePoint: capture.failurePoint,
@@ -245,31 +389,38 @@ export function logAppleSdkEventForensic(
     isSuccess ? "success-event" : "failure-event",
   );
 
-  const payload = isRecord(detail) ? detail : { type: event.type, detail };
-  const errorCode = resolveAppleSdkErrorCode(payload);
-  const message = resolveAppleSdkErrorMessage(payload, detail);
-
-  console.warn("[APPLE SDK FORENSIC]");
   if (isSuccess) {
-    console.warn("# AppleID.auth.signIn result", detail ?? event);
+    const fields = extractAppleSignInResultFields(detail);
+    console.log("[APPLE SDK FORENSIC]", "# AppleID.auth.signIn result (document event)", safeAppleSdkJson(fields));
+    console.log("[APPLE SDK FORENSIC]", "# authorization.id_token", fields["authorization.id_token"]);
+    console.log("[APPLE SDK FORENSIC]", "# authorization.code", fields["authorization.code"]);
+    console.log("[APPLE SDK FORENSIC]", "# authorization.state", fields["authorization.state"]);
+    console.log("[APPLE SDK FORENSIC]", "# user", safeAppleSdkJson(fields.user));
+    console.log("[APPLE SDK FORENSIC]", "# Token issuance phase", tokenIssuancePhase);
+    console.log("[APPLE SDK FORENSIC]", "# Exact Failure Point", failurePoint);
+    logAppleSdkForensicFull("AppleIDSignInOnSuccess", { eventType: event.type, fields, extra: extra ?? null });
   } else {
-    console.warn("# Apple JS SDK error object", detail ?? event);
-    console.warn("# Apple JS SDK error code", errorCode ?? "(none)");
-    console.warn("# Apple JS SDK error message", message ?? "(none)");
-  }
-  console.warn("# Token issuance phase", tokenIssuancePhase);
-  console.warn("# Apple Error Payload", safeAppleSdkJson(detail ?? { type: event.type }));
-  console.warn("# Exact Failure Point", failurePoint);
-  if (extra && Object.keys(extra).length > 0) {
-    console.warn("# Extra", safeAppleSdkJson(extra));
+    const payload = isRecord(detail) ? detail : { type: event.type, detail };
+    const errorCode = resolveAppleSdkErrorCode(payload);
+    const message = resolveAppleSdkErrorMessage(payload, detail);
+
+    console.error("[APPLE SDK FORENSIC]");
+    console.error("# Apple JS SDK error object", safeAppleSdkJson(detail ?? { type: event.type }));
+    console.error("# Apple JS SDK error code", errorCode ?? "(none)");
+    console.error("# Apple JS SDK error message", message ?? "(none)");
+    console.error("# Token issuance phase", tokenIssuancePhase);
+    console.error("# Exact Failure Point", failurePoint);
+    if (extra && Object.keys(extra).length > 0) {
+      console.error("# Extra", safeAppleSdkJson(extra));
+    }
+    console.error("[APPLE SDK FORENSIC FULL]", safeAppleSdkJson(detail ?? { type: event.type, extra }));
+    logAppleSdkForensicFull(failurePoint, { eventType: event.type, detail, extra: extra ?? null });
   }
 
   logAppleJs("sdk-forensic-event", {
     failurePoint,
     eventType: event.type,
     tokenIssuancePhase,
-    errorCode,
-    message,
     detailJson: safeAppleSdkJson(detail ?? null),
     extra: extra ?? null,
   });
@@ -284,10 +435,9 @@ export function installApplePopupMessageTap(label: string): () => void {
       sourcePresent: Boolean(event.source),
       dataType: typeof event.data,
       data: event.data,
-      dataJson: safeAppleSdkJson(event.data),
     };
 
-    console.warn("[APPLE SDK FORENSIC] # Popup postMessage", payload);
+    console.log("[APPLE SDK FORENSIC]", "# Popup postMessage", safeAppleSdkJson(payload));
     logAppleJs("popup-postmessage", payload);
   };
 
@@ -297,26 +447,36 @@ export function installApplePopupMessageTap(label: string): () => void {
 
 export async function invokeAppleAuthSignIn(
   failurePointPrefix: string,
+  mode: AppleJsRuntimeMode,
 ): Promise<{ authorization: { id_token?: string; code?: string; state?: string }; user?: unknown }> {
   const failurePoint = `${failurePointPrefix}:AppleID.auth.signIn()`;
-  logAppleJs("signIn-call-start", { failurePointPrefix, failurePoint });
+  const modeLabel = mode === "popup" ? "MODE=popup" : "MODE=redirect";
+
+  console.log("[APPLE SDK FORENSIC]", modeLabel);
+  console.log("[APPLE SDK FORENSIC]", "# signIn() call", safeAppleSdkJson({ failurePointPrefix, failurePoint, mode }));
+
+  logAppleJs("signIn-call-start", { failurePointPrefix, failurePoint, mode, modeLabel });
+
+  const signInPromise = window.AppleID!.auth.signIn();
+
+  signInPromise.catch((error) => {
+    logAppleSdkForensic(`${failurePoint}:promise-reject-tap`, error, { mode, modeLabel }, "before_token_issuance");
+  });
 
   try {
-    const result = await window.AppleID!.auth.signIn();
-    const { tokenIssuancePhase } = logAppleAuthSignInResult(result, failurePoint);
+    const result = await signInPromise;
+    const { tokenIssuancePhase } = logAppleAuthSignInResult(result, failurePoint, mode);
     logAppleJs("signIn-call-resolve", {
       failurePointPrefix,
       failurePoint,
+      mode,
+      modeLabel,
       tokenIssuancePhase,
-      hasAuthorization: Boolean(result?.authorization),
-      authorizationKeys: result?.authorization ? Object.keys(result.authorization) : [],
-      hasIdToken: hasAppleAuthorizationToken(result),
-      hasUser: Boolean(result?.user),
-      resultJson: safeAppleSdkJson(result),
+      fields: extractAppleSignInResultFields(result),
     });
     return result;
   } catch (error) {
-    logAppleSdkForensic(`${failurePoint}:promise-reject`, error, undefined, "before_token_issuance");
+    logAppleSdkForensic(`${failurePoint}:promise-reject`, error, { mode, modeLabel }, "before_token_issuance");
     throw error;
   }
 }

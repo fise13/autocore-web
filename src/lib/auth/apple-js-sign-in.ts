@@ -17,8 +17,10 @@ import {
   installApplePopupMessageTap,
   invokeAppleAuthInit,
   invokeAppleAuthSignIn,
+  logAppleJsModeDecision,
   logAppleSdkEventForensic,
   logAppleSdkForensic,
+  resolveAppleJsModeDecision,
   safeAppleSdkJson,
 } from "@/lib/auth/apple-js-forensic";
 
@@ -339,10 +341,15 @@ function waitForAppleAuthEvent(timeoutMs: number): Promise<Omit<AppleJsSignInRes
       const error = new Error(detailError || "Apple Sign-In failure event without error detail");
       if (isAppleUserCancellationError(error) || isAppleUserCancellationError(detail)) {
         logAppleJs("auth-cancelled", { reason: error.message, detailJson: safeAppleSdkJson(detail) });
+        logAppleSdkForensic("document:AppleIDSignInOnFailure:cancelled", detail ?? error, {
+          wrappedMessage: error.message,
+        });
         reject(asAppleUserCancelledError(error));
         return;
       }
-      logAppleSdkForensic("document:AppleIDSignInOnFailure:reject", error, { detail });
+      logAppleSdkForensic("document:AppleIDSignInOnFailure:reject", detail ?? error, {
+        wrappedMessage: error.message,
+      });
       reject(error);
     };
 
@@ -390,6 +397,7 @@ async function signInWithAppleJsPopup(session: PreparedAppleSession): Promise<Ap
   storeAppleNonceSession(session.rawNonce, session.hashedNonce);
   initAppleAuth(session, true);
 
+  logAppleJsModeDecision(resolveAppleJsModeDecision({ initUsePopup: true }), "signInWithAppleJsPopup");
   logAppleJs("popup-start");
   const removeMessageTap = installApplePopupMessageTap("signInWithAppleJsPopup");
 
@@ -398,7 +406,7 @@ async function signInWithAppleJsPopup(session: PreparedAppleSession): Promise<Ap
 
     let result: Omit<AppleJsSignInResult, "rawNonce">;
     try {
-      const signInPromise = invokeAppleAuthSignIn("signInWithAppleJsPopup") as Promise<
+      const signInPromise = invokeAppleAuthSignIn("signInWithAppleJsPopup", "popup") as Promise<
         Omit<AppleJsSignInResult, "rawNonce">
       >;
       result = await Promise.race([signInPromise, eventPromise]);
@@ -424,11 +432,12 @@ async function signInWithAppleJsRedirect(session: PreparedAppleSession): Promise
   }
 
   initAppleAuth(session, false);
+  logAppleJsModeDecision(resolveAppleJsModeDecision({ initUsePopup: false }), "signInWithAppleJsRedirect");
   logAppleJs("redirect-start");
 
   const removeMessageTap = installApplePopupMessageTap("signInWithAppleJsRedirect");
   try {
-    await invokeAppleAuthSignIn("signInWithAppleJsRedirect");
+    await invokeAppleAuthSignIn("signInWithAppleJsRedirect", "redirect");
   } finally {
     removeMessageTap();
   }
@@ -451,9 +460,14 @@ export async function signInWithAppleJs(): Promise<AppleJsSignInResult> {
   }
 
   const usePopup = isAppleJsPopupEnabled();
+  const entryModeDecision = resolveAppleJsModeDecision();
+  logAppleJsModeDecision(entryModeDecision, "signInWithAppleJs:entry");
+
   logAppleJs("sign-in-start", {
     clientId: APPLE_WEB_CLIENT_ID,
     usePopup,
+    mode: entryModeDecision.modeLabel,
+    modeReasons: entryModeDecision.reasons,
     redirectURI: getAppleWebRedirectUri(),
     hasPreparedSession: Boolean(preparedSession),
     checklist: getAppleJsDeveloperChecklist(),
@@ -494,6 +508,10 @@ export async function signInWithAppleJs(): Promise<AppleJsSignInResult> {
       }
 
       logAppleJs("popup-blocked-fallback-to-redirect", { message: "popup_blocked_by_browser" });
+      logAppleJsModeDecision(
+        resolveAppleJsModeDecision({ popupBlockedFallback: true }),
+        "signInWithAppleJs:popup-blocked-fallback",
+      );
       restorePreparedSession(session);
       await signInWithAppleJsRedirect(session);
     }
@@ -525,6 +543,11 @@ export function clearStaleAppleAuthSession() {
 export async function bootstrapAppleJsReturn(): Promise<AppleJsSignInResult | null> {
   if (typeof window === "undefined") return null;
   if (!hasPendingAppleJsRedirect()) return null;
+
+  logAppleJsModeDecision(
+    resolveAppleJsModeDecision({ forceRedirectReturn: true }),
+    "bootstrapAppleJsReturn:entry",
+  );
 
   const rawNonce = readAppleRawNonce();
   if (!rawNonce) {
