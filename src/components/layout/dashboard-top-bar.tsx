@@ -138,6 +138,7 @@ export function DashboardTopBar() {
   const workspace = isWorkspaceRoute(pathname);
   const isSpecificRoute = pathname.startsWith("/specific/");
   const isMotorRoute = pathname === "/motors" || pathname === "/sold";
+  const isAllMotorsRoute = pathname === "/motors";
   const isWarehouseRoute = pathname === "/warehouse";
   const isSoldRoute = pathname === "/sold";
   const isMissionControlRoute = pathname === "/";
@@ -253,7 +254,7 @@ export function DashboardTopBar() {
           slotKey={centerKey}
           className="flex w-full items-center justify-center gap-3 px-1"
         >
-          <DashboardImportProgress variant="compact" />
+          <DashboardImportProgress variant="compact" showMotors={isAllMotorsRoute} />
 
           {showAvailabilityFilter ? (
             <div className="inline-flex rounded-lg border bg-muted/40 p-0.5">
@@ -318,9 +319,9 @@ export function DashboardTopBar() {
                   <Barcode className="size-4" />
                 </Button>
               ) : null}
-              {isMotorRoute ? (
+              {isAllMotorsRoute ? (
                 <MotorImportTriggerButton size="sm" showLabel={false} variant="ghost" />
-              ) : (
+              ) : isWarehouseRoute ? (
                 <Button
                   variant="ghost"
                   size="icon-sm"
@@ -330,7 +331,7 @@ export function DashboardTopBar() {
                 >
                   <Download className="size-4" />
                 </Button>
-              )}
+              ) : null}
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -356,10 +357,6 @@ export function DashboardTopBar() {
                 ) : null}
               </Button>
             </>
-          ) : null}
-
-          {!workspace && canViewMotors && canEdit && isMissionControlRoute ? (
-            <MotorImportTriggerButton size="sm" />
           ) : null}
 
           <Link

@@ -1,7 +1,7 @@
 "use client";
 
 import { LayoutGroup, motion } from "framer-motion";
-import { Moon, Sun } from "lucide-react";
+import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
@@ -10,12 +10,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
 
-type ThemeChoice = "light" | "dark";
+type ThemeChoice = "light" | "dark" | "system";
 
 const THEME_OPTIONS: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
+  { value: "system", label: userCopy.settings.themeSystem, icon: Monitor },
   { value: "light", label: userCopy.settings.themeLight, icon: Sun },
   { value: "dark", label: userCopy.settings.themeDark, icon: Moon },
 ];
+
+function resolveActiveTheme(theme: string | undefined, resolvedTheme: string | undefined): ThemeChoice {
+  if (theme === "system") return "system";
+  if (theme === "dark" || resolvedTheme === "dark") return "dark";
+  return "light";
+}
 
 export function ThemeSettingsCard() {
   const { theme, setTheme, resolvedTheme } = useTheme();
@@ -23,8 +30,9 @@ export function ThemeSettingsCard() {
 
   useEffect(() => setMounted(true), []);
 
-  const activeTheme: ThemeChoice =
-    (mounted ? (theme === "dark" || resolvedTheme === "dark" ? "dark" : "light") : "light") as ThemeChoice;
+  const activeTheme: ThemeChoice = mounted
+    ? resolveActiveTheme(theme, resolvedTheme)
+    : "system";
 
   return (
     <Card>

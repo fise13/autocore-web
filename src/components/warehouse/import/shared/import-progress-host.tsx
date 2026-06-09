@@ -233,27 +233,34 @@ function ImportReviewIsland({
 export function DashboardImportProgress({
   variant = "compact",
   className,
+  showMotors = true,
 }: {
   variant?: "compact" | "panel";
   className?: string;
+  /** When false, motor Magic Import progress/review is hidden (e.g. outside «Все моторы»). */
+  showMotors?: boolean;
 }) {
   const active = useActiveImportProgress();
   const { motorImportReviewPending } = useWorkspace();
   const handleIslandAction = useMotorImportIslandAction();
 
+  const showMotorProgress = showMotors && active?.kind === "motors";
+  const showWarehouseProgress = active?.kind === "warehouse";
+  const showMotorReview = showMotors && motorImportReviewPending;
+
   return (
     <AnimatePresence mode="wait">
-      {active ? (
+      {showMotorProgress || showWarehouseProgress ? (
         <ImportProgressCore
           key="import-progress"
-          progress={active.progress}
-          onCancel={active.onCancel}
+          progress={active!.progress}
+          onCancel={active!.onCancel}
           variant={variant}
-          kind={active.kind}
+          kind={active!.kind}
           className={className}
           onIslandClick={handleIslandAction}
         />
-      ) : motorImportReviewPending ? (
+      ) : showMotorReview ? (
         <ImportReviewIsland
           key="import-review"
           onClick={handleIslandAction}

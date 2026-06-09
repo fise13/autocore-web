@@ -12,6 +12,7 @@ import { logAuthDebug } from "@/lib/auth/auth-debug";
 import { formatAppleAuthErrorForUi, logAppleAuthError } from "@/lib/auth/apple-auth-log";
 import { isAppleUserCancellationError, normalizeAppleJsError } from "@/lib/auth/apple-js-sign-in";
 import { prepareSyncAuth } from "@/lib/auth/prepare-sync-auth";
+import { navigateToAppAfterAuth } from "@/lib/motion/auth-session-transition";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
@@ -53,7 +54,7 @@ export function MarketingAppleSignIn({
 
       await prepareSyncAuth(user.uid, { force: true });
       await refreshProfile();
-      router.push("/");
+      await navigateToAppAfterAuth(router, "push");
     } catch (cause) {
       logAuthDebug("marketing-apple", "sign-in error", cause);
       if (isAppleUserCancellationError(cause)) {

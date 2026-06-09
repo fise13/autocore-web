@@ -12,6 +12,7 @@ import {
 } from "firebase/auth";
 
 import { logAppleAuthError, logAppleAuthStep } from "@/lib/auth/apple-auth-log";
+import { buildInitialsAvatarDataUrl } from "@/lib/auth/apple-profile-avatar";
 import { markAppleRedirectPending } from "@/lib/auth/apple-redirect-state";
 import { createAppleOAuthProvider } from "@/lib/auth/apple-provider";
 import { logAuthDebug } from "@/lib/auth/auth-debug";
@@ -90,9 +91,22 @@ export async function applyAppleSignInResult(result: UserCredential): Promise<Us
   });
 
   const displayName = readAppleDisplayName(result);
+  const profileUpdate: { displayName?: string; photoURL?: string } = {};
+
   if (displayName && !result.user.displayName?.trim()) {
-    await updateProfile(result.user, { displayName });
-    logAppleAuthStep("display-name-saved", { displayName });
+    profileUpdate.displayName = displayName;
+  }
+
+  if (!result.user.photoURL?.trim()) {
+    profileUpdate.photoURL = buildInitialsAvatarDataUrl(
+      displayName ?? result.user.displayName,
+      result.user.email ?? "",
+    );
+  }
+
+  if (Object.keys(profileUpdate).length > 0) {
+    await updateProfile(result.user, profileUpdate);
+    logAppleAuthStep("profile-saved", profileUpdate);
   }
 
   return result;

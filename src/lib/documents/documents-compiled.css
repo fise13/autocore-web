@@ -4935,11 +4935,6 @@
       text-underline-offset: 3px;
     }
   }
-  .\[\&_button\]\:w-full {
-    & button {
-      width: 100%;
-    }
-  }
   .\[\&_p\:not\(\:last-child\)\]\:mb-4 {
     & p:not(:last-child) {
       margin-bottom: calc(var(--spacing) * 4);

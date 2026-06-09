@@ -7,7 +7,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AppLogo } from "@/components/brand/app-logo";
 import { landingPageContent } from "@/components/marketing/content/landing-page-content";
-import { MarketingAppleSignIn } from "@/components/marketing/site/marketing-apple-sign-in";
 import { ProductNavMenu } from "@/components/marketing/site/product-nav-menu";
 import {
   isMarketingNavActive,
@@ -148,7 +147,6 @@ export function SiteNav() {
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
-          <MarketingAppleSignIn showLabel={false} size="icon" variant="outline" className="shrink-0" />
           <Button variant="ghost" size="sm" render={<Link href={appLoginUrl()} />}>
             {copy.signIn}
           </Button>
@@ -184,31 +182,8 @@ export function SiteNav() {
                 />
               </button>
               {mobileProductOpen ? (
-                <div className="mb-3 ml-1 space-y-2 border-l border-border pl-3">
-                  <Link
-                    href={productGroup.items[0].href}
-                    className="block rounded-lg bg-muted/50 px-3 py-2.5"
-                    onClick={closeAll}
-                  >
-                    <span className="block text-sm font-medium">{productGroup.items[0].label}</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">{productGroup.items[0].description}</span>
-                  </Link>
-                  <ul className="space-y-0.5">
-                    {productGroup.items.slice(1).map((item) => (
-                      <li key={item.href}>
-                        <Link
-                          href={item.href}
-                          className="block rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-                          onClick={closeAll}
-                        >
-                          <span className="font-medium text-foreground/90">{item.label}</span>
-                          {item.description ? (
-                            <span className="mt-0.5 block text-xs opacity-80">{item.description}</span>
-                          ) : null}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
+                <div className="mb-2 ml-1 border-l border-border pl-3">
+                  <ProductNavMenu onNavigate={closeAll} className="shadow-none border-0 bg-transparent w-full" />
                 </div>
               ) : null}
             </li>
@@ -231,7 +206,6 @@ export function SiteNav() {
             ))}
 
             <li className="space-y-2 pt-3">
-              <MarketingAppleSignIn className="w-full [&_button]:w-full" onNavigate={closeAll} />
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" render={<Link href={appLoginUrl()} onClick={closeAll} />}>
                   {copy.signIn}

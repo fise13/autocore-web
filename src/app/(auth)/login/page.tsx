@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { AuthDebugPanel } from "@/components/auth/auth-debug-panel";
 import { LoginScreen } from "@/components/auth/login-screen";
@@ -20,6 +20,7 @@ import { isFirebaseHandlerAppleAuthMode } from "@/lib/auth/apple-auth-mode";
 import { bootstrapAppleRedirect } from "@/lib/auth/apple-redirect";
 import { prepareAppleSignInSession, isAppleJsReturnLanding } from "@/lib/auth/apple-js-sign-in";
 import { completeAppleJsReturnIfNeeded } from "@/lib/auth/sign-in-with-apple-credential";
+import { navigateToAppAfterAuth } from "@/lib/motion/auth-session-transition";
 import { userCopy } from "@/lib/user-copy";
 
 export default function LoginPage() {
@@ -30,6 +31,10 @@ export default function LoginPage() {
   const [appleReturnPending, setAppleReturnPending] = useState(
     () => typeof window !== "undefined" && isAppleJsReturnLanding(),
   );
+
+  const goToApp = useCallback(() => {
+    void navigateToAppAfterAuth(router, "replace");
+  }, [router]);
 
   useEffect(() => {
     logAuthDebug("login-page", "mounted");
@@ -63,7 +68,7 @@ export default function LoginPage() {
         if (!cancelled && auth.currentUser) {
           logAuthDebug("login-page", "apple-js redirect complete → /");
           setAppleReturnPending(false);
-          router.replace("/");
+          await navigateToAppAfterAuth(router, "replace");
         }
       } catch (error) {
         if (!cancelled) {
@@ -132,7 +137,7 @@ export default function LoginPage() {
         firebaseUser: firebaseUser?.uid ?? null,
         currentUser: currentUser?.uid ?? null,
       });
-      router.replace("/");
+      void navigateToAppAfterAuth(router, "replace");
     }
   }, [authReady, currentUser?.uid, firebaseUser?.uid, isAuthed, isFirebaseReady, isLoading, router]);
 
@@ -184,7 +189,7 @@ export default function LoginPage() {
 
   return (
     <div>
-      <LoginScreen bootstrapError={bootstrapError} />
+      <LoginScreen bootstrapError={bootstrapError} onAuthenticated={goToApp} />
       {showAuthDebug ? <AuthDebugPanel snapshot={debugSnapshot} /> : null}
     </div>
   );

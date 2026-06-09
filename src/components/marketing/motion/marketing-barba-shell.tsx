@@ -27,7 +27,7 @@ export function MarketingBarbaShell({ children }: MarketingBarbaShellProps) {
     <div
       ref={wrapperRef}
       data-barba="wrapper"
-      className={cn("site-theme dark flex min-h-screen flex-col bg-background text-foreground")}
+      className={cn("site-theme flex min-h-screen flex-col bg-background text-foreground")}
     >
       <SiteNav />
       <main

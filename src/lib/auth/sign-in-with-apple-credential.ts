@@ -6,6 +6,7 @@ import {
   updateProfile,
 } from "firebase/auth";
 
+import { buildInitialsAvatarDataUrl } from "@/lib/auth/apple-profile-avatar";
 import {
   logAppleAuthError,
   logAppleAuthStep,
@@ -31,18 +32,34 @@ function buildDisplayName(user?: AppleJsUser): string | null {
   return displayName || null;
 }
 
-async function applyAppleDisplayName(user: User, appleUser?: AppleJsUser) {
+async function applyAppleProfile(user: User, appleUser?: AppleJsUser) {
   const displayName = buildDisplayName(appleUser);
-  if (!displayName || user.displayName?.trim()) {
-    logFirebaseSignInResult("display-name-skipped", {
-      reason: displayName ? "already-set" : "missing-from-apple",
+  const email = user.email ?? appleUser?.email ?? "";
+  const photoURL = user.photoURL?.trim() ? user.photoURL : buildInitialsAvatarDataUrl(displayName ?? user.displayName, email);
+
+  const profileUpdate: { displayName?: string; photoURL?: string } = {};
+
+  if (displayName && !user.displayName?.trim()) {
+    profileUpdate.displayName = displayName;
+  }
+
+  if (!user.photoURL?.trim()) {
+    profileUpdate.photoURL = photoURL;
+  }
+
+  if (Object.keys(profileUpdate).length === 0) {
+    logFirebaseSignInResult("profile-skipped", {
       firebaseDisplayName: user.displayName,
+      hasPhoto: Boolean(user.photoURL),
     });
     return;
   }
 
-  await updateProfile(user, { displayName });
-  logFirebaseSignInResult("display-name-applied", { displayName });
+  await updateProfile(user, profileUpdate);
+  logFirebaseSignInResult("profile-applied", {
+    displayName: profileUpdate.displayName ?? user.displayName,
+    photoApplied: Boolean(profileUpdate.photoURL),
+  });
 }
 
 export async function completeAppleCredentialSignIn(
@@ -91,7 +108,7 @@ export async function completeAppleCredentialSignIn(
       displayName: result.user.displayName,
       providerIds: result.user.providerData.map((p) => p.providerId),
     });
-    await applyAppleDisplayName(result.user, appleUser);
+    await applyAppleProfile(result.user, appleUser);
     resetAppleSignInSession();
     return result;
   } catch (error) {

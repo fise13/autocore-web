@@ -47,6 +47,7 @@ export function MarketingPricingCard({
       className={cn(
         "marketing-pricing-card landing-card",
         plan.highlighted && "marketing-pricing-card-highlighted",
+        isCustom && "marketing-pricing-card-enterprise",
       )}
     >
       <AnimatePresence mode="popLayout">
@@ -80,7 +81,9 @@ export function MarketingPricingCard({
 
       <div className="marketing-pricing-card-price-row">
         {isCustom ? (
-          <span className="marketing-pricing-card-price">{plan.customPriceLabel}</span>
+          <span className="marketing-pricing-card-price marketing-pricing-card-price-custom">
+            {plan.customPriceLabel}
+          </span>
         ) : isFree ? (
           <span className="marketing-pricing-card-price">0 ₽</span>
         ) : (
@@ -111,10 +114,16 @@ export function MarketingPricingCard({
       </ul>
 
       <Button
-        className="mt-auto w-full"
+        className={cn("mt-auto w-full", isCustom && "marketing-pricing-card-cta-enterprise")}
         variant={plan.highlighted ? "default" : "outline"}
         size="lg"
-        render={<Link href={href} />}
+        render={
+          isCustom ? (
+            <a href={href} />
+          ) : (
+            <Link href={href} />
+          )
+        }
       >
         {plan.cta}
       </Button>

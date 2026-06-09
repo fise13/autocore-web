@@ -10,6 +10,7 @@ import { formatAppleAuthErrorForUi, logAppleAuthError } from "@/lib/auth/apple-a
 import { bootstrapAppleRedirect } from "@/lib/auth/apple-redirect";
 import { prepareAppleSignInSession } from "@/lib/auth/apple-js-sign-in";
 import { prepareSyncAuth } from "@/lib/auth/prepare-sync-auth";
+import { navigateToAppAfterAuth } from "@/lib/motion/auth-session-transition";
 
 /** Completes Firebase Apple redirect OAuth on marketing pages (firebase_handler mode only). */
 export function useMarketingAuthBootstrap() {
@@ -53,10 +54,10 @@ export function useMarketingAuthBootstrap() {
       try {
         await prepareSyncAuth(user.uid, { force: true });
         await refreshProfile();
-        router.replace("/");
+        await navigateToAppAfterAuth(router, "replace");
       } catch (syncError) {
         logAppleAuthError("marketing-auth-bootstrap:post-sign-in", syncError);
-        router.replace("/");
+        await navigateToAppAfterAuth(router, "replace");
       }
     })();
 

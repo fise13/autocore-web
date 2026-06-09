@@ -1,7 +1,6 @@
 "use client";
 
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
-import { useWorkspace } from "@/components/layout/workspace-context";
 import { useAuth } from "@/components/providers/auth-provider";
 import {
   Card,
@@ -18,26 +17,18 @@ import Link from "next/link";
 
 import { deepActionRoutes } from "@/lib/navigation/deep-actions";
 
-type QuickAction =
-  | {
-      kind: "link";
-      href: string;
-      label: string;
-      description: string;
-      icon: typeof Plus;
-      permission: Parameters<typeof can>[1];
-      shortcut?: string;
-      proOnly?: boolean;
-      requiresMotors?: boolean;
-      requiresWarehouse?: boolean;
-    }
-  | {
-      kind: "motor-import";
-      label: string;
-      description: string;
-      icon: typeof Upload;
-      permission: Parameters<typeof can>[1];
-    };
+type QuickAction = {
+  kind: "link";
+  href: string;
+  label: string;
+  description: string;
+  icon: typeof Plus;
+  permission: Parameters<typeof can>[1];
+  shortcut?: string;
+  proOnly?: boolean;
+  requiresMotors?: boolean;
+  requiresWarehouse?: boolean;
+};
 
 const actions: QuickAction[] = [
   {
@@ -88,11 +79,13 @@ const actions: QuickAction[] = [
     proOnly: true,
   },
   {
-    kind: "motor-import",
+    kind: "link",
+    href: "/motors",
     label: "Импорт моторов",
-    description: "Загрузка из Excel.",
+    description: "Magic Import на странице «Все моторы».",
     icon: Upload,
     permission: "import_data",
+    requiresMotors: true,
   },
   {
     kind: "link",
@@ -112,15 +105,13 @@ export function QuickActionsPanel({
   className?: string;
 }) {
   const { profile } = useAuth();
-  const { isPro, requirePro } = useBillingGate();
-  const { triggerMotorImportPicker } = useWorkspace();
+  const { isPro } = useBillingGate();
 
   const visible = actions.filter((action) => {
     if (!can(profile, action.permission)) return false;
-    if (action.kind === "link" && action.proOnly && !isPro) return false;
-    if (action.kind === "link" && action.requiresMotors && !canAccessMotorsArea(profile)) return false;
-    if (action.kind === "link" && action.requiresWarehouse && !can(profile, "inventory_view")) return false;
-    if (action.kind === "motor-import" && !canAccessMotorsArea(profile)) return false;
+    if (action.proOnly && !isPro) return false;
+    if (action.requiresMotors && !canAccessMotorsArea(profile)) return false;
+    if (action.requiresWarehouse && !can(profile, "inventory_view")) return false;
     return true;
   });
   if (visible.length === 0) return null;
@@ -135,19 +126,9 @@ export function QuickActionsPanel({
         <div className="space-y-1 p-2">
           {visible.map((action) => (
             <div key={action.label}>
-              {action.kind === "motor-import" ? (
-                <button
-                  type="button"
-                  className="mc-action-tile group w-full py-2 text-left text-sm"
-                  onClick={() => requirePro("import", () => triggerMotorImportPicker())}
-                >
-                  <ActionRowContent action={action} />
-                </button>
-              ) : (
-                <Link href={action.href} className="mc-action-tile group py-2 text-sm">
-                  <ActionRowContent action={action} shortcut={action.shortcut} />
-                </Link>
-              )}
+              <Link href={action.href} className="mc-action-tile group py-2 text-sm">
+                <ActionRowContent action={action} shortcut={action.shortcut} />
+              </Link>
             </div>
           ))}
         </div>
@@ -165,19 +146,9 @@ export function QuickActionsPanel({
         <div className="space-y-1">
           {visible.map((action) => (
             <div key={action.label}>
-              {action.kind === "motor-import" ? (
-                <button
-                  type="button"
-                  className="mc-action-tile group w-full py-2 text-left text-sm"
-                  onClick={() => requirePro("import", () => triggerMotorImportPicker())}
-                >
-                  <ActionRowContent action={action} />
-                </button>
-              ) : (
-                <Link href={action.href} className="mc-action-tile group py-2 text-sm">
-                  <ActionRowContent action={action} shortcut={action.shortcut} />
-                </Link>
-              )}
+              <Link href={action.href} className="mc-action-tile group py-2 text-sm">
+                <ActionRowContent action={action} shortcut={action.shortcut} />
+              </Link>
             </div>
           ))}
         </div>

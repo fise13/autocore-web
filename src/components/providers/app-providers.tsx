@@ -14,7 +14,7 @@ type AppProvidersProps = {
 
 export function AppProviders({ children }: AppProvidersProps) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="autocore-theme">
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="autocore-theme">
       <QueryProvider>
         <AuthProvider>
           <PageTransitionProvider>

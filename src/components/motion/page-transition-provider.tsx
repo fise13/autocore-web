@@ -13,6 +13,10 @@ import {
 
 import { AppLogo } from "@/components/brand/app-logo";
 import {
+  peekAuthSessionTransition,
+  playAuthSessionEnter,
+} from "@/lib/motion/auth-session-transition";
+import {
   CrossRouteDirection,
   markCrossRouteTransition,
   mountCrossRouteOverlay,
@@ -96,9 +100,15 @@ export function PageTransitionProvider({ children }: PageTransitionProviderProps
 
   useEffect(() => {
     const direction = peekCrossRouteTransition();
-    if (!direction) return;
+    if (direction) {
+      void playCrossRouteEnter(direction);
+      return;
+    }
 
-    void playCrossRouteEnter(direction);
+    const authSession = peekAuthSessionTransition();
+    if (authSession) {
+      void playAuthSessionEnter(authSession);
+    }
   }, [pathname]);
 
   const value: PageTransitionContextValue = {

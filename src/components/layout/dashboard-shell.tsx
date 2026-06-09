@@ -174,6 +174,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
       </Suspense>
       <div
         ref={barbaWrapperRef}
+        data-dashboard-shell
         data-barba="wrapper"
         className={cn(
           "flex h-screen overflow-hidden bg-background",
@@ -181,6 +182,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
         )}
       >
         <div
+          data-app-reveal
           className={cn(
             "relative z-40 my-2 hidden h-[calc(100vh-1rem)] shrink-0 md:block",
             sidebarOnRight ? "mr-2" : "ml-2",
@@ -218,7 +220,9 @@ function DashboardShellInner({ children }: DashboardShellProps) {
 
         <div className={cn("relative flex min-w-0 flex-1 flex-col", isEditing && "overflow-hidden")}>
           <SidebarEditBlur />
-          <DashboardTopBar />
+          <div data-app-reveal>
+            <DashboardTopBar />
+          </div>
 
           <main
             ref={barbaContainerRef}

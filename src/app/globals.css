@@ -878,9 +878,14 @@
   will-change: opacity, transform, filter;
 }
 
+[data-dashboard-shell] {
+  will-change: opacity, transform, filter;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-transition-panel,
-  [data-login-screen] {
+  [data-login-screen],
+  [data-dashboard-shell] {
     will-change: auto;
   }
 }

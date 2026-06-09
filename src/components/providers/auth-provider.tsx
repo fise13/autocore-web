@@ -43,6 +43,11 @@ import { markSyncAuthPrepared, prepareSyncAuth, resetSyncAuthCache } from "@/lib
 import { mapAuthError } from "@/lib/user-copy";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
 import {
+  markAuthSessionTransition,
+  playAuthSessionLeave,
+} from "@/lib/motion/auth-session-transition";
+import { prefersReducedMotion } from "@/lib/motion/cross-route-transition";
+import {
   describeFirebaseUser,
   logAuthDebug,
 } from "@/lib/auth/auth-debug";
@@ -168,6 +173,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await setDoc(userRef, {
         name: user.displayName ?? "",
         email: user.email ?? "",
+        ...(user.photoURL?.trim() ? { photoURL: user.photoURL.trim() } : {}),
         role: defaultRole,
         companyId: "",
         permissions: [],
@@ -181,10 +187,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const existingData = existing.data() as UserDoc;
     const missingEmail = !existingData.email && user.email;
     const missingName = !existingData.name && user.displayName;
-    if (missingEmail || missingName) {
+    const missingPhoto = !existingData.photoURL?.trim() && user.photoURL?.trim();
+    if (missingEmail || missingName || missingPhoto) {
       await updateDoc(userRef, {
         ...(missingEmail ? { email: user.email } : {}),
         ...(missingName ? { name: user.displayName } : {}),
+        ...(missingPhoto ? { photoURL: user.photoURL!.trim() } : {}),
       });
     }
   }, []);
@@ -418,8 +426,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (!isFirebaseReady) return;
         const auth = getFirebaseAuth();
         const uid = auth.currentUser?.uid;
+
+        if (!prefersReducedMotion()) {
+          try {
+            await playAuthSessionLeave("sign-out");
+          } catch {
+            // Overlay may not be mounted.
+          }
+        }
+
         await signOut(auth);
         resetSyncAuthCache(uid);
+        markAuthSessionTransition("sign-out");
         router.push("/login");
       },
       async createCompany(name) {

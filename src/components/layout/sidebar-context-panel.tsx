@@ -116,28 +116,32 @@ function SidebarContextContent({ mode }: SidebarContextPanelProps) {
             Все моторы
           </Link>
         ) : null}
-        <ActionButton
-          icon={Download}
-          label={userCopy.motors.importExcel}
-          disabled={!canEditInventory || motorExcelIo.busy === "import"}
-          onClick={() => {
-            requirePro("import", () => {
-              if (!triggerMotorImportPicker()) {
-                router.push(deepActionRoutes.import());
-              }
-            });
-          }}
-        />
-        <ActionButton
-          icon={Upload}
-          label="Экспорт Excel"
-          disabled={!canEditInventory || !motorExcelIo.canExport || motorExcelIo.busy === "export"}
-          onClick={() => {
-            requirePro("export", () => void triggerMotorExport().catch(() => undefined));
-          }}
-        />
-        {!isPro ? (
-          <p className="px-3 text-[11px] text-muted-foreground">Импорт и экспорт — на тарифе Pro</p>
+        {mode === "motors" ? (
+          <>
+            <ActionButton
+              icon={Download}
+              label={userCopy.motors.importExcel}
+              disabled={!canEditInventory || motorExcelIo.busy === "import"}
+              onClick={() => {
+                requirePro("import", () => {
+                  if (!triggerMotorImportPicker()) {
+                    router.push(deepActionRoutes.import());
+                  }
+                });
+              }}
+            />
+            <ActionButton
+              icon={Upload}
+              label="Экспорт Excel"
+              disabled={!canEditInventory || !motorExcelIo.canExport || motorExcelIo.busy === "export"}
+              onClick={() => {
+                requirePro("export", () => void triggerMotorExport().catch(() => undefined));
+              }}
+            />
+            {!isPro ? (
+              <p className="px-3 text-[11px] text-muted-foreground">Импорт и экспорт — на тарифе Pro</p>
+            ) : null}
+          </>
         ) : null}
         <ActionButton
           icon={Receipt}

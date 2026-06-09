@@ -9,7 +9,6 @@ import { McRecentOperations } from "@/components/mission-control/dashboard/mc-re
 import { McRevenueChart } from "@/components/mission-control/dashboard/mc-revenue-chart";
 import { McWarehouseHealth } from "@/components/mission-control/dashboard/mc-warehouse-health";
 import { QuickActionsPanel } from "@/components/mission-control/quick-actions/quick-actions-panel";
-import { DashboardImportProgress } from "@/components/warehouse/import/shared/import-progress-host";
 import { useMissionControlData } from "@/hooks/use-mission-control-data";
 import { buildDashboardStats } from "@/lib/mission-control/compute-dashboard-charts";
 
@@ -38,8 +37,6 @@ export function McDashboardGrid(props: McDashboardGridProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <DashboardImportProgress variant="compact" />
-
       {/* Efferd layout: 4 KPI → 2 charts → table → side panels */}
       <div className="mc-dashboard-grid grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <McDashboardStats stats={stats} isLoading={isLoading} />

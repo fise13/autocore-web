@@ -113,6 +113,10 @@ function requireOverlay(): OverlayElements {
   return overlayElements;
 }
 
+export function getCrossRouteOverlay(): OverlayElements | null {
+  return overlayElements;
+}
+
 export async function playCrossRouteLeave(
   direction: CrossRouteDirection,
   leaveTarget?: HTMLElement | null,
@@ -171,13 +175,25 @@ export async function playCrossRouteLeave(
     logo,
     {
       opacity: 1,
-      scale: 1,
+      scale: direction === "to-auth" ? 1.04 : 1,
       y: 0,
-      duration: 0.38,
-      ease: "power3.out",
+      duration: direction === "to-auth" ? 0.44 : 0.38,
+      ease: direction === "to-auth" ? "back.out(1.4)" : "power3.out",
     },
     0.24,
   );
+
+  if (direction === "to-auth") {
+    timeline.to(
+      logo,
+      {
+        scale: 1,
+        duration: 0.24,
+        ease: "power2.out",
+      },
+      0.58,
+    );
+  }
 
   await timeline;
 }
