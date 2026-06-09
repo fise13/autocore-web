@@ -1,5 +1,16 @@
 import { logAppleJs } from "@/lib/auth/apple-auth-log";
 
+export type AppleAuthInitConfig = {
+  clientId: string;
+  redirectURI: string;
+  scope: string;
+  state: string;
+  nonce: string;
+  usePopup: boolean;
+};
+
+export type AppleTokenIssuancePhase = "before_token_issuance" | "after_token_issuance" | "indeterminate";
+
 export type AppleSdkForensicCapture = {
   failurePoint: string;
   rawError: unknown;
@@ -8,6 +19,7 @@ export type AppleSdkForensicCapture = {
   message: string | null;
   payload: Record<string, unknown>;
   payloadJson: string;
+  tokenIssuancePhase: AppleTokenIssuancePhase;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -36,7 +48,120 @@ export function safeAppleSdkJson(value: unknown): string {
   }
 }
 
-export function captureAppleSdkError(error: unknown): Omit<AppleSdkForensicCapture, "failurePoint"> {
+function resolveAppleSdkErrorCode(payload: Record<string, unknown>): string | null {
+  if (typeof payload.code === "string" || typeof payload.code === "number") {
+    return String(payload.code);
+  }
+  if (typeof payload.error === "string") {
+    return payload.error;
+  }
+  return null;
+}
+
+function resolveAppleSdkErrorMessage(payload: Record<string, unknown>, error: unknown): string | null {
+  if (typeof payload.message === "string") {
+    return payload.message;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return null;
+}
+
+export function hasAppleAuthorizationToken(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+
+  const authorization = value.authorization;
+  if (!isRecord(authorization)) return false;
+
+  const idToken = authorization.id_token;
+  return typeof idToken === "string" && idToken.trim().length > 0;
+}
+
+/** Classifies whether Apple issued tokens before the SDK reported failure. */
+export function classifyAppleTokenIssuancePhase(
+  value: unknown,
+  context: "signIn-resolve" | "signIn-reject" | "success-event" | "failure-event" | "unknown" = "unknown",
+): AppleTokenIssuancePhase {
+  if (hasAppleAuthorizationToken(value)) {
+    return "after_token_issuance";
+  }
+
+  if (context === "signIn-resolve") {
+    const authorization = isRecord(value) && isRecord(value.authorization) ? value.authorization : null;
+    const hasCode = typeof authorization?.code === "string" && authorization.code.trim().length > 0;
+    return hasCode ? "after_token_issuance" : "before_token_issuance";
+  }
+
+  if (context === "success-event") {
+    return "after_token_issuance";
+  }
+
+  if (context === "signIn-reject" || context === "failure-event") {
+    return "before_token_issuance";
+  }
+
+  return "indeterminate";
+}
+
+/** Always-on: exact AppleID.auth.init() arguments passed to the SDK. */
+export function logAppleAuthInitPayload(config: AppleAuthInitConfig, failurePoint: string): void {
+  const payload = {
+    clientId: config.clientId,
+    redirectURI: config.redirectURI,
+    scope: config.scope,
+    state: config.state,
+    nonce: config.nonce,
+    usePopup: config.usePopup,
+  };
+
+  console.warn("[APPLE SDK FORENSIC]");
+  console.warn("# AppleID.auth.init payload", payload);
+  console.warn("# Exact Failure Point", failurePoint);
+
+  logAppleJs("auth-init-payload", { failurePoint, ...payload });
+}
+
+/** Always-on: full AppleID.auth.signIn() resolved value. */
+export function logAppleAuthSignInResult(
+  result: unknown,
+  failurePoint: string,
+): { tokenIssuancePhase: AppleTokenIssuancePhase } {
+  const tokenIssuancePhase = classifyAppleTokenIssuancePhase(result, "signIn-resolve");
+
+  console.warn("[APPLE SDK FORENSIC]");
+  console.warn("# AppleID.auth.signIn result", result);
+  console.warn("# Token issuance phase", tokenIssuancePhase);
+  console.warn("# Exact Failure Point", failurePoint);
+
+  logAppleJs("auth-signIn-result", {
+    failurePoint,
+    tokenIssuancePhase,
+    resultJson: safeAppleSdkJson(result),
+  });
+
+  return { tokenIssuancePhase };
+}
+
+export function invokeAppleAuthInit(
+  config: AppleAuthInitConfig,
+  failurePoint: string,
+): void {
+  logAppleAuthInitPayload(config, failurePoint);
+  window.AppleID!.auth.init({
+    clientId: config.clientId,
+    scope: config.scope,
+    redirectURI: config.redirectURI,
+    state: config.state,
+    usePopup: config.usePopup,
+    nonce: config.nonce,
+  });
+}
+
+export function captureAppleSdkError(
+  error: unknown,
+  tokenIssuancePhase: AppleTokenIssuancePhase = "before_token_issuance",
+): Omit<AppleSdkForensicCapture, "failurePoint"> {
   const payload: Record<string, unknown> = {};
 
   if (error instanceof Error) {
@@ -57,19 +182,8 @@ export function captureAppleSdkError(error: unknown): Omit<AppleSdkForensicCaptu
     payload.value = error;
   }
 
-  const errorCode =
-    typeof payload.code === "string"
-      ? payload.code
-      : typeof payload.code === "number"
-        ? String(payload.code)
-        : null;
-
-  const message =
-    typeof payload.message === "string"
-      ? payload.message
-      : error instanceof Error
-        ? error.message
-        : null;
+  const errorCode = resolveAppleSdkErrorCode(payload);
+  const message = resolveAppleSdkErrorMessage(payload, error);
 
   return {
     rawError: error,
@@ -78,6 +192,7 @@ export function captureAppleSdkError(error: unknown): Omit<AppleSdkForensicCaptu
     message,
     payload,
     payloadJson: safeAppleSdkJson(payload),
+    tokenIssuancePhase,
   };
 }
 
@@ -86,17 +201,18 @@ export function logAppleSdkForensic(
   failurePoint: string,
   error: unknown,
   extra?: Record<string, unknown>,
+  tokenIssuancePhase: AppleTokenIssuancePhase = "before_token_issuance",
 ): AppleSdkForensicCapture {
   const capture: AppleSdkForensicCapture = {
     failurePoint,
-    ...captureAppleSdkError(error),
+    ...captureAppleSdkError(error, tokenIssuancePhase),
   };
 
   console.warn("[APPLE SDK FORENSIC]");
-  console.warn("# Raw Apple SDK Error", capture.rawError);
-  console.warn("# Apple Error Code", capture.errorCode ?? "(none)");
-  console.warn("# error.error", capture.errorField ?? "(none)");
-  console.warn("# error.message", capture.message ?? "(none)");
+  console.warn("# Apple JS SDK error object", capture.rawError);
+  console.warn("# Apple JS SDK error code", capture.errorCode ?? "(none)");
+  console.warn("# Apple JS SDK error message", capture.message ?? "(none)");
+  console.warn("# Token issuance phase", capture.tokenIssuancePhase);
   console.warn("# Apple Error Payload", capture.payloadJson);
   console.warn("# Exact Failure Point", capture.failurePoint);
   if (extra && Object.keys(extra).length > 0) {
@@ -108,6 +224,7 @@ export function logAppleSdkForensic(
     errorCode: capture.errorCode,
     errorField: capture.errorField,
     message: capture.message,
+    tokenIssuancePhase: capture.tokenIssuancePhase,
     payloadJson: capture.payloadJson,
     extra: extra ?? null,
   });
@@ -122,15 +239,25 @@ export function logAppleSdkEventForensic(
 ): void {
   const customEvent = event as CustomEvent<unknown>;
   const detail = customEvent.detail;
+  const isSuccess = event.type === "AppleIDSignInOnSuccess";
+  const tokenIssuancePhase = classifyAppleTokenIssuancePhase(
+    detail,
+    isSuccess ? "success-event" : "failure-event",
+  );
+
+  const payload = isRecord(detail) ? detail : { type: event.type, detail };
+  const errorCode = resolveAppleSdkErrorCode(payload);
+  const message = resolveAppleSdkErrorMessage(payload, detail);
 
   console.warn("[APPLE SDK FORENSIC]");
-  console.warn("# Raw Apple SDK Error", detail ?? event);
-  console.warn("# Apple Error Code", isRecord(detail) && detail.code != null ? String(detail.code) : "(none)");
-  console.warn("# error.error", isRecord(detail) ? (detail.error ?? "(none)") : "(none)");
-  console.warn(
-    "# error.message",
-    isRecord(detail) && typeof detail.message === "string" ? detail.message : "(none)",
-  );
+  if (isSuccess) {
+    console.warn("# AppleID.auth.signIn result", detail ?? event);
+  } else {
+    console.warn("# Apple JS SDK error object", detail ?? event);
+    console.warn("# Apple JS SDK error code", errorCode ?? "(none)");
+    console.warn("# Apple JS SDK error message", message ?? "(none)");
+  }
+  console.warn("# Token issuance phase", tokenIssuancePhase);
   console.warn("# Apple Error Payload", safeAppleSdkJson(detail ?? { type: event.type }));
   console.warn("# Exact Failure Point", failurePoint);
   if (extra && Object.keys(extra).length > 0) {
@@ -140,6 +267,9 @@ export function logAppleSdkEventForensic(
   logAppleJs("sdk-forensic-event", {
     failurePoint,
     eventType: event.type,
+    tokenIssuancePhase,
+    errorCode,
+    message,
     detailJson: safeAppleSdkJson(detail ?? null),
     extra: extra ?? null,
   });
@@ -168,20 +298,25 @@ export function installApplePopupMessageTap(label: string): () => void {
 export async function invokeAppleAuthSignIn(
   failurePointPrefix: string,
 ): Promise<{ authorization: { id_token?: string; code?: string; state?: string }; user?: unknown }> {
-  logAppleJs("signIn-call-start", { failurePointPrefix });
+  const failurePoint = `${failurePointPrefix}:AppleID.auth.signIn()`;
+  logAppleJs("signIn-call-start", { failurePointPrefix, failurePoint });
 
   try {
     const result = await window.AppleID!.auth.signIn();
+    const { tokenIssuancePhase } = logAppleAuthSignInResult(result, failurePoint);
     logAppleJs("signIn-call-resolve", {
       failurePointPrefix,
+      failurePoint,
+      tokenIssuancePhase,
       hasAuthorization: Boolean(result?.authorization),
       authorizationKeys: result?.authorization ? Object.keys(result.authorization) : [],
+      hasIdToken: hasAppleAuthorizationToken(result),
       hasUser: Boolean(result?.user),
       resultJson: safeAppleSdkJson(result),
     });
     return result;
   } catch (error) {
-    logAppleSdkForensic(`${failurePointPrefix}:AppleID.auth.signIn():promise-reject`, error);
+    logAppleSdkForensic(`${failurePoint}:promise-reject`, error, undefined, "before_token_issuance");
     throw error;
   }
 }

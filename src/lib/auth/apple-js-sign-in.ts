@@ -15,6 +15,7 @@ import {
 import { logAuthDebug } from "@/lib/auth/auth-debug";
 import {
   installApplePopupMessageTap,
+  invokeAppleAuthInit,
   invokeAppleAuthSignIn,
   logAppleSdkEventForensic,
   logAppleSdkForensic,
@@ -278,30 +279,20 @@ function restorePreparedSession(session: PreparedAppleSession) {
 
 function initAppleAuth(session: PreparedAppleSession, usePopup: boolean) {
   const redirectURI = getAppleWebRedirectUri({ usePopup });
-  logAppleJs(usePopup ? "popup-init" : "redirect-init", {
-    clientId: APPLE_WEB_CLIENT_ID,
-    redirectURI,
-    usePopup,
-    hashedNoncePreview: `${session.hashedNonce.slice(0, 8)}…`,
-  });
-
-  window.AppleID!.auth.init({
+  const state = `autocore-web-${Date.now()}`;
+  const initConfig = {
     clientId: APPLE_WEB_CLIENT_ID,
     scope: "name email",
     redirectURI,
-    state: `autocore-web-${Date.now()}`,
+    state,
     usePopup,
     nonce: session.hashedNonce,
-  });
+  };
 
-  logAppleJs("auth-init-config", {
-    clientId: APPLE_WEB_CLIENT_ID,
-    scope: "name email",
-    redirectURI,
-    usePopup,
-    nonceLength: session.hashedNonce.length,
-    statePrefix: "autocore-web",
-  });
+  invokeAppleAuthInit(
+    initConfig,
+    usePopup ? "initAppleAuth:popup" : "initAppleAuth:redirect",
+  );
 
   return redirectURI;
 }
@@ -373,6 +364,12 @@ function finalizeAppleJsResult(
   const idToken = result.authorization.id_token?.trim() ?? "";
   if (!idToken) {
     const error = new Error("Apple JS authorization response missing id_token");
+    logAppleSdkForensic(
+      "finalizeAppleJsResult:missing-id_token",
+      error,
+      { authorization: result.authorization, hasCode: Boolean(result.authorization.code) },
+      "before_token_issuance",
+    );
     logAppleAuthError("apple-js:missing-id-token", error);
     throw error;
   }
@@ -541,14 +538,17 @@ export async function bootstrapAppleJsReturn(): Promise<AppleJsSignInResult | nu
 
   const hashedNonce = sessionStorage.getItem(APPLE_HASHED_NONCE_STORAGE_KEY);
   if (hashedNonce) {
-    window.AppleID.auth.init({
-      clientId: APPLE_WEB_CLIENT_ID,
-      scope: "name email",
-      redirectURI: getAppleWebRedirectUri({ usePopup: false }),
-      usePopup: false,
-      nonce: hashedNonce,
-      state: "autocore-web-return",
-    });
+    invokeAppleAuthInit(
+      {
+        clientId: APPLE_WEB_CLIENT_ID,
+        scope: "name email",
+        redirectURI: getAppleWebRedirectUri({ usePopup: false }),
+        usePopup: false,
+        nonce: hashedNonce,
+        state: "autocore-web-return",
+      },
+      "bootstrapAppleJsReturn:redirect-return",
+    );
   }
 
   logAppleJs("redirect-return-bootstrap", { rawNonceLength: rawNonce.length, hasHashedNonce: Boolean(hashedNonce) });
