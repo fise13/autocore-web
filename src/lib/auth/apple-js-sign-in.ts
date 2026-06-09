@@ -13,6 +13,13 @@ import {
   logAppleNonce,
 } from "@/lib/auth/apple-auth-log";
 import { logAuthDebug } from "@/lib/auth/auth-debug";
+import {
+  installApplePopupMessageTap,
+  invokeAppleAuthSignIn,
+  logAppleSdkEventForensic,
+  logAppleSdkForensic,
+  safeAppleSdkJson,
+} from "@/lib/auth/apple-js-forensic";
 
 export { APPLE_WEB_CLIENT_ID };
 
@@ -58,7 +65,7 @@ export class AppleUserCancelledError extends Error {
 }
 
 type AppleJsSuccessEvent = CustomEvent<{ authorization: AppleJsAuthorization; user?: AppleJsUser }>;
-type AppleJsFailureEvent = CustomEvent<{ error: string }>;
+type AppleJsFailureEvent = CustomEvent<Record<string, unknown> | { error: string }>;
 
 declare global {
   interface Window {
@@ -287,6 +294,15 @@ function initAppleAuth(session: PreparedAppleSession, usePopup: boolean) {
     nonce: session.hashedNonce,
   });
 
+  logAppleJs("auth-init-config", {
+    clientId: APPLE_WEB_CLIENT_ID,
+    scope: "name email",
+    redirectURI,
+    usePopup,
+    nonceLength: session.hashedNonce.length,
+    statePrefix: "autocore-web",
+  });
+
   return redirectURI;
 }
 
@@ -302,6 +318,10 @@ function waitForAppleAuthEvent(timeoutMs: number): Promise<Omit<AppleJsSignInRes
     const onSuccess = (event: Event) => {
       const detail = (event as AppleJsSuccessEvent).detail;
       cleanup();
+      logAppleSdkEventForensic("document:AppleIDSignInOnSuccess", event, {
+        hasIdToken: Boolean(detail.authorization?.id_token),
+        detailJson: safeAppleSdkJson(detail),
+      });
       logAppleJs("auth-success-event", {
         hasIdToken: Boolean(detail.authorization?.id_token),
         hasUser: Boolean(detail.user),
@@ -316,13 +336,22 @@ function waitForAppleAuthEvent(timeoutMs: number): Promise<Omit<AppleJsSignInRes
     const onFailure = (event: Event) => {
       const detail = (event as AppleJsFailureEvent).detail;
       cleanup();
-      const error = new Error(detail.error || "Apple Sign-In failure event without error detail");
-      if (isAppleUserCancellationError(error)) {
-        logAppleJs("auth-cancelled", { reason: error.message });
+      logAppleSdkEventForensic("document:AppleIDSignInOnFailure", event, {
+        detailJson: safeAppleSdkJson(detail),
+      });
+
+      const detailError =
+        detail && typeof detail === "object" && "error" in detail
+          ? String((detail as { error: string }).error)
+          : safeAppleSdkJson(detail);
+
+      const error = new Error(detailError || "Apple Sign-In failure event without error detail");
+      if (isAppleUserCancellationError(error) || isAppleUserCancellationError(detail)) {
+        logAppleJs("auth-cancelled", { reason: error.message, detailJson: safeAppleSdkJson(detail) });
         reject(asAppleUserCancelledError(error));
         return;
       }
-      logAppleAuthError("apple-js:auth-failure", error);
+      logAppleSdkForensic("document:AppleIDSignInOnFailure:reject", error, { detail });
       reject(error);
     };
 
@@ -365,17 +394,30 @@ async function signInWithAppleJsPopup(session: PreparedAppleSession): Promise<Ap
   initAppleAuth(session, true);
 
   logAppleJs("popup-start");
-  const eventPromise = waitForAppleAuthEvent(120_000);
-  const signInReturn = window.AppleID!.auth.signIn();
+  const removeMessageTap = installApplePopupMessageTap("signInWithAppleJsPopup");
 
-  let result: Omit<AppleJsSignInResult, "rawNonce">;
-  if (signInReturn && typeof signInReturn.then === "function") {
-    result = await Promise.race([signInReturn, eventPromise]);
-  } else {
-    result = await eventPromise;
+  try {
+    const eventPromise = waitForAppleAuthEvent(120_000);
+
+    let result: Omit<AppleJsSignInResult, "rawNonce">;
+    try {
+      const signInPromise = invokeAppleAuthSignIn("signInWithAppleJsPopup") as Promise<
+        Omit<AppleJsSignInResult, "rawNonce">
+      >;
+      result = await Promise.race([signInPromise, eventPromise]);
+      logAppleJs("popup-race-winner", {
+        source: result?.authorization?.id_token ? "signIn-or-success-event" : "unknown",
+        resultJson: safeAppleSdkJson(result),
+      });
+    } catch (raceError) {
+      logAppleSdkForensic("signInWithAppleJsPopup:Promise.race", raceError);
+      throw raceError;
+    }
+
+    return finalizeAppleJsResult(result, session.rawNonce);
+  } finally {
+    removeMessageTap();
   }
-
-  return finalizeAppleJsResult(result, session.rawNonce);
 }
 
 async function signInWithAppleJsRedirect(session: PreparedAppleSession): Promise<never> {
@@ -387,7 +429,12 @@ async function signInWithAppleJsRedirect(session: PreparedAppleSession): Promise
   initAppleAuth(session, false);
   logAppleJs("redirect-start");
 
-  await window.AppleID!.auth.signIn();
+  const removeMessageTap = installApplePopupMessageTap("signInWithAppleJsRedirect");
+  try {
+    await invokeAppleAuthSignIn("signInWithAppleJsRedirect");
+  } finally {
+    removeMessageTap();
+  }
   throw new AppleJsRedirectStarted();
 }
 
@@ -438,6 +485,7 @@ export async function signInWithAppleJs(): Promise<AppleJsSignInResult> {
     try {
       return await signInWithAppleJsPopup(session);
     } catch (error) {
+      logAppleSdkForensic("signInWithAppleJs:popup-or-redirect-inner-catch", error);
       if (isAppleUserCancellationError(error)) {
         resetAppleSignInSession();
         logAppleJs("sign-in-cancelled-by-user");
@@ -460,6 +508,7 @@ export async function signInWithAppleJs(): Promise<AppleJsSignInResult> {
       resetAppleSignInSession();
       throw asAppleUserCancelledError(error);
     }
+    logAppleSdkForensic("signInWithAppleJs:outer-catch", error);
     resetAppleSignInSession();
     logAppleAuthError("apple-js:signIn", error);
     throw normalizeAppleJsError(error);
@@ -527,7 +576,9 @@ export async function bootstrapAppleJsReturn(): Promise<AppleJsSignInResult | nu
       const detail = (event as AppleJsFailureEvent).detail;
       cleanup();
       sessionStorage.removeItem(APPLE_REDIRECT_FLAG);
-      logAppleAuthError("apple-js:bootstrap-failure", new Error(detail.error || "Apple redirect failure"));
+      logAppleSdkEventForensic("bootstrapAppleJsReturn:AppleIDSignInOnFailure", event, {
+        detailJson: safeAppleSdkJson(detail),
+      });
       resolve(null);
     };
 

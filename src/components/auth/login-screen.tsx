@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { formatAppleAuthErrorForUi, logAppleAuthError } from "@/lib/auth/apple-auth-log";
 import { isAppleJsAuthMode } from "@/lib/auth/apple-auth-mode";
+import { APPLE_DOMAIN_SETUP_STEPS, isAppleDomainAssociationLive } from "@/lib/auth/apple-domain-health";
 import { getAppleJsLoginRedirectUri, getAppleJsSetupIssue } from "@/lib/auth/apple-js-setup";
 import { isAppleUserCancellationError, normalizeAppleJsError } from "@/lib/auth/apple-js-sign-in";
 import { logAuthDebug } from "@/lib/auth/auth-debug";
@@ -41,9 +42,16 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
   const [authPhase, setAuthPhase] = useState<AuthPhase>("idle");
   const [pendingAuth, setPendingAuth] = useState<PendingAuth>(null);
 
+  const [appleDomainLive, setAppleDomainLive] = useState<boolean | null>(null);
+
   const isBusy = authPhase !== "idle";
   const appleSetupIssue = isAppleJsAuthMode() ? getAppleJsSetupIssue() : null;
   const appleRedirectUri = isAppleJsAuthMode() ? getAppleJsLoginRedirectUri() : null;
+
+  useEffect(() => {
+    if (!isAppleJsAuthMode()) return;
+    void isAppleDomainAssociationLive().then(setAppleDomainLive);
+  }, []);
 
   useEffect(() => {
     if (bootstrapError) {
@@ -214,6 +222,18 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                 </Button>
                 {appleSetupIssue ? (
                   <p className="text-xs text-destructive">{appleSetupIssue}</p>
+                ) : appleDomainLive === false ? (
+                  <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs leading-relaxed text-destructive">
+                    <p className="font-semibold">Apple Sign-In: домен не верифицирован (404)</p>
+                    <p className="mt-1 text-destructive/90">
+                      Пока не загружен файл{" "}
+                      <span className="font-mono">/.well-known/apple-developer-domain-association</span>, Apple
+                      показывает «Регистрация не выполнена». Сейчас используется запасной вход через Firebase OAuth.
+                    </p>
+                    <pre className="mt-2 whitespace-pre-wrap font-mono text-[10px] text-destructive/80">
+                      {APPLE_DOMAIN_SETUP_STEPS}
+                    </pre>
+                  </div>
                 ) : appleRedirectUri ? (
                   <p className="text-[11px] leading-snug text-muted-foreground">
                     Apple Return URL: <span className="font-mono">{appleRedirectUri}</span>
