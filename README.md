@@ -109,15 +109,35 @@ npm run lint
 npm run build
 ```
 
+## Домены и SEO
+
+Production split (рекомендуется):
+
+| Домен | Назначение | Примеры URL |
+|-------|------------|-------------|
+| `myautocore.com` | Marketing, индексируется Google | `/`, `/product`, `/pricing` |
+| `app.myautocore.com` | Приложение, не индексируется | `/login`, `/warehouse` |
+
+Переменные Vercel:
+
+```bash
+NEXT_PUBLIC_MARKETING_URL=https://myautocore.com
+NEXT_PUBLIC_APP_URL=https://app.myautocore.com
+```
+
+SEO marketing: `src/lib/seo/` — metadata, JSON-LD, sitemap, robots. Позиционирование: **программа для авторазборок и автосервисов**.
+
 ## Деплой на Vercel
 
 1. Подключите репозиторий в [vercel.com](https://vercel.com) (Framework: Next.js).
 2. Скопируйте переменные из `.env.vercel.example` в **Project → Settings → Environment Variables**.
 3. Обязательно на Vercel:
    - `FIREBASE_SERVICE_ACCOUNT_JSON` — JSON сервисного аккаунта одной строкой (не путь к файлу).
-   - `NEXT_PUBLIC_APP_URL` — production URL (`https://your-project.vercel.app` или свой домен).
-4. **Firebase Console → Authentication → Authorized domains** — добавьте `your-project.vercel.app`.
-5. **Apple Developer → Services ID** — Domain + Return URL `https://your-project.vercel.app/login`.
-6. Локально проверьте сборку: `npm run build` (должна проходить без ошибок).
+   - `NEXT_PUBLIC_MARKETING_URL=https://myautocore.com`
+   - `NEXT_PUBLIC_APP_URL=https://app.myautocore.com`
+4. **Vercel → Domains** — добавьте оба домена к одному проекту.
+5. **Firebase Console → Authentication → Authorized domains** — `app.myautocore.com`, `myautocore.com`.
+6. **Apple Developer → Services ID** — Return URL `https://app.myautocore.com/login`.
+7. Локально проверьте сборку: `npm run build` (должна проходить без ошибок).
 
 `vercel.json` уже настроен: регион `fra1`, таймаут PDF/API 60s.

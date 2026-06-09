@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Mail, Rocket, Building2 } from "lucide-react";
 
@@ -7,6 +6,7 @@ import { MarketingFaq } from "@/components/marketing/site/marketing-faq";
 import { MarketingSection } from "@/components/marketing/site/marketing-section";
 import { MarketingSubpage } from "@/components/marketing/site/marketing-subpage";
 import { marketingRoutes } from "@/lib/marketing-routes";
+import { buildMarketingMetadata } from "@/lib/seo/build-marketing-metadata";
 import { appDemoUrl } from "@/lib/site-urls";
 import { Button } from "@/components/ui/button";
 
@@ -18,10 +18,7 @@ const CHANNELS = [
   { icon: Building2, featured: false },
 ] as const;
 
-export const metadata: Metadata = {
-  title: copy.meta.title,
-  description: copy.meta.description,
-};
+export const metadata = buildMarketingMetadata("contact");
 
 export default function ContactPage() {
   return (

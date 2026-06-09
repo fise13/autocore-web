@@ -1,17 +1,13 @@
-import type { Metadata } from "next";
-
 import { MarketingSubpage } from "@/components/marketing/site/marketing-subpage";
+import { buildMarketingMetadata } from "@/lib/seo/build-marketing-metadata";
 
-export const metadata: Metadata = {
-  title: "Политика конфиденциальности",
-  description: "Как AutoCore обрабатывает данные компаний и пользователей.",
-};
+export const metadata = buildMarketingMetadata("privacy");
 
 export default function PrivacyPage() {
   return (
     <MarketingSubpage
       title="Политика конфиденциальности"
-      description="Как мы обрабатываем данные пользователей и компаний в сервисе AutoCore."
+      description="Как мы обрабатываем данные пользователей и компаний авторазборок и автосервисов в сервисе AutoCore."
       breadcrumbLabel="Конфиденциальность"
       showCta={false}
     >
@@ -19,8 +15,9 @@ export default function PrivacyPage() {
         <section>
           <h2>1. Общие положения</h2>
           <p>
-            Настоящая политика описывает обработку данных пользователей и компаний в сервисе AutoCore. Используя
-            приложение, вы соглашаетесь с условиями обработки данных в объёме, необходимом для работы сервиса.
+            Настоящая политика описывает обработку данных пользователей и компаний в сервисе AutoCore — программе для
+            авторазборок и автосервисов. Используя приложение, вы соглашаетесь с условиями обработки данных в объёме,
+            необходимом для работы сервиса.
           </p>
         </section>
         <section>

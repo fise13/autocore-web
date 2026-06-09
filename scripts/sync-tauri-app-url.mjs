@@ -12,7 +12,7 @@ const TAURI_DIR = join(ROOT, "src-tauri");
 const URL_FILE = join(TAURI_DIR, "desktop-app-url.txt");
 const CONF_FILE = join(TAURI_DIR, "tauri.conf.json");
 
-const DEFAULT_APP_ORIGIN = "https://autocore-web.vercel.app";
+const DEFAULT_APP_ORIGIN = "https://app.myautocore.com";
 
 function parseEnvFile(path) {
   if (!existsSync(path)) return {};

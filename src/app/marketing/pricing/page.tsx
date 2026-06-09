@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Check, Minus } from "lucide-react";
 
@@ -8,14 +7,12 @@ import { MarketingFaq } from "@/components/marketing/site/marketing-faq";
 import { MarketingSection } from "@/components/marketing/site/marketing-section";
 import { MarketingSubpage } from "@/components/marketing/site/marketing-subpage";
 import { marketingRoutes } from "@/lib/marketing-routes";
+import { buildMarketingMetadata } from "@/lib/seo/build-marketing-metadata";
 import { Button } from "@/components/ui/button";
 
 const copy = marketingSiteContent.pricing;
 
-export const metadata: Metadata = {
-  title: copy.meta.title,
-  description: copy.meta.description,
-};
+export const metadata = buildMarketingMetadata("pricing");
 
 function CompareCell({ value }: { value: boolean | string }) {
   if (value === true) return <Check className="mx-auto size-4 text-primary" aria-label="Да" />;

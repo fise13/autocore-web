@@ -1,10 +1,13 @@
 export type SiteHostKind = "marketing" | "app" | "local";
 
-function normalizeHost(host: string): string {
+export const DEFAULT_MARKETING_ORIGIN = "https://myautocore.com";
+export const DEFAULT_APP_ORIGIN = "https://app.myautocore.com";
+
+export function normalizeHost(host: string): string {
   return (host.split(":")[0] ?? "").toLowerCase();
 }
 
-function getUrlHost(url: string): string | null {
+export function getUrlHost(url: string): string | null {
   try {
     return normalizeHost(new URL(url).host);
   } catch {
@@ -20,12 +23,9 @@ export function isUnifiedSiteHost(host: string): boolean {
   return normalizeHost(host) === appHost;
 }
 
-/** Application host (Mission Control, warehouse, etc.). */
-export function getAppUrl(): string {
-  const fromEnv = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  if (fromEnv) {
-    return fromEnv.replace(/\/$/, "");
-  }
+function resolveUrlFromEnv(primary: string | undefined, fallback: string): string {
+  const fromEnv = primary?.trim();
+  if (fromEnv) return fromEnv.replace(/\/$/, "");
 
   const vercelProduction = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
   if (vercelProduction) {
@@ -37,16 +37,17 @@ export function getAppUrl(): string {
     return `https://${vercelUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
   }
 
-  return "http://localhost:3000";
+  return fallback;
 }
 
-/** Public marketing site host. */
+/** Application host — Mission Control, warehouse, login (app.myautocore.com). */
+export function getAppUrl(): string {
+  return resolveUrlFromEnv(process.env.NEXT_PUBLIC_APP_URL, DEFAULT_APP_ORIGIN);
+}
+
+/** Public marketing site host (myautocore.com). */
 export function getMarketingUrl(): string {
-  const raw =
-    process.env.NEXT_PUBLIC_MARKETING_URL ??
-    process.env.NEXT_PUBLIC_APP_URL ??
-    "http://localhost:3000";
-  return raw.replace(/\/$/, "");
+  return resolveUrlFromEnv(process.env.NEXT_PUBLIC_MARKETING_URL, DEFAULT_MARKETING_ORIGIN);
 }
 
 export function getHostKind(host: string): SiteHostKind {
@@ -57,10 +58,22 @@ export function getHostKind(host: string): SiteHostKind {
   const normalized = normalizeHost(host);
   if (normalized === "localhost" || normalized === "127.0.0.1") return "local";
   if (isUnifiedSiteHost(host)) return "local";
-  if (normalized.startsWith("app.") || normalized.includes("app.autocore")) return "app";
+
+  const marketingHost = getUrlHost(getMarketingUrl());
+  const appHost = getUrlHost(getAppUrl());
+
+  if (marketingHost && normalized === marketingHost) return "marketing";
+  if (marketingHost && normalized === `www.${marketingHost}`) return "marketing";
+  if (appHost && normalized === appHost) return "app";
+
+  if (normalized.startsWith("app.")) return "app";
+  if (normalized === "myautocore.com" || normalized === "www.myautocore.com") return "marketing";
+  if (normalized === "app.myautocore.com") return "app";
+
   if (normalized === "autocore-web.vercel.app" || normalized.endsWith(".autocore-web.vercel.app")) {
     return normalized.startsWith("app.") ? "app" : "marketing";
   }
+
   return "app";
 }
 
@@ -96,6 +109,24 @@ export const APP_ROUTE_PREFIXES = [
 export function isAppRoute(pathname: string): boolean {
   if (pathname === "/") return true;
   return APP_ROUTE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+/** Marketing paths that should only be served on the marketing host. */
+export const MARKETING_PUBLIC_PREFIXES = [
+  "/product",
+  "/modules",
+  "/pricing",
+  "/security",
+  "/contact",
+  "/legal",
+  "/marketing",
+] as const;
+
+export function isMarketingPublicPath(pathname: string): boolean {
+  if (pathname === "/") return true;
+  return MARKETING_PUBLIC_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 }

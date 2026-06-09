@@ -1,7 +1,9 @@
-export const DEFAULT_PRODUCTION_APP_URL = "https://autocore-web.vercel.app";
+export const DEFAULT_PRODUCTION_APP_URL = "https://app.myautocore.com";
 
 export const ALLOWED_APP_ORIGINS = [
   DEFAULT_PRODUCTION_APP_URL,
+  "https://myautocore.com",
+  "https://autocore-web.vercel.app",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
 ] as const;

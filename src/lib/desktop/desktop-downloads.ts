@@ -1,4 +1,4 @@
-import { DEFAULT_PRODUCTION_APP_URL } from "@/lib/app-url";
+import { DEFAULT_APP_ORIGIN, DEFAULT_MARKETING_ORIGIN } from "@/lib/site-urls";
 
 export type DesktopDownloadLinks = {
   mac: string;
@@ -9,7 +9,7 @@ export type DesktopDownloadLinks = {
 function downloadsBaseUrl(): string {
   const fromEnv = process.env.NEXT_PUBLIC_DESKTOP_DOWNLOADS_BASE_URL?.trim();
   if (fromEnv) return fromEnv.replace(/\/$/, "");
-  return DEFAULT_PRODUCTION_APP_URL;
+  return DEFAULT_MARKETING_ORIGIN;
 }
 
 function appLoginOrigin(): string {
@@ -17,7 +17,7 @@ function appLoginOrigin(): string {
     process.env.NEXT_PUBLIC_DESKTOP_APP_URL?.trim() ||
     process.env.NEXT_PUBLIC_APP_URL?.trim();
   if (fromEnv) return fromEnv.replace(/\/$/, "");
-  return DEFAULT_PRODUCTION_APP_URL;
+  return DEFAULT_APP_ORIGIN;
 }
 
 /** Public download links for the native desktop shell (Tauri). */

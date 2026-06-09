@@ -1,17 +1,13 @@
-import type { Metadata } from "next";
-
 import { MarketingSubpage } from "@/components/marketing/site/marketing-subpage";
+import { buildMarketingMetadata } from "@/lib/seo/build-marketing-metadata";
 
-export const metadata: Metadata = {
-  title: "Условия использования",
-  description: "Правила использования сервиса AutoCore для разборок, запчастей и СТО.",
-};
+export const metadata = buildMarketingMetadata("terms");
 
 export default function TermsPage() {
   return (
     <MarketingSubpage
       title="Условия использования"
-      description="Правила использования веб-приложения AutoCore и связанных сервисов."
+      description="Правила использования облачной программы AutoCore для авторазборок и автосервисов."
       breadcrumbLabel="Условия"
       showCta={false}
     >
@@ -19,8 +15,8 @@ export default function TermsPage() {
         <section>
           <h2>1. Предмет соглашения</h2>
           <p>
-            AutoCore предоставляет программное обеспечение для операционного управления автобизнесом: склад, заказ-наряды,
-            бухгалтерия и команда. Условия регулируют использование веб-приложения и связанных сервисов.
+            AutoCore предоставляет программное обеспечение для авторазборок и автосервисов: склад запчастей,
+            заказ-наряды, бухгалтерия и команда. Условия регулируют использование веб-приложения и связанных сервисов.
           </p>
         </section>
         <section>

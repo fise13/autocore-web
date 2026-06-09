@@ -1,14 +1,13 @@
 import type { MetadataRoute } from "next";
 
 import { marketingSitemapEntries } from "@/lib/marketing-routes";
-import { getMarketingUrl } from "@/lib/site-urls";
+import { marketingAbsoluteUrl } from "@/lib/seo/marketing-paths";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = getMarketingUrl().replace(/\/$/, "");
   const lastModified = new Date();
 
   return marketingSitemapEntries.map((entry) => ({
-    url: `${base}${entry.path}`,
+    url: marketingAbsoluteUrl(entry.key),
     lastModified,
     changeFrequency: entry.changeFrequency,
     priority: entry.priority,

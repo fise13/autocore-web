@@ -6,8 +6,8 @@ export function DesktopDownloadSection() {
     <SectionShell
       id="download"
       label="Desktop"
-      title="AutoCore для компьютера"
-      description="Нативное приложение для macOS и Windows. Тот же интерфейс и данные, что в браузере — без установки Node.js и без локального сервера."
+      title="Скачать AutoCore для авторазборки и автосервиса"
+      description="Нативное приложение для macOS и Windows. Тот же интерфейс и данные, что в браузере на app.myautocore.com — без локального сервера."
       align="center"
     >
       <DesktopDownloadButtons variant="marketing" className="mx-auto max-w-xl text-center" />
