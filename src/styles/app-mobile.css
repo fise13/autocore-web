@@ -1,0 +1,109 @@
+/* ── App shell: mobile layout & touch targets ── */
+
+@supports (padding: env(safe-area-inset-bottom)) {
+  [data-dashboard-shell] {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  [data-dashboard-shell] main {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@media (max-width: 767px) {
+  [data-dashboard-shell] {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+
+  [data-dashboard-shell] > .relative.flex.min-w-0 {
+    min-height: 0;
+  }
+
+  [data-dashboard-shell] header {
+    min-height: 3.25rem;
+    height: auto;
+    flex-wrap: wrap;
+    row-gap: 0.5rem;
+    padding-inline: max(0.75rem, env(safe-area-inset-left, 0px));
+    padding-block: 0.5rem;
+  }
+
+  [data-dashboard-shell] header .workspace-search-mobile {
+    order: 10;
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  [data-dashboard-shell] main {
+    padding-inline: 0.75rem;
+    padding-block: 0.75rem;
+  }
+
+  [data-mobile-sidebar] {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  [data-mobile-sidebar-backdrop] {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .workspace-status-bar,
+  [data-workspace-status] {
+    padding-inline: 0.75rem;
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Tables & wide grids scroll horizontally on small screens */
+  [data-dashboard-shell] .overflow-x-auto,
+  [data-dashboard-shell] table {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  [data-dashboard-shell] button,
+  [data-dashboard-shell] a[role="button"],
+  [data-dashboard-shell] [data-slot="button"] {
+    min-height: 2.25rem;
+  }
+}
+
+/* ── Marketing footer: mobile typography ── */
+
+@media (max-width: 639px) {
+  .site-footer-shell {
+    width: min(100% - 1.25rem, var(--landing-max));
+  }
+
+  .site-footer-panel {
+    border-radius: 1.25rem 1.25rem 0 0;
+    padding-inline: 1.25rem;
+  }
+
+  .site-footer-brand-title {
+    font-size: 0.9375rem;
+    letter-spacing: -0.02em;
+  }
+
+  .site-footer-tagline {
+    font-size: 0.8125rem;
+    line-height: 1.55;
+  }
+
+  .site-footer-section-title {
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+  }
+
+  .site-footer-link {
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    padding-block: 0.125rem;
+  }
+
+  .site-footer-meta {
+    font-size: 0.6875rem;
+    line-height: 1.5;
+  }
+}

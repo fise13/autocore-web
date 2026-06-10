@@ -6,7 +6,9 @@ export type DocumentTemplateVariant =
   | "engine-warranty"
   | "invoice"
   | "engine-waybill"
-  | "commercial-proposal";
+  | "commercial-proposal"
+  | "vehicle-intake-act"
+  | "sales-receipt";
 
 export type DocumentTemplateMeta = {
   title: string;
@@ -88,6 +90,24 @@ export const DOCUMENT_TEMPLATE_META: Record<DocumentTemplateVariant, DocumentTem
     footer: "Предложение сформировано в AutoCore. Окончательная стоимость фиксируется в заказ-наряде.",
     disclaimer:
       "Документ носит ознакомительный характер. Итоговая сумма может измениться после диагностики и согласования.",
+  },
+  "vehicle-intake-act": {
+    title: "Акт приёма автомобиля",
+    tag: "Приёмка",
+    lead: "Фиксация состояния автомобиля, комплектации и согласованного объёма работ при поступлении в сервис.",
+    primaryLabel: "Пробег при приёмке",
+    warrantyBlock: "",
+    footer: "Акт приёма подтверждает передачу автомобиля на обслуживание.",
+    disclaimer: "Клиент подтверждает достоверность указанных данных и согласие с условиями приёмки.",
+  },
+  "sales-receipt": {
+    title: "Товарный чек",
+    tag: "Продажа",
+    lead: "Подтверждение продажи запчастей, агрегатов и сопутствующих позиций.",
+    primaryLabel: "Сумма чека",
+    warrantyBlock: "",
+    footer: "Чек подтверждает факт продажи и получения оплаты.",
+    disclaimer: "Возврат и гарантия регулируются условиями продавца.",
   },
 };
 
@@ -176,12 +196,41 @@ export const DOCUMENT_TEMPLATE_LAYOUT: Record<DocumentTemplateVariant, DocumentT
     useOrderStatusTag: false,
     compactHero: false,
   },
+  "vehicle-intake-act": {
+    showTimeline: true,
+    showMoneyTotals: false,
+    showLabor: false,
+    showParts: false,
+    showClientVehicle: true,
+    showAcceptanceBanner: true,
+    showMotorSpotlight: false,
+    showWarrantyTerms: false,
+    showUnifiedLineItems: false,
+    showDisclaimer: true,
+    useOrderStatusTag: false,
+    compactHero: true,
+  },
+  "sales-receipt": {
+    showTimeline: false,
+    showMoneyTotals: true,
+    showLabor: false,
+    showParts: true,
+    showClientVehicle: true,
+    showAcceptanceBanner: false,
+    showMotorSpotlight: false,
+    showWarrantyTerms: false,
+    showUnifiedLineItems: true,
+    showDisclaimer: true,
+    useOrderStatusTag: false,
+    compactHero: false,
+  },
 };
 
 export const DOCUMENT_TEMPLATE_THEME_NOTES: Record<DocumentTheme, string> = {
   classic: "Строгий официальный стиль для дилерского сервиса и СТО.",
   premium: "Премиальная карточная подача с теплым бренд-акцентом.",
   modern: "Минималистичная SaaS-структура с высокой плотностью информации.",
+  racing: "Спортивная подача: контраст, плотная типографика, акцент на агрегатах.",
 };
 
 export const DOCUMENT_TEMPLATE_TIMELINE_LABELS = [

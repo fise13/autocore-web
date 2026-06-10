@@ -79,7 +79,9 @@ export type WorkOrderDocumentType =
   | "engine_warranty"
   | "client_invoice"
   | "engine_waybill"
-  | "commercial_proposal";
+  | "commercial_proposal"
+  | "vehicle_intake_act"
+  | "sales_receipt";
 
 export type WorkOrderDocument = {
   id: string;

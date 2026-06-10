@@ -5,7 +5,7 @@ import { DocumentContext } from "@/lib/documents/document-context";
 import { DocumentSlug } from "@/lib/documents/document-types";
 
 export function resolveDocumentsForOrderCreated(): DocumentSlug[] {
-  return ["work-order"];
+  return ["work-order", "vehicle-intake-act"];
 }
 
 export function resolveDocumentsForOrderCompleted(context: DocumentContext): DocumentSlug[] {
@@ -15,7 +15,7 @@ export function resolveDocumentsForOrderCompleted(context: DocumentContext): Doc
   if (context.order.motorLines.length > 0) {
     slugs.push("engine-warranty");
     if (context.order.motorLines.some((line) => line.outcome === "sell")) {
-      slugs.push("engine-waybill");
+      slugs.push("engine-waybill", "sales-receipt");
     }
   }
 

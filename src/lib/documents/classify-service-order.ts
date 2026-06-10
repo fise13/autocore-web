@@ -67,7 +67,7 @@ export function classifyServiceOrder(context: DocumentContext): ServiceOrderProf
     showEngineBlock: isEngine,
     showEngineWarranty: hasMotorInstall,
     showBreakInNotes: hasMotorInstall,
-    showControlInspection: hasMotorInstall,
+    showControlInspection: false,
     showDiagnosticsNotes: isDiagnostics && hasDiagnosticContent,
     showPartsBlock: context.order.partLines.length > 0,
   };
@@ -77,13 +77,17 @@ export function summarizeOrderForLogbook(context: DocumentContext): string {
   const profile = classifyServiceOrder(context);
   const { laborTitles, hasMotorInstall } = collectText(context);
 
-  if (profile.kind === "engine_install") {
-    const motor = context.order.motorLines.find((line) => line.outcome === "install") ?? context.order.motorLines[0];
-    if (motor) {
-      const code = motor.engineCode || motor.serialCode;
-      return `Замена двигателя ${code}`;
+  if (context.order.motorLines.length > 0) {
+    const motor = context.order.motorLines[0];
+    const code = [motor.brandName, motor.engineCode, motor.serialCode].filter(Boolean).join(" ");
+    if (motor.outcome === "sell") {
+      return code ? `Продажа двигателя ${code}` : "Продажа двигателя";
     }
-    return "Замена двигателя";
+    return code ? `Установка двигателя ${code}` : "Установка двигателя";
+  }
+
+  if (profile.kind === "engine_install") {
+    return "Установка двигателя";
   }
 
   if (profile.kind === "oil_change") return "Замена масла";
@@ -132,10 +136,7 @@ export function buildDiagnosticNotes(context: DocumentContext): string[] {
 }
 
 export function buildBreakInNotes(): string[] {
-  return [
-    "Щадящий режим первые 1 000 км — без резких разгонов.",
-    "Контрольный осмотр через 1 000 км после установки.",
-  ];
+  return ["Щадящий режим первые 1 000 км — без резких разгонов."];
 }
 
 export function buildOilRelatedParts(context: DocumentContext) {
@@ -159,10 +160,13 @@ export function summarizeWorkOrderForLogbook(order: WorkOrder): string {
     textMatches(laborTitles, DIAGNOSTIC_PATTERN) ||
     order.laborLines.some((line) => line.assigneeRole === "diagnostician");
 
-  if (isEngine) {
-    const motor = order.motorLines.find((line) => line.outcome === "install") ?? order.motorLines[0];
-    if (motor) return `Замена двигателя ${motor.engineCode || motor.serialCode}`;
-    return "Замена двигателя";
+  if (order.motorLines.length > 0) {
+    const motor = order.motorLines[0];
+    const code = [motor.brandName, motor.engineCode, motor.serialCode].filter(Boolean).join(" ");
+    if (motor.outcome === "sell") {
+      return code ? `Продажа двигателя ${code}` : "Продажа двигателя";
+    }
+    return code ? `Установка двигателя ${code}` : "Установка двигателя";
   }
   if (isOilChange) return "Замена масла";
   if (isDiagnostics) return laborTitles[0] ?? "Диагностика";

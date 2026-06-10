@@ -57,9 +57,14 @@ export function readServiceAccountFromDisk(): Record<string, unknown> {
   return JSON.parse(raw) as Record<string, unknown>;
 }
 
+function isPlaceholderServiceAccountJson(raw: string): boolean {
+  const trimmed = raw.trim();
+  return trimmed.includes("...") || /"project_id"\s*:\s*"\.\.\."/.test(trimmed);
+}
+
 export function parseInlineServiceAccount(raw: string): Record<string, unknown> {
   const trimmed = raw.trim();
-  if (trimmed.includes("...")) {
+  if (isPlaceholderServiceAccountJson(trimmed)) {
     throw new Error(
       "FIREBASE_SERVICE_ACCOUNT_JSON содержит placeholder (...). Укажите полный JSON сервисного аккаунта.",
     );
@@ -73,17 +78,39 @@ export function parseInlineServiceAccount(raw: string): Record<string, unknown> 
   }
 }
 
-export function parseServiceAccount(): Record<string, unknown> {
-  const inline = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
-  if (inline) {
-    return parseInlineServiceAccount(inline);
-  }
-
+function canReadServiceAccountFromDisk(): boolean {
   const configured =
     process.env.FIREBASE_SERVICE_ACCOUNT_PATH?.trim() ||
     process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
+  return Boolean(configured || discoverServiceAccountInDir(process.cwd()));
+}
 
-  if (configured || discoverServiceAccountInDir(process.cwd())) {
+export function parseServiceAccount(): Record<string, unknown> {
+  const inline = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
+
+  if (inline && !isPlaceholderServiceAccountJson(inline)) {
+    try {
+      return parseInlineServiceAccount(inline);
+    } catch (error) {
+      if (canReadServiceAccountFromDisk()) {
+        console.warn("[firebase-admin] Invalid FIREBASE_SERVICE_ACCOUNT_JSON, using file path fallback");
+        return readServiceAccountFromDisk();
+      }
+      throw error;
+    }
+  }
+
+  if (inline && isPlaceholderServiceAccountJson(inline)) {
+    if (canReadServiceAccountFromDisk()) {
+      console.warn("[firebase-admin] FIREBASE_SERVICE_ACCOUNT_JSON is a placeholder, using file path fallback");
+      return readServiceAccountFromDisk();
+    }
+    throw new Error(
+      "FIREBASE_SERVICE_ACCOUNT_JSON содержит placeholder (...). Вставьте полный JSON сервисного аккаунта в Vercel или удалите переменную.",
+    );
+  }
+
+  if (canReadServiceAccountFromDisk()) {
     return readServiceAccountFromDisk();
   }
 

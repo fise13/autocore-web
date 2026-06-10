@@ -1,6 +1,15 @@
-export const DOCUMENT_THEMES = ["classic", "modern", "premium"] as const;
+import {
+  parseCompanyDocumentConfig,
+  type CompanyDocumentConfig,
+  type DocumentSectionConfig,
+  type WarrantyTemplateId,
+} from "@/domain/document-config";
+
+export const DOCUMENT_THEMES = ["classic", "modern", "premium", "racing"] as const;
 
 export type DocumentTheme = (typeof DOCUMENT_THEMES)[number];
+
+export type { CompanyDocumentConfig, DocumentSectionConfig, WarrantyTemplateId };
 
 export type CompanyBranding = {
   documentTheme?: DocumentTheme;
@@ -8,8 +17,13 @@ export type CompanyBranding = {
   email?: string;
   website?: string;
   socialHandle?: string;
+  qrLinkUrl?: string;
   warrantyLabel?: string;
   warrantyText?: string;
+  warrantyTemplateId?: WarrantyTemplateId;
+  documentSections?: DocumentSectionConfig;
+  documentFooter?: string;
+  invoiceValidityDays?: number;
   serviceIntervalKm?: number;
   serviceIntervalMonths?: number;
   primaryColor: string;
@@ -45,7 +59,11 @@ export function companyBrandingFromRecord(data: Record<string, unknown> | null |
 
   const rawTheme = typeof data?.documentTheme === "string" ? data.documentTheme : undefined;
   const documentTheme =
-    rawTheme === "classic" || rawTheme === "modern" || rawTheme === "premium" ? rawTheme : "modern";
+    rawTheme === "classic" || rawTheme === "modern" || rawTheme === "premium" || rawTheme === "racing"
+      ? rawTheme
+      : "modern";
+
+  const documentConfig = parseCompanyDocumentConfig(data ?? undefined);
 
   return {
     documentTheme,
@@ -53,8 +71,13 @@ export function companyBrandingFromRecord(data: Record<string, unknown> | null |
     email: typeof data?.email === "string" ? data.email : undefined,
     website: typeof data?.website === "string" ? data.website : undefined,
     socialHandle: typeof data?.socialHandle === "string" ? data.socialHandle : undefined,
+    qrLinkUrl: documentConfig.qrLinkUrl,
     warrantyLabel: typeof data?.warrantyLabel === "string" ? data.warrantyLabel : undefined,
     warrantyText: typeof data?.warrantyText === "string" ? data.warrantyText : undefined,
+    warrantyTemplateId: documentConfig.warrantyTemplateId,
+    documentSections: documentConfig.sections,
+    documentFooter: documentConfig.documentFooter,
+    invoiceValidityDays: documentConfig.invoiceValidityDays,
     serviceIntervalKm: Number.isFinite(serviceIntervalKm) ? serviceIntervalKm : undefined,
     serviceIntervalMonths: Number.isFinite(serviceIntervalMonths) ? serviceIntervalMonths : undefined,
     primaryColor: normalizeHexColor(

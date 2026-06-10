@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { DEMO_ACCOUNT_EMAIL } from "@/lib/demo/demo-config";
 import { getFirebaseAuth, isFirebaseConfigured } from "@/infrastructure/firebase/client";
 import { prepareSyncAuth } from "@/lib/auth/prepare-sync-auth";
-import { appLoginUrl } from "@/lib/site-urls";
+import { appLoginUrl, marketingHomeUrl } from "@/lib/site-urls";
 import { userCopy } from "@/lib/user-copy";
 
 type DemoAuthPayload =
@@ -98,7 +98,7 @@ export default function DemoPage() {
         </div>
         <div className="flex flex-wrap justify-center gap-3">
           <Button render={<Link href={appLoginUrl()} />}>Войти в аккаунт</Button>
-          <Button variant="outline" render={<Link href="/marketing" />}>
+          <Button variant="outline" render={<Link href={marketingHomeUrl()} />}>
             На главную
           </Button>
         </div>

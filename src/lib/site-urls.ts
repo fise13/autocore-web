@@ -105,6 +105,20 @@ export function appDashboardUrl(): string {
   return `${getAppUrl()}/`;
 }
 
+/** Absolute marketing URL for a path; relative on unified localhost dev. */
+export function marketingPageUrl(path: string): string {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  const marketing = getMarketingUrl().replace(/\/$/, "");
+  const app = getAppUrl().replace(/\/$/, "");
+  if (marketing === app) return normalized;
+  return `${marketing}${normalized}`;
+}
+
+/** Marketing landing home — absolute URL when app and marketing are on different hosts. */
+export function marketingHomeUrl(): string {
+  return marketingPageUrl("/");
+}
+
 export const APP_ROUTE_PREFIXES = [
   "/login",
   "/demo",

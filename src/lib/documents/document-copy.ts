@@ -1,11 +1,14 @@
-export const ENGINE_WARRANTY_MONTHS = 6;
-export const ENGINE_WARRANTY_KM = 10_000;
+import { WARRANTY_TEMPLATE_PRESETS } from "@/lib/documents/warranty/warranty-templates";
+
+const ENGINE_PRESET = WARRANTY_TEMPLATE_PRESETS.contract_engine;
+
+/** Canonical defaults — aligned with warranty template presets (not hardcoded in PDF). */
+export const ENGINE_WARRANTY_MONTHS = ENGINE_PRESET.months;
+export const ENGINE_WARRANTY_KM = ENGINE_PRESET.km;
 
 export const ENGINE_WARRANTY_CONDITIONS = [
-  "Гарантия распространяется на двигатель при соблюдении регламента эксплуатации и обслуживания.",
-  "Гарантия не действует при механических повреждениях, перегреве, использовании некачественных ГСМ и масел.",
-  "Обязательна фиксация пробега и даты установки в сервисной книге автомобиля.",
-  "Претензии принимаются только при предъявлении настоящего талона и заказ-наряда.",
+  ...ENGINE_PRESET.conditions,
+  ...ENGINE_PRESET.restrictions,
 ];
 
 export const SERVICE_TAG_OIL_INTERVAL_KM = 5_000;

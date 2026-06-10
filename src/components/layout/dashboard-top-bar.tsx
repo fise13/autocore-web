@@ -118,7 +118,7 @@ function AnimatedSlot({
 export function DashboardTopBar() {
   const pathname = usePathname();
   const { profile } = useAuth();
-  const { sidebarCollapsed, toggleSidebar } = useDashboardLayout();
+  const { sidebarCollapsed, toggleSidebar, toggleMobileSidebar } = useDashboardLayout();
   const {
     availability,
     setAvailability,
@@ -215,6 +215,16 @@ export function DashboardTopBar() {
         <Button
           variant="ghost"
           size="icon-sm"
+          onClick={toggleMobileSidebar}
+          title="Меню"
+          aria-label="Открыть меню"
+          className="md:hidden"
+        >
+          <PanelLeft className="size-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={toggleSidebar}
           title="Свернуть боковую панель (⌘B)"
           className="hidden md:inline-flex"
@@ -226,13 +236,10 @@ export function DashboardTopBar() {
             )}
           />
         </Button>
-        <Separator
-          orientation="vertical"
-          className="hidden h-4 md:block"
-        />
+        <Separator orientation="vertical" className="hidden h-4 md:block" />
         <AnimatedSlot slotKey={leftKey} className="flex min-w-0 items-center gap-2">
           {workspace ? (
-            <span className="hidden text-sm font-semibold tracking-tight md:block">
+            <span className="truncate text-sm font-semibold tracking-tight">
               {workspaceTitle ?? "AutoCore"}
             </span>
           ) : isMissionControlRoute ? (
@@ -278,7 +285,7 @@ export function DashboardTopBar() {
 
           {(isWarehouseRoute || isMotorRoute || isSpecificRoute) ? (
             <WorkspaceSearchField
-              className="hidden md:block"
+              className={cn("w-full max-w-md md:max-w-lg", workspace && "workspace-search-mobile")}
               placeholder={
                 isWarehouseRoute
                   ? "Поиск по артикулу, названию, бренду..."

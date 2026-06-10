@@ -4,7 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, Palette, Upload } from "lucide-react";
 
-import { DEFAULT_COMPANY_PRIMARY_COLOR, DEFAULT_COMPANY_SECONDARY_COLOR, DOCUMENT_THEMES, DocumentTheme } from "@/domain/company-branding";
+import {
+  DEFAULT_COMPANY_PRIMARY_COLOR,
+  DEFAULT_COMPANY_SECONDARY_COLOR,
+  DOCUMENT_THEMES,
+  DocumentTheme,
+} from "@/domain/company-branding";
+import { DOCUMENT_THEME_LABELS_RU } from "@/lib/documents/themes/tokens";
+import {
+  DEFAULT_DOCUMENT_CONFIG_DRAFT,
+  DocumentConfigSettings,
+  type DocumentConfigDraft,
+} from "@/components/settings/document-config-settings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -46,6 +57,14 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
   const normalizedCompanyId = normalizeCompanyId(companyId);
   const { profile, isLoading } = useCompanyBranding(normalizedCompanyId);
   const [draft, setDraft] = useState(brandingDraftFromProfile(profile));
+  const [docConfig, setDocConfig] = useState<DocumentConfigDraft>(() => ({
+    ...DEFAULT_DOCUMENT_CONFIG_DRAFT,
+    warrantyTemplateId: profile.warrantyTemplateId ?? "contract_engine",
+    documentSections: profile.documentSections ?? {},
+    qrLinkUrl: profile.qrLinkUrl ?? "",
+    documentFooter: profile.documentFooter ?? "",
+    invoiceValidityDays: profile.invoiceValidityDays ? String(profile.invoiceValidityDays) : "5",
+  }));
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -54,6 +73,14 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
   useEffect(() => {
     if (uploadingLogo || saving) return;
     setDraft(brandingDraftFromProfile(profile));
+    setDocConfig({
+      ...DEFAULT_DOCUMENT_CONFIG_DRAFT,
+      warrantyTemplateId: profile.warrantyTemplateId ?? "contract_engine",
+      documentSections: profile.documentSections ?? {},
+      qrLinkUrl: profile.qrLinkUrl ?? "",
+      documentFooter: profile.documentFooter ?? "",
+      invoiceValidityDays: profile.invoiceValidityDays ? String(profile.invoiceValidityDays) : "5",
+    });
   }, [profile, uploadingLogo, saving]);
 
   useEffect(() => {
@@ -102,7 +129,10 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
     setSaving(true);
     onStatus?.(null);
     try {
-      await saveCompanyBranding(normalizedCompanyId, draft);
+      await saveCompanyBranding(normalizedCompanyId, {
+        ...draft,
+        ...docConfig,
+      });
       onStatus?.("Брендинг сохранён. Новые PDF будут использовать эти настройки.");
     } catch (error) {
       onStatus?.(error instanceof Error ? error.message : "Не удалось сохранить брендинг");
@@ -302,14 +332,16 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
                         transition={{ type: "spring", stiffness: 420, damping: 34 }}
                       />
                     ) : null}
-                    <span className="relative z-10">
-                      {theme === "classic" ? "Классика" : theme === "modern" ? "Современная" : "Премиум"}
-                    </span>
+                    <span className="relative z-10">{DOCUMENT_THEME_LABELS_RU[theme]}</span>
                   </button>
                 );
               })}
             </div>
           </div>
+        </motion.div>
+
+        <motion.div variants={sectionMotion} className="rounded-2xl border bg-muted/10 p-4">
+          <DocumentConfigSettings draft={docConfig} onChange={setDocConfig} />
         </motion.div>
 
         <motion.div variants={sectionMotion} className="space-y-4 rounded-2xl border bg-muted/10 p-4">

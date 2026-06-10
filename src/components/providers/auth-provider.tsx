@@ -144,17 +144,17 @@ async function finalizeSignedInUser(
   logAuthDebug("auth-provider", "finalizeSignedInUser", describeFirebaseUser(user));
   setFirebaseUser(user);
   setIsLoading(false);
-  await auth.authStateReady();
-  logAuthDebug("auth-provider", "authStateReady after finalize", {
-    currentUser: auth.currentUser?.uid ?? null,
+  void auth.authStateReady().then(() => {
+    logAuthDebug("auth-provider", "authStateReady after finalize", {
+      currentUser: auth.currentUser?.uid ?? null,
+    });
   });
-  try {
-    await refreshProfile();
-    logAuthDebug("auth-provider", "refreshProfile done");
-  } catch (error) {
-    logAuthDebug("auth-provider", "refreshProfile error", error);
-    console.error("Failed to refresh profile after auth", error);
-  }
+  void refreshProfile()
+    .then(() => logAuthDebug("auth-provider", "refreshProfile done"))
+    .catch((error) => {
+      logAuthDebug("auth-provider", "refreshProfile error", error);
+      console.error("Failed to refresh profile after auth", error);
+    });
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
@@ -223,12 +223,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return;
     }
 
-    try {
-      await prepareSyncAuth(currentUser.uid);
-    } catch (error) {
-      console.warn("Auth prep skipped during profile refresh:", error);
-    }
-
     const companyRef = doc(db, "companies", companyId);
     const employeeRef = doc(db, "companies", companyId, "employees", currentUser.uid);
 
@@ -254,6 +248,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const mapped = mapUserDoc(currentUser.uid, currentUser, userDoc);
     setProfile({ ...mergeProfileWithEmployee(mapped, employeeDoc), isCompanyOwner });
     markSyncAuthPrepared(currentUser.uid);
+
+    void prepareSyncAuth(currentUser.uid).catch((error) => {
+      console.warn("Auth prep skipped during profile refresh:", error);
+    });
   }, [upsertDefaultUserDoc]);
 
   const refreshProfileRef = useRef(refreshProfile);

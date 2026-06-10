@@ -166,6 +166,7 @@ export async function loadWarrantyDocumentContext(companyId: string, warrantyId:
 
   return buildDocumentContext({
     company,
+    companyRecord: companyData ?? undefined,
     order,
     orderLabel: formatWorkOrderLabel(order),
     client,

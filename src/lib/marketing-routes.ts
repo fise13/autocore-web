@@ -1,41 +1,20 @@
 import type { MetadataRoute } from "next";
 
 import { marketingCleanPaths } from "@/lib/seo/marketing-paths";
-import { usesCleanMarketingPaths } from "@/lib/seo/marketing-paths";
-import { marketingInternalPaths } from "@/lib/seo/marketing-paths";
 import type { MarketingPathKey } from "@/lib/seo/marketing-paths";
 import { getMarketingUrl } from "@/lib/site-urls";
 
+/** Public marketing URLs — always clean paths (/pricing, never /marketing/pricing). */
 export const marketingRoutes = {
-  get home() {
-    return resolveRoute("home");
-  },
-  get product() {
-    return resolveRoute("product");
-  },
-  get modules() {
-    return resolveRoute("modules");
-  },
-  get pricing() {
-    return resolveRoute("pricing");
-  },
-  get security() {
-    return resolveRoute("security");
-  },
-  get contact() {
-    return resolveRoute("contact");
-  },
-  get privacy() {
-    return resolveRoute("privacy");
-  },
-  get terms() {
-    return resolveRoute("terms");
-  },
+  home: marketingCleanPaths.home,
+  product: marketingCleanPaths.product,
+  modules: marketingCleanPaths.modules,
+  pricing: marketingCleanPaths.pricing,
+  security: marketingCleanPaths.security,
+  contact: marketingCleanPaths.contact,
+  privacy: marketingCleanPaths.privacy,
+  terms: marketingCleanPaths.terms,
 } as const;
-
-function resolveRoute(key: MarketingPathKey): string {
-  return usesCleanMarketingPaths() ? marketingCleanPaths[key] : marketingInternalPaths[key];
-}
 
 export const marketingSitemapEntries: Array<{
   key: MarketingPathKey;

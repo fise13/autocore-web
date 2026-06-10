@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Mail, PlayCircle, LogIn, MessageCircle } from "lucide-react";
+import { LogIn, Mail, MessageCircle, PlayCircle } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 
@@ -62,6 +62,10 @@ const FOOTER_SECTIONS: FooterSection[] = [
   },
 ];
 
+function formatHost(url: string): string {
+  return url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+}
+
 export function SiteFooter() {
   const year = new Date().getFullYear();
   const copy = landingPageContent.footer;
@@ -70,31 +74,37 @@ export function SiteFooter() {
     <div className="site-footer-shell">
       <footer
         className={cn(
-          "site-footer-panel relative mx-auto flex w-full max-w-5xl flex-col items-center justify-center rounded-t-4xl border border-b-0 px-6 md:rounded-t-[2.5rem] md:px-8",
-          "bg-muted/25 dark:bg-[radial-gradient(35%_128px_at_50%_0%,color-mix(in_srgb,var(--foreground)_10%,transparent),transparent)]",
+          "site-footer-panel relative mx-auto flex w-full max-w-5xl flex-col rounded-t-[1.75rem] border border-b-0 px-5 sm:rounded-t-4xl sm:px-7 md:px-8",
+          "bg-muted/20 dark:bg-[radial-gradient(40%_140px_at_50%_0%,color-mix(in_srgb,var(--foreground)_8%,transparent),transparent)]",
         )}
       >
         <div
-          className="pointer-events-none absolute top-0 right-1/2 left-1/2 h-px w-1/3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground/20 blur-sm"
+          className="pointer-events-none absolute top-0 right-1/2 left-1/2 h-px w-2/5 max-w-xs -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground/15"
           aria-hidden
         />
 
-        <div className="grid w-full gap-8 py-8 md:py-10 lg:grid-cols-3 lg:gap-10">
-          <FooterAnimatedBlock className="flex flex-col space-y-4">
-            <Link href={marketingRoutes.home} className="inline-flex items-center gap-2.5">
-              <AppLogo size={28} />
-              <span className="text-sm font-semibold tracking-tight">AutoCore</span>
+        <div className="grid w-full gap-10 py-9 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.6fr)] md:gap-12 md:py-11">
+          <FooterAnimatedBlock className="flex flex-col gap-5">
+            <Link href={marketingRoutes.home} className="inline-flex w-fit items-center gap-3">
+              <AppLogo size={30} />
+              <span className="site-footer-brand-title text-[0.9375rem] font-semibold tracking-[-0.02em] text-foreground">
+                AutoCore
+              </span>
             </Link>
-            <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">{copy.tagline}</p>
-            <DesktopDownloadIcons className="pt-1" />
+            <p className="site-footer-tagline max-w-[18rem] text-[0.8125rem] leading-[1.6] text-muted-foreground sm:text-sm">
+              {copy.tagline}
+            </p>
+            <DesktopDownloadIcons className="pt-0.5" />
           </FooterAnimatedBlock>
 
-          <div className="mt-2 grid grid-cols-2 gap-8 sm:gap-10 md:grid-cols-4 lg:col-span-2 lg:mt-0">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-2 sm:gap-x-8 md:grid-cols-4">
             {FOOTER_SECTIONS.map((section, index) => (
-              <FooterAnimatedBlock key={section.title} delay={0.1 + index * 0.08}>
-                <div className="mb-8 md:mb-0">
-                  <h3 className="text-xs font-medium tracking-wide text-foreground/80 uppercase">{section.title}</h3>
-                  <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
+              <FooterAnimatedBlock key={section.title} delay={0.08 + index * 0.06}>
+                <div className="flex flex-col gap-3.5">
+                  <h3 className="site-footer-section-title text-[0.6875rem] font-semibold tracking-[0.1em] text-foreground/70 uppercase">
+                    {section.title}
+                  </h3>
+                  <ul className="flex flex-col gap-2">
                     {section.links.map((link) => (
                       <li key={`${section.title}-${link.label}`}>
                         <FooterLinkItem link={link} />
@@ -107,13 +117,18 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <div className="h-px w-full bg-linear-to-r from-transparent via-border to-transparent" aria-hidden />
+        <div className="h-px w-full bg-linear-to-r from-transparent via-border/80 to-transparent" aria-hidden />
 
-        <div className="flex w-full flex-col items-center justify-center gap-2 py-5 text-center">
-          <p className="text-sm text-muted-foreground">© {year} AutoCore. Все права защищены.</p>
-          <p className="text-xs text-muted-foreground/80">
-            Сайт · {getMarketingUrl().replace(/^https?:\/\//, "")} · Приложение ·{" "}
-            {getAppUrl().replace(/^https?:\/\//, "")}
+        <div className="flex w-full flex-col items-start justify-between gap-3 py-5 sm:flex-row sm:items-center sm:gap-4">
+          <p className="site-footer-meta text-[0.75rem] text-muted-foreground sm:text-sm">
+            © {year} AutoCore. Все права защищены.
+          </p>
+          <p className="site-footer-meta text-[0.6875rem] leading-relaxed text-muted-foreground/75 sm:text-right">
+            <span className="text-muted-foreground/90">{formatHost(getMarketingUrl())}</span>
+            <span className="mx-2 text-border" aria-hidden>
+              ·
+            </span>
+            <span>{formatHost(getAppUrl())}</span>
           </p>
         </div>
       </footer>
@@ -122,8 +137,11 @@ export function SiteFooter() {
 }
 
 function FooterLinkItem({ link }: { link: FooterLink }) {
-  const className =
-    "inline-flex items-center transition-colors duration-200 hover:text-foreground [&_svg]:me-1.5 [&_svg]:size-3.5";
+  const className = cn(
+    "site-footer-link inline-flex items-center text-[0.8125rem] leading-snug text-muted-foreground transition-colors duration-200",
+    "hover:text-foreground",
+    "[&_svg]:me-1.5 [&_svg]:size-3.5 [&_svg]:opacity-80",
+  );
 
   if (link.external || link.href.startsWith("mailto:")) {
     return (
@@ -144,7 +162,7 @@ function FooterLinkItem({ link }: { link: FooterLink }) {
 
 function FooterAnimatedBlock({
   className,
-  delay = 0.1,
+  delay = 0.08,
   children,
 }: {
   delay?: number;
@@ -160,10 +178,10 @@ function FooterAnimatedBlock({
   return (
     <motion.div
       className={className}
-      initial={{ filter: "blur(4px)", translateY: -8, opacity: 0 }}
-      transition={{ delay, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-      viewport={{ once: true, margin: "-40px" }}
-      whileInView={{ filter: "blur(0px)", translateY: 0, opacity: 1 }}
+      initial={{ opacity: 0, translateY: 6 }}
+      transition={{ delay, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      viewport={{ once: true, margin: "-32px" }}
+      whileInView={{ opacity: 1, translateY: 0 }}
     >
       {children}
     </motion.div>

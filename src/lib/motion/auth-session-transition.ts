@@ -64,7 +64,7 @@ export async function playAuthSessionEnter(kind: AuthSessionKind): Promise<void>
     if (!peekAuthSessionTransition()) return;
 
     const selector = getEnterSelector(kind);
-    const target = await waitForTransitionTarget(selector);
+    const target = await waitForTransitionTarget(selector, 700);
     const revealSelector = kind === "sign-in" ? "[data-app-reveal]" : "[data-page-reveal]";
 
     await playDissolveEnter(target, revealSelector);
@@ -109,7 +109,7 @@ export async function navigateToAppAfterAuth(
     try {
       await Promise.race([
         playAuthSessionLeave("sign-in"),
-        new Promise<void>((resolve) => window.setTimeout(resolve, 900)),
+        new Promise<void>((resolve) => window.setTimeout(resolve, 320)),
       ]);
     } catch {
       // Overlay may not be mounted during SSR or early bootstrap.

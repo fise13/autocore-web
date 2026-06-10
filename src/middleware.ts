@@ -3,8 +3,8 @@ import type { NextRequest } from "next/server";
 
 import {
   cleanPathFromInternal,
+  isMarketingContentPath,
   resolveMarketingPathFromClean,
-  usesCleanMarketingPaths,
 } from "@/lib/seo/marketing-paths";
 import { getAppUrl, getHostKind, getMarketingUrl, isAppRoute, isMarketingPublicPath } from "@/lib/site-urls";
 
@@ -22,13 +22,10 @@ function redirectAppRouteFromMarketing(request: NextRequest): NextResponse {
   return NextResponse.redirect(target, 308);
 }
 
-export function middleware(request: NextRequest) {
-  const host = request.headers.get("host") ?? "";
-  const kind = getHostKind(host);
-  const { pathname } = request.nextUrl;
-
-  if (kind === "marketing") {
-    const hostWithoutPort = host.split(":")[0] ?? "";
+/** Marketing host + unified localhost: clean URLs + legacy /marketing/* → 301. */
+function handleMarketingRoutes(request: NextRequest, pathname: string, isMarketingHost: boolean): NextResponse {
+  if (isMarketingHost) {
+    const hostWithoutPort = (request.headers.get("host") ?? "").split(":")[0] ?? "";
     const marketingHost = stripWww(getMarketingUrl().replace(/^https?:\/\//, "").split(":")[0] ?? "");
 
     if (hostWithoutPort.toLowerCase().startsWith("www.") && marketingHost) {
@@ -36,28 +33,42 @@ export function middleware(request: NextRequest) {
       canonical.hostname = marketingHost;
       return NextResponse.redirect(canonical, 301);
     }
+  }
 
-    if (pathname === "/") {
-      return NextResponse.rewrite(new URL("/marketing", request.url));
+  if (pathname === "/" && isMarketingHost) {
+    return NextResponse.rewrite(new URL("/marketing", request.url));
+  }
+
+  const internalFromClean = resolveMarketingPathFromClean(pathname);
+  if (internalFromClean) {
+    return NextResponse.rewrite(new URL(internalFromClean + request.nextUrl.search, request.url));
+  }
+
+  if (pathname.startsWith("/marketing")) {
+    const clean = cleanPathFromInternal(pathname);
+    if (clean) {
+      return NextResponse.redirect(new URL(clean + request.nextUrl.search, request.url), 301);
     }
+  }
 
-    const internalFromClean = resolveMarketingPathFromClean(pathname);
-    if (internalFromClean) {
-      return NextResponse.rewrite(new URL(internalFromClean + request.nextUrl.search, request.url));
-    }
+  if (isMarketingHost && isAppRoute(pathname) && pathname !== "/marketing") {
+    return redirectAppRouteFromMarketing(request);
+  }
 
-    if (pathname.startsWith("/marketing")) {
-      const clean = cleanPathFromInternal(pathname);
-      if (clean && usesCleanMarketingPaths()) {
-        return NextResponse.redirect(new URL(clean + request.nextUrl.search, request.url), 301);
-      }
-    }
+  return NextResponse.next();
+}
 
-    if (isAppRoute(pathname) && pathname !== "/marketing") {
-      return redirectAppRouteFromMarketing(request);
-    }
+export function middleware(request: NextRequest) {
+  const host = request.headers.get("host") ?? "";
+  const kind = getHostKind(host);
+  const { pathname } = request.nextUrl;
 
-    return NextResponse.next();
+  if (kind === "marketing") {
+    return handleMarketingRoutes(request, pathname, true);
+  }
+
+  if (kind === "local" && isMarketingContentPath(pathname) && !isAppRoute(pathname)) {
+    return handleMarketingRoutes(request, pathname, false);
   }
 
   if (kind === "app") {
@@ -73,8 +84,7 @@ export function middleware(request: NextRequest) {
 
     if (pathname.startsWith("/marketing")) {
       const clean = cleanPathFromInternal(pathname);
-      const targetPath = clean && usesCleanMarketingPaths() ? clean : pathname;
-      return redirectToMarketing(request, targetPath);
+      return redirectToMarketing(request, clean ?? pathname);
     }
 
     if (isMarketingPublicPath(pathname) && pathname !== "/") {

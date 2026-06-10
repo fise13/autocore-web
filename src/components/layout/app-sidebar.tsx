@@ -60,6 +60,7 @@ type AppSidebarProps = {
   canManageBrands?: boolean;
   brandCounts?: Map<number, number>;
   brandsSectionTitle?: string;
+  onNavigate?: () => void;
 };
 
 function isManagedBrand(brand: BrandEntity): boolean {
@@ -87,6 +88,7 @@ export function AppSidebar({
   canManageBrands = false,
   brandCounts,
   brandsSectionTitle = "Бренды",
+  onNavigate,
 }: AppSidebarProps) {
   const pathname = usePathname();
   const { customization, isEditing, setCustomization } = useSidebarCustomization();
@@ -353,6 +355,7 @@ export function AppSidebar({
                   <Link
                     key={navId}
                     href={item.href}
+                    onClick={onNavigate}
                     title={collapsed ? item.label : undefined}
                     className={cn(
                       sidebarNavRowClass,
@@ -419,6 +422,7 @@ export function AppSidebar({
                           <Link
                             key={category.id}
                             href={href}
+                            onClick={onNavigate}
                             className={cn(
                               "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all duration-200",
                               active

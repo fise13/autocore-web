@@ -1,10 +1,13 @@
 "use client";
 
-import { ReactNode, createContext, useContext } from "react";
+import { ReactNode, createContext, useCallback, useContext } from "react";
 
 type DashboardLayoutContextValue = {
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
+  mobileSidebarOpen: boolean;
+  setMobileSidebarOpen: (open: boolean) => void;
+  toggleMobileSidebar: () => void;
 };
 
 const DashboardLayoutContext = createContext<DashboardLayoutContextValue | null>(null);
@@ -13,13 +16,29 @@ export function DashboardLayoutProvider({
   children,
   sidebarCollapsed,
   toggleSidebar,
+  mobileSidebarOpen,
+  setMobileSidebarOpen,
 }: {
   children: ReactNode;
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
+  mobileSidebarOpen: boolean;
+  setMobileSidebarOpen: (open: boolean) => void;
 }) {
+  const toggleMobileSidebar = useCallback(() => {
+    setMobileSidebarOpen(!mobileSidebarOpen);
+  }, [mobileSidebarOpen, setMobileSidebarOpen]);
+
   return (
-    <DashboardLayoutContext.Provider value={{ sidebarCollapsed, toggleSidebar }}>
+    <DashboardLayoutContext.Provider
+      value={{
+        sidebarCollapsed,
+        toggleSidebar,
+        mobileSidebarOpen,
+        setMobileSidebarOpen,
+        toggleMobileSidebar,
+      }}
+    >
       {children}
     </DashboardLayoutContext.Provider>
   );

@@ -110,6 +110,7 @@ export function mapAdminCompany(id: string, data: Record<string, unknown>): Comp
     serviceIntervalMonths: branding.serviceIntervalMonths,
     primaryColor: branding.primaryColor,
     secondaryColor: branding.secondaryColor,
+    documentTheme: branding.documentTheme,
     createdAt: adminToDate(data.createdAt) ?? undefined,
   };
 }

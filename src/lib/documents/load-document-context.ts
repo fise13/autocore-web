@@ -176,6 +176,7 @@ export async function loadDocumentContext(companyId: string, workOrderId: string
 
   return buildDocumentContext({
     company,
+    companyRecord: companyData ?? undefined,
     order,
     orderLabel: formatWorkOrderLabel(order, order.number.match(/^\d+$/) ? Number(order.number) : undefined),
     client,

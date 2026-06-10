@@ -21,6 +21,7 @@ import { isAppleUserCancellationError, normalizeAppleJsError } from "@/lib/auth/
 import { logAuthDebug } from "@/lib/auth/auth-debug";
 import { getFirebaseAuth } from "@/infrastructure/firebase/client";
 import { marketingRoutes } from "@/lib/marketing-routes";
+import { marketingHomeUrl, marketingPageUrl } from "@/lib/site-urls";
 import { mapAuthError, userCopy } from "@/lib/user-copy";
 
 type AuthPhase = "idle" | "submitting" | "completing";
@@ -166,7 +167,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
         </div>
 
         <Link
-          href={marketingRoutes.home}
+          href={marketingHomeUrl()}
           className={buttonVariants({ variant: "ghost", size: "sm", className: "absolute top-7 left-5" })}
         >
           <ChevronLeft className="size-4" data-icon="inline-start" aria-hidden />
@@ -317,14 +318,14 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
           <p className="mt-8 text-sm text-muted-foreground">
             Нажимая «Продолжить», вы соглашаетесь с{" "}
             <Link
-              href={marketingRoutes.terms}
+              href={marketingPageUrl(marketingRoutes.terms)}
               className="underline underline-offset-4 hover:text-primary"
             >
               Условиями использования
             </Link>{" "}
             и{" "}
             <Link
-              href={marketingRoutes.privacy}
+              href={marketingPageUrl(marketingRoutes.privacy)}
               className="underline underline-offset-4 hover:text-primary"
             >
               Политикой конфиденциальности

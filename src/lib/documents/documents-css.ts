@@ -10,18 +10,34 @@ const COMPILED_PATHS = [
   path.join(process.cwd(), ".next/documents.css"),
 ];
 
+const PDF_STYLE_PATHS = [
+  path.join(process.cwd(), "src/styles/document-pdf-template.css"),
+  path.join(process.cwd(), "src/styles/document-pdf-racing.css"),
+];
+
+function readPdfStyles(): string {
+  return PDF_STYLE_PATHS.map((filePath) => {
+    if (!existsSync(filePath)) return "";
+    return readFileSync(filePath, "utf8");
+  })
+    .filter(Boolean)
+    .join("\n");
+}
+
 let cachedCss: string | null = null;
 
 export function getDocumentsCss(): string {
   if (cachedCss) return cachedCss;
 
+  const pdfStyles = readPdfStyles();
+
   for (const filePath of COMPILED_PATHS) {
     if (existsSync(filePath)) {
-      cachedCss = readFileSync(filePath, "utf8");
+      cachedCss = `${readFileSync(filePath, "utf8")}\n${pdfStyles}`;
       return cachedCss;
     }
   }
 
-  cachedCss = DOCUMENT_PRINT_STYLES;
+  cachedCss = `${DOCUMENT_PRINT_STYLES}\n${pdfStyles}`;
   return cachedCss;
 }

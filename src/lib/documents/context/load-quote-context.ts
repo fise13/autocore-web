@@ -149,6 +149,7 @@ export async function loadQuoteDocumentContext(companyId: string, quoteId: strin
 
   return buildDocumentContext({
     company,
+    companyRecord: companyData ?? undefined,
     order,
     orderLabel: formatWorkOrderLabel(order),
     client,

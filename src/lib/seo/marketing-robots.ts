@@ -1,9 +1,4 @@
-import { usesCleanMarketingPaths } from "@/lib/seo/marketing-paths";
-
-/** Indexable paths for robots.txt on the current deployment. */
+/** Indexable paths for robots.txt — always clean public URLs. */
 export function marketingRobotsAllowPaths(): string[] {
-  if (usesCleanMarketingPaths()) {
-    return ["/", "/product", "/modules", "/pricing", "/security", "/contact", "/legal/"];
-  }
-  return ["/", "/marketing", "/marketing/"];
+  return ["/", "/product", "/modules", "/pricing", "/security", "/contact", "/legal/"];
 }

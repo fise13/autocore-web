@@ -21,7 +21,7 @@ export function MarketingBarbaShell({ children }: MarketingBarbaShellProps) {
     shouldAnimate: shouldAnimateMarketingNavigation,
   });
 
-  const namespace = pathToBarbaNamespace(pathname);
+  const namespace = pathToBarbaNamespace(pathname, "marketing");
 
   return (
     <div

@@ -1,6 +1,7 @@
 import { doc, updateDoc } from "firebase/firestore";
 
 import { getFirebaseAuth, getFirestoreDb } from "@/infrastructure/firebase/client";
+import { DocumentSectionConfig, WarrantyTemplateId } from "@/domain/document-config";
 import { CompanyBrandingProfile } from "@/hooks/use-company-branding";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { prepareLogoFile } from "@/lib/company/prepare-logo-file";
@@ -20,7 +21,12 @@ export type SaveCompanyBrandingInput = {
   primaryColor?: string;
   secondaryColor?: string;
   logoUrl?: string;
-  documentTheme?: "classic" | "modern" | "premium";
+  documentTheme?: "classic" | "modern" | "premium" | "racing";
+  warrantyTemplateId?: WarrantyTemplateId;
+  documentSections?: DocumentSectionConfig;
+  qrLinkUrl?: string;
+  documentFooter?: string;
+  invoiceValidityDays?: string;
 };
 
 const LOGO_UPLOAD_TIMEOUT_MS = 25_000;
@@ -73,7 +79,7 @@ export async function uploadCompanyLogo(_companyId: string, file: File): Promise
 
 export async function saveCompanyBranding(companyId: string, input: SaveCompanyBrandingInput): Promise<void> {
   const normalizedCompanyId = normalizeCompanyId(companyId);
-  const payload: Record<string, string | number | undefined> = {
+  const payload: Record<string, string | number | DocumentSectionConfig | undefined> = {
     legalName: input.legalName?.trim() || undefined,
     slogan: input.slogan?.trim() || undefined,
     phone: input.phone?.trim() || undefined,
@@ -87,6 +93,10 @@ export async function saveCompanyBranding(companyId: string, input: SaveCompanyB
     secondaryColor: input.secondaryColor?.trim() || undefined,
     logoUrl: input.logoUrl?.trim() || undefined,
     documentTheme: input.documentTheme,
+    warrantyTemplateId: input.warrantyTemplateId,
+    qrLinkUrl: input.qrLinkUrl?.trim() || undefined,
+    documentFooter: input.documentFooter?.trim() || undefined,
+    documentSections: input.documentSections,
   };
 
   const intervalKm = input.serviceIntervalKm?.trim();
@@ -98,6 +108,11 @@ export async function saveCompanyBranding(companyId: string, input: SaveCompanyB
   if (intervalMonths) {
     const parsed = Number(intervalMonths);
     if (Number.isFinite(parsed) && parsed > 0) payload.serviceIntervalMonths = parsed;
+  }
+  const invoiceDays = input.invoiceValidityDays?.trim();
+  if (invoiceDays) {
+    const parsed = Number(invoiceDays);
+    if (Number.isFinite(parsed) && parsed > 0) payload.invoiceValidityDays = parsed;
   }
 
   Object.keys(payload).forEach((key) => {
@@ -124,5 +139,10 @@ export function brandingDraftFromProfile(profile: CompanyBrandingProfile): SaveC
     secondaryColor: profile.secondaryColor,
     logoUrl: profile.logoUrl,
     documentTheme: profile.documentTheme,
+    warrantyTemplateId: profile.warrantyTemplateId,
+    documentSections: profile.documentSections,
+    qrLinkUrl: profile.qrLinkUrl ?? "",
+    documentFooter: profile.documentFooter ?? "",
+    invoiceValidityDays: profile.invoiceValidityDays ? String(profile.invoiceValidityDays) : "",
   };
 }

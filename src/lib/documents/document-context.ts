@@ -6,10 +6,12 @@ import {
   DEFAULT_COMPANY_SECONDARY_COLOR,
   DocumentTheme,
 } from "@/domain/company-branding";
+import { CompanyDocumentConfig, parseCompanyDocumentConfig } from "@/domain/document-config";
 import { CompanyEmployee } from "@/domain/rbac";
 import { MotorEntity } from "@/domain/motor";
 import { VehicleEntity } from "@/domain/vehicle";
 import { WorkOrder } from "@/domain/work-order";
+import { DocumentPhoto } from "@/lib/documents/render-model/types";
 
 export type DocumentCompanyInfo = {
   name: string;
@@ -27,6 +29,7 @@ export type DocumentCompanyInfo = {
   logoDataUri?: string;
   primaryColor: string;
   secondaryColor: string;
+  documentConfig?: CompanyDocumentConfig;
 };
 
 export type VehicleLogbookSource = {
@@ -50,10 +53,13 @@ export type DocumentContext = {
   locale: "ru-KZ";
   theme?: DocumentTheme;
   warrantyVerificationToken?: string;
+  photos?: DocumentPhoto[];
 };
 
 export type DocumentContextInput = {
   company: CompanyEntity;
+  /** Raw Firestore company fields — ensures branding/theme config is not lost after mapping. */
+  companyRecord?: Record<string, unknown>;
   order: WorkOrder;
   orderLabel: string;
   client: ClientEntity | null;
@@ -64,6 +70,7 @@ export type DocumentContextInput = {
   vehicleLogbook?: VehicleLogbookSource[];
   generatedAt?: Date;
   warrantyVerificationToken?: string;
+  photos?: DocumentPhoto[];
 };
 
 export function buildDocumentContext(input: DocumentContextInput): DocumentContext {
@@ -76,7 +83,14 @@ export function buildDocumentContext(input: DocumentContextInput): DocumentConte
     }
   }
 
-  const branding = companyBrandingFromRecord(input.company as unknown as Record<string, unknown>);
+  const companyRecord =
+    input.companyRecord ??
+    ({
+      ...(input.company as unknown as Record<string, unknown>),
+      documentTheme: input.company.documentTheme,
+    } as Record<string, unknown>);
+  const branding = companyBrandingFromRecord(companyRecord);
+  const documentConfig = parseCompanyDocumentConfig(companyRecord);
 
   return {
     company: {
@@ -95,6 +109,13 @@ export function buildDocumentContext(input: DocumentContextInput): DocumentConte
       logoDataUri: input.logoDataUri,
       primaryColor: input.company.primaryColor ?? branding.primaryColor ?? DEFAULT_COMPANY_PRIMARY_COLOR,
       secondaryColor: input.company.secondaryColor ?? branding.secondaryColor ?? DEFAULT_COMPANY_SECONDARY_COLOR,
+      documentConfig: {
+        ...documentConfig,
+        qrLinkUrl: branding.qrLinkUrl ?? documentConfig.qrLinkUrl,
+        warrantyTemplateId: branding.warrantyTemplateId ?? documentConfig.warrantyTemplateId,
+        sections: branding.documentSections ?? documentConfig.sections,
+        documentFooter: branding.documentFooter ?? documentConfig.documentFooter,
+      },
     },
     order: input.order,
     orderLabel: input.orderLabel,
@@ -108,5 +129,6 @@ export function buildDocumentContext(input: DocumentContextInput): DocumentConte
     locale: "ru-KZ",
     theme: branding.documentTheme ?? "modern",
     warrantyVerificationToken: input.warrantyVerificationToken,
+    photos: input.photos,
   };
 }

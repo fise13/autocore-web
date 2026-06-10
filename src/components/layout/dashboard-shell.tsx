@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { ReactNode, Suspense, useCallback, useEffect, useMemo } from "react";
+import { ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 import { useBarbaNavigation } from "@/hooks/use-barba-navigation";
 import { pathToBarbaNamespace, shouldAnimateDashboardNavigation } from "@/lib/barba/barba-navigation";
@@ -55,6 +55,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
   const workspace = useWorkspace();
   const { setAvailability } = workspace;
   const { collapsed, width, setWidth, toggleVisible } = useSidebarLayout();
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const { customization, isEditing } = useSidebarCustomization();
   const sidebarOnRight = customization.position === "right";
   const companyId = normalizeCompanyId(profile?.companyId);
@@ -155,6 +156,40 @@ function DashboardShellInner({ children }: DashboardShellProps) {
   }, [isSoldRoute, pathname, setAvailability]);
 
   useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileSidebarOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [mobileSidebarOpen]);
+
+  const sidebarProps = {
+    brands: sidebarCatalog.brands,
+    engines: sidebarCatalog.engines,
+    specificCategories,
+    selectedBrandLocalId: workspace.selectedBrandLocalId,
+    selectedEngineLocalId: workspace.selectedEngineLocalId,
+    onBrandChange: workspace.setSelectedBrandLocalId,
+    onEngineChange: workspace.setSelectedEngineLocalId,
+    onClearBrandFilters: () => {
+      workspace.setSelectedBrandLocalId(null);
+      workspace.setSelectedEngineLocalId(null);
+    },
+    onRenameBrand: canManageBrands ? handleRenameBrand : undefined,
+    onDeleteBrand: canManageBrands ? handleDeleteBrand : undefined,
+    onAddBrand: canManageBrands ? handleAddBrand : undefined,
+    canManageBrands,
+    showBrandFilters: pathname === "/motors" || isSoldRoute,
+    brandCounts: sidebarCatalog.soldCountByBrand,
+    brandsSectionTitle: isSoldRoute ? "Проданные по брендам" : undefined,
+  };
+
+  useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "b") {
         event.preventDefault();
@@ -167,7 +202,12 @@ function DashboardShellInner({ children }: DashboardShellProps) {
 
   return (
     <BillingGateProvider companyId={companyId}>
-    <DashboardLayoutProvider sidebarCollapsed={collapsed} toggleSidebar={toggleVisible}>
+    <DashboardLayoutProvider
+      sidebarCollapsed={collapsed}
+      toggleSidebar={toggleVisible}
+      mobileSidebarOpen={mobileSidebarOpen}
+      setMobileSidebarOpen={setMobileSidebarOpen}
+    >
       <CommandPaletteProvider>
       <Suspense fallback={null}>
         <MotorImportHost />
@@ -194,28 +234,46 @@ function DashboardShellInner({ children }: DashboardShellProps) {
             position={customization.position}
             onWidthChange={setWidth}
           >
-            <AppSidebar
-              collapsed={collapsed}
-            brands={sidebarCatalog.brands}
-            engines={sidebarCatalog.engines}
-            specificCategories={specificCategories}
-            selectedBrandLocalId={workspace.selectedBrandLocalId}
-            selectedEngineLocalId={workspace.selectedEngineLocalId}
-            onBrandChange={workspace.setSelectedBrandLocalId}
-            onEngineChange={workspace.setSelectedEngineLocalId}
-            onClearBrandFilters={() => {
-              workspace.setSelectedBrandLocalId(null);
-              workspace.setSelectedEngineLocalId(null);
-            }}
-            onRenameBrand={canManageBrands ? handleRenameBrand : undefined}
-            onDeleteBrand={canManageBrands ? handleDeleteBrand : undefined}
-            onAddBrand={canManageBrands ? handleAddBrand : undefined}
-            canManageBrands={canManageBrands}
-            showBrandFilters={pathname === "/motors" || isSoldRoute}
-            brandCounts={sidebarCatalog.soldCountByBrand}
-            brandsSectionTitle={isSoldRoute ? "Проданные по брендам" : undefined}
-          />
+            <AppSidebar {...sidebarProps} collapsed={collapsed} />
         </ResizableSidebar>
+        </div>
+
+        <div
+          data-mobile-sidebar-backdrop
+          className={cn(
+            "fixed inset-0 z-50 md:hidden",
+            mobileSidebarOpen ? "pointer-events-auto" : "pointer-events-none",
+          )}
+          aria-hidden={!mobileSidebarOpen}
+        >
+          <button
+            type="button"
+            className={cn(
+              "absolute inset-0 bg-black/45 transition-opacity duration-200",
+              mobileSidebarOpen ? "opacity-100" : "opacity-0",
+            )}
+            aria-label="Закрыть меню"
+            tabIndex={mobileSidebarOpen ? 0 : -1}
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+          <aside
+            data-mobile-sidebar
+            className={cn(
+              "absolute inset-y-0 flex w-[min(88vw,20rem)] flex-col border-r bg-sidebar shadow-2xl transition-transform duration-200 ease-out",
+              sidebarOnRight ? "right-0 border-r-0 border-l" : "left-0",
+              mobileSidebarOpen
+                ? "translate-x-0"
+                : sidebarOnRight
+                  ? "translate-x-full"
+                  : "-translate-x-full",
+            )}
+          >
+            <AppSidebar
+              {...sidebarProps}
+              collapsed={false}
+              onNavigate={() => setMobileSidebarOpen(false)}
+            />
+          </aside>
         </div>
 
         <div className={cn("relative flex min-w-0 flex-1 flex-col", isEditing && "overflow-hidden")}>

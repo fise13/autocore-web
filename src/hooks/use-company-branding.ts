@@ -5,6 +5,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 
 import { CompanyEntity } from "@/domain/company";
 import { companyBrandingFromRecord } from "@/domain/company-branding";
+import { parseCompanyDocumentConfig } from "@/domain/document-config";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 
@@ -26,7 +27,13 @@ export type CompanyBrandingProfile = Pick<
   | "primaryColor"
   | "secondaryColor"
   | "documentTheme"
->;
+> & {
+  warrantyTemplateId?: import("@/domain/document-config").WarrantyTemplateId;
+  documentSections?: import("@/domain/document-config").DocumentSectionConfig;
+  qrLinkUrl?: string;
+  documentFooter?: string;
+  invoiceValidityDays?: number;
+};
 
 const emptyProfile: CompanyBrandingProfile = {
   name: "",
@@ -56,6 +63,7 @@ export function useCompanyBranding(companyId: string | null | undefined) {
         }
         const data = snap.data() as Record<string, unknown>;
         const branding = companyBrandingFromRecord(data);
+        const documentConfig = parseCompanyDocumentConfig(data);
         const logoFromDoc =
           typeof data.logoUrl === "string"
             ? data.logoUrl
@@ -79,6 +87,11 @@ export function useCompanyBranding(companyId: string | null | undefined) {
           primaryColor: branding.primaryColor,
           secondaryColor: branding.secondaryColor,
           documentTheme: branding.documentTheme,
+          warrantyTemplateId: documentConfig.warrantyTemplateId,
+          documentSections: documentConfig.sections,
+          qrLinkUrl: documentConfig.qrLinkUrl,
+          documentFooter: documentConfig.documentFooter,
+          invoiceValidityDays: documentConfig.invoiceValidityDays,
         });
         setIsLoading(false);
       },

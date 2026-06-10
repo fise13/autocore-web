@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { FileText, Printer, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,11 @@ import {
 } from "@/components/ui/dialog";
 import { FinancialOperation } from "@/domain/financial-operation";
 import { MotorEntity } from "@/domain/motor";
-import { getFirebaseAuth } from "@/infrastructure/firebase/client";
+import { useMotorSaleDocuments } from "@/hooks/use-motor-sale-documents";
 import { MOTOR_SALE_CATEGORY } from "@/lib/accounting/categories";
 import { downloadDocumentPdf, printDocumentPdf } from "@/lib/documents/fetch-document-pdf";
 import { operationCategoryLabel } from "@/lib/accounting/labels";
+import { mapServerError } from "@/lib/errors/map-server-error";
 
 type MotorSaleDocumentsSheetProps = {
   operation: FinancialOperation | null;
@@ -25,19 +26,17 @@ type MotorSaleDocumentsSheetProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-type MotorDocumentsPayload = {
-  motorId: string;
-  serialCode: string;
-  brandName?: string;
-  engineCode?: string;
-  warrantyId: string | null;
-};
-
-function resolveMotorId(operation: FinancialOperation, motors: MotorEntity[]): string | null {
-  if (operation.relatedMotorId) return operation.relatedMotorId;
+function resolveMotor(operation: FinancialOperation | null, motors: MotorEntity[]): MotorEntity | null {
+  if (!operation) return null;
+  if (operation.relatedMotorId) {
+    return motors.find((item) => item.id === operation.relatedMotorId) ?? null;
+  }
   if (operation.relatedMotorID == null) return null;
-  const motor = motors.find((item) => item.localId === operation.relatedMotorID || item.id === String(operation.relatedMotorID));
-  return motor?.id ?? null;
+  return (
+    motors.find(
+      (item) => item.localId === operation.relatedMotorID || item.id === String(operation.relatedMotorID),
+    ) ?? null
+  );
 }
 
 export function MotorSaleDocumentsSheet({
@@ -46,51 +45,10 @@ export function MotorSaleDocumentsSheet({
   open,
   onOpenChange,
 }: MotorSaleDocumentsSheetProps) {
-  const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<"warranty" | "invoice" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [documents, setDocuments] = useState<MotorDocumentsPayload | null>(null);
-
-  useEffect(() => {
-    if (!open || !operation) {
-      setDocuments(null);
-      setError(null);
-      return;
-    }
-
-    const motorId = resolveMotorId(operation, motors);
-    if (!motorId) {
-      setError("Не удалось найти мотор для этой операции");
-      return;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    void (async () => {
-      try {
-        const auth = getFirebaseAuth();
-        const token = await auth.currentUser?.getIdToken();
-        if (!token) throw new Error("Требуется авторизация");
-
-        const response = await fetch(`/api/motors/${encodeURIComponent(motorId)}/documents`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const payload = (await response.json()) as MotorDocumentsPayload & { error?: string };
-        if (!response.ok) throw new Error(payload.error ?? "Не удалось загрузить документы");
-        if (!cancelled) setDocuments(payload);
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Ошибка загрузки");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [open, operation, motors]);
+  const motor = useMemo(() => resolveMotor(operation, motors), [operation, motors]);
+  const { documents, isLoading } = useMotorSaleDocuments(motor, open);
 
   async function handlePrint(slug: "engine-warranty" | "invoice") {
     if (!documents?.warrantyId) {
@@ -103,7 +61,7 @@ export function MotorSaleDocumentsSheet({
     try {
       await printDocumentPdf(slug, documents.warrantyId, { aggregateType: "warranty" });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось напечатать документ");
+      setError(mapServerError(e, "Не удалось напечатать документ"));
     } finally {
       setBusy(null);
     }
@@ -125,7 +83,7 @@ export function MotorSaleDocumentsSheet({
         { aggregateType: "warranty" },
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось скачать документ");
+      setError(mapServerError(e, "Не удалось скачать документ"));
     } finally {
       setBusy(null);
     }
@@ -156,10 +114,14 @@ export function MotorSaleDocumentsSheet({
             ) : null}
           </div>
 
-          {loading ? <p className="text-sm text-muted-foreground">Загружаем документы…</p> : null}
+          {!motor && operation ? (
+            <p className="text-sm text-destructive">Не удалось найти мотор для этой операции</p>
+          ) : null}
+
+          {isLoading ? <p className="text-sm text-muted-foreground">Загружаем документы…</p> : null}
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-          {!loading && documents?.warrantyId ? (
+          {!isLoading && documents?.warrantyId ? (
             <div className="grid gap-2">
               <Button
                 type="button"
@@ -203,7 +165,7 @@ export function MotorSaleDocumentsSheet({
             </div>
           ) : null}
 
-          {!loading && documents && !documents.warrantyId ? (
+          {!isLoading && documents && !documents.warrantyId ? (
             <p className="text-sm text-muted-foreground">
               Документы ещё формируются. Обновите через несколько секунд.
             </p>

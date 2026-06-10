@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { LayoutGrid, X } from "lucide-react";
 
 import { sellMotorWithFinancialOperationUseCase } from "@/application/use-cases/sell-motor-with-financial-operation";
+import { enqueueMotorSoldEffects } from "@/lib/motors/enqueue-motor-sold-effects";
 import { unsellMotorWithFinancialOperationUseCase } from "@/application/use-cases/unsell-motor-with-financial-operation";
 import { MotorSaleSuccessOverlay } from "@/components/motors/motor-sale-success-overlay";
 import { useWorkspace } from "@/components/layout/workspace-context";
@@ -211,6 +212,13 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
         comment: payload.comment,
       });
 
+      void enqueueMotorSoldEffects(motor, {
+        amount: payload.amount,
+        account: payload.account,
+        paymentMethod: payload.paymentMethod,
+        comment: payload.comment,
+      });
+
       setSellSuccess({ serialCode: motor.serialCode, amount: payload.amount });
       return;
     }
@@ -238,6 +246,12 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
           motor,
           companyId,
           createdByUserId: profile.id,
+          amount: 0,
+          account: "cashbox",
+          paymentMethod: "cash",
+          comment: "Продажа мотора",
+        });
+        void enqueueMotorSoldEffects(motor, {
           amount: 0,
           account: "cashbox",
           paymentMethod: "cash",

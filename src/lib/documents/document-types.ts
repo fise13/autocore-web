@@ -7,7 +7,9 @@ export type DocumentSlug =
   | "service-tag"
   | "invoice"
   | "engine-waybill"
-  | "commercial-proposal";
+  | "commercial-proposal"
+  | "vehicle-intake-act"
+  | "sales-receipt";
 
 export type DocumentDefinition = {
   slug: DocumentSlug;
@@ -65,6 +67,20 @@ export const DOCUMENT_DEFINITIONS: DocumentDefinition[] = [
     type: "commercial_proposal",
     title: "Коммерческое предложение",
     description: "Предварительное предложение до оформления заказа",
+    pageSize: "A4",
+  },
+  {
+    slug: "vehicle-intake-act",
+    type: "vehicle_intake_act",
+    title: "Акт приёма автомобиля",
+    description: "Фиксация состояния автомобиля при приёмке",
+    pageSize: "A4",
+  },
+  {
+    slug: "sales-receipt",
+    type: "sales_receipt",
+    title: "Товарный чек",
+    description: "Подтверждение продажи запчастей и агрегатов",
     pageSize: "A4",
   },
 ];

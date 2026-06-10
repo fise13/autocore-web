@@ -9,7 +9,7 @@ export function mapServerError(error: unknown, fallback = "Не удалось �
     message.includes("Firebase Admin не настроен") ||
     message.includes("service account")
   ) {
-    return "Firebase Admin не настроен. Добавьте ключ сервисного аккаунта в FIREBASE_SERVICE_ACCOUNT_PATH и перезапустите сервер.";
+    return "PDF и гарантия требуют Firebase Admin: локально — FIREBASE_SERVICE_ACCOUNT_PATH; на Vercel — полный FIREBASE_SERVICE_ACCOUNT_JSON (без placeholder «...»).";
   }
 
   return message || fallback;

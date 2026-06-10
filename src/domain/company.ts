@@ -1,3 +1,5 @@
+import type { DocumentTheme } from "@/domain/company-branding";
+
 export type CompanyEntity = {
   id: string;
   name: string;
@@ -16,6 +18,6 @@ export type CompanyEntity = {
   serviceIntervalMonths?: number;
   primaryColor?: string;
   secondaryColor?: string;
-  documentTheme?: "classic" | "modern" | "premium";
+  documentTheme?: DocumentTheme;
   createdAt?: Date;
 };

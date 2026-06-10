@@ -12,10 +12,9 @@ import {
 } from "@/infrastructure/firestore/admin/work-order-effects-admin";
 import { MOTOR_SALE_CATEGORY } from "@/lib/accounting/categories";
 import { normalizeCompanyId } from "@/lib/company-id";
-import {
-  ENGINE_WARRANTY_KM,
-  ENGINE_WARRANTY_MONTHS,
-} from "@/lib/documents/document-copy";
+import { companyBrandingFromRecord } from "@/domain/company-branding";
+import { parseCompanyDocumentConfig } from "@/domain/document-config";
+import { canonicalWarrantyDuration } from "@/lib/documents/warranty/resolve-warranty";
 
 function addMonths(date: Date, months: number): Date {
   const next = new Date(date);
@@ -32,8 +31,22 @@ export async function processStandaloneMotorSold(params: {
   paymentMethod: string;
   comment?: string;
 }): Promise<{ warrantyId: string; jobId: string; operationId: string | null }> {
+  const existingWarranty = await fetchWarrantyByMotorId(params.companyId, params.motor.id);
+  if (existingWarranty) {
+    return { warrantyId: existingWarranty.id, jobId: "", operationId: null };
+  }
+
   const soldAt = new Date();
-  const expiresAt = addMonths(soldAt, ENGINE_WARRANTY_MONTHS);
+  const companySnap = await getAdminFirestore()
+    .collection("companies")
+    .doc(normalizeCompanyId(params.companyId))
+    .get();
+  const companyData = (companySnap.data() ?? {}) as Record<string, unknown>;
+  const branding = companyBrandingFromRecord(companyData);
+  const documentConfig = parseCompanyDocumentConfig(companyData);
+  const warrantyTemplateId = branding.warrantyTemplateId ?? documentConfig.warrantyTemplateId;
+  const { months: warrantyMonths, km: warrantyKm } = canonicalWarrantyDuration(warrantyTemplateId);
+  const expiresAt = addMonths(soldAt, warrantyMonths);
   const motorDescription = [params.motor.brandName, params.motor.engineCode, params.motor.serialCode]
     .filter(Boolean)
     .join(" ");
@@ -69,7 +82,7 @@ export async function processStandaloneMotorSold(params: {
     installedAt: soldAt,
     soldAt,
     expiresAt,
-    expiresAtMileage: ENGINE_WARRANTY_KM,
+    expiresAtMileage: warrantyKm,
     saleAmount: params.amount > 0 ? params.amount : undefined,
   });
 

@@ -37,19 +37,19 @@ const CLEAN_TO_INTERNAL: Record<string, string> = {
   [marketingCleanPaths.terms]: marketingInternalPaths.terms,
 };
 
-/** True when marketing and app live on different hosts (production split). */
+/** Public links, sitemap and SEO always use clean paths (never /marketing/...). */
 export function usesCleanMarketingPaths(): boolean {
-  const forced = process.env.NEXT_PUBLIC_MARKETING_CLEAN_PATHS?.trim();
-  if (forced === "true") return true;
-  if (forced === "false") return false;
-
-  const appHost = getUrlHost(getAppUrl());
-  const marketingHost = getUrlHost(getMarketingUrl());
-  return Boolean(appHost && marketingHost && appHost !== marketingHost);
+  return true;
 }
 
+/** Public URL segment for links and canonicals. */
 export function resolveMarketingPath(key: MarketingPathKey): string {
-  return usesCleanMarketingPaths() ? marketingCleanPaths[key] : marketingInternalPaths[key];
+  return marketingCleanPaths[key];
+}
+
+/** App Router file path for middleware rewrites only. */
+export function resolveMarketingInternalPath(key: MarketingPathKey): string {
+  return marketingInternalPaths[key];
 }
 
 export function resolveMarketingPathFromClean(cleanPath: string): string | null {
@@ -67,6 +67,19 @@ export function cleanPathFromInternal(internalPath: string): string | null {
   return null;
 }
 
+/** True when pathname is a marketing page (clean or legacy internal). */
+export function isMarketingContentPath(pathname: string): boolean {
+  if (pathname === "/" || pathname.startsWith("/marketing")) return true;
+  return resolveMarketingPathFromClean(pathname) !== null;
+}
+
 export function marketingAbsoluteUrl(key: MarketingPathKey): string {
-  return `${getMarketingUrl().replace(/\/$/, "")}${resolveMarketingPath(key)}`;
+  return `${getMarketingUrl().replace(/\/$/, "")}${marketingCleanPaths[key]}`;
+}
+
+/** @deprecated Use isMarketingContentPath — kept for middleware split-host checks. */
+export function isSplitMarketingDeployment(): boolean {
+  const appHost = getUrlHost(getAppUrl());
+  const marketingHost = getUrlHost(getMarketingUrl());
+  return Boolean(appHost && marketingHost && appHost !== marketingHost);
 }

@@ -8,6 +8,8 @@ import { EngineWarrantyDocument } from "../engine-warranty/engine-warranty-docum
 import { InvoiceDocument } from "../invoice/invoice-document";
 import { ServiceActDocument } from "../service-act/service-act-document";
 import { ServiceTagDocument } from "../service-tag/service-tag-document";
+import { SalesReceiptDocument } from "../sales-receipt/sales-receipt-document";
+import { VehicleIntakeActDocument } from "../vehicle-intake-act/vehicle-intake-act-document";
 import { WorkOrderDocument } from "../work-order/work-order-document";
 
 type RenderDocumentProps = {
@@ -32,6 +34,10 @@ export function RenderDocument({ slug, context, qrDataUri }: RenderDocumentProps
       return <EngineWaybillDocument context={context} />;
     case "commercial-proposal":
       return <CommercialProposalDocument context={context} />;
+    case "vehicle-intake-act":
+      return <VehicleIntakeActDocument context={context} qrDataUri={qrDataUri} />;
+    case "sales-receipt":
+      return <SalesReceiptDocument context={context} qrDataUri={qrDataUri} />;
     default:
       return null;
   }
