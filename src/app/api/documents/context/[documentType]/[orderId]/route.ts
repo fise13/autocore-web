@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { loadDocumentContext, serializeDocumentContext } from "@/lib/documents/load-document-context";
 import { resolveDocumentSlug } from "@/lib/documents/document-types";
+import { mapDocumentError } from "@/lib/documents/map-document-error";
 import {
   assertOrderCompanyAccess,
   DocumentAccessError,
@@ -36,7 +37,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
     console.error("[documents/context]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to load document context" },
+      {
+        error: mapDocumentError(error, "Failed to load document context"),
+      },
       { status: 500 },
     );
   }

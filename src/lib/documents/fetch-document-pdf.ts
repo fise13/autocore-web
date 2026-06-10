@@ -1,13 +1,10 @@
-import { getFirebaseAuth } from "@/infrastructure/firebase/client";
+import { waitForFirebaseUser } from "@/lib/auth/wait-for-firebase-user";
+import { mapDocumentError } from "@/lib/documents/map-document-error";
 import { DocumentSlug } from "@/lib/documents/document-types";
 import { DocumentAggregateType } from "@/lib/documents/resolve-document-context";
 
 async function getAuthToken(): Promise<string> {
-  const auth = getFirebaseAuth();
-  const user = auth.currentUser;
-  if (!user) {
-    throw new Error("Требуется авторизация");
-  }
+  const user = await waitForFirebaseUser();
   return user.getIdToken();
 }
 
@@ -25,6 +22,16 @@ function buildPdfUrl(
   return `/api/pdf/${slug}/${aggregateId}${query}`;
 }
 
+async function readPdfError(response: Response): Promise<string> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+    return payload?.error ?? "Не удалось получить PDF";
+  }
+  const text = await response.text().catch(() => "");
+  return text.trim() || "Не удалось получить PDF";
+}
+
 export async function fetchDocumentPdf(
   slug: DocumentSlug,
   aggregateId: string,
@@ -38,11 +45,15 @@ export async function fetchDocumentPdf(
   });
 
   if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(payload?.error ?? "Не удалось получить PDF");
+    throw new Error(mapDocumentError(new Error(await readPdfError(response))));
   }
 
-  return response.blob();
+  const blob = await response.blob();
+  if (blob.size === 0) {
+    throw new Error("Сервер вернул пустой PDF");
+  }
+
+  return blob;
 }
 
 export async function downloadDocumentPdf(
@@ -56,8 +67,11 @@ export async function downloadDocumentPdf(
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename ?? `${slug}-${aggregateId}.pdf`;
+  anchor.rel = "noopener";
+  document.body.appendChild(anchor);
   anchor.click();
-  URL.revokeObjectURL(url);
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 export async function printDocumentPdf(
@@ -67,23 +81,78 @@ export async function printDocumentPdf(
 ): Promise<void> {
   const blob = await fetchDocumentPdf(slug, aggregateId, { inline: true, ...options });
   const url = URL.createObjectURL(blob);
-  const frame = document.createElement("iframe");
-  frame.style.position = "fixed";
-  frame.style.right = "0";
-  frame.style.bottom = "0";
-  frame.style.width = "0";
-  frame.style.height = "0";
-  frame.style.border = "0";
-  frame.src = url;
-  document.body.appendChild(frame);
-  frame.onload = () => {
-    frame.contentWindow?.focus();
-    frame.contentWindow?.print();
-    window.setTimeout(() => {
-      document.body.removeChild(frame);
+
+  await new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
+      resolve();
+    };
+
+    const popup = window.open(url, "_blank", "noopener,noreferrer");
+    if (popup) {
+      const triggerPrint = () => {
+        try {
+          popup.focus();
+          popup.print();
+        } catch {
+          // Browser may block programmatic print — user can print from the tab.
+        }
+        finish();
+      };
+
+      popup.addEventListener("load", triggerPrint);
+      window.setTimeout(triggerPrint, 1200);
+      return;
+    }
+
+    const frame = document.createElement("iframe");
+    frame.setAttribute("title", "Печать PDF");
+    frame.style.cssText =
+      "position:fixed;inset:0;width:100%;height:100%;border:0;z-index:99999;background:#0a0a0a;";
+    frame.src = url;
+
+    const cleanup = () => {
+      frame.remove();
+      finish();
+    };
+
+    const triggerFramePrint = () => {
+      const printWindow = frame.contentWindow;
+      if (!printWindow) {
+        cleanup();
+        reject(new Error("Браузер не открыл PDF для печати"));
+        return;
+      }
+
+      try {
+        printWindow.focus();
+        printWindow.print();
+      } catch {
+        reject(
+          new Error("Браузер заблокировал печать. Разрешите всплывающие окна или скачайте PDF."),
+        );
+        frame.remove();
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      printWindow.addEventListener("afterprint", cleanup, { once: true });
+      window.setTimeout(cleanup, 120_000);
+    };
+
+    frame.onload = triggerFramePrint;
+    frame.onerror = () => {
+      frame.remove();
       URL.revokeObjectURL(url);
-    }, 1000);
-  };
+      reject(new Error("Не удалось загрузить PDF для печати"));
+    };
+
+    document.body.appendChild(frame);
+    window.setTimeout(triggerFramePrint, 1200);
+  });
 }
 
 export async function generateWorkOrderDocuments(orderId: string, types?: DocumentSlug[]): Promise<void> {
@@ -99,6 +168,6 @@ export async function generateWorkOrderDocuments(orderId: string, types?: Docume
 
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(payload?.error ?? "Не удалось сгенерировать документы");
+    throw new Error(mapDocumentError(new Error(payload?.error ?? "Не удалось сгенерировать документы")));
   }
 }

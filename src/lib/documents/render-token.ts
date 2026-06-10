@@ -3,13 +3,33 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { DocumentSlug, resolveDocumentSlug } from "@/lib/documents/document-types";
+import { getAppUrl } from "@/lib/site-urls";
+
+function resolveRenderBaseUrl(): string {
+  const override = process.env.PDF_RENDER_BASE_URL?.trim();
+  if (override) return override.replace(/\/$/, "");
+
+  if (process.env.NODE_ENV === "development") {
+    const port = process.env.PORT?.trim() || "3000";
+    return `http://127.0.0.1:${port}`;
+  }
+
+  return getAppUrl().replace(/\/$/, "");
+}
 
 function renderSecret(): string {
-  return (
-    process.env.DOCUMENT_RENDER_SECRET?.trim() ||
-    process.env.FIREBASE_SERVICE_ACCOUNT_PATH?.trim() ||
-    "autocore-document-render-dev"
-  );
+  const dedicated = process.env.DOCUMENT_RENDER_SECRET?.trim();
+  if (dedicated) return dedicated;
+
+  const inlineServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
+  if (inlineServiceAccount && !inlineServiceAccount.includes("...")) {
+    return inlineServiceAccount;
+  }
+
+  const pathSecret = process.env.FIREBASE_SERVICE_ACCOUNT_PATH?.trim();
+  if (pathSecret) return pathSecret;
+
+  return "autocore-document-render-dev";
 }
 
 type RenderTokenPayload = {
@@ -89,7 +109,7 @@ export function documentRenderUrl(params: {
   aggregateType?: "work_order" | "warranty" | "quote";
   theme?: string;
 }): string {
-  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const baseUrl = resolveRenderBaseUrl();
   const token = createDocumentRenderToken(params);
   const themeQuery = params.theme ? `&theme=${encodeURIComponent(params.theme)}` : "";
   const aggregateQuery =

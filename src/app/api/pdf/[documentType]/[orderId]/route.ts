@@ -5,6 +5,7 @@ import {
   parseDocumentAggregateType,
   resolveDocumentContext,
 } from "@/lib/documents/resolve-document-context";
+import { mapDocumentError } from "@/lib/documents/map-document-error";
 import {
   assertOrderCompanyAccess,
   DocumentAccessError,
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
     console.error("[pdf]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to generate PDF" },
+      { error: mapDocumentError(error, "Failed to generate PDF") },
       { status: 500 },
     );
   }

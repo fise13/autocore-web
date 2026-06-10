@@ -35,7 +35,15 @@ export async function generatePdfFromRenderUrl(params: PdfFromUrlOptions): Promi
 
   try {
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: "load", timeout: 60_000 });
+    const response = await page.goto(url, { waitUntil: "load", timeout: 60_000 });
+    if (!response || !response.ok()) {
+      const status = response?.status() ?? "no response";
+      throw new Error(`Страница рендера PDF недоступна (${status}): ${url}`);
+    }
+
+    await page.waitForSelector(".doc-pdf-page, .doc-racing-page, .doc-sr-page, .doc-page", {
+      timeout: 30_000,
+    });
     await page.emulateMediaType("print");
 
     const pdf = await page.pdf({

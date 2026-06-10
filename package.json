@@ -6,6 +6,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "predev": "node scripts/ensure-puppeteer-browser.mjs",
     "dev": "next dev",
     "dev:desktop": "node scripts/dev-desktop.mjs",
     "prebuild": "python3 scripts/generate-favicon-ico.py && node scripts/build-documents-css.mjs",

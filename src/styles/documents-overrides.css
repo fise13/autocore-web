@@ -12,6 +12,16 @@
     background: #f4f4f5;
     -webkit-font-smoothing: antialiased;
   }
+
+  .documents-preview-dark {
+    color: #f5f5f5;
+    background: #0a0a0a;
+  }
+
+  .documents-preview-dark .doc-preview-paper {
+    background: #ffffff;
+    color: #0a0a0a;
+  }
 }
 
 @layer components {
@@ -117,6 +127,30 @@
 }
 
 @media print {
+  body.doc-preview-printing * {
+    visibility: hidden;
+  }
+
+  body.doc-preview-printing #doc-preview-print-root,
+  body.doc-preview-printing #doc-preview-print-root * {
+    visibility: visible;
+  }
+
+  body.doc-preview-printing #doc-preview-print-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  body.doc-preview-printing .documents-preview-dark {
+    background: #ffffff !important;
+  }
+
   @page {
     size: A4;
     margin: 0;

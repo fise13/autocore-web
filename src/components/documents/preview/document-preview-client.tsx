@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 
 import { RenderDocument } from "@/components/documents/registry/render-document";
-import { getFirebaseAuth } from "@/infrastructure/firebase/client";
+import { waitForFirebaseUser } from "@/lib/auth/wait-for-firebase-user";
 import { DocumentContext } from "@/lib/documents/document-context";
 import { DocumentSlug } from "@/lib/documents/document-types";
+import { mapDocumentError } from "@/lib/documents/map-document-error";
 import { reviveDocumentContext } from "@/lib/documents/revive-document-context";
 
 import { DocumentPreviewActions } from "./document-preview-actions";
@@ -19,6 +20,7 @@ type DocumentPreviewClientProps = {
 export function DocumentPreviewClient({ orderId, slug }: DocumentPreviewClientProps) {
   const [context, setContext] = useState<DocumentContext | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,11 +30,7 @@ export function DocumentPreviewClient({ orderId, slug }: DocumentPreviewClientPr
       setLoading(true);
       setError(null);
       try {
-        const auth = getFirebaseAuth();
-        const user = auth.currentUser;
-        if (!user) {
-          throw new Error("Требуется авторизация");
-        }
+        const user = await waitForFirebaseUser();
         const token = await user.getIdToken();
         const response = await fetch(`/api/documents/context/${slug}/${orderId}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -47,7 +45,7 @@ export function DocumentPreviewClient({ orderId, slug }: DocumentPreviewClientPr
         }
       } catch (nextError) {
         if (!cancelled) {
-          setError(nextError instanceof Error ? nextError.message : "Ошибка загрузки");
+          setError(mapDocumentError(nextError, "Ошибка загрузки"));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -60,14 +58,36 @@ export function DocumentPreviewClient({ orderId, slug }: DocumentPreviewClientPr
     };
   }, [orderId, slug]);
 
+  const activeError = pdfError ?? error;
+
   return (
-    <DocumentPreviewFrame toolbar={<DocumentPreviewActions slug={slug} orderId={orderId} />}>
+    <DocumentPreviewFrame
+      toolbar={
+        <DocumentPreviewActions
+          slug={slug}
+          orderId={orderId}
+          previewReady={Boolean(context)}
+          onError={setPdfError}
+        />
+      }
+    >
+      {activeError ? (
+        <div className="w-full max-w-3xl rounded-xl border border-red-500/30 bg-[#141414] px-6 py-5 text-sm text-red-300">
+          {activeError}
+        </div>
+      ) : null}
+
       {loading ? (
-        <div className="rounded-xl border bg-white px-8 py-16 text-sm text-neutral-500">Загрузка документа…</div>
-      ) : error ? (
-        <div className="rounded-xl border border-red-200 bg-white px-8 py-16 text-sm text-red-600">{error}</div>
-      ) : context ? (
-        <RenderDocument slug={slug} context={context} />
+        <div className="rounded-xl border border-white/10 bg-[#141414] px-8 py-16 text-sm text-neutral-400">
+          Загрузка документа…
+        </div>
+      ) : error ? null : context ? (
+        <div
+          id="doc-preview-print-root"
+          className="doc-preview-paper overflow-hidden rounded-lg shadow-[0_24px_80px_rgb(0_0_0/0.55)]"
+        >
+          <RenderDocument slug={slug} context={context} />
+        </div>
       ) : null}
     </DocumentPreviewFrame>
   );

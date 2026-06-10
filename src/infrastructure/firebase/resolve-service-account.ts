@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { isAbsolute, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 
 import "server-only";
 
@@ -14,21 +14,53 @@ function discoverServiceAccountInDir(dir: string): string | null {
   }
 }
 
+function resolveProjectRoot(): string {
+  const roots = new Set<string>();
+  let cursor = process.cwd();
+
+  for (let depth = 0; depth < 8; depth += 1) {
+    roots.add(cursor);
+    try {
+      const pkgPath = join(cursor, "package.json");
+      if (existsSync(pkgPath)) {
+        const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as { name?: string };
+        if (pkg.name === "autocore-web") {
+          return cursor;
+        }
+      }
+    } catch {
+      // Keep walking up.
+    }
+
+    const parent = dirname(cursor);
+    if (parent === cursor) break;
+    cursor = parent;
+  }
+
+  return process.cwd();
+}
+
 function candidatePaths(configuredPath?: string): string[] {
+  const projectRoot = resolveProjectRoot();
   const cwd = process.cwd();
+  const searchDirs = [...new Set([projectRoot, cwd])];
   const candidates: string[] = [];
 
   if (configuredPath) {
     const trimmed = configuredPath.trim();
     candidates.push(resolve(trimmed));
-    if (!isAbsolute(trimmed)) {
-      candidates.push(resolve(cwd, trimmed));
+    for (const dir of searchDirs) {
+      if (!isAbsolute(trimmed)) {
+        candidates.push(resolve(dir, trimmed));
+      }
     }
   }
 
-  const discovered = discoverServiceAccountInDir(cwd);
-  if (discovered) {
-    candidates.push(discovered);
+  for (const dir of searchDirs) {
+    const discovered = discoverServiceAccountInDir(dir);
+    if (discovered) {
+      candidates.push(discovered);
+    }
   }
 
   return [...new Set(candidates)];
@@ -82,7 +114,12 @@ function canReadServiceAccountFromDisk(): boolean {
   const configured =
     process.env.FIREBASE_SERVICE_ACCOUNT_PATH?.trim() ||
     process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
-  return Boolean(configured || discoverServiceAccountInDir(process.cwd()));
+  const projectRoot = resolveProjectRoot();
+  return Boolean(
+    configured ||
+      discoverServiceAccountInDir(projectRoot) ||
+      discoverServiceAccountInDir(process.cwd()),
+  );
 }
 
 export function parseServiceAccount(): Record<string, unknown> {
