@@ -11,7 +11,20 @@ export const MARKETING_BRAND = {
   supportEmail: "support@autocore.app",
   locale: "ru_RU",
   language: "ru",
+  themeColor: "#0a0a0a",
 } as const;
+
+/** Human-readable titles for breadcrumb JSON-LD. */
+const MARKETING_BREADCRUMB_TITLES: Record<MarketingPathKey, string> = {
+  home: "Главная",
+  product: "Продукт",
+  modules: "Модули",
+  pricing: "Тарифы",
+  security: "Безопасность",
+  contact: "Контакты",
+  privacy: "Конфиденциальность",
+  terms: "Условия использования",
+};
 
 /** Core SEO keywords — авторазборки, автосервисы, смежные запросы. */
 export const MARKETING_KEYWORDS = [
@@ -96,6 +109,25 @@ export const MARKETING_SEO_PAGES: Record<MarketingPathKey, MarketingSeoPageConfi
 
 export function getMarketingSeoPage(key: MarketingPathKey): MarketingSeoPageConfig {
   return MARKETING_SEO_PAGES[key];
+}
+
+/** BreadcrumbList JSON-LD: Главная → текущая страница. */
+export function buildBreadcrumbJsonLd(key: MarketingPathKey) {
+  const items =
+    key === "home"
+      ? ([{ key: "home" as MarketingPathKey }] as const)
+      : ([{ key: "home" as MarketingPathKey }, { key }] as const);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: MARKETING_BREADCRUMB_TITLES[item.key],
+      item: marketingAbsoluteUrl(item.key),
+    })),
+  };
 }
 
 export function buildFaqJsonLd(items: ReadonlyArray<{ readonly q: string; readonly a: string }>) {

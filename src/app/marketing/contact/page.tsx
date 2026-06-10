@@ -2,11 +2,13 @@ import Link from "next/link";
 import { ArrowRight, Mail, Rocket, Building2 } from "lucide-react";
 
 import { marketingSiteContent } from "@/components/marketing/content/marketing-site-content";
+import { MarketingExtraJsonLd } from "@/components/marketing/seo/marketing-json-ld";
 import { MarketingFaq } from "@/components/marketing/site/marketing-faq";
 import { MarketingSection } from "@/components/marketing/site/marketing-section";
 import { MarketingSubpage } from "@/components/marketing/site/marketing-subpage";
 import { marketingRoutes } from "@/lib/marketing-routes";
 import { buildMarketingMetadata } from "@/lib/seo/build-marketing-metadata";
+import { buildBreadcrumbJsonLd, buildFaqJsonLd } from "@/lib/seo/marketing-seo";
 import { appDemoUrl } from "@/lib/site-urls";
 import { Button } from "@/components/ui/button";
 
@@ -22,13 +24,17 @@ export const metadata = buildMarketingMetadata("contact");
 
 export default function ContactPage() {
   return (
-    <MarketingSubpage
-      title={copy.hero.title}
-      description={copy.hero.description}
-      breadcrumbLabel="Контакты"
-      eyebrow="Поддержка"
-    >
-      <div className="marketing-channel-grid">
+    <>
+      <MarketingExtraJsonLd
+        extra={[buildBreadcrumbJsonLd("contact"), buildFaqJsonLd(marketingSiteContent.faq.items)]}
+      />
+      <MarketingSubpage
+        title={copy.hero.title}
+        description={copy.hero.description}
+        breadcrumbLabel="Контакты"
+        eyebrow="Поддержка"
+      >
+        <div className="marketing-channel-grid">
         {copy.channels.map((channel, i) => {
           const { icon: Icon, featured } = CHANNELS[i] ?? CHANNELS[1];
           const href = channel.href === "app" ? appDemoUrl() : channel.href;
@@ -84,6 +90,7 @@ export default function ContactPage() {
           </Link>
         </p>
       </MarketingSection>
-    </MarketingSubpage>
+      </MarketingSubpage>
+    </>
   );
 }

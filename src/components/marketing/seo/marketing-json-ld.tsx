@@ -27,6 +27,27 @@ export function MarketingJsonLd({ extra }: MarketingJsonLdProps) {
   );
 }
 
+/**
+ * Renders only page-specific graphs (breadcrumbs, FAQ, …) without repeating the
+ * Organization/WebSite/SoftwareApplication graphs that the marketing layout
+ * already emits on every page.
+ */
+export function MarketingExtraJsonLd({ extra }: { extra: JsonLdGraph | JsonLdGraph[] }) {
+  const graphs = Array.isArray(extra) ? extra : [extra];
+
+  return (
+    <>
+      {graphs.map((graph, index) => (
+        <script
+          key={`marketing-extra-jsonld-${index}`}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(graph) }}
+        />
+      ))}
+    </>
+  );
+}
+
 export function MarketingPageJsonLd({
   page,
   children,
@@ -36,7 +57,7 @@ export function MarketingPageJsonLd({
 }) {
   return (
     <>
-      <MarketingJsonLd extra={page} />
+      <MarketingExtraJsonLd extra={page} />
       {children}
     </>
   );

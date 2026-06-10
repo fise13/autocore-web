@@ -23,18 +23,33 @@ export function isUnifiedSiteHost(host: string): boolean {
   return normalizeHost(host) === appHost;
 }
 
+/**
+ * Guarantees an absolute origin with a scheme. A bare host like
+ * `app.myautocore.com` would otherwise be treated as a relative URL and produce
+ * broken links such as `https://myautocore.com/app.myautocore.com/login`.
+ */
+export function ensureHttpScheme(value: string): string {
+  const trimmed = value.trim().replace(/\/+$/, "");
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+
+  const host = trimmed.replace(/^\/+/, "");
+  const isLocal = /^(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(host);
+  return `${isLocal ? "http" : "https"}://${host}`;
+}
+
 function resolveUrlFromEnv(primary: string | undefined, fallback: string): string {
   const fromEnv = primary?.trim();
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  if (fromEnv) return ensureHttpScheme(fromEnv);
 
   const vercelProduction = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
   if (vercelProduction) {
-    return `https://${vercelProduction.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
+    return ensureHttpScheme(vercelProduction);
   }
 
   const vercelUrl = process.env.VERCEL_URL?.trim();
   if (vercelUrl) {
-    return `https://${vercelUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
+    return ensureHttpScheme(vercelUrl);
   }
 
   return fallback;

@@ -12,6 +12,18 @@ import { getMarketingUrl } from "@/lib/site-urls";
 
 type BuildMarketingMetadataOverrides = Partial<Omit<MarketingSeoPageConfig, "key">>;
 
+/** Search-console verification, opt-in via env (Google Search Console / Yandex Webmaster). */
+function marketingVerification(): Metadata["verification"] | undefined {
+  const google = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
+  const yandex = process.env.NEXT_PUBLIC_YANDEX_VERIFICATION?.trim();
+
+  const verification: NonNullable<Metadata["verification"]> = {};
+  if (google) verification.google = google;
+  if (yandex) verification.yandex = yandex;
+
+  return Object.keys(verification).length > 0 ? verification : undefined;
+}
+
 export function buildMarketingMetadata(
   key: MarketingPathKey,
   overrides?: BuildMarketingMetadataOverrides,
@@ -30,6 +42,10 @@ export function buildMarketingMetadata(
     metadataBase: new URL(marketingUrl),
     alternates: {
       canonical,
+      languages: {
+        "ru-RU": canonical,
+        "x-default": canonical,
+      },
     },
     openGraph: {
       type: "website",
@@ -52,15 +68,17 @@ export function buildMarketingMetadata(
         follow: true,
         "max-image-preview": "large",
         "max-snippet": -1,
+        "max-video-preview": -1,
       },
     },
     category: "business",
   };
 }
 
-/** Root marketing layout defaults (home + title template). */
+/** Root marketing layout defaults (home + title template + site-wide signals). */
 export function buildMarketingRootMetadata(): Metadata {
   const home = getMarketingSeoPage("home");
+  const marketingUrl = getMarketingUrl();
 
   return {
     ...buildMarketingMetadata("home"),
@@ -68,5 +86,16 @@ export function buildMarketingRootMetadata(): Metadata {
       default: home.title,
       template: `%s · ${MARKETING_BRAND.name}`,
     },
+    applicationName: MARKETING_BRAND.name,
+    authors: [{ name: MARKETING_BRAND.name, url: marketingUrl }],
+    creator: MARKETING_BRAND.name,
+    publisher: MARKETING_BRAND.name,
+    formatDetection: { telephone: false, email: false, address: false },
+    appleWebApp: {
+      capable: true,
+      title: MARKETING_BRAND.name,
+      statusBarStyle: "black-translucent",
+    },
+    verification: marketingVerification(),
   };
 }

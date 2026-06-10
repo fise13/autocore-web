@@ -1,4 +1,4 @@
-import { DEFAULT_APP_ORIGIN, DEFAULT_MARKETING_ORIGIN } from "@/lib/site-urls";
+import { DEFAULT_APP_ORIGIN, DEFAULT_MARKETING_ORIGIN, ensureHttpScheme } from "@/lib/site-urls";
 
 export type DesktopDownloadLinks = {
   mac: string;
@@ -8,7 +8,7 @@ export type DesktopDownloadLinks = {
 
 function downloadsBaseUrl(): string {
   const fromEnv = process.env.NEXT_PUBLIC_DESKTOP_DOWNLOADS_BASE_URL?.trim();
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  if (fromEnv) return ensureHttpScheme(fromEnv);
   return DEFAULT_MARKETING_ORIGIN;
 }
 
@@ -16,7 +16,7 @@ function appLoginOrigin(): string {
   const fromEnv =
     process.env.NEXT_PUBLIC_DESKTOP_APP_URL?.trim() ||
     process.env.NEXT_PUBLIC_APP_URL?.trim();
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  if (fromEnv) return ensureHttpScheme(fromEnv);
   return DEFAULT_APP_ORIGIN;
 }
 
