@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { LayoutGrid, X } from "lucide-react";
 
+import { sellMotorWithFinancialOperationUseCase } from "@/application/use-cases/sell-motor-with-financial-operation";
 import { unsellMotorWithFinancialOperationUseCase } from "@/application/use-cases/unsell-motor-with-financial-operation";
 import { MotorSaleSuccessOverlay } from "@/components/motors/motor-sale-success-overlay";
 import { useWorkspace } from "@/components/layout/workspace-context";
@@ -21,7 +22,6 @@ import { MotorEntity } from "@/domain/motor";
 import { useDeepAction } from "@/hooks/use-deep-action";
 import { useEffectiveCatalog } from "@/hooks/use-effective-catalog";
 import { useMotorsRealtime } from "@/hooks/use-motors-realtime";
-import { getFirebaseAuth } from "@/infrastructure/firebase/client";
 import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { can } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
@@ -200,44 +200,16 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
     const { motor, mode } = sellDialog;
 
     if (mode === "sell") {
-      const auth = getFirebaseAuth();
-      const token = await auth.currentUser?.getIdToken();
-      if (!token) throw new Error("Требуется авторизация");
-
-      const response = await fetch(`/api/motors/${encodeURIComponent(motor.id)}/sold-effects`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          serialCode: motor.serialCode,
-          engineCode: motor.engineCode,
-          brandName: motor.brandName,
-          configuration: motor.configuration,
-          localId: motor.localId,
-          amount: payload.amount,
-          account: payload.account,
-          paymentMethod: payload.paymentMethod,
-          comment: payload.comment,
-        }),
+      await sellMotorWithFinancialOperationUseCase(motorRepository, financialRepository, {
+        uid,
+        motor,
+        companyId,
+        createdByUserId: profile.id,
+        amount: payload.amount,
+        account: payload.account,
+        paymentMethod: payload.paymentMethod,
+        comment: payload.comment,
       });
-
-      const result = (await response.json()) as { jobId?: string; error?: string };
-      if (!response.ok) {
-        throw new Error(result.error ?? "Не удалось оформить продажу");
-      }
-
-      if (result.jobId) {
-        void fetch("/api/documents/process-queue", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ jobId: result.jobId }),
-        }).catch(() => undefined);
-      }
 
       setSellSuccess({ serialCode: motor.serialCode, amount: payload.amount });
       return;
@@ -259,29 +231,17 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
     if (!uid || !companyId || !profile) return;
     setCloudPending(true);
     try {
-      const auth = getFirebaseAuth();
-      const token = await auth.currentUser?.getIdToken();
-      if (!token) return;
-
       for (const motor of motors) {
         if (motor.soldDate) continue;
-        await fetch(`/api/motors/${encodeURIComponent(motor.id)}/sold-effects`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            serialCode: motor.serialCode,
-            engineCode: motor.engineCode,
-            brandName: motor.brandName,
-            configuration: motor.configuration,
-            localId: motor.localId,
-            amount: 0,
-            account: "cashbox",
-            paymentMethod: "cash",
-            comment: "Продажа мотора",
-          }),
+        await sellMotorWithFinancialOperationUseCase(motorRepository, financialRepository, {
+          uid,
+          motor,
+          companyId,
+          createdByUserId: profile.id,
+          amount: 0,
+          account: "cashbox",
+          paymentMethod: "cash",
+          comment: "Продажа мотора",
         });
       }
     } finally {

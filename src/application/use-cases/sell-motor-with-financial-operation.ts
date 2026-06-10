@@ -40,16 +40,18 @@ export async function sellMotorWithFinancialOperationUseCase(
     engineId: params.motor.engineId,
   });
 
-  await createSaleOperationUseCase(financialRepository, {
-    companyId: params.companyId,
-    amount: params.amount,
-    account: params.account,
-    paymentMethod: params.paymentMethod,
-    relatedMotorID: Number.isFinite(relatedMotorID) ? relatedMotorID : null,
-    relatedMotorId: params.motor.id,
-    category: MOTOR_SALE_CATEGORY,
-    description: motorDescription,
-    comment: params.comment ?? "Продажа мотора",
-    createdByUserId: params.createdByUserId,
-  });
+  if (params.amount > 0) {
+    await createSaleOperationUseCase(financialRepository, {
+      companyId: params.companyId,
+      amount: params.amount,
+      account: params.account,
+      paymentMethod: params.paymentMethod,
+      relatedMotorID: Number.isFinite(relatedMotorID) ? relatedMotorID : null,
+      relatedMotorId: params.motor.id,
+      category: MOTOR_SALE_CATEGORY,
+      description: motorDescription,
+      comment: params.comment ?? "Продажа мотора",
+      createdByUserId: params.createdByUserId,
+    });
+  }
 }
