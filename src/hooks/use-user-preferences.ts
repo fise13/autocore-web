@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 import { updateAccountProfile as updateAccountProfileRemote } from "@/infrastructure/firestore/user-profile-service";
 import { AccountingPreferences } from "@/hooks/use-accounting-preferences";
+import { normalizeAppDisplayCurrency } from "@/lib/money/display-currency";
 
 export type WorkflowPreferences = {
   defaultAvailability: "all" | "available" | "sold";
@@ -47,6 +48,7 @@ const defaultUserPreferences: UserPreferences = {
   employees: [],
   specifics: [],
   isConfigured: false,
+  displayCurrency: "KZT",
   motorSyncEnabled: true,
   workflow: defaultWorkflow,
   importExport: defaultImportExport,
@@ -88,6 +90,7 @@ function mapPreferences(data: Record<string, unknown> | null | undefined): UserP
       typeof accountingSettings?.isConfigured === "boolean"
         ? accountingSettings.isConfigured
         : defaultUserPreferences.isConfigured,
+    displayCurrency: normalizeAppDisplayCurrency(accountingSettings?.displayCurrency),
     motorSyncEnabled:
       typeof data?.motorSyncEnabled === "boolean"
         ? data.motorSyncEnabled
@@ -175,12 +178,14 @@ export function useUserPreferences(uid: string) {
       if (
         next.employees !== undefined ||
         next.specifics !== undefined ||
-        typeof next.isConfigured === "boolean"
+        typeof next.isConfigured === "boolean" ||
+        next.displayCurrency !== undefined
       ) {
         payload.accountingSettings = {
           employees: next.employees ?? preferences.employees,
           specifics: next.specifics ?? preferences.specifics,
           isConfigured: next.isConfigured ?? preferences.isConfigured,
+          displayCurrency: next.displayCurrency ?? preferences.displayCurrency,
         };
       }
       if (next.workflow) {
@@ -197,7 +202,7 @@ export function useUserPreferences(uid: string) {
       }
       await setDoc(userRef, payload, { merge: true });
     },
-    [db, preferences.employees, preferences.importExport, preferences.isConfigured, preferences.specifics, preferences.workflow, uid],
+    [db, preferences.displayCurrency, preferences.employees, preferences.importExport, preferences.isConfigured, preferences.specifics, preferences.workflow, uid],
   );
 
   const updateAccountProfile = useCallback(

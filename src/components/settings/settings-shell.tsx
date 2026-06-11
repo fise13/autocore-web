@@ -2,7 +2,7 @@
 
 import { ReactNode, useMemo, useState } from "react";
 import { LayoutGroup, motion } from "framer-motion";
-import { Building2, Laptop, Palette, Receipt, Settings2, Trash2, UserCircle } from "lucide-react";
+import { Building2, Laptop, Palette, Receipt, Settings2, Sparkles, Trash2, UserCircle } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { can } from "@/lib/auth/permissions";
@@ -12,6 +12,7 @@ import { userCopy } from "@/lib/user-copy";
 export type SettingsSectionId =
   | "account"
   | "company"
+  | "appConfig"
   | "branding"
   | "accounting"
   | "dataCleanup"
@@ -20,6 +21,7 @@ export type SettingsSectionId =
 const allSections: { id: SettingsSectionId; label: string; icon: typeof UserCircle }[] = [
   { id: "account", label: userCopy.settings.account, icon: UserCircle },
   { id: "company", label: userCopy.settings.company, icon: Building2 },
+  { id: "appConfig", label: userCopy.settings.appConfig, icon: Sparkles },
   { id: "branding", label: "Брендинг", icon: Palette },
   { id: "accounting", label: userCopy.settings.accounting, icon: Receipt },
   { id: "dataCleanup", label: userCopy.settings.dataCleanup, icon: Trash2 },
@@ -29,6 +31,7 @@ const allSections: { id: SettingsSectionId; label: string; icon: typeof UserCirc
 const sectionSubtitles: Record<SettingsSectionId, string> = {
   account: userCopy.settings.subtitleAccount,
   company: userCopy.settings.subtitleCompany,
+  appConfig: userCopy.settings.subtitleAppConfig,
   branding: "Фирменный стиль PDF: логотип, тема, шапка и живое превью документа.",
   accounting: userCopy.settings.subtitleAccounting,
   dataCleanup: userCopy.settings.subtitleDataCleanup,
@@ -51,6 +54,7 @@ export function SettingsShell({ children, initialSection = "account" }: Settings
     () =>
       allSections.filter((section) => {
         if (section.id === "company") return hasCompany && can(profile, "settings_manage");
+        if (section.id === "appConfig") return hasCompany && can(profile, "settings_manage");
         if (section.id === "branding") return hasCompany && can(profile, "settings_manage");
         if (section.id === "accounting") return can(profile, "accounting_view");
         if (section.id === "dataCleanup") return canCleanupData;

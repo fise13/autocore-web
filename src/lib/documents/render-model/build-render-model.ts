@@ -22,6 +22,11 @@ import {
   documentPrimaryMotorEntity,
   documentVehicleLabel,
 } from "@/lib/documents/document-helpers";
+import {
+  adaptWarrantyForMotorSale,
+  isStandaloneMotorSale,
+  motorSaleDocumentMeta,
+} from "@/lib/documents/motor-sale-document";
 import { DocumentSlug, isDocumentSlug } from "@/lib/documents/document-types";
 import { addMonths, formatDocumentDate, formatDocumentMoney } from "@/lib/documents/format";
 import {
@@ -52,6 +57,7 @@ function slugToVariant(slug: DocumentSlug): DocumentTemplateVariant {
 
 function buildUnifiedLineItems(context: DocumentContext): DocumentLineItem[] {
   const { order } = context;
+  const motorSale = isStandaloneMotorSale(context);
   const rows: DocumentLineItem[] = [];
 
   for (const line of order.laborLines) {
@@ -76,7 +82,7 @@ function buildUnifiedLineItems(context: DocumentContext): DocumentLineItem[] {
     rows.push({
       id: line.id,
       title: [line.brandName, line.engineCode, line.serialCode].filter(Boolean).join(" "),
-      subtitle: "Двигатель",
+      subtitle: motorSale ? "Контрактный двигатель" : "Двигатель",
       quantity: "1",
       amount: formatDocumentMoney(line.unitPrice),
     });
@@ -113,7 +119,9 @@ function buildSections(
   const qrDataUri = options?.qrDataUri;
   const resolvedDisclaimer = options?.disclaimerText;
   const { company, order, client, vehicle } = context;
-  const meta = DOCUMENT_TEMPLATE_META[variant];
+  const motorSale = isStandaloneMotorSale(context);
+  const baseMeta = DOCUMENT_TEMPLATE_META[variant];
+  const meta = motorSale ? motorSaleDocumentMeta(slug, baseMeta) : baseMeta;
   const layout = DOCUMENT_TEMPLATE_LAYOUT[variant];
   const profile = classifyServiceOrder(context);
   const motorLine = documentPrimaryMotor(context);
@@ -194,18 +202,25 @@ function buildSections(
             key: "motor_spotlight",
             serialCode: motorLine.serialCode,
             meta: [motorLine.brandName, motorLine.engineCode, motorLine.configuration].filter(Boolean).join(" · "),
-            fields: [
-              { label: "Автомобиль", value: documentVehicleLabel(context) },
-              { label: "VIN", value: order.vin || vehicle?.vin || "—" },
-              {
-                label: "Операция",
-                value: motorLine.outcome === "install" ? "Установка" : "Продажа",
-              },
-              {
-                label: "Пробег ДВС",
-                value: mileage ? `${mileage.toLocaleString("ru-KZ")} км` : "—",
-              },
-            ],
+            fields: motorSale
+              ? [
+                  { label: "Марка / код", value: [motorLine.brandName, motorLine.engineCode].filter(Boolean).join(" ") },
+                  { label: "Комплектация", value: motorLine.configuration || "—" },
+                  { label: "Стоимость", value: formatDocumentMoney(motorLine.unitPrice) },
+                  { label: "Дата продажи", value: documentDate },
+                ]
+              : [
+                  { label: "Автомобиль", value: documentVehicleLabel(context) },
+                  { label: "VIN", value: order.vin || vehicle?.vin || "—" },
+                  {
+                    label: "Операция",
+                    value: motorLine.outcome === "install" ? "Установка" : "Продажа",
+                  },
+                  {
+                    label: "Пробег ДВС",
+                    value: mileage ? `${mileage.toLocaleString("ru-KZ")} км` : "—",
+                  },
+                ],
           });
         }
         break;
@@ -213,36 +228,54 @@ function buildSections(
         sections.push({
           key: "vehicle",
           plate: plate ?? undefined,
+          clientCardTitle: motorSale ? "Покупатель" : undefined,
+          detailsCardTitle: motorSale ? "Двигатель" : undefined,
+          sectionTitle: motorSale ? "Сделка" : undefined,
           client: [
-            { label: "ФИО", value: documentClientName(context) },
+            { label: motorSale ? "Покупатель" : "ФИО", value: documentClientName(context) },
             { label: "Телефон", value: documentClientPhone(context) },
             { label: "Email", value: clientEmail },
             { label: "Примечание", value: client?.notes?.trim() || "—" },
           ],
-          vehicle: [
-            { label: "Марка / модель", value: documentVehicleLabel(context) },
-            { label: "VIN", value: order.vin || vehicle?.vin || "—" },
-            { label: "Пробег", value: mileage ? `${mileage.toLocaleString("ru-KZ")} км` : "—" },
-            {
-              label: "Двигатель",
-              value: motorLine
-                ? [motorLine.brandName, motorLine.engineCode, motorLine.configuration].filter(Boolean).join(", ")
-                : "—",
-            },
-          ],
+          vehicle: motorSale
+            ? [
+                { label: "Товар", value: [motorLine?.brandName, motorLine?.engineCode, motorLine?.serialCode].filter(Boolean).join(" ") || "—" },
+                { label: "Серийный номер", value: motorLine?.serialCode || "—" },
+                { label: "Комплектация", value: motorLine?.configuration || "—" },
+                { label: "Сумма", value: motorLine ? formatDocumentMoney(motorLine.unitPrice) : "—" },
+              ]
+            : [
+                { label: "Марка / модель", value: documentVehicleLabel(context) },
+                { label: "VIN", value: order.vin || vehicle?.vin || "—" },
+                { label: "Пробег", value: mileage ? `${mileage.toLocaleString("ru-KZ")} км` : "—" },
+                {
+                  label: "Двигатель",
+                  value: motorLine
+                    ? [motorLine.brandName, motorLine.engineCode, motorLine.configuration].filter(Boolean).join(", ")
+                    : "—",
+                },
+              ],
         });
         break;
       case "engine":
         if (motorLine) {
           sections.push({
             key: "engine",
-            label: "Двигатель",
-            fields: [
-              { label: "Номер", value: motorLine.serialCode },
-              { label: "Модель", value: [motorLine.brandName, motorLine.engineCode].filter(Boolean).join(" ") },
-              { label: "Комплектация", value: motorLine.configuration || "—" },
-              { label: "Стоимость", value: formatDocumentMoney(motorLine.unitPrice) },
-            ],
+            label: motorSale ? "Характеристики двигателя" : "Двигатель",
+            fields: motorSale
+              ? [
+                  { label: "Серийный номер", value: motorLine.serialCode },
+                  { label: "Марка / код", value: [motorLine.brandName, motorLine.engineCode].filter(Boolean).join(" ") },
+                  { label: "Комплектация", value: motorLine.configuration || "—" },
+                  { label: "Коробка передач", value: motorEntity?.transmission?.trim() || "—" },
+                  { label: "Стоимость", value: formatDocumentMoney(motorLine.unitPrice) },
+                ]
+              : [
+                  { label: "Номер", value: motorLine.serialCode },
+                  { label: "Модель", value: [motorLine.brandName, motorLine.engineCode].filter(Boolean).join(" ") },
+                  { label: "Комплектация", value: motorLine.configuration || "—" },
+                  { label: "Стоимость", value: formatDocumentMoney(motorLine.unitPrice) },
+                ],
           });
         }
         break;
@@ -272,7 +305,8 @@ function buildSections(
         break;
       case "warranty":
         if (layout.showWarrantyTerms || slug === "engine-warranty" || profile.showEngineWarranty) {
-          sections.push({ key: "warranty", warranty, expiresAt });
+          const resolvedWarranty = motorSale ? adaptWarrantyForMotorSale(warranty) : warranty;
+          sections.push({ key: "warranty", warranty: resolvedWarranty, expiresAt });
         }
         break;
       case "vehicle_history": {
@@ -301,17 +335,29 @@ function buildSections(
       case "totals":
         sections.push({
           key: "totals",
-          totals: {
-            labor: formatDocumentMoney(order.pricing.laborTotal),
-            parts: formatDocumentMoney(order.pricing.partsTotal),
-            engine: formatDocumentMoney(motorOnlyTotal),
-            transmission: motorEntity?.transmission?.trim() || "—",
-            discount: order.pricing.discount > 0 ? `−${formatDocumentMoney(order.pricing.discount)}` : null,
-            tax: null,
-            grandTotal: formatDocumentMoney(order.pricing.grandTotal),
-            warrantyNote: warrantyNote ?? (meta.warrantyBlock || null),
-            recommendations,
-          },
+          totals: motorSale
+            ? {
+                labor: null,
+                parts: null,
+                engine: formatDocumentMoney(motorOnlyTotal),
+                transmission: null,
+                discount: order.pricing.discount > 0 ? `−${formatDocumentMoney(order.pricing.discount)}` : null,
+                tax: null,
+                grandTotal: formatDocumentMoney(order.pricing.grandTotal),
+                warrantyNote: slug === "engine-warranty" ? (warrantyNote ?? meta.warrantyBlock ?? null) : null,
+                recommendations: null,
+              }
+            : {
+                labor: formatDocumentMoney(order.pricing.laborTotal),
+                parts: formatDocumentMoney(order.pricing.partsTotal),
+                engine: formatDocumentMoney(motorOnlyTotal),
+                transmission: motorEntity?.transmission?.trim() || "—",
+                discount: order.pricing.discount > 0 ? `−${formatDocumentMoney(order.pricing.discount)}` : null,
+                tax: null,
+                grandTotal: formatDocumentMoney(order.pricing.grandTotal),
+                warrantyNote: warrantyNote ?? (meta.warrantyBlock || null),
+                recommendations,
+              },
         });
         break;
       case "disclaimer":
@@ -321,9 +367,13 @@ function buildSections(
         sections.push({
           key: "signatures",
           signatures: {
-            executorLabel: slug === "engine-waybill" ? "Передал (исполнитель)" : "Исполнитель",
+            executorLabel: motorSale
+              ? "Продавец"
+              : slug === "engine-waybill"
+                ? "Передал (исполнитель)"
+                : "Исполнитель",
             executorName,
-            clientLabel: slug === "engine-waybill" ? "Получил (клиент)" : "Клиент",
+            clientLabel: motorSale ? "Покупатель" : slug === "engine-waybill" ? "Получил (клиент)" : "Клиент",
             clientName: documentClientName(context),
           },
         });
@@ -347,8 +397,8 @@ function buildSections(
       const idx = sections.findIndex((s) => s.key === "totals");
       const block: DocumentSectionModel = {
         key: "unified_lines",
-        title: "Позиции к оплате",
-        hint: `${unified.length} поз.`,
+        title: motorSale ? "Двигатель к оплате" : "Позиции к оплате",
+        hint: motorSale ? "1 позиция" : `${unified.length} поз.`,
         rows: unified,
       };
       if (idx >= 0) sections.splice(idx, 0, block);
@@ -368,7 +418,9 @@ export function buildDocumentRenderModel(
     ? slugOrVariant
     : (slugOrVariant as DocumentSlug);
   const variant = slugToVariant(slug);
-  const meta = DOCUMENT_TEMPLATE_META[variant];
+  const motorSale = isStandaloneMotorSale(context);
+  const baseMeta = DOCUMENT_TEMPLATE_META[variant];
+  const meta = motorSale ? motorSaleDocumentMeta(slug, baseMeta) : baseMeta;
   const layout = DOCUMENT_TEMPLATE_LAYOUT[variant];
   const theme = (context.theme ?? "modern") as DocumentTheme;
   const typography = documentTypography(theme);
@@ -377,7 +429,7 @@ export function buildDocumentRenderModel(
   const documentConfig = company.documentConfig ?? parseCompanyDocumentConfig({});
   const profile = classifyServiceOrder(context);
   const warranty = resolveWarrantyForDocument(company, documentConfig, {
-    forEngine: profile.showEngineWarranty,
+    forEngine: profile.showEngineWarranty || motorSale,
     forWork: slug === "work-order" || slug === "service-act",
   });
 
@@ -393,6 +445,8 @@ export function buildDocumentRenderModel(
     slug === "invoice" && meta.disclaimer
       ? meta.disclaimer.replace(/\d+\s+рабочих\s+дней?/i, `${invoiceDays} рабочих дней`)
       : meta.disclaimer;
+
+  const resolvedWarranty = motorSale && slug === "engine-warranty" ? adaptWarrantyForMotorSale(warranty) : warranty;
 
   const headerConfig = ensureDocumentHeaderConfig(company.headerConfig, theme);
   const watermarkConfig = ensureDocumentWatermarkConfig(company.watermarkConfig, theme);
@@ -428,7 +482,7 @@ export function buildDocumentRenderModel(
       orderLabel: context.orderLabel,
       documentDate: formatDocumentDate(documentOrderDate(context)),
       primaryLabel: meta.primaryLabel,
-      primaryValue: buildPrimaryValue(context, slug, warranty.months, warranty.km),
+      primaryValue: buildPrimaryValue(context, slug, resolvedWarranty.months, resolvedWarranty.km),
       primaryHint: null,
       executorName: documentAssigneeSummary(context),
     },
@@ -465,7 +519,7 @@ export function buildDocumentRenderModel(
     enabledSectionKeys: enabledKeys,
     qrDataUri,
     racing:
-      theme === "racing"
+      theme === "racing" && !motorSale
         ? buildRacingViewModel(context, { disclaimer: disclaimerText ?? meta.disclaimer })
         : undefined,
   };

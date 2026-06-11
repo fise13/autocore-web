@@ -17,13 +17,13 @@ import { useSimulatedFeed } from "@/components/marketing/hooks/use-simulated-fee
 import { cn } from "@/lib/utils";
 
 const KPI = [
-  { label: "Выручка сегодня", value: "₽ 2,4 млн", icon: TrendingUp, tone: "text-emerald-500" },
+  { label: "Выручка сегодня", value: "$2.4M", icon: TrendingUp, tone: "text-emerald-500" },
   { label: "Открытые наряды", value: "12", icon: Activity, tone: "text-primary" },
   { label: "SKU на складе", value: "4 892", icon: Package, tone: "text-primary" },
   { label: "Команда онлайн", value: "6", icon: Users, tone: "text-emerald-500" },
   { label: "Низкий остаток", value: "3", icon: AlertTriangle, tone: "text-amber-500" },
-  { label: "Баланс", value: "₽ 18,6 млн", icon: Wallet, tone: "text-primary" },
-  { label: "Авансы", value: "₽ 240 тыс.", icon: Banknote, tone: "text-amber-500" },
+  { label: "Баланс", value: "$18.6M", icon: Wallet, tone: "text-primary" },
+  { label: "Авансы", value: "$240K", icon: Banknote, tone: "text-amber-500" },
 ] as const;
 
 const SHOWCASE_KPI = KPI.slice(0, 5);
@@ -37,7 +37,7 @@ const MODULE_TILES = [
   },
   {
     name: "Бухгалтерия",
-    value: "₽ 2,4 млн",
+    value: "$2.4M",
     detail: "7 операций сегодня",
     bars: [72, 54, 38],
   },

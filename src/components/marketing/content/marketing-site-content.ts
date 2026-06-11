@@ -237,7 +237,7 @@ export const marketingSiteContent = {
           "Генерация документов и PDF",
           "Приоритетная поддержка",
         ],
-        cta: "Начать с Pro",
+        cta: "Оплатить Pro",
         highlighted: true,
         popularLabel: "Рекомендуем",
       },

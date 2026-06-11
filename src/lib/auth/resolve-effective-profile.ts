@@ -42,11 +42,20 @@ export function mergeProfileWithEmployee(
   const role = resolveMemberRole(profile.role, employeeRole);
   const permissions = Array.isArray(employee.permissions) ? employee.permissions : [];
 
+  const employeeName = employee.fullName?.trim();
+  const userName = profile.displayName?.trim();
+  const resolvedName =
+    (employeeName && employeeName.split(/\s+/).filter(Boolean).length >= 2 ? employeeName : null) ??
+    (userName && userName.split(/\s+/).filter(Boolean).length >= 2 ? userName : null) ??
+    employeeName ??
+    userName ??
+    null;
+
   return {
     ...withoutUserDocPermissions,
     role,
     permissions,
     isActive: employee.isActive ?? profile.isActive,
-    displayName: employee.fullName?.trim() || profile.displayName,
+    displayName: resolvedName,
   };
 }

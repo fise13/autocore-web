@@ -1,7 +1,7 @@
 "use client";
 
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
 
 import { AuthDebugPanel } from "@/components/auth/auth-debug-panel";
 import { LoginScreen } from "@/components/auth/login-screen";
@@ -189,7 +189,9 @@ export default function LoginPage() {
 
   return (
     <div>
-      <LoginScreen bootstrapError={bootstrapError} onAuthenticated={goToApp} />
+      <Suspense fallback={<AppLoadingScreen message={userCopy.auth.loading} />}>
+        <LoginScreen bootstrapError={bootstrapError} onAuthenticated={goToApp} />
+      </Suspense>
       {showAuthDebug ? <AuthDebugPanel snapshot={debugSnapshot} /> : null}
     </div>
   );

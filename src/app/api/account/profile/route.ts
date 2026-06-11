@@ -44,6 +44,17 @@ export async function POST(request: NextRequest) {
       } catch {
         // Firestore profile is the source of truth for the app UI.
       }
+
+      const userSnap = await getAdminFirestore().collection("users").doc(access.uid).get();
+      const companyId = String(userSnap.data()?.companyId ?? "").trim();
+      if (companyId) {
+        await getAdminFirestore()
+          .collection("companies")
+          .doc(companyId)
+          .collection("employees")
+          .doc(access.uid)
+          .set({ fullName: name }, { merge: true });
+      }
     }
 
     return NextResponse.json({

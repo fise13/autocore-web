@@ -1,8 +1,11 @@
+"use client";
+
 import { Banknote, CreditCard, TrendingUp, Wallet } from "lucide-react";
 
 import { MetricCard } from "@/components/accounting/metric-card";
 import { BalanceSnapshot } from "@/application/use-cases/calculate-cash-balance";
 import { FinancialOperation } from "@/domain/financial-operation";
+import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
 
 type OverviewCardsProps = {
   balance: BalanceSnapshot;
@@ -10,6 +13,7 @@ type OverviewCardsProps = {
 };
 
 export function OverviewCards({ balance, operations }: OverviewCardsProps) {
+  const { formatMoney } = useAppDisplayCurrency();
   const today = new Date().toDateString();
 
   const todayIncome = operations
@@ -56,7 +60,7 @@ export function OverviewCards({ balance, operations }: OverviewCardsProps) {
           icon={TrendingUp}
           tone={todayNet >= 0 ? "green" : "red"}
           index={3}
-          hint={`Доход: ${todayIncome.toLocaleString("ru-RU")} ₸ · Расходы: ${todayExpenses.toLocaleString("ru-RU")} ₸`}
+          hint={`Доход: ${formatMoney(todayIncome)} · Расходы: ${formatMoney(todayExpenses)}`}
         />
       </div>
     </div>

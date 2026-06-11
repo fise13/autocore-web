@@ -9,6 +9,7 @@ import { FileStack } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FinancialOperation } from "@/domain/financial-operation";
+import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
 import {
   operationAccountLabel,
   operationCategoryLabel,
@@ -55,6 +56,7 @@ export function OperationsTable({
   showWorkOrderColumn = false,
   workOrders = [],
 }: OperationsTableProps) {
+  const { formatMoney } = useAppDisplayCurrency();
   const workOrderIndex = useMemo(() => buildWorkOrderDisplayIndex(workOrders), [workOrders]);
   const workOrderById = useMemo(
     () => new Map(workOrders.map((order) => [order.id, order])),
@@ -128,7 +130,7 @@ export function OperationsTable({
                   </span>
                 </TableCell>
                 <TableCell className="text-right font-medium tabular-nums">
-                  {operation.amount.toLocaleString("ru-RU")} ₸
+                  {formatMoney(operation.amount)}
                 </TableCell>
                 <TableCell className="max-w-[260px] truncate">{detail}</TableCell>
                 {showWorkOrderColumn ? (

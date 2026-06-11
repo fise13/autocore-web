@@ -3,17 +3,15 @@
 import { ArrowDownLeft, ArrowUpRight, Scale } from "lucide-react";
 
 import { AdvanceSnapshot } from "@/lib/accounting/advances";
+import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
 import { cn } from "@/lib/utils";
 
 type AdvancesOverviewProps = {
   snapshot: AdvanceSnapshot;
 };
 
-function formatMoney(value: number) {
-  return `${value.toLocaleString("ru-RU")} ₸`;
-}
-
 export function AdvancesOverview({ snapshot }: AdvancesOverviewProps) {
+  const { formatMoney } = useAppDisplayCurrency();
   return (
     <div className="autocore-surface-group space-y-4 p-4">
       <div>

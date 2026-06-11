@@ -15,7 +15,6 @@ import {
 import { buildDocumentContext, DocumentContext } from "@/lib/documents/document-context";
 import { resolveCompanyLogoDataUri } from "@/lib/documents/resolve-company-logo";
 import { normalizeCompanyId } from "@/lib/company-id";
-import { formatWorkOrderLabel } from "@/lib/work-order/work-order-display";
 
 async function fetchMotorById(companyId: string, motorId: string): Promise<MotorEntity | null> {
   const db = getAdminFirestore();
@@ -114,6 +113,8 @@ export async function loadWarrantyDocumentContext(companyId: string, warrantyId:
     soldAt,
     saleAmount,
   });
+  const motorLabel = [motor.brandName, motor.engineCode, motor.serialCode].filter(Boolean).join(" · ");
+  const orderLabel = motorLabel ? `Продажа двигателя · ${motorLabel}` : `Продажа двигателя · ${motor.serialCode}`;
   const [companySnapshot, employeesSnapshot] = await Promise.all([
     db.collection("companies").doc(normalizedCompanyId).get(),
     db.collection("companies").doc(normalizedCompanyId).collection("employees").get(),
@@ -168,7 +169,7 @@ export async function loadWarrantyDocumentContext(companyId: string, warrantyId:
     company,
     companyRecord: companyData ?? undefined,
     order,
-    orderLabel: formatWorkOrderLabel(order),
+    orderLabel,
     client,
     vehicle,
     motors: [motor],

@@ -1,13 +1,15 @@
+"use client";
+
 import { LucideIcon } from "lucide-react";
 
 import { AnimatedNumber } from "@/components/ui/animated-number";
+import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
 import { cn } from "@/lib/utils";
 import { motionStagger } from "@/lib/motion";
 
 type MetricCardProps = {
   label: string;
   value: number;
-  suffix?: string;
   hint?: string;
   icon?: LucideIcon;
   tone?: "default" | "green" | "blue" | "amber" | "red";
@@ -26,13 +28,14 @@ const toneClasses: Record<NonNullable<MetricCardProps["tone"]>, string> = {
 export function MetricCard({
   label,
   value,
-  suffix = " ₸",
   hint,
   icon: Icon,
   tone = "default",
   index = 0,
   className,
 }: MetricCardProps) {
+  const { formatMoney } = useAppDisplayCurrency();
+
   return (
     <div
       className={cn(
@@ -46,7 +49,7 @@ export function MetricCard({
         {Icon ? <Icon className={cn("size-3.5 opacity-70", toneClasses[tone])} /> : null}
       </div>
       <p className={cn("text-xl font-semibold tabular-nums tracking-tight", toneClasses[tone])}>
-        <AnimatedNumber value={value} format={(n) => `${n.toLocaleString("ru-RU")}${suffix}`} />
+        <AnimatedNumber value={value} format={formatMoney} />
       </p>
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>

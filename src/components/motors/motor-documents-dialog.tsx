@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { FileText, History, Printer, ShieldCheck } from "lucide-react";
+import { FileStack, History } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -11,10 +9,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { MotorSaleDocumentsPanel } from "@/components/motors/motor-sale-documents-panel";
 import { MotorEntity } from "@/domain/motor";
 import { useMotorSaleDocuments } from "@/hooks/use-motor-sale-documents";
-import { downloadDocumentPdf, printDocumentPdf } from "@/lib/documents/fetch-document-pdf";
-import { mapServerError } from "@/lib/errors/map-server-error";
 
 type MotorDocumentsDialogProps = {
   motor: MotorEntity | null;
@@ -23,93 +20,37 @@ type MotorDocumentsDialogProps = {
 };
 
 export function MotorDocumentsDialog({ motor, open, onOpenChange }: MotorDocumentsDialogProps) {
-  const [busy, setBusy] = useState<"warranty" | "invoice" | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const { documents, isLoading } = useMotorSaleDocuments(motor, open);
 
-  async function handlePrint(slug: "engine-warranty" | "invoice") {
-    if (!documents?.warrantyId) return;
-    setBusy(slug === "engine-warranty" ? "warranty" : "invoice");
-    setError(null);
-    try {
-      await printDocumentPdf(slug, documents.warrantyId, { aggregateType: "warranty" });
-    } catch (e) {
-      setError(mapServerError(e, "Не удалось напечатать документ"));
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function handleDownload(slug: "engine-warranty" | "invoice") {
-    if (!documents?.warrantyId) return;
-    setBusy(slug === "engine-warranty" ? "warranty" : "invoice");
-    setError(null);
-    try {
-      await downloadDocumentPdf(
-        slug,
-        documents.warrantyId,
-        `${motor?.serialCode ?? "motor"}-${slug}.pdf`,
-        { aggregateType: "warranty" },
-      );
-    } catch (e) {
-      setError(mapServerError(e, "Не удалось скачать документ"));
-    } finally {
-      setBusy(null);
-    }
-  }
+  const motorLabel = documents
+    ? [documents.brandName, documents.engineCode, documents.serialCode].filter(Boolean).join(" · ")
+    : motor?.serialCode ?? "Продажа двигателя";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Документы мотора</DialogTitle>
-          <DialogDescription>{motor?.serialCode ?? "Продажа мотора"}</DialogDescription>
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <DialogHeader className="border-b border-border/60 px-6 py-5 text-left">
+          <div className="flex items-start gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/8 text-primary">
+              <FileStack className="size-4" aria-hidden />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <DialogTitle>Документы двигателя</DialogTitle>
+              <DialogDescription>
+                {motor?.serialCode ? `Серийный номер ${motor.serialCode}` : "Гарантия и счёт по продаже"}
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {isLoading ? <p className="text-sm text-muted-foreground">Загружаем документы…</p> : null}
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-
-          {!isLoading && documents?.warrantyId ? (
-            <div className="grid gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="justify-start gap-2"
-                disabled={busy != null}
-                onClick={() => void handlePrint("engine-warranty")}
-              >
-                <ShieldCheck className="size-4" />
-                {busy === "warranty" ? "Печать…" : "Печать гарантийного талона"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="justify-start gap-2"
-                disabled={busy != null}
-                onClick={() => void handleDownload("engine-warranty")}
-              >
-                <FileText className="size-4" />
-                Скачать гарантийный талон
-              </Button>
-              <Button
-                type="button"
-                className="justify-start gap-2"
-                disabled={busy != null}
-                onClick={() => void handlePrint("invoice")}
-              >
-                <Printer className="size-4" />
-                {busy === "invoice" ? "Печать…" : "Печать счёта на оплату"}
-              </Button>
-            </div>
-          ) : null}
-
-          {!isLoading && documents && !documents.warrantyId ? (
-            <p className="text-sm text-muted-foreground">
-              Гарантия ещё формируется. Если продажа только что оформлена — подождите несколько секунд и
-              откройте снова.
-            </p>
-          ) : null}
+        <div className="px-6 py-5">
+          <MotorSaleDocumentsPanel
+            documents={documents}
+            isLoading={isLoading}
+            motorLabel={motorLabel}
+            serialCode={motor?.serialCode}
+            saleDate={motor?.soldDate ?? undefined}
+          />
         </div>
       </DialogContent>
     </Dialog>
@@ -148,7 +89,7 @@ export function MotorHistoryDialog({ motor, open, onOpenChange }: MotorHistoryDi
             Пока нет записей. Изменения статуса, цены и продажи появятся здесь по мере работы команды.
           </p>
         ) : (
-          <ul className="max-h-72 space-y-2 overflow-y-auto">
+          <ul className="max-h-72 flex flex-col gap-2 overflow-y-auto">
             {[...entries]
               .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
               .map((entry) => (

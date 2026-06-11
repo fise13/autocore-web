@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 
 import type { PricingFrequency } from "@/components/marketing/pricing/pricing-frequency-toggle";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Button } from "@/components/ui/button";
+import { formatMarketingUsd } from "@/lib/money/display-currency";
 import { cn } from "@/lib/utils";
 
 type MarketingPlan = (typeof import("@/components/marketing/content/marketing-site-content").marketingSiteContent.pricing.plans)[number];
@@ -20,11 +21,12 @@ type MarketingPricingCardProps = {
     yearlySave: string;
   };
   href: string;
+  onProCheckout?: () => void;
+  isCheckoutLoading?: boolean;
 };
 
 function formatUsd(value: number): string {
-  const rounded = Math.round(value * 10) / 10;
-  return `$${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}`;
+  return formatMarketingUsd(value);
 }
 
 export function MarketingPricingCard({
@@ -32,6 +34,8 @@ export function MarketingPricingCard({
   frequency,
   billingCopy,
   href,
+  onProCheckout,
+  isCheckoutLoading = false,
 }: MarketingPricingCardProps) {
   const isSubscription = plan.billing === "subscription";
   const isFree = plan.billing === "free";
@@ -85,7 +89,7 @@ export function MarketingPricingCard({
             {plan.customPriceLabel}
           </span>
         ) : isFree ? (
-          <span className="marketing-pricing-card-price">0 ₽</span>
+          <span className="marketing-pricing-card-price">{formatMarketingUsd(0)}</span>
         ) : (
           <>
             <AnimatedNumber
@@ -117,15 +121,24 @@ export function MarketingPricingCard({
         className={cn("mt-auto w-full", isCustom && "marketing-pricing-card-cta-enterprise")}
         variant={plan.highlighted ? "default" : "outline"}
         size="lg"
+        disabled={isCheckoutLoading}
+        onClick={onProCheckout}
         render={
-          isCustom ? (
+          onProCheckout ? undefined : isCustom ? (
             <a href={href} />
           ) : (
             <Link href={href} />
           )
         }
       >
-        {plan.cta}
+        {isCheckoutLoading ? (
+          <>
+            <Loader2 className="animate-spin" data-icon="inline-start" aria-hidden />
+            Переход к оплате…
+          </>
+        ) : (
+          plan.cta
+        )}
       </Button>
     </article>
   );

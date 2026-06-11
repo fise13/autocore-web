@@ -70,7 +70,7 @@ export const landingPageContent = {
     items: [
       { id: "work-order", title: "Заказ-наряд", hint: "НЗ-2026-0142 · Hyundai Sonata" },
       { id: "warranty", title: "Гарантийный талон", hint: "G4KC · 6 мес · QR-код" },
-      { id: "service-act", title: "Акт выполненных работ", hint: "₽ 611 000 · подписи" },
+      { id: "service-act", title: "Акт выполненных работ", hint: "$6,110 · подписи" },
     ],
   },
   demo: {

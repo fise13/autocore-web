@@ -38,6 +38,22 @@ async function readSubscriptionPro(companyId: string): Promise<boolean> {
   );
 }
 
+export async function verifyCompanyOwner(uid: string, companyId: string): Promise<void> {
+  const normalizedCompanyId = companyId.trim();
+  if (!normalizedCompanyId) {
+    throw new AccountAccessError("Company not linked", 403);
+  }
+
+  const companySnap = await getAdminFirestore().collection("companies").doc(normalizedCompanyId).get();
+  if (!companySnap.exists) {
+    throw new AccountAccessError("Company not found", 404);
+  }
+
+  if (String(companySnap.data()?.ownerId ?? "") !== uid) {
+    throw new AccountAccessError("Only company owner can perform this action", 403);
+  }
+}
+
 export async function verifyCompanyManager(
   uid: string,
   requiredPermission: Permission = "employee_manage",

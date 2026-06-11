@@ -39,10 +39,7 @@ export function normalizeSupplierName(value: string | undefined): string {
   return value.trim().replace(/\s+/g, " ");
 }
 
-export function normalizeBarcode(value: string | undefined): string {
-  if (!value?.trim()) return "";
-  return value.trim().replace(/\s+/g, "");
-}
+export { normalizeInventoryCode as normalizeBarcode } from "@/lib/barcode/scan-code";
 
 export function normalizeWarehouseLocation(value: string | undefined): string {
   if (!value?.trim()) return "";

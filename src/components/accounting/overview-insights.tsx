@@ -6,6 +6,7 @@ import { BarChart3, PieChart, Tags } from "lucide-react";
 
 import { FinancialOperation } from "@/domain/financial-operation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
 import { operationCategoryLabel } from "@/lib/accounting/labels";
 import { cn } from "@/lib/utils";
 import { motionStagger } from "@/lib/motion";
@@ -53,6 +54,7 @@ function buildLast7DaysSeries(operations: FinancialOperation[]) {
 }
 
 export function OverviewInsights({ operations }: OverviewInsightsProps) {
+  const { formatMoney } = useAppDisplayCurrency();
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     const frame = requestAnimationFrame(() => setMounted(true));
@@ -110,7 +112,7 @@ export function OverviewInsights({ operations }: OverviewInsightsProps) {
                         height: mounted ? targetHeight : 0,
                         animationDelay: motionStagger(index, 70),
                       }}
-                      title={`${item.label}: ${item.net.toLocaleString("ru-RU")} ₸`}
+                      title={`${item.label}: ${formatMoney(item.net)}`}
                     />
                   </div>
                   <span className="text-[10px] font-medium text-muted-foreground">{item.label}</span>
@@ -144,7 +146,7 @@ export function OverviewInsights({ operations }: OverviewInsightsProps) {
                 <div className="flex items-center justify-between gap-2 text-sm">
                   <span className="truncate font-medium">{categoryChartLabel(name)}</span>
                   <span className="shrink-0 tabular-nums text-muted-foreground">
-                    {amount.toLocaleString("ru-RU")} ₸
+                    {formatMoney(amount)}
                   </span>
                 </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-muted">
@@ -185,7 +187,7 @@ export function OverviewInsights({ operations }: OverviewInsightsProps) {
               <div className="flex items-center justify-between text-sm">
                 <span className="font-medium">{TYPE_LABELS[type] ?? type}</span>
                 <span className="tabular-nums text-muted-foreground">
-                  {amount.toLocaleString("ru-RU")} ₸
+                  {formatMoney(amount)}
                 </span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-muted">

@@ -65,7 +65,7 @@ export function classifyServiceOrder(context: DocumentContext): ServiceOrderProf
     kind,
     showOilInterval: isOilChange && !isEngine,
     showEngineBlock: isEngine,
-    showEngineWarranty: hasMotorInstall,
+    showEngineWarranty: hasMotorInstall || context.order.motorLines.some((line) => line.outcome === "sell"),
     showBreakInNotes: hasMotorInstall,
     showControlInspection: false,
     showDiagnosticsNotes: isDiagnostics && hasDiagnosticContent,

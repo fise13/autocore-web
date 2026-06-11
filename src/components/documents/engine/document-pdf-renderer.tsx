@@ -123,10 +123,12 @@ function TotalsSheet({
   note?: { warranty?: string | null; recommendations?: string | null };
 }) {
   const rows = [
-    { label: "Работы", value: totals.labor },
-    { label: "Запчасти", value: totals.parts },
-    { label: "Двигатель", value: totals.engine },
-    totals.transmission !== "—" ? { label: "КПП", value: totals.transmission } : null,
+    totals.labor ? { label: "Работы", value: totals.labor } : null,
+    totals.parts ? { label: "Запчасти", value: totals.parts } : null,
+    totals.engine ? { label: totals.labor || totals.parts ? "Двигатель" : "Стоимость двигателя", value: totals.engine } : null,
+    totals.transmission && totals.transmission !== "—"
+      ? { label: "КПП", value: totals.transmission }
+      : null,
     totals.discount ? { label: "Скидка", value: totals.discount } : null,
     totals.tax ? { label: "Налог", value: totals.tax } : null,
   ].filter(Boolean) as { label: string; value: string }[];
@@ -213,10 +215,14 @@ function renderSection(section: DocumentSectionModel) {
     case "vehicle":
       return (
         <section className="doc-pdf-block" key="vehicle">
-          <BlockHead title="Участники" />
+          <BlockHead title={section.sectionTitle ?? "Участники"} />
           <div className="doc-pdf-split">
-            <DataCard title="Клиент" fields={section.client} />
-            <DataCard title="Автомобиль" badge={section.plate} fields={section.vehicle} />
+            <DataCard title={section.clientCardTitle ?? "Клиент"} fields={section.client} />
+            <DataCard
+              title={section.detailsCardTitle ?? "Автомобиль"}
+              badge={section.plate}
+              fields={section.vehicle}
+            />
           </div>
         </section>
       );

@@ -3,6 +3,10 @@ import { DocumentSlug } from "@/lib/documents/document-types";
 import { DocumentTemplateLayout } from "@/lib/documents/templates/document-template-meta";
 import { DocumentContext } from "@/lib/documents/document-context";
 import { classifyServiceOrder } from "@/lib/documents/classify-service-order";
+import {
+  hasMotorSaleBuyer,
+  isStandaloneMotorSale,
+} from "@/lib/documents/motor-sale-document";
 import { buildDocumentPhotos } from "@/lib/documents/render-model/build-document-photos";
 import {
   documentPrimaryMotor,
@@ -91,6 +95,7 @@ function layoutAllowsSection(
     case "acceptance":
       return layout.showAcceptanceBanner;
     case "vehicle":
+      if (isStandaloneMotorSale(context) && !hasMotorSaleBuyer(context)) return false;
       return layout.showClientVehicle;
     case "labor":
       return layout.showLabor && context.order.laborLines.length > 0;
@@ -105,7 +110,7 @@ function layoutAllowsSection(
     case "vehicle_history":
       return layout.showTimeline;
     case "aggregate_history":
-      return hasMotor;
+      return hasMotor && !isStandaloneMotorSale(context);
     case "photos":
       return buildDocumentPhotos(context).length > 0;
     case "diagnostics":

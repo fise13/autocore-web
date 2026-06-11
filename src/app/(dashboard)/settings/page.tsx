@@ -9,6 +9,8 @@ import { SidebarSettingsCard } from "@/components/settings/sidebar-settings-card
 import { ThemeSettingsCard } from "@/components/settings/theme-settings-card";
 import { SubscriptionStrip } from "@/components/billing/subscription-strip";
 import { BrandingSettingsCard } from "@/components/settings/branding-settings-card";
+import { CompanyAppConfigSettingsCard } from "@/components/settings/company-app-config-settings-card";
+import { DisplayCurrencySettingsCard } from "@/components/settings/display-currency-settings-card";
 import { CompanySettingsPanel } from "@/components/settings/company-settings-panel";
 import { DataCleanupPanel } from "@/components/settings/data-cleanup-panel";
 import { SettingsSectionId, SettingsShell } from "@/components/settings/settings-shell";
@@ -35,6 +37,7 @@ function resolveSection(section: string | null): SettingsSectionId {
   switch (section) {
     case "account":
     case "company":
+    case "appConfig":
     case "branding":
     case "accounting":
     case "dataCleanup":
@@ -110,10 +113,15 @@ export default function SettingsPage() {
             onStatus={setStatus}
           />
         ) : null;
+      case "appConfig":
+        return profile?.companyId ? (
+          <CompanyAppConfigSettingsCard companyId={profile.companyId} onStatus={setStatus} />
+        ) : null;
       case "accounting":
         return (
           <FadeIn>
             <div className="space-y-5">
+              <DisplayCurrencySettingsCard onStatus={setStatus} />
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2">

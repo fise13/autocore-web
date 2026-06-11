@@ -136,6 +136,14 @@ export const SETUP_WIZARD_COPY = {
     title: "Компания настроена",
     subtitle: "Сохранили выбор и открываем рабочее пространство…",
   },
+  settings: {
+    title: "Система",
+    subtitle: "Разделы меню, каталог запчастей и гарантия по умолчанию.",
+    hint: "Изменения применяются к меню и рабочим разделам после сохранения.",
+    save: "Сохранить",
+    saving: "Сохраняем…",
+    saved: "Настройки системы сохранены",
+  },
 } as const;
 
 export type BusinessPresetId = (typeof SETUP_WIZARD_COPY.presets.options)[number]["id"];

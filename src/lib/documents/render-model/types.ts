@@ -65,10 +65,10 @@ export type DocumentPhoto = {
 };
 
 export type DocumentTotalsBlock = {
-  labor: string;
-  parts: string;
-  engine: string;
-  transmission: string;
+  labor: string | null;
+  parts: string | null;
+  engine: string | null;
+  transmission: string | null;
   discount: string | null;
   tax: string | null;
   grandTotal: string;
@@ -93,7 +93,15 @@ export type DocumentSectionModel =
   | { key: "hero"; meta: Pick<DocumentMetaBlock, "title" | "lead" | "primaryLabel" | "primaryValue" | "primaryHint" | "executorName"> }
   | { key: "acceptance"; text: string }
   | { key: "motor_spotlight"; serialCode: string; meta: string; fields: DocumentFieldRow[] }
-  | { key: "vehicle"; client: DocumentFieldRow[]; vehicle: DocumentFieldRow[]; plate?: string }
+  | {
+      key: "vehicle";
+      client: DocumentFieldRow[];
+      vehicle: DocumentFieldRow[];
+      plate?: string;
+      sectionTitle?: string;
+      clientCardTitle?: string;
+      detailsCardTitle?: string;
+    }
   | { key: "engine"; label: string; fields: DocumentFieldRow[] }
   | { key: "transmission"; label: string; value: string }
   | { key: "labor"; title: string; hint: string; rows: DocumentLineItem[] }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { AtSign, ChevronLeft, Loader2 } from "lucide-react";
 
@@ -14,7 +15,9 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { AppLogo } from "@/components/brand/app-logo";
 import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { ProfileNameFields } from "@/components/auth/profile-name-fields";
 import { formatAppleAuthErrorForUi, logAppleAuthError } from "@/lib/auth/apple-auth-log";
 import { isAppleJsAuthMode } from "@/lib/auth/apple-auth-mode";
 import { getAppleJsSetupIssue } from "@/lib/auth/apple-js-setup";
@@ -28,6 +31,10 @@ import {
 import { getFirebaseAuth } from "@/infrastructure/firebase/client";
 import { marketingRoutes } from "@/lib/marketing-routes";
 import { marketingHomeUrl, marketingPageUrl } from "@/lib/site-urls";
+import {
+  readPendingMarketingCheckout,
+  storePendingMarketingCheckout,
+} from "@/lib/marketing/pending-checkout";
 import { prefersReducedMotion } from "@/lib/motion/cross-route-transition";
 import { cn } from "@/lib/utils";
 import { mapAuthError, userCopy } from "@/lib/user-copy";
@@ -51,8 +58,12 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
     resolveSignInMethodsForEmail,
     sendPasswordResetForEmail,
   } = useAuth();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [paidCheckoutPending, setPaidCheckoutPending] = useState(false);
   const [emailStep, setEmailStep] = useState(false);
   const [emailMode, setEmailMode] = useState<EmailSignInMode>("login");
   const [oauthProviders, setOauthProviders] = useState<Array<"google.com" | "apple.com">>([]);
@@ -77,6 +88,25 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
       setError(bootstrapError);
     }
   }, [bootstrapError]);
+
+  useEffect(() => {
+    const checkout = searchParams.get("checkout");
+    const sessionId = searchParams.get("session_id")?.trim();
+    const interval = searchParams.get("interval");
+    if (checkout === "success" && sessionId) {
+      storePendingMarketingCheckout({
+        sessionId,
+        interval: interval === "yearly" ? "yearly" : "monthly",
+      });
+      setPaidCheckoutPending(true);
+      setEmailStep(true);
+      setEmailMode("signup");
+      setAuthStepDirection(1);
+      setAuthStepAnimated(true);
+    } else {
+      setPaidCheckoutPending(Boolean(readPendingMarketingCheckout()));
+    }
+  }, [searchParams]);
 
   async function runAuth(action: () => Promise<void>, provider: PendingAuth) {
     logAuthDebug("login-screen", "runAuth start", { provider });
@@ -147,6 +177,10 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
         setError(passwordError);
         return;
       }
+      if (!firstName.trim() || !lastName.trim()) {
+        setError("Укажите имя и фамилию.");
+        return;
+      }
     } else if (password.length < 6) {
       setError("Пароль слишком короткий (минимум 6 символов).");
       return;
@@ -154,7 +188,10 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
     await runAuth(async () => {
       try {
         if (isSignUp) {
-          await signUpWithEmail(email, password);
+          await signUpWithEmail(email, password, {
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+          });
         } else {
           await signInWithEmail(email, password);
         }
@@ -265,6 +302,16 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
               Вход в {userCopy.appName} или регистрация новой команды.
             </p>
           </div>
+
+          {paidCheckoutPending ? (
+            <Alert>
+              <AlertTitle>Оплата Pro прошла успешно</AlertTitle>
+              <AlertDescription>
+                Создайте аккаунт с тем же email, что указали в Stripe, затем создайте компанию —
+                подписка активируется автоматически.
+              </AlertDescription>
+            </Alert>
+          ) : null}
 
           <AnimatePresence mode="wait" custom={authStepDirection}>
           {!emailStep ? (
@@ -437,6 +484,24 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                 <p className="text-sm text-muted-foreground">
                   Аккаунт найден — введите пароль для входа.
                 </p>
+              ) : null}
+
+              {isSignUp ? (
+                <motion.div
+                  initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.24, ease: authStepEase, delay: 0.04 }}
+                >
+                  <ProfileNameFields
+                    firstName={firstName}
+                    lastName={lastName}
+                    onFirstNameChange={setFirstName}
+                    onLastNameChange={setLastName}
+                    disabled={isBusy}
+                    firstNameId="signup-first-name"
+                    lastNameId="signup-last-name"
+                  />
+                </motion.div>
               ) : null}
 
               {isSignUp ? (

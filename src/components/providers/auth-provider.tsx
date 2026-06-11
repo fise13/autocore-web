@@ -15,6 +15,7 @@ import {
   signOut,
   updateEmail,
   updatePassword,
+  updateProfile,
 } from "firebase/auth";
 import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
@@ -45,6 +46,7 @@ import { AppleJsRedirectStarted, isAppleUserCancellationError } from "@/lib/auth
 import { signInWithAppleFirebase } from "@/lib/auth/sign-in-with-apple-web";
 import { mergeProfileWithEmployee, EmployeeProfileSlice } from "@/lib/auth/resolve-effective-profile";
 import { markSyncAuthPrepared, prepareSyncAuth, resetSyncAuthCache } from "@/lib/auth/prepare-sync-auth";
+import { claimPendingMarketingCheckout } from "@/lib/billing/claim-marketing-checkout";
 import { mapAuthError } from "@/lib/user-copy";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
 import {
@@ -69,7 +71,11 @@ type AuthContextValue = {
   signInWithGoogle: () => Promise<void>;
   signInWithApple: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (
+    email: string,
+    password: string,
+    profile?: { firstName: string; lastName: string },
+  ) => Promise<void>;
   resolveSignInMethodsForEmail: (email: string) => Promise<string[]>;
   sendPasswordResetForEmail: (email: string) => Promise<void>;
   sendEmailVerification: () => Promise<void>;
@@ -384,11 +390,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
           throw new Error(mapAuthError(error));
         }
       },
-      async signUpWithEmail(email, password) {
+      async signUpWithEmail(email, password, profileNames) {
         if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));
         try {
           const auth = getFirebaseAuth();
+          const db = getFirestoreDb();
           const result = await createUserWithEmailAndPassword(auth, email, password);
+          const trimmedFirst = profileNames?.firstName?.trim() ?? "";
+          const trimmedLast = profileNames?.lastName?.trim() ?? "";
+          if (trimmedFirst && trimmedLast) {
+            const fullName = `${trimmedFirst} ${trimmedLast}`;
+            await updateProfile(result.user, { displayName: fullName });
+            await setDoc(doc(db, "users", result.user.uid), {
+              name: fullName,
+              email: result.user.email ?? email.trim(),
+              role: defaultRole,
+              companyId: "",
+              permissions: [],
+              isActive: true,
+              onboardingCompleted: true,
+              createdAt: serverTimestamp(),
+            });
+          }
           await finalizeSignedInUser(auth, result.user, refreshProfile, setFirebaseUser, setIsLoading);
         } catch (error) {
           throw new Error(mapAuthError(error));
@@ -494,7 +517,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));
         const auth = getFirebaseAuth();
         if (!auth.currentUser) throw new Error(mapAuthError(new Error("auth/invalid-credential")));
-        await createCompanyRecord(auth.currentUser.uid, name);
+        const companyId = await createCompanyRecord(auth.currentUser.uid, name);
+        try {
+          await claimPendingMarketingCheckout(companyId);
+        } catch (claimError) {
+          console.warn("Marketing checkout claim skipped:", claimError);
+        }
         await prepareSyncAuth(auth.currentUser.uid, { force: true });
         await refreshProfile();
       },

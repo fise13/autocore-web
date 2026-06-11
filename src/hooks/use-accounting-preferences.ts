@@ -4,6 +4,7 @@ import { doc, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
+import { AppDisplayCurrency, normalizeAppDisplayCurrency } from "@/lib/money/display-currency";
 
 export type AccountingPreferences = {
   syncEnabled: boolean;
@@ -11,6 +12,7 @@ export type AccountingPreferences = {
   employees: string[];
   specifics: string[];
   isConfigured: boolean;
+  displayCurrency: AppDisplayCurrency;
 };
 
 const defaultAccountingPreferences: AccountingPreferences = {
@@ -19,6 +21,7 @@ const defaultAccountingPreferences: AccountingPreferences = {
   employees: [],
   specifics: [],
   isConfigured: false,
+  displayCurrency: "KZT",
 };
 
 function mapPreferences(data: Record<string, unknown> | null | undefined): AccountingPreferences {
@@ -49,6 +52,7 @@ function mapPreferences(data: Record<string, unknown> | null | undefined): Accou
       typeof accountingSettings?.isConfigured === "boolean"
         ? accountingSettings.isConfigured
         : defaultAccountingPreferences.isConfigured,
+    displayCurrency: normalizeAppDisplayCurrency(accountingSettings?.displayCurrency),
   };
 }
 
@@ -85,17 +89,19 @@ export function useAccountingPreferences(uid: string) {
       if (
         next.employees !== undefined ||
         next.specifics !== undefined ||
-        typeof next.isConfigured === "boolean"
+        typeof next.isConfigured === "boolean" ||
+        next.displayCurrency !== undefined
       ) {
         payload.accountingSettings = {
           employees: next.employees ?? preferences.employees,
           specifics: next.specifics ?? preferences.specifics,
           isConfigured: next.isConfigured ?? preferences.isConfigured,
+          displayCurrency: next.displayCurrency ?? preferences.displayCurrency,
         };
       }
       await setDoc(userRef, payload, { merge: true });
     },
-    [db, preferences.employees, preferences.isConfigured, preferences.specifics, uid],
+    [db, preferences.displayCurrency, preferences.employees, preferences.isConfigured, preferences.specifics, uid],
   );
 
   const updateAccountProfile = useCallback(

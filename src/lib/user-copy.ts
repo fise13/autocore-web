@@ -185,6 +185,8 @@ export const userCopy = {
     themeSystem: "Авто",
     themeLight: "Светлая",
     themeDark: "Тёмная",
+    appConfig: "Система",
+    subtitleAppConfig: "Разделы меню, каталог запчастей и гарантия по умолчанию.",
     account: "Аккаунт",
     employees: "Сотрудники",
     roles: "Роли",

@@ -142,7 +142,7 @@ type DemoMissionControlProps = {
 
 function DemoMissionControl({ events }: DemoMissionControlProps) {
   const metrics = [
-    { label: "Выручка сегодня", value: "₽ 2,4 млн" },
+    { label: "Выручка сегодня", value: "$2.4M" },
     { label: "Открытые наряды", value: "12" },
     { label: "SKU на складе", value: "4 892" },
     { label: "Низкий остаток", value: "3" },

@@ -188,7 +188,7 @@ export function buildMarketingJsonLd() {
       offers: {
         "@type": "Offer",
         price: "0",
-        priceCurrency: "RUB",
+        priceCurrency: "USD",
         description: "14-дневный пробный период",
       },
       url: appUrl,
