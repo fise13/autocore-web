@@ -18,6 +18,18 @@ const MODULE_KEYS: CompanyModuleKey[] = [
   "specifics",
 ];
 
+function sanitizeSpecificCategories(
+  categories: CompanyAppConfig["specificCategories"],
+): Array<Record<string, unknown>> {
+  return categories.map(({ id, name, mode, warrantyDefault }) => {
+    const item: Record<string, unknown> = { id, name, mode };
+    if (warrantyDefault !== undefined) {
+      item.warrantyDefault = warrantyDefault;
+    }
+    return item;
+  });
+}
+
 function mapSpecificCategory(raw: unknown): CompanySpecificCategoryConfig | null {
   if (!raw || typeof raw !== "object") return null;
   const data = raw as Record<string, unknown>;
@@ -30,7 +42,7 @@ function mapSpecificCategory(raw: unknown): CompanySpecificCategoryConfig | null
     (typeof data.warrantyDefault === "string" && data.warrantyDefault.startsWith("contract_"))
       ? (data.warrantyDefault as WarrantyTemplateId | "none")
       : undefined;
-  return { id, name, mode, warrantyDefault };
+  return warrantyDefault !== undefined ? { id, name, mode, warrantyDefault } : { id, name, mode };
 }
 
 function mapCompanyAppConfig(data: Record<string, unknown> | undefined): CompanyAppConfig {
@@ -110,7 +122,7 @@ export function createCompanyConfigRepository() {
         {
           onboardingCompleted: config.onboardingCompleted,
           modules: config.modules,
-          specificCategories: config.specificCategories,
+          specificCategories: sanitizeSpecificCategories(config.specificCategories),
           defaultWarrantyTemplate: config.defaultWarrantyTemplate,
           updatedByUserId,
           updatedAt: serverTimestamp(),
