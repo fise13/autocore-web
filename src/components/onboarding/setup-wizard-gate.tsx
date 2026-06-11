@@ -10,6 +10,7 @@ import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
 import { useCompanyAppConfig } from "@/hooks/use-company-app-config";
 import { can } from "@/lib/auth/permissions";
 import { prefersReducedMotion } from "@/lib/motion/cross-route-transition";
+import { SETUP_WIZARD_COPY } from "@/lib/onboarding/setup-wizard-copy";
 import { userCopy } from "@/lib/user-copy";
 
 type SetupWizardGateProps = {
@@ -62,8 +63,8 @@ function SetupWizardLoadingState() {
           <Settings2 className="size-5" aria-hidden />
         </span>
         <div className="space-y-1">
-          <p className="text-sm font-medium text-foreground">Подготавливаем мастер настройки</p>
-          <p className="text-xs text-muted-foreground">Загружаем конфигурацию компании…</p>
+          <p className="text-sm font-medium text-foreground">{SETUP_WIZARD_COPY.shell.loadingTitle}</p>
+          <p className="text-xs text-muted-foreground">{SETUP_WIZARD_COPY.shell.loadingSubtitle}</p>
         </div>
         <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden />
       </motion.div>

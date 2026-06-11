@@ -354,7 +354,7 @@ export const userCopy = {
   },
 
   onboarding: {
-    loading: "Подготавливаем рабочее пространство…",
+    loading: "Загружаем настройки компании…",
     appleRedirect: "Переход к Apple ID…",
     appleFailed:
       "Firebase не получил сессию после Apple. Проверьте Apple OAuth в Firebase Console и Return URL handler в Apple Developer.",
