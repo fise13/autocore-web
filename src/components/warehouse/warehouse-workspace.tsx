@@ -68,6 +68,9 @@ export function WarehouseWorkspace() {
     setSaveError,
     search,
     setSearch,
+    setWarehouseItemHighlightId,
+    setWarehouseBarcodePrefill,
+    lastBarcodeScan,
     setCounts,
     setSearchSuggestions,
     selectedWarehouseId,
@@ -165,8 +168,12 @@ export function WarehouseWorkspace() {
 
   useEffect(() => {
     const query = searchParams.get("search")?.trim();
+    const highlight = searchParams.get("highlight")?.trim();
+    const barcode = searchParams.get("barcode")?.trim();
     if (query) setSearch(query);
-  }, [searchParams, setSearch]);
+    if (highlight) setWarehouseItemHighlightId(highlight);
+    if (barcode) setWarehouseBarcodePrefill(barcode);
+  }, [searchParams, setSearch, setWarehouseBarcodePrefill, setWarehouseItemHighlightId]);
 
   const exportWarehouse = useCallback(async () => {
     setIoBusy("export");
@@ -285,18 +292,18 @@ export function WarehouseWorkspace() {
         </div>
       ) : null}
       {saveError ? (
-        <div className="flex items-center justify-between gap-3 border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-xs text-destructive">
-          <span>{saveError}</span>
+        <div className="flex items-center justify-between gap-3 border-b border-destructive/25 bg-destructive/8 px-4 py-2.5 text-xs text-destructive">
+          <span className="min-w-0 flex-1 leading-relaxed">{saveError}</span>
           <button
             type="button"
-            className="rounded px-2 py-1 text-[11px] font-medium hover:bg-destructive/10"
+            className="shrink-0 rounded-md border border-destructive/20 px-2.5 py-1 text-[11px] font-medium transition-colors hover:bg-destructive/10"
             onClick={() => setSaveError(null)}
           >
             Скрыть
           </button>
         </div>
       ) : null}
-      <div className="flex items-center justify-between gap-3 border-b bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
         <span>
           Склад:{" "}
           <span className="font-medium text-foreground">
@@ -306,17 +313,28 @@ export function WarehouseWorkspace() {
             <span className="text-muted-foreground"> · остатки только этого склада</span>
           ) : null}
         </span>
-        {canEdit && !defaultWarehouse ? (
-          <button
-            type="button"
-            className="rounded-md border px-2 py-1 text-foreground hover:bg-muted"
-            onClick={() => {
-              void ensureDefaultWarehouseUseCase(warehouseRepository, companyId, actorUserId);
-            }}
-          >
-            Создать основной склад
-          </button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {lastBarcodeScan ? (
+            <span className="rounded-full border bg-background px-2.5 py-1 text-[11px] text-foreground">
+              {lastBarcodeScan.itemName
+                ? `Скан: ${lastBarcodeScan.itemName}`
+                : `Скан: ${lastBarcodeScan.barcode}`}
+            </span>
+          ) : (
+            <span className="text-[11px]">Сканер USB активен — наведите и отсканируйте</span>
+          )}
+          {canEdit && !defaultWarehouse ? (
+            <button
+              type="button"
+              className="rounded-md border px-2 py-1 text-foreground transition-colors hover:bg-muted"
+              onClick={() => {
+                void ensureDefaultWarehouseUseCase(warehouseRepository, companyId, actorUserId);
+              }}
+            >
+              Создать основной склад
+            </button>
+          ) : null}
+        </div>
       </div>
       {itemsQuery.isBootstrapping ? <MotorsGridSkeleton /> : null}
       <div
@@ -468,7 +486,11 @@ export function WarehouseWorkspace() {
           const result = await lookupBarcodeUseCase(barcodeRepository, itemRepository, companyId, barcode);
           return result.item;
         }}
-        onFound={(item) => setActiveItem(item)}
+        onFound={(item) => {
+          setActiveItem(item);
+          setSearch(item.sku);
+          setWarehouseItemHighlightId(item.id);
+        }}
       />
 
       <WarehouseImportWizard

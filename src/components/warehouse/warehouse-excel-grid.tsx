@@ -327,6 +327,10 @@ export function WarehouseExcelGrid({
     registerCloudPushHandler,
     registerSyncHandler,
     gridZoom,
+    warehouseItemHighlightId,
+    setWarehouseItemHighlightId,
+    warehouseBarcodePrefill,
+    setWarehouseBarcodePrefill,
   } = useWorkspace();
 
   const layout = useMemo(() => buildWarehouseGridLayoutMetrics(gridZoom), [gridZoom]);
@@ -369,6 +373,7 @@ export function WarehouseExcelGrid({
   const [fillPreview, setFillPreview] = useState<GridRange | null>(null);
   const [dirtyVersion, setDirtyVersion] = useState(0);
   const [saveFlashRows, setSaveFlashRows] = useState<Set<string>>(new Set());
+  const [scanFlashRows, setScanFlashRows] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     itemsRef.current = items;
@@ -560,6 +565,8 @@ export function WarehouseExcelGrid({
       const rowReplacements = new Map<string, WarehouseGridRow>();
       const pushedRowIds: string[] = [];
 
+      const rowErrors: string[] = [];
+
       for (const rowId of [...dirtyRowsRef.current]) {
         const row = snapshotRows.find((item) => item.rowId === rowId);
         if (!row) continue;
@@ -573,35 +580,43 @@ export function WarehouseExcelGrid({
           continue;
         }
 
-        const syncResult = await syncWarehouseGridRowUseCase(
-          repository,
-          stockLevelRepository,
-          movementRepository,
-          warehouseRepository,
-          financialRepository,
-          {
-            companyId,
-            actorUserId,
-            warehouseId: activeWarehouseId,
-            row,
-            baseline,
-          },
-        );
+        try {
+          const syncResult = await syncWarehouseGridRowUseCase(
+            repository,
+            stockLevelRepository,
+            movementRepository,
+            warehouseRepository,
+            financialRepository,
+            {
+              companyId,
+              actorUserId,
+              warehouseId: activeWarehouseId,
+              row,
+              baseline,
+            },
+          );
 
-        if (syncResult === WAREHOUSE_ROW_ARCHIVED) {
-          rowReplacements.set(rowId, createEmptyWarehouseRow());
+          if (syncResult === WAREHOUSE_ROW_ARCHIVED) {
+            rowReplacements.set(rowId, createEmptyWarehouseRow());
+            dirtyRowsRef.current.delete(rowId);
+            continue;
+          }
+
+          if (row.rowKind === "empty" && syncResult) {
+            rowReplacements.set(rowId, buildSavedRowFromCreate(row, syncResult, companyId));
+            pushedRowIds.push(`saved-${syncResult}`);
+          } else {
+            rowReplacements.set(rowId, row);
+            pushedRowIds.push(rowId);
+          }
           dirtyRowsRef.current.delete(rowId);
-          continue;
+        } catch (rowError) {
+          const label =
+            row.rowKind === "saved"
+              ? row.sku || row.name || "строка"
+              : row.draft.sku || row.draft.name || "новая строка";
+          rowErrors.push(`${label}: ${mapGridSaveError(rowError)}`);
         }
-
-        if (row.rowKind === "empty" && syncResult) {
-          rowReplacements.set(rowId, buildSavedRowFromCreate(row, syncResult, companyId));
-          pushedRowIds.push(`saved-${syncResult}`);
-        } else {
-          rowReplacements.set(rowId, row);
-          pushedRowIds.push(rowId);
-        }
-        dirtyRowsRef.current.delete(rowId);
       }
 
       if (rowReplacements.size > 0) {
@@ -615,7 +630,19 @@ export function WarehouseExcelGrid({
       }
       localSaveAckRef.current.clear();
       setDirtyVersion((current) => current + 1);
-      setSaveStatus("saved");
+
+      if (rowErrors.length > 0) {
+        setSaveStatus(pushedRowIds.length > 0 ? "saved" : "error");
+        setSaveError(
+          pushedRowIds.length > 0
+            ? `Сохранено ${pushedRowIds.length} строк. Ошибки: ${rowErrors.join(" · ")}`
+            : rowErrors.join(" · "),
+        );
+      } else {
+        setSaveStatus("saved");
+        setSaveError(null);
+      }
+
       if (pushedRowIds.length > 0) {
         setSaveFlashRows(new Set(pushedRowIds));
         window.setTimeout(() => setSaveFlashRows(new Set()), 450);
@@ -821,6 +848,86 @@ export function WarehouseExcelGrid({
     setEditor({ cell, value, initialValue: value, selectAll });
     scrollToCell(cell);
   }, [canEdit, markDirty, rows, scrollToCell]);
+
+  const highlightHandledRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!warehouseItemHighlightId) {
+      highlightHandledRef.current = null;
+      return;
+    }
+    const rowIndex = rows.findIndex(
+      (row) => row.rowKind === "saved" && row.id === warehouseItemHighlightId,
+    );
+    if (rowIndex < 0) return;
+    if (highlightHandledRef.current === warehouseItemHighlightId) return;
+    highlightHandledRef.current = warehouseItemHighlightId;
+
+    const row = rows[rowIndex];
+    if (!row) return;
+    const cell = { row: rowIndex, column: 2 };
+    setSelection(clickSelection(selectionRef.current, cell, { shift: false, meta: false }));
+    scrollToCell(cell);
+    setScanFlashRows(new Set([row.rowId]));
+    const timer = window.setTimeout(() => {
+      setScanFlashRows(new Set());
+      setWarehouseItemHighlightId(null);
+    }, 2600);
+    return () => window.clearTimeout(timer);
+  }, [rows, scrollToCell, setWarehouseItemHighlightId, warehouseItemHighlightId]);
+
+  useEffect(() => {
+    if (!warehouseBarcodePrefill || !canEdit) return;
+    const barcode = normalizeBarcode(warehouseBarcodePrefill);
+    setWarehouseBarcodePrefill(null);
+    if (!barcode) return;
+
+    let targetRowId: string | null = null;
+    setRows((current) => {
+      let next = current;
+      let emptyIndex = next.findIndex(
+        (row) => row.rowKind === "empty" && !hasWarehouseDraftContent(row),
+      );
+      if (emptyIndex < 0) {
+        next = growWarehouseRows(current, 8);
+        emptyIndex = next.findIndex(
+          (row) => row.rowKind === "empty" && !hasWarehouseDraftContent(row),
+        );
+      }
+      if (emptyIndex < 0) return current;
+      const target = next[emptyIndex];
+      if (target.rowKind !== "empty") return current;
+      targetRowId = target.rowId;
+      const updated = [...next];
+      updated[emptyIndex] = {
+        ...target,
+        draft: {
+          ...target.draft,
+          barcode,
+          sku: target.draft.sku.trim() ? target.draft.sku : barcode,
+        },
+      };
+      return updated;
+    });
+
+    if (!targetRowId) return;
+    markDirty(targetRowId);
+    window.setTimeout(() => {
+      const rowIndex = rowsRef.current.findIndex((row) => row.rowId === targetRowId);
+      if (rowIndex < 0) return;
+      const cell = { row: rowIndex, column: 2 };
+      setSelection(clickSelection(selectionRef.current, cell, { shift: false, meta: false }));
+      scrollToCell(cell);
+      beginEdit(cell);
+    }, 0);
+  }, [
+    beginEdit,
+    canEdit,
+    markDirty,
+    scrollToCell,
+    setWarehouseBarcodePrefill,
+    warehouseBarcodePrefill,
+  ]);
 
   const commitEditor = useCallback((direction?: "down" | "up" | "left" | "right") => {
     if (!editor) return;
@@ -1426,6 +1533,9 @@ export function WarehouseExcelGrid({
                             selected && !outOfStock && "bg-emerald-500/12",
                             focused && "z-[2] ring-2 ring-inset",
                             saveFlashRows.has(row.rowId) && !outOfStock && "bg-emerald-400/20",
+                            scanFlashRows.has(row.rowId) &&
+                              !outOfStock &&
+                              "bg-primary/12 ring-2 ring-inset ring-primary/40",
                             lowStock && (colIdx === 5 || colIdx === 7) && "text-amber-700 dark:text-amber-300",
                             colIdx === 6 && !outOfStock && "text-muted-foreground",
                             colIdx === 15 && "text-muted-foreground text-[11px]",

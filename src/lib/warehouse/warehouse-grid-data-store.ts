@@ -207,6 +207,12 @@ function parseOptionalNumber(value: string | undefined): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+/** Coerce grid/Firestore numbers so Zod + Firestore never see NaN or negatives. */
+export function sanitizeWarehouseNumber(value: number | undefined | null): number | undefined {
+  if (value == null || !Number.isFinite(value) || value < 0) return undefined;
+  return value;
+}
+
 export function parseDraftToUpsert(row: WarehouseGridRow, companyId: string, actorUserId: string) {
   if (row.rowKind === "saved") {
     return {
@@ -221,9 +227,9 @@ export function parseDraftToUpsert(row: WarehouseGridRow, companyId: string, act
       notes: row.notes,
       categoryPath: row.categoryPath,
       unit: row.unit,
-      purchasePrice: row.purchasePrice,
-      sellPrice: row.sellPrice,
-      lowStockThreshold: row.lowStockThreshold,
+      purchasePrice: sanitizeWarehouseNumber(row.purchasePrice),
+      sellPrice: sanitizeWarehouseNumber(row.sellPrice),
+      lowStockThreshold: sanitizeWarehouseNumber(row.lowStockThreshold),
       barcodes: row.barcodes,
       status: row.status,
       actorUserId,

@@ -1270,6 +1270,9 @@
   .max-w-\[140px\] {
     max-width: 140px;
   }
+  .max-w-\[160px\] {
+    max-width: 160px;
+  }
   .max-w-\[180px\] {
     max-width: 180px;
   }
@@ -4570,6 +4573,11 @@
   .sm\:justify-start {
     @media (width >= 40rem) {
       justify-content: flex-start;
+    }
+  }
+  .sm\:gap-0 {
+    @media (width >= 40rem) {
+      gap: calc(var(--spacing) * 0);
     }
   }
   .sm\:gap-4 {

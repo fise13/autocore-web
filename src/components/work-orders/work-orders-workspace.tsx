@@ -12,6 +12,8 @@ import { quickCreateVehicleUseCase } from "@/application/use-cases/work-orders/q
 import { transitionWorkOrderStatusUseCase } from "@/application/use-cases/work-orders/transition-work-order-status";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useWorkspace } from "@/components/layout/workspace-context";
+import { useToast } from "@/components/ui/toast-provider";
+import { InventoryItem } from "@/domain/inventory";
 import {
   ComposerFormState,
   LaborDraft,
@@ -120,7 +122,8 @@ function initialFormState(): ComposerFormState {
 
 export function WorkOrdersWorkspace() {
   const { profile, isLoading } = useAuth();
-  const { registerSyncHandler } = useWorkspace();
+  const { registerSyncHandler, registerWorkOrderBarcodeScanHandler } = useWorkspace();
+  const { toast } = useToast();
   const searchParams = useSearchParams();
   const routeParams = useParams();
   const routeOrderId = typeof routeParams?.id === "string" ? routeParams.id : null;
@@ -437,6 +440,41 @@ export function WorkOrdersWorkspace() {
       partUnitPrice: 0,
     }));
   }, [form.partName, form.partSku, form.partQuantity, form.partUnitPrice, inventoryItems]);
+
+  const handleBarcodeScan = useCallback(
+    (item: InventoryItem) => {
+      if (!isCreating) return false;
+      setError(null);
+      setForm((current) => ({
+        ...current,
+        partLines: [
+          ...current.partLines,
+          {
+            id: nextId("part"),
+            itemId: item.id,
+            source: "warehouse" as const,
+            sku: item.sku,
+            name: item.name,
+            quantity: 1,
+            unitPrice: item.sellPrice ?? item.averageCost ?? item.purchasePrice ?? 0,
+            unitCost: item.averageCost ?? item.purchasePrice ?? 0,
+          },
+        ],
+      }));
+      toast({
+        title: "Запчасть добавлена",
+        description: `${item.name} × 1`,
+        variant: "success",
+      });
+      return true;
+    },
+    [isCreating, toast],
+  );
+
+  useEffect(() => {
+    registerWorkOrderBarcodeScanHandler(handleBarcodeScan);
+    return () => registerWorkOrderBarcodeScanHandler(null);
+  }, [handleBarcodeScan, registerWorkOrderBarcodeScanHandler]);
 
   const addMotorLine = useCallback(() => {
     const serial = form.motorSerial.trim();

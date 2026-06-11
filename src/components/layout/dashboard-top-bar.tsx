@@ -129,6 +129,7 @@ export function DashboardTopBar() {
     triggerWarehouseImport,
     registerWarehouseImportPicker,
     triggerWarehouseBarcode,
+    lastBarcodeScan,
   } = useWorkspace();
   const { requirePro, isPro } = useBillingGate();
 
@@ -308,6 +309,15 @@ export function DashboardTopBar() {
               title={excelError}
             >
               {excelError}
+            </span>
+          ) : null}
+
+          {lastBarcodeScan && !isWarehouseRoute ? (
+            <span
+              className="hidden max-w-[160px] truncate rounded-full border bg-muted/40 px-2.5 py-1 text-[11px] text-foreground lg:inline"
+              title={lastBarcodeScan.barcode}
+            >
+              {lastBarcodeScan.itemName ?? lastBarcodeScan.barcode}
             </span>
           ) : null}
 

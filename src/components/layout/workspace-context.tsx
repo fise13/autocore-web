@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 
+import { InventoryItem } from "@/domain/inventory";
 import { initialMotorSyncState, MotorSyncState } from "@/domain/motor-sync";
 import { MotorAvailability } from "@/infrastructure/firestore/motor-repository";
 import { isEditableExternalField, isRedoShortcut, isUndoShortcut } from "@/lib/grid/grid-keyboard-shortcuts";
@@ -43,6 +44,12 @@ export type WorkspaceSearchSuggestion = {
   label: string;
   description?: string;
   searchValue: string;
+};
+
+export type BarcodeScanSnapshot = {
+  barcode: string;
+  itemId?: string;
+  itemName?: string;
 };
 
 type WorkspaceContextValue = {
@@ -99,6 +106,14 @@ type WorkspaceContextValue = {
   triggerWarehouseImportPicker: () => boolean;
   registerWarehouseBarcodeHandler: (handler: (() => void) | null) => void;
   triggerWarehouseBarcode: () => boolean;
+  warehouseItemHighlightId: string | null;
+  setWarehouseItemHighlightId: (id: string | null) => void;
+  warehouseBarcodePrefill: string | null;
+  setWarehouseBarcodePrefill: (barcode: string | null) => void;
+  lastBarcodeScan: BarcodeScanSnapshot | null;
+  setLastBarcodeScan: (scan: BarcodeScanSnapshot | null) => void;
+  registerWorkOrderBarcodeScanHandler: (handler: ((item: InventoryItem) => boolean) | null) => void;
+  triggerWorkOrderBarcodeScan: (item: InventoryItem) => boolean;
   warehouseImportProgress: WarehouseImportProgressState | null;
   setWarehouseImportProgress: (progress: WarehouseImportProgressState | null) => void;
   registerWarehouseImportCancel: (handler: (() => void) | null) => void;
@@ -167,6 +182,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   });
   const warehouseImportPickerRef = useRef<(() => void) | null>(null);
   const warehouseBarcodeHandlerRef = useRef<(() => void) | null>(null);
+  const workOrderBarcodeScanRef = useRef<((item: InventoryItem) => boolean) | null>(null);
+  const [warehouseItemHighlightId, setWarehouseItemHighlightId] = useState<string | null>(null);
+  const [warehouseBarcodePrefill, setWarehouseBarcodePrefill] = useState<string | null>(null);
+  const [lastBarcodeScan, setLastBarcodeScan] = useState<BarcodeScanSnapshot | null>(null);
   const [motorExcelIo, setMotorExcelIo] = useState<MotorExcelIoState>({
     canExport: false,
     canImport: false,
@@ -436,6 +455,18 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     return true;
   }, []);
 
+  const registerWorkOrderBarcodeScanHandler = useCallback(
+    (handler: ((item: InventoryItem) => boolean) | null) => {
+      workOrderBarcodeScanRef.current = handler;
+    },
+    [],
+  );
+
+  const triggerWorkOrderBarcodeScan = useCallback((item: InventoryItem): boolean => {
+    if (!workOrderBarcodeScanRef.current) return false;
+    return workOrderBarcodeScanRef.current(item);
+  }, []);
+
   const value = useMemo(
     () => ({
       search,
@@ -485,6 +516,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       triggerWarehouseImportPicker,
       registerWarehouseBarcodeHandler,
       triggerWarehouseBarcode,
+      warehouseItemHighlightId,
+      setWarehouseItemHighlightId,
+      warehouseBarcodePrefill,
+      setWarehouseBarcodePrefill,
+      lastBarcodeScan,
+      setLastBarcodeScan,
+      registerWorkOrderBarcodeScanHandler,
+      triggerWorkOrderBarcodeScan,
       warehouseImportProgress,
       setWarehouseImportProgress,
       registerWarehouseImportCancel,
@@ -536,6 +575,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       triggerWarehouseImportPicker,
       registerWarehouseBarcodeHandler,
       triggerWarehouseBarcode,
+      warehouseItemHighlightId,
+      warehouseBarcodePrefill,
+      lastBarcodeScan,
+      registerWorkOrderBarcodeScanHandler,
+      triggerWorkOrderBarcodeScan,
       warehouseImportProgress,
       registerWarehouseImportCancel,
       cancelWarehouseImport,

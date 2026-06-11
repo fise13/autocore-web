@@ -11,6 +11,7 @@ import {
 
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { omitUndefinedFields } from "@/lib/firestore/omit-undefined-fields";
 import { normalizeBarcode } from "@/lib/warehouse/warehouse-sync-ids";
 
 const COLLECTION = "barcodeMappings";
@@ -90,7 +91,7 @@ export function createBarcodeMappingRepository() {
       isPrimary?: boolean;
     }): Promise<string> {
       const existing = await this.findByBarcode(input.companyId, input.barcode);
-      const payload = {
+      const payload = omitUndefinedFields({
         companyId: normalizeCompanyId(input.companyId),
         barcode: normalizeBarcode(input.barcode),
         itemId: input.itemId,
@@ -98,7 +99,7 @@ export function createBarcodeMappingRepository() {
         format: input.format,
         isPrimary: input.isPrimary ?? false,
         updatedAt: serverTimestamp(),
-      };
+      });
       if (existing) {
         const { updateDoc } = await import("firebase/firestore");
         await updateDoc(doc(db, COLLECTION, existing.id), payload);
