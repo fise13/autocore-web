@@ -38,13 +38,20 @@ export function McDashboardStats({ stats, isLoading }: McDashboardStatsProps) {
             <p className="text-2xl font-semibold tracking-tight tabular-nums text-primary">
               {stat.value}
             </p>
-            {stat.hint ? (
+            {stat.hint || stat.deltaKind !== "none" ? (
               <div className="mt-auto flex flex-wrap items-center gap-1.5 text-xs">
-                <Delta value={stat.delta}>
-                  <DeltaIcon variant="trend" />
-                  <DeltaValue suffix="%" absolute />
-                </Delta>
-                <span className="text-muted-foreground">{stat.hint}</span>
+                {stat.deltaKind === "percent" ? (
+                  <Delta value={stat.delta}>
+                    <DeltaIcon variant="trend" />
+                    <DeltaValue suffix="%" absolute />
+                  </Delta>
+                ) : stat.deltaKind === "count" && stat.delta !== 0 ? (
+                  <Delta value={stat.delta} variant="badge">
+                    <DeltaIcon variant="trend" />
+                    <DeltaValue suffix="" absolute={false} precision={0} />
+                  </Delta>
+                ) : null}
+                {stat.hint ? <span className="text-muted-foreground">{stat.hint}</span> : null}
               </div>
             ) : null}
           </McPanelBody>

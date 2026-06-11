@@ -585,6 +585,36 @@
     0 0 0 1px color-mix(in oklab, var(--primary) 10%, transparent);
 }
 
+.mc-stat-card {
+  border: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.2s ease;
+}
+
+.mc-stat-card:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--primary) 22%, var(--border));
+  box-shadow: 0 8px 24px color-mix(in oklab, var(--foreground) 5%, transparent);
+}
+
+.settings-nav-scroll {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, transparent, black 0.5rem, black calc(100% - 0.5rem), transparent);
+}
+
+.settings-nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .settings-nav-scroll {
+    mask-image: none;
+  }
+}
+
 .mc-module-header {
   border-bottom: 1px solid var(--mc-border-subtle);
   background: linear-gradient(

@@ -4,7 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 
+import { SETUP_WIZARD_CATEGORY_PRESETS } from "@/domain/company-config";
 import { createWorkOrderUseCase } from "@/application/use-cases/work-orders/create-work-order";
+import { updateWorkOrderUseCase } from "@/application/use-cases/work-orders/update-work-order";
 import { quickCreateClientUseCase } from "@/application/use-cases/work-orders/quick-create-client";
 import { quickCreateVehicleUseCase } from "@/application/use-cases/work-orders/quick-create-vehicle";
 import { transitionWorkOrderStatusUseCase } from "@/application/use-cases/work-orders/transition-work-order-status";
@@ -32,7 +34,7 @@ import {
   WorkOrderListPanel,
 } from "@/components/work-orders/work-order-list-panel";
 import { isOpenStatus, nextId, nextStatuses as getNextStatuses } from "@/components/work-orders/work-order-utils";
-import { calculateWorkOrderPricing } from "@/domain/work-order";
+import { calculateWorkOrderPricing, WorkOrder } from "@/domain/work-order";
 import { useClientsRealtime } from "@/hooks/use-clients-realtime";
 import { useDomainEventsRealtime } from "@/hooks/use-domain-events-realtime";
 import { useEmployeesRealtime } from "@/hooks/use-employees-realtime";
@@ -42,7 +44,9 @@ import { useOperationsRealtime } from "@/hooks/use-operations-realtime";
 import { usePayrollTransactionsRealtime } from "@/hooks/use-payroll-transactions-realtime";
 import { useVehiclesRealtime } from "@/hooks/use-vehicles-realtime";
 import { useWorkOrderDocumentsRealtime } from "@/hooks/use-work-order-documents-realtime";
+import { useCompanyAppConfig } from "@/hooks/use-company-app-config";
 import { useWorkOrdersRealtime } from "@/hooks/use-work-orders-realtime";
+import { workOrderToComposerForm } from "@/lib/work-order/order-to-composer-form";
 import { can } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { formatWorkOrderLabel, buildWorkOrderDisplayIndex } from "@/lib/work-order/work-order-display";
@@ -101,9 +105,14 @@ function initialFormState(): ComposerFormState {
     partQuantity: 1,
     partUnitPrice: 0,
     partLines: [],
+    specificCategoryId: "",
+    specificPartName: "",
+    specificPartPrice: 0,
+    specificWarrantyTemplateId: "none",
     motorSerial: "",
     motorOutcome: "install",
     motorPrice: 0,
+    motorWarrantyTemplateId: "",
     motorLines: [],
     discount: 0,
   };
@@ -139,7 +148,17 @@ export function WorkOrdersWorkspace() {
     !isLoading && canView,
   );
 
+  const { config: companyAppConfig } = useCompanyAppConfig(companyId);
+  const quickSpecificCategories = useMemo(() => {
+    const fromConfig = (companyAppConfig?.specificCategories ?? []).filter(
+      (item) => item.mode === "quick",
+    );
+    if (fromConfig.length > 0) return fromConfig;
+    return SETUP_WIZARD_CATEGORY_PRESETS.filter((item) => item.mode === "quick");
+  }, [companyAppConfig]);
+
   const [isCreating, setIsCreating] = useState(false);
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [composerStep, setComposerStep] = useState(1);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [listSearch, setListSearch] = useState("");
@@ -220,15 +239,31 @@ export function WorkOrdersWorkspace() {
     setForm(initialFormState());
     setComposerStep(1);
     setIsCreating(false);
+    setEditingOrderId(null);
   }, []);
 
   const startCreate = useCallback(() => {
     setForm(initialFormState());
     setComposerStep(1);
     setIsCreating(true);
+    setEditingOrderId(null);
     setSelectedOrderId(null);
     setError(null);
   }, []);
+
+  const startEdit = useCallback(
+    (orderId: string) => {
+      const order = orders.find((entry) => entry.id === orderId);
+      if (!order || !["draft", "confirmed"].includes(order.status)) return;
+      setForm(workOrderToComposerForm(order));
+      setComposerStep(1);
+      setEditingOrderId(order.id);
+      setIsCreating(true);
+      setSelectedOrderId(order.id);
+      setError(null);
+    },
+    [orders],
+  );
 
   const selectOrder = useCallback((orderId: string) => {
     setSelectedOrderId(orderId);
@@ -295,8 +330,9 @@ export function WorkOrdersWorkspace() {
         }
       }
 
-      if (!assigneeId) {
-        setError("Выберите исполнителя — Tab ↹ для подсказки в поле");
+      const displayName = !assigneeId && draft.assigneeName.trim() ? draft.assigneeName.trim() : "";
+      if (!assigneeId && !displayName) {
+        setError("Укажите исполнителя — выберите сотрудника, нажмите «Я» или введите имя");
         return current;
       }
       const pricingMode = draft.pricingMode === "hourly" ? "hourly" : "fixed";
@@ -320,7 +356,8 @@ export function WorkOrdersWorkspace() {
             pricingMode,
             hours: pricingMode === "hourly" ? Number(draft.hours) || 0 : 0,
             unitPrice: Number(draft.unitPrice) || 0,
-            assigneeIds: [assigneeId],
+            assigneeIds: assigneeId ? [assigneeId] : [],
+            ...(displayName ? { assigneeDisplayNames: [displayName] } : {}),
             assigneeRole,
           },
         ],
@@ -385,7 +422,7 @@ export function WorkOrdersWorkspace() {
         {
           id: nextId("part"),
           source: "adhoc" as const,
-          sku: sku || undefined,
+          ...(sku ? { sku } : {}),
           name,
           quantity,
           unitPrice: manualPrice,
@@ -415,17 +452,69 @@ export function WorkOrdersWorkspace() {
           id: nextId("motor"),
           motorId: motor.id,
           serialCode: motor.serialCode,
-          brandName: motor.brandName,
-          engineCode: motor.engineCode,
-          configuration: motor.configuration,
+          ...(motor.brandName ? { brandName: motor.brandName } : {}),
+          ...(motor.engineCode ? { engineCode: motor.engineCode } : {}),
+          ...(motor.configuration ? { configuration: motor.configuration } : {}),
           unitPrice: Number(current.motorPrice) || 0,
           outcome: current.motorOutcome,
+          ...(current.motorWarrantyTemplateId
+            ? {
+                warrantyTemplateId: current.motorWarrantyTemplateId as WorkOrder["motorLines"][number]["warrantyTemplateId"],
+              }
+            : {}),
         },
       ],
       motorSerial: "",
       motorPrice: 0,
+      motorWarrantyTemplateId: "",
     }));
-  }, [availableMotors, form.motorSerial]);
+  }, [availableMotors, form.motorSerial, form.motorWarrantyTemplateId]);
+
+  const addSpecificPartLine = useCallback(() => {
+    const category = quickSpecificCategories.find((entry) => entry.id === form.specificCategoryId);
+    const name = form.specificPartName.trim();
+    const price = Number(form.specificPartPrice) || 0;
+    if (!category) {
+      setError("Выберите категорию");
+      return;
+    }
+    if (!name) {
+      setError("Укажите название позиции");
+      return;
+    }
+    if (!(price > 0)) {
+      setError("Укажите цену");
+      return;
+    }
+    setError(null);
+    setForm((current) => ({
+      ...current,
+      partLines: [
+        ...current.partLines,
+        {
+          id: nextId("specific"),
+          source: "specific_quick",
+          name,
+          quantity: 1,
+          unitPrice: price,
+          unitCost: 0,
+          specificCategoryId: category.id,
+          specificCategoryName: category.name,
+          ...(!current.specificWarrantyTemplateId ||
+          current.specificWarrantyTemplateId === "none"
+            ? { warrantyTemplateId: "none" as const }
+            : {
+                warrantyTemplateId:
+                  current.specificWarrantyTemplateId as WorkOrder["partLines"][number]["warrantyTemplateId"],
+              }),
+        },
+      ],
+      specificCategoryId: "",
+      specificPartName: "",
+      specificPartPrice: 0,
+      specificWarrantyTemplateId: "none",
+    }));
+  }, [form.specificCategoryId, form.specificPartName, form.specificPartPrice, quickSpecificCategories]);
 
   const saveDraft = useCallback(async () => {
     if (!profile?.id || !companyId) return;
@@ -464,8 +553,7 @@ export function WorkOrdersWorkspace() {
           createdByUserId: profile.id,
         }));
 
-      const order = await createWorkOrderUseCase(workOrderRepository, domainEventRepository, {
-        companyId,
+      const payload = {
         clientId: client.id,
         clientName: client.fullName,
         clientPhone: client.phone,
@@ -479,20 +567,34 @@ export function WorkOrdersWorkspace() {
         partLines: form.partLines,
         motorLines: form.motorLines,
         pricing,
-        paymentAccount: "cashbox",
-        paymentMethod: "cash",
-        createdByUserId: profile.id,
+        paymentAccount: "cashbox" as const,
+        paymentMethod: "cash" as const,
         updatedByUserId: profile.id,
-      });
-      setSelectedOrderId(order.id);
+      };
+
+      if (editingOrderId) {
+        await updateWorkOrderUseCase(workOrderRepository, {
+          companyId,
+          workOrderId: editingOrderId,
+          input: payload,
+        });
+        setSelectedOrderId(editingOrderId);
+      } else {
+        const order = await createWorkOrderUseCase(workOrderRepository, domainEventRepository, {
+          companyId,
+          ...payload,
+          createdByUserId: profile.id,
+        });
+        setSelectedOrderId(order.id);
+        void triggerWorkOrderEventProcessing(order.id).catch(() => undefined);
+      }
       resetComposer();
-      void triggerWorkOrderEventProcessing(order.id).catch(() => undefined);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Не удалось создать заказ-наряд");
     } finally {
       setSaving(false);
     }
-  }, [clients, companyId, form, pricing, profile?.id, resetComposer, vehicles]);
+  }, [clients, companyId, editingOrderId, form, pricing, profile?.id, resetComposer, vehicles]);
 
   useEffect(() => {
     if (!canEdit || !isCreating) {
@@ -652,6 +754,16 @@ export function WorkOrdersWorkspace() {
                         inventoryItems={inventoryItems}
                         availableMotors={availableMotors}
                         employees={employees}
+                        currentUserId={profile?.id}
+                        quickSpecificCategories={quickSpecificCategories}
+                        editingLabel={
+                          editingOrderId
+                            ? `Редактирование ${formatWorkOrderLabel(
+                                orders.find((entry) => entry.id === editingOrderId) ?? { id: editingOrderId, number: "" },
+                                workOrderDisplayIndex,
+                              )}`
+                            : undefined
+                        }
                         pricing={pricing}
                         saving={saving}
                         canEdit={canEdit}
@@ -664,6 +776,7 @@ export function WorkOrdersWorkspace() {
                         onVehicleSelect={handleVehicleSelect}
                         onAddLabor={addLaborLine}
                         onAddPart={addPartLine}
+                        onAddSpecificPart={addSpecificPartLine}
                         onAddMotor={addMotorLine}
                         onRemoveLabor={(index) =>
                           setForm((current) => ({
@@ -675,6 +788,12 @@ export function WorkOrdersWorkspace() {
                           setForm((current) => ({
                             ...current,
                             partLines: current.partLines.filter((_, itemIndex) => itemIndex !== index),
+                          }))
+                        }
+                        onRemovePartById={(lineId) =>
+                          setForm((current) => ({
+                            ...current,
+                            partLines: current.partLines.filter((line) => line.id !== lineId),
                           }))
                         }
                         onRemoveMotor={(index) =>
@@ -709,6 +828,11 @@ export function WorkOrdersWorkspace() {
                         canEdit={canEdit}
                         nextStatuses={getNextStatuses(selectedOrder.status)}
                         onTransition={transition}
+                        onEdit={
+                          canEdit && ["draft", "confirmed"].includes(selectedOrder.status)
+                            ? () => startEdit(selectedOrder.id)
+                            : undefined
+                        }
                       />
                     </motion.div>
                   ) : (

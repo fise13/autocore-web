@@ -1,7 +1,7 @@
 import { CompanyEmployee } from "@/domain/rbac";
 import { WorkOrderLaborLine, WorkOrderStatus } from "@/domain/work-order";
 import { ROLE_LABELS } from "@/components/work-orders/work-order-copy";
-import { resolveEmployeeName } from "@/lib/work-order/work-order-display";
+import { laborLineAssigneeLabels } from "@/lib/work-order/work-order-display";
 import { laborLineTotal, normalizeLaborPricingMode } from "@/lib/work-order/labor-pricing";
 
 export function nextId(prefix: string) {
@@ -33,11 +33,8 @@ export function isOpenStatus(status: WorkOrderStatus) {
 }
 
 export function laborLineLabel(line: WorkOrderLaborLine, employees: CompanyEmployee[]) {
-  const assigneeNames = line.assigneeIds
-    .map((assigneeId) => resolveEmployeeName(assigneeId, employees))
-    .filter(Boolean)
-    .join(", ");
-  const assignee = assigneeNames || "без исполнителя";
+  const labels = laborLineAssigneeLabels(line, employees);
+  const assignee = labels.length > 0 ? labels.join(", ") : "без исполнителя";
   const total = laborLineTotal(line);
   const mode = normalizeLaborPricingMode(line.pricingMode);
   const pricePart =

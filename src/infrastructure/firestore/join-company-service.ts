@@ -90,22 +90,15 @@ async function linkUserProfile(
   await setDoc(userRef, payload, { merge: true });
 }
 
-export async function joinCompanyWithInviteCode(uid: string, rawCode: string): Promise<void> {
+type InviteJoinInput = {
+  inviteDocId: string;
+  invite: Record<string, unknown>;
+  expectedEmail?: string;
+};
+
+async function joinCompanyWithInviteRecord(uid: string, input: InviteJoinInput): Promise<void> {
   const db = getFirestoreDb();
-  const inviteCode = normalizeInviteCode(rawCode);
-  if (!inviteCode) {
-    throw new Error("Укажите код приглашения");
-  }
-
-  const snapshot = await getDocs(
-    query(collection(db, "invites"), where("code", "==", inviteCode), limit(1)),
-  );
-  if (snapshot.empty) {
-    throw new Error("Код приглашения не найден. Проверьте правильность кода и попробуйте снова.");
-  }
-
-  const inviteDoc = snapshot.docs[0];
-  const invite = inviteDoc.data();
+  const invite = input.invite;
   const companyId = String(invite.companyId ?? "");
   const role = normalizeRole(String(invite.role ?? "employee"));
   if (!companyId) {
@@ -116,7 +109,16 @@ export async function joinCompanyWithInviteCode(uid: string, rawCode: string): P
   const userSnap = await getDoc(userRef);
   const userData = (userSnap.data() ?? {}) as Record<string, unknown>;
   await ensureUserProfile(userRef, userData);
+  const userEmail = String(userData.email ?? "").trim().toLowerCase();
   const existingCompanyId = String(userData.companyId ?? "").trim();
+
+  const inviteEmail = typeof invite.email === "string" ? invite.email.trim().toLowerCase() : "";
+  if (inviteEmail && userEmail && inviteEmail !== userEmail) {
+    throw new Error("Это приглашение отправлено на другой email. Войдите под указанным адресом.");
+  }
+  if (input.expectedEmail && userEmail && input.expectedEmail.trim().toLowerCase() !== userEmail) {
+    throw new Error("Войдите под email, на который пришло приглашение.");
+  }
 
   if (existingCompanyId === companyId) {
     return;
@@ -130,12 +132,13 @@ export async function joinCompanyWithInviteCode(uid: string, rawCode: string): P
   const inviteAlreadyUsed = invite.used === true;
 
   if (inviteAlreadyUsed && !employeeSnap.exists()) {
-    throw new Error("Код приглашения уже использован");
+    throw new Error("Приглашение уже использовано");
   }
   if (!inviteAlreadyUsed) {
-    const expiresAt = invite.expiresAt?.toDate?.() as Date | undefined;
+    const expiresAtRaw = invite.expiresAt as { toDate?: () => Date } | undefined;
+    const expiresAt = expiresAtRaw?.toDate?.();
     if (!expiresAt || expiresAt.getTime() <= Date.now()) {
-      throw new Error("Срок действия кода истёк");
+      throw new Error("Срок действия приглашения истёк");
     }
   }
 
@@ -151,7 +154,7 @@ export async function joinCompanyWithInviteCode(uid: string, rawCode: string): P
           role,
           permissions: [],
           invitedBy: String(invite.createdBy ?? ""),
-          inviteId: inviteDoc.id,
+          inviteId: input.inviteDocId,
           isActive: true,
           createdAt: serverTimestamp(),
           lastActiveAt: serverTimestamp(),
@@ -165,9 +168,9 @@ export async function joinCompanyWithInviteCode(uid: string, rawCode: string): P
 
   if (!inviteAlreadyUsed) {
     try {
-      await updateDoc(inviteDoc.ref, { used: true });
+      await updateDoc(doc(db, "invites", input.inviteDocId), { used: true, status: "used" });
     } catch (error) {
-      rethrowStep("Не удалось подтвердить код приглашения", error);
+      rethrowStep("Не удалось подтвердить приглашение", error);
     }
   }
 
@@ -182,4 +185,46 @@ export async function joinCompanyWithInviteCode(uid: string, rawCode: string): P
   if (linkedCompanyId !== companyId) {
     throw new Error("Не удалось привязать аккаунт к компании (профиль не обновился)");
   }
+}
+
+export async function joinCompanyWithInviteCode(uid: string, rawCode: string): Promise<void> {
+  const db = getFirestoreDb();
+  const inviteCode = normalizeInviteCode(rawCode);
+  if (!inviteCode) {
+    throw new Error("Укажите код приглашения");
+  }
+
+  const snapshot = await getDocs(
+    query(collection(db, "invites"), where("code", "==", inviteCode), limit(1)),
+  );
+  if (snapshot.empty) {
+    throw new Error("Код приглашения не найден. Проверьте правильность кода и попробуйте снова.");
+  }
+
+  const inviteDoc = snapshot.docs[0]!;
+  await joinCompanyWithInviteRecord(uid, {
+    inviteDocId: inviteDoc.id,
+    invite: inviteDoc.data(),
+  });
+}
+
+export async function joinCompanyWithInviteToken(uid: string, rawToken: string): Promise<void> {
+  const db = getFirestoreDb();
+  const token = rawToken.trim();
+  if (!token) {
+    throw new Error("Некорректная ссылка приглашения");
+  }
+
+  const snapshot = await getDocs(
+    query(collection(db, "invites"), where("token", "==", token), limit(1)),
+  );
+  if (snapshot.empty) {
+    throw new Error("Ссылка приглашения не найдена или устарела.");
+  }
+
+  const inviteDoc = snapshot.docs[0]!;
+  await joinCompanyWithInviteRecord(uid, {
+    inviteDocId: inviteDoc.id,
+    invite: inviteDoc.data(),
+  });
 }

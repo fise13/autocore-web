@@ -58,7 +58,7 @@ export const SIDEBAR_BLOCK_META: Record<
 > = {
   navigation: {
     label: "Разделы",
-    description: "Mission Control, моторы, склад…",
+    description: "Центр управления, моторы, склад…",
     icon: LayoutGrid,
   },
   context: {
@@ -87,7 +87,7 @@ export const SIDEBAR_NAV_META: Record<
   SidebarNavItemId,
   { label: string; href: string; icon: LucideIcon }
 > = {
-  home: { label: "Mission Control", href: "/", icon: Radar },
+  home: { label: "Центр управления", href: "/", icon: Radar },
   motors: { label: "Все моторы", href: "/motors", icon: LayoutGrid },
   sold: { label: "Проданные", href: "/sold", icon: Receipt },
   work_orders: { label: "Заказ-наряды", href: "/work-orders", icon: ClipboardList },

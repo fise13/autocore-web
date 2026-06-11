@@ -68,7 +68,6 @@ export function McDashboardGrid(props: McDashboardGridProps) {
         )}
       </div>
 
-      {permissions.canEmployees ? <QuickActionsPanel /> : null}
     </div>
   );
 }

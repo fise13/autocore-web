@@ -2,7 +2,7 @@
 
 import { ReactNode, useMemo, useState } from "react";
 import { LayoutGroup, motion } from "framer-motion";
-import { Building2, Laptop, Palette, Settings2, Trash2, UserCircle } from "lucide-react";
+import { Building2, Laptop, Palette, Receipt, Settings2, Trash2, UserCircle } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { can } from "@/lib/auth/permissions";
@@ -21,7 +21,7 @@ const allSections: { id: SettingsSectionId; label: string; icon: typeof UserCirc
   { id: "account", label: userCopy.settings.account, icon: UserCircle },
   { id: "company", label: userCopy.settings.company, icon: Building2 },
   { id: "branding", label: "Брендинг", icon: Palette },
-  { id: "accounting", label: userCopy.settings.accounting, icon: Building2 },
+  { id: "accounting", label: userCopy.settings.accounting, icon: Receipt },
   { id: "dataCleanup", label: userCopy.settings.dataCleanup, icon: Trash2 },
   { id: "macOnly", label: userCopy.settings.macOnly, icon: Laptop },
 ];
@@ -75,7 +75,7 @@ export function SettingsShell({ children, initialSection = "account" }: Settings
     <section className="mx-auto flex w-full max-w-[1100px] flex-col gap-5 lg:flex-row lg:items-start">
       <aside className="w-full shrink-0 rounded-xl border bg-card p-2 lg:sticky lg:top-4 lg:w-56 lg:self-start">
         <LayoutGroup id="settings-nav">
-          <nav className="flex flex-row gap-1 overflow-x-auto lg:flex-col">
+          <nav className="settings-nav-scroll flex flex-row gap-1 overflow-x-auto lg:flex-col">
             {sections.map((section) => {
               const Icon = section.icon;
               const active = activeSection === section.id;

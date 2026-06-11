@@ -19,11 +19,14 @@ export type IncomeExpenseRow = {
   expense: number;
 };
 
+export type DashboardStatDeltaKind = "percent" | "count" | "none";
+
 export type DashboardStat = {
   key: string;
   label: string;
   value: string;
   delta: number;
+  deltaKind: DashboardStatDeltaKind;
   hint: string;
 };
 
@@ -138,6 +141,7 @@ export function buildDashboardStats(input: {
       label: "Выручка сегодня",
       value: `${metrics.todayRevenue.toLocaleString("ru-RU")} ₸`,
       delta: revenueDelta,
+      deltaKind: "percent",
       hint: "к прошлой неделе",
     });
     stats.push({
@@ -148,6 +152,7 @@ export function buildDashboardStats(input: {
         metrics.todayExpenses,
         metrics.todayRevenue - metrics.todayExpenses,
       ),
+      deltaKind: "percent",
       hint: "чистый поток сегодня",
     });
   }
@@ -158,6 +163,7 @@ export function buildDashboardStats(input: {
       label: "Моторы",
       value: String(metrics.activeInventoryCount),
       delta: metrics.lowStockCount > 0 ? -metrics.lowStockCount : 0,
+      deltaKind: metrics.lowStockCount > 0 ? "count" : "none",
       hint: metrics.lowStockCount > 0 ? `${metrics.lowStockCount} с низким остатком` : "в наличии",
     });
   }
@@ -168,6 +174,7 @@ export function buildDashboardStats(input: {
       label: "Склад",
       value: String(metrics.warehouseItemCount),
       delta: metrics.warehouseLowStockCount > 0 ? -metrics.warehouseLowStockCount : 0,
+      deltaKind: metrics.warehouseLowStockCount > 0 ? "count" : "none",
       hint: `${metrics.warehouseStockValue.toLocaleString("ru-RU")} ₸ остатков`,
     });
   }
@@ -178,6 +185,7 @@ export function buildDashboardStats(input: {
       label: "Команда онлайн",
       value: `${metrics.onlineEmployeesCount} / ${metrics.activeEmployeesCount}`,
       delta: metrics.changesToday,
+      deltaKind: metrics.changesToday > 0 ? "count" : "none",
       hint: `${metrics.changesToday} изменений сегодня`,
     });
   }
@@ -188,6 +196,7 @@ export function buildDashboardStats(input: {
       label: "Изменений сегодня",
       value: String(metrics.changesToday),
       delta: 0,
+      deltaKind: "none",
       hint: "активность в системе",
     });
   }

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function RolesPage() {
-  redirect("/settings?section=roles");
+  redirect("/settings/team?tab=roles");
 }

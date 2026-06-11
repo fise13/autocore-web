@@ -8,6 +8,7 @@ import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { contextSnapshotHash } from "@/infrastructure/firestore/admin/work-order-effects-admin";
 import { companyBrandingFromRecord } from "@/domain/company-branding";
+import { mapDocumentError } from "@/lib/documents/map-document-error";
 
 type DocumentJobRecord = {
   id: string;
@@ -142,6 +143,11 @@ export async function processDocumentQueueJob(params: {
         } catch (error) {
           console.error(`[document-queue] ${slug}`, error);
           failed.push(slug);
+          if (failed.length === 1) {
+            await jobRef.update({
+              error: mapDocumentError(error, `Failed: ${slug}`),
+            });
+          }
         }
       }),
     );

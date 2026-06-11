@@ -156,13 +156,17 @@ export const workOrderLaborLineSchema = z.object({
   hours: z.number().nonnegative(),
   unitPrice: z.number().nonnegative(),
   assigneeIds: z.array(z.string().min(1)).default([]),
+  assigneeDisplayNames: z.array(z.string().trim().min(1)).optional(),
   assigneeRole: workOrderAssigneeRoleSchema.default("mechanic"),
 });
 
 export const workOrderPartLineSchema = z.object({
   id: z.string().min(1),
   itemId: z.string().trim().optional(),
-  source: z.enum(["warehouse", "adhoc"]).optional(),
+  source: z.enum(["warehouse", "adhoc", "specific_quick"]).optional(),
+  specificCategoryId: z.string().trim().optional(),
+  specificCategoryName: z.string().trim().optional(),
+  warrantyTemplateId: z.string().trim().optional(),
   sku: z.string().trim().optional(),
   name: z.string().trim().min(1),
   quantity: z.number().positive(),
@@ -180,6 +184,7 @@ export const workOrderMotorLineSchema = z.object({
   configuration: z.string().trim().optional(),
   unitPrice: z.number().nonnegative(),
   outcome: workOrderMotorOutcomeSchema.default("install"),
+  warrantyTemplateId: z.string().trim().optional(),
 });
 
 export const workOrderPricingSchema = z.object({

@@ -8,7 +8,6 @@ import { useEffect, useState } from "react";
 import {
   Barcode,
   Download,
-  LayoutDashboard,
   PanelLeft,
   Settings,
   Upload,
@@ -243,10 +242,13 @@ export function DashboardTopBar() {
               {workspaceTitle ?? "AutoCore"}
             </span>
           ) : isMissionControlRoute ? (
-            <div className="flex min-w-0 items-center gap-2">
-              <LayoutDashboard className="size-3.5 shrink-0 text-primary" aria-hidden />
-              <span className="truncate text-sm font-semibold tracking-tight">Mission Control</span>
-            </div>
+            <span className="truncate text-sm text-muted-foreground">
+              {new Date().toLocaleDateString("ru-RU", {
+                weekday: "short",
+                day: "numeric",
+                month: "short",
+              })}
+            </span>
           ) : (
             <div className="flex items-center gap-2.5">
               <AppLogo size={24} className="rounded-md" alt="AutoCore" />
@@ -264,7 +266,7 @@ export function DashboardTopBar() {
           <DashboardImportProgress variant="compact" showMotors={isAllMotorsRoute} />
 
           {showAvailabilityFilter ? (
-            <div className="inline-flex rounded-lg border bg-muted/40 p-0.5">
+            <div className="autocore-segmented-tabs inline-flex rounded-lg p-0.5">
               {availabilityOptions.map((option) => (
                 <button
                   key={option.value}
@@ -366,19 +368,25 @@ export function DashboardTopBar() {
             </>
           ) : null}
 
-          <Link
-            href="/settings"
-            title="Настройки"
-            className={workspace ? undefined : "rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"}
-          >
-            {workspace ? (
-              <Button variant="ghost" size="icon-sm">
-                <Settings className="size-4" />
-              </Button>
-            ) : (
-              "Настройки"
-            )}
-          </Link>
+          {workspace ? (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              title="Настройки"
+              render={<Link href="/settings" />}
+            >
+              <Settings className="size-4" />
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground"
+              render={<Link href="/settings" />}
+            >
+              Настройки
+            </Button>
+          )}
 
           <AccountMenu />
         </AnimatedSlot>

@@ -17,6 +17,7 @@ export function laborLineTotal(line: Pick<WorkOrderLaborLine, "pricingMode" | "h
 export function laborLinePayrollPerAssignee(
   line: Pick<WorkOrderLaborLine, "pricingMode" | "hours" | "unitPrice" | "assigneeIds">,
 ): number {
-  const assigneeCount = Math.max(1, line.assigneeIds?.length ?? 0);
+  const assigneeCount = line.assigneeIds?.length ?? 0;
+  if (assigneeCount <= 0) return 0;
   return laborLineTotal(line) / assigneeCount;
 }

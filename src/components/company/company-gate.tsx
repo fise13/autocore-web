@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, ReactNode, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { Laptop, Users } from "lucide-react";
 
 import { AppLogo } from "@/components/brand/app-logo";
@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
+import { clearInviteToken, readInviteToken } from "@/lib/invites/pending-invite";
 import { mapAuthError, userCopy } from "@/lib/user-copy";
 
 type CompanyGateProps = {
@@ -17,19 +18,45 @@ type CompanyGateProps = {
 };
 
 export function CompanyGate({ children }: CompanyGateProps) {
-  const { profile, createCompany, joinCompanyWithInvite, ensureDefaultCompany, isLoading } = useAuth();
+  const {
+    profile,
+    createCompany,
+    joinCompanyWithInvite,
+    joinCompanyWithInviteToken,
+    ensureDefaultCompany,
+    isLoading,
+  } = useAuth();
   const [companyName, setCompanyName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [showInvite, setShowInvite] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const pendingInviteAttempted = useRef(false);
+  const hasCompany = Boolean(profile?.companyId && profile.companyId.trim().length > 0);
+
+  useEffect(() => {
+    if (isLoading || !profile || hasCompany || pendingInviteAttempted.current) return;
+    const token = readInviteToken();
+    if (!token) return;
+    pendingInviteAttempted.current = true;
+    setIsSubmitting(true);
+    setSubmitMessage("Присоединение по приглашению…");
+    setError(null);
+    void joinCompanyWithInviteToken(token)
+      .then(() => clearInviteToken())
+      .catch((e) => {
+        setError(mapAuthError(e, { surface: "onboarding" }));
+        setIsSubmitting(false);
+        setSubmitMessage(null);
+        setShowInvite(true);
+      });
+  }, [hasCompany, isLoading, joinCompanyWithInviteToken, profile]);
 
   if (isLoading || !profile) {
     return <AppLoadingScreen message={userCopy.auth.completing} />;
   }
 
-  const hasCompany = Boolean(profile.companyId && profile.companyId.trim().length > 0);
   if (hasCompany) return <>{children}</>;
 
   if (isSubmitting) {

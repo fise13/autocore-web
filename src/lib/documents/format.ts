@@ -6,7 +6,12 @@ export function formatDocumentMoney(value: number): string {
   }).format(value);
 }
 
+export function isValidDocumentDate(value: Date | null | undefined): value is Date {
+  return value instanceof Date && Number.isFinite(value.getTime());
+}
+
 export function formatDocumentDate(value: Date): string {
+  if (!isValidDocumentDate(value)) return "—";
   return new Intl.DateTimeFormat("ru-KZ", {
     day: "2-digit",
     month: "long",
@@ -15,7 +20,7 @@ export function formatDocumentDate(value: Date): string {
 }
 
 export function formatDocumentDateShort(value: Date): string {
-  if (!Number.isFinite(value.getTime())) return "—";
+  if (!isValidDocumentDate(value)) return "—";
   return new Intl.DateTimeFormat("ru-KZ", {
     day: "2-digit",
     month: "2-digit",
@@ -37,6 +42,7 @@ export function coerceDocumentDate(value: unknown, fallback = new Date()): Date 
 }
 
 export function formatDocumentTime(value: Date): string {
+  if (!isValidDocumentDate(value)) return "—";
   return new Intl.DateTimeFormat("ru-KZ", {
     hour: "2-digit",
     minute: "2-digit",

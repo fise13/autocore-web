@@ -20,7 +20,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { reorderList, SidebarEditItem } from "@/components/layout/sidebar-edit-item";
 import { AnimatedSidebarSlot } from "@/components/layout/animated-sidebar-slot";
-import { sidebarNavIconClass, sidebarNavRowClass } from "@/components/layout/sidebar-nav-row";
+import {
+  sidebarNavIconClass,
+  sidebarNavRowClass,
+  sidebarSectionLabelClass,
+} from "@/components/layout/sidebar-nav-row";
 import { SidebarCustomizeSheet } from "@/components/layout/sidebar-customize-sheet";
 import { SidebarContextPanel } from "@/components/layout/sidebar-context-panel";
 import {
@@ -404,9 +408,7 @@ export function AppSidebar({
               {showSpecificCategories ? (
                 <div className="px-3 py-2">
                   <div className="mb-2 flex items-center justify-between">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Специфичные
-                    </p>
+                    <p className={sidebarSectionLabelClass}>Специфичные</p>
                   </div>
                   {sidebarSpecificCategories.length === 0 ? (
                     <p className="px-2 py-1.5 text-xs italic text-muted-foreground">Нет категорий</p>
@@ -424,10 +426,10 @@ export function AppSidebar({
                             href={href}
                             onClick={onNavigate}
                             className={cn(
-                              "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all duration-200",
+                              sidebarNavRowClass,
                               active
                                 ? "bg-primary/12 text-primary shadow-sm"
-                                : "text-sidebar-foreground hover:bg-sidebar-accent hover:translate-x-0.5",
+                                : "text-sidebar-foreground hover:bg-sidebar-accent",
                             )}
                             title={category.name}
                           >
@@ -461,9 +463,7 @@ export function AppSidebar({
               {showBrandFilters ? (
             <div className="px-1 py-1">
               <div className="mb-1 flex items-center justify-between gap-2 px-3 py-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {brandsSectionTitle}
-                </p>
+                <p className={sidebarSectionLabelClass}>{brandsSectionTitle}</p>
                 {canManageBrands && onAddBrand ? (
                   <button
                     type="button"

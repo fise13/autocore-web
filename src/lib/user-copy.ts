@@ -32,6 +32,9 @@ export const userCopy = {
     completing: "Подготовка рабочего пространства…",
     signingIn: "Вход…",
     creatingAccount: "Создание аккаунта…",
+    verifyEmailTitle: "Подтвердите email",
+    forgotPassword: "Забыли пароль?",
+    passwordResetSent: "Ссылка для сброса пароля отправлена.",
   },
 
   company: {

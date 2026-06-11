@@ -16,6 +16,10 @@ import { DocumentPhoto } from "@/lib/documents/render-model/types";
 export type DocumentCompanyInfo = {
   name: string;
   legalName?: string;
+  bin?: string;
+  bankName?: string;
+  bankAccount?: string;
+  iban?: string;
   slogan?: string;
   address?: string;
   phone?: string;

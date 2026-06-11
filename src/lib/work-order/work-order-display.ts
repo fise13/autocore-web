@@ -70,6 +70,22 @@ export function formatWorkOrderLabel(
   return "Заказ-наряд";
 }
 
+export function laborLineAssigneeLabels(
+  line: WorkOrder["laborLines"][number],
+  employees: CompanyEmployee[],
+): string[] {
+  const names: string[] = [];
+  for (const assigneeId of line.assigneeIds) {
+    const name = resolveEmployeeName(assigneeId, employees);
+    if (name) names.push(name);
+  }
+  for (const displayName of line.assigneeDisplayNames ?? []) {
+    const trimmed = displayName.trim();
+    if (trimmed) names.push(trimmed);
+  }
+  return names;
+}
+
 export function workOrderAssigneeSummary(
   order: WorkOrder,
   employees: CompanyEmployee[],
@@ -78,9 +94,8 @@ export function workOrderAssigneeSummary(
   const names = new Set<string>();
 
   for (const line of order.laborLines) {
-    for (const assigneeId of line.assigneeIds) {
-      const name = resolveEmployeeName(assigneeId, employees);
-      if (name) names.add(name);
+    for (const label of laborLineAssigneeLabels(line, employees)) {
+      names.add(label);
     }
   }
 

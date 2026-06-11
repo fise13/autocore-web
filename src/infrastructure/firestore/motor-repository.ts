@@ -33,8 +33,13 @@ async function appendActivitySafely(
 }
 
 function toDate(value: unknown): Date | null {
-  if (value instanceof Timestamp) return value.toDate();
-  if (value instanceof Date) return value;
+  if (value instanceof Timestamp) {
+    const parsed = value.toDate();
+    return Number.isFinite(parsed.getTime()) ? parsed : null;
+  }
+  if (value instanceof Date) {
+    return Number.isFinite(value.getTime()) ? value : null;
+  }
   if (typeof value === "object" && value !== null && "seconds" in value) {
     const seconds = Number((value as { seconds?: unknown }).seconds);
     const nanoseconds = Number((value as { nanoseconds?: unknown }).nanoseconds ?? 0);

@@ -106,7 +106,7 @@ export function WorkOrderDocumentsPanel({
         </p>
       ) : null}
 
-      {latestJob?.status === "failed" ? (
+      {latestJob?.status === "failed" && documents.length === 0 ? (
         <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
           Ошибка генерации: {latestJob.error ?? "повторите обновление"}
         </p>
@@ -137,7 +137,7 @@ export function WorkOrderDocumentsPanel({
                       <span className="rounded-full bg-muted px-2 py-0.5 text-[0.65rem] font-medium text-muted-foreground">
                         формируется…
                       </span>
-                    ) : persisted?.downloadUrl ? (
+                    ) : persisted || latestJob?.completedSlugs.includes(definition.slug) ? (
                       <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[0.65rem] font-medium text-emerald-700">
                         готов
                       </span>

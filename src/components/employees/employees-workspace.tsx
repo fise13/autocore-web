@@ -11,9 +11,12 @@ import { useDeepAction } from "@/hooks/use-deep-action";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { CompanyEmployee, InviteDocument } from "@/domain/rbac";
 import { PERMISSIONS, Permission, ROLE_PERMISSIONS, USER_ROLES, UserRole } from "@/domain/user";
+import { getFirebaseAuth } from "@/infrastructure/firebase/client";
 import { createEmployeeRbacRepository } from "@/infrastructure/firestore/employee-rbac-repository";
 import { createInviteRepository } from "@/infrastructure/firestore/invite-repository";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -103,7 +106,9 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteRole, setInviteRole] = useState<UserRole>("mechanic");
   const [inviteTtlHours, setInviteTtlHours] = useState(72);
+  const [inviteEmail, setInviteEmail] = useState("");
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [emailInviteSent, setEmailInviteSent] = useState<string | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<CompanyEmployee | null>(null);
   const [busy, setBusy] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState<Set<Permission>>(new Set());
@@ -200,6 +205,49 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
       await navigator.clipboard.writeText(generatedCode);
     } catch {
       setError("Не удалось скопировать код");
+    }
+  }
+
+  async function sendEmailInvite() {
+    if (!profile || !companyId) return;
+    const email = inviteEmail.trim().toLowerCase();
+    if (!email.includes("@")) {
+      setError("Укажите корректный email");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setEmailInviteSent(null);
+    try {
+      const user = getFirebaseAuth().currentUser;
+      if (!user) throw new Error("Войдите в аккаунт");
+      const token = await user.getIdToken();
+      const response = await fetch("/api/invites/send", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          role: inviteRole,
+          ttlHours: inviteTtlHours,
+        }),
+      });
+      const payload = (await response.json()) as { error?: string; joinUrl?: string; email?: string };
+      if (!response.ok) {
+        if (response.status === 503 && payload.joinUrl) {
+          setEmailInviteSent(`Сервис почты не настроен. Ссылка: ${payload.joinUrl}`);
+          return;
+        }
+        throw new Error(payload.error ?? "Не удалось отправить приглашение");
+      }
+      setEmailInviteSent(`Приглашение отправлено на ${payload.email ?? email}`);
+      setInviteEmail("");
+    } catch (nextError) {
+      setError(mapEmployeeError(nextError));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -450,10 +498,29 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
           <DialogHeader>
             <DialogTitle>Пригласить сотрудника</DialogTitle>
             <DialogDescription>
-              Создайте код приглашения и передайте его новому сотруднику. Он вводит код при входе в AutoCore.
+              Отправьте приглашение на email или создайте код для ручной передачи.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="inviteEmail">Email сотрудника</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="inviteEmail"
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(event) => setInviteEmail(event.target.value)}
+                  placeholder="colleague@company.ru"
+                />
+                <Button type="button" variant="secondary" disabled={busy} onClick={() => void sendEmailInvite()}>
+                  Отправить
+                </Button>
+              </div>
+              {emailInviteSent ? (
+                <p className="text-xs text-muted-foreground">{emailInviteSent}</p>
+              ) : null}
+            </div>
+
             <div className="grid gap-2">
               <p className="text-sm font-medium">Роль нового сотрудника</p>
               <div className="grid gap-2 sm:grid-cols-2">

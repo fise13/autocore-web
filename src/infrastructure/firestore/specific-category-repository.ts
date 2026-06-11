@@ -104,6 +104,27 @@ export function createSpecificCategoryRepository() {
   const activity = createActivityLogRepository();
 
   return {
+    async fetchCategories(companyId: string): Promise<SpecificCategoryEntity[]> {
+      const categoriesQuery = query(
+        collection(db, "specificCategories"),
+        where("companyId", "==", companyId),
+      );
+      const snapshot = await getDocs(categoriesQuery);
+      const categories = snapshot.docs
+        .map((item) => {
+          const data = item.data() as Record<string, unknown>;
+          const localId = readNumber(data.localId ?? data.id);
+          return {
+            id: item.id,
+            localId,
+            name: String(data.name ?? ""),
+            companyId: String(data.companyId ?? companyId),
+          };
+        })
+        .filter((item) => item.name.trim().length > 0);
+      return dedupeCategories(companyId, categories);
+    },
+
     subscribeCategories(
       companyId: string,
       onData: (categories: SpecificCategoryEntity[]) => void,

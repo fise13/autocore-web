@@ -84,10 +84,22 @@ function buildWarrantyNote(
   return null;
 }
 
-/** Canonical months/km for warranty record creation (admin). */
-export function canonicalWarrantyDuration(templateId?: WarrantyTemplateId): { months: number; km: number } {
-  const preset = getWarrantyTemplate(templateId ?? "contract_engine");
-  return { months: preset.months, km: preset.km };
+export type WarrantyDurationOverride = WarrantyTemplateId | "no_warranty" | "none" | undefined;
+
+/** Canonical months/km for warranty record creation (admin). Returns null when no warranty applies. */
+export function canonicalWarrantyDuration(
+  companyDefault?: WarrantyDurationOverride,
+  lineOverride?: WarrantyDurationOverride,
+): { months: number; km: number; templateId: WarrantyTemplateId } | null {
+  const resolved = lineOverride ?? companyDefault ?? "contract_engine";
+  if (resolved === "no_warranty" || resolved === "none") {
+    return null;
+  }
+  const preset = getWarrantyTemplate(resolved);
+  if (preset.months <= 0 || preset.km <= 0) {
+    return null;
+  }
+  return { months: preset.months, km: preset.km, templateId: resolved };
 }
 
 export { WARRANTY_TEMPLATE_PRESETS };

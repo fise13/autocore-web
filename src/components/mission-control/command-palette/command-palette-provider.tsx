@@ -1,7 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { Command } from "cmdk";
 import {
   Download,
@@ -42,6 +50,22 @@ function matchesQuery(query: string, parts: Array<string | undefined | null>): b
   if (!query) return true;
   const haystack = parts.filter(Boolean).join(" ").toLowerCase();
   return haystack.includes(query);
+}
+
+type CommandPaletteContextValue = {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  toggle: () => void;
+};
+
+const CommandPaletteContext = createContext<CommandPaletteContextValue | null>(null);
+
+export function useCommandPalette() {
+  const context = useContext(CommandPaletteContext);
+  if (!context) {
+    throw new Error("useCommandPalette must be used within CommandPaletteProvider");
+  }
+  return context;
 }
 
 type CommandPaletteProviderProps = {
@@ -176,8 +200,10 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
 
   const showNavigation = !normalizedQuery;
 
+  const toggle = useCallback(() => setOpen((current) => !current), []);
+
   return (
-    <>
+    <CommandPaletteContext.Provider value={{ open, setOpen, toggle }}>
       {children}
       <Dialog
         open={open}
@@ -206,7 +232,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
               <Command.Group heading="Навигация">
                 {canAccessMissionControl(profile) ? (
                   <CommandItem icon={LayoutGrid} onSelect={() => navigate("/")}>
-                    Mission Control
+                    Центр управления
                   </CommandItem>
                 ) : null}
                 {canAccessMotorsArea(profile) ? (
@@ -381,7 +407,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
           </Command>
         </DialogContent>
       </Dialog>
-    </>
+    </CommandPaletteContext.Provider>
   );
 }
 

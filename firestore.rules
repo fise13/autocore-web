@@ -431,6 +431,26 @@ service cloud.firestore {
         );
     }
 
+    // Cheap path for setup wizard / company settings (avoids deep RBAC get() chains).
+    function canManageCompanySettings(companyId) {
+      return companyId != null
+        && companyId != ""
+        && (
+          isOwnerOfCompany(companyId)
+          || (
+            hasCompany()
+            && sameCompany(companyId)
+            && inRole(['owner', 'admin', 'manager'])
+          )
+        );
+    }
+
+    function canOwnerInventoryAccess(companyId) {
+      return companyId != null
+        && companyId != ""
+        && isOwnerOfCompany(companyId);
+    }
+
     function motorLocalIdValid(data) {
       return data.localId is int || data.localId is number;
     }
@@ -669,6 +689,12 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
+      match /settings/{settingId} {
+        allow read: if canManageCompanySettings(companyId) || isCompanyMember(companyId);
+        allow create, update: if canManageCompanySettings(companyId);
+        allow delete: if false;
+      }
+
       match /meta/{metaId} {
         allow read: if canWorkOrdersRead(companyId);
         allow create, update: if canWorkOrdersWrite(companyId);
@@ -789,7 +815,7 @@ service cloud.firestore {
       allow update: if isSignedIn()
         && request.resource.data.used == true
         && resource.data.used != true
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used', 'status'])
         && resource.data.companyId != null
         && exists(employeeRef(resource.data.companyId, request.auth.uid));
       allow update: if resource.data.companyId != null
@@ -951,10 +977,14 @@ service cloud.firestore {
     }
 
     match /specificCategories/{categoryId} {
-      allow read: if hasPermission(resource.data.companyId, 'inventory_view');
-      allow create: if hasPermission(request.resource.data.companyId, 'inventory_edit');
-      allow update: if hasPermission(request.resource.data.companyId, 'inventory_edit');
-      allow delete: if hasPermission(resource.data.companyId, 'inventory_delete');
+      allow read: if canOwnerInventoryAccess(resource.data.companyId)
+        || hasPermission(resource.data.companyId, 'inventory_view');
+      allow create: if canOwnerInventoryAccess(request.resource.data.companyId)
+        || hasPermission(request.resource.data.companyId, 'inventory_edit');
+      allow update: if canOwnerInventoryAccess(request.resource.data.companyId)
+        || hasPermission(request.resource.data.companyId, 'inventory_edit');
+      allow delete: if canOwnerInventoryAccess(resource.data.companyId)
+        || hasPermission(resource.data.companyId, 'inventory_delete');
     }
 
     match /specificRecords/{recordId} {

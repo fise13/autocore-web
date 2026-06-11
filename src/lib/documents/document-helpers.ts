@@ -1,5 +1,8 @@
 import { DocumentContext } from "@/lib/documents/document-context";
-import { resolveEmployeeName, workOrderAssigneeSummary } from "@/lib/work-order/work-order-display";
+import {
+  laborLineAssigneeLabels,
+  workOrderAssigneeSummary,
+} from "@/lib/work-order/work-order-display";
 import { laborLineTotal } from "@/lib/work-order/labor-pricing";
 
 export function documentVehicleLabel(context: DocumentContext): string {
@@ -21,10 +24,11 @@ export function documentAssigneeSummary(context: DocumentContext): string {
   return workOrderAssigneeSummary(context.order, context.employees) || "—";
 }
 
-export function documentLaborLineAssignees(context: DocumentContext, assigneeIds: string[]): string {
-  const names = assigneeIds
-    .map((id) => resolveEmployeeName(id, context.employees))
-    .filter(Boolean);
+export function documentLaborLineAssignees(
+  context: DocumentContext,
+  line: DocumentContext["order"]["laborLines"][number],
+): string {
+  const names = laborLineAssigneeLabels(line, context.employees);
   return names.length > 0 ? names.join(", ") : "—";
 }
 

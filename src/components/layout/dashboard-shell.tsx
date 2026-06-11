@@ -11,6 +11,7 @@ import { deleteBrandUseCase } from "@/application/use-cases/delete-brand";
 import { renameBrandUseCase } from "@/application/use-cases/rename-brand";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { SidebarEditBlur } from "@/components/layout/sidebar-edit-blur";
+import { CompanyConfigSidebarSync } from "@/components/onboarding/company-config-sidebar-sync";
 import { SidebarCustomizationProvider } from "@/components/providers/sidebar-customization-provider";
 import { BillingGateProvider } from "@/components/billing/billing-gate-provider";
 import { DashboardLayoutProvider } from "@/components/layout/dashboard-layout-context";
@@ -313,6 +314,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
 export function DashboardShell({ children }: DashboardShellProps) {
   return (
     <SidebarCustomizationProvider>
+      <CompanyConfigSidebarSync />
       <WorkspaceProvider>
         <FirestoreListenerGuard />
         <DashboardShellInner>{children}</DashboardShellInner>

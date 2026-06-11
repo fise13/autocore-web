@@ -16,6 +16,7 @@ import {
 import { InviteDocument } from "@/domain/rbac";
 import { UserRole } from "@/domain/user";
 import { toDateFromFirestore } from "@/lib/firestore-timestamp";
+import { generateInviteToken } from "@/lib/invites/invite-token";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 
 const INVITE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -31,15 +32,28 @@ function generateInviteCode(length = 6): string {
 function mapInviteDoc(id: string, companyId: string, data: Record<string, unknown>): InviteDocument | null {
   const expiresAt = toDateFromFirestore(data.expiresAt);
   if (!expiresAt) return null;
+  const used = Boolean(data.used ?? false);
+  const status =
+    data.status === "used" || data.status === "expired" || data.status === "pending"
+      ? data.status
+      : used
+        ? "used"
+        : expiresAt.getTime() <= Date.now()
+          ? "expired"
+          : "pending";
+
   return {
     id,
     code: String(data.code ?? ""),
+    token: typeof data.token === "string" ? data.token : undefined,
+    email: typeof data.email === "string" ? data.email : undefined,
     companyId: String(data.companyId ?? companyId),
     role: String(data.role ?? "employee") as UserRole,
     createdAt: toDateFromFirestore(data.createdAt),
     expiresAt,
     createdBy: String(data.createdBy ?? ""),
-    used: Boolean(data.used ?? false),
+    used,
+    status,
   };
 }
 
@@ -90,24 +104,30 @@ export function createInviteRepository() {
         );
         if (!existing.empty) continue;
 
+        const token = generateInviteToken();
+
         const ref = await addDoc(collection(db, "invites"), {
           code,
+          token,
           companyId: input.companyId,
           role: input.role,
           createdAt: serverTimestamp(),
           expiresAt: Timestamp.fromDate(expiresAt),
           createdBy: input.createdBy,
           used: false,
+          status: "pending",
         });
 
         return {
           id: ref.id,
           code,
+          token,
           companyId: input.companyId,
           role: input.role,
           expiresAt,
           createdBy: input.createdBy,
           used: false,
+          status: "pending",
         };
       }
 

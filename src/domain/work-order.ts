@@ -1,3 +1,4 @@
+import { WarrantyTemplateId } from "@/domain/document-config";
 import { OperationAccount, PaymentMethod } from "@/domain/financial-operation";
 
 export const WORK_ORDER_STATUSES = [
@@ -32,10 +33,12 @@ export type WorkOrderLaborLine = {
   hours: number;
   unitPrice: number;
   assigneeIds: string[];
+  /** Free-text names when assignee is not a company employee (no payroll). */
+  assigneeDisplayNames?: string[];
   assigneeRole: WorkOrderAssigneeRole;
 };
 
-export type WorkOrderPartSource = "warehouse" | "adhoc";
+export type WorkOrderPartSource = "warehouse" | "adhoc" | "specific_quick";
 
 export type WorkOrderPartLine = {
   id: string;
@@ -47,6 +50,9 @@ export type WorkOrderPartLine = {
   unitPrice: number;
   unitCost: number;
   warehouseId?: string;
+  specificCategoryId?: string;
+  specificCategoryName?: string;
+  warrantyTemplateId?: WarrantyTemplateId | "none";
 };
 
 export function isWarehousePartLine(line: WorkOrderPartLine): boolean {
@@ -62,6 +68,7 @@ export type WorkOrderMotorLine = {
   configuration?: string;
   unitPrice: number;
   outcome: WorkOrderMotorOutcome;
+  warrantyTemplateId?: WarrantyTemplateId | "no_warranty";
 };
 
 export type WorkOrderPricing = {

@@ -40,14 +40,19 @@ export type ActivityLogEntry = {
   metadata?: Record<string, string | number | boolean | null>;
 };
 
+export type InviteStatus = "pending" | "used" | "expired";
+
 export type InviteDocument = {
   id: string;
   code: string;
+  token?: string;
+  email?: string;
   companyId: string;
   role: UserRole;
   createdAt?: Date;
   expiresAt: Date;
   createdBy: string;
   used: boolean;
+  status?: InviteStatus;
 };
 

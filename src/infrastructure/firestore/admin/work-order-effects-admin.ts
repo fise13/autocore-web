@@ -11,10 +11,9 @@ import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { mapAdminWorkOrder } from "@/infrastructure/firestore/admin-mappers";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { summarizeWorkOrderForLogbook } from "@/lib/documents/classify-service-order";
-import {
-  ENGINE_WARRANTY_KM,
-  ENGINE_WARRANTY_MONTHS,
-} from "@/lib/documents/document-copy";
+import { WarrantyTemplateId, parseCompanyDocumentConfig } from "@/domain/document-config";
+import { canonicalWarrantyDuration } from "@/lib/documents/warranty/resolve-warranty";
+import { getWarrantyTemplate } from "@/lib/documents/warranty/warranty-templates";
 import { processInventoryEventForWorkOrder } from "@/infrastructure/firestore/admin/inventory-effects-admin";
 import { laborLinePayrollPerAssignee } from "@/lib/work-order/labor-pricing";
 
@@ -26,6 +25,23 @@ function addMonths(date: Date, months: number): Date {
 
 function warrantyToken(): string {
   return randomBytes(16).toString("hex");
+}
+
+async function fetchCompanyDefaultWarrantyTemplate(companyId: string): Promise<WarrantyTemplateId | "no_warranty"> {
+  const db = getAdminFirestore();
+  const [companySnap, appConfigSnap] = await Promise.all([
+    db.collection("companies").doc(normalizeCompanyId(companyId)).get(),
+    db.collection("companies").doc(normalizeCompanyId(companyId)).collection("settings").doc("app").get(),
+  ]);
+  const appData = appConfigSnap.data() as { defaultWarrantyTemplate?: string } | undefined;
+  if (appData?.defaultWarrantyTemplate === "no_warranty") {
+    return "no_warranty";
+  }
+  if (appData?.defaultWarrantyTemplate && appData.defaultWarrantyTemplate !== "no_warranty") {
+    return appData.defaultWarrantyTemplate as WarrantyTemplateId;
+  }
+  const documentConfig = parseCompanyDocumentConfig((companySnap.data() ?? {}) as Record<string, unknown>);
+  return documentConfig.warrantyTemplateId ?? "contract_engine";
 }
 
 export async function fetchWorkOrder(companyId: string, workOrderId: string): Promise<WorkOrder | null> {
@@ -315,9 +331,18 @@ export async function processWorkOrderEvent(
       break;
     }
     case "WarrantyActivated": {
+      const companyDefault = await fetchCompanyDefaultWarrantyTemplate(companyId);
+      const installedAt = order.completedAt ?? new Date();
+
       for (const line of order.motorLines) {
-        const installedAt = order.completedAt ?? new Date();
-        const expiresAt = addMonths(installedAt, ENGINE_WARRANTY_MONTHS);
+        const duration = canonicalWarrantyDuration(
+          companyDefault,
+          line.warrantyTemplateId ?? companyDefault,
+        );
+        if (!duration) continue;
+
+        const preset = getWarrantyTemplate(duration.templateId);
+        const expiresAt = addMonths(installedAt, duration.months);
         const warranty = await createWarrantyRecord({
           companyId,
           motorId: line.motorId,
@@ -331,10 +356,43 @@ export async function processWorkOrderEvent(
           installedAt,
           soldAt: line.outcome === "sell" ? installedAt : undefined,
           expiresAt,
-          expiresAtMileage: (order.mileage || 0) + ENGINE_WARRANTY_KM,
+          expiresAtMileage: (order.mileage || 0) + duration.km,
+          termsText: preset.conditions.join("\n"),
+          restrictionsText: preset.restrictions.join("\n"),
           verificationToken: warrantyToken(),
         });
         await updateMotorById(actorUserId, line.motorId, { warrantyId: warranty.id });
+      }
+
+      for (const line of order.partLines.filter((part) => part.source === "specific_quick")) {
+        const lineTemplate =
+          line.warrantyTemplateId === "none"
+            ? "no_warranty"
+            : (line.warrantyTemplateId as WarrantyTemplateId | undefined);
+        const duration = canonicalWarrantyDuration(companyDefault, lineTemplate);
+        if (!duration) continue;
+
+        const preset = getWarrantyTemplate(duration.templateId);
+        const expiresAt = addMonths(installedAt, duration.months);
+        await createWarrantyRecord({
+          companyId,
+          motorId: `specific:${line.id}`,
+          vehicleId: order.vehicleId,
+          workOrderId: order.id,
+          clientId: order.clientId,
+          serialCode: line.name,
+          engineCode: line.specificCategoryName,
+          vin: order.vin,
+          licensePlate: order.licensePlate,
+          installedAt,
+          soldAt: installedAt,
+          saleAmount: line.unitPrice * line.quantity,
+          expiresAt,
+          expiresAtMileage: (order.mileage || 0) + duration.km,
+          termsText: preset.conditions.join("\n"),
+          restrictionsText: preset.restrictions.join("\n"),
+          verificationToken: warrantyToken(),
+        });
       }
       break;
     }

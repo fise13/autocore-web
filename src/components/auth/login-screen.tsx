@@ -2,29 +2,39 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { AtSign, ChevronLeft, Loader2 } from "lucide-react";
 
 import { AppleIcon, GoogleIcon } from "@/components/auth/auth-brand-icons";
 import { AuthDivider } from "@/components/auth/auth-divider";
 import { FloatingPaths } from "@/components/auth/floating-paths";
+import { PasswordField } from "@/components/auth/password-field";
+import { PasswordStrengthField } from "@/components/auth/password-strength-field";
 import { useAuth } from "@/components/providers/auth-provider";
 import { AppLogo } from "@/components/brand/app-logo";
 import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { formatAppleAuthErrorForUi, logAppleAuthError } from "@/lib/auth/apple-auth-log";
 import { isAppleJsAuthMode } from "@/lib/auth/apple-auth-mode";
 import { getAppleJsSetupIssue } from "@/lib/auth/apple-js-setup";
 import { isAppleUserCancellationError, normalizeAppleJsError } from "@/lib/auth/apple-js-sign-in";
 import { logAuthDebug } from "@/lib/auth/auth-debug";
+import { validateSignupPassword } from "@/lib/auth/password-validation";
+import {
+  EmailSignInMode,
+  resolveEmailSignInMode,
+} from "@/lib/auth/resolve-email-sign-in-mode";
 import { getFirebaseAuth } from "@/infrastructure/firebase/client";
 import { marketingRoutes } from "@/lib/marketing-routes";
 import { marketingHomeUrl, marketingPageUrl } from "@/lib/site-urls";
+import { prefersReducedMotion } from "@/lib/motion/cross-route-transition";
+import { cn } from "@/lib/utils";
 import { mapAuthError, userCopy } from "@/lib/user-copy";
 
-type AuthPhase = "idle" | "submitting" | "completing";
+const authStepEase = [0.22, 1, 0.36, 1] as const;
+
+type AuthPhase = "idle" | "submitting" | "completing" | "detecting";
 type PendingAuth = "google" | "apple" | "email" | null;
 
 type LoginScreenProps = {
@@ -33,17 +43,34 @@ type LoginScreenProps = {
 };
 
 export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScreenProps = {}) {
-  const { signInWithEmail, signInWithGoogle, signInWithApple, signUpWithEmail } = useAuth();
+  const {
+    signInWithEmail,
+    signInWithGoogle,
+    signInWithApple,
+    signUpWithEmail,
+    resolveSignInMethodsForEmail,
+    sendPasswordResetForEmail,
+  } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailStep, setEmailStep] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [emailMode, setEmailMode] = useState<EmailSignInMode>("login");
+  const [oauthProviders, setOauthProviders] = useState<Array<"google.com" | "apple.com">>([]);
+  const [resetSent, setResetSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authPhase, setAuthPhase] = useState<AuthPhase>("idle");
   const [pendingAuth, setPendingAuth] = useState<PendingAuth>(null);
+  const [authStepDirection, setAuthStepDirection] = useState(1);
+  const [authStepAnimated, setAuthStepAnimated] = useState(false);
 
   const isBusy = authPhase !== "idle";
   const appleSetupIssue = isAppleJsAuthMode() ? getAppleJsSetupIssue() : null;
+  const isSignUp = emailMode === "signup";
+  const reducedMotion = prefersReducedMotion();
+  const authStepInitial =
+    authStepAnimated && !reducedMotion
+      ? { opacity: 0, x: authStepDirection * 24 }
+      : false;
 
   useEffect(() => {
     if (bootstrapError) {
@@ -65,7 +92,6 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
         currentUser: currentUser?.uid ?? null,
       });
       if (!currentUser) {
-        // signInWithRedirect (Apple on mobile) — page will navigate away.
         return;
       }
       setAuthPhase("completing");
@@ -89,29 +115,91 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
     }
   }
 
-  function onEmailContinue(event: FormEvent<HTMLFormElement>) {
+  async function onEmailContinue(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!email.trim()) {
       setError("Введите email.");
       return;
     }
     setError(null);
-    setEmailStep(true);
+    setResetSent(false);
+    setAuthPhase("detecting");
+    try {
+      const methods = await resolveSignInMethodsForEmail(email);
+      const resolved = resolveEmailSignInMode(methods);
+      setAuthStepDirection(1);
+      setAuthStepAnimated(true);
+      setEmailMode(resolved.mode);
+      setOauthProviders(resolved.oauthProviders);
+      setEmailStep(true);
+    } catch (e) {
+      setError(mapAuthError(e));
+    } finally {
+      setAuthPhase("idle");
+    }
   }
 
   async function onPasswordSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (password.length < 6) {
+    if (isSignUp) {
+      const passwordError = validateSignupPassword(password);
+      if (passwordError) {
+        setError(passwordError);
+        return;
+      }
+    } else if (password.length < 6) {
       setError("Пароль слишком короткий (минимум 6 символов).");
       return;
     }
     await runAuth(async () => {
-      if (isSignUp) {
-        await signUpWithEmail(email, password);
-      } else {
-        await signInWithEmail(email, password);
+      try {
+        if (isSignUp) {
+          await signUpWithEmail(email, password);
+        } else {
+          await signInWithEmail(email, password);
+        }
+      } catch (authError) {
+        const message = mapAuthError(authError);
+        if (isSignUp && message.includes("уже зарегистрирован")) {
+          setEmailMode("login");
+          throw new Error("Этот email уже зарегистрирован. Введите пароль для входа.");
+        }
+        if (!isSignUp && message.includes("Неверный email или пароль")) {
+          const methods = await resolveSignInMethodsForEmail(email);
+          if (methods.length === 0) {
+            setEmailMode("signup");
+            throw new Error("Аккаунта с этим email нет. Придумайте пароль для регистрации.");
+          }
+        }
+        throw authError;
       }
     }, "email");
+  }
+
+  function changeEmail() {
+    setAuthStepDirection(-1);
+    setAuthStepAnimated(true);
+    setEmailStep(false);
+    setPassword("");
+    setError(null);
+    setResetSent(false);
+  }
+
+  async function onForgotPassword() {
+    if (!email.trim()) {
+      setError("Введите email.");
+      return;
+    }
+    setError(null);
+    setAuthPhase("submitting");
+    try {
+      await sendPasswordResetForEmail(email);
+      setResetSent(true);
+    } catch (e) {
+      setError(mapAuthError(e));
+    } finally {
+      setAuthPhase("idle");
+    }
   }
 
   useEffect(() => {
@@ -154,14 +242,8 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
         </div>
       </div>
 
-      <div
-        data-page-reveal
-        className="relative flex min-h-screen flex-col justify-center px-8"
-      >
-        <div
-          aria-hidden
-          className="absolute inset-0 isolate -z-10 opacity-60 contain-strict"
-        >
+      <div data-page-reveal className="relative flex min-h-screen flex-col justify-center px-8">
+        <div aria-hidden className="absolute inset-0 isolate -z-10 opacity-60 contain-strict">
           <div className="absolute top-0 right-0 h-80 w-56 -translate-y-1/2 rounded-full bg-[radial-gradient(68.54%_68.72%_at_55.02%_31.46%,color-mix(in_srgb,var(--foreground)_6%,transparent)_0,color-mix(in_srgb,var(--foreground)_2%,transparent)_50%,transparent_80%)]" />
           <div className="absolute top-0 right-0 h-80 w-40 translate-x-[5%] -translate-y-1/2 rounded-full bg-[radial-gradient(50%_50%_at_50%_50%,color-mix(in_srgb,var(--foreground)_4%,transparent)_0,transparent_80%)]" />
         </div>
@@ -184,12 +266,21 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
             </p>
           </div>
 
+          <AnimatePresence mode="wait" custom={authStepDirection}>
           {!emailStep ? (
-            <>
+            <motion.div
+              key="email-entry"
+              custom={authStepDirection}
+              initial={authStepInitial}
+              animate={{ opacity: 1, x: 0 }}
+              exit={reducedMotion ? undefined : { opacity: 0, x: authStepDirection * -24 }}
+              transition={{ duration: 0.28, ease: authStepEase }}
+              className="space-y-4"
+            >
               <div className="space-y-2">
                 <Button
                   type="button"
-                  className="h-10 w-full"
+                  className="auth-oauth-button auth-oauth-button-google h-10 w-full"
                   disabled={isBusy}
                   onClick={() => runAuth(() => signInWithGoogle(), "google")}
                 >
@@ -203,7 +294,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-10 w-full"
+                  className="auth-oauth-button auth-oauth-button-apple h-10 w-full"
                   disabled={isBusy || Boolean(appleSetupIssue)}
                   onClick={() => {
                     if (appleSetupIssue) {
@@ -233,7 +324,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                 </p>
                 <InputGroup>
                   <InputGroupInput
-                    placeholder="your.email@example.com"
+                    placeholder="ваш@email.ru"
                     type="email"
                     autoComplete="email"
                     value={email}
@@ -246,44 +337,125 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                   </InputGroupAddon>
                 </InputGroup>
 
-                <Button className="h-10 w-full" type="submit" disabled={isBusy}>
-                  Продолжить с email
+                <Button
+                  className={cn(
+                    "h-10 w-full transition-all duration-300",
+                    authPhase === "detecting" && "pointer-events-none",
+                  )}
+                  type="submit"
+                  disabled={isBusy}
+                >
+                  {authPhase === "detecting" ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="relative flex size-4 items-center justify-center">
+                        <span className="absolute inset-0 animate-ping rounded-full bg-primary/25 motion-reduce:animate-none" />
+                        <Loader2 className="relative size-4 animate-spin" aria-hidden />
+                      </span>
+                      Проверяем email…
+                    </span>
+                  ) : (
+                    "Продолжить с email"
+                  )}
                 </Button>
               </form>
-            </>
-          ) : (
-            <form className="animate-autocore-auth-form-enter space-y-3 motion-reduce:animate-none" onSubmit={onPasswordSubmit}>
+            </motion.div>
+          ) : emailMode === "oauth" ? (
+            <motion.div
+              key="oauth"
+              custom={authStepDirection}
+              initial={authStepInitial}
+              animate={{ opacity: 1, x: 0 }}
+              exit={reducedMotion ? undefined : { opacity: 0, x: authStepDirection * -24 }}
+              transition={{ duration: 0.28, ease: authStepEase }}
+              className="space-y-3"
+            >
               <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm">
                 <span className="text-muted-foreground">Email: </span>
                 <span className="font-medium">{email}</span>
                 <button
                   type="button"
-                  className="ml-2 text-xs text-primary underline underline-offset-4"
+                  className="ml-2 text-xs text-primary underline underline-offset-4 transition-opacity hover:opacity-80"
                   disabled={isBusy}
-                  onClick={() => {
-                    setEmailStep(false);
-                    setPassword("");
-                    setError(null);
-                  }}
+                  onClick={changeEmail}
+                >
+                  Изменить
+                </button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Этот email зарегистрирован через{" "}
+                {oauthProviders.includes("google.com") ? "Google" : "Apple"}
+                {oauthProviders.length > 1 ? " или Apple" : ""}. Войдите тем же способом.
+              </p>
+              <div className="space-y-2">
+                {oauthProviders.includes("google.com") ? (
+                  <Button
+                    type="button"
+                    className="auth-oauth-button auth-oauth-button-google h-10 w-full"
+                    disabled={isBusy}
+                    onClick={() => runAuth(() => signInWithGoogle(), "google")}
+                  >
+                    {userCopy.auth.signInGoogle}
+                  </Button>
+                ) : null}
+                {oauthProviders.includes("apple.com") ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="auth-oauth-button auth-oauth-button-apple h-10 w-full"
+                    disabled={isBusy || Boolean(appleSetupIssue)}
+                    onClick={() => void runAuth(() => signInWithApple(), "apple")}
+                  >
+                    {userCopy.auth.signInApple}
+                  </Button>
+                ) : null}
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key={isSignUp ? "signup" : "login"}
+              custom={authStepDirection}
+              initial={authStepInitial}
+              animate={{ opacity: 1, x: 0 }}
+              exit={reducedMotion ? undefined : { opacity: 0, x: authStepDirection * -24 }}
+              transition={{ duration: 0.28, ease: authStepEase }}
+            >
+            <form className="space-y-3" onSubmit={onPasswordSubmit}>
+              <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm">
+                <span className="text-muted-foreground">Email: </span>
+                <span className="font-medium">{email}</span>
+                <button
+                  type="button"
+                  className="ml-2 text-xs text-primary underline underline-offset-4 transition-opacity hover:opacity-80"
+                  disabled={isBusy}
+                  onClick={changeEmail}
                 >
                   Изменить
                 </button>
               </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="password">Пароль</Label>
-                <Input
+              {!isSignUp ? (
+                <p className="text-sm text-muted-foreground">
+                  Аккаунт найден — введите пароль для входа.
+                </p>
+              ) : null}
+
+              {isSignUp ? (
+                <PasswordStrengthField
                   id="password"
-                  type="password"
-                  autoComplete={isSignUp ? "new-password" : "current-password"}
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  required
-                  minLength={6}
+                  onChange={setPassword}
                   disabled={isBusy}
-                  className="h-10"
                 />
-              </div>
+              ) : (
+                <PasswordField
+                  id="password"
+                  label="Пароль"
+                  value={password}
+                  onChange={setPassword}
+                  autoComplete="current-password"
+                  disabled={isBusy}
+                />
+              )}
 
               <Button type="submit" disabled={isBusy} className="h-10 w-full">
                 {pendingAuth === "email" ? (
@@ -298,19 +470,33 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                 )}
               </Button>
 
-              <button
-                type="button"
-                className="w-full text-sm text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground disabled:opacity-50"
-                disabled={isBusy}
-                onClick={() => setIsSignUp((value) => !value)}
-              >
-                {isSignUp ? userCopy.auth.haveAccount : userCopy.auth.noAccount}
-              </button>
+              {!isSignUp ? (
+                <button
+                  type="button"
+                  className="w-full text-sm text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground disabled:opacity-50"
+                  disabled={isBusy}
+                  onClick={() => void onForgotPassword()}
+                >
+                  Забыли пароль?
+                </button>
+              ) : null}
+
+              {resetSent ? (
+                <p className="text-center text-sm text-muted-foreground">
+                  Ссылка для сброса пароля отправлена на {email}.
+                </p>
+              ) : null}
             </form>
+            </motion.div>
           )}
+          </AnimatePresence>
 
           {error ? (
-            <p className="animate-shake text-sm whitespace-pre-wrap text-destructive motion-reduce:animate-none">
+            <p
+              role="alert"
+              aria-live="assertive"
+              className="animate-shake text-sm whitespace-pre-wrap text-destructive motion-reduce:animate-none"
+            >
               {error}
             </p>
           ) : null}

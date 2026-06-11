@@ -14,7 +14,10 @@ import {
   Wrench,
 } from "lucide-react";
 
+import { CompanySpecificCategoryConfig } from "@/domain/company-config";
+import { WARRANTY_TEMPLATE_IDS } from "@/domain/document-config";
 import { WorkOrder, WorkOrderAssigneeRole, WorkOrderLaborPricingMode, WorkOrderMotorOutcome } from "@/domain/work-order";
+import { getWarrantyTemplate } from "@/lib/documents/warranty/warranty-templates";
 import { ClientEntity } from "@/domain/client";
 import { VehicleEntity } from "@/domain/vehicle";
 import { InventoryItem } from "@/domain/inventory";
@@ -65,9 +68,14 @@ export type ComposerFormState = {
   partQuantity: number;
   partUnitPrice: number;
   partLines: WorkOrder["partLines"];
+  specificCategoryId: string;
+  specificPartName: string;
+  specificPartPrice: number;
+  specificWarrantyTemplateId: string;
   motorSerial: string;
   motorOutcome: WorkOrderMotorOutcome;
   motorPrice: number;
+  motorWarrantyTemplateId: string;
   motorLines: WorkOrder["motorLines"];
   discount: number;
 };
@@ -80,6 +88,9 @@ type WorkOrderComposerProps = {
   inventoryItems: InventoryItem[];
   availableMotors: MotorEntity[];
   employees: CompanyEmployee[];
+  currentUserId?: string;
+  quickSpecificCategories?: CompanySpecificCategoryConfig[];
+  editingLabel?: string;
   pricing: WorkOrder["pricing"];
   saving: boolean;
   canEdit: boolean;
@@ -90,9 +101,11 @@ type WorkOrderComposerProps = {
   onVehicleSelect: (vehicleId: string) => void;
   onAddLabor: () => void;
   onAddPart: () => void;
+  onAddSpecificPart: () => void;
   onAddMotor: () => void;
   onRemoveLabor: (index: number) => void;
   onRemovePart: (index: number) => void;
+  onRemovePartById: (lineId: string) => void;
   onRemoveMotor: (index: number) => void;
   onSave: () => void;
   onCancel: () => void;
@@ -152,6 +165,9 @@ export function WorkOrderComposer({
   inventoryItems,
   availableMotors,
   employees,
+  currentUserId,
+  quickSpecificCategories = [],
+  editingLabel,
   pricing,
   saving,
   canEdit,
@@ -162,13 +178,24 @@ export function WorkOrderComposer({
   onVehicleSelect,
   onAddLabor,
   onAddPart,
+  onAddSpecificPart,
   onAddMotor,
   onRemoveLabor,
   onRemovePart,
+  onRemovePartById,
   onRemoveMotor,
   onSave,
   onCancel,
 }: WorkOrderComposerProps) {
+  const specificPartLines = useMemo(
+    () => form.partLines.filter((line) => line.source === "specific_quick"),
+    [form.partLines],
+  );
+  const regularPartLines = useMemo(
+    () => form.partLines.filter((line) => line.source !== "specific_quick"),
+    [form.partLines],
+  );
+
   const clientVehicles = useMemo(
     () => vehicles.filter((vehicle) => !form.clientId || vehicle.clientId === form.clientId),
     [form.clientId, vehicles],
@@ -270,6 +297,20 @@ export function WorkOrderComposer({
     );
     if (employee) commitAssignee(employee.fullName || employee.email);
   }
+
+  function assignSelf() {
+    if (!currentUserId) return;
+    const employee = employees.find((entry) => entry.uid === currentUserId);
+    if (employee) {
+      commitAssignee(employee.fullName || employee.email);
+      return;
+    }
+    onLaborDraftChange({
+      assigneeId: currentUserId,
+      assigneeName: "Я",
+      assigneeRole: "mechanic",
+    });
+  }
   const partSkuOptions = useMemo(
     () => inventoryItems.map((item) => ({ value: item.sku, label: item.name })),
     [inventoryItems],
@@ -307,7 +348,9 @@ export function WorkOrderComposer({
       <div className="border-b bg-card/60 px-6 py-4 backdrop-blur-sm">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Новый заказ-наряд</h2>
+            <h2 className="text-lg font-semibold tracking-tight">
+              {editingLabel ?? "Новый заказ-наряд"}
+            </h2>
             <p className="text-sm text-muted-foreground">Три шага — клиент, работы, сохранение</p>
           </div>
           <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
@@ -486,9 +529,9 @@ export function WorkOrderComposer({
                 <TabsTrigger value="parts" className="gap-1.5">
                   <Package className="size-3.5" />
                   Запчасти
-                  {form.partLines.length > 0 ? (
+                  {regularPartLines.length > 0 ? (
                     <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
-                      {form.partLines.length}
+                      {regularPartLines.length}
                     </span>
                   ) : null}
                 </TabsTrigger>
@@ -501,6 +544,17 @@ export function WorkOrderComposer({
                     </span>
                   ) : null}
                 </TabsTrigger>
+                {quickSpecificCategories.length > 0 ? (
+                  <TabsTrigger value="specific" className="gap-1.5">
+                    <Package className="size-3.5" />
+                    Специфичные
+                    {specificPartLines.length > 0 ? (
+                      <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
+                        {specificPartLines.length}
+                      </span>
+                    ) : null}
+                  </TabsTrigger>
+                ) : null}
               </TabsList>
 
               <TabsContent value="labor" className="space-y-4">
@@ -551,20 +605,30 @@ export function WorkOrderComposer({
                         placeholder={isHourlyLabor ? "5000" : "90000"}
                       />
                     </Field>
-                    <Field label="Исполнитель" required hint="Tab ↹">
-                      <DatalistInput
-                        value={form.laborDraft.assigneeName}
-                        onValueChange={(value) =>
-                          onLaborDraftChange({ assigneeName: value, assigneeId: "" })
-                        }
-                        options={assigneeOptions}
-                        onOptionCommit={commitAssignee}
-                        onBlur={(event) =>
-                          tryResolveAssigneeByName((event.target as HTMLInputElement).value)
-                        }
-                        placeholder="ФИО сотрудника"
-                        className={cn(form.laborDraft.assigneeId && "border-emerald-500/50 ring-emerald-500/10")}
-                      />
+                    <Field label="Исполнитель" required hint="Tab ↹ или своё имя">
+                      <div className="flex gap-2">
+                        <DatalistInput
+                          value={form.laborDraft.assigneeName}
+                          onValueChange={(value) =>
+                            onLaborDraftChange({ assigneeName: value, assigneeId: "" })
+                          }
+                          options={assigneeOptions}
+                          onOptionCommit={commitAssignee}
+                          onBlur={(event) =>
+                            tryResolveAssigneeByName((event.target as HTMLInputElement).value)
+                          }
+                          placeholder="Сотрудник или ФИО"
+                          className={cn(
+                            "min-w-0 flex-1",
+                            form.laborDraft.assigneeId && "border-emerald-500/50 ring-emerald-500/10",
+                          )}
+                        />
+                        {currentUserId ? (
+                          <Button type="button" variant="outline" size="sm" onClick={assignSelf}>
+                            Я
+                          </Button>
+                        ) : null}
+                      </div>
                     </Field>
                   </div>
 
@@ -588,9 +652,13 @@ export function WorkOrderComposer({
                         <p className="text-xs text-amber-600">
                           Добавьте сотрудников в «Настройки → Сотрудники»
                         </p>
+                      ) : form.laborDraft.assigneeName.trim() ? (
+                        <p className="text-xs text-muted-foreground">
+                          Внешний исполнитель · {form.laborDraft.assigneeName} — без начисления в зарплату
+                        </p>
                       ) : (
                         <p className="text-xs text-muted-foreground">
-                          Без исполнителя работа не добавится — владелец, менеджер, механик или любой сотрудник
+                          Сотрудник из списка, кнопка «Я» или произвольное имя
                         </p>
                       )}
                     </div>
@@ -668,11 +736,14 @@ export function WorkOrderComposer({
                 </AddRowCard>
                 <LineItems
                   empty="Запчасти не выбраны"
-                  items={form.partLines.map((line) => {
+                  items={regularPartLines.map((line) => {
                     const tag = line.source === "adhoc" || !line.itemId ? " · разово" : "";
                     return `${line.name}${tag} × ${line.quantity} = ${money(line.quantity * line.unitPrice)}`;
                   })}
-                  onRemove={onRemovePart}
+                  onRemove={(index) => {
+                    const line = regularPartLines[index];
+                    if (line) onRemovePartById(line.id);
+                  }}
                 />
               </TabsContent>
 
@@ -706,6 +777,23 @@ export function WorkOrderComposer({
                       Добавить
                     </Button>
                   </div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <Field label="Гарантия на двигатель">
+                      <select
+                        className={selectClass}
+                        value={form.motorWarrantyTemplateId}
+                        onChange={(event) => onFormChange("motorWarrantyTemplateId", event.target.value)}
+                      >
+                        <option value="">По умолчанию компании</option>
+                        {WARRANTY_TEMPLATE_IDS.map((id) => (
+                          <option key={id} value={id}>
+                            {getWarrantyTemplate(id).name}
+                          </option>
+                        ))}
+                        <option value="no_warranty">Без гарантии</option>
+                      </select>
+                    </Field>
+                  </div>
                 </AddRowCard>
                 <LineItems
                   empty="Двигатели не добавлены"
@@ -716,6 +804,79 @@ export function WorkOrderComposer({
                   onRemove={onRemoveMotor}
                 />
               </TabsContent>
+
+              {quickSpecificCategories.length > 0 ? (
+                <TabsContent value="specific" className="space-y-4">
+                  <AddRowCard
+                    title="Быстрая позиция"
+                    description="Генератор, стартер, кузовные — без учёта на складе"
+                  >
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Field label="Категория">
+                        <select
+                          className={selectClass}
+                          value={form.specificCategoryId}
+                          onChange={(event) => onFormChange("specificCategoryId", event.target.value)}
+                        >
+                          <option value="">Выберите…</option>
+                          {quickSpecificCategories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.name}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                      <Field label="Название">
+                        <Input
+                          value={form.specificPartName}
+                          onChange={(event) => onFormChange("specificPartName", event.target.value)}
+                          placeholder="Генератор Toyota 1NZ"
+                        />
+                      </Field>
+                      <Field label="Цена, ₸">
+                        <Input
+                          type="number"
+                          min={0}
+                          value={form.specificPartPrice || ""}
+                          onChange={(event) =>
+                            onFormChange("specificPartPrice", Number(event.target.value) || 0)
+                          }
+                        />
+                      </Field>
+                      <Field label="Гарантия">
+                        <select
+                          className={selectClass}
+                          value={form.specificWarrantyTemplateId}
+                          onChange={(event) =>
+                            onFormChange("specificWarrantyTemplateId", event.target.value)
+                          }
+                        >
+                          <option value="none">Без гарантии</option>
+                          {WARRANTY_TEMPLATE_IDS.map((id) => (
+                            <option key={id} value={id}>
+                              {getWarrantyTemplate(id).name}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    </div>
+                    <Button type="button" variant="secondary" className="mt-3" onClick={onAddSpecificPart}>
+                      Добавить
+                    </Button>
+                  </AddRowCard>
+                  <LineItems
+                    empty="Специфичные позиции не добавлены"
+                    items={specificPartLines.map((line) => {
+                      const category = line.specificCategoryName ? `${line.specificCategoryName} · ` : "";
+                      return `${category}${line.name} = ${money(line.unitPrice)}`;
+                    })}
+                    onRemove={(index) => {
+                      const line = specificPartLines[index];
+                      if (line) onRemovePartById(line.id);
+                    }}
+                  />
+                </TabsContent>
+              ) : null}
             </Tabs>
           </FadeIn>
         ) : null}
@@ -738,7 +899,13 @@ export function WorkOrderComposer({
             <SummaryCard title="Состав" className="lg:col-span-2">
               <ul className="space-y-1 text-sm text-muted-foreground">
                 <li>Работ: {form.laborLines.length}</li>
-                <li>Запчастей: {form.partLines.length}</li>
+                <li>
+                  Запчастей:{" "}
+                  {form.partLines.filter((line) => line.source !== "specific_quick").length}
+                </li>
+                {specificPartLines.length > 0 ? (
+                  <li>Специфичных: {specificPartLines.length}</li>
+                ) : null}
                 <li>Двигателей: {form.motorLines.length}</li>
                 {form.comment ? <li className="pt-2 text-foreground">«{form.comment}»</li> : null}
               </ul>

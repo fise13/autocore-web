@@ -1,6 +1,6 @@
 import { MotorHistoryEntry } from "@/domain/motor";
 import { DocumentContext } from "@/lib/documents/document-context";
-import { formatDocumentDate } from "@/lib/documents/format";
+import { formatDocumentDate, isValidDocumentDate } from "@/lib/documents/format";
 import {
   documentAssigneeSummary,
   documentPrimaryMotorEntity,
@@ -23,7 +23,7 @@ export function buildVehicleHistoryTimeline(context: DocumentContext): DocumentT
 
   const events: DocumentTimelineEvent[] = [];
 
-  if (context.order.createdAt) {
+  if (isValidDocumentDate(context.order.createdAt)) {
     events.push({
       id: "intake",
       label: "Поступление автомобиля",
@@ -45,7 +45,7 @@ export function buildVehicleHistoryTimeline(context: DocumentContext): DocumentT
     });
   }
 
-  if (context.order.status === "completed" && context.order.completedAt) {
+  if (context.order.status === "completed" && isValidDocumentDate(context.order.completedAt)) {
     events.push({
       id: "handover",
       label: "Выдача клиенту",
@@ -66,7 +66,7 @@ export function buildAggregateHistoryTimeline(context: DocumentContext): Documen
   const responsible = assignee !== "—" ? assignee : context.company.name;
   const events: DocumentTimelineEvent[] = [];
 
-  if (motor.arrivalDate) {
+  if (isValidDocumentDate(motor.arrivalDate)) {
     events.push({
       id: "arrival",
       label: "Поступил на склад",
@@ -77,9 +77,9 @@ export function buildAggregateHistoryTimeline(context: DocumentContext): Documen
   }
 
   if (motor.motorHistory?.length) {
-    for (const entry of [...motor.motorHistory].sort(
-      (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
-    )) {
+    for (const entry of [...motor.motorHistory]
+      .filter((item) => isValidDocumentDate(item.createdAt))
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())) {
       events.push({
         id: entry.id,
         label: MOTOR_HISTORY_LABELS[entry.type] ?? entry.type,
@@ -93,7 +93,9 @@ export function buildAggregateHistoryTimeline(context: DocumentContext): Documen
       events.push({
         id: "sold",
         label: "Продан",
-        date: motor.soldDate ? formatDocumentDate(motor.soldDate) : formatDocumentDate(context.generatedAt),
+        date: isValidDocumentDate(motor.soldDate)
+          ? formatDocumentDate(motor.soldDate)
+          : formatDocumentDate(context.generatedAt),
         responsible,
         kind: "aggregate",
       });

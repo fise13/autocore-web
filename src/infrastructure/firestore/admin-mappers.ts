@@ -9,13 +9,23 @@ import { VehicleEntity } from "@/domain/vehicle";
 import { WorkOrder, WorkOrderStatus } from "@/domain/work-order";
 import { Permission, UserEntity, UserRole } from "@/domain/user";
 
+function isFiniteDate(value: Date): boolean {
+  return Number.isFinite(value.getTime());
+}
+
 export function adminToDate(value: unknown): Date | undefined {
-  if (value instanceof Timestamp) return value.toDate();
-  if (value instanceof Date) return value;
+  if (value instanceof Timestamp) {
+    const parsed = value.toDate();
+    return isFiniteDate(parsed) ? parsed : undefined;
+  }
+  if (value instanceof Date) {
+    return isFiniteDate(value) ? value : undefined;
+  }
   if (value && typeof value === "object" && "toDate" in value) {
     const candidate = value as { toDate?: () => Date };
     if (typeof candidate.toDate === "function") {
-      return candidate.toDate.call(value);
+      const parsed = candidate.toDate.call(value);
+      return isFiniteDate(parsed) ? parsed : undefined;
     }
   }
   return undefined;

@@ -5,8 +5,10 @@ import {
   GoogleAuthProvider,
   User,
   createUserWithEmailAndPassword,
+  fetchSignInMethodsForEmail,
   onAuthStateChanged,
   reauthenticateWithCredential,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
@@ -32,7 +34,10 @@ import {
   createCompany as createCompanyRecord,
   ensureDefaultCompany as assignDefaultCompany,
 } from "@/infrastructure/firestore/company-service";
-import { joinCompanyWithInviteCode } from "@/infrastructure/firestore/join-company-service";
+import {
+  joinCompanyWithInviteCode,
+  joinCompanyWithInviteToken,
+} from "@/infrastructure/firestore/join-company-service";
 import { getAppleAuthMode, isFirebaseHandlerAppleAuthMode } from "@/lib/auth/apple-auth-mode";
 import { logAppleAuthError, logAppleAuthStep, logAppleJs } from "@/lib/auth/apple-auth-log";
 import { signInWithAppleLikeMacOS } from "@/lib/auth/sign-in-with-apple-credential";
@@ -65,12 +70,17 @@ type AuthContextValue = {
   signInWithApple: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
+  resolveSignInMethodsForEmail: (email: string) => Promise<string[]>;
+  sendPasswordResetForEmail: (email: string) => Promise<void>;
+  sendEmailVerification: () => Promise<void>;
+  reloadFirebaseUser: () => Promise<boolean>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   changeEmail: (newEmail: string, currentPassword: string) => Promise<void>;
   sendPasswordReset: () => Promise<void>;
   logout: () => Promise<void>;
   createCompany: (name: string) => Promise<void>;
   joinCompanyWithInvite: (code: string) => Promise<void>;
+  joinCompanyWithInviteToken: (token: string) => Promise<void>;
   ensureDefaultCompany: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   isFirebaseReady: boolean;
@@ -384,6 +394,48 @@ export function AuthProvider({ children }: AuthProviderProps) {
           throw new Error(mapAuthError(error));
         }
       },
+      async resolveSignInMethodsForEmail(email) {
+        if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));
+        const trimmedEmail = email.trim().toLowerCase();
+        try {
+          const response = await fetch("/api/auth/resolve-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: trimmedEmail }),
+          });
+          if (response.ok) {
+            const payload = (await response.json()) as { exists: boolean; methods: string[] };
+            if (!payload.exists) return [];
+            return payload.methods.length > 0 ? payload.methods : ["password"];
+          }
+        } catch (lookupError) {
+          logAuthDebug("auth-provider", "resolve-email API fallback", lookupError);
+        }
+        const auth = getFirebaseAuth();
+        return fetchSignInMethodsForEmail(auth, trimmedEmail);
+      },
+      async sendPasswordResetForEmail(email) {
+        if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));
+        const auth = getFirebaseAuth();
+        await sendPasswordResetEmail(auth, email.trim());
+      },
+      async sendEmailVerification() {
+        if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));
+        const auth = getFirebaseAuth();
+        const user = auth.currentUser;
+        if (!user) throw new Error(mapAuthError(new Error("auth/invalid-credential")));
+        assertEmailProvider(user);
+        await sendEmailVerification(user);
+      },
+      async reloadFirebaseUser() {
+        if (!isFirebaseReady) return false;
+        const auth = getFirebaseAuth();
+        const user = auth.currentUser;
+        if (!user) return false;
+        await user.reload();
+        setFirebaseUser(auth.currentUser);
+        return Boolean(auth.currentUser?.emailVerified);
+      },
       async changePassword(currentPassword, newPassword) {
         if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));
         const auth = getFirebaseAuth();
@@ -452,6 +504,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (!auth.currentUser) throw new Error(mapAuthError(new Error("auth/invalid-credential")));
 
         await joinCompanyWithInviteCode(auth.currentUser.uid, code);
+        await prepareSyncAuth(auth.currentUser.uid, { force: true });
+        await refreshProfile();
+      },
+      async joinCompanyWithInviteToken(token) {
+        if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));
+        const auth = getFirebaseAuth();
+        if (!auth.currentUser) throw new Error(mapAuthError(new Error("auth/invalid-credential")));
+
+        await joinCompanyWithInviteToken(auth.currentUser.uid, token);
         await prepareSyncAuth(auth.currentUser.uid, { force: true });
         await refreshProfile();
       },

@@ -2,7 +2,11 @@ import "server-only";
 
 import { Timestamp } from "firebase-admin/firestore";
 
-import { getAdminFirestore, getAdminStorage, getStorageBucketName } from "@/infrastructure/firebase/admin";
+import { getAdminFirestore } from "@/infrastructure/firebase/admin";
+import {
+  isStorageBucketMissingError,
+  resolveAdminStorageBucket,
+} from "@/infrastructure/firebase/resolve-storage-bucket";
 import { WorkOrderDocument, WorkOrderDocumentType } from "@/domain/work-order";
 import { DOCUMENT_BY_TYPE } from "@/lib/documents/document-types";
 import { normalizeCompanyId } from "@/lib/company-id";
@@ -20,7 +24,7 @@ export async function uploadDocumentPdf(params: {
   pdf: Buffer;
 }): Promise<{ storagePath: string; downloadUrl: string }> {
   const storagePath = storagePathFor(params.companyId, params.workOrderId, params.type);
-  const bucket = getAdminStorage().bucket(getStorageBucketName());
+  const bucket = await resolveAdminStorageBucket();
   const file = bucket.file(storagePath);
 
   await file.save(params.pdf, {
@@ -103,12 +107,27 @@ export async function persistDocumentPdf(params: {
   type: WorkOrderDocumentType;
   pdf: Buffer;
 }): Promise<WorkOrderDocument> {
-  const uploaded = await uploadDocumentPdf(params);
-  return upsertWorkOrderDocumentMetadata({
-    companyId: params.companyId,
-    workOrderId: params.workOrderId,
-    type: params.type,
-    storagePath: uploaded.storagePath,
-    downloadUrl: uploaded.downloadUrl,
-  });
+  try {
+    const uploaded = await uploadDocumentPdf(params);
+    return upsertWorkOrderDocumentMetadata({
+      companyId: params.companyId,
+      workOrderId: params.workOrderId,
+      type: params.type,
+      storagePath: uploaded.storagePath,
+      downloadUrl: uploaded.downloadUrl,
+    });
+  } catch (error) {
+    if (!isStorageBucketMissingError(error)) {
+      throw error;
+    }
+
+    // Storage bucket is not provisioned — keep metadata so PDF is served on demand via /api/pdf.
+    return upsertWorkOrderDocumentMetadata({
+      companyId: params.companyId,
+      workOrderId: params.workOrderId,
+      type: params.type,
+      storagePath: "",
+      downloadUrl: "",
+    });
+  }
 }

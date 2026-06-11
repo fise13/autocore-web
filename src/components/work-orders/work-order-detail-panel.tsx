@@ -48,6 +48,7 @@ type WorkOrderDetailPanelProps = {
   canEdit: boolean;
   nextStatuses: WorkOrderStatus[];
   onTransition: (status: WorkOrderStatus) => void;
+  onEdit?: () => void;
   preferredTab?: DetailTab;
 };
 
@@ -65,6 +66,7 @@ export function WorkOrderDetailPanel({
   canEdit,
   nextStatuses,
   onTransition,
+  onEdit,
   preferredTab,
 }: WorkOrderDetailPanelProps) {
   const [showSystemLog, setShowSystemLog] = useState(false);
@@ -114,8 +116,13 @@ export function WorkOrderDetailPanel({
           </div>
         </div>
 
-        {nextStatuses.length > 0 && canEdit ? (
+        {canEdit && (onEdit || nextStatuses.length > 0) ? (
           <div className="mt-4 flex flex-wrap gap-2">
+            {onEdit ? (
+              <Button type="button" variant="outline" size="sm" disabled={saving} onClick={onEdit}>
+                Редактировать
+              </Button>
+            ) : null}
             {nextStatuses.map((status, index) => (
               <Button
                 key={status}

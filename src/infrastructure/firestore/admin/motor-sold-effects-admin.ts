@@ -30,7 +30,7 @@ export async function processStandaloneMotorSold(params: {
   account: string;
   paymentMethod: string;
   comment?: string;
-}): Promise<{ warrantyId: string; jobId: string; operationId: string | null }> {
+}): Promise<{ warrantyId: string | null; jobId: string | null; operationId: string | null }> {
   const existingWarranty = await fetchWarrantyByMotorId(params.companyId, params.motor.id);
   if (existingWarranty) {
     return { warrantyId: existingWarranty.id, jobId: "", operationId: null };
@@ -45,8 +45,8 @@ export async function processStandaloneMotorSold(params: {
   const branding = companyBrandingFromRecord(companyData);
   const documentConfig = parseCompanyDocumentConfig(companyData);
   const warrantyTemplateId = branding.warrantyTemplateId ?? documentConfig.warrantyTemplateId;
-  const { months: warrantyMonths, km: warrantyKm } = canonicalWarrantyDuration(warrantyTemplateId);
-  const expiresAt = addMonths(soldAt, warrantyMonths);
+  const warrantyDuration = canonicalWarrantyDuration(warrantyTemplateId);
+  const expiresAt = warrantyDuration ? addMonths(soldAt, warrantyDuration.months) : null;
   const motorDescription = [params.motor.brandName, params.motor.engineCode, params.motor.serialCode]
     .filter(Boolean)
     .join(" ");
@@ -74,28 +74,31 @@ export async function processStandaloneMotorSold(params: {
     });
   }
 
-  const warranty = await createWarrantyRecord({
-    companyId: params.companyId,
-    motorId: params.motor.id,
-    serialCode: params.motor.serialCode,
-    engineCode: params.motor.engineCode,
-    installedAt: soldAt,
-    soldAt,
-    expiresAt,
-    expiresAtMileage: warrantyKm,
-    saleAmount: params.amount > 0 ? params.amount : undefined,
-  });
+  let warrantyId: string | null = null;
+  let jobId: string | null = null;
+  if (warrantyDuration && expiresAt) {
+    const warranty = await createWarrantyRecord({
+      companyId: params.companyId,
+      motorId: params.motor.id,
+      serialCode: params.motor.serialCode,
+      engineCode: params.motor.engineCode,
+      installedAt: soldAt,
+      soldAt,
+      expiresAt,
+      expiresAtMileage: warrantyDuration.km,
+      saleAmount: params.amount > 0 ? params.amount : undefined,
+    });
+    warrantyId = warranty.id;
+    await updateMotorById(params.actorUserId, params.motor.id, { warrantyId: warranty.id });
+    jobId = await enqueueDocumentJob({
+      companyId: params.companyId,
+      aggregateType: "warranty",
+      aggregateId: warranty.id,
+      slugs: ["engine-warranty", "engine-waybill", "invoice"],
+    });
+  }
 
-  await updateMotorById(params.actorUserId, params.motor.id, { warrantyId: warranty.id });
-
-  const jobId = await enqueueDocumentJob({
-    companyId: params.companyId,
-    aggregateType: "warranty",
-    aggregateId: warranty.id,
-    slugs: ["engine-warranty", "engine-waybill", "invoice"],
-  });
-
-  return { warrantyId: warranty.id, jobId, operationId };
+  return { warrantyId, jobId, operationId };
 }
 
 export async function fetchWarrantyByMotorId(companyId: string, motorId: string) {

@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Download, Laptop, Workflow } from "lucide-react";
+import { Download, Laptop, Receipt, Workflow } from "lucide-react";
 
 import { AccountSettingsPanel } from "@/components/account/account-settings-panel";
 import { SidebarSettingsCard } from "@/components/settings/sidebar-settings-card";
@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { userCopy } from "@/lib/user-copy";
 
@@ -116,7 +117,7 @@ export default function SettingsPage() {
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2">
-                    <Building2 className="size-4 text-primary" />
+                    <Receipt className="size-4 text-primary" />
                     <CardTitle>{userCopy.settings.accounting}</CardTitle>
                   </div>
                   <CardDescription>Списки сотрудников и категорий для операций.</CardDescription>
@@ -126,19 +127,19 @@ export default function SettingsPage() {
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label>Сотрудники</Label>
-                      <textarea
+                      <Textarea
                         value={employeesValue}
                         onChange={(event) => setEmployeesDraft(event.target.value)}
-                        className="min-h-28 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                        className="min-h-28"
                         placeholder={"Саня\nВалера"}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>Специфика бухгалтерии</Label>
-                      <textarea
+                      <Textarea
                         value={specificsValue}
                         onChange={(event) => setSpecificsDraft(event.target.value)}
-                        className="min-h-28 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                        className="min-h-28"
                         placeholder={"аванс\nлогистика"}
                       />
                     </div>
@@ -173,8 +174,10 @@ export default function SettingsPage() {
 
               <Card>
                 <CardHeader>
-                  <Workflow className="size-4 text-primary" />
-                  <CardTitle>{userCopy.settings.workflow}</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Workflow className="size-4 text-primary" />
+                    <CardTitle>{userCopy.settings.workflow}</CardTitle>
+                  </div>
                   <CardDescription>Общие параметры поведения списка моторов.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-wrap gap-2">
@@ -211,8 +214,10 @@ export default function SettingsPage() {
 
               <Card>
                 <CardHeader>
-                  <Download className="size-4 text-primary" />
-                  <CardTitle>{userCopy.settings.importExport}</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Download className="size-4 text-primary" />
+                    <CardTitle>{userCopy.settings.importExport}</CardTitle>
+                  </div>
                   <CardDescription>
                     {isPro
                       ? "Параметры импорта и экспорта, общие для всех устройств."
@@ -262,8 +267,10 @@ export default function SettingsPage() {
           <FadeIn>
             <Card>
               <CardHeader>
-                <Laptop className="size-4 text-primary" />
-                <CardTitle>{userCopy.settings.macOnly}</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Laptop className="size-4 text-primary" />
+                  <CardTitle>{userCopy.settings.macOnly}</CardTitle>
+                </div>
                 <CardDescription>{userCopy.settings.macOnlyHint}</CardDescription>
               </CardHeader>
             </Card>
@@ -278,12 +285,16 @@ export default function SettingsPage() {
     <SettingsShell key={initialSection} initialSection={initialSection}>
       {(section) => (
         <>
-          {renderSection(section)}
           {status ? (
-            <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-foreground">
+            <p
+              role="status"
+              aria-live="polite"
+              className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-foreground"
+            >
               {status}
             </p>
           ) : null}
+          {renderSection(section)}
         </>
       )}
     </SettingsShell>

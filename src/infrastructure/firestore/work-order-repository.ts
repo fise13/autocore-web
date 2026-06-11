@@ -25,6 +25,7 @@ import { formatWorkOrderActivityName } from "@/lib/work-order/work-order-display
 import { normalizeCompanyId } from "@/lib/company-id";
 import { toDateFromFirestore } from "@/lib/firestore-timestamp";
 import { notifyFirestoreSnapshotError } from "@/lib/firestore/snapshot-errors";
+import { stripUndefinedDeep } from "@/lib/firestore/strip-undefined";
 
 const COLLECTION = "workOrders";
 
@@ -145,12 +146,15 @@ export function createWorkOrderRepository() {
 
       const payload: Record<string, unknown> = { ...validated };
       delete payload.id;
-      await setDoc(targetRef, {
-        ...payload,
-        number,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+      await setDoc(
+        targetRef,
+        stripUndefinedDeep({
+          ...payload,
+          number,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }),
+      );
 
       await activity.append(validated.companyId, {
         actor: validated.createdByUserId,
@@ -167,10 +171,13 @@ export function createWorkOrderRepository() {
     },
 
     async update(companyId: string, workOrderId: string, input: UpdateWorkOrderInput) {
-      await updateDoc(workOrderRef(companyId, workOrderId), {
-        ...input,
-        updatedAt: serverTimestamp(),
-      });
+      await updateDoc(
+        workOrderRef(companyId, workOrderId),
+        stripUndefinedDeep({
+          ...input,
+          updatedAt: serverTimestamp(),
+        }),
+      );
     },
 
     async updateStatus(
