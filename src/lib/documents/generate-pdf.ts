@@ -1,14 +1,8 @@
 import "server-only";
 
-import puppeteer from "puppeteer-core";
-
 import { DOCUMENT_BY_SLUG, DocumentSlug } from "@/lib/documents/document-types";
+import { getPuppeteerBrowser } from "@/lib/documents/puppeteer-browser";
 import { documentRenderUrl } from "@/lib/documents/render-token";
-import {
-  resolvePuppeteerExecutablePath,
-  resolvePuppeteerLaunchArgs,
-  shouldUseLambdaChromium,
-} from "@/lib/documents/resolve-puppeteer-executable";
 
 export type PdfFromUrlOptions = {
   companyId: string;
@@ -23,26 +17,22 @@ export async function generatePdfFromRenderUrl(params: PdfFromUrlOptions): Promi
   const isServiceTag = definition.pageSize === "service-tag";
   const url = documentRenderUrl(params);
 
-  const executablePath = await resolvePuppeteerExecutablePath();
-  const args = await resolvePuppeteerLaunchArgs(shouldUseLambdaChromium(executablePath));
-
-  const browser = await puppeteer.launch({
-    args,
-    defaultViewport: isServiceTag ? { width: 264, height: 378 } : { width: 794, height: 1123 },
-    executablePath,
-    headless: true,
-  });
+  const browser = await getPuppeteerBrowser();
+  const page = await browser.newPage();
 
   try {
-    const page = await browser.newPage();
-    const response = await page.goto(url, { waitUntil: "load", timeout: 60_000 });
+    await page.setViewport(
+      isServiceTag ? { width: 264, height: 378 } : { width: 794, height: 1123 },
+    );
+
+    const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45_000 });
     if (!response || !response.ok()) {
       const status = response?.status() ?? "no response";
       throw new Error(`Страница рендера PDF недоступна (${status}): ${url}`);
     }
 
     await page.waitForSelector(".doc-pdf-page, .doc-racing-page, .doc-sr-page, .doc-page", {
-      timeout: 30_000,
+      timeout: 20_000,
     });
     await page.emulateMediaType("print");
 
@@ -62,7 +52,7 @@ export async function generatePdfFromRenderUrl(params: PdfFromUrlOptions): Promi
 
     return Buffer.from(pdf);
   } finally {
-    await browser.close();
+    await page.close().catch(() => undefined);
   }
 }
 

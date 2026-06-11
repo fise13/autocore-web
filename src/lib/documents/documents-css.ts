@@ -12,7 +12,9 @@ const COMPILED_PATHS = [
 
 const PDF_STYLE_PATHS = [
   path.join(process.cwd(), "src/styles/document-pdf-template.css"),
+  path.join(process.cwd(), "src/styles/document-pdf-header.css"),
   path.join(process.cwd(), "src/styles/document-pdf-racing.css"),
+  path.join(process.cwd(), "src/styles/document-pdf-watermark.css"),
 ];
 
 function readPdfStyles(): string {

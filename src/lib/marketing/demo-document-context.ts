@@ -1,4 +1,5 @@
 import { DocumentContext } from "@/lib/documents/document-context";
+import { parseDocumentHeaderConfig } from "@/domain/document-header-config";
 import { MotorEntity } from "@/domain/motor";
 import { WorkOrder } from "@/domain/work-order";
 
@@ -113,6 +114,7 @@ export const demoDocumentContext: DocumentContext = {
     warrantyText: "Гарантия распространяется на двигатель при соблюдении регламента обслуживания.",
     primaryColor: "#0a73f2",
     secondaryColor: "#11131a",
+    headerConfig: parseDocumentHeaderConfig(undefined, "modern"),
   },
   order: demoOrder,
   orderLabel: demoOrder.number,

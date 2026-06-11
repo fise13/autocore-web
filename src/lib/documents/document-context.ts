@@ -6,6 +6,8 @@ import {
   DEFAULT_COMPANY_SECONDARY_COLOR,
   DocumentTheme,
 } from "@/domain/company-branding";
+import { ensureDocumentHeaderConfig } from "@/domain/document-header-config";
+import type { DocumentHeaderConfig } from "@/domain/document-header-config";
 import { CompanyDocumentConfig, parseCompanyDocumentConfig } from "@/domain/document-config";
 import { CompanyEmployee } from "@/domain/rbac";
 import { MotorEntity } from "@/domain/motor";
@@ -15,6 +17,7 @@ import { DocumentPhoto } from "@/lib/documents/render-model/types";
 
 export type DocumentCompanyInfo = {
   name: string;
+  shortName?: string;
   legalName?: string;
   bin?: string;
   bankName?: string;
@@ -31,8 +34,10 @@ export type DocumentCompanyInfo = {
   serviceIntervalKm?: number;
   serviceIntervalMonths?: number;
   logoDataUri?: string;
+  watermarkConfig?: import("@/domain/document-watermark-config").DocumentWatermarkConfig;
   primaryColor: string;
   secondaryColor: string;
+  headerConfig: DocumentHeaderConfig;
   documentConfig?: CompanyDocumentConfig;
 };
 
@@ -99,6 +104,7 @@ export function buildDocumentContext(input: DocumentContextInput): DocumentConte
   return {
     company: {
       name: input.company.legalName?.trim() || input.company.name,
+      shortName: branding.shortName,
       legalName: input.company.legalName,
       slogan: branding.slogan,
       address: input.company.address,
@@ -111,8 +117,10 @@ export function buildDocumentContext(input: DocumentContextInput): DocumentConte
       serviceIntervalKm: branding.serviceIntervalKm ?? input.company.serviceIntervalKm,
       serviceIntervalMonths: branding.serviceIntervalMonths ?? input.company.serviceIntervalMonths,
       logoDataUri: input.logoDataUri,
+      watermarkConfig: branding.watermarkConfig,
       primaryColor: input.company.primaryColor ?? branding.primaryColor ?? DEFAULT_COMPANY_PRIMARY_COLOR,
       secondaryColor: input.company.secondaryColor ?? branding.secondaryColor ?? DEFAULT_COMPANY_SECONDARY_COLOR,
+      headerConfig: ensureDocumentHeaderConfig(branding.headerConfig, branding.documentTheme ?? "modern"),
       documentConfig: {
         ...documentConfig,
         qrLinkUrl: branding.qrLinkUrl ?? documentConfig.qrLinkUrl,

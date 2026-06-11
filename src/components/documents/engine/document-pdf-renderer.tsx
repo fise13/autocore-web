@@ -1,4 +1,6 @@
+import { DocumentPdfHeader } from "@/components/documents/header/document-pdf-header";
 import { DocumentPdfRacingRenderer } from "@/components/documents/engine/document-pdf-racing-renderer";
+import { DocumentWatermarkLayer } from "@/components/documents/watermark/document-watermark-layer";
 import { companyMonogram } from "@/lib/documents/company-brand";
 import {
   DocumentLineItem,
@@ -342,77 +344,56 @@ export function DocumentPdfRenderer({ model }: { model: DocumentRenderModel }) {
     return <DocumentPdfRacingRenderer model={model} />;
   }
 
-  const { brand, meta } = model;
   const signatureSection = model.sections.find((s) => s.key === "signatures");
   const qrSection = model.sections.find((s) => s.key === "qr");
 
   return (
     <main
-      className={cn("doc-pdf-page", model.pageClass, model.themeClass)}
-      style={{ ...model.brandStyle, ...model.typographyVars }}
+      className={cn(
+        "doc-pdf-page",
+        model.pageClass,
+        model.themeClass,
+        model.documentWatermark && `doc-pdf-page--wm-${model.documentWatermark.type}`,
+      )}
+      style={{ ...model.brandStyle, ...model.typographyVars, ...model.header.style }}
     >
-      <header className="doc-pdf-header">
-        <div className="doc-pdf-brand">
-          {brand.logoDataUri ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={brand.logoDataUri} alt={brand.name} className="doc-pdf-logo" />
-          ) : (
-            <div className="doc-pdf-monogram">{model.monogram}</div>
-          )}
-          <div className="doc-pdf-brand-text">
-            <h1>{brand.name}</h1>
-            {brand.slogan ? <p className="doc-pdf-slogan">{brand.slogan}</p> : null}
-            {brand.address ? <p>{brand.address}</p> : null}
-            <p>{[brand.phone, brand.email, brand.website].filter(Boolean).join(" · ") || "—"}</p>
+      {model.documentWatermark ? <DocumentWatermarkLayer watermark={model.documentWatermark} /> : null}
+
+      <div className="doc-pdf-page__surface">
+        <DocumentPdfHeader header={model.header} />
+
+        <div className="doc-pdf-body">{model.sections.map((section) => renderSection(section))}</div>
+
+        <footer className="doc-pdf-footer-block">
+          <div className={cn("doc-pdf-footer-grid", !qrSection && "doc-pdf-footer-grid--no-qr")}>
+            {signatureSection?.key === "signatures" ? (
+              <div className="doc-pdf-signatures">
+                <div className="doc-pdf-sign">
+                  <span>{signatureSection.signatures.executorLabel}</span>
+                  <b>{signatureSection.signatures.executorName}</b>
+                  <div className="doc-pdf-sign-line">подпись</div>
+                </div>
+                <div className="doc-pdf-sign">
+                  <span>{signatureSection.signatures.clientLabel}</span>
+                  <b>{signatureSection.signatures.clientName}</b>
+                  <div className="doc-pdf-sign-line">подпись</div>
+                </div>
+              </div>
+            ) : null}
+            {qrSection?.key === "qr" ? (
+              <div className="doc-pdf-qr">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={qrSection.qr.dataUri} alt="" />
+                <span>{qrSection.qr.label}</span>
+              </div>
+            ) : null}
           </div>
-        </div>
-        <div className="doc-pdf-meta">
-          <span className="doc-pdf-meta-tag">{meta.tag}</span>
-          <h2>{meta.title}</h2>
-          <dl className="doc-pdf-meta-list">
-            <div>
-              <dt>Номер</dt>
-              <dd>{meta.orderLabel}</dd>
-            </div>
-            <div>
-              <dt>Дата</dt>
-              <dd>{meta.documentDate}</dd>
-            </div>
-          </dl>
-        </div>
-      </header>
-
-      <div className="doc-pdf-body">{model.sections.map((section) => renderSection(section))}</div>
-
-      <footer className="doc-pdf-footer-block">
-        <div className={cn("doc-pdf-footer-grid", !qrSection && "doc-pdf-footer-grid--no-qr")}>
-          {signatureSection?.key === "signatures" ? (
-            <div className="doc-pdf-signatures">
-              <div className="doc-pdf-sign">
-                <span>{signatureSection.signatures.executorLabel}</span>
-                <b>{signatureSection.signatures.executorName}</b>
-                <div className="doc-pdf-sign-line">подпись</div>
-              </div>
-              <div className="doc-pdf-sign">
-                <span>{signatureSection.signatures.clientLabel}</span>
-                <b>{signatureSection.signatures.clientName}</b>
-                <div className="doc-pdf-sign-line">подпись</div>
-              </div>
-            </div>
-          ) : null}
-          {qrSection?.key === "qr" ? (
-            <div className="doc-pdf-qr">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qrSection.qr.dataUri} alt="" />
-              <span>{qrSection.qr.label}</span>
-            </div>
-          ) : null}
-        </div>
-        <div className="doc-pdf-footer">
-          <span>{meta.footer}</span>
-          <span>{meta.orderLabel}</span>
-        </div>
-      </footer>
+          <div className="doc-pdf-footer">
+            <span>{model.meta.footer}</span>
+            <span>{model.meta.orderLabel}</span>
+          </div>
+        </footer>
+      </div>
     </main>
   );
 }

@@ -1,0 +1,152 @@
+/* ─── Enterprise document watermark engine ─── */
+
+.doc-pdf-page,
+.doc-racing-page {
+  isolation: isolate;
+}
+
+.doc-pdf-page__surface,
+.doc-racing-page__surface {
+  position: relative;
+  z-index: 1;
+}
+
+.doc-watermark {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+@media print {
+  .doc-watermark {
+    position: fixed;
+    inset: 0;
+  }
+}
+
+.doc-watermark--grayscale .doc-watermark__logo-mark,
+.doc-watermark--grayscale .doc-watermark__brand-logo,
+.doc-watermark--grayscale .doc-watermark__pattern-logo {
+  filter: grayscale(100%) contrast(1.08);
+}
+
+.doc-watermark--multiply .doc-watermark__logo-mark,
+.doc-watermark--multiply .doc-watermark__brand-mark,
+.doc-watermark--multiply .doc-watermark__pattern {
+  mix-blend-mode: multiply;
+}
+
+/* ─── Diagonal logo watermark ─── */
+
+.doc-watermark__logo-mark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--doc-wm-scale, 55%);
+  max-width: 148mm;
+  height: auto;
+  object-fit: contain;
+  opacity: var(--doc-wm-opacity, 0.04);
+  transform: translate(-50%, -50%) rotate(var(--doc-wm-rotation, 30deg));
+  transform-origin: center center;
+}
+
+.doc-watermark--pos-center-left .doc-watermark__logo-mark {
+  left: 38%;
+}
+
+.doc-watermark--pos-center-right .doc-watermark__logo-mark {
+  left: 62%;
+}
+
+/* ─── Full brand mark ─── */
+
+.doc-watermark__brand-mark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.08em;
+  width: var(--doc-wm-scale, 95%);
+  max-width: 200mm;
+  opacity: var(--doc-wm-opacity, 0.02);
+  transform: translate(-50%, -50%) rotate(var(--doc-wm-rotation, 0deg));
+  text-align: center;
+  line-height: 0.92;
+}
+
+.doc-watermark--pos-center-left .doc-watermark__brand-mark {
+  left: 36%;
+}
+
+.doc-watermark--pos-center-right .doc-watermark__brand-mark {
+  left: 64%;
+}
+
+.doc-watermark__brand-logo {
+  width: min(28%, 52mm);
+  height: auto;
+  margin-bottom: 0.35em;
+  object-fit: contain;
+}
+
+.doc-watermark__brand-line {
+  display: block;
+  font-size: clamp(28px, calc(var(--doc-wm-scale, 95%) * 0.34), 92px);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #111111;
+  white-space: nowrap;
+}
+
+/* ─── Repeating certificate pattern ─── */
+
+.doc-watermark__pattern {
+  position: absolute;
+  inset: -8%;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  justify-content: flex-start;
+  padding: var(--doc-wm-repeat-spacing, 140px);
+  opacity: var(--doc-wm-opacity, 0.015);
+}
+
+.doc-watermark__pattern-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  min-height: 28px;
+}
+
+.doc-watermark__pattern-logo {
+  width: auto;
+  height: 22px;
+  max-width: 88px;
+  object-fit: contain;
+}
+
+.doc-watermark__pattern-name {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #111111;
+  white-space: nowrap;
+}
+
+@media print {
+  .doc-watermark__logo-mark,
+  .doc-watermark__brand-logo,
+  .doc-watermark__pattern-logo {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

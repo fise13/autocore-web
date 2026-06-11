@@ -2,11 +2,16 @@
 
 import { ArrowLeft, Download, Printer } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { DOCUMENT_BY_SLUG, DocumentSlug } from "@/lib/documents/document-types";
-import { downloadDocumentPdf, printDocumentPdf } from "@/lib/documents/fetch-document-pdf";
+import {
+  downloadDocumentPdf,
+  downloadPdfBlob,
+  fetchDocumentPdf,
+  printDocumentPdf,
+} from "@/lib/documents/fetch-document-pdf";
 import { mapDocumentError } from "@/lib/documents/map-document-error";
 import { printPreviewInBrowser } from "@/lib/documents/preview-document-output";
 
@@ -26,14 +31,58 @@ export function DocumentPreviewActions({
   const router = useRouter();
   const [busy, setBusy] = useState<"download" | "print" | null>(null);
   const definition = DOCUMENT_BY_SLUG[slug];
+  const prefetchedBlobRef = useRef<Blob | null>(null);
+  const prefetchPromiseRef = useRef<Promise<Blob> | null>(null);
+
+  useEffect(() => {
+    if (!previewReady) {
+      prefetchedBlobRef.current = null;
+      prefetchPromiseRef.current = null;
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      const promise = fetchDocumentPdf(slug, orderId)
+        .then((blob) => {
+          prefetchedBlobRef.current = blob;
+          return blob;
+        })
+        .catch(() => {
+          prefetchedBlobRef.current = null;
+          throw new Error("prefetch failed");
+        });
+      prefetchPromiseRef.current = promise;
+    }, 600);
+
+    return () => window.clearTimeout(timer);
+  }, [previewReady, slug, orderId]);
+
+  async function resolvePdfBlob(): Promise<Blob> {
+    if (prefetchedBlobRef.current) {
+      return prefetchedBlobRef.current;
+    }
+    if (prefetchPromiseRef.current) {
+      try {
+        return await prefetchPromiseRef.current;
+      } catch {
+        // Regenerate on demand below.
+      }
+    }
+    return fetchDocumentPdf(slug, orderId);
+  }
 
   async function handleDownload() {
     setBusy("download");
     onError?.(null);
     try {
-      await downloadDocumentPdf(slug, orderId, `${definition.slug}-${orderId}.pdf`);
+      const blob = await resolvePdfBlob();
+      downloadPdfBlob(blob, `${definition.slug}-${orderId}.pdf`);
     } catch (error) {
-      onError?.(mapDocumentError(error, "Не удалось скачать PDF"));
+      try {
+        await downloadDocumentPdf(slug, orderId, `${definition.slug}-${orderId}.pdf`);
+      } catch (fallbackError) {
+        onError?.(mapDocumentError(fallbackError ?? error, "Не удалось скачать PDF"));
+      }
     } finally {
       setBusy(null);
     }

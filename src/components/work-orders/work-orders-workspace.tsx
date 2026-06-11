@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { SETUP_WIZARD_CATEGORY_PRESETS } from "@/domain/company-config";
@@ -122,6 +122,8 @@ export function WorkOrdersWorkspace() {
   const { profile, isLoading } = useAuth();
   const { registerSyncHandler } = useWorkspace();
   const searchParams = useSearchParams();
+  const routeParams = useParams();
+  const routeOrderId = typeof routeParams?.id === "string" ? routeParams.id : null;
   const companyId = normalizeCompanyId(profile?.companyId);
   const canView = can(profile, "work_orders_view");
   const canEdit = can(profile, "work_orders_edit");
@@ -219,13 +221,13 @@ export function WorkOrdersWorkspace() {
   }, [payrollTransactions, selectedOrderId]);
 
   useEffect(() => {
-    const orderId = searchParams.get("order");
+    const orderId = searchParams.get("order") ?? routeOrderId;
     if (!orderId || orders.length === 0) return;
     if (orders.some((order) => order.id === orderId)) {
       setSelectedOrderId(orderId);
       setIsCreating(false);
     }
-  }, [orders, searchParams]);
+  }, [orders, routeOrderId, searchParams]);
 
   useEffect(() => {
     setListFilter(parseWorkOrdersFilter(searchParams.get("filter")));

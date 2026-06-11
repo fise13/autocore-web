@@ -65,7 +65,11 @@ export function WorkOrderDocumentsPanel({
     setBusySlug(slug);
     setError(null);
     try {
-      await downloadDocumentPdf(slug, orderId);
+      const definition = DOCUMENT_DEFINITIONS.find((entry) => entry.slug === slug);
+      const persisted = definition ? documentsByType.get(definition.type) : undefined;
+      await downloadDocumentPdf(slug, orderId, `${slug}-${orderId}.pdf`, {
+        cachedDownloadUrl: persisted?.downloadUrl,
+      });
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Не удалось скачать PDF");
     } finally {

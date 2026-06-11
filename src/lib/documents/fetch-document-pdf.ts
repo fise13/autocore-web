@@ -56,22 +56,49 @@ export async function fetchDocumentPdf(
   return blob;
 }
 
-export async function downloadDocumentPdf(
-  slug: DocumentSlug,
-  aggregateId: string,
-  filename?: string,
-  options?: { aggregateType?: DocumentAggregateType },
-): Promise<void> {
-  const blob = await fetchDocumentPdf(slug, aggregateId, options);
+export function downloadPdfBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = filename ?? `${slug}-${aggregateId}.pdf`;
+  anchor.download = filename;
   anchor.rel = "noopener";
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+export async function downloadDocumentPdfFromUrl(downloadUrl: string, filename: string): Promise<void> {
+  const response = await fetch(downloadUrl, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error("Не удалось скачать сохранённый PDF");
+  }
+  const blob = await response.blob();
+  if (blob.size === 0) {
+    throw new Error("Сервер вернул пустой PDF");
+  }
+  downloadPdfBlob(blob, filename);
+}
+
+export async function downloadDocumentPdf(
+  slug: DocumentSlug,
+  aggregateId: string,
+  filename?: string,
+  options?: { aggregateType?: DocumentAggregateType; cachedDownloadUrl?: string },
+): Promise<void> {
+  const resolvedFilename = filename ?? `${slug}-${aggregateId}.pdf`;
+  const cachedUrl = options?.cachedDownloadUrl?.trim();
+  if (cachedUrl) {
+    try {
+      await downloadDocumentPdfFromUrl(cachedUrl, resolvedFilename);
+      return;
+    } catch {
+      // Fall back to on-demand generation.
+    }
+  }
+
+  const blob = await fetchDocumentPdf(slug, aggregateId, options);
+  downloadPdfBlob(blob, resolvedFilename);
 }
 
 export async function printDocumentPdf(
@@ -104,7 +131,7 @@ export async function printDocumentPdf(
       };
 
       popup.addEventListener("load", triggerPrint);
-      window.setTimeout(triggerPrint, 1200);
+      window.setTimeout(triggerPrint, 450);
       return;
     }
 
@@ -151,7 +178,7 @@ export async function printDocumentPdf(
     };
 
     document.body.appendChild(frame);
-    window.setTimeout(triggerFramePrint, 1200);
+    window.setTimeout(triggerFramePrint, 450);
   });
 }
 

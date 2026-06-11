@@ -5,6 +5,8 @@ import { doc, onSnapshot } from "firebase/firestore";
 
 import { CompanyEntity } from "@/domain/company";
 import { companyBrandingFromRecord } from "@/domain/company-branding";
+import { DocumentHeaderVisibility } from "@/domain/document-header-config";
+import { DocumentWatermarkConfig } from "@/domain/document-watermark-config";
 import { parseCompanyDocumentConfig } from "@/domain/document-config";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
@@ -28,6 +30,12 @@ export type CompanyBrandingProfile = Pick<
   | "secondaryColor"
   | "documentTheme"
 > & {
+  shortName?: string;
+  headerBackgroundColor?: string;
+  headerTextColor?: string;
+  headerLogoMaxHeightMm?: number;
+  documentWatermark?: DocumentWatermarkConfig;
+  documentHeaderVisibility?: DocumentHeaderVisibility;
   warrantyTemplateId?: import("@/domain/document-config").WarrantyTemplateId;
   documentSections?: import("@/domain/document-config").DocumentSectionConfig;
   qrLinkUrl?: string;
@@ -72,6 +80,7 @@ export function useCompanyBranding(companyId: string | null | undefined) {
               : undefined;
         setProfile({
           name: String(data.name ?? ""),
+          shortName: branding.shortName,
           legalName: typeof data.legalName === "string" ? data.legalName : undefined,
           address: typeof data.address === "string" ? data.address : undefined,
           phone: typeof data.phone === "string" ? data.phone : undefined,
@@ -87,6 +96,11 @@ export function useCompanyBranding(companyId: string | null | undefined) {
           primaryColor: branding.primaryColor,
           secondaryColor: branding.secondaryColor,
           documentTheme: branding.documentTheme,
+          headerBackgroundColor: branding.headerConfig.headerBackgroundColor,
+          headerTextColor: branding.headerConfig.headerTextColor,
+          headerLogoMaxHeightMm: branding.headerConfig.logoMaxHeightMm,
+          documentWatermark: branding.watermarkConfig,
+          documentHeaderVisibility: branding.headerConfig.visibility,
           warrantyTemplateId: documentConfig.warrantyTemplateId,
           documentSections: documentConfig.sections,
           qrLinkUrl: documentConfig.qrLinkUrl,

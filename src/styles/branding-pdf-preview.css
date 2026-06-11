@@ -1,0 +1,67 @@
+/* ─── Branding settings: scaled A4 live preview ─── */
+
+.branding-preview-viewport {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(180deg, #f1f5f9 0%, #e8edf3 100%);
+}
+
+.dark .branding-preview-viewport {
+  background: linear-gradient(180deg, hsl(var(--muted) / 0.45) 0%, hsl(var(--muted) / 0.25) 100%);
+}
+
+.branding-preview-trigger {
+  display: block;
+  width: 100%;
+  cursor: zoom-in;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: center;
+  border-radius: 10px;
+  transition: box-shadow 0.2s ease;
+}
+
+.branding-preview-trigger:hover {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary, #111827) 25%, transparent);
+}
+
+.branding-preview-trigger:focus-visible {
+  outline: 2px solid var(--ring, #111827);
+  outline-offset: 2px;
+}
+
+.branding-preview-scale-outer {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.branding-preview-scale-inner {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  margin: 0;
+}
+
+.doc-pdf-page--branding-preview {
+  margin: 0;
+  min-height: 297mm;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 8px 28px rgba(15, 23, 42, 0.1);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.branding-preview-dialog-body {
+  max-height: min(88vh, 920px);
+  overflow: auto;
+  padding: 20px;
+  background: linear-gradient(180deg, #f1f5f9 0%, #e8edf3 100%);
+}
+
+.branding-preview-hint {
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--muted-foreground, #64748b);
+}

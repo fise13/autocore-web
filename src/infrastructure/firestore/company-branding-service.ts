@@ -2,12 +2,15 @@ import { doc, updateDoc } from "firebase/firestore";
 
 import { getFirebaseAuth, getFirestoreDb } from "@/infrastructure/firebase/client";
 import { DocumentSectionConfig, WarrantyTemplateId } from "@/domain/document-config";
+import { DocumentHeaderVisibility } from "@/domain/document-header-config";
+import { DocumentWatermarkConfig } from "@/domain/document-watermark-config";
 import { CompanyBrandingProfile } from "@/hooks/use-company-branding";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { prepareLogoFile } from "@/lib/company/prepare-logo-file";
 
 export type SaveCompanyBrandingInput = {
   legalName?: string;
+  shortName?: string;
   slogan?: string;
   phone?: string;
   email?: string;
@@ -20,6 +23,11 @@ export type SaveCompanyBrandingInput = {
   serviceIntervalMonths?: string;
   primaryColor?: string;
   secondaryColor?: string;
+  headerBackgroundColor?: string;
+  headerTextColor?: string;
+  headerLogoMaxHeightMm?: string;
+  documentWatermark?: DocumentWatermarkConfig;
+  documentHeaderVisibility?: DocumentHeaderVisibility;
   logoUrl?: string;
   documentTheme?: "classic" | "modern" | "premium" | "racing";
   warrantyTemplateId?: WarrantyTemplateId;
@@ -79,8 +87,21 @@ export async function uploadCompanyLogo(_companyId: string, file: File): Promise
 
 export async function saveCompanyBranding(companyId: string, input: SaveCompanyBrandingInput): Promise<void> {
   const normalizedCompanyId = normalizeCompanyId(companyId);
-  const payload: Record<string, string | number | DocumentSectionConfig | undefined> = {
+  const logoHeightMm = input.headerLogoMaxHeightMm?.trim();
+  const parsedLogoHeight =
+    logoHeightMm && Number.isFinite(Number(logoHeightMm)) ? Number(logoHeightMm) : undefined;
+
+  const payload: Record<
+    string,
+    | string
+    | number
+    | DocumentSectionConfig
+    | DocumentHeaderVisibility
+    | DocumentWatermarkConfig
+    | undefined
+  > = {
     legalName: input.legalName?.trim() || undefined,
+    shortName: input.shortName?.trim() || undefined,
     slogan: input.slogan?.trim() || undefined,
     phone: input.phone?.trim() || undefined,
     email: input.email?.trim() || undefined,
@@ -91,6 +112,11 @@ export async function saveCompanyBranding(companyId: string, input: SaveCompanyB
     warrantyText: input.warrantyText?.trim() || undefined,
     primaryColor: input.primaryColor?.trim() || undefined,
     secondaryColor: input.secondaryColor?.trim() || undefined,
+    headerBackgroundColor: input.headerBackgroundColor?.trim() || undefined,
+    headerTextColor: input.headerTextColor?.trim() || undefined,
+    headerLogoMaxHeightMm: parsedLogoHeight,
+    documentWatermark: input.documentWatermark,
+    documentHeaderVisibility: input.documentHeaderVisibility,
     logoUrl: input.logoUrl?.trim() || undefined,
     documentTheme: input.documentTheme,
     warrantyTemplateId: input.warrantyTemplateId,
@@ -125,6 +151,7 @@ export async function saveCompanyBranding(companyId: string, input: SaveCompanyB
 export function brandingDraftFromProfile(profile: CompanyBrandingProfile): SaveCompanyBrandingInput {
   return {
     legalName: profile.legalName ?? profile.name,
+    shortName: profile.shortName ?? "",
     slogan: profile.slogan ?? "",
     phone: profile.phone ?? "",
     email: profile.email ?? "",
@@ -137,6 +164,13 @@ export function brandingDraftFromProfile(profile: CompanyBrandingProfile): SaveC
     serviceIntervalMonths: profile.serviceIntervalMonths ? String(profile.serviceIntervalMonths) : "",
     primaryColor: profile.primaryColor,
     secondaryColor: profile.secondaryColor,
+    headerBackgroundColor: profile.headerBackgroundColor,
+    headerTextColor: profile.headerTextColor,
+    headerLogoMaxHeightMm: profile.headerLogoMaxHeightMm
+      ? String(profile.headerLogoMaxHeightMm)
+      : "",
+    documentWatermark: profile.documentWatermark,
+    documentHeaderVisibility: profile.documentHeaderVisibility,
     logoUrl: profile.logoUrl,
     documentTheme: profile.documentTheme,
     warrantyTemplateId: profile.warrantyTemplateId,

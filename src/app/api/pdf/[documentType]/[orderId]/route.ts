@@ -32,11 +32,25 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const documentContext = await resolveDocumentContext(access.companyId, orderId, aggregateType);
     await assertOrderCompanyAccess(access.companyId, documentContext.order.companyId);
 
-    const { generateDocumentPdf } = await import("@/lib/documents/generate-pdf");
-    const pdf = await generateDocumentPdf(slug, access.companyId, orderId, {
-      theme: documentContext.theme,
-      aggregateType,
-    });
+    const forceFresh = request.nextUrl.searchParams.get("fresh") === "1";
+    let pdf: Buffer | null = null;
+
+    if (!forceFresh && aggregateType === "work_order") {
+      const { readCachedWorkOrderPdf } = await import("@/lib/documents/resolve-cached-document-pdf");
+      pdf = await readCachedWorkOrderPdf({
+        companyId: access.companyId,
+        workOrderId: orderId,
+        slug,
+      });
+    }
+
+    if (!pdf) {
+      const { generateDocumentPdf } = await import("@/lib/documents/generate-pdf");
+      pdf = await generateDocumentPdf(slug, access.companyId, orderId, {
+        theme: documentContext.theme,
+        aggregateType,
+      });
+    }
     const definition = DOCUMENT_BY_SLUG[slug];
     const inline = request.nextUrl.searchParams.get("inline") === "1";
     const filename = `${definition.slug}-${orderId}.pdf`;

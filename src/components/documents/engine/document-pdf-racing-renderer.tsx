@@ -1,3 +1,5 @@
+import { DocumentPdfHeader } from "@/components/documents/header/document-pdf-header";
+import { DocumentWatermarkLayer } from "@/components/documents/watermark/document-watermark-layer";
 import { DocumentRenderModel } from "@/lib/documents/render-model/types";
 import { RacingViewModel } from "@/lib/documents/render-model/build-racing-view-model";
 import { cn } from "@/lib/utils";
@@ -90,22 +92,19 @@ export function DocumentPdfRacingRenderer({ model }: { model: DocumentRenderMode
 
   return (
     <main
-      className={cn("doc-racing-page", model.pageClass)}
-      style={{ ...model.brandStyle, ...model.typographyVars }}
+      className={cn(
+        "doc-racing-page",
+        model.pageClass,
+        model.documentWatermark && `doc-racing-page--wm-${model.documentWatermark.type}`,
+      )}
+      style={{ ...model.brandStyle, ...model.typographyVars, ...model.header.style }}
     >
-      <header className="doc-racing-top">
-        <div className="doc-racing-top-left">
-          <p className="doc-racing-order">ORDER № {racing.orderRef}</p>
-          <p className="doc-racing-date">{racing.documentDate}</p>
-        </div>
-        <div className="doc-racing-top-right">
-          {racing.companyLines.map((line) => (
-            <p key={line}>{line}</p>
-          ))}
-        </div>
-      </header>
+      {model.documentWatermark ? <DocumentWatermarkLayer watermark={model.documentWatermark} /> : null}
 
-      <div className="doc-racing-title-row">
+      <div className="doc-racing-page__surface">
+        <DocumentPdfHeader header={model.header} />
+
+        <div className="doc-racing-title-row">
         <div className="doc-racing-title-main">
           <h1>{racing.vehicleTitle}</h1>
           <p className="doc-racing-vin">— VIN {racing.vin} —</p>
@@ -196,10 +195,11 @@ export function DocumentPdfRacingRenderer({ model }: { model: DocumentRenderMode
 
       <CheckeredBar />
 
-      <div className="doc-racing-bottom">
-        <span>{racing.edgeLeft}</span>
-        <span>ОФОРМИЛ: {racing.executorName.toUpperCase()}</span>
-        <span>{racing.edgeRight}</span>
+        <div className="doc-racing-bottom">
+          <span>{racing.edgeLeft}</span>
+          <span>ОФОРМИЛ: {racing.executorName.toUpperCase()}</span>
+          <span>{racing.edgeRight}</span>
+        </div>
       </div>
     </main>
   );

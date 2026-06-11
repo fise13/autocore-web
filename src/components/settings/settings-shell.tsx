@@ -29,7 +29,7 @@ const allSections: { id: SettingsSectionId; label: string; icon: typeof UserCirc
 const sectionSubtitles: Record<SettingsSectionId, string> = {
   account: userCopy.settings.subtitleAccount,
   company: userCopy.settings.subtitleCompany,
-  branding: "Логотип, контакты и фирменные цвета для PDF-документов клиентам.",
+  branding: "Фирменный стиль PDF: логотип, тема, шапка и живое превью документа.",
   accounting: userCopy.settings.subtitleAccounting,
   dataCleanup: userCopy.settings.subtitleDataCleanup,
   macOnly: userCopy.settings.macOnlyHint,
@@ -72,7 +72,12 @@ export function SettingsShell({ children, initialSection = "account" }: Settings
   }
 
   return (
-    <section className="mx-auto flex w-full max-w-[1100px] flex-col gap-5 lg:flex-row lg:items-start">
+    <section
+      className={cn(
+        "mx-auto flex w-full flex-col gap-5 lg:flex-row lg:items-start",
+        activeSection === "branding" ? "max-w-[1280px]" : "max-w-[1100px]",
+      )}
+    >
       <aside className="w-full shrink-0 rounded-xl border bg-card p-2 lg:sticky lg:top-4 lg:w-56 lg:self-start">
         <LayoutGroup id="settings-nav">
           <nav className="settings-nav-scroll flex flex-row gap-1 overflow-x-auto lg:flex-col">

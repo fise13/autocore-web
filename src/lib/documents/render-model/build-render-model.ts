@@ -2,6 +2,10 @@ import { parseCompanyDocumentConfig } from "@/domain/document-config";
 import { DocumentTheme } from "@/domain/company-branding";
 import { STATUS_LABELS } from "@/components/work-orders/work-order-copy";
 import { companyBrandStyle, companyMonogram } from "@/lib/documents/company-brand";
+import { ensureDocumentHeaderConfig } from "@/domain/document-header-config";
+import { ensureDocumentWatermarkConfig } from "@/domain/document-watermark-config";
+import { buildDocumentHeaderModel } from "@/lib/documents/header/build-document-header-model";
+import { buildWatermarkRenderModel } from "@/lib/documents/watermark/build-watermark-render-model";
 import { DocumentContext } from "@/lib/documents/document-context";
 import {
   buildLaborLinesForDocument,
@@ -390,6 +394,28 @@ export function buildDocumentRenderModel(
       ? meta.disclaimer.replace(/\d+\s+рабочих\s+дней?/i, `${invoiceDays} рабочих дней`)
       : meta.disclaimer;
 
+  const headerConfig = ensureDocumentHeaderConfig(company.headerConfig, theme);
+  const watermarkConfig = ensureDocumentWatermarkConfig(company.watermarkConfig, theme);
+
+  const header = buildDocumentHeaderModel({
+    theme,
+    companyName: company.name,
+    shortName: company.shortName,
+    slogan: company.slogan,
+    address: company.address,
+    phone: company.phone,
+    email: company.email,
+    website: company.website,
+    logoDataUri: company.logoDataUri,
+    primaryColor: company.primaryColor,
+    headerConfig,
+    documentTitle: meta.title,
+    documentTag: documentTag,
+    orderLabel: context.orderLabel,
+    documentDate: formatDocumentDate(documentOrderDate(context)),
+    qrDataUri: qrDataUri,
+  });
+
   return {
     meta: {
       slug,
@@ -406,8 +432,10 @@ export function buildDocumentRenderModel(
       primaryHint: null,
       executorName: documentAssigneeSummary(context),
     },
+    header,
     brand: {
       name: company.name,
+      shortName: company.shortName,
       legalName: company.legalName,
       slogan: company.slogan,
       address: company.address,
@@ -420,10 +448,15 @@ export function buildDocumentRenderModel(
     },
     theme,
     typographyVars: typographyStyleVars(typography),
-    brandStyle: companyBrandStyle(company),
+    brandStyle: companyBrandStyle(company, theme),
     themeClass: documentThemeClass(theme),
     pageClass: `doc-pdf-page--${variant}`,
     watermark: meta.title,
+    documentWatermark: buildWatermarkRenderModel({
+      config: watermarkConfig,
+      logoDataUri: company.logoDataUri,
+      companyName: company.shortName?.trim() || company.name,
+    }),
     monogram: companyMonogram(company.name),
     sections: buildSections(context, slug, variant, enabledKeys, warranty, {
       qrDataUri,

@@ -1,6 +1,7 @@
 import { WorkOrder } from "@/domain/work-order";
 import { DocumentContext } from "@/lib/documents/document-context";
 import { DEFAULT_COMPANY_PRIMARY_COLOR, DEFAULT_COMPANY_SECONDARY_COLOR } from "@/domain/company-branding";
+import { parseDocumentHeaderConfig } from "@/domain/document-header-config";
 
 /** Lightweight context for client-side document policy (no Firestore reads). */
 export function buildDocumentContextFromOrder(order: WorkOrder): DocumentContext {
@@ -9,6 +10,7 @@ export function buildDocumentContextFromOrder(order: WorkOrder): DocumentContext
       name: "Сервис",
       primaryColor: DEFAULT_COMPANY_PRIMARY_COLOR,
       secondaryColor: DEFAULT_COMPANY_SECONDARY_COLOR,
+      headerConfig: parseDocumentHeaderConfig(undefined, "modern"),
     },
     order,
     orderLabel: order.number,

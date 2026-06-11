@@ -4,6 +4,17 @@ import {
   type DocumentSectionConfig,
   type WarrantyTemplateId,
 } from "@/domain/document-config";
+import {
+  parseDocumentHeaderConfig,
+  type DocumentHeaderConfig,
+  type DocumentHeaderVisibility,
+} from "@/domain/document-header-config";
+import {
+  parseDocumentWatermarkConfig,
+  type DocumentWatermarkConfig,
+} from "@/domain/document-watermark-config";
+
+export type { DocumentHeaderConfig, DocumentHeaderVisibility, DocumentWatermarkConfig };
 
 export const DOCUMENT_THEMES = ["classic", "modern", "premium", "racing"] as const;
 
@@ -12,6 +23,7 @@ export type DocumentTheme = (typeof DOCUMENT_THEMES)[number];
 export type { CompanyDocumentConfig, DocumentSectionConfig, WarrantyTemplateId };
 
 export type CompanyBranding = {
+  shortName?: string;
   documentTheme?: DocumentTheme;
   slogan?: string;
   email?: string;
@@ -28,6 +40,8 @@ export type CompanyBranding = {
   serviceIntervalMonths?: number;
   primaryColor: string;
   secondaryColor: string;
+  watermarkConfig: DocumentWatermarkConfig;
+  headerConfig: DocumentHeaderConfig;
 };
 
 export const DEFAULT_COMPANY_PRIMARY_COLOR = "#111827";
@@ -64,8 +78,13 @@ export function companyBrandingFromRecord(data: Record<string, unknown> | null |
       : "modern";
 
   const documentConfig = parseCompanyDocumentConfig(data ?? undefined);
+  const primaryColor = normalizeHexColor(
+    typeof data?.primaryColor === "string" ? data.primaryColor : undefined,
+    DEFAULT_COMPANY_PRIMARY_COLOR,
+  );
 
   return {
+    shortName: typeof data?.shortName === "string" ? data.shortName : undefined,
     documentTheme,
     slogan: typeof data?.slogan === "string" ? data.slogan : undefined,
     email: typeof data?.email === "string" ? data.email : undefined,
@@ -80,14 +99,13 @@ export function companyBrandingFromRecord(data: Record<string, unknown> | null |
     invoiceValidityDays: documentConfig.invoiceValidityDays,
     serviceIntervalKm: Number.isFinite(serviceIntervalKm) ? serviceIntervalKm : undefined,
     serviceIntervalMonths: Number.isFinite(serviceIntervalMonths) ? serviceIntervalMonths : undefined,
-    primaryColor: normalizeHexColor(
-      typeof data?.primaryColor === "string" ? data.primaryColor : undefined,
-      DEFAULT_COMPANY_PRIMARY_COLOR,
-    ),
+    primaryColor,
     secondaryColor: normalizeHexColor(
       typeof data?.secondaryColor === "string" ? data.secondaryColor : undefined,
       DEFAULT_COMPANY_SECONDARY_COLOR,
     ),
+    watermarkConfig: parseDocumentWatermarkConfig(data ?? undefined, documentTheme),
+    headerConfig: parseDocumentHeaderConfig(data ?? undefined, documentTheme),
   };
 }
 
