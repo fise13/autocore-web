@@ -41,6 +41,7 @@ export type CompanyBrandingProfile = Pick<
   qrLinkUrl?: string;
   documentFooter?: string;
   invoiceValidityDays?: number;
+  showServiceLogbook?: boolean;
 };
 
 const emptyProfile: CompanyBrandingProfile = {
@@ -106,6 +107,7 @@ export function useCompanyBranding(companyId: string | null | undefined) {
           qrLinkUrl: documentConfig.qrLinkUrl,
           documentFooter: documentConfig.documentFooter,
           invoiceValidityDays: documentConfig.invoiceValidityDays,
+          showServiceLogbook: branding.showServiceLogbook,
         });
         setIsLoading(false);
       },

@@ -84,6 +84,23 @@ function LogbookRail({ points }: { points: RacingViewModel["logbook"] }) {
   );
 }
 
+function MotorDetailGrid({ fields }: { fields: RacingViewModel["motorDetailFields"] }) {
+  if (fields.length === 0) {
+    return <p className="doc-racing-empty">Данные двигателя не указаны</p>;
+  }
+
+  return (
+    <dl className="doc-racing-motor-grid">
+      {fields.map((field) => (
+        <div className="doc-racing-motor-field" key={field.label}>
+          <dt>{field.label}</dt>
+          <dd>{field.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 export function DocumentPdfRacingRenderer({ model }: { model: DocumentRenderModel }) {
   const racing = model.racing;
   if (!racing) return null;
@@ -158,7 +175,7 @@ export function DocumentPdfRacingRenderer({ model }: { model: DocumentRenderMode
         </div>
       </section>
 
-      <div className="doc-racing-main">
+      <div className={cn("doc-racing-main", !racing.showServiceLogbook && "doc-racing-main--single")}>
         <div className="doc-racing-pit">
           <h3>ЧТО СДЕЛАЛИ — ПИТ-СТОП</h3>
           <PitStopList laborRows={racing.laborRows} partRows={racing.partRows} />
@@ -166,11 +183,18 @@ export function DocumentPdfRacingRenderer({ model }: { model: DocumentRenderMode
             <strong>{racing.grandTotal}</strong>
           </div>
         </div>
-        <div className="doc-racing-log">
-          <h3>БОРТЖУРНАЛ</h3>
-          {racing.logbookSubtitle ? <p className="doc-racing-log-sub">{racing.logbookSubtitle}</p> : null}
-          <LogbookRail points={racing.logbook} />
-        </div>
+        {racing.showServiceLogbook ? (
+          <div className="doc-racing-log">
+            <h3>БОРТЖУРНАЛ</h3>
+            {racing.logbookSubtitle ? <p className="doc-racing-log-sub">{racing.logbookSubtitle}</p> : null}
+            <LogbookRail points={racing.logbook} />
+          </div>
+        ) : (
+          <div className="doc-racing-motor">
+            <h3>ДВИГАТЕЛЬ</h3>
+            <MotorDetailGrid fields={racing.motorDetailFields} />
+          </div>
+        )}
       </div>
 
       {model.meta.disclaimer ? (

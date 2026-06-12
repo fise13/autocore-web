@@ -18,6 +18,7 @@ import { CompanySpecificCategoryConfig } from "@/domain/company-config";
 import { WARRANTY_TEMPLATE_IDS } from "@/domain/document-config";
 import { WorkOrder, WorkOrderAssigneeRole, WorkOrderLaborPricingMode, WorkOrderMotorOutcome } from "@/domain/work-order";
 import { getWarrantyTemplate } from "@/lib/documents/warranty/warranty-templates";
+import { formatMotorLineLabel } from "@/lib/motors/format-motor-display-name";
 import { ClientEntity } from "@/domain/client";
 import { VehicleEntity } from "@/domain/vehicle";
 import { InventoryItem } from "@/domain/inventory";
@@ -316,14 +317,21 @@ export function WorkOrderComposer({
     [inventoryItems],
   );
   const partNameOptions = useMemo(
-    () => inventoryItems.map((item) => ({ value: item.name, label: item.sku })),
+    () =>
+      inventoryItems.map((item) => ({
+        value: item.name,
+        label: item.sku ? `${item.name} · ${item.sku}` : item.name,
+      })),
     [inventoryItems],
   );
   const motorSerialOptions = useMemo(
     () =>
       availableMotors.map((motor) => ({
         value: motor.serialCode,
-        label: [motor.serialCode, motor.brandName, motor.engineCode, motor.configuration]
+        label: [
+          formatMotorLineLabel(motor, { includeSerial: true }),
+          motor.serialCode !== formatMotorLineLabel(motor) ? motor.serialCode : null,
+        ]
           .filter(Boolean)
           .join(" · "),
       })),
@@ -799,7 +807,7 @@ export function WorkOrderComposer({
                   empty="Двигатели не добавлены"
                   items={form.motorLines.map(
                     (line) =>
-                      `${line.serialCode} · ${line.outcome === "install" ? "установка" : "продажа"} · ${money(line.unitPrice)}`,
+                      `${formatMotorLineLabel(line, { includeSerial: true })} · ${line.outcome === "install" ? "установка" : "продажа"} · ${money(line.unitPrice)}`,
                   )}
                   onRemove={onRemoveMotor}
                 />

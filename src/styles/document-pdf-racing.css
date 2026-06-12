@@ -211,6 +211,56 @@
   min-height: 95mm;
 }
 
+.doc-racing-main--single {
+  grid-template-columns: 1fr;
+}
+
+.doc-racing-main--single .doc-racing-motor {
+  margin-top: 4px;
+}
+
+.doc-racing-main--single .doc-racing-motor-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.doc-racing-motor h3 {
+  margin: 0 0 8px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--racing-muted);
+}
+
+.doc-racing-motor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  margin: 0;
+}
+
+.doc-racing-motor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.doc-racing-motor-field dt {
+  margin: 0;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--racing-muted);
+}
+
+.doc-racing-motor-field dd {
+  margin: 0;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--racing-ink);
+}
+
 .doc-racing-pit h3,
 .doc-racing-log h3 {
   margin: 0 0 8px;

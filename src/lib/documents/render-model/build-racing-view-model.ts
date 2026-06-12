@@ -5,11 +5,13 @@ import {
   documentAssigneeSummary,
   documentLaborLineTotal,
   documentOrderDate,
+  documentPrimaryMotor,
+  documentPrimaryMotorEntity,
 } from "@/lib/documents/document-helpers";
 import { addMonths } from "@/lib/documents/format";
 import { resolveWarrantyForDocument } from "@/lib/documents/warranty/resolve-warranty";
 import { formatDocumentDate, formatDocumentDateShort, formatDocumentMoney } from "@/lib/documents/format";
-import { DocumentLineItem } from "@/lib/documents/render-model/types";
+import { DocumentFieldRow, DocumentLineItem } from "@/lib/documents/render-model/types";
 import {
   buildLogbookTimeline,
   buildNextServiceInsight,
@@ -18,6 +20,7 @@ import {
   documentReleaseDate,
   documentVehicleTitle,
 } from "@/lib/documents/work-order-insights";
+import { formatMotorLineLabel } from "@/lib/motors/format-motor-display-name";
 
 export type RacingLogbookPoint = {
   id: string;
@@ -48,6 +51,8 @@ export type RacingViewModel = {
   laborRows: DocumentLineItem[];
   partRows: DocumentLineItem[];
   logbook: RacingLogbookPoint[];
+  showServiceLogbook: boolean;
+  motorDetailFields: DocumentFieldRow[];
   clientName: string;
   executorName: string;
   visitNote: string | null;
@@ -76,20 +81,38 @@ function buildPartRows(context: DocumentContext): DocumentLineItem[] {
   const rows: DocumentLineItem[] = context.order.partLines.map((line) => ({
     id: line.id,
     title: line.name,
-    subtitle: line.sku ? `Арт. ${line.sku}` : "Запчасть",
+    subtitle: "Запчасть",
     quantity: String(line.quantity),
     amount: formatDocumentMoney(line.quantity * line.unitPrice),
   }));
   for (const line of context.order.motorLines) {
     rows.push({
       id: line.id,
-      title: [line.brandName, line.engineCode, line.serialCode].filter(Boolean).join(" "),
+      title: formatMotorLineLabel(line),
       subtitle: line.outcome === "sell" ? "Продажа" : "Установка",
       quantity: "1",
       amount: formatDocumentMoney(line.unitPrice),
     });
   }
   return rows;
+}
+
+function buildMotorDetailFields(context: DocumentContext): DocumentFieldRow[] {
+  const motorLine = documentPrimaryMotor(context);
+  const motorEntity = documentPrimaryMotorEntity(context);
+  if (!motorLine) return [];
+
+  return [
+    { label: "Двигатель", value: formatMotorLineLabel(motorLine, { includeSerial: true }) || "—" },
+    { label: "Серийный номер", value: motorLine.serialCode || "—" },
+    {
+      label: "Марка / код",
+      value: [motorLine.brandName, motorLine.engineCode].filter(Boolean).join(" ") || "—",
+    },
+    { label: "Комплектация", value: motorLine.configuration || "—" },
+    { label: "Коробка передач", value: motorEntity?.transmission?.trim() || "—" },
+    { label: "Стоимость", value: formatDocumentMoney(motorLine.unitPrice) },
+  ].filter((field) => field.value !== "—" || field.label === "Двигатель");
 }
 
 function visitCountLabel(count: number): string {
@@ -155,8 +178,9 @@ function buildRacingLogbook(
 
 export function buildRacingViewModel(
   context: DocumentContext,
-  options?: { disclaimer?: string },
+  options?: { disclaimer?: string; showServiceLogbook?: boolean },
 ): RacingViewModel {
+  const showServiceLogbook = options?.showServiceLogbook !== false;
   const profile = classifyServiceOrder(context);
   const mileage = context.order.mileage || context.vehicle?.currentMileage || 0;
   const milestone = racingMilestone(mileage);
@@ -196,10 +220,13 @@ export function buildRacingViewModel(
     }
   }
 
-  const logbook = buildRacingLogbook(context, profile, {
-    warrantyUntil,
-    warrantyKm: warrantyPreset.km,
-  });
+  const logbook = showServiceLogbook
+    ? buildRacingLogbook(context, profile, {
+        warrantyUntil,
+        warrantyKm: warrantyPreset.km,
+      })
+    : [];
+  const motorDetailFields = !showServiceLogbook ? buildMotorDetailFields(context) : [];
 
   const companyLines = [
     context.company.address,
@@ -229,15 +256,17 @@ export function buildRacingViewModel(
     nextServiceLabel: motorOrder ? "ГАРАНТИЙНЫЙ ПРОБЕГ" : "СЛЕДУЮЩАЯ ЗАМЕНА",
     nextServiceKm,
     nextServiceSub,
-    logbookSubtitle: logbookSubtitle(logbook),
+    logbookSubtitle: showServiceLogbook ? logbookSubtitle(logbook) : null,
     milestoneTarget: milestone.target,
     milestoneRemaining: milestone.remaining,
     laborRows: buildLaborRows(context),
     partRows: buildPartRows(context),
     logbook,
+    showServiceLogbook,
+    motorDetailFields,
     clientName: documentClientName(context),
     executorName: documentAssigneeSummary(context),
-    visitNote: visitNote(logbook),
+    visitNote: showServiceLogbook ? visitNote(logbook) : null,
     disclaimer:
       options?.disclaimer?.trim() ||
       context.company.warrantyText?.trim() ||

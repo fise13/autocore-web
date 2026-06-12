@@ -15,6 +15,7 @@ import {
 import { buildDocumentContext, DocumentContext } from "@/lib/documents/document-context";
 import { resolveCompanyLogoDataUri } from "@/lib/documents/resolve-company-logo";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { formatMotorLineLabel } from "@/lib/motors/format-motor-display-name";
 
 async function fetchMotorById(companyId: string, motorId: string): Promise<MotorEntity | null> {
   const db = getAdminFirestore();
@@ -113,8 +114,8 @@ export async function loadWarrantyDocumentContext(companyId: string, warrantyId:
     soldAt,
     saleAmount,
   });
-  const motorLabel = [motor.brandName, motor.engineCode, motor.serialCode].filter(Boolean).join(" · ");
-  const orderLabel = motorLabel ? `Продажа двигателя · ${motorLabel}` : `Продажа двигателя · ${motor.serialCode}`;
+  const motorLabel = formatMotorLineLabel(motor, { includeSerial: true });
+  const orderLabel = motorLabel !== "Двигатель" ? `Продажа двигателя · ${motorLabel}` : "Продажа двигателя";
   const [companySnapshot, employeesSnapshot] = await Promise.all([
     db.collection("companies").doc(normalizedCompanyId).get(),
     db.collection("companies").doc(normalizedCompanyId).collection("employees").get(),

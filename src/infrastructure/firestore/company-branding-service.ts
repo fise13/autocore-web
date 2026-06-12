@@ -21,6 +21,7 @@ export type SaveCompanyBrandingInput = {
   warrantyText?: string;
   serviceIntervalKm?: string;
   serviceIntervalMonths?: string;
+  showServiceLogbook?: boolean;
   primaryColor?: string;
   secondaryColor?: string;
   headerBackgroundColor?: string;
@@ -95,6 +96,7 @@ export async function saveCompanyBranding(companyId: string, input: SaveCompanyB
     string,
     | string
     | number
+    | boolean
     | DocumentSectionConfig
     | DocumentHeaderVisibility
     | DocumentWatermarkConfig
@@ -123,6 +125,7 @@ export async function saveCompanyBranding(companyId: string, input: SaveCompanyB
     qrLinkUrl: input.qrLinkUrl?.trim() || undefined,
     documentFooter: input.documentFooter?.trim() || undefined,
     documentSections: input.documentSections,
+    showServiceLogbook: input.showServiceLogbook,
   };
 
   const intervalKm = input.serviceIntervalKm?.trim();
@@ -178,5 +181,6 @@ export function brandingDraftFromProfile(profile: CompanyBrandingProfile): SaveC
     qrLinkUrl: profile.qrLinkUrl ?? "",
     documentFooter: profile.documentFooter ?? "",
     invoiceValidityDays: profile.invoiceValidityDays ? String(profile.invoiceValidityDays) : "",
+    showServiceLogbook: profile.showServiceLogbook ?? true,
   };
 }

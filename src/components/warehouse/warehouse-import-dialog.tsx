@@ -99,7 +99,7 @@ export function WarehouseImportDialog({
                 <thead className="sticky top-0 bg-muted/80">
                   <tr>
                     <th className="px-2 py-1 text-left">✓</th>
-                    <th className="px-2 py-1 text-left">SKU</th>
+                    <th className="px-2 py-1 text-left">Артикул</th>
                     <th className="px-2 py-1 text-left">Название</th>
                     <th className="px-2 py-1 text-left">Qty</th>
                     <th className="px-2 py-1 text-left">Conf.</th>

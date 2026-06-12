@@ -33,6 +33,7 @@ export type DocumentCompanyInfo = {
   warrantyText?: string;
   serviceIntervalKm?: number;
   serviceIntervalMonths?: number;
+  showServiceLogbook?: boolean;
   logoDataUri?: string;
   watermarkConfig?: import("@/domain/document-watermark-config").DocumentWatermarkConfig;
   primaryColor: string;
@@ -116,6 +117,7 @@ export function buildDocumentContext(input: DocumentContextInput): DocumentConte
       warrantyText: branding.warrantyText ?? input.company.warrantyText,
       serviceIntervalKm: branding.serviceIntervalKm ?? input.company.serviceIntervalKm,
       serviceIntervalMonths: branding.serviceIntervalMonths ?? input.company.serviceIntervalMonths,
+      showServiceLogbook: branding.showServiceLogbook,
       logoDataUri: input.logoDataUri,
       watermarkConfig: branding.watermarkConfig,
       primaryColor: input.company.primaryColor ?? branding.primaryColor ?? DEFAULT_COMPANY_PRIMARY_COLOR,

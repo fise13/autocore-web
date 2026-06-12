@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 const KPI = [
   { label: "Выручка сегодня", value: "$2.4M", icon: TrendingUp, tone: "text-emerald-500" },
   { label: "Открытые наряды", value: "12", icon: Activity, tone: "text-primary" },
-  { label: "SKU на складе", value: "4 892", icon: Package, tone: "text-primary" },
+  { label: "Позиций на складе", value: "4 892", icon: Package, tone: "text-primary" },
   { label: "Команда онлайн", value: "6", icon: Users, tone: "text-emerald-500" },
   { label: "Низкий остаток", value: "3", icon: AlertTriangle, tone: "text-amber-500" },
   { label: "Баланс", value: "$18.6M", icon: Wallet, tone: "text-primary" },

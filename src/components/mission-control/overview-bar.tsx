@@ -111,7 +111,7 @@ export const OverviewBar = memo(function OverviewBar({
           label="Позиций на складе"
           value={metrics.warehouseItemCount}
           suffix=""
-          hint="активные SKU"
+          hint="активных позиций"
           icon={Package}
           tone="primary"
         />

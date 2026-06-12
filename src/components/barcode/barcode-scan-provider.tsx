@@ -51,7 +51,7 @@ export function BarcodeScanProvider({ children }: BarcodeScanProviderProps) {
       setLastBarcodeScan({ barcode: item.barcodes[0] ?? item.sku, itemId: item.id, itemName: item.name });
       toast({
         title: item.name,
-        description: `${item.sku} · доступно ${item.totalAvailable} ${item.unit}`,
+        description: `Доступно ${item.totalAvailable} ${item.unit}`,
         variant: "success",
       });
     },
@@ -83,7 +83,7 @@ export function BarcodeScanProvider({ children }: BarcodeScanProviderProps) {
 
       toast({
         title: item.name,
-        description: `${item.sku} найден, но нет доступа к складу`,
+        description: "Товар найден, но нет доступа к складу",
         variant: "default",
       });
     },

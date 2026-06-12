@@ -38,6 +38,7 @@ export type CompanyBranding = {
   invoiceValidityDays?: number;
   serviceIntervalKm?: number;
   serviceIntervalMonths?: number;
+  showServiceLogbook?: boolean;
   primaryColor: string;
   secondaryColor: string;
   watermarkConfig: DocumentWatermarkConfig;
@@ -71,6 +72,9 @@ export function companyBrandingFromRecord(data: Record<string, unknown> | null |
         ? Number(data.serviceIntervalMonths)
         : undefined;
 
+  const showServiceLogbook =
+    typeof data?.showServiceLogbook === "boolean" ? data.showServiceLogbook : true;
+
   const rawTheme = typeof data?.documentTheme === "string" ? data.documentTheme : undefined;
   const documentTheme =
     rawTheme === "classic" || rawTheme === "modern" || rawTheme === "premium" || rawTheme === "racing"
@@ -99,6 +103,7 @@ export function companyBrandingFromRecord(data: Record<string, unknown> | null |
     invoiceValidityDays: documentConfig.invoiceValidityDays,
     serviceIntervalKm: Number.isFinite(serviceIntervalKm) ? serviceIntervalKm : undefined,
     serviceIntervalMonths: Number.isFinite(serviceIntervalMonths) ? serviceIntervalMonths : undefined,
+    showServiceLogbook,
     primaryColor,
     secondaryColor: normalizeHexColor(
       typeof data?.secondaryColor === "string" ? data.secondaryColor : undefined,

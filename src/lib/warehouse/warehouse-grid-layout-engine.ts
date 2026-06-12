@@ -13,7 +13,7 @@ export const WAREHOUSE_READ_ONLY_COLUMNS = new Set([6, 7, 14]);
 
 const BASE_COLUMNS: GridColumnDefinition[] = [
   { id: "rowNumber", title: "#", width: 40, editable: false, align: "center" },
-  { id: "col-1", title: "SKU", width: 120, editable: true, modelField: "sku" },
+  { id: "col-1", title: "Артикул", width: 120, editable: true, modelField: "sku" },
   { id: "col-2", title: "Название", width: 220, editable: true, modelField: "name" },
   { id: "col-3", title: "Категория", width: 140, editable: true, modelField: "categoryPath" },
   { id: "col-4", title: "Бренд", width: 110, editable: true, modelField: "brandName" },

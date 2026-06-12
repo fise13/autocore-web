@@ -8,23 +8,15 @@ import {
   PricingFrequency,
   PricingFrequencyToggle,
 } from "@/components/marketing/pricing/pricing-frequency-toggle";
+import { startMarketingProCheckout } from "@/infrastructure/stripe/billing-service";
 import { appLoginUrl } from "@/lib/site-urls";
+import { userCopy } from "@/lib/user-copy";
 
 const copy = marketingSiteContent.pricing;
 
 function planHref(planId: string): string {
   if (planId === "enterprise") return "mailto:enterprise@autocore.app";
   return appLoginUrl();
-}
-
-function resolveCheckoutError(error: unknown): string {
-  if (error instanceof TypeError) {
-    return "Не удалось связаться с сервером оплаты. Проверьте интернет и попробуйте снова.";
-  }
-  if (error instanceof Error && error.message.trim()) {
-    return error.message;
-  }
-  return "Не удалось начать оплату";
 }
 
 export function MarketingPricingSection() {
@@ -36,26 +28,10 @@ export function MarketingPricingSection() {
     setCheckoutPlanId("pro");
     setCheckoutError(null);
     try {
-      const response = await fetch("/api/marketing/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ interval: frequency }),
-      });
-
-      let payload: { url?: string; error?: string } | null = null;
-      try {
-        payload = (await response.json()) as { url?: string; error?: string };
-      } catch {
-        throw new TypeError("invalid-json");
-      }
-
-      if (!response.ok || !payload?.url) {
-        throw new Error(payload?.error ?? "Не удалось начать оплату");
-      }
-
-      window.location.assign(payload.url);
+      const url = await startMarketingProCheckout(frequency);
+      window.location.assign(url);
     } catch (error) {
-      setCheckoutError(resolveCheckoutError(error));
+      setCheckoutError(error instanceof Error ? error.message : userCopy.billing.checkoutError);
       setCheckoutPlanId(null);
     }
   }

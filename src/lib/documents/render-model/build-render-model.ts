@@ -50,6 +50,7 @@ import {
   DocumentSectionModel,
   DocumentLineItem,
 } from "@/lib/documents/render-model/types";
+import { formatMotorDisplayName, formatMotorLineLabel } from "@/lib/motors/format-motor-display-name";
 
 function slugToVariant(slug: DocumentSlug): DocumentTemplateVariant {
   return slug as DocumentTemplateVariant;
@@ -73,7 +74,7 @@ function buildUnifiedLineItems(context: DocumentContext): DocumentLineItem[] {
     rows.push({
       id: line.id,
       title: line.name,
-      subtitle: line.sku ? `Арт. ${line.sku}` : "Запчасть",
+      subtitle: "Запчасть",
       quantity: String(line.quantity),
       amount: formatDocumentMoney(line.quantity * line.unitPrice),
     });
@@ -81,7 +82,7 @@ function buildUnifiedLineItems(context: DocumentContext): DocumentLineItem[] {
   for (const line of order.motorLines) {
     rows.push({
       id: line.id,
-      title: [line.brandName, line.engineCode, line.serialCode].filter(Boolean).join(" "),
+      title: formatMotorLineLabel(line),
       subtitle: motorSale ? "Контрактный двигатель" : "Двигатель",
       quantity: "1",
       amount: formatDocumentMoney(line.unitPrice),
@@ -157,14 +158,14 @@ function buildSections(
       return {
         id: line.id,
         title: line.title,
-        subtitle: source?.sku ? `Арт. ${source.sku}` : "Запчасть",
+        subtitle: "Запчасть",
         quantity: source ? String(source.quantity) : "1",
         amount: line.amount,
       };
     }),
     ...order.motorLines.map((line) => ({
       id: line.id,
-      title: [line.brandName, line.engineCode, line.serialCode].filter(Boolean).join(" "),
+      title: formatMotorLineLabel(line),
       subtitle: "Двигатель",
       quantity: "1",
       amount: formatDocumentMoney(line.unitPrice),
@@ -198,10 +199,12 @@ function buildSections(
         break;
       case "motor_spotlight":
         if (motorLine) {
+          const displayName = formatMotorLineLabel(motorLine, { includeSerial: true });
           sections.push({
             key: "motor_spotlight",
+            displayName,
             serialCode: motorLine.serialCode,
-            meta: [motorLine.brandName, motorLine.engineCode, motorLine.configuration].filter(Boolean).join(" · "),
+            meta: formatMotorDisplayName(motorLine) || motorLine.serialCode,
             fields: motorSale
               ? [
                   { label: "Марка / код", value: [motorLine.brandName, motorLine.engineCode].filter(Boolean).join(" ") },
@@ -239,7 +242,7 @@ function buildSections(
           ],
           vehicle: motorSale
             ? [
-                { label: "Товар", value: [motorLine?.brandName, motorLine?.engineCode, motorLine?.serialCode].filter(Boolean).join(" ") || "—" },
+                { label: "Товар", value: formatMotorLineLabel(motorLine ?? {}, { includeSerial: true }) || "—" },
                 { label: "Серийный номер", value: motorLine?.serialCode || "—" },
                 { label: "Комплектация", value: motorLine?.configuration || "—" },
                 { label: "Сумма", value: motorLine ? formatDocumentMoney(motorLine.unitPrice) : "—" },
@@ -250,9 +253,7 @@ function buildSections(
                 { label: "Пробег", value: mileage ? `${mileage.toLocaleString("ru-KZ")} км` : "—" },
                 {
                   label: "Двигатель",
-                  value: motorLine
-                    ? [motorLine.brandName, motorLine.engineCode, motorLine.configuration].filter(Boolean).join(", ")
-                    : "—",
+                  value: motorLine ? formatMotorLineLabel(motorLine) : "—",
                 },
               ],
         });
@@ -520,7 +521,10 @@ export function buildDocumentRenderModel(
     qrDataUri,
     racing:
       theme === "racing" && !motorSale
-        ? buildRacingViewModel(context, { disclaimer: disclaimerText ?? meta.disclaimer })
+        ? buildRacingViewModel(context, {
+            disclaimer: disclaimerText ?? meta.disclaimer,
+            showServiceLogbook: context.company.showServiceLogbook !== false,
+          })
         : undefined,
   };
 }

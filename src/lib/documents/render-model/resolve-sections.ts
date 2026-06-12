@@ -53,7 +53,6 @@ const SLUG_SECTION_ORDER: Record<DocumentSlug, DocumentSectionKey[]> = {
     "vehicle",
     "engine",
     "warranty",
-    "aggregate_history",
     "photos",
     "signatures",
     "qr",
@@ -108,8 +107,10 @@ function layoutAllowsSection(
     case "warranty":
       return layout.showWarrantyTerms || profile.showEngineWarranty || slug === "engine-warranty";
     case "vehicle_history":
+      if (context.company.showServiceLogbook === false) return false;
       return layout.showTimeline;
     case "aggregate_history":
+      if (slug === "engine-warranty") return false;
       return hasMotor && !isStandaloneMotorSale(context);
     case "photos":
       return buildDocumentPhotos(context).length > 0;

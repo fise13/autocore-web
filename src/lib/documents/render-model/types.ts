@@ -92,7 +92,7 @@ export type DocumentQrBlock = {
 export type DocumentSectionModel =
   | { key: "hero"; meta: Pick<DocumentMetaBlock, "title" | "lead" | "primaryLabel" | "primaryValue" | "primaryHint" | "executorName"> }
   | { key: "acceptance"; text: string }
-  | { key: "motor_spotlight"; serialCode: string; meta: string; fields: DocumentFieldRow[] }
+  | { key: "motor_spotlight"; displayName: string; serialCode: string; meta: string; fields: DocumentFieldRow[] }
   | {
       key: "vehicle";
       client: DocumentFieldRow[];

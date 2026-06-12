@@ -26,6 +26,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
+import { formatMotorLineLabel } from "@/lib/motors/format-motor-display-name";
 import { formatWorkOrderLabel, workOrderAssigneeSummary } from "@/lib/work-order/work-order-display";
 import {
   eventTypeLabel,
@@ -205,7 +206,7 @@ export function WorkOrderDetailPanel({
                 empty="Двигатели не указаны"
                 lines={order.motorLines.map(
                   (line) =>
-                    `${line.serialCode} · ${line.outcome === "install" ? "установка" : "продажа"} · ${money(line.unitPrice)}`,
+                    `${formatMotorLineLabel(line, { includeSerial: true })} · ${line.outcome === "install" ? "установка" : "продажа"} · ${money(line.unitPrice)}`,
                 )}
               />
               {order.pricing.discount > 0 ? (

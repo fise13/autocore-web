@@ -3,6 +3,7 @@ import { DocumentSlug } from "@/lib/documents/document-types";
 import { DocumentTemplateMeta } from "@/lib/documents/templates/document-template-meta";
 import { ResolvedWarranty } from "@/lib/documents/warranty/resolve-warranty";
 import { documentPrimaryMotor } from "@/lib/documents/document-helpers";
+import { formatMotorLineLabel } from "@/lib/motors/format-motor-display-name";
 
 /** Standalone motor sale: sold engine without work-order labor/parts. */
 export function isStandaloneMotorSale(context: DocumentContext): boolean {
@@ -15,8 +16,9 @@ export function isStandaloneMotorSale(context: DocumentContext): boolean {
 
 export function formatMotorSaleDocumentLabel(context: DocumentContext): string {
   const motor = documentPrimaryMotor(context);
-  const label = [motor?.brandName, motor?.engineCode, motor?.serialCode].filter(Boolean).join(" · ");
-  return label ? `Продажа двигателя · ${label}` : "Продажа двигателя";
+  if (!motor) return "Продажа двигателя";
+  const label = formatMotorLineLabel(motor, { includeSerial: true });
+  return label !== "Двигатель" ? `Продажа двигателя · ${label}` : "Продажа двигателя";
 }
 
 export function motorSaleDocumentMeta(

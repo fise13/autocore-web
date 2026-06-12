@@ -98,7 +98,11 @@ export function WarehouseBarcodePanel({
             <div className="flex flex-col gap-2 rounded-lg border bg-muted/30 p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-medium">{result.name}</p>
-                <Badge variant="secondary">{result.sku}</Badge>
+                {result.sku ? (
+                  <Badge variant="outline" className="font-normal">
+                    {result.sku}
+                  </Badge>
+                ) : null}
               </div>
               <p className="text-sm text-muted-foreground">
                 Доступно: {result.totalAvailable} {result.unit}

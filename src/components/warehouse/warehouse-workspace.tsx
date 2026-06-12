@@ -321,7 +321,7 @@ export function WarehouseWorkspace() {
                 : `Скан: ${lastBarcodeScan.barcode}`}
             </span>
           ) : (
-            <span className="text-[11px]">Сканер USB активен — наведите и отсканируйте</span>
+            <span className="text-[11px]">Сканер штрихкода активен — наведите и отсканируйте</span>
           )}
           {canEdit && !defaultWarehouse ? (
             <button

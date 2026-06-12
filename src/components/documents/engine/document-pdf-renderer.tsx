@@ -199,7 +199,7 @@ function renderSection(section: DocumentSectionModel) {
         <section className="doc-pdf-block doc-pdf-block--motor" key="motor_spotlight">
           <div className="doc-pdf-motor-head">
             <span>Двигатель</span>
-            <strong>{section.serialCode}</strong>
+            <strong>{section.displayName}</strong>
           </div>
           <p className="doc-pdf-motor-sub">{section.meta}</p>
           <div className="doc-pdf-motor-grid">

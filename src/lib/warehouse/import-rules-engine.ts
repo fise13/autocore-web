@@ -79,7 +79,7 @@ export async function buildImportPreview(
     const lowStockRaw = readMapped(raw, mapping, "lowStockThreshold");
 
     const rowErrors: string[] = [];
-    if (!sku) rowErrors.push("SKU обязателен");
+    if (!sku) rowErrors.push("Артикул обязателен");
     if (!name && !sku) rowErrors.push("Название обязательно");
 
     const quantity = quantityRaw ? Number(quantityRaw.replace(",", ".")) : 0;

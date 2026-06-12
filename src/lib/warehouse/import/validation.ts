@@ -12,7 +12,7 @@ export function validateImportRow(row: EnhancedImportRow): EnhancedImportRow {
 
   if (!sku && !name) errors.push("Не удалось определить товар");
   if (!sku && name) {
-    warnings.push("SKU сгенерирован из названия");
+    warnings.push("Артикул сгенерирован автоматически");
   }
   if (!Number.isFinite(quantity)) errors.push("Некорректное количество");
   if (quantity < 0) errors.push("Количество не может быть отрицательным");

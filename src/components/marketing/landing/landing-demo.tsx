@@ -144,7 +144,7 @@ function DemoMissionControl({ events }: DemoMissionControlProps) {
   const metrics = [
     { label: "Выручка сегодня", value: "$2.4M" },
     { label: "Открытые наряды", value: "12" },
-    { label: "SKU на складе", value: "4 892" },
+    { label: "Позиций на складе", value: "4 892" },
     { label: "Низкий остаток", value: "3" },
   ];
 
@@ -191,7 +191,7 @@ function DemoWarehouse() {
         <table className="landing-demo-table">
           <thead>
             <tr>
-              <th>SKU</th>
+              <th>Артикул</th>
               <th>Наименование</th>
               <th className="text-right">Остаток</th>
               <th className="text-right">Статус</th>

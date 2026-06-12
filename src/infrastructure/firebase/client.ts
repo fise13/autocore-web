@@ -84,7 +84,7 @@ export function getFirestoreDb(): Firestore {
 
 export function getFirebaseFunctions(): Functions {
   if (functionsInstance) return functionsInstance;
-  functionsInstance = getFunctions(getFirebaseApp());
+  functionsInstance = getFunctions(getFirebaseApp(), "us-central1");
   return functionsInstance;
 }
 

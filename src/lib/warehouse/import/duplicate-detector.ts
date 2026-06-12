@@ -89,7 +89,7 @@ function findFuzzyDuplicate(
     if (skuDistance <= 2) {
       const score = 0.75 - skuDistance * 0.05;
       if (!best || score > best.score) {
-        best = { item, score, reason: "Похожий SKU" };
+        best = { item, score, reason: "Похожий артикул" };
       }
     }
     const titleScore = jaccard(tokenSet(title), tokenSet(item.name));
@@ -136,7 +136,7 @@ function enrichSingleRow(
     if (bySku) {
       duplicateOfItemId = bySku.id;
       duplicateConfidence = Math.max(duplicateConfidence, 0.95);
-      reasons.push("Совпадение SKU");
+      reasons.push("Совпадение артикула");
       conflictList = [...new Set([...conflictList, ...conflictFields(bySku, normalized)])];
     } else if (allowFuzzy && existingItems.length > 0) {
       const fuzzy = findFuzzyDuplicate(sku, title, existingItems);

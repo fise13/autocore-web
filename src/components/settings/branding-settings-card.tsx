@@ -214,8 +214,10 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
       documentWatermark: watermarkConfig,
       documentTheme: activeTheme,
       visibility: headerVisibility,
+      showServiceLogbook: draft.showServiceLogbook !== false,
+      warrantyTemplateId: docConfig.warrantyTemplateId,
     }),
-    [draft, profile.name, previewSrc, themeHeaderDefaults, activeTheme, headerVisibility, logoMaxHeightMm, watermarkConfig],
+    [draft, docConfig.warrantyTemplateId, profile.name, previewSrc, themeHeaderDefaults, activeTheme, headerVisibility, logoMaxHeightMm, watermarkConfig],
   );
 
   if (isLoading) {
@@ -591,6 +593,26 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
                       description="Текст появится в сервисном отчёте и гарантийных документах."
                     >
                       <div className="grid gap-4 sm:grid-cols-2">
+                        <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2.5 sm:col-span-2">
+                          <input
+                            type="checkbox"
+                            className="mt-0.5 size-4 rounded border-input"
+                            checked={draft.showServiceLogbook !== false}
+                            onChange={(event) =>
+                              setDraft((current) => ({
+                                ...current,
+                                showServiceLogbook: event.target.checked,
+                              }))
+                            }
+                          />
+                          <span className="space-y-1">
+                            <span className="block text-sm font-medium">Бортжурнал в заказ-наряде</span>
+                            <span className="block text-xs text-muted-foreground">
+                              Показывать историю обслуживания в racing-теме. Если выключено — блок работ и данные
+                              двигателя занимают всю страницу.
+                            </span>
+                          </span>
+                        </label>
                         <div className="space-y-2 sm:col-span-2">
                           <Label htmlFor="brand-warranty-label">Заголовок гарантии</Label>
                           <Input

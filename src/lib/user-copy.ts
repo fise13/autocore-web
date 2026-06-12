@@ -77,10 +77,8 @@ export const userCopy = {
     upgradeYearly: "Pro — $150 / год",
     manageButton: "Управлять подпиской",
     checkoutError: "Не удалось открыть оплату Stripe",
-    checkoutUnavailable:
-      "Сервис оплаты временно недоступен. Проверьте, что Firebase Functions задеплоены и Stripe настроен.",
-    stripeNotConfigured:
-      "Stripe не настроен на сервере. Добавьте STRIPE_SECRET_KEY в Firebase Functions и перезапустите.",
+    checkoutUnavailable: "Сервис оплаты временно недоступен. Попробуйте позже или обратитесь в поддержку.",
+    stripeNotConfigured: "Оплата временно недоступна. Обратитесь в поддержку.",
     notConfigured: "Stripe не настроен. Добавьте Price ID в .env.local.",
     proActiveHint: "Pro активен — доступны облако, экспорт и команда.",
     freeActiveHint: "Free — базовый доступ. Pro открывает облако и команду.",
@@ -359,7 +357,7 @@ export const userCopy = {
     loading: "Загружаем настройки компании…",
     appleRedirect: "Переход к Apple ID…",
     appleFailed:
-      "Firebase не получил сессию после Apple. Проверьте Apple OAuth в Firebase Console и Return URL handler в Apple Developer.",
+      "Не удалось завершить вход через Apple. Попробуйте другой способ входа или обратитесь в поддержку.",
   },
 } as const;
 
@@ -454,13 +452,16 @@ function extractAuthErrorCode(error: unknown): string {
 }
 
 const GRID_FIELD_LABELS: Record<string, string> = {
-  sku: "SKU",
+  sku: "Артикул",
   name: "Название",
 };
 
 function mapValidationError(error: unknown): string | null {
-  if (error instanceof Error && error.message.includes("SKU и название")) {
+  if (error instanceof Error && error.message.includes("Артикул и название")) {
     return error.message;
+  }
+  if (error instanceof Error && error.message.includes("SKU и название")) {
+    return error.message.replace(/SKU/g, "Артикул");
   }
 
   const zodIssues =
@@ -507,14 +508,14 @@ export function mapGridSaveError(error: unknown): string {
   if (typeof error === "object" && error !== null && "code" in error) {
     const code = String((error as { code?: string }).code);
     if (code === "permission-denied") {
-      return "Не удалось сохранить остаток на складе. Обновите страницу — если ошибка повторится, правила Firebase могут быть устаревшими.";
+      return "Не удалось сохранить остаток на складе. Обновите страницу и попробуйте снова.";
     }
     if (code === "invalid-argument") {
       return "Не удалось сохранить: в строке есть некорректное значение. Проверьте пустые поля, цены и количество.";
     }
   }
   if (error instanceof Error && /missing or insufficient permissions/i.test(error.message)) {
-    return "Не удалось сохранить остаток на складе. Обновите страницу — если ошибка повторится, правила Firebase могут быть устаревшими.";
+    return "Не удалось сохранить остаток на складе. Обновите страницу и попробуйте снова.";
   }
   if (
     error instanceof Error &&
@@ -550,7 +551,7 @@ export function mapAuthError(error: unknown, context?: AuthErrorContext): string
     case "auth/operation-not-allowed":
       return "Этот способ входа временно недоступен.";
     case "auth/unauthorized-domain":
-      return "Этот домен не разрешён для входа. Добавьте autocore-web.vercel.app и localhost в Firebase Authentication → Settings → Authorized domains.";
+      return "Этот адрес сайта не разрешён для входа. Обратитесь в поддержку.";
     case "auth/invalid-oauth-client-id":
     case "auth/invalid-oauth-provider":
       return code;
