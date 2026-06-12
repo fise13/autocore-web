@@ -37,6 +37,7 @@ export function PasswordStrengthField({
         <div className="relative">
           <Input
             id={id}
+            name="password"
             type={visible ? "text" : "password"}
             autoComplete="new-password"
             value={value}

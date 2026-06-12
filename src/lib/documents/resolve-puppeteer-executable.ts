@@ -66,6 +66,10 @@ export async function resolvePuppeteerExecutablePath(): Promise<string> {
   }
 
   if (process.env.VERCEL) {
+    const packagedBin = join(process.cwd(), "node_modules", "@sparticuz", "chromium", "bin");
+    if (existsSync(packagedBin)) {
+      return chromium.executablePath(packagedBin);
+    }
     return chromium.executablePath();
   }
 

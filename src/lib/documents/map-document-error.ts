@@ -12,8 +12,13 @@ export function mapDocumentError(error: unknown, fallback = "Не удалось
     return "PDF требует Firebase Admin. Локально: *-firebase-adminsdk-*.json в корне + FIREBASE_SERVICE_ACCOUNT_PATH в .env.local, затем перезапуск dev-сервера. На Vercel: FIREBASE_SERVICE_ACCOUNT_JSON (полный JSON одной строкой) + FIREBASE_STORAGE_BUCKET, затем redeploy.";
   }
 
-  if (message.includes("Chrome не найден") || message.includes("PUPPETEER")) {
-    return "На сервере не найден Chrome для PDF. Локально: npm run install:browser. На Vercel деплой уже использует @sparticuz/chromium.";
+  if (
+    message.includes("Chrome не найден") ||
+    message.includes("PUPPETEER") ||
+    message.includes("@sparticuz/chromium") ||
+    message.includes("input directory")
+  ) {
+    return "Не удалось запустить генератор PDF на сервере. Попробуйте через минуту или обратитесь в поддержку.";
   }
 
   if (

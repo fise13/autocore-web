@@ -1,6 +1,7 @@
 import "server-only";
 
 import puppeteer, { type Browser } from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 
 import {
   resolvePuppeteerExecutablePath,
@@ -17,12 +18,17 @@ const globalStore = globalThis as PuppeteerGlobal;
 
 async function launchBrowser(): Promise<Browser> {
   const executablePath = await resolvePuppeteerExecutablePath();
-  const args = await resolvePuppeteerLaunchArgs(shouldUseLambdaChromium(executablePath));
+  const useLambda = shouldUseLambdaChromium(executablePath);
+  if (useLambda) {
+    chromium.setGraphicsMode = false;
+  }
+
+  const args = await resolvePuppeteerLaunchArgs(useLambda);
 
   return puppeteer.launch({
     args,
     executablePath,
-    headless: true,
+    headless: useLambda ? ("shell" as const) : true,
   });
 }
 

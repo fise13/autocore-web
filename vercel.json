@@ -4,10 +4,12 @@
   "regions": ["fra1"],
   "functions": {
     "src/app/api/pdf/**/*.ts": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "memory": 1024
     },
     "src/app/api/documents/**/*.ts": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "memory": 1024
     }
   }
 }

@@ -365,15 +365,17 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
 
               <AuthDivider>ИЛИ</AuthDivider>
 
-              <form className="space-y-2" onSubmit={onEmailContinue}>
+              <form className="space-y-2" onSubmit={onEmailContinue} autoComplete="on">
                 <p className="text-start text-xs text-muted-foreground">
                   Email для входа или создания аккаунта
                 </p>
                 <InputGroup>
                   <InputGroupInput
+                    id="auth-email-entry"
+                    name="email"
                     placeholder="ваш@email.ru"
                     type="email"
-                    autoComplete="email"
+                    autoComplete="username email"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     required
@@ -466,10 +468,20 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
               exit={reducedMotion ? undefined : { opacity: 0, x: authStepDirection * -24 }}
               transition={{ duration: 0.28, ease: authStepEase }}
             >
-            <form className="space-y-3" onSubmit={onPasswordSubmit}>
+            <form className="space-y-3" onSubmit={onPasswordSubmit} autoComplete="on">
               <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm">
-                <span className="text-muted-foreground">Email: </span>
-                <span className="font-medium">{email}</span>
+                <label htmlFor="auth-email" className="text-muted-foreground">
+                  Email:{" "}
+                </label>
+                <input
+                  id="auth-email"
+                  type="email"
+                  name="email"
+                  autoComplete="username"
+                  value={email}
+                  readOnly
+                  className="inline bg-transparent font-medium outline-none"
+                />
                 <button
                   type="button"
                   className="ml-2 text-xs text-primary underline underline-offset-4 transition-opacity hover:opacity-80"
@@ -479,12 +491,6 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                   Изменить
                 </button>
               </div>
-
-              {!isSignUp ? (
-                <p className="text-sm text-muted-foreground">
-                  Аккаунт найден — введите пароль для входа.
-                </p>
-              ) : null}
 
               {isSignUp ? (
                 <motion.div

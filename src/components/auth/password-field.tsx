@@ -14,6 +14,7 @@ type PasswordFieldProps = {
   value: string;
   onChange: (value: string) => void;
   autoComplete?: "new-password" | "current-password";
+  name?: string;
   disabled?: boolean;
   minLength?: number;
   className?: string;
@@ -25,6 +26,7 @@ export function PasswordField({
   value,
   onChange,
   autoComplete = "current-password",
+  name = "password",
   disabled = false,
   minLength = 6,
   className,
@@ -37,6 +39,7 @@ export function PasswordField({
       <div className="relative">
         <Input
           id={id}
+          name={name}
           type={visible ? "text" : "password"}
           autoComplete={autoComplete}
           value={value}
