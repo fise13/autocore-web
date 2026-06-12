@@ -1,5 +1,6 @@
 "use client";
 
+import { CrossPlatformSection } from "@/components/marketing/sections/cross-platform-section";
 import { LandingCompare } from "@/components/marketing/landing/landing-compare";
 import { LandingCta } from "@/components/marketing/landing/landing-cta";
 import { LandingDemo } from "@/components/marketing/landing/landing-demo";
@@ -16,6 +17,7 @@ export function MarketingPage() {
       <LandingDocuments />
       <LandingDemo />
       <LandingCompare />
+      <CrossPlatformSection />
       <LandingFaq />
       <LandingCta />
     </div>

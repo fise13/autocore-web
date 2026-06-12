@@ -55,6 +55,7 @@ export const siteNavigation = {
     { href: marketingRoutes.pricing, label: "Тарифы" },
     { href: `${marketingRoutes.home}#faq`, label: "FAQ" },
     { href: marketingRoutes.security, label: "Безопасность" },
+    { href: marketingRoutes.download, label: "Скачать" },
     { href: marketingRoutes.contact, label: "Контакты" },
   ] satisfies SiteNavLink[],
   footer: {
@@ -69,6 +70,7 @@ export const siteNavigation = {
       { href: marketingRoutes.pricing, label: "Тарифы" },
       { href: marketingRoutes.security, label: "Безопасность" },
       { href: marketingRoutes.contact, label: "Контакты" },
+      { href: marketingRoutes.download, label: "Скачать приложение" },
     ],
   },
 } as const;

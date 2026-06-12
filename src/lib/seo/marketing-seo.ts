@@ -1,6 +1,9 @@
 import type { MarketingPathKey } from "@/lib/seo/marketing-paths";
 import { marketingAbsoluteUrl } from "@/lib/seo/marketing-paths";
 import { getAppUrl, getMarketingUrl } from "@/lib/site-urls";
+import { getPlatformContacts } from "@/lib/platform/platform-contacts";
+
+const platformContacts = getPlatformContacts();
 
 export const MARKETING_BRAND = {
   name: "AutoCore",
@@ -8,7 +11,8 @@ export const MARKETING_BRAND = {
   tagline: "Программа для авторазборок и автосервисов",
   shortDescription:
     "AutoCore — облачная программа для авторазборок и автосервисов: склад запчастей, учёт двигателей, заказ-наряды, гарантии и бухгалтерия в одной системе.",
-  supportEmail: "support@autocore.app",
+  supportEmail: platformContacts.email,
+  supportPhone: platformContacts.phone,
   locale: "ru_RU",
   language: "ru",
   themeColor: "#0a0a0a",
@@ -22,6 +26,7 @@ const MARKETING_BREADCRUMB_TITLES: Record<MarketingPathKey, string> = {
   pricing: "Тарифы",
   security: "Безопасность",
   contact: "Контакты",
+  download: "Скачать",
   privacy: "Конфиденциальность",
   terms: "Условия использования",
 };
@@ -95,6 +100,13 @@ export const MARKETING_SEO_PAGES: Record<MarketingPathKey, MarketingSeoPageConfi
       "Запросите демо, внедрение и миграцию склада из Excel для вашей авторазборки или автосервиса. Поддержка и корпоративный доступ.",
     keywords: ["демо программа автосервис", "внедрение авторазборка"],
   },
+  download: {
+    key: "download",
+    title: "Скачать AutoCore для macOS и Windows",
+    description:
+      "Установите нативное приложение AutoCore для Mac или Windows. Синхронизация склада, заказ-нарядов и документов с облаком.",
+    keywords: ["скачать AutoCore", "программа для автосервиса mac", "desktop авторазборка"],
+  },
   privacy: {
     key: "privacy",
     title: "Политика конфиденциальности AutoCore",
@@ -158,6 +170,7 @@ export function buildMarketingJsonLd() {
       logo: `${marketingUrl}/icon`,
       description: MARKETING_BRAND.shortDescription,
       email: MARKETING_BRAND.supportEmail,
+      telephone: MARKETING_BRAND.supportPhone,
       areaServed: { "@type": "Country", name: "RU" },
       knowsAbout: [
         "авторазборка",

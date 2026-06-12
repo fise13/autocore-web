@@ -6,10 +6,11 @@ import { motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 
 import { AppLogo } from "@/components/brand/app-logo";
-import { DesktopDownloadIcons } from "@/components/marketing/desktop-download-icons";
+import { DesktopDownloadButtons, DesktopDownloadIcons } from "@/components/marketing/desktop-download-buttons";
 import { landingPageContent } from "@/components/marketing/content/landing-page-content";
 import { siteNavigation } from "@/components/marketing/site/site-navigation";
 import { marketingRoutes } from "@/lib/marketing-routes";
+import { getPlatformContacts } from "@/lib/platform/platform-contacts";
 import { appDemoUrl, appLoginUrl, getAppUrl, getMarketingUrl } from "@/lib/site-urls";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,8 @@ type FooterSection = {
   title: string;
   links: FooterLink[];
 };
+
+const contacts = getPlatformContacts();
 
 const FOOTER_SECTIONS: FooterSection[] = [
   {
@@ -40,6 +43,7 @@ const FOOTER_SECTIONS: FooterSection[] = [
   {
     title: "Ресурсы",
     links: [
+      { label: "Скачать приложение", href: marketingRoutes.download },
       { label: "Возможности", href: `${marketingRoutes.home}#features` },
       { label: "FAQ", href: `${marketingRoutes.home}#faq` },
       { label: "Каталог модулей", href: marketingRoutes.modules },
@@ -52,9 +56,15 @@ const FOOTER_SECTIONS: FooterSection[] = [
       { label: "Попробовать демо", href: appDemoUrl(), icon: <PlayCircle aria-hidden /> },
       { label: "Войти", href: appLoginUrl(), icon: <LogIn aria-hidden /> },
       {
-        label: "support@autocore.app",
-        href: "mailto:support@autocore.app",
+        label: contacts.email,
+        href: contacts.mailtoHref,
         icon: <Mail aria-hidden />,
+        external: true,
+      },
+      {
+        label: contacts.formattedPhone,
+        href: contacts.telHref,
+        icon: <MessageCircle aria-hidden />,
         external: true,
       },
       { label: "Контакты", href: marketingRoutes.contact, icon: <MessageCircle aria-hidden /> },
@@ -95,6 +105,12 @@ export function SiteFooter() {
               {copy.tagline}
             </p>
             <DesktopDownloadIcons className="pt-0.5" />
+            <Link
+              href={marketingRoutes.download}
+              className="site-footer-link mt-1 inline-flex text-[0.8125rem] text-muted-foreground hover:text-foreground"
+            >
+              Скачать для Mac и Windows
+            </Link>
           </FooterAnimatedBlock>
 
           <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-2 sm:gap-x-8 md:grid-cols-4">

@@ -44,6 +44,7 @@ import { useInventoryRealtime } from "@/hooks/use-inventory-realtime";
 import { useMotorsRealtime } from "@/hooks/use-motors-realtime";
 import { useOperationsRealtime } from "@/hooks/use-operations-realtime";
 import { usePayrollTransactionsRealtime } from "@/hooks/use-payroll-transactions-realtime";
+import { useMyPayrollTransactions } from "@/hooks/use-my-payroll-transactions";
 import { useVehiclesRealtime } from "@/hooks/use-vehicles-realtime";
 import { useWorkOrderDocumentsRealtime } from "@/hooks/use-work-order-documents-realtime";
 import { useCompanyAppConfig } from "@/hooks/use-company-app-config";
@@ -147,11 +148,20 @@ export function WorkOrdersWorkspace() {
     type: "all",
     enabled: !isLoading && canView,
   });
-  const { transactions: payrollTransactions } = usePayrollTransactionsRealtime(
+  const canViewAccounting = can(profile, "accounting_view");
+  const canViewOwnPayroll = can(profile, "payroll_view_own");
+  const { transactions: companyPayrollTransactions } = usePayrollTransactionsRealtime(
     payrollTransactionRepository,
     companyId,
-    !isLoading && canView,
+    !isLoading && canView && canViewAccounting,
   );
+  const { transactions: ownPayrollTransactions } = useMyPayrollTransactions(
+    payrollTransactionRepository,
+    companyId,
+    profile?.id ?? "",
+    !isLoading && canView && !canViewAccounting && canViewOwnPayroll,
+  );
+  const payrollTransactions = canViewAccounting ? companyPayrollTransactions : ownPayrollTransactions;
 
   const { config: companyAppConfig } = useCompanyAppConfig(companyId);
   const quickSpecificCategories = useMemo(() => {

@@ -9,6 +9,7 @@ import {
   Sparkles,
   Tag,
   UserCircle,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -22,7 +23,8 @@ export type SidebarNavItemId =
   | "sold"
   | "work_orders"
   | "accounting"
-  | "warehouse";
+  | "warehouse"
+  | "my_earnings";
 
 export type SidebarCustomization = {
   version: 1;
@@ -48,6 +50,7 @@ export const DEFAULT_NAV_ORDER: SidebarNavItemId[] = [
   "motors",
   "sold",
   "work_orders",
+  "my_earnings",
   "accounting",
   "warehouse",
 ];
@@ -91,6 +94,7 @@ export const SIDEBAR_NAV_META: Record<
   motors: { label: "Все моторы", href: "/motors", icon: LayoutGrid },
   sold: { label: "Проданные", href: "/sold", icon: Receipt },
   work_orders: { label: "Заказ-наряды", href: "/work-orders", icon: ClipboardList },
+  my_earnings: { label: "Мои начисления", href: "/my-earnings", icon: Wallet },
   accounting: { label: "Бухгалтерия", href: "/accounting", icon: Folder },
   warehouse: { label: "Склад", href: "/warehouse", icon: Package },
 };
@@ -112,6 +116,7 @@ export const DEFAULT_SIDEBAR_CUSTOMIZATION: SidebarCustomization = {
     motors: { enabled: true },
     sold: { enabled: true },
     work_orders: { enabled: true },
+    my_earnings: { enabled: true },
     accounting: { enabled: true },
     warehouse: { enabled: true },
   },

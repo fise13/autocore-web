@@ -42,6 +42,7 @@ export type CompanyBrandingProfile = Pick<
   documentFooter?: string;
   invoiceValidityDays?: number;
   showServiceLogbook?: boolean;
+  showPlatformContacts?: boolean;
 };
 
 const emptyProfile: CompanyBrandingProfile = {
@@ -108,6 +109,7 @@ export function useCompanyBranding(companyId: string | null | undefined) {
           documentFooter: documentConfig.documentFooter,
           invoiceValidityDays: documentConfig.invoiceValidityDays,
           showServiceLogbook: branding.showServiceLogbook,
+          showPlatformContacts: branding.showPlatformContacts,
         });
         setIsLoading(false);
       },

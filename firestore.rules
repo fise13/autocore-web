@@ -231,7 +231,8 @@ service cloud.firestore {
             'work_orders_view',
             'work_orders_edit',
             'clients_manage',
-            'vehicles_manage'
+            'vehicles_manage',
+            'payroll_view_own'
           ]
         )
         || (
@@ -239,7 +240,8 @@ service cloud.firestore {
           && permission in [
             'work_orders_view',
             'work_orders_edit',
-            'vehicles_manage'
+            'vehicles_manage',
+            'payroll_view_own'
           ]
         );
     }
@@ -748,11 +750,56 @@ service cloud.firestore {
 
       match /payrollTransactions/{transactionId} {
         allow read: if canWorkOrdersRead(companyId)
+          || hasPermission(companyId, 'payroll_view_own')
           || (isSignedIn() && resource.data.employeeId == request.auth.uid);
         allow create, delete: if false;
         allow update: if hasPermission(companyId, 'accounting_edit')
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paidAt'])
           && request.resource.data.status in ['pending', 'paid', 'cancelled'];
+      }
+
+      match /supportThreads/{threadId} {
+        allow read: if canAccessCompanyDoc(companyId) && (
+          isOwnerOrAdmin()
+          || hasPermission(companyId, 'settings_manage')
+          || (isSignedIn() && resource.data.userId == request.auth.uid)
+        );
+        allow create: if canAccessCompanyDoc(companyId)
+          && request.resource.data.companyId == companyId
+          && request.resource.data.userId == request.auth.uid;
+        allow update: if canAccessCompanyDoc(companyId) && (
+          (isSignedIn()
+            && resource.data.userId == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'lastMessageAt']))
+          || ((isOwnerOrAdmin() || hasPermission(companyId, 'settings_manage'))
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'lastMessageAt']))
+        );
+        allow delete: if false;
+
+        match /messages/{messageId} {
+          function threadData() {
+            return get(/databases/$(database)/documents/companies/$(companyId)/supportThreads/$(threadId)).data;
+          }
+
+          allow read: if canAccessCompanyDoc(companyId) && (
+            isOwnerOrAdmin()
+            || hasPermission(companyId, 'settings_manage')
+            || threadData().userId == request.auth.uid
+          );
+          allow create: if canAccessCompanyDoc(companyId) && (
+            (
+              threadData().userId == request.auth.uid
+              && request.resource.data.role in ['user', 'bot', 'system']
+              && (request.resource.data.role != 'user' || request.resource.data.authorId == request.auth.uid)
+            )
+            || (
+              (isOwnerOrAdmin() || hasPermission(companyId, 'settings_manage'))
+              && request.resource.data.role == 'agent'
+              && request.resource.data.authorId == request.auth.uid
+            )
+          );
+          allow update, delete: if false;
+        }
       }
 
       match /workOrderDocuments/{documentId} {

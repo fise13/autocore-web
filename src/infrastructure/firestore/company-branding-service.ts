@@ -22,6 +22,7 @@ export type SaveCompanyBrandingInput = {
   serviceIntervalKm?: string;
   serviceIntervalMonths?: string;
   showServiceLogbook?: boolean;
+  showPlatformContacts?: boolean;
   primaryColor?: string;
   secondaryColor?: string;
   headerBackgroundColor?: string;
@@ -126,6 +127,7 @@ export async function saveCompanyBranding(companyId: string, input: SaveCompanyB
     documentFooter: input.documentFooter?.trim() || undefined,
     documentSections: input.documentSections,
     showServiceLogbook: input.showServiceLogbook,
+    showPlatformContacts: input.showPlatformContacts,
   };
 
   const intervalKm = input.serviceIntervalKm?.trim();
@@ -182,5 +184,6 @@ export function brandingDraftFromProfile(profile: CompanyBrandingProfile): SaveC
     documentFooter: profile.documentFooter ?? "",
     invoiceValidityDays: profile.invoiceValidityDays ? String(profile.invoiceValidityDays) : "",
     showServiceLogbook: profile.showServiceLogbook ?? true,
+    showPlatformContacts: profile.showPlatformContacts ?? false,
   };
 }

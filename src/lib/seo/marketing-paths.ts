@@ -8,6 +8,7 @@ export const marketingCleanPaths = {
   pricing: "/pricing",
   security: "/security",
   contact: "/contact",
+  download: "/download",
   privacy: "/legal/privacy",
   terms: "/legal/terms",
 } as const;
@@ -20,6 +21,7 @@ export const marketingInternalPaths = {
   pricing: "/marketing/pricing",
   security: "/marketing/security",
   contact: "/marketing/contact",
+  download: "/marketing/download",
   privacy: "/marketing/legal/privacy",
   terms: "/marketing/legal/terms",
 } as const;

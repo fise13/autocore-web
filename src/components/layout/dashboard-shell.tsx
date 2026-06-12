@@ -17,6 +17,7 @@ import { BillingGateProvider } from "@/components/billing/billing-gate-provider"
 import { DashboardLayoutProvider } from "@/components/layout/dashboard-layout-context";
 import { DashboardTopBar } from "@/components/layout/dashboard-top-bar";
 import { BarcodeScanProvider } from "@/components/barcode/barcode-scan-provider";
+import { SupportWidget } from "@/components/support/support-widget";
 import { CommandPaletteProvider } from "@/components/mission-control/command-palette/command-palette-provider";
 import { DashboardRouteCache } from "@/components/layout/dashboard-route-cache";
 import { MotorImportHost } from "@/components/motors/motor-import-host";
@@ -320,6 +321,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
         <BarcodeScanProvider>
           <FirestoreListenerGuard />
           <DashboardShellInner>{children}</DashboardShellInner>
+          <SupportWidget />
         </BarcodeScanProvider>
       </WorkspaceProvider>
     </SidebarCustomizationProvider>

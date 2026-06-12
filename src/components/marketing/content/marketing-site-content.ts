@@ -1,4 +1,7 @@
 import { marketingRoutes } from "@/lib/marketing-routes";
+import { getPlatformContacts } from "@/lib/platform/platform-contacts";
+
+const supportContacts = getPlatformContacts();
 
 export const marketingSiteContent = {
   cta: {
@@ -389,8 +392,8 @@ export const marketingSiteContent = {
       {
         title: "Внедрение и миграция",
         body: "Помогаем перенести прайсы и остатки из Excel, настроить первый Mission Control и роли.",
-        action: "Написать на support@autocore.app",
-        href: "mailto:support@autocore.app",
+        action: `Написать на ${supportContacts.email}`,
+        href: supportContacts.mailtoHref,
       },
       {
         title: "Enterprise и филиалы",

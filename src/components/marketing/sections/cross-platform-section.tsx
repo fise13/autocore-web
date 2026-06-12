@@ -1,5 +1,6 @@
 import { Laptop, Monitor, Smartphone } from "lucide-react";
 
+import { DesktopDownloadButtons } from "@/components/marketing/desktop-download-buttons";
 import { landingCopy } from "@/components/marketing/copy/landing-copy";
 import { FeatureCard } from "@/components/marketing/site/feature-card";
 import { SectionShell } from "@/components/marketing/ui/section-shell";
@@ -34,6 +35,9 @@ export function CrossPlatformSection() {
             description={platform.detail}
           />
         ))}
+      </div>
+      <div className="mt-10 flex flex-col items-center gap-4">
+        <DesktopDownloadButtons layout="stack" />
       </div>
       <p className="mx-auto mt-10 max-w-2xl text-center text-muted-foreground">{copy.footnote}</p>
     </SectionShell>

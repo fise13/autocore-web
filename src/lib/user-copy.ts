@@ -422,6 +422,8 @@ export function formatPermission(permission: string | undefined | null): string 
       return "Экспорт данных";
     case "import_data":
       return "Импорт данных";
+    case "payroll_view_own":
+      return "Мои начисления";
     default:
       return permission ?? "—";
   }

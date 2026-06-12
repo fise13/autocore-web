@@ -12,6 +12,7 @@ export const marketingRoutes = {
   pricing: marketingCleanPaths.pricing,
   security: marketingCleanPaths.security,
   contact: marketingCleanPaths.contact,
+  download: marketingCleanPaths.download,
   privacy: marketingCleanPaths.privacy,
   terms: marketingCleanPaths.terms,
 } as const;
@@ -27,6 +28,7 @@ export const marketingSitemapEntries: Array<{
   { key: "pricing", changeFrequency: "weekly", priority: 0.85 },
   { key: "security", changeFrequency: "monthly", priority: 0.8 },
   { key: "contact", changeFrequency: "monthly", priority: 0.7 },
+  { key: "download", changeFrequency: "monthly", priority: 0.75 },
   { key: "privacy", changeFrequency: "yearly", priority: 0.4 },
   { key: "terms", changeFrequency: "yearly", priority: 0.4 },
 ];

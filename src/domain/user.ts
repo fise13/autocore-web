@@ -29,6 +29,7 @@ export const PERMISSIONS = [
   "settings_manage",
   "export_data",
   "import_data",
+  "payroll_view_own",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -80,11 +81,13 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "work_orders_edit",
     "clients_manage",
     "vehicles_manage",
+    "payroll_view_own",
   ],
   diagnostician: [
     "work_orders_view",
     "work_orders_edit",
     "vehicles_manage",
+    "payroll_view_own",
   ],
   employee: ["inventory_view", "accounting_view", "work_orders_view"],
 };
