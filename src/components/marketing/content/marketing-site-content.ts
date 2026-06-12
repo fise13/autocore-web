@@ -220,7 +220,7 @@ export const marketingSiteContent = {
           "Mission Control и базовые модули",
           "Склад и импорт прайсов",
           "До 3 пользователей",
-          "Поддержка по email",
+          "Связь по email",
         ],
         cta: "Попробовать бесплатно",
         highlighted: false,

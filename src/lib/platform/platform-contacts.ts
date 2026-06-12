@@ -52,11 +52,3 @@ export function getPlatformContacts(): PlatformContacts {
     supportLine: `${formattedPhone} · ${email}`,
   };
 }
-
-/** Server-only inbox for support chat operator notifications. */
-export function getSupportAgentEmail(): string {
-  return (
-    readEnv("SUPPORT_AGENT_EMAIL", "NEXT_PUBLIC_AUTOCORE_SUPPORT_EMAIL", "AUTOCORE_SUPPORT_EMAIL") ??
-    DEFAULT_EMAIL
-  );
-}

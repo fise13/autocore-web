@@ -32,7 +32,7 @@ export default function ContactPage() {
         title={copy.hero.title}
         description={copy.hero.description}
         breadcrumbLabel="Контакты"
-        eyebrow="Поддержка"
+        eyebrow="Контакты"
       >
         <div className="marketing-channel-grid">
         {copy.channels.map((channel, i) => {

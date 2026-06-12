@@ -105,14 +105,6 @@ export function canAccessPath(
   if (pathname.startsWith("/my-earnings")) {
     return canAccessMyEarnings(user);
   }
-  if (pathname.startsWith("/support/inbox")) {
-    return (
-      user.isCompanyOwner ||
-      user.role === "owner" ||
-      user.role === "admin" ||
-      can(user, "settings_manage")
-    );
-  }
   if (pathname.startsWith("/warehouse")) {
     return isNavAllowed(user, "warehouse");
   }
