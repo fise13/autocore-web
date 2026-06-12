@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Eye, FileText, Maximize2, Palette } from "lucide-react";
 
-import { DocumentPdfHeader } from "@/components/documents/header/document-pdf-header";
-import { DocumentWatermarkLayer } from "@/components/documents/watermark/document-watermark-layer";
+import { WorkOrderDocument } from "@/components/documents/work-order/work-order-document";
 import {
   Dialog,
   DialogContent,
@@ -17,18 +16,10 @@ import { WarrantyTemplateId } from "@/domain/document-config";
 import {
   DEFAULT_DOCUMENT_HEADER_VISIBILITY,
   DocumentHeaderVisibility,
-  parseDocumentHeaderConfig,
 } from "@/domain/document-header-config";
-import {
-  DocumentWatermarkConfig,
-  ensureDocumentWatermarkConfig,
-} from "@/domain/document-watermark-config";
-import { addMonths } from "@/lib/documents/format";
-import { getWarrantyTemplate } from "@/lib/documents/warranty/warranty-templates";
-import { companyBrandStyle } from "@/lib/documents/company-brand";
-import { buildDocumentHeaderModel } from "@/lib/documents/header/build-document-header-model";
-import { buildWatermarkRenderModel } from "@/lib/documents/watermark/build-watermark-render-model";
-import { DOCUMENT_THEME_LABELS_RU, documentThemeClass } from "@/lib/documents/themes/tokens";
+import { DocumentWatermarkConfig } from "@/domain/document-watermark-config";
+import { buildBrandingPreviewContext } from "@/lib/documents/build-branding-preview-context";
+import { DOCUMENT_THEME_LABELS_RU } from "@/lib/documents/themes/tokens";
 import { cn } from "@/lib/utils";
 
 export type BrandingLivePreviewInput = {
@@ -50,64 +41,9 @@ export type BrandingLivePreviewInput = {
   visibility?: Partial<DocumentHeaderVisibility>;
   showServiceLogbook?: boolean;
   warrantyTemplateId?: WarrantyTemplateId;
+  warrantyLabel?: string;
+  warrantyText?: string;
 };
-
-type SamplePreviewMeta = {
-  documentTitle: string;
-  documentTag: string;
-  orderLabel: string;
-  documentDate: string;
-  saleDate: string;
-  warrantyLabel: string;
-  warrantyUntil: string;
-};
-
-function formatPreviewDate(date: Date): string {
-  return date.toLocaleDateString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
-function buildSamplePreviewMeta(warrantyTemplateId?: WarrantyTemplateId): SamplePreviewMeta {
-  const now = new Date();
-  const documentDate = new Date(now);
-  documentDate.setDate(documentDate.getDate() - (2 + Math.floor(Math.random() * 4)));
-
-  const saleDate = new Date(now);
-  saleDate.setMonth(saleDate.getMonth() - (3 + Math.floor(Math.random() * 9)));
-
-  const preset = getWarrantyTemplate(warrantyTemplateId ?? "contract_engine");
-  const warrantyUntil =
-    preset.months > 0 ? formatPreviewDate(addMonths(documentDate, preset.months)) : "—";
-
-  return {
-    documentTitle: "Заказ-наряд",
-    documentTag: "В работе",
-    orderLabel: "№ 1042",
-    documentDate: formatPreviewDate(documentDate),
-    saleDate: formatPreviewDate(saleDate),
-    warrantyLabel:
-      preset.months > 0
-        ? `Гарантия · ${preset.months} мес · ${preset.km.toLocaleString("ru-KZ")} км`
-        : "Без гарантии",
-    warrantyUntil,
-  };
-}
-
-const SAMPLE_LINES = [
-  { title: "Замена масла и фильтра", amount: "18 500 ₸" },
-  { title: "Масляный фильтр", amount: "4 200 ₸" },
-  { title: "Масло моторное 5W-30", amount: "12 800 ₸" },
-];
-
-const SAMPLE_MOTOR_FIELDS = [
-  { label: "Двигатель", value: "Hyundai G4KC 2.4 MPI" },
-  { label: "Серийный номер", value: "DVS-88421" },
-  { label: "Коробка передач", value: "АКПП" },
-  { label: "Комплектация", value: "Без навесного" },
-];
 
 type BrandingLivePreviewProps = {
   input: BrandingLivePreviewInput;
@@ -159,127 +95,6 @@ function usePreviewScale(
   return scale;
 }
 
-function PreviewDocumentBody({
-  theme,
-  meta,
-  showServiceLogbook,
-}: {
-  theme: DocumentTheme;
-  meta: SamplePreviewMeta;
-  showServiceLogbook: boolean;
-}) {
-  return (
-    <div className="space-y-3 text-[10px] leading-relaxed text-foreground/85">
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-md border border-foreground/8 bg-foreground/[0.03] p-2">
-          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Клиент</p>
-          <p className="mt-1 font-medium">Алексей Ким</p>
-          <p className="text-muted-foreground">+7 777 123 45 67</p>
-        </div>
-        <div className="rounded-md border border-foreground/8 bg-foreground/[0.03] p-2">
-          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Автомобиль</p>
-          <p className="mt-1 font-medium">Hyundai Sonata</p>
-          <p className="text-muted-foreground">142 500 км</p>
-        </div>
-      </div>
-
-      <div className="rounded-md border border-foreground/8">
-        <div className="border-b border-foreground/8 px-2 py-1.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Работы и запчасти
-        </div>
-        <ul className="divide-y divide-foreground/8">
-          {SAMPLE_LINES.map((line) => (
-            <li key={line.title} className="flex items-start justify-between gap-3 px-2 py-1.5">
-              <span>{line.title}</span>
-              <strong className="shrink-0 tabular-nums">{line.amount}</strong>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="rounded-md border border-primary/20 bg-primary/5 px-2 py-2">
-        <p className="text-[9px] font-semibold uppercase tracking-wide text-primary">{meta.warrantyLabel}</p>
-        <p className="mt-1 text-muted-foreground">
-          Дата продажи: {meta.saleDate}
-          {meta.warrantyUntil !== "—" ? ` · действует до ${meta.warrantyUntil}` : ""}
-        </p>
-      </div>
-
-      {theme === "racing" ? (
-        <div className={cn("grid gap-2", showServiceLogbook ? "grid-cols-2" : "grid-cols-1")}>
-          <div className="rounded-md border border-foreground/8 p-2">
-            <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Пит-стоп</p>
-            <p className="mt-1">3 позиции · 35 500 ₸</p>
-          </div>
-          {showServiceLogbook ? (
-            <div className="rounded-md border border-foreground/8 p-2">
-              <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Бортжурнал</p>
-              <p className="mt-1">4 заезда с {meta.saleDate}</p>
-            </div>
-          ) : (
-            <div className="rounded-md border border-foreground/8 p-2">
-              <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Двигатель</p>
-              <dl className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1">
-                {SAMPLE_MOTOR_FIELDS.map((field) => (
-                  <div key={field.label}>
-                    <dt className="text-[8px] uppercase text-muted-foreground">{field.label}</dt>
-                    <dd className="font-medium">{field.value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          )}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-type BrandingPreviewPageProps = {
-  theme: DocumentTheme;
-  headerHidden: boolean;
-  header: ReturnType<typeof buildDocumentHeaderModel>;
-  documentWatermark: ReturnType<typeof buildWatermarkRenderModel>;
-  pageStyle: CSSProperties;
-  meta: SamplePreviewMeta;
-  showServiceLogbook: boolean;
-};
-
-function BrandingPreviewPage({
-  theme,
-  headerHidden,
-  header,
-  documentWatermark,
-  pageStyle,
-  meta,
-  showServiceLogbook,
-}: BrandingPreviewPageProps) {
-  return (
-    <main
-      className={cn(
-        "doc-pdf-page doc-pdf-page--branding-preview",
-        documentThemeClass(theme),
-        documentWatermark && `doc-pdf-page--wm-${documentWatermark.type}`,
-      )}
-      style={pageStyle}
-    >
-      {documentWatermark ? <DocumentWatermarkLayer watermark={documentWatermark} /> : null}
-      <div className="doc-pdf-page__surface">
-        {headerHidden ? (
-          <div className="flex min-h-[72px] items-center justify-center border border-dashed px-4 py-6 text-center text-xs text-muted-foreground">
-            Шапка скрыта
-          </div>
-        ) : (
-          <DocumentPdfHeader header={header} preview />
-        )}
-        <div className="doc-pdf-body mt-3">
-          <PreviewDocumentBody theme={theme} meta={meta} showServiceLogbook={showServiceLogbook} />
-        </div>
-      </div>
-    </main>
-  );
-}
-
 function ScaledPreviewFrame({
   scale,
   children,
@@ -308,89 +123,13 @@ function ScaledPreviewFrame({
 
 export function BrandingLivePreview({ input, compact = false }: BrandingLivePreviewProps) {
   const theme = input.documentTheme ?? "modern";
-  const showServiceLogbook = input.showServiceLogbook !== false;
-  const headerHidden = !(input.visibility?.showHeader ?? DEFAULT_DOCUMENT_HEADER_VISIBILITY.showHeader);
   const [dialogOpen, setDialogOpen] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
   const dialogViewportRef = useRef<HTMLDivElement>(null);
   const inlineScale = usePreviewScale(viewportRef, 0.58);
   const dialogScale = usePreviewScale(dialogViewportRef, 0.95, dialogOpen);
-  const sampleMeta = useMemo(
-    () => buildSamplePreviewMeta(input.warrantyTemplateId),
-    [input.warrantyTemplateId],
-  );
 
-  const header = useMemo(() => {
-    const headerConfig = parseDocumentHeaderConfig(
-      {
-        shortName: input.shortName,
-        headerBackgroundColor: input.headerBackgroundColor,
-        headerTextColor: input.headerTextColor,
-        headerLogoMaxHeightMm: input.headerLogoMaxHeightMm,
-        documentHeaderVisibility: {
-          ...DEFAULT_DOCUMENT_HEADER_VISIBILITY,
-          ...input.visibility,
-        },
-      },
-      theme,
-    );
-
-    return buildDocumentHeaderModel({
-      theme,
-      companyName: input.companyName || "Название компании",
-      shortName: input.shortName,
-      slogan: input.slogan,
-      address: input.address,
-      phone: input.phone,
-      email: input.email,
-      website: input.website,
-      logoDataUri: input.logoUrl ?? undefined,
-      primaryColor: input.primaryColor ?? "#111827",
-      headerConfig,
-      documentTitle: sampleMeta.documentTitle,
-      documentTag: sampleMeta.documentTag,
-      orderLabel: sampleMeta.orderLabel,
-      documentDate: sampleMeta.documentDate,
-    });
-  }, [input, sampleMeta, theme]);
-
-  const documentWatermark = useMemo(() => {
-    const watermarkConfig = ensureDocumentWatermarkConfig(input.documentWatermark, theme);
-    return buildWatermarkRenderModel({
-      config: watermarkConfig,
-      logoDataUri: input.logoUrl ?? undefined,
-      companyName: input.shortName?.trim() || input.companyName || "Компания",
-    });
-  }, [input, theme]);
-
-  const pageStyle = useMemo(() => {
-    const headerConfig = parseDocumentHeaderConfig(
-      {
-        shortName: input.shortName,
-        headerBackgroundColor: input.headerBackgroundColor,
-        headerTextColor: input.headerTextColor,
-        headerLogoMaxHeightMm: input.headerLogoMaxHeightMm,
-        documentHeaderVisibility: {
-          ...DEFAULT_DOCUMENT_HEADER_VISIBILITY,
-          ...input.visibility,
-        },
-      },
-      theme,
-    );
-
-    return {
-      ...companyBrandStyle(
-        {
-          name: input.companyName,
-          primaryColor: input.primaryColor ?? "#111827",
-          secondaryColor: input.secondaryColor ?? "#4f46e5",
-          headerConfig,
-        },
-        theme,
-      ),
-      ...header.style,
-    } as CSSProperties;
-  }, [header.style, input, theme]);
+  const previewContext = useMemo(() => buildBrandingPreviewContext(input), [input]);
 
   const palette = [
     { label: "Бренд", color: input.primaryColor ?? "#111827" },
@@ -399,17 +138,7 @@ export function BrandingLivePreview({ input, compact = false }: BrandingLivePrev
     { label: "Акцент", color: input.secondaryColor ?? "#4f46e5" },
   ];
 
-  const previewPage = (
-    <BrandingPreviewPage
-      theme={theme}
-      headerHidden={headerHidden}
-      header={header}
-      documentWatermark={documentWatermark}
-      pageStyle={pageStyle}
-      meta={sampleMeta}
-      showServiceLogbook={showServiceLogbook}
-    />
-  );
+  const previewPage = <WorkOrderDocument context={previewContext} />;
 
   return (
     <>
@@ -470,7 +199,7 @@ export function BrandingLivePreview({ input, compact = false }: BrandingLivePrev
                 aria-label="Открыть превью PDF в полном размере"
               >
                 <motion.div
-                  key={`${theme}-${input.logoUrl}-${input.documentWatermark?.type}-${input.documentWatermark?.opacity}-${input.documentWatermark?.scale}-${input.documentWatermark?.rotation}-${input.warrantyTemplateId}-${showServiceLogbook}`}
+                  key={`${theme}-${input.logoUrl}-${input.documentWatermark?.type}-${input.documentWatermark?.opacity}-${input.documentWatermark?.scale}-${input.documentWatermark?.rotation}-${input.documentWatermark?.position}-${input.documentWatermark?.blend}-${input.warrantyTemplateId}-${input.warrantyLabel}-${input.showServiceLogbook}`}
                   initial={{ opacity: 0.85 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.2 }}

@@ -326,18 +326,49 @@
 }
 
 .animate-autocore-grid-enter {
-  animation: autocore-grid-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: autocore-grid-enter 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes autocore-grid-enter {
   from {
     opacity: 0;
-    transform: translateY(6px) scale(0.995);
+    transform: translateY(5px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
+}
+
+@keyframes autocore-grid-header-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.autocore-grid-header-enter {
+  animation: autocore-grid-header-enter 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes autocore-grid-row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.autocore-grid-rows-enter > * {
+  animation: autocore-grid-row-enter 0.14s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--grid-row-i, 0) * 10ms);
 }
 
 @keyframes autocore-logo-enter {
@@ -476,6 +507,8 @@
   .animate-autocore-fade-in,
   .animate-tab-enter,
   .animate-autocore-grid-enter,
+  .autocore-grid-header-enter,
+  .autocore-grid-rows-enter > *,
   .animate-autocore-fade-in-up,
   .animate-autocore-tab-enter,
   .animate-autocore-bar-grow,
@@ -891,13 +924,11 @@
   }
 }
 
-/* App sidebar — Efferd-style icon collapse */
+/* App sidebar — flush chrome rail (unified with top bar) */
 .app-sidebar-shell > div {
-  border-radius: calc(var(--radius) * 1.35);
-  border: 1px solid var(--sidebar-border);
-  box-shadow:
-    0 1px 2px color-mix(in oklab, var(--foreground) 4%, transparent),
-    0 8px 24px color-mix(in oklab, var(--foreground) 3%, transparent);
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
 }
 
 .app-sidebar--collapsed .sidebar-nav-label,

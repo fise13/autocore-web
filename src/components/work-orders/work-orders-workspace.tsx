@@ -50,6 +50,7 @@ import { useWorkOrderDocumentsRealtime } from "@/hooks/use-work-order-documents-
 import { useCompanyAppConfig } from "@/hooks/use-company-app-config";
 import { useWorkOrdersRealtime } from "@/hooks/use-work-orders-realtime";
 import { workOrderToComposerForm } from "@/lib/work-order/order-to-composer-form";
+import { canAccessMyEarnings } from "@/lib/auth/app-access";
 import { can } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { formatWorkOrderLabel, buildWorkOrderDisplayIndex } from "@/lib/work-order/work-order-display";
@@ -149,7 +150,7 @@ export function WorkOrdersWorkspace() {
     enabled: !isLoading && canView,
   });
   const canViewAccounting = can(profile, "accounting_view");
-  const canViewOwnPayroll = can(profile, "payroll_view_own");
+  const canViewOwnPayroll = canAccessMyEarnings(profile);
   const { transactions: companyPayrollTransactions } = usePayrollTransactionsRealtime(
     payrollTransactionRepository,
     companyId,

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useGridEnterMotion } from "@/hooks/use-grid-enter-motion";
 import { GridEditorOverlay } from "@/components/grid/grid-editor-overlay";
 import { GridFillHandle } from "@/components/grid/grid-fill-handle";
 import { useWorkspace } from "@/components/layout/workspace-context";
@@ -129,6 +130,7 @@ export function SpecificExcelGrid({
     registerSyncHandler,
     gridZoom,
   } = useWorkspace();
+  const gridEntering = useGridEnterMotion();
 
   const effectiveAvailability: MotorAvailability = soldOnly ? "sold" : availability;
 
@@ -1299,7 +1301,7 @@ export function SpecificExcelGrid({
             }}
           >
             <div
-              className="sticky top-0 z-10 border-b bg-muted"
+              className="autocore-grid-header-enter sticky top-0 z-10 border-b bg-muted"
               style={{ height: layout.headerHeight }}
             >
               {layout.columns.map((column, colIdx) => {
@@ -1331,7 +1333,10 @@ export function SpecificExcelGrid({
               })}
             </div>
 
-            <div className="absolute left-0 right-0" style={{ top: layout.headerHeight }}>
+            <div
+              className={cn("absolute left-0 right-0", gridEntering && "autocore-grid-rows-enter")}
+              style={{ top: layout.headerHeight }}
+            >
               {Array.from({ length: visible.rowEnd - visible.rowStart + 1 }, (_, offset) => {
                 const displayIndex = visible.rowStart + offset;
                 const displayRow = displayRows[displayIndex];
@@ -1342,7 +1347,7 @@ export function SpecificExcelGrid({
                   <div
                     key={row.rowId}
                     className="transition-[height] duration-200 ease-out"
-                    style={{ height: layout.rowHeight }}
+                    style={{ height: layout.rowHeight, ["--grid-row-i" as string]: offset }}
                   >
                     {Array.from({ length: visible.colEnd - visible.colStart + 1 }, (_, colOffset) => {
                       const colIdx = visible.colStart + colOffset;

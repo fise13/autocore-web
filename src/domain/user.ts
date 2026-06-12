@@ -87,7 +87,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "work_orders_view",
     "work_orders_edit",
     "vehicles_manage",
-    "payroll_view_own",
   ],
   employee: ["inventory_view", "accounting_view", "work_orders_view"],
 };

@@ -110,12 +110,6 @@ export function WorkOrderDocumentsPanel({
         </p>
       ) : null}
 
-      {latestJob?.status === "failed" && documents.length === 0 ? (
-        <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-          Ошибка генерации: {latestJob.error ?? "повторите обновление"}
-        </p>
-      ) : null}
-
       {error ? (
         <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{error}</p>
       ) : null}

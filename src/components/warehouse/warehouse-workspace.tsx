@@ -303,7 +303,7 @@ export function WarehouseWorkspace() {
           </button>
         </div>
       ) : null}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sidebar-border bg-sidebar px-4 py-2 text-xs text-muted-foreground">
         <span>
           Склад:{" "}
           <span className="font-medium text-foreground">
@@ -320,9 +320,7 @@ export function WarehouseWorkspace() {
                 ? `Скан: ${lastBarcodeScan.itemName}`
                 : `Скан: ${lastBarcodeScan.barcode}`}
             </span>
-          ) : (
-            <span className="text-[11px]">Сканер штрихкода активен — наведите и отсканируйте</span>
-          )}
+          ) : null}
           {canEdit && !defaultWarehouse ? (
             <button
               type="button"
@@ -339,7 +337,7 @@ export function WarehouseWorkspace() {
       {itemsQuery.isBootstrapping ? <MotorsGridSkeleton /> : null}
       <div
         className={cn(
-          "flex min-h-0 flex-1 flex-col transition-[opacity,transform] duration-500 ease-out motion-reduce:transition-none",
+          "flex min-h-0 flex-1 flex-col transition-[opacity,transform] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
           isGridReady ? "opacity-100 translate-y-0" : "pointer-events-none absolute inset-0 opacity-0 translate-y-1",
         )}
       >

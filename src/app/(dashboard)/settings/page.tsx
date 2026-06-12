@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Download, Laptop, Receipt, Workflow } from "lucide-react";
 
 import { AccountSettingsPanel } from "@/components/account/account-settings-panel";
+import { SupportSettingsCard } from "@/components/settings/support-settings-card";
 import { SidebarSettingsCard } from "@/components/settings/sidebar-settings-card";
 import { ThemeSettingsCard } from "@/components/settings/theme-settings-card";
 import { SubscriptionStrip } from "@/components/billing/subscription-strip";
@@ -93,6 +94,7 @@ export default function SettingsPage() {
           <FadeIn>
             <div className="space-y-5">
               <AccountSettingsPanel onStatus={setStatus} />
+              <SupportSettingsCard />
               <ThemeSettingsCard />
               <SidebarSettingsCard />
               <SubscriptionStrip />

@@ -207,8 +207,8 @@ export function DashboardTopBar() {
   return (
     <header
       className={cn(
-        "relative z-30 flex h-14 shrink-0 items-center gap-3 overflow-hidden border-b px-4 md:px-5",
-        workspace ? "bg-card" : "bg-card/95 backdrop-blur-sm",
+        "relative z-30 flex h-14 shrink-0 items-center gap-3 overflow-hidden border-b border-sidebar-border bg-sidebar px-4 md:px-5",
+        !workspace && "bg-sidebar/95 backdrop-blur-sm",
       )}
     >
       <div className="flex min-w-0 shrink-0 items-center gap-2">
@@ -372,7 +372,7 @@ export function DashboardTopBar() {
               >
                 <Upload className="size-4" />
                 {!isPro && !isWarehouseRoute ? (
-                  <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-primary ring-2 ring-card" />
+                  <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-primary ring-2 ring-sidebar" />
                 ) : null}
               </Button>
             </>

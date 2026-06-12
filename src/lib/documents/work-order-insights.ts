@@ -1,6 +1,5 @@
+import { parseCompanyDocumentConfig } from "@/domain/document-config";
 import {
-  ENGINE_WARRANTY_KM,
-  ENGINE_WARRANTY_MONTHS,
   SERVICE_TAG_OIL_INTERVAL_KM,
   SERVICE_TAG_OIL_INTERVAL_MONTHS,
 } from "@/lib/documents/document-copy";
@@ -15,12 +14,12 @@ import {
   documentPrimaryMotor,
   documentPrimaryMotorEntity,
 } from "@/lib/documents/document-helpers";
-import {
-  addMonths,
+import { addMonths,
   coerceDocumentDate,
   daysBetween,
   formatDocumentDateShort,
 } from "@/lib/documents/format";
+import { resolveWarrantyForDocument } from "@/lib/documents/warranty/resolve-warranty";
 import { getAppUrl } from "@/lib/site-urls";
 
 export type WarrantyInsight = {
@@ -183,17 +182,31 @@ export function buildWarrantyInsight(context: DocumentContext): WarrantyInsight 
   const motorLine = documentPrimaryMotor(context);
   if (!motorLine || motorLine.outcome !== "install") return null;
 
+  const documentConfig = context.company.documentConfig ?? parseCompanyDocumentConfig({});
+  const warranty = resolveWarrantyForDocument(context.company, documentConfig, { forEngine: true });
   const installDate = documentOrderDate(context);
-  const untilDate = addMonths(installDate, ENGINE_WARRANTY_MONTHS);
   const mileage = context.order.mileage || 0;
 
+  if (warranty.months <= 0 || warranty.km <= 0) {
+    return {
+      months: 0,
+      km: 0,
+      untilDate: installDate,
+      untilMileage: mileage,
+      status: "inactive",
+      statusLabel: warranty.statusLabel,
+    };
+  }
+
+  const untilDate = addMonths(installDate, warranty.months);
+
   return {
-    months: ENGINE_WARRANTY_MONTHS,
-    km: ENGINE_WARRANTY_KM,
+    months: warranty.months,
+    km: warranty.km,
     untilDate,
-    untilMileage: mileage + ENGINE_WARRANTY_KM,
+    untilMileage: mileage + warranty.km,
     status: "active",
-    statusLabel: "Активна",
+    statusLabel: warranty.statusLabel,
   };
 }
 

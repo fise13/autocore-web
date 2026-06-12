@@ -9,7 +9,6 @@ import { useGsapSplitHeading } from "@/components/marketing/motion/use-gsap-reve
 import { Button } from "@/components/ui/button";
 import { marketingRoutes } from "@/lib/marketing-routes";
 import { appDemoUrl } from "@/lib/site-urls";
-import { DesktopDownloadButtons } from "@/components/marketing/desktop-download-buttons";
 
 const copy = landingPageContent.cta;
 
@@ -32,9 +31,6 @@ export function LandingCta() {
           <Button variant="ghost" size="lg" render={<Link href={marketingRoutes.pricing} />}>
             {copy.secondary}
           </Button>
-        </div>
-        <div className="mt-6 flex justify-center">
-          <DesktopDownloadButtons size="lg" />
         </div>
       </div>
     </section>

@@ -153,11 +153,19 @@ export async function processDocumentQueueJob(params: {
     );
   }
 
+  const allFailed = failed.length > 0 && completed.length === 0;
   await jobRef.update({
     completedSlugs: completed,
-    status: failed.length > 0 && completed.length === 0 ? "failed" : "done",
+    status: allFailed ? "failed" : "done",
     completedAt: FieldValue.serverTimestamp(),
-    ...(failed.length > 0 ? { error: `Failed: ${failed.join(", ")}` } : {}),
+    ...(allFailed
+      ? {
+          error: mapDocumentError(
+            new Error(`Failed: ${failed.join(", ")}`),
+            "Не удалось сохранить PDF в фоне. Используйте кнопку «PDF» — документ сформируется по запросу.",
+          ),
+        }
+      : { error: FieldValue.delete() }),
   });
 
   return { completed, failed };

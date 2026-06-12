@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { useMyPayrollTransactions } from "@/hooks/use-my-payroll-transactions";
 import { useWorkOrdersRealtime } from "@/hooks/use-work-orders-realtime";
+import { canAccessMyEarnings } from "@/lib/auth/app-access";
 import { can } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { createPayrollTransactionRepository } from "@/infrastructure/firestore/payroll-transaction-repository";
@@ -21,7 +22,7 @@ export function MyEarningsWorkspace() {
   const { profile, isLoading } = useAuth();
   const companyId = normalizeCompanyId(profile?.companyId);
   const employeeId = profile?.id ?? "";
-  const allowed = can(profile, "payroll_view_own");
+  const allowed = canAccessMyEarnings(profile);
 
   const { transactions, isLoading: payrollLoading } = useMyPayrollTransactions(
     payrollRepository,

@@ -25,7 +25,7 @@ export function WorkspaceStatusBar() {
   }[saveStatus];
 
   return (
-    <footer className="flex h-10 shrink-0 items-center gap-2 border-t bg-card px-3 text-xs text-muted-foreground">
+    <footer className="flex h-10 shrink-0 items-center gap-2 border-t border-sidebar-border bg-sidebar px-3 text-xs text-muted-foreground">
       <span>
         {shownCount} / {totalCount}
       </span>

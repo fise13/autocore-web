@@ -240,8 +240,7 @@ service cloud.firestore {
           && permission in [
             'work_orders_view',
             'work_orders_edit',
-            'vehicles_manage',
-            'payroll_view_own'
+            'vehicles_manage'
           ]
         );
     }

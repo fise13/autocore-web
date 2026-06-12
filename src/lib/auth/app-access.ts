@@ -7,10 +7,16 @@ import {
 } from "@/lib/navigation/sidebar-customization";
 import { can } from "@/lib/auth/permissions";
 
+/** Only shop-floor mechanics see own payroll in navigation. */
+export function canAccessMyEarnings(user: UserEntity | null | undefined): boolean {
+  if (!user) return false;
+  return user.role === "mechanic" && can(user, "payroll_view_own");
+}
+
 /** Restricted roles see only these sidebar sections (owner/manager use permissions). */
 const ROLE_NAV_ALLOWLIST: Partial<Record<UserRole, readonly SidebarNavItemId[]>> = {
   mechanic: ["work_orders", "my_earnings"],
-  diagnostician: ["work_orders", "my_earnings"],
+  diagnostician: ["work_orders"],
   accountant: ["accounting"],
   admin: ["home", "work_orders", "warehouse"],
 };
@@ -63,6 +69,7 @@ export function isNavAllowed(
   if (navId === "home") return canAccessMissionControl(user);
 
   const permission = navPermission(navId);
+  if (navId === "my_earnings") return canAccessMyEarnings(user);
   if (!permission) return true;
   return can(user, permission);
 }
@@ -96,7 +103,7 @@ export function canAccessPath(
     return can(user, "accounting_view");
   }
   if (pathname.startsWith("/my-earnings")) {
-    return can(user, "payroll_view_own");
+    return canAccessMyEarnings(user);
   }
   if (pathname.startsWith("/support/inbox")) {
     return (
@@ -136,7 +143,7 @@ export function defaultAppPath(user: UserEntity | null | undefined): string {
 
   if (canAccessMissionControl(user)) return "/";
   if (can(user, "work_orders_view")) return "/work-orders";
-  if (can(user, "payroll_view_own")) return "/my-earnings";
+  if (canAccessMyEarnings(user)) return "/my-earnings";
   if (can(user, "accounting_view")) return "/accounting";
   if (can(user, "inventory_view")) return "/warehouse";
   return "/settings";

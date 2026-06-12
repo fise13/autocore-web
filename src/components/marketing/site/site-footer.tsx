@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { LogIn, Mail, MessageCircle, PlayCircle } from "lucide-react";
+import { LogIn, Mail, MessageCircle, Phone, PlayCircle } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 
 import { AppLogo } from "@/components/brand/app-logo";
-import { DesktopDownloadButtons, DesktopDownloadIcons } from "@/components/marketing/desktop-download-buttons";
 import { landingPageContent } from "@/components/marketing/content/landing-page-content";
 import { siteNavigation } from "@/components/marketing/site/site-navigation";
 import { marketingRoutes } from "@/lib/marketing-routes";
@@ -19,6 +18,7 @@ type FooterLink = {
   href: string;
   icon?: ReactNode;
   external?: boolean;
+  detail?: string;
 };
 
 type FooterSection = {
@@ -43,7 +43,6 @@ const FOOTER_SECTIONS: FooterSection[] = [
   {
     title: "Ресурсы",
     links: [
-      { label: "Скачать приложение", href: marketingRoutes.download },
       { label: "Возможности", href: `${marketingRoutes.home}#features` },
       { label: "FAQ", href: `${marketingRoutes.home}#faq` },
       { label: "Каталог модулей", href: marketingRoutes.modules },
@@ -55,20 +54,25 @@ const FOOTER_SECTIONS: FooterSection[] = [
     links: [
       { label: "Попробовать демо", href: appDemoUrl(), icon: <PlayCircle aria-hidden /> },
       { label: "Войти", href: appLoginUrl(), icon: <LogIn aria-hidden /> },
-      {
-        label: contacts.email,
-        href: contacts.mailtoHref,
-        icon: <Mail aria-hidden />,
-        external: true,
-      },
-      {
-        label: contacts.formattedPhone,
-        href: contacts.telHref,
-        icon: <MessageCircle aria-hidden />,
-        external: true,
-      },
       { label: "Контакты", href: marketingRoutes.contact, icon: <MessageCircle aria-hidden /> },
     ],
+  },
+];
+
+const CONTACT_LINKS: FooterLink[] = [
+  {
+    label: "Email",
+    href: contacts.mailtoHref,
+    icon: <Mail aria-hidden />,
+    external: true,
+    detail: contacts.email,
+  },
+  {
+    label: "Телефон",
+    href: contacts.telHref,
+    icon: <Phone aria-hidden />,
+    external: true,
+    detail: contacts.formattedPhone,
   },
 ];
 
@@ -104,13 +108,6 @@ export function SiteFooter() {
             <p className="site-footer-tagline max-w-[18rem] text-[0.8125rem] leading-[1.6] text-muted-foreground sm:text-sm">
               {copy.tagline}
             </p>
-            <DesktopDownloadIcons className="pt-0.5" />
-            <Link
-              href={marketingRoutes.download}
-              className="site-footer-link mt-1 inline-flex text-[0.8125rem] text-muted-foreground hover:text-foreground"
-            >
-              Скачать для Mac и Windows
-            </Link>
           </FooterAnimatedBlock>
 
           <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-2 sm:gap-x-8 md:grid-cols-4">
@@ -126,6 +123,13 @@ export function SiteFooter() {
                         <FooterLinkItem link={link} />
                       </li>
                     ))}
+                    {section.title === "Связь"
+                      ? CONTACT_LINKS.map((link) => (
+                          <li key={`contact-${link.label}`}>
+                            <FooterContactItem link={link} />
+                          </li>
+                        ))
+                      : null}
                   </ul>
                 </div>
               </FooterAnimatedBlock>
@@ -152,11 +156,30 @@ export function SiteFooter() {
   );
 }
 
+function FooterContactItem({ link }: { link: FooterLink }) {
+  const className = cn(
+    "site-footer-link flex min-w-0 max-w-full flex-col gap-0.5 text-[0.8125rem] leading-snug text-muted-foreground transition-colors duration-200",
+    "hover:text-foreground",
+  );
+
+  return (
+    <a className={className} href={link.href} rel="noreferrer">
+      <span className="inline-flex min-w-0 items-center gap-1.5">
+        <span className="shrink-0 opacity-80">{link.icon}</span>
+        <span className="font-medium text-foreground/80">{link.label}</span>
+      </span>
+      {link.detail ? (
+        <span className="break-all ps-5 text-[0.75rem] text-muted-foreground">{link.detail}</span>
+      ) : null}
+    </a>
+  );
+}
+
 function FooterLinkItem({ link }: { link: FooterLink }) {
   const className = cn(
-    "site-footer-link inline-flex items-center text-[0.8125rem] leading-snug text-muted-foreground transition-colors duration-200",
+    "site-footer-link inline-flex min-w-0 max-w-full items-center text-[0.8125rem] leading-snug text-muted-foreground transition-colors duration-200",
     "hover:text-foreground",
-    "[&_svg]:me-1.5 [&_svg]:size-3.5 [&_svg]:opacity-80",
+    "[&_svg]:me-1.5 [&_svg]:size-3.5 [&_svg]:shrink-0 [&_svg]:opacity-80",
   );
 
   if (link.external || link.href.startsWith("mailto:")) {

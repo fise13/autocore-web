@@ -39,7 +39,6 @@ import { documentTypography, typographyStyleVars } from "@/lib/documents/themes/
 import { resolveWarrantyForDocument } from "@/lib/documents/warranty/resolve-warranty";
 import { resolveDocumentQrTarget } from "@/lib/documents/render-model/qr-targets";
 import { resolveEnabledSections } from "@/lib/documents/render-model/resolve-sections";
-import { getPlatformContacts } from "@/lib/platform/platform-contacts";
 import { buildDocumentPhotos } from "@/lib/documents/render-model/build-document-photos";
 import {
   buildAggregateHistoryTimeline,
@@ -442,9 +441,6 @@ export function buildDocumentRenderModel(
     : meta.tag;
 
   let footerText = documentConfig.documentFooter ?? meta.footer.replace(/AutoCore/g, company.name);
-  if (company.showPlatformContacts) {
-    footerText = `${footerText} · Поддержка AutoCore: ${getPlatformContacts().supportLine}`;
-  }
   const invoiceDays = documentConfig.invoiceValidityDays ?? 5;
   const disclaimerText =
     slug === "invoice" && meta.disclaimer

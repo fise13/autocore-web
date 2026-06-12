@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useGridEnterMotion } from "@/hooks/use-grid-enter-motion";
 import { syncWarehouseGridRowUseCase } from "@/application/use-cases/warehouse/sync-warehouse-grid-row";
 import { GridEditorOverlay } from "@/components/grid/grid-editor-overlay";
 import { GridFillHandle } from "@/components/grid/grid-fill-handle";
@@ -332,6 +333,7 @@ export function WarehouseExcelGrid({
     warehouseBarcodePrefill,
     setWarehouseBarcodePrefill,
   } = useWorkspace();
+  const gridEntering = useGridEnterMotion();
 
   const layout = useMemo(() => buildWarehouseGridLayoutMetrics(gridZoom), [gridZoom]);
 
@@ -1465,7 +1467,7 @@ export function WarehouseExcelGrid({
             }}
           >
             <div
-              className="sticky top-0 z-10 border-b bg-muted"
+              className="autocore-grid-header-enter sticky top-0 z-10 border-b bg-muted"
               style={{ height: layout.headerHeight }}
             >
               {layout.columns.map((column, colIdx) => {
@@ -1495,7 +1497,7 @@ export function WarehouseExcelGrid({
             </div>
 
             <div
-              className="absolute left-0 right-0"
+              className={cn("absolute left-0 right-0", gridEntering && "autocore-grid-rows-enter")}
               style={{ top: layout.headerHeight }}
             >
               {Array.from({ length: visible.rowEnd - visible.rowStart + 1 }, (_, offset) => {
@@ -1507,7 +1509,7 @@ export function WarehouseExcelGrid({
                   <div
                     key={row.rowId}
                     className="transition-[height] duration-200 ease-out"
-                    style={{ height: layout.rowHeight }}
+                    style={{ height: layout.rowHeight, ["--grid-row-i" as string]: offset }}
                   >
                     {Array.from({ length: visible.colEnd - visible.colStart + 1 }, (_, colOffset) => {
                       const colIdx = visible.colStart + colOffset;

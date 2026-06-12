@@ -30,7 +30,11 @@ export type PlatformContacts = {
   supportLine: string;
 };
 
-/** Canonical AutoCore support contacts for marketing, app, PDF and emails. */
+/**
+ * Public support contacts for marketing pages, footer, SEO and /contact.
+ * Configure via NEXT_PUBLIC_AUTOCORE_SUPPORT_* in .env.local (see .env.local.example).
+ * Not injected into client PDFs or app branding.
+ */
 export function getPlatformContacts(): PlatformContacts {
   const phone =
     readEnv("NEXT_PUBLIC_AUTOCORE_SUPPORT_PHONE", "AUTOCORE_SUPPORT_PHONE") ?? DEFAULT_PHONE;
@@ -49,6 +53,10 @@ export function getPlatformContacts(): PlatformContacts {
   };
 }
 
+/** Server-only inbox for support chat operator notifications. */
 export function getSupportAgentEmail(): string {
-  return readEnv("SUPPORT_AGENT_EMAIL", "NEXT_PUBLIC_AUTOCORE_SUPPORT_EMAIL", "AUTOCORE_SUPPORT_EMAIL") ?? DEFAULT_EMAIL;
+  return (
+    readEnv("SUPPORT_AGENT_EMAIL", "NEXT_PUBLIC_AUTOCORE_SUPPORT_EMAIL", "AUTOCORE_SUPPORT_EMAIL") ??
+    DEFAULT_EMAIL
+  );
 }
