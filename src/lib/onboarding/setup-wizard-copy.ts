@@ -10,8 +10,48 @@ import {
   Warehouse,
 } from "lucide-react";
 
-import type { CompanyModuleKey, CompanySpecificCategoryConfig } from "@/domain/company-config";
+import type {
+  CompanyModuleKey,
+  CompanySpecificCategoryConfig,
+  SpecificCategoryMode,
+} from "@/domain/company-config";
 import { SETUP_WIZARD_CATEGORY_PRESETS } from "@/domain/company-config";
+
+export type SetupWizardCategoryId =
+  | "gearboxes"
+  | "transfer_cases"
+  | "turbos"
+  | "pumps"
+  | "ecu"
+  | "alternators"
+  | "starters"
+  | "bumpers"
+  | "headlights"
+  | "fenders";
+
+export type SetupWizardCategoryGroupId = "mechanics" | "electrical" | "body";
+
+export type SetupWizardCategoryGroup = {
+  id: SetupWizardCategoryGroupId;
+  label: string;
+  ids: readonly SetupWizardCategoryId[];
+};
+
+export const SETUP_WIZARD_CATEGORY_GROUPS = [
+  { id: "mechanics", label: "Агрегаты", ids: ["gearboxes", "transfer_cases", "turbos", "pumps"] },
+  { id: "electrical", label: "Электрика", ids: ["ecu", "alternators", "starters"] },
+  { id: "body", label: "Кузов", ids: ["bumpers", "headlights", "fenders"] },
+] as const satisfies readonly SetupWizardCategoryGroup[];
+
+export function categoriesInGroup(group: SetupWizardCategoryGroup): CompanySpecificCategoryConfig[] {
+  const ids = new Set<string>(group.ids);
+  return SETUP_WIZARD_CATEGORY_PRESETS.filter((item) => ids.has(item.id));
+}
+
+export type SetupWizardCategoryPreset = Pick<
+  CompanySpecificCategoryConfig,
+  "id" | "name" | "mode" | "warrantyDefault"
+>;
 
 export type SetupWizardStepId = 1 | 2 | 3;
 
@@ -24,72 +64,72 @@ export type SetupWizardStepMeta = {
 
 export const SETUP_WIZARD_COPY = {
   shell: {
-    title: "Настройка компании",
-    subtitle: "Выберите, что будете вести в AutoCore. Всё можно изменить позже в настройках.",
+    title: "Настройка",
+    subtitle: "Можно изменить позже в настройках.",
     loadingTitle: "Загружаем настройки",
-    loadingSubtitle: "Проверяем конфигурацию вашей компании…",
+    loadingSubtitle: "Секунду…",
   },
   steps: [
     {
       id: 1,
-      title: "Разделы системы",
-      subtitle: "Отметьте направления работы — в меню останутся только нужные разделы.",
+      title: "Разделы",
+      subtitle: "Что показывать в меню",
       icon: Sparkles,
     },
     {
       id: 2,
-      title: "Каталог запчастей",
-      subtitle: "Выберите типы деталей и способ учёта: склад или быстрая продажа.",
+      title: "Каталог",
+      subtitle: "Типы запчастей",
       icon: Boxes,
     },
     {
       id: 3,
-      title: "Гарантия клиентам",
-      subtitle: "Шаблон по умолчанию для моторов и продаж. На сделке можно изменить.",
+      title: "Гарантия",
+      subtitle: "Шаблон по умолчанию",
       icon: ShieldCheck,
     },
   ] satisfies SetupWizardStepMeta[],
   presets: {
-    title: "Быстрый старт",
-    hint: "Подставим типовой набор — вы сможете уточнить ниже.",
+    title: "Шаблон",
+    hint: "",
     options: [
       {
         id: "service",
-        label: "СТО и сервис",
-        description: "Заказ-наряды, склад, бухгалтерия",
+        label: "СТО",
+        description: "Наряды · склад",
       },
       {
         id: "dismantling",
-        label: "Разбор моторов",
-        description: "Моторы, продажи, гарантийные документы",
+        label: "Разбор",
+        description: "Моторы · продажи",
       },
       {
         id: "full",
-        label: "Полный цикл",
-        description: "Сервис, моторы, склад и запчасти",
+        label: "Всё",
+        description: "Полный цикл",
       },
     ] as const,
   },
   modules: {
     motors: {
-      label: "Моторы и продажи",
-      description: "Учёт двигателей, сделки и гарантийные PDF",
+      label: "Моторы",
+      description: "Продажи и гарантия",
     },
     workOrders: {
       label: "Заказ-наряды",
-      description: "Приём работ, запчасти, зарплата и документы",
+      description: "Приём и цех",
     },
     accounting: {
       label: "Бухгалтерия",
-      description: "Операции, счета и отчёты",
+      description: "Операции и счета",
     },
     warehouse: {
       label: "Склад",
-      description: "Остатки, перемещения и импорт",
+      description: "Остатки",
     },
     specifics: {
-      label: "Запчасти по каталогу",
-      description: "Коробки, электрика, кузовные детали",
+      label: "Каталог",
+      description: "Запчасти",
     },
   } satisfies Record<CompanyModuleKey, { label: string; description: string }>,
   moduleIcons: {
@@ -100,41 +140,37 @@ export const SETUP_WIZARD_COPY = {
     specifics: Package,
   } satisfies Record<CompanyModuleKey, LucideIcon>,
   categories: {
-    specificsDisabled:
-      "Раздел «Запчасти по каталогу» выключен. Вернитесь на шаг 1 или нажмите «Пропустить».",
-    emptyHint: "Выберите, если работаете с этой категорией",
-    trackedHint: "Остатки на складе и полный учёт",
-    quickHint: "Продажа без склада — сразу в заказ-наряд",
-    modeTracked: "Складской учёт",
-    modeQuick: "Быстрая продажа",
-    groups: [
-      { id: "mechanics", label: "Агрегаты", ids: ["gearboxes", "transfer_cases", "turbos", "pumps"] },
-      { id: "electrical", label: "Электрика", ids: ["ecu", "alternators", "starters"] },
-      { id: "body", label: "Кузов", ids: ["bumpers", "headlights", "fenders"] },
-    ] as const,
+    specificsDisabled: "Включите «Каталог» на шаге 1 или пропустите.",
+    emptyHint: "",
+    trackedHint: "Склад",
+    quickHint: "Без склада",
+    modeTracked: "Склад",
+    modeQuick: "Быстро",
+    modeTrackedAria: "С учётом склада",
+    modeQuickAria: "Без учёта склада",
+    groups: SETUP_WIZARD_CATEGORY_GROUPS,
   },
   warranty: {
-    customHint: "Условия задаёте вручную на каждой сделке",
-    noWarranty: "Без гарантийных обязательств",
+    customHint: "На каждой сделке",
+    noWarranty: "Без гарантии",
   },
   actions: {
     back: "Назад",
-    next: "Продолжить",
+    next: "Далее",
     skipCategories: "Пропустить",
-    finish: "Запустить AutoCore",
+    finish: "Готово",
     saving: "Сохраняем…",
-    stepCounter: (current: number, total: number) => `Шаг ${current} из ${total}`,
-    modulesSelected: (count: number, total: number) => `${count} из ${total} разделов`,
-    categoriesSelected: (count: number) =>
-      count === 0 ? "Категории не выбраны" : `${count} категорий`,
+    stepCounter: (current: number, total: number) => `${current} / ${total}`,
+    modulesSelected: (count: number, total: number) => `${count}/${total}`,
+    categoriesSelected: (count: number) => (count === 0 ? "0" : String(count)),
   },
   validation: {
-    pickModule: "Выберите хотя бы один раздел системы.",
-    saveFailed: "Не удалось сохранить настройки. Попробуйте ещё раз.",
+    pickModule: "Выберите хотя бы один раздел.",
+    saveFailed: "Не удалось сохранить. Попробуйте снова.",
   },
   success: {
-    title: "Компания настроена",
-    subtitle: "Сохранили выбор и открываем рабочее пространство…",
+    title: "Готово",
+    subtitle: "Открываем рабочее пространство…",
   },
   settings: {
     title: "Система",
@@ -179,8 +215,10 @@ export function modulesForPreset(preset: BusinessPresetId): Record<CompanyModule
 }
 
 export function categoriesForPreset(preset: BusinessPresetId): CompanySpecificCategoryConfig[] {
-  const byId = (ids: string[]) =>
-    SETUP_WIZARD_CATEGORY_PRESETS.filter((item) => ids.includes(item.id));
+  const byId = (ids: readonly SetupWizardCategoryId[]) =>
+    SETUP_WIZARD_CATEGORY_PRESETS.filter((item) =>
+      (ids as readonly string[]).includes(item.id),
+    );
 
   switch (preset) {
     case "service":

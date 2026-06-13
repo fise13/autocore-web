@@ -121,6 +121,7 @@ export function marketingHomeUrl(): string {
 
 export const APP_ROUTE_PREFIXES = [
   "/login",
+  "/auth",
   "/demo",
   "/warehouse",
   "/work-orders",

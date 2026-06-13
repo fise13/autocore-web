@@ -8,11 +8,11 @@ import { AtSign, ChevronLeft, Loader2 } from "lucide-react";
 
 import { AppleIcon, GoogleIcon } from "@/components/auth/auth-brand-icons";
 import { AuthDivider } from "@/components/auth/auth-divider";
-import { FloatingPaths } from "@/components/auth/floating-paths";
+import { AuthJourneyReveal } from "@/components/auth/auth-journey-reveal";
+import { AuthJourneyShell } from "@/components/auth/auth-journey-shell";
 import { PasswordField } from "@/components/auth/password-field";
 import { PasswordStrengthField } from "@/components/auth/password-strength-field";
 import { useAuth } from "@/components/providers/auth-provider";
-import { AppLogo } from "@/components/brand/app-logo";
 import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -248,62 +248,45 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
   }, [authPhase]);
 
   if (authPhase === "completing") {
-    return <AppLoadingScreen message={userCopy.auth.completing} />;
+    return (
+      <AuthJourneyShell stepKey="completing" stepLabel="Вход и регистрация" contentWidth="md">
+        <div className="flex flex-col items-center gap-4 py-10 text-center">
+          <Loader2 className="size-6 animate-spin text-primary motion-reduce:animate-none" aria-hidden />
+          <p className="text-sm font-medium text-foreground">{userCopy.auth.completing}</p>
+        </div>
+      </AuthJourneyShell>
+    );
   }
 
+  const loginStepKey = emailStep ? `email-${emailMode}` : "entry";
+
   return (
-    <main
-      data-login-screen
-      className="relative md:h-screen md:overflow-hidden lg:grid lg:grid-cols-2"
-    >
-      <div
-        data-page-reveal
-        className="relative hidden h-full flex-col border-r border-border bg-secondary p-10 lg:flex dark:bg-secondary/20"
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background" />
-        <AppLogo size={28} className="relative z-10 mr-auto h-7 w-auto" priority />
-
-        <div className="relative z-10 mt-auto">
-          <blockquote className="space-y-2">
-            <p className="text-xl leading-relaxed">
-              &ldquo;AutoCore помогает закрывать наряды быстрее — склад, цех и бухгалтерия наконец
-              говорят на одном языке.&rdquo;
-            </p>
-            <footer className="font-mono text-sm font-semibold">~ Команда AutoCore</footer>
-          </blockquote>
-        </div>
-
-        <div className="absolute inset-0">
-          <FloatingPaths position={1} />
-          <FloatingPaths position={-1} />
-        </div>
-      </div>
-
-      <div data-page-reveal className="relative flex min-h-screen flex-col justify-center px-8">
-        <div aria-hidden className="absolute inset-0 isolate -z-10 opacity-60 contain-strict">
-          <div className="absolute top-0 right-0 h-80 w-56 -translate-y-1/2 rounded-full bg-[radial-gradient(68.54%_68.72%_at_55.02%_31.46%,color-mix(in_srgb,var(--foreground)_6%,transparent)_0,color-mix(in_srgb,var(--foreground)_2%,transparent)_50%,transparent_80%)]" />
-          <div className="absolute top-0 right-0 h-80 w-40 translate-x-[5%] -translate-y-1/2 rounded-full bg-[radial-gradient(50%_50%_at_50%_50%,color-mix(in_srgb,var(--foreground)_4%,transparent)_0,transparent_80%)]" />
-        </div>
-
+    <AuthJourneyShell
+      stepKey={loginStepKey}
+      stepLabel="Вход и регистрация"
+      contentWidth="sm"
+      topLeft={
         <Link
           href={marketingHomeUrl()}
-          className={buttonVariants({ variant: "ghost", size: "sm", className: "absolute top-7 left-5" })}
+          className={buttonVariants({ variant: "ghost", size: "sm" })}
         >
           <ChevronLeft className="size-4" data-icon="inline-start" aria-hidden />
           На главную
         </Link>
+      }
+    >
+      <div className="space-y-4">
+        <div className="flex flex-col space-y-1">
+          <AuthJourneyReveal index={0} as="h1" className="text-2xl font-bold tracking-tight">
+            Войти или создать аккаунт
+          </AuthJourneyReveal>
+          <AuthJourneyReveal index={1} as="p" className="text-base text-muted-foreground">
+            Вход в {userCopy.appName} или регистрация новой команды.
+          </AuthJourneyReveal>
+        </div>
 
-        <div className="mx-auto w-full space-y-4 sm:max-w-sm">
-          <AppLogo size={28} className="h-7 w-auto lg:hidden" priority />
-
-          <div className="flex flex-col space-y-1">
-            <h1 className="text-2xl font-bold tracking-wide">Войти или создать аккаунт</h1>
-            <p className="text-base text-muted-foreground">
-              Вход в {userCopy.appName} или регистрация новой команды.
-            </p>
-          </div>
-
-          {paidCheckoutPending ? (
+        {paidCheckoutPending ? (
+          <AuthJourneyReveal index={2}>
             <Alert>
               <AlertTitle>Оплата Pro прошла успешно</AlertTitle>
               <AlertDescription>
@@ -311,9 +294,10 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                 подписка активируется автоматически.
               </AlertDescription>
             </Alert>
-          ) : null}
+          </AuthJourneyReveal>
+        ) : null}
 
-          <AnimatePresence mode="wait" custom={authStepDirection}>
+        <AnimatePresence mode="wait" custom={authStepDirection}>
           {!emailStep ? (
             <motion.div
               key="email-entry"
@@ -325,46 +309,53 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
               className="space-y-4"
             >
               <div className="space-y-2">
-                <Button
-                  type="button"
-                  className="auth-oauth-button auth-oauth-button-google h-10 w-full"
-                  disabled={isBusy}
-                  onClick={() => runAuth(() => signInWithGoogle(), "google")}
-                >
+                <AuthJourneyReveal index={paidCheckoutPending ? 3 : 2}>
+                  <Button
+                    type="button"
+                    className="auth-oauth-button auth-oauth-button-google h-10 w-full"
+                    disabled={isBusy}
+                    onClick={() => runAuth(() => signInWithGoogle(), "google")}
+                  >
                   {pendingAuth === "google" ? (
                     <Loader2 className="size-4 animate-spin" data-icon="inline-start" aria-hidden />
                   ) : (
                     <GoogleIcon className="size-4" data-icon="inline-start" />
                   )}
                   {userCopy.auth.signInGoogle}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="auth-oauth-button auth-oauth-button-apple h-10 w-full"
-                  disabled={isBusy || Boolean(appleSetupIssue)}
-                  onClick={() => {
-                    if (appleSetupIssue) {
-                      setError(appleSetupIssue);
-                      return;
-                    }
-                    void runAuth(() => signInWithApple(), "apple");
-                  }}
-                >
+                  </Button>
+                </AuthJourneyReveal>
+                <AuthJourneyReveal index={paidCheckoutPending ? 4 : 3}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="auth-oauth-button auth-oauth-button-apple h-10 w-full"
+                    disabled={isBusy || Boolean(appleSetupIssue)}
+                    onClick={() => {
+                      if (appleSetupIssue) {
+                        setError(appleSetupIssue);
+                        return;
+                      }
+                      void runAuth(() => signInWithApple(), "apple");
+                    }}
+                  >
                   {pendingAuth === "apple" ? (
                     <Loader2 className="size-4 animate-spin" data-icon="inline-start" aria-hidden />
                   ) : (
                     <AppleIcon className="size-4" data-icon="inline-start" />
                   )}
                   {userCopy.auth.signInApple}
-                </Button>
+                  </Button>
+                </AuthJourneyReveal>
                 {appleSetupIssue ? (
                   <p className="text-xs text-destructive">{appleSetupIssue}</p>
                 ) : null}
               </div>
 
-              <AuthDivider>ИЛИ</AuthDivider>
+              <AuthJourneyReveal index={paidCheckoutPending ? 5 : 4}>
+                <AuthDivider>ИЛИ</AuthDivider>
+              </AuthJourneyReveal>
 
+              <AuthJourneyReveal index={paidCheckoutPending ? 6 : 5}>
               <form className="space-y-2" onSubmit={onEmailContinue} autoComplete="on">
                 <p className="text-start text-xs text-muted-foreground">
                   Email для входа или создания аккаунта
@@ -407,6 +398,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                   )}
                 </Button>
               </form>
+              </AuthJourneyReveal>
             </motion.div>
           ) : emailMode === "oauth" ? (
             <motion.div
@@ -589,8 +581,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
             </Link>
             .
           </p>
-        </div>
       </div>
-    </main>
+    </AuthJourneyShell>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { Loader2, MailCheck } from "lucide-react";
 
 import { AppLogo } from "@/components/brand/app-logo";
@@ -8,25 +8,90 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
 import { userCopy } from "@/lib/user-copy";
+import { cn } from "@/lib/utils";
 
 type EmailVerificationGateProps = {
   children: ReactNode;
 };
 
+function normalizeCode(value: string): string {
+  return value.replace(/\D/g, "").slice(0, 6);
+}
+
 export function EmailVerificationGate({ children }: EmailVerificationGateProps) {
-  const { firebaseUser, isLoading, sendEmailVerification, reloadFirebaseUser, logout } = useAuth();
+  const { firebaseUser, isLoading, sendEmailVerification, verifyEmailWithCode, logout } = useAuth();
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [code, setCode] = useState("");
+  const autoSentRef = useRef(false);
+  const verifyAttemptRef = useRef<string | null>(null);
+
+  const provider = firebaseUser ? getAccountProviderInfo(firebaseUser) : null;
+  const needsVerification =
+    Boolean(firebaseUser) && provider?.kind === "email" && !firebaseUser?.emailVerified;
+
+  useEffect(() => {
+    if (!needsVerification || autoSentRef.current) return;
+    autoSentRef.current = true;
+    void sendEmailVerification()
+      .then(() => setStatus(userCopy.auth.verifyEmailAutoSent))
+      .catch((sendError) => {
+        const message = sendError instanceof Error ? sendError.message : "";
+        if (message.includes("Подождите")) {
+          setStatus(userCopy.auth.verifyEmailAutoSent);
+          return;
+        }
+        autoSentRef.current = false;
+        setError(message || "Не удалось отправить код.");
+      });
+  }, [needsVerification, sendEmailVerification]);
+
+  useEffect(() => {
+    if (!needsVerification || code.length !== 6) return;
+    if (verifyAttemptRef.current === code) return;
+    verifyAttemptRef.current = code;
+
+    let cancelled = false;
+    setBusy(true);
+    setError(null);
+    setStatus(userCopy.auth.verifyEmailCodeWorking);
+
+    void verifyEmailWithCode(code)
+      .then((verified) => {
+        if (cancelled) return;
+        if (verified) {
+          setStatus(userCopy.auth.verifyEmailSuccess);
+          return;
+        }
+        setStatus(userCopy.auth.verifyEmailNotYet);
+        verifyAttemptRef.current = null;
+      })
+      .catch((verifyError) => {
+        if (cancelled) return;
+        setError(
+          verifyError instanceof Error
+            ? verifyError.message
+            : userCopy.auth.verifyEmailCodeInvalid,
+        );
+        setStatus(null);
+        verifyAttemptRef.current = null;
+      })
+      .finally(() => {
+        if (!cancelled) setBusy(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [code, needsVerification, verifyEmailWithCode]);
 
   if (isLoading || !firebaseUser) {
     return <AppLoadingScreen message={userCopy.auth.loading} />;
   }
-
-  const provider = getAccountProviderInfo(firebaseUser);
-  const needsVerification = provider?.kind === "email" && !firebaseUser.emailVerified;
 
   if (!needsVerification) {
     return <>{children}</>;
@@ -36,27 +101,13 @@ export function EmailVerificationGate({ children }: EmailVerificationGateProps) 
     setBusy(true);
     setError(null);
     setStatus(null);
+    setCode("");
+    verifyAttemptRef.current = null;
     try {
       await sendEmailVerification();
-      setStatus("Письмо отправлено. Проверьте почту и папку «Спам».");
+      setStatus(userCopy.auth.verifyEmailResent);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось отправить письмо.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function onCheckVerified() {
-    setBusy(true);
-    setError(null);
-    setStatus(null);
-    try {
-      const verified = await reloadFirebaseUser();
-      if (!verified) {
-        setStatus("Email ещё не подтверждён. Откройте ссылку из письма и нажмите снова.");
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось обновить статус.");
+      setError(e instanceof Error ? e.message : "Не удалось отправить код.");
     } finally {
       setBusy(false);
     }
@@ -68,27 +119,64 @@ export function EmailVerificationGate({ children }: EmailVerificationGateProps) 
         <div className="flex justify-center">
           <AppLogo size={40} />
         </div>
-        <Card>
+        <Card className="overflow-hidden border-border/80 shadow-xl shadow-black/5">
+          <div className="h-1 bg-gradient-to-r from-primary via-primary/80 to-sky-400" />
           <CardHeader className="text-center">
-            <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <MailCheck className="size-6" aria-hidden />
+            <div className="mx-auto mb-3 flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15">
+              {busy ? (
+                <Loader2 className="size-6 animate-spin" aria-hidden />
+              ) : (
+                <MailCheck className="size-6" aria-hidden />
+              )}
             </div>
-            <CardTitle>Подтвердите email</CardTitle>
-            <CardDescription>
-              Мы отправили письмо на{" "}
-              <span className="font-medium text-foreground">{firebaseUser.email}</span>. Откройте
-              ссылку, чтобы продолжить.
+            <CardTitle className="text-2xl tracking-tight">{userCopy.auth.verifyEmailTitle}</CardTitle>
+            <CardDescription className="text-base leading-relaxed">
+              {userCopy.auth.verifyEmailDescription}{" "}
+              <span className="font-medium text-foreground">{firebaseUser.email}</span>.
+              <span className="mt-2 block">{userCopy.auth.verifyEmailCodeHint}</span>
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <Button type="button" className="w-full" disabled={busy} onClick={() => void onCheckVerified()}>
-              {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-              Я подтвердил email
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="email-verification-code" className="sr-only">
+                Код подтверждения
+              </label>
+              <Input
+                id="email-verification-code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={code}
+                disabled={busy}
+                placeholder="000000"
+                onChange={(event) => {
+                  setError(null);
+                  setStatus(null);
+                  setCode(normalizeCode(event.target.value));
+                }}
+                className={cn(
+                  "h-14 text-center text-2xl font-semibold tracking-[0.45em] tabular-nums",
+                  busy && "opacity-70",
+                )}
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 w-full"
+              disabled={busy}
+              onClick={() => void onResend()}
+            >
+              Отправить код повторно
             </Button>
-            <Button type="button" variant="outline" className="w-full" disabled={busy} onClick={() => void onResend()}>
-              Отправить повторно
-            </Button>
-            <Button type="button" variant="ghost" className="w-full" disabled={busy} onClick={() => void logout()}>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              disabled={busy}
+              onClick={() => void logout()}
+            >
               Выйти
             </Button>
             {status ? <p className="text-center text-sm text-muted-foreground">{status}</p> : null}

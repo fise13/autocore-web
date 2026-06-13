@@ -54,6 +54,52 @@ function transitionBlurPx(): string {
   return value || "10px";
 }
 
+/** Lift any stuck dissolve veil left by an interrupted auth handoff. */
+export function resetDissolveVeil(): void {
+  if (typeof document === "undefined") return;
+  const veil = document.querySelector<HTMLElement>("[data-transition-veil]");
+  if (veil) {
+    veil.style.opacity = "0";
+  }
+  const overlay = document.querySelector<HTMLElement>(".page-transition-overlay");
+  if (overlay) {
+    overlay.style.visibility = "hidden";
+    overlay.style.pointerEvents = "none";
+  }
+}
+
+/** Reveal only the auth journey right panel; brand panel stays visible. */
+export async function playAuthJourneyContentEnter(): Promise<void> {
+  if (prefersReducedMotion()) {
+    resetDissolveVeil();
+    return;
+  }
+
+  resetDissolveVeil();
+
+  const content = document.querySelector<HTMLElement>("[data-auth-journey-content]");
+  const step = document.querySelector<HTMLElement>("[data-auth-journey-step]");
+  if (!content) return;
+
+  const blur = transitionBlurPx();
+  gsap.set(content, { opacity: 1, clearProps: "transform,filter" });
+
+  if (step) {
+    gsap.fromTo(
+      step,
+      { opacity: 0, x: 28, filter: `blur(${Math.max(4, parseFloat(blur) - 4)}px)` },
+      {
+        opacity: 1,
+        x: 0,
+        filter: "blur(0px)",
+        duration: 0.42,
+        ease: "power2.out",
+        clearProps: "filter",
+      },
+    );
+  }
+}
+
 /** Fade current view out through a soft veil. */
 export async function playDissolveLeave(target: HTMLElement | null): Promise<void> {
   if (prefersReducedMotion()) return;

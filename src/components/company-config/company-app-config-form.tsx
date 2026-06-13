@@ -1,23 +1,27 @@
 "use client";
 
 import { useMemo } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { ShieldCheck } from "lucide-react";
+import { motion } from "framer-motion";
 
 import {
+  CategoryGridTile,
   CategoryGroupHeader,
   CategoryModeToggle,
+  ModuleSelectRow,
   PresetChip,
   SelectableTile,
+  WarrantySelectRow,
 } from "@/components/onboarding/setup-wizard-ui";
 import {
   CompanyAppConfig,
   CompanyModuleKey,
-  SETUP_WIZARD_CATEGORY_PRESETS,
+  CompanySpecificCategoryConfig,
+  SpecificCategoryMode,
 } from "@/domain/company-config";
 import { WARRANTY_TEMPLATE_IDS } from "@/domain/document-config";
 import { getWarrantyTemplate } from "@/lib/documents/warranty/warranty-templates";
 import {
+  categoriesInGroup,
   SETUP_WIZARD_COPY,
   type BusinessPresetId,
 } from "@/lib/onboarding/setup-wizard-copy";
@@ -30,11 +34,12 @@ type CompanyAppConfigFormProps = {
   activePreset: BusinessPresetId | null;
   onApplyPreset: (preset: BusinessPresetId) => void;
   onToggleModule: (key: CompanyModuleKey, enabled: boolean) => void;
-  onToggleCategory: (category: (typeof SETUP_WIZARD_CATEGORY_PRESETS)[number], enabled: boolean) => void;
-  onSetCategoryMode: (categoryId: string, mode: "tracked" | "quick") => void;
+  onToggleCategory: (category: CompanySpecificCategoryConfig, enabled: boolean) => void;
+  onSetCategoryMode: (categoryId: string, mode: SpecificCategoryMode) => void;
   onSetDefaultWarrantyTemplate: (template: CompanyAppConfig["defaultWarrantyTemplate"]) => void;
   section: "modules" | "categories" | "warranty";
   showValidation?: boolean;
+  compact?: boolean;
 };
 
 export function CompanyAppConfigForm({
@@ -47,6 +52,7 @@ export function CompanyAppConfigForm({
   onSetDefaultWarrantyTemplate,
   section,
   showValidation = false,
+  compact = false,
 }: CompanyAppConfigFormProps) {
   const warrantyOptions = useMemo(
     () =>
@@ -69,11 +75,52 @@ export function CompanyAppConfigForm({
   const canProceedFromModules = Object.values(draft.modules).filter(Boolean).length > 0;
 
   if (section === "modules") {
+    if (compact) {
+      return (
+        <div className="mx-auto w-full max-w-md space-y-5">
+          <div className="flex flex-wrap gap-2">
+            {SETUP_WIZARD_COPY.presets.options.map((preset) => (
+              <PresetChip
+                key={preset.id}
+                label={preset.label}
+                selected={activePreset === preset.id}
+                onClick={() => onApplyPreset(preset.id)}
+                compact
+              />
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            {MODULE_KEYS.map((key, index) => {
+              const meta = SETUP_WIZARD_COPY.modules[key];
+              const Icon = SETUP_WIZARD_COPY.moduleIcons[key];
+              return (
+                <ModuleSelectRow
+                  key={key}
+                  index={index}
+                  title={meta.label}
+                  icon={Icon}
+                  selected={draft.modules[key]}
+                  onClick={() => onToggleModule(key, !draft.modules[key])}
+                />
+              );
+            })}
+          </div>
+
+          {showValidation && !canProceedFromModules ? (
+            <p className="text-sm text-destructive">{SETUP_WIZARD_COPY.validation.pickModule}</p>
+          ) : null}
+        </div>
+      );
+    }
+
     return (
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <p className="text-xs font-medium text-muted-foreground">{SETUP_WIZARD_COPY.presets.title}</p>
-          <div className="grid gap-2 sm:grid-cols-3">
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-3">
+          {SETUP_WIZARD_COPY.presets.title ? (
+            <p className="text-xs font-medium text-muted-foreground">{SETUP_WIZARD_COPY.presets.title}</p>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
             {SETUP_WIZARD_COPY.presets.options.map((preset) => (
               <PresetChip
                 key={preset.id}
@@ -84,7 +131,6 @@ export function CompanyAppConfigForm({
               />
             ))}
           </div>
-          <p className="text-xs text-muted-foreground">{SETUP_WIZARD_COPY.presets.hint}</p>
         </div>
 
         <div className="grid gap-2.5 sm:grid-cols-2">
@@ -113,8 +159,50 @@ export function CompanyAppConfigForm({
   }
 
   if (section === "categories") {
+    if (compact) {
+      return (
+        <div className="mx-auto w-full max-w-2xl space-y-8">
+          {!draft.modules.specifics ? (
+            <p className="text-sm text-muted-foreground">{SETUP_WIZARD_COPY.categories.specificsDisabled}</p>
+          ) : null}
+
+          {SETUP_WIZARD_COPY.categories.groups.map((group) => {
+            const categories = categoriesInGroup(group);
+            const selectedInGroup = categories.filter((item) =>
+              draft.specificCategories.some((selected) => selected.id === item.id),
+            ).length;
+
+            return (
+              <section key={group.id} className="space-y-3">
+                <CategoryGroupHeader label={group.label} count={selectedInGroup} />
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {categories.map((category, index) => {
+                    const enabled = draft.specificCategories.some((item) => item.id === category.id);
+                    const selected = draft.specificCategories.find((item) => item.id === category.id);
+
+                    return (
+                      <CategoryGridTile
+                        key={category.id}
+                        index={index}
+                        label={category.name}
+                        selected={enabled}
+                        mode={selected?.mode ?? category.mode}
+                        disabled={!draft.modules.specifics}
+                        onToggle={() => onToggleCategory(category, !enabled)}
+                        onModeChange={(mode) => onSetCategoryMode(category.id, mode)}
+                      />
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      );
+    }
+
     return (
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-6">
         {!draft.modules.specifics ? (
           <motion.div
             initial={prefersReducedMotion() ? false : { opacity: 0, y: 6 }}
@@ -126,9 +214,7 @@ export function CompanyAppConfigForm({
         ) : null}
 
         {SETUP_WIZARD_COPY.categories.groups.map((group) => {
-          const categories = SETUP_WIZARD_CATEGORY_PRESETS.filter((item) =>
-            (group.ids as readonly string[]).includes(item.id),
-          );
+          const categories = categoriesInGroup(group);
           const selectedInGroup = categories.filter((item) =>
             draft.specificCategories.some((selected) => selected.id === item.id),
           ).length;
@@ -154,25 +240,15 @@ export function CompanyAppConfigForm({
                             ? selected.mode === "tracked"
                               ? SETUP_WIZARD_COPY.categories.trackedHint
                               : SETUP_WIZARD_COPY.categories.quickHint
-                            : SETUP_WIZARD_COPY.categories.emptyHint
+                            : SETUP_WIZARD_COPY.categories.emptyHint || undefined
                         }
                       />
-                      <AnimatePresence initial={false}>
-                        {enabled && selected ? (
-                          <motion.div
-                            key={`${category.id}-mode`}
-                            initial={prefersReducedMotion() ? false : { opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                          >
-                            <CategoryModeToggle
-                              mode={selected.mode}
-                              onChange={(mode) => onSetCategoryMode(category.id, mode)}
-                            />
-                          </motion.div>
-                        ) : null}
-                      </AnimatePresence>
+                      {enabled && selected ? (
+                        <CategoryModeToggle
+                          mode={selected.mode}
+                          onChange={(mode) => onSetCategoryMode(category.id, mode)}
+                        />
+                      ) : null}
                     </div>
                   );
                 })}
@@ -180,6 +256,23 @@ export function CompanyAppConfigForm({
             </div>
           );
         })}
+      </div>
+    );
+  }
+
+  if (compact) {
+    return (
+      <div className="mx-auto w-full max-w-md space-y-2">
+        {warrantyOptions.map((option, index) => (
+          <WarrantySelectRow
+            key={option.id}
+            index={index}
+            title={option.label}
+            hint={option.hint}
+            selected={draft.defaultWarrantyTemplate === option.id}
+            onClick={() => onSetDefaultWarrantyTemplate(option.id)}
+          />
+        ))}
       </div>
     );
   }
@@ -194,7 +287,6 @@ export function CompanyAppConfigForm({
           onClick={() => onSetDefaultWarrantyTemplate(option.id)}
           title={option.label}
           description={option.hint}
-          icon={ShieldCheck}
         />
       ))}
     </div>

@@ -2,11 +2,13 @@ import {
   playDissolveEnter,
   playDissolveLeave,
   prefersReducedMotion,
+  resetDissolveVeil,
   waitForTransitionTarget,
 } from "@/lib/motion/dissolve-transition";
 import { isTauriDesktop } from "@/lib/tauri/is-tauri-desktop";
 
 export const AUTH_SESSION_STORAGE_KEY = "autocore-auth-session";
+export const AUTH_JOURNEY_HANDOFF_KEY = "autocore-auth-journey-handoff";
 
 export type AuthSessionKind = "sign-in" | "sign-out";
 
@@ -14,6 +16,16 @@ let enterInFlight = false;
 
 export function markAuthSessionTransition(kind: AuthSessionKind): void {
   sessionStorage.setItem(AUTH_SESSION_STORAGE_KEY, kind);
+}
+
+export function markAuthJourneyHandoff(): void {
+  sessionStorage.setItem(AUTH_JOURNEY_HANDOFF_KEY, "1");
+}
+
+export function consumeAuthJourneyHandoff(): boolean {
+  const value = sessionStorage.getItem(AUTH_JOURNEY_HANDOFF_KEY);
+  sessionStorage.removeItem(AUTH_JOURNEY_HANDOFF_KEY);
+  return value === "1";
 }
 
 export function peekAuthSessionTransition(): AuthSessionKind | null {
@@ -36,17 +48,18 @@ function getLeaveTarget(kind: AuthSessionKind): HTMLElement | null {
     );
   }
 
-  return (
-    document.querySelector<HTMLElement>('[data-barba="wrapper"]') ??
-    document.querySelector<HTMLElement>("[data-login-screen]")
-  );
+  return document.querySelector<HTMLElement>("[data-auth-journey-content]");
 }
 
 function getEnterSelector(kind: AuthSessionKind): string {
-  return kind === "sign-in" ? "[data-dashboard-shell]" : "[data-login-screen]";
+  return kind === "sign-in" ? "[data-auth-journey-shell]" : "[data-login-screen]";
 }
 
 export async function playAuthSessionLeave(kind: AuthSessionKind): Promise<void> {
+  if (kind === "sign-in" && consumeAuthJourneyHandoff()) {
+    return;
+  }
+
   const target = getLeaveTarget(kind);
   await playDissolveLeave(target);
 }
@@ -58,15 +71,29 @@ export async function playAuthSessionEnter(kind: AuthSessionKind): Promise<void>
   try {
     if (shouldSkipAuthMotion()) {
       consumeAuthSessionTransition();
+      resetDissolveVeil();
       return;
     }
 
     if (!peekAuthSessionTransition()) return;
 
-    const selector = getEnterSelector(kind);
-    const target = await waitForTransitionTarget(selector, 700);
-    const revealSelector = kind === "sign-in" ? "[data-app-reveal]" : "[data-page-reveal]";
+    if (kind === "sign-in" && consumeAuthJourneyHandoff()) {
+      await waitForTransitionTarget("[data-auth-journey-shell]", 2400);
+      resetDissolveVeil();
+      consumeAuthSessionTransition();
+      return;
+    }
 
+    const selector = getEnterSelector(kind);
+    const target = await waitForTransitionTarget(selector, 2400);
+
+    if (kind === "sign-in" && target) {
+      resetDissolveVeil();
+      consumeAuthSessionTransition();
+      return;
+    }
+
+    const revealSelector = kind === "sign-in" ? "[data-auth-journey-step]" : "[data-page-reveal]";
     await playDissolveEnter(target, revealSelector);
     consumeAuthSessionTransition();
   } finally {
@@ -98,6 +125,7 @@ export async function navigateToAppAfterAuth(
     if (shouldSkipAuthMotion()) {
       sessionStorage.removeItem(APP_AUTH_NAV_LOCK);
       sessionStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
+      sessionStorage.removeItem(AUTH_JOURNEY_HANDOFF_KEY);
       router[method]("/");
       return;
     }
@@ -106,15 +134,7 @@ export async function navigateToAppAfterAuth(
       sessionStorage.setItem(APP_AUTH_NAV_LOCK, "1");
     }
 
-    try {
-      await Promise.race([
-        playAuthSessionLeave("sign-in"),
-        new Promise<void>((resolve) => window.setTimeout(resolve, 320)),
-      ]);
-    } catch {
-      // Overlay may not be mounted during SSR or early bootstrap.
-    }
-
+    markAuthJourneyHandoff();
     markAuthSessionTransition("sign-in");
     router[method]("/");
   })();

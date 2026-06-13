@@ -28,11 +28,12 @@ const MODULE_KEYS = Object.keys(SETUP_WIZARD_COPY.modules) as CompanyModuleKey[]
 type SetupWizardProps = {
   companyId: string;
   onCompleted: () => void;
+  embedded?: boolean;
 };
 
 type WizardPhase = "wizard" | "success";
 
-export function SetupWizard({ companyId, onCompleted }: SetupWizardProps) {
+export function SetupWizard({ companyId, onCompleted, embedded = false }: SetupWizardProps) {
   const { profile } = useAuth();
   const [phase, setPhase] = useState<WizardPhase>("wizard");
   const [step, setStep] = useState(1);
@@ -79,41 +80,48 @@ export function SetupWizard({ companyId, onCompleted }: SetupWizardProps) {
   }
 
   if (phase === "success") {
-    return <SetupWizardSuccess onDone={onCompleted} />;
+    return <SetupWizardSuccess embedded={embedded} onDone={onCompleted} />;
   }
 
   const canProceedFromStep1 = enabledModulesCount > 0;
 
   const statusBadge =
     step === 1 ? (
-      <Badge variant="outline">
+      <Badge variant="outline" className="font-normal tabular-nums">
         {SETUP_WIZARD_COPY.actions.modulesSelected(enabledModulesCount, MODULE_KEYS.length)}
       </Badge>
     ) : step === 2 ? (
-      <Badge variant="outline">{SETUP_WIZARD_COPY.actions.categoriesSelected(enabledCategoriesCount)}</Badge>
+      <Badge variant="outline" className="font-normal tabular-nums">
+        {SETUP_WIZARD_COPY.actions.categoriesSelected(enabledCategoriesCount)}
+      </Badge>
     ) : (
-      <Badge variant="outline">{getWarrantyTemplate(draft.defaultWarrantyTemplate).name}</Badge>
+      <Badge variant="outline" className="font-normal">
+        {getWarrantyTemplate(draft.defaultWarrantyTemplate).name}
+      </Badge>
     );
 
   const section = step === 1 ? "modules" : step === 2 ? "categories" : "warranty";
 
   const footer = (
-    <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex items-center justify-between gap-4">
       <Button
         type="button"
         variant="ghost"
+        size="sm"
         disabled={step === 1 || busy}
         onClick={() => goToStep(Math.max(1, step - 1))}
+        className={embedded && step === 1 ? "invisible" : undefined}
       >
         <ChevronLeft data-icon="inline-start" aria-hidden />
         {SETUP_WIZARD_COPY.actions.back}
       </Button>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-2">
         {step === 2 ? (
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
+            size="sm"
             disabled={busy}
             onClick={() => {
               clearCategories();
@@ -127,6 +135,7 @@ export function SetupWizard({ companyId, onCompleted }: SetupWizardProps) {
         {step < 3 ? (
           <Button
             type="button"
+            size={embedded ? "default" : "default"}
             disabled={busy || (step === 1 && !canProceedFromStep1)}
             onClick={() => goToStep(step + 1)}
           >
@@ -148,10 +157,16 @@ export function SetupWizard({ companyId, onCompleted }: SetupWizardProps) {
   );
 
   return (
-    <SetupWizardShell>
-      <SetupWizardHeader steps={STEPS} currentStep={step} />
+    <SetupWizardShell embedded={embedded}>
+      <SetupWizardHeader steps={STEPS} currentStep={step} embedded={embedded} />
 
-      <SetupWizardLayout steps={STEPS} currentStep={step} footer={footer} status={statusBadge}>
+      <SetupWizardLayout
+        steps={STEPS}
+        currentStep={step}
+        footer={footer}
+        status={embedded ? null : statusBadge}
+        embedded={embedded}
+      >
         <SetupWizardStepPanel stepKey={step} direction={direction}>
           <CompanyAppConfigForm
             draft={draft}
@@ -163,6 +178,7 @@ export function SetupWizard({ companyId, onCompleted }: SetupWizardProps) {
             onSetDefaultWarrantyTemplate={setDefaultWarrantyTemplate}
             section={section}
             showValidation={step === 1}
+            compact={embedded}
           />
         </SetupWizardStepPanel>
 

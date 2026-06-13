@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import { Resend } from "resend";
 
 import { UserRole, USER_ROLES } from "@/domain/user";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { generateInviteToken } from "@/lib/invites/invite-token";
+import { getResend, getSupportFrom, isResendConfigured } from "@/lib/email/resend-client";
+import {
+  buildInviteEmailHtml,
+  buildInviteEmailSubject,
+} from "@/lib/email/templates/invite-email";
 import { AccountAccessError, verifyAccountAccess } from "@/lib/auth/verify-account-access";
 import { verifyCompanyManager } from "@/lib/auth/verify-company-manager.server";
 
@@ -78,9 +82,7 @@ export async function POST(request: NextRequest) {
       status: "pending",
     });
 
-    const resendKey = process.env.RESEND_API_KEY?.trim();
-    const fromEmail = process.env.RESEND_FROM_EMAIL?.trim();
-    if (!resendKey || !fromEmail) {
+    if (!isResendConfigured()) {
       return NextResponse.json(
         {
           error: "Email service not configured",
@@ -92,18 +94,17 @@ export async function POST(request: NextRequest) {
     }
 
     const joinUrl = appJoinUrl(token);
-    const resend = new Resend(resendKey);
+    const resend = getResend();
     await resend.emails.send({
-      from: fromEmail,
+      from: getSupportFrom(),
       to: email,
-      subject: `Приглашение в ${companyName} — AutoCore`,
-      html: `
-        <p>Вас пригласили в команду <strong>${companyName}</strong> в AutoCore.</p>
-        <p>Роль: <strong>${role}</strong></p>
-        <p><a href="${joinUrl}">Принять приглашение</a></p>
-        <p>Ссылка действует до ${expiresAt.toLocaleString("ru-RU")}.</p>
-        <p>Если кнопка не работает, скопируйте ссылку: ${joinUrl}</p>
-      `,
+      subject: buildInviteEmailSubject(companyName),
+      html: buildInviteEmailHtml({
+        joinUrl,
+        companyName,
+        role,
+        expiresAt,
+      }),
     });
 
     return NextResponse.json({

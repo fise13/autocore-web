@@ -8,8 +8,6 @@ import {
   fetchSignInMethodsForEmail,
   onAuthStateChanged,
   reauthenticateWithCredential,
-  sendEmailVerification,
-  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -50,6 +48,11 @@ import { claimPendingMarketingCheckout } from "@/lib/billing/claim-marketing-che
 import { mapAuthError } from "@/lib/user-copy";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
 import {
+  sendPasswordResetViaApi,
+  sendVerificationEmailViaApi,
+  verifyEmailCodeViaApi,
+} from "@/lib/auth/send-auth-email";
+import {
   markAuthSessionTransition,
   playAuthSessionLeave,
 } from "@/lib/motion/auth-session-transition";
@@ -79,6 +82,7 @@ type AuthContextValue = {
   resolveSignInMethodsForEmail: (email: string) => Promise<string[]>;
   sendPasswordResetForEmail: (email: string) => Promise<void>;
   sendEmailVerification: () => Promise<void>;
+  verifyEmailWithCode: (code: string) => Promise<boolean>;
   reloadFirebaseUser: () => Promise<boolean>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   changeEmail: (newEmail: string, currentPassword: string) => Promise<void>;
@@ -413,6 +417,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
             });
           }
           await finalizeSignedInUser(auth, result.user, refreshProfile, setFirebaseUser, setIsLoading);
+          try {
+            await sendVerificationEmailViaApi(result.user);
+          } catch (verificationError) {
+            console.warn("Verification email send skipped:", verificationError);
+          }
         } catch (error) {
           throw new Error(mapAuthError(error));
         }
@@ -439,8 +448,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       },
       async sendPasswordResetForEmail(email) {
         if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));
-        const auth = getFirebaseAuth();
-        await sendPasswordResetEmail(auth, email.trim());
+        await sendPasswordResetViaApi(email);
       },
       async sendEmailVerification() {
         if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));
@@ -448,7 +456,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const user = auth.currentUser;
         if (!user) throw new Error(mapAuthError(new Error("auth/invalid-credential")));
         assertEmailProvider(user);
-        await sendEmailVerification(user);
+        await sendVerificationEmailViaApi(user);
+      },
+      async verifyEmailWithCode(code) {
+        if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));
+        const auth = getFirebaseAuth();
+        const user = auth.currentUser;
+        if (!user) throw new Error(mapAuthError(new Error("auth/invalid-credential")));
+        assertEmailProvider(user);
+        await verifyEmailCodeViaApi(user, code);
+        await user.reload();
+        await user.getIdToken(true);
+        setFirebaseUser(auth.currentUser);
+        return Boolean(auth.currentUser?.emailVerified);
       },
       async reloadFirebaseUser() {
         if (!isFirebaseReady) return false;
@@ -493,7 +513,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const user = auth.currentUser;
         if (!user?.email) throw new Error(mapAuthError(new Error("auth/invalid-email")));
         assertEmailProvider(user);
-        await sendPasswordResetEmail(auth, user.email);
+        await sendPasswordResetViaApi(user.email);
       },
       async logout() {
         if (!isFirebaseReady) return;
