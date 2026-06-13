@@ -1,40 +1,29 @@
-import { useEffect, useState } from "react";
+"use client";
+
+import { useMemo } from "react";
 
 import { InventoryImportJob } from "@/domain/inventory-import";
 import { InventoryImportRepository } from "@/infrastructure/firestore/inventory-import-repository";
+import { useRealtimeQuery } from "@/hooks/use-realtime-query";
 
 export function useImportJobsRealtime(
   repository: InventoryImportRepository,
   companyId: string | undefined,
   enabled = true,
 ) {
-  const [jobs, setJobs] = useState<InventoryImportJob[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const active = Boolean(companyId && enabled);
+  const queryKey = useMemo(() => ["import-jobs", companyId] as const, [companyId]);
 
-  useEffect(() => {
-    if (!companyId || !enabled) {
-      setJobs([]);
-      setLoading(false);
-      return;
-    }
+  const { data, isBootstrapping, errorMessage } = useRealtimeQuery<InventoryImportJob[]>({
+    queryKey,
+    enabled: active,
+    initialData: [],
+    subscribe: (onData, onError) => repository.subscribe(companyId!, onData, onError),
+  });
 
-    setLoading(true);
-    const unsubscribe = repository.subscribe(
-      companyId,
-      (next) => {
-        setJobs(next);
-        setLoading(false);
-        setErrorMessage(null);
-      },
-      (error) => {
-        setErrorMessage(error.message);
-        setLoading(false);
-      },
-    );
-
-    return () => unsubscribe();
-  }, [repository, companyId, enabled]);
-
-  return { jobs, loading, errorMessage };
+  return {
+    jobs: active ? data : [],
+    loading: active ? isBootstrapping : false,
+    errorMessage: active ? errorMessage : null,
+  };
 }

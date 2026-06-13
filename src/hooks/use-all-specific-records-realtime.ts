@@ -1,40 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
 import {
   SpecificCategoryRepository,
   SpecificRecordEntity,
 } from "@/infrastructure/firestore/specific-category-repository";
+import { useRealtimeQuery } from "@/hooks/use-realtime-query";
 
 export function useAllSpecificRecordsRealtime(
   repository: SpecificCategoryRepository,
   companyId: string,
 ) {
   const enabled = Boolean(companyId);
-  const [records, setRecords] = useState<SpecificRecordEntity[]>([]);
-  const [ready, setReady] = useState(!enabled);
+  const queryKey = useMemo(() => ["all-specific-records", companyId] as const, [companyId]);
 
-  useEffect(() => {
-    if (!enabled) return;
-
-    const unsubscribe = repository.subscribeAllRecords(
-      companyId,
-      (nextRecords) => {
-        setRecords(nextRecords);
-        setReady(true);
-      },
-      () => {
-        setRecords([]);
-        setReady(true);
-      },
-    );
-
-    return () => unsubscribe();
-  }, [companyId, enabled, repository]);
+  const { data, isBootstrapping } = useRealtimeQuery<SpecificRecordEntity[]>({
+    queryKey,
+    enabled,
+    initialData: [],
+    subscribe: (onData) =>
+      repository.subscribeAllRecords(
+        companyId,
+        onData,
+        () => onData([]),
+      ),
+  });
 
   return {
-    records: enabled && ready ? records : [],
-    loading: enabled ? !ready : false,
+    records: enabled && !isBootstrapping ? data : [],
+    loading: enabled ? isBootstrapping : false,
   };
 }

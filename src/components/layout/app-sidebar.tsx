@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ChevronDown, ChevronRight, Cog, FileText, Plus, Tag, Trash2 } from "lucide-react";
 import { AnimatePresence, LayoutGroup } from "framer-motion";
 import { Suspense, useCallback, useMemo, useState } from "react";
@@ -43,6 +43,8 @@ import {
   type SidebarNavItemId,
 } from "@/lib/navigation/sidebar-customization";
 import { userCopy, formatRole } from "@/lib/user-copy";
+import { shouldPrefetchRoute } from "@/hooks/use-barba-navigation";
+import { usePerformanceTier } from "@/components/providers/performance-tier-provider";
 import { cn } from "@/lib/utils";
 import { BrandEntity, EngineEntity } from "@/infrastructure/firestore/catalog-repository";
 import { SpecificCategoryEntity } from "@/infrastructure/firestore/specific-category-repository";
@@ -95,6 +97,16 @@ export function AppSidebar({
   onNavigate,
 }: AppSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { tier } = usePerformanceTier();
+  const prefetchHref = useCallback(
+    (href: string) => {
+      if (shouldPrefetchRoute(href, tier)) {
+        router.prefetch(href);
+      }
+    },
+    [router, tier],
+  );
   const { customization, isEditing, setCustomization } = useSidebarCustomization();
   const [dragging, setDragging] = useState<
     { kind: "block"; id: SidebarBlockId } | { kind: "nav"; id: SidebarNavItemId } | null
@@ -360,6 +372,8 @@ export function AppSidebar({
                     key={navId}
                     href={item.href}
                     onClick={onNavigate}
+                    onMouseEnter={() => prefetchHref(item.href)}
+                    onFocus={() => prefetchHref(item.href)}
                     title={collapsed ? item.label : undefined}
                     className={cn(
                       sidebarNavRowClass,
@@ -425,6 +439,8 @@ export function AppSidebar({
                             key={category.id}
                             href={href}
                             onClick={onNavigate}
+                            onMouseEnter={() => prefetchHref(href)}
+                            onFocus={() => prefetchHref(href)}
                             className={cn(
                               sidebarNavRowClass,
                               active

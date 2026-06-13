@@ -1,40 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
 import { ClientEntity } from "@/domain/client";
 import { ClientRepository } from "@/infrastructure/firestore/client-repository";
+import { useRealtimeQuery } from "@/hooks/use-realtime-query";
 
 export function useClientsRealtime(
   repository: ClientRepository,
   companyId: string,
   enabled = true,
 ) {
-  const [clients, setClients] = useState<ClientEntity[]>([]);
-  const [isLoading, setIsLoading] = useState(enabled);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!companyId || !enabled) {
-      return;
-    }
-
-    const unsubscribe = repository.subscribe(
-      companyId,
-      (next) => {
-        setClients(next);
-        setIsLoading(false);
-        setError(null);
-      },
-      (nextError) => {
-        setError(nextError.message);
-        setIsLoading(false);
-      },
-    );
-
-    return unsubscribe;
-  }, [repository, companyId, enabled]);
-
   const active = Boolean(companyId && enabled);
-  return { clients: active ? clients : [], isLoading: active ? isLoading : false, error: active ? error : null };
+  const queryKey = useMemo(() => ["clients", companyId] as const, [companyId]);
+
+  const { data, isBootstrapping, errorMessage } = useRealtimeQuery<ClientEntity[]>({
+    queryKey,
+    enabled: active,
+    initialData: [],
+    subscribe: (onData, onError) => repository.subscribe(companyId, onData, onError),
+  });
+
+  return {
+    clients: active ? data : [],
+    isLoading: active ? isBootstrapping : false,
+    error: active ? errorMessage : null,
+  };
 }

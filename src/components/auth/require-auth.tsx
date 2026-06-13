@@ -4,10 +4,12 @@ import { useRouter } from "next/navigation";
 import { ReactNode, useEffect } from "react";
 
 import { useAuth } from "@/components/providers/auth-provider";
+import { DashboardShellSkeleton } from "@/components/layout/dashboard-shell-skeleton";
 import { FirebaseConfigRequired } from "@/components/firebase/firebase-config-required";
 import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
 import { userCopy } from "@/lib/user-copy";
 import { logAuthDebug } from "@/lib/auth/auth-debug";
+import { hasSeenAuthSession, markAuthSessionSeen } from "@/lib/performance/session-flags";
 
 type RequireAuthProps = {
   children: ReactNode;
@@ -16,6 +18,7 @@ type RequireAuthProps = {
 export function RequireAuth({ children }: RequireAuthProps) {
   const router = useRouter();
   const { firebaseUser, isLoading, isFirebaseReady } = useAuth();
+  const returningSession = hasSeenAuthSession();
 
   useEffect(() => {
     if (!isFirebaseReady || isLoading) return;
@@ -28,6 +31,12 @@ export function RequireAuth({ children }: RequireAuthProps) {
     }
   }, [firebaseUser, isFirebaseReady, isLoading, router]);
 
+  useEffect(() => {
+    if (firebaseUser) {
+      markAuthSessionSeen();
+    }
+  }, [firebaseUser]);
+
   if (!isFirebaseReady) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -37,11 +46,11 @@ export function RequireAuth({ children }: RequireAuthProps) {
   }
 
   if (isLoading) {
-    return <AppLoadingScreen message={userCopy.auth.completing} />;
+    return returningSession ? <DashboardShellSkeleton /> : <AppLoadingScreen message={userCopy.auth.completing} />;
   }
 
   if (!firebaseUser) {
-    return <AppLoadingScreen message={userCopy.auth.completing} />;
+    return returningSession ? <DashboardShellSkeleton /> : <AppLoadingScreen message={userCopy.auth.completing} />;
   }
 
   return <>{children}</>;

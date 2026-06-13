@@ -1,40 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
 import { CompanyEmployee } from "@/domain/rbac";
 import { createEmployeeRbacRepository } from "@/infrastructure/firestore/employee-rbac-repository";
+import { useRealtimeQuery } from "@/hooks/use-realtime-query";
 
 const employeeRepository = createEmployeeRbacRepository();
 
 export function useEmployeesRealtime(companyId: string, enabled: boolean) {
-  const [employees, setEmployees] = useState<CompanyEmployee[]>([]);
-  const [isLoading, setIsLoading] = useState(enabled);
-  const [error, setError] = useState<string | null>(null);
+  const active = Boolean(enabled && companyId);
+  const queryKey = useMemo(() => ["employees", companyId] as const, [companyId]);
 
-  useEffect(() => {
-    if (!enabled || !companyId) {
-      setEmployees([]);
-      setIsLoading(false);
-      return;
-    }
+  const { data, isBootstrapping, errorMessage } = useRealtimeQuery<CompanyEmployee[]>({
+    queryKey,
+    enabled: active,
+    initialData: [],
+    subscribe: (onData, onError) =>
+      employeeRepository.subscribeEmployees(companyId, onData, onError),
+  });
 
-    setIsLoading(true);
-    const unsubscribe = employeeRepository.subscribeEmployees(
-      companyId,
-      (next) => {
-        setEmployees(next);
-        setIsLoading(false);
-        setError(null);
-      },
-      (nextError) => {
-        setError(nextError.message);
-        setIsLoading(false);
-      },
-    );
-
-    return unsubscribe;
-  }, [companyId, enabled]);
-
-  return { employees, isLoading, error };
+  return {
+    employees: active ? data : [],
+    isLoading: active ? isBootstrapping : false,
+    error: active ? errorMessage : null,
+  };
 }

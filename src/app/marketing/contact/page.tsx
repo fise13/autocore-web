@@ -22,6 +22,8 @@ const CHANNELS = [
 
 export const metadata = buildMarketingMetadata("contact");
 
+export const revalidate = 3600;
+
 export default function ContactPage() {
   return (
     <>

@@ -94,6 +94,12 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
   );
 
   useEffect(() => {
+    if (!open) return;
+    const routes = ["/", "/motors", "/warehouse", "/work-orders", "/settings", "/quotes"];
+    routes.forEach((href) => router.prefetch(href));
+  }, [open, router]);
+
+  useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();

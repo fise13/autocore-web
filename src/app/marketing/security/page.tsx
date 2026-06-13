@@ -9,6 +9,8 @@ const copy = marketingSiteContent.security;
 
 export const metadata = buildMarketingMetadata("security");
 
+export const revalidate = 3600;
+
 export default function SecurityPage() {
   return (
     <>

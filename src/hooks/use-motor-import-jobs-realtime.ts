@@ -1,38 +1,29 @@
-import { useEffect, useState } from "react";
+"use client";
+
+import { useMemo } from "react";
 
 import { MotorImportJob } from "@/domain/motor-import";
 import { MotorImportRepository } from "@/infrastructure/firestore/motor-import-repository";
+import { useRealtimeQuery } from "@/hooks/use-realtime-query";
 
 export function useMotorImportJobsRealtime(
   repository: MotorImportRepository,
   companyId: string | undefined,
   enabled = true,
 ) {
-  const [jobs, setJobs] = useState<MotorImportJob[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const active = Boolean(companyId && enabled);
+  const queryKey = useMemo(() => ["motor-import-jobs", companyId] as const, [companyId]);
 
-  useEffect(() => {
-    if (!companyId || !enabled) {
-      setJobs([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const unsubscribe = repository.subscribe(
-      companyId,
-      (next) => {
-        setJobs(next);
-        setLoading(false);
-        setErrorMessage(null);
-      },
-      (error) => {
-        setErrorMessage(error.message);
-        setLoading(false);
-      },
-    );
-    return () => unsubscribe();
-  }, [repository, companyId, enabled]);
+  const { data, isBootstrapping, errorMessage } = useRealtimeQuery<MotorImportJob[]>({
+    queryKey,
+    enabled: active,
+    initialData: [],
+    subscribe: (onData, onError) => repository.subscribe(companyId!, onData, onError),
+  });
 
-  return { jobs, loading, errorMessage };
+  return {
+    jobs: active ? data : [],
+    loading: active ? isBootstrapping : false,
+    errorMessage: active ? errorMessage : null,
+  };
 }

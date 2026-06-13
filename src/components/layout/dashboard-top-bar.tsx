@@ -208,7 +208,7 @@ export function DashboardTopBar() {
     <header
       className={cn(
         "relative z-30 flex h-14 shrink-0 items-center gap-3 overflow-hidden border-b border-sidebar-border bg-sidebar px-4 md:px-5",
-        !workspace && "bg-sidebar/95 backdrop-blur-sm",
+        !workspace && "bg-sidebar/95 perf-backdrop-blur",
       )}
     >
       <div className="flex min-w-0 shrink-0 items-center gap-2">

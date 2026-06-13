@@ -3,6 +3,8 @@ import { buildMarketingMetadata } from "@/lib/seo/build-marketing-metadata";
 
 export const metadata = buildMarketingMetadata("terms");
 
+export const revalidate = 3600;
+
 export default function TermsPage() {
   return (
     <MarketingSubpage

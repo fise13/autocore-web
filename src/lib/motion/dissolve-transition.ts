@@ -48,9 +48,17 @@ function requireDissolveOverlay(): DissolveOverlay {
   return dissolveOverlay;
 }
 
+function transitionBlurPx(): string {
+  if (typeof window === "undefined") return "10px";
+  const value = getComputedStyle(document.documentElement).getPropertyValue("--transition-blur").trim();
+  return value || "10px";
+}
+
 /** Fade current view out through a soft veil. */
 export async function playDissolveLeave(target: HTMLElement | null): Promise<void> {
   if (prefersReducedMotion()) return;
+
+  const blur = transitionBlurPx();
 
   const { root, veil } = requireDissolveOverlay();
   gsap.set(root, { visibility: "visible", pointerEvents: "auto" });
@@ -65,7 +73,7 @@ export async function playDissolveLeave(target: HTMLElement | null): Promise<voi
         opacity: 0,
         scale: 0.992,
         y: target.hasAttribute("data-dashboard-shell") ? -12 : -8,
-        filter: "blur(10px)",
+        filter: `blur(${blur})`,
         duration: 0.34,
         ease: "power2.in",
       },
@@ -98,12 +106,14 @@ export async function playDissolveEnter(
   gsap.set(root, { visibility: "visible", pointerEvents: "auto" });
   gsap.set(veil, { opacity: 1 });
 
+  const blur = transitionBlurPx();
+
   if (target) {
     gsap.set(target, {
       opacity: 0,
       y: 14,
       scale: 0.996,
-      filter: "blur(8px)",
+      filter: `blur(${Math.max(4, parseFloat(blur) - 2)}px)`,
     });
   }
 

@@ -1,32 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
 import { Quote } from "@/domain/quote";
 import { createQuoteRepository } from "@/infrastructure/firestore/quote-repository";
+import { useRealtimeQuery } from "@/hooks/use-realtime-query";
+
+const quoteRepository = createQuoteRepository();
 
 export function useQuotesRealtime(companyId: string, enabled = true) {
-  const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [isLoading, setIsLoading] = useState(enabled);
+  const active = Boolean(companyId && enabled);
+  const queryKey = useMemo(() => ["quotes", companyId] as const, [companyId]);
 
-  useEffect(() => {
-    if (!companyId || !enabled) {
-      setQuotes([]);
-      setIsLoading(false);
-      return;
-    }
+  const { data, isBootstrapping } = useRealtimeQuery<Quote[]>({
+    queryKey,
+    enabled: active,
+    initialData: [],
+    subscribe: (onData, onError) => quoteRepository.subscribe(companyId, onData, onError),
+  });
 
-    setIsLoading(true);
-    const repository = createQuoteRepository();
-    return repository.subscribe(
-      companyId,
-      (next) => {
-        setQuotes(next);
-        setIsLoading(false);
-      },
-      () => setIsLoading(false),
-    );
-  }, [companyId, enabled]);
-
-  return { quotes, isLoading };
+  return { quotes: active ? data : [], isLoading: active ? isBootstrapping : false };
 }

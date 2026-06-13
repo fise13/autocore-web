@@ -12,6 +12,8 @@ const copy = marketingSiteContent.modules;
 
 export const metadata = buildMarketingMetadata("modules");
 
+export const revalidate = 3600;
+
 export default function ModulesPage() {
   return (
     <>

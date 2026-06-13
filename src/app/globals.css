@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "../styles/marketing-landing.css";
 @import "../styles/app-mobile.css";
 @import "../styles/document-pdf-template.css";
 @import "../styles/document-pdf-header.css";
@@ -60,6 +59,9 @@
 }
 
 :root {
+  --blur-strength: 12px;
+  --transition-blur: 10px;
+  --scroll-trigger-scrub: 1;
   --background: #f5f7fb;
   --foreground: #11131a;
   --card: #ffffff;
@@ -870,8 +872,29 @@
   }
 }
 
+/* Performance tier tokens */
+[data-perf-tier="balanced"] {
+  --blur-strength: 8px;
+  --transition-blur: 6px;
+}
+
+[data-perf-tier="low"] {
+  --blur-strength: 0px;
+  --transition-blur: 4px;
+  --scroll-trigger-scrub: 0;
+}
+
+.perf-backdrop-blur {
+  backdrop-filter: blur(var(--blur-strength));
+}
+
+[data-perf-tier="low"] .perf-backdrop-blur {
+  backdrop-filter: none;
+  background-color: color-mix(in srgb, var(--background) 88%, transparent);
+}
+
 /* Barba.js — marketing page transitions */
-[data-barba="container"] {
+[data-barba="wrapper"].barba-transition-running [data-barba="container"] {
   will-change: opacity, transform;
 }
 
@@ -879,10 +902,10 @@
   pointer-events: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  [data-barba="container"] {
-    will-change: auto;
-  }
+[data-barba="wrapper"].barba-transition-running [data-barba="wrapper"],
+[data-barba="wrapper"].barba-transition-running [data-login-screen],
+[data-barba="wrapper"].barba-transition-running [data-dashboard-shell] {
+  will-change: opacity, transform, filter;
 }
 
 /* Cross-route dissolve transitions (marketing ↔ login ↔ app) */
@@ -900,26 +923,32 @@
   inset: 0;
   opacity: 0;
   background: var(--background);
+}
+
+.barba-transition-running .page-transition-veil {
   will-change: opacity;
 }
 
-[data-login-screen] {
-  will-change: opacity, transform, filter;
+[data-panel-suspended] {
+  content-visibility: hidden;
+  contain: strict;
 }
 
-[data-dashboard-shell] {
-  will-change: opacity, transform, filter;
+.excel-grid-scroll {
+  contain: layout style paint;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
-[data-barba="wrapper"] {
-  will-change: opacity, transform, filter;
+.dashboard-workspace-scroll {
+  overscroll-behavior: contain;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .page-transition-veil,
-  [data-login-screen],
-  [data-dashboard-shell],
-  [data-barba="wrapper"] {
+  [data-barba="wrapper"].barba-transition-running [data-barba="container"],
+  .barba-transition-running .page-transition-veil,
+  [data-barba="wrapper"].barba-transition-running [data-login-screen],
+  [data-barba="wrapper"].barba-transition-running [data-dashboard-shell] {
     will-change: auto;
   }
 }

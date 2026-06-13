@@ -1,46 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
 import { ActivityLogEntry } from "@/domain/rbac";
 import { createActivityLogRepository } from "@/infrastructure/firestore/activity-log-repository";
 import { isIgnorableFirestoreError } from "@/lib/firestore/snapshot-errors";
+import { useRealtimeQuery } from "@/hooks/use-realtime-query";
 
 const activityRepository = createActivityLogRepository();
 
 export function useActivityLogRealtime(companyId: string, enabled: boolean) {
-  const [entries, setEntries] = useState<ActivityLogEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(enabled);
-  const [error, setError] = useState<string | null>(null);
+  const active = Boolean(enabled && companyId);
+  const queryKey = useMemo(() => ["activity-log", companyId] as const, [companyId]);
 
-  useEffect(() => {
-    if (!enabled || !companyId) {
-      setEntries([]);
-      setIsLoading(false);
-      return;
-    }
+  const { data, isBootstrapping, errorMessage } = useRealtimeQuery<ActivityLogEntry[]>({
+    queryKey,
+    enabled: active,
+    initialData: [],
+    subscribe: (onData, onError) =>
+      activityRepository.subscribe(
+        companyId,
+        onData,
+        (nextError) => {
+          if (isIgnorableFirestoreError(nextError as Parameters<typeof isIgnorableFirestoreError>[0])) {
+            onData([]);
+            onError({ message: "Недостаточно прав для просмотра журнала активности." });
+            return;
+          }
+          onError(nextError);
+        },
+      ),
+  });
 
-    setIsLoading(true);
-    const unsubscribe = activityRepository.subscribe(
-      companyId,
-      (next) => {
-        setEntries(next);
-        setIsLoading(false);
-        setError(null);
-      },
-      (nextError) => {
-        if (isIgnorableFirestoreError(nextError as Parameters<typeof isIgnorableFirestoreError>[0])) {
-          setEntries([]);
-          setError("Недостаточно прав для просмотра журнала активности.");
-        } else {
-          setError(nextError.message);
-        }
-        setIsLoading(false);
-      },
-    );
-
-    return unsubscribe;
-  }, [companyId, enabled]);
-
-  return { entries, isLoading, error };
+  return {
+    entries: active ? data : [],
+    isLoading: active ? isBootstrapping : false,
+    error: active ? errorMessage : null,
+  };
 }

@@ -1,53 +1,40 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { Warehouse } from "@/domain/warehouse";
 import { WarehouseRepository } from "@/infrastructure/firestore/warehouse-repository";
 import { defaultWarehouseDocId } from "@/lib/warehouse/default-warehouse-id";
 import { dedupeWarehousesForDisplay } from "@/lib/warehouse/dedupe-warehouses";
+import { useRealtimeQuery } from "@/hooks/use-realtime-query";
 
 export function useWarehousesRealtime(
   repository: WarehouseRepository,
   companyId: string,
   enabled = true,
 ) {
-  const [rawWarehouses, setRawWarehouses] = useState<Warehouse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
+  const active = Boolean(companyId && enabled);
+  const queryKey = useMemo(() => ["warehouses", companyId] as const, [companyId]);
   const preferredDefaultId = companyId ? defaultWarehouseDocId(companyId) : undefined;
 
+  const { data, isBootstrapping, errorMessage } = useRealtimeQuery<Warehouse[]>({
+    queryKey,
+    enabled: active,
+    initialData: [],
+    subscribe: (onData, onError) => repository.subscribe(companyId, onData, onError),
+  });
+
   const warehouses = useMemo(
-    () => dedupeWarehousesForDisplay(rawWarehouses, preferredDefaultId),
-    [preferredDefaultId, rawWarehouses],
+    () => dedupeWarehousesForDisplay(active ? data : [], preferredDefaultId),
+    [active, data, preferredDefaultId],
   );
-
-  useEffect(() => {
-    if (!companyId || !enabled) {
-      setRawWarehouses([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    const unsubscribe = repository.subscribe(
-      companyId,
-      (next) => {
-        setRawWarehouses(next);
-        setLoading(false);
-        setErrorMessage(null);
-      },
-      (error) => {
-        setErrorMessage(error.message);
-        setLoading(false);
-      },
-    );
-
-    return () => unsubscribe();
-  }, [repository, companyId, enabled]);
 
   const defaultWarehouse = warehouses.find((warehouse) => warehouse.isDefault) ?? warehouses[0] ?? null;
 
-  return { warehouses, defaultWarehouse, loading, errorMessage };
+  return {
+    warehouses,
+    defaultWarehouse,
+    loading: active ? isBootstrapping : false,
+    errorMessage: active ? errorMessage : null,
+  };
 }

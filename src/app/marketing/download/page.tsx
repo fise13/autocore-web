@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button";
 
 export const metadata = buildMarketingMetadata("download");
 
+export const revalidate = 3600;
+
 export default function DownloadPage() {
   const links = getDesktopDownloadLinks();
   const contacts = getPlatformContacts();

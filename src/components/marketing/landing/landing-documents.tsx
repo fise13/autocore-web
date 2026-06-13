@@ -9,6 +9,7 @@ import { useRef, useState } from "react";
 import { landingPageContent } from "@/components/marketing/content/landing-page-content";
 import { useGsapReveal, useGsapSplitHeading } from "@/components/marketing/motion/use-gsap-reveal";
 import { usePrefersReducedMotion } from "@/components/marketing/motion/use-landing-gsap";
+import { usePerformanceTier } from "@/components/providers/performance-tier-provider";
 import { demoDocumentContext } from "@/lib/marketing/demo-document-context";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +50,7 @@ export function LandingDocuments() {
   const stackRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const reduced = usePrefersReducedMotion();
+  const { scrollTriggerScrub } = usePerformanceTier();
 
   useGsapSplitHeading(ref, "[data-doc-heading]");
   useGsapReveal(ref, "[data-doc-reveal]");
@@ -64,7 +66,7 @@ export function LandingDocuments() {
         trigger: stack,
         start: "top 70%",
         end: "bottom 30%",
-        scrub: 0.5,
+        scrub: scrollTriggerScrub ? 0.5 : false,
         onUpdate: (self) => {
           const idx = Math.min(copy.items.length - 1, Math.floor(self.progress * copy.items.length));
           setActiveIndex(idx);
@@ -80,7 +82,7 @@ export function LandingDocuments() {
         });
       });
     },
-    { scope: ref, dependencies: [reduced] },
+    { scope: ref, dependencies: [reduced, scrollTriggerScrub] },
   );
 
   return (

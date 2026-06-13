@@ -9,6 +9,8 @@ const copy = marketingSiteContent.product;
 
 export const metadata = buildMarketingMetadata("product");
 
+export const revalidate = 3600;
+
 export default function ProductPage() {
   return (
     <>

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
 import { InventoryMovement } from "@/domain/inventory-movement";
 import { InventoryMovementRepository } from "@/infrastructure/firestore/inventory-movement-repository";
+import { useRealtimeQuery } from "@/hooks/use-realtime-query";
 
 export function useInventoryMovementsRealtime(
   repository: InventoryMovementRepository,
@@ -11,35 +12,25 @@ export function useInventoryMovementsRealtime(
   itemId?: string,
   enabled = true,
 ) {
-  const [movements, setMovements] = useState<InventoryMovement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const active = Boolean(companyId && enabled);
+  const queryKey = useMemo(
+    () => ["inventory-movements", companyId, itemId ?? "recent"] as const,
+    [companyId, itemId],
+  );
 
-  useEffect(() => {
-    if (!companyId || !enabled) {
-      setMovements([]);
-      setLoading(false);
-      setErrorMessage(null);
-      return;
-    }
+  const { data, isBootstrapping, errorMessage } = useRealtimeQuery<InventoryMovement[]>({
+    queryKey,
+    enabled: active,
+    initialData: [],
+    subscribe: (onData, onError) =>
+      itemId
+        ? repository.subscribeByItem(companyId, itemId, onData, onError)
+        : repository.subscribeRecent(companyId, onData, onError),
+  });
 
-    setLoading(true);
-    setErrorMessage(null);
-    const handleData = (next: InventoryMovement[]) => {
-      setMovements(next);
-      setLoading(false);
-      setErrorMessage(null);
-    };
-    const handleError = (error: Error) => {
-      setErrorMessage(error.message);
-      setLoading(false);
-    };
-    const unsubscribe = itemId
-      ? repository.subscribeByItem(companyId, itemId, handleData, handleError)
-      : repository.subscribeRecent(companyId, handleData, handleError);
-
-    return () => unsubscribe();
-  }, [repository, companyId, itemId, enabled]);
-
-  return { movements, loading, errorMessage };
+  return {
+    movements: active ? data : [],
+    loading: active ? isBootstrapping : false,
+    errorMessage: active ? errorMessage : null,
+  };
 }

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { collection, limit, onSnapshot, query, where } from "firebase/firestore";
+import { useEffect, useMemo, useState } from "react";
+import { collection, limit, onSnapshot, query as firestoreQuery, where } from "firebase/firestore";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { EngineWarranty } from "@/domain/warranty";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
@@ -35,17 +36,26 @@ function mapWarranty(id: string, data: Record<string, unknown>): EngineWarranty 
 }
 
 export function useMotorWarrantyRealtime(companyId: string, motorId: string | undefined, enabled = true) {
-  const [warranty, setWarranty] = useState<EngineWarranty | null>(null);
-  const [isLoading, setIsLoading] = useState(enabled && Boolean(motorId));
+  const queryClient = useQueryClient();
+  const active = Boolean(companyId && motorId && enabled);
+  const queryKey = useMemo(
+    () => ["motor-warranty", companyId, motorId] as const,
+    [companyId, motorId],
+  );
+  const activeKey = queryKey.join("|");
+  const [snapshotKey, setSnapshotKey] = useState<string | null>(null);
+
+  const warrantyQuery = useQuery<EngineWarranty | null>({
+    queryKey,
+    queryFn: async () => null,
+    enabled: active,
+    initialData: null,
+  });
 
   useEffect(() => {
-    if (!companyId || !motorId || !enabled) {
-      setWarranty(null);
-      setIsLoading(false);
-      return;
-    }
+    if (!active || !motorId) return;
 
-    const q = query(
+    const q = firestoreQuery(
       collection(getFirestoreDb(), "companies", normalizeCompanyId(companyId), "warranties"),
       where("motorId", "==", motorId),
       limit(1),
@@ -55,12 +65,16 @@ export function useMotorWarrantyRealtime(companyId: string, motorId: string | un
       q,
       (snapshot) => {
         const doc = snapshot.docs[0];
-        setWarranty(doc ? mapWarranty(doc.id, doc.data() as Record<string, unknown>) : null);
-        setIsLoading(false);
+        const warranty = doc ? mapWarranty(doc.id, doc.data() as Record<string, unknown>) : null;
+        setSnapshotKey(activeKey);
+        queryClient.setQueryData(queryKey, warranty);
       },
-      () => setIsLoading(false),
+      () => setSnapshotKey(activeKey),
     );
-  }, [companyId, motorId, enabled]);
+  }, [active, activeKey, companyId, motorId, queryClient, queryKey]);
 
-  return { warranty, isLoading };
+  return {
+    warranty: active ? warrantyQuery.data ?? null : null,
+    isLoading: active ? snapshotKey !== activeKey : false,
+  };
 }

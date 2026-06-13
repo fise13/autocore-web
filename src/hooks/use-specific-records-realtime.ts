@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
 import {
   SpecificCategoryEntity,
   SpecificCategoryRepository,
   SpecificRecordEntity,
 } from "@/infrastructure/firestore/specific-category-repository";
+import { useRealtimeQuery } from "@/hooks/use-realtime-query";
 
 export function useSpecificRecordsRealtime(
   repository: SpecificCategoryRepository,
@@ -15,33 +16,30 @@ export function useSpecificRecordsRealtime(
   allCategories: SpecificCategoryEntity[],
 ) {
   const enabled = Boolean(companyId && category);
-  const [records, setRecords] = useState<SpecificRecordEntity[]>([]);
-  const [readyCategoryKey, setReadyCategoryKey] = useState<string | null>(null);
-
   const categoryKey = category ? `${category.id}:${category.localId}` : null;
+  const queryKey = useMemo(
+    () => ["specific-records", companyId, categoryKey] as const,
+    [companyId, categoryKey],
+  );
 
-  useEffect(() => {
-    if (!enabled || !category) return;
-
-    const unsubscribe = repository.subscribeRecords(
-      companyId,
-      category,
-      allCategories,
-      (nextRecords) => {
-        setRecords(nextRecords);
-        setReadyCategoryKey(categoryKey);
-      },
-      () => {
-        setRecords([]);
-        setReadyCategoryKey(categoryKey);
-      },
-    );
-
-    return () => unsubscribe();
-  }, [allCategories, category, categoryKey, companyId, enabled, repository]);
+  const { data, isBootstrapping } = useRealtimeQuery<SpecificRecordEntity[]>({
+    queryKey,
+    enabled,
+    initialData: [],
+    subscribe: (onData) => {
+      if (!category) return () => undefined;
+      return repository.subscribeRecords(
+        companyId,
+        category,
+        allCategories,
+        onData,
+        () => onData([]),
+      );
+    },
+  });
 
   return {
-    records: enabled && readyCategoryKey === categoryKey ? records : [],
-    loading: enabled ? readyCategoryKey !== categoryKey : false,
+    records: enabled && !isBootstrapping ? data : [],
+    loading: enabled ? isBootstrapping : false,
   };
 }

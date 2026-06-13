@@ -1,5 +1,10 @@
 /* Marketing landing — premium dark, story-driven layout */
 
+.landing-page > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 560px;
+}
+
 .site-theme {
   --landing-max: 72rem;
   --landing-border: color-mix(in srgb, var(--foreground) 8%, transparent);

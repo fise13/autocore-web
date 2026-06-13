@@ -16,6 +16,8 @@ const copy = marketingSiteContent.pricing;
 
 export const metadata = buildMarketingMetadata("pricing");
 
+export const revalidate = 3600;
+
 const pricingFaqItems = [
   {
     q: "Нужна ли карта для пробного периода?",

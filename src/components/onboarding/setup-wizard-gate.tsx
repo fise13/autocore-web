@@ -1,17 +1,20 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2, Settings2 } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { SetupWizard } from "@/components/onboarding/setup-wizard";
-import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
+import { DashboardShellSkeleton } from "@/components/layout/dashboard-shell-skeleton";
 import { useCompanyAppConfig } from "@/hooks/use-company-app-config";
 import { can } from "@/lib/auth/permissions";
 import { prefersReducedMotion } from "@/lib/motion/cross-route-transition";
 import { SETUP_WIZARD_COPY } from "@/lib/onboarding/setup-wizard-copy";
-import { userCopy } from "@/lib/user-copy";
+import {
+  hasWizardCompleted,
+  markWizardCompleted,
+} from "@/lib/performance/session-flags";
 
 type SetupWizardGateProps = {
   children: ReactNode;
@@ -22,12 +25,23 @@ export function SetupWizardGate({ children }: SetupWizardGateProps) {
   const companyId = profile?.companyId?.trim() || null;
   const { config, loaded } = useCompanyAppConfig(companyId);
   const [localCompleted, setLocalCompleted] = useState(false);
+  const cachedCompleted = companyId ? hasWizardCompleted(companyId) : false;
+
+  useEffect(() => {
+    if (config?.onboardingCompleted && companyId) {
+      markWizardCompleted(companyId);
+    }
+  }, [config?.onboardingCompleted, companyId]);
 
   if (isLoading || !profile) {
-    return <AppLoadingScreen message={userCopy.auth.loading} />;
+    return <DashboardShellSkeleton />;
   }
 
   if (!companyId) {
+    return <>{children}</>;
+  }
+
+  if (!loaded && cachedCompleted) {
     return <>{children}</>;
   }
 
@@ -36,13 +50,19 @@ export function SetupWizardGate({ children }: SetupWizardGateProps) {
   }
 
   const needsWizard =
-    !localCompleted && !config?.onboardingCompleted && (profile.isCompanyOwner || can(profile, "settings_manage"));
+    !localCompleted &&
+    !cachedCompleted &&
+    !config?.onboardingCompleted &&
+    (profile.isCompanyOwner || can(profile, "settings_manage"));
 
   if (needsWizard) {
     return (
       <SetupWizard
         companyId={companyId}
-        onCompleted={() => setLocalCompleted(true)}
+        onCompleted={() => {
+          markWizardCompleted(companyId);
+          setLocalCompleted(true);
+        }}
       />
     );
   }

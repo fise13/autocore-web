@@ -1,40 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
 import { WorkOrder } from "@/domain/work-order";
 import { WorkOrderRepository } from "@/infrastructure/firestore/work-order-repository";
+import { useRealtimeQuery } from "@/hooks/use-realtime-query";
 
 export function useWorkOrdersRealtime(
   repository: WorkOrderRepository,
   companyId: string,
   enabled = true,
 ) {
-  const [orders, setOrders] = useState<WorkOrder[]>([]);
-  const [isLoading, setIsLoading] = useState(enabled);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!companyId || !enabled) {
-      return;
-    }
-
-    const unsubscribe = repository.subscribe(
-      companyId,
-      (next) => {
-        setOrders(next);
-        setIsLoading(false);
-        setError(null);
-      },
-      (nextError) => {
-        setError(nextError.message);
-        setIsLoading(false);
-      },
-    );
-
-    return unsubscribe;
-  }, [repository, companyId, enabled]);
-
   const active = Boolean(companyId && enabled);
-  return { orders: active ? orders : [], isLoading: active ? isLoading : false, error: active ? error : null };
+  const queryKey = useMemo(() => ["work-orders", companyId] as const, [companyId]);
+
+  const { data, isBootstrapping, errorMessage } = useRealtimeQuery<WorkOrder[]>({
+    queryKey,
+    enabled: active,
+    initialData: [],
+    subscribe: (onData, onError) => repository.subscribe(companyId, onData, onError),
+  });
+
+  return {
+    orders: active ? data : [],
+    isLoading: active ? isBootstrapping : false,
+    error: active ? errorMessage : null,
+  };
 }

@@ -1263,7 +1263,7 @@ export function SpecificExcelGrid({
         onKeyDown={handleKeyDown}
       >
         <div
-          className="absolute inset-0 overflow-auto bg-card"
+          className="absolute inset-0 overflow-auto bg-card excel-grid-scroll"
           ref={bodyRef}
           onScroll={(event) => {
             const target = event.currentTarget;

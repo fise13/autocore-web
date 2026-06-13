@@ -88,7 +88,7 @@ export function SiteNav() {
       className={cn(
         "site-nav sticky top-0 z-50 w-full transition-[background-color,border-color,backdrop-filter] duration-300",
         scrolled
-          ? "border-b border-border/80 bg-background/95 backdrop-blur-md supports-backdrop-filter:bg-background/80"
+          ? "border-b border-border/80 bg-background/95 perf-backdrop-blur supports-backdrop-filter:bg-background/80"
           : "border-b border-transparent bg-transparent",
       )}
     >

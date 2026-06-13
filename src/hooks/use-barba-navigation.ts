@@ -3,8 +3,13 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
+import {
+  notifyInstantCacheEnter,
+  resolveRouteCacheKey,
+} from "@/components/layout/dashboard-route-cache";
 import { initBarbaRuntime, runBarbaEnter, runBarbaLeave } from "@/lib/barba/barba-runtime";
 import { peekCrossRouteTransition } from "@/lib/motion/cross-route-transition";
+import { isInstantCacheNavigation } from "@/lib/performance/route-cache-store";
 
 type UseBarbaNavigationOptions = {
   shouldAnimate: (target: URL, currentPathname: string) => boolean;
@@ -18,6 +23,7 @@ export function useBarbaNavigation({ shouldAnimate }: UseBarbaNavigationOptions)
   const previousPathRef = useRef(pathname);
   const isFirstRenderRef = useRef(true);
   const isTransitioningRef = useRef(false);
+  const skipEnterRef = useRef(false);
 
   useEffect(() => {
     void initBarbaRuntime();
@@ -39,8 +45,23 @@ export function useBarbaNavigation({ shouldAnimate }: UseBarbaNavigationOptions)
     }
 
     if (previousPathRef.current === pathname) return;
+
+    const fromPath = previousPathRef.current;
     previousPathRef.current = pathname;
+
     if (peekCrossRouteTransition() === "to-marketing") return;
+
+    if (skipEnterRef.current) {
+      skipEnterRef.current = false;
+      notifyInstantCacheEnter(pathname);
+      return;
+    }
+
+    if (isInstantCacheNavigation(fromPath, pathname)) {
+      notifyInstantCacheEnter(pathname);
+      return;
+    }
+
     void runBarbaEnter(container, href);
   }, [pathname]);
 
@@ -76,6 +97,15 @@ export function useBarbaNavigation({ shouldAnimate }: UseBarbaNavigationOptions)
         return;
       }
 
+      const instant = isInstantCacheNavigation(pathname, target.pathname);
+
+      if (instant) {
+        skipEnterRef.current = true;
+        router.push(nextHref);
+        notifyInstantCacheEnter(target.pathname);
+        return;
+      }
+
       isTransitioningRef.current = true;
       wrapper.classList.add("barba-transition-running");
 
@@ -95,4 +125,11 @@ export function useBarbaNavigation({ shouldAnimate }: UseBarbaNavigationOptions)
   }, [pathname, router, shouldAnimate]);
 
   return { wrapperRef, containerRef };
+}
+
+export function shouldPrefetchRoute(pathname: string, tier: "high" | "balanced" | "low"): boolean {
+  if (tier === "low") {
+    return ["/", "/motors", "/work-orders"].includes(pathname);
+  }
+  return resolveRouteCacheKey(pathname) !== null;
 }

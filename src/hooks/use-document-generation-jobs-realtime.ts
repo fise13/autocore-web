@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { collection, onSnapshot, orderBy, query, where, limit } from "firebase/firestore";
+import { useEffect, useMemo, useState } from "react";
+import { collection, limit, onSnapshot, orderBy, query as firestoreQuery, where } from "firebase/firestore";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { DocumentGenerationJob } from "@/domain/document-generation";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
@@ -30,17 +31,26 @@ export function useDocumentGenerationJobsRealtime(
   aggregateId: string,
   enabled = true,
 ) {
-  const [jobs, setJobs] = useState<DocumentGenerationJob[]>([]);
-  const [isLoading, setIsLoading] = useState(enabled);
+  const queryClient = useQueryClient();
+  const active = Boolean(companyId && aggregateId && enabled);
+  const queryKey = useMemo(
+    () => ["document-generation-jobs", companyId, aggregateId] as const,
+    [companyId, aggregateId],
+  );
+  const activeKey = queryKey.join("|");
+  const [snapshotKey, setSnapshotKey] = useState<string | null>(null);
+
+  const jobsQuery = useQuery<DocumentGenerationJob[]>({
+    queryKey,
+    queryFn: async () => [],
+    enabled: active,
+    initialData: [],
+  });
 
   useEffect(() => {
-    if (!companyId || !aggregateId || !enabled) {
-      setJobs([]);
-      setIsLoading(false);
-      return;
-    }
+    if (!active) return;
 
-    const q = query(
+    const q = firestoreQuery(
       collection(getFirestoreDb(), "companies", normalizeCompanyId(companyId), "documentGenerationJobs"),
       where("aggregateId", "==", aggregateId),
       orderBy("createdAt", "desc"),
@@ -50,16 +60,22 @@ export function useDocumentGenerationJobsRealtime(
     return onSnapshot(
       q,
       (snapshot) => {
-        setJobs(snapshot.docs.map((doc) => mapJob(doc.id, doc.data() as Record<string, unknown>)));
-        setIsLoading(false);
+        const jobs = snapshot.docs.map((doc) => mapJob(doc.id, doc.data() as Record<string, unknown>));
+        setSnapshotKey(activeKey);
+        queryClient.setQueryData(queryKey, jobs);
       },
-      () => setIsLoading(false),
+      () => setSnapshotKey(activeKey),
     );
-  }, [companyId, aggregateId, enabled]);
+  }, [active, activeKey, aggregateId, companyId, queryClient, queryKey]);
 
+  const jobs = active ? (jobsQuery.data ?? []) : [];
   const latestJob = jobs[0];
-  const isGenerating =
-    latestJob?.status === "pending" || latestJob?.status === "processing";
+  const isGenerating = latestJob?.status === "pending" || latestJob?.status === "processing";
 
-  return { jobs, latestJob, isGenerating, isLoading };
+  return {
+    jobs,
+    latestJob,
+    isGenerating,
+    isLoading: active ? snapshotKey !== activeKey : false,
+  };
 }
