@@ -7,7 +7,12 @@ import {
   notifyInstantCacheEnter,
   resolveRouteCacheKey,
 } from "@/components/layout/dashboard-route-cache";
-import { initBarbaRuntime, runBarbaEnter, runBarbaLeave } from "@/lib/barba/barba-runtime";
+import {
+  initBarbaRuntime,
+  resetBarbaContainerVisibility,
+  runBarbaEnter,
+  runBarbaLeave,
+} from "@/lib/barba/barba-runtime";
 import { peekCrossRouteTransition } from "@/lib/motion/cross-route-transition";
 import { isInstantCacheNavigation } from "@/lib/performance/route-cache-store";
 
@@ -46,18 +51,13 @@ export function useBarbaNavigation({ shouldAnimate }: UseBarbaNavigationOptions)
 
     if (previousPathRef.current === pathname) return;
 
-    const fromPath = previousPathRef.current;
     previousPathRef.current = pathname;
 
     if (peekCrossRouteTransition() === "to-marketing") return;
 
     if (skipEnterRef.current) {
       skipEnterRef.current = false;
-      notifyInstantCacheEnter(pathname);
-      return;
-    }
-
-    if (isInstantCacheNavigation(fromPath, pathname)) {
+      resetBarbaContainerVisibility(container);
       notifyInstantCacheEnter(pathname);
       return;
     }
@@ -101,6 +101,7 @@ export function useBarbaNavigation({ shouldAnimate }: UseBarbaNavigationOptions)
 
       if (instant) {
         skipEnterRef.current = true;
+        resetBarbaContainerVisibility(container);
         router.push(nextHref);
         notifyInstantCacheEnter(target.pathname);
         return;

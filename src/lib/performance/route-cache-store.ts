@@ -23,5 +23,6 @@ export function isInstantCacheNavigation(fromPathname: string, toPathname: strin
   const fromKey = resolveRouteCacheKey(fromPathname);
   const toKey = resolveRouteCacheKey(toPathname);
   if (!fromKey || !toKey) return false;
-  return visitedKeys.has(toKey);
+  // Both endpoints must have been visited before this navigation starts.
+  return visitedKeys.has(fromKey) && visitedKeys.has(toKey);
 }

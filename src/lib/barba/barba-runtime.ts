@@ -135,3 +135,9 @@ export async function runBarbaEnter(container: HTMLElement, href: string): Promi
     barba.transitions.isRunning = false;
   }
 }
+
+/** Reset inline GSAP styles after instant cache navigation (leave may have set opacity: 0). */
+export function resetBarbaContainerVisibility(container: HTMLElement | null): void {
+  if (!container) return;
+  gsap.set(container, { opacity: 1, scale: 1, y: 0, clearProps: "opacity,transform,filter" });
+}

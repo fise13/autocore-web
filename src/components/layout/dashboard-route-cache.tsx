@@ -16,10 +16,6 @@ import { SpecificCategoryCachedPage } from "@/components/layout/specific-categor
 import { usePerformanceTier } from "@/components/providers/performance-tier-provider";
 import { usePanelLifecycle } from "@/hooks/use-panel-lifecycle";
 import {
-  workOrdersSectionTransition,
-  workOrdersSectionVariants,
-} from "@/components/work-orders/work-orders-motion";
-import {
   registerRouteCacheKey,
   unregisterRouteCacheKey,
 } from "@/lib/performance/route-cache-store";
@@ -94,6 +90,12 @@ function CachedRoutePanel({ cacheKey, isActive, instantEnter = false }: CachedRo
   usePanelLifecycle({ isActive, rootRef: panelRef });
 
   useEffect(() => {
+    if (isActive) {
+      registerRouteCacheKey(cacheKey);
+    }
+  }, [cacheKey, isActive]);
+
+  useEffect(() => {
     wasActiveRef.current = isActive;
   }, [isActive]);
 
@@ -107,13 +109,12 @@ function CachedRoutePanel({ cacheKey, isActive, instantEnter = false }: CachedRo
     >
       <motion.div
         className="flex min-h-0 flex-1 flex-col"
-        initial={entering ? (instantEnter ? { opacity: 0.92 } : "initial") : false}
-        animate={instantEnter && entering ? { opacity: 1 } : "animate"}
-        variants={workOrdersSectionVariants}
+        initial={false}
+        animate={{ opacity: 1, y: 0 }}
         transition={
           instantEnter && entering
             ? { duration: 0.08, ease: "easeOut" }
-            : workOrdersSectionTransition
+            : { duration: 0.12, ease: [0.22, 1, 0.36, 1] }
         }
       >
         {renderCachedRoute(cacheKey)}
@@ -141,10 +142,8 @@ export function DashboardRouteCache({ children }: DashboardRouteCacheProps) {
       const trimmed = trimVisitedKeys(next, maxPanels);
       const evicted = next.filter((key) => !trimmed.includes(key));
       evicted.forEach((key) => unregisterRouteCacheKey(key));
-      trimmed.forEach((key) => registerRouteCacheKey(key));
       return trimmed;
     });
-    registerRouteCacheKey(activeKey);
   }, [activeKey, maxPanels]);
 
   useEffect(() => {

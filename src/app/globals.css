@@ -930,8 +930,7 @@
 }
 
 [data-panel-suspended] {
-  content-visibility: hidden;
-  contain: strict;
+  pointer-events: none;
 }
 
 .excel-grid-scroll {
