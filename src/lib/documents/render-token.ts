@@ -21,6 +21,17 @@ function renderSecret(): string {
   const dedicated = process.env.DOCUMENT_RENDER_SECRET?.trim();
   if (dedicated) return dedicated;
 
+  const isProduction =
+    process.env.NODE_ENV === "production" ||
+    process.env.VERCEL === "1" ||
+    Boolean(process.env.VERCEL_ENV);
+
+  if (isProduction) {
+    throw new Error(
+      "DOCUMENT_RENDER_SECRET is required in production. Set a random string of at least 32 characters.",
+    );
+  }
+
   const inlineServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
   if (inlineServiceAccount && !inlineServiceAccount.includes("...")) {
     return inlineServiceAccount;

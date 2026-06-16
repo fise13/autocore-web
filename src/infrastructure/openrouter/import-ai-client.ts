@@ -27,6 +27,20 @@ type AiCallableResponse = {
 };
 
 function mapCallableError(error: unknown): Error {
+  const code =
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof (error as { code?: unknown }).code === "string"
+      ? (error as { code: string }).code
+      : "";
+
+  if (code === "functions/not-found" || code === "functions/unimplemented") {
+    return new Error(
+      "Magic Import не настроен на сервере. Обратитесь в поддержку или импортируйте файл вручную.",
+    );
+  }
+
   if (error instanceof Error) return error;
   return new Error("AI import request failed");
 }

@@ -11,8 +11,8 @@
   --doc-accent-text: #ffffff;
   --doc-radius: 8px;
   --doc-gap: 10px;
-  --doc-pad: 14mm;
-  --doc-font: var(--doc-font, Inter, ui-sans-serif, system-ui, sans-serif);
+  --doc-pad: 15mm;
+  --doc-font: Inter, ui-sans-serif, system-ui, sans-serif;
 
   box-sizing: border-box;
   width: 210mm;
@@ -22,7 +22,7 @@
   background: var(--doc-bg);
   color: var(--doc-ink);
   font-family: var(--doc-font);
-  font-size: var(--doc-text-body, 9.5px);
+  font-size: var(--doc-text-body, 12px);
   line-height: 1.45;
   position: relative;
   print-color-adjust: exact;
@@ -45,14 +45,7 @@
   background: var(--doc-brand);
 }
 
-/* ─── Themes ─── */
-
-.doc-theme-classic.doc-pdf-page {
-  --doc-radius: 0;
-  --doc-surface: #f9fafb;
-  --doc-surface-2: #f3f4f6;
-  font-family: Georgia, "Times New Roman", serif;
-}
+/* ─── Themes (structural — colors via themeStyleVars) ─── */
 
 .doc-theme-classic .doc-pdf-header,
 .doc-theme-classic .doc-pdf-data-card,
@@ -64,62 +57,51 @@
 .doc-theme-classic .doc-pdf-block-head h3 {
   border-bottom: 1px solid var(--doc-ink);
   padding-bottom: 4px;
+  text-transform: none;
+  letter-spacing: var(--doc-tracking-wide);
 }
 
 .doc-theme-classic .doc-pdf-hero-band {
   border: 1px solid var(--doc-ink);
-  background: #fff;
 }
 
 .doc-theme-classic .doc-pdf-hero-amount {
-  background: var(--doc-ink);
   border-radius: 0;
 }
 
-.doc-theme-premium.doc-pdf-page {
-  --doc-bg: #fffdf8;
-  --doc-surface: #fff8ef;
-  --doc-surface-2: #f6f1ea;
-  --doc-line: #e7e5e4;
-  --doc-radius: 14px;
-  font-family: Palatino, "Book Antiqua", Georgia, serif;
+.doc-theme-classic .doc-pdf-table th,
+.doc-theme-classic .doc-pdf-table td {
+  border: 1px solid var(--doc-line);
 }
 
-.doc-theme-premium .doc-pdf-hero-band {
-  background: linear-gradient(135deg, #fff8ef 0%, #ffffff 100%);
-  border-color: color-mix(in srgb, var(--doc-brand) 30%, var(--doc-line));
+.doc-theme-classic .doc-pdf-totals-row--grand {
+  background: var(--doc-ink);
+  color: #fff;
 }
 
-.doc-theme-premium .doc-pdf-hero-amount {
-  background: linear-gradient(145deg, #3d2b1f, var(--doc-brand));
+.doc-theme-classic .doc-pdf-totals-row--grand .doc-pdf-totals-label {
+  color: rgb(255 255 255 / 0.72);
 }
 
-.doc-theme-premium .doc-pdf-totals-row--grand {
-  background: linear-gradient(135deg, #f6f1ea, #fff8ef);
+.doc-theme-classic .doc-pdf-totals-row--grand .doc-pdf-totals-value {
+  color: #fff;
 }
 
-.doc-theme-modern.doc-pdf-page {
-  --doc-surface: #f8fafc;
-  --doc-surface-2: #f1f5f9;
-  --doc-line: #e2e8f0;
-  --doc-radius: 10px;
+.doc-theme-premium .doc-pdf-block-head h3 {
+  letter-spacing: var(--doc-tracking-wide);
+  font-weight: 600;
 }
 
-.doc-theme-modern .doc-pdf-meta-tag {
-  background: #eff6ff;
-  color: #1d4ed8;
+.doc-theme-premium .doc-pdf-data-card-head {
+  background: var(--doc-surface);
 }
 
-.doc-theme-modern .doc-pdf-hero-band {
-  background: #f8fafc;
+.doc-theme-modern .doc-pdf-table thead {
+  background: var(--doc-table-head-bg, var(--doc-surface));
 }
 
-.doc-theme-modern .doc-pdf-hero-amount {
-  background: linear-gradient(145deg, #1e40af, var(--doc-brand));
-}
-
-.doc-theme-modern .doc-pdf-totals-row--grand {
-  background: #eff6ff;
+.doc-theme-modern .doc-pdf-table th {
+  color: var(--doc-ink);
 }
 
 .doc-theme-racing.doc-pdf-page {
@@ -162,148 +144,9 @@
 
 /* ─── Document variant accents ─── */
 
-.doc-pdf-page--service-act .doc-pdf-meta-tag {
-  background: #ecfdf5;
-  color: #047857;
-}
-
-.doc-pdf-page--engine-warranty .doc-pdf-meta-tag {
-  background: #fffbeb;
-  color: #b45309;
-}
-
-.doc-pdf-page--invoice .doc-pdf-meta-tag {
-  background: #eff6ff;
-  color: #1d4ed8;
-}
-
-.doc-pdf-page--commercial-proposal .doc-pdf-meta-tag {
-  background: #faf5ff;
-  color: #7c3aed;
-}
-
 .doc-pdf-page--engine-warranty .doc-pdf-block--motor {
   border-width: 2px;
   border-color: color-mix(in srgb, var(--doc-brand) 40%, var(--doc-line));
-}
-
-/* ─── Header ─── */
-
-.doc-pdf-header {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 16px;
-  align-items: start;
-  padding: 8px 0 14px;
-  border-bottom: 1px solid var(--doc-line);
-  margin-bottom: 12px;
-}
-
-.doc-pdf-brand {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  min-width: 0;
-}
-
-.doc-pdf-logo {
-  width: 36mm;
-  max-height: 14mm;
-  object-fit: contain;
-  object-position: left top;
-  flex-shrink: 0;
-}
-
-.doc-pdf-monogram {
-  width: 12mm;
-  height: 12mm;
-  border-radius: calc(var(--doc-radius) - 2px);
-  background: var(--doc-brand);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  font-size: 10px;
-  font-weight: 800;
-  flex-shrink: 0;
-}
-
-.doc-pdf-brand-text {
-  min-width: 0;
-}
-
-.doc-pdf-brand-text h1 {
-  margin: 0;
-  font-size: var(--doc-text-h1, 16px);
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: var(--doc-tracking-tight, -0.02em);
-}
-
-.doc-pdf-brand-text p {
-  margin: 3px 0 0;
-  color: var(--doc-muted);
-  font-size: var(--doc-text-caption, 8.5px);
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-
-.doc-pdf-slogan {
-  color: var(--doc-brand) !important;
-  font-weight: 500;
-}
-
-.doc-pdf-meta {
-  min-width: 52mm;
-  padding: 10px 12px;
-  border: 1px solid var(--doc-line);
-  border-radius: var(--doc-radius);
-  background: var(--doc-surface);
-}
-
-.doc-pdf-meta-tag {
-  display: inline-block;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: var(--doc-surface-2);
-  color: var(--doc-brand);
-  font-size: 7.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.doc-pdf-meta h2 {
-  margin: 8px 0 0;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-}
-
-.doc-pdf-meta-list {
-  margin: 8px 0 0;
-  display: grid;
-  gap: 4px;
-}
-
-.doc-pdf-meta-list > div {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.doc-pdf-meta-list dt {
-  color: var(--doc-muted);
-  font-size: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.doc-pdf-meta-list dd {
-  margin: 0;
-  font-size: 9px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
 }
 
 /* ─── Hero band ─── */
@@ -317,7 +160,7 @@
   margin-bottom: 12px;
   border: 1px solid var(--doc-line);
   border-radius: var(--doc-radius);
-  background: var(--doc-surface);
+  background: var(--doc-hero-bg, var(--doc-surface));
 }
 
 .doc-pdf-hero-copy {
@@ -360,7 +203,7 @@
   width: 44mm;
   padding: 12px 14px;
   border-radius: var(--doc-radius);
-  background: var(--doc-brand);
+  background: var(--doc-hero-amount-bg, var(--doc-brand));
   color: var(--doc-accent-text);
   display: flex;
   flex-direction: column;
@@ -393,6 +236,13 @@
   gap: var(--doc-gap);
 }
 
+.doc-pdf-empty-message {
+  margin: 0;
+  font-size: var(--doc-text-body, 12px);
+  color: var(--doc-muted);
+  line-height: 1.5;
+}
+
 .doc-pdf-block {
   break-inside: avoid;
 }
@@ -407,11 +257,11 @@
 
 .doc-pdf-block-head h3 {
   margin: 0;
-  font-size: var(--doc-text-h3, 9px);
+  font-size: var(--doc-text-h3, 13px);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: var(--doc-tracking-wide, 0.1em);
-  color: var(--doc-brand);
+  color: var(--doc-section-head-color, var(--doc-brand));
 }
 
 .doc-pdf-block-head > span {
@@ -571,7 +421,7 @@
 }
 
 .doc-pdf-table thead {
-  background: var(--doc-surface);
+  background: var(--doc-table-head-bg, var(--doc-surface));
 }
 
 .doc-pdf-table th {
@@ -884,7 +734,7 @@
 
 .doc-pdf-totals-row--grand {
   padding: 12px 14px;
-  background: var(--doc-surface-2);
+  background: var(--doc-totals-grand-bg, var(--doc-surface-2));
 }
 
 .doc-pdf-totals-row--grand .doc-pdf-totals-label {

@@ -110,17 +110,17 @@
   display: inline-block;
   padding: 3px 8px;
   border-radius: 999px;
-  font-size: 7px;
+  font-size: var(--doc-text-micro, 10px);
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--doc-tracking-wide, 0.08em);
   text-transform: uppercase;
-  background: color-mix(in srgb, var(--doc-header-accent) 14%, transparent);
-  color: var(--doc-header-accent);
+  background: var(--doc-meta-tag-bg, color-mix(in srgb, var(--doc-header-accent) 14%, transparent));
+  color: var(--doc-meta-tag-color, var(--doc-header-accent));
 }
 
 .doc-pdf-header__title {
   margin: 8px 0 0;
-  font-size: 11px;
+  font-size: var(--doc-text-h2, 15px);
   font-weight: 700;
   line-height: 1.2;
   color: var(--doc-header-text);
@@ -137,7 +137,7 @@
   grid-template-columns: auto 1fr;
   gap: 8px;
   align-items: baseline;
-  font-size: 8px;
+  font-size: var(--doc-text-micro, 10px);
 }
 
 .doc-pdf-header__meta-list dt {
@@ -204,12 +204,16 @@
 }
 
 .doc-pdf-header--modern .doc-pdf-header__title {
-  font-size: 13px;
+  font-size: var(--doc-text-h2, 15px);
 }
 
 /* ─── Classic ─── */
 
 .doc-theme-classic .doc-pdf-header {
+  border-width: 2px;
+}
+
+.doc-theme-classic .doc-pdf-header__meta {
   border-width: 2px;
 }
 

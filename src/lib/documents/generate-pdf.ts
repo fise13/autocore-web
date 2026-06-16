@@ -1,5 +1,9 @@
 import "server-only";
 
+import { readFileSync, existsSync } from "node:fs";
+import path from "node:path";
+
+import { DocumentTheme } from "@/domain/company-branding";
 import { DOCUMENT_BY_SLUG, DocumentSlug } from "@/lib/documents/document-types";
 import { getPuppeteerBrowser } from "@/lib/documents/puppeteer-browser";
 import { documentRenderUrl } from "@/lib/documents/render-token";
@@ -9,8 +13,21 @@ export type PdfFromUrlOptions = {
   orderId: string;
   slug: DocumentSlug;
   aggregateType?: "work_order" | "warranty" | "quote";
-  theme?: string;
+  theme?: DocumentTheme;
 };
+
+async function waitForPdfAssets(page: Awaited<ReturnType<Awaited<ReturnType<typeof getPuppeteerBrowser>>["newPage"]>>) {
+  await page.evaluate(() => document.fonts.ready).catch(() => undefined);
+  await page
+    .waitForFunction(
+      () => {
+        const images = [...document.images];
+        return images.length === 0 || images.every((img) => img.complete);
+      },
+      { timeout: 12_000 },
+    )
+    .catch(() => undefined);
+}
 
 export async function generatePdfFromRenderUrl(params: PdfFromUrlOptions): Promise<Buffer> {
   const definition = DOCUMENT_BY_SLUG[params.slug];
@@ -34,6 +51,7 @@ export async function generatePdfFromRenderUrl(params: PdfFromUrlOptions): Promi
     await page.waitForSelector(".doc-pdf-page, .doc-racing-page, .doc-sr-page, .doc-page", {
       timeout: 20_000,
     });
+    await waitForPdfAssets(page);
     await page.emulateMediaType("print");
 
     const pdf = await page.pdf({
@@ -43,10 +61,7 @@ export async function generatePdfFromRenderUrl(params: PdfFromUrlOptions): Promi
         ? { width: "70mm", height: "100mm", margin: { top: "0", right: "0", bottom: "0", left: "0" } }
         : {
             format: "A4",
-            margin:
-              params.slug === "work-order"
-                ? { top: "0", right: "0", bottom: "0", left: "0" }
-                : { top: "12mm", right: "12mm", bottom: "12mm", left: "12mm" },
+            margin: { top: "0", right: "0", bottom: "0", left: "0" },
           }),
     });
 
@@ -60,7 +75,7 @@ export async function generateDocumentPdf(
   slug: DocumentSlug,
   companyId: string,
   orderId: string,
-  options?: { theme?: string; aggregateType?: "work_order" | "warranty" | "quote" },
+  options?: { theme?: DocumentTheme; aggregateType?: "work_order" | "warranty" | "quote" },
 ): Promise<Buffer> {
   return generatePdfFromRenderUrl({
     slug,

@@ -1,6 +1,6 @@
 import { DocumentTheme } from "@/domain/company-branding";
 
-/** Professional type scale for PDF documents — theme adjusts weight and tracking. */
+/** Professional type scale for PDF documents — px at 96 DPI (A4 viewport 794×1123). */
 export type DocumentTypography = {
   fontFamily: string;
   display: string;
@@ -16,50 +16,58 @@ export type DocumentTypography = {
 };
 
 const BASE: DocumentTypography = {
-  fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
-  display: "1.75rem",
-  h1: "1.125rem",
-  h2: "0.9375rem",
-  h3: "0.8125rem",
-  body: "0.75rem",
-  caption: "0.6875rem",
-  micro: "0.625rem",
-  total: "1.5rem",
+  fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
+  display: "28px",
+  h1: "18px",
+  h2: "15px",
+  h3: "13px",
+  body: "12px",
+  caption: "11px",
+  micro: "10px",
+  total: "24px",
   letterSpacingTight: "-0.02em",
   letterSpacingWide: "0.08em",
 };
 
 const THEME_OVERRIDES: Partial<Record<DocumentTheme, Partial<DocumentTypography>>> = {
   classic: {
-    fontFamily: "Georgia, 'Times New Roman', 'Noto Serif', serif",
-    h1: "1.25rem",
-    h3: "0.75rem",
-    body: "0.8125rem",
-    total: "1.375rem",
+    fontFamily: "'Noto Serif', Georgia, 'Times New Roman', serif",
+    display: "26px",
+    h1: "20px",
+    h2: "14px",
+    h3: "12px",
+    body: "13px",
+    caption: "11px",
+    micro: "10px",
+    total: "22px",
     letterSpacingTight: "0",
     letterSpacingWide: "0.04em",
   },
   premium: {
-    fontFamily: "'Iowan Old Style', Palatino, 'Book Antiqua', Georgia, serif",
-    display: "1.875rem",
-    h1: "1.2rem",
-    total: "1.625rem",
+    fontFamily: "'Noto Serif', 'Iowan Old Style', Palatino, Georgia, serif",
+    display: "30px",
+    h1: "19px",
+    h2: "15px",
+    h3: "12px",
+    body: "12px",
+    total: "26px",
     letterSpacingWide: "0.12em",
   },
   racing: {
     fontFamily: "'SF Pro Display', 'Helvetica Neue', Inter, ui-sans-serif, system-ui, sans-serif",
-    display: "1.625rem",
-    h1: "0.9375rem",
-    h3: "0.6875rem",
-    body: "0.6875rem",
+    display: "26px",
+    h1: "15px",
+    h3: "11px",
+    body: "11px",
     letterSpacingTight: "-0.04em",
     letterSpacingWide: "0.16em",
-    total: "1.875rem",
+    total: "30px",
   },
   modern: {
-    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
-    h1: "1.0625rem",
-    total: "1.5625rem",
+    fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
+    h1: "17px",
+    h2: "14px",
+    total: "25px",
     letterSpacingTight: "-0.025em",
   },
 };

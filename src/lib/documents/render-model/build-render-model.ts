@@ -1,7 +1,7 @@
 import { parseCompanyDocumentConfig } from "@/domain/document-config";
 import { DocumentTheme } from "@/domain/company-branding";
 import { STATUS_LABELS } from "@/components/work-orders/work-order-copy";
-import { companyBrandStyle, companyMonogram } from "@/lib/documents/company-brand";
+import { companyBrandStyle } from "@/lib/documents/company-brand";
 import { ensureDocumentHeaderConfig } from "@/domain/document-header-config";
 import { ensureDocumentWatermarkConfig } from "@/domain/document-watermark-config";
 import { buildDocumentHeaderModel } from "@/lib/documents/header/build-document-header-model";
@@ -35,6 +35,7 @@ import {
   DocumentTemplateVariant,
 } from "@/lib/documents/templates/document-template-meta";
 import { documentThemeClass } from "@/lib/documents/themes/tokens";
+import { documentThemeStyleVars } from "@/lib/documents/themes/theme-tokens";
 import { documentTypography, typographyStyleVars } from "@/lib/documents/themes/typography";
 import { resolveWarrantyForDocument } from "@/lib/documents/warranty/resolve-warranty";
 import { resolveDocumentQrTarget } from "@/lib/documents/render-model/qr-targets";
@@ -488,37 +489,21 @@ export function buildDocumentRenderModel(
       executorName: documentAssigneeSummary(context),
     },
     header,
-    brand: {
-      name: company.name,
-      shortName: company.shortName,
-      legalName: company.legalName,
-      slogan: company.slogan,
-      address: company.address,
-      phone: company.phone,
-      email: company.email,
-      website: company.website,
-      logoDataUri: company.logoDataUri,
-      primaryColor: company.primaryColor,
-      secondaryColor: company.secondaryColor,
-    },
     theme,
     typographyVars: typographyStyleVars(typography),
+    themeStyleVars: documentThemeStyleVars(theme, company.primaryColor),
     brandStyle: companyBrandStyle(company, theme),
     themeClass: documentThemeClass(theme),
     pageClass: `doc-pdf-page--${variant}`,
-    watermark: meta.title,
     documentWatermark: buildWatermarkRenderModel({
       config: watermarkConfig,
       logoDataUri: company.logoDataUri,
       companyName: company.shortName?.trim() || company.name,
     }),
-    monogram: companyMonogram(company.name),
     sections: buildSections(context, slug, variant, enabledKeys, warranty, {
       qrDataUri,
       disclaimerText: disclaimerText ?? meta.disclaimer,
     }),
-    enabledSectionKeys: enabledKeys,
-    qrDataUri,
     racing:
       theme === "racing" && !motorSale
         ? buildRacingViewModel(context, {

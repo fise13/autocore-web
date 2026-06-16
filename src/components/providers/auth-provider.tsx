@@ -8,6 +8,7 @@ import {
   fetchSignInMethodsForEmail,
   onAuthStateChanged,
   reauthenticateWithCredential,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -64,6 +65,7 @@ import {
   sendVerificationEmailViaApi,
   verifyEmailCodeViaApi,
 } from "@/lib/auth/send-auth-email";
+import { buildClientActionCodeSettings } from "@/lib/email/action-code-settings.client";
 import {
   markAuthSessionTransition,
   playAuthSessionLeave,
@@ -456,7 +458,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       },
       async sendPasswordResetForEmail(email) {
         if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));
-        await sendPasswordResetViaApi(email);
+        const delivery = await sendPasswordResetViaApi(email);
+        if (delivery === "firebase") {
+          const auth = getFirebaseAuth();
+          await sendPasswordResetEmail(auth, email.trim(), buildClientActionCodeSettings());
+        }
       },
       async sendEmailVerification() {
         if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));
@@ -521,7 +527,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const user = auth.currentUser;
         if (!user?.email) throw new Error(mapAuthError(new Error("auth/invalid-email")));
         assertEmailProvider(user);
-        await sendPasswordResetViaApi(user.email);
+        const delivery = await sendPasswordResetViaApi(user.email);
+        if (delivery === "firebase") {
+          await sendPasswordResetEmail(auth, user.email, buildClientActionCodeSettings());
+        }
       },
       async logout() {
         if (!isFirebaseReady) return;

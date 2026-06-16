@@ -9,9 +9,9 @@ import { DOCUMENT_THEME_LABELS_RU } from "@/lib/documents/themes/tokens";
 import { cn } from "@/lib/utils";
 
 const THEME_DESCRIPTIONS: Record<DocumentTheme, string> = {
-  modern: "Много воздуха, крупная типографика, минимальный логотип",
-  premium: "Белый фон, тонкие линии — стиль Apple / Stripe",
-  classic: "Строгий официальный документ с классической вёрсткой",
+  modern: "Sans-serif, воздух и brand-акценты — SaaS-счёт",
+  premium: "Serif, тёплая бумага и letterhead — премиальное письмо",
+  classic: "Serif, строгие рамки — официальный бухгалтерский документ",
   racing: "Motorsport: тёмная шапка, белый текст, красный акцент",
 };
 

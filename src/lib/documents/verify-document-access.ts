@@ -3,6 +3,7 @@ import "server-only";
 import { hasPermission } from "@/domain/user";
 import { getAdminAuth, getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { mapAdminUser } from "@/infrastructure/firestore/admin-mappers";
+import { readCompanyProActive } from "@/lib/billing/verify-pro-subscription.server";
 import { normalizeCompanyId } from "@/lib/company-id";
 
 export type VerifiedDocumentAccess = {
@@ -39,6 +40,10 @@ export async function verifyDocumentAccess(request: Request): Promise<VerifiedDo
   const companyId = normalizeCompanyId(user.companyId ?? "");
   if (!companyId) {
     throw new DocumentAccessError("Company is not configured for user", 403);
+  }
+
+  if (!(await readCompanyProActive(companyId))) {
+    throw new DocumentAccessError("Pro subscription required", 402);
   }
 
   return { uid, companyId };

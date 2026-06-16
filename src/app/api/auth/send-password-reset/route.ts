@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!isResendConfigured()) {
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ ok: true, fallback: "firebase" });
     }
 
     await assertPasswordResetRateLimit(email);

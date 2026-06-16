@@ -18,6 +18,7 @@ export const DOCUMENT_SECTION_KEYS = [
   "acceptance",
   "hero",
   "disclaimer",
+  "unified_lines",
 ] as const;
 
 export type DocumentSectionKey = (typeof DOCUMENT_SECTION_KEYS)[number];
@@ -43,6 +44,7 @@ export const DOCUMENT_SECTION_LABELS: Record<DocumentSectionKey, string> = {
   acceptance: "Баннер приёмки",
   hero: "Шапка документа",
   disclaimer: "Дисклеймер",
+  unified_lines: "Позиции к оплате",
 };
 
 /** Preset warranty templates — content lives here, not in PDF templates. */

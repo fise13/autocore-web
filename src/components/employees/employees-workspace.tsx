@@ -109,6 +109,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
   const [inviteEmail, setInviteEmail] = useState("");
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [emailInviteSent, setEmailInviteSent] = useState<string | null>(null);
+  const [emailInviteJoinUrl, setEmailInviteJoinUrl] = useState<string | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<CompanyEmployee | null>(null);
   const [busy, setBusy] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState<Set<Permission>>(new Set());
@@ -218,6 +219,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
     setBusy(true);
     setError(null);
     setEmailInviteSent(null);
+    setEmailInviteJoinUrl(null);
     try {
       const user = getFirebaseAuth().currentUser;
       if (!user) throw new Error("Войдите в аккаунт");
@@ -237,11 +239,13 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
       const payload = (await response.json()) as { error?: string; joinUrl?: string; email?: string };
       if (!response.ok) {
         if (response.status === 503 && payload.joinUrl) {
-          setEmailInviteSent(`Сервис почты не настроен. Ссылка: ${payload.joinUrl}`);
+          setEmailInviteJoinUrl(payload.joinUrl);
+          setEmailInviteSent("Сервис почты не настроен — скопируйте ссылку и отправьте сотруднику вручную.");
           return;
         }
         throw new Error(payload.error ?? "Не удалось отправить приглашение");
       }
+      setEmailInviteJoinUrl(payload.joinUrl ?? null);
       setEmailInviteSent(`Приглашение отправлено на ${payload.email ?? email}`);
       setInviteEmail("");
     } catch (nextError) {
@@ -511,14 +515,38 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                   value={inviteEmail}
                   onChange={(event) => setInviteEmail(event.target.value)}
                   placeholder="colleague@company.ru"
+                  disabled={busy}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void sendEmailInvite();
+                    }
+                  }}
                 />
-                <Button type="button" variant="secondary" disabled={busy} onClick={() => void sendEmailInvite()}>
-                  Отправить
+                <Button type="button" disabled={busy} onClick={() => void sendEmailInvite()}>
+                  {busy ? "Отправка…" : "Отправить на email"}
                 </Button>
               </div>
               {emailInviteSent ? (
-                <p className="text-xs text-muted-foreground">{emailInviteSent}</p>
-              ) : null}
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">{emailInviteSent}</p>
+                  {emailInviteJoinUrl ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void navigator.clipboard.writeText(emailInviteJoinUrl)}
+                    >
+                      <Copy className="mr-2 size-4" />
+                      Скопировать ссылку-приглашение
+                    </Button>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Сотрудник получит письмо со ссылкой для входа в команду.
+                </p>
+              )}
             </div>
 
             <div className="grid gap-2">

@@ -361,7 +361,7 @@ export function DocumentPdfRenderer({ model }: { model: DocumentRenderModel }) {
         model.themeClass,
         model.documentWatermark && `doc-pdf-page--wm-${model.documentWatermark.type}`,
       )}
-      style={{ ...model.brandStyle, ...model.typographyVars, ...model.header.style }}
+      style={{ ...model.brandStyle, ...model.themeStyleVars, ...model.typographyVars, ...model.header.style }}
     >
       {model.documentWatermark ? <DocumentWatermarkLayer watermark={model.documentWatermark} /> : null}
 

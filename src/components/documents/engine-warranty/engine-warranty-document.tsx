@@ -1,10 +1,8 @@
 import { DocumentContext } from "@/lib/documents/document-context";
 import { documentPrimaryMotor } from "@/lib/documents/document-helpers";
 
+import { DocumentPdfEmptyState } from "../shared/document-pdf-empty-state";
 import { DocumentPdfTemplate } from "../template/document-pdf-template";
-import { DocumentPage } from "../shared/document-page";
-import { DocumentHeader } from "../shared/document-header";
-import { docBody } from "../shared/document-tokens";
 
 type EngineWarrantyDocumentProps = {
   context: DocumentContext;
@@ -16,10 +14,11 @@ export function EngineWarrantyDocument({ context, qrDataUri }: EngineWarrantyDoc
 
   if (!motorLine) {
     return (
-      <DocumentPage>
-        <DocumentHeader context={context} title="Гарантийный талон двигателя" reference={context.orderLabel} />
-        <p className={docBody}>Для этого заказ-наряда двигатель не указан.</p>
-      </DocumentPage>
+      <DocumentPdfEmptyState
+        context={context}
+        title="Гарантийный талон двигателя"
+        message="Для этого заказ-наряда двигатель не указан."
+      />
     );
   }
 

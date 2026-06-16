@@ -3,6 +3,7 @@ import "server-only";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { Permission, UserRole, hasPermission } from "@/domain/user";
 import { AccountAccessError } from "@/lib/auth/verify-account-access";
+import { readCompanyProActive } from "@/lib/billing/verify-pro-subscription.server";
 
 type EmployeeDoc = {
   role?: UserRole;
@@ -23,19 +24,7 @@ export type VerifiedCompanyManager = {
 };
 
 async function readSubscriptionPro(companyId: string): Promise<boolean> {
-  const snap = await getAdminFirestore()
-    .collection("companies")
-    .doc(companyId)
-    .collection("billing")
-    .doc("subscription")
-    .get();
-  if (!snap.exists) return false;
-  const data = snap.data() as { proActive?: boolean; plan?: string; status?: string };
-  if (typeof data.proActive === "boolean") return data.proActive;
-  return (
-    data.plan === "pro" &&
-    (data.status === "active" || data.status === "trialing" || data.status === "past_due")
-  );
+  return readCompanyProActive(companyId);
 }
 
 export async function verifyCompanyOwner(uid: string, companyId: string): Promise<void> {

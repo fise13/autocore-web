@@ -1,10 +1,8 @@
 import { DocumentContext } from "@/lib/documents/document-context";
 import { documentPrimaryMotor } from "@/lib/documents/document-helpers";
 
+import { DocumentPdfEmptyState } from "../shared/document-pdf-empty-state";
 import { DocumentPdfTemplate } from "../template/document-pdf-template";
-import { DocumentHeader } from "../shared/document-header";
-import { DocumentPage } from "../shared/document-page";
-import { docBody } from "../shared/document-tokens";
 
 type EngineWaybillDocumentProps = {
   context: DocumentContext;
@@ -15,10 +13,11 @@ export function EngineWaybillDocument({ context }: EngineWaybillDocumentProps) {
 
   if (!motorLine) {
     return (
-      <DocumentPage>
-        <DocumentHeader context={context} title="Накладная на двигатель" reference={context.orderLabel} />
-        <p className={docBody}>Для этой операции двигатель не указан.</p>
-      </DocumentPage>
+      <DocumentPdfEmptyState
+        context={context}
+        title="Накладная на двигатель"
+        message="Для этой операции двигатель не указан."
+      />
     );
   }
 

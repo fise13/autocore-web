@@ -53,6 +53,13 @@ type BrandingLivePreviewProps = {
 const PAGE_WIDTH_PX = 794;
 const PAGE_HEIGHT_PX = 1123;
 
+/** Placeholder QR for branding preview when QR visibility is enabled. */
+const PREVIEW_QR_DATA_URI =
+  "data:image/svg+xml," +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#fff"/><path d="M8 8h20v20H8zm4 4v12h12V12zm28-4h20v20H40zm4 4v12h12V12zM8 40h20v20H8zm4 4v12h12V12zM40 40h8v8h-8zm12 0h4v4h-4zm-8 8h4v4h-4zm8 0h4v4h-4zm4 4h4v4h-4z" fill="#111"/></svg>',
+  );
+
 function usePreviewScale(
   viewportRef: React.RefObject<HTMLElement | null>,
   maxScale = 0.72,
@@ -130,6 +137,8 @@ export function BrandingLivePreview({ input, compact = false }: BrandingLivePrev
   const dialogScale = usePreviewScale(dialogViewportRef, 0.95, dialogOpen);
 
   const previewContext = useMemo(() => buildBrandingPreviewContext(input), [input]);
+  const showQr = input.visibility?.showQr ?? DEFAULT_DOCUMENT_HEADER_VISIBILITY.showQr;
+  const qrDataUri = showQr ? PREVIEW_QR_DATA_URI : undefined;
 
   const palette = [
     { label: "Бренд", color: input.primaryColor ?? "#111827" },
@@ -138,7 +147,7 @@ export function BrandingLivePreview({ input, compact = false }: BrandingLivePrev
     { label: "Акцент", color: input.secondaryColor ?? "#4f46e5" },
   ];
 
-  const previewPage = <WorkOrderDocument context={previewContext} />;
+  const previewPage = <WorkOrderDocument context={previewContext} qrDataUri={qrDataUri} />;
 
   return (
     <>

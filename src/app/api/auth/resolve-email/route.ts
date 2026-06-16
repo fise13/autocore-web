@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getAdminAuth } from "@/infrastructure/firebase/admin";
+import {
+  assertResolveEmailRateLimit,
+  EmailRateLimitError,
+  markResolveEmailLookup,
+} from "@/lib/email/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -9,6 +14,15 @@ type ResolveEmailResponse = {
   methods: string[];
 };
 
+function readClientIp(request: NextRequest): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const first = forwarded.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  return request.headers.get("x-real-ip")?.trim() || "unknown";
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as { email?: unknown };
@@ -16,6 +30,9 @@ export async function POST(request: NextRequest) {
     if (!email || !email.includes("@")) {
       return NextResponse.json({ error: "Invalid email" }, { status: 400 });
     }
+
+    const clientIp = readClientIp(request);
+    await assertResolveEmailRateLimit(clientIp, email);
 
     try {
       const user = await getAdminAuth().getUserByEmail(email);
@@ -31,6 +48,8 @@ export async function POST(request: NextRequest) {
         methods.push("password");
       }
 
+      await markResolveEmailLookup(clientIp, email);
+
       return NextResponse.json({
         exists: true,
         methods,
@@ -41,6 +60,7 @@ export async function POST(request: NextRequest) {
           ? String((error as { code?: string }).code)
           : "";
       if (code === "auth/user-not-found") {
+        await markResolveEmailLookup(clientIp, email);
         return NextResponse.json({
           exists: false,
           methods: [],
@@ -49,6 +69,12 @@ export async function POST(request: NextRequest) {
       throw error;
     }
   } catch (error) {
+    if (error instanceof EmailRateLimitError) {
+      return NextResponse.json(
+        { error: error.message, retryAfterSec: error.retryAfterSec },
+        { status: 429 },
+      );
+    }
     console.error("[auth/resolve-email]", error);
     return NextResponse.json(
       { error: "Email lookup unavailable" },

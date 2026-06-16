@@ -114,7 +114,7 @@ export function DocumentPdfRacingRenderer({ model }: { model: DocumentRenderMode
         model.pageClass,
         model.documentWatermark && `doc-racing-page--wm-${model.documentWatermark.type}`,
       )}
-      style={{ ...model.brandStyle, ...model.typographyVars, ...model.header.style }}
+      style={{ ...model.brandStyle, ...model.themeStyleVars, ...model.typographyVars, ...model.header.style }}
     >
       {model.documentWatermark ? <DocumentWatermarkLayer watermark={model.documentWatermark} /> : null}
 

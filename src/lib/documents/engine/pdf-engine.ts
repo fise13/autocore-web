@@ -7,7 +7,7 @@ export async function generateDocumentPdfWithRetry(
   slug: Parameters<typeof import("@/lib/documents/generate-pdf").generateDocumentPdf>[0],
   companyId: string,
   orderId: string,
-  options?: { theme?: string; maxAttempts?: number },
+  options?: { theme?: import("@/domain/company-branding").DocumentTheme; maxAttempts?: number },
 ): Promise<Buffer> {
   const { generateDocumentPdf } = await import("@/lib/documents/generate-pdf");
   const maxAttempts = options?.maxAttempts ?? 2;

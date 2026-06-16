@@ -32,7 +32,6 @@ export type DocumentTemplateLayout = {
   showUnifiedLineItems: boolean;
   showDisclaimer: boolean;
   useOrderStatusTag: boolean;
-  compactHero: boolean;
 };
 
 export const DOCUMENT_TEMPLATE_META: Record<DocumentTemplateVariant, DocumentTemplateMeta> = {
@@ -124,7 +123,6 @@ export const DOCUMENT_TEMPLATE_LAYOUT: Record<DocumentTemplateVariant, DocumentT
     showUnifiedLineItems: false,
     showDisclaimer: false,
     useOrderStatusTag: true,
-    compactHero: false,
   },
   "service-act": {
     showTimeline: false,
@@ -138,7 +136,6 @@ export const DOCUMENT_TEMPLATE_LAYOUT: Record<DocumentTemplateVariant, DocumentT
     showUnifiedLineItems: false,
     showDisclaimer: true,
     useOrderStatusTag: false,
-    compactHero: true,
   },
   "engine-warranty": {
     showTimeline: false,
@@ -152,7 +149,6 @@ export const DOCUMENT_TEMPLATE_LAYOUT: Record<DocumentTemplateVariant, DocumentT
     showUnifiedLineItems: false,
     showDisclaimer: false,
     useOrderStatusTag: false,
-    compactHero: false,
   },
   invoice: {
     showTimeline: false,
@@ -166,7 +162,6 @@ export const DOCUMENT_TEMPLATE_LAYOUT: Record<DocumentTemplateVariant, DocumentT
     showUnifiedLineItems: true,
     showDisclaimer: true,
     useOrderStatusTag: false,
-    compactHero: false,
   },
   "engine-waybill": {
     showTimeline: false,
@@ -180,7 +175,6 @@ export const DOCUMENT_TEMPLATE_LAYOUT: Record<DocumentTemplateVariant, DocumentT
     showUnifiedLineItems: false,
     showDisclaimer: true,
     useOrderStatusTag: false,
-    compactHero: true,
   },
   "commercial-proposal": {
     showTimeline: false,
@@ -194,7 +188,6 @@ export const DOCUMENT_TEMPLATE_LAYOUT: Record<DocumentTemplateVariant, DocumentT
     showUnifiedLineItems: false,
     showDisclaimer: true,
     useOrderStatusTag: false,
-    compactHero: false,
   },
   "vehicle-intake-act": {
     showTimeline: true,
@@ -208,7 +201,6 @@ export const DOCUMENT_TEMPLATE_LAYOUT: Record<DocumentTemplateVariant, DocumentT
     showUnifiedLineItems: false,
     showDisclaimer: true,
     useOrderStatusTag: false,
-    compactHero: true,
   },
   "sales-receipt": {
     showTimeline: false,
@@ -222,7 +214,6 @@ export const DOCUMENT_TEMPLATE_LAYOUT: Record<DocumentTemplateVariant, DocumentT
     showUnifiedLineItems: true,
     showDisclaimer: true,
     useOrderStatusTag: false,
-    compactHero: false,
   },
 };
 

@@ -1,26 +1,11 @@
 import type { CSSProperties } from "react";
 
 import { DocumentTheme } from "@/domain/company-branding";
-import { DocumentSectionKey } from "@/domain/document-config";
 import { DocumentSlug } from "@/lib/documents/document-types";
 import { ResolvedWarranty } from "@/lib/documents/warranty/resolve-warranty";
 import type { RacingViewModel } from "@/lib/documents/render-model/build-racing-view-model";
 import type { DocumentHeaderModel } from "@/lib/documents/header/build-document-header-model";
 import type { DocumentWatermarkRenderModel } from "@/lib/documents/watermark/build-watermark-render-model";
-
-export type DocumentBrandBlock = {
-  name: string;
-  shortName?: string;
-  legalName?: string;
-  slogan?: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  website?: string;
-  logoDataUri?: string;
-  primaryColor: string;
-  secondaryColor: string;
-};
 
 export type DocumentMetaBlock = {
   slug: DocumentSlug;
@@ -122,17 +107,13 @@ export type DocumentSectionModel =
 export type DocumentRenderModel = {
   meta: DocumentMetaBlock;
   header: DocumentHeaderModel;
-  brand: DocumentBrandBlock;
   theme: DocumentTheme;
   typographyVars: Record<string, string>;
+  themeStyleVars: Record<string, string>;
   brandStyle: CSSProperties;
   themeClass: string;
   pageClass: string;
-  watermark: string;
   documentWatermark: DocumentWatermarkRenderModel | null;
-  monogram: string;
   sections: DocumentSectionModel[];
-  enabledSectionKeys: DocumentSectionKey[];
-  qrDataUri?: string;
   racing?: RacingViewModel;
 };

@@ -1,5 +1,7 @@
 import { DocumentTheme } from "@/domain/company-branding";
 
+export { documentThemeStyleVars } from "@/lib/documents/themes/theme-tokens";
+
 export const DOCUMENT_THEME_CLASS: Record<DocumentTheme, string> = {
   classic: "doc-theme-classic",
   modern: "doc-theme-modern",

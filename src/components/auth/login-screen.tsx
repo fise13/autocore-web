@@ -406,6 +406,21 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                     "Продолжить с email"
                   )}
                 </Button>
+
+                <button
+                  type="button"
+                  className="w-full text-sm text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground disabled:opacity-50"
+                  disabled={isBusy}
+                  onClick={() => void onForgotPassword()}
+                >
+                  Забыли пароль?
+                </button>
+
+                {resetSent ? (
+                  <p className="text-center text-sm text-muted-foreground">
+                    Ссылка для сброса пароля отправлена на {email || "ваш email"}.
+                  </p>
+                ) : null}
               </form>
               </AuthJourneyReveal>
             </motion.div>

@@ -20,6 +20,7 @@ export function companyBrandStyle(company: DocumentCompanyInfo, theme: DocumentT
   return {
     ["--brand-primary" as string]: accent,
     ["--brand-secondary" as string]: company.secondaryColor,
+    ["--doc-accent-secondary" as string]: company.secondaryColor,
     ["--brand-primary-soft" as string]: `color-mix(in srgb, ${accent} 10%, white)`,
     ["--brand-secondary-soft" as string]: `color-mix(in srgb, ${company.secondaryColor} 12%, white)`,
     ["--doc-header-bg" as string]: headerBg,

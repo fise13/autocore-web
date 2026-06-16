@@ -65,3 +65,39 @@ export async function markPasswordResetEmailSent(email: string): Promise<void> {
     { merge: true },
   );
 }
+
+async function assertKeyedRateLimit(docId: string): Promise<void> {
+  const db = getAdminFirestore();
+  const ref = db.collection("emailRateLimits").doc(docId);
+  const snap = await ref.get();
+  const raw = snap.data()?.sentAt;
+  const lastSentAt =
+    raw instanceof Timestamp ? raw.toDate() : raw instanceof Date ? raw : null;
+  const remaining = remainingCooldown(lastSentAt);
+  if (remaining > 0) {
+    throw new EmailRateLimitError(Math.ceil(remaining / 1000));
+  }
+}
+
+async function markKeyedRateLimit(docId: string, kind: string): Promise<void> {
+  const db = getAdminFirestore();
+  await db.collection("emailRateLimits").doc(docId).set(
+    { sentAt: FieldValue.serverTimestamp(), kind },
+    { merge: true },
+  );
+}
+
+/** Limits email enumeration via resolve-email API (per IP and per email). */
+export async function assertResolveEmailRateLimit(ip: string, email: string): Promise<void> {
+  const normalizedIp = ip.trim() || "unknown";
+  const normalizedEmail = email.trim().toLowerCase();
+  await assertKeyedRateLimit(`resolve-email:ip:${normalizedIp}`);
+  await assertKeyedRateLimit(`resolve-email:email:${normalizedEmail}`);
+}
+
+export async function markResolveEmailLookup(ip: string, email: string): Promise<void> {
+  const normalizedIp = ip.trim() || "unknown";
+  const normalizedEmail = email.trim().toLowerCase();
+  await markKeyedRateLimit(`resolve-email:ip:${normalizedIp}`, "resolve-email");
+  await markKeyedRateLimit(`resolve-email:email:${normalizedEmail}`, "resolve-email");
+}

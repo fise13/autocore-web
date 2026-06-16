@@ -2,6 +2,15 @@
 
 import type { User } from "firebase/auth";
 
+type AuthEmailApiError = {
+  error?: string;
+  retryAfterSec?: number;
+};
+
+async function readAuthEmailApiError(response: Response): Promise<AuthEmailApiError | null> {
+  return (await response.json().catch(() => null)) as AuthEmailApiError | null;
+}
+
 async function postAuthEmailApi(path: string, token: string | null, body?: object): Promise<void> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -17,7 +26,7 @@ async function postAuthEmailApi(path: string, token: string | null, body?: objec
   });
 
   if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+    const payload = await readAuthEmailApiError(response);
     throw new Error(payload?.error ?? "Не удалось отправить письмо");
   }
 }
@@ -32,6 +41,28 @@ export async function verifyEmailCodeViaApi(user: User, code: string): Promise<v
   await postAuthEmailApi("/api/auth/verify-email-code", token, { code });
 }
 
-export async function sendPasswordResetViaApi(email: string): Promise<void> {
-  await postAuthEmailApi("/api/auth/send-password-reset", null, { email: email.trim() });
+export type PasswordResetDelivery = "resend" | "firebase";
+
+export async function sendPasswordResetViaApi(email: string): Promise<PasswordResetDelivery> {
+  const response = await fetch("/api/auth/send-password-reset", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: email.trim() }),
+  });
+
+  const payload = await readAuthEmailApiError(response);
+
+  if (response.status === 429) {
+    throw new Error(payload?.error ?? "Подождите перед повторной отправкой");
+  }
+
+  if (!response.ok) {
+    throw new Error(payload?.error ?? "Не удалось отправить письмо для сброса пароля");
+  }
+
+  if (payload && "fallback" in payload && payload.fallback === "firebase") {
+    return "firebase";
+  }
+
+  return "resend";
 }

@@ -33,7 +33,7 @@
 
   .doc-page-a4 {
     box-shadow: 0 8px 30px rgb(0 0 0 / 0.06);
-    padding: 12mm;
+    padding: 15mm;
   }
 
   .doc-page-tag {
@@ -47,82 +47,6 @@
   .doc-signature-line {
     margin-top: 1rem;
     border-bottom: 1px solid #9ca3af;
-  }
-
-  .doc-theme-classic {
-    --doc-font-heading: Georgia, "Times New Roman", serif;
-    --doc-border: #374151;
-    --doc-accent: #1f2937;
-  }
-
-  .doc-theme-classic .doc-title,
-  .doc-theme-classic h1,
-  .doc-theme-classic h2 {
-    font-family: var(--doc-font-heading);
-  }
-
-  .doc-theme-classic .doc-table th,
-  .doc-theme-classic .doc-table td {
-    border: 1px solid var(--doc-border);
-  }
-
-  .doc-theme-classic .doc-meta-card {
-    border-radius: 0.5rem;
-    background: white;
-  }
-
-  .doc-theme-modern {
-    --doc-border: #e5e7eb;
-    --doc-accent: var(--brand-primary, #2563eb);
-  }
-
-  .doc-theme-modern .doc-table thead th {
-    background: color-mix(in oklab, var(--brand-primary, #2563eb) 8%, white);
-    color: #374151;
-  }
-
-  .doc-theme-modern .doc-meta-card {
-    border-color: color-mix(in oklab, var(--brand-primary, #2563eb) 18%, #e5e7eb);
-    background: color-mix(in oklab, var(--brand-primary, #2563eb) 4%, white);
-  }
-
-  .doc-theme-modern .doc-highlight-card {
-    border-color: color-mix(in oklab, var(--brand-primary, #2563eb) 22%, #e5e7eb);
-  }
-
-  .doc-theme-premium {
-    --doc-border: #d4af37;
-    --doc-accent: #d4af37;
-  }
-
-  .doc-theme-premium .doc-header-band {
-    border-radius: 0.75rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .doc-theme-premium .doc-table thead th {
-    background: #111827;
-    color: #f9fafb;
-    border-color: #374151;
-  }
-
-  .doc-theme-premium .doc-meta-card {
-    border-color: color-mix(in oklab, #d4af37 35%, #e5e7eb);
-    background: linear-gradient(180deg, #fffef8, #ffffff);
-  }
-
-  .doc-theme-premium .doc-highlight-card {
-    border-color: color-mix(in oklab, #d4af37 40%, #e5e7eb);
-    background: linear-gradient(135deg, #fffef8 0%, #ffffff 100%);
-  }
-
-  .doc-theme-premium .doc-warranty-terms {
-    border-color: color-mix(in oklab, #d4af37 30%, #e5e7eb);
-    background: linear-gradient(180deg, #fffef8, #ffffff);
-  }
-
-  .doc-table tbody tr:nth-child(even) {
-    background: rgb(249 250 251 / 0.65);
   }
 }
 
