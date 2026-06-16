@@ -987,10 +987,28 @@
 
 @media print {
   .doc-pdf-page {
-    width: 210mm;
-    min-height: 297mm;
+    width: 100%;
+    min-height: 0;
     margin: 0;
     box-shadow: none;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  .doc-racing-page {
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  .doc-sr-page {
+    width: 210mm;
+    min-height: 0;
+    margin: 0;
+    page-break-after: avoid;
+    page-break-inside: avoid;
   }
 
   .doc-pdf-block,

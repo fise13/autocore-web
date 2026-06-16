@@ -1,3 +1,3 @@
 export default function DocumentRenderLayout({ children }: { children: React.ReactNode }) {
-  return <div className="min-h-screen bg-white">{children}</div>;
+  return <div className="documents-render-shell bg-white">{children}</div>;
 }

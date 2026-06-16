@@ -7,19 +7,18 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DOCUMENT_BY_SLUG, DocumentSlug } from "@/lib/documents/document-types";
 import {
-  downloadDocumentPdf,
-  downloadPdfBlob,
+  deliverPdfToUser,
   fetchDocumentPdf,
-  printDocumentPdf,
+  printPdfBlob,
 } from "@/lib/documents/fetch-document-pdf";
 import { mapDocumentError } from "@/lib/documents/map-document-error";
-import { printPreviewInBrowser } from "@/lib/documents/preview-document-output";
 
 type DocumentPreviewActionsProps = {
   slug: DocumentSlug;
   orderId: string;
   previewReady?: boolean;
   onError?: (message: string | null) => void;
+  onNotice?: (message: string | null) => void;
 };
 
 export function DocumentPreviewActions({
@@ -27,6 +26,7 @@ export function DocumentPreviewActions({
   orderId,
   previewReady = false,
   onError,
+  onNotice,
 }: DocumentPreviewActionsProps) {
   const router = useRouter();
   const [busy, setBusy] = useState<"download" | "print" | null>(null);
@@ -41,48 +41,50 @@ export function DocumentPreviewActions({
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      const promise = fetchDocumentPdf(slug, orderId)
-        .then((blob) => {
-          prefetchedBlobRef.current = blob;
-          return blob;
-        })
-        .catch(() => {
-          prefetchedBlobRef.current = null;
-          throw new Error("prefetch failed");
-        });
-      prefetchPromiseRef.current = promise;
-    }, 600);
+    const promise = fetchDocumentPdf(slug, orderId)
+      .then((blob) => {
+        prefetchedBlobRef.current = blob;
+        return blob;
+      })
+      .catch(() => {
+        prefetchedBlobRef.current = null;
+        prefetchPromiseRef.current = null;
+        throw new Error("prefetch failed");
+      });
 
-    return () => window.clearTimeout(timer);
+    prefetchPromiseRef.current = promise;
   }, [previewReady, slug, orderId]);
 
-  async function resolvePdfBlob(): Promise<Blob> {
+  async function resolvePdfBlob(): Promise<{ blob: Blob; prefetched: boolean }> {
     if (prefetchedBlobRef.current) {
-      return prefetchedBlobRef.current;
+      return { blob: prefetchedBlobRef.current, prefetched: true };
     }
     if (prefetchPromiseRef.current) {
       try {
-        return await prefetchPromiseRef.current;
+        const blob = await prefetchPromiseRef.current;
+        return { blob, prefetched: true };
       } catch {
         // Regenerate on demand below.
       }
     }
-    return fetchDocumentPdf(slug, orderId);
+    const blob = await fetchDocumentPdf(slug, orderId);
+    prefetchedBlobRef.current = blob;
+    return { blob, prefetched: false };
   }
 
   async function handleDownload() {
     setBusy("download");
     onError?.(null);
+    onNotice?.(null);
     try {
-      const blob = await resolvePdfBlob();
-      downloadPdfBlob(blob, `${definition.slug}-${orderId}.pdf`);
-    } catch (error) {
-      try {
-        await downloadDocumentPdf(slug, orderId, `${definition.slug}-${orderId}.pdf`);
-      } catch (fallbackError) {
-        onError?.(mapDocumentError(fallbackError ?? error, "Не удалось скачать PDF"));
+      const { blob, prefetched } = await resolvePdfBlob();
+      const filename = `${definition.slug}-${orderId}.pdf`;
+      const result = deliverPdfToUser(blob, filename, prefetched ? "instant" : "async");
+      if (result === "opened-tab") {
+        onNotice?.("PDF открыт в новой вкладке. Сохраните его через меню браузера (⌘S / Ctrl+S).");
       }
+    } catch (error) {
+      onError?.(mapDocumentError(error, "Не удалось скачать PDF"));
     } finally {
       setBusy(null);
     }
@@ -91,21 +93,11 @@ export function DocumentPreviewActions({
   async function handlePrint() {
     setBusy("print");
     onError?.(null);
+    onNotice?.(null);
     try {
-      if (previewReady) {
-        printPreviewInBrowser();
-        return;
-      }
-      await printDocumentPdf(slug, orderId);
+      const { blob } = await resolvePdfBlob();
+      await printPdfBlob(blob);
     } catch (error) {
-      if (previewReady) {
-        try {
-          printPreviewInBrowser();
-          return;
-        } catch {
-          // Fall through to mapped server error.
-        }
-      }
       onError?.(mapDocumentError(error, "Не удалось напечатать PDF"));
     } finally {
       setBusy(null);
@@ -135,7 +127,7 @@ export function DocumentPreviewActions({
           size="sm"
           className="min-w-[118px] border-white/15 bg-transparent text-neutral-100 hover:bg-white/10 hover:text-white"
           disabled={busy != null || !previewReady}
-          onClick={handlePrint}
+          onClick={() => void handlePrint()}
         >
           <Printer className="size-4" />
           {busy === "print" ? "Печать…" : "Печать"}
@@ -145,7 +137,7 @@ export function DocumentPreviewActions({
           size="sm"
           className="min-w-[128px] bg-white text-black hover:bg-neutral-200"
           disabled={busy != null || !previewReady}
-          onClick={handleDownload}
+          onClick={() => void handleDownload()}
         >
           <Download className="size-4" />
           {busy === "download" ? "Скачивание…" : "Скачать PDF"}

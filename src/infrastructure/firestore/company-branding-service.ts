@@ -37,6 +37,8 @@ export type SaveCompanyBrandingInput = {
   qrLinkUrl?: string;
   documentFooter?: string;
   invoiceValidityDays?: string;
+  customWarrantyMonths?: string;
+  customWarrantyKm?: string;
 };
 
 const LOGO_UPLOAD_TIMEOUT_MS = 25_000;
@@ -144,6 +146,16 @@ export async function saveCompanyBranding(companyId: string, input: SaveCompanyB
   if (invoiceDays) {
     const parsed = Number(invoiceDays);
     if (Number.isFinite(parsed) && parsed > 0) payload.invoiceValidityDays = parsed;
+  }
+  const customMonths = input.customWarrantyMonths?.trim();
+  if (customMonths) {
+    const parsed = Number(customMonths);
+    if (Number.isFinite(parsed) && parsed > 0) payload.customWarrantyMonths = parsed;
+  }
+  const customKm = input.customWarrantyKm?.trim();
+  if (customKm) {
+    const parsed = Number(customKm);
+    if (Number.isFinite(parsed) && parsed > 0) payload.customWarrantyKm = parsed;
   }
 
   Object.keys(payload).forEach((key) => {

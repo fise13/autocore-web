@@ -1,0 +1,24 @@
+/* Puppeteer PDF export — pixel layout, no mm/centering surprises */
+
+@media print {
+  .documents-pdf-export,
+  .documents-pdf-export .documents-render-shell,
+  .documents-pdf-export.documents-root {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    background: #ffffff !important;
+  }
+
+  .documents-pdf-export .doc-pdf-page,
+  .documents-pdf-export .doc-racing-page,
+  .documents-pdf-export .doc-sr-page,
+  .documents-pdf-export .doc-page {
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    box-sizing: border-box !important;
+    box-shadow: none !important;
+  }
+}

@@ -74,6 +74,9 @@ export type CompanyDocumentConfig = {
   /** Per-section enable/disable. Absent key = enabled by default for the document type. */
   sections?: DocumentSectionConfig;
   warrantyTemplateId?: WarrantyTemplateId;
+  /** Custom template: explicit duration when label is free-form text. */
+  customWarrantyMonths?: number;
+  customWarrantyKm?: number;
   /** Override QR landing URL (company card, website, etc.) */
   qrLinkUrl?: string;
   /** Custom footer line on all documents */
@@ -106,12 +109,28 @@ export function parseCompanyDocumentConfig(data: Record<string, unknown> | null 
         ? Number(data.invoiceValidityDays)
         : undefined;
 
+  const customWarrantyMonths =
+    typeof data?.customWarrantyMonths === "number"
+      ? data.customWarrantyMonths
+      : typeof data?.customWarrantyMonths === "string" && data.customWarrantyMonths.trim()
+        ? Number(data.customWarrantyMonths)
+        : undefined;
+
+  const customWarrantyKm =
+    typeof data?.customWarrantyKm === "number"
+      ? data.customWarrantyKm
+      : typeof data?.customWarrantyKm === "string" && data.customWarrantyKm.trim()
+        ? Number(data.customWarrantyKm)
+        : undefined;
+
   return {
     sections: Object.keys(sections).length > 0 ? sections : undefined,
     warrantyTemplateId,
     qrLinkUrl: typeof data?.qrLinkUrl === "string" ? data.qrLinkUrl.trim() || undefined : undefined,
     documentFooter: typeof data?.documentFooter === "string" ? data.documentFooter.trim() || undefined : undefined,
     invoiceValidityDays: Number.isFinite(invoiceValidityDays) ? invoiceValidityDays : undefined,
+    customWarrantyMonths: Number.isFinite(customWarrantyMonths) ? customWarrantyMonths : undefined,
+    customWarrantyKm: Number.isFinite(customWarrantyKm) ? customWarrantyKm : undefined,
   };
 }
 

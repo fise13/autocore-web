@@ -97,6 +97,10 @@ export async function loadWarrantyDocumentContext(companyId: string, warrantyId:
   const soldAt = data.soldAt instanceof Timestamp ? data.soldAt.toDate() : new Date();
   const saleAmount = typeof data.saleAmount === "number" ? data.saleAmount : undefined;
   const workOrderId = typeof data.workOrderId === "string" ? data.workOrderId : "";
+  const warrantyLabel = typeof data.warrantyLabel === "string" ? data.warrantyLabel : undefined;
+  const termsText = typeof data.termsText === "string" ? data.termsText : undefined;
+  const warrantyMonths = typeof data.warrantyMonths === "number" ? data.warrantyMonths : undefined;
+  const warrantyKm = typeof data.warrantyKm === "number" ? data.warrantyKm : undefined;
 
   if (workOrderId) {
     const { loadDocumentContext } = await import("@/lib/documents/load-document-context");
@@ -168,7 +172,10 @@ export async function loadWarrantyDocumentContext(companyId: string, warrantyId:
 
   return buildDocumentContext({
     company,
-    companyRecord: companyData ?? undefined,
+    companyRecord: {
+      ...(companyData ?? {}),
+      ...(termsText ? { warrantyTemplateId: "custom" } : {}),
+    },
     order,
     orderLabel,
     client,
@@ -178,5 +185,14 @@ export async function loadWarrantyDocumentContext(companyId: string, warrantyId:
     logoDataUri,
     vehicleLogbook: [],
     warrantyVerificationToken: String(data.verificationToken ?? ""),
+    warrantyOverride:
+      warrantyLabel || termsText || warrantyMonths || warrantyKm
+        ? {
+            warrantyLabel,
+            warrantyText: termsText,
+            customWarrantyMonths: warrantyMonths,
+            customWarrantyKm: warrantyKm,
+          }
+        : undefined,
   });
 }

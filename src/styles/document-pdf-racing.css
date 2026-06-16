@@ -507,9 +507,11 @@
 @media print {
   .doc-racing-page {
     width: 210mm;
-    min-height: 297mm;
+    min-height: 0;
     margin: 0;
     background: #ffffff;
+    page-break-after: avoid;
+    page-break-inside: avoid;
   }
 
   .doc-racing-main,

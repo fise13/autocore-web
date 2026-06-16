@@ -433,6 +433,7 @@ export function buildDocumentRenderModel(
   const warranty = resolveWarrantyForDocument(company, documentConfig, {
     forEngine: profile.showEngineWarranty || motorSale,
     forWork: slug === "work-order" || slug === "service-act",
+    override: context.warrantyOverride,
   });
 
   const enabledKeys = resolveEnabledSections(slug, layout, context, documentConfig.sections);

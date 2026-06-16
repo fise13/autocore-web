@@ -11,16 +11,17 @@ import {
 import { documentVehicleHistoryUrl } from "@/lib/documents/work-order-insights";
 import { buildWarrantyVerifyUrl } from "@/components/documents/shared/document-qr";
 import { getDocumentsCss } from "@/lib/documents/documents-css";
+import { cn } from "@/lib/utils";
 import { DocumentTheme } from "@/domain/company-branding";
 
 type DocumentRenderPageProps = {
   params: Promise<{ orderId: string; documentType: string }>;
-  searchParams: Promise<{ token?: string; theme?: string; aggregate?: string }>;
+  searchParams: Promise<{ token?: string; theme?: string; aggregate?: string; export?: string }>;
 };
 
 export default async function DocumentRenderPage({ params, searchParams }: DocumentRenderPageProps) {
   const { orderId, documentType } = await params;
-  const { token, theme: themeParam, aggregate: aggregateParam } = await searchParams;
+  const { token, theme: themeParam, aggregate: aggregateParam, export: exportParam } = await searchParams;
   const slug = resolveDocumentSlug(documentType);
 
   if (!slug || !token) notFound();
@@ -49,7 +50,12 @@ export default async function DocumentRenderPage({ params, searchParams }: Docum
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: compiledCss }} />
-      <div className="documents-root bg-white print:bg-white">
+      <div
+        className={cn(
+          "documents-root bg-white print:bg-white",
+          exportParam === "pdf" && "documents-pdf-export",
+        )}
+      >
         <RenderDocument slug={slug} context={contextWithTheme} qrDataUri={qrDataUri} />
       </div>
     </>

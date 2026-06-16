@@ -108,6 +108,8 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
       qrLinkUrl: profile.qrLinkUrl ?? "",
       documentFooter: profile.documentFooter ?? "",
       invoiceValidityDays: profile.invoiceValidityDays ? String(profile.invoiceValidityDays) : "5",
+      customWarrantyMonths: profile.customWarrantyMonths ? String(profile.customWarrantyMonths) : "",
+      customWarrantyKm: profile.customWarrantyKm ? String(profile.customWarrantyKm) : "",
     });
   }, [profile, uploadingLogo, saving]);
 

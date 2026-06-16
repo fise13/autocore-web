@@ -68,6 +68,32 @@ export function downloadPdfBlob(blob: Blob, filename: string): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
+export type PdfDeliveryResult = "downloaded" | "opened-tab";
+
+/** After async PDF generation, browsers block programmatic download — open the PDF in a new tab. */
+export function deliverPdfToUser(
+  blob: Blob,
+  filename: string,
+  mode: "instant" | "async" = "async",
+): PdfDeliveryResult {
+  const url = URL.createObjectURL(blob);
+  const scheduleRevoke = () => window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
+
+  if (mode === "instant") {
+    downloadPdfBlob(blob, filename);
+    return "downloaded";
+  }
+
+  const popup = window.open(url, "_blank", "noopener,noreferrer");
+  if (!popup) {
+    URL.revokeObjectURL(url);
+    throw new Error("Браузер заблокировал открытие PDF. Разрешите всплывающие окна для этого сайта.");
+  }
+
+  scheduleRevoke();
+  return "opened-tab";
+}
+
 export async function downloadDocumentPdfFromUrl(downloadUrl: string, filename: string): Promise<void> {
   const response = await fetch(downloadUrl, { cache: "no-store" });
   if (!response.ok) {
@@ -85,28 +111,23 @@ export async function downloadDocumentPdf(
   aggregateId: string,
   filename?: string,
   options?: { aggregateType?: DocumentAggregateType; cachedDownloadUrl?: string },
-): Promise<void> {
+): Promise<PdfDeliveryResult> {
   const resolvedFilename = filename ?? `${slug}-${aggregateId}.pdf`;
   const cachedUrl = options?.cachedDownloadUrl?.trim();
   if (cachedUrl) {
     try {
       await downloadDocumentPdfFromUrl(cachedUrl, resolvedFilename);
-      return;
+      return "downloaded";
     } catch {
       // Fall back to on-demand generation.
     }
   }
 
   const blob = await fetchDocumentPdf(slug, aggregateId, options);
-  downloadPdfBlob(blob, resolvedFilename);
+  return deliverPdfToUser(blob, resolvedFilename, "async");
 }
 
-export async function printDocumentPdf(
-  slug: DocumentSlug,
-  aggregateId: string,
-  options?: { aggregateType?: DocumentAggregateType },
-): Promise<void> {
-  const blob = await fetchDocumentPdf(slug, aggregateId, { inline: true, ...options });
+export async function printPdfBlob(blob: Blob): Promise<void> {
   const url = URL.createObjectURL(blob);
 
   await new Promise<void>((resolve, reject) => {
@@ -180,6 +201,15 @@ export async function printDocumentPdf(
     document.body.appendChild(frame);
     window.setTimeout(triggerFramePrint, 450);
   });
+}
+
+export async function printDocumentPdf(
+  slug: DocumentSlug,
+  aggregateId: string,
+  options?: { aggregateType?: DocumentAggregateType },
+): Promise<void> {
+  const blob = await fetchDocumentPdf(slug, aggregateId, { inline: true, ...options });
+  await printPdfBlob(blob);
 }
 
 export async function generateWorkOrderDocuments(orderId: string, types?: DocumentSlug[]): Promise<void> {

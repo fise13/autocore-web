@@ -119,6 +119,7 @@ export function documentRenderUrl(params: {
   slug: DocumentSlug;
   aggregateType?: "work_order" | "warranty" | "quote";
   theme?: string;
+  export?: boolean;
 }): string {
   const baseUrl = resolveRenderBaseUrl();
   const token = createDocumentRenderToken(params);
@@ -127,5 +128,6 @@ export function documentRenderUrl(params: {
     params.aggregateType && params.aggregateType !== "work_order"
       ? `&aggregate=${encodeURIComponent(params.aggregateType)}`
       : "";
-  return `${baseUrl}/render/documents/${params.orderId}/${params.slug}?token=${encodeURIComponent(token)}${themeQuery}${aggregateQuery}`;
+  const exportQuery = params.export ? "&export=pdf" : "";
+  return `${baseUrl}/render/documents/${params.orderId}/${params.slug}?token=${encodeURIComponent(token)}${themeQuery}${aggregateQuery}${exportQuery}`;
 }

@@ -34,6 +34,28 @@ export async function POST(request: NextRequest, context: RouteContext) {
       account: String(body.account ?? "cashbox"),
       paymentMethod: String(body.paymentMethod ?? "cash"),
       comment: typeof body.comment === "string" ? body.comment : undefined,
+      warrantyOverride:
+        body.warrantyOverride && typeof body.warrantyOverride === "object"
+          ? {
+              warrantyLabel:
+                typeof (body.warrantyOverride as { warrantyLabel?: unknown }).warrantyLabel === "string"
+                  ? (body.warrantyOverride as { warrantyLabel: string }).warrantyLabel
+                  : undefined,
+              warrantyText:
+                typeof (body.warrantyOverride as { warrantyText?: unknown }).warrantyText === "string"
+                  ? (body.warrantyOverride as { warrantyText: string }).warrantyText
+                  : undefined,
+              customWarrantyMonths:
+                typeof (body.warrantyOverride as { customWarrantyMonths?: unknown }).customWarrantyMonths ===
+                "number"
+                  ? (body.warrantyOverride as { customWarrantyMonths: number }).customWarrantyMonths
+                  : undefined,
+              customWarrantyKm:
+                typeof (body.warrantyOverride as { customWarrantyKm?: unknown }).customWarrantyKm === "number"
+                  ? (body.warrantyOverride as { customWarrantyKm: number }).customWarrantyKm
+                  : undefined,
+            }
+          : undefined,
     });
 
     void fetch(`${request.nextUrl.origin}/api/documents/process-queue`, {

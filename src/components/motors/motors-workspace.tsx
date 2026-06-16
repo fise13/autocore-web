@@ -14,7 +14,7 @@ import { buildMotorSearchSuggestions } from "@/components/layout/workspace-searc
 import { useMotorSyncBridge } from "@/components/motors/motor-sync-bridge";
 import { MotorsExcelGrid } from "@/components/motors/motors-excel-grid";
 import { MotorsGridSkeleton } from "@/components/motors/motors-grid-skeleton";
-import { SellMotorDialog } from "@/components/motors/sell-motor-dialog";
+import { SellMotorDialog, type MotorSellPayload } from "@/components/motors/sell-motor-dialog";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { Button } from "@/components/ui/button";
@@ -191,12 +191,7 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
 
   useDeepAction({ onAction: handleDeepAction });
 
-  async function confirmSellOperation(payload: {
-    amount: number;
-    account: "cashbox" | "kaspi";
-    paymentMethod: "cash" | "transfer" | "mixed";
-    comment: string;
-  }) {
+  async function confirmSellOperation(payload: MotorSellPayload) {
     if (!sellDialog || !uid || !companyId || !profile) return;
     const { motor, mode } = sellDialog;
 
@@ -217,6 +212,7 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
         account: payload.account,
         paymentMethod: payload.paymentMethod,
         comment: payload.comment,
+        warrantyOverride: payload.warrantyOverride,
       });
 
       setSellSuccess({ serialCode: motor.serialCode, amount: payload.amount });
@@ -411,6 +407,7 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
       </AnimatePresence>
 
       <SellMotorDialog
+        companyId={companyId}
         motor={sellDialog?.motor ?? null}
         mode={sellDialog?.mode ?? "sell"}
         open={Boolean(sellDialog)}

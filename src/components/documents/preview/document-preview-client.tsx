@@ -21,6 +21,7 @@ export function DocumentPreviewClient({ orderId, slug }: DocumentPreviewClientPr
   const [context, setContext] = useState<DocumentContext | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [pdfNotice, setPdfNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -68,12 +69,19 @@ export function DocumentPreviewClient({ orderId, slug }: DocumentPreviewClientPr
           orderId={orderId}
           previewReady={Boolean(context)}
           onError={setPdfError}
+          onNotice={setPdfNotice}
         />
       }
     >
       {activeError ? (
         <div className="w-full max-w-3xl rounded-xl border border-red-500/30 bg-[#141414] px-6 py-5 text-sm text-red-300">
           {activeError}
+        </div>
+      ) : null}
+
+      {pdfNotice ? (
+        <div className="w-full max-w-3xl rounded-xl border border-sky-500/30 bg-[#141414] px-6 py-5 text-sm text-sky-200">
+          {pdfNotice}
         </div>
       ) : null}
 

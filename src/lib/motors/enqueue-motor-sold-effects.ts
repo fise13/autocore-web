@@ -1,5 +1,6 @@
 import { MotorEntity } from "@/domain/motor";
 import { PaymentMethod, OperationAccount } from "@/domain/financial-operation";
+import type { MotorSaleWarrantyOverride } from "@/lib/documents/warranty/custom-warranty";
 import { getFirebaseAuth } from "@/infrastructure/firebase/client";
 
 /** Creates warranty + PDF jobs on the server (best-effort; sale already saved client-side). */
@@ -10,6 +11,7 @@ export async function enqueueMotorSoldEffects(
     account: OperationAccount;
     paymentMethod: PaymentMethod;
     comment?: string;
+    warrantyOverride?: MotorSaleWarrantyOverride;
   },
 ): Promise<{ ok: boolean; error?: string }> {
   try {
@@ -33,6 +35,7 @@ export async function enqueueMotorSoldEffects(
         account: payload.account,
         paymentMethod: payload.paymentMethod,
         comment: payload.comment,
+        warrantyOverride: payload.warrantyOverride,
       }),
     });
 

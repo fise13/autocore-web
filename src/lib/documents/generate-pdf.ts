@@ -1,10 +1,17 @@
 import "server-only";
 
-import { readFileSync, existsSync } from "node:fs";
-import path from "node:path";
-
 import { DocumentTheme } from "@/domain/company-branding";
 import { DOCUMENT_BY_SLUG, DocumentSlug } from "@/lib/documents/document-types";
+import {
+  applyPdfExportLayoutScript,
+  computePdfFitScale,
+  measurePdfPageScript,
+  PDF_A4_HEIGHT_PX,
+  PDF_A4_WIDTH_PX,
+  PDF_PAGE_ROOT_SELECTORS,
+  PDF_SERVICE_TAG_HEIGHT_PX,
+  PDF_SERVICE_TAG_WIDTH_PX,
+} from "@/lib/documents/fit-pdf-page";
 import { getPuppeteerBrowser } from "@/lib/documents/puppeteer-browser";
 import { documentRenderUrl } from "@/lib/documents/render-token";
 
@@ -32,17 +39,17 @@ async function waitForPdfAssets(page: Awaited<ReturnType<Awaited<ReturnType<type
 export async function generatePdfFromRenderUrl(params: PdfFromUrlOptions): Promise<Buffer> {
   const definition = DOCUMENT_BY_SLUG[params.slug];
   const isServiceTag = definition.pageSize === "service-tag";
-  const url = documentRenderUrl(params);
+  const targetWidthPx = isServiceTag ? PDF_SERVICE_TAG_WIDTH_PX : PDF_A4_WIDTH_PX;
+  const targetHeightPx = isServiceTag ? PDF_SERVICE_TAG_HEIGHT_PX : PDF_A4_HEIGHT_PX;
+  const url = documentRenderUrl({ ...params, export: true });
 
   const browser = await getPuppeteerBrowser();
   const page = await browser.newPage();
 
   try {
-    await page.setViewport(
-      isServiceTag ? { width: 264, height: 378 } : { width: 794, height: 1123 },
-    );
+    await page.setViewport({ width: targetWidthPx, height: targetHeightPx, deviceScaleFactor: 1 });
 
-    const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45_000 });
+    const response = await page.goto(url, { waitUntil: "networkidle0", timeout: 45_000 });
     if (!response || !response.ok()) {
       const status = response?.status() ?? "no response";
       throw new Error(`Страница рендера PDF недоступна (${status}): ${url}`);
@@ -54,13 +61,39 @@ export async function generatePdfFromRenderUrl(params: PdfFromUrlOptions): Promi
     await waitForPdfAssets(page);
     await page.emulateMediaType("print");
 
+    const pageSelectors = [...PDF_PAGE_ROOT_SELECTORS];
+    const measureArgs = { targetWidthPx, pageSelectors };
+
+    let content = await page.evaluate(measurePdfPageScript, measureArgs);
+    let fitScale = computePdfFitScale(content.contentHeight, targetHeightPx);
+
+    if (fitScale < 0.999) {
+      await page.setViewport({
+        width: targetWidthPx,
+        height: Math.min(Math.ceil(content.contentHeight + 48), 10_000),
+        deviceScaleFactor: 1,
+      });
+      content = await page.evaluate(measurePdfPageScript, measureArgs);
+      fitScale = computePdfFitScale(content.contentHeight, targetHeightPx);
+    }
+
+    await page.setViewport({ width: targetWidthPx, height: targetHeightPx, deviceScaleFactor: 1 });
+    await page.evaluate(applyPdfExportLayoutScript, {
+      fitScale,
+      targetWidthPx,
+      targetHeightPx,
+      pageSelectors,
+    });
+
     const pdf = await page.pdf({
       printBackground: true,
-      preferCSSPageSize: true,
+      preferCSSPageSize: false,
+      pageRanges: "1",
       ...(isServiceTag
         ? { width: "70mm", height: "100mm", margin: { top: "0", right: "0", bottom: "0", left: "0" } }
         : {
-            format: "A4",
+            width: `${targetWidthPx}px`,
+            height: `${targetHeightPx}px`,
             margin: { top: "0", right: "0", bottom: "0", left: "0" },
           }),
     });

@@ -41,6 +41,8 @@ export type CompanyBrandingProfile = Pick<
   qrLinkUrl?: string;
   documentFooter?: string;
   invoiceValidityDays?: number;
+  customWarrantyMonths?: number;
+  customWarrantyKm?: number;
   showServiceLogbook?: boolean;
   showPlatformContacts?: boolean;
 };
@@ -108,6 +110,8 @@ export function useCompanyBranding(companyId: string | null | undefined) {
           qrLinkUrl: documentConfig.qrLinkUrl,
           documentFooter: documentConfig.documentFooter,
           invoiceValidityDays: documentConfig.invoiceValidityDays,
+          customWarrantyMonths: documentConfig.customWarrantyMonths,
+          customWarrantyKm: documentConfig.customWarrantyKm,
           showServiceLogbook: branding.showServiceLogbook,
           showPlatformContacts: branding.showPlatformContacts,
         });

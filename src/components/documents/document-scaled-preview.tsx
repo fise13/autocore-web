@@ -2,8 +2,12 @@
 
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 
-export const DOCUMENT_PAGE_WIDTH_PX = 794;
-export const DOCUMENT_PAGE_HEIGHT_PX = 1123;
+import {
+  PDF_A4_HEIGHT_PX as DOCUMENT_PAGE_HEIGHT_PX,
+  PDF_A4_WIDTH_PX as DOCUMENT_PAGE_WIDTH_PX,
+} from "@/lib/documents/fit-pdf-page";
+
+export { DOCUMENT_PAGE_HEIGHT_PX, DOCUMENT_PAGE_WIDTH_PX };
 
 export function useDocumentPreviewScale(
   viewportRef: RefObject<HTMLElement | null>,

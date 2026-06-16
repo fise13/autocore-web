@@ -20,6 +20,9 @@ export type EngineWarranty = {
   expiresAtMileage: number;
   termsText?: string;
   restrictionsText?: string;
+  warrantyLabel?: string;
+  warrantyMonths?: number;
+  warrantyKm?: number;
   verificationToken: string;
   status: WarrantyStatus;
   pdfStoragePath?: string;

@@ -25,6 +25,12 @@
 }
 
 @layer components {
+  .documents-render-shell {
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+  }
+
   .doc-page {
     box-sizing: border-box;
     print-color-adjust: exact;
@@ -100,14 +106,41 @@
 
   .doc-sr-page {
     width: 210mm !important;
-    min-height: 297mm !important;
+    min-height: 0 !important;
     page-break-after: avoid;
+    page-break-inside: avoid;
   }
 
   .doc-pdf-page {
-    width: 210mm !important;
-    min-height: 297mm !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
     page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  .doc-racing-page {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    min-height: 0 !important;
+  }
+
+  .documents-render-shell {
+    min-height: 0 !important;
+    height: auto !important;
+    background: #ffffff !important;
   }
 
   .doc-preview-toolbar {

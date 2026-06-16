@@ -14,6 +14,7 @@ import { MotorEntity } from "@/domain/motor";
 import { VehicleEntity } from "@/domain/vehicle";
 import { WorkOrder } from "@/domain/work-order";
 import { DocumentPhoto } from "@/lib/documents/render-model/types";
+import { CustomWarrantyFields } from "@/lib/documents/warranty/custom-warranty";
 
 export type DocumentCompanyInfo = {
   name: string;
@@ -65,6 +66,7 @@ export type DocumentContext = {
   theme?: DocumentTheme;
   warrantyVerificationToken?: string;
   photos?: DocumentPhoto[];
+  warrantyOverride?: CustomWarrantyFields;
 };
 
 export type DocumentContextInput = {
@@ -82,6 +84,7 @@ export type DocumentContextInput = {
   generatedAt?: Date;
   warrantyVerificationToken?: string;
   photos?: DocumentPhoto[];
+  warrantyOverride?: CustomWarrantyFields;
 };
 
 export function buildDocumentContext(input: DocumentContextInput): DocumentContext {
@@ -131,6 +134,8 @@ export function buildDocumentContext(input: DocumentContextInput): DocumentConte
         warrantyTemplateId: branding.warrantyTemplateId ?? documentConfig.warrantyTemplateId,
         sections: branding.documentSections ?? documentConfig.sections,
         documentFooter: branding.documentFooter ?? documentConfig.documentFooter,
+        customWarrantyMonths: documentConfig.customWarrantyMonths,
+        customWarrantyKm: documentConfig.customWarrantyKm,
       },
     },
     order: input.order,
@@ -146,5 +151,6 @@ export function buildDocumentContext(input: DocumentContextInput): DocumentConte
     theme: branding.documentTheme ?? "modern",
     warrantyVerificationToken: input.warrantyVerificationToken,
     photos: input.photos,
+    warrantyOverride: input.warrantyOverride,
   };
 }

@@ -11,6 +11,7 @@ import {
   type WarrantyTemplateId,
 } from "@/domain/document-config";
 import { WARRANTY_TEMPLATE_PRESETS } from "@/lib/documents/warranty/warranty-templates";
+import { formatWarrantyDurationLabel } from "@/lib/documents/warranty/custom-warranty";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,8 @@ import { cn } from "@/lib/utils";
 export type DocumentConfigDraft = {
   documentSections: DocumentSectionConfig;
   warrantyTemplateId: WarrantyTemplateId;
+  customWarrantyMonths: string;
+  customWarrantyKm: string;
   qrLinkUrl: string;
   documentFooter: string;
   invoiceValidityDays: string;
@@ -26,6 +29,8 @@ export type DocumentConfigDraft = {
 export const DEFAULT_DOCUMENT_CONFIG_DRAFT: DocumentConfigDraft = {
   documentSections: {},
   warrantyTemplateId: "contract_engine",
+  customWarrantyMonths: "",
+  customWarrantyKm: "",
   qrLinkUrl: "",
   documentFooter: "",
   invoiceValidityDays: "5",
@@ -111,18 +116,57 @@ export function DocumentConfigSettings({ draft, onChange }: DocumentConfigSettin
                 ) : null}
                 <span className="relative z-10 block text-sm font-medium">{preset.name}</span>
                 <span className="relative z-10 mt-1 block text-xs text-muted-foreground">
-                  {preset.months > 0
-                    ? `${preset.months} мес · ${preset.km.toLocaleString("ru-KZ")} км`
-                    : "Без гарантийных обязательств"}
+                  {id === "custom"
+                    ? draft.customWarrantyMonths && draft.customWarrantyKm
+                      ? formatWarrantyDurationLabel(
+                          Number(draft.customWarrantyMonths),
+                          Number(draft.customWarrantyKm),
+                        )
+                      : "Укажите срок и текст гарантии"
+                    : preset.months > 0
+                      ? `${preset.months} мес · ${preset.km.toLocaleString("ru-KZ")} км`
+                      : "Без гарантийных обязательств"}
                 </span>
               </button>
             );
           })}
         </div>
         {draft.warrantyTemplateId === "custom" ? (
-          <p className="text-xs text-muted-foreground">
-            Используйте поле «Текст гарантии» ниже — каждый абзац с новой строки.
-          </p>
+          <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
+            <p className="text-xs text-muted-foreground">
+              Задайте срок и текст — они попадут в гарантийный талон. При продаже двигателя можно
+              изменить условия для конкретной сделки.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="custom-warranty-months">Срок, мес</Label>
+                <Input
+                  id="custom-warranty-months"
+                  type="number"
+                  min={1}
+                  value={draft.customWarrantyMonths}
+                  onChange={(event) =>
+                    onChange({ ...draft, customWarrantyMonths: event.target.value })
+                  }
+                  placeholder="6"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="custom-warranty-km">Пробег, км</Label>
+                <Input
+                  id="custom-warranty-km"
+                  type="number"
+                  min={1}
+                  value={draft.customWarrantyKm}
+                  onChange={(event) => onChange({ ...draft, customWarrantyKm: event.target.value })}
+                  placeholder="10000"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Текст условий — в полях «Заголовок гарантии» и «Условия гарантии» на вкладке «Оформление».
+            </p>
+          </div>
         ) : null}
       </div>
 
