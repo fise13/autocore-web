@@ -1,19 +1,15 @@
-import { existsSync } from "node:fs";
-import { join } from "node:path";
-
 import { NextResponse } from "next/server";
 
 import {
   DESKTOP_DOWNLOAD_FILES,
   getDesktopDownloadLinks,
-  resolveDesktopDownloadPath,
 } from "@/lib/desktop/desktop-downloads";
+import { hasLocalDesktopInstaller } from "@/lib/desktop/desktop-downloads.server";
 
 export const runtime = "nodejs";
 
-function isAvailable(fileName: string): boolean {
-  const path = resolveDesktopDownloadPath(fileName);
-  return existsSync(path);
+function isAvailable(platform: keyof typeof DESKTOP_DOWNLOAD_FILES): boolean {
+  return hasLocalDesktopInstaller(platform);
 }
 
 export function GET() {
@@ -22,12 +18,12 @@ export function GET() {
   const platforms = {
     mac: {
       url: links.mac,
-      available: isAvailable(DESKTOP_DOWNLOAD_FILES.mac),
+      available: isAvailable("mac"),
       fileName: DESKTOP_DOWNLOAD_FILES.mac,
     },
     windows: {
       url: links.windows,
-      available: isAvailable(DESKTOP_DOWNLOAD_FILES.windows),
+      available: isAvailable("windows"),
       fileName: DESKTOP_DOWNLOAD_FILES.windows,
     },
   };
