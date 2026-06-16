@@ -26,5 +26,5 @@ export const deepActionRoutes = {
   sync: () => buildDeepActionUrl("/motors", "sync"),
   sell: () => buildDeepActionUrl("/motors", "sell"),
   add: () => buildDeepActionUrl("/motors", "add"),
-  invite: () => buildDeepActionUrl("/settings", "invite", { section: "employees" }),
+  invite: () => buildDeepActionUrl("/team", "invite", { tab: "employees" }),
 } as const;

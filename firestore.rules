@@ -152,6 +152,13 @@ service cloud.firestore {
         && companyOwner(companyId) == request.auth.uid;
     }
 
+    function canSwitchToMemberCompany(companyId) {
+      return isSignedIn()
+        && companyId != null
+        && companyId != ""
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid)/memberships/$(companyId));
+    }
+
     function inviteData(inviteId) {
       return inviteId != null && inviteId != ""
         && exists(inviteDoc(inviteId))
@@ -464,6 +471,11 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.auth.uid == userId
         && isValidMemberRole(request.resource.data.role);
+      // Switch active workspace between companies the user belongs to.
+      allow update: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['companyId'])
+        && canSwitchToMemberCompany(request.resource.data.companyId);
       // Owner onboarding: link to a company you created (no recursive get() / hasNoCompanyYet required).
       allow update: if isSignedIn()
         && request.auth.uid == userId
@@ -513,6 +525,10 @@ service cloud.firestore {
       allow read: if isSignedIn()
         && resource.data.companyId != null
         && canAccessCompanyDoc(resource.data.companyId);
+
+      match /memberships/{membershipCompanyId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
 
       // Incremental motor mirror (macOS / web → users/{uid}/motors/{localId}).
       match /motors/{motorDocId} {

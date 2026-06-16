@@ -117,6 +117,16 @@ export function canAccessPath(
   if (pathname.startsWith("/employees") || pathname.startsWith("/roles")) {
     return can(user, "employee_view") || can(user, "employee_manage");
   }
+  if (pathname.startsWith("/team") || pathname.startsWith("/activity")) {
+    return can(user, "employee_view") || can(user, "employee_manage");
+  }
+  if (pathname.startsWith("/documents")) {
+    return (
+      can(user, "settings_manage") ||
+      can(user, "work_orders_view") ||
+      can(user, "accounting_view")
+    );
+  }
   if (pathname.startsWith("/settings")) {
     return true;
   }

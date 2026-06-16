@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRightIcon } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -33,15 +33,15 @@ type McRecentOperationsProps = {
 export function McRecentOperations({ operations, isLoading, className }: McRecentOperationsProps) {
   const recent = [...operations]
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    .slice(0, 5);
+    .slice(0, 4);
 
   if (isLoading) {
     return (
-      <McPanel className={cn("md:col-span-2", className)}>
-        <McPanelHeader title="Последние операции" />
-        <McPanelBody className="space-y-2">
+      <McPanel className={cn("gap-0 shadow-none md:col-span-2 dark:ring-0", className)}>
+        <McPanelHeader title="Последние операции" bordered />
+        <McPanelBody className="space-y-2 p-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-12 w-full rounded-lg" />
+            <Skeleton key={index} className="h-14 w-full rounded-lg" />
           ))}
         </McPanelBody>
       </McPanel>
@@ -49,48 +49,50 @@ export function McRecentOperations({ operations, isLoading, className }: McRecen
   }
 
   return (
-    <McPanel className={cn("md:col-span-2", className)}>
+    <McPanel className={cn("gap-0 shadow-none md:col-span-2 dark:ring-0", className)}>
       <McPanelHeader
         title="Последние операции"
-        description="Суммы и типы недавних проводок"
+        description="Недавние проводки в бухгалтерии"
+        bordered
       />
-      <McPanelBody className="space-y-0 px-0 pb-0">
+      <McPanelBody className="p-0">
         {recent.length === 0 ? (
-          <p className="px-4 py-10 text-center text-sm text-muted-foreground">Операций пока нет</p>
+          <p className="px-6 py-10 text-center text-sm text-muted-foreground">Операций пока нет</p>
         ) : (
           <Table>
-            <TableCaption className="sr-only">Последние финансовые операции</TableCaption>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="ps-4">Тип</TableHead>
-                <TableHead>Дата</TableHead>
-                <TableHead className="pe-4 text-right tabular-nums">Сумма</TableHead>
+                <TableHead className="pl-6">Тип</TableHead>
+                <TableHead className="hidden sm:table-cell">Дата</TableHead>
+                <TableHead className="text-right">Сумма</TableHead>
+                <TableHead className="pr-6 text-right">Статус</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {recent.map((operation) => (
-                <TableRow className="mc-list-row border-0 bg-transparent hover:bg-muted/30" key={operation.id}>
-                  <TableCell className="max-w-40 truncate ps-4 font-medium">
+                <TableRow className="h-14 hover:bg-transparent" key={operation.id}>
+                  <TableCell className="max-w-36 truncate pl-6 font-medium">
                     {operationTypeLabel(operation.type)}
                   </TableCell>
-                  <TableCell className="text-muted-foreground tabular-nums">
+                  <TableCell className="hidden text-muted-foreground text-sm tabular-nums sm:table-cell">
                     {operation.createdAt.toLocaleDateString("ru-RU", {
                       day: "2-digit",
                       month: "2-digit",
                     })}
                   </TableCell>
-                  <TableCell className="pe-4 text-right tabular-nums text-primary">
-                    {formatMoney(operation.amount)}
+                  <TableCell className="text-right tabular-nums">{formatMoney(operation.amount)}</TableCell>
+                  <TableCell className="pr-6 text-right">
+                    <Badge variant="secondary">Проведено</Badge>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         )}
-        <div className="flex items-center justify-center border-t border-border/50 py-2.5">
-          <Button render={<Link href="/accounting" />} variant="ghost" size="sm">
+        <div className="flex justify-center border-t py-3">
+          <Button size="sm" variant="ghost" render={<Link href="/accounting" />} nativeButton={false}>
             Вся бухгалтерия
-            <ArrowRight className="size-4" data-icon="inline-end" aria-hidden />
+            <ArrowRightIcon aria-hidden data-icon="inline-end" />
           </Button>
         </div>
       </McPanelBody>

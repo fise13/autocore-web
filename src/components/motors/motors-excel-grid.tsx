@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useGridEnterMotion } from "@/hooks/use-grid-enter-motion";
 import { createMotorUseCase } from "@/application/use-cases/create-motor";
 import { syncMotorCatalogUseCase } from "@/application/use-cases/motors/sync-motor-catalog";
 import { softDeleteMotorUseCase } from "@/application/use-cases/soft-delete-motor";
@@ -299,7 +298,6 @@ export function MotorsExcelGrid({
     registerCloudPushHandler,
     gridZoom,
   } = useWorkspace();
-  const gridEntering = useGridEnterMotion();
 
   const hideBrandColumn = Boolean(defaultBrandName?.trim());
   const layout = useMemo(
@@ -1401,7 +1399,7 @@ export function MotorsExcelGrid({
             </div>
 
             <div
-              className={cn("absolute left-0 right-0", gridEntering && "autocore-grid-rows-enter")}
+              className="absolute left-0 right-0"
               style={{ top: layout.headerHeight }}
             >
               {Array.from({ length: visible.rowEnd - visible.rowStart + 1 }, (_, offset) => {

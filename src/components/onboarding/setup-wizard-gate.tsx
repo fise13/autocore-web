@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useState, useSyncExternalStore } from "react";
 import { motion } from "framer-motion";
 import { Loader2, Settings2 } from "lucide-react";
 
@@ -20,12 +20,20 @@ type SetupWizardGateProps = {
   children: ReactNode;
 };
 
+function useWizardCompletedFlag(companyId: string | null): boolean {
+  return useSyncExternalStore(
+    () => () => {},
+    () => (companyId ? hasWizardCompleted(companyId) : false),
+    () => false,
+  );
+}
+
 export function SetupWizardGate({ children }: SetupWizardGateProps) {
   const { profile, isLoading } = useAuth();
   const companyId = profile?.companyId?.trim() || null;
   const { config, loaded } = useCompanyAppConfig(companyId);
   const [localCompleted, setLocalCompleted] = useState(false);
-  const cachedCompleted = companyId ? hasWizardCompleted(companyId) : false;
+  const cachedCompleted = useWizardCompletedFlag(companyId);
 
   useEffect(() => {
     if (config?.onboardingCompleted && companyId) {

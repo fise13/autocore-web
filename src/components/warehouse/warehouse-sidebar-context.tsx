@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LayoutGroup, motion } from "framer-motion";
 import { Package, Plus, Star } from "lucide-react";
 
 import { createWarehouseUseCase } from "@/application/use-cases/warehouse/create-warehouse";
+import { ensureDefaultWarehouseUseCase } from "@/application/use-cases/warehouse/ensure-default-warehouse";
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { sidebarNavRowClass, sidebarSectionLabelClass } from "@/components/layout/sidebar-nav-row";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -49,6 +50,8 @@ export function WarehouseSidebarContext() {
   const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ensuringDefault, setEnsuringDefault] = useState(false);
+  const ensuringRef = useRef(false);
 
   const sortedWarehouses = useMemo(
     () =>
@@ -58,6 +61,19 @@ export function WarehouseSidebarContext() {
       }),
     [warehouses],
   );
+
+  useEffect(() => {
+    if (!companyId || loading || warehouses.length > 0 || ensuringRef.current) return;
+
+    ensuringRef.current = true;
+    setEnsuringDefault(true);
+    void ensureDefaultWarehouseUseCase(warehouseRepository, companyId, actorUserId)
+      .catch(() => undefined)
+      .finally(() => {
+        ensuringRef.current = false;
+        setEnsuringDefault(false);
+      });
+  }, [actorUserId, companyId, loading, warehouses.length]);
 
   useEffect(() => {
     if (!companyId || loading) return;
@@ -130,13 +146,15 @@ export function WarehouseSidebarContext() {
           ) : null}
         </div>
 
-        {loading && warehouses.length === 0 ? (
-          <p className="px-3 py-2 text-xs text-muted-foreground">Загрузка…</p>
+        {loading || ensuringDefault ? (
+          <p className="px-3 py-2 text-xs text-muted-foreground">
+            {ensuringDefault ? "Создаём основной склад…" : "Загрузка…"}
+          </p>
         ) : null}
 
-        {!loading && warehouses.length === 0 ? (
+        {!loading && !ensuringDefault && warehouses.length === 0 ? (
           <p className="px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-            Создайте первый склад — остатки будут учитываться отдельно для каждого.
+            Основной склад появится автоматически через несколько секунд.
           </p>
         ) : null}
 

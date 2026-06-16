@@ -99,10 +99,6 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
         interval: interval === "yearly" ? "yearly" : "monthly",
       });
       setPaidCheckoutPending(true);
-      setEmailStep(true);
-      setEmailMode("signup");
-      setAuthStepDirection(1);
-      setAuthStepAnimated(true);
     } else {
       setPaidCheckoutPending(Boolean(readPendingMarketingCheckout()));
     }
@@ -171,6 +167,10 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
 
   async function onPasswordSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!email.trim()) {
+      setError("Введите email.");
+      return;
+    }
     if (isSignUp) {
       const passwordError = validateSignupPassword(password);
       if (passwordError) {
@@ -188,12 +188,12 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
     await runAuth(async () => {
       try {
         if (isSignUp) {
-          await signUpWithEmail(email, password, {
+          await signUpWithEmail(email.trim(), password, {
             firstName: firstName.trim(),
             lastName: lastName.trim(),
           });
         } else {
-          await signInWithEmail(email, password);
+          await signInWithEmail(email.trim(), password);
         }
       } catch (authError) {
         const message = mapAuthError(authError);
@@ -461,27 +461,36 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
               transition={{ duration: 0.28, ease: authStepEase }}
             >
             <form className="space-y-3" onSubmit={onPasswordSubmit} autoComplete="on">
-              <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm">
-                <label htmlFor="auth-email" className="text-muted-foreground">
-                  Email:{" "}
-                </label>
-                <input
-                  id="auth-email"
-                  type="email"
-                  name="email"
-                  autoComplete="username"
-                  value={email}
-                  readOnly
-                  className="inline bg-transparent font-medium outline-none"
-                />
-                <button
-                  type="button"
-                  className="ml-2 text-xs text-primary underline underline-offset-4 transition-opacity hover:opacity-80"
-                  disabled={isBusy}
-                  onClick={changeEmail}
-                >
-                  Изменить
-                </button>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <label htmlFor="auth-email" className="text-xs text-muted-foreground">
+                    Email
+                  </label>
+                  <button
+                    type="button"
+                    className="text-xs text-primary underline underline-offset-4 transition-opacity hover:opacity-80"
+                    disabled={isBusy}
+                    onClick={changeEmail}
+                  >
+                    Назад
+                  </button>
+                </div>
+                <InputGroup>
+                  <InputGroupInput
+                    id="auth-email"
+                    name="email"
+                    placeholder="ваш@email.ru"
+                    type="email"
+                    autoComplete="username email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    required
+                    disabled={isBusy}
+                  />
+                  <InputGroupAddon align="inline-start">
+                    <AtSign className="size-4" aria-hidden />
+                  </InputGroupAddon>
+                </InputGroup>
               </div>
 
               {isSignUp ? (

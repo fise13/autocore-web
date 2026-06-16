@@ -126,6 +126,8 @@ export const APP_ROUTE_PREFIXES = [
   "/warehouse",
   "/work-orders",
   "/documents",
+  "/team",
+  "/activity",
   "/render",
   "/motors",
   "/sold",

@@ -24,7 +24,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { can } from "@/lib/auth/permissions";
 import { deepActionRoutes } from "@/lib/navigation/deep-actions";
-import type { SidebarMode } from "@/lib/navigation/sidebar-mode";
+import { showSidebarContextInSidebar, type SidebarMode } from "@/lib/navigation/sidebar-mode";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
@@ -267,7 +267,7 @@ function SidebarContextContent({ mode }: SidebarContextPanelProps) {
 }
 
 export function SidebarContextPanel({ mode }: SidebarContextPanelProps) {
-  const visible = mode !== "home" && mode !== "other";
+  const visible = showSidebarContextInSidebar(mode);
 
   return (
     <AnimatedSidebarSlot slotKey={visible ? mode : "context-empty"}>

@@ -29,6 +29,7 @@ import { useEffectiveCatalog } from "@/hooks/use-effective-catalog";
 import { useMotorsRealtime } from "@/hooks/use-motors-realtime";
 import { useSidebarCustomization } from "@/components/providers/sidebar-customization-provider";
 import { useSidebarLayout } from "@/hooks/use-sidebar-layout";
+import { useEnsureDefaultWarehouse } from "@/hooks/use-ensure-default-warehouse";
 import { useSpecificCategoriesRealtime } from "@/hooks/use-specific-categories-realtime";
 import { canAccessMotorsArea } from "@/lib/auth/app-access";
 import { can } from "@/lib/auth/permissions";
@@ -65,11 +66,11 @@ function DashboardShellInner({ children }: DashboardShellProps) {
   const canViewMotors = canAccessMotorsArea(profile);
   const canManageBrands = can(profile, "inventory_edit") && canViewMotors;
   const canSubscribe = Boolean(uid && companyId && !isLoading);
+  useEnsureDefaultWarehouse(canSubscribe);
 
   const isMotorRoute = pathname === "/motors" || pathname === "/sold";
   const isSpecificRoute = pathname.startsWith("/specific/");
   const isWarehouseRoute = pathname === "/warehouse";
-  const isMissionControlRoute = pathname === "/";
   const isWorkspaceRoute = isMotorRoute || isSpecificRoute || isWarehouseRoute;
 
   const isSoldRoute = pathname === "/sold";
@@ -215,9 +216,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
         <MotorImportHost />
       </Suspense>
       <div
-        ref={barbaWrapperRef}
         data-dashboard-shell
-        data-barba="wrapper"
         className={cn(
           "flex h-screen overflow-hidden bg-background",
           sidebarOnRight && "flex-row-reverse",
@@ -225,6 +224,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
       >
         <div
           data-app-reveal
+          data-barba-prevent
           className="relative z-40 hidden h-full shrink-0 md:block"
         >
           <ResizableSidebar
@@ -234,11 +234,12 @@ function DashboardShellInner({ children }: DashboardShellProps) {
             onWidthChange={setWidth}
           >
             <AppSidebar {...sidebarProps} collapsed={collapsed} />
-        </ResizableSidebar>
+          </ResizableSidebar>
         </div>
 
         <div
           data-mobile-sidebar-backdrop
+          data-barba-prevent
           className={cn(
             "fixed inset-0 z-50 md:hidden",
             mobileSidebarOpen ? "pointer-events-auto" : "pointer-events-none",
@@ -275,7 +276,11 @@ function DashboardShellInner({ children }: DashboardShellProps) {
           </aside>
         </div>
 
-        <div className={cn("relative flex min-w-0 flex-1 flex-col", isEditing && "overflow-hidden")}>
+        <div
+          ref={barbaWrapperRef}
+          data-barba="wrapper"
+          className={cn("relative flex min-w-0 flex-1 flex-col", isEditing && "overflow-hidden")}
+        >
           <SidebarEditBlur />
           <div data-app-reveal>
             <DashboardTopBar />
@@ -288,11 +293,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
             className={
               isWorkspaceRoute
                 ? "relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden"
-                : cn(
-                    "relative z-0 min-h-0 flex-1 overflow-y-auto p-4 md:p-6",
-                    isMissionControlRoute &&
-                      "bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,color-mix(in_oklab,var(--primary)_6%,transparent),transparent_50%)]",
-                  )
+                : "relative z-0 min-h-0 flex-1 overflow-y-auto p-4 md:p-6"
             }
           >
             <div className="flex min-h-0 flex-1 flex-col dashboard-workspace-scroll">

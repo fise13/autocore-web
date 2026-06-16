@@ -39,7 +39,7 @@ function NavLink({
       {active ? (
         <motion.span
           layoutId="work-orders-nav-active"
-          className="absolute inset-0 rounded-lg bg-primary/12 shadow-sm"
+          className="absolute inset-0 rounded-md bg-[var(--nav-active)]"
           transition={workOrdersNavSpring}
         />
       ) : null}

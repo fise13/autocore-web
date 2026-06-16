@@ -328,49 +328,29 @@
 }
 
 .animate-autocore-grid-enter {
-  animation: autocore-grid-enter 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: autocore-grid-enter 0.18s ease-out both;
 }
 
 @keyframes autocore-grid-enter {
   from {
     opacity: 0;
-    transform: translateY(5px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
 @keyframes autocore-grid-header-enter {
   from {
     opacity: 0;
-    transform: translateY(-3px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
 .autocore-grid-header-enter {
-  animation: autocore-grid-header-enter 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes autocore-grid-row-enter {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.autocore-grid-rows-enter > * {
-  animation: autocore-grid-row-enter 0.14s cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: calc(var(--grid-row-i, 0) * 10ms);
+  animation: autocore-grid-header-enter 0.16s ease-out both;
 }
 
 @keyframes autocore-logo-enter {
@@ -510,7 +490,6 @@
   .animate-tab-enter,
   .animate-autocore-grid-enter,
   .autocore-grid-header-enter,
-  .autocore-grid-rows-enter > *,
   .animate-autocore-fade-in-up,
   .animate-autocore-tab-enter,
   .animate-autocore-bar-grow,
@@ -959,6 +938,10 @@
   box-shadow: none;
 }
 
+.app-sidebar--collapsed [data-sidebar="menu-button"] {
+  justify-content: center;
+}
+
 .app-sidebar--collapsed .sidebar-nav-label,
 .app-sidebar--collapsed .sidebar-section-label,
 .app-sidebar--collapsed [data-sidebar-hide-collapsed] {
@@ -997,4 +980,13 @@
   .app-sidebar .sidebar-section-label {
     transition: none;
   }
+}
+
+[data-sonner-toaster] {
+  font-family: var(--font-sans);
+  z-index: 100;
+}
+
+[data-sonner-toast] {
+  font-family: var(--font-sans);
 }

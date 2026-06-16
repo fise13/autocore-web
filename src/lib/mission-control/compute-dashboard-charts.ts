@@ -4,6 +4,7 @@ import { format } from "date-fns";
 
 import { FinancialOperation } from "@/domain/financial-operation";
 import { InventoryItem } from "@/domain/inventory";
+import { WorkOrder } from "@/domain/work-order";
 import { MissionControlOverviewMetrics } from "@/lib/mission-control/compute-overview-metrics";
 
 export type DailyRevenueRow = {
@@ -217,4 +218,25 @@ export function countLowStockIssues(
 
 export function formatMoney(value: number): string {
   return `${value.toLocaleString("ru-RU")} ₸`;
+}
+
+export type DailyWorkOrderRow = {
+  day: string;
+  label: string;
+  count: number;
+};
+
+export function buildWorkOrdersDailySeries(workOrders: WorkOrder[], days = 7): DailyWorkOrderRow[] {
+  const today = startOfDay(new Date());
+  return Array.from({ length: days }, (_, index) => {
+    const day = subDays(today, days - 1 - index);
+    const key = day.toDateString();
+    const count = workOrders.filter((order) => order.createdAt.toDateString() === key).length;
+
+    return {
+      day: format(day, "EEE", { locale: ru }),
+      label: format(day, "d MMM", { locale: ru }),
+      count,
+    };
+  });
 }

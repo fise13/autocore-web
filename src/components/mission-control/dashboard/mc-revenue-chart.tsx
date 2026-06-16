@@ -1,7 +1,7 @@
 "use client";
 
-import type * as React from "react";
-import { Bar, BarChart, XAxis } from "recharts";
+import { useId, useMemo, useState } from "react";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import {
   type ChartConfig,
@@ -16,6 +16,13 @@ import {
   McPanelHeader,
 } from "@/components/mission-control/dashboard/dashboard-panel";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   buildDailyRevenueSeries,
   formatMoney,
   growthPercent,
@@ -24,35 +31,14 @@ import { cn } from "@/lib/utils";
 import { FinancialOperation } from "@/domain/financial-operation";
 import { Skeleton } from "@/components/ui/skeleton";
 
+type PeriodDays = 7 | 30;
+
 const chartConfig = {
   revenue: {
     label: "Выручка",
     color: "var(--chart-1)",
   },
 } satisfies ChartConfig;
-
-function GradientBar(
-  props: React.SVGProps<SVGRectElement> & {
-    index?: number;
-    dataKey?: string | number;
-  },
-) {
-  const { fill, x = 0, y = 0, width = 0, height = 0, dataKey = "revenue", index = 0 } = props;
-  const gid = `mc-revenue-bar-${String(dataKey)}-${index}`;
-
-  return (
-    <>
-      <rect fill={`url(#${gid})`} height={height} stroke="none" width={width} x={x} y={y} />
-      <rect fill={fill} height={2} stroke="none" width={width} x={x} y={y} />
-      <defs>
-        <linearGradient id={gid} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor={fill} stopOpacity={0.55} />
-          <stop offset="100%" stopColor={fill} stopOpacity={0} />
-        </linearGradient>
-      </defs>
-    </>
-  );
-}
 
 type McRevenueChartProps = {
   operations: FinancialOperation[];
@@ -61,52 +47,104 @@ type McRevenueChartProps = {
 };
 
 export function McRevenueChart({ operations, isLoading, className }: McRevenueChartProps) {
-  const rows = buildDailyRevenueSeries(operations, 7);
-  const growth = growthPercent(rows[0]?.revenue ?? 0, rows.at(-1)?.revenue ?? 0);
+  const chartUid = useId().replace(/:/g, "");
+  const gradientId = `mc-revenue-area-grad-${chartUid}`;
+  const [periodDays, setPeriodDays] = useState<PeriodDays>(7);
+
+  const chartRows = useMemo(
+    () => buildDailyRevenueSeries(operations, periodDays),
+    [operations, periodDays],
+  );
+
+  const growth = growthPercent(chartRows[0]?.revenue ?? 0, chartRows.at(-1)?.revenue ?? 0);
 
   if (isLoading) {
     return (
-      <McPanel className={cn("md:col-span-2", className)}>
+      <McPanel className={cn("shadow-none md:col-span-2 lg:col-span-3 dark:ring-0", className)}>
         <McPanelHeader title="Выручка" />
         <McPanelBody>
-          <Skeleton className="h-60 w-full md:h-64" />
+          <Skeleton className="aspect-22/8 w-full" />
         </McPanelBody>
       </McPanel>
     );
   }
 
   return (
-    <McPanel className={cn("md:col-span-2", className)}>
+    <McPanel className={cn("shadow-none md:col-span-2 lg:col-span-3 dark:ring-0", className)}>
       <McPanelHeader
         title="Выручка"
-        description="Дневная выручка за последние 7 дней"
+        description="Дневная выручка за выбранный период"
         badge={
           <Delta value={growth} variant="badge">
             <DeltaIcon variant="trend" />
             <DeltaValue />
           </Delta>
         }
+        action={
+          <Select
+            onValueChange={(value) => setPeriodDays(Number(value) as PeriodDays)}
+            value={String(periodDays)}
+          >
+            <SelectTrigger aria-label="Период выручки" className="w-full min-w-36 sm:w-fit" size="sm">
+              <SelectValue placeholder="Период" />
+            </SelectTrigger>
+            <SelectContent align="end">
+              <SelectItem value="7">7 дней</SelectItem>
+              <SelectItem value="30">30 дней</SelectItem>
+            </SelectContent>
+          </Select>
+        }
       />
       <McPanelBody>
-        <div className="autocore-chart-grid rounded-xl border border-border/40 bg-background/30 p-2">
-          <ChartContainer className="aspect-auto h-56 w-full md:h-64" config={chartConfig}>
-            <BarChart accessibilityLayer data={rows}>
-              <XAxis axisLine={false} dataKey="day" tickLine={false} tickMargin={10} />
-              <ChartTooltip
-                content={
-                  <ChartTooltipContent formatter={(value) => formatMoney(Number(value))} />
-                }
-                cursor={false}
-              />
-              <Bar
-                dataKey="revenue"
-                fill="var(--color-revenue)"
-                radius={[4, 4, 0, 0]}
-                shape={<GradientBar />}
-              />
-            </BarChart>
-          </ChartContainer>
-        </div>
+        <ChartContainer className="aspect-22/8 w-full" config={chartConfig}>
+          <AreaChart
+            accessibilityLayer
+            data={chartRows}
+            margin={{ left: 4, right: 8, top: 8, bottom: 0 }}
+          >
+            <defs>
+              <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor="var(--color-revenue)" stopOpacity={0.45} />
+                <stop offset="55%" stopColor="var(--color-revenue)" stopOpacity={0.12} />
+                <stop offset="100%" stopColor="var(--color-revenue)" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid className="stroke-border" vertical={false} />
+            <XAxis
+              axisLine={false}
+              dataKey="label"
+              interval={periodDays <= 7 ? 0 : "preserveStartEnd"}
+              minTickGap={periodDays >= 30 ? 28 : undefined}
+              tickLine={false}
+              tickMargin={8}
+            />
+            <YAxis
+              axisLine={false}
+              tick={{ className: "tabular-nums" }}
+              tickLine={false}
+              tickMargin={8}
+              width={36}
+            />
+            <ChartTooltip
+              content={
+                <ChartTooltipContent
+                  className="min-w-34"
+                  formatter={(value) => formatMoney(Number(value))}
+                  indicator="line"
+                />
+              }
+              cursor={false}
+            />
+            <Area
+              dataKey="revenue"
+              dot={false}
+              fill={`url(#${gradientId})`}
+              stroke="var(--color-revenue)"
+              strokeWidth={2}
+              type="natural"
+            />
+          </AreaChart>
+        </ChartContainer>
       </McPanelBody>
     </McPanel>
   );

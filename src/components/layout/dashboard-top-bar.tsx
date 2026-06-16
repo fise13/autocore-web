@@ -9,11 +9,13 @@ import {
   Barcode,
   Download,
   PanelLeft,
+  Radar,
   Settings,
   Upload,
 } from "lucide-react";
 
 import { AccountMenu } from "@/components/account/account-menu";
+import { AppBreadcrumbs } from "@/components/app-breadcrumbs";
 import { AppLogo } from "@/components/brand/app-logo";
 import { useDashboardLayout } from "@/components/layout/dashboard-layout-context";
 import {
@@ -207,8 +209,11 @@ export function DashboardTopBar() {
   return (
     <header
       className={cn(
-        "relative z-30 flex h-14 shrink-0 items-center gap-3 overflow-hidden border-b border-sidebar-border bg-sidebar px-4 md:px-5",
-        !workspace && "bg-sidebar/95 perf-backdrop-blur",
+        "relative z-30 flex h-14 shrink-0 items-center gap-3 overflow-hidden border-b px-4 md:px-6",
+        isMissionControlRoute
+          ? "border-border bg-background"
+          : "border-sidebar-border bg-sidebar px-4 md:px-5",
+        !workspace && !isMissionControlRoute && "bg-sidebar/95 perf-backdrop-blur",
       )}
     >
       <div className="flex min-w-0 shrink-0 items-center gap-2">
@@ -238,17 +243,16 @@ export function DashboardTopBar() {
         </Button>
         <Separator orientation="vertical" className="hidden h-4 md:block" />
         <AnimatedSlot slotKey={leftKey} className="flex min-w-0 items-center gap-2">
-          {workspace ? (
+          {isMissionControlRoute ? (
+            <AppBreadcrumbs
+              page={{
+                title: "Центр управления",
+                icon: <Radar className="size-3.5" />,
+              }}
+            />
+          ) : workspace ? (
             <span className="truncate text-sm font-semibold tracking-tight">
               {workspaceTitle ?? "AutoCore"}
-            </span>
-          ) : isMissionControlRoute ? (
-            <span className="truncate text-sm text-muted-foreground">
-              {new Date().toLocaleDateString("ru-RU", {
-                weekday: "short",
-                day: "numeric",
-                month: "short",
-              })}
             </span>
           ) : (
             <div className="flex items-center gap-2.5">

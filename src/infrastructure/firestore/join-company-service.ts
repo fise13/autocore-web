@@ -13,6 +13,7 @@ import {
 
 import { UserRole, USER_ROLES } from "@/domain/user";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
+import { recordUserCompanyMembership } from "@/infrastructure/firestore/user-company-membership-service";
 import { canSwitchCompanyViaInvite } from "@/lib/company-id";
 import { mapAuthError } from "@/lib/user-copy";
 
@@ -176,6 +177,7 @@ async function joinCompanyWithInviteRecord(uid: string, input: InviteJoinInput):
 
   try {
     await linkUserProfile(userRef, companyId, role);
+    await recordUserCompanyMembership(uid, companyId, role);
   } catch (error) {
     rethrowStep("Не удалось привязать аккаунт к компании", error);
   }

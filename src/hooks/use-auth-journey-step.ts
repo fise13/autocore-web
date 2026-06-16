@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 
 import { isCompleteFullName } from "@/components/auth/profile-name-fields";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -33,7 +33,11 @@ export function useAuthJourneyStep(localProfileName?: string | null): AuthJourne
   const { firebaseUser, profile, isLoading } = useAuth();
   const companyId = profile?.companyId?.trim() || null;
   const { config, loaded } = useCompanyAppConfig(companyId);
-  const cachedCompleted = companyId ? hasWizardCompleted(companyId) : false;
+  const cachedCompleted = useSyncExternalStore(
+    () => () => {},
+    () => (companyId ? hasWizardCompleted(companyId) : false),
+    () => false,
+  );
 
   return useMemo(() => {
     if (isLoading || !profile || !firebaseUser) return "loading";
@@ -52,12 +56,8 @@ export function useAuthJourneyStep(localProfileName?: string | null): AuthJourne
       return "company";
     }
 
-    if (!loaded && cachedCompleted) {
-      return "app";
-    }
-
     if (!loaded) {
-      return "setup-wizard";
+      return cachedCompleted ? "app" : "loading";
     }
 
     const needsWizard =

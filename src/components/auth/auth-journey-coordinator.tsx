@@ -18,6 +18,7 @@ import { SETUP_WIZARD_COPY } from "@/lib/onboarding/setup-wizard-copy";
 import { userCopy } from "@/lib/user-copy";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useCompanyAppConfig } from "@/hooks/use-company-app-config";
+import { resetDissolveVeil } from "@/lib/motion/dissolve-transition";
 
 type AuthJourneyCoordinatorProps = {
   children: ReactNode;
@@ -36,6 +37,12 @@ export function AuthJourneyCoordinator({ children }: AuthJourneyCoordinatorProps
       markWizardCompleted(companyId);
     }
   }, [config?.onboardingCompleted, companyId]);
+
+  useEffect(() => {
+    if (wizardDone || step === "app") {
+      resetDissolveVeil();
+    }
+  }, [step, wizardDone]);
 
   if (wizardDone || step === "app") {
     return <>{children}</>;

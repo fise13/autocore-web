@@ -13,6 +13,11 @@ import { getFirestoreDb } from "@/infrastructure/firebase/client";
 import { DEFAULT_COMPANY_ID } from "@/lib/company-id";
 import { userCopy } from "@/lib/user-copy";
 import { seedFreeCompanyBilling } from "@/infrastructure/firestore/billing-repository";
+import { recordUserCompanyMembership } from "@/infrastructure/firestore/user-company-membership-service";
+import { createWarehouseRepository } from "@/infrastructure/firestore/warehouse-repository";
+import { ensureDefaultWarehouseUseCase } from "@/application/use-cases/warehouse/ensure-default-warehouse";
+
+const warehouseRepository = createWarehouseRepository();
 
 function rethrowStep(step: string, error: unknown): never {
   if (error instanceof FirebaseError) {
@@ -142,7 +147,9 @@ export async function createCompany(ownerId: string, name: string): Promise<stri
   const profile = await readOwnerProfile(ownerId);
   await upsertOwnerEmployee(companyRef.id, ownerId, profile);
   await linkUserToCompany(ownerId, companyRef.id, "owner");
+  await recordUserCompanyMembership(ownerId, companyRef.id, "owner");
   await seedFreeCompanyBilling(companyRef.id);
+  await ensureDefaultWarehouseUseCase(warehouseRepository, companyRef.id, ownerId).catch(() => undefined);
 
   return companyRef.id;
 }
@@ -171,7 +178,11 @@ export async function ensureDefaultCompany(ownerId: string) {
     const profile = await readOwnerProfile(ownerId);
     await upsertOwnerEmployee(DEFAULT_COMPANY_ID, ownerId, profile);
     await linkUserToCompany(ownerId, DEFAULT_COMPANY_ID, "owner");
+    await recordUserCompanyMembership(ownerId, DEFAULT_COMPANY_ID, "owner");
     await seedFreeCompanyBilling(DEFAULT_COMPANY_ID);
+    await ensureDefaultWarehouseUseCase(warehouseRepository, DEFAULT_COMPANY_ID, ownerId).catch(
+      () => undefined,
+    );
   } catch (error) {
     if (
       !companyDocReady

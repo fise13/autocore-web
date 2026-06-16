@@ -1,9 +1,15 @@
 "use client";
 
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Delta, DeltaIcon, DeltaValue } from "@/components/ui/delta";
 import { Skeleton } from "@/components/ui/skeleton";
-import { McPanel, McPanelBody } from "@/components/mission-control/dashboard/dashboard-panel";
 import type { DashboardStat } from "@/lib/mission-control/compute-dashboard-charts";
+import { cn } from "@/lib/utils";
 
 type McDashboardStatsProps = {
   stats: DashboardStat[];
@@ -15,13 +21,15 @@ export function McDashboardStats({ stats, isLoading }: McDashboardStatsProps) {
     return (
       <>
         {Array.from({ length: 4 }).map((_, index) => (
-          <McPanel key={index}>
-            <McPanelBody className="space-y-2">
+          <Card className="shadow-none dark:ring-0" key={index}>
+            <CardHeader>
               <Skeleton className="h-3 w-24" />
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2">
               <Skeleton className="h-8 w-32" />
               <Skeleton className="h-3 w-20" />
-            </McPanelBody>
-          </McPanel>
+            </CardContent>
+          </Card>
         ))}
       </>
     );
@@ -32,30 +40,32 @@ export function McDashboardStats({ stats, isLoading }: McDashboardStatsProps) {
   return (
     <>
       {visible.map((stat) => (
-        <McPanel key={stat.key}>
-          <McPanelBody className="flex flex-col gap-2">
-            <p className="mc-section-label">{stat.label}</p>
-            <p className="text-2xl font-semibold tracking-tight tabular-nums text-primary">
-              {stat.value}
-            </p>
+        <Card className={cn("shadow-none dark:ring-0")} key={stat.key}>
+          <CardHeader>
+            <CardTitle className="font-normal text-muted-foreground text-xs">
+              {stat.label}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            <p className="font-semibold text-2xl tabular-nums">{stat.value}</p>
             {stat.hint || stat.deltaKind !== "none" ? (
-              <div className="mt-auto flex flex-wrap items-center gap-1.5 text-xs">
+              <div className="flex items-center gap-1 text-xs">
                 {stat.deltaKind === "percent" ? (
                   <Delta value={stat.delta}>
-                    <DeltaIcon variant="trend" />
-                    <DeltaValue suffix="%" absolute />
+                    <DeltaIcon />
+                    <DeltaValue suffix="%" />
                   </Delta>
                 ) : stat.deltaKind === "count" && stat.delta !== 0 ? (
-                  <Delta value={stat.delta} variant="badge">
-                    <DeltaIcon variant="trend" />
+                  <Delta value={stat.delta}>
+                    <DeltaIcon />
                     <DeltaValue suffix="" absolute={false} precision={0} />
                   </Delta>
                 ) : null}
                 {stat.hint ? <span className="text-muted-foreground">{stat.hint}</span> : null}
               </div>
             ) : null}
-          </McPanelBody>
-        </McPanel>
+          </CardContent>
+        </Card>
       ))}
     </>
   );

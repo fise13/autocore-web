@@ -12,6 +12,9 @@ const DASHBOARD_ANIMATED_PREFIXES = [
   "/work-orders",
   "/specific",
   "/quotes",
+  "/documents",
+  "/team",
+  "/activity",
 ] as const;
 
 export function isMarketingInternalPath(pathname: string): boolean {

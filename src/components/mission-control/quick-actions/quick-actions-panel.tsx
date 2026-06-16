@@ -118,21 +118,26 @@ export function QuickActionsPanel({
 
   if (variant === "dashboard") {
     return (
-      <aside className={cn("mc-sidebar-panel overflow-hidden", className)}>
-        <div className="border-b border-border/50 px-3.5 py-2.5">
-          <h2 className="text-sm font-semibold tracking-tight">Быстрые действия</h2>
-          <p className="text-xs text-muted-foreground">Короткие пути к частым задачам</p>
-        </div>
-        <div className="space-y-1 p-2">
-          {visible.map((action) => (
-            <div key={action.label}>
-              <Link href={action.href} className="mc-action-tile group py-2 text-sm">
-                <ActionRowContent action={action} shortcut={action.shortcut} />
-              </Link>
-            </div>
-          ))}
-        </div>
-      </aside>
+      <Card className={cn("gap-0 shadow-none dark:ring-0", className)}>
+        <CardHeader className="border-b">
+          <CardTitle>Быстрые действия</CardTitle>
+          <CardDescription>Короткие пути к частым задачам</CardDescription>
+        </CardHeader>
+        <CardContent className="px-0">
+          <ul className="flex flex-col divide-y divide-border">
+            {visible.map((action) => (
+              <li key={action.label}>
+                <Link
+                  href={action.href}
+                  className="flex h-16 items-center gap-3 px-3 transition-colors hover:bg-muted/40"
+                >
+                  <ActionRowContent action={action} shortcut={action.shortcut} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
     );
   }
 

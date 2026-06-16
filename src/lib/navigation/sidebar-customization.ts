@@ -9,13 +9,21 @@ import {
   Sparkles,
   Tag,
   UserCircle,
+  Users,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
 
 export type SidebarPosition = "left" | "right";
 
-export type SidebarBlockId = "navigation" | "context" | "specific" | "brands" | "profile";
+export type SidebarBlockId =
+  | "navigation"
+  | "context"
+  | "documents"
+  | "team"
+  | "specific"
+  | "brands"
+  | "profile";
 
 export type SidebarNavItemId =
   | "home"
@@ -40,6 +48,8 @@ export const SIDEBAR_CUSTOMIZATION_STORAGE_KEY = "autocore-sidebar-customization
 export const DEFAULT_BLOCK_ORDER: SidebarBlockId[] = [
   "navigation",
   "context",
+  "documents",
+  "team",
   "specific",
   "brands",
   "profile",
@@ -69,6 +79,16 @@ export const SIDEBAR_BLOCK_META: Record<
     description: "Кнопки для текущей страницы",
     icon: Sparkles,
   },
+  documents: {
+    label: "Документы",
+    description: "Брендинг PDF и реквизиты",
+    icon: FileText,
+  },
+  team: {
+    label: "Команда",
+    description: "Сотрудники, роли и приглашения",
+    icon: Users,
+  },
   specific: {
     label: "Специфичные",
     description: "Коробки, раздатки, ЭБУ — не бренды моторов",
@@ -81,7 +101,7 @@ export const SIDEBAR_BLOCK_META: Record<
   },
   profile: {
     label: "Профиль",
-    description: "Почта и роль внизу панели",
+    description: "Аккаунт, настройки и выход",
     icon: UserCircle,
   },
 };
@@ -106,9 +126,11 @@ export const DEFAULT_SIDEBAR_CUSTOMIZATION: SidebarCustomization = {
   blocks: {
     navigation: { enabled: true },
     context: { enabled: true },
+    documents: { enabled: true },
+    team: { enabled: true },
     specific: { enabled: true },
     brands: { enabled: true },
-    profile: { enabled: true },
+    profile: { enabled: false },
   },
   navOrder: [...DEFAULT_NAV_ORDER],
   navItems: {
@@ -150,6 +172,10 @@ export function normalizeSidebarCustomization(
 
   const blocks = { ...base.blocks };
   for (const id of ALL_BLOCK_IDS) {
+    if (id === "profile") {
+      blocks.profile = { enabled: false };
+      continue;
+    }
     const enabled = input.blocks?.[id]?.enabled;
     blocks[id] = { enabled: typeof enabled === "boolean" ? enabled : base.blocks[id].enabled };
   }

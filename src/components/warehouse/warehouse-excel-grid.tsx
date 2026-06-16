@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useGridEnterMotion } from "@/hooks/use-grid-enter-motion";
 import { syncWarehouseGridRowUseCase } from "@/application/use-cases/warehouse/sync-warehouse-grid-row";
 import { GridEditorOverlay } from "@/components/grid/grid-editor-overlay";
 import { GridFillHandle } from "@/components/grid/grid-fill-handle";
@@ -333,7 +332,6 @@ export function WarehouseExcelGrid({
     warehouseBarcodePrefill,
     setWarehouseBarcodePrefill,
   } = useWorkspace();
-  const gridEntering = useGridEnterMotion();
 
   const layout = useMemo(() => buildWarehouseGridLayoutMetrics(gridZoom), [gridZoom]);
 
@@ -1497,7 +1495,7 @@ export function WarehouseExcelGrid({
             </div>
 
             <div
-              className={cn("absolute left-0 right-0", gridEntering && "autocore-grid-rows-enter")}
+              className="absolute left-0 right-0"
               style={{ top: layout.headerHeight }}
             >
               {Array.from({ length: visible.rowEnd - visible.rowStart + 1 }, (_, offset) => {

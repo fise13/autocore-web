@@ -37,6 +37,7 @@ import {
   joinCompanyWithInviteCode,
   joinCompanyWithInviteToken,
 } from "@/infrastructure/firestore/join-company-service";
+import { switchActiveCompany } from "@/infrastructure/firestore/user-company-membership-service";
 import { getAppleAuthMode, isFirebaseHandlerAppleAuthMode } from "@/lib/auth/apple-auth-mode";
 import { logAppleAuthError, logAppleAuthStep, logAppleJs } from "@/lib/auth/apple-auth-log";
 import { signInWithAppleLikeMacOS } from "@/lib/auth/sign-in-with-apple-credential";
@@ -44,7 +45,8 @@ import { AppleJsRedirectStarted, isAppleUserCancellationError } from "@/lib/auth
 import { signInWithAppleFirebase } from "@/lib/auth/sign-in-with-apple-web";
 import { mergeProfileWithEmployee, EmployeeProfileSlice } from "@/lib/auth/resolve-effective-profile";
 import { markSyncAuthPrepared, prepareSyncAuth, resetSyncAuthCache } from "@/lib/auth/prepare-sync-auth";
-import { claimPendingMarketingCheckout } from "@/lib/billing/claim-marketing-checkout";
+import { tryClaimPendingMarketingCheckout } from "@/lib/billing/claim-marketing-checkout";
+import { DEFAULT_COMPANY_ID } from "@/lib/company-id";
 import { mapAuthError } from "@/lib/user-copy";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
 import {
@@ -89,6 +91,7 @@ type AuthContextValue = {
   sendPasswordReset: () => Promise<void>;
   logout: () => Promise<void>;
   createCompany: (name: string) => Promise<void>;
+  switchCompany: (companyId: string) => Promise<void>;
   joinCompanyWithInvite: (code: string) => Promise<void>;
   joinCompanyWithInviteToken: (token: string) => Promise<void>;
   ensureDefaultCompany: () => Promise<void>;
@@ -157,24 +160,17 @@ async function reauthenticateEmailUser(user: User, password: string) {
 async function finalizeSignedInUser(
   auth: ReturnType<typeof getFirebaseAuth>,
   user: User,
-  refreshProfile: () => Promise<void>,
+  _refreshProfile: () => Promise<void>,
   setFirebaseUser: (user: User) => void,
-  setIsLoading: (loading: boolean) => void,
+  _setIsLoading: (loading: boolean) => void,
 ) {
   logAuthDebug("auth-provider", "finalizeSignedInUser", describeFirebaseUser(user));
   setFirebaseUser(user);
-  setIsLoading(false);
   void auth.authStateReady().then(() => {
     logAuthDebug("auth-provider", "authStateReady after finalize", {
       currentUser: auth.currentUser?.uid ?? null,
     });
   });
-  void refreshProfile()
-    .then(() => logAuthDebug("auth-provider", "refreshProfile done"))
-    .catch((error) => {
-      logAuthDebug("auth-provider", "refreshProfile error", error);
-      console.error("Failed to refresh profile after auth", error);
-    });
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
@@ -298,6 +294,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return;
       }
 
+      setIsLoading(true);
+
       void (async () => {
         try {
           await upsertDefaultUserDoc(nextUser);
@@ -308,8 +306,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } catch (error) {
           logAuthDebug("auth-provider", "fast profile load error", error);
           setProfile(mapUserDoc(nextUser.uid, nextUser, null));
-        } finally {
-          setIsLoading(false);
         }
 
         try {
@@ -317,6 +313,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } catch (error) {
           logAuthDebug("auth-provider", "onAuthStateChanged refreshProfile error", error);
           console.error("Failed to refresh profile after auth", error);
+        } finally {
+          setIsLoading(false);
         }
       })();
     });
@@ -538,11 +536,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const auth = getFirebaseAuth();
         if (!auth.currentUser) throw new Error(mapAuthError(new Error("auth/invalid-credential")));
         const companyId = await createCompanyRecord(auth.currentUser.uid, name);
-        try {
-          await claimPendingMarketingCheckout(companyId);
-        } catch (claimError) {
-          console.warn("Marketing checkout claim skipped:", claimError);
-        }
+        await tryClaimPendingMarketingCheckout(companyId);
+        await prepareSyncAuth(auth.currentUser.uid, { force: true });
+        await refreshProfile();
+      },
+      async switchCompany(companyId) {
+        if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));
+        const auth = getFirebaseAuth();
+        if (!auth.currentUser) throw new Error(mapAuthError(new Error("auth/invalid-credential")));
+        await switchActiveCompany(auth.currentUser.uid, companyId);
         await prepareSyncAuth(auth.currentUser.uid, { force: true });
         await refreshProfile();
       },
@@ -569,6 +571,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const auth = getFirebaseAuth();
         if (!auth.currentUser) throw new Error(mapAuthError(new Error("auth/invalid-credential")));
         await assignDefaultCompany(auth.currentUser.uid);
+        await tryClaimPendingMarketingCheckout(DEFAULT_COMPANY_ID);
         await prepareSyncAuth(auth.currentUser.uid, { force: true });
         await refreshProfile();
       },

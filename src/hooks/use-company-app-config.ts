@@ -18,19 +18,34 @@ export function useCompanyAppConfig(companyId: string | null | undefined) {
       setLoaded(true);
       return;
     }
+
+    let settled = false;
     setLoaded(false);
+
+    const settle = (nextConfig: CompanyAppConfig | null, nextError?: Error) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      setConfig(nextConfig);
+      if (nextError) setError(nextError);
+      setLoaded(true);
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      settle(null);
+    }, 12_000);
+
     const unsubscribe = repository.subscribeAppConfig(
       companyId,
-      (next) => {
-        setConfig(next);
-        setLoaded(true);
-      },
-      (nextError) => {
-        setError(nextError);
-        setLoaded(true);
-      },
+      (next) => settle(next),
+      (nextError) => settle(null, nextError),
     );
-    return () => unsubscribe();
+
+    return () => {
+      settled = true;
+      window.clearTimeout(timeoutId);
+      unsubscribe();
+    };
   }, [companyId]);
 
   return { config, loaded, error };

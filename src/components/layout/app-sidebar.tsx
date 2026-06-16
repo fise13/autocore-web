@@ -20,19 +20,34 @@ import {
 import { Input } from "@/components/ui/input";
 import { reorderList, SidebarEditItem } from "@/components/layout/sidebar-edit-item";
 import { AnimatedSidebarSlot } from "@/components/layout/animated-sidebar-slot";
+import { SidebarAnimatedSection } from "@/components/layout/sidebar-animated-section";
 import {
   sidebarNavIconClass,
   sidebarNavRowClass,
   sidebarSectionLabelClass,
 } from "@/components/layout/sidebar-nav-row";
+import { SidebarNavLink } from "@/components/layout/sidebar-nav-link";
 import { SidebarCustomizeSheet } from "@/components/layout/sidebar-customize-sheet";
 import { SidebarContextPanel } from "@/components/layout/sidebar-context-panel";
+import { SidebarDocumentsPanel } from "@/components/layout/sidebar-documents-panel";
+import { SidebarTeamPanel } from "@/components/layout/sidebar-team-panel";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarProvider,
+  SidebarSeparator,
+} from "@/components/ui/sidebar";
 import {
   resolveSidebarMode,
   showBrandFiltersInSidebar,
+  showSidebarContextInSidebar,
   showSpecificCategoriesInSidebar,
 } from "@/lib/navigation/sidebar-mode";
 import { resolveVisibleNavItems } from "@/lib/auth/app-access";
+import { can, canManageEmployees, canManageSettings, canViewEmployees } from "@/lib/auth/permissions";
 import { isLikelyMotorCatalogName } from "@/lib/motors/import/specific-category-intelligence";
 import {
   SIDEBAR_BLOCK_META,
@@ -42,39 +57,21 @@ import {
   type SidebarCustomization,
   type SidebarNavItemId,
 } from "@/lib/navigation/sidebar-customization";
-import { userCopy, formatRole } from "@/lib/user-copy";
+import { userCopy } from "@/lib/user-copy";
 import { shouldPrefetchRoute } from "@/hooks/use-barba-navigation";
 import { usePerformanceTier } from "@/components/providers/performance-tier-provider";
 import { cn } from "@/lib/utils";
 import { BrandEntity, EngineEntity } from "@/infrastructure/firestore/catalog-repository";
 import { SpecificCategoryEntity } from "@/infrastructure/firestore/specific-category-repository";
 
-type AppSidebarProps = {
-  collapsed?: boolean;
-  brands: BrandEntity[];
-  engines: EngineEntity[];
-  specificCategories: SpecificCategoryEntity[];
-  selectedBrandLocalId: number | null;
-  selectedEngineLocalId: number | null;
-  onBrandChange: (brandLocalId: number | null) => void;
-  onEngineChange: (engineLocalId: number | null) => void;
-  onClearBrandFilters: () => void;
-  onRenameBrand?: (brand: BrandEntity, newName: string) => Promise<void>;
-  onDeleteBrand?: (brand: BrandEntity) => Promise<void>;
-  onAddBrand?: (name: string) => Promise<void>;
-  showBrandFilters?: boolean;
-  canManageBrands?: boolean;
-  brandCounts?: Map<number, number>;
-  brandsSectionTitle?: string;
-  onNavigate?: () => void;
-};
+import type { AppSidebarProps } from "@/lib/navigation/sidebar-types";
 
 function isManagedBrand(brand: BrandEntity): boolean {
   return !brand.id.startsWith("derived-");
 }
 
-function SidebarDivider() {
-  return <div className="my-3 h-px bg-sidebar-border" />;
+function SidebarBlockDivider() {
+  return <SidebarSeparator className="my-3" />;
 }
 
 export function AppSidebar({
@@ -144,13 +141,24 @@ export function AppSidebar({
     [specificCategories],
   );
 
+  const showDocumentsBlock =
+    (canManageSettings(profile) ||
+      can(profile, "work_orders_view") ||
+      can(profile, "accounting_view")) &&
+    !collapsed;
+  const showTeamBlock =
+    (canViewEmployees(profile) || canManageEmployees(profile)) && !collapsed;
+
   const visibleBlocks = useMemo(() => {
     return customization.blockOrder.filter((blockId) => {
       if (collapsed && blockId !== "navigation") return false;
       if (!isBlockEnabled(customization, blockId)) return false;
       if (blockId === "profile") return false;
       if (blockId === "navigation") return enabledNavIds.length > 0;
+      if (blockId === "documents") return showDocumentsBlock || isEditing;
+      if (blockId === "team") return showTeamBlock || isEditing;
       if (isEditing) return true;
+      if (blockId === "context") return showSidebarContextInSidebar(sidebarMode);
       if (blockId === "specific") return showSpecificCategories;
       if (blockId === "brands") return showBrandFilters;
       return true;
@@ -161,7 +169,10 @@ export function AppSidebar({
     isEditing,
     showBrandFilters,
     showSpecificCategories,
+    showDocumentsBlock,
+    showTeamBlock,
     collapsed,
+    sidebarMode,
   ]);
 
   const enginesByBrand = useMemo(() => {
@@ -291,7 +302,7 @@ export function AppSidebar({
     const meta = SIDEBAR_BLOCK_META[blockId];
     return (
       <div key={blockId} className="w-full">
-        {showDividerBefore ? <SidebarDivider /> : null}
+        {showDividerBefore ? <SidebarBlockDivider /> : null}
         <AnimatePresence mode="popLayout">
           <SidebarEditItem
             key={blockId}
@@ -324,7 +335,7 @@ export function AppSidebar({
         if (isEditing) {
           return (
             <div key={blockId} className="w-full">
-              {showDividerBefore ? <SidebarDivider /> : null}
+              {showDividerBefore ? <SidebarBlockDivider /> : null}
               <nav className="space-y-1">
                 <AnimatePresence mode="popLayout">
                   {enabledNavIds.map((navId, navIndex) => {
@@ -356,40 +367,28 @@ export function AppSidebar({
         }
         return (
           <div key={blockId}>
-            {showDividerBefore ? <SidebarDivider /> : null}
-            <nav className="space-y-1">
-              {enabledNavIds.map((navId) => {
-                const item = SIDEBAR_NAV_META[navId];
-                const Icon = item.icon;
-                const active =
-                  item.href === "/"
-                    ? pathname === "/"
-                    : item.href === "/motors"
-                      ? pathname === "/motors" || pathname.startsWith("/specific/")
-                      : pathname === item.href || pathname.startsWith(`${item.href}/`);
-                return (
-                  <Link
-                    key={navId}
-                    href={item.href}
-                    onClick={onNavigate}
-                    onMouseEnter={() => prefetchHref(item.href)}
-                    onFocus={() => prefetchHref(item.href)}
-                    title={collapsed ? item.label : undefined}
-                    className={cn(
-                      sidebarNavRowClass,
-                      collapsed && "justify-center px-2",
-                      active
-                        ? "bg-primary/12 text-primary shadow-sm"
-                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:translate-x-0.5",
-                      collapsed && "hover:translate-x-0",
-                    )}
-                  >
-                    <Icon className={sidebarNavIconClass} />
-                    <span className="sidebar-nav-label truncate">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
+            {showDividerBefore ? <SidebarBlockDivider /> : null}
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {enabledNavIds.map((navId, navIndex) => {
+                    const item = SIDEBAR_NAV_META[navId];
+                    return (
+                      <SidebarNavLink
+                        key={navId}
+                        href={item.href}
+                        label={item.label}
+                        icon={item.icon}
+                        pathname={pathname}
+                        collapsed={collapsed}
+                        onNavigate={onNavigate}
+                        animationIndex={navIndex}
+                      />
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
           </div>
         );
       case "context":
@@ -398,10 +397,56 @@ export function AppSidebar({
         }
         return (
           <div key={blockId}>
-            {showDividerBefore ? <SidebarDivider /> : null}
+            {showDividerBefore ? <SidebarBlockDivider /> : null}
             <Suspense fallback={null}>
               <SidebarContextPanel mode={sidebarMode} />
             </Suspense>
+          </div>
+        );
+      case "documents":
+        if (isEditing) {
+          return renderBlockShell(
+            blockId,
+            showDividerBefore,
+            showDocumentsBlock ? "Брендинг и реквизиты" : "Нужны права настройки",
+            index,
+          );
+        }
+        return (
+          <div key={blockId}>
+            {showDividerBefore ? <SidebarBlockDivider /> : null}
+            <SidebarAnimatedSection blockIndex={index}>
+              <Suspense fallback={null}>
+                <SidebarDocumentsPanel
+                  collapsed={collapsed}
+                  onNavigate={onNavigate}
+                  linkAnimationIndex={enabledNavIds.length}
+                />
+              </Suspense>
+            </SidebarAnimatedSection>
+          </div>
+        );
+      case "team":
+        if (isEditing) {
+          return renderBlockShell(
+            blockId,
+            showDividerBefore,
+            showTeamBlock ? "Сотрудники и роли" : "Нужны права команды",
+            index,
+          );
+        }
+        return (
+          <div key={blockId}>
+            {showDividerBefore ? <SidebarBlockDivider /> : null}
+            <SidebarAnimatedSection blockIndex={index}>
+              <Suspense fallback={null}>
+                <SidebarTeamPanel
+                  collapsed={collapsed}
+                  onNavigate={onNavigate}
+                  linkAnimationIndex={enabledNavIds.length + 1}
+                />
+              </Suspense>
+            </SidebarAnimatedSection>
           </div>
         );
       case "specific":
@@ -417,7 +462,7 @@ export function AppSidebar({
         }
         return (
           <div key={blockId}>
-            {showDividerBefore ? <SidebarDivider /> : null}
+            {showDividerBefore ? <SidebarBlockDivider /> : null}
             <AnimatedSidebarSlot slotKey={showSpecificCategories ? `specific-${sidebarMode}` : "specific-hidden"}>
               {showSpecificCategories ? (
                 <div className="px-3 py-2">
@@ -472,7 +517,7 @@ export function AppSidebar({
         }
         return (
           <div key={blockId}>
-            {showDividerBefore ? <SidebarDivider /> : null}
+            {showDividerBefore ? <SidebarBlockDivider /> : null}
             <AnimatedSidebarSlot
               slotKey={showBrandFilters ? `brands-${sidebarMode}` : "brands-hidden"}
             >
@@ -629,7 +674,9 @@ export function AppSidebar({
     }
   }
 
-  const showProfileFooter = isBlockEnabled(customization, "profile");
+  function renderSidebarBody() {
+    return visibleBlocks.map((blockId, index) => renderBlock(blockId, index));
+  }
 
   return (
     <>
@@ -637,68 +684,36 @@ export function AppSidebar({
         data-collapsed={collapsed ? "true" : "false"}
         className={cn("app-sidebar flex h-full w-full flex-col bg-sidebar", collapsed && "app-sidebar--collapsed")}
       >
-        {isEditing ? (
-          <LayoutGroup id="sidebar-customize">
-            <div className="flex-1 overflow-y-auto px-2 py-3">
-              {visibleBlocks.map((blockId, index) => renderBlock(blockId, index))}
-              {showProfileFooter ? (
-                <>
-                  <SidebarDivider />
-                  <SidebarEditItem
-                    layoutId="block-profile"
-                    icon={SIDEBAR_BLOCK_META.profile.icon}
-                    label={SIDEBAR_BLOCK_META.profile.label}
-                    hint={profile?.email ?? undefined}
-                    jiggleDelay={0.08}
-                    dragging={dragging?.kind === "block" && dragging.id === "profile"}
-                    onRemove={() =>
-                      patch((current) => ({
-                        ...current,
-                        blocks: { ...current.blocks, profile: { enabled: false } },
-                      }))
-                    }
-                    onDragStart={() => setDragging({ kind: "block", id: "profile" })}
-                    onDragEnd={() => setDragging(null)}
-                    onDrop={() => handleBlockDrop("profile")}
-                  />
-                </>
-              ) : null}
-            </div>
+        <SidebarProvider open={!collapsed} className="flex h-full min-h-0 w-full flex-col">
+          <Sidebar collapsible="none" className="flex h-full min-h-0 w-full flex-col bg-transparent">
+            {isEditing ? (
+              <LayoutGroup id="sidebar-customize">
+                <SidebarContent>{renderSidebarBody()}</SidebarContent>
 
-            <SidebarCustomizeSheet
-              disabledNav={disabledNav}
-              disabledBlocks={disabledBlocks}
-              onRestoreNav={(navId) =>
-                patch((current) => ({
-                  ...current,
-                  navItems: { ...current.navItems, [navId]: { enabled: true } },
-                }))
-              }
-              onRestoreBlock={(blockId) =>
-                patch((current) => ({
-                  ...current,
-                  blocks: { ...current.blocks, [blockId]: { enabled: true } },
-                }))
-              }
-            />
-          </LayoutGroup>
-        ) : (
-          <>
-            <div className="flex-1 overflow-y-auto px-2 py-3">
-              {visibleBlocks.map((blockId, index) => renderBlock(blockId, index))}
-            </div>
-            <div className="shrink-0 border-t border-sidebar-border/80 px-2 py-2 transition-opacity duration-200 ease-linear">
-              {showProfileFooter && !collapsed ? (
-                <div className="px-1">
-                  <p className="truncate text-xs text-muted-foreground">{profile?.email}</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {userCopy.settings.role}: {formatRole(profile?.role)}
-                  </p>
-                </div>
-              ) : null}
-            </div>
-          </>
-        )}
+                <SidebarCustomizeSheet
+                  disabledNav={disabledNav}
+                  disabledBlocks={disabledBlocks}
+                  onRestoreNav={(navId) =>
+                    patch((current) => ({
+                      ...current,
+                      navItems: { ...current.navItems, [navId]: { enabled: true } },
+                    }))
+                  }
+                  onRestoreBlock={(blockId) =>
+                    patch((current) => ({
+                      ...current,
+                      blocks: { ...current.blocks, [blockId]: { enabled: true } },
+                    }))
+                  }
+                />
+              </LayoutGroup>
+            ) : (
+              <LayoutGroup id="app-sidebar-nav">
+                <SidebarContent>{renderSidebarBody()}</SidebarContent>
+              </LayoutGroup>
+            )}
+          </Sidebar>
+        </SidebarProvider>
       </aside>
 
       <Dialog open={addBrandOpen} onOpenChange={(open) => !open && setAddBrandOpen(false)}>

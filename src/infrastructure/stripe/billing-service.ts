@@ -103,14 +103,20 @@ export async function openBillingPortal(companyId: string): Promise<string> {
 
 type SyncBillingResponse = { proActive: boolean };
 
-export async function syncCompanyBilling(companyId: string): Promise<boolean> {
+export async function syncCompanyBilling(
+  companyId: string,
+  sessionId?: string,
+): Promise<boolean> {
   try {
     const functions = getFirebaseFunctions();
-    const syncBilling = httpsCallable<{ companyId: string }, SyncBillingResponse>(
-      functions,
-      "syncCompanyBilling",
-    );
-    const result = await syncBilling({ companyId });
+    const syncBilling = httpsCallable<
+      { companyId: string; sessionId?: string },
+      SyncBillingResponse
+    >(functions, "syncCompanyBilling");
+    const result = await syncBilling({
+      companyId,
+      ...(sessionId ? { sessionId } : {}),
+    });
     return Boolean(result.data?.proActive);
   } catch (error) {
     throw new Error(mapBillingCallableError(error));

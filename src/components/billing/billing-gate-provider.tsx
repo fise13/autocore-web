@@ -18,7 +18,9 @@ import { CompanySubscription, isProSubscription } from "@/domain/billing";
 import { useCompanySubscription } from "@/hooks/use-company-subscription";
 import { useAuth } from "@/components/providers/auth-provider";
 import { canManageBilling } from "@/lib/billing/access";
+import { tryClaimPendingMarketingCheckout } from "@/lib/billing/claim-marketing-checkout";
 import { ProBillingFeature } from "@/lib/billing/entitlements";
+import { readPendingMarketingCheckout } from "@/lib/marketing/pending-checkout";
 import { syncCompanyBilling } from "@/infrastructure/stripe/billing-service";
 import { isStripeBillingConfigured } from "@/lib/stripe/prices";
 
@@ -50,12 +52,15 @@ export function BillingGateProvider({ companyId, children }: BillingGateProvider
   const { subscription, isLoading, error } = useCompanySubscription(companyId);
   const subscriptionIsPro = isProSubscription(subscription);
   const billingManager = canManageBilling(profile);
+  const canClaimMarketingCheckout = Boolean(profile?.isCompanyOwner);
   const [paywallFeature, setPaywallFeature] = useState<ProBillingFeature | null>(null);
   const [celebrationOpen, setCelebrationOpen] = useState(false);
   const [celebrationPhase, setCelebrationPhase] = useState<ProActivationPhase>("activating");
   const checkoutSyncTriggered = useRef(false);
+  const pendingClaimTriggered = useRef(false);
 
   const checkoutResult = searchParams.get("checkout");
+  const checkoutSessionId = searchParams.get("session_id")?.trim() || undefined;
   const isPro = subscriptionIsPro;
   const isActivating = celebrationOpen && celebrationPhase === "activating" && !subscriptionIsPro;
 
@@ -70,6 +75,28 @@ export function BillingGateProvider({ companyId, children }: BillingGateProvider
   }, [pathname, router, searchParams]);
 
   useEffect(() => {
+    if (!companyId || !canClaimMarketingCheckout || pendingClaimTriggered.current) return;
+
+    const pending = readPendingMarketingCheckout();
+    if (!pending) return;
+
+    pendingClaimTriggered.current = true;
+    const sessionId = pending.sessionId;
+
+    void tryClaimPendingMarketingCheckout(companyId)
+      .then(async (claimed) => {
+        if (!claimed) return;
+
+        setCelebrationOpen(true);
+        setCelebrationPhase("celebrating");
+        await syncCompanyBilling(companyId, sessionId).catch(() => undefined);
+      })
+      .catch((error) => {
+        console.warn("Marketing checkout claim skipped in billing gate:", error);
+      });
+  }, [canClaimMarketingCheckout, companyId]);
+
+  useEffect(() => {
     const fromUrl = checkoutResult === "success";
     const fromSession = sessionStorage.getItem(PRO_CHECKOUT_SESSION_KEY) === "1";
     if (!fromUrl && !fromSession) return;
@@ -80,8 +107,8 @@ export function BillingGateProvider({ companyId, children }: BillingGateProvider
     if (!billingManager || checkoutSyncTriggered.current) return;
 
     checkoutSyncTriggered.current = true;
-    void syncCompanyBilling(companyId).catch(() => undefined);
-  }, [billingManager, checkoutResult, companyId, subscriptionIsPro]);
+    void syncCompanyBilling(companyId, checkoutSessionId).catch(() => undefined);
+  }, [billingManager, checkoutResult, checkoutSessionId, companyId, subscriptionIsPro]);
 
   useEffect(() => {
     if (!celebrationOpen || celebrationPhase !== "activating") return;

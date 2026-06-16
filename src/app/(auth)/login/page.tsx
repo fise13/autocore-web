@@ -132,13 +132,22 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isFirebaseReady || isLoading || !authReady) return;
-    if (isAuthed) {
-      logAuthDebug("login-page", "redirect → /", {
-        firebaseUser: firebaseUser?.uid ?? null,
-        currentUser: currentUser?.uid ?? null,
-      });
-      void navigateToAppAfterAuth(router, "replace");
-    }
+    if (!isAuthed) return;
+
+    logAuthDebug("login-page", "redirect → /", {
+      firebaseUser: firebaseUser?.uid ?? null,
+      currentUser: currentUser?.uid ?? null,
+    });
+
+    void navigateToAppAfterAuth(router, "replace");
+
+    const fallbackTimer = window.setTimeout(() => {
+      if (window.location.pathname.startsWith("/login")) {
+        window.location.assign("/");
+      }
+    }, 4000);
+
+    return () => window.clearTimeout(fallbackTimer);
   }, [authReady, currentUser?.uid, firebaseUser?.uid, isAuthed, isFirebaseReady, isLoading, router]);
 
   const debugSnapshot = buildAuthDebugSnapshot({

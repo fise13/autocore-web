@@ -5,11 +5,14 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 
 import { AccountingWorkspace } from "@/components/accounting/accounting-workspace";
+import { ActivityWorkspace } from "@/components/activity/activity-workspace";
+import { DocumentsWorkspace } from "@/components/documents/documents-workspace";
 import { MissionControlShell } from "@/components/mission-control/mission-control-shell";
 import { MotorsWorkspace } from "@/components/motors/motors-workspace";
 import { QuotesWorkspace } from "@/components/quotes/quotes-workspace";
 import { SettingsWorkspace } from "@/components/settings/settings-workspace";
 import { SoldWorkspace } from "@/components/sold/sold-workspace";
+import { TeamWorkspace } from "@/components/team/team-workspace";
 import { WarehouseWorkspace } from "@/components/warehouse/warehouse-workspace";
 import { WorkOrdersWorkspace } from "@/components/work-orders/work-orders-workspace";
 import { SpecificCategoryCachedPage } from "@/components/layout/specific-category-cached-page";
@@ -32,6 +35,9 @@ export function resolveRouteCacheKey(pathname: string): string | null {
   if (pathname === "/warehouse") return "/warehouse";
   if (pathname === "/settings" || pathname.startsWith("/settings/")) return "/settings";
   if (pathname === "/quotes" || pathname.startsWith("/quotes/")) return "/quotes";
+  if (pathname === "/team" || pathname.startsWith("/team/")) return "/team";
+  if (pathname === "/activity" || pathname.startsWith("/activity/")) return "/activity";
+  if (pathname === "/documents" || pathname.startsWith("/documents/")) return "/documents";
   if (pathname.startsWith("/specific/")) return pathname;
   return null;
 }
@@ -62,6 +68,20 @@ function renderCachedRoute(cacheKey: string): ReactNode {
       );
     case "/quotes":
       return <QuotesWorkspace />;
+    case "/team":
+      return (
+        <Suspense fallback={null}>
+          <TeamWorkspace />
+        </Suspense>
+      );
+    case "/activity":
+      return <ActivityWorkspace />;
+    case "/documents":
+      return (
+        <Suspense fallback={null}>
+          <DocumentsWorkspace />
+        </Suspense>
+      );
     default:
       if (cacheKey.startsWith("/specific/")) {
         const categoryId = cacheKey.replace("/specific/", "");
@@ -168,6 +188,8 @@ export function DashboardRouteCache({ children }: DashboardRouteCacheProps) {
     return <>{children}</>;
   }
 
+  const cachedPanel = renderCachedRoute(activeKey);
+
   return (
     <>
       {visitedKeys.map((cacheKey) => (
@@ -178,6 +200,7 @@ export function DashboardRouteCache({ children }: DashboardRouteCacheProps) {
           instantEnter={instantEnterKey === cacheKey}
         />
       ))}
+      {cachedPanel == null ? <>{children}</> : null}
     </>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useSyncExternalStore } from "react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { DashboardShellSkeleton } from "@/components/layout/dashboard-shell-skeleton";
@@ -15,10 +15,18 @@ type RequireAuthProps = {
   children: ReactNode;
 };
 
+function useReturningAuthSession(): boolean {
+  return useSyncExternalStore(
+    () => () => {},
+    () => hasSeenAuthSession(),
+    () => false,
+  );
+}
+
 export function RequireAuth({ children }: RequireAuthProps) {
   const router = useRouter();
   const { firebaseUser, isLoading, isFirebaseReady } = useAuth();
-  const returningSession = hasSeenAuthSession();
+  const returningSession = useReturningAuthSession();
 
   useEffect(() => {
     if (!isFirebaseReady || isLoading) return;
