@@ -113,10 +113,6 @@
   padding-top: 0.25rem;
 }
 
-.landing-hero-downloads {
-  padding-top: 0.75rem;
-}
-
 .landing-hero-shot {
   position: relative;
   margin-top: clamp(2rem, 5vw, 3.5rem);

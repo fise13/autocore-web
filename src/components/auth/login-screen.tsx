@@ -14,7 +14,6 @@ import { PasswordField } from "@/components/auth/password-field";
 import { PasswordStrengthField } from "@/components/auth/password-strength-field";
 import { useAuth } from "@/components/providers/auth-provider";
 import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
-import { DesktopDownloadButtons } from "@/components/marketing/desktop-download-buttons";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
@@ -582,14 +581,6 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
               {error}
             </p>
           ) : null}
-
-          <div className="mt-6 space-y-3 rounded-xl border bg-muted/15 p-4">
-            <p className="text-sm font-medium">Приложение для компьютера</p>
-            <p className="text-sm text-muted-foreground">
-              Скачайте AutoCore для macOS или Windows — тот же аккаунт, офлайн-доступ к складу и нарядам.
-            </p>
-            <DesktopDownloadButtons layout="stack" />
-          </div>
 
           <p className="mt-8 text-sm text-muted-foreground">
             Нажимая «Продолжить», вы соглашаетесь с{" "}

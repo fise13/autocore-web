@@ -101,6 +101,7 @@ type DesktopDownloadBadgeProps = {
   available: boolean;
   emphasized?: boolean;
   compact?: boolean;
+  mini?: boolean;
   onUnavailable: () => void;
 };
 
@@ -110,13 +111,15 @@ function DesktopDownloadBadge({
   available,
   emphasized = false,
   compact = false,
+  mini = false,
   onUnavailable,
 }: DesktopDownloadBadgeProps) {
   const isMac = platform === "mac";
   const label = isMac ? "Mac OS" : "Windows";
   const className = cn(
     "desktop-download-badge",
-    compact && "is-compact",
+    mini && "is-mini",
+    compact && !mini && "is-compact",
     emphasized && "is-emphasis",
     !available && "is-unavailable",
   );
@@ -201,23 +204,32 @@ export function DesktopDownloadButtons({
 }
 
 /** Compact store-style badges for footer and tight layouts. */
-export function DesktopDownloadIcons({ className }: { className?: string }) {
+export function DesktopDownloadIcons({
+  className,
+  size = "mini",
+}: {
+  className?: string;
+  size?: "compact" | "mini";
+}) {
   const { links, availability, handleDownload } = useDesktopDownloadAvailability();
+  const mini = size === "mini";
 
   return (
-    <div className={cn("desktop-download-badges", className)}>
+    <div className={cn("desktop-download-badges", mini && "is-mini", className)}>
       <DesktopDownloadBadge
         platform="mac"
         url={links.mac}
         available={availability.mac}
-        compact
+        compact={!mini}
+        mini={mini}
         onUnavailable={() => handleDownload("mac", links.mac, false)}
       />
       <DesktopDownloadBadge
         platform="windows"
         url={links.windows}
         available={availability.windows}
-        compact
+        compact={!mini}
+        mini={mini}
         onUnavailable={() => handleDownload("windows", links.windows, false)}
       />
     </div>

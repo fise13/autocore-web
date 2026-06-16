@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 
 import { AppLogo } from "@/components/brand/app-logo";
 import { landingPageContent } from "@/components/marketing/content/landing-page-content";
+import { DesktopDownloadIcons } from "@/components/marketing/desktop-download-buttons";
 import { siteNavigation } from "@/components/marketing/site/site-navigation";
 import { marketingRoutes } from "@/lib/marketing-routes";
 import { getPlatformContacts } from "@/lib/platform/platform-contacts";
@@ -108,6 +109,7 @@ export function SiteFooter() {
             <p className="site-footer-tagline max-w-[18rem] text-[0.8125rem] leading-[1.6] text-muted-foreground sm:text-sm">
               {copy.tagline}
             </p>
+            <DesktopDownloadIcons size="mini" />
           </FooterAnimatedBlock>
 
           <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-2 sm:gap-x-8 md:grid-cols-4">
