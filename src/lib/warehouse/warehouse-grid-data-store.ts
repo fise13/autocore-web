@@ -6,6 +6,7 @@ import {
   normalizeBarcode,
   parseInventoryStatus,
 } from "@/lib/warehouse/warehouse-search";
+import { parseGroupedNumber } from "@/lib/money/format-number";
 
 export type WarehouseGridRow =
   | (InventoryItem & {
@@ -203,7 +204,7 @@ export function draftFieldForColumn(column: number): keyof WarehouseDraftFields 
 
 function parseOptionalNumber(value: string | undefined): number | undefined {
   if (!value?.trim()) return undefined;
-  const parsed = Number(value.replace(",", "."));
+  const parsed = parseGroupedNumber(value);
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 

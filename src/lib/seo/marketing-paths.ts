@@ -35,6 +35,7 @@ const CLEAN_TO_INTERNAL: Record<string, string> = {
   [marketingCleanPaths.pricing]: marketingInternalPaths.pricing,
   [marketingCleanPaths.security]: marketingInternalPaths.security,
   [marketingCleanPaths.contact]: marketingInternalPaths.contact,
+  [marketingCleanPaths.download]: marketingInternalPaths.download,
   [marketingCleanPaths.privacy]: marketingInternalPaths.privacy,
   [marketingCleanPaths.terms]: marketingInternalPaths.terms,
 };

@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { DatalistInput, DatalistOption } from "@/components/ui/datalist-input";
 import { SearchCombobox } from "@/components/ui/search-combobox";
 import { FadeIn } from "@/components/ui/fade-in";
+import { GroupedNumberInput } from "@/components/ui/grouped-number-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,6 +41,7 @@ import {
 } from "@/lib/vehicles/vehicle-catalog";
 import { ROLE_LABELS } from "@/components/work-orders/work-order-copy";
 import { laborLineLabel, money } from "@/components/work-orders/work-order-utils";
+import { formatGroupedNumber } from "@/lib/money/format-number";
 
 export type LaborDraft = {
   title: string;
@@ -501,11 +503,10 @@ export function WorkOrderComposer({
                   />
                 </Field>
                 <Field label="Пробег, км">
-                  <Input
-                    type="number"
-                    value={form.mileage || ""}
-                    onChange={(event) => onFormChange("mileage", Number(event.target.value) || 0)}
-                    placeholder="125000"
+                  <GroupedNumberInput
+                    value={form.mileage}
+                    onValueChange={(value) => onFormChange("mileage", value)}
+                    placeholder="125 000"
                   />
                 </Field>
               </div>
@@ -594,23 +595,21 @@ export function WorkOrderComposer({
                   <div className={cn("mt-4 grid gap-4", isHourlyLabor ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
                     {isHourlyLabor ? (
                       <Field label="Нормо-часы">
-                        <Input
-                          type="number"
-                          min={0}
-                          step={0.5}
+                        <GroupedNumberInput
                           value={form.laborDraft.hours}
-                          onChange={(event) => onLaborDraftChange({ hours: Number(event.target.value) })}
-                          placeholder="2.5"
+                          onValueChange={(value) => onLaborDraftChange({ hours: value })}
+                          allowDecimals
+                          maximumFractionDigits={1}
+                          placeholder="2,5"
                         />
                       </Field>
                     ) : null}
                     <Field label={isHourlyLabor ? "Ставка, ₸/час" : "Сумма работы, ₸"}>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={form.laborDraft.unitPrice || ""}
-                        onChange={(event) => onLaborDraftChange({ unitPrice: Number(event.target.value) })}
-                        placeholder={isHourlyLabor ? "5000" : "90000"}
+                      <GroupedNumberInput
+                        value={form.laborDraft.unitPrice}
+                        onValueChange={(value) => onLaborDraftChange({ unitPrice: value })}
+                        emptyAsZero={false}
+                        placeholder={isHourlyLabor ? "5 000" : "90 000"}
                       />
                     </Field>
                     <Field label="Исполнитель" required hint="Tab ↹ или своё имя">
@@ -719,18 +718,15 @@ export function WorkOrderComposer({
                       }}
                       placeholder="Название"
                     />
-                    <Input
-                      type="number"
-                      min={1}
+                    <GroupedNumberInput
                       value={form.partQuantity}
-                      onChange={(event) => onFormChange("partQuantity", Number(event.target.value) || 1)}
+                      onValueChange={(value) => onFormChange("partQuantity", value || 1)}
                       aria-label="Количество"
                     />
-                    <Input
-                      type="number"
-                      min={0}
-                      value={form.partUnitPrice || ""}
-                      onChange={(event) => onFormChange("partUnitPrice", Number(event.target.value) || 0)}
+                    <GroupedNumberInput
+                      value={form.partUnitPrice}
+                      onValueChange={(value) => onFormChange("partUnitPrice", value)}
+                      emptyAsZero={false}
                       placeholder="Цена, ₸"
                       aria-label="Цена"
                     />
@@ -775,10 +771,10 @@ export function WorkOrderComposer({
                       <option value="install">Установка</option>
                       <option value="sell">Продажа</option>
                     </select>
-                    <Input
-                      type="number"
-                      value={form.motorPrice || ""}
-                      onChange={(event) => onFormChange("motorPrice", Number(event.target.value))}
+                    <GroupedNumberInput
+                      value={form.motorPrice}
+                      onValueChange={(value) => onFormChange("motorPrice", value)}
+                      emptyAsZero={false}
                       placeholder="Цена"
                     />
                     <Button type="button" variant="secondary" onClick={onAddMotor}>
@@ -842,13 +838,10 @@ export function WorkOrderComposer({
                         />
                       </Field>
                       <Field label="Цена, ₸">
-                        <Input
-                          type="number"
-                          min={0}
-                          value={form.specificPartPrice || ""}
-                          onChange={(event) =>
-                            onFormChange("specificPartPrice", Number(event.target.value) || 0)
-                          }
+                        <GroupedNumberInput
+                          value={form.specificPartPrice}
+                          onValueChange={(value) => onFormChange("specificPartPrice", value)}
+                          emptyAsZero={false}
                         />
                       </Field>
                       <Field label="Гарантия">
@@ -901,7 +894,7 @@ export function WorkOrderComposer({
               </p>
               <p className="text-sm text-muted-foreground">
                 {[form.licensePlate, form.vin].filter(Boolean).join(" · ") || "—"}
-                {form.mileage ? ` · ${form.mileage.toLocaleString("ru-RU")} км` : ""}
+                {form.mileage ? ` · ${formatGroupedNumber(form.mileage)} км` : ""}
               </p>
             </SummaryCard>
             <SummaryCard title="Состав" className="lg:col-span-2">
@@ -919,11 +912,10 @@ export function WorkOrderComposer({
               </ul>
             </SummaryCard>
             <SummaryCard title="Скидка" className="lg:col-span-2">
-              <Input
-                type="number"
-                min={0}
-                value={form.discount || ""}
-                onChange={(event) => onFormChange("discount", Number(event.target.value) || 0)}
+              <GroupedNumberInput
+                value={form.discount}
+                onValueChange={(value) => onFormChange("discount", value)}
+                emptyAsZero={false}
                 placeholder="0"
               />
             </SummaryCard>

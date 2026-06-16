@@ -11,6 +11,7 @@ import { McTeamOnDuty } from "@/components/mission-control/dashboard/mc-team-on-
 import { McWarehouseHealth } from "@/components/mission-control/dashboard/mc-warehouse-health";
 import { McWorkOrdersChart } from "@/components/mission-control/dashboard/mc-work-orders-chart";
 import { QuickActionsPanel } from "@/components/mission-control/quick-actions/quick-actions-panel";
+import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
 import { useMissionControlData } from "@/hooks/use-mission-control-data";
 import { buildDashboardStats } from "@/lib/mission-control/compute-dashboard-charts";
 
@@ -28,6 +29,7 @@ export function McDashboardGrid(props: McDashboardGridProps) {
     isLoading,
     permissions,
   } = props;
+  const { formatMoney } = useAppDisplayCurrency();
 
   const stats = useMemo(
     () =>
@@ -35,8 +37,9 @@ export function McDashboardGrid(props: McDashboardGridProps) {
         metrics: overview,
         operations: permissions.canAccounting ? operations : [],
         permissions,
+        formatMoney,
       }),
-    [operations, overview, permissions],
+    [formatMoney, operations, overview, permissions],
   );
 
   const motorAvailable = overview.activeInventoryCount;

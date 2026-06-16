@@ -1,0 +1,18 @@
+{
+  "$schema": "../gen/schemas/remote-schema.json",
+  "identifier": "remote-macos-siwa",
+  "description": "Sign in with Apple from the remote web app on macOS",
+  "platforms": ["macOS"],
+  "windows": ["main"],
+  "remote": {
+    "urls": [
+      "https://autocore-web.vercel.app/*",
+      "https://*.vercel.app/*",
+      "https://app.myautocore.com/*",
+      "https://myautocore.com/*",
+      "http://localhost:*/*",
+      "http://127.0.0.1:*/*"
+    ]
+  },
+  "permissions": ["siwa:allow-get-apple-id-credential"]
+}

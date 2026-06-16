@@ -9,6 +9,7 @@ import { buildMarketingRootMetadata } from "@/lib/seo/build-marketing-metadata";
 
 export const metadata: Metadata = buildMarketingRootMetadata();
 
+export const dynamic = "force-static";
 export const revalidate = 3600;
 
 type MarketingLayoutProps = {

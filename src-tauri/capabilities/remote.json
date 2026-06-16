@@ -12,7 +12,6 @@
   "permissions": [
     "core:default",
     "shell:default",
-    "opener:default",
-    "siwa:allow-get-apple-id-credential"
+    "opener:default"
   ]
 }

@@ -38,21 +38,45 @@ export function ensureHttpScheme(value: string): string {
   return `${isLocal ? "http" : "https"}://${host}`;
 }
 
+/** Canonical public origin: https, no www, no trailing slash. Localhost keeps http. */
+export function normalizeSiteOrigin(value: string): string {
+  const ensured = ensureHttpScheme(value);
+  if (!ensured) return "";
+
+  try {
+    const url = new URL(ensured);
+    const host = url.hostname.toLowerCase();
+    const isLocal = host === "localhost" || host === "127.0.0.1";
+
+    if (!isLocal) {
+      url.hostname = host.replace(/^www\./, "");
+      url.protocol = "https:";
+    }
+
+    url.pathname = "";
+    url.search = "";
+    url.hash = "";
+    return url.origin;
+  } catch {
+    return ensured.replace(/\/$/, "");
+  }
+}
+
 function resolveUrlFromEnv(primary: string | undefined, fallback: string): string {
   const fromEnv = primary?.trim();
-  if (fromEnv) return ensureHttpScheme(fromEnv);
+  if (fromEnv) return normalizeSiteOrigin(fromEnv);
 
   const vercelProduction = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
   if (vercelProduction) {
-    return ensureHttpScheme(vercelProduction);
+    return normalizeSiteOrigin(vercelProduction);
   }
 
   const vercelUrl = process.env.VERCEL_URL?.trim();
   if (vercelUrl) {
-    return ensureHttpScheme(vercelUrl);
+    return normalizeSiteOrigin(vercelUrl);
   }
 
-  return fallback;
+  return normalizeSiteOrigin(fallback);
 }
 
 /** Application host — Mission Control, warehouse, login (app.myautocore.com). */
@@ -80,6 +104,7 @@ export function getHostKind(host: string): SiteHostKind {
   if (marketingHost && normalized === marketingHost) return "marketing";
   if (marketingHost && normalized === `www.${marketingHost}`) return "marketing";
   if (appHost && normalized === appHost) return "app";
+  if (appHost && normalized === `www.${appHost}`) return "app";
 
   if (normalized.startsWith("app.")) return "app";
   if (normalized === "myautocore.com" || normalized === "www.myautocore.com") return "marketing";

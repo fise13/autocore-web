@@ -8,32 +8,35 @@ import {
   PricingFrequency,
   PricingFrequencyToggle,
 } from "@/components/marketing/pricing/pricing-frequency-toggle";
-import { startMarketingProCheckout } from "@/infrastructure/stripe/billing-service";
-import { appLoginUrl } from "@/lib/site-urls";
-import { userCopy } from "@/lib/user-copy";
+import { StripeBillingInterval } from "@/lib/stripe/prices";
+import { storePendingBillingIntent } from "@/lib/marketing/pending-billing-intent";
+import { marketingProSignupUrl, marketingTrialSignupUrl } from "@/lib/marketing/trial-signup-url";
 
 const copy = marketingSiteContent.pricing;
 
-function planHref(planId: string): string {
+function signupUrl(intent: "trial" | "pro", interval?: StripeBillingInterval): string {
+  if (intent === "trial") return marketingTrialSignupUrl();
+  return marketingProSignupUrl(interval ?? "monthly");
+}
+
+function planHref(planId: string, frequency: PricingFrequency): string {
   if (planId === "enterprise") return "mailto:enterprise@autocore.app";
-  return appLoginUrl();
+  if (planId === "trial") return signupUrl("trial");
+  if (planId === "pro") return signupUrl("pro", frequency);
+  return marketingTrialSignupUrl();
 }
 
 export function MarketingPricingSection() {
   const [frequency, setFrequency] = useState<PricingFrequency>("monthly");
-  const [checkoutPlanId, setCheckoutPlanId] = useState<string | null>(null);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  async function startProCheckout() {
-    setCheckoutPlanId("pro");
-    setCheckoutError(null);
-    try {
-      const url = await startMarketingProCheckout(frequency);
-      window.location.assign(url);
-    } catch (error) {
-      setCheckoutError(error instanceof Error ? error.message : userCopy.billing.checkoutError);
-      setCheckoutPlanId(null);
-    }
+  function startTrialSignup() {
+    storePendingBillingIntent({ type: "trial" });
+    window.location.href = signupUrl("trial");
+  }
+
+  function startProCheckout() {
+    storePendingBillingIntent({ type: "pro", interval: frequency });
+    window.location.href = signupUrl("pro", frequency);
   }
 
   return (
@@ -48,12 +51,6 @@ export function MarketingPricingSection() {
         />
       </div>
 
-      {checkoutError ? (
-        <p role="alert" className="marketing-pricing-checkout-error text-sm text-destructive">
-          {checkoutError}
-        </p>
-      ) : null}
-
       <div className="marketing-pricing-grid">
         {copy.plans.map((plan) => (
           <MarketingPricingCard
@@ -61,9 +58,9 @@ export function MarketingPricingSection() {
             plan={plan}
             frequency={frequency}
             billingCopy={copy.billing}
-            href={planHref(plan.id)}
+            href={planHref(plan.id, frequency)}
+            onTrialSignup={plan.id === "trial" ? startTrialSignup : undefined}
             onProCheckout={plan.id === "pro" ? startProCheckout : undefined}
-            isCheckoutLoading={checkoutPlanId === plan.id}
           />
         ))}
       </div>

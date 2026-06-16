@@ -53,6 +53,7 @@ export const siteNavigation = {
   primaryLinks: [
     { href: `${marketingRoutes.home}#story`, label: "Как работает" },
     { href: marketingRoutes.pricing, label: "Тарифы" },
+    { href: marketingRoutes.download, label: "Скачать" },
     { href: `${marketingRoutes.home}#faq`, label: "FAQ" },
     { href: marketingRoutes.security, label: "Безопасность" },
     { href: marketingRoutes.contact, label: "Контакты" },

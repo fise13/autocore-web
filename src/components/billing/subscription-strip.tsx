@@ -34,9 +34,11 @@ export function SubscriptionStrip({ className }: SubscriptionStripProps) {
         )}
         <p className="truncate text-sm text-muted-foreground">
           {isPro
-            ? renewalDate === "—"
-              ? userCopy.billing.proActiveHint
-              : `${userCopy.billing.nextChargeLabel}: ${renewalDate}`
+            ? subscription?.status === "trialing" && renewalDate !== "—"
+              ? userCopy.billing.trialingHint(renewalDate)
+              : renewalDate === "—"
+                ? userCopy.billing.proActiveHint
+                : `${userCopy.billing.nextChargeLabel}: ${renewalDate}`
             : userCopy.billing.freeActiveHint}
         </p>
       </div>

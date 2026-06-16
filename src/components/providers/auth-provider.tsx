@@ -46,7 +46,17 @@ import { signInWithAppleFirebase } from "@/lib/auth/sign-in-with-apple-web";
 import { mergeProfileWithEmployee, EmployeeProfileSlice } from "@/lib/auth/resolve-effective-profile";
 import { markSyncAuthPrepared, prepareSyncAuth, resetSyncAuthCache } from "@/lib/auth/prepare-sync-auth";
 import { tryClaimPendingMarketingCheckout } from "@/lib/billing/claim-marketing-checkout";
+import {
+  claimPendingBillingIntent,
+  ensureCompanyTrial,
+} from "@/lib/billing/claim-pending-billing-intent";
 import { DEFAULT_COMPANY_ID } from "@/lib/company-id";
+import { isDemoSession } from "@/lib/demo/demo-config";
+import {
+  clearDemoSessionMarker,
+  hasDemoSessionMarker,
+  resetDemoWorkspaceRemote,
+} from "@/lib/demo/demo-session.client";
 import { mapAuthError } from "@/lib/user-copy";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
 import {
@@ -516,7 +526,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
       async logout() {
         if (!isFirebaseReady) return;
         const auth = getFirebaseAuth();
-        const uid = auth.currentUser?.uid;
+        const user = auth.currentUser;
+        const uid = user?.uid;
+        const shouldResetDemo =
+          user &&
+          hasDemoSessionMarker() &&
+          isDemoSession({ email: user.email, companyId: profile?.companyId ?? null });
+
+        if (shouldResetDemo) {
+          try {
+            await resetDemoWorkspaceRemote();
+          } catch (error) {
+            console.warn("[demo] reset on logout failed:", error);
+          } finally {
+            clearDemoSessionMarker();
+          }
+        }
 
         if (!prefersReducedMotion()) {
           try {
@@ -536,6 +561,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const auth = getFirebaseAuth();
         if (!auth.currentUser) throw new Error(mapAuthError(new Error("auth/invalid-credential")));
         const companyId = await createCompanyRecord(auth.currentUser.uid, name);
+        await ensureCompanyTrial(companyId);
+        await claimPendingBillingIntent(companyId);
         await tryClaimPendingMarketingCheckout(companyId);
         await prepareSyncAuth(auth.currentUser.uid, { force: true });
         await refreshProfile();
@@ -571,6 +598,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const auth = getFirebaseAuth();
         if (!auth.currentUser) throw new Error(mapAuthError(new Error("auth/invalid-credential")));
         await assignDefaultCompany(auth.currentUser.uid);
+        await ensureCompanyTrial(DEFAULT_COMPANY_ID);
+        await claimPendingBillingIntent(DEFAULT_COMPANY_ID);
         await tryClaimPendingMarketingCheckout(DEFAULT_COMPANY_ID);
         await prepareSyncAuth(auth.currentUser.uid, { force: true });
         await refreshProfile();

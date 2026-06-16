@@ -77,6 +77,7 @@ import { InventoryMovementRepository } from "@/infrastructure/firestore/inventor
 import { InventoryStockLevelRepository } from "@/infrastructure/firestore/inventory-stock-level-repository";
 import { FinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
 import { WarehouseRepository } from "@/infrastructure/firestore/warehouse-repository";
+import { formatGroupedNumber, parseGroupedNumber } from "@/lib/money/format-number";
 import { mapAuthError, mapGridSaveError } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
@@ -120,13 +121,19 @@ function isEditableColumn(column: number): boolean {
 
 function parseGridNumber(value: string): number | undefined {
   if (!value.trim()) return undefined;
-  const parsed = Number(value.replace(",", "."));
+  const parsed = parseGroupedNumber(value);
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function formatOptionalGridNumber(value: number | undefined | null): string {
   if (value == null || value === 0) return "";
-  return String(value);
+  return formatGroupedNumber(value);
+}
+
+function formatDraftGridNumber(value: string): string {
+  if (!value.trim()) return "";
+  const parsed = parseGroupedNumber(value);
+  return Number.isFinite(parsed) ? formatGroupedNumber(parsed) : value;
 }
 
 function valueAtCell(row: WarehouseGridRow, column: number): string {
@@ -175,11 +182,11 @@ function valueAtCell(row: WarehouseGridRow, column: number): string {
     case 4:
       return row.draft.brandName;
     case 5:
-      return row.draft.onHand;
+      return formatDraftGridNumber(row.draft.onHand);
     case 8:
-      return row.draft.purchasePrice;
+      return formatDraftGridNumber(row.draft.purchasePrice);
     case 9:
-      return row.draft.sellPrice;
+      return formatDraftGridNumber(row.draft.sellPrice);
     case 10:
       return row.draft.supplierName;
     case 11:
@@ -187,7 +194,7 @@ function valueAtCell(row: WarehouseGridRow, column: number): string {
     case 12:
       return row.draft.warehouseLocation;
     case 13:
-      return row.draft.lowStockThreshold;
+      return formatDraftGridNumber(row.draft.lowStockThreshold);
     default:
       return "";
   }

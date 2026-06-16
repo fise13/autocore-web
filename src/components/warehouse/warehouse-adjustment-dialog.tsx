@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { AmountInput, parseGroupedNumber } from "@/components/ui/grouped-number-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { InventoryItem } from "@/domain/inventory";
+import { formatGroupedNumber } from "@/lib/money/format-number";
 
 type WarehouseAdjustmentDialogProps = {
   item: InventoryItem | null;
@@ -40,7 +41,7 @@ export function WarehouseAdjustmentDialog({
   onOpenChange,
   onConfirm,
 }: WarehouseAdjustmentDialogProps) {
-  const [quantity, setQuantity] = useState("1");
+  const [quantity, setQuantity] = useState(formatGroupedNumber(1));
   const [direction, setDirection] = useState<"increase" | "decrease">("increase");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -48,7 +49,7 @@ export function WarehouseAdjustmentDialog({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const parsedQty = Number(quantity);
+    const parsedQty = parseGroupedNumber(quantity);
     if (!Number.isFinite(parsedQty) || parsedQty <= 0) {
       setError("Укажите корректное количество");
       return;
@@ -91,7 +92,7 @@ export function WarehouseAdjustmentDialog({
           </div>
           <div className="grid gap-2">
             <Label htmlFor="adjust-qty">Количество</Label>
-            <Input id="adjust-qty" type="number" min={1} value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+            <AmountInput id="adjust-qty" value={quantity} onChange={setQuantity} />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="adjust-reason">Причина</Label>

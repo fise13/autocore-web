@@ -3,12 +3,18 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
-import { openBillingPortal, startProCheckout, syncCompanyBilling } from "@/infrastructure/stripe/billing-service";
+import { useToast } from "@/components/ui/toast-provider";
+import {
+  activateInternalProRemote,
+  refreshCompanyBillingRemote,
+} from "@/lib/billing/internal-billing.client";
+import { syncCompanyBilling } from "@/infrastructure/stripe/billing-service";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { StripeBillingInterval } from "@/lib/stripe/prices";
 import { userCopy } from "@/lib/user-copy";
 
 const BILLING_PORTAL_RETURN_KEY = "autocore-billing-portal-return";
+const PRO_CHECKOUT_SESSION_KEY = "autocore-pro-checkout-pending";
 
 type UseBillingActionsOptions = {
   companyId: string;
@@ -23,7 +29,8 @@ export function useBillingActions({
 }: UseBillingActionsOptions) {
   const resolvedCompanyId = normalizeCompanyId(companyId);
   const { isPro, isLoading, canManageBilling } = useBillingGate();
-  const [pending, setPending] = useState<"monthly" | "yearly" | "portal" | "sync" | null>(null);
+  const { toast } = useToast();
+  const [pending, setPending] = useState<"sync" | "checkout" | null>(null);
 
   useEffect(() => {
     if (!syncOnPortalReturn) return;
@@ -41,41 +48,48 @@ export function useBillingActions({
       .finally(() => setPending(null));
   }, [onStatus, resolvedCompanyId, syncOnPortalReturn]);
 
-  const runAction = useCallback(
-    async (action: "monthly" | "yearly" | "portal", runner: () => Promise<string>) => {
-      setPending(action);
+  const checkout = useCallback(
+    async (interval: StripeBillingInterval) => {
+      if (!canManageBilling) return;
+      setPending("checkout");
       onStatus?.(null);
       try {
-        const url = await runner();
-        if (action === "portal") {
-          sessionStorage.setItem(BILLING_PORTAL_RETURN_KEY, "1");
-        } else {
-          sessionStorage.setItem("autocore-pro-checkout-pending", "1");
-        }
-        window.location.assign(url);
+        await activateInternalProRemote(resolvedCompanyId, interval);
+        sessionStorage.setItem(PRO_CHECKOUT_SESSION_KEY, "1");
+        onStatus?.(userCopy.billing.proActiveHint);
+        toast({
+          title: userCopy.billing.proActivation.celebrationTitle,
+          description: userCopy.billing.proActivation.celebrationSubtitle,
+        });
       } catch (error) {
-        onStatus?.(error instanceof Error ? error.message : userCopy.billing.checkoutUnavailable);
+        onStatus?.(error instanceof Error ? error.message : userCopy.billing.loadError);
+        toast({
+          title: userCopy.billing.paymentUnavailableTitle,
+          description: userCopy.billing.paymentUnavailable,
+        });
+      } finally {
         setPending(null);
       }
     },
-    [onStatus],
+    [canManageBilling, onStatus, resolvedCompanyId, toast],
   );
 
-  const checkout = useCallback(
-    (interval: StripeBillingInterval) =>
-      runAction(interval, () => startProCheckout(resolvedCompanyId, interval)),
-    [resolvedCompanyId, runAction],
-  );
-
-  const openPortal = useCallback(
-    () => runAction("portal", () => openBillingPortal(resolvedCompanyId)),
-    [resolvedCompanyId, runAction],
-  );
+  const openPortal = useCallback(() => {
+    toast({
+      title: userCopy.billing.paymentUnavailableTitle,
+      description: userCopy.billing.paymentUnavailable,
+    });
+  }, [toast]);
 
   const syncBilling = useCallback(async () => {
     setPending("sync");
     onStatus?.(null);
     try {
+      const refreshed = await refreshCompanyBillingRemote(resolvedCompanyId);
+      if (refreshed.proActive) {
+        onStatus?.(userCopy.billing.proActiveHint);
+        return true;
+      }
       const active = await syncCompanyBilling(resolvedCompanyId);
       onStatus?.(active ? userCopy.billing.proActiveHint : userCopy.billing.freeActiveHint);
       return active;

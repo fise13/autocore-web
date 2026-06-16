@@ -14,6 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { AmountInput, parseGroupedNumber } from "@/components/ui/grouped-number-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -32,6 +33,7 @@ import {
   paymentMethodLabel,
 } from "@/lib/accounting/labels";
 import { appendAdvanceMarker } from "@/lib/accounting/advances";
+import { formatGroupedNumber } from "@/lib/money/format-number";
 import {
   OPERATION_ACCOUNTS,
   PAYMENT_METHODS,
@@ -79,14 +81,14 @@ export function NewOperationDialog({
       setType(defaultType);
     }
   }, [defaultType, open]);
-  const [amount, setAmount] = useState("0");
+  const [amount, setAmount] = useState(formatGroupedNumber(0));
   const [account, setAccount] = useState<OperationAccount>("cashbox");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [category, setCategory] = useState("");
   const [comment, setComment] = useState("");
   const [markAsAdvance, setMarkAsAdvance] = useState(false);
 
-  const parsedAmount = useMemo(() => Number(amount), [amount]);
+  const parsedAmount = useMemo(() => parseGroupedNumber(amount), [amount]);
   const visibleSuggestions = useMemo(
     () => filterAccountingCategorySuggestions(category, categorySuggestions).slice(0, 12),
     [category, categorySuggestions],
@@ -115,7 +117,7 @@ export function NewOperationDialog({
         comment: normalized.comment || null,
       });
       setOpen(false);
-      setAmount("0");
+      setAmount(formatGroupedNumber(0));
       setCategory("");
       setComment("");
       setMarkAsAdvance(false);
@@ -160,10 +162,9 @@ export function NewOperationDialog({
 
             <div className="space-y-1">
               <Label>Сумма</Label>
-              <Input
-                inputMode="decimal"
+              <AmountInput
                 value={amount}
-                onChange={(event) => setAmount(event.target.value)}
+                onChange={setAmount}
                 placeholder="0"
               />
             </div>

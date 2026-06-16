@@ -11,10 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { AmountInput, parseGroupedNumber } from "@/components/ui/grouped-number-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { InventoryItem } from "@/domain/inventory";
+import { formatGroupedNumber } from "@/lib/money/format-number";
 
 type WarehouseReceiptDialogProps = {
   item: InventoryItem | null;
@@ -34,7 +35,7 @@ export function WarehouseReceiptDialog({
   onOpenChange,
   onConfirm,
 }: WarehouseReceiptDialogProps) {
-  const [quantity, setQuantity] = useState("1");
+  const [quantity, setQuantity] = useState(formatGroupedNumber(1));
   const [unitCost, setUnitCost] = useState("");
   const [reason, setReason] = useState("Приход на склад");
   const [createExpense, setCreateExpense] = useState(false);
@@ -43,7 +44,7 @@ export function WarehouseReceiptDialog({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const parsedQty = Number(quantity);
+    const parsedQty = parseGroupedNumber(quantity);
     if (!Number.isFinite(parsedQty) || parsedQty <= 0) {
       setError("Укажите корректное количество");
       return;
@@ -53,7 +54,7 @@ export function WarehouseReceiptDialog({
     try {
       await onConfirm({
         quantity: parsedQty,
-        unitCost: unitCost.trim() ? Number(unitCost) : item?.purchasePrice,
+        unitCost: unitCost.trim() ? parseGroupedNumber(unitCost) : item?.purchasePrice,
         reason: reason.trim() || "Приход на склад",
         createExpense,
       });
@@ -75,17 +76,15 @@ export function WarehouseReceiptDialog({
         <form onSubmit={submit} className="grid gap-4">
           <div className="grid gap-2">
             <Label htmlFor="receipt-qty">Количество</Label>
-            <Input id="receipt-qty" type="number" min={1} value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+            <AmountInput id="receipt-qty" value={quantity} onChange={setQuantity} />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="receipt-cost">Цена закупки (за ед.)</Label>
-            <Input
+            <AmountInput
               id="receipt-cost"
-              type="number"
-              min={0}
               value={unitCost}
-              onChange={(e) => setUnitCost(e.target.value)}
-              placeholder={item?.purchasePrice != null ? String(item.purchasePrice) : ""}
+              onChange={setUnitCost}
+              placeholder={item?.purchasePrice != null ? formatGroupedNumber(item.purchasePrice) : ""}
             />
           </div>
           <div className="grid gap-2">

@@ -1,0 +1,101 @@
+.desktop-download-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.desktop-download-badges.is-stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+@media (min-width: 640px) {
+  .desktop-download-badges.is-stack {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+.desktop-download-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 3.25rem;
+  min-width: 11.5rem;
+  padding: 0.45rem 1.125rem 0.45rem 0.875rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(255 255 255 / 0.82);
+  background: #000;
+  color: #fff;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    opacity 160ms ease;
+}
+
+.desktop-download-badge:hover {
+  transform: translateY(-1px);
+  border-color: #fff;
+}
+
+.desktop-download-badge.is-emphasis {
+  border-color: #fff;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.12);
+}
+
+.desktop-download-badge.is-unavailable {
+  opacity: 0.72;
+}
+
+.desktop-download-badge.is-unavailable:hover {
+  opacity: 0.88;
+}
+
+.desktop-download-badge.is-compact {
+  min-height: 2.75rem;
+  min-width: 10.25rem;
+  padding: 0.35rem 0.875rem 0.35rem 0.75rem;
+}
+
+.desktop-download-badge-icon {
+  display: flex;
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.desktop-download-badge.is-compact .desktop-download-badge-icon {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+.desktop-download-badge-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  line-height: 1;
+}
+
+.desktop-download-badge-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+}
+
+.desktop-download-badge-platform {
+  margin-top: 0.125rem;
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.desktop-download-badge.is-compact .desktop-download-badge-platform {
+  font-size: 1.125rem;
+}

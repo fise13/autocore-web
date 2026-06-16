@@ -6,33 +6,65 @@ import {
   isMarketingContentPath,
   resolveMarketingPathFromClean,
 } from "@/lib/seo/marketing-paths";
-import { getAppUrl, getHostKind, getMarketingUrl, isAppRoute, isMarketingPublicPath } from "@/lib/site-urls";
-
-function stripWww(host: string): string {
-  return host.replace(/^www\./i, "");
-}
+import {
+  getAppUrl,
+  getHostKind,
+  getMarketingUrl,
+  getUrlHost,
+  isAppRoute,
+  isMarketingPublicPath,
+  normalizeHost,
+} from "@/lib/site-urls";
 
 function redirectToMarketing(request: NextRequest, pathname: string): NextResponse {
   const target = new URL(pathname + request.nextUrl.search, getMarketingUrl());
-  return NextResponse.redirect(target, 308);
+  return NextResponse.redirect(target, 301);
 }
 
 function redirectAppRouteFromMarketing(request: NextRequest): NextResponse {
   const target = new URL(request.nextUrl.pathname + request.nextUrl.search, getAppUrl());
-  return NextResponse.redirect(target, 308);
+  return NextResponse.redirect(target, 301);
+}
+
+/**
+ * Redirect http/www variants to the canonical marketing origin (https, no www).
+ * GSC lists http:// and www. URLs as "page with redirect" — they must 301 here.
+ */
+function redirectToCanonicalMarketingOrigin(request: NextRequest): NextResponse | null {
+  const hostHeader = normalizeHost(request.headers.get("host") ?? "");
+  const canonicalHost = getUrlHost(getMarketingUrl());
+  if (!canonicalHost || !hostHeader) return null;
+
+  const isLocal = hostHeader === "localhost" || hostHeader === "127.0.0.1";
+  if (isLocal) return null;
+
+  const proto =
+    (request.headers.get("x-forwarded-proto") ?? request.nextUrl.protocol.replace(":", ""))
+      .split(",")[0]
+      ?.trim()
+      .toLowerCase() ?? "https";
+
+  const isMarketingHost =
+    hostHeader === canonicalHost || hostHeader === `www.${canonicalHost}`;
+  if (!isMarketingHost) return null;
+
+  const needsHttps = proto !== "https";
+  const needsWwwStrip = hostHeader.startsWith("www.");
+  if (!needsHttps && !needsWwwStrip) return null;
+
+  const target = new URL(request.url);
+  target.protocol = "https:";
+  target.hostname = canonicalHost;
+  target.port = "";
+
+  return NextResponse.redirect(target, 301);
 }
 
 /** Marketing host + unified localhost: clean URLs + legacy /marketing/* → 301. */
 function handleMarketingRoutes(request: NextRequest, pathname: string, isMarketingHost: boolean): NextResponse {
   if (isMarketingHost) {
-    const hostWithoutPort = (request.headers.get("host") ?? "").split(":")[0] ?? "";
-    const marketingHost = stripWww(getMarketingUrl().replace(/^https?:\/\//, "").split(":")[0] ?? "");
-
-    if (hostWithoutPort.toLowerCase().startsWith("www.") && marketingHost) {
-      const canonical = new URL(request.url);
-      canonical.hostname = marketingHost;
-      return NextResponse.redirect(canonical, 301);
-    }
+    const canonicalRedirect = redirectToCanonicalMarketingOrigin(request);
+    if (canonicalRedirect) return canonicalRedirect;
   }
 
   if (pathname === "/" && isMarketingHost) {

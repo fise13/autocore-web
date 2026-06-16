@@ -47,6 +47,7 @@ export default function PricingPage() {
         description={copy.hero.description}
         breadcrumbLabel="Тарифы"
         eyebrow="Тарифы"
+        pathKey="pricing"
       >
       <MarketingPricingSection />
 

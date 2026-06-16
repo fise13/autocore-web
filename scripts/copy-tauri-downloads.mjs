@@ -2,21 +2,44 @@
 /**
  * Copies latest Tauri bundle artifacts into public/downloads for Vercel hosting.
  */
-import { copyFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
-const BUNDLE_DIR = join(ROOT, "src-tauri", "target", "release", "bundle");
+const TARGET_DIR = join(ROOT, "src-tauri", "target");
 const OUT_DIR = join(ROOT, "public", "downloads");
 
 function findNewest(dir, extension) {
   if (!existsSync(dir)) return null;
   const files = readdirSync(dir)
     .filter((name) => name.endsWith(extension))
-    .map((name) => join(dir, name));
-  return files.at(-1) ?? null;
+    .map((name) => join(dir, name))
+    .sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs);
+  return files[0] ?? null;
+}
+
+function resolveBundleDir() {
+  const candidates = [
+    join(TARGET_DIR, "release", "bundle"),
+    join(TARGET_DIR, "aarch64-apple-darwin", "release", "bundle"),
+    join(TARGET_DIR, "x86_64-apple-darwin", "release", "bundle"),
+    join(TARGET_DIR, "x86_64-pc-windows-msvc", "release", "bundle"),
+  ];
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+
+  if (!existsSync(TARGET_DIR)) return null;
+
+  for (const entry of readdirSync(TARGET_DIR)) {
+    const nested = join(TARGET_DIR, entry, "release", "bundle");
+    if (existsSync(nested)) return nested;
+  }
+
+  return null;
 }
 
 function copyArtifact(source, targetName) {
@@ -31,18 +54,26 @@ function copyArtifact(source, targetName) {
   return true;
 }
 
-const macDmg = findNewest(join(BUNDLE_DIR, "dmg"), ".dmg");
-const macApp = findNewest(join(BUNDLE_DIR, "macos"), ".app");
-const winExe =
-  findNewest(join(BUNDLE_DIR, "nsis"), ".exe") ??
-  findNewest(join(BUNDLE_DIR, "msi"), ".msi");
+const bundleDir = resolveBundleDir();
+if (!bundleDir) {
+  console.warn("[tauri:publish] No bundle directory found. Run npm run tauri:build:mac or tauri:build:win first.");
+  process.exit(0);
+}
 
-const copied =
+console.log(`[tauri:publish] Using bundle dir: ${bundleDir}`);
+
+const macDmg = findNewest(join(bundleDir, "dmg"), ".dmg");
+const macApp = findNewest(join(bundleDir, "macos"), ".app");
+const winExe =
+  findNewest(join(bundleDir, "nsis"), ".exe") ??
+  findNewest(join(bundleDir, "msi"), ".msi");
+
+const copiedMac =
   copyArtifact(macDmg, "AutoCore-mac.dmg") ||
   copyArtifact(macApp, "AutoCore-mac.app");
 copyArtifact(winExe, "AutoCore-windows.exe");
 
-if (!copied) {
+if (!copiedMac) {
   console.warn("[tauri:publish] No macOS artifact found. Run npm run tauri:build:mac first.");
 }
 

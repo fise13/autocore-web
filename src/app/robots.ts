@@ -1,10 +1,11 @@
 import type { MetadataRoute } from "next";
 
 import { marketingRobotsAllowPaths } from "@/lib/seo/marketing-robots";
-import { getMarketingUrl } from "@/lib/site-urls";
+import { getMarketingUrl, getUrlHost } from "@/lib/site-urls";
 
 export default function robots(): MetadataRoute.Robots {
   const marketing = getMarketingUrl();
+  const host = getUrlHost(marketing);
 
   return {
     rules: [
@@ -27,6 +28,6 @@ export default function robots(): MetadataRoute.Robots {
       },
     ],
     sitemap: `${marketing.replace(/\/$/, "")}/sitemap.xml`,
-    host: marketing.replace(/^https?:\/\//, ""),
+    ...(host ? { host } : {}),
   };
 }

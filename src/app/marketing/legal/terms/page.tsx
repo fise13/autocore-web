@@ -11,6 +11,7 @@ export default function TermsPage() {
       title="Условия использования"
       description="Правила использования облачной программы AutoCore для авторазборок и автосервисов."
       breadcrumbLabel="Условия"
+      pathKey="terms"
       showCta={false}
     >
       <article className="marketing-legal-article">

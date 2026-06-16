@@ -14,15 +14,19 @@ import {
 
 import { ProActivationCelebration, ProActivationPhase } from "@/components/billing/pro-activation-celebration";
 import { ProPaywallDialog } from "@/components/billing/pro-paywall-dialog";
+import { useToast } from "@/components/ui/toast-provider";
 import { CompanySubscription, isProSubscription } from "@/domain/billing";
 import { useCompanySubscription } from "@/hooks/use-company-subscription";
 import { useAuth } from "@/components/providers/auth-provider";
 import { canManageBilling } from "@/lib/billing/access";
+import { claimPendingBillingIntent } from "@/lib/billing/claim-pending-billing-intent";
 import { tryClaimPendingMarketingCheckout } from "@/lib/billing/claim-marketing-checkout";
+import { refreshCompanyBillingRemote } from "@/lib/billing/internal-billing.client";
 import { ProBillingFeature } from "@/lib/billing/entitlements";
+import { readPendingBillingIntent } from "@/lib/marketing/pending-billing-intent";
 import { readPendingMarketingCheckout } from "@/lib/marketing/pending-checkout";
 import { syncCompanyBilling } from "@/infrastructure/stripe/billing-service";
-import { isStripeBillingConfigured } from "@/lib/stripe/prices";
+import { userCopy } from "@/lib/user-copy";
 
 const PRO_CHECKOUT_SESSION_KEY = "autocore-pro-checkout-pending";
 const ACTIVATION_TIMEOUT_MS = 45_000;
@@ -46,6 +50,7 @@ type BillingGateProviderProps = {
 
 export function BillingGateProvider({ companyId, children }: BillingGateProviderProps) {
   const { profile } = useAuth();
+  const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -58,6 +63,8 @@ export function BillingGateProvider({ companyId, children }: BillingGateProvider
   const [celebrationPhase, setCelebrationPhase] = useState<ProActivationPhase>("activating");
   const checkoutSyncTriggered = useRef(false);
   const pendingClaimTriggered = useRef(false);
+  const billingIntentClaimTriggered = useRef(false);
+  const billingRefreshTriggered = useRef(false);
 
   const checkoutResult = searchParams.get("checkout");
   const checkoutSessionId = searchParams.get("session_id")?.trim() || undefined;
@@ -73,6 +80,57 @@ export function BillingGateProvider({ companyId, children }: BillingGateProvider
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
+
+  useEffect(() => {
+    if (!companyId || !canClaimMarketingCheckout || billingRefreshTriggered.current) return;
+    billingRefreshTriggered.current = true;
+
+    void refreshCompanyBillingRemote(companyId)
+      .then((result) => {
+        if (result.expired !== "trial" && result.expired !== "pro") return;
+        const storageKey = `autocore-billing-expired-toast-${companyId}-${result.expired}`;
+        if (sessionStorage.getItem(storageKey) === "1") return;
+        sessionStorage.setItem(storageKey, "1");
+        toast({
+          title:
+            result.expired === "trial"
+              ? userCopy.billing.trialExpiredTitle
+              : userCopy.billing.proExpiredTitle,
+          description:
+            result.expired === "trial"
+              ? userCopy.billing.trialExpiredDescription
+              : userCopy.billing.proExpiredDescription,
+        });
+      })
+      .catch((error) => {
+        console.warn("Billing refresh skipped:", error);
+      });
+  }, [canClaimMarketingCheckout, companyId, toast]);
+
+  useEffect(() => {
+    if (!companyId || !canClaimMarketingCheckout || billingIntentClaimTriggered.current) return;
+    if (!readPendingBillingIntent()) return;
+
+    billingIntentClaimTriggered.current = true;
+
+    void claimPendingBillingIntent(companyId)
+      .then((claimed) => {
+        if (claimed === "pro") {
+          setCelebrationOpen(true);
+          setCelebrationPhase("celebrating");
+          return;
+        }
+        if (claimed === "trial") {
+          toast({
+            title: userCopy.billing.trialStartedTitle,
+            description: userCopy.billing.trialStartedDescription,
+          });
+        }
+      })
+      .catch((error) => {
+        console.warn("Billing intent claim skipped in billing gate:", error);
+      });
+  }, [canClaimMarketingCheckout, companyId, toast]);
 
   useEffect(() => {
     if (!companyId || !canClaimMarketingCheckout || pendingClaimTriggered.current) return;
@@ -156,8 +214,6 @@ export function BillingGateProvider({ companyId, children }: BillingGateProvider
     [billingManager, error, isActivating, isLoading, isPro, requirePro, subscription],
   );
 
-  const stripeReady = isStripeBillingConfigured();
-
   return (
     <BillingGateContext.Provider value={value}>
       {children}
@@ -173,7 +229,6 @@ export function BillingGateProvider({ companyId, children }: BillingGateProvider
         feature={paywallFeature}
         companyId={companyId}
         canManageBilling={billingManager}
-        stripeReady={stripeReady}
         onOpenChange={(open) => {
           if (!open) setPaywallFeature(null);
         }}

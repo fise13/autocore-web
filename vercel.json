@@ -2,6 +2,20 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "regions": ["fra1"],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.myautocore.com" }],
+      "destination": "https://myautocore.com/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.app.myautocore.com" }],
+      "destination": "https://app.myautocore.com/:path*",
+      "permanent": true
+    }
+  ],
   "functions": {
     "src/app/api/pdf/**/*.ts": {
       "maxDuration": 60,

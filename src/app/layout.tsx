@@ -16,8 +16,6 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(getAppUrl()),
-  title: "AutoCore",
-  description: "Рабочее пространство AutoCore",
 };
 
 export const viewport: Viewport = {

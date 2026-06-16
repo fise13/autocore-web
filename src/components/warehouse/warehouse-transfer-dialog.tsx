@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { AmountInput, parseGroupedNumber } from "@/components/ui/grouped-number-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { InventoryItem } from "@/domain/inventory";
+import { formatGroupedNumber } from "@/lib/money/format-number";
 import { Warehouse } from "@/domain/warehouse";
 
 type WarehouseTransferDialogProps = {
@@ -48,14 +49,14 @@ export function WarehouseTransferDialog({
   const defaultTo = warehouses.find((warehouse) => warehouse.id !== defaultFrom)?.id ?? "";
   const [fromWarehouseId, setFromWarehouseId] = useState(defaultFrom);
   const [toWarehouseId, setToWarehouseId] = useState(defaultTo);
-  const [quantity, setQuantity] = useState("1");
+  const [quantity, setQuantity] = useState(formatGroupedNumber(1));
   const [reason, setReason] = useState("Перемещение между складами");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const parsedQty = Number(quantity);
+    const parsedQty = parseGroupedNumber(quantity);
     if (!Number.isFinite(parsedQty) || parsedQty <= 0) {
       setError("Укажите корректное количество");
       return;
@@ -113,7 +114,7 @@ export function WarehouseTransferDialog({
           </div>
           <div className="grid gap-2">
             <Label htmlFor="transfer-qty">Количество</Label>
-            <Input id="transfer-qty" type="number" min={1} value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+            <AmountInput id="transfer-qty" value={quantity} onChange={setQuantity} />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="transfer-reason">Комментарий</Label>

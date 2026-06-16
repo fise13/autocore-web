@@ -20,6 +20,7 @@ export default function SecurityPage() {
         description={copy.hero.description}
         breadcrumbLabel="Безопасность"
         eyebrow="Enterprise-ready"
+        pathKey="security"
       >
         <SecurityPageContent />
       </MarketingSubpage>

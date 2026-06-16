@@ -131,8 +131,11 @@ export function buildDashboardStats(input: {
     canWarehouse: boolean;
     canEmployees: boolean;
   };
+  formatMoney?: (value: number) => string;
 }): DashboardStat[] {
   const { metrics, operations, permissions } = input;
+  const formatMoney =
+    input.formatMoney ?? ((value: number) => `${value.toLocaleString("ru-RU")} ₸`);
   const revenueDelta = computeRevenueDelta(operations);
   const stats: DashboardStat[] = [];
 
@@ -140,7 +143,7 @@ export function buildDashboardStats(input: {
     stats.push({
       key: "revenue",
       label: "Выручка сегодня",
-      value: `${metrics.todayRevenue.toLocaleString("ru-RU")} ₸`,
+      value: formatMoney(metrics.todayRevenue),
       delta: revenueDelta,
       deltaKind: "percent",
       hint: "к прошлой неделе",
@@ -148,7 +151,7 @@ export function buildDashboardStats(input: {
     stats.push({
       key: "balance",
       label: "Баланс",
-      value: `${metrics.totalBalance.toLocaleString("ru-RU")} ₸`,
+      value: formatMoney(metrics.totalBalance),
       delta: growthPercent(
         metrics.todayExpenses,
         metrics.todayRevenue - metrics.todayExpenses,
@@ -176,7 +179,7 @@ export function buildDashboardStats(input: {
       value: String(metrics.warehouseItemCount),
       delta: metrics.warehouseLowStockCount > 0 ? -metrics.warehouseLowStockCount : 0,
       deltaKind: metrics.warehouseLowStockCount > 0 ? "count" : "none",
-      hint: `${metrics.warehouseStockValue.toLocaleString("ru-RU")} ₸ остатков`,
+      hint: `${formatMoney(metrics.warehouseStockValue)} остатков`,
     });
   }
 
@@ -216,7 +219,7 @@ export function countLowStockIssues(
   return warehouseLow + motorLowStock;
 }
 
-export function formatMoney(value: number): string {
+export function formatMoneyKztFallback(value: number): string {
   return `${value.toLocaleString("ru-RU")} ₸`;
 }
 

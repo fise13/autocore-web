@@ -8,7 +8,6 @@
   "permissions": [
     "core:default",
     "shell:default",
-    "log:default",
-    "siwa:allow-get-apple-id-credential"
+    "log:default"
   ]
 }

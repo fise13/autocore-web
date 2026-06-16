@@ -20,6 +20,7 @@ export default function ProductPage() {
         description={copy.hero.description}
         breadcrumbLabel="Продукт"
         eyebrow="AutoCore"
+        pathKey="product"
       >
         <ProductPageContent />
       </MarketingSubpage>

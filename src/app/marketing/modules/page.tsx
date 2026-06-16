@@ -23,6 +23,7 @@ export default function ModulesPage() {
         description={copy.meta.description}
         breadcrumbLabel="Модули"
         eyebrow="Экосистема"
+        pathKey="modules"
       >
       <ModulesPageContent />
 

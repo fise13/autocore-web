@@ -1,12 +1,13 @@
 import "server-only";
 
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 import { ROLE_PERMISSIONS, type UserRole } from "@/domain/user";
-import { DEMO_ACCOUNT_EMAIL } from "@/lib/demo/demo-config";
+import { DEMO_ACCOUNT_EMAIL, DEMO_COMPANY_ID } from "@/lib/demo/demo-config";
+import { resetDemoWorkspaceData } from "@/lib/demo/demo-reset.server";
 import { getAdminAuth, getAdminFirestore } from "@/infrastructure/firebase/admin";
 
-export const DEMO_COMPANY_ID = "demo-autocore";
+export { DEMO_COMPANY_ID };
 
 function isUserNotFound(error: unknown): boolean {
   return (
@@ -112,11 +113,15 @@ export async function ensureDemoWorkspace(uid: string): Promise<void> {
   const billingRef = companyRef.collection("billing").doc("subscription");
   const billingSnap = await billingRef.get();
   if (!billingSnap.exists) {
+    const trialEnd = new Date();
+    trialEnd.setFullYear(trialEnd.getFullYear() + 10);
     await billingRef.set({
       plan: "pro",
       status: "trialing",
       proActive: true,
       provider: "internal",
+      trialUsed: true,
+      currentPeriodEnd: Timestamp.fromDate(trialEnd),
       updatedAt: FieldValue.serverTimestamp(),
     });
   }
@@ -124,6 +129,7 @@ export async function ensureDemoWorkspace(uid: string): Promise<void> {
 
 export async function createDemoCustomToken(): Promise<string> {
   const { uid } = await ensureDemoAuthUser();
+  await resetDemoWorkspaceData(uid);
   await ensureDemoWorkspace(uid);
   return getAdminAuth().createCustomToken(uid);
 }

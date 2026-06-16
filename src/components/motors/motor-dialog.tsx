@@ -12,10 +12,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { AmountInput, parseGroupedNumber } from "@/components/ui/grouped-number-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MotorEntity, UpsertMotorInput } from "@/domain/motor";
+import { formatGroupedNumber } from "@/lib/money/format-number";
 
 type MotorDialogProps = {
   companyId: string;
@@ -41,7 +43,7 @@ export function MotorDialog({
   const [serialCode, setSerialCode] = useState(initialMotor?.serialCode ?? "");
   const [configuration, setConfiguration] = useState(initialMotor?.configuration ?? "");
   const [notes, setNotes] = useState(initialMotor?.notes ?? "");
-  const [quantity, setQuantity] = useState(String(initialMotor?.quantity ?? 1));
+  const [quantity, setQuantity] = useState(formatGroupedNumber(initialMotor?.quantity ?? 1));
   const [transmission, setTransmission] = useState(initialMotor?.transmission ?? "");
   const [brandName, setBrandName] = useState(initialMotor?.brandName ?? "");
   const [engineCode, setEngineCode] = useState(initialMotor?.engineCode ?? "");
@@ -53,7 +55,7 @@ export function MotorDialog({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const parsedQty = Number(quantity);
+    const parsedQty = parseGroupedNumber(quantity);
     if (!serialCode.trim()) {
       setError("Номер двигателя обязателен");
       return;
@@ -109,7 +111,7 @@ export function MotorDialog({
             </div>
             <div className="space-y-1">
               <Label>Количество</Label>
-              <Input value={quantity} onChange={(e) => setQuantity(e.target.value)} inputMode="numeric" />
+              <AmountInput value={quantity} onChange={setQuantity} />
             </div>
             <div className="space-y-1">
               <Label>Бренд</Label>

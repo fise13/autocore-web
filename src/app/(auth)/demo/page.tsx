@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { DEMO_ACCOUNT_EMAIL } from "@/lib/demo/demo-config";
 import { getFirebaseAuth, isFirebaseConfigured } from "@/infrastructure/firebase/client";
 import { prepareSyncAuth } from "@/lib/auth/prepare-sync-auth";
+import { clearDemoSessionMarker } from "@/lib/demo/demo-session.client";
 import { appLoginUrl, marketingHomeUrl } from "@/lib/site-urls";
 import { userCopy } from "@/lib/user-copy";
 

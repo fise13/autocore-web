@@ -18,8 +18,8 @@ import {
   McPanelBody,
   McPanelHeader,
 } from "@/components/mission-control/dashboard/dashboard-panel";
-import { formatMoney } from "@/lib/mission-control/compute-dashboard-charts";
 import { operationTypeLabel } from "@/lib/accounting/labels";
+import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
 import { cn } from "@/lib/utils";
 import { FinancialOperation } from "@/domain/financial-operation";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,6 +31,7 @@ type McRecentOperationsProps = {
 };
 
 export function McRecentOperations({ operations, isLoading, className }: McRecentOperationsProps) {
+  const { formatMoney } = useAppDisplayCurrency();
   const recent = [...operations]
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .slice(0, 4);

@@ -36,7 +36,9 @@ export function buildMarketingMetadata(
   const ogTitle = page.ogTitle ?? page.title;
 
   return {
-    title: page.title,
+    title: {
+      absolute: page.title,
+    },
     description: page.description,
     keywords: [...keywords],
     metadataBase: new URL(marketingUrl),

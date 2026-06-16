@@ -24,9 +24,9 @@ import {
 } from "@/components/ui/select";
 import {
   buildDailyRevenueSeries,
-  formatMoney,
   growthPercent,
 } from "@/lib/mission-control/compute-dashboard-charts";
+import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
 import { cn } from "@/lib/utils";
 import { FinancialOperation } from "@/domain/financial-operation";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -47,6 +47,7 @@ type McRevenueChartProps = {
 };
 
 export function McRevenueChart({ operations, isLoading, className }: McRevenueChartProps) {
+  const { formatMoney } = useAppDisplayCurrency();
   const chartUid = useId().replace(/:/g, "");
   const gradientId = `mc-revenue-area-grad-${chartUid}`;
   const [periodDays, setPeriodDays] = useState<PeriodDays>(7);
@@ -121,9 +122,10 @@ export function McRevenueChart({ operations, isLoading, className }: McRevenueCh
             <YAxis
               axisLine={false}
               tick={{ className: "tabular-nums" }}
+              tickFormatter={(value) => formatMoney(Number(value))}
               tickLine={false}
               tickMargin={8}
-              width={36}
+              width={72}
             />
             <ChartTooltip
               content={

@@ -15,6 +15,22 @@ const nextConfig: NextConfig = {
     "/api/documents/generate": CHROMIUM_TRACE_INCLUDES,
     "/api/documents/process-queue": CHROMIUM_TRACE_INCLUDES,
   },
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.myautocore.com" }],
+        destination: "https://myautocore.com/:path*",
+        permanent: true,
+      },
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.app.myautocore.com" }],
+        destination: "https://app.myautocore.com/:path*",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default withBundleAnalyzer(nextConfig);

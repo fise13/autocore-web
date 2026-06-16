@@ -11,6 +11,7 @@ export default function PrivacyPage() {
       title="Политика конфиденциальности"
       description="Как мы обрабатываем данные пользователей и компаний авторазборок и автосервисов в сервисе AutoCore."
       breadcrumbLabel="Конфиденциальность"
+      pathKey="privacy"
       showCta={false}
     >
       <article className="marketing-legal-article">

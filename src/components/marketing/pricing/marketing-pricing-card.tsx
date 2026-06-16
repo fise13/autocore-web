@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Loader2 } from "lucide-react";
+import { Check } from "lucide-react";
 
 import type { PricingFrequency } from "@/components/marketing/pricing/pricing-frequency-toggle";
 import { AnimatedNumber } from "@/components/ui/animated-number";
@@ -21,8 +21,8 @@ type MarketingPricingCardProps = {
     yearlySave: string;
   };
   href: string;
+  onTrialSignup?: () => void;
   onProCheckout?: () => void;
-  isCheckoutLoading?: boolean;
 };
 
 function formatUsd(value: number): string {
@@ -34,8 +34,8 @@ export function MarketingPricingCard({
   frequency,
   billingCopy,
   href,
+  onTrialSignup,
   onProCheckout,
-  isCheckoutLoading = false,
 }: MarketingPricingCardProps) {
   const isSubscription = plan.billing === "subscription";
   const isFree = plan.billing === "free";
@@ -121,24 +121,16 @@ export function MarketingPricingCard({
         className={cn("mt-auto w-full", isCustom && "marketing-pricing-card-cta-enterprise")}
         variant={plan.highlighted ? "default" : "outline"}
         size="lg"
-        disabled={isCheckoutLoading}
-        onClick={onProCheckout}
+        onClick={onProCheckout ?? onTrialSignup}
         render={
-          onProCheckout ? undefined : isCustom ? (
+          onProCheckout || onTrialSignup ? undefined : isCustom ? (
             <a href={href} />
           ) : (
             <Link href={href} />
           )
         }
       >
-        {isCheckoutLoading ? (
-          <>
-            <Loader2 className="animate-spin" data-icon="inline-start" aria-hidden />
-            Переход к оплате…
-          </>
-        ) : (
-          plan.cta
-        )}
+        {plan.cta}
       </Button>
     </article>
   );

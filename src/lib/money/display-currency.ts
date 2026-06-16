@@ -49,11 +49,21 @@ export function appDisplayCurrencyOption(currency: AppDisplayCurrency): AppDispl
 
 export function formatAppMoney(value: number, currency: AppDisplayCurrency = "KZT"): string {
   const option = appDisplayCurrencyOption(currency);
+  const fractionDigits = currency === "USD" && Math.abs(value) < 1000 ? 2 : 0;
   return new Intl.NumberFormat(option.locale, {
     style: "currency",
     currency: option.currency,
-    maximumFractionDigits: 0,
+    maximumFractionDigits: fractionDigits,
+    minimumFractionDigits: fractionDigits,
   }).format(value);
+}
+
+export function formatAppMoneyExample(
+  amountInBase: number,
+  currency: AppDisplayCurrency,
+  convert: (value: number) => number,
+): string {
+  return formatAppMoney(convert(amountInBase), currency);
 }
 
 /** Marketing site always uses USD. */

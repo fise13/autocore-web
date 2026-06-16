@@ -35,6 +35,7 @@ export default function ContactPage() {
         description={copy.hero.description}
         breadcrumbLabel="Контакты"
         eyebrow="Контакты"
+        pathKey="contact"
       >
         <div className="marketing-channel-grid">
         {copy.channels.map((channel, i) => {

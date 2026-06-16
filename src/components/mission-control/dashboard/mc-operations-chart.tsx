@@ -14,7 +14,8 @@ import {
   McPanelBody,
   McPanelHeader,
 } from "@/components/mission-control/dashboard/dashboard-panel";
-import { buildIncomeExpenseSeries, formatMoney } from "@/lib/mission-control/compute-dashboard-charts";
+import { buildIncomeExpenseSeries } from "@/lib/mission-control/compute-dashboard-charts";
+import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
 import { cn } from "@/lib/utils";
 import { FinancialOperation } from "@/domain/financial-operation";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -46,6 +47,7 @@ type McOperationsChartProps = {
 };
 
 export function McOperationsChart({ operations, isLoading, className }: McOperationsChartProps) {
+  const { formatMoney } = useAppDisplayCurrency();
   const chartRows = buildIncomeExpenseSeries(operations, VISIBLE_DAYS);
 
   if (isLoading) {

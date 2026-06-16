@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useBillingActions } from "@/hooks/use-billing-actions";
 import { formatNextBillingDate } from "@/lib/billing/format-renewal";
 import { cn } from "@/lib/utils";
-import { isStripeBillingConfigured, StripeBillingInterval } from "@/lib/stripe/prices";
+import { StripeBillingInterval } from "@/lib/stripe/prices";
 import { userCopy } from "@/lib/user-copy";
 
 type PlanComparisonTableProps = {
@@ -36,7 +36,6 @@ export function PlanComparisonTable({
     syncOnPortalReturn: false,
   });
   const [interval, setInterval] = useState<StripeBillingInterval>("monthly");
-  const stripeReady = isStripeBillingConfigured();
   const renewalDate = formatNextBillingDate(subscription?.currentPeriodEnd);
   const rows = userCopy.billing.planComparison.rows;
   const priceCopy =
@@ -149,11 +148,10 @@ export function PlanComparisonTable({
                         {userCopy.billing.nextChargeLabel}:{" "}
                         {renewalDate === "—" ? userCopy.billing.nextChargeUnknown : renewalDate}
                       </p>
-                      {canManageBilling && stripeReady ? (
+                      {canManageBilling ? (
                         <AnimatedUpgradeCta
                           animated={false}
                           variant="outline"
-                          pending={pending === "portal"}
                           disabled={pending !== null || isLoading}
                           onClick={() => void openPortal()}
                         >
@@ -161,10 +159,9 @@ export function PlanComparisonTable({
                         </AnimatedUpgradeCta>
                       ) : null}
                     </>
-                  ) : canManageBilling && stripeReady ? (
+                  ) : canManageBilling ? (
                     <AnimatedUpgradeCta
                       animated
-                      pending={pending === interval}
                       disabled={pending !== null || isLoading}
                       onClick={() => void checkout(interval)}
                     >
@@ -181,9 +178,6 @@ export function PlanComparisonTable({
       </div>
 
       {error ? <p className="border-t px-4 py-2 text-sm text-destructive">{error}</p> : null}
-      {!stripeReady && canManageBilling ? (
-        <p className="border-t px-4 py-2 text-xs text-muted-foreground">{userCopy.billing.notConfigured}</p>
-      ) : null}
       <p className="border-t px-4 py-2 text-xs text-muted-foreground">{userCopy.billing.paywallFooter}</p>
     </div>
   );

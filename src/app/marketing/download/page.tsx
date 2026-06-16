@@ -31,6 +31,7 @@ export default function DownloadPage() {
         description="Нативное приложение для macOS и Windows — склад, наряды и документы работают офлайн, синхронизация с облаком в фоне."
         breadcrumbLabel="Скачать"
         eyebrow="Desktop"
+        pathKey="download"
       >
         <div className="marketing-channel-card is-featured mx-auto max-w-2xl">
           <span className="marketing-channel-icon" aria-hidden>

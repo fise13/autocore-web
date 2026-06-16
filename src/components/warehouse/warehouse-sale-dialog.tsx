@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { AmountInput, parseGroupedNumber } from "@/components/ui/grouped-number-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { InventoryItem } from "@/domain/inventory";
 import { OperationAccount, PaymentMethod } from "@/domain/financial-operation";
 import { operationAccountLabel, paymentMethodLabel } from "@/lib/accounting/labels";
+import { formatGroupedNumber } from "@/lib/money/format-number";
 
 type WarehouseSaleDialogProps = {
   item: InventoryItem | null;
@@ -44,7 +45,7 @@ export function WarehouseSaleDialog({
   onOpenChange,
   onConfirm,
 }: WarehouseSaleDialogProps) {
-  const [quantity, setQuantity] = useState("1");
+  const [quantity, setQuantity] = useState(formatGroupedNumber(1));
   const [amount, setAmount] = useState("");
   const [account, setAccount] = useState<OperationAccount>("cashbox");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
@@ -55,8 +56,8 @@ export function WarehouseSaleDialog({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!item) return;
-    const parsedQty = Number(quantity);
-    const parsedAmount = Number(amount);
+    const parsedQty = parseGroupedNumber(quantity);
+    const parsedAmount = parseGroupedNumber(amount);
     if (!Number.isFinite(parsedQty) || parsedQty <= 0) {
       setError("Укажите корректное количество");
       return;
@@ -95,23 +96,19 @@ export function WarehouseSaleDialog({
         <form onSubmit={submit} className="grid gap-4">
           <div className="grid gap-2">
             <Label htmlFor="sale-qty">Количество</Label>
-            <Input
+            <AmountInput
               id="sale-qty"
-              type="number"
-              min={1}
               value={quantity}
-              onChange={(event) => setQuantity(event.target.value)}
+              onChange={setQuantity}
             />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="sale-amount">Сумма</Label>
-            <Input
+            <AmountInput
               id="sale-amount"
-              type="number"
-              min={0}
               value={amount}
-              onChange={(event) => setAmount(event.target.value)}
-              placeholder={item?.sellPrice ? String(item.sellPrice) : "0"}
+              onChange={setAmount}
+              placeholder={item?.sellPrice ? formatGroupedNumber(item.sellPrice) : "0"}
             />
           </div>
           <div className="grid gap-2">

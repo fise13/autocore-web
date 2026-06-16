@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { AmountInput, parseGroupedNumber } from "@/components/ui/grouped-number-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -26,6 +26,7 @@ import {
   operationAccountLabel,
   paymentMethodLabel,
 } from "@/lib/accounting/labels";
+import { formatGroupedNumber } from "@/lib/money/format-number";
 
 export type SellFinancialPayload = {
   amount: number;
@@ -59,14 +60,14 @@ function SellFinancialDialogForm({
   onCancel: () => void;
   onConfirm: (payload: SellFinancialPayload) => Promise<void>;
 }) {
-  const [amount, setAmount] = useState("0");
+  const [amount, setAmount] = useState(formatGroupedNumber(0));
   const [account, setAccount] = useState<OperationAccount>("cashbox");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [comment, setComment] = useState(defaultComment);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const parsedAmount = useMemo(() => Number(amount), [amount]);
+  const parsedAmount = useMemo(() => parseGroupedNumber(amount), [amount]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -101,7 +102,7 @@ function SellFinancialDialogForm({
       <form className="space-y-4" onSubmit={submit}>
         <div className="space-y-1">
           <Label>Сумма</Label>
-          <Input value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" />
+          <AmountInput value={amount} onChange={setAmount} />
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">

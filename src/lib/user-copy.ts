@@ -80,6 +80,13 @@ export const userCopy = {
       "Общее рабочее пространство уже занято. Присоединитесь по коду приглашения или создайте новую команду.",
   },
 
+  desktop: {
+    downloadUnavailableTitle: "Установщик пока недоступен",
+    macUnavailable: "Сборка для macOS ещё не опубликована. Напишите в поддержку — пришлём ссылку.",
+    windowsUnavailable:
+      "Сборка для Windows готовится. Напишите в поддержку — пришлём установщик, как только он будет готов.",
+  },
+
   billing: {
     title: "Подписка",
     description: "Тариф компании для облака, экспорта и команды.",
@@ -94,15 +101,26 @@ export const userCopy = {
     manageButton: "Управлять подпиской",
     checkoutError: "Не удалось открыть оплату Stripe",
     checkoutUnavailable: "Сервис оплаты временно недоступен. Попробуйте позже или обратитесь в поддержку.",
+    paymentUnavailableTitle: "Оплата пока недоступна",
+    paymentUnavailable: "Напишите в поддержку — поможем оформить подписку.",
     stripeNotConfigured: "Оплата временно недоступна. Обратитесь в поддержку.",
     notConfigured: "Stripe не настроен. Добавьте Price ID в .env.local.",
     proActiveHint: "Pro активен — доступны облако, экспорт и команда.",
     freeActiveHint: "Free — базовый доступ. Pro открывает облако и команду.",
+    trialingHint: (date: string) => `Пробный Pro до ${date}`,
+    trialStartedTitle: "Пробный Pro активирован",
+    trialStartedDescription: "14 дней полного доступа без привязки карты.",
+    trialExpiredTitle: "Пробный период завершён",
+    trialExpiredDescription:
+      "Pro доступ отключён. Оформите подписку в настройках, чтобы продолжить пользоваться облаком и командой.",
+    proExpiredTitle: "Подписка Pro завершена",
+    proExpiredDescription:
+      "Срок Pro истёк. Оформите подписку в настройках, чтобы вернуть облако и команду.",
     viewPlans: "Выбрать тариф",
     openSettings: "Открыть подписку",
     askAdmin: "Обратитесь к владельцу или администратору компании для оформления Pro.",
     paywallTitle: "Нужен тариф Pro",
-    paywallFooter: "Безопасная оплата через Stripe · отмена в любой момент",
+    paywallFooter: "Оформление подписки — через поддержку",
     nextChargeLabel: "Следующее списание",
     nextChargeUnknown: "Дата списания появится после подтверждения оплаты",
     planComparison: {
@@ -155,7 +173,7 @@ export const userCopy = {
     ],
     proActivation: {
       activatingTitle: "Активируем Pro…",
-      activatingHint: "Подтверждаем оплату — это займёт несколько секунд.",
+      activatingHint: "Подключаем Pro — это займёт несколько секунд.",
       celebrationTitle: "Добро пожаловать в Pro",
       celebrationSubtitle: "Облако, экспорт и команда — всё уже доступно вашей компании.",
       startButton: "Начать работу",

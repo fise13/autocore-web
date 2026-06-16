@@ -21,7 +21,6 @@ import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { formatNextBillingDate } from "@/lib/billing/format-renewal";
 import { canViewEmployees } from "@/lib/auth/permissions";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
-import { isStripeBillingConfigured } from "@/lib/stripe/prices";
 import { userCopy } from "@/lib/user-copy";
 
 type CompanySettingsPanelProps = {
@@ -53,7 +52,6 @@ export function CompanySettingsPanel({
   const [companyNameDraft, setCompanyNameDraft] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [showPlans, setShowPlans] = useState(showPlansInitially);
-  const stripeReady = isStripeBillingConfigured();
   const renewalDate = formatNextBillingDate(subscription?.currentPeriodEnd);
   const canViewTeam = canViewEmployees(profile) && isPro;
 
@@ -141,16 +139,28 @@ export function CompanySettingsPanel({
                 {subscription?.status === "past_due" ? (
                   <Badge variant="destructive">{userCopy.billing.pastDue}</Badge>
                 ) : null}
+                {subscription?.status === "trialing" ? (
+                  <Badge variant="secondary">Пробный период</Badge>
+                ) : null}
                 {isPro ? (
                   <>
+                    {subscription?.status !== "trialing" ? (
+                      <>
+                        <span>
+                          {userCopy.billing.planComparison.billingInterval}:{" "}
+                          {billingIntervalLabel(subscription?.billingInterval)}
+                        </span>
+                        <span>·</span>
+                      </>
+                    ) : null}
                     <span>
-                      {userCopy.billing.planComparison.billingInterval}:{" "}
-                      {billingIntervalLabel(subscription?.billingInterval)}
-                    </span>
-                    <span>·</span>
-                    <span>
-                      {userCopy.billing.nextChargeLabel}:{" "}
-                      {renewalDate === "—" ? userCopy.billing.nextChargeUnknown : renewalDate}
+                      {subscription?.status === "trialing"
+                        ? userCopy.billing.trialingHint(
+                            renewalDate === "—" ? "скоро" : renewalDate,
+                          )
+                        : `${userCopy.billing.nextChargeLabel}: ${
+                            renewalDate === "—" ? userCopy.billing.nextChargeUnknown : renewalDate
+                          }`}
                     </span>
                   </>
                 ) : (
@@ -169,14 +179,14 @@ export function CompanySettingsPanel({
                   {showPlans ? userCopy.billing.planComparison.hidePlans : userCopy.billing.viewPlans}
                 </Button>
               )}
-              {isPro && canManageBilling && stripeReady ? (
+              {isPro && canManageBilling ? (
                 <Button
                   variant="outline"
                   size="sm"
                   disabled={pending !== null}
                   onClick={() => void openPortal()}
                 >
-                  {pending === "portal" ? <Loader2 className="size-4 animate-spin" /> : null}
+                  {pending === "sync" ? <Loader2 className="size-4 animate-spin" /> : null}
                   {userCopy.billing.manageButton}
                 </Button>
               ) : null}

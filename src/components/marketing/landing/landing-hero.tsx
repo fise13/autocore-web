@@ -7,10 +7,13 @@ import { ArrowRight } from "lucide-react";
 import { useRef } from "react";
 
 import { landingDemoAnchor, landingPageContent } from "@/components/marketing/content/landing-page-content";
+import { DesktopDownloadButtons } from "@/components/marketing/desktop-download-buttons";
 import { LandingHeroAppShot } from "@/components/marketing/landing/landing-hero-app-shot";
 import { useGsapSplitHero } from "@/components/marketing/motion/use-gsap-reveal";
 import { usePrefersReducedMotion } from "@/components/marketing/motion/use-landing-gsap";
 import { Button } from "@/components/ui/button";
+import { storePendingBillingIntent } from "@/lib/marketing/pending-billing-intent";
+import { marketingTrialSignupUrl } from "@/lib/marketing/trial-signup-url";
 import { appDemoUrl } from "@/lib/site-urls";
 
 const copy = landingPageContent.hero;
@@ -43,7 +46,8 @@ export function LandingHero() {
         <div className="landing-hero-copy">
           <Link
             data-hero-fade
-            href={appDemoUrl()}
+            href={marketingTrialSignupUrl()}
+            onClick={() => storePendingBillingIntent({ type: "trial" })}
             className="landing-hero-announcement group"
           >
             <span className="landing-hero-announcement-tag">{copy.announcementTag}</span>
@@ -76,6 +80,10 @@ export function LandingHero() {
             <Button variant="outline" size="lg" render={<Link href={landingDemoAnchor} />}>
               {copy.ctaSecondary}
             </Button>
+          </div>
+
+          <div data-hero-fade className="landing-hero-downloads">
+            <DesktopDownloadButtons size="lg" />
           </div>
         </div>
 

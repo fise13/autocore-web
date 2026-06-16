@@ -22,7 +22,6 @@ type ProPaywallDialogProps = {
   feature: ProBillingFeature | null;
   companyId: string;
   canManageBilling: boolean;
-  stripeReady: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
@@ -31,7 +30,6 @@ export function ProPaywallDialog({
   feature,
   companyId,
   canManageBilling,
-  stripeReady,
   onOpenChange,
 }: ProPaywallDialogProps) {
   const paywall = feature ? userCopy.billing.paywall[feature] : null;
@@ -57,7 +55,7 @@ export function ProPaywallDialog({
             <DialogDescription>{paywall?.description ?? userCopy.billing.description}</DialogDescription>
           </DialogHeader>
 
-          {canManageBilling && stripeReady ? (
+          {canManageBilling ? (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
