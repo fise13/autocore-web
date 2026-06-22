@@ -9,15 +9,16 @@ import { ExcelSheetData } from "@/lib/motors/excel-types";
 
 import { duplicateMotorRows, enrichMotorRowsWithDuplicates } from "./duplicate-detector";
 import {
-  applyMagicMotorDefaults,
   isMotorQuickImportReady,
   magicEnhanceMotorRows,
 } from "./magic-import";
+import { prepareMagicImportRowsForCommit } from "./import-row-integrity";
 import { preprocessMotorSheets, normalizeSerial } from "./preprocessor";
 import {
   buildSheetMappingState,
   mergeAiSheetMapping,
 } from "./sheet-mapper";
+import { finalizeSheetMappings, rebalanceEmptyEngineSheets } from "./sheet-recovery";
 import {
   MotorImportPreviewResult,
   MotorImportPreviewRow,
@@ -56,7 +57,8 @@ function buildEnginePreviewRows(
 
     const parsed = buildEngineRowsFromSheet(sheet, mapping.config, mapping.columnMapping);
     parsed.forEach((row, index) => {
-      const rowKey = `${mapping.config.id}:${normalizeSerial(row.serialCode)}:${index}`;
+      const rowKey = `${mapping.config.id}:${normalizeSerial(row.serialCode) || `row-${index}`}:${index}`;
+      const missingSerial = !row.serialCode.trim();
       rows.push({
         ...row,
         rowKey,
@@ -64,10 +66,12 @@ function buildEnginePreviewRows(
         sheetConfigId: mapping.config.id,
         importType: "engines",
         action: "create",
-        summary: "Создаст новый мотор",
+        summary: missingSerial ? "Импорт с автономером" : "Создаст новый мотор",
         confidence: mapping.confidence,
         errors: [],
-        warnings: [...mapping.warnings],
+        warnings: missingSerial
+          ? [...mapping.warnings, "Серийник не найден в строке — будет импортирован с автономером"]
+          : [...mapping.warnings],
         selected: true,
       });
     });
@@ -157,6 +161,8 @@ export async function runMotorImportPreviewPipeline(
     }
   }
 
+  sheetMappings = finalizeSheetMappings(sheets, sheetMappings, existingCategoryNames);
+
   emit(options.onProgress, {
     phase: "preview",
     current: 65,
@@ -166,21 +172,32 @@ export async function runMotorImportPreviewPipeline(
   });
 
   let engineRows = buildEnginePreviewRows(sheets, sheetMappings);
+  sheetMappings = rebalanceEmptyEngineSheets(
+    sheets,
+    sheetMappings,
+    engineRows,
+    existingCategoryNames,
+  );
+  engineRows = buildEnginePreviewRows(sheets, sheetMappings);
 
   if (useMagicImport && engineRows.length > 0) {
     engineRows = await magicEnhanceMotorRows(options.companyId, engineRows, {
       onProgress: options.onProgress,
     });
-    engineRows = applyMagicMotorDefaults(engineRows);
   }
 
   engineRows = enrichMotorRowsWithDuplicates(engineRows, options.existingMotors);
-  engineRows = validateMotorPreviewRows(engineRows);
+
+  if (useMagicImport) {
+    engineRows = prepareMagicImportRowsForCommit(engineRows);
+  } else {
+    engineRows = validateMotorPreviewRows(engineRows);
+  }
   const specificSheets = buildSpecificPreview(sheets, sheetMappings);
 
   const stats = {
     totalEngineRows: engineRows.length,
-    validEngineRows: engineRows.filter((row) => row.errors.length === 0).length,
+    validEngineRows: engineRows.filter((row) => row.selected).length,
     duplicates: duplicateMotorRows(engineRows).length,
     errors: engineRows.filter((row) => row.errors.length > 0).length,
     warnings: engineRows.filter((row) => row.warnings.length > 0).length,

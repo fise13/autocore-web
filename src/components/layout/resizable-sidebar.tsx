@@ -4,6 +4,7 @@ import { ReactNode, useCallback, useEffect, useRef } from "react";
 
 import {
   SIDEBAR_COLLAPSED_WIDTH,
+  SIDEBAR_EDIT_MIN_WIDTH,
   SIDEBAR_MIN_WIDTH,
 } from "@/hooks/use-sidebar-layout";
 import type { SidebarPosition } from "@/lib/navigation/sidebar-customization";
@@ -14,6 +15,7 @@ type ResizableSidebarProps = {
   collapsed: boolean;
   width: number;
   position?: SidebarPosition;
+  isEditing?: boolean;
   onWidthChange: (width: number) => void;
 };
 
@@ -22,6 +24,7 @@ export function ResizableSidebar({
   collapsed,
   width,
   position = "left",
+  isEditing = false,
   onWidthChange,
 }: ResizableSidebarProps) {
   const draggingRef = useRef(false);
@@ -30,7 +33,9 @@ export function ResizableSidebar({
   const onPointerMoveRef = useRef<(event: PointerEvent) => void>(() => {});
   const stopDraggingRef = useRef<() => void>(() => {});
 
-  const effectiveWidth = collapsed ? SIDEBAR_COLLAPSED_WIDTH : width;
+  const minWidth = isEditing ? SIDEBAR_EDIT_MIN_WIDTH : SIDEBAR_MIN_WIDTH;
+  const clampedWidth = Math.max(width, minWidth);
+  const effectiveWidth = collapsed ? SIDEBAR_COLLAPSED_WIDTH : clampedWidth;
 
   const onPointerMove = useCallback(
     (event: PointerEvent) => {
@@ -75,16 +80,24 @@ export function ResizableSidebar({
   return (
     <aside
       data-collapsed={collapsed ? "true" : "false"}
+      data-editing={isEditing ? "true" : "false"}
       className={cn(
         "app-sidebar-shell relative hidden h-full shrink-0 overflow-hidden md:flex md:flex-col",
-        "transition-[width] duration-200 ease-linear motion-reduce:transition-none",
+        isEditing
+          ? "transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+          : "transition-[width] duration-200 ease-linear motion-reduce:transition-none",
         position === "right" ? "border-l border-sidebar-border" : "border-r border-sidebar-border",
       )}
       style={{ width: effectiveWidth }}
     >
       <div
-        className="flex h-full flex-col bg-sidebar transition-[width] duration-200 ease-linear motion-reduce:transition-none"
-        style={{ width: collapsed ? SIDEBAR_COLLAPSED_WIDTH : Math.max(width, SIDEBAR_MIN_WIDTH) }}
+        className={cn(
+          "flex h-full flex-col bg-sidebar motion-reduce:transition-none",
+          isEditing
+            ? "transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+            : "transition-[width] duration-200 ease-linear",
+        )}
+        style={{ width: collapsed ? SIDEBAR_COLLAPSED_WIDTH : clampedWidth }}
       >
         {children}
       </div>

@@ -1,18 +1,25 @@
+import { SpecificColumnDef } from "@/domain/specific-category";
 import {
   MOTOR_GRID_BASE_HEADER_HEIGHT,
   MOTOR_GRID_BASE_ROW_HEIGHT,
   MOTOR_GRID_COLUMN_WIDTHS,
   scaleMotorGridDimension,
 } from "@/lib/motor-grid-layout";
-import { GridCellAddress, GridColumnDefinition } from "@/lib/grid/grid-types";
-import {
-  buildSpecificHeaderMapping,
-  specificSlotTitle,
-  SpecificHeaderMapping,
-} from "@/lib/specific/specific-header-mapping";
-import { SpecificRecordEntity } from "@/infrastructure/firestore/specific-category-repository";
+import { GridCellAddress, GridColumnDefinition, GridColumnId } from "@/lib/grid/grid-types";
+import { SpecificHeaderMapping } from "@/lib/specific/specific-header-mapping";
+import { schemaToHeaderMapping } from "@/lib/specific/specific-category-schema";
 
-const SLOT_COLUMN_IDS = [
+const CANONICAL_WIDTHS = [
+  MOTOR_GRID_COLUMN_WIDTHS.serialCode,
+  MOTOR_GRID_COLUMN_WIDTHS.configuration,
+  MOTOR_GRID_COLUMN_WIDTHS.notes,
+  MOTOR_GRID_COLUMN_WIDTHS.quantity,
+  MOTOR_GRID_COLUMN_WIDTHS.transmission,
+  MOTOR_GRID_COLUMN_WIDTHS.arrivalDate,
+  MOTOR_GRID_COLUMN_WIDTHS.soldDate,
+] as const;
+
+const CANONICAL_COLUMN_IDS = [
   "serialCode",
   "configuration",
   "notes",
@@ -20,13 +27,37 @@ const SLOT_COLUMN_IDS = [
   "transmission",
   "arrivalDate",
   "soldDate",
-] as const;
+] as const satisfies readonly GridColumnId[];
 
-export function buildSpecificMotorGridLayout(
-  records: SpecificRecordEntity[],
-  zoom: number,
-  mapping: SpecificHeaderMapping = buildSpecificHeaderMapping(records),
-) {
+function columnGridId(column: SpecificColumnDef, index: number): GridColumnId {
+  if (column.kind === "canonical" && column.slotIndex != null) {
+    return CANONICAL_COLUMN_IDS[column.slotIndex] ?? `col-${index}`;
+  }
+  return `col-${index}`;
+}
+
+function columnWidth(column: SpecificColumnDef, index: number): number {
+  if (column.width) return column.width;
+  if (column.kind === "canonical" && column.slotIndex != null) {
+    return CANONICAL_WIDTHS[column.slotIndex] ?? MOTOR_GRID_COLUMN_WIDTHS.notes;
+  }
+  return index === 0
+    ? MOTOR_GRID_COLUMN_WIDTHS.serialCode
+    : MOTOR_GRID_COLUMN_WIDTHS.notes;
+}
+
+function columnAlign(column: SpecificColumnDef, index: number): "left" | "center" {
+  if (column.kind === "canonical") {
+    if (column.slotIndex === 3 || (column.slotIndex != null && column.slotIndex >= 5)) {
+      return "center";
+    }
+  }
+  return index === 3 ? "center" : "left";
+}
+
+export function buildSpecificMotorGridLayout(columnSchema: SpecificColumnDef[], zoom: number) {
+  const mapping: SpecificHeaderMapping = schemaToHeaderMapping(columnSchema);
+
   const columns: GridColumnDefinition[] = [
     {
       id: "rowNumber",
@@ -35,35 +66,20 @@ export function buildSpecificMotorGridLayout(
       editable: false,
       align: "center",
     },
-    ...Array.from({ length: 7 }, (_, slotIndex) => ({
-      id: SLOT_COLUMN_IDS[slotIndex],
-      title: specificSlotTitle(mapping, slotIndex),
-      width: scaleMotorGridDimension(
-        slotIndex === 0
-          ? MOTOR_GRID_COLUMN_WIDTHS.serialCode
-          : slotIndex === 1
-            ? MOTOR_GRID_COLUMN_WIDTHS.configuration
-            : slotIndex === 2
-              ? MOTOR_GRID_COLUMN_WIDTHS.notes
-              : slotIndex === 3
-                ? MOTOR_GRID_COLUMN_WIDTHS.quantity
-                : slotIndex === 4
-                  ? MOTOR_GRID_COLUMN_WIDTHS.transmission
-                  : slotIndex === 5
-                    ? MOTOR_GRID_COLUMN_WIDTHS.arrivalDate
-                    : MOTOR_GRID_COLUMN_WIDTHS.soldDate,
-        zoom,
-      ),
-      editable: slotIndex !== 6,
-      align: slotIndex === 3 || slotIndex >= 5 ? ("center" as const) : ("left" as const),
-      modelField: mapping.slotKeys[slotIndex] ?? SLOT_COLUMN_IDS[slotIndex],
+    ...columnSchema.map((column, index) => ({
+      id: columnGridId(column, index),
+      title: column.title,
+      width: scaleMotorGridDimension(columnWidth(column, index), zoom),
+      editable: column.editable !== false,
+      align: columnAlign(column, index),
+      modelField: column.key,
     })),
     {
       id: "action",
       title: "",
       width: scaleMotorGridDimension(MOTOR_GRID_COLUMN_WIDTHS.action, zoom),
       editable: false,
-      align: "center",
+      align: "center" as const,
     },
   ];
 
@@ -83,6 +99,9 @@ export function buildSpecificMotorGridLayout(
     totalWidth: cursor,
     xOffsets,
     mapping,
+    columnSchema,
+    dataColumnCount: columnSchema.length,
+    actionColumn: columnSchema.length + 1,
   };
 }
 
@@ -97,4 +116,17 @@ export function specificCellFrame(
     width: layout.columns[cell.column]?.width ?? 0,
     height: layout.rowHeight,
   };
+}
+
+export function specificSchemaColumnAt(layout: ReturnType<typeof buildSpecificMotorGridLayout>, column: number) {
+  if (column <= 0 || column > layout.dataColumnCount) return null;
+  return layout.columnSchema[column - 1] ?? null;
+}
+
+export function isSpecificSchemaColumnEditable(
+  layout: ReturnType<typeof buildSpecificMotorGridLayout>,
+  column: number,
+): boolean {
+  const col = specificSchemaColumnAt(layout, column);
+  return col != null && col.editable !== false;
 }

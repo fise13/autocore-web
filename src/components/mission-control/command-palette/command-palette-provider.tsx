@@ -27,6 +27,7 @@ import {
   Wrench,
 } from "lucide-react";
 
+import { useWorkspace } from "@/components/layout/workspace-context";
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -74,6 +75,7 @@ type CommandPaletteProviderProps = {
 
 export function CommandPaletteProvider({ children }: CommandPaletteProviderProps) {
   const router = useRouter();
+  const workspace = useWorkspace();
   const { profile } = useAuth();
   const { isPro } = useBillingGate();
   const companyId = normalizeCompanyId(profile?.companyId);
@@ -81,16 +83,16 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  const data = useMissionControlData({ profile, uid, companyId, isPro });
+  const data = useMissionControlData({ profile, uid, companyId, isPro, enabled: open });
   const { clients } = useClientsRealtime(
     clientRepository,
     companyId,
-    Boolean(companyId) && can(profile, "work_orders_view"),
+    open && Boolean(companyId) && can(profile, "work_orders_view"),
   );
   const categories = useSpecificCategoriesRealtime(
     specificCategoryRepository,
     companyId,
-    Boolean(companyId) && canAccessMotorsArea(profile),
+    open && Boolean(companyId) && canAccessMotorsArea(profile),
   );
 
   useEffect(() => {
@@ -280,7 +282,12 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
                     <CommandItem
                       key={category.id}
                       icon={Folder}
-                      onSelect={() => navigate(`/specific/${category.id}`)}
+                      onSelect={() => {
+                        workspace.setSelectedSpecificCategoryId(category.id);
+                        workspace.setSelectedBrandLocalId(null);
+                        workspace.setSelectedEngineLocalId(null);
+                        navigate("/motors");
+                      }}
                     >
                       {category.name}
                     </CommandItem>

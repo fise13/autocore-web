@@ -41,6 +41,10 @@ export function useMotorsRealtime(
     queryFn: async () => [],
     enabled: Boolean(uid && companyId && enabled),
     initialData: [],
+    staleTime: Infinity,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    placeholderData: (previous) => previous ?? [],
   });
 
   useEffect(() => {

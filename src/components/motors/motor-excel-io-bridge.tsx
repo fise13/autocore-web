@@ -5,7 +5,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { MotorEntity } from "@/domain/motor";
 import { ImportExportPreferences } from "@/hooks/use-user-preferences";
-import { buildExportFilename, exportMotorsToExcelFile } from "@/lib/motors/excel-export";
 import { createActivityLogRepository } from "@/infrastructure/firestore/activity-log-repository";
 
 type MotorExcelIoBridgeProps = {
@@ -42,6 +41,7 @@ export function useMotorExcelIoBridge({
 
     setBusy("export");
     try {
+      const { buildExportFilename, exportMotorsToExcelFile } = await import("@/lib/motors/excel-export");
       const scoped = motorsRef.current.filter(
         (motor) => importExportPrefs.includeDeleted || !motor.deletedAt,
       );

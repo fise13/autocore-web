@@ -1,53 +1,34 @@
 "use client";
 
-import { useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 
-import { SpecificRecordsWorkspace } from "@/components/specific/specific-records-workspace";
-import { useAuth } from "@/components/providers/auth-provider";
+import { useWorkspace } from "@/components/layout/workspace-context";
 import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
-import { useSpecificCategoriesRealtime } from "@/hooks/use-specific-categories-realtime";
-import { normalizeCompanyId } from "@/lib/company-id";
 import { scopedCategoryDocumentId } from "@/lib/specific/specific-sync-ids";
-import { createSpecificCategoryRepository } from "@/infrastructure/firestore/specific-category-repository";
+import { useAuth } from "@/components/providers/auth-provider";
+import { normalizeCompanyId } from "@/lib/company-id";
 
-const specificCategoryRepository = createSpecificCategoryRepository();
-
-export default function SpecificCategoryPage() {
+export default function SpecificCategoryRedirectPage() {
   const params = useParams<{ categoryId: string }>();
-  const { profile, isLoading } = useAuth();
+  const router = useRouter();
+  const { profile } = useAuth();
+  const workspace = useWorkspace();
   const companyId = normalizeCompanyId(profile?.companyId);
-  const categories = useSpecificCategoriesRealtime(specificCategoryRepository, companyId);
 
-  const category = useMemo(() => {
-    const direct = categories.find((item) => item.id === params.categoryId);
-    if (direct) return direct;
+  useEffect(() => {
+    const rawId = params.categoryId;
+    const scopedLocalId = Number(rawId.split("_").pop());
+    const canonicalId =
+      Number.isFinite(scopedLocalId) && companyId
+        ? scopedCategoryDocumentId(companyId, scopedLocalId)
+        : rawId;
 
-    const scopedLocalId = Number(params.categoryId.split("_").pop());
-    if (Number.isFinite(scopedLocalId)) {
-      const byLocalId = categories.find((item) => item.localId === scopedLocalId);
-      if (byLocalId) return byLocalId;
-      if (companyId) {
-        return categories.find((item) => item.id === scopedCategoryDocumentId(companyId, scopedLocalId)) ?? null;
-      }
-    }
-    return null;
-  }, [categories, companyId, params.categoryId]);
+    workspace.setSelectedSpecificCategoryId(canonicalId);
+    workspace.setSelectedBrandLocalId(null);
+    workspace.setSelectedEngineLocalId(null);
+    router.replace("/motors");
+  }, [companyId, params.categoryId, router, workspace]);
 
-  if (isLoading) {
-    return <AppLoadingScreen message="Загрузка…" />;
-  }
-
-  if (!category) {
-    return (
-      <div className="mx-auto flex max-w-lg flex-col gap-2 py-16 text-center">
-        <h1 className="text-lg font-semibold">Категория не найдена</h1>
-        <p className="text-sm text-muted-foreground">
-          Возможно, категория ещё не загружена или была удалена.
-        </p>
-      </div>
-    );
-  }
-
-  return <SpecificRecordsWorkspace category={category} />;
+  return <AppLoadingScreen message="Загрузка…" />;
 }

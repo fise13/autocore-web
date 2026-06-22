@@ -1,40 +1,88 @@
 import {
   FirestoreError,
   collection,
+  deleteDoc,
   doc,
   getDocs,
   onSnapshot,
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where,
   writeBatch,
 } from "firebase/firestore";
 
+import {
+  SpecificCategoryEntity,
+  SpecificColumnDef,
+  SpecificRecordEntity,
+} from "@/domain/specific-category";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 import { notifyFirestoreSnapshotError } from "@/lib/firestore/snapshot-errors";
 import { createActivityLogRepository } from "@/infrastructure/firestore/activity-log-repository";
+import {
+  createDefaultColumnSchema,
+  normalizeColumnSchema,
+} from "@/lib/specific/specific-category-schema";
 import {
   isScopedCategoryDocumentId,
   scopedCategoryDocumentId,
   scopedRecordDocumentId,
 } from "@/lib/specific/specific-sync-ids";
 
-export type SpecificCategoryEntity = {
-  id: string;
-  localId: number;
-  name: string;
-  companyId: string;
-};
+export type { SpecificCategoryEntity, SpecificColumnDef, SpecificRecordEntity };
 
-export type SpecificRecordEntity = {
-  id: string;
-  categoryId: string;
-  categoryLocalId: number;
-  rowIndex: number;
-  data: Record<string, string>;
-  companyId: string;
-};
+const BATCH_SIZE = 400;
+
+function mapCategory(
+  id: string,
+  data: Record<string, unknown>,
+  companyId: string,
+): SpecificCategoryEntity {
+  const localId = readNumber(data.localId ?? data.id);
+  const rawSchema = data.columnSchema;
+  const columnSchema =
+    Array.isArray(rawSchema) && rawSchema.length > 0
+      ? normalizeColumnSchema(rawSchema as SpecificColumnDef[])
+      : [];
+
+  return {
+    id,
+    localId,
+    name: String(data.name ?? ""),
+    companyId: String(data.companyId ?? companyId),
+    columnSchema,
+  };
+}
+
+function mapRecord(
+  id: string,
+  payload: Record<string, unknown>,
+  companyId: string,
+  fallbackCategoryId?: string,
+  fallbackLocalId?: number,
+): SpecificRecordEntity {
+  const rawData = payload.data;
+  const parsedData: Record<string, string> = {};
+  if (rawData && typeof rawData === "object" && !Array.isArray(rawData)) {
+    for (const [key, value] of Object.entries(rawData as Record<string, unknown>)) {
+      parsedData[key] = value == null ? "" : String(value);
+    }
+  }
+
+  const categoryLocalId = readNumber(payload.categoryLocalId ?? fallbackLocalId);
+  return {
+    id,
+    categoryId: String(
+      payload.categoryId ?? fallbackCategoryId ?? scopedCategoryDocumentId(companyId, categoryLocalId),
+    ),
+    categoryLocalId,
+    rowIndex: readNumber(payload.rowIndex),
+    data: parsedData,
+    companyId: String(payload.companyId ?? companyId),
+  };
+}
 
 function readNumber(value: unknown): number {
   if (typeof value === "number") return value;
@@ -111,16 +159,7 @@ export function createSpecificCategoryRepository() {
       );
       const snapshot = await getDocs(categoriesQuery);
       const categories = snapshot.docs
-        .map((item) => {
-          const data = item.data() as Record<string, unknown>;
-          const localId = readNumber(data.localId ?? data.id);
-          return {
-            id: item.id,
-            localId,
-            name: String(data.name ?? ""),
-            companyId: String(data.companyId ?? companyId),
-          };
-        })
+        .map((item) => mapCategory(item.id, item.data() as Record<string, unknown>, companyId))
         .filter((item) => item.name.trim().length > 0);
       return dedupeCategories(companyId, categories);
     },
@@ -139,22 +178,172 @@ export function createSpecificCategoryRepository() {
         categoriesQuery,
         (snapshot) => {
           const categories = snapshot.docs
-            .map((item) => {
-              const data = item.data() as Record<string, unknown>;
-              const localId = readNumber(data.localId ?? data.id);
-              return {
-                id: item.id,
-                localId,
-                name: String(data.name ?? ""),
-                companyId: String(data.companyId ?? companyId),
-              };
-            })
+            .map((item) => mapCategory(item.id, item.data() as Record<string, unknown>, companyId))
             .filter((item) => item.name.trim().length > 0);
 
           onData(dedupeCategories(companyId, categories));
         },
         (error) => notifyFirestoreSnapshotError(error, onError),
       );
+    },
+
+    async createCategory(
+      companyId: string,
+      name: string,
+      existing: SpecificCategoryEntity[],
+      actorUid?: string,
+      columnSchema: SpecificColumnDef[] = createDefaultColumnSchema(),
+    ): Promise<SpecificCategoryEntity> {
+      const trimmed = name.trim();
+      if (!trimmed) throw new Error("Название листа не может быть пустым");
+
+      const duplicate = existing.find(
+        (item) => item.name.localeCompare(trimmed, "ru", { sensitivity: "accent" }) === 0,
+      );
+      if (duplicate) {
+        throw new Error(`Лист «${trimmed}» уже существует`);
+      }
+
+      const localId = nextLocalId(existing);
+      const categoryRef = doc(db, "specificCategories", scopedCategoryDocumentId(companyId, localId));
+      const payload: SpecificCategoryEntity = {
+        id: categoryRef.id,
+        localId,
+        name: trimmed,
+        companyId,
+        columnSchema: normalizeColumnSchema(columnSchema),
+      };
+
+      await setDoc(categoryRef, {
+        companyId,
+        localId,
+        name: trimmed,
+        columnSchema: payload.columnSchema,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      if (actorUid) {
+        await activity.append(companyId, {
+          actor: actorUid,
+          action: "inventory.specific_category_created",
+          target: `specificCategory:${payload.id}`,
+        });
+      }
+
+      return payload;
+    },
+
+    async updateCategory(
+      companyId: string,
+      category: SpecificCategoryEntity,
+      patch: Partial<Pick<SpecificCategoryEntity, "name" | "columnSchema">>,
+    ): Promise<SpecificCategoryEntity> {
+      const canonicalId = scopedCategoryDocumentId(companyId, category.localId);
+      const categoryRef = doc(db, "specificCategories", canonicalId);
+      const updatePayload: Record<string, unknown> = {
+        updatedAt: serverTimestamp(),
+      };
+      if (patch.name != null) updatePayload.name = patch.name.trim();
+      if (patch.columnSchema != null) {
+        updatePayload.columnSchema = normalizeColumnSchema(patch.columnSchema);
+      }
+      await updateDoc(categoryRef, updatePayload);
+
+      return {
+        ...category,
+        id: canonicalId,
+        name: patch.name?.trim() ?? category.name,
+        columnSchema: patch.columnSchema
+          ? normalizeColumnSchema(patch.columnSchema)
+          : category.columnSchema,
+      };
+    },
+
+    async deleteCategory(companyId: string, category: SpecificCategoryEntity, actorUid?: string) {
+      await this.deleteRecordsForCategory(companyId, category);
+      const canonicalId = scopedCategoryDocumentId(companyId, category.localId);
+      await deleteDoc(doc(db, "specificCategories", canonicalId));
+      if (actorUid) {
+        await activity.append(companyId, {
+          actor: actorUid,
+          action: "inventory.specific_category_deleted",
+          target: `specificCategory:${canonicalId}`,
+        });
+      }
+    },
+
+    async deleteRecord(recordId: string, actorUid?: string, companyId?: string) {
+      await deleteDoc(doc(db, "specificRecords", recordId));
+      if (actorUid && companyId) {
+        await activity.append(companyId, {
+          actor: actorUid,
+          action: "inventory.specific_record_deleted",
+          target: `specificRecord:${recordId}`,
+        });
+      }
+    },
+
+    async deleteRecordsForCategory(companyId: string, category: SpecificCategoryEntity) {
+      const localIds = [category.localId];
+      const existingQuery = query(
+        collection(db, "specificRecords"),
+        where("companyId", "==", companyId),
+        where("categoryLocalId", "in", localIds.slice(0, 30)),
+      );
+      const existingSnap = await getDocs(existingQuery);
+      for (let index = 0; index < existingSnap.docs.length; index += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        const chunk = existingSnap.docs.slice(index, index + BATCH_SIZE);
+        for (const item of chunk) {
+          batch.delete(item.ref);
+        }
+        await batch.commit();
+      }
+    },
+
+    async batchUpdateRecordDataKeys(
+      companyId: string,
+      category: SpecificCategoryEntity,
+      ops: {
+        rename?: Array<{ oldKey: string; newKey: string }>;
+        remove?: string[];
+      },
+    ) {
+      const localIds = [category.localId];
+      const existingQuery = query(
+        collection(db, "specificRecords"),
+        where("companyId", "==", companyId),
+        where("categoryLocalId", "in", localIds.slice(0, 30)),
+      );
+      const existingSnap = await getDocs(existingQuery);
+
+      for (let index = 0; index < existingSnap.docs.length; index += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        const chunk = existingSnap.docs.slice(index, index + BATCH_SIZE);
+
+        for (const item of chunk) {
+          const payload = item.data() as Record<string, unknown>;
+          const record = mapRecord(item.id, payload, companyId, category.id, category.localId);
+          let nextData = { ...record.data };
+
+          for (const rename of ops.rename ?? []) {
+            if (rename.oldKey === rename.newKey || !(rename.oldKey in nextData)) continue;
+            nextData[rename.newKey] = nextData[rename.oldKey] ?? "";
+            delete nextData[rename.oldKey];
+          }
+          for (const key of ops.remove ?? []) {
+            if (key in nextData) delete nextData[key];
+          }
+
+          batch.update(item.ref, {
+            data: nextData,
+            updatedAt: serverTimestamp(),
+          });
+        }
+
+        await batch.commit();
+      }
     },
 
     async upsertCategory(
@@ -184,29 +373,21 @@ export function createSpecificCategoryRepository() {
         return { ...match, id: canonicalId };
       }
 
-      const localId = nextLocalId(existing);
-      const categoryRef = doc(db, "specificCategories", scopedCategoryDocumentId(companyId, localId));
-      const payload: SpecificCategoryEntity = {
-        id: categoryRef.id,
-        localId,
-        name: trimmed,
-        companyId,
-      };
+      throw new Error(`Лист «${trimmed}» не найден. Создайте его в сайдбаре «Специфичные».`);
+    },
 
-      await setDoc(categoryRef, {
-        ...payload,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-      if (actorUid) {
-        await activity.append(companyId, {
-          actor: actorUid,
-          action: "inventory.specific_category_created",
-          target: `specificCategory:${payload.id}`,
-        });
-      }
-
-      return payload;
+    async findCategoryByName(
+      companyId: string,
+      name: string,
+      existing: SpecificCategoryEntity[],
+    ): Promise<SpecificCategoryEntity | null> {
+      const trimmed = name.trim();
+      const match = existing.find(
+        (item) => item.name.localeCompare(trimmed, "ru", { sensitivity: "accent" }) === 0,
+      );
+      if (!match) return null;
+      const canonicalId = scopedCategoryDocumentId(companyId, match.localId);
+      return { ...match, id: canonicalId };
     },
 
     async replaceRecordsForCategory(
@@ -341,24 +522,15 @@ export function createSpecificCategoryRepository() {
         const unsubscribe = onSnapshot(
           recordsQuery,
           (snapshot) => {
-            const records = snapshot.docs.map((item) => {
-              const payload = item.data() as Record<string, unknown>;
-              const rawData = payload.data;
-              const parsedData: Record<string, string> = {};
-              if (rawData && typeof rawData === "object" && !Array.isArray(rawData)) {
-                for (const [key, value] of Object.entries(rawData as Record<string, unknown>)) {
-                  parsedData[key] = value == null ? "" : String(value);
-                }
-              }
-              return {
-                id: item.id,
-                categoryId: String(payload.categoryId ?? scopedCategoryDocumentId(companyId, localId)),
-                categoryLocalId: readNumber(payload.categoryLocalId ?? localId),
-                rowIndex: readNumber(payload.rowIndex),
-                data: parsedData,
-                companyId: String(payload.companyId ?? companyId),
-              };
-            });
+            const records = snapshot.docs.map((item) =>
+              mapRecord(
+                item.id,
+                item.data() as Record<string, unknown>,
+                companyId,
+                scopedCategoryDocumentId(companyId, localId),
+                localId,
+              ),
+            );
             recordsByLocalId.set(localId, records);
             emit();
           },
@@ -385,24 +557,9 @@ export function createSpecificCategoryRepository() {
       return onSnapshot(
         recordsQuery,
         (snapshot) => {
-          const records = snapshot.docs.map((item) => {
-            const payload = item.data() as Record<string, unknown>;
-            const rawData = payload.data;
-            const parsedData: Record<string, string> = {};
-            if (rawData && typeof rawData === "object" && !Array.isArray(rawData)) {
-              for (const [key, value] of Object.entries(rawData as Record<string, unknown>)) {
-                parsedData[key] = value == null ? "" : String(value);
-              }
-            }
-            return {
-              id: item.id,
-              categoryId: String(payload.categoryId ?? ""),
-              categoryLocalId: readNumber(payload.categoryLocalId),
-              rowIndex: readNumber(payload.rowIndex),
-              data: parsedData,
-              companyId: String(payload.companyId ?? companyId),
-            };
-          });
+          const records = snapshot.docs.map((item) =>
+            mapRecord(item.id, item.data() as Record<string, unknown>, companyId),
+          );
           onData(records.sort((a, b) => a.rowIndex - b.rowIndex || a.id.localeCompare(b.id)));
         },
         (error) => notifyFirestoreSnapshotError(error, onError),

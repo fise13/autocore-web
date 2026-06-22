@@ -33,16 +33,23 @@ type UseMissionControlDataParams = {
   uid: string;
   companyId: string;
   isPro: boolean;
+  enabled?: boolean;
 };
 
-export function useMissionControlData({ profile, uid, companyId, isPro }: UseMissionControlDataParams) {
+export function useMissionControlData({
+  profile,
+  uid,
+  companyId,
+  isPro,
+  enabled: enabledOverride = true,
+}: UseMissionControlDataParams) {
   const canAccounting = can(profile, "accounting_view");
   const canInventory = can(profile, "inventory_view");
   const canMotors = canAccessMotorsArea(profile);
   const canWarehouse = isNavAllowed(profile, "warehouse");
   const canWorkOrders = can(profile, "work_orders_view");
   const canEmployees = isPro && canViewEmployees(profile);
-  const enabled = Boolean(uid && companyId);
+  const enabled = enabledOverride && Boolean(uid && companyId);
 
   const motorsQuery = useMotorsRealtime(motorRepository, {
     uid,

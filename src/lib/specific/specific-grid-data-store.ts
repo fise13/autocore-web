@@ -1,3 +1,4 @@
+import { SpecificColumnDef } from "@/domain/specific-category";
 import { SpecificRecordEntity } from "@/infrastructure/firestore/specific-category-repository";
 
 import { nextEmptyRowId } from "@/lib/grid/empty-row-id";
@@ -30,19 +31,18 @@ export function createEmptySpecificRow(rowIndex: number): SpecificGridRow {
   };
 }
 
-export function hasSpecificRowContent(
-  row: SpecificGridRow,
-  mapping: SpecificHeaderMapping = buildSpecificHeaderMapping([]),
-): boolean {
-  return hasSpecificMappedContent(row, mapping);
-}
-
 export function specificCellValue(
   row: SpecificGridRow,
   column: number,
   mapping: SpecificHeaderMapping,
+  schema?: SpecificColumnDef[],
 ): string {
   if (column === 0) return String(row.rowIndex || "");
+  if (schema?.length) {
+    const colDef = schema[column - 1];
+    if (!colDef) return "";
+    return row.data[colDef.key] ?? "";
+  }
   if (column >= 1 && column <= 7) {
     return specificValueForSlot(row.data, mapping, column - 1);
   }
@@ -54,13 +54,36 @@ export function applySpecificCellValue(
   column: number,
   value: string,
   mapping: SpecificHeaderMapping,
+  schema?: SpecificColumnDef[],
 ): SpecificGridRow {
-  if (column === 0 || column > 6) return row;
+  if (column === 0) return row;
+  if (schema?.length) {
+    const colDef = schema[column - 1];
+    if (!colDef || colDef.editable === false) return row;
+    const nextData = { ...row.data, [colDef.key]: value };
+    if (row.rowKind === "saved") return { ...row, data: nextData };
+    return { ...row, data: nextData };
+  }
+  if (column > 6) return row;
   const nextData = applySpecificSlotValue(row.data, mapping, column - 1, value);
   if (row.rowKind === "saved") {
     return { ...row, data: nextData };
   }
   return { ...row, data: nextData };
+}
+
+export function hasSpecificRowContent(
+  row: SpecificGridRow,
+  mapping: SpecificHeaderMapping = buildSpecificHeaderMapping([]),
+  schema?: SpecificColumnDef[],
+): boolean {
+  if (schema?.length) {
+    for (const column of schema) {
+      if ((row.data[column.key] ?? "").trim()) return true;
+    }
+    return false;
+  }
+  return hasSpecificMappedContent(row, mapping);
 }
 
 export function hasSpecificMappedContent(

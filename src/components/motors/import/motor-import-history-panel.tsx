@@ -27,6 +27,8 @@ type MotorImportHistoryPanelProps = {
 };
 
 const statusLabels: Record<MotorImportJob["status"], string> = {
+  queued: "В очереди",
+  analyzing: "Анализ",
   preview: "Предпросмотр",
   applying: "Применение",
   completed: "Завершён",
@@ -93,7 +95,7 @@ export function MotorImportHistoryPanel({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent overlayClassName="z-[100]" className="z-[100] max-w-2xl">
         <DialogHeader>
           <DialogTitle>История импортов моторов</DialogTitle>
           <DialogDescription>Последние импорты Excel с возможностью продолжить preview.</DialogDescription>

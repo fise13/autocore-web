@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyboardEvent, useMemo } from "react";
+import { KeyboardEvent, useLayoutEffect, useMemo, useRef } from "react";
 
 type GridEditorOverlayProps = {
   value: string;
@@ -25,11 +25,26 @@ export function GridEditorOverlay({
   selectAll = true,
   autocompleteMatch = null,
 }: GridEditorOverlayProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   const autocompleteSuffix = useMemo(() => {
     if (!autocompleteMatch) return "";
     if (!autocompleteMatch.toLowerCase().startsWith(value.toLowerCase())) return "";
     return autocompleteMatch.slice(value.length);
   }, [autocompleteMatch, value]);
+
+  useLayoutEffect(() => {
+    if (!autoFocus) return;
+    const node = textareaRef.current;
+    if (!node) return;
+    node.focus({ preventScroll: true });
+    if (selectAll) {
+      node.select();
+      return;
+    }
+    const cursor = node.value.length;
+    node.setSelectionRange(cursor, cursor);
+  }, [autoFocus, editorKey, selectAll]);
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Escape") {
@@ -82,14 +97,13 @@ export function GridEditorOverlay({
 
   return (
     <div
-      className="absolute z-30 overflow-hidden rounded-[2px] border-2 bg-card shadow-sm animate-autocore-fade-in origin-top-left motion-reduce:animate-none"
+      className="absolute z-30 overflow-hidden rounded-[2px] border-2 bg-card opacity-100 shadow-sm"
       style={{
         left: frame.x,
         top: frame.y,
         width: frame.width + 1,
         height: frame.height + 1,
         borderColor: "rgb(22, 163, 74)",
-        animationDuration: "180ms",
       }}
     >
       <div
@@ -102,6 +116,7 @@ export function GridEditorOverlay({
         ) : null}
       </div>
       <textarea
+        ref={textareaRef}
         key={editorKey}
         autoFocus={autoFocus}
         value={value}
@@ -117,7 +132,7 @@ export function GridEditorOverlay({
         onChange={(event) => onChange(event.target.value)}
         onBlur={() => onCommit()}
         onKeyDown={handleKeyDown}
-        className="relative h-full w-full resize-none bg-transparent px-2 py-1 text-[13px] leading-5 text-foreground outline-none"
+        className="relative z-10 h-full w-full resize-none bg-card px-2 py-1 text-[13px] leading-5 text-foreground caret-foreground outline-none"
         style={{ minHeight: frame.height + 1 }}
       />
     </div>

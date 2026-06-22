@@ -37,6 +37,9 @@ export function useRealtimeQuery<T>({
     queryFn: async () => initialData as T,
     enabled,
     initialData,
+    staleTime: Infinity,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {

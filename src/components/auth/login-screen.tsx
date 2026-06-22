@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { AtSign, ChevronLeft, Loader2 } from "lucide-react";
@@ -39,6 +39,10 @@ import {
   readBillingIntentFromSearchParams,
   storePendingBillingIntent,
 } from "@/lib/marketing/pending-billing-intent";
+import {
+  readInviteCompanyName,
+  readInviteEmail,
+} from "@/lib/invites/pending-invite";
 import { prefersReducedMotion } from "@/lib/motion/cross-route-transition";
 import { cn } from "@/lib/utils";
 import { mapAuthError, userCopy } from "@/lib/user-copy";
@@ -77,8 +81,12 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
   const [pendingAuth, setPendingAuth] = useState<PendingAuth>(null);
   const [authStepDirection, setAuthStepDirection] = useState(1);
   const [authStepAnimated, setAuthStepAnimated] = useState(false);
+  const [inviteCompanyName, setInviteCompanyName] = useState<string | null>(null);
+  const [inviteFlowActive, setInviteFlowActive] = useState(false);
+  const inviteBootstrapRef = useRef(false);
 
   const isBusy = authPhase !== "idle";
+  const isInviteFlow = inviteFlowActive || Boolean(inviteCompanyName);
   const appleSetupIssue = isAppleJsAuthMode() ? getAppleJsSetupIssue() : null;
   const isSignUp = emailMode === "signup";
   const reducedMotion = prefersReducedMotion();
@@ -112,6 +120,47 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
       storePendingBillingIntent(billingIntent);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (inviteBootstrapRef.current) return;
+    const pendingInviteEmail = readInviteEmail();
+    if (!pendingInviteEmail) return;
+    inviteBootstrapRef.current = true;
+    setInviteFlowActive(true);
+
+    const inviteEmail = pendingInviteEmail;
+    let cancelled = false;
+    async function bootstrapInviteLogin() {
+      setEmail(inviteEmail);
+      setInviteCompanyName(readInviteCompanyName());
+      setError(null);
+      setResetSent(false);
+      setAuthPhase("detecting");
+      try {
+        const methods = await resolveSignInMethodsForEmail(inviteEmail);
+        if (cancelled) return;
+        const resolved = resolveEmailSignInMode(methods);
+        setAuthStepDirection(1);
+        setAuthStepAnimated(true);
+        setEmailMode(resolved.mode);
+        setOauthProviders(resolved.oauthProviders);
+        setEmailStep(true);
+      } catch (e) {
+        if (!cancelled) {
+          setError(mapAuthError(e));
+        }
+      } finally {
+        if (!cancelled) {
+          setAuthPhase("idle");
+        }
+      }
+    }
+
+    void bootstrapInviteLogin();
+    return () => {
+      cancelled = true;
+    };
+  }, [resolveSignInMethodsForEmail]);
 
   async function runAuth(action: () => Promise<void>, provider: PendingAuth) {
     logAuthDebug("login-screen", "runAuth start", { provider });
@@ -287,12 +336,34 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
       <div className="space-y-4">
         <div className="flex flex-col space-y-1">
           <AuthJourneyReveal index={0} as="h1" className="text-2xl font-bold tracking-tight">
-            Войти или создать аккаунт
+            {isInviteFlow && inviteCompanyName
+              ? `Приглашение в ${inviteCompanyName}`
+              : "Войти или создать аккаунт"}
           </AuthJourneyReveal>
           <AuthJourneyReveal index={1} as="p" className="text-base text-muted-foreground">
-            Вход в {userCopy.appName} или регистрация новой команды.
+            {isInviteFlow
+              ? emailStep
+                ? isSignUp
+                  ? "Создайте пароль и укажите имя — email уже подставлен из приглашения."
+                  : "Введите пароль для входа — email уже подставлен из приглашения."
+                : "Загружаем данные приглашения…"
+              : `Вход в ${userCopy.appName} или регистрация новой команды.`}
           </AuthJourneyReveal>
         </div>
+
+        {isInviteFlow && emailStep ? (
+          <AuthJourneyReveal index={2}>
+            <Alert>
+              <AlertTitle>Вы приглашены в команду</AlertTitle>
+              <AlertDescription>
+                {inviteCompanyName
+                  ? `Компания «${inviteCompanyName}». `
+                  : null}
+                После входа вы автоматически присоединитесь к команде.
+              </AlertDescription>
+            </Alert>
+          </AuthJourneyReveal>
+        ) : null}
 
         {paidCheckoutPending ? (
           <AuthJourneyReveal index={2}>
@@ -493,7 +564,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                   <button
                     type="button"
                     className="text-xs text-primary underline underline-offset-4 transition-opacity hover:opacity-80"
-                    disabled={isBusy}
+                    disabled={isBusy || isInviteFlow}
                     onClick={changeEmail}
                   >
                     Назад
@@ -509,7 +580,8 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     required
-                    disabled={isBusy}
+                    disabled={isBusy || isInviteFlow}
+                    readOnly={isInviteFlow}
                   />
                   <InputGroupAddon align="inline-start">
                     <AtSign className="size-4" aria-hidden />

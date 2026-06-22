@@ -92,6 +92,20 @@ export function createDataCleanupService() {
         // collectionGroup may be unavailable for some roles; user-scoped delete still runs.
       }
 
+      const brands = await getDocs(
+        query(collection(db, "brands"), where("companyId", "==", normalizedCompanyId)),
+      );
+      for (const item of brands.docs) {
+        refs.set(item.ref.path, item.ref);
+      }
+
+      const engines = await getDocs(
+        query(collection(db, "engines"), where("companyId", "==", normalizedCompanyId)),
+      );
+      for (const item of engines.docs) {
+        refs.set(item.ref.path, item.ref);
+      }
+
       const deleted = await deleteDocsInBatches([...refs.values()]);
       await activity.append(normalizedCompanyId, {
         actor: actorId,

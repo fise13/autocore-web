@@ -3,6 +3,7 @@ import { requestAiMotorNormalizeBatch } from "@/infrastructure/openrouter/import
 
 import { MotorNormalizeBatchItem } from "./ai-schemas";
 import { coerceBrandEnginePair } from "./brand-engine-intelligence";
+import { prepareMagicImportRow } from "./import-row-integrity";
 import { MotorImportPreviewRow, MotorImportProgress } from "./types";
 
 const AI_BATCH_SIZE = 35;
@@ -164,44 +165,30 @@ export async function magicEnhanceMotorRows(
 }
 
 export function applyMagicMotorDefaults(rows: MotorImportPreviewRow[]): MotorImportPreviewRow[] {
-  return rows.map((row) => {
-    const uncertain = row.aiMeta?.warnings.some((warning) => warning.includes("не уверен"));
-    const hasSerial = Boolean(row.serialCode.trim());
-    const errors = uncertain
-      ? row.errors.filter((error) => !error.includes("проверки"))
-      : row.errors;
-
-    return {
-      ...row,
-      errors,
-      selected: hasSerial && errors.length === 0,
-      action:
-        !hasSerial || errors.length > 0
-          ? "skip"
-          : row.duplicateOfMotorId
-            ? "update"
-            : "create",
-      summary: !hasSerial
-        ? "Не удалось определить серийник"
-        : uncertain
-          ? "Импорт с пометкой — проверьте позже"
-          : row.duplicateOfMotorId
-            ? "Обновит существующий мотор"
-            : row.soldDate
-              ? "Создаст · продан"
-              : "Создаст новый мотор",
-    };
-  });
+  return rows.map(prepareMagicImportRow);
 }
 
 export function isMotorQuickImportReady(result: {
   engineRows: MotorImportPreviewRow[];
-  sheetMappings: Record<string, { config: { importType: string } }>;
+  sheetMappings: Record<string, { config: { importType: string; id: string } }>;
 }): boolean {
   const hasSpecific = Object.values(result.sheetMappings).some(
     (mapping) => mapping.config.importType === "specific",
   );
   if (hasSpecific) return false;
+
+  const engineSheets = Object.values(result.sheetMappings).filter(
+    (mapping) => mapping.config.importType === "engines",
+  );
+  if (engineSheets.length === 0) return false;
+
+  const emptyEngineSheet = engineSheets.some((mapping) => {
+    const rowsForSheet = result.engineRows.filter(
+      (row) => row.sheetConfigId === mapping.config.id,
+    );
+    return rowsForSheet.length === 0;
+  });
+  if (emptyEngineSheet) return false;
 
   const duplicates = result.engineRows.filter((row) => Boolean(row.duplicateOfMotorId)).length;
   if (duplicates > 0) return false;

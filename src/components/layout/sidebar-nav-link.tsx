@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
@@ -29,7 +30,7 @@ export type SidebarNavLinkProps = {
   animateEnter?: boolean;
 };
 
-export function SidebarNavLink({
+export const SidebarNavLink = memo(function SidebarNavLink({
   href,
   label,
   icon: Icon,
@@ -101,4 +102,4 @@ export function SidebarNavLink({
       {button}
     </motion.li>
   );
-}
+});

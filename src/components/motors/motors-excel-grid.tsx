@@ -8,6 +8,11 @@ import { softDeleteMotorUseCase } from "@/application/use-cases/soft-delete-moto
 import { upsertMotorUseCase } from "@/application/use-cases/upsert-motor";
 import { GridEditorOverlay } from "@/components/grid/grid-editor-overlay";
 import { GridFillHandle } from "@/components/grid/grid-fill-handle";
+import {
+  GridContextMenu,
+  GridContextMenuItem,
+  GridContextMenuSeparator,
+} from "@/components/grid/grid-context-menu";
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { GridZoomControl } from "@/components/motors/grid-zoom-control";
 import { MotorDocumentsDialog, MotorHistoryDialog } from "@/components/motors/motor-documents-dialog";
@@ -32,9 +37,9 @@ import { buildFillOperations } from "@/lib/grid/grid-fill-engine";
 import { buildGridLayoutMetrics, cellFrame } from "@/lib/grid/grid-layout-engine";
 import { GridMutation, GridCommandBus } from "@/lib/grid/grid-command-bus";
 import { isRedoShortcut, isUndoShortcut } from "@/lib/grid/grid-keyboard-shortcuts";
-import { resolvePointerCell } from "@/lib/grid/pointer-to-cell";
-import { useGridScrollIntoView } from "@/lib/grid/scroll-into-view";
+import { resolvePointerCellClamped } from "@/lib/grid/pointer-to-cell";
 import { useGridScrollWhileDrag } from "@/lib/grid/grid-scroll-while-drag";
+import { useGridScrollIntoView } from "@/lib/grid/scroll-into-view";
 import { handleGridRedo, handleGridUndo } from "@/lib/grid/grid-undo-redo";
 import {
   allRanges,
@@ -90,6 +95,7 @@ type EditorState = {
 type ContextMenuState = {
   x: number;
   y: number;
+  cell: GridCellAddress;
   selected: MotorEntity[];
 };
 
@@ -322,6 +328,7 @@ export function MotorsExcelGrid({
   const bodyRef = useRef<HTMLDivElement>(null);
   const commandBusRef = useRef(new GridCommandBus());
   const motorsRef = useRef(motors);
+  const companyIdRef = useRef(companyId);
   const dirtyRowsRef = useRef<Set<string>>(new Set());
   const localSaveAckRef = useRef<Set<string>>(new Set());
   const cmdADoubleTapRef = useRef(0);
@@ -336,6 +343,8 @@ export function MotorsExcelGrid({
   const fillSourceRef = useRef<GridRange | null>(null);
   const fillTargetRef = useRef<GridRange | null>(null);
   const dirtyStatusScheduledRef = useRef(false);
+  const lastDragPointerRef = useRef({ x: 0, y: 0 });
+  const onDragAutoScrollTickRef = useRef<() => void>(() => {});
 
   const rowDefaults = useMemo<MotorRowDefaults>(
     () => ({
@@ -382,6 +391,13 @@ export function MotorsExcelGrid({
   const [historyMotor, setHistoryMotor] = useState<MotorEntity | null>(null);
 
   useEffect(() => {
+    const companyChanged = companyIdRef.current !== companyId;
+    companyIdRef.current = companyId;
+
+    if (motors.length === 0 && motorsRef.current.length > 0 && !companyChanged) {
+      return;
+    }
+
     motorsRef.current = motors;
     setRows((current) =>
       reconcileRowsWithRemote(current, motors, companyId, dirtyRowsRef.current, rowDefaults),
@@ -738,9 +754,9 @@ export function MotorsExcelGrid({
       gridRef.current?.focus();
     }
 
-    function cellFromPointer(clientX: number, clientY: number): GridCellAddress | null {
+    function cellFromPointerClamped(clientX: number, clientY: number): GridCellAddress | null {
       if (!bodyRef.current) return null;
-      return resolvePointerCell({
+      return resolvePointerCellClamped({
         clientX,
         clientY,
         viewport: bodyRef.current,
@@ -752,7 +768,37 @@ export function MotorsExcelGrid({
       });
     }
 
+    function applyDragAtPointer(clientX: number, clientY: number) {
+      if (isDraggingSelectionRef.current) {
+        const cell = cellFromPointerClamped(clientX, clientY);
+        if (!cell) return;
+        setSelection((current) => {
+          const next = dragSelection(current, cell);
+          selectionRef.current = next;
+          return next;
+        });
+        ensureExpanded(cell.row);
+      }
+      if (isDraggingFillRef.current && fillSourceRef.current) {
+        const cell = cellFromPointerClamped(clientX, clientY);
+        if (!cell) return;
+        const source = fillSourceRef.current;
+        const target = normalizeRange(
+          { row: source.minRow, column: source.minColumn },
+          { row: Math.max(cell.row, source.maxRow), column: Math.max(cell.column, source.maxColumn) },
+        );
+        fillTargetRef.current = target;
+        setFillPreview(target);
+        ensureExpanded(target.maxRow);
+      }
+    }
+
+    onDragAutoScrollTickRef.current = () => {
+      applyDragAtPointer(lastDragPointerRef.current.x, lastDragPointerRef.current.y);
+    };
+
     function onPointerMove(event: PointerEvent) {
+      lastDragPointerRef.current = { x: event.clientX, y: event.clientY };
       if (pendingSelectionDragRef.current && !isDraggingSelectionRef.current) {
         const pending = pendingSelectionDragRef.current;
         const dx = Math.abs(event.clientX - pending.clientX);
@@ -764,28 +810,7 @@ export function MotorsExcelGrid({
           }
         }
       }
-      if (isDraggingSelectionRef.current) {
-        const cell = cellFromPointer(event.clientX, event.clientY);
-        if (!cell) return;
-        setSelection((current) => {
-          const next = dragSelection(current, cell);
-          selectionRef.current = next;
-          return next;
-        });
-        ensureExpanded(cell.row);
-      }
-      if (isDraggingFillRef.current && fillSourceRef.current) {
-        const cell = cellFromPointer(event.clientX, event.clientY);
-        if (!cell) return;
-        const source = fillSourceRef.current;
-        const target = normalizeRange(
-          { row: source.minRow, column: source.minColumn },
-          { row: Math.max(cell.row, source.maxRow), column: Math.max(cell.column, source.maxColumn) },
-        );
-        fillTargetRef.current = target;
-        setFillPreview(target);
-        ensureExpanded(target.maxRow);
-      }
+      applyDragAtPointer(event.clientX, event.clientY);
     }
 
     function onPointerUp() {
@@ -829,7 +854,7 @@ export function MotorsExcelGrid({
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
     };
-  }, [ensureExpanded, layout.columns, layout.headerHeight, layout.rowHeight, layout.xOffsets, markDirty, rows]);
+  }, [ensureExpanded, layout.columns, layout.headerHeight, layout.rowHeight, layout.xOffsets, layoutColumns, markDirty, rows]);
 
   useGridScrollWhileDrag({
     bodyRef,
@@ -837,14 +862,11 @@ export function MotorsExcelGrid({
       isDraggingSelectionRef.current ||
       isDraggingFillRef.current ||
       pendingSelectionDragRef.current != null,
+    onAutoScrollTick: () => onDragAutoScrollTickRef.current(),
   });
 
-  useEffect(() => {
-    function closeContext() {
-      setContextMenu(null);
-    }
-    window.addEventListener("click", closeContext);
-    return () => window.removeEventListener("click", closeContext);
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
   }, []);
 
   const resolveScrollFrame = useCallback(
@@ -1490,6 +1512,7 @@ export function MotorsExcelGrid({
                             setContextMenu({
                               x: event.clientX,
                               y: event.clientY,
+                              cell: clicked,
                               selected: getContextSelectedMotors(rows, nextSelection),
                             });
                           }}
@@ -1635,66 +1658,107 @@ export function MotorsExcelGrid({
         <GridZoomControl />
       </div>
 
-      {contextMenu && contextMenu.selected.length > 0 ? (
-        <div
-          className="animate-tab-enter fixed z-40 min-w-[170px] rounded-md border bg-popover p-1 shadow-md"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-        >
-          <button
-            type="button"
-            className="block w-full rounded px-3 py-1.5 text-left text-sm hover:bg-muted disabled:opacity-40"
-            disabled={contextMenu.selected.every((item) => item.soldDate)}
+      {contextMenu ? (
+        <GridContextMenu x={contextMenu.x} y={contextMenu.y} onClose={closeContextMenu}>
+          <GridContextMenuItem
+            shortcut="⌘C"
             onClick={() => {
-              const targets = contextMenu.selected.filter((item) => !item.soldDate);
-              if (targets.length === 0) return;
-              if (targets.length === 1) onSell(targets[0]!);
-              else if (onBatchSell) onBatchSell(targets);
-              else targets.forEach((motor) => onSell(motor));
-              setContextMenu(null);
+              void copyPrimaryRange();
+              closeContextMenu();
             }}
           >
-            Продать ({contextMenu.selected.filter((item) => !item.soldDate).length})
-          </button>
-          <button
-            type="button"
-            className="block w-full rounded px-3 py-1.5 text-left text-sm hover:bg-muted disabled:opacity-40"
-            disabled={contextMenu.selected.every((item) => !item.soldDate)}
-            onClick={() => {
-              const targets = contextMenu.selected.filter((item) => item.soldDate);
-              if (targets.length === 0) return;
-              if (targets.length === 1) onUnsell(targets[0]!);
-              else if (onBatchUnsell) onBatchUnsell(targets);
-              else targets.forEach((motor) => onUnsell(motor));
-              setContextMenu(null);
-            }}
-          >
-            Вернуть в наличие ({contextMenu.selected.filter((item) => item.soldDate).length})
-          </button>
+            Копировать
+          </GridContextMenuItem>
+
+          {canEdit ? (
+            <>
+              <GridContextMenuItem
+                onClick={() => {
+                  if (isEditableColumn(contextMenu.cell.column, layoutColumns)) {
+                    beginEdit(contextMenu.cell);
+                  }
+                  closeContextMenu();
+                }}
+                disabled={!isEditableColumn(contextMenu.cell.column, layoutColumns)}
+              >
+                Редактировать
+              </GridContextMenuItem>
+              <GridContextMenuItem
+                shortcut="⌘V"
+                onClick={() => {
+                  void pasteAtSelection();
+                  closeContextMenu();
+                }}
+              >
+                Вставить
+              </GridContextMenuItem>
+            </>
+          ) : null}
+
+          {contextMenu.selected.length > 0 ? (
+            <>
+              <GridContextMenuSeparator />
+              <GridContextMenuItem
+                disabled={contextMenu.selected.every((item) => item.soldDate)}
+                onClick={() => {
+                  const targets = contextMenu.selected.filter((item) => !item.soldDate);
+                  if (targets.length === 0) return;
+                  if (targets.length === 1) onSell(targets[0]!);
+                  else if (onBatchSell) onBatchSell(targets);
+                  else targets.forEach((motor) => onSell(motor));
+                  closeContextMenu();
+                }}
+              >
+                Продать ({contextMenu.selected.filter((item) => !item.soldDate).length})
+              </GridContextMenuItem>
+              <GridContextMenuItem
+                disabled={contextMenu.selected.every((item) => !item.soldDate)}
+                onClick={() => {
+                  const targets = contextMenu.selected.filter((item) => item.soldDate);
+                  if (targets.length === 0) return;
+                  if (targets.length === 1) onUnsell(targets[0]!);
+                  else if (onBatchUnsell) onBatchUnsell(targets);
+                  else targets.forEach((motor) => onUnsell(motor));
+                  closeContextMenu();
+                }}
+              >
+                Вернуть в наличие ({contextMenu.selected.filter((item) => item.soldDate).length})
+              </GridContextMenuItem>
+            </>
+          ) : null}
+
           {contextMenu.selected.length === 1 ? (
             <>
-              <button
-                type="button"
-                className="block w-full rounded px-3 py-1.5 text-left text-sm hover:bg-muted"
+              <GridContextMenuSeparator />
+              {contextMenu.selected[0]?.serialCode.trim() ? (
+                <GridContextMenuItem
+                  onClick={() => {
+                    void navigator.clipboard.writeText(contextMenu.selected[0]!.serialCode.trim());
+                    closeContextMenu();
+                  }}
+                >
+                  Копировать номер
+                </GridContextMenuItem>
+              ) : null}
+              <GridContextMenuItem
                 onClick={() => {
                   setHistoryMotor(contextMenu.selected[0]!);
-                  setContextMenu(null);
+                  closeContextMenu();
                 }}
               >
                 История изменений
-              </button>
-              <button
-                type="button"
-                className="block w-full rounded px-3 py-1.5 text-left text-sm hover:bg-muted"
+              </GridContextMenuItem>
+              <GridContextMenuItem
                 onClick={() => {
                   setDocumentsMotor(contextMenu.selected[0]!);
-                  setContextMenu(null);
+                  closeContextMenu();
                 }}
               >
                 PDF · гарантия / счёт
-              </button>
+              </GridContextMenuItem>
             </>
           ) : null}
-        </div>
+        </GridContextMenu>
       ) : null}
 
       <MotorHistoryDialog

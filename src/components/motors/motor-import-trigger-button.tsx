@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
 import { Sparkles } from "lucide-react";
 
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
@@ -59,14 +58,9 @@ export function MotorImportTriggerButton({
 }
 
 export function useMotorImportIslandAction() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const { triggerImportIslandClick, motorImportProgress, motorImportReviewPending } = useWorkspace();
+  const { triggerImportIslandClick } = useWorkspace();
 
   return () => {
     triggerImportIslandClick();
-    if ((motorImportReviewPending || motorImportProgress) && pathname !== "/motors") {
-      router.push("/motors?import=open");
-    }
   };
 }

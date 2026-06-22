@@ -15,6 +15,22 @@ const nextConfig: NextConfig = {
     "/api/documents/generate": CHROMIUM_TRACE_INCLUDES,
     "/api/documents/process-queue": CHROMIUM_TRACE_INCLUDES,
   },
+  experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "recharts",
+      "date-fns",
+      "framer-motion",
+      "@tanstack/react-query",
+    ],
+  },
+  compiler: {
+    removeConsole:
+      process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
+  },
+  images: {
+    formats: ["image/avif", "image/webp"],
+  },
   async redirects() {
     return [
       {

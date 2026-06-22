@@ -15,6 +15,13 @@ import { InventoryItem } from "@/domain/inventory";
 import { initialMotorSyncState, MotorSyncState } from "@/domain/motor-sync";
 import { MotorAvailability } from "@/infrastructure/firestore/motor-repository";
 import { isEditableExternalField, isRedoShortcut, isUndoShortcut } from "@/lib/grid/grid-keyboard-shortcuts";
+import {
+  clearMotorImportSession,
+  dismissMotorImportJob,
+  isMotorImportJobDismissed,
+  readMotorImportSession,
+} from "@/lib/motors/import/motor-import-session";
+import { cancelMotorImportJobRemote } from "@/lib/motors/motor-import-api.client";
 
 export type GridSaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
 
@@ -35,9 +42,18 @@ export type WarehouseImportProgressState = {
   percent: number;
   message: string;
   fileName?: string;
+  jobId?: string;
 };
 
 export type MotorImportProgressState = WarehouseImportProgressState;
+
+export type MotorImportReviewSnapshot = {
+  jobId: string;
+  fileName?: string;
+  totalMotors: number;
+  validMotors: number;
+  specificSheets: number;
+};
 
 export type WorkspaceSearchSuggestion = {
   id: string;
@@ -63,6 +79,10 @@ type WorkspaceContextValue = {
   setSelectedBrandLocalId: (value: number | null) => void;
   selectedEngineLocalId: number | null;
   setSelectedEngineLocalId: (value: number | null) => void;
+  selectedSpecificCategoryId: string | null;
+  setSelectedSpecificCategoryId: (value: string | null) => void;
+  specificColumnsDialogOpen: boolean;
+  setSpecificColumnsDialogOpen: (open: boolean) => void;
   selectedWarehouseId: string | null;
   setSelectedWarehouseId: (value: string | null) => void;
   shownCount: number;
@@ -120,9 +140,14 @@ type WorkspaceContextValue = {
   cancelWarehouseImport: () => void;
   motorImportProgress: MotorImportProgressState | null;
   setMotorImportProgress: (progress: MotorImportProgressState | null) => void;
+  motorImportPendingJobId: string | null;
+  setMotorImportPendingJobId: (jobId: string | null) => void;
   registerMotorImportCancel: (handler: (() => void) | null) => void;
   cancelMotorImport: () => void;
   motorImportReviewPending: boolean;
+  motorImportReview: MotorImportReviewSnapshot | null;
+  setMotorImportReview: (review: MotorImportReviewSnapshot | null) => void;
+  dismissMotorImportReview: () => void;
   setMotorImportReviewPending: (pending: boolean) => void;
   registerImportIslandHandler: (handler: (() => void) | null) => void;
   triggerImportIslandClick: () => void;
@@ -154,6 +179,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [availability, setAvailability] = useState<MotorAvailability>("all");
   const [selectedBrandLocalId, setSelectedBrandLocalId] = useState<number | null>(null);
   const [selectedEngineLocalId, setSelectedEngineLocalId] = useState<number | null>(null);
+  const [selectedSpecificCategoryId, setSelectedSpecificCategoryId] = useState<string | null>(null);
+  const [specificColumnsDialogOpen, setSpecificColumnsDialogOpen] = useState(false);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null);
   const [shownCount, setShownCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
@@ -198,12 +225,73 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   });
   const [warehouseImportProgress, setWarehouseImportProgress] =
     useState<WarehouseImportProgressState | null>(null);
-  const [motorImportProgress, setMotorImportProgress] =
+  const [motorImportProgress, setMotorImportProgressState] =
     useState<MotorImportProgressState | null>(null);
+  const [motorImportPendingJobId, setMotorImportPendingJobIdState] = useState<string | null>(null);
+  const motorImportPendingJobIdRef = useRef<string | null>(null);
+  const motorImportReviewRef = useRef<MotorImportReviewSnapshot | null>(null);
+  const motorImportProgressRef = useRef<MotorImportProgressState | null>(null);
+  const motorImportUserCancelledRef = useRef(false);
   const warehouseImportCancelRef = useRef<(() => void) | null>(null);
   const motorImportCancelRef = useRef<(() => void) | null>(null);
   const importIslandHandlerRef = useRef<(() => void) | null>(null);
-  const [motorImportReviewPending, setMotorImportReviewPending] = useState(false);
+  const [motorImportReview, setMotorImportReview] = useState<MotorImportReviewSnapshot | null>(null);
+  motorImportPendingJobIdRef.current = motorImportPendingJobId;
+  motorImportReviewRef.current = motorImportReview;
+  motorImportProgressRef.current = motorImportProgress;
+
+  const setMotorImportPendingJobId = useCallback((jobId: string | null) => {
+    if (jobId !== null) {
+      motorImportUserCancelledRef.current = false;
+    }
+    motorImportPendingJobIdRef.current = jobId;
+    setMotorImportPendingJobIdState(jobId);
+  }, []);
+
+  const setMotorImportProgress = useCallback((progress: MotorImportProgressState | null) => {
+    motorImportProgressRef.current = progress;
+    if (progress !== null && motorImportUserCancelledRef.current) {
+      return;
+    }
+    setMotorImportProgressState(progress);
+  }, []);
+
+  const dismissMotorImportReview = useCallback(() => {
+    const jobId = motorImportReviewRef.current?.jobId;
+    if (jobId) {
+      dismissMotorImportJob(jobId);
+      void cancelMotorImportJobRemote(jobId);
+    }
+    setMotorImportReview((current) => {
+      if (current) {
+        clearMotorImportSession();
+      }
+      return null;
+    });
+    motorImportUserCancelledRef.current = true;
+    setMotorImportPendingJobId(null);
+    setMotorImportProgress(null);
+  }, [setMotorImportPendingJobId, setMotorImportProgress]);
+
+  const setMotorImportReviewPending = useCallback((pending: boolean) => {
+    if (!pending) {
+      setMotorImportReview(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.sessionStorage.getItem("autocore.motor-import.session");
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { jobId?: string };
+      if (parsed.jobId && !isMotorImportJobDismissed(parsed.jobId)) {
+        setMotorImportPendingJobId(parsed.jobId);
+      }
+    } catch {
+      // ignore
+    }
+  }, [setMotorImportPendingJobId]);
 
   const registerWarehouseImportCancel = useCallback((handler: (() => void) | null) => {
     warehouseImportCancelRef.current = handler;
@@ -218,8 +306,27 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const cancelMotorImport = useCallback(() => {
+    const jobId =
+      motorImportPendingJobIdRef.current ??
+      motorImportProgressRef.current?.jobId ??
+      motorImportReviewRef.current?.jobId ??
+      readMotorImportSession()?.jobId ??
+      null;
+
+    motorImportUserCancelledRef.current = true;
+
+    if (jobId) {
+      dismissMotorImportJob(jobId);
+      void cancelMotorImportJobRemote(jobId);
+    }
+
     motorImportCancelRef.current?.();
-  }, []);
+    clearMotorImportSession();
+    setMotorImportReview(null);
+    setMotorImportPendingJobId(null);
+    setMotorImportProgressState(null);
+    motorImportProgressRef.current = null;
+  }, [setMotorImportPendingJobId]);
 
   const registerImportIslandHandler = useCallback((handler: (() => void) | null) => {
     importIslandHandlerRef.current = handler;
@@ -467,6 +574,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     return workOrderBarcodeScanRef.current(item);
   }, []);
 
+  const motorImportReviewPending = motorImportReview !== null;
+
   const value = useMemo(
     () => ({
       search,
@@ -479,6 +588,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       setSelectedBrandLocalId,
       selectedEngineLocalId,
       setSelectedEngineLocalId,
+      selectedSpecificCategoryId,
+      setSelectedSpecificCategoryId,
+      specificColumnsDialogOpen,
+      setSpecificColumnsDialogOpen,
       selectedWarehouseId,
       setSelectedWarehouseId,
       shownCount,
@@ -530,9 +643,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       cancelWarehouseImport,
       motorImportProgress,
       setMotorImportProgress,
+      motorImportPendingJobId,
+      setMotorImportPendingJobId,
       registerMotorImportCancel,
       cancelMotorImport,
       motorImportReviewPending,
+      motorImportReview,
+      setMotorImportReview,
+      dismissMotorImportReview,
       setMotorImportReviewPending,
       registerImportIslandHandler,
       triggerImportIslandClick,
@@ -543,6 +661,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       availability,
       selectedBrandLocalId,
       selectedEngineLocalId,
+      selectedSpecificCategoryId,
+      specificColumnsDialogOpen,
       selectedWarehouseId,
       shownCount,
       totalCount,
@@ -584,9 +704,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       registerWarehouseImportCancel,
       cancelWarehouseImport,
       motorImportProgress,
+      motorImportPendingJobId,
       registerMotorImportCancel,
       cancelMotorImport,
       motorImportReviewPending,
+      motorImportReview,
+      dismissMotorImportReview,
       registerImportIslandHandler,
       triggerImportIslandClick,
     ],

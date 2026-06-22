@@ -6,6 +6,11 @@ import {
   resolveBrandDisplayName,
 } from "@/lib/motors/import-normalization";
 import { coerceBrandEnginePair, resolveSheetBrandAndEngine } from "@/lib/motors/import/brand-engine-intelligence";
+import {
+  isLikelyMotorCatalogName,
+  isLikelySpecificSheetName,
+  suggestSheetImportType,
+} from "@/lib/motors/import/specific-category-intelligence";
 
 export type SheetImportType = "engines" | "specific" | "skip";
 
@@ -20,13 +25,25 @@ export type SheetImportConfig = {
   categoryName: string;
 };
 
-function suggestImportType(sheetName: string, customBrand: string, customEngineCode: string): SheetImportType {
+function suggestImportType(
+  sheetName: string,
+  customBrand: string,
+  customEngineCode: string,
+  hasSerialColumn = false,
+): SheetImportType {
   if (normalizeHeader(sheetName) === "В НАЛИЧИИ" || isLikelySoldSheetName(sheetName)) {
     return "engines";
   }
-  if (customBrand && customEngineCode) return "engines";
-  if (parseSheetBrandEngine(sheetName)) return "engines";
-  return "specific";
+  if (isLikelyMotorCatalogName(sheetName)) return "engines";
+  if (isLikelySpecificSheetName(sheetName)) return "specific";
+  const suggested = suggestSheetImportType(
+    sheetName,
+    Boolean(customBrand),
+    Boolean(customEngineCode),
+    hasSerialColumn,
+  );
+  if (suggested === "skip") return "engines";
+  return suggested;
 }
 
 export function createSheetImportConfig(sheetName: string, rows: string[][]): SheetImportConfig {

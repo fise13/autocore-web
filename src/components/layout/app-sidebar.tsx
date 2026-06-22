@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronDown, ChevronRight, Cog, FileText, Plus, Tag, Trash2 } from "lucide-react";
-import { AnimatePresence, LayoutGroup } from "framer-motion";
-import { Suspense, useCallback, useMemo, useState } from "react";
+import { ChevronDown, ChevronRight, Cog, FileText, Plus, Settings2, Tag, Trash2 } from "lucide-react";
+import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { useSidebarCustomization } from "@/components/providers/sidebar-customization-provider";
@@ -34,6 +34,7 @@ import { SidebarTeamPanel } from "@/components/layout/sidebar-team-panel";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
@@ -87,6 +88,13 @@ export function AppSidebar({
   onRenameBrand,
   onDeleteBrand,
   onAddBrand,
+  onAddSpecificCategory,
+  onRenameSpecificCategory,
+  onDeleteSpecificCategory,
+  selectedSpecificCategoryId = null,
+  onSpecificCategoryChange,
+  onOpenSpecificColumnsSettings,
+  canManageSpecificCategories = false,
   showBrandFilters: showBrandFiltersProp,
   canManageBrands = false,
   brandCounts,
@@ -105,6 +113,7 @@ export function AppSidebar({
     [router, tier],
   );
   const { customization, isEditing, setCustomization } = useSidebarCustomization();
+  const [jiggleActive, setJiggleActive] = useState(false);
   const [dragging, setDragging] = useState<
     { kind: "block"; id: SidebarBlockId } | { kind: "nav"; id: SidebarNavItemId } | null
   >(null);
@@ -115,6 +124,16 @@ export function AppSidebar({
     },
     [setCustomization],
   );
+
+  useEffect(() => {
+    if (!isEditing) {
+      setJiggleActive(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setJiggleActive(true), 320);
+    return () => window.clearTimeout(timer);
+  }, [isEditing]);
+
   const sidebarMode = resolveSidebarMode(pathname);
   const showSpecificCategories =
     showSpecificCategoriesInSidebar(sidebarMode) && isBlockEnabled(customization, "specific");
@@ -128,6 +147,11 @@ export function AppSidebar({
   const [addBrandOpen, setAddBrandOpen] = useState(false);
   const [addBrandText, setAddBrandText] = useState("");
   const [brandToDelete, setBrandToDelete] = useState<BrandEntity | null>(null);
+  const [addCategoryOpen, setAddCategoryOpen] = useState(false);
+  const [addCategoryText, setAddCategoryText] = useState("");
+  const [categoryToRename, setCategoryToRename] = useState<SpecificCategoryEntity | null>(null);
+  const [categoryRenameText, setCategoryRenameText] = useState("");
+  const [categoryToDelete, setCategoryToDelete] = useState<SpecificCategoryEntity | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -293,6 +317,75 @@ export function AppSidebar({
     }
   }
 
+  function openRenameCategoryDialog(category: SpecificCategoryEntity) {
+    if (!canManageSpecificCategories || !onRenameSpecificCategory) return;
+    setActionError(null);
+    setCategoryToRename(category);
+    setCategoryRenameText(category.name);
+  }
+
+  async function confirmAddCategory() {
+    if (!onAddSpecificCategory) return;
+    const trimmed = addCategoryText.trim();
+    if (!trimmed) return;
+
+    setBusy(true);
+    setActionError(null);
+    try {
+      const created = await onAddSpecificCategory(trimmed);
+      setAddCategoryOpen(false);
+      setAddCategoryText("");
+      if (created?.id) {
+        onSpecificCategoryChange?.(created.id);
+        if (pathname !== "/motors") {
+          router.push("/motors");
+        }
+        onNavigate?.();
+      }
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Не удалось создать лист");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmRenameCategory() {
+    if (!categoryToRename || !onRenameSpecificCategory) return;
+    const trimmed = categoryRenameText.trim();
+    if (!trimmed || trimmed === categoryToRename.name) {
+      setCategoryToRename(null);
+      return;
+    }
+
+    setBusy(true);
+    setActionError(null);
+    try {
+      await onRenameSpecificCategory(categoryToRename, trimmed);
+      setCategoryToRename(null);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Не удалось переименовать лист");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmDeleteCategory() {
+    if (!categoryToDelete || !onDeleteSpecificCategory) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      await onDeleteSpecificCategory(categoryToDelete);
+      if (selectedSpecificCategoryId === categoryToDelete.id) {
+        onSpecificCategoryChange?.(null);
+      }
+      setCategoryToDelete(null);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Не удалось удалить лист");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function renderBlockShell(
     blockId: SidebarBlockId,
     showDividerBefore: boolean,
@@ -303,13 +396,12 @@ export function AppSidebar({
     return (
       <div key={blockId} className="w-full">
         {showDividerBefore ? <SidebarBlockDivider /> : null}
-        <AnimatePresence mode="popLayout">
-          <SidebarEditItem
-            key={blockId}
-            layoutId={`block-${blockId}`}
-            icon={meta.icon}
+        <SidebarEditItem
+          key={blockId}
+          icon={meta.icon}
             label={meta.label}
             hint={hint}
+            jiggle={jiggleActive}
             jiggleDelay={jiggleIndex * 0.035}
             dragging={dragging?.kind === "block" && dragging.id === blockId}
             onRemove={() =>
@@ -322,7 +414,6 @@ export function AppSidebar({
             onDragEnd={() => setDragging(null)}
             onDrop={() => handleBlockDrop(blockId)}
           />
-        </AnimatePresence>
       </div>
     );
   }
@@ -337,15 +428,14 @@ export function AppSidebar({
             <div key={blockId} className="w-full">
               {showDividerBefore ? <SidebarBlockDivider /> : null}
               <nav className="space-y-1">
-                <AnimatePresence mode="popLayout">
-                  {enabledNavIds.map((navId, navIndex) => {
-                    const item = SIDEBAR_NAV_META[navId];
-                    return (
-                      <SidebarEditItem
-                        key={navId}
-                        layoutId={`nav-${navId}`}
-                        icon={item.icon}
+                {enabledNavIds.map((navId, navIndex) => {
+                  const item = SIDEBAR_NAV_META[navId];
+                  return (
+                    <SidebarEditItem
+                      key={navId}
+                      icon={item.icon}
                         label={item.label}
+                        jiggle={jiggleActive}
                         jiggleDelay={navIndex * 0.035}
                         dragging={dragging?.kind === "nav" && dragging.id === navId}
                         onRemove={() =>
@@ -360,7 +450,6 @@ export function AppSidebar({
                       />
                     );
                   })}
-                </AnimatePresence>
               </nav>
             </div>
           );
@@ -381,7 +470,12 @@ export function AppSidebar({
                         icon={item.icon}
                         pathname={pathname}
                         collapsed={collapsed}
-                        onNavigate={onNavigate}
+                        onNavigate={() => {
+                          if (item.href === "/motors") {
+                            onSpecificCategoryChange?.(null);
+                          }
+                          onNavigate?.();
+                        }}
                         animationIndex={navIndex}
                       />
                     );
@@ -468,35 +562,100 @@ export function AppSidebar({
                 <div className="px-3 py-2">
                   <div className="mb-2 flex items-center justify-between">
                     <p className={sidebarSectionLabelClass}>Специфичные</p>
+                    <div className="flex items-center gap-0.5">
+                      {canManageSpecificCategories && selectedSpecificCategoryId && onOpenSpecificColumnsSettings ? (
+                        <button
+                          type="button"
+                          onClick={onOpenSpecificColumnsSettings}
+                          className="rounded-md p-1 text-muted-foreground transition hover:bg-sidebar-accent hover:text-foreground"
+                          aria-label="Колонки листа"
+                          title="Колонки"
+                        >
+                          <Settings2 className="size-3.5" />
+                        </button>
+                      ) : null}
+                      {canManageSpecificCategories && onAddSpecificCategory ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActionError(null);
+                            setAddCategoryText("");
+                            setAddCategoryOpen(true);
+                          }}
+                          className="rounded-md p-1 text-muted-foreground transition hover:bg-sidebar-accent hover:text-foreground"
+                          aria-label="Создать лист"
+                          title="Создать лист"
+                        >
+                          <Plus className="size-3.5" />
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                   {sidebarSpecificCategories.length === 0 ? (
-                    <p className="px-2 py-1.5 text-xs italic text-muted-foreground">Нет категорий</p>
+                    canManageSpecificCategories && onAddSpecificCategory ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionError(null);
+                          setAddCategoryText("");
+                          setAddCategoryOpen(true);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-primary transition hover:bg-primary/10"
+                      >
+                        <Plus className="size-3.5 shrink-0" />
+                        {userCopy.specificSheets.emptyCta}
+                      </button>
+                    ) : (
+                      <p className="px-2 py-1.5 text-xs italic text-muted-foreground">Нет листов</p>
+                    )
                   ) : (
                     <div className="space-y-0.5">
                       {sidebarSpecificCategories.map((category) => {
-                        const href = `/specific/${category.id}`;
-                        const active =
-                          pathname === href ||
-                          pathname.startsWith(`${href}/`) ||
-                          pathname.endsWith(`_${category.localId}`);
+                        const active = selectedSpecificCategoryId === category.id;
                         return (
-                          <Link
-                            key={category.id}
-                            href={href}
-                            onClick={onNavigate}
-                            onMouseEnter={() => prefetchHref(href)}
-                            onFocus={() => prefetchHref(href)}
-                            className={cn(
-                              sidebarNavRowClass,
-                              active
-                                ? "bg-primary/12 text-primary shadow-sm"
-                                : "text-sidebar-foreground hover:bg-sidebar-accent",
-                            )}
-                            title={category.name}
-                          >
-                            <FileText className="size-4 shrink-0 opacity-80" />
-                            <span className="truncate">{category.name}</span>
-                          </Link>
+                          <div key={category.id} className="group flex items-center gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const nextId =
+                                  selectedSpecificCategoryId === category.id ? null : category.id;
+                                onSpecificCategoryChange?.(nextId);
+                                if (nextId && pathname !== "/motors") {
+                                  router.push("/motors");
+                                }
+                                onNavigate?.();
+                              }}
+                              onDoubleClick={(event) => {
+                                event.preventDefault();
+                                openRenameCategoryDialog(category);
+                              }}
+                              className={cn(
+                                sidebarNavRowClass,
+                                "min-w-0 flex-1",
+                                active
+                                  ? "bg-primary/12 text-primary shadow-sm"
+                                  : "text-sidebar-foreground hover:bg-sidebar-accent",
+                              )}
+                              title={category.name}
+                            >
+                              <FileText className="size-4 shrink-0 opacity-80" />
+                              <span className="truncate">{category.name}</span>
+                            </button>
+                            {onDeleteSpecificCategory ? (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setActionError(null);
+                                  setCategoryToDelete(category);
+                                }}
+                                className="rounded-md p-1 text-muted-foreground opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus:opacity-100"
+                                aria-label={`Удалить ${category.name}`}
+                              >
+                                <Trash2 className="size-3.5" />
+                              </button>
+                            ) : null}
+                          </div>
                         );
                       })}
                     </div>
@@ -684,34 +843,59 @@ export function AppSidebar({
         data-collapsed={collapsed ? "true" : "false"}
         className={cn("app-sidebar flex h-full w-full flex-col bg-sidebar", collapsed && "app-sidebar--collapsed")}
       >
-        <SidebarProvider open={!collapsed} className="flex h-full min-h-0 w-full flex-col">
-          <Sidebar collapsible="none" className="flex h-full min-h-0 w-full flex-col bg-transparent">
-            {isEditing ? (
-              <LayoutGroup id="sidebar-customize">
-                <SidebarContent>{renderSidebarBody()}</SidebarContent>
-
-                <SidebarCustomizeSheet
-                  disabledNav={disabledNav}
-                  disabledBlocks={disabledBlocks}
-                  onRestoreNav={(navId) =>
-                    patch((current) => ({
-                      ...current,
-                      navItems: { ...current.navItems, [navId]: { enabled: true } },
-                    }))
-                  }
-                  onRestoreBlock={(blockId) =>
-                    patch((current) => ({
-                      ...current,
-                      blocks: { ...current.blocks, [blockId]: { enabled: true } },
-                    }))
-                  }
-                />
-              </LayoutGroup>
-            ) : (
-              <LayoutGroup id="app-sidebar-nav">
-                <SidebarContent>{renderSidebarBody()}</SidebarContent>
-              </LayoutGroup>
-            )}
+        <SidebarProvider open={!collapsed} className="flex h-full max-h-full min-h-0 w-full flex-col overflow-hidden">
+          <Sidebar collapsible="none" className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-transparent">
+            <AnimatePresence mode="wait" initial={false}>
+              {isEditing ? (
+                <motion.div
+                  key="sidebar-customize"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                  className="flex h-full min-h-0 flex-col overflow-hidden"
+                >
+                  <LayoutGroup id="sidebar-customize">
+                    <SidebarContent className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
+                      {renderSidebarBody()}
+                    </SidebarContent>
+                    <SidebarFooter className="relative z-10 shrink-0 border-t-0 bg-sidebar p-0">
+                      <SidebarCustomizeSheet
+                        disabledNav={disabledNav}
+                        disabledBlocks={disabledBlocks}
+                        onRestoreNav={(navId) =>
+                          patch((current) => ({
+                            ...current,
+                            navItems: { ...current.navItems, [navId]: { enabled: true } },
+                          }))
+                        }
+                        onRestoreBlock={(blockId) =>
+                          patch((current) => ({
+                            ...current,
+                            blocks: { ...current.blocks, [blockId]: { enabled: true } },
+                          }))
+                        }
+                      />
+                    </SidebarFooter>
+                  </LayoutGroup>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="sidebar-nav"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                  className="flex h-full min-h-0 flex-col overflow-hidden"
+                >
+                  <LayoutGroup id="app-sidebar-nav">
+                    <SidebarContent className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
+                      {renderSidebarBody()}
+                    </SidebarContent>
+                  </LayoutGroup>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </Sidebar>
         </SidebarProvider>
       </aside>
@@ -798,6 +982,97 @@ export function AppSidebar({
             </Button>
             <Button type="button" variant="destructive" onClick={() => void confirmDelete()} disabled={busy}>
               {userCopy.brands.deleteAction}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={addCategoryOpen} onOpenChange={(open) => !open && setAddCategoryOpen(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{userCopy.specificSheets.addTitle}</DialogTitle>
+            <DialogDescription>{userCopy.specificSheets.addHint}</DialogDescription>
+          </DialogHeader>
+          <Input
+            value={addCategoryText}
+            onChange={(event) => setAddCategoryText(event.target.value)}
+            placeholder={userCopy.specificSheets.addPlaceholder}
+            autoFocus
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void confirmAddCategory();
+              }
+            }}
+          />
+          {actionError && addCategoryOpen ? (
+            <p className="text-sm text-destructive">{actionError}</p>
+          ) : null}
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setAddCategoryOpen(false)} disabled={busy}>
+              Отмена
+            </Button>
+            <Button type="button" onClick={() => void confirmAddCategory()} disabled={busy || !addCategoryText.trim()}>
+              Создать
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={categoryToRename != null} onOpenChange={(open) => !open && setCategoryToRename(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{userCopy.specificSheets.renameTitle}</DialogTitle>
+            <DialogDescription>{userCopy.specificSheets.renameHint}</DialogDescription>
+          </DialogHeader>
+          <Input
+            value={categoryRenameText}
+            onChange={(event) => setCategoryRenameText(event.target.value)}
+            placeholder={userCopy.specificSheets.renamePlaceholder}
+            autoFocus
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void confirmRenameCategory();
+              }
+            }}
+          />
+          {actionError && categoryToRename ? (
+            <p className="text-sm text-destructive">{actionError}</p>
+          ) : null}
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setCategoryToRename(null)} disabled={busy}>
+              Отмена
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void confirmRenameCategory()}
+              disabled={busy || !categoryRenameText.trim()}
+            >
+              Сохранить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={categoryToDelete != null} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{userCopy.specificSheets.deleteTitle}</DialogTitle>
+            <DialogDescription>{userCopy.specificSheets.deleteHint}</DialogDescription>
+          </DialogHeader>
+          {categoryToDelete ? (
+            <p className="text-sm font-medium">{categoryToDelete.name}</p>
+          ) : null}
+          {actionError && categoryToDelete ? (
+            <p className="text-sm text-destructive">{actionError}</p>
+          ) : null}
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setCategoryToDelete(null)} disabled={busy}>
+              Отмена
+            </Button>
+            <Button type="button" variant="destructive" onClick={() => void confirmDeleteCategory()} disabled={busy}>
+              {userCopy.specificSheets.deleteAction}
             </Button>
           </DialogFooter>
         </DialogContent>

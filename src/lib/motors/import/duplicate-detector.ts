@@ -39,7 +39,7 @@ export function enrichMotorRowsWithDuplicates(
       conflictList = conflictFields(existing, row);
     }
 
-    const action = row.errors.length > 0 ? "skip" : existing ? "update" : "create";
+    const action = existing ? "update" : row.action === "skip" ? "skip" : "create";
     return {
       ...row,
       duplicateOfMotorId: existing?.id,

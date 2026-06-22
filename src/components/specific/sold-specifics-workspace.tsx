@@ -14,6 +14,7 @@ import {
   buildSpecificHeaderMapping,
   isSpecificRecordSold,
 } from "@/lib/specific/specific-header-mapping";
+import { resolveCategoryColumnSchema } from "@/lib/specific/specific-category-schema";
 import { filterSpecificRecords } from "@/lib/specific/specific-table";
 import {
   createSpecificCategoryRepository,
@@ -117,6 +118,7 @@ export function SoldSpecificsWorkspace() {
               records={categoryRecords}
               search={workspace.search}
               category={category}
+              columnSchema={resolveCategoryColumnSchema(category, categoryRecords)}
               companyId={companyId}
               canEdit={canEdit}
               repository={specificCategoryRepository}

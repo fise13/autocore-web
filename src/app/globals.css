@@ -307,6 +307,22 @@
   transform-origin: left center;
 }
 
+@keyframes autocore-sidebar-edit-shell {
+  0% {
+    box-shadow: inset 0 0 0 0 color-mix(in oklab, var(--sidebar-ring) 0%, transparent);
+  }
+  35% {
+    box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--sidebar-ring) 55%, transparent);
+  }
+  100% {
+    box-shadow: inset 0 0 0 0 color-mix(in oklab, var(--sidebar-ring) 0%, transparent);
+  }
+}
+
+.app-sidebar-shell[data-editing="true"] {
+  animation: autocore-sidebar-edit-shell 0.65s ease-out;
+}
+
 @keyframes autocore-fade-in {
   from {
     opacity: 0;
@@ -483,6 +499,10 @@
 
 @media (prefers-reduced-motion: reduce) {
   .animate-sidebar-jiggle {
+    animation: none !important;
+  }
+
+  .app-sidebar-shell[data-editing="true"] {
     animation: none !important;
   }
 

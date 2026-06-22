@@ -9,6 +9,7 @@ import {
 } from "@/infrastructure/firestore/specific-category-repository";
 import { MotorEntity } from "@/domain/motor";
 import { MotorImportApplyProgress, MotorImportPreviewRow } from "@/lib/motors/import/types";
+import { prepareMagicImportRowsForCommit } from "@/lib/motors/import/import-row-integrity";
 import { ExcelSheetData } from "@/lib/motors/excel-types";
 import { SheetImportConfig } from "@/lib/motors/excel-sheet-config";
 import { SheetColumnMapping } from "@/lib/motors/excel-column-mapping";
@@ -40,7 +41,7 @@ export async function applyMotorImportJobUseCase(
 ) {
   await importRepository.updateStatus(params.jobId, "applying");
 
-  const selectedRows = params.engineRows.filter((row) => row.selected && row.errors.length === 0);
+  const selectedRows = prepareMagicImportRowsForCommit(params.engineRows).filter((row) => row.selected);
   let applied = 0;
 
   try {

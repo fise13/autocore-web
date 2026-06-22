@@ -18,6 +18,40 @@ function parseQuantity(value: string): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
+const LIKELY_SERIAL_CELL = /^[A-Z0-9][A-Z0-9\-_.]{2,}$/i;
+
+function rowHasMeaningfulData(row: string[], skipColumnIndex: number | null): boolean {
+  return row.some((cell, index) => index !== skipColumnIndex && cell.trim().length > 0);
+}
+
+export function inferSerialColumnIndex(
+  sheet: ExcelSheetData,
+  mapping: SheetColumnMapping,
+): number | null {
+  const explicit = columnIndexFor(mapping, "serialCode");
+  if (explicit != null) return explicit;
+
+  const dataStartIndex = (mapping.headerRowIndex ?? -1) + 1;
+  const maxColumn = sheet.rows.reduce((max, row) => Math.max(max, row.length), 0);
+  let bestIndex: number | null = null;
+  let bestScore = 0;
+
+  for (let columnIndex = 0; columnIndex < maxColumn; columnIndex += 1) {
+    let score = 0;
+    const sampleEnd = Math.min(sheet.rows.length, dataStartIndex + 24);
+    for (let rowIndex = dataStartIndex; rowIndex < sampleEnd; rowIndex += 1) {
+      const cell = getCell(sheet.rows[rowIndex] ?? [], columnIndex);
+      if (LIKELY_SERIAL_CELL.test(cell)) score += 1;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = columnIndex;
+    }
+  }
+
+  return bestScore >= 2 ? bestIndex : null;
+}
+
 function columnIndexFor(
   mapping: SheetColumnMapping,
   field: NonNullable<SheetColumnMapping["columnMappings"][number]["engineFieldMapping"]>,
@@ -37,7 +71,7 @@ export function buildEngineRowsFromSheet(
   config: SheetImportConfig,
   mapping: SheetColumnMapping,
 ): ParsedImportMotorRow[] {
-  const serialIndex = columnIndexFor(mapping, "serialCode");
+  const serialIndex = inferSerialColumnIndex(sheet, mapping);
   if (serialIndex == null) return [];
 
   const soldSheetHint = isLikelySoldSheetName(sheet.name);
@@ -49,7 +83,9 @@ export function buildEngineRowsFromSheet(
   for (let rowIndex = dataStartIndex; rowIndex < sheet.rows.length; rowIndex += 1) {
     const row = sheet.rows[rowIndex] ?? [];
     const serialCode = getCell(row, serialIndex);
-    if (!serialCode) continue;
+    if (!serialCode) {
+      if (!rowHasMeaningfulData(row, serialIndex)) continue;
+    }
 
     const arrivalDate = parseExcelDateValue(getCell(row, columnIndexFor(mapping, "arrivalDate")) || null);
     let soldDate = parseExcelDateValue(getCell(row, columnIndexFor(mapping, "soldDate")) || null);

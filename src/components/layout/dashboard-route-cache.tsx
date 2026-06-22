@@ -1,21 +1,10 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 
-import { AccountingWorkspace } from "@/components/accounting/accounting-workspace";
-import { ActivityWorkspace } from "@/components/activity/activity-workspace";
-import { DocumentsWorkspace } from "@/components/documents/documents-workspace";
-import { MissionControlShell } from "@/components/mission-control/mission-control-shell";
-import { MotorsWorkspace } from "@/components/motors/motors-workspace";
-import { QuotesWorkspace } from "@/components/quotes/quotes-workspace";
-import { SettingsWorkspace } from "@/components/settings/settings-workspace";
-import { SoldWorkspace } from "@/components/sold/sold-workspace";
-import { TeamWorkspace } from "@/components/team/team-workspace";
-import { WarehouseWorkspace } from "@/components/warehouse/warehouse-workspace";
-import { WorkOrdersWorkspace } from "@/components/work-orders/work-orders-workspace";
-import { SpecificCategoryCachedPage } from "@/components/layout/specific-category-cached-page";
 import { usePerformanceTier } from "@/components/providers/performance-tier-provider";
 import { usePanelLifecycle } from "@/hooks/use-panel-lifecycle";
 import {
@@ -24,6 +13,65 @@ import {
 } from "@/lib/performance/route-cache-store";
 import { ROUTE_CACHE_MAX_PANELS } from "@/lib/performance/performance-tier";
 import { cn } from "@/lib/utils";
+
+const lazyPanel = (loader: () => Promise<{ default: React.ComponentType }>) =>
+  dynamic(loader, { ssr: false, loading: () => null });
+
+const MissionControlShell = lazyPanel(() =>
+  import("@/components/mission-control/mission-control-shell").then((m) => ({
+    default: m.MissionControlShell,
+  })),
+);
+const WorkOrdersWorkspace = lazyPanel(() =>
+  import("@/components/work-orders/work-orders-workspace").then((m) => ({
+    default: m.WorkOrdersWorkspace,
+  })),
+);
+const AccountingWorkspace = lazyPanel(() =>
+  import("@/components/accounting/accounting-workspace").then((m) => ({
+    default: m.AccountingWorkspace,
+  })),
+);
+const MotorsWorkspace = lazyPanel(() =>
+  import("@/components/motors/motors-workspace").then((m) => ({
+    default: m.MotorsWorkspace,
+  })),
+);
+const SoldWorkspace = lazyPanel(() =>
+  import("@/components/sold/sold-workspace").then((m) => ({
+    default: m.SoldWorkspace,
+  })),
+);
+const WarehouseWorkspace = lazyPanel(() =>
+  import("@/components/warehouse/warehouse-workspace").then((m) => ({
+    default: m.WarehouseWorkspace,
+  })),
+);
+const SettingsWorkspace = lazyPanel(() =>
+  import("@/components/settings/settings-workspace").then((m) => ({
+    default: m.SettingsWorkspace,
+  })),
+);
+const QuotesWorkspace = lazyPanel(() =>
+  import("@/components/quotes/quotes-workspace").then((m) => ({
+    default: m.QuotesWorkspace,
+  })),
+);
+const TeamWorkspace = lazyPanel(() =>
+  import("@/components/team/team-workspace").then((m) => ({
+    default: m.TeamWorkspace,
+  })),
+);
+const ActivityWorkspace = lazyPanel(() =>
+  import("@/components/activity/activity-workspace").then((m) => ({
+    default: m.ActivityWorkspace,
+  })),
+);
+const DocumentsWorkspace = lazyPanel(() =>
+  import("@/components/documents/documents-workspace").then((m) => ({
+    default: m.DocumentsWorkspace,
+  })),
+);
 
 /** Routes that stay mounted in the background when you navigate away (Safari-style, no tab UI). */
 export function resolveRouteCacheKey(pathname: string): string | null {
@@ -38,7 +86,7 @@ export function resolveRouteCacheKey(pathname: string): string | null {
   if (pathname === "/team" || pathname.startsWith("/team/")) return "/team";
   if (pathname === "/activity" || pathname.startsWith("/activity/")) return "/activity";
   if (pathname === "/documents" || pathname.startsWith("/documents/")) return "/documents";
-  if (pathname.startsWith("/specific/")) return pathname;
+  if (pathname.startsWith("/specific/")) return "/motors";
   return null;
 }
 
@@ -83,10 +131,6 @@ function renderCachedRoute(cacheKey: string): ReactNode {
         </Suspense>
       );
     default:
-      if (cacheKey.startsWith("/specific/")) {
-        const categoryId = cacheKey.replace("/specific/", "");
-        return <SpecificCategoryCachedPage categoryId={categoryId} />;
-      }
       return null;
   }
 }

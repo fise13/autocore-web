@@ -21,6 +21,10 @@ export function useCatalogRealtime(
     queryFn: async () => [],
     enabled: Boolean(companyId),
     initialData: [],
+    staleTime: Infinity,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    placeholderData: (previous) => previous ?? [],
   });
 
   const enginesQuery = useQuery<EngineEntity[]>({
@@ -28,6 +32,10 @@ export function useCatalogRealtime(
     queryFn: async () => [],
     enabled: Boolean(companyId),
     initialData: [],
+    staleTime: Infinity,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    placeholderData: (previous) => previous ?? [],
   });
 
   useEffect(() => {

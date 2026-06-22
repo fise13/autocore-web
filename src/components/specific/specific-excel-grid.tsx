@@ -2,8 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { deleteSpecificRecordUseCase } from "@/application/use-cases/specific/delete-specific-record";
+import { SpecificColumnDef } from "@/domain/specific-category";
 import { GridEditorOverlay } from "@/components/grid/grid-editor-overlay";
 import { GridFillHandle } from "@/components/grid/grid-fill-handle";
+import {
+  GridContextMenu,
+  GridContextMenuItem,
+  GridContextMenuSeparator,
+} from "@/components/grid/grid-context-menu";
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { GridZoomControl } from "@/components/motors/grid-zoom-control";
 import {
@@ -15,7 +22,8 @@ import {
 import { buildFillOperations } from "@/lib/grid/grid-fill-engine";
 import { GridMutation, GridCommandBus } from "@/lib/grid/grid-command-bus";
 import { isRedoShortcut, isUndoShortcut } from "@/lib/grid/grid-keyboard-shortcuts";
-import { resolvePointerCell } from "@/lib/grid/pointer-to-cell";
+import { resolvePointerCellClamped } from "@/lib/grid/pointer-to-cell";
+import { useGridScrollWhileDrag } from "@/lib/grid/grid-scroll-while-drag";
 import { useGridScrollIntoView } from "@/lib/grid/scroll-into-view";
 import { handleGridRedo, handleGridUndo } from "@/lib/grid/grid-undo-redo";
 import {
@@ -48,8 +56,14 @@ import {
 } from "@/lib/specific/specific-grid-data-store";
 import {
   buildSpecificMotorGridLayout,
+  isSpecificSchemaColumnEditable,
   specificCellFrame,
+  specificSchemaColumnAt,
 } from "@/lib/specific/specific-grid-layout";
+import {
+  buildRowPayloadFromSchema,
+  resolveCategoryColumnSchema,
+} from "@/lib/specific/specific-category-schema";
 import {
   applySpecificSlotValue,
   buildSpecificRowPayload,
@@ -73,6 +87,7 @@ type SpecificExcelGridProps = {
   records: SpecificRecordEntity[];
   search?: string;
   category: SpecificCategoryEntity;
+  columnSchema?: SpecificColumnDef[];
   companyId: string;
   canEdit: boolean;
   repository: SpecificCategoryRepository;
@@ -90,26 +105,56 @@ type EditorState = {
   selectAll: boolean;
 };
 
+type ContextMenuState = {
+  x: number;
+  y: number;
+  cell: GridCellAddress;
+  selected: SpecificGridRow[];
+};
+
+function getContextSelectedRows(
+  rows: SpecificGridRow[],
+  selection: GridSelectionState,
+): SpecificGridRow[] {
+  const unique = new Map<string, SpecificGridRow>();
+  for (const range of allRanges(selection)) {
+    for (let row = range.minRow; row <= range.maxRow; row += 1) {
+      const item = rows[row];
+      if (!item || item.rowKind !== "saved") continue;
+      unique.set(item.id, item);
+    }
+  }
+  return [...unique.values()];
+}
+
 type DisplayRow = {
   sourceIndex: number;
   row: SpecificGridRow;
 };
 
 const EDITABLE_COL_START = 1;
-const ACTION_COLUMN = 8;
+
+function isDateColumn(
+  column: number,
+  layout: ReturnType<typeof buildSpecificMotorGridLayout>,
+): boolean {
+  const colDef = specificSchemaColumnAt(layout, column);
+  if (!colDef) return false;
+  if (colDef.kind === "canonical") {
+    return colDef.slotIndex === 5 || colDef.slotIndex === 6;
+  }
+  return false;
+}
 
 function isInteractiveGridTarget(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && Boolean(target.closest("button, a, input, textarea, select"));
-}
-
-function isDateColumn(column: number): boolean {
-  return column === 6 || column === 7;
 }
 
 export function SpecificExcelGrid({
   records,
   search,
   category,
+  columnSchema: columnSchemaProp,
   companyId,
   canEdit,
   repository,
@@ -137,20 +182,26 @@ export function SpecificExcelGrid({
     return filterSpecificRecordsByAvailability(searched, effectiveAvailability);
   }, [effectiveAvailability, records, search]);
 
+  const columnSchema = useMemo(
+    () => columnSchemaProp ?? resolveCategoryColumnSchema(category, scopedRecords),
+    [category, columnSchemaProp, scopedRecords],
+  );
+
   const layout = useMemo(
-    () => buildSpecificMotorGridLayout(scopedRecords, gridZoom),
-    [gridZoom, scopedRecords],
+    () => buildSpecificMotorGridLayout(columnSchema, gridZoom),
+    [columnSchema, gridZoom],
   );
   const headerMapping = layout.mapping;
+  const editableColEnd = layout.dataColumnCount;
+  const actionColumn = layout.actionColumn;
 
   const [rows, setRows] = useState<SpecificGridRow[]>(() => buildSpecificGridRows(scopedRecords));
   const [dirtyVersion, setDirtyVersion] = useState(0);
   const [dirtyRowIdSet, setDirtyRowIdSet] = useState<Set<string>>(() => new Set());
-  const editableColEnd = 6;
 
   const isEditableColumn = useCallback(
-    (column: number) => column >= EDITABLE_COL_START && column <= editableColEnd,
-    [editableColEnd],
+    (column: number) => isSpecificSchemaColumnEditable(layout, column),
+    [layout],
   );
 
   const navigableColumns = useMemo(
@@ -160,14 +211,15 @@ export function SpecificExcelGrid({
   );
 
   const valueAtCell = useCallback(
-    (row: SpecificGridRow, column: number) => specificCellValue(row, column, headerMapping),
-    [headerMapping],
+    (row: SpecificGridRow, column: number) =>
+      specificCellValue(row, column, headerMapping, columnSchema),
+    [columnSchema, headerMapping],
   );
 
   const applyCellValue = useCallback(
     (row: SpecificGridRow, column: number, value: string) =>
-      applySpecificCellValue(row, column, value, headerMapping),
-    [headerMapping],
+      applySpecificCellValue(row, column, value, headerMapping, columnSchema),
+    [columnSchema, headerMapping],
   );
 
   const gridRef = useRef<HTMLDivElement>(null);
@@ -186,6 +238,8 @@ export function SpecificExcelGrid({
   const fillSourceRef = useRef<GridRange | null>(null);
   const fillTargetRef = useRef<GridRange | null>(null);
   const dirtyStatusScheduledRef = useRef(false);
+  const lastDragPointerRef = useRef({ x: 0, y: 0 });
+  const onDragAutoScrollTickRef = useRef<() => void>(() => {});
 
   const [selection, setSelection] = useState<GridSelectionState>(initialSelection);
   const selectionRef = useRef(selection);
@@ -197,6 +251,7 @@ export function SpecificExcelGrid({
   editorRef.current = editor;
   const [scroll, setScroll] = useState({ top: 0, left: 0, width: 0, height: 0 });
   const [fillPreview, setFillPreview] = useState<GridRange | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [activeActionLabel, setActiveActionLabel] = useState<string | null>(null);
   const [saveFlashRows, setSaveFlashRows] = useState<Set<string>>(new Set());
 
@@ -288,15 +343,20 @@ export function SpecificExcelGrid({
     scroll.width,
   ]);
 
+  const isDateColumnAt = useCallback(
+    (column: number) => isDateColumn(column, layout),
+    [layout],
+  );
+
   const editorAutocompleteMatch = useMemo(
     () =>
       resolveGridColumnAutocomplete(
         editor,
         rows.length,
         (row, column) => valueAtCell(rows[row], column),
-        (column) => isEditableColumn(column) && !isDateColumn(column),
+        (column) => isEditableColumn(column) && !isDateColumnAt(column),
       ),
-    [editor, isEditableColumn, rows, valueAtCell],
+    [editor, isDateColumnAt, isEditableColumn, rows, valueAtCell],
   );
 
   const scheduleDirtyStatus = useCallback(() => {
@@ -331,6 +391,32 @@ export function SpecificExcelGrid({
     },
     [headerMapping, onSell, onUnsell],
   );
+
+  const handleDeleteRow = useCallback(
+    async (row: SpecificGridRow) => {
+      if (!canEdit || row.rowKind !== "saved") return;
+      const actorUid = getFirebaseAuth().currentUser?.uid;
+      if (!actorUid) return;
+      try {
+        await deleteSpecificRecordUseCase(repository, {
+          recordId: row.id,
+          companyId,
+          actorUid,
+        });
+        dirtyRowsRef.current.delete(row.rowId);
+        setRows((current) => current.filter((item) => item.rowId !== row.rowId));
+        scheduleDirtyStatus();
+      } catch (error) {
+        setSaveStatus("error");
+        setSaveError(mapAuthError(error));
+      }
+    },
+    [canEdit, companyId, repository, scheduleDirtyStatus, setSaveError, setSaveStatus],
+  );
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
 
   const setCell = useCallback(
     (cell: GridCellAddress, newValue: string, options?: { trackUndo?: boolean; markDirty?: boolean }) => {
@@ -434,14 +520,14 @@ export function SpecificExcelGrid({
       for (const rowId of dirtyRowsRef.current) {
         const row = snapshotRows.find((item) => item.rowId === rowId);
         if (!row) continue;
-        if (row.rowKind === "empty" && !hasSpecificRowContent(row, headerMapping)) continue;
+        if (row.rowKind === "empty" && !hasSpecificRowContent(row, headerMapping, columnSchema)) continue;
 
         if (row.rowKind === "saved") {
           const baseline = baselineById.get(row.id);
           const changed =
             !baseline ||
-            JSON.stringify(buildSpecificRowPayload(row.data, headerMapping)) !==
-              JSON.stringify(buildSpecificRowPayload(baseline.data, headerMapping));
+            JSON.stringify(buildRowPayloadFromSchema(row.data, columnSchema)) !==
+              JSON.stringify(buildRowPayloadFromSchema(baseline.data, columnSchema));
           if (!changed) continue;
         }
 
@@ -449,7 +535,7 @@ export function SpecificExcelGrid({
           companyId,
           category,
           row.rowIndex,
-          buildSpecificRowPayload(row.data, headerMapping),
+          buildRowPayloadFromSchema(row.data, columnSchema),
           actorUid,
         );
       }
@@ -470,7 +556,7 @@ export function SpecificExcelGrid({
       setSaveError(message);
       throw new Error(message);
     }
-  }, [canEdit, category, companyId, flushEditor, headerMapping, repository, rows, setSaveError, setSaveStatus]);
+  }, [canEdit, category, columnSchema, companyId, flushEditor, repository, rows, setSaveError, setSaveStatus]);
 
   const syncNow = useCallback(async () => {
     runSave();
@@ -530,9 +616,9 @@ export function SpecificExcelGrid({
       gridRef.current?.focus();
     }
 
-    function cellFromPointer(clientX: number, clientY: number): GridCellAddress | null {
+    function cellFromPointerClamped(clientX: number, clientY: number): GridCellAddress | null {
       if (!bodyRef.current) return null;
-      return resolvePointerCell({
+      return resolvePointerCellClamped({
         clientX,
         clientY,
         viewport: bodyRef.current,
@@ -545,16 +631,9 @@ export function SpecificExcelGrid({
       });
     }
 
-    function onPointerMove(event: PointerEvent) {
-      if (pendingSelectionDragRef.current && !isDraggingSelectionRef.current) {
-        const dx = Math.abs(event.clientX - pendingSelectionDragRef.current.clientX);
-        const dy = Math.abs(event.clientY - pendingSelectionDragRef.current.clientY);
-        if (dx > 4 || dy > 4) {
-          isDraggingSelectionRef.current = true;
-        }
-      }
+    function applyDragAtPointer(clientX: number, clientY: number) {
       if (isDraggingSelectionRef.current) {
-        const cell = cellFromPointer(event.clientX, event.clientY);
+        const cell = cellFromPointerClamped(clientX, clientY);
         if (!cell) return;
         setSelection((current) => {
           const next = dragSelection(current, cell);
@@ -565,7 +644,7 @@ export function SpecificExcelGrid({
         if (displayIndex >= 0) ensureExpanded(displayIndex);
       }
       if (isDraggingFillRef.current && fillSourceRef.current) {
-        const cell = cellFromPointer(event.clientX, event.clientY);
+        const cell = cellFromPointerClamped(clientX, clientY);
         if (!cell) return;
         const source = fillSourceRef.current;
         const target = normalizeRange(
@@ -579,6 +658,22 @@ export function SpecificExcelGrid({
       }
     }
 
+    onDragAutoScrollTickRef.current = () => {
+      applyDragAtPointer(lastDragPointerRef.current.x, lastDragPointerRef.current.y);
+    };
+
+    function onPointerMove(event: PointerEvent) {
+      lastDragPointerRef.current = { x: event.clientX, y: event.clientY };
+      if (pendingSelectionDragRef.current && !isDraggingSelectionRef.current) {
+        const dx = Math.abs(event.clientX - pendingSelectionDragRef.current.clientX);
+        const dy = Math.abs(event.clientY - pendingSelectionDragRef.current.clientY);
+        if (dx > 4 || dy > 4) {
+          isDraggingSelectionRef.current = true;
+        }
+      }
+      applyDragAtPointer(event.clientX, event.clientY);
+    }
+
     function onPointerUp() {
       stopSelectionDrag();
       if (isDraggingFillRef.current && fillSourceRef.current && fillTargetRef.current) {
@@ -587,7 +682,7 @@ export function SpecificExcelGrid({
           target: fillTargetRef.current,
           valueAt: (cell) => valueAtCell(rows[cell.row], cell.column),
           isEditableColumn,
-          isDateColumn,
+          isDateColumn: isDateColumnAt,
         });
         const mutations: GridMutation[] = [];
         setRows((current) => {
@@ -637,6 +732,15 @@ export function SpecificExcelGrid({
     rows,
     valueAtCell,
   ]);
+
+  useGridScrollWhileDrag({
+    bodyRef,
+    isDragging: () =>
+      isDraggingSelectionRef.current ||
+      isDraggingFillRef.current ||
+      pendingSelectionDragRef.current != null,
+    onAutoScrollTick: () => onDragAutoScrollTickRef.current(),
+  });
 
   const resolveScrollFrame = useCallback(
     (cell: GridCellAddress) => {
@@ -1189,7 +1293,7 @@ export function SpecificExcelGrid({
   const handleFillDoubleClick = useCallback(() => {
     const source = primaryRange(selection);
     const lastDataRow = rows.reduce((acc, row, index) => {
-      return hasSpecificRowContent(row, headerMapping) ? index : acc;
+      return hasSpecificRowContent(row, headerMapping, columnSchema) ? index : acc;
     }, source.maxRow);
     if (lastDataRow <= source.maxRow) return;
     const target = {
@@ -1203,7 +1307,7 @@ export function SpecificExcelGrid({
       target,
       valueAt: (cell) => valueAtCell(rows[cell.row], cell.column),
       isEditableColumn,
-      isDateColumn,
+      isDateColumn: isDateColumnAt,
     });
     const mutations: GridMutation[] = [];
     setRows((current) => {
@@ -1238,15 +1342,6 @@ export function SpecificExcelGrid({
 
   return (
     <div className="animate-autocore-grid-enter relative flex h-full min-h-0 flex-col bg-card">
-      {canEdit ? (
-        <div className="border-b bg-muted/20 px-3 py-1.5 text-xs text-muted-foreground">
-          Колонки распределены по ключам как в приложении для Mac. Продажа и возврат — в последней колонке.
-        </div>
-      ) : (
-        <div className="border-b bg-muted/20 px-3 py-1.5 text-xs text-muted-foreground">
-          Только просмотр. Для редактирования нужна роль выше «Наблюдатель».
-        </div>
-      )}
       {activeActionLabel ? (
         <div className="pointer-events-none absolute right-14 top-2 z-20 text-xs text-muted-foreground">
           {activeActionLabel}
@@ -1417,10 +1512,26 @@ export function SpecificExcelGrid({
                               beginEdit({ row: rowIdx, column: colIdx });
                             }
                           }}
+                          onContextMenu={(event) => {
+                            event.preventDefault();
+                            const clicked = { row: rowIdx, column: colIdx };
+                            const nextSelection = isCellInsideRange(clicked, primaryRange(selection))
+                              ? selection
+                              : selectWholeRow(rowIdx, EDITABLE_COL_START, editableColEnd);
+                            if (nextSelection !== selection) {
+                              setSelection(nextSelection);
+                            }
+                            setContextMenu({
+                              x: event.clientX,
+                              y: event.clientY,
+                              cell: clicked,
+                              selected: getContextSelectedRows(rows, nextSelection),
+                            });
+                          }}
                         >
-                          {colIdx === ACTION_COLUMN ? (
+                          {colIdx === actionColumn ? (
                             row.rowKind === "saved" &&
-                            hasSpecificRowContent(row, headerMapping) &&
+                            hasSpecificRowContent(row, headerMapping, columnSchema) &&
                             canEdit ? (
                               <button
                                 type="button"
@@ -1527,6 +1638,71 @@ export function SpecificExcelGrid({
         </div>
         <GridZoomControl />
       </div>
+
+      {contextMenu ? (
+        <GridContextMenu x={contextMenu.x} y={contextMenu.y} onClose={closeContextMenu}>
+          <GridContextMenuItem
+            shortcut="⌘C"
+            onClick={() => {
+              void copyPrimaryRange();
+              closeContextMenu();
+            }}
+          >
+            Копировать
+          </GridContextMenuItem>
+
+          {canEdit ? (
+            <>
+              <GridContextMenuItem
+                onClick={() => {
+                  if (isEditableColumn(contextMenu.cell.column)) {
+                    beginEdit(contextMenu.cell);
+                  }
+                  closeContextMenu();
+                }}
+                disabled={!isEditableColumn(contextMenu.cell.column)}
+              >
+                Редактировать
+              </GridContextMenuItem>
+              <GridContextMenuItem
+                shortcut="⌘V"
+                onClick={() => {
+                  void pasteAtSelection();
+                  closeContextMenu();
+                }}
+              >
+                Вставить
+              </GridContextMenuItem>
+            </>
+          ) : null}
+
+          {contextMenu.selected.length === 1 &&
+          hasSpecificRowContent(contextMenu.selected[0]!, headerMapping, columnSchema) &&
+          canEdit ? (
+            <>
+              <GridContextMenuSeparator />
+              <GridContextMenuItem
+                onClick={() => {
+                  handleSellAction(contextMenu.selected[0]!);
+                  closeContextMenu();
+                }}
+              >
+                {isSpecificRecordSold(contextMenu.selected[0]!, headerMapping)
+                  ? "Вернуть в наличие"
+                  : "Продать"}
+              </GridContextMenuItem>
+              <GridContextMenuItem
+                onClick={() => {
+                  void handleDeleteRow(contextMenu.selected[0]!);
+                  closeContextMenu();
+                }}
+              >
+                Удалить строку
+              </GridContextMenuItem>
+            </>
+          ) : null}
+        </GridContextMenu>
+      ) : null}
     </div>
   );
 }

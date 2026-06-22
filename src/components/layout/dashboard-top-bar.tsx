@@ -7,10 +7,10 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import {
   Barcode,
-  Download,
   PanelLeft,
   Radar,
   Settings,
+  Settings2,
   Upload,
 } from "lucide-react";
 
@@ -23,19 +23,25 @@ import {
   dashboardTopBarTransition,
 } from "@/components/layout/dashboard-top-bar-motion";
 import { WorkspaceSearchField } from "@/components/layout/workspace-search-field";
-import { DashboardImportProgress } from "@/components/warehouse/import/shared/import-progress-host";
 import { MotorImportTriggerButton } from "@/components/motors/motor-import-trigger-button";
+import { WarehouseImportTriggerButton } from "@/components/warehouse/warehouse-import-trigger-button";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { DashboardImportProgress } from "@/components/warehouse/import/shared/import-progress-host";
 import { canAccessMotorsArea } from "@/lib/auth/app-access";
 import { can } from "@/lib/auth/permissions";
 import { cn } from "@/lib/utils";
 import { resolveSidebarMode, type SidebarMode } from "@/lib/navigation/sidebar-mode";
 import { userCopy } from "@/lib/user-copy";
 import { MotorAvailability } from "@/infrastructure/firestore/motor-repository";
+import { useSpecificCategoriesRealtime } from "@/hooks/use-specific-categories-realtime";
+import { createSpecificCategoryRepository } from "@/infrastructure/firestore/specific-category-repository";
+import { normalizeCompanyId } from "@/lib/company-id";
+
+const specificCategoryRepository = createSpecificCategoryRepository();
 
 const WORKSPACE_TITLES: Partial<Record<SidebarMode, string>> = {
   motors: "Все моторы",
@@ -51,12 +57,7 @@ const availabilityOptions: { value: MotorAvailability; label: string }[] = [
 ];
 
 function isWorkspaceRoute(pathname: string): boolean {
-  return (
-    pathname === "/motors" ||
-    pathname === "/sold" ||
-    pathname.startsWith("/specific/") ||
-    pathname === "/warehouse"
-  );
+  return pathname === "/motors" || pathname === "/sold" || pathname === "/warehouse";
 }
 
 function topBarLeftKey(mode: SidebarMode, workspace: boolean): string {
@@ -64,12 +65,12 @@ function topBarLeftKey(mode: SidebarMode, workspace: boolean): string {
   return "app-brand";
 }
 
-function topBarCenterKey(mode: SidebarMode, workspace: boolean): string {
+function topBarCenterKey(mode: SidebarMode, workspace: boolean, specificView: boolean): string {
   if (workspace) {
     if (mode === "warehouse") return "center-warehouse";
     if (mode === "sold") return "center-sold";
+    if (mode === "motors" && specificView) return "center-specific-filters";
     if (mode === "motors") return "center-motors-filters";
-    if (mode === "specific") return "center-specific-filters";
     return "center-workspace";
   }
   return mode === "home" ? "center-home" : `center-app-${mode}`;
@@ -125,33 +126,49 @@ export function DashboardTopBar() {
     setAvailability,
     motorExcelIo,
     triggerMotorExport,
-    triggerMotorImportPicker,
     warehouseExcelIo,
     triggerWarehouseExport,
     triggerWarehouseImport,
     registerWarehouseImportPicker,
     triggerWarehouseBarcode,
     lastBarcodeScan,
+    selectedSpecificCategoryId,
+    setSpecificColumnsDialogOpen,
   } = useWorkspace();
   const { requirePro, isPro } = useBillingGate();
+
+  const companyId = normalizeCompanyId(profile?.companyId);
+  const specificCategories = useSpecificCategoriesRealtime(
+    specificCategoryRepository,
+    companyId,
+    Boolean(selectedSpecificCategoryId && companyId),
+  );
+  const selectedSpecificCategory = specificCategories.find(
+    (item) => item.id === selectedSpecificCategoryId,
+  );
 
   const [excelError, setExcelError] = useState<string | null>(null);
   const sidebarMode = resolveSidebarMode(pathname);
   const workspace = isWorkspaceRoute(pathname);
-  const isSpecificRoute = pathname.startsWith("/specific/");
+  const isSpecificView = pathname === "/motors" && Boolean(selectedSpecificCategoryId);
+  const isMotorsRoute = pathname === "/motors";
   const isMotorRoute = pathname === "/motors" || pathname === "/sold";
-  const isAllMotorsRoute = pathname === "/motors";
   const isWarehouseRoute = pathname === "/warehouse";
   const isSoldRoute = pathname === "/sold";
   const isMissionControlRoute = pathname === "/";
-  const workspaceTitle = WORKSPACE_TITLES[sidebarMode];
-  const showAvailabilityFilter = (pathname === "/motors" || isSpecificRoute) && !isSoldRoute;
-  const showExcelIo = isMotorRoute || isWarehouseRoute;
+  const workspaceTitle =
+    isSpecificView && selectedSpecificCategory
+      ? selectedSpecificCategory.name
+      : WORKSPACE_TITLES[sidebarMode];
+  const showAvailabilityFilter = (pathname === "/motors" || isSpecificView) && !isSoldRoute;
+  const showExcelIo = (isMotorRoute || isWarehouseRoute) && !isSpecificView;
   const canViewMotors = canAccessMotorsArea(profile);
-
   const canEdit = can(profile, "inventory_edit");
+  const canMotorImport = canViewMotors && canEdit;
   const canImportWarehouse = can(profile, "inventory_import");
   const canExportWarehouse = can(profile, "inventory_export");
+  const showMotorMagicImport = isMotorsRoute && canMotorImport && !isSpecificView;
+  const showWarehouseMagicImport = isWarehouseRoute && canImportWarehouse;
   const exportBusy = isWarehouseRoute ? warehouseExcelIo.busy === "export" : motorExcelIo.busy === "export";
   const importBusy = isWarehouseRoute ? warehouseExcelIo.busy === "import" : motorExcelIo.busy === "import";
   const canExport = isWarehouseRoute ? warehouseExcelIo.canExport : motorExcelIo.canExport;
@@ -189,27 +206,14 @@ export function DashboardTopBar() {
     if (!requirePro("export", () => void runExport())) return;
   }
 
-  function handleImportClick() {
-    setExcelError(null);
-    if (isWarehouseRoute) {
-      void triggerWarehouseImport();
-      return;
-    }
-    requirePro("import", () => {
-      if (!triggerMotorImportPicker()) {
-        setExcelError("Импорт недоступен");
-      }
-    });
-  }
-
   const leftKey = topBarLeftKey(sidebarMode, workspace);
-  const centerKey = topBarCenterKey(sidebarMode, workspace);
+  const centerKey = topBarCenterKey(sidebarMode, workspace, isSpecificView);
   const rightKey = topBarRightKey(sidebarMode, workspace);
 
   return (
     <header
       className={cn(
-        "relative z-30 flex h-14 shrink-0 items-center gap-3 overflow-hidden border-b px-4 md:px-6",
+        "relative z-30 flex h-14 shrink-0 items-center gap-3 border-b px-4 md:px-6",
         isMissionControlRoute
           ? "border-border bg-background"
           : "border-sidebar-border bg-sidebar px-4 md:px-5",
@@ -263,12 +267,12 @@ export function DashboardTopBar() {
         </AnimatedSlot>
       </div>
 
-      <div className="relative flex min-h-9 min-w-0 flex-1 items-center justify-center">
+      <div className="relative z-[55] flex min-h-9 min-w-0 flex-1 items-center justify-center">
         <AnimatedSlot
           slotKey={centerKey}
           className="flex w-full items-center justify-center gap-3 px-1"
         >
-          <DashboardImportProgress variant="compact" showMotors={isAllMotorsRoute} />
+          <DashboardImportProgress variant="compact" />
 
           {showAvailabilityFilter ? (
             <div className="autocore-segmented-tabs inline-flex rounded-lg p-0.5">
@@ -290,13 +294,13 @@ export function DashboardTopBar() {
             </div>
           ) : null}
 
-          {(isWarehouseRoute || isMotorRoute || isSpecificRoute) ? (
+          {(isWarehouseRoute || isMotorRoute || isSpecificView) ? (
             <WorkspaceSearchField
               className={cn("w-full max-w-md md:max-w-lg", workspace && "workspace-search-mobile")}
               placeholder={
                 isWarehouseRoute
                   ? "Поиск по артикулу, названию, бренду..."
-                  : isSpecificRoute
+                  : isSpecificView
                     ? "Поиск по записям..."
                     : "Поиск по номеру, бренду, комплектации..."
               }
@@ -325,6 +329,31 @@ export function DashboardTopBar() {
             </span>
           ) : null}
 
+          {isSpecificView && canEdit ? (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              title="Колонки"
+              aria-label="Колонки"
+              onClick={() => setSpecificColumnsDialogOpen(true)}
+            >
+              <Settings2 className="size-4" />
+            </Button>
+          ) : null}
+
+          {showMotorMagicImport ? (
+            <MotorImportTriggerButton size="sm" showLabel={false} variant="ghost" />
+          ) : null}
+
+          {showWarehouseMagicImport ? (
+            <WarehouseImportTriggerButton
+              size="sm"
+              showLabel={false}
+              variant="ghost"
+              disabled={!canImport || importBusy}
+            />
+          ) : null}
+
           {showExcelIo ? (
             <>
               {isWarehouseRoute ? (
@@ -340,19 +369,6 @@ export function DashboardTopBar() {
                   }}
                 >
                   <Barcode className="size-4" />
-                </Button>
-              ) : null}
-              {isAllMotorsRoute ? (
-                <MotorImportTriggerButton size="sm" showLabel={false} variant="ghost" />
-              ) : isWarehouseRoute ? (
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  disabled={!canImportWarehouse || !canImport || importBusy}
-                  title="Импорт CSV"
-                  onClick={handleImportClick}
-                >
-                  <Download className="size-4" />
                 </Button>
               ) : null}
               <Button

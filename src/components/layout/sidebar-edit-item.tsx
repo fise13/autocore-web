@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { Minus, type LucideIcon } from "lucide-react";
 import type { DragEvent as ReactDragEvent } from "react";
 
@@ -16,13 +15,13 @@ export function reorderList<T>(list: T[], fromIndex: number, toIndex: number): T
 }
 
 type SidebarEditItemProps = {
-  layoutId: string;
   icon: LucideIcon;
   label: string;
   hint?: string;
   onRemove: () => void;
   dragging?: boolean;
   jiggleDelay?: number;
+  jiggle?: boolean;
   onDragStart?: () => void;
   onDragEnd?: () => void;
   onDrop?: () => void;
@@ -30,29 +29,23 @@ type SidebarEditItemProps = {
 };
 
 export function SidebarEditItem({
-  layoutId,
   icon,
   label,
   hint,
   onRemove,
   dragging = false,
   jiggleDelay = 0,
+  jiggle = true,
   onDragStart,
   onDragEnd,
   onDrop,
   className,
 }: SidebarEditItemProps) {
   return (
-    <motion.div
-      layout
-      layoutId={layoutId}
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: "auto" }}
-      exit={{ opacity: 0, height: 0 }}
-      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+    <div
       className={cn(
-        "group relative",
-        !dragging && "animate-sidebar-jiggle",
+        "group relative opacity-100",
+        jiggle && !dragging && "animate-sidebar-jiggle",
         dragging && "animate-none opacity-80",
         className,
       )}
@@ -88,6 +81,6 @@ export function SidebarEditItem({
       >
         <SidebarNavRow icon={icon} label={label} hint={hint} />
       </div>
-    </motion.div>
+    </div>
   );
 }

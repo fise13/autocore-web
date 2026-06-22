@@ -36,12 +36,22 @@ export async function commitMotorExcelImport(params: {
   sheetConfigs: SheetImportConfig[];
   columnMappings: Record<string, SheetColumnMapping>;
   selectedEngineRows?: MotorImportPreviewRow[];
-  onProgress?: (progress: { applied: number; total: number; percent: number }) => void;
+  onProgress?: (progress: {
+    applied: number;
+    total: number;
+    percent: number;
+    createdMotorIds: string[];
+    updatedMotorIds: string[];
+    createdBrandIds: string[];
+    createdEngineIds: string[];
+  }) => void;
   shouldCancel?: () => boolean;
 }): Promise<
   MotorExcelImportResult & {
     createdMotorIds: string[];
     updatedMotorIds: string[];
+    createdBrandIds: string[];
+    createdEngineIds: string[];
   }
 > {
   const bySerial = new Map<string, MotorEntity>();
@@ -63,6 +73,8 @@ export async function commitMotorExcelImport(params: {
   let specificCategoriesUpdated = 0;
   const createdMotorIds: string[] = [];
   const updatedMotorIds: string[] = [];
+  const createdBrandIds: string[] = [];
+  const createdEngineIds: string[] = [];
 
   const selectedKeys = new Set((params.selectedEngineRows ?? []).filter((row) => row.selected).map((row) => row.rowKey));
   const useSelection = selectedKeys.size > 0;
@@ -91,8 +103,14 @@ export async function commitMotorExcelImport(params: {
       applied: imported + updated,
       total: Math.max(total, 1),
       percent: total === 0 ? 100 : Math.round((processedSelected / Math.max(total, 1)) * 100),
+      createdMotorIds: [...createdMotorIds],
+      updatedMotorIds: [...updatedMotorIds],
+      createdBrandIds: [...createdBrandIds],
+      createdEngineIds: [...createdEngineIds],
     });
   }
+
+  reportProgress();
 
   for (const config of params.sheetConfigs) {
     if (config.importType !== "engines") continue;
@@ -108,6 +126,14 @@ export async function commitMotorExcelImport(params: {
     }
 
     try {
+      const rows = params.selectedEngineRows
+        ? params.selectedEngineRows
+            .filter((row) => row.sheetConfigId === config.id && row.selected)
+            .map(previewRowToParsed)
+        : buildEngineRowsFromSheet(sheet, config, mapping);
+
+      if (rows.length === 0) continue;
+
       const brand = await params.catalogRepository.upsertBrand(
         params.companyId,
         brandName,
@@ -115,6 +141,7 @@ export async function commitMotorExcelImport(params: {
       );
       if (!workingBrands.some((item) => item.localId === brand.localId)) {
         workingBrands = [...workingBrands, brand];
+        createdBrandIds.push(brand.id);
       }
 
       const engine = await params.catalogRepository.upsertEngine(
@@ -125,14 +152,10 @@ export async function commitMotorExcelImport(params: {
       );
       if (!workingEngines.some((item) => item.localId === engine.localId)) {
         workingEngines = [...workingEngines, engine];
+        createdEngineIds.push(engine.id);
       }
 
       processedSheets.add(config.sheetName);
-      const rows = params.selectedEngineRows
-        ? params.selectedEngineRows
-            .filter((row) => row.sheetConfigId === config.id && row.selected)
-            .map(previewRowToParsed)
-        : buildEngineRowsFromSheet(sheet, config, mapping);
 
       for (const row of rows) {
         if (params.shouldCancel?.()) break;
@@ -210,6 +233,7 @@ export async function commitMotorExcelImport(params: {
 
   for (const config of params.sheetConfigs) {
     if (config.importType !== "specific") continue;
+    if (params.shouldCancel?.()) break;
     const sheet = params.sheets.find((item) => item.name === config.sheetName);
     const mapping = params.columnMappings[config.id];
     if (!sheet || !mapping) continue;
@@ -229,7 +253,6 @@ export async function commitMotorExcelImport(params: {
       );
       if (!workingSpecificCategories.some((item) => item.id === category.id)) {
         workingSpecificCategories = [...workingSpecificCategories, category];
-        specificCategoriesUpdated += 1;
       }
 
       const parsedRows = buildSpecificRowsFromSheet(sheet, mapping);
@@ -287,5 +310,7 @@ export async function commitMotorExcelImport(params: {
     errors,
     createdMotorIds,
     updatedMotorIds,
+    createdBrandIds,
+    createdEngineIds,
   };
 }

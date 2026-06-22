@@ -6,7 +6,6 @@ import {
   getDocs,
   limit,
   onSnapshot,
-  orderBy,
   query,
   serverTimestamp,
   updateDoc,
@@ -21,6 +20,7 @@ import { normalizeCompanyId } from "@/lib/company-id";
 import { toDateFromFirestore } from "@/lib/firestore-timestamp";
 import { notifyFirestoreSnapshotError } from "@/lib/firestore/snapshot-errors";
 import { SheetImportConfig } from "@/lib/motors/excel-sheet-config";
+import { normalizeImportEngineRows } from "@/lib/motors/import/normalize-engine-rows";
 import { MotorImportPreviewRow } from "@/lib/motors/import/types";
 
 const COLLECTION = "motorImports";
@@ -81,6 +81,11 @@ function mapMotorImportJob(id: string, data: Record<string, unknown>): MotorImpo
     id,
     companyId: String(data.companyId ?? ""),
     status: data.status as MotorImportJob["status"],
+    progress: data.progress as MotorImportJob["progress"],
+    storagePath: typeof data.storagePath === "string" ? data.storagePath : undefined,
+    quickImport: data.quickImport === true,
+    autoApply: data.autoApply === true,
+    processAttempts: typeof data.processAttempts === "number" ? data.processAttempts : undefined,
     sourceFileName: typeof data.sourceFileName === "string" ? data.sourceFileName : undefined,
     sheetConfigs: ((data.sheetConfigs as Omit<SheetImportConfig, "previewRows">[]) ?? []).map(
       restoreSheetConfigFromFirestore,
@@ -95,6 +100,9 @@ function mapMotorImportJob(id: string, data: Record<string, unknown>): MotorImpo
       warnings: 0,
       specificSheets: 0,
     },
+    specificSheetsPreview: (data.specificSheetsPreview as MotorImportJob["specificSheetsPreview"]) ?? [],
+    rowCount: typeof data.rowCount === "number" ? data.rowCount : undefined,
+    aiNotes: typeof data.aiNotes === "string" ? data.aiNotes : undefined,
     appliedSummary: data.appliedSummary as MotorImportJob["appliedSummary"],
     rollbackSnapshot: data.rollbackSnapshot as MotorImportJob["rollbackSnapshot"],
     rowsStoredInSubcollection: data.rowsStoredInSubcollection === true,
@@ -171,22 +179,37 @@ export function createMotorImportRepository() {
     },
 
     async loadEngineRows(job: MotorImportJob): Promise<MotorImportPreviewRow[]> {
-      if (!job.rowsStoredInSubcollection) return job.engineRows;
+      const expectedCount = job.rowCount ?? job.stats.totalEngineRows;
+
+      if (!job.rowsStoredInSubcollection) {
+        return normalizeImportEngineRows(job.engineRows);
+      }
+
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        const snapshot = await getDocs(collection(db, COLLECTION, job.id, "rows"));
+        const rows = normalizeImportEngineRows(
+          snapshot.docs.map((item) => item.data() as MotorImportPreviewRow),
+        );
+        if (rows.length > 0 || expectedCount === 0) {
+          return rows;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
+      }
+
       const snapshot = await getDocs(collection(db, COLLECTION, job.id, "rows"));
-      return snapshot.docs.map((item) => item.data() as MotorImportPreviewRow);
+      return normalizeImportEngineRows(snapshot.docs.map((item) => item.data() as MotorImportPreviewRow));
     },
 
     subscribe(companyId: string, onData: (jobs: MotorImportJob[]) => void, onError?: (error: Error) => void) {
-      const q = query(
-        ref,
-        where("companyId", "==", normalizeCompanyId(companyId)),
-        orderBy("createdAt", "desc"),
-        limit(20),
-      );
+      const q = query(ref, where("companyId", "==", normalizeCompanyId(companyId)));
       return onSnapshot(
         q,
         (snapshot) => {
-          onData(snapshot.docs.map((item) => mapMotorImportJob(item.id, item.data() as Record<string, unknown>)));
+          const jobs = snapshot.docs
+            .map((item) => mapMotorImportJob(item.id, item.data() as Record<string, unknown>))
+            .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
+            .slice(0, 20);
+          onData(jobs);
         },
         (error) => {
           notifyFirestoreSnapshotError(error);

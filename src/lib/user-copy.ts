@@ -249,10 +249,11 @@ export const userCopy = {
     deleteAccountingConfirmDescription:
       "Все операции кассы, расходов, продаж и авансов будут удалены без возможности восстановления.",
     deleteMotorsTitle: "Удалить моторы",
-    deleteMotorsDescription: "Удаляет моторы компании из облачного каталога, доступного в браузере.",
+    deleteMotorsDescription:
+      "Удаляет моторы компании, а также бренды и двигатели в левом меню.",
     deleteMotorsConfirmTitle: "Удалить все моторы?",
     deleteMotorsConfirmDescription:
-      "Все моторы компании в облаке будут удалены. Локальные копии в приложении для Mac не затрагиваются.",
+      "Все моторы компании в облаке будут удалены вместе с брендами и двигателями в боковом меню. Локальные копии в приложении для Mac не затрагиваются.",
     deleteSpecificsTitle: "Удалить специфичные",
     deleteSpecificsDescription: "Удаляет все категории и записи раздела «Специфичные».",
     deleteSpecificsConfirmTitle: "Удалить все специфичные?",
@@ -261,7 +262,9 @@ export const userCopy = {
     deleteAccountingSuccess: (count: number) =>
       count > 0 ? `Бухгалтерия очищена: удалено ${count} записей` : "Бухгалтерия уже была пустой",
     deleteMotorsSuccess: (count: number) =>
-      count > 0 ? `Моторы удалены: ${count} записей` : "Моторы в облаке уже отсутствовали",
+      count > 0
+        ? `Моторы и каталог брендов очищены: удалено ${count} записей`
+        : "Моторы и бренды в облаке уже отсутствовали",
     deleteSpecificsSuccess: (count: number) =>
       count > 0 ? `Специфичные удалены: ${count} записей` : "Специфичные уже были пустыми",
     deleteWarehouseTitle: "Очистить склад",
@@ -292,14 +295,28 @@ export const userCopy = {
     exportExcel: "Экспорт в Excel",
     importExcel: "Импорт из Excel",
     magicImport: "Magic Import",
-    magicImportReview: "Magic Import · на проверке",
+    magicImportReview: "Проверить импорт",
+    magicImportReviewHint: "Готово к проверке",
     magicImportDone: "Magic Import завершён",
     exportEmpty: "Нет данных для экспорта",
     importDone: "Импорт завершён",
-    emptyTitle: "У вас пока нет двигателей",
-    emptyDescription: "Добавьте первый двигатель в таблицу или импортируйте Excel со склада.",
-    emptyImport: "Импортировать Excel",
-    emptyCreate: "Создать двигатель",
+    emptyTitle: "Каталог пуст",
+    emptyDescription: "Импортируйте Excel со склада или добавьте моторы вручную в таблицу.",
+    emptyImport: "Выбрать файл",
+    emptyImportDropHint: "Перетащите .xlsx или .xls сюда",
+    emptyImportAiHint: "Magic Import сам разберёт листы, бренды и серийники.",
+    emptyCreate: "Вручную",
+    emptyImportProgressTitle: "Magic Import",
+    emptyImportProgressDescription: "Обработка на сервере — можно уйти с этой страницы.",
+    emptyImportProgressHint: "Прогресс также виден в верхней панели. После анализа откроется проверка.",
+    emptyImportProgressAction: "Подробнее",
+    emptyImportProgressCollapse: "Свернуть",
+    emptyImportProgressCollapsed: "Импорт в фоне",
+    emptyImportPhaseAnalyze: "Анализ",
+    emptyImportPhaseApply: "Загрузка",
+    emptyImportReviewTitle: "Готово к проверке",
+    emptyImportReviewDescription: "Проверьте строки перед загрузкой в базу.",
+    emptyImportReviewAction: "Проверить импорт",
     soldEmptyTitle: "Проданных двигателей пока нет",
     soldEmptyDescription: "Отметьте продажу в разделе «Все моторы» — запись появится здесь.",
   },
@@ -345,6 +362,24 @@ export const userCopy = {
     deleteTitle: "Удалить бренд?",
     deleteHint: "Бренд и его двигатели будут удалены из каталога. Моторы в таблице останутся.",
     deleteAction: "Удалить",
+  },
+
+  specificSheets: {
+    addTitle: "Новый специфичный лист",
+    addHint: "Лист появится в сайдбаре с семью базовыми колонками. Дополнительные колонки можно добавить позже.",
+    addPlaceholder: "Например, Коробки",
+    renameTitle: "Переименовать лист",
+    renameHint: "Двойной клик по листу открывает это окно.",
+    renamePlaceholder: "Новое название листа",
+    deleteTitle: "Удалить лист?",
+    deleteHint: "Лист и все строки будут удалены без возможности восстановления.",
+    deleteAction: "Удалить лист",
+    emptyCta: "Создать лист",
+    columnsTitle: "Колонки листа",
+    columnsHint: "Базовые колонки можно переименовать. Дополнительные — добавить, переименовать или удалить.",
+    importHint: "Загрузить данные — через Magic Import в разделе «Все моторы», выбрав существующий лист.",
+    selectSheet: "Выберите лист",
+    selectSheetHint: "Создайте лист в сайдбаре «Специфичные», если нужного ещё нет.",
   },
 
   account: {

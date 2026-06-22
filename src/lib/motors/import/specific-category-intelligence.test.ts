@@ -21,7 +21,7 @@ describe("specific category intelligence", () => {
     assert.equal(isLikelyMotorCatalogName("VOLVO"), true);
     assert.equal(isLikelySpecificSheetName("CRUZE"), false);
     assert.equal(isLikelySpecificSheetName("Коробки"), true);
-    assert.equal(isLikelySpecificSheetName("ПОСЛЕ ДЭНА"), false);
+    assert.equal(isLikelySpecificSheetName("ПОСЛЕ ДЭНА"), true);
   });
 
   it("maps aliases to canonical category names", () => {

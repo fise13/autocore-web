@@ -20,6 +20,13 @@ export type AppSidebarProps = {
   onRenameBrand?: (brand: BrandEntity, newName: string) => Promise<void>;
   onDeleteBrand?: (brand: BrandEntity) => Promise<void>;
   onAddBrand?: (name: string) => Promise<void>;
+  onAddSpecificCategory?: (name: string) => Promise<SpecificCategoryEntity | void>;
+  onRenameSpecificCategory?: (category: SpecificCategoryEntity, newName: string) => Promise<void>;
+  onDeleteSpecificCategory?: (category: SpecificCategoryEntity) => Promise<void>;
+  selectedSpecificCategoryId?: string | null;
+  onSpecificCategoryChange?: (categoryId: string | null) => void;
+  onOpenSpecificColumnsSettings?: () => void;
+  canManageSpecificCategories?: boolean;
   showBrandFilters?: boolean;
   canManageBrands?: boolean;
   brandCounts?: Map<number, number>;
@@ -36,7 +43,7 @@ export type SidebarTeamPanelProps = SidebarPanelBaseProps;
 export function isSidebarNavActive(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
   if (href === "/motors") {
-    return pathname === "/motors" || pathname.startsWith("/specific/");
+    return pathname === "/motors";
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }

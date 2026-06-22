@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, Sparkles } from "lucide-react";
 
@@ -16,13 +16,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ConfidenceBadge } from "@/components/warehouse/import/shared/confidence-badge";
 import { ImportProgressBar } from "@/components/warehouse/import/shared/import-progress-bar";
 import { useToast } from "@/components/ui/toast-provider";
@@ -37,6 +30,15 @@ import {
 } from "@/lib/motors/import/types";
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
+import { SpecificCategoryEntity } from "@/infrastructure/firestore/specific-category-repository";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type WizardStep = "analyze" | "review" | "mapping" | "confirm";
 
@@ -51,6 +53,7 @@ type MotorImportWizardProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   useAi: boolean;
+  specificCategories?: SpecificCategoryEntity[];
   resumeSession?: ResumeSession | null;
   onOpenHistory?: () => void;
   onDismiss?: () => void;
@@ -80,7 +83,7 @@ const stepLabels: Record<WizardStep, string> = {
 
 const stepHints: Record<WizardStep, string> = {
   analyze: "ИИ найдёт листы двигателей и специфичные каталоги (КПП, раздатки, ЭБУ…) — колонки, бренды, комплектации и даты",
-  review: "Снимите галочки с лишних строк или откройте настройки листов",
+  review: "Снимите галочки только с лишних строк — по умолчанию импортируются все данные из файла",
   mapping: "Уточните тип листов, бренд и категорию специфичных таблиц",
   confirm: "Можно закрыть окно — загрузка продолжится, прогресс будет сверху",
 };
@@ -110,6 +113,7 @@ export function MotorImportWizard({
   open,
   onOpenChange,
   useAi,
+  specificCategories = [],
   resumeSession,
   onOpenHistory,
   onDismiss,
@@ -118,7 +122,8 @@ export function MotorImportWizard({
   onApply,
   onComplete,
 }: MotorImportWizardProps) {
-  const { motorImportProgress, setMotorImportProgress, registerMotorImportCancel } = useWorkspace();
+  const { motorImportProgress, setMotorImportProgress, setMotorImportReview, cancelMotorImport } =
+    useWorkspace();
   const { toast } = useToast();
   const cancelRef = useRef(false);
   const runningInBackgroundRef = useRef(false);
@@ -134,6 +139,7 @@ export function MotorImportWizard({
   const [preview, setPreview] = useState<(MotorImportPreviewResult & { jobId: string }) | null>(null);
   const [engineRows, setEngineRows] = useState<MotorImportPreviewRow[]>([]);
   const [sheetMappings, setSheetMappings] = useState<Record<string, MotorSheetMappingResult>>({});
+  const [mappingDirty, setMappingDirty] = useState(false);
 
   const uncertainRows = useMemo(
     () =>
@@ -147,12 +153,16 @@ export function MotorImportWizard({
     [engineRows],
   );
   const selectedCount = useMemo(
-    () => engineRows.filter((row) => row.selected && row.errors.length === 0).length,
+    () => engineRows.filter((row) => row.selected).length,
     [engineRows],
   );
   const hasSpecificSheets = useMemo(
     () => Object.values(sheetMappings).some((item) => item.config.importType === "specific"),
     [sheetMappings],
+  );
+  const sheetCount = useMemo(
+    () => Math.max(Object.keys(sheetMappings).length, preview?.sheets.length ?? 0),
+    [preview?.sheets.length, sheetMappings],
   );
   const engineSheetCount = useMemo(
     () => Object.values(sheetMappings).filter((item) => item.config.importType === "engines").length,
@@ -176,37 +186,31 @@ export function MotorImportWizard({
   }
 
   function syncReviewPending(nextOpen: boolean, nextStep: WizardStep = step) {
-    if (!onReviewPending) return;
-    const pending = !nextOpen && Boolean(preview) && nextStep === "review" && !loading && !motorImportProgress;
-    onReviewPending(pending);
+    const shouldShowReview =
+      !nextOpen && Boolean(preview) && nextStep === "review" && !loading && !motorImportProgress;
+
+    if (shouldShowReview && preview) {
+      setMotorImportReview({
+        jobId: preview.jobId,
+        fileName: sourceFileName,
+        totalMotors: preview.stats.totalEngineRows,
+        validMotors: preview.stats.validEngineRows,
+        specificSheets: preview.stats.specificSheets,
+      });
+    } else if (nextOpen) {
+      setMotorImportReview(null);
+    }
+
+    onReviewPending?.(shouldShowReview);
   }
 
   const cancelImport = useCallback(() => {
     cancelRef.current = true;
     runningInBackgroundRef.current = false;
-    registerMotorImportCancel(null);
-    setMotorImportProgress(null);
-    setLoading(false);
-    setProgress(null);
-    setApplyProgress(null);
-    setError(null);
-    setPreview(null);
-    setEngineRows([]);
-    setSheetMappings({});
-    setStep("analyze");
-    setShowMapping(false);
-    lastAnalyzedSheetsKeyRef.current = null;
-    analyzeStartedForKeyRef.current = null;
     onReviewPending?.(false);
     onOpenChange(false);
-    onDismiss?.();
-  }, [onDismiss, onOpenChange, onReviewPending, registerMotorImportCancel, setMotorImportProgress]);
-
-  useEffect(() => {
-    if (!motorImportProgress) return;
-    registerMotorImportCancel(cancelImport);
-    return () => registerMotorImportCancel(null);
-  }, [cancelImport, registerMotorImportCancel]);
+    cancelMotorImport();
+  }, [cancelMotorImport, onOpenChange, onReviewPending]);
 
   function resetState() {
     runningInBackgroundRef.current = false;
@@ -219,10 +223,10 @@ export function MotorImportWizard({
     setPreview(null);
     setEngineRows([]);
     setSheetMappings({});
+    setMappingDirty(false);
     cancelRef.current = false;
     lastAnalyzedSheetsKeyRef.current = null;
     analyzeStartedForKeyRef.current = null;
-    registerMotorImportCancel(null);
     setMotorImportProgress(null);
     onDismiss?.();
   }
@@ -255,19 +259,35 @@ export function MotorImportWizard({
 
       if (!result.cancelled) {
         onComplete(result);
-        const parts = [`${result.imported} моторов загружено`];
-        if (result.specificRecordsImported) {
-          parts.push(`${result.specificRecordsImported} специфичных`);
+        const isServerDeferred =
+          result.imported === 0 &&
+          result.updated === 0 &&
+          (result.specificRecordsImported ?? 0) === 0 &&
+          !result.cancelled;
+        if (!isServerDeferred) {
+          if (result.imported > 0 || result.updated > 0 || (result.specificRecordsImported ?? 0) > 0) {
+            const parts = [`${result.imported} моторов загружено`];
+            if (result.specificRecordsImported) {
+              parts.push(`${result.specificRecordsImported} специфичных`);
+            }
+            if (result.errors.length) {
+              parts.push(`ошибок: ${result.errors.length}`);
+            }
+            toast({
+              title: userCopy.motors.magicImportDone,
+              description: parts.join(" · "),
+              variant: result.errors.length ? "default" : "success",
+              durationMs: 8000,
+            });
+          }
+          resetState();
+          onReviewPending?.(false);
+          return;
         }
-        if (result.errors.length) {
-          parts.push(`ошибок: ${result.errors.length}`);
-        }
-        toast({
-          title: userCopy.motors.magicImportDone,
-          description: parts.join(" · "),
-          variant: result.errors.length ? "default" : "success",
-          durationMs: 8000,
-        });
+
+        runningInBackgroundRef.current = false;
+        onReviewPending?.(false);
+        return;
       }
 
       resetState();
@@ -324,10 +344,14 @@ export function MotorImportWizard({
       setPreview(result);
       setEngineRows(result.engineRows);
       setSheetMappings(result.sheetMappings);
+      setMappingDirty(false);
       lastAnalyzedSheetsKeyRef.current = sheetsKey;
 
-      const autoApply = options?.autoApply ?? result.quickImport;
-      if (autoApply && result.stats.validEngineRows > 0) {
+      const autoApply =
+        (options?.autoApply ?? result.quickImport) &&
+        result.stats.specificSheets === 0 &&
+        result.stats.validEngineRows > 0;
+      if (autoApply) {
         runningInBackgroundRef.current = false;
         setMotorImportProgress(null);
         await runApplyInBackground(result, result.engineRows, result.sheetMappings);
@@ -353,20 +377,31 @@ export function MotorImportWizard({
   }
 
   useEffect(() => {
-    if (sheets.length === 0) return;
+    if (!resumeSession || !open) return;
+    setPreview({ ...resumeSession.preview, jobId: resumeSession.jobId });
+    setEngineRows(resumeSession.preview.engineRows);
+    setSheetMappings(resumeSession.preview.sheetMappings);
+    setMappingDirty(false);
+    setShowMapping(false);
+    setStep("review");
+    const hydrating =
+      resumeSession.preview.engineRows.length === 0 &&
+      (resumeSession.preview.stats.totalEngineRows ?? 0) > 0;
+    setLoading(hydrating);
+    setProgress(null);
+    setError(null);
+    lastAnalyzedSheetsKeyRef.current = sheetsKey;
+  }, [
+    open,
+    resumeSession,
+    resumeSession?.preview.engineRows.length,
+    resumeSession?.preview.stats.totalEngineRows,
+    sheetsKey,
+  ]);
 
-    if (resumeSession) {
-      if (!open) return;
-      setPreview({ ...resumeSession.preview, jobId: resumeSession.jobId });
-      setEngineRows(resumeSession.preview.engineRows);
-      setSheetMappings(resumeSession.preview.sheetMappings);
-      setStep("review");
-      setLoading(false);
-      setProgress(null);
-      setError(null);
-      lastAnalyzedSheetsKeyRef.current = sheetsKey;
-      return;
-    }
+  useEffect(() => {
+    if (resumeSession) return;
+    if (sheets.length === 0) return;
 
     if (preview && lastAnalyzedSheetsKeyRef.current === sheetsKey) {
       if (open) {
@@ -384,6 +419,24 @@ export function MotorImportWizard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheetsKey, resumeSession?.jobId, open]);
 
+  useLayoutEffect(() => {
+    if (step !== "analyze" || !loading || motorImportProgress) return;
+    runningInBackgroundRef.current = true;
+    pushGlobalProgress("analyze", {
+      percent: progress?.percent ?? 2,
+      message: progress?.message ?? "Анализ файла…",
+    });
+    onOpenChange(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, loading, motorImportProgress]);
+
+  useEffect(() => {
+    if (open && motorImportProgress && loading) {
+      runningInBackgroundRef.current = true;
+      onOpenChange(false);
+    }
+  }, [open, motorImportProgress, loading, onOpenChange]);
+
   useEffect(() => {
     if (motorImportProgress && open) {
       onOpenChange(false);
@@ -397,6 +450,7 @@ export function MotorImportWizard({
   }, [open, step, preview, loading]);
 
   function updateSheetMapping(configId: string, patch: Partial<MotorSheetMappingResult["config"]>) {
+    setMappingDirty(true);
     setSheetMappings((current) => {
       const existing = current[configId];
       if (!existing) return current;
@@ -415,24 +469,61 @@ export function MotorImportWizard({
     setEngineRows((current) => current.map((row) => (row.rowKey === rowKey ? { ...row, selected } : row)));
   }
 
+  function rowsReadyForApply() {
+    if (engineRows.length > 0) {
+      return engineRows.some((row) => row.selected) || hasSpecificSheets;
+    }
+    const stats = preview?.stats;
+    if (!stats) return false;
+    return stats.validEngineRows > 0 || stats.specificSheets > 0;
+  }
+
+  function primaryActionLabel(): string {
+    if (activeStep === "confirm") return "Загрузить в базу";
+    if (activeStep === "review" && !mappingDirty && !showMapping) return "Загрузить в базу";
+    if (
+      (showMapping && mappingDirty) ||
+      activeStep === "mapping" ||
+      (activeStep === "review" && mappingDirty)
+    ) {
+      return "Пересчитать";
+    }
+    return "Далее";
+  }
+
   function canProceed() {
     if (loading) return false;
     if (step === "mapping") return Object.values(sheetMappings).length > 0;
-    if (step === "review") return engineRows.length > 0 || hasSpecificSheets;
-    if (step === "confirm") return selectedCount > 0 || hasSpecificSheets;
+    if (step === "review") {
+      if (mappingDirty || showMapping) return true;
+      if (Object.values(sheetMappings).length === 0) return false;
+      return rowsReadyForApply();
+    }
+    if (step === "confirm") return rowsReadyForApply();
     return false;
   }
 
   async function goNext() {
+    if (showMapping && !mappingDirty) {
+      setShowMapping(false);
+      return;
+    }
+
     if (step === "mapping") {
-      await runAnalyze(sheetMappings, { autoApply: false, closeDialog: false });
+      await runAnalyze(sheetMappings, { autoApply: false, closeDialog: true });
       setShowMapping(false);
       setStep("review");
       return;
     }
 
-    if (step === "review") {
-      setStep("confirm");
+    if (step === "review" && mappingDirty) {
+      await runAnalyze(sheetMappings, { autoApply: false, closeDialog: false });
+      setShowMapping(false);
+      return;
+    }
+
+    if (step === "review" && !mappingDirty && !showMapping && preview) {
+      await runApplyInBackground(preview, engineRows, sheetMappings);
       return;
     }
 
@@ -446,6 +537,10 @@ export function MotorImportWizard({
       setStep("review");
       return;
     }
+    if (showMapping) {
+      setShowMapping(false);
+      return;
+    }
     if (step === "mapping") {
       setShowMapping(false);
       setStep("review");
@@ -454,6 +549,19 @@ export function MotorImportWizard({
 
   function minimizeImport() {
     runningInBackgroundRef.current = true;
+    if (loading && !motorImportProgress) {
+      const phase = step === "confirm" || applyProgress != null ? "apply" : "analyze";
+      pushGlobalProgress(phase, {
+        percent:
+          phase === "apply"
+            ? (applyProgress ?? progress?.percent ?? 2)
+            : (progress?.percent ?? 2),
+        message:
+          phase === "apply"
+            ? `Загрузка в базу · ${applyProgress ?? progress?.percent ?? 0}%`
+            : (progress?.message ?? "Анализ файла…"),
+      });
+    }
     onOpenChange(false);
     syncReviewPending(false, step);
   }
@@ -485,7 +593,14 @@ export function MotorImportWizard({
 
   return (
     <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className="flex max-h-[90vh] max-w-5xl flex-col gap-0 overflow-hidden p-0">
+      <DialogContent
+        overlayClassName="z-[100]"
+        className={cn(
+          "z-[100] flex flex-col gap-0 overflow-hidden p-0",
+          "h-[100dvh] max-h-[100dvh] w-[100vw] max-w-[100vw] rounded-none border-0",
+          "sm:h-[min(100dvh,960px)] sm:max-h-[96vh] sm:w-[min(calc(100vw-1.5rem),88rem)] sm:max-w-[min(calc(100vw-1.5rem),88rem)] sm:rounded-xl sm:border",
+        )}
+      >
         <DialogHeader className="border-b px-6 py-4">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -539,7 +654,9 @@ export function MotorImportWizard({
                 {preview ? (
                   <ImportStatsCards
                     preview={preview}
+                    sheetCount={sheetCount}
                     engineSheetCount={engineSheetCount}
+                    engineRowCount={engineRows.length}
                     selectedCount={selectedCount}
                   />
                 ) : (
@@ -557,10 +674,17 @@ export function MotorImportWizard({
                 transition={{ duration: 0.2 }}
                 className="space-y-4"
               >
+                {loading && engineRows.length === 0 && (preview?.stats.totalEngineRows ?? 0) > 0 ? (
+                  <div className="rounded-lg border border-dashed border-primary/25 bg-primary/5 px-4 py-6 text-center text-sm text-muted-foreground">
+                    Загружаем данные импорта…
+                  </div>
+                ) : null}
                 {preview ? (
                   <ImportStatsCards
                     preview={preview}
+                    sheetCount={sheetCount}
                     engineSheetCount={engineSheetCount}
+                    engineRowCount={engineRows.length}
                     selectedCount={selectedCount}
                   />
                 ) : null}
@@ -574,8 +698,13 @@ export function MotorImportWizard({
                 <div className="rounded-lg border bg-muted/20 p-3 text-sm">
                   <p>
                     К импорту: <span className="font-medium text-foreground">{selectedCount}</span> из{" "}
-                    {engineRows.length} моторов
+                    {engineRows.length || preview?.stats.totalEngineRows || 0} моторов
                   </p>
+                  {engineRows.length === 0 && (preview?.stats.totalEngineRows ?? 0) > 0 ? (
+                    <p className="mt-1 text-destructive">
+                      Строки preview не загрузились — закройте окно и откройте импорт снова
+                    </p>
+                  ) : null}
                   {uncertainRows.length > 0 ? (
                     <p className="mt-1 text-amber-700 dark:text-amber-300">
                       {uncertainRows.length} строк с низкой уверенностью ИИ — проверьте перед загрузкой
@@ -593,12 +722,35 @@ export function MotorImportWizard({
                   ) : null}
                 </div>
 
-                <div className="flex justify-end">
-                  <Button variant="outline" size="sm" onClick={() => setShowMapping(true)}>
-                    Настроить листы
-                    <ChevronDown className="ml-1 size-3.5" />
-                  </Button>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium">Листы файла</p>
+                    <Button variant="outline" size="sm" onClick={() => setShowMapping((current) => !current)}>
+                      {showMapping ? "Свернуть" : "Развернуть настройки"}
+                      <ChevronDown
+                        className={cn("ml-1 size-3.5 transition-transform", showMapping && "rotate-180")}
+                      />
+                    </Button>
+                  </div>
+                  <SheetMappingList
+                    sheetMappings={sheetMappings}
+                    engineRows={engineRows}
+                    specificSheets={preview?.specificSheets ?? []}
+                    specificCategories={specificCategories}
+                    expanded={showMapping}
+                    onUpdate={updateSheetMapping}
+                  />
                 </div>
+
+                {(preview?.specificSheets.length ?? 0) > 0 ? (
+                  <SpecificSheetsPreview sheets={preview!.specificSheets} />
+                ) : null}
+
+                {mappingDirty ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+                    <p>Настройки листов изменены — пересчитайте preview перед импортом</p>
+                  </div>
+                ) : null}
 
                 <MotorPreviewTable rows={engineRows.slice(0, 150)} onToggle={toggleRow} />
               </motion.div>
@@ -613,13 +765,25 @@ export function MotorImportWizard({
                 transition={{ duration: 0.2 }}
                 className="space-y-4"
               >
-                {Object.values(sheetMappings).map((mapping) => (
-                  <SheetMappingCard
-                    key={mapping.config.id}
-                    mapping={mapping}
-                    onUpdate={(patch) => updateSheetMapping(mapping.config.id, patch)}
-                  />
-                ))}
+                {Object.values(sheetMappings).map((mapping) => {
+                  const motorCount = engineRows.filter((row) => row.sheetConfigId === mapping.config.id).length;
+                  const specificMeta = preview?.specificSheets.find((item) => item.configId === mapping.config.id);
+                  const rowHint =
+                    mapping.config.importType === "engines"
+                      ? `${motorCount} моторов`
+                      : mapping.config.importType === "specific"
+                        ? `${specificMeta?.rowCount ?? 0} строк`
+                        : "пропуск";
+                  return (
+                    <SheetMappingCard
+                      key={mapping.config.id}
+                      mapping={mapping}
+                      rowHint={rowHint}
+                      specificCategories={specificCategories}
+                      onUpdate={(patch) => updateSheetMapping(mapping.config.id, patch)}
+                    />
+                  );
+                })}
               </motion.div>
             ) : null}
 
@@ -681,7 +845,7 @@ export function MotorImportWizard({
           ) : null}
           {activeStep !== "analyze" ? (
             <Button onClick={() => void goNext()} disabled={!canProceed()}>
-              {activeStep === "confirm" ? "Загрузить в базу" : activeStep === "mapping" ? "Пересчитать" : "Далее"}
+              {primaryActionLabel()}
             </Button>
           ) : null}
         </DialogFooter>
@@ -692,17 +856,23 @@ export function MotorImportWizard({
 
 function ImportStatsCards({
   preview,
+  sheetCount,
   engineSheetCount,
+  engineRowCount,
   selectedCount,
 }: {
   preview: MotorImportPreviewResult;
+  sheetCount: number;
   engineSheetCount: number;
+  engineRowCount: number;
   selectedCount: number;
 }) {
+  const totalMotors = engineRowCount || preview.stats.totalEngineRows;
+
   return (
     <div className="grid gap-3 sm:grid-cols-4">
-      <StatCard label="Листов" value={preview.sheets.length} hint={`${engineSheetCount} двигатели`} />
-      <StatCard label="Моторов" value={preview.stats.totalEngineRows} hint={`${selectedCount} к загрузке`} />
+      <StatCard label="Листов" value={sheetCount} hint={`${engineSheetCount} двигатели`} />
+      <StatCard label="Моторов" value={totalMotors} hint={`${selectedCount} к загрузке`} />
       <StatCard label="Готово" value={preview.stats.validEngineRows} hint={`${preview.stats.errors} ошибок`} />
       <StatCard
         label="Специфичные"
@@ -723,11 +893,126 @@ function StatCard({ label, value, hint }: { label: string; value: number; hint: 
   );
 }
 
+function SheetMappingList({
+  sheetMappings,
+  engineRows,
+  specificSheets,
+  specificCategories,
+  expanded,
+  onUpdate,
+}: {
+  sheetMappings: Record<string, MotorSheetMappingResult>;
+  engineRows: MotorImportPreviewRow[];
+  specificSheets: MotorImportPreviewResult["specificSheets"];
+  specificCategories: SpecificCategoryEntity[];
+  expanded: boolean;
+  onUpdate: (configId: string, patch: Partial<MotorSheetMappingResult["config"]>) => void;
+}) {
+  const specificByConfigId = useMemo(
+    () => new Map(specificSheets.map((item) => [item.configId, item])),
+    [specificSheets],
+  );
+
+  return (
+    <div className="space-y-2">
+      {Object.values(sheetMappings).map((mapping) => {
+        const motorCount = engineRows.filter((row) => row.sheetConfigId === mapping.config.id).length;
+        const specificMeta = specificByConfigId.get(mapping.config.id);
+        const rowHint =
+          mapping.config.importType === "engines"
+            ? `${motorCount} моторов`
+            : mapping.config.importType === "specific"
+              ? `${specificMeta?.rowCount ?? 0} строк`
+              : "пропуск";
+
+        if (!expanded) {
+          return (
+            <div
+              key={mapping.config.id}
+              className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm"
+            >
+              <div className="min-w-0">
+                <p className="truncate font-medium">{mapping.config.sheetName}</p>
+                <p className="text-xs text-muted-foreground">{rowHint}</p>
+              </div>
+              <ImportTypeBadge type={mapping.config.importType} />
+            </div>
+          );
+        }
+
+        return (
+          <SheetMappingCard
+            key={mapping.config.id}
+            mapping={mapping}
+            rowHint={rowHint}
+            specificCategories={specificCategories}
+            onUpdate={(patch) => onUpdate(mapping.config.id, patch)}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function ImportTypeBadge({ type }: { type: SheetImportType }) {
+  const label =
+    type === "engines" ? "Двигатели" : type === "specific" ? "Специфичный" : "Пропуск";
+  const className =
+    type === "engines"
+      ? "bg-primary/10 text-primary"
+      : type === "specific"
+        ? "bg-amber-500/10 text-amber-800 dark:text-amber-200"
+        : "bg-muted text-muted-foreground";
+
+  return (
+    <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", className)}>
+      {label}
+    </span>
+  );
+}
+
+function SpecificSheetsPreview({
+  sheets,
+}: {
+  sheets: MotorImportPreviewResult["specificSheets"];
+}) {
+  if (sheets.length === 0) return null;
+
+  return (
+    <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-4">
+      <p className="text-sm font-medium text-amber-950 dark:text-amber-100">
+        Специфичные каталоги ({sheets.length})
+      </p>
+      <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-200/80">
+        Эти листы загрузятся в выбранные специфичные листы. Старые записи в каждом листе будут заменены.
+      </p>
+      <ul className="mt-3 space-y-2">
+        {sheets.map((sheet) => (
+          <li
+            key={sheet.configId}
+            className="flex items-center justify-between gap-3 rounded-md border border-amber-500/20 bg-background/60 px-3 py-2 text-sm"
+          >
+            <div className="min-w-0">
+              <p className="truncate font-medium">{sheet.sheetName}</p>
+              <p className="text-xs text-muted-foreground">→ {sheet.categoryName}</p>
+            </div>
+            <span className="shrink-0 tabular-nums text-muted-foreground">{sheet.rowCount} строк</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function SheetMappingCard({
   mapping,
+  rowHint,
+  specificCategories,
   onUpdate,
 }: {
   mapping: MotorSheetMappingResult;
+  rowHint: string;
+  specificCategories: SpecificCategoryEntity[];
   onUpdate: (patch: Partial<MotorSheetMappingResult["config"]>) => void;
 }) {
   return (
@@ -737,32 +1022,37 @@ function SheetMappingCard({
           <p className="font-medium">{mapping.config.sheetName}</p>
           <p className="text-xs text-muted-foreground">
             {mapping.source === "ai" ? "ИИ" : mapping.source === "manual" ? "Вручную" : "Правила"} ·{" "}
-            {mapping.reasoning}
+            {rowHint} · {mapping.reasoning}
           </p>
         </div>
         <ConfidenceBadge confidence={mapping.confidence} />
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-1">
+      <div className="space-y-3">
+        <div className="space-y-2">
           <Label>Тип листа</Label>
-          <Select
-            value={mapping.config.importType}
-            onValueChange={(value) => onUpdate({ importType: value as SheetImportType })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {importTypeOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-wrap gap-2">
+            {importTypeOptions.map((option) => (
+              <Button
+                key={option.value}
+                type="button"
+                size="sm"
+                variant={mapping.config.importType === option.value ? "default" : "outline"}
+                onClick={() => onUpdate({ importType: option.value })}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {mapping.config.importType === "engines"
+              ? "Серийники → моторы в базе. Укажите бренд и код двигателя для листа."
+              : mapping.config.importType === "specific"
+                ? "Данные загрузятся в выбранный специфичный лист. Создайте лист в сайдбаре, если его ещё нет."
+                : "Лист не будет импортирован."}
+          </p>
         </div>
         {mapping.config.importType === "engines" ? (
-          <>
+          <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
               <Label>Бренд листа</Label>
               <Input
@@ -779,16 +1069,34 @@ function SheetMappingCard({
                 placeholder="1JZ-GTE"
               />
             </div>
-          </>
+          </div>
         ) : null}
         {mapping.config.importType === "specific" ? (
           <div className="space-y-1">
-            <Label>Категория</Label>
-            <Input
-              value={mapping.config.categoryName}
-              onChange={(event) => onUpdate({ categoryName: event.target.value })}
-              placeholder="Например: Коробки"
-            />
+            <Label>Лист в приложении</Label>
+            {specificCategories.length === 0 ? (
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                {userCopy.specificSheets.selectSheetHint}
+              </p>
+            ) : (
+              <Select
+                value={mapping.config.categoryName || null}
+                onValueChange={(value) => onUpdate({ categoryName: value ?? "" })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={userCopy.specificSheets.selectSheet} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {specificCategories.map((category) => (
+                      <SelectItem key={category.id} value={category.name}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            )}
           </div>
         ) : null}
       </div>

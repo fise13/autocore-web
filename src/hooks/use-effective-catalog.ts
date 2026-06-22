@@ -26,7 +26,7 @@ export function useEffectiveCatalog(
   const motorsQuery = useMotorsRealtime(motorRepository, {
     uid,
     companyId: normalizedCompanyId,
-    enabled: options?.loadMotorsForCatalog ?? false,
+    enabled: enabled && (options?.loadMotorsForCatalog ?? false),
   });
 
   const derivedCatalog = useMemo(

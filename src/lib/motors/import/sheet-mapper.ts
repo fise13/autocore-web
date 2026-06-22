@@ -4,6 +4,7 @@ import {
 } from "@/lib/motors/excel-column-mapping";
 import {
   createSheetColumnMapping,
+  inferSerialColumnIndex,
   mappingHasSerialColumn,
 } from "@/lib/motors/excel-import-engine-rows";
 import {
@@ -66,12 +67,22 @@ export function applyAiSheetToConfig(
   aiSheet: MotorSheetResolveItem,
   existingCategoryNames: string[] = [],
 ): SheetImportConfig {
-  if (aiSheet.import_type === "specific") {
-    const rawName = aiSheet.category_name?.trim() || config.categoryName || config.sheetName;
+  const resolvedImportType =
+    aiSheet.import_type === "skip"
+      ? isLikelySpecificSheetName(config.sheetName)
+        ? "specific"
+        : "engines"
+      : aiSheet.import_type;
+
+  const normalizedAiSheet =
+    aiSheet.import_type === "skip" ? { ...aiSheet, import_type: resolvedImportType } : aiSheet;
+
+  if (normalizedAiSheet.import_type === "specific") {
+    const rawName = normalizedAiSheet.category_name?.trim() || config.categoryName || config.sheetName;
     if (isLikelyMotorCatalogName(rawName)) {
       const coerced = coerceBrandEnginePair(
-        aiSheet.brand_name?.trim() || config.customBrand,
-        aiSheet.engine_code?.trim() || config.customEngineCode,
+        normalizedAiSheet.brand_name?.trim() || config.customBrand,
+        normalizedAiSheet.engine_code?.trim() || config.customEngineCode,
         { sheetName: config.sheetName },
       );
       return {
@@ -94,17 +105,17 @@ export function applyAiSheetToConfig(
   }
 
   const coerced = coerceBrandEnginePair(
-    aiSheet.brand_name?.trim() || config.customBrand,
-    aiSheet.engine_code?.trim() || config.customEngineCode,
+    normalizedAiSheet.brand_name?.trim() || config.customBrand,
+    normalizedAiSheet.engine_code?.trim() || config.customEngineCode,
     { sheetName: config.sheetName },
   );
 
   return {
     ...config,
-    importType: aiSheet.import_type,
+    importType: normalizedAiSheet.import_type,
     customBrand: coerced.brand,
-    customEngineCode: coerced.engine || normalizeEngineCode(aiSheet.engine_code ?? ""),
-    categoryName: aiSheet.category_name?.trim() || config.categoryName,
+    customEngineCode: coerced.engine || normalizeEngineCode(normalizedAiSheet.engine_code ?? ""),
+    categoryName: normalizedAiSheet.category_name?.trim() || config.categoryName,
   };
 }
 
@@ -165,7 +176,8 @@ export function buildRuleSheetMapping(
 
   config = finalizeSheetConfig(config, existingCategoryNames);
   const columnMapping = createSheetColumnMapping(sheet, config.importType);
-  const hasSerial = mappingHasSerialColumn(columnMapping);
+  const hasSerial =
+    mappingHasSerialColumn(columnMapping) || inferSerialColumnIndex(sheet, columnMapping) != null;
   const warnings: string[] = [];
 
   let confidence = 0.5;

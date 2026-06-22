@@ -1,10 +1,11 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
 import { PanelLeft, PanelRight, RotateCcw } from "lucide-react";
+import { motion } from "framer-motion";
 
 import { useSidebarCustomization } from "@/components/providers/sidebar-customization-provider";
 import { SidebarNavRow } from "@/components/layout/sidebar-nav-row";
+import { useSidebarEditMode } from "@/hooks/use-sidebar-edit-mode";
 import {
   SIDEBAR_BLOCK_META,
   SIDEBAR_NAV_META,
@@ -27,23 +28,28 @@ export function SidebarCustomizeSheet({
   onRestoreNav,
   onRestoreBlock,
 }: SidebarCustomizeSheetProps) {
-  const { customization, setCustomization, setIsEditing, resetCustomization } =
-    useSidebarCustomization();
+  const { customization, setCustomization, resetCustomization } = useSidebarCustomization();
+  const { exitEditMode } = useSidebarEditMode();
 
   const hasPool = disabledNav.length > 0 || disabledBlocks.length > 0;
 
   return (
-    <div className="shrink-0 space-y-2 border-t border-sidebar-border/80 px-2 py-2">
-      <div className="flex items-center justify-between gap-2 px-1">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.32, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+      className="relative z-10 flex shrink-0 flex-col gap-2 border-t border-sidebar-border/80 bg-sidebar px-2 py-2"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 px-1">
         <button
           type="button"
-          onClick={() => setIsEditing(false)}
-          className="text-xs font-medium text-primary transition-opacity hover:opacity-80"
+          onClick={exitEditMode}
+          className="shrink-0 text-xs font-medium text-primary transition-opacity hover:opacity-80"
         >
           Готово
         </button>
 
-        <div className="flex rounded-md border border-sidebar-border/80 p-0.5 text-[10px]">
+        <div className="flex shrink-0 rounded-md border border-sidebar-border/80 p-0.5 text-[10px]">
           {(["left", "right"] as SidebarPosition[]).map((side) => (
             <button
               key={side}
@@ -68,63 +74,48 @@ export function SidebarCustomizeSheet({
         </div>
       </div>
 
-      <AnimatePresence>
-        {hasPool ? (
-          <motion.div
-            key="pool"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <p className="px-3 py-1 text-[10px] text-muted-foreground">Скрытые — нажмите, чтобы вернуть</p>
-            <div className="space-y-0.5">
-              {disabledNav.map((navId) => {
-                const meta = SIDEBAR_NAV_META[navId];
-                return (
-                  <motion.button
-                    key={navId}
-                    type="button"
-                    layoutId={`nav-${navId}`}
-                    onClick={() => onRestoreNav(navId)}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="block w-full text-left"
-                  >
-                    <SidebarNavRow icon={meta.icon} label={meta.label} ghost />
-                  </motion.button>
-                );
-              })}
-              {disabledBlocks.map((blockId) => {
-                const meta = SIDEBAR_BLOCK_META[blockId];
-                return (
-                  <motion.button
-                    key={blockId}
-                    type="button"
-                    layoutId={`block-${blockId}`}
-                    onClick={() => onRestoreBlock(blockId)}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="block w-full text-left"
-                  >
-                    <SidebarNavRow icon={meta.icon} label={meta.label} ghost />
-                  </motion.button>
-                );
-              })}
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {hasPool ? (
+        <div className="min-h-0 overflow-hidden">
+          <p className="px-3 py-1 text-[10px] text-muted-foreground">Скрытые — нажмите, чтобы вернуть</p>
+          <div className="max-h-[min(38vh,11rem)] space-y-0.5 overflow-y-auto overscroll-y-contain pr-0.5">
+            {disabledNav.map((navId) => {
+              const meta = SIDEBAR_NAV_META[navId];
+              return (
+                <button
+                  key={navId}
+                  type="button"
+                  onClick={() => onRestoreNav(navId)}
+                  className="block w-full text-left opacity-100"
+                >
+                  <SidebarNavRow icon={meta.icon} label={meta.label} ghost />
+                </button>
+              );
+            })}
+            {disabledBlocks.map((blockId) => {
+              const meta = SIDEBAR_BLOCK_META[blockId];
+              return (
+                <button
+                  key={blockId}
+                  type="button"
+                  onClick={() => onRestoreBlock(blockId)}
+                  className="block w-full text-left opacity-100"
+                >
+                  <SidebarNavRow icon={meta.icon} label={meta.label} ghost />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       <button
         type="button"
         onClick={resetCustomization}
-        className="flex w-full items-center justify-center gap-1 py-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+        className="flex w-full shrink-0 items-center justify-center gap-1 py-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
       >
         <RotateCcw className="size-3" />
         По умолчанию
       </button>
-    </div>
+    </motion.div>
   );
 }

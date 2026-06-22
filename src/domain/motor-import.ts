@@ -3,6 +3,8 @@ import { SheetImportConfig } from "@/lib/motors/excel-sheet-config";
 import { MotorImportPreviewRow } from "@/lib/motors/import/types";
 
 export const MOTOR_IMPORT_STATUSES = [
+  "queued",
+  "analyzing",
   "preview",
   "applying",
   "completed",
@@ -13,10 +15,23 @@ export const MOTOR_IMPORT_STATUSES = [
 
 export type MotorImportStatus = (typeof MOTOR_IMPORT_STATUSES)[number];
 
+export type MotorImportJobProgress = {
+  phase: "analyze" | "apply";
+  percent: number;
+  message?: string;
+  current?: number;
+  total?: number;
+};
+
 export type MotorImportJob = {
   id: string;
   companyId: string;
   status: MotorImportStatus;
+  progress?: MotorImportJobProgress;
+  storagePath?: string;
+  quickImport?: boolean;
+  autoApply?: boolean;
+  processAttempts?: number;
   sourceFileName?: string;
   sheetConfigs: SheetImportConfig[];
   columnMappings: Record<string, SheetColumnMapping>;
@@ -29,6 +44,14 @@ export type MotorImportJob = {
     warnings: number;
     specificSheets: number;
   };
+  specificSheetsPreview?: Array<{
+    configId: string;
+    sheetName: string;
+    categoryName: string;
+    rowCount: number;
+  }>;
+  rowCount?: number;
+  aiNotes?: string;
   appliedSummary?: {
     imported: number;
     updated: number;
@@ -38,6 +61,8 @@ export type MotorImportJob = {
   rollbackSnapshot?: {
     createdMotorIds: string[];
     updatedMotorIds: string[];
+    createdBrandIds?: string[];
+    createdEngineIds?: string[];
   };
   rowsStoredInSubcollection?: boolean;
   createdByUserId: string;

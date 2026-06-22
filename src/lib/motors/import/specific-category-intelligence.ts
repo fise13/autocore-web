@@ -34,6 +34,12 @@ const SPECIFIC_CATEGORY_ALIASES: Record<string, string> = {
 const SPECIFIC_SHEET_HINTS =
   /короб|кпп|gearbox|transmission|раздат|transfer|эбу|ecu|турб|turbo|редуктор|мост|насос|акпп|mkpp/i;
 
+const MISC_SPECIFIC_SHEET_HINTS = /после\s|дэн|разное|прочее|проч|misc|список|каталог/i;
+
+function isMiscSpecificSheetName(name: string): boolean {
+  return MISC_SPECIFIC_SHEET_HINTS.test(name.trim());
+}
+
 /** Tab names that are motor inventory (brand/model/engine), not parts-specific catalogs. */
 const MOTOR_CATALOG_TAB_NAMES =
   /^(cruze|camry|corolla|accord|civic|forester|outback|legacy|impreza|wrx|mix|jeep|volvo|bmw|audi|honda|toyota|nissan|subaru|mazda|mitsubishi|hyundai|kia|lexus|infiniti|mercedes|land rover|range rover)$/i;
@@ -46,6 +52,7 @@ function isKnownSpecificPartsName(name: string): boolean {
   const trimmed = name.trim();
   if (!trimmed) return false;
   if (SPECIFIC_SHEET_HINTS.test(trimmed)) return true;
+  if (isMiscSpecificSheetName(trimmed)) return true;
   return normalizeCategoryKey(trimmed) in SPECIFIC_CATEGORY_ALIASES;
 }
 
@@ -82,7 +89,12 @@ export function resolveSpecificCategoryName(
 
   const key = normalizeCategoryKey(trimmed);
   if (SPECIFIC_CATEGORY_ALIASES[key]) {
-    return SPECIFIC_CATEGORY_ALIASES[key];
+    const canonical = SPECIFIC_CATEGORY_ALIASES[key];
+    if (existingCategoryNames.length === 0) return canonical;
+    const match = existingCategoryNames.find(
+      (existing) => normalizeCategoryKey(existing) === normalizeCategoryKey(canonical),
+    );
+    return match?.trim() ?? "";
   }
 
   for (const existing of existingCategoryNames) {
@@ -100,9 +112,15 @@ export function resolveSpecificCategoryName(
 
   for (const [alias, canonical] of Object.entries(SPECIFIC_CATEGORY_ALIASES)) {
     if (key.includes(alias) || alias.includes(key)) {
-      return canonical;
+      if (existingCategoryNames.length === 0) return canonical;
+      const match = existingCategoryNames.find(
+        (existing) => normalizeCategoryKey(existing) === normalizeCategoryKey(canonical),
+      );
+      return match?.trim() ?? "";
     }
   }
+
+  if (existingCategoryNames.length > 0) return "";
 
   if (/^[a-zA-Zа-яА-Я0-9\s-]{2,}$/.test(trimmed)) {
     return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
@@ -121,12 +139,10 @@ export function suggestSheetImportType(
     return "engines";
   }
   if (isLikelyMotorCatalogName(sheetName)) return "engines";
+  if (isLikelySpecificSheetName(sheetName) || isMiscSpecificSheetName(sheetName)) return "specific";
   if (hasEngineBrand && hasEngineCode && hasSerialColumn) return "engines";
-  if (isLikelySpecificSheetName(sheetName)) return "specific";
   if (hasSerialColumn && (hasEngineBrand || hasEngineCode)) return "engines";
-  if (!hasSerialColumn && isLikelySpecificSheetName(sheetName)) return "specific";
-  if (!hasEngineBrand && !hasEngineCode && !hasSerialColumn) {
-    return isLikelySpecificSheetName(sheetName) ? "specific" : "engines";
-  }
+  if (hasSerialColumn) return "engines";
+  if (!isLikelyMotorCatalogName(sheetName)) return "specific";
   return "engines";
 }

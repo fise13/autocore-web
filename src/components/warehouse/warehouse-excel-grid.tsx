@@ -5,6 +5,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { syncWarehouseGridRowUseCase } from "@/application/use-cases/warehouse/sync-warehouse-grid-row";
 import { GridEditorOverlay } from "@/components/grid/grid-editor-overlay";
 import { GridFillHandle } from "@/components/grid/grid-fill-handle";
+import {
+  GridContextMenu,
+  GridContextMenuItem,
+  GridContextMenuSeparator,
+} from "@/components/grid/grid-context-menu";
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { GridZoomControl } from "@/components/motors/grid-zoom-control";
 import { InventoryItem } from "@/domain/inventory";
@@ -17,7 +22,8 @@ import {
 import { buildFillOperations } from "@/lib/grid/grid-fill-engine";
 import { GridMutation, GridCommandBus } from "@/lib/grid/grid-command-bus";
 import { isRedoShortcut, isUndoShortcut } from "@/lib/grid/grid-keyboard-shortcuts";
-import { resolvePointerCell } from "@/lib/grid/pointer-to-cell";
+import { resolvePointerCellClamped } from "@/lib/grid/pointer-to-cell";
+import { useGridScrollWhileDrag } from "@/lib/grid/grid-scroll-while-drag";
 import { useGridScrollIntoView } from "@/lib/grid/scroll-into-view";
 import { handleGridRedo, handleGridUndo } from "@/lib/grid/grid-undo-redo";
 import {
@@ -110,6 +116,7 @@ type EditorState = {
 type ContextMenuState = {
   x: number;
   y: number;
+  cell: GridCellAddress;
   selected: InventoryItem[];
 };
 
@@ -361,6 +368,8 @@ export function WarehouseExcelGrid({
   const fillSourceRef = useRef<GridRange | null>(null);
   const fillTargetRef = useRef<GridRange | null>(null);
   const dirtyStatusScheduledRef = useRef(false);
+  const lastDragPointerRef = useRef({ x: 0, y: 0 });
+  const onDragAutoScrollTickRef = useRef<() => void>(() => {});
 
   const [rows, setRows] = useState<WarehouseGridRow[]>(() => buildWarehouseGridRows(items));
   const rowsRef = useRef(rows);
@@ -725,9 +734,9 @@ export function WarehouseExcelGrid({
       gridRef.current?.focus();
     }
 
-    function cellFromPointer(clientX: number, clientY: number): GridCellAddress | null {
+    function cellFromPointerClamped(clientX: number, clientY: number): GridCellAddress | null {
       if (!bodyRef.current) return null;
-      return resolvePointerCell({
+      return resolvePointerCellClamped({
         clientX,
         clientY,
         viewport: bodyRef.current,
@@ -739,16 +748,9 @@ export function WarehouseExcelGrid({
       });
     }
 
-    function onPointerMove(event: PointerEvent) {
-      if (pendingSelectionDragRef.current && !isDraggingSelectionRef.current) {
-        const dx = Math.abs(event.clientX - pendingSelectionDragRef.current.clientX);
-        const dy = Math.abs(event.clientY - pendingSelectionDragRef.current.clientY);
-        if (dx > 4 || dy > 4) {
-          isDraggingSelectionRef.current = true;
-        }
-      }
+    function applyDragAtPointer(clientX: number, clientY: number) {
       if (isDraggingSelectionRef.current) {
-        const cell = cellFromPointer(event.clientX, event.clientY);
+        const cell = cellFromPointerClamped(clientX, clientY);
         if (!cell) return;
         setSelection((current) => {
           const next = dragSelection(current, cell);
@@ -758,7 +760,7 @@ export function WarehouseExcelGrid({
         ensureExpanded(cell.row);
       }
       if (isDraggingFillRef.current && fillSourceRef.current) {
-        const cell = cellFromPointer(event.clientX, event.clientY);
+        const cell = cellFromPointerClamped(clientX, clientY);
         if (!cell) return;
         const source = fillSourceRef.current;
         const target = normalizeRange(
@@ -769,6 +771,22 @@ export function WarehouseExcelGrid({
         setFillPreview(target);
         ensureExpanded(target.maxRow);
       }
+    }
+
+    onDragAutoScrollTickRef.current = () => {
+      applyDragAtPointer(lastDragPointerRef.current.x, lastDragPointerRef.current.y);
+    };
+
+    function onPointerMove(event: PointerEvent) {
+      lastDragPointerRef.current = { x: event.clientX, y: event.clientY };
+      if (pendingSelectionDragRef.current && !isDraggingSelectionRef.current) {
+        const dx = Math.abs(event.clientX - pendingSelectionDragRef.current.clientX);
+        const dy = Math.abs(event.clientY - pendingSelectionDragRef.current.clientY);
+        if (dx > 4 || dy > 4) {
+          isDraggingSelectionRef.current = true;
+        }
+      }
+      applyDragAtPointer(event.clientX, event.clientY);
     }
 
     function onPointerUp() {
@@ -814,12 +832,17 @@ export function WarehouseExcelGrid({
     };
   }, [ensureExpanded, layout.columns, layout.headerHeight, layout.rowHeight, layout.xOffsets, markDirty, rows]);
 
-  useEffect(() => {
-    function closeContext() {
-      setContextMenu(null);
-    }
-    window.addEventListener("click", closeContext);
-    return () => window.removeEventListener("click", closeContext);
+  useGridScrollWhileDrag({
+    bodyRef,
+    isDragging: () =>
+      isDraggingSelectionRef.current ||
+      isDraggingFillRef.current ||
+      pendingSelectionDragRef.current != null,
+    onAutoScrollTick: () => onDragAutoScrollTickRef.current(),
+  });
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
   }, []);
 
   const resolveScrollFrame = useCallback(
@@ -1608,6 +1631,7 @@ export function WarehouseExcelGrid({
                             setContextMenu({
                               x: event.clientX,
                               y: event.clientY,
+                              cell: clicked,
                               selected: getContextSelectedItems(rows, nextSelection),
                             });
                           }}
@@ -1745,71 +1769,104 @@ export function WarehouseExcelGrid({
       </div>
 
       {contextMenu ? (
-        <div
-          className="animate-tab-enter fixed z-40 min-w-[170px] rounded-md border bg-popover p-1 shadow-md"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-        >
+        <GridContextMenu x={contextMenu.x} y={contextMenu.y} onClose={closeContextMenu}>
+          <GridContextMenuItem
+            shortcut="⌘C"
+            onClick={() => {
+              void copyPrimaryRange();
+              closeContextMenu();
+            }}
+          >
+            Копировать
+          </GridContextMenuItem>
+
           {canEdit ? (
-            <button
-              type="button"
-              className="block w-full rounded px-3 py-1.5 text-left text-sm text-destructive hover:bg-muted"
-              onClick={() => {
-                deleteSelectedRows();
-                setContextMenu(null);
-              }}
-            >
-              Удалить строку
-            </button>
+            <>
+              <GridContextMenuItem
+                onClick={() => {
+                  if (isEditableColumn(contextMenu.cell.column)) {
+                    beginEdit(contextMenu.cell);
+                  }
+                  closeContextMenu();
+                }}
+                disabled={!isEditableColumn(contextMenu.cell.column)}
+              >
+                Редактировать
+              </GridContextMenuItem>
+              <GridContextMenuItem
+                shortcut="⌘V"
+                onClick={() => {
+                  void pasteAtSelection();
+                  closeContextMenu();
+                }}
+              >
+                Вставить
+              </GridContextMenuItem>
+              <GridContextMenuSeparator />
+              <GridContextMenuItem
+                destructive
+                onClick={() => {
+                  deleteSelectedRows();
+                  closeContextMenu();
+                }}
+              >
+                Удалить строку
+              </GridContextMenuItem>
+            </>
           ) : null}
+
           {contextMenu.selected.length > 0 ? (
             <>
-              <button
-                type="button"
-                className="block w-full rounded px-3 py-1.5 text-left text-sm hover:bg-muted"
+              <GridContextMenuSeparator />
+              <GridContextMenuItem
                 onClick={() => {
                   const target = contextMenu.selected[0];
                   if (target) onReceipt(target);
-                  setContextMenu(null);
+                  closeContextMenu();
                 }}
               >
                 Приход
-              </button>
-              <button
-                type="button"
-                className="block w-full rounded px-3 py-1.5 text-left text-sm hover:bg-muted"
+              </GridContextMenuItem>
+              <GridContextMenuItem
                 onClick={() => {
                   const target = contextMenu.selected[0];
                   if (target) onAdjust(target);
-                  setContextMenu(null);
+                  closeContextMenu();
                 }}
               >
                 Корректировка
-              </button>
-              <button
-                type="button"
-                className="block w-full rounded px-3 py-1.5 text-left text-sm hover:bg-muted"
+              </GridContextMenuItem>
+              <GridContextMenuItem
                 onClick={() => {
                   const target = contextMenu.selected[0];
                   if (target) onTransfer(target);
-                  setContextMenu(null);
+                  closeContextMenu();
                 }}
               >
                 Перемещение
-              </button>
-              <button
-                type="button"
-                className="block w-full rounded px-3 py-1.5 text-left text-sm hover:bg-muted"
+              </GridContextMenuItem>
+              <GridContextMenuItem
                 onClick={() => {
                   const target = contextMenu.selected[0];
                   if (target) onHistory(target);
-                  setContextMenu(null);
+                  closeContextMenu();
                 }}
               >
                 История
-              </button>
+              </GridContextMenuItem>
+              {contextMenu.selected[0]?.sku.trim() ? (
+                <GridContextMenuItem
+                  onClick={() => {
+                    void navigator.clipboard.writeText(contextMenu.selected[0]!.sku.trim());
+                    closeContextMenu();
+                  }}
+                >
+                  Копировать артикул
+                </GridContextMenuItem>
+              ) : null}
             </>
           ) : null}
-        </div>
+        </GridContextMenu>
       ) : null}
     </div>
   );

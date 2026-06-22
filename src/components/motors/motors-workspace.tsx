@@ -18,6 +18,9 @@ import { SellMotorDialog, type MotorSellPayload } from "@/components/motors/sell
 import { useAuth } from "@/components/providers/auth-provider";
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { Button } from "@/components/ui/button";
+import { MotorsImportEmptyLanding } from "@/components/motors/motors-import-empty-landing";
+import { SpecificRecordsWorkspace } from "@/components/specific/specific-records-workspace";
+import { useMotorImportIslandAction } from "@/components/motors/motor-import-trigger-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MotorEntity } from "@/domain/motor";
 import { useDeepAction } from "@/hooks/use-deep-action";
@@ -32,10 +35,13 @@ import { cn } from "@/lib/utils";
 import { createCatalogRepository } from "@/infrastructure/firestore/catalog-repository";
 import { createFinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
 import { createMotorRepository } from "@/infrastructure/firestore/motor-repository";
+import { createSpecificCategoryRepository } from "@/infrastructure/firestore/specific-category-repository";
+import { useSpecificCategoriesRealtime } from "@/hooks/use-specific-categories-realtime";
 
 const motorRepository = createMotorRepository();
 const financialRepository = createFinancialOperationRepository();
 const catalogRepository = createCatalogRepository();
+const specificCategoryRepository = createSpecificCategoryRepository();
 
 export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
   const { profile } = useAuth();
@@ -56,14 +62,32 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
   const { preferences } = useUserPreferences(uid);
   const {
     triggerMotorExport,
+    triggerMotorImport,
     triggerMotorImportPicker,
     triggerSync,
+    motorImportProgress,
+    motorImportReview,
+    cancelMotorImport,
+    motorExcelIo,
+    selectedSpecificCategoryId,
   } = useWorkspace();
+  const openImportIsland = useMotorImportIslandAction();
   const searchParams = useSearchParams();
 
   const { brands, engines } = useEffectiveCatalog(catalogRepository, motorRepository, uid, companyId, {
     loadMotorsForCatalog: true,
   });
+
+  const specificCategories = useSpecificCategoriesRealtime(
+    specificCategoryRepository,
+    companyId,
+    Boolean(companyId && !soldOnly),
+  );
+
+  const selectedSpecificCategory = useMemo(
+    () => specificCategories.find((item) => item.id === selectedSpecificCategoryId) ?? null,
+    [selectedSpecificCategoryId, specificCategories],
+  );
 
   const selectedBrandName = useMemo(
     () => brands.find((brand) => brand.localId === workspace.selectedBrandLocalId)?.name,
@@ -134,8 +158,8 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
   );
 
   useEffect(() => {
-    setCounts(motorCount, motorCount);
-  }, [motorCount, setCounts]);
+    setCounts(motorCount, allMotorsQuery.data?.length ?? motorCount);
+  }, [allMotorsQuery.data, motorCount, setCounts]);
 
   useEffect(() => {
     if (!can(profile, "inventory_view")) {
@@ -290,6 +314,10 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
     );
   }
 
+  if (selectedSpecificCategory) {
+    return <SpecificRecordsWorkspace category={selectedSpecificCategory} embedded />;
+  }
+
   if (soldOnly && isGridReady && rowData.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center px-6">
@@ -318,35 +346,37 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-            className="flex min-h-0 flex-1 items-center justify-center px-6 py-10"
+            className="flex min-h-0 flex-1"
           >
-            <EmptyState
-              icon={LayoutGrid}
-              title={userCopy.motors.emptyTitle}
-              description={userCopy.motors.emptyDescription}
-              primaryAction={
-                canEdit
-                  ? {
-                      label: userCopy.motors.emptyImport,
-                      onClick: () =>
-                        requirePro("import", () => {
-                          if (!triggerMotorImportPicker()) {
-                            setDeepActionError("Импорт недоступен на этой странице");
-                          }
-                        }),
-                      variant: "outline",
-                    }
-                  : undefined
+            <MotorsImportEmptyLanding
+              canEdit={canEdit}
+              progress={motorImportProgress}
+              review={motorImportReview}
+              onImportFile={async (file) => {
+                requirePro("import", async () => {
+                  if (!motorExcelIo.canImport) {
+                    setDeepActionError("Импорт недоступен на этой странице");
+                    return;
+                  }
+                  try {
+                    await triggerMotorImport(file);
+                  } catch (error) {
+                    setDeepActionError(
+                      error instanceof Error ? error.message : "Не удалось начать импорт",
+                    );
+                  }
+                });
+              }}
+              onPickFile={() =>
+                requirePro("import", () => {
+                  if (!triggerMotorImportPicker()) {
+                    setDeepActionError("Импорт недоступен на этой странице");
+                  }
+                })
               }
-              secondaryAction={
-                canEdit
-                  ? {
-                      label: userCopy.motors.emptyCreate,
-                      onClick: revealMotorEditor,
-                    }
-                  : undefined
-              }
-              className="max-w-lg border-none bg-transparent shadow-none"
+              onManualAdd={revealMotorEditor}
+              onOpenReview={openImportIsland}
+              onCancelImport={cancelMotorImport}
             />
           </motion.div>
         ) : (
@@ -378,29 +408,27 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
             <div
               className={cn(
                 "flex min-h-0 flex-1 flex-col transition-opacity duration-200 ease-out motion-reduce:transition-none",
-                isGridReady ? "opacity-100" : "pointer-events-none absolute inset-0 opacity-0",
+                isGridReady ? "opacity-100" : "pointer-events-none opacity-0",
               )}
             >
-              {isGridReady ? (
-                <MotorsExcelGrid
-                  motors={rowData}
-                  companyId={companyId}
-                  uid={uid}
-                  canEdit={canEdit}
-                  soldOnly={soldOnly}
-                  brands={brands}
-                  engines={engines}
-                  catalogRepository={catalogRepository}
-                  defaultBrandName={selectedBrandName}
-                  defaultEngineCode={selectedEngineCode}
-                  repository={motorRepository}
-                  onCloudPendingChange={setCloudPending}
-                  onSell={(motor) => setSellDialog({ motor, mode: "sell" })}
-                  onUnsell={(motor) => setSellDialog({ motor, mode: "unsell" })}
-                  onBatchSell={(motors) => void batchSellMotors(motors)}
-                  onBatchUnsell={(motors) => void batchUnsellMotors(motors)}
-                />
-              ) : null}
+              <MotorsExcelGrid
+                motors={rowData}
+                companyId={companyId}
+                uid={uid}
+                canEdit={canEdit}
+                soldOnly={soldOnly}
+                brands={brands}
+                engines={engines}
+                catalogRepository={catalogRepository}
+                defaultBrandName={selectedBrandName}
+                defaultEngineCode={selectedEngineCode}
+                repository={motorRepository}
+                onCloudPendingChange={setCloudPending}
+                onSell={(motor) => setSellDialog({ motor, mode: "sell" })}
+                onUnsell={(motor) => setSellDialog({ motor, mode: "unsell" })}
+                onBatchSell={(motors) => void batchSellMotors(motors)}
+                onBatchUnsell={(motors) => void batchUnsellMotors(motors)}
+              />
             </div>
           </motion.div>
         )}

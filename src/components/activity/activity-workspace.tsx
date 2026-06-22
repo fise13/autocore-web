@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 
-import { ActivityTimeline } from "@/components/mission-control/activity/activity-timeline";
+import { ActivityLogJournal } from "@/components/activity/activity-log-journal";
 import { WorkspaceActivityFeed } from "@/components/activity/workspace-activity-feed";
 import { EnterprisePanelCard } from "@/components/layout/enterprise-panel-card";
 import { EnterpriseWorkspaceNav } from "@/components/layout/enterprise-workspace-nav";
@@ -88,31 +88,29 @@ export function ActivityWorkspace() {
             onSelect={() => undefined}
           />
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+          <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] xl:items-start">
             <EnterprisePanelCard
               title="Лента событий"
               description="Компактный вид, как в центре управления"
-              className="xl:sticky xl:top-4 xl:self-start"
+              className="xl:sticky xl:top-4 xl:max-h-[min(72vh,720px)] xl:self-start"
+              contentClassName="min-h-0 overflow-hidden"
               footer={
                 <Button type="button" variant="ghost" size="sm" className="w-full" render={<Link href="/" />}>
                   Центр управления
                 </Button>
               }
             >
-              <WorkspaceActivityFeed entries={enrichedEntries} limit={14} />
+              <div className="max-h-[min(52vh,480px)] overflow-y-auto overscroll-y-contain xl:max-h-[min(60vh,560px)]">
+                <WorkspaceActivityFeed entries={enrichedEntries} limit={14} />
+              </div>
             </EnterprisePanelCard>
 
-            <EnterprisePanelCard
-              title="Полный журнал"
-              description="Детализация по модулям, авторам и объектам"
-              contentClassName="p-4"
-            >
-              <ActivityTimeline
-                entries={enrichedEntries}
-                isLoading={isLoading}
-                error={errorMessage}
-              />
-            </EnterprisePanelCard>
+            <ActivityLogJournal
+              entries={enrichedEntries}
+              isLoading={isLoading}
+              error={errorMessage}
+              className="min-h-[min(72vh,720px)]"
+            />
           </div>
         </div>
       </ProFeatureGate>

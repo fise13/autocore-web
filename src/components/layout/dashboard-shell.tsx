@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+import { ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useBarbaNavigation } from "@/hooks/use-barba-navigation";
 import { pathToBarbaNamespace, shouldAnimateDashboardNavigation } from "@/lib/barba/barba-navigation";
@@ -9,6 +10,9 @@ import { pathToBarbaNamespace, shouldAnimateDashboardNavigation } from "@/lib/ba
 import { createBrandUseCase } from "@/application/use-cases/create-brand";
 import { deleteBrandUseCase } from "@/application/use-cases/delete-brand";
 import { renameBrandUseCase } from "@/application/use-cases/rename-brand";
+import { createSpecificCategoryUseCase } from "@/application/use-cases/specific/create-specific-category";
+import { deleteSpecificCategoryUseCase } from "@/application/use-cases/specific/delete-specific-category";
+import { renameSpecificCategoryUseCase } from "@/application/use-cases/specific/rename-specific-category";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { SidebarEditBlur } from "@/components/layout/sidebar-edit-blur";
 import { CompanyConfigSidebarSync } from "@/components/onboarding/company-config-sidebar-sync";
@@ -19,7 +23,6 @@ import { DashboardTopBar } from "@/components/layout/dashboard-top-bar";
 import { BarcodeScanProvider } from "@/components/barcode/barcode-scan-provider";
 import { CommandPaletteProvider } from "@/components/mission-control/command-palette/command-palette-provider";
 import { DashboardRouteCache } from "@/components/layout/dashboard-route-cache";
-import { MotorImportHost } from "@/components/motors/motor-import-host";
 import { ResizableSidebar } from "@/components/layout/resizable-sidebar";
 import { WorkspaceProvider, useWorkspace } from "@/components/layout/workspace-context";
 import { WorkspaceStatusBar } from "@/components/layout/workspace-status-bar";
@@ -28,7 +31,8 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { useEffectiveCatalog } from "@/hooks/use-effective-catalog";
 import { useMotorsRealtime } from "@/hooks/use-motors-realtime";
 import { useSidebarCustomization } from "@/components/providers/sidebar-customization-provider";
-import { useSidebarLayout } from "@/hooks/use-sidebar-layout";
+import { useSidebarLayout, SIDEBAR_EDIT_MIN_WIDTH } from "@/hooks/use-sidebar-layout";
+import { useSidebarEditMode } from "@/hooks/use-sidebar-edit-mode";
 import { useEnsureDefaultWarehouse } from "@/hooks/use-ensure-default-warehouse";
 import { useSpecificCategoriesRealtime } from "@/hooks/use-specific-categories-realtime";
 import { canAccessMotorsArea } from "@/lib/auth/app-access";
@@ -38,7 +42,10 @@ import { cn } from "@/lib/utils";
 import { countSoldMotorsByBrand, filterCatalogBySoldMotors } from "@/lib/catalog-sold-filter";
 import { BrandEntity, createCatalogRepository } from "@/infrastructure/firestore/catalog-repository";
 import { createMotorRepository } from "@/infrastructure/firestore/motor-repository";
-import { createSpecificCategoryRepository } from "@/infrastructure/firestore/specific-category-repository";
+import {
+  createSpecificCategoryRepository,
+  SpecificCategoryEntity,
+} from "@/infrastructure/firestore/specific-category-repository";
 
 type DashboardShellProps = {
   children: ReactNode;
@@ -47,6 +54,11 @@ type DashboardShellProps = {
 const catalogRepository = createCatalogRepository();
 const motorRepository = createMotorRepository();
 const specificCategoryRepository = createSpecificCategoryRepository();
+
+const MotorImportHost = dynamic(
+  () => import("@/components/motors/motor-import-host").then((m) => ({ default: m.MotorImportHost })),
+  { ssr: false, loading: () => null },
+);
 
 function DashboardShellInner({ children }: DashboardShellProps) {
   const pathname = usePathname();
@@ -60,24 +72,28 @@ function DashboardShellInner({ children }: DashboardShellProps) {
   const { collapsed, width, setWidth, toggleVisible } = useSidebarLayout();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const { customization, isEditing } = useSidebarCustomization();
+  const { prepareSidebarForEdit } = useSidebarEditMode();
+  const wasEditingRef = useRef(false);
   const sidebarOnRight = customization.position === "right";
   const companyId = normalizeCompanyId(profile?.companyId);
   const uid = profile?.id ?? "";
   const canViewMotors = canAccessMotorsArea(profile);
   const canManageBrands = can(profile, "inventory_edit") && canViewMotors;
+  const canManageSpecificCategories = can(profile, "inventory_edit") && canViewMotors;
   const canSubscribe = Boolean(uid && companyId && !isLoading);
   useEnsureDefaultWarehouse(canSubscribe);
 
   const isMotorRoute = pathname === "/motors" || pathname === "/sold";
-  const isSpecificRoute = pathname.startsWith("/specific/");
   const isWarehouseRoute = pathname === "/warehouse";
-  const isWorkspaceRoute = isMotorRoute || isSpecificRoute || isWarehouseRoute;
+  const isWorkspaceRoute = isMotorRoute || isWarehouseRoute;
 
   const isSoldRoute = pathname === "/sold";
+  const needsSidebarCatalog =
+    (isMotorRoute || isSoldRoute) && canSubscribe && canViewMotors;
 
   const { brands, engines } = useEffectiveCatalog(catalogRepository, motorRepository, uid, companyId, {
-    loadMotorsForCatalog: pathname === "/motors" && canSubscribe && canViewMotors,
-    enabled: canSubscribe && canViewMotors,
+    loadMotorsForCatalog: pathname === "/motors" && needsSidebarCatalog,
+    enabled: needsSidebarCatalog,
   });
 
   const motorsQuery = useMotorsRealtime(motorRepository, {
@@ -111,7 +127,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
   const specificCategories = useSpecificCategoriesRealtime(
     specificCategoryRepository,
     companyId,
-    canSubscribe && canViewMotors,
+    needsSidebarCatalog,
   );
 
   const handleAddBrand = useCallback(
@@ -150,6 +166,53 @@ function DashboardShellInner({ children }: DashboardShellProps) {
     [engines],
   );
 
+  const handleAddSpecificCategory = useCallback(
+    async (name: string) => {
+      if (!companyId || !uid) return;
+      const created = await createSpecificCategoryUseCase(specificCategoryRepository, {
+        companyId,
+        name,
+        existingCategories: specificCategories,
+        actorUid: uid,
+      });
+      if (created?.id) {
+        workspace.setSelectedSpecificCategoryId(created.id);
+        workspace.setSelectedBrandLocalId(null);
+        workspace.setSelectedEngineLocalId(null);
+      }
+      return created;
+    },
+    [companyId, specificCategories, uid, workspace],
+  );
+
+  const handleRenameSpecificCategory = useCallback(
+    async (category: SpecificCategoryEntity, newName: string) => {
+      if (!companyId) return;
+      await renameSpecificCategoryUseCase(specificCategoryRepository, {
+        companyId,
+        category,
+        newName,
+        existingCategories: specificCategories,
+      });
+    },
+    [companyId, specificCategories],
+  );
+
+  const handleDeleteSpecificCategory = useCallback(
+    async (category: SpecificCategoryEntity) => {
+      if (!companyId || !uid) return;
+      await deleteSpecificCategoryUseCase(specificCategoryRepository, {
+        companyId,
+        category,
+        actorUid: uid,
+      });
+      if (workspace.selectedSpecificCategoryId === category.id) {
+        workspace.setSelectedSpecificCategoryId(null);
+      }
+    },
+    [companyId, uid, workspace],
+  );
+
   useEffect(() => {
     if (isSoldRoute) {
       setAvailability("sold");
@@ -157,6 +220,21 @@ function DashboardShellInner({ children }: DashboardShellProps) {
       setAvailability("all");
     }
   }, [isSoldRoute, pathname, setAvailability]);
+
+  useEffect(() => {
+    if (isEditing && !wasEditingRef.current) {
+      prepareSidebarForEdit();
+    }
+    wasEditingRef.current = isEditing;
+  }, [isEditing, prepareSidebarForEdit]);
+
+  const handleSidebarWidthChange = useCallback(
+    (next: number) => {
+      const min = isEditing ? SIDEBAR_EDIT_MIN_WIDTH : undefined;
+      setWidth(min !== undefined ? Math.max(next, min) : next);
+    },
+    [isEditing, setWidth],
+  );
 
   useEffect(() => {
     setMobileSidebarOpen(false);
@@ -177,15 +255,32 @@ function DashboardShellInner({ children }: DashboardShellProps) {
     specificCategories,
     selectedBrandLocalId: workspace.selectedBrandLocalId,
     selectedEngineLocalId: workspace.selectedEngineLocalId,
-    onBrandChange: workspace.setSelectedBrandLocalId,
+    selectedSpecificCategoryId: workspace.selectedSpecificCategoryId,
+    onBrandChange: (brandLocalId: number | null) => {
+      workspace.setSelectedBrandLocalId(brandLocalId);
+      workspace.setSelectedSpecificCategoryId(null);
+    },
     onEngineChange: workspace.setSelectedEngineLocalId,
     onClearBrandFilters: () => {
       workspace.setSelectedBrandLocalId(null);
       workspace.setSelectedEngineLocalId(null);
+      workspace.setSelectedSpecificCategoryId(null);
     },
     onRenameBrand: canManageBrands ? handleRenameBrand : undefined,
     onDeleteBrand: canManageBrands ? handleDeleteBrand : undefined,
     onAddBrand: canManageBrands ? handleAddBrand : undefined,
+    onAddSpecificCategory: canManageSpecificCategories ? handleAddSpecificCategory : undefined,
+    onRenameSpecificCategory: canManageSpecificCategories ? handleRenameSpecificCategory : undefined,
+    onDeleteSpecificCategory: can(profile, "inventory_delete") ? handleDeleteSpecificCategory : undefined,
+    onSpecificCategoryChange: (categoryId: string | null) => {
+      workspace.setSelectedSpecificCategoryId(categoryId);
+      if (categoryId) {
+        workspace.setSelectedBrandLocalId(null);
+        workspace.setSelectedEngineLocalId(null);
+      }
+    },
+    onOpenSpecificColumnsSettings: () => workspace.setSpecificColumnsDialogOpen(true),
+    canManageSpecificCategories,
     canManageBrands,
     showBrandFilters: pathname === "/motors" || isSoldRoute,
     brandCounts: sidebarCatalog.soldCountByBrand,
@@ -231,7 +326,8 @@ function DashboardShellInner({ children }: DashboardShellProps) {
             collapsed={collapsed}
             width={width}
             position={customization.position}
-            onWidthChange={setWidth}
+            isEditing={isEditing}
+            onWidthChange={handleSidebarWidthChange}
           >
             <AppSidebar {...sidebarProps} collapsed={collapsed} />
           </ResizableSidebar>
