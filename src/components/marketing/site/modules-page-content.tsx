@@ -19,13 +19,13 @@ import { useEffect, useRef, useState } from "react";
 import { marketingSiteContent } from "@/components/marketing/content/marketing-site-content";
 import { FeatureIcon } from "@/components/marketing/site/feature-icon";
 import { MarketingRelatedLinks } from "@/components/marketing/site/marketing-related-links";
+import { ModulesTocNav } from "@/components/marketing/site/modules-toc-nav";
 import {
   useGsapReveal,
   useGsapStaggerChildren,
 } from "@/components/marketing/motion/use-gsap-reveal";
 import { usePrefersReducedMotion } from "@/components/marketing/motion/use-landing-gsap";
 import { marketingRoutes } from "@/lib/marketing-routes";
-import { cn } from "@/lib/utils";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -150,6 +150,12 @@ export function ModulesPageContent() {
     return () => observer.disconnect();
   }, []);
 
+  const tocItems = copy.items.map((mod) => ({
+    id: mod.id,
+    title: mod.title,
+    icon: ICONS[mod.id] ?? Radar,
+  }));
+
   return (
     <div ref={ref}>
       <div className="marketing-stats-row">
@@ -185,25 +191,13 @@ export function ModulesPageContent() {
       </div>
 
       <div className="marketing-modules-layout mt-16">
-        <nav className="marketing-modules-toc" aria-label="Модули" data-modules-reveal>
-          <p className="landing-eyebrow mb-4">Содержание</p>
-          <ul className="space-y-1">
-            {copy.items.map((mod) => {
-              const Icon = ICONS[mod.id] ?? Radar;
-              return (
-                <li key={mod.id}>
-                  <a
-                    href={`#${mod.id}`}
-                    className={cn("marketing-modules-toc-link", activeId === mod.id && "is-active")}
-                  >
-                    <Icon className="size-3.5 shrink-0 opacity-60" aria-hidden />
-                    {mod.title}
-                  </a>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
+        <div data-modules-reveal>
+          <ModulesTocNav
+            items={tocItems}
+            activeId={activeId}
+            onActiveChange={setActiveId}
+          />
+        </div>
 
         <div className="marketing-modules-list">
           {copy.items.map((mod, index) => {

@@ -783,8 +783,15 @@
   .marketing-stat:hover,
   .marketing-module-overview-card:hover,
   .marketing-channel-card:hover,
-  .marketing-related-link:hover {
+  .marketing-related-link:hover,
+  .marketing-modules-toc-link.is-active .marketing-modules-toc-icon,
+  .marketing-modules-toc-link.is-hovered .marketing-modules-toc-icon,
+  .marketing-modules-toc-link.is-active .marketing-modules-toc-label {
     transform: none;
+  }
+
+  .marketing-modules-toc-indicator {
+    transition: none;
   }
 
   .landing-doc-skeleton {
@@ -929,7 +936,48 @@
   top: 5.5rem;
 }
 
+.marketing-modules-toc-track {
+  position: relative;
+}
+
+.marketing-modules-toc-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 0;
+  border-radius: var(--radius-md);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  will-change: transform, height, opacity;
+}
+
+.marketing-modules-toc-list {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.marketing-modules-toc-indicator.is-active {
+  opacity: 1;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.marketing-modules-toc-indicator.is-hover {
+  background: color-mix(in srgb, var(--muted) 55%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--landing-border) 80%, transparent);
+}
+
 .marketing-modules-toc-link {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -937,22 +985,55 @@
   border-radius: var(--radius-md);
   font-size: 0.875rem;
   color: var(--muted-foreground);
+  background: transparent;
   transition:
-    color 0.2s ease,
-    background 0.25s ease,
-    transform 0.2s ease;
+    color 0.22s ease,
+    transform 0.22s ease;
+}
+
+.marketing-modules-toc-link.is-hovered {
+  color: color-mix(in srgb, var(--foreground) 88%, var(--muted-foreground));
 }
 
 .marketing-modules-toc-link.is-active {
   color: var(--foreground);
-  background: color-mix(in srgb, var(--primary) 10%, transparent);
   font-weight: 500;
-  transform: translateX(2px);
 }
 
-.marketing-modules-toc-link:hover {
-  color: var(--foreground);
-  background: color-mix(in srgb, var(--muted) 40%, transparent);
+.marketing-modules-toc-link:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.marketing-modules-toc-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+  opacity: 0.55;
+  transition:
+    opacity 0.22s ease,
+    transform 0.28s ease,
+    color 0.22s ease;
+}
+
+.marketing-modules-toc-link.is-active .marketing-modules-toc-icon {
+  opacity: 1;
+  transform: scale(1.08);
+  color: var(--primary);
+}
+
+.marketing-modules-toc-link.is-hovered .marketing-modules-toc-icon {
+  opacity: 0.85;
+  transform: translateX(1px);
+}
+
+.marketing-modules-toc-label {
+  min-width: 0;
+  transition: transform 0.22s ease;
+}
+
+.marketing-modules-toc-link.is-active .marketing-modules-toc-label {
+  transform: translateX(1px);
 }
 
 .marketing-modules-list {
