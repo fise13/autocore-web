@@ -7,7 +7,7 @@ import { Check } from "lucide-react";
 import type { PricingFrequency } from "@/components/marketing/pricing/pricing-frequency-toggle";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Button } from "@/components/ui/button";
-import { formatMarketingUsd } from "@/lib/money/display-currency";
+import { formatMarketingKzt } from "@/lib/money/display-currency";
 import { cn } from "@/lib/utils";
 
 type MarketingPlan = (typeof import("@/components/marketing/content/marketing-site-content").marketingSiteContent.pricing.plans)[number];
@@ -25,8 +25,8 @@ type MarketingPricingCardProps = {
   onProCheckout?: () => void;
 };
 
-function formatUsd(value: number): string {
-  return formatMarketingUsd(value);
+function formatKzt(value: number): string {
+  return formatMarketingKzt(value);
 }
 
 export function MarketingPricingCard({
@@ -89,12 +89,12 @@ export function MarketingPricingCard({
             {plan.customPriceLabel}
           </span>
         ) : isFree ? (
-          <span className="marketing-pricing-card-price">{formatMarketingUsd(0)}</span>
+          <span className="marketing-pricing-card-price">{formatMarketingKzt(0)}</span>
         ) : (
           <>
             <AnimatedNumber
               value={displayPrice}
-              format={formatUsd}
+              format={formatKzt}
               className="marketing-pricing-card-price"
             />
             <span className="marketing-pricing-card-price-suffix">{billingCopy.perMonthSuffix}</span>

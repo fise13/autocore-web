@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { marketingSiteContent } from "@/components/marketing/content/marketing-site-content";
 import { MarketingPricingCard } from "@/components/marketing/pricing/marketing-pricing-card";
@@ -8,6 +8,7 @@ import {
   PricingFrequency,
   PricingFrequencyToggle,
 } from "@/components/marketing/pricing/pricing-frequency-toggle";
+import { useGsapReveal, useGsapStaggerChildren } from "@/components/marketing/motion/use-gsap-reveal";
 import { StripeBillingInterval } from "@/lib/stripe/prices";
 import { storePendingBillingIntent } from "@/lib/marketing/pending-billing-intent";
 import { marketingProSignupUrl, marketingTrialSignupUrl } from "@/lib/marketing/trial-signup-url";
@@ -27,7 +28,14 @@ function planHref(planId: string, frequency: PricingFrequency): string {
 }
 
 export function MarketingPricingSection() {
+  const ref = useRef<HTMLElement>(null);
   const [frequency, setFrequency] = useState<PricingFrequency>("monthly");
+
+  useGsapReveal(ref, "[data-pricing-toolbar]", { y: 16 });
+  useGsapStaggerChildren(ref, ".marketing-pricing-grid", ".marketing-pricing-card", {
+    stagger: 0.12,
+    y: 28,
+  });
 
   function startTrialSignup() {
     storePendingBillingIntent({ type: "trial" });
@@ -40,8 +48,8 @@ export function MarketingPricingSection() {
   }
 
   return (
-    <section className="marketing-pricing-section" aria-label="Тарифные планы">
-      <div className="marketing-pricing-section-toolbar">
+    <section ref={ref} className="marketing-pricing-section" aria-label="Тарифные планы">
+      <div className="marketing-pricing-section-toolbar" data-pricing-toolbar>
         <PricingFrequencyToggle
           value={frequency}
           onChange={setFrequency}

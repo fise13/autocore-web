@@ -16,7 +16,7 @@ import {
 import { marketingSiteContent } from "@/components/marketing/content/marketing-site-content";
 import { FeatureCard } from "@/components/marketing/site/feature-card";
 import { MarketingSection } from "@/components/marketing/site/marketing-section";
-import { useGsapReveal } from "@/components/marketing/motion/use-gsap-reveal";
+import { useGsapReveal, useGsapStaggerChildren } from "@/components/marketing/motion/use-gsap-reveal";
 import { marketingRoutes } from "@/lib/marketing-routes";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +33,9 @@ const SEVERITY_CLASS = {
 export function SecurityPageContent() {
   const ref = useRef<HTMLDivElement>(null);
   useGsapReveal(ref, "[data-security-reveal]");
+  useGsapStaggerChildren(ref, ".security-stack", ".security-stack-item", { stagger: 0.1, y: 20 });
+  useGsapStaggerChildren(ref, ".security-audit-log", ".security-audit-row", { stagger: 0.05, y: 12 });
+  useGsapStaggerChildren(ref, ".security-checklist", "li", { stagger: 0.06, y: 10 });
 
   return (
     <div ref={ref} className="security-page">
@@ -76,7 +79,7 @@ export function SecurityPageContent() {
       >
         <div className="security-stack">
           {copy.stack.map((item, index) => (
-            <article key={item.layer} className="security-stack-item" data-security-reveal>
+            <article key={item.layer} className="security-stack-item">
               <div className="security-stack-index">{String(index + 1).padStart(2, "0")}</div>
               <div>
                 <h3 className="font-semibold">{item.layer}</h3>
@@ -109,7 +112,7 @@ export function SecurityPageContent() {
         description="Пример того, что видит руководитель в Mission Control — каждое действие с контекстом, модулем и временем."
         className="mt-20"
       >
-        <div className="security-audit-log" data-security-reveal>
+        <div className="security-audit-log">
           {copy.auditLog.map((entry) => (
             <div key={entry.time + entry.action} className="security-audit-row">
               <span className={cn("security-audit-dot", SEVERITY_CLASS[entry.severity])} aria-hidden />
@@ -134,7 +137,7 @@ export function SecurityPageContent() {
         className="mt-20"
         centered
       >
-        <ul className="security-checklist" data-security-reveal>
+        <ul className="security-checklist">
           {copy.checklist.map((item) => (
             <li key={item}>
               <CheckCircle2 className="size-4 shrink-0 text-emerald-500" aria-hidden />

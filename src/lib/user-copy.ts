@@ -96,8 +96,8 @@ export const userCopy = {
     loadError: "Не удалось загрузить тариф. Обновите страницу.",
     pastDue: "Оплата просрочена",
     renewsAt: (date: string) => `Следующее списание: ${date}`,
-    upgradeMonthly: "Pro — $15 / мес",
-    upgradeYearly: "Pro — $150 / год",
+    upgradeMonthly: "Pro — 7 500 ₸ / мес",
+    upgradeYearly: "Pro — 75 000 ₸ / год",
     manageButton: "Управлять подпиской",
     checkoutError: "Не удалось открыть оплату Stripe",
     checkoutUnavailable: "Сервис оплаты временно недоступен. Попробуйте позже или обратитесь в поддержку.",
@@ -130,10 +130,10 @@ export const userCopy = {
       yearly: "Год",
       billingInterval: "Интервал",
       currentPlan: "Текущий план",
-      proMonthlyPrice: "$15 / мес",
-      proYearlyPrice: "$150 / год",
+      proMonthlyPrice: "7 500 ₸ / мес",
+      proYearlyPrice: "75 000 ₸ / год",
       yearlySave: "−17%",
-      yearlyHint: "Экономия $30 в год по сравнению с помесячной оплатой",
+      yearlyHint: "Экономия 15 000 ₸ в год по сравнению с помесячной оплатой",
       upgradeCta: "Перейти на Pro",
       hidePlans: "Скрыть тарифы",
       rows: [
@@ -380,6 +380,13 @@ export const userCopy = {
     importHint: "Загрузить данные — через Magic Import в разделе «Все моторы», выбрав существующий лист.",
     selectSheet: "Выберите лист",
     selectSheetHint: "Создайте лист в сайдбаре «Специфичные», если нужного ещё нет.",
+  },
+
+  demo: {
+    bannerTitle: "Демо-режим",
+    bannerHint: "изменения не сохраняются после выхода",
+    exit: "Выйти из демо",
+    exiting: "Выход…",
   },
 
   account: {

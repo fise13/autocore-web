@@ -97,6 +97,79 @@ export function useGsapSplitHeading(
   );
 }
 
+/** Animate on mount — page headers, above-the-fold subpage blocks. */
+export function useGsapMountReveal(
+  ref: RefObject<HTMLElement | null>,
+  selector: string,
+  options?: RevealOptions,
+) {
+  const reduced = usePrefersReducedMotion();
+
+  useGSAP(
+    () => {
+      const root = ref.current;
+      if (!root || reduced) return;
+
+      const targets = root.querySelectorAll<HTMLElement>(selector);
+      if (!targets.length) return;
+
+      gsap.set(targets, { opacity: 0, y: options?.y ?? 18 });
+
+      gsap.to(targets, {
+        opacity: 1,
+        y: 0,
+        duration: options?.duration ?? 0.65,
+        ease: "power2.out",
+        stagger: options?.stagger ?? 0.07,
+        delay: options?.delay ?? 0.04,
+      });
+    },
+    { scope: ref, dependencies: [reduced, selector] },
+  );
+}
+
+/** Stagger children inside scroll-triggered containers. */
+export function useGsapStaggerChildren(
+  ref: RefObject<HTMLElement | null>,
+  containerSelector: string,
+  childSelector: string,
+  options?: RevealOptions,
+) {
+  const reduced = usePrefersReducedMotion();
+
+  useGSAP(
+    () => {
+      const root = ref.current;
+      if (!root || reduced) return;
+
+      const containers = root.querySelectorAll<HTMLElement>(containerSelector);
+      if (!containers.length) return;
+
+      containers.forEach((container) => {
+        const children = container.querySelectorAll<HTMLElement>(childSelector);
+        if (!children.length) return;
+
+        gsap.set(children, { opacity: 0, y: options?.y ?? 22 });
+
+        gsap.to(children, {
+          opacity: 1,
+          y: 0,
+          duration: options?.duration ?? 0.6,
+          ease: "power2.out",
+          stagger: options?.stagger ?? 0.07,
+          delay: options?.delay ?? 0,
+          scrollTrigger: {
+            trigger: container,
+            start: options?.start ?? "top 86%",
+            once: true,
+          },
+        });
+      });
+    },
+    { scope: ref, dependencies: [reduced, containerSelector, childSelector] },
+  );
+}
+
 /** Hero-only: animate lines on mount (no ScrollTrigger). */
 export function useGsapSplitHero(
   ref: RefObject<HTMLElement | null>,

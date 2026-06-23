@@ -15,6 +15,7 @@ import {
   SpecificRecordEntity,
 } from "@/infrastructure/firestore/specific-category-repository";
 import {
+  createDefaultColumnSchema,
   normalizeColumnSchema,
 } from "@/lib/specific/specific-category-schema";
 import { normalizeCompanyId } from "@/lib/company-id";
@@ -270,7 +271,24 @@ export function createAdminMotorImportRepositories(uid: string, companyId: strin
       );
       if (match) return match;
 
-      throw new Error(`Лист «${trimmed}» не найден. Создайте его в сайдбаре «Специфичные».`);
+      const localId = nextLocalId(existing);
+      const docId = scopedCategoryDocumentId(normalizedCompanyId, localId);
+      const columnSchema = normalizeColumnSchema(createDefaultColumnSchema());
+      await db.collection("specificCategories").doc(docId).set({
+        companyId: normalizedCompanyId,
+        localId,
+        name: trimmed,
+        columnSchema,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      return {
+        id: docId,
+        localId,
+        name: trimmed,
+        companyId: normalizedCompanyId,
+        columnSchema,
+      };
     },
 
     async replaceRecordsForCategory(

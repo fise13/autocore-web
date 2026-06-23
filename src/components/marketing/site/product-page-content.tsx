@@ -18,7 +18,10 @@ import { MarketingFaq } from "@/components/marketing/site/marketing-faq";
 import { MarketingSection } from "@/components/marketing/site/marketing-section";
 import { FeatureCard } from "@/components/marketing/site/feature-card";
 import { ProductPreviewFrame } from "@/components/marketing/site/product-preview-frame";
-import { useGsapReveal } from "@/components/marketing/motion/use-gsap-reveal";
+import {
+  useGsapReveal,
+  useGsapStaggerChildren,
+} from "@/components/marketing/motion/use-gsap-reveal";
 import { marketingRoutes } from "@/lib/marketing-routes";
 import { appDemoUrl } from "@/lib/site-urls";
 import { Button } from "@/components/ui/button";
@@ -33,6 +36,9 @@ const PLATFORM_ICONS = [Globe, Monitor, Smartphone] as const;
 export function ProductPageContent() {
   const ref = useRef<HTMLDivElement>(null);
   useGsapReveal(ref, "[data-product-reveal]");
+  useGsapStaggerChildren(ref, ".marketing-timeline", ".marketing-timeline-step", { stagger: 0.12, y: 24 });
+  useGsapStaggerChildren(ref, ".marketing-persona-grid", ".marketing-persona-card", { stagger: 0.1, y: 22 });
+  useGsapStaggerChildren(ref, ".marketing-platform-grid", ".marketing-platform-card", { stagger: 0.1, y: 22 });
 
   return (
     <div ref={ref} className="marketing-product-page">
@@ -81,7 +87,7 @@ export function ProductPageContent() {
         description={copy.workflow.description}
         className="mt-20"
       >
-        <div className="marketing-timeline" data-product-reveal>
+        <div className="marketing-timeline">
           {copy.workflow.steps.map((step, i) => (
             <article key={step.label} className="marketing-timeline-step">
               <div className="marketing-timeline-marker">
@@ -102,7 +108,7 @@ export function ProductPageContent() {
         description={copy.audience.description}
         className="mt-20 scroll-mt-28"
       >
-        <div className="marketing-persona-grid" data-product-reveal>
+        <div className="marketing-persona-grid">
           {copy.audience.personas.map((persona) => (
             <article key={persona.title} className="marketing-persona-card">
               <h3 className="text-base font-semibold">{persona.title}</h3>
@@ -120,7 +126,7 @@ export function ProductPageContent() {
       </MarketingSection>
 
       <MarketingSection title={copy.platforms.title} description={copy.platforms.description} className="mt-20">
-        <div className="marketing-platform-grid" data-product-reveal>
+        <div className="marketing-platform-grid">
           {copy.platforms.items.map((item, i) => {
             const Icon = PLATFORM_ICONS[i] ?? Globe;
             return (

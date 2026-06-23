@@ -205,7 +205,7 @@ export const marketingSiteContent = {
       yearlyLabel: "Год",
       yearlySave: "−17%",
       perMonthSuffix: "/ мес",
-      yearlyNote: "оплата $150 в год",
+      yearlyNote: "оплата 75 000 ₸ в год",
     },
     plans: [
       {
@@ -229,8 +229,8 @@ export const marketingSiteContent = {
         id: "pro",
         name: "Pro",
         billing: "subscription" as const,
-        priceMonthly: 15,
-        priceYearly: 12.5,
+        priceMonthly: 7500,
+        priceYearly: 6250,
         period: "за компанию",
         description: "Полный операционный контур для разборки, СТО или магазина запчастей.",
         features: [

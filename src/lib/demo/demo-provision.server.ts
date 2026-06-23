@@ -3,6 +3,7 @@ import "server-only";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 import { ROLE_PERMISSIONS, type UserRole } from "@/domain/user";
+import { defaultCompanyAppConfig } from "@/domain/company-config";
 import { DEMO_ACCOUNT_EMAIL, DEMO_COMPANY_ID } from "@/lib/demo/demo-config";
 import { resetDemoWorkspaceData } from "@/lib/demo/demo-reset.server";
 import { getAdminAuth, getAdminFirestore } from "@/infrastructure/firebase/admin";
@@ -125,6 +126,28 @@ export async function ensureDemoWorkspace(uid: string): Promise<void> {
       updatedAt: FieldValue.serverTimestamp(),
     });
   }
+
+  const appConfig = {
+    ...defaultCompanyAppConfig(),
+    onboardingCompleted: true,
+  };
+  await companyRef
+    .collection("settings")
+    .doc("app")
+    .set(
+      {
+        onboardingCompleted: true,
+        modules: appConfig.modules,
+        specificCategories: appConfig.specificCategories.map(({ id, name, mode, warrantyDefault }) => {
+          const item: Record<string, unknown> = { id, name, mode };
+          if (warrantyDefault !== undefined) item.warrantyDefault = warrantyDefault;
+          return item;
+        }),
+        defaultWarrantyTemplate: appConfig.defaultWarrantyTemplate,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
 }
 
 export async function createDemoCustomToken(): Promise<string> {

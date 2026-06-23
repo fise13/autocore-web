@@ -373,7 +373,7 @@ export function createSpecificCategoryRepository() {
         return { ...match, id: canonicalId };
       }
 
-      throw new Error(`Лист «${trimmed}» не найден. Создайте его в сайдбаре «Специфичные».`);
+      return this.createCategory(companyId, trimmed, existing, actorUid);
     },
 
     async findCategoryByName(

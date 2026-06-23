@@ -55,10 +55,10 @@ import { DEFAULT_COMPANY_ID } from "@/lib/company-id";
 import { isDemoSession } from "@/lib/demo/demo-config";
 import {
   clearDemoSessionMarker,
-  hasDemoSessionMarker,
   resetDemoWorkspaceRemote,
 } from "@/lib/demo/demo-session.client";
 import { mapAuthError } from "@/lib/user-copy";
+import { marketingHomeUrl } from "@/lib/site-urls";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
 import {
   sendPasswordResetViaApi,
@@ -537,19 +537,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const auth = getFirebaseAuth();
         const user = auth.currentUser;
         const uid = user?.uid;
-        const shouldResetDemo =
+        const isDemo =
           user &&
-          hasDemoSessionMarker() &&
           isDemoSession({ email: user.email, companyId: profile?.companyId ?? null });
 
-        if (shouldResetDemo) {
-          try {
-            await resetDemoWorkspaceRemote();
-          } catch (error) {
+        if (isDemo) {
+          clearDemoSessionMarker();
+          void resetDemoWorkspaceRemote().catch((error) => {
             console.warn("[demo] reset on logout failed:", error);
-          } finally {
-            clearDemoSessionMarker();
-          }
+          });
         }
 
         if (!prefersReducedMotion()) {
@@ -563,6 +559,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         await signOut(auth);
         resetSyncAuthCache(uid);
         markAuthSessionTransition("sign-out");
+
+        if (isDemo) {
+          window.location.assign(marketingHomeUrl());
+          return;
+        }
+
         router.push("/login");
       },
       async createCompany(name) {

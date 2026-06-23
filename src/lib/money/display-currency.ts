@@ -66,7 +66,18 @@ export function formatAppMoneyExample(
   return formatAppMoney(convert(amountInBase), currency);
 }
 
-/** Marketing site always uses USD. */
+/** Marketing site uses KZT (Kazakhstan). */
+export function formatMarketingKzt(value: number): string {
+  const rounded = Math.round(value);
+  return new Intl.NumberFormat("ru-KZ", {
+    style: "currency",
+    currency: "KZT",
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  }).format(rounded);
+}
+
+/** @deprecated Marketing site uses KZT — prefer {@link formatMarketingKzt}. */
 export function formatMarketingUsd(value: number): string {
   const rounded = Math.round(value * 10) / 10;
   return new Intl.NumberFormat("en-US", {

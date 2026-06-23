@@ -27,9 +27,17 @@ export async function saveCompanyAppConfig({
 
   await configRepository.saveAppConfig(companyId, finalConfig, userId);
 
-  const existingCategories = await specificRepository.fetchCategories(companyId);
+  let existingCategories = await specificRepository.fetchCategories(companyId);
   for (const category of finalConfig.specificCategories.filter((item) => item.mode === "tracked")) {
-    await specificRepository.upsertCategory(companyId, category.name, existingCategories, userId);
+    const ensured = await specificRepository.upsertCategory(
+      companyId,
+      category.name,
+      existingCategories,
+      userId,
+    );
+    if (!existingCategories.some((item) => item.id === ensured.id)) {
+      existingCategories = [...existingCategories, ensured];
+    }
   }
 
   const sidebar = applyCompanyModulesToSidebar(readSidebarCustomization(), finalConfig);

@@ -9,6 +9,7 @@ import { UserAvatar } from "@/components/account/user-avatar";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
+import { useDemoSession } from "@/hooks/use-demo-session";
 import { formatRole, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,7 @@ const MENU_WIDTH = 288;
 
 export function AccountMenu({ compact = false }: AccountMenuProps) {
   const { firebaseUser, profile, logout } = useAuth();
+  const isDemo = useDemoSession();
   const [open, setOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -144,7 +146,7 @@ export function AccountMenu({ compact = false }: AccountMenuProps) {
         }}
       >
         <LogOut className="size-4" />
-        {userCopy.account.signOut}
+        {isDemo ? userCopy.demo.exit : userCopy.account.signOut}
       </button>
     </div>
   ) : null;

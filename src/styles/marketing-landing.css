@@ -779,7 +779,11 @@
 
 @media (prefers-reduced-motion: reduce) {
   .landing-compare-col:hover,
-  .landing-card-hover:hover {
+  .landing-card-hover:hover,
+  .marketing-stat:hover,
+  .marketing-module-overview-card:hover,
+  .marketing-channel-card:hover,
+  .marketing-related-link:hover {
     transform: none;
   }
 
@@ -882,6 +886,16 @@
   border-radius: var(--radius-xl);
   border: 1px solid var(--landing-border);
   background: color-mix(in srgb, var(--card) 40%, var(--background));
+  transition:
+    border-color 0.25s ease,
+    transform 0.25s ease,
+    background 0.25s ease;
+}
+
+.marketing-stat:hover {
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--landing-border));
+  background: color-mix(in srgb, var(--card) 52%, var(--background));
+  transform: translateY(-2px);
 }
 
 .marketing-stat-value {
@@ -923,18 +937,22 @@
   border-radius: var(--radius-md);
   font-size: 0.875rem;
   color: var(--muted-foreground);
-  transition: color 0.2s ease, background 0.2s ease;
-}
-
-.marketing-modules-toc-link:hover {
-  color: var(--foreground);
-  background: color-mix(in srgb, var(--muted) 40%, transparent);
+  transition:
+    color 0.2s ease,
+    background 0.25s ease,
+    transform 0.2s ease;
 }
 
 .marketing-modules-toc-link.is-active {
   color: var(--foreground);
   background: color-mix(in srgb, var(--primary) 10%, transparent);
   font-weight: 500;
+  transform: translateX(2px);
+}
+
+.marketing-modules-toc-link:hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--muted) 40%, transparent);
 }
 
 .marketing-modules-list {
@@ -949,10 +967,36 @@
 }
 
 .marketing-module-card-inner {
+  position: relative;
+  overflow: hidden;
   border-radius: var(--radius-2xl);
   border: 1px solid var(--landing-border);
   background: color-mix(in srgb, var(--card) 35%, var(--background));
   padding: 1.75rem;
+  transition:
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.marketing-module-card.is-visible .marketing-module-card-inner {
+  border-color: color-mix(in srgb, var(--primary) 18%, var(--landing-border));
+  box-shadow: 0 12px 40px -24px color-mix(in srgb, var(--primary) 25%, transparent);
+}
+
+.marketing-module-card-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--primary) 90%, white),
+    color-mix(in srgb, var(--primary) 40%, transparent)
+  );
+  transform-origin: top center;
+  border-radius: 0 2px 2px 0;
+  pointer-events: none;
 }
 
 @media (min-width: 768px) {
@@ -1473,6 +1517,17 @@
   border: 1px solid var(--landing-border);
   background: color-mix(in srgb, var(--card) 32%, var(--background));
   padding: 1.75rem;
+  transition:
+    border-color 0.25s ease,
+    transform 0.25s ease,
+    background 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.marketing-channel-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--primary) 24%, var(--landing-border));
+  box-shadow: 0 16px 40px -28px color-mix(in srgb, var(--primary) 20%, transparent);
 }
 
 .marketing-channel-card.is-featured {
@@ -1542,9 +1597,9 @@
 }
 
 .marketing-related-link:hover {
-  border-color: color-mix(in srgb, var(--primary) 25%, var(--landing-border));
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--landing-border));
   background: color-mix(in srgb, var(--card) 45%, var(--background));
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 .marketing-check-item {

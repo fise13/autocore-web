@@ -7,6 +7,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { useCompanyAppConfig } from "@/hooks/use-company-app-config";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
 import { can } from "@/lib/auth/permissions";
+import { isDemoSession } from "@/lib/demo/demo-config";
 import { hasWizardCompleted } from "@/lib/performance/session-flags";
 
 export type AuthJourneyStep =
@@ -41,6 +42,15 @@ export function useAuthJourneyStep(localProfileName?: string | null): AuthJourne
 
   return useMemo(() => {
     if (isLoading || !profile || !firebaseUser) return "loading";
+
+    if (
+      isDemoSession({
+        email: firebaseUser.email,
+        companyId: profile.companyId ?? null,
+      })
+    ) {
+      return "app";
+    }
 
     const provider = getAccountProviderInfo(firebaseUser);
     if (provider?.kind === "email" && !firebaseUser.emailVerified) {

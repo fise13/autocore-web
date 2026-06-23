@@ -11,12 +11,23 @@ import {
   Wrench,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useGSAP } from "@gsap/react";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useEffect, useRef, useState } from "react";
 
 import { marketingSiteContent } from "@/components/marketing/content/marketing-site-content";
 import { FeatureIcon } from "@/components/marketing/site/feature-icon";
+import { MarketingRelatedLinks } from "@/components/marketing/site/marketing-related-links";
+import {
+  useGsapReveal,
+  useGsapStaggerChildren,
+} from "@/components/marketing/motion/use-gsap-reveal";
+import { usePrefersReducedMotion } from "@/components/marketing/motion/use-landing-gsap";
 import { marketingRoutes } from "@/lib/marketing-routes";
 import { cn } from "@/lib/utils";
+
+gsap.registerPlugin(ScrollTrigger);
 
 const copy = marketingSiteContent.modules;
 
@@ -58,8 +69,65 @@ const RELATED: Record<string, { label: string; href: string }[]> = {
   ],
 };
 
+const RELATED_SECTIONS = [
+  { href: marketingRoutes.product, label: "Обзор продукта", hint: "Mission Control и процессы" },
+  { href: marketingRoutes.pricing, label: "Тарифы", hint: "Пробный период и Pro" },
+  { href: marketingRoutes.security, label: "Безопасность", hint: "RBAC и аудит" },
+  { href: marketingRoutes.contact, label: "Контакты", hint: "Демо и внедрение" },
+];
+
 export function ModulesPageContent() {
+  const ref = useRef<HTMLDivElement>(null);
   const [activeId, setActiveId] = useState<string>(copy.items[0]?.id ?? "");
+  const reduced = usePrefersReducedMotion();
+
+  useGsapReveal(ref, "[data-modules-reveal]", { stagger: 0.08, y: 24 });
+  useGsapStaggerChildren(ref, ".marketing-stats-row", ".marketing-stat", { stagger: 0.1, y: 20 });
+  useGsapStaggerChildren(ref, "[data-modules-overview]", ".marketing-module-overview-card", {
+    stagger: 0.07,
+    y: 18,
+  });
+
+  useGSAP(
+    () => {
+      const root = ref.current;
+      if (!root || reduced) return;
+
+      const cards = root.querySelectorAll<HTMLElement>(".marketing-module-card");
+      cards.forEach((card) => {
+        const inner = card.querySelector<HTMLElement>(".marketing-module-card-inner");
+        const checks = card.querySelectorAll<HTMLElement>(".marketing-check-item");
+        const accent = card.querySelector<HTMLElement>(".marketing-module-card-accent");
+        if (!inner) return;
+
+        gsap.set(inner, { opacity: 0, y: 36 });
+        gsap.set(checks, { opacity: 0, x: -10 });
+        if (accent) gsap.set(accent, { scaleY: 0 });
+
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: card,
+            start: "top 84%",
+            once: true,
+            onEnter: () => card.classList.add("is-visible"),
+          },
+        });
+
+        tl.to(inner, { opacity: 1, y: 0, duration: 0.75, ease: "power3.out" });
+        if (accent) {
+          tl.to(accent, { scaleY: 1, duration: 0.55, ease: "power2.out" }, "-=0.5");
+        }
+        if (checks.length) {
+          tl.to(
+            checks,
+            { opacity: 1, x: 0, duration: 0.4, stagger: 0.035, ease: "power2.out" },
+            "-=0.45",
+          );
+        }
+      });
+    },
+    { scope: ref, dependencies: [reduced] },
+  );
 
   useEffect(() => {
     const sections = copy.items
@@ -83,7 +151,7 @@ export function ModulesPageContent() {
   }, []);
 
   return (
-    <>
+    <div ref={ref}>
       <div className="marketing-stats-row">
         {copy.stats.map((stat) => (
           <div key={stat.label} className="marketing-stat">
@@ -93,11 +161,13 @@ export function ModulesPageContent() {
         ))}
       </div>
 
-      <p className="landing-lead mt-10 max-w-3xl">{copy.intro}</p>
+      <p className="landing-lead mt-10 max-w-3xl" data-modules-reveal>
+        {copy.intro}
+      </p>
 
-      <div className="marketing-module-overview mt-12">
+      <div className="marketing-module-overview mt-12" data-modules-reveal>
         <p className="landing-eyebrow mb-4">Быстрый обзор</p>
-        <div className="marketing-module-overview-grid">
+        <div className="marketing-module-overview-grid" data-modules-overview>
           {copy.items.map((mod, index) => {
             const Icon = ICONS[mod.id] ?? Radar;
             return (
@@ -115,10 +185,10 @@ export function ModulesPageContent() {
       </div>
 
       <div className="marketing-modules-layout mt-16">
-        <nav className="marketing-modules-toc" aria-label="Модули">
+        <nav className="marketing-modules-toc" aria-label="Модули" data-modules-reveal>
           <p className="landing-eyebrow mb-4">Содержание</p>
           <ul className="space-y-1">
-            {copy.items.map((mod, index) => {
+            {copy.items.map((mod) => {
               const Icon = ICONS[mod.id] ?? Radar;
               return (
                 <li key={mod.id}>
@@ -142,6 +212,7 @@ export function ModulesPageContent() {
             return (
               <article key={mod.id} id={mod.id} className="marketing-module-card scroll-mt-28">
                 <div className="marketing-module-card-inner">
+                  <span className="marketing-module-card-accent" aria-hidden />
                   <div className="marketing-module-card-head">
                     <FeatureIcon icon={Icon} tone={TONES[index] ?? "blue"} size="lg" />
                     <div className="min-w-0">
@@ -185,6 +256,8 @@ export function ModulesPageContent() {
           })}
         </div>
       </div>
-    </>
+
+      <MarketingRelatedLinks links={RELATED_SECTIONS} />
+    </div>
   );
 }

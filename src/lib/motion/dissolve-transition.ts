@@ -104,9 +104,12 @@ export async function playAuthJourneyContentEnter(): Promise<void> {
 export async function playDissolveLeave(target: HTMLElement | null): Promise<void> {
   if (prefersReducedMotion()) return;
 
+  const overlay = getDissolveOverlay();
+  if (!overlay) return;
+
   const blur = transitionBlurPx();
 
-  const { root, veil } = requireDissolveOverlay();
+  const { root, veil } = overlay;
   gsap.set(root, { visibility: "visible", pointerEvents: "auto" });
   gsap.set(veil, { opacity: 0 });
 
