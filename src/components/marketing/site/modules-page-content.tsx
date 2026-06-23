@@ -26,6 +26,9 @@ import {
 } from "@/components/marketing/motion/use-gsap-reveal";
 import { usePrefersReducedMotion } from "@/components/marketing/motion/use-landing-gsap";
 import { marketingRoutes } from "@/lib/marketing-routes";
+import { smoothScrollToElement } from "@/lib/motion/smooth-scroll-to";
+
+const MODULE_SCROLL_OFFSET = 112;
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -156,6 +159,22 @@ export function ModulesPageContent() {
     icon: ICONS[mod.id] ?? Radar,
   }));
 
+  function goToModule(id: string, event?: React.MouseEvent<HTMLAnchorElement>) {
+    event?.preventDefault();
+    const section = document.getElementById(id);
+    if (!section) return;
+
+    setActiveId(id);
+    history.replaceState(null, "", `#${id}`);
+
+    if (reduced) {
+      section.scrollIntoView({ behavior: "auto", block: "start" });
+      return;
+    }
+
+    void smoothScrollToElement(section, MODULE_SCROLL_OFFSET);
+  }
+
   return (
     <div ref={ref}>
       <div className="marketing-stats-row">
@@ -177,7 +196,12 @@ export function ModulesPageContent() {
           {copy.items.map((mod, index) => {
             const Icon = ICONS[mod.id] ?? Radar;
             return (
-              <a key={mod.id} href={`#${mod.id}`} className="marketing-module-overview-card group">
+              <a
+                key={mod.id}
+                href={`#${mod.id}`}
+                className="marketing-module-overview-card group"
+                onClick={(event) => goToModule(mod.id, event)}
+              >
                 <FeatureIcon icon={Icon} tone={TONES[index] ?? "blue"} size="md" />
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold">{mod.title}</span>
@@ -191,13 +215,7 @@ export function ModulesPageContent() {
       </div>
 
       <div className="marketing-modules-layout mt-16">
-        <div data-modules-reveal>
-          <ModulesTocNav
-            items={tocItems}
-            activeId={activeId}
-            onActiveChange={setActiveId}
-          />
-        </div>
+        <ModulesTocNav items={tocItems} activeId={activeId} onActiveChange={setActiveId} />
 
         <div className="marketing-modules-list">
           {copy.items.map((mod, index) => {

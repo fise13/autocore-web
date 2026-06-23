@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import { usePrefersReducedMotion } from "@/components/marketing/motion/use-landing-gsap";
+import { smoothScrollToElement } from "@/lib/motion/smooth-scroll-to";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 
@@ -26,7 +27,10 @@ type ModulesTocNavProps = {
   activeId: string;
   onActiveChange: (id: string) => void;
   listRef?: RefObject<HTMLUListElement | null>;
+  scrollOffset?: number;
 };
+
+const DEFAULT_SCROLL_OFFSET = 112; // matches scroll-mt-28 on module sections
 
 function indicatorPosition(link: HTMLElement, track: HTMLElement) {
   const trackTop = track.getBoundingClientRect().top;
@@ -37,13 +41,20 @@ function indicatorPosition(link: HTMLElement, track: HTMLElement) {
   };
 }
 
-export function ModulesTocNav({ items, activeId, onActiveChange, listRef: externalListRef }: ModulesTocNavProps) {
+export function ModulesTocNav({
+  items,
+  activeId,
+  onActiveChange,
+  listRef: externalListRef,
+  scrollOffset = DEFAULT_SCROLL_OFFSET,
+}: ModulesTocNavProps) {
   const internalListRef = useRef<HTMLUListElement>(null);
   const listRef = externalListRef ?? internalListRef;
   const trackRef = useRef<HTMLDivElement>(null);
   const activeIndicatorRef = useRef<HTMLSpanElement>(null);
   const hoverIndicatorRef = useRef<HTMLSpanElement>(null);
   const linkRefs = useRef(new Map<string, HTMLAnchorElement>());
+  const scrollAnimRef = useRef<Promise<void> | null>(null);
   const reduced = usePrefersReducedMotion();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
@@ -95,7 +106,11 @@ export function ModulesTocNav({ items, activeId, onActiveChange, listRef: extern
   useEffect(() => {
     const refresh = () => syncActiveIndicator(false);
     window.addEventListener("resize", refresh);
-    return () => window.removeEventListener("resize", refresh);
+    window.addEventListener("scroll", refresh, { passive: true });
+    return () => {
+      window.removeEventListener("resize", refresh);
+      window.removeEventListener("scroll", refresh);
+    };
   }, [syncActiveIndicator]);
 
   useGSAP(
@@ -126,8 +141,18 @@ export function ModulesTocNav({ items, activeId, onActiveChange, listRef: extern
     if (!section) return;
 
     onActiveChange(id);
-    section.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
     history.replaceState(null, "", `#${id}`);
+
+    if (reduced) {
+      section.scrollIntoView({ behavior: "auto", block: "start" });
+      return;
+    }
+
+    const scrollPromise = smoothScrollToElement(section, scrollOffset);
+    scrollAnimRef.current = scrollPromise;
+    void scrollPromise.finally(() => {
+      if (scrollAnimRef.current === scrollPromise) scrollAnimRef.current = null;
+    });
   }
 
   function handleMouseEnter(id: string) {
@@ -148,7 +173,7 @@ export function ModulesTocNav({ items, activeId, onActiveChange, listRef: extern
 
   return (
     <nav className="marketing-modules-toc" aria-label="Модули">
-      <p className="landing-eyebrow mb-4">Содержание</p>
+      <p className="landing-eyebrow mb-4 marketing-modules-toc-heading">Содержание</p>
       <div ref={trackRef} className="marketing-modules-toc-track">
         <span
           ref={activeIndicatorRef}

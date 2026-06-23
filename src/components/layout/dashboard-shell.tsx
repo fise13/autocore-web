@@ -21,6 +21,7 @@ import { BillingGateProvider } from "@/components/billing/billing-gate-provider"
 import { DashboardLayoutProvider } from "@/components/layout/dashboard-layout-context";
 import { DashboardTopBar } from "@/components/layout/dashboard-top-bar";
 import { DemoSessionBanner } from "@/components/demo/demo-session-banner";
+import { useDemoExitReset } from "@/hooks/use-demo-exit-reset";
 import { BarcodeScanProvider } from "@/components/barcode/barcode-scan-provider";
 import { CommandPaletteProvider } from "@/components/mission-control/command-palette/command-palette-provider";
 import { DashboardRouteCache } from "@/components/layout/dashboard-route-cache";
@@ -83,6 +84,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
   const canManageSpecificCategories = can(profile, "inventory_edit") && canViewMotors;
   const canSubscribe = Boolean(uid && companyId && !isLoading);
   useEnsureDefaultWarehouse(canSubscribe);
+  useDemoExitReset();
 
   const isMotorRoute = pathname === "/motors" || pathname === "/sold";
   const isWarehouseRoute = pathname === "/warehouse";

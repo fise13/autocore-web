@@ -55,7 +55,8 @@ import { DEFAULT_COMPANY_ID } from "@/lib/company-id";
 import { isDemoSession } from "@/lib/demo/demo-config";
 import {
   clearDemoSessionMarker,
-  resetDemoWorkspaceRemote,
+  dispatchDemoReset,
+  hasDemoSessionMarker,
 } from "@/lib/demo/demo-session.client";
 import { mapAuthError } from "@/lib/user-copy";
 import { marketingHomeUrl } from "@/lib/site-urls";
@@ -537,15 +538,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const auth = getFirebaseAuth();
         const user = auth.currentUser;
         const uid = user?.uid;
-        const isDemo =
+        const isDemo = Boolean(
           user &&
-          isDemoSession({ email: user.email, companyId: profile?.companyId ?? null });
+            (hasDemoSessionMarker() ||
+              isDemoSession({ email: user.email, companyId: profile?.companyId ?? null })),
+        );
 
         if (isDemo) {
-          clearDemoSessionMarker();
-          void resetDemoWorkspaceRemote().catch((error) => {
+          try {
+            await dispatchDemoReset({ timeoutMs: 12_000 });
+          } catch (error) {
             console.warn("[demo] reset on logout failed:", error);
-          });
+          }
+          clearDemoSessionMarker();
         }
 
         if (!prefersReducedMotion()) {

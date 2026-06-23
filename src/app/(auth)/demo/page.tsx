@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { DEMO_ACCOUNT_EMAIL } from "@/lib/demo/demo-config";
 import { getFirebaseAuth, isFirebaseConfigured } from "@/infrastructure/firebase/client";
 import { prepareSyncAuth } from "@/lib/auth/prepare-sync-auth";
-import { clearDemoSessionMarker } from "@/lib/demo/demo-session.client";
+import { clearDemoSessionMarker, dispatchDemoReset, markDemoSessionActive } from "@/lib/demo/demo-session.client";
 import { appLoginUrl, marketingHomeUrl } from "@/lib/site-urls";
 import { userCopy } from "@/lib/user-copy";
 
@@ -68,7 +68,12 @@ export default function DemoPage() {
 
         await prepareSyncAuth(user.uid, { force: true });
         await refreshProfile();
-        sessionStorage.setItem("autocore-demo-session", "1");
+
+        if (payload.type === "password") {
+          await dispatchDemoReset();
+        }
+
+        markDemoSessionActive();
         router.replace("/");
       } catch (cause) {
         const detail = cause instanceof Error && cause.message !== "Demo unavailable" ? ` ${cause.message}` : "";

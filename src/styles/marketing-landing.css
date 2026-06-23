@@ -933,7 +933,25 @@
 
 .marketing-modules-toc {
   position: sticky;
-  top: 5.5rem;
+  top: calc(3.5rem + 1.25rem);
+  align-self: start;
+  z-index: 2;
+  max-height: calc(100dvh - 3.5rem - 2.5rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 0.5rem;
+}
+
+.marketing-modules-toc-heading {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-bottom: 0.25rem;
+  background: linear-gradient(
+    180deg,
+    var(--background) 70%,
+    color-mix(in srgb, var(--background) 0%, transparent)
+  );
 }
 
 .marketing-modules-toc-track {

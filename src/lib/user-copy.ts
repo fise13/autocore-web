@@ -386,7 +386,7 @@ export const userCopy = {
     bannerTitle: "Демо-режим",
     bannerHint: "изменения не сохраняются после выхода",
     exit: "Выйти из демо",
-    exiting: "Выход…",
+    exiting: "Сброс и выход…",
   },
 
   account: {
