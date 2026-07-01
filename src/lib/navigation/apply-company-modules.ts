@@ -21,11 +21,11 @@ export function applyCompanyModulesToSidebar(
       sold: { enabled: modules.motors },
       work_orders: { enabled: modules.workOrders },
       accounting: { enabled: modules.accounting },
-      warehouse: { enabled: modules.warehouse },
+      warehouse: { enabled: false },
     },
     blocks: {
       ...customization.blocks,
-      specific: { enabled: modules.specifics && config.specificCategories.length > 0 },
+      specific: { enabled: modules.motors || modules.specifics || modules.warehouse },
     },
   });
 

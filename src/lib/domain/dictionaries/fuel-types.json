@@ -1,0 +1,7 @@
+[
+  { "id": "petrol", "name": "Бензин", "aliases": ["бензиновый", "petrol", "gasoline", "gas"], "type": "fuelType" },
+  { "id": "diesel", "name": "Дизель", "aliases": ["дизельный", "diesel", "дт"], "type": "fuelType" },
+  { "id": "hybrid", "name": "Гибрид", "aliases": ["гибридный", "hybrid", "hev"], "type": "fuelType" },
+  { "id": "electric", "name": "Электро", "aliases": ["электрический", "electric", "ev"], "type": "fuelType" },
+  { "id": "lpg", "name": "Газ (ГБО)", "aliases": ["гбо", "пропан", "lpg", "газ"], "type": "fuelType" }
+]

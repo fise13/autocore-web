@@ -4,11 +4,13 @@ import { PanelLeft, PanelRight, RotateCcw } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { useSidebarCustomization } from "@/components/providers/sidebar-customization-provider";
+import { useSidebarPreferences } from "@/components/providers/sidebar-preferences-provider";
 import { SidebarNavRow } from "@/components/layout/sidebar-nav-row";
 import { useSidebarEditMode } from "@/hooks/use-sidebar-edit-mode";
 import {
   SIDEBAR_BLOCK_META,
   SIDEBAR_NAV_META,
+  DEFAULT_SIDEBAR_CUSTOMIZATION,
   type SidebarBlockId,
   type SidebarNavItemId,
   type SidebarPosition,
@@ -29,7 +31,13 @@ export function SidebarCustomizeSheet({
   onRestoreBlock,
 }: SidebarCustomizeSheetProps) {
   const { customization, setCustomization, resetCustomization } = useSidebarCustomization();
+  const { setPreferences } = useSidebarPreferences();
   const { exitEditMode } = useSidebarEditMode();
+
+  function setSidebarPosition(side: SidebarPosition) {
+    setCustomization((current) => ({ ...current, position: side }));
+    setPreferences((current) => ({ ...current, position: side }));
+  }
 
   const hasPool = disabledNav.length > 0 || disabledBlocks.length > 0;
 
@@ -54,12 +62,7 @@ export function SidebarCustomizeSheet({
             <button
               key={side}
               type="button"
-              onClick={() =>
-                setCustomization((current) => ({
-                  ...current,
-                  position: side,
-                }))
-              }
+              onClick={() => setSidebarPosition(side)}
               className={cn(
                 "inline-flex items-center gap-1 rounded px-2 py-0.5 font-medium transition-colors duration-200",
                 customization.position === side
@@ -110,7 +113,13 @@ export function SidebarCustomizeSheet({
 
       <button
         type="button"
-        onClick={resetCustomization}
+        onClick={() => {
+          resetCustomization();
+          setPreferences((current) => ({
+            ...current,
+            position: DEFAULT_SIDEBAR_CUSTOMIZATION.position,
+          }));
+        }}
         className="flex w-full shrink-0 items-center justify-center gap-1 py-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
       >
         <RotateCcw className="size-3" />

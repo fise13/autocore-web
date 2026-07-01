@@ -1,13 +1,16 @@
 "use client";
 
 import { AppleIcon, GoogleIcon } from "@/components/auth/auth-brand-icons";
-import { AuthProviderKind, getAccountInitials } from "@/lib/auth/account-info";
+import { AuthProviderKind } from "@/lib/auth/account-info";
+import { userAvatarStyle } from "@/lib/user/user-avatar-style";
 import { cn } from "@/lib/utils";
 
 type UserAvatarProps = {
   photoURL?: string | null;
   displayName?: string | null;
   email?: string;
+  /** Stable id for gradient selection when photo is missing. */
+  seed?: string;
   provider?: AuthProviderKind;
   size?: "sm" | "md" | "lg";
   showProviderBadge?: boolean;
@@ -15,9 +18,9 @@ type UserAvatarProps = {
 };
 
 const sizeClasses = {
-  sm: "size-8 text-[11px]",
-  md: "size-9 text-xs",
-  lg: "size-14 text-base",
+  sm: "size-8",
+  md: "size-9",
+  lg: "size-14",
 } as const;
 
 const badgeSizeClasses = {
@@ -30,12 +33,13 @@ export function UserAvatar({
   photoURL,
   displayName,
   email = "",
+  seed,
   provider,
   size = "md",
   showProviderBadge = false,
   className,
 }: UserAvatarProps) {
-  const initials = getAccountInitials(displayName, email);
+  const gradientSeed = seed ?? (email.trim() || displayName?.trim() || "user");
 
   return (
     <span className={cn("relative inline-flex shrink-0", className)}>
@@ -52,14 +56,10 @@ export function UserAvatar({
         />
       ) : (
         <span
-          className={cn(
-            "inline-flex items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/75 font-semibold text-primary-foreground shadow-sm",
-            sizeClasses[size],
-          )}
+          style={userAvatarStyle(gradientSeed)}
+          className={cn("inline-block rounded-full ring-1 ring-border/20", sizeClasses[size])}
           aria-hidden="true"
-        >
-          {initials}
-        </span>
+        />
       )}
 
       {showProviderBadge && provider && provider !== "email" && provider !== "unknown" ? (

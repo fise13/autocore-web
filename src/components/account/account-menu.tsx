@@ -6,6 +6,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { UserAvatar } from "@/components/account/user-avatar";
+import { CompanySwitcherMenu } from "@/components/layout/company-switcher-menu";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
@@ -19,6 +20,93 @@ type AccountMenuProps = {
 
 const MENU_WIDTH = 288;
 
+function AccountMenuPanel({
+  photoURL,
+  displayName,
+  email,
+  userSeed,
+  accountInfo,
+  profileRole,
+  isDemo,
+  onClose,
+  onLogout,
+}: {
+  photoURL: string | null;
+  displayName: string | null;
+  email: string;
+  userSeed: string;
+  accountInfo: ReturnType<typeof getAccountProviderInfo>;
+  profileRole: Parameters<typeof formatRole>[0];
+  isDemo: boolean;
+  onClose: () => void;
+  onLogout: () => void;
+}) {
+  return (
+    <>
+      <div className="flex items-center gap-3 rounded-lg bg-muted/35 px-3 py-3">
+        <UserAvatar
+          photoURL={photoURL}
+          displayName={displayName}
+          email={email}
+          seed={userSeed}
+          provider={accountInfo?.kind}
+          showProviderBadge
+          size="lg"
+        />
+        <div className="min-w-0 flex-1">
+          {displayName ? <p className="truncate text-sm font-semibold">{displayName}</p> : null}
+          <p className="truncate text-xs text-muted-foreground">{email || "—"}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {accountInfo?.label ?? "—"} · {formatRole(profileRole)}
+          </p>
+        </div>
+      </div>
+
+      <div className="my-1 h-px bg-border/70" />
+
+      <div className="rounded-lg border border-border/60 bg-background/50 p-1">
+        <CompanySwitcherMenu variant="plain" onClose={onClose} />
+      </div>
+
+      <div className="my-1 h-px bg-border/70" />
+
+      <Link
+        href="/settings?section=account"
+        role="menuitem"
+        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
+        onClick={onClose}
+      >
+        <UserCircle className="size-4 text-muted-foreground" />
+        {userCopy.account.menuSettings}
+      </Link>
+      <Link
+        href="/settings"
+        role="menuitem"
+        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
+        onClick={onClose}
+      >
+        <Settings className="size-4 text-muted-foreground" />
+        {userCopy.settings.title}
+      </Link>
+
+      <div className="my-1 h-px bg-border/70" />
+
+      <button
+        type="button"
+        role="menuitem"
+        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10"
+        onClick={() => {
+          onClose();
+          onLogout();
+        }}
+      >
+        <LogOut className="size-4" />
+        {isDemo ? userCopy.demo.exit : userCopy.account.signOut}
+      </button>
+    </>
+  );
+}
+
 export function AccountMenu({ compact = false }: AccountMenuProps) {
   const { firebaseUser, profile, logout } = useAuth();
   const isDemo = useDemoSession();
@@ -31,6 +119,7 @@ export function AccountMenu({ compact = false }: AccountMenuProps) {
   const displayName = profile?.displayName ?? accountInfo?.displayName ?? null;
   const photoURL = profile?.photoURL ?? accountInfo?.photoURL ?? null;
   const email = profile?.email ?? accountInfo?.email ?? "";
+  const userSeed = profile?.id ?? firebaseUser?.uid ?? email;
 
   useLayoutEffect(() => {
     if (!open || !anchorRef.current) {
@@ -93,61 +182,21 @@ export function AccountMenu({ compact = false }: AccountMenuProps) {
       ref={menuRef}
       role="menu"
       style={{ top: menuPosition.top, left: menuPosition.left, width: MENU_WIDTH }}
-      className="fixed z-[220] origin-top-right animate-autocore-auth-form-enter rounded-xl border bg-popover p-2 text-popover-foreground shadow-xl motion-reduce:animate-none"
+      className="fixed z-[220] max-h-[min(80vh,32rem)] origin-top-right overflow-y-auto animate-autocore-auth-form-enter rounded-xl border bg-popover p-2 text-popover-foreground shadow-xl motion-reduce:animate-none"
     >
-      <div className="flex items-center gap-3 rounded-lg bg-muted/35 px-3 py-3">
-        <UserAvatar
-          photoURL={photoURL}
-          displayName={displayName}
-          email={email}
-          provider={accountInfo?.kind}
-          showProviderBadge
-          size="lg"
-        />
-        <div className="min-w-0 flex-1">
-          {displayName ? <p className="truncate text-sm font-semibold">{displayName}</p> : null}
-          <p className="truncate text-xs text-muted-foreground">{email || "—"}</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            {accountInfo?.label ?? "—"} · {formatRole(profile?.role)}
-          </p>
-        </div>
-      </div>
-
-      <div className="my-1 h-px bg-border/70" />
-
-      <Link
-        href="/settings?section=account"
-        role="menuitem"
-        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
-        onClick={() => setOpen(false)}
-      >
-        <UserCircle className="size-4 text-muted-foreground" />
-        {userCopy.account.menuSettings}
-      </Link>
-      <Link
-        href="/settings"
-        role="menuitem"
-        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
-        onClick={() => setOpen(false)}
-      >
-        <Settings className="size-4 text-muted-foreground" />
-        {userCopy.settings.title}
-      </Link>
-
-      <div className="my-1 h-px bg-border/70" />
-
-      <button
-        type="button"
-        role="menuitem"
-        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10"
-        onClick={() => {
-          setOpen(false);
+      <AccountMenuPanel
+        photoURL={photoURL}
+        displayName={displayName}
+        email={email}
+        userSeed={userSeed}
+        accountInfo={accountInfo}
+        profileRole={profile?.role}
+        isDemo={isDemo}
+        onClose={() => setOpen(false)}
+        onLogout={() => {
           void logout();
         }}
-      >
-        <LogOut className="size-4" />
-        {isDemo ? userCopy.demo.exit : userCopy.account.signOut}
-      </button>
+      />
     </div>
   ) : null;
 
@@ -168,6 +217,7 @@ export function AccountMenu({ compact = false }: AccountMenuProps) {
             photoURL={photoURL}
             displayName={displayName}
             email={email}
+            seed={userSeed}
             provider={accountInfo?.kind}
             showProviderBadge
             size="sm"

@@ -14,7 +14,7 @@ function emit(onProgress: ((progress: MotorImportProgress) => void) | undefined,
 }
 
 function summarizeMotorRow(row: MotorImportPreviewRow): string {
-  return [
+  const parts = [
     row.serialCode && `серийник: ${row.serialCode}`,
     row.brandName && `бренд: ${row.brandName}`,
     row.engineCode && `двигатель: ${row.engineCode}`,
@@ -23,10 +23,10 @@ function summarizeMotorRow(row: MotorImportPreviewRow): string {
     row.notes && `заметки: ${row.notes}`,
     row.arrivalDate && `приход: ${row.arrivalDate.toISOString().slice(0, 10)}`,
     row.soldDate && `продажа: ${row.soldDate.toISOString().slice(0, 10)}`,
-  ]
-    .filter(Boolean)
-    .join(" · ")
-    .slice(0, 480);
+    row.rawRowCells && `ячейки: ${row.rawRowCells}`,
+  ].filter(Boolean);
+
+  return parts.join(" · ").slice(0, 480);
 }
 
 function applyAiMotorSuggestion(
@@ -113,6 +113,9 @@ export async function magicEnhanceMotorRows(
       rawTransmission: row.transmission,
       rawNotes: row.notes,
       rawSheet: row.sheetName,
+      sheetBrand: row.brandName,
+      sheetEngine: row.engineCode,
+      rawRowCells: row.rawRowCells,
       rawRow: summarizeMotorRow(row),
     }));
 

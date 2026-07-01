@@ -129,7 +129,7 @@ function DocumentsWorkspaceContent() {
       }
       action={
         canManage ? (
-          <Button type="button" variant="outline" render={<Link href="/settings?section=branding" />}>
+          <Button variant="outline" render={<Link href="/settings?section=branding" />} nativeButton={false}>
             <PaletteIcon data-icon="inline-start" />
             Брендинг PDF
           </Button>

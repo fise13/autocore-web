@@ -8,7 +8,7 @@ import {
   documentPrimaryMotor,
   documentPrimaryMotorEntity,
 } from "@/lib/documents/document-helpers";
-import { addMonths } from "@/lib/documents/format";
+import { addDays } from "@/lib/documents/format";
 import { resolveWarrantyForDocument } from "@/lib/documents/warranty/resolve-warranty";
 import { formatDocumentDate, formatDocumentDateShort, formatDocumentMoney } from "@/lib/documents/format";
 import { DocumentFieldRow, DocumentLineItem } from "@/lib/documents/render-model/types";
@@ -193,14 +193,14 @@ export function buildRacingViewModel(
   });
   const warrantyUntil =
     warrantyInsight?.untilDate ??
-    (warrantyPreset.months > 0 ? addMonths(documentOrderDate(context), warrantyPreset.months) : null);
+    (warrantyPreset.days > 0 ? addDays(documentOrderDate(context), warrantyPreset.days) : null);
 
   let paidPrefix: string | null = null;
   let warrantyHighlight: string | null = null;
   if (context.order.pricing.grandTotal > 0) {
     paidPrefix = "оплачено —";
-    if (warrantyUntil && warrantyPreset.months > 0) {
-      warrantyHighlight = `гарантия до ${formatDocumentDate(warrantyUntil)} (${warrantyPreset.months * 30} дней)`;
+    if (warrantyUntil && warrantyPreset.days > 0) {
+      warrantyHighlight = `гарантия до ${formatDocumentDate(warrantyUntil)} (${warrantyPreset.days} дней)`;
     }
   }
 

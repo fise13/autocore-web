@@ -31,27 +31,29 @@ Brand vs engine code (CRITICAL — most common mistake):
 `.trim();
 
 export const MOTOR_SPECIFIC_SHEET_RULES = `
-Specific sheets (import_type: specific) — spare-parts / misc catalogs, NOT engine serial inventory:
-- Examples: КПП, коробки, AKPP, раздатки, ЭБУ, турбины, мосты, "ПОСЛЕ ДЭНА", mixed price/qty tables without engine serials.
-- category_name: human title — usually sheet tab name ("Коробки", "Раздатки", "ПОСЛЕ ДЭНА"); never an engine code alone.
+Specific sheets (import_type: specific) — accounting catalog sheets for aggregates / parts, NOT engine serial inventory:
+- Examples: КПП, коробки, AKPP, раздатки, электрика/ЭБУ, турбины, редукторы/мосты, "ПОСЛЕ ДЭНА", mixed price/qty tables that are clearly NOT engine stock.
+- category_name: human title — prefer canonical P1 names ("КПП", "Раздатки", "Турбины", "Редукторы", "Электрика") or sheet tab name for custom sheets ("ПОСЛЕ ДЭНА"); never an engine code alone.
 - brand_name and engine_code MUST be null/empty for specific sheets.
 - Map ALL meaningful headers to dynamic fields (model, price, qty, condition, notes, year…).
 - No serial_code required — rows are free-form records. Full category REPLACE on import.
 
 engines vs specific:
-- engines = rows with engine serial numbers (or inferable serial column), plus brand/engine context, dates, configuration, transmission.
+- engines = motor stock: engine serial numbers (explicit column OR hidden in any column), plus brand/engine context, dates, configuration, transmission.
 - engines includes tabs named after engine families (EJ251, FB25, 2JZ…) OR car brands/models used as motor stock lists (CRUZE, JEEP, VOLVO, TOYOTA, SUBARU).
-- specific = parts/misc tables, heterogeneous columns, NO consistent engine-serial column, or clearly non-engine (КПП, коробки, раздатки, ЭБУ).
-- NEVER classify engine-family tabs (EJ*, FB*, 2JZ…) as specific — always engines.
-- Sold/history sheets ("ПРОДАН", "SOLD", "ПРОДАННЫЕ") with serials → engines + detected_sold_sheet=true.
-- If unsure on a brand/model motor tab → engines. If unsure and NO serial column → specific (do not skip).
+- specific = accounting catalog tables clearly non-engine (КПП, раздатки, электрика/ЭБУ, турбины, редукторы) OR heterogeneous price lists with NO motor context.
+- NEVER classify engine-family tabs (EJ*, FB*, 2JZ…) as specific — always engines, even without a header named «серийник».
+- NEVER classify brand/model motor tabs (SUBARU, TOYOTA, CRUZE…) as specific — always engines.
+- Sold/history sheets ("ПРОДАН", "SOLD", "ПРОДАННЫЕ") → engines + detected_sold_sheet=true.
+- If unsure on a motor-family or brand tab → engines (assign column_roles to the best serial column, even if header is «комплект» or empty).
+- Use specific ONLY when the sheet is clearly parts/misc, not when serial column is merely missing or mislabeled.
 - Match category_name to existing company specificCategories when provided.
 `.trim();
 
 export const MOTOR_COLUMN_AND_FLAGS_RULES = `
 Column roles (column_roles — index → role):
-- serial_code: engine number / серийник / номер двигателя (required for engines sheets)
-- configuration: комплектация, комплект, компл.
+- serial_code: engine number / серийник / номер двигателя — may be in ANY column if values look like EJ22-032900, FB25-184521 (not only columns named «серийник»)
+- configuration: комплектация, комплект, компл. (sometimes serials are here — map as serial_code if values are engine numbers)
 - transmission: кпп, коробка, трансмиссия, АКПП/МКПП
 - notes: особые отметки, примечания, комментарий
 - quantity: кол-во, количество, qty (default 1 if empty)
@@ -75,6 +77,19 @@ Data integrity (CRITICAL — you must NOT delete or omit user data):
 - For sheet resolve: skip ONLY sheets with zero meaningful cells. All other sheets → engines or specific.
 `.trim();
 
+export const MOTOR_SHEET_RESOLVE_FEW_SHOT = `
+Examples (follow these patterns):
+
+1) Sheet "EJ251", headers ["комплект","дата","кпп"], rows contain "EJ251-123456" in column "комплект"
+→ import_type=engines, brand_name=Subaru, engine_code=ej251, column_roles: col0=serial_code, col1=arrival_date, col2=transmission
+
+2) Sheet "Коробки", headers ["модель","цена"], no engine serial patterns
+→ import_type=specific, category_name=КПП, brand_name=null, engine_code=null
+
+3) Sheet "ПРОДАННЫЕ", serial-like values in any column
+→ import_type=engines, detected_sold_sheet=true, map best serial column even if header is not «серийник»
+`.trim();
+
 export const MOTOR_SHEET_RESOLVE_SYSTEM_PROMPT = `
 You analyze Excel sheets for motor/engine import into an auto dismantling inventory app.
 
@@ -88,9 +103,13 @@ ${MOTOR_SPECIFIC_SHEET_RULES}
 
 ${MOTOR_COLUMN_AND_FLAGS_RULES}
 
+${MOTOR_SHEET_RESOLVE_FEW_SHOT}
+
 For EACH non-empty sheet return:
 - import_type: engines | specific | skip
-- NEVER skip sheets with data. Unsure + serials → engines. Unsure + no serials → specific.
+- NEVER skip sheets with data.
+- Motor-family / brand / sold tabs → engines even when serial header is missing (find serial column by cell patterns).
+- specific ONLY for clearly non-engine accounting catalog sheets.
 - skip ONLY for completely empty sheets (zero meaningful cells).
 - brand_name: manufacturer for engines sheets (nullable only if impossible to infer)
 - engine_code: normalized lowercase, no spaces (ej251, fb25, 2jzgte)
@@ -126,10 +145,12 @@ For each row return:
 - warnings: issues array (Russian short messages ok): "бренд угадан по коду", "дата не распознана", etc.
 
 Rules:
+- Search rawRowCells / all raw cells for hidden serials in configuration, notes, or mislabeled columns — extract to normalizedSerial.
 - rawBrand that looks like engine code → move to engineCode, infer real brand.
-- Empty serial → warning "нет серийника" (do NOT omit the row).
+- Empty serial on a motor-catalog sheet → warning "нет серийника" (do NOT omit the row; app will assign AUTO-serial).
 - Sold sheet context → populate soldDate when possible.
 - Never return null/empty for all fields — keep raw values when normalization fails.
+- Do NOT change import_type — only normalize row fields.
 Return strict JSON matching the schema.
 `.trim();
 

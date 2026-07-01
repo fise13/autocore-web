@@ -64,8 +64,8 @@ export function CompanyAppConfigForm({
           hint:
             id === "custom"
               ? SETUP_WIZARD_COPY.warranty.customHint
-              : template.months > 0
-                ? `${template.months} мес. · ${template.km.toLocaleString("ru-RU")} км`
+              : template.days > 0
+                ? `${template.days} дн. · ${template.km.toLocaleString("ru-RU")} км`
                 : SETUP_WIZARD_COPY.warranty.noWarranty,
         };
       }),
@@ -175,25 +175,31 @@ export function CompanyAppConfigForm({
             return (
               <section key={group.id} className="space-y-3">
                 <CategoryGroupHeader label={group.label} count={selectedInGroup} />
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {categories.map((category, index) => {
-                    const enabled = draft.specificCategories.some((item) => item.id === category.id);
-                    const selected = draft.specificCategories.find((item) => item.id === category.id);
+                {categories.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {categories.map((category, index) => {
+                      const enabled = draft.specificCategories.some((item) => item.id === category.id);
+                      const selected = draft.specificCategories.find((item) => item.id === category.id);
 
-                    return (
-                      <CategoryGridTile
-                        key={category.id}
-                        index={index}
-                        label={category.name}
-                        selected={enabled}
-                        mode={selected?.mode ?? category.mode}
-                        disabled={!draft.modules.specifics}
-                        onToggle={() => onToggleCategory(category, !enabled)}
-                        onModeChange={(mode) => onSetCategoryMode(category.id, mode)}
-                      />
-                    );
-                  })}
-                </div>
+                      return (
+                        <CategoryGridTile
+                          key={category.id}
+                          index={index}
+                          label={category.name}
+                          selected={enabled}
+                          mode={selected?.mode ?? category.mode}
+                          disabled={!draft.modules.specifics}
+                          onToggle={() => onToggleCategory(category, !enabled)}
+                          onModeChange={(mode) => onSetCategoryMode(category.id, mode)}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="rounded-xl border border-dashed border-border/80 bg-muted/15 px-4 py-3 text-sm text-muted-foreground">
+                    Масла, антифриз, фильтры, свечи и герметики доступны в разделе «Расходники» после сохранения.
+                  </p>
+                )}
               </section>
             );
           })}
@@ -222,37 +228,43 @@ export function CompanyAppConfigForm({
           return (
             <div key={group.id} className="flex flex-col gap-2">
               <CategoryGroupHeader label={group.label} count={selectedInGroup} />
-              <div className="flex flex-col gap-2">
-                {categories.map((category, index) => {
-                  const enabled = draft.specificCategories.some((item) => item.id === category.id);
-                  const selected = draft.specificCategories.find((item) => item.id === category.id);
+              {categories.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  {categories.map((category, index) => {
+                    const enabled = draft.specificCategories.some((item) => item.id === category.id);
+                    const selected = draft.specificCategories.find((item) => item.id === category.id);
 
-                  return (
-                    <div key={category.id}>
-                      <SelectableTile
-                        index={index}
-                        selected={enabled}
-                        disabled={!draft.modules.specifics}
-                        onClick={() => onToggleCategory(category, !enabled)}
-                        title={category.name}
-                        description={
-                          enabled && selected
-                            ? selected.mode === "tracked"
-                              ? SETUP_WIZARD_COPY.categories.trackedHint
-                              : SETUP_WIZARD_COPY.categories.quickHint
-                            : SETUP_WIZARD_COPY.categories.emptyHint || undefined
-                        }
-                      />
-                      {enabled && selected ? (
-                        <CategoryModeToggle
-                          mode={selected.mode}
-                          onChange={(mode) => onSetCategoryMode(category.id, mode)}
+                    return (
+                      <div key={category.id}>
+                        <SelectableTile
+                          index={index}
+                          selected={enabled}
+                          disabled={!draft.modules.specifics}
+                          onClick={() => onToggleCategory(category, !enabled)}
+                          title={category.name}
+                          description={
+                            enabled && selected
+                              ? selected.mode === "tracked"
+                                ? SETUP_WIZARD_COPY.categories.trackedHint
+                                : SETUP_WIZARD_COPY.categories.quickHint
+                              : SETUP_WIZARD_COPY.categories.emptyHint || undefined
+                          }
                         />
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
+                        {enabled && selected ? (
+                          <CategoryModeToggle
+                            mode={selected.mode}
+                            onChange={(mode) => onSetCategoryMode(category.id, mode)}
+                          />
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="rounded-xl border border-dashed border-border/80 bg-muted/15 px-4 py-3 text-sm text-muted-foreground">
+                  Масла, антифриз, фильтры, свечи и герметики доступны в разделе «Расходники» после сохранения.
+                </p>
+              )}
             </div>
           );
         })}

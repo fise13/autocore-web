@@ -62,7 +62,7 @@ export type WarrantyTemplateId = (typeof WARRANTY_TEMPLATE_IDS)[number];
 export type WarrantyTemplatePreset = {
   id: WarrantyTemplateId;
   name: string;
-  months: number;
+  days: number;
   km: number;
   conditions: string[];
   restrictions: string[];
@@ -74,8 +74,8 @@ export type CompanyDocumentConfig = {
   /** Per-section enable/disable. Absent key = enabled by default for the document type. */
   sections?: DocumentSectionConfig;
   warrantyTemplateId?: WarrantyTemplateId;
-  /** Custom template: explicit duration when label is free-form text. */
-  customWarrantyMonths?: number;
+  /** Custom template: explicit duration in days when label is free-form text. */
+  customWarrantyDays?: number;
   customWarrantyKm?: number;
   /** Override QR landing URL (company card, website, etc.) */
   qrLinkUrl?: string;
@@ -109,11 +109,25 @@ export function parseCompanyDocumentConfig(data: Record<string, unknown> | null 
         ? Number(data.invoiceValidityDays)
         : undefined;
 
-  const customWarrantyMonths =
+  const customWarrantyDaysRaw =
+    typeof data?.customWarrantyDays === "number"
+      ? data.customWarrantyDays
+      : typeof data?.customWarrantyDays === "string" && data.customWarrantyDays.trim()
+        ? Number(data.customWarrantyDays)
+        : undefined;
+
+  const legacyCustomWarrantyMonths =
     typeof data?.customWarrantyMonths === "number"
       ? data.customWarrantyMonths
       : typeof data?.customWarrantyMonths === "string" && data.customWarrantyMonths.trim()
         ? Number(data.customWarrantyMonths)
+        : undefined;
+
+  const customWarrantyDays =
+    Number.isFinite(customWarrantyDaysRaw) && customWarrantyDaysRaw! > 0
+      ? customWarrantyDaysRaw
+      : Number.isFinite(legacyCustomWarrantyMonths) && legacyCustomWarrantyMonths! > 0
+        ? legacyCustomWarrantyMonths! * 30
         : undefined;
 
   const customWarrantyKm =
@@ -129,7 +143,7 @@ export function parseCompanyDocumentConfig(data: Record<string, unknown> | null 
     qrLinkUrl: typeof data?.qrLinkUrl === "string" ? data.qrLinkUrl.trim() || undefined : undefined,
     documentFooter: typeof data?.documentFooter === "string" ? data.documentFooter.trim() || undefined : undefined,
     invoiceValidityDays: Number.isFinite(invoiceValidityDays) ? invoiceValidityDays : undefined,
-    customWarrantyMonths: Number.isFinite(customWarrantyMonths) ? customWarrantyMonths : undefined,
+    customWarrantyDays: Number.isFinite(customWarrantyDays) ? customWarrantyDays : undefined,
     customWarrantyKm: Number.isFinite(customWarrantyKm) ? customWarrantyKm : undefined,
   };
 }

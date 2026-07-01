@@ -32,19 +32,18 @@ import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useMissionControlData } from "@/hooks/use-mission-control-data";
-import { useSpecificCategoriesRealtime } from "@/hooks/use-specific-categories-realtime";
 import { useClientsRealtime } from "@/hooks/use-clients-realtime";
 import { canAccessMotorsArea, canAccessMissionControl, canAccessPath, isNavAllowed } from "@/lib/auth/app-access";
 import { can } from "@/lib/auth/permissions";
 import { operationCategoryLabel, operationTypeLabel } from "@/lib/accounting/labels";
 import { formatRole } from "@/lib/user-copy";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { businessNavCopy } from "@/lib/navigation/business-nav-copy";
+import { buildCollectionHref } from "@/lib/navigation/inventory-collections";
 import { deepActionRoutes } from "@/lib/navigation/deep-actions";
 import { buildWorkOrderDisplayIndex, formatWorkOrderLabel } from "@/lib/work-order/work-order-display";
-import { createSpecificCategoryRepository } from "@/infrastructure/firestore/specific-category-repository";
 import { createClientRepository } from "@/infrastructure/firestore/client-repository";
 
-const specificCategoryRepository = createSpecificCategoryRepository();
 const clientRepository = createClientRepository();
 
 function matchesQuery(query: string, parts: Array<string | undefined | null>): boolean {
@@ -88,11 +87,6 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
     clientRepository,
     companyId,
     open && Boolean(companyId) && can(profile, "work_orders_view"),
-  );
-  const categories = useSpecificCategoriesRealtime(
-    specificCategoryRepository,
-    companyId,
-    open && Boolean(companyId) && canAccessMotorsArea(profile),
   );
 
   useEffect(() => {
@@ -237,35 +231,41 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
               </Command.Empty>
 
               {showNavigation ? (
-              <Command.Group heading="Навигация">
+              <Command.Group heading="Бизнес">
                 {canAccessMissionControl(profile) ? (
                   <CommandItem icon={LayoutGrid} onSelect={() => navigate("/")}>
-                    Центр управления
+                    {businessNavCopy.workspace.dashboard}
                   </CommandItem>
                 ) : null}
                 {canAccessMotorsArea(profile) ? (
-                  <CommandItem icon={LayoutGrid} onSelect={() => navigate("/motors")}>
-                    Все моторы
+                  <CommandItem
+                    icon={LayoutGrid}
+                    onSelect={() => navigate(buildCollectionHref({ collection: "engines" }))}
+                  >
+                    {businessNavCopy.inventoryCollection.engines}
                   </CommandItem>
                 ) : null}
                 {isNavAllowed(profile, "sold") ? (
                   <CommandItem icon={Receipt} onSelect={() => navigate("/sold")}>
-                    Проданные
+                    {businessNavCopy.business.sales}
                   </CommandItem>
                 ) : null}
                 {can(profile, "work_orders_view") ? (
                   <CommandItem icon={Package} onSelect={() => navigate("/work-orders")}>
-                    Заказ-наряды
+                    {businessNavCopy.business.workOrders}
                   </CommandItem>
                 ) : null}
                 {can(profile, "accounting_view") ? (
                   <CommandItem icon={Folder} onSelect={() => navigate("/accounting")}>
-                    Бухгалтерия
+                    {businessNavCopy.business.accounting}
                   </CommandItem>
                 ) : null}
                 {isNavAllowed(profile, "warehouse") ? (
-                  <CommandItem icon={Package} onSelect={() => navigate("/warehouse")}>
-                    Склад
+                  <CommandItem
+                    icon={Package}
+                    onSelect={() => navigate(buildCollectionHref({ collection: "consumables" }))}
+                  >
+                    {businessNavCopy.inventoryCollection.consumables}
                   </CommandItem>
                 ) : null}
                 {canAccessPath(profile, "/settings") ? (
@@ -276,38 +276,19 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
               </Command.Group>
               ) : null}
 
-              {showNavigation && categories.length > 0 ? (
-                <Command.Group heading="Специфичные">
-                  {categories.map((category) => (
-                    <CommandItem
-                      key={category.id}
-                      icon={Folder}
-                      onSelect={() => {
-                        workspace.setSelectedSpecificCategoryId(category.id);
-                        workspace.setSelectedBrandLocalId(null);
-                        workspace.setSelectedEngineLocalId(null);
-                        navigate("/motors");
-                      }}
-                    >
-                      {category.name}
-                    </CommandItem>
-                  ))}
-                </Command.Group>
-              ) : null}
-
               {showNavigation && canAccessMotorsArea(profile) && can(profile, "inventory_edit") ? (
-                <Command.Group heading="Действия">
+                <Command.Group heading={businessNavCopy.quickActions.section}>
                   <CommandItem icon={Plus} onSelect={() => navigate(deepActionRoutes.add())}>
-                    Добавить мотор
+                    {businessNavCopy.quickActions.addEngine}
                   </CommandItem>
                   <CommandItem icon={Upload} onSelect={() => navigate(deepActionRoutes.import())}>
-                    Импорт Excel
+                    {businessNavCopy.quickActions.importBusiness}
                   </CommandItem>
                   <CommandItem icon={Download} onSelect={() => navigate(deepActionRoutes.export())}>
                     Экспорт Excel
                   </CommandItem>
                   <CommandItem icon={Receipt} onSelect={() => navigate(deepActionRoutes.sell())}>
-                    Продать мотор
+                    {businessNavCopy.quickActions.sellItem}
                   </CommandItem>
                 </Command.Group>
               ) : null}

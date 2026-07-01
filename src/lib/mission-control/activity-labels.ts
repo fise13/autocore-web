@@ -18,12 +18,12 @@ const CATALOG: Record<string, ActivityLabel> = {
   "inventory.motor_import_failed": { label: "импорт моторов завершился ошибкой", module: "inventory", severity: "warning" },
   "inventory.motor_import_rolled_back": { label: "откатил импорт моторов", module: "inventory", severity: "warning" },
   "inventory.motor_exported": { label: "экспортировал моторы", module: "inventory", severity: "info" },
-  "inventory.specific_category_created": { label: "создал категорию специфичных", module: "inventory", severity: "info" },
-  "inventory.specific_category_deleted": { label: "удалил лист специфичных", module: "inventory", severity: "warning" },
-  "inventory.specific_columns_updated": { label: "обновил колонки специфичного листа", module: "inventory", severity: "info" },
-  "inventory.specific_record_deleted": { label: "удалил строку специфичных", module: "inventory", severity: "info" },
-  "inventory.specific_records_replaced": { label: "заменил записи специфичных", module: "inventory", severity: "warning" },
-  "inventory.specific_record_upserted": { label: "обновил запись специфичных", module: "inventory", severity: "info" },
+  "inventory.specific_category_created": { label: "создал лист каталога", module: "inventory", severity: "info" },
+  "inventory.specific_category_deleted": { label: "удалил лист каталога", module: "inventory", severity: "warning" },
+  "inventory.specific_columns_updated": { label: "обновил колонки листа каталога", module: "inventory", severity: "info" },
+  "inventory.specific_record_deleted": { label: "удалил строку каталога", module: "inventory", severity: "info" },
+  "inventory.specific_records_replaced": { label: "заменил записи каталога", module: "inventory", severity: "warning" },
+  "inventory.specific_record_upserted": { label: "обновил запись каталога", module: "inventory", severity: "info" },
   "inventory.item_created": { label: "добавил позицию на склад", module: "inventory", severity: "info" },
   "inventory.item_upserted": { label: "обновил позицию на складе", module: "inventory", severity: "info" },
   "inventory.item_archived": { label: "архивировал позицию", module: "inventory", severity: "warning" },
@@ -39,7 +39,7 @@ const CATALOG: Record<string, ActivityLabel> = {
   "inventory.import_rolled_back": { label: "откатил импорт склада", module: "inventory", severity: "warning" },
   "inventory.warehouse_cleared": { label: "очистил склад", module: "inventory", severity: "critical" },
   "inventory.motors_cleared": { label: "очистил моторы", module: "inventory", severity: "critical" },
-  "inventory.specifics_cleared": { label: "очистил специфичные", module: "inventory", severity: "critical" },
+  "inventory.specifics_cleared": { label: "очистил каталог учёта", module: "inventory", severity: "critical" },
   "accounting.operation_created": { label: "добавил операцию", module: "accounting", severity: "info" },
   "accounting.operation_updated": { label: "изменил операцию", module: "accounting", severity: "info" },
   "accounting.operation_deleted": { label: "удалил операцию", module: "accounting", severity: "warning" },
@@ -91,7 +91,7 @@ export function resolveActivityLabel(action: string): ActivityLabel {
 export function moduleLabel(module: ActivityModule): string {
   switch (module) {
     case "inventory":
-      return "Склад";
+      return "Учёт";
     case "accounting":
       return "Бухгалтерия";
     case "employees":

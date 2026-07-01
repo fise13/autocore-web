@@ -15,15 +15,11 @@ import { canonicalWarrantyDuration } from "@/lib/documents/warranty/resolve-warr
 import {
   MotorSaleWarrantyOverride,
   resolveCustomWarrantyDuration,
+  resolveStoredWarrantyDays,
 } from "@/lib/documents/warranty/custom-warranty";
 import { getWarrantyTemplate } from "@/lib/documents/warranty/warranty-templates";
+import { addDays } from "@/lib/documents/format";
 import { normalizeCompanyId } from "@/lib/company-id";
-
-function addMonths(date: Date, months: number): Date {
-  const next = new Date(date);
-  next.setMonth(next.getMonth() + months);
-  return next;
-}
 
 export async function processStandaloneMotorSold(params: {
   companyId: string;
@@ -33,12 +29,23 @@ export async function processStandaloneMotorSold(params: {
   account: string;
   paymentMethod: string;
   comment?: string;
+  clientId?: string;
+  clientName?: string;
+  clientPhone?: string;
   warrantyOverride?: MotorSaleWarrantyOverride;
 }): Promise<{ warrantyId: string | null; jobId: string | null; operationId: string | null }> {
   const existingWarranty = await fetchWarrantyByMotorId(params.companyId, params.motor.id);
   if (existingWarranty) {
     return { warrantyId: existingWarranty.id, jobId: "", operationId: null };
   }
+
+  const clientId = await resolveMotorSaleClientId({
+    companyId: params.companyId,
+    actorUserId: params.actorUserId,
+    clientId: params.clientId,
+    clientName: params.clientName,
+    clientPhone: params.clientPhone,
+  });
 
   const soldAt = new Date();
   const companySnap = await getAdminFirestore()
@@ -53,13 +60,17 @@ export async function processStandaloneMotorSold(params: {
   const brandingFields = {
     warrantyLabel: params.warrantyOverride?.warrantyLabel ?? branding.warrantyLabel,
     warrantyText: params.warrantyOverride?.warrantyText ?? branding.warrantyText,
-    customWarrantyMonths:
-      params.warrantyOverride?.customWarrantyMonths ?? documentConfig.customWarrantyMonths,
+    customWarrantyDays:
+      params.warrantyOverride?.customWarrantyDays ??
+      resolveStoredWarrantyDays(
+        documentConfig.customWarrantyDays,
+        params.warrantyOverride?.customWarrantyMonths,
+      ),
     customWarrantyKm: params.warrantyOverride?.customWarrantyKm ?? documentConfig.customWarrantyKm,
   };
 
   const warrantyDuration = canonicalWarrantyDuration(warrantyTemplateId, undefined, brandingFields);
-  const expiresAt = warrantyDuration ? addMonths(soldAt, warrantyDuration.months) : null;
+  const expiresAt = warrantyDuration ? addDays(soldAt, warrantyDuration.days) : null;
 
   await updateMotorById(params.actorUserId, params.motor.id, {
     status: "sold",
@@ -75,7 +86,7 @@ export async function processStandaloneMotorSold(params: {
       warrantyTemplateId === "custom"
         ? resolveCustomWarrantyDuration(
             brandingFields,
-            customPreset.months,
+            customPreset.days,
             customPreset.km,
           )
         : null;
@@ -84,6 +95,8 @@ export async function processStandaloneMotorSold(params: {
     const warranty = await createWarrantyRecord({
       companyId: params.companyId,
       motorId: params.motor.id,
+      clientId,
+      soldByUserId: params.actorUserId,
       serialCode: params.motor.serialCode,
       engineCode: params.motor.engineCode,
       installedAt: soldAt,
@@ -97,7 +110,7 @@ export async function processStandaloneMotorSold(params: {
           ? resolvedCustom.paragraphs.join("\n")
           : preset.conditions.join("\n"),
       restrictionsText: preset.restrictions.join("\n"),
-      warrantyMonths: warrantyDuration.months,
+      warrantyDays: warrantyDuration.days,
       warrantyKm: warrantyDuration.km,
     });
     warrantyId = warranty.id;
@@ -111,6 +124,48 @@ export async function processStandaloneMotorSold(params: {
   }
 
   return { warrantyId, jobId, operationId: null };
+}
+
+async function resolveMotorSaleClientId(params: {
+  companyId: string;
+  actorUserId: string;
+  clientId?: string;
+  clientName?: string;
+  clientPhone?: string;
+}): Promise<string> {
+  const db = getAdminFirestore();
+  const companyRef = db.collection("companies").doc(normalizeCompanyId(params.companyId));
+  const clientsRef = companyRef.collection("clients");
+
+  if (params.clientId?.trim()) {
+    const existing = await clientsRef.doc(params.clientId.trim()).get();
+    if (existing.exists) {
+      return existing.id;
+    }
+  }
+
+  const fullName = params.clientName?.trim() ?? "";
+  const phone = params.clientPhone?.trim() ?? "";
+  if (fullName.length < 2 || phone.length < 3) {
+    throw new Error("Укажите покупателя и телефон");
+  }
+
+  const byPhone = await clientsRef.where("phone", "==", phone).limit(1).get();
+  if (!byPhone.empty) {
+    return byPhone.docs[0].id;
+  }
+
+  const created = await clientsRef.add({
+    companyId: normalizeCompanyId(params.companyId),
+    fullName,
+    phone,
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+    createdByUserId: params.actorUserId,
+    updatedByUserId: params.actorUserId,
+  });
+
+  return created.id;
 }
 
 export async function fetchWarrantyByMotorId(companyId: string, motorId: string) {

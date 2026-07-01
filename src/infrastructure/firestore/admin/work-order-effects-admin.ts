@@ -14,14 +14,9 @@ import { summarizeWorkOrderForLogbook } from "@/lib/documents/classify-service-o
 import { WarrantyTemplateId, parseCompanyDocumentConfig } from "@/domain/document-config";
 import { canonicalWarrantyDuration } from "@/lib/documents/warranty/resolve-warranty";
 import { getWarrantyTemplate } from "@/lib/documents/warranty/warranty-templates";
+import { addDays } from "@/lib/documents/format";
 import { processInventoryEventForWorkOrder } from "@/infrastructure/firestore/admin/inventory-effects-admin";
 import { laborLinePayrollPerAssignee } from "@/lib/work-order/labor-pricing";
-
-function addMonths(date: Date, months: number): Date {
-  const next = new Date(date);
-  next.setMonth(next.getMonth() + months);
-  return next;
-}
 
 function warrantyToken(): string {
   return randomBytes(16).toString("hex");
@@ -223,8 +218,9 @@ export async function createWarrantyRecord(input: CreateWarrantyInput): Promise<
     termsText: input.termsText,
     restrictionsText: input.restrictionsText,
     warrantyLabel: input.warrantyLabel,
-    warrantyMonths: input.warrantyMonths,
+    warrantyDays: input.warrantyDays,
     warrantyKm: input.warrantyKm,
+    soldByUserId: input.soldByUserId,
     verificationToken: token,
     status: input.status ?? "active",
     createdAt: new Date(),
@@ -345,7 +341,7 @@ export async function processWorkOrderEvent(
         if (!duration) continue;
 
         const preset = getWarrantyTemplate(duration.templateId);
-        const expiresAt = addMonths(installedAt, duration.months);
+        const expiresAt = addDays(installedAt, duration.days);
         const warranty = await createWarrantyRecord({
           companyId,
           motorId: line.motorId,
@@ -376,7 +372,7 @@ export async function processWorkOrderEvent(
         if (!duration) continue;
 
         const preset = getWarrantyTemplate(duration.templateId);
-        const expiresAt = addMonths(installedAt, duration.months);
+        const expiresAt = addDays(installedAt, duration.days);
         await createWarrantyRecord({
           companyId,
           motorId: `specific:${line.id}`,

@@ -1,4 +1,8 @@
 import {
+  resolveConsumableSubcategoryFromText,
+} from "@/lib/warehouse/inventory-taxonomy-normalize";
+import { subcategoryLabel } from "@/domain/inventory-taxonomy";
+import {
   categoryPathFromLabel,
   normalizeBarcode,
   normalizeBrandName,
@@ -125,11 +129,19 @@ export function normalizeImportRow(
   })();
 
   const categoryPath = categoryPathFromLabel(rawCategory);
+  const resolvedSubcategory = resolveConsumableSubcategoryFromText(rawCategory, name);
 
   return {
     sku,
     name,
     ...(categoryPath ? { categoryPath } : {}),
+    ...(resolvedSubcategory
+      ? {
+          subcategoryId: resolvedSubcategory,
+          inventoryGroup: "consumables" as const,
+          categoryPath: categoryPathFromLabel(subcategoryLabel(resolvedSubcategory)),
+        }
+      : {}),
     brandName,
     supplierName: normalizeSupplierName(readMappedValue(row, mapping, "supplierName")),
     barcodes,

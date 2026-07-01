@@ -30,6 +30,7 @@ import {
 } from "@/lib/motors/import/types";
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
+import { isLikelyMotorCatalogName } from "@/lib/motors/import/specific-category-intelligence";
 import { SpecificCategoryEntity } from "@/infrastructure/firestore/specific-category-repository";
 import {
   Select,
@@ -82,15 +83,15 @@ const stepLabels: Record<WizardStep, string> = {
 };
 
 const stepHints: Record<WizardStep, string> = {
-  analyze: "ИИ найдёт листы двигателей и специфичные каталоги (КПП, раздатки, ЭБУ…) — колонки, бренды, комплектации и даты",
+  analyze: "ИИ найдёт листы двигателей и каталоги учёта (КПП, раздатки, электрика…) — колонки, бренды, комплектации и даты",
   review: "Снимите галочки только с лишних строк — по умолчанию импортируются все данные из файла",
-  mapping: "Уточните тип листов, бренд и категорию специфичных таблиц",
+  mapping: "Уточните тип листов, бренд и категорию каталога учёта",
   confirm: "Можно закрыть окно — загрузка продолжится, прогресс будет сверху",
 };
 
 const importTypeOptions: { value: SheetImportType; label: string }[] = [
   { value: "engines", label: "Двигатели" },
-  { value: "specific", label: "Специфичный каталог" },
+  { value: "specific", label: "Каталог учёта" },
   { value: "skip", label: "Пропустить" },
 ];
 
@@ -268,7 +269,7 @@ export function MotorImportWizard({
           if (result.imported > 0 || result.updated > 0 || (result.specificRecordsImported ?? 0) > 0) {
             const parts = [`${result.imported} моторов загружено`];
             if (result.specificRecordsImported) {
-              parts.push(`${result.specificRecordsImported} специфичных`);
+              parts.push(`${result.specificRecordsImported} строк каталога`);
             }
             if (result.errors.length) {
               parts.push(`ошибок: ${result.errors.length}`);
@@ -717,7 +718,7 @@ export function MotorImportWizard({
                   ) : null}
                   {hasSpecificSheets ? (
                     <p className="mt-1 text-muted-foreground">
-                      Специфичные листы будут импортированы в свои категории
+                      Листы каталога будут импортированы в свои категории
                     </p>
                   ) : null}
                 </div>
@@ -804,13 +805,13 @@ export function MotorImportWizard({
                   </p>
                   {hasSpecificSheets ? (
                     <p className="mt-1 text-muted-foreground">
-                      Специфичных категорий: {preview?.stats.specificSheets ?? 0}
+                      Категорий учёта: {preview?.stats.specificSheets ?? 0}
                     </p>
                   ) : null}
                 </div>
                 {hasSpecificSheets ? (
                   <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-900 dark:text-amber-200">
-                    Специфичные листы будут полностью заменены в своих категориях.
+                    Листы каталога будут полностью заменены в своих категориях.
                   </p>
                 ) : null}
                 <p className="text-xs text-muted-foreground">
@@ -875,7 +876,7 @@ function ImportStatsCards({
       <StatCard label="Моторов" value={totalMotors} hint={`${selectedCount} к загрузке`} />
       <StatCard label="Готово" value={preview.stats.validEngineRows} hint={`${preview.stats.errors} ошибок`} />
       <StatCard
-        label="Специфичные"
+        label="Каталог"
         value={preview.stats.specificSheets}
         hint={preview.stats.duplicates ? `${preview.stats.duplicates} дубликатов` : "без дубликатов"}
       />
@@ -891,6 +892,26 @@ function StatCard({ label, value, hint }: { label: string; value: number; hint: 
       <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p>
     </div>
   );
+}
+
+function sheetMappingHint(mapping: MotorSheetMappingResult): string {
+  const warning = mapping.warnings.find(Boolean);
+  if (warning) return warning;
+  if (mapping.config.importType === "engines") {
+    const brand = mapping.config.customBrand?.trim();
+    const engine = mapping.config.customEngineCode?.trim();
+    if (brand || engine) return [brand, engine].filter(Boolean).join(" · ");
+  }
+  if (mapping.config.importType === "specific" && mapping.config.categoryName) {
+    return `→ ${mapping.config.categoryName}`;
+  }
+  return mapping.reasoning ?? "";
+}
+
+function canSwitchSheetToEngines(mapping: MotorSheetMappingResult): boolean {
+  if (mapping.config.importType !== "specific") return false;
+  if (isLikelyMotorCatalogName(mapping.config.sheetName)) return true;
+  return mapping.warnings.some((warning) => /серийник/i.test(warning));
 }
 
 function SheetMappingList({
@@ -926,16 +947,33 @@ function SheetMappingList({
               : "пропуск";
 
         if (!expanded) {
+          const hint = sheetMappingHint(mapping);
           return (
             <div
               key={mapping.config.id}
-              className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm"
+              className="rounded-lg border px-3 py-2 text-sm"
             >
-              <div className="min-w-0">
-                <p className="truncate font-medium">{mapping.config.sheetName}</p>
-                <p className="text-xs text-muted-foreground">{rowHint}</p>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{mapping.config.sheetName}</p>
+                  <p className="text-xs text-muted-foreground">{rowHint}</p>
+                  {hint ? (
+                    <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{hint}</p>
+                  ) : null}
+                </div>
+                <ImportTypeBadge type={mapping.config.importType} />
               </div>
-              <ImportTypeBadge type={mapping.config.importType} />
+              {canSwitchSheetToEngines(mapping) ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="mt-2 h-7 text-xs"
+                  onClick={() => onUpdate(mapping.config.id, { importType: "engines", categoryName: "" })}
+                >
+                  Импортировать как моторы
+                </Button>
+              ) : null}
             </div>
           );
         }
@@ -956,7 +994,7 @@ function SheetMappingList({
 
 function ImportTypeBadge({ type }: { type: SheetImportType }) {
   const label =
-    type === "engines" ? "Двигатели" : type === "specific" ? "Специфичный" : "Пропуск";
+    type === "engines" ? "Двигатели" : type === "specific" ? "Каталог" : "Пропуск";
   const className =
     type === "engines"
       ? "bg-primary/10 text-primary"
@@ -981,24 +1019,34 @@ function SpecificSheetsPreview({
   return (
     <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-4">
       <p className="text-sm font-medium text-amber-950 dark:text-amber-100">
-        Специфичные каталоги ({sheets.length})
+        Каталоги учёта ({sheets.length})
       </p>
       <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-200/80">
-        Эти листы загрузятся в выбранные специфичные листы. Старые записи в каждом листе будут заменены.
+        Эти листы загрузятся в выбранные листы учёта. Старые записи в каждом листе будут заменены.
       </p>
       <ul className="mt-3 space-y-2">
-        {sheets.map((sheet) => (
-          <li
-            key={sheet.configId}
-            className="flex items-center justify-between gap-3 rounded-md border border-amber-500/20 bg-background/60 px-3 py-2 text-sm"
-          >
-            <div className="min-w-0">
-              <p className="truncate font-medium">{sheet.sheetName}</p>
-              <p className="text-xs text-muted-foreground">→ {sheet.categoryName}</p>
-            </div>
-            <span className="shrink-0 tabular-nums text-muted-foreground">{sheet.rowCount} строк</span>
-          </li>
-        ))}
+        {sheets.map((sheet) => {
+          const columns = Object.keys(sheet.previewSample[0] ?? {}).filter((key) => !key.startsWith("_"));
+          return (
+            <li
+              key={sheet.configId}
+              className="rounded-md border border-amber-500/20 bg-background/60 px-3 py-2 text-sm"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{sheet.sheetName}</p>
+                  <p className="text-xs text-muted-foreground">→ {sheet.categoryName}</p>
+                  {columns.length > 0 ? (
+                    <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">
+                      Колонки: {columns.join(", ")}
+                    </p>
+                  ) : null}
+                </div>
+                <span className="shrink-0 tabular-nums text-muted-foreground">{sheet.rowCount} строк</span>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -1015,6 +1063,8 @@ function SheetMappingCard({
   specificCategories: SpecificCategoryEntity[];
   onUpdate: (patch: Partial<MotorSheetMappingResult["config"]>) => void;
 }) {
+  const hint = sheetMappingHint(mapping);
+
   return (
     <div className="rounded-lg border p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -1024,9 +1074,22 @@ function SheetMappingCard({
             {mapping.source === "ai" ? "ИИ" : mapping.source === "manual" ? "Вручную" : "Правила"} ·{" "}
             {rowHint} · {mapping.reasoning}
           </p>
+          {hint ? <p className="mt-1 text-xs text-amber-800 dark:text-amber-200">{hint}</p> : null}
         </div>
         <ConfidenceBadge confidence={mapping.confidence} />
       </div>
+      {canSwitchSheetToEngines(mapping) ? (
+        <div className="mb-3">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => onUpdate({ importType: "engines", categoryName: "" })}
+          >
+            Импортировать как моторы
+          </Button>
+        </div>
+      ) : null}
       <div className="space-y-3">
         <div className="space-y-2">
           <Label>Тип листа</Label>
@@ -1047,7 +1110,7 @@ function SheetMappingCard({
             {mapping.config.importType === "engines"
               ? "Серийники → моторы в базе. Укажите бренд и код двигателя для листа."
               : mapping.config.importType === "specific"
-                ? "Данные загрузятся в выбранный специфичный лист. Создайте лист в сайдбаре, если его ещё нет."
+                ? "Данные загрузятся в выбранный лист учёта. Создайте лист в сайдбаре, если его ещё нет."
                 : "Лист не будет импортирован."}
           </p>
         </div>

@@ -69,7 +69,7 @@ export const landingPageContent = {
       "Заказ-наряд, гарантийный талон и акт — из одних данных. Не копируете из Excel в Word.",
     items: [
       { id: "work-order", title: "Заказ-наряд", hint: "НЗ-2026-0142 · Hyundai Sonata" },
-      { id: "warranty", title: "Гарантийный талон", hint: "G4KC · 6 мес · QR-код" },
+      { id: "warranty", title: "Гарантийный талон", hint: "G4KC · 180 дн · QR-код" },
       { id: "service-act", title: "Акт выполненных работ", hint: "$6,110 · подписи" },
     ],
   },

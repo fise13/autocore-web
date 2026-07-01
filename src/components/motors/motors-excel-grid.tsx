@@ -61,9 +61,9 @@ import {
 } from "@/lib/motor-grid-layout";
 import { MotorRepository, isMotorRowEmpty } from "@/infrastructure/firestore/motor-repository";
 import { BrandEntity, CatalogRepository, EngineEntity } from "@/infrastructure/firestore/catalog-repository";
-import { resolveGridColumnAutocomplete, pickColumnAutocompleteMatch } from "@/lib/grid/grid-column-autocomplete";
+import { resolveGridColumnAutocomplete, pickColumnAutocompleteMatch, filterColumnSuggestions } from "@/lib/grid/grid-column-autocomplete";
 import { gridPalette } from "@/lib/grid/grid-palette";
-import { mapAuthError } from "@/lib/user-copy";
+import { mapGridSaveError } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 type MotorsExcelGridProps = {
@@ -482,6 +482,37 @@ export function MotorsExcelGrid({
     );
   }, [brandNameOptions, editor, engineCodesByBrand, engines, layoutColumns, rows]);
 
+  const editorSuggestionList = useMemo(() => {
+    if (!editor) return [] as string[];
+    const editingColumnId = columnIdAt(layoutColumns, editor.cell.column);
+
+    if (editingColumnId === "brandName") {
+      return filterColumnSuggestions(editor.value, brandNameOptions);
+    }
+
+    if (editingColumnId === "engineCode") {
+      const rowBrand = rows[editor.cell.row]?.brandName?.trim();
+      const scoped = rowBrand
+        ? engineCodesByBrand.get(rowBrand.toLowerCase()) ?? []
+        : engines.map((engine) => engine.code);
+      const fromRows: string[] = [];
+      for (let row = 0; row < rows.length; row += 1) {
+        if (row === editor.cell.row) continue;
+        const cellValue = valueAtCell(rows[row], editor.cell.column, layoutColumns).trim();
+        if (cellValue) fromRows.push(cellValue);
+      }
+      return filterColumnSuggestions(editor.value, [...new Set([...scoped, ...fromRows])]);
+    }
+
+    const fromRows: string[] = [];
+    for (let row = 0; row < rows.length; row += 1) {
+      if (row === editor.cell.row) continue;
+      const cellValue = valueAtCell(rows[row], editor.cell.column, layoutColumns).trim();
+      if (cellValue) fromRows.push(cellValue);
+    }
+    return filterColumnSuggestions(editor.value, fromRows);
+  }, [brandNameOptions, editor, engineCodesByBrand, engines, layoutColumns, rows]);
+
   const scheduleDirtyStatus = useCallback(() => {
     if (dirtyStatusScheduledRef.current) return;
     dirtyStatusScheduledRef.current = true;
@@ -708,7 +739,7 @@ export function MotorsExcelGrid({
       window.setTimeout(() => setSaveStatus("idle"), 1200);
     } catch (error) {
       setSaveStatus("error");
-      const message = mapAuthError(error);
+      const message = mapGridSaveError(error);
       setSaveError(message);
       throw new Error(message);
     }
@@ -895,9 +926,10 @@ export function MotorsExcelGrid({
     scrollToCell(cell);
   }, [canEdit, rows, scrollToCell]);
 
-  const commitEditor = useCallback((direction?: "down" | "up" | "left" | "right") => {
+  const commitEditor = useCallback((direction?: "down" | "up" | "left" | "right", valueOverride?: string) => {
     if (!editor) return;
-    const { cell, value } = editor;
+    const { cell } = editor;
+    const value = valueOverride ?? editor.value;
     setCell(cell, value);
     setEditor(null);
     if (!direction) {
@@ -1644,12 +1676,14 @@ export function MotorsExcelGrid({
                   selectAll={editor.selectAll}
                   frame={cellFrame(layout, editor.cell)}
                   onChange={(value) => setEditor((current) => (current ? { ...current, value } : current))}
-                  onCommit={(direction) => commitEditor(direction)}
+                  onCommit={(direction, value) => commitEditor(direction, value)}
                   onCancel={() => {
                     setEditor(null);
                     focusGrid();
                   }}
                   autocompleteMatch={editorAutocompleteMatch}
+                  columnSuggestions={editorSuggestionList}
+                  domainCategory={layout.columns[editor.cell.column]?.domainCategory}
                 />
               ) : null}
             </div>

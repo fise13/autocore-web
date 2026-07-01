@@ -4,13 +4,14 @@ import { DocumentCompanyInfo } from "@/lib/documents/document-context";
 import {
   CustomWarrantyFields,
   resolveCustomWarrantyDuration,
+  resolveStoredWarrantyDays,
 } from "@/lib/documents/warranty/custom-warranty";
 import { getWarrantyTemplate, WARRANTY_TEMPLATE_PRESETS } from "@/lib/documents/warranty/warranty-templates";
 
 export type ResolvedWarranty = {
   templateId: WarrantyTemplateId;
   name: string;
-  months: number;
+  days: number;
   km: number;
   conditions: string[];
   restrictions: string[];
@@ -50,18 +51,23 @@ export function resolveWarrantyForDocument(
       {
         warrantyLabel: customLabel,
         warrantyText: override?.warrantyText ?? company.warrantyText,
-        customWarrantyMonths:
-          override?.customWarrantyMonths ?? documentConfig?.customWarrantyMonths,
+        customWarrantyDays:
+          override?.customWarrantyDays ??
+          resolveStoredWarrantyDays(
+            documentConfig?.customWarrantyDays,
+            override?.customWarrantyMonths,
+          ),
+        customWarrantyMonths: override?.customWarrantyMonths,
         customWarrantyKm: override?.customWarrantyKm ?? documentConfig?.customWarrantyKm,
       },
-      preset.months,
+      preset.days,
       preset.km,
     );
 
     return {
       templateId: "custom",
       name: resolved.label,
-      months: resolved.months,
+      days: resolved.days,
       km: resolved.km,
       conditions:
         resolved.paragraphs.length > 0
@@ -83,7 +89,7 @@ export function resolveWarrantyForDocument(
   return {
     templateId,
     name: preset.name,
-    months: preset.months,
+    days: preset.days,
     km: preset.km,
     conditions,
     restrictions: preset.restrictions,
@@ -110,15 +116,16 @@ function buildWarrantyNote(
 
 export type WarrantyDurationOverride = WarrantyTemplateId | "no_warranty" | "none" | undefined;
 
-/** Canonical months/km for warranty record creation (admin). Returns null when no warranty applies. */
+/** Canonical days/km for warranty record creation (admin). Returns null when no warranty applies. */
 export function canonicalWarrantyDuration(
   companyDefault?: WarrantyDurationOverride,
   lineOverride?: WarrantyDurationOverride,
   branding?: CustomWarrantyFields & {
+    customWarrantyDays?: number;
     customWarrantyMonths?: number;
     customWarrantyKm?: number;
   },
-): { months: number; km: number; templateId: WarrantyTemplateId } | null {
+): { days: number; km: number; templateId: WarrantyTemplateId } | null {
   const resolved = lineOverride ?? companyDefault ?? "contract_engine";
   if (resolved === "no_warranty" || resolved === "none") {
     return null;
@@ -129,20 +136,24 @@ export function canonicalWarrantyDuration(
       {
         warrantyLabel: branding?.warrantyLabel,
         warrantyText: branding?.warrantyText,
+        customWarrantyDays: resolveStoredWarrantyDays(
+          branding?.customWarrantyDays,
+          branding?.customWarrantyMonths,
+        ),
         customWarrantyMonths: branding?.customWarrantyMonths,
         customWarrantyKm: branding?.customWarrantyKm,
       },
-      getWarrantyTemplate("custom").months,
+      getWarrantyTemplate("custom").days,
       getWarrantyTemplate("custom").km,
     );
-    return { months: custom.months, km: custom.km, templateId: "custom" };
+    return { days: custom.days, km: custom.km, templateId: "custom" };
   }
 
   const preset = getWarrantyTemplate(resolved);
-  if (preset.months <= 0 || preset.km <= 0) {
+  if (preset.days <= 0 || preset.km <= 0) {
     return null;
   }
-  return { months: preset.months, km: preset.km, templateId: resolved };
+  return { days: preset.days, km: preset.km, templateId: resolved };
 }
 
 export { WARRANTY_TEMPLATE_PRESETS };

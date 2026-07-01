@@ -28,6 +28,12 @@
       ],
       "@assets/*": [
         "./assets/*"
+      ],
+      "@autocore/types": [
+        "./autocore-desktop/packages/types/src"
+      ],
+      "@autocore/types/*": [
+        "./autocore-desktop/packages/types/src/*"
       ]
     }
   },
@@ -42,6 +48,8 @@
   "exclude": [
     "node_modules",
     "**/*.test.ts",
-    "firebase/functions"
+    "firebase/functions",
+    "autocore-desktop",
+    "autocore-mobile"
   ]
 }

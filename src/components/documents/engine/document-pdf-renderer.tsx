@@ -264,11 +264,11 @@ function renderSection(section: DocumentSectionModel) {
               {section.warranty.statusLabel}
             </span>
           </div>
-          {section.warranty.months > 0 ? (
+          {section.warranty.days > 0 ? (
             <div className="doc-pdf-warranty-stats">
               <div>
                 <span>Срок</span>
-                <strong>{section.warranty.months} мес.</strong>
+                <strong>{section.warranty.days} дн.</strong>
               </div>
               <div>
                 <span>Пробег</span>

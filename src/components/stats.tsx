@@ -1,7 +1,7 @@
-import { cn } from "@/lib/utils";
 import {
 	Card,
 	CardContent,
+	CardFooter,
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
@@ -11,64 +11,67 @@ type Stat = {
 	label: string;
 	value: string;
 	delta: number;
-	footnote: string;
-	/** When true, a negative delta is treated as favorable (e.g. queue depth, reply time). */
-	lowerIsBetter: boolean;
+	hint: string;
 };
 
 const stats: readonly Stat[] = [
 	{
-		label: "Open queue",
-		value: "38",
-		delta: -12.4,
-		footnote: "vs yesterday",
-		lowerIsBetter: true,
+		label: "Total revenue",
+		value: "$284,920",
+		delta: 8.2,
+		hint: "vs prior 30 days",
 	},
 	{
-		label: "Active conversations",
-		value: "126",
-		delta: 5.2,
-		footnote: "vs last week",
-		lowerIsBetter: false,
+		label: "Orders",
+		value: "1,842",
+		delta: 4.1,
+		hint: "vs prior 30 days",
 	},
 	{
-		label: "Median first reply",
-		value: "4.1m",
-		delta: -8.0,
-		footnote: "vs last week",
-		lowerIsBetter: true,
+		label: "Average order value",
+		value: "$154.60",
+		delta: -1.3,
+		hint: "vs prior 30 days",
 	},
 	{
-		label: "CSAT (30d)",
-		value: "94%",
-		delta: 1.1,
-		footnote: "vs prior 30d",
-		lowerIsBetter: false,
+		label: "Store conversion",
+		value: "3.06%",
+		delta: 0.6,
+		hint: "vs prior 30 days",
 	},
-];
+] as const;
 
 export function DashboardStats() {
 	return (
 		<>
 			{stats.map((s) => (
-				<Card className={cn("shadow-none dark:ring-0")} key={s.label}>
-					<CardHeader>
-						<CardTitle className="font-normal text-muted-foreground text-xs">
-							{s.label}
-						</CardTitle>
-					</CardHeader>
-					<CardContent className="flex flex-col gap-2">
-						<p className="font-semibold text-2xl tabular-nums">{s.value}</p>
-						<div className="flex items-center gap-1 text-xs">
-							<Delta value={s.delta}>
-								<DeltaIcon />
-								<DeltaValue />
-							</Delta>
-							<span className="text-muted-foreground">{s.footnote}</span>
-						</div>
-					</CardContent>
-				</Card>
+				<StatCard key={s.label} stat={s} />
 			))}
 		</>
+	);
+}
+
+function StatCard({ stat }: { stat: Stat }) {
+	const { label, value, delta, hint } = stat;
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle className="font-normal text-muted-foreground text-xs">
+					{label}
+				</CardTitle>
+			</CardHeader>
+			<CardContent>
+				<p className="text-balance font-semibold text-2xl tabular-nums tracking-tight">
+					{value}
+				</p>
+			</CardContent>
+			<CardFooter className="gap-1.5 text-xs">
+				<Delta value={delta} variant="default">
+					<DeltaIcon />
+					<DeltaValue />
+				</Delta>
+				<span className="text-pretty text-muted-foreground">{hint}</span>
+			</CardFooter>
+		</Card>
 	);
 }

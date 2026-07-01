@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DatalistInput } from "@/components/ui/datalist-input";
 import { AmountInput, parseGroupedNumber } from "@/components/ui/grouped-number-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +26,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { MotorEntity } from "@/domain/motor";
 import { OperationAccount, PaymentMethod } from "@/domain/financial-operation";
+import { useClientsRealtime } from "@/hooks/use-clients-realtime";
 import { useCompanyBranding } from "@/hooks/use-company-branding";
+import { createClientRepository } from "@/infrastructure/firestore/client-repository";
 import {
   operationAccountLabel,
   paymentMethodLabel,
@@ -35,8 +38,13 @@ import type { MotorSaleWarrantyOverride } from "@/lib/documents/warranty/custom-
 import { formatGroupedNumber } from "@/lib/money/format-number";
 
 export type MotorSellPayload = SellFinancialPayload & {
+  clientId?: string;
+  clientName?: string;
+  clientPhone?: string;
   warrantyOverride?: MotorSaleWarrantyOverride;
 };
+
+const clientRepository = createClientRepository();
 
 type SellMotorDialogProps = {
   companyId: string | null | undefined;
@@ -61,9 +69,10 @@ function SellMotorDialogForm({
   onConfirm: (payload: MotorSellPayload) => Promise<void>;
 }) {
   const { profile } = useCompanyBranding(companyId);
+  const { clients } = useClientsRealtime(clientRepository, companyId ?? "", mode === "sell");
   const usesCustomWarranty = profile.warrantyTemplateId === "custom" && mode === "sell";
 
-  const defaultMonths = profile.customWarrantyMonths ? String(profile.customWarrantyMonths) : "6";
+  const defaultDays = profile.customWarrantyDays ? String(profile.customWarrantyDays) : "180";
   const defaultKm = profile.customWarrantyKm ? String(profile.customWarrantyKm) : "10000";
 
   const [amount, setAmount] = useState(formatGroupedNumber(0));
@@ -72,22 +81,45 @@ function SellMotorDialogForm({
   const [comment, setComment] = useState(
     mode === "sell" ? `Продажа · ${motor.serialCode}` : `Возврат · ${motor.serialCode}`,
   );
-  const [warrantyMonths, setWarrantyMonths] = useState(defaultMonths);
+  const [warrantyDays, setWarrantyDays] = useState(defaultDays);
   const [warrantyKm, setWarrantyKm] = useState(defaultKm);
   const [warrantyLabel, setWarrantyLabel] = useState(profile.warrantyLabel ?? "");
   const [warrantyText, setWarrantyText] = useState(profile.warrantyText ?? "");
+  const [clientId, setClientId] = useState<string | undefined>();
+  const [clientName, setClientName] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const clientNameOptions = useMemo(
+    () => clients.map((client) => ({ value: client.fullName, label: client.phone })),
+    [clients],
+  );
+  const clientPhoneOptions = useMemo(
+    () => clients.map((client) => ({ value: client.phone, label: client.fullName })),
+    [clients],
+  );
+
+  function selectClient(id: string) {
+    const client = clients.find((entry) => entry.id === id);
+    if (!client) return;
+    setClientId(client.id);
+    setClientName(client.fullName);
+    setClientPhone(client.phone);
+  }
+
   useEffect(() => {
-    setWarrantyMonths(defaultMonths);
+    setWarrantyDays(defaultDays);
     setWarrantyKm(defaultKm);
     setWarrantyLabel(profile.warrantyLabel ?? "");
     setWarrantyText(profile.warrantyText ?? "");
-  }, [defaultMonths, defaultKm, profile.warrantyLabel, profile.warrantyText, motor.id, mode]);
+    setClientId(undefined);
+    setClientName("");
+    setClientPhone("");
+  }, [defaultDays, defaultKm, profile.warrantyLabel, profile.warrantyText, motor.id, mode]);
 
   const parsedAmount = useMemo(() => parseGroupedNumber(amount), [amount]);
-  const parsedMonths = Number(warrantyMonths);
+  const parsedDays = Number(warrantyDays);
   const parsedKm = Number(warrantyKm);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -97,9 +129,22 @@ function SellMotorDialogForm({
       return;
     }
 
+    if (mode === "sell") {
+      const name = clientName.trim();
+      const phone = clientPhone.trim();
+      if (name.length < 2) {
+        setError("Укажите имя покупателя");
+        return;
+      }
+      if (phone.length < 3) {
+        setError("Укажите телефон покупателя");
+        return;
+      }
+    }
+
     if (usesCustomWarranty) {
-      if (!Number.isFinite(parsedMonths) || parsedMonths <= 0) {
-        setError("Укажите срок гарантии в месяцах");
+      if (!Number.isFinite(parsedDays) || parsedDays <= 0) {
+        setError("Укажите срок гарантии в днях");
         return;
       }
       if (!Number.isFinite(parsedKm) || parsedKm <= 0) {
@@ -118,7 +163,7 @@ function SellMotorDialogForm({
       const label =
         warrantyLabel.trim() ||
         (usesCustomWarranty
-          ? formatWarrantyDurationLabel(parsedMonths, parsedKm)
+          ? formatWarrantyDurationLabel(parsedDays, parsedKm)
           : undefined);
 
       await onConfirm({
@@ -126,11 +171,18 @@ function SellMotorDialogForm({
         account,
         paymentMethod,
         comment: comment.trim(),
+        ...(mode === "sell"
+          ? {
+              clientId,
+              clientName: clientName.trim(),
+              clientPhone: clientPhone.trim(),
+            }
+          : {}),
         warrantyOverride: usesCustomWarranty
           ? {
               warrantyLabel: label,
               warrantyText: warrantyText.trim(),
-              customWarrantyMonths: parsedMonths,
+              customWarrantyDays: parsedDays,
               customWarrantyKm: parsedKm,
             }
           : undefined,
@@ -153,6 +205,51 @@ function SellMotorDialogForm({
       </DialogHeader>
 
       <form className="space-y-4" onSubmit={submit}>
+        {mode === "sell" ? (
+          <div className="space-y-3 rounded-xl border border-border/80 bg-muted/30 p-3">
+            <p className="text-sm font-medium">Покупатель</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="motor-sale-client-name">ФИО</Label>
+                <DatalistInput
+                  id="motor-sale-client-name"
+                  value={clientName}
+                  onValueChange={(value) => {
+                    setClientId(undefined);
+                    setClientName(value);
+                  }}
+                  options={clientNameOptions}
+                  onOptionCommit={(value) => {
+                    const client = clients.find((entry) => entry.fullName === value);
+                    if (client) selectClient(client.id);
+                  }}
+                  placeholder="Иванов Алексей"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="motor-sale-client-phone">Телефон</Label>
+                <DatalistInput
+                  id="motor-sale-client-phone"
+                  value={clientPhone}
+                  onValueChange={(value) => {
+                    setClientId(undefined);
+                    setClientPhone(value);
+                  }}
+                  options={clientPhoneOptions}
+                  onOptionCommit={(value) => {
+                    const client = clients.find((entry) => entry.phone === value);
+                    if (client) selectClient(client.id);
+                  }}
+                  placeholder="+7 777 000 00 00"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Новый покупатель будет сохранён в базе клиентов.
+            </p>
+          </div>
+        ) : null}
+
         <div className="space-y-1">
           <Label>Сумма</Label>
           <AmountInput value={amount} onChange={setAmount} />
@@ -194,13 +291,13 @@ function SellMotorDialogForm({
             <p className="text-sm font-medium">Гарантия на эту продажу</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1">
-                <Label htmlFor="sale-warranty-months">Срок, мес</Label>
+                <Label htmlFor="sale-warranty-days">Срок, дн</Label>
                 <Input
-                  id="sale-warranty-months"
+                  id="sale-warranty-days"
                   type="number"
                   min={1}
-                  value={warrantyMonths}
-                  onChange={(event) => setWarrantyMonths(event.target.value)}
+                  value={warrantyDays}
+                  onChange={(event) => setWarrantyDays(event.target.value)}
                 />
               </div>
               <div className="space-y-1">
@@ -220,7 +317,7 @@ function SellMotorDialogForm({
                 id="sale-warranty-label"
                 value={warrantyLabel}
                 onChange={(event) => setWarrantyLabel(event.target.value)}
-                placeholder={formatWarrantyDurationLabel(parsedMonths || 6, parsedKm || 10_000)}
+                placeholder={formatWarrantyDurationLabel(parsedDays || 180, parsedKm || 10_000)}
               />
             </div>
             <div className="space-y-1">
@@ -284,7 +381,7 @@ export function SellMotorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md duration-300">
+      <DialogContent className="max-w-lg duration-300">
         <SellMotorDialogForm
           key={`${motor.id}-${mode}`}
           companyId={companyId}

@@ -8,7 +8,7 @@ import { useCompanyAppConfig } from "@/hooks/use-company-app-config";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
 import { can } from "@/lib/auth/permissions";
 import { isDemoSession } from "@/lib/demo/demo-config";
-import { hasWizardCompleted } from "@/lib/performance/session-flags";
+import { hasMigrationOfferCompleted, hasWizardCompleted } from "@/lib/performance/session-flags";
 
 export type AuthJourneyStep =
   | "loading"
@@ -16,6 +16,7 @@ export type AuthJourneyStep =
   | "profile-name"
   | "company"
   | "setup-wizard"
+  | "business-import"
   | "app";
 
 export type AuthJourneyStepMeta = {
@@ -28,6 +29,7 @@ export const AUTH_JOURNEY_STEP_LABELS: Record<Exclude<AuthJourneyStep, "loading"
   "profile-name": "Ваш профиль",
   company: "Команда и доступ",
   "setup-wizard": "Настройка пространства",
+  "business-import": "Перенос данных",
 };
 
 export function useAuthJourneyStep(localProfileName?: string | null): AuthJourneyStep {
@@ -67,6 +69,14 @@ export function useAuthJourneyStep(localProfileName?: string | null): AuthJourne
     }
 
     if (!loaded) {
+      if (
+        cachedCompleted &&
+        profile.isCompanyOwner &&
+        companyId &&
+        !hasMigrationOfferCompleted(companyId)
+      ) {
+        return "business-import";
+      }
       return cachedCompleted ? "app" : "loading";
     }
 
@@ -77,6 +87,15 @@ export function useAuthJourneyStep(localProfileName?: string | null): AuthJourne
 
     if (needsWizard) {
       return "setup-wizard";
+    }
+
+    const needsBusinessImport =
+      profile.isCompanyOwner &&
+      config?.onboardingCompleted &&
+      !hasMigrationOfferCompleted(companyId);
+
+    if (needsBusinessImport) {
+      return "business-import";
     }
 
     return "app";

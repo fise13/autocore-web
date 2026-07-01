@@ -134,7 +134,7 @@ export function buildDocumentContext(input: DocumentContextInput): DocumentConte
         warrantyTemplateId: branding.warrantyTemplateId ?? documentConfig.warrantyTemplateId,
         sections: branding.documentSections ?? documentConfig.sections,
         documentFooter: branding.documentFooter ?? documentConfig.documentFooter,
-        customWarrantyMonths: documentConfig.customWarrantyMonths,
+        customWarrantyDays: documentConfig.customWarrantyDays,
         customWarrantyKm: documentConfig.customWarrantyKm,
       },
     },

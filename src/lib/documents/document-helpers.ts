@@ -1,6 +1,7 @@
 import { DocumentContext } from "@/lib/documents/document-context";
 import {
   laborLineAssigneeLabels,
+  resolveEmployeeName,
   workOrderAssigneeSummary,
 } from "@/lib/work-order/work-order-display";
 import { laborLineTotal } from "@/lib/work-order/labor-pricing";
@@ -21,7 +22,19 @@ export function documentClientPhone(context: DocumentContext): string {
 }
 
 export function documentAssigneeSummary(context: DocumentContext): string {
-  return workOrderAssigneeSummary(context.order, context.employees) || "—";
+  const fromLabor = workOrderAssigneeSummary(context.order, context.employees);
+  if (fromLabor) return fromLabor;
+
+  const actorId =
+    context.order.updatedByUserId?.trim() || context.order.createdByUserId?.trim() || "";
+  if (actorId) {
+    const name = resolveEmployeeName(actorId, context.employees);
+    if (name) return name;
+    const fromMap = context.assigneeNames.get(actorId);
+    if (fromMap) return fromMap;
+  }
+
+  return "—";
 }
 
 export function documentLaborLineAssignees(

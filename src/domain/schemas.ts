@@ -114,6 +114,8 @@ export const upsertInventoryItemSchema = z.object({
   notes: z.string().trim().optional(),
   categoryId: z.string().trim().optional(),
   categoryPath: z.array(z.string().trim()).optional(),
+  inventoryGroup: z.enum(["aggregates", "parts", "consumables"]).optional(),
+  subcategoryId: z.string().trim().optional(),
   unit: z.string().trim().default("шт"),
   purchasePrice: z.number().nonnegative().optional(),
   averageCost: z.number().nonnegative().optional(),

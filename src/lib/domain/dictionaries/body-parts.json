@@ -1,0 +1,21 @@
+[
+  { "id": "headlight_left", "name": "Фара левая", "category": "Оптика", "aliases": ["левая фара", "фара лев", "headlight left", "фара л"], "type": "bodyPart" },
+  { "id": "headlight_right", "name": "Фара правая", "category": "Оптика", "aliases": ["правая фара", "фара прав", "headlight right", "фара п"], "type": "bodyPart" },
+  { "id": "headlight_set", "name": "Фара комплект", "category": "Оптика", "aliases": ["комплект фар", "фары комплект", "пара фар"], "type": "bodyPart" },
+  { "id": "fog_light", "name": "Фара противотуманная", "category": "Оптика", "aliases": ["противотуманка", "птф", "туманка", "fog light"], "type": "bodyPart" },
+  { "id": "taillight_left", "name": "Фонарь левый", "category": "Оптика", "aliases": ["левый фонарь", "стоп левый", "taillight left"], "type": "bodyPart" },
+  { "id": "taillight_right", "name": "Фонарь правый", "category": "Оптика", "aliases": ["правый фонарь", "стоп правый", "taillight right"], "type": "bodyPart" },
+  { "id": "bumper_front", "name": "Бампер передний", "category": "Кузов", "aliases": ["передний бампер", "бампер пер", "front bumper"], "type": "bodyPart" },
+  { "id": "bumper_rear", "name": "Бампер задний", "category": "Кузов", "aliases": ["задний бампер", "бампер зад", "rear bumper"], "type": "bodyPart" },
+  { "id": "hood", "name": "Капот", "category": "Кузов", "aliases": ["крышка капота", "hood", "bonnet"], "type": "bodyPart" },
+  { "id": "fender_left", "name": "Крыло переднее левое", "category": "Кузов", "aliases": ["крыло лев", "левое крыло", "fender left"], "type": "bodyPart" },
+  { "id": "fender_right", "name": "Крыло переднее правое", "category": "Кузов", "aliases": ["крыло прав", "правое крыло", "fender right"], "type": "bodyPart" },
+  { "id": "door_front_left", "name": "Дверь передняя левая", "category": "Кузов", "aliases": ["дверь пер лев", "передняя левая дверь", "door front left"], "type": "bodyPart" },
+  { "id": "door_front_right", "name": "Дверь передняя правая", "category": "Кузов", "aliases": ["дверь пер прав", "передняя правая дверь", "door front right"], "type": "bodyPart" },
+  { "id": "trunk_lid", "name": "Крышка багажника", "category": "Кузов", "aliases": ["багажник", "trunk lid", "tailgate"], "type": "bodyPart" },
+  { "id": "nose_cut", "name": "Ноускат", "category": "Кузов", "aliases": ["ноускат", "морда", "nose cut", "передняя часть"], "type": "bodyPart" },
+  { "id": "radiator_support", "name": "Телевизор (рамка радиатора)", "category": "Кузов", "aliases": ["телевизор", "рамка радиатора", "radiator support"], "type": "bodyPart" },
+  { "id": "mirror_left", "name": "Зеркало левое", "category": "Кузов", "aliases": ["левое зеркало", "зеркало лев", "mirror left"], "type": "bodyPart" },
+  { "id": "mirror_right", "name": "Зеркало правое", "category": "Кузов", "aliases": ["правое зеркало", "зеркало прав", "mirror right"], "type": "bodyPart" },
+  { "id": "grille", "name": "Решётка радиатора", "category": "Кузов", "aliases": ["решетка", "решетка радиатора", "grille"], "type": "bodyPart" }
+]

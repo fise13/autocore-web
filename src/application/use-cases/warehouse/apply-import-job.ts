@@ -12,6 +12,7 @@ import { InventoryStockLevelRepository } from "@/infrastructure/firestore/invent
 import { WarehouseRepository } from "@/infrastructure/firestore/warehouse-repository";
 import { FinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
 import { InventoryItem } from "@/domain/inventory";
+import { InventoryGroupId, InventorySubcategoryId } from "@/domain/inventory-taxonomy";
 
 const APPLY_CHUNK_SIZE = 25;
 
@@ -138,6 +139,8 @@ export async function applyImportJobUseCase(
               categoryPath: Array.isArray(normalized.categoryPath)
                 ? normalized.categoryPath.map(String)
                 : undefined,
+              inventoryGroup: normalized.inventoryGroup as InventoryGroupId | undefined,
+              subcategoryId: normalized.subcategoryId as InventorySubcategoryId | undefined,
               barcodes: Array.isArray(normalized.barcodes) ? normalized.barcodes.map(String) : undefined,
               unit: normalized.unit ? String(normalized.unit) : "шт",
               purchasePrice:

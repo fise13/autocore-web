@@ -53,7 +53,7 @@ export function useSidebarLayout() {
     localStorage.setItem(COLLAPSED_KEY, String(next));
   }, []);
 
-  const toggleVisible = useCallback(() => {
+  const toggleCollapsed = useCallback(() => {
     setCollapsedState((current) => {
       const next = !current;
       localStorage.setItem(COLLAPSED_KEY, String(next));
@@ -69,6 +69,8 @@ export function useSidebarLayout() {
     setVisible,
     setCollapsed,
     setWidth,
-    toggleVisible,
+    toggleCollapsed,
+    /** @deprecated Use toggleCollapsed */
+    toggleVisible: toggleCollapsed,
   };
 }

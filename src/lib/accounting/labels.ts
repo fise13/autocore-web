@@ -3,6 +3,7 @@ import {
   OperationType,
   PaymentMethod,
 } from "@/domain/financial-operation";
+import { MOTOR_SALE_CATEGORY } from "@/lib/accounting/categories";
 
 export const OPERATION_TYPE_LABELS: Record<OperationType, string> = {
   sale: "Продажа",
@@ -23,6 +24,20 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   mixed: "Смешанная",
 };
 
+/** Canonical Firestore keys → labels shown in UI. */
+export const OPERATION_CATEGORY_LABELS: Record<string, string> = {
+  [MOTOR_SALE_CATEGORY]: "Продажа мотора",
+  work_order_income: "Доход заказ-наряда",
+  work_order_parts_cost: "Себестоимость запчастей",
+  payroll: "Зарплата",
+  motor_import: "Закупка моторов",
+  warehouse_import: "Закупка на склад",
+};
+
+const OPERATION_CATEGORY_LABEL_LOOKUP = new Map<string, string>(
+  Object.entries(OPERATION_CATEGORY_LABELS).map(([key, label]) => [label.toLowerCase(), key]),
+);
+
 export const CREATABLE_OPERATION_TYPES = ["expense", "income", "sale", "refund"] as const;
 
 export type CreatableOperationType = (typeof CREATABLE_OPERATION_TYPES)[number];
@@ -39,23 +54,31 @@ export function paymentMethodLabel(method: PaymentMethod | string): string {
   return PAYMENT_METHOD_LABELS[method as PaymentMethod] ?? String(method);
 }
 
-import { MOTOR_SALE_CATEGORY } from "@/lib/accounting/categories";
-
 export function operationCategoryLabel(category: string | null | undefined): string {
-  switch (category) {
-    case MOTOR_SALE_CATEGORY:
-      return "Продажа мотора";
-    case "work_order_income":
-      return "Доход заказ-наряда";
-    case "work_order_parts_cost":
-      return "Себестоимость запчастей";
-    case "payroll":
-      return "Зарплата";
-    case "motor_import":
-      return "Закупка моторов";
-    case "warehouse_import":
-      return "Закупка на склад";
-    default:
-      return category || "—";
-  }
+  if (!category) return "—";
+  const trimmed = category.trim();
+  if (!trimmed) return "—";
+  return OPERATION_CATEGORY_LABELS[trimmed] ?? trimmed;
+}
+
+export function operationCategoryDisplayValue(category: string): string {
+  const trimmed = category.trim();
+  if (!trimmed) return "";
+  return OPERATION_CATEGORY_LABELS[trimmed] ?? trimmed;
+}
+
+export function resolveOperationCategoryValue(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) return "";
+
+  if (OPERATION_CATEGORY_LABELS[trimmed]) return trimmed;
+
+  const fromLabel = OPERATION_CATEGORY_LABEL_LOOKUP.get(trimmed.toLowerCase());
+  if (fromLabel) return fromLabel;
+
+  return trimmed;
+}
+
+export function isKnownOperationCategory(category: string): boolean {
+  return category.trim() in OPERATION_CATEGORY_LABELS;
 }

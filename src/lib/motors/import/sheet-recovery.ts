@@ -60,7 +60,7 @@ export function recoverSkippedSheetMapping(
     warnings: [
       ...mapping.warnings,
       importType === "specific"
-        ? "Неизвестный лист → специфичный каталог (все колонки сохранятся)"
+        ? "Неизвестный лист → каталог учёта (все колонки сохранятся)"
         : "Неизвестный лист → моторы (проверьте сопоставление колонок)",
     ],
     confidence: Math.max(mapping.confidence, 0.42),
@@ -78,7 +78,19 @@ export function rebalanceMisclassifiedEngineSheet(
   existingCategoryNames: string[] = [],
 ): MotorSheetMappingResult {
   if (mapping.config.importType !== "engines") return mapping;
-  if (isLikelyMotorCatalogName(sheet.name) && sheetHasSerialSignal(sheet, mapping)) return mapping;
+  if (isLikelyMotorCatalogName(sheet.name)) {
+    if (!sheetHasSerialSignal(sheet, mapping)) {
+      return {
+        ...mapping,
+        warnings: [
+          ...mapping.warnings,
+          "Колонка серийников не найдена — импортируем как моторы с автономерами",
+        ],
+        confidence: Math.max(mapping.confidence, 0.5),
+      };
+    }
+    return mapping;
+  }
   if (sheetHasSerialSignal(sheet, mapping)) return mapping;
 
   const config = finalizeSheetConfig(
@@ -97,7 +109,7 @@ export function rebalanceMisclassifiedEngineSheet(
     config,
     warnings: [
       ...mapping.warnings,
-      "Нет колонки серийников — импортируем как специфичный каталог, чтобы не потерять данные",
+      "Нет колонки серийников — импортируем как каталог учёта, чтобы не потерять данные",
     ],
     confidence: Math.max(mapping.confidence, 0.5),
   };
@@ -118,6 +130,21 @@ export function rebalanceEmptyEngineSheets(
       const rowCount = engineRows.filter((row) => row.sheetConfigId === mapping.config.id).length;
       if (rowCount > 0) return [id, mapping];
 
+      if (isLikelyMotorCatalogName(mapping.config.sheetName)) {
+        return [
+          id,
+          {
+            ...mapping,
+            warnings: [
+              ...mapping.warnings,
+              "Серийники не распознаны — лист остаётся моторами, будут автономера",
+            ],
+            confidence: Math.max(mapping.confidence, 0.55),
+            reasoning: `${mapping.reasoning} · моторный лист без серийников`,
+          },
+        ];
+      }
+
       const config = finalizeSheetConfig(
         {
           ...mapping.config,
@@ -136,10 +163,10 @@ export function rebalanceEmptyEngineSheets(
           config,
           warnings: [
             ...mapping.warnings,
-            "Не найдены серийники — лист импортируется как специфичный каталог (все колонки сохранятся)",
+            "Не найдены серийники — лист импортируется как каталог учёта (все колонки сохранятся)",
           ],
           confidence: Math.max(mapping.confidence, 0.55),
-          reasoning: `${mapping.reasoning} · нет строк моторов → специфичный`,
+          reasoning: `${mapping.reasoning} · нет строк моторов → каталог учёта`,
         },
       ];
     }),

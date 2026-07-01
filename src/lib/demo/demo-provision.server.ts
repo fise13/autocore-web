@@ -6,6 +6,7 @@ import { ROLE_PERMISSIONS, type UserRole } from "@/domain/user";
 import { defaultCompanyAppConfig } from "@/domain/company-config";
 import { DEMO_ACCOUNT_EMAIL, DEMO_COMPANY_ID } from "@/lib/demo/demo-config";
 import { resetDemoWorkspaceData } from "@/lib/demo/demo-reset.server";
+import { seedDemoWorkspaceData } from "@/lib/demo/demo-seed.server";
 import { getAdminAuth, getAdminFirestore } from "@/infrastructure/firebase/admin";
 
 export { DEMO_COMPANY_ID };
@@ -148,6 +149,8 @@ export async function ensureDemoWorkspace(uid: string): Promise<void> {
       },
       { merge: true },
     );
+
+  await seedDemoWorkspaceData(uid);
 }
 
 export async function createDemoCustomToken(): Promise<string> {

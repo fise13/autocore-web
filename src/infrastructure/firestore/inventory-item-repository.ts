@@ -13,9 +13,16 @@ import {
   serverTimestamp,
   updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 
 import { InventoryItem, UpsertInventoryItemInput } from "@/domain/inventory";
+import {
+  isInventoryGroupId,
+  isInventorySubcategoryId,
+  type InventoryGroupId,
+  type InventorySubcategoryId,
+} from "@/domain/inventory-taxonomy";
 import { createActivityLogRepository } from "@/infrastructure/firestore/activity-log-repository";
 import { createBarcodeMappingRepository } from "@/infrastructure/firestore/barcode-mapping-repository";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
@@ -35,6 +42,9 @@ const COLLECTION = "inventoryItems";
 function mapItem(id: string, data: Record<string, unknown>): InventoryItem {
   const averageCost = Number(data.averageCost ?? data.purchasePrice ?? 0);
   const totalOnHand = Number(data.totalOnHand ?? data.quantity ?? 0);
+  const categoryPath = Array.isArray(data.categoryPath) ? data.categoryPath.map(String) : undefined;
+  const inventoryGroup = isInventoryGroupId(data.inventoryGroup) ? data.inventoryGroup : "consumables";
+  const subcategoryId = isInventorySubcategoryId(data.subcategoryId) ? data.subcategoryId : undefined;
   return {
     id,
     companyId: String(data.companyId ?? ""),
@@ -51,7 +61,9 @@ function mapItem(id: string, data: Record<string, unknown>): InventoryItem {
       typeof data.warehouseLocation === "string" ? data.warehouseLocation : undefined,
     notes: typeof data.notes === "string" ? data.notes : undefined,
     categoryId: typeof data.categoryId === "string" ? data.categoryId : undefined,
-    categoryPath: Array.isArray(data.categoryPath) ? data.categoryPath.map(String) : undefined,
+    categoryPath,
+    inventoryGroup,
+    subcategoryId,
     unit: typeof data.unit === "string" ? data.unit : "шт",
     purchasePrice: data.purchasePrice == null ? undefined : Number(data.purchasePrice),
     averageCost: Number.isFinite(averageCost) ? averageCost : undefined,
@@ -144,6 +156,10 @@ function buildItemPayload(input: UpsertInventoryItemInput, options?: { isUpdate?
   if (notes !== undefined) payload.notes = notes;
   if (categoryId !== undefined) payload.categoryId = categoryId;
   if (categoryPath !== undefined) payload.categoryPath = categoryPath;
+  if (input.inventoryGroup) payload.inventoryGroup = input.inventoryGroup;
+  else if (!clearOnUpdate) payload.inventoryGroup = "consumables";
+  if (input.subcategoryId) payload.subcategoryId = input.subcategoryId;
+  else if (clearOnUpdate) payload.subcategoryId = deleteField();
 
   const purchasePrice = optionalNumberField(input.purchasePrice, clearOnUpdate);
   const sellPrice = optionalNumberField(input.sellPrice, clearOnUpdate);
@@ -333,6 +349,42 @@ export function createInventoryItemRepository() {
         });
       } catch {
         // Activity log is best-effort; archive write already succeeded.
+      }
+    },
+
+    async fetchAllActive(companyId: string): Promise<InventoryItem[]> {
+      const normalized = normalizeCompanyId(companyId);
+      const snapshot = await getDocs(
+        query(ref, where("companyId", "==", normalized), orderBy("updatedAt", "desc")),
+      );
+      return snapshot.docs
+        .map((item) => mapItem(item.id, item.data() as Record<string, unknown>))
+        .filter((item) => item.status === "active" || item.status === "discontinued");
+    },
+
+    async batchUpdateTaxonomy(
+      companyId: string,
+      patches: Array<{
+        itemId: string;
+        subcategoryId: InventorySubcategoryId;
+        inventoryGroup: InventoryGroupId;
+        categoryPath: string[];
+      }>,
+    ): Promise<void> {
+      const normalized = normalizeCompanyId(companyId);
+      for (let offset = 0; offset < patches.length; offset += 400) {
+        const chunk = patches.slice(offset, offset + 400);
+        const batch = writeBatch(db);
+        for (const patch of chunk) {
+          batch.update(doc(db, COLLECTION, patch.itemId), {
+            companyId: normalized,
+            subcategoryId: patch.subcategoryId,
+            inventoryGroup: patch.inventoryGroup,
+            categoryPath: patch.categoryPath,
+            updatedAt: serverTimestamp(),
+          });
+        }
+        await batch.commit();
       }
     },
 

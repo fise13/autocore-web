@@ -1,0 +1,6 @@
+[
+  { "id": "fwd", "name": "Передний (FWD)", "aliases": ["передний", "fwd", "перед", "передний привод"], "type": "driveType" },
+  { "id": "rwd", "name": "Задний (RWD)", "aliases": ["задний", "rwd", "зад", "задний привод"], "type": "driveType" },
+  { "id": "awd", "name": "Полный (AWD)", "aliases": ["полный", "awd", "полный привод", "4x4"], "type": "driveType" },
+  { "id": "4wd", "name": "Подключаемый полный (4WD)", "aliases": ["4wd", "part time", "подключаемый"], "type": "driveType" }
+]

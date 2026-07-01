@@ -212,7 +212,7 @@ function ImportReviewIsland({
       ? `${review.validMotors > 0 ? review.validMotors : review.totalMotors} моторов`
       : "нет моторов";
   const specificLabel =
-    review.specificSheets > 0 ? ` · ${review.specificSheets} специфичных` : "";
+    review.specificSheets > 0 ? ` · ${review.specificSheets} листов каталога` : "";
 
   return (
     <motion.div

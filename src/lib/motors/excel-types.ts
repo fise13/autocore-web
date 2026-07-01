@@ -14,6 +14,8 @@ export type ParsedImportMotorRow = {
   soldDate: Date | null;
   brandName: string;
   engineCode: string;
+  /** Non-empty cell values from the source Excel row (for Magic Import AI context). */
+  rawRowCells?: string;
 };
 
 export type MotorExcelImportResult = {

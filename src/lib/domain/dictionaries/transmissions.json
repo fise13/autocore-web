@@ -1,0 +1,16 @@
+[
+  { "id": "u660e", "name": "U660E", "brand": "Toyota", "hint": "6-ст. АКПП", "aliases": ["u66", "u 660 e", "u-660e", "u660"], "type": "transmission" },
+  { "id": "u760e", "name": "U760E", "brand": "Toyota", "hint": "6-ст. АКПП", "aliases": ["u76", "u 760 e", "u760"], "type": "transmission" },
+  { "id": "a340e", "name": "A340E", "brand": "Toyota", "hint": "4-ст. АКПП", "aliases": ["a340", "a 340 e"], "type": "transmission" },
+  { "id": "a750f", "name": "A750F", "brand": "Toyota", "hint": "5-ст. АКПП", "aliases": ["a750", "a 750 f"], "type": "transmission" },
+  { "id": "aw55-50sn", "name": "AW55-50SN", "brand": "Aisin", "hint": "5-ст. АКПП", "aliases": ["aw5550sn", "aw55", "aw 55 50 sn"], "type": "transmission" },
+  { "id": "jf010e", "name": "JF010E", "brand": "Nissan", "hint": "вариатор CVT", "aliases": ["jf010", "jf 010 e"], "type": "transmission" },
+  { "id": "jf011e", "name": "JF011E", "brand": "Nissan", "hint": "вариатор CVT", "aliases": ["jf011", "jf 011 e"], "type": "transmission" },
+  { "id": "re5r05a", "name": "RE5R05A", "brand": "Nissan", "hint": "5-ст. АКПП", "aliases": ["re5r05", "re 5r05a"], "type": "transmission" },
+  { "id": "ty754", "name": "TY754", "brand": "Subaru", "hint": "вариатор Lineartronic", "aliases": ["ty 754", "ty-754"], "type": "transmission" },
+  { "id": "tg5c7", "name": "TG5C7", "brand": "Subaru", "hint": "5-ст. АКПП", "aliases": ["tg 5c7"], "type": "transmission" },
+  { "id": "09g", "name": "09G", "brand": "Volkswagen", "hint": "6-ст. АКПП Aisin", "aliases": ["09 g", "09-g"], "type": "transmission" },
+  { "id": "dq250", "name": "DQ250", "brand": "Volkswagen", "hint": "DSG 6", "aliases": ["dq 250", "dsg6"], "type": "transmission" },
+  { "id": "f4a51", "name": "F4A51", "brand": "Mitsubishi", "hint": "4-ст. АКПП", "aliases": ["f4a 51"], "type": "transmission" },
+  { "id": "a6mf1", "name": "A6MF1", "brand": "Hyundai", "hint": "6-ст. АКПП", "aliases": ["a6mf", "a 6mf1"], "type": "transmission" }
+]

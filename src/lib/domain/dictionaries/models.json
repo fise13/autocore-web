@@ -1,0 +1,15 @@
+[
+  { "id": "subaru_impreza", "name": "Impreza", "brand": "Subaru", "aliases": ["импреза", "impreza"], "type": "model" },
+  { "id": "subaru_forester", "name": "Forester", "brand": "Subaru", "aliases": ["форестер", "forester"], "type": "model" },
+  { "id": "subaru_legacy", "name": "Legacy", "brand": "Subaru", "aliases": ["легаси", "legacy"], "type": "model" },
+  { "id": "subaru_outback", "name": "Outback", "brand": "Subaru", "aliases": ["аутбек", "outback"], "type": "model" },
+  { "id": "toyota_camry", "name": "Camry", "brand": "Toyota", "aliases": ["камри", "camry"], "type": "model" },
+  { "id": "toyota_corolla", "name": "Corolla", "brand": "Toyota", "aliases": ["королла", "corolla"], "type": "model" },
+  { "id": "toyota_land_cruiser", "name": "Land Cruiser", "brand": "Toyota", "aliases": ["ленд крузер", "крузак", "land cruiser"], "type": "model" },
+  { "id": "toyota_prado", "name": "Land Cruiser Prado", "brand": "Toyota", "aliases": ["прадо", "prado"], "type": "model" },
+  { "id": "nissan_skyline", "name": "Skyline", "brand": "Nissan", "aliases": ["скайлайн", "skyline"], "type": "model" },
+  { "id": "nissan_xtrail", "name": "X-Trail", "brand": "Nissan", "aliases": ["икстрейл", "x trail", "xtrail"], "type": "model" },
+  { "id": "honda_civic", "name": "Civic", "brand": "Honda", "aliases": ["цивик", "сивик", "civic"], "type": "model" },
+  { "id": "honda_crv", "name": "CR-V", "brand": "Honda", "aliases": ["црв", "cr v", "crv"], "type": "model" },
+  { "id": "mazda_cx5", "name": "CX-5", "brand": "Mazda", "aliases": ["цх5", "cx 5", "cx5"], "type": "model" }
+]

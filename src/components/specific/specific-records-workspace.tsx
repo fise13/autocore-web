@@ -206,8 +206,8 @@ export function SpecificRecordsWorkspace({
         mode={sellDialog?.mode ?? "sell"}
         title={
           sellDialog?.mode === "unsell"
-            ? "Возврат специфичной записи"
-            : "Продажа специфичной записи"
+            ? "Возврат записи каталога"
+            : "Продажа записи каталога"
         }
         description={
           dialogRecord

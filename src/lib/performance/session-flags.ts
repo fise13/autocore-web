@@ -20,3 +20,15 @@ export function hasWizardCompleted(companyId: string): boolean {
   if (typeof window === "undefined" || !companyId) return false;
   return sessionStorage.getItem(`${WIZARD_COMPLETED_PREFIX}${companyId}`) === "1";
 }
+
+const MIGRATION_OFFER_PREFIX = "autocore-migration-offered:";
+
+export function markMigrationOfferCompleted(companyId: string): void {
+  if (typeof window === "undefined" || !companyId) return;
+  sessionStorage.setItem(`${MIGRATION_OFFER_PREFIX}${companyId}`, "1");
+}
+
+export function hasMigrationOfferCompleted(companyId: string): boolean {
+  if (typeof window === "undefined" || !companyId) return false;
+  return sessionStorage.getItem(`${MIGRATION_OFFER_PREFIX}${companyId}`) === "1";
+}

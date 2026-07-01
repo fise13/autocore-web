@@ -1,3 +1,4 @@
+import type { InventoryCategoryRepository } from "@/infrastructure/firestore/inventory-category-repository";
 import { WarehouseRepository } from "@/infrastructure/firestore/warehouse-repository";
 import { defaultWarehouseDocId } from "@/lib/warehouse/default-warehouse-id";
 
@@ -5,7 +6,9 @@ export async function ensureDefaultWarehouseUseCase(
   repository: WarehouseRepository,
   companyId: string,
   actorUserId?: string,
+  categoryRepository?: InventoryCategoryRepository,
 ) {
+  await categoryRepository?.ensureConsumableCategories(companyId);
   const docId = defaultWarehouseDocId(companyId);
   const existing = await repository.getDefault(companyId);
   if (existing) {

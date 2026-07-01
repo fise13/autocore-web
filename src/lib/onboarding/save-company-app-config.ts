@@ -34,6 +34,8 @@ export async function saveCompanyAppConfig({
       category.name,
       existingCategories,
       userId,
+      category.groupId,
+      category.subcategoryId,
     );
     if (!existingCategories.some((item) => item.id === ensured.id)) {
       existingCategories = [...existingCategories, ensured];

@@ -51,6 +51,27 @@ export function rowContentHash(row: Record<string, string>, fields: string[]): s
 }
 
 export function detectHeaderRowIndex(matrix: string[][]): number {
+  const motorHeaderPattern =
+    /номер\s*двигател|комплектац|особые\s*отмет|кол-?во|дата\s*приход|дата\s*продаж/i;
+
+  for (let index = 0; index < Math.min(matrix.length, 20); index += 1) {
+    const row = matrix[index] ?? [];
+    const nonEmpty = row.map(cleanCell).filter(Boolean);
+    const joined = nonEmpty.join(" ");
+    if (nonEmpty.length >= 2 && motorHeaderPattern.test(joined)) {
+      return index;
+    }
+  }
+
+  for (let index = 0; index < Math.min(matrix.length, 20); index += 1) {
+    const row = matrix[index] ?? [];
+    const nonEmpty = row.map(cleanCell).filter(Boolean);
+    const joined = nonEmpty.join(" ").toLowerCase();
+    if (/^номер$/i.test(nonEmpty[0] ?? "") && /дата/i.test(joined)) {
+      return index;
+    }
+  }
+
   for (let index = 0; index < Math.min(matrix.length, 20); index += 1) {
     const row = matrix[index] ?? [];
     const nonEmpty = row.map(cleanCell).filter(Boolean);

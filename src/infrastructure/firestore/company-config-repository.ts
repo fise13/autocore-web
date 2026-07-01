@@ -7,6 +7,12 @@ import {
   defaultCompanyAppConfig,
 } from "@/domain/company-config";
 import { WarrantyTemplateId } from "@/domain/document-config";
+import {
+  isInventoryGroupId,
+  isInventorySubcategoryId,
+  resolveGroupForCategoryName,
+  resolveSubcategoryForCategoryName,
+} from "@/domain/inventory-taxonomy";
 import { toDateFromFirestore } from "@/lib/firestore-timestamp";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 
@@ -21,8 +27,11 @@ const MODULE_KEYS: CompanyModuleKey[] = [
 function sanitizeSpecificCategories(
   categories: CompanyAppConfig["specificCategories"],
 ): Array<Record<string, unknown>> {
-  return categories.map(({ id, name, mode, warrantyDefault }) => {
-    const item: Record<string, unknown> = { id, name, mode };
+  return categories.map(({ id, name, mode, groupId, subcategoryId, warrantyDefault }) => {
+    const item: Record<string, unknown> = { id, name, mode, groupId };
+    if (subcategoryId) {
+      item.subcategoryId = subcategoryId;
+    }
     if (warrantyDefault !== undefined) {
       item.warrantyDefault = warrantyDefault;
     }
@@ -37,12 +46,22 @@ function mapSpecificCategory(raw: unknown): CompanySpecificCategoryConfig | null
   const name = String(data.name ?? "").trim();
   if (!id || !name) return null;
   const mode = data.mode === "quick" ? "quick" : "tracked";
+  const resolvedSubcategory = resolveSubcategoryForCategoryName(name);
+  const groupId = isInventoryGroupId(data.groupId)
+    ? data.groupId
+    : (resolvedSubcategory?.groupId ?? resolveGroupForCategoryName(name));
+  const subcategoryId = isInventorySubcategoryId(data.subcategoryId)
+    ? data.subcategoryId
+    : resolvedSubcategory?.id;
   const warrantyDefault =
     data.warrantyDefault === "none" ||
     (typeof data.warrantyDefault === "string" && data.warrantyDefault.startsWith("contract_"))
       ? (data.warrantyDefault as WarrantyTemplateId | "none")
       : undefined;
-  return warrantyDefault !== undefined ? { id, name, mode, warrantyDefault } : { id, name, mode };
+  const category: CompanySpecificCategoryConfig = { id, name, mode, groupId };
+  if (subcategoryId) category.subcategoryId = subcategoryId;
+  if (warrantyDefault !== undefined) category.warrantyDefault = warrantyDefault;
+  return category;
 }
 
 function mapCompanyAppConfig(data: Record<string, unknown> | undefined): CompanyAppConfig {
@@ -76,6 +95,7 @@ function mapCompanyAppConfig(data: Record<string, unknown> | undefined): Company
     modules,
     specificCategories,
     defaultWarrantyTemplate,
+    taxonomyVersion: typeof data.taxonomyVersion === "number" ? data.taxonomyVersion : undefined,
     updatedAt: toDateFromFirestore(data.updatedAt) ?? undefined,
   };
 }
@@ -124,6 +144,7 @@ export function createCompanyConfigRepository() {
           modules: config.modules,
           specificCategories: sanitizeSpecificCategories(config.specificCategories),
           defaultWarrantyTemplate: config.defaultWarrantyTemplate,
+          taxonomyVersion: config.taxonomyVersion,
           updatedByUserId,
           updatedAt: serverTimestamp(),
         },

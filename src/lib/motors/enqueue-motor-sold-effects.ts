@@ -11,6 +11,9 @@ export async function enqueueMotorSoldEffects(
     account: OperationAccount;
     paymentMethod: PaymentMethod;
     comment?: string;
+    clientId?: string;
+    clientName?: string;
+    clientPhone?: string;
     warrantyOverride?: MotorSaleWarrantyOverride;
   },
 ): Promise<{ ok: boolean; error?: string }> {
@@ -35,6 +38,9 @@ export async function enqueueMotorSoldEffects(
         account: payload.account,
         paymentMethod: payload.paymentMethod,
         comment: payload.comment,
+        clientId: payload.clientId,
+        clientName: payload.clientName,
+        clientPhone: payload.clientPhone,
         warrantyOverride: payload.warrantyOverride,
       }),
     });

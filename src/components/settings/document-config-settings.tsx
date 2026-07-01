@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 export type DocumentConfigDraft = {
   documentSections: DocumentSectionConfig;
   warrantyTemplateId: WarrantyTemplateId;
-  customWarrantyMonths: string;
+  customWarrantyDays: string;
   customWarrantyKm: string;
   qrLinkUrl: string;
   documentFooter: string;
@@ -29,7 +29,7 @@ export type DocumentConfigDraft = {
 export const DEFAULT_DOCUMENT_CONFIG_DRAFT: DocumentConfigDraft = {
   documentSections: {},
   warrantyTemplateId: "contract_engine",
-  customWarrantyMonths: "",
+  customWarrantyDays: "",
   customWarrantyKm: "",
   qrLinkUrl: "",
   documentFooter: "",
@@ -117,14 +117,14 @@ export function DocumentConfigSettings({ draft, onChange }: DocumentConfigSettin
                 <span className="relative z-10 block text-sm font-medium">{preset.name}</span>
                 <span className="relative z-10 mt-1 block text-xs text-muted-foreground">
                   {id === "custom"
-                    ? draft.customWarrantyMonths && draft.customWarrantyKm
+                    ? draft.customWarrantyDays && draft.customWarrantyKm
                       ? formatWarrantyDurationLabel(
-                          Number(draft.customWarrantyMonths),
+                          Number(draft.customWarrantyDays),
                           Number(draft.customWarrantyKm),
                         )
                       : "Укажите срок и текст гарантии"
-                    : preset.months > 0
-                      ? `${preset.months} мес · ${preset.km.toLocaleString("ru-KZ")} км`
+                    : preset.days > 0
+                      ? `${preset.days} дн · ${preset.km.toLocaleString("ru-KZ")} км`
                       : "Без гарантийных обязательств"}
                 </span>
               </button>
@@ -139,16 +139,16 @@ export function DocumentConfigSettings({ draft, onChange }: DocumentConfigSettin
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1">
-                <Label htmlFor="custom-warranty-months">Срок, мес</Label>
+                <Label htmlFor="custom-warranty-days">Срок, дн</Label>
                 <Input
-                  id="custom-warranty-months"
+                  id="custom-warranty-days"
                   type="number"
                   min={1}
-                  value={draft.customWarrantyMonths}
+                  value={draft.customWarrantyDays}
                   onChange={(event) =>
-                    onChange({ ...draft, customWarrantyMonths: event.target.value })
+                    onChange({ ...draft, customWarrantyDays: event.target.value })
                   }
-                  placeholder="6"
+                  placeholder="180"
                 />
               </div>
               <div className="space-y-1">

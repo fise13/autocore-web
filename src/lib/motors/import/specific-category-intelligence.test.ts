@@ -25,12 +25,18 @@ describe("specific category intelligence", () => {
   });
 
   it("maps aliases to canonical category names", () => {
-    assert.equal(resolveSpecificCategoryName("кпп"), "Коробки");
-    assert.equal(resolveSpecificCategoryName("AKPP"), "Коробки");
+    assert.equal(resolveSpecificCategoryName("кпп"), "КПП");
+    assert.equal(resolveSpecificCategoryName("AKPP"), "КПП");
+    assert.equal(resolveSpecificCategoryName("ЭБУ"), "Электрика");
     assert.equal(resolveSpecificCategoryName("раздатки"), "Раздатки");
   });
 
   it("reuses existing company categories", () => {
-    assert.equal(resolveSpecificCategoryName("коробка", ["Коробки", "ЭБУ"]), "Коробки");
+    assert.equal(resolveSpecificCategoryName("коробка", ["КПП", "Электрика"]), "КПП");
+  });
+
+  it("returns human-readable name when no existing category matches", () => {
+    assert.equal(resolveSpecificCategoryName("После дэна", ["КПП", "Электрика"]), "После дэна");
+    assert.equal(resolveSpecificCategoryName("кпп", ["Электрика"]), "КПП");
   });
 });

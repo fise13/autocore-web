@@ -1,0 +1,9 @@
+[
+  { "id": "japan", "name": "Япония", "aliases": ["japan", "jp", "японский"], "type": "country" },
+  { "id": "korea", "name": "Корея", "aliases": ["korea", "kr", "корейский", "южная корея"], "type": "country" },
+  { "id": "germany", "name": "Германия", "aliases": ["germany", "de", "немецкий"], "type": "country" },
+  { "id": "usa", "name": "США", "aliases": ["usa", "сша", "америка", "us"], "type": "country" },
+  { "id": "china", "name": "Китай", "aliases": ["china", "cn", "китайский"], "type": "country" },
+  { "id": "russia", "name": "Россия", "aliases": ["russia", "ru", "рф"], "type": "country" },
+  { "id": "uae", "name": "ОАЭ", "aliases": ["uae", "эмираты", "дубай"], "type": "country" }
+]

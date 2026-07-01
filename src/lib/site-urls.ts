@@ -161,6 +161,9 @@ export const APP_ROUTE_PREFIXES = [
   "/roles",
   "/settings",
   "/specific",
+  "/help",
+  "/changelog",
+  "/status",
 ] as const;
 
 export function isAppRoute(pathname: string): boolean {

@@ -31,6 +31,7 @@ import {
   operationCategoryLabel,
   operationTypeLabel,
   paymentMethodLabel,
+  resolveOperationCategoryValue,
 } from "@/lib/accounting/labels";
 import { appendAdvanceMarker } from "@/lib/accounting/advances";
 import { formatGroupedNumber } from "@/lib/money/format-number";
@@ -84,14 +85,14 @@ export function NewOperationDialog({
   const [amount, setAmount] = useState(formatGroupedNumber(0));
   const [account, setAccount] = useState<OperationAccount>("cashbox");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
-  const [category, setCategory] = useState("");
+  const [categoryInput, setCategoryInput] = useState("");
   const [comment, setComment] = useState("");
   const [markAsAdvance, setMarkAsAdvance] = useState(false);
 
   const parsedAmount = useMemo(() => parseGroupedNumber(amount), [amount]);
   const visibleSuggestions = useMemo(
-    () => filterAccountingCategorySuggestions(category, categorySuggestions).slice(0, 12),
-    [category, categorySuggestions],
+    () => filterAccountingCategorySuggestions(categoryInput, categorySuggestions).slice(0, 12),
+    [categoryInput, categorySuggestions],
   );
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -105,8 +106,11 @@ export function NewOperationDialog({
     setError(null);
     try {
       const normalized = markAsAdvance
-        ? appendAdvanceMarker(category, comment)
-        : { category: category.trim(), comment: comment.trim() };
+        ? appendAdvanceMarker(resolveOperationCategoryValue(categoryInput), comment)
+        : {
+            category: resolveOperationCategoryValue(categoryInput),
+            comment: comment.trim(),
+          };
 
       await onCreate({
         type,
@@ -118,7 +122,7 @@ export function NewOperationDialog({
       });
       setOpen(false);
       setAmount(formatGroupedNumber(0));
-      setCategory("");
+      setCategoryInput("");
       setComment("");
       setMarkAsAdvance(false);
       setType("expense");
@@ -208,8 +212,12 @@ export function NewOperationDialog({
           <div className="space-y-1">
             <Label>Категория</Label>
             <Input
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
+              value={categoryInput}
+              onChange={(event) => setCategoryInput(event.target.value)}
+              onBlur={() => {
+                const resolved = resolveOperationCategoryValue(categoryInput);
+                setCategoryInput(operationCategoryLabel(resolved === "—" ? "" : resolved));
+              }}
               placeholder="Например: зарплата Сане"
             />
             <div className="flex flex-wrap gap-2 pt-1">
@@ -218,7 +226,7 @@ export function NewOperationDialog({
                   key={item}
                   type="button"
                   className="rounded-full border bg-background px-2.5 py-1 text-xs transition hover:bg-muted"
-                  onClick={() => setCategory(item)}
+                  onClick={() => setCategoryInput(operationCategoryLabel(item))}
                 >
                   {operationCategoryLabel(item)}
                 </button>

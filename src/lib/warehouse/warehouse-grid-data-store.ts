@@ -1,8 +1,9 @@
 import { InventoryItem, InventoryItemStatus, InventoryItemType } from "@/domain/inventory";
+import {
+  normalizeInventoryTaxonomyInput,
+} from "@/lib/warehouse/inventory-taxonomy-normalize";
 import { nextEmptyRowId } from "@/lib/grid/empty-row-id";
 import {
-  categoryLabelFromPath,
-  categoryPathFromLabel,
   normalizeBarcode,
   parseInventoryStatus,
 } from "@/lib/warehouse/warehouse-search";
@@ -22,7 +23,6 @@ export type WarehouseGridRow =
 export type WarehouseDraftFields = {
   sku: string;
   name: string;
-  category: string;
   brandName: string;
   unit: string;
   onHand: string;
@@ -40,7 +40,6 @@ export function createEmptyDraft(): WarehouseDraftFields {
   return {
     sku: "",
     name: "",
-    category: "",
     brandName: "",
     unit: "шт",
     onHand: "",
@@ -69,7 +68,6 @@ export function hasWarehouseDraftContent(row: WarehouseGridRow): boolean {
   return Boolean(
     draft.sku.trim() ||
       draft.name.trim() ||
-      draft.category.trim() ||
       draft.brandName.trim() ||
       draft.onHand.trim() ||
       draft.barcode.trim(),
@@ -178,22 +176,20 @@ export function draftFieldForColumn(column: number): keyof WarehouseDraftFields 
     case 2:
       return "name";
     case 3:
-      return "category";
-    case 4:
       return "brandName";
-    case 5:
+    case 4:
       return "onHand";
-    case 8:
+    case 7:
       return "purchasePrice";
-    case 9:
+    case 8:
       return "sellPrice";
-    case 10:
+    case 9:
       return "supplierName";
-    case 11:
+    case 10:
       return "barcode";
-    case 12:
+    case 11:
       return "warehouseLocation";
-    case 13:
+    case 12:
       return "lowStockThreshold";
     case 14:
       return "status";
@@ -216,7 +212,7 @@ export function sanitizeWarehouseNumber(value: number | undefined | null): numbe
 
 export function parseDraftToUpsert(row: WarehouseGridRow, companyId: string, actorUserId: string) {
   if (row.rowKind === "saved") {
-    return {
+    return normalizeInventoryTaxonomyInput({
       companyId,
       localId: row.localId,
       type: row.type,
@@ -227,6 +223,8 @@ export function parseDraftToUpsert(row: WarehouseGridRow, companyId: string, act
       warehouseLocation: row.warehouseLocation,
       notes: row.notes,
       categoryPath: row.categoryPath,
+      inventoryGroup: row.inventoryGroup,
+      subcategoryId: row.subcategoryId,
       unit: row.unit,
       purchasePrice: sanitizeWarehouseNumber(row.purchasePrice),
       sellPrice: sanitizeWarehouseNumber(row.sellPrice),
@@ -234,11 +232,11 @@ export function parseDraftToUpsert(row: WarehouseGridRow, companyId: string, act
       barcodes: row.barcodes,
       status: row.status,
       actorUserId,
-    };
+    });
   }
 
   const barcode = normalizeBarcode(row.draft.barcode);
-  return {
+  return normalizeInventoryTaxonomyInput({
     companyId,
     type: row.draft.type,
     sku: row.draft.sku.trim(),
@@ -246,7 +244,6 @@ export function parseDraftToUpsert(row: WarehouseGridRow, companyId: string, act
     brandName: row.draft.brandName.trim() || undefined,
     supplierName: row.draft.supplierName.trim() || undefined,
     warehouseLocation: row.draft.warehouseLocation.trim() || undefined,
-    categoryPath: categoryPathFromLabel(row.draft.category),
     unit: row.draft.unit.trim() || "шт",
     purchasePrice: parseOptionalNumber(row.draft.purchasePrice),
     sellPrice: parseOptionalNumber(row.draft.sellPrice),
@@ -254,7 +251,7 @@ export function parseDraftToUpsert(row: WarehouseGridRow, companyId: string, act
     barcodes: barcode ? [barcode] : [],
     status: row.draft.status,
     actorUserId,
-  };
+  });
 }
 
 export function parseDraftOnHand(row: WarehouseGridRow): number {
@@ -270,7 +267,6 @@ export function savedRowMetadataChanged(
   return (
     baseline.sku !== row.sku ||
     baseline.name !== row.name ||
-    categoryLabelFromPath(baseline.categoryPath) !== categoryLabelFromPath(row.categoryPath) ||
     (baseline.brandName ?? "") !== (row.brandName ?? "") ||
     baseline.unit !== row.unit ||
     baseline.purchasePrice !== row.purchasePrice ||
@@ -306,7 +302,6 @@ export function buildSavedRowFromCreate(
   const onHand = parseDraftOnHand(row);
   const purchasePrice = parseOptionalNumber(row.draft.purchasePrice);
   const sellPrice = parseOptionalNumber(row.draft.sellPrice);
-  const categoryPath = categoryPathFromLabel(row.draft.category);
 
   return {
     id: itemId,
@@ -318,7 +313,6 @@ export function buildSavedRowFromCreate(
     brandName: row.draft.brandName.trim() || undefined,
     supplierName: row.draft.supplierName.trim() || undefined,
     warehouseLocation: row.draft.warehouseLocation.trim() || undefined,
-    categoryPath,
     unit: row.draft.unit.trim() || "шт",
     purchasePrice,
     averageCost: purchasePrice,

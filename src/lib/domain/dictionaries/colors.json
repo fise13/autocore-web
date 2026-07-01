@@ -1,0 +1,11 @@
+[
+  { "id": "black", "name": "Чёрный", "aliases": ["черный", "black"], "type": "color" },
+  { "id": "white", "name": "Белый", "aliases": ["white"], "type": "color" },
+  { "id": "silver", "name": "Серебристый", "aliases": ["серебро", "silver"], "type": "color" },
+  { "id": "gray", "name": "Серый", "aliases": ["серый", "gray", "grey"], "type": "color" },
+  { "id": "red", "name": "Красный", "aliases": ["red"], "type": "color" },
+  { "id": "blue", "name": "Синий", "aliases": ["blue", "голубой"], "type": "color" },
+  { "id": "green", "name": "Зелёный", "aliases": ["зеленый", "green"], "type": "color" },
+  { "id": "brown", "name": "Коричневый", "aliases": ["brown", "бежевый"], "type": "color" },
+  { "id": "gold", "name": "Золотистый", "aliases": ["золото", "gold"], "type": "color" }
+]

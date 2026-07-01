@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { LayoutGridIcon, ListChecksIcon, BarChart3Icon, MessageSquareTextIcon, UsersIcon, PlugIcon, SettingsIcon, HelpCircleIcon, ActivityIcon } from "lucide-react";
+import { LayoutGridIcon, BarChart3Icon, ShoppingCartIcon, FileTextIcon, UsersIcon, MegaphoneIcon, SettingsIcon, HelpCircleIcon, ActivityIcon } from "lucide-react";
 
 export type SidebarNavItem = {
 	title: string;
@@ -10,38 +10,26 @@ export type SidebarNavItem = {
 };
 
 export type SidebarNavGroup = {
-	label?: string;
+	label: string;
 	items: SidebarNavItem[];
 };
 
 export const navGroups: SidebarNavGroup[] = [
 	{
+		label: "Overview",
 		items: [
 			{
-				title: "Overview",
-				path: "#/overview",
+				title: "Dashboard",
+				path: "#/dashboard",
 				icon: (
 					<LayoutGridIcon
 					/>
 				),
 				isActive: true,
 			},
-		],
-	},
-	{
-		label: "Today",
-		items: [
 			{
-				title: "Queue",
-				path: "#/queue",
-				icon: (
-					<ListChecksIcon
-					/>
-				),
-			},
-			{
-				title: "Team insights",
-				path: "#/team-insights",
+				title: "Sales",
+				path: "#/sales",
 				icon: (
 					<BarChart3Icon
 					/>
@@ -50,18 +38,32 @@ export const navGroups: SidebarNavGroup[] = [
 		],
 	},
 	{
-		label: "Inbox",
+		label: "Store",
 		items: [
 			{
-				title: "Conversations",
+				title: "Orders",
+				path: "#/orders",
 				icon: (
-					<MessageSquareTextIcon
+					<ShoppingCartIcon
 					/>
 				),
 				subItems: [
-					{ title: "Unassigned", path: "#/inbox/unassigned" },
-					{ title: "Assigned to me", path: "#/inbox/assigned" },
-					{ title: "Recently closed", path: "#/inbox/closed" },
+					{ title: "All orders", path: "#/orders/all" },
+					{ title: "Unfulfilled", path: "#/orders/unfulfilled" },
+					{ title: "Returns", path: "#/orders/returns" },
+				],
+			},
+			{
+				title: "Products",
+				path: "#/products",
+				icon: (
+					<FileTextIcon
+					/>
+				),
+				subItems: [
+					{ title: "Catalog", path: "#/products/catalog" },
+					{ title: "Inventory", path: "#/products/inventory" },
+					{ title: "Collections", path: "#/products/collections" },
 				],
 			},
 			{
@@ -73,30 +75,31 @@ export const navGroups: SidebarNavGroup[] = [
 				),
 			},
 			{
-				title: "Channels",
-				path: "#/channels",
+				title: "Marketing",
+				path: "#/marketing",
 				icon: (
-					<PlugIcon
+					<MegaphoneIcon
 					/>
 				),
 			},
 		],
 	},
 	{
-		label: "Organization",
+		label: "Settings",
 		items: [
 			{
-				title: "Workspace",
+				title: "Store settings",
+				path: "#/store-settings",
 				icon: (
 					<SettingsIcon
 					/>
 				),
 				subItems: [
-					{ title: "Branding", path: "#/workspace/branding" },
-					{ title: "Team & roles", path: "#/workspace/team" },
-					{ title: "API keys", path: "#/workspace/api-keys" },
-					{ title: "Webhooks", path: "#/workspace/webhooks" },
-					{ title: "Billing", path: "#/workspace/billing" },
+					{ title: "Store profile", path: "#/store-settings/profile" },
+					{ title: "Shipping & delivery", path: "#/store-settings/shipping" },
+					{ title: "Payments", path: "#/store-settings/payments" },
+					{ title: "Staff", path: "#/store-settings/staff" },
+					{ title: "Apps", path: "#/store-settings/apps" },
 				],
 			},
 		],
@@ -105,15 +108,15 @@ export const navGroups: SidebarNavGroup[] = [
 
 export const footerNavLinks: SidebarNavItem[] = [
 	{
-		title: "Help Center",
-		path: "#/help",
+		title: "Seller help",
+		path: "#/seller-help",
 		icon: (
 			<HelpCircleIcon
 			/>
 		),
 	},
 	{
-		title: "System status",
+		title: "Platform status",
 		path: "#/status",
 		icon: (
 			<ActivityIcon

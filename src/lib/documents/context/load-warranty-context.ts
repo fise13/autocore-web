@@ -15,6 +15,7 @@ import {
 import { buildDocumentContext, DocumentContext } from "@/lib/documents/document-context";
 import { resolveCompanyLogoDataUri } from "@/lib/documents/resolve-company-logo";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { resolveStoredWarrantyDays } from "@/lib/documents/warranty/custom-warranty";
 import { formatMotorLineLabel } from "@/lib/motors/format-motor-display-name";
 
 async function fetchMotorById(companyId: string, motorId: string): Promise<MotorEntity | null> {
@@ -36,6 +37,10 @@ function warrantyAsWorkOrder(params: {
   motor: MotorEntity;
   soldAt: Date;
   saleAmount?: number;
+  clientId?: string;
+  clientName?: string;
+  clientPhone?: string;
+  soldByUserId?: string;
 }): WorkOrder {
   const amount = params.saleAmount ?? 0;
   return {
@@ -43,7 +48,9 @@ function warrantyAsWorkOrder(params: {
     companyId: params.companyId,
     number: params.motor.serialCode || params.motor.id.slice(0, 8),
     status: "completed",
-    clientId: "",
+    clientId: params.clientId ?? "",
+    clientName: params.clientName,
+    clientPhone: params.clientPhone,
     vehicleId: "",
     vin: "",
     licensePlate: "",
@@ -65,8 +72,8 @@ function warrantyAsWorkOrder(params: {
     pricing: { laborTotal: 0, partsTotal: 0, motorsTotal: amount, discount: 0, grandTotal: amount },
     paymentMethod: "cash",
     paymentAccount: "cashbox",
-    createdByUserId: "",
-    updatedByUserId: "",
+    createdByUserId: params.soldByUserId ?? "",
+    updatedByUserId: params.soldByUserId ?? "",
     createdAt: params.soldAt,
     updatedAt: params.soldAt,
     completedAt: params.soldAt,
@@ -99,8 +106,12 @@ export async function loadWarrantyDocumentContext(companyId: string, warrantyId:
   const workOrderId = typeof data.workOrderId === "string" ? data.workOrderId : "";
   const warrantyLabel = typeof data.warrantyLabel === "string" ? data.warrantyLabel : undefined;
   const termsText = typeof data.termsText === "string" ? data.termsText : undefined;
-  const warrantyMonths = typeof data.warrantyMonths === "number" ? data.warrantyMonths : undefined;
+  const warrantyDays = resolveStoredWarrantyDays(
+    typeof data.warrantyDays === "number" ? data.warrantyDays : undefined,
+    typeof data.warrantyMonths === "number" ? data.warrantyMonths : undefined,
+  );
   const warrantyKm = typeof data.warrantyKm === "number" ? data.warrantyKm : undefined;
+  const soldByUserId = typeof data.soldByUserId === "string" ? data.soldByUserId : undefined;
 
   if (workOrderId) {
     const { loadDocumentContext } = await import("@/lib/documents/load-document-context");
@@ -111,12 +122,30 @@ export async function loadWarrantyDocumentContext(companyId: string, warrantyId:
     };
   }
 
+  const clientId = typeof data.clientId === "string" ? data.clientId : "";
+  let client = null;
+  if (clientId) {
+    const clientSnap = await db
+      .collection("companies")
+      .doc(normalizedCompanyId)
+      .collection("clients")
+      .doc(clientId)
+      .get();
+    if (clientSnap.exists) {
+      client = mapAdminClient(clientSnap.id, clientSnap.data() as Record<string, unknown>);
+    }
+  }
+
   const order = warrantyAsWorkOrder({
     warrantyId,
     companyId: normalizedCompanyId,
     motor,
     soldAt,
     saleAmount,
+    clientId,
+    clientName: client?.fullName,
+    clientPhone: client?.phone,
+    soldByUserId,
   });
   const motorLabel = formatMotorLineLabel(motor, { includeSerial: true });
   const orderLabel = motorLabel !== "Двигатель" ? `Продажа двигателя · ${motorLabel}` : "Продажа двигателя";
@@ -141,20 +170,6 @@ export async function loadWarrantyDocumentContext(companyId: string, warrantyId:
   const employees = employeesSnapshot.docs.map((doc) =>
     mapAdminEmployee(doc.id, normalizedCompanyId, doc.data() as Record<string, unknown>),
   );
-
-  let client = null;
-  const clientId = typeof data.clientId === "string" ? data.clientId : "";
-  if (clientId) {
-    const clientSnap = await db
-      .collection("companies")
-      .doc(normalizedCompanyId)
-      .collection("clients")
-      .doc(clientId)
-      .get();
-    if (clientSnap.exists) {
-      client = mapAdminClient(clientSnap.id, clientSnap.data() as Record<string, unknown>);
-    }
-  }
 
   let vehicle = null;
   const vehicleId = typeof data.vehicleId === "string" ? data.vehicleId : "";
@@ -186,11 +201,11 @@ export async function loadWarrantyDocumentContext(companyId: string, warrantyId:
     vehicleLogbook: [],
     warrantyVerificationToken: String(data.verificationToken ?? ""),
     warrantyOverride:
-      warrantyLabel || termsText || warrantyMonths || warrantyKm
+      warrantyLabel || termsText || warrantyDays || warrantyKm
         ? {
             warrantyLabel,
             warrantyText: termsText,
-            customWarrantyMonths: warrantyMonths,
+            customWarrantyDays: warrantyDays,
             customWarrantyKm: warrantyKm,
           }
         : undefined,

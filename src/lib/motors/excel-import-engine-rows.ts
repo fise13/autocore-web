@@ -7,6 +7,7 @@ import { parseExcelDateValue } from "@/lib/motors/excel-dates";
 import { SheetImportConfig, effectiveBrand, effectiveEngineCode } from "@/lib/motors/excel-sheet-config";
 import { ExcelSheetData, ParsedImportMotorRow } from "@/lib/motors/excel-types";
 import { coerceBrandEnginePair } from "@/lib/motors/import/brand-engine-intelligence";
+import { isLikelyMotorCatalogName } from "@/lib/motors/import/specific-category-intelligence";
 
 function getCell(row: string[], index: number | undefined): string {
   if (index == null || index < 0 || index >= row.length) return "";
@@ -19,9 +20,81 @@ function parseQuantity(value: string): number {
 }
 
 const LIKELY_SERIAL_CELL = /^[A-Z0-9][A-Z0-9\-_.]{2,}$/i;
+const SERIAL_HEADER_HINTS = /серий|serial|номер\s*двиг|engine\s*no|двигател/i;
+const DATE_LIKE = /^\d{1,2}[./]\d{1,2}[./]\d{2,4}$/;
+const PRICE_LIKE = /^\d+([.,]\d+)?\s*(руб|₽)?$/i;
+
+const SERIAL_SAMPLE_ROWS = 48;
+const SERIAL_COLUMN_MIN_SCORE = 2;
 
 function rowHasMeaningfulData(row: string[], skipColumnIndex: number | null): boolean {
   return row.some((cell, index) => index !== skipColumnIndex && cell.trim().length > 0);
+}
+
+function isLikelyNonSerialCell(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  if (DATE_LIKE.test(trimmed)) return true;
+  if (PRICE_LIKE.test(trimmed)) return true;
+  if (/^\d+$/.test(trimmed) && trimmed.length <= 3) return true;
+  return false;
+}
+
+const CONFIGURATION_TOKENS =
+  /^(2wd|4wd|awd|rwd|fwd|cvt|at|mt|акпп|мкпп|полный|без|полная|неполная)$/i;
+
+function scoreSerialCell(cell: string, sheetName?: string): number {
+  if (!cell || isLikelyNonSerialCell(cell)) return 0;
+  if (CONFIGURATION_TOKENS.test(cell.trim())) return 0;
+
+  let score = 0;
+  const hasLetter = /[A-Z]/i.test(cell);
+  const hasDigit = /\d/.test(cell);
+
+  if (hasLetter && hasDigit) {
+    score += 2;
+    if (cell.includes("-")) score += 1;
+  } else if (LIKELY_SERIAL_CELL.test(cell)) {
+    score += 1;
+  }
+
+  if (sheetName) {
+    const sheetToken = sheetName.replace(/\s+/g, "").slice(0, 4).toUpperCase();
+    if (sheetToken.length >= 2 && hasLetter && hasDigit && cell.toUpperCase().startsWith(sheetToken)) {
+      score += 1;
+    }
+  }
+
+  return score;
+}
+
+export function extractSerialFromRow(
+  row: string[],
+  context?: { sheetName?: string; skipColumnIndex?: number | null },
+): string {
+  const skip = context?.skipColumnIndex ?? null;
+  let best = "";
+  let bestScore = 0;
+
+  for (let columnIndex = 0; columnIndex < row.length; columnIndex += 1) {
+    if (columnIndex === skip) continue;
+    const cell = row[columnIndex]?.trim() ?? "";
+    const score = scoreSerialCell(cell, context?.sheetName);
+    if (score > bestScore) {
+      bestScore = score;
+      best = cell;
+    }
+  }
+
+  return bestScore >= 2 ? best : "";
+}
+
+function summarizeRawCells(row: string[]): string {
+  return row
+    .map((cell) => cell.trim())
+    .filter(Boolean)
+    .join(" · ")
+    .slice(0, 480);
 }
 
 export function inferSerialColumnIndex(
@@ -32,24 +105,31 @@ export function inferSerialColumnIndex(
   if (explicit != null) return explicit;
 
   const dataStartIndex = (mapping.headerRowIndex ?? -1) + 1;
+  const headerRow = sheet.rows[mapping.headerRowIndex ?? 0] ?? [];
   const maxColumn = sheet.rows.reduce((max, row) => Math.max(max, row.length), 0);
   let bestIndex: number | null = null;
   let bestScore = 0;
 
   for (let columnIndex = 0; columnIndex < maxColumn; columnIndex += 1) {
     let score = 0;
-    const sampleEnd = Math.min(sheet.rows.length, dataStartIndex + 24);
+    const header = getCell(headerRow, columnIndex).toLowerCase();
+    if (SERIAL_HEADER_HINTS.test(header) || header === "№" || header === "no") {
+      score += 5;
+    }
+
+    const sampleEnd = Math.min(sheet.rows.length, dataStartIndex + SERIAL_SAMPLE_ROWS);
     for (let rowIndex = dataStartIndex; rowIndex < sampleEnd; rowIndex += 1) {
       const cell = getCell(sheet.rows[rowIndex] ?? [], columnIndex);
-      if (LIKELY_SERIAL_CELL.test(cell)) score += 1;
+      score += scoreSerialCell(cell, sheet.name);
     }
+
     if (score > bestScore) {
       bestScore = score;
       bestIndex = columnIndex;
     }
   }
 
-  return bestScore >= 2 ? bestIndex : null;
+  return bestScore >= SERIAL_COLUMN_MIN_SCORE ? bestIndex : null;
 }
 
 function columnIndexFor(
@@ -66,13 +146,32 @@ export function createSheetColumnMapping(sheet: ExcelSheetData, importType: Shee
   return createAutoColumnMapping(sheet.rows);
 }
 
+function sheetHasImportableDataRows(
+  sheet: ExcelSheetData,
+  mapping: SheetColumnMapping,
+  serialIndex: number | null,
+): boolean {
+  const dataStartIndex = (mapping.headerRowIndex ?? -1) + 1;
+  for (let rowIndex = dataStartIndex; rowIndex < sheet.rows.length; rowIndex += 1) {
+    const row = sheet.rows[rowIndex] ?? [];
+    if (serialIndex != null && getCell(row, serialIndex)) return true;
+    if (extractSerialFromRow(row, { sheetName: sheet.name, skipColumnIndex: serialIndex })) return true;
+    if (rowHasMeaningfulData(row, serialIndex)) return true;
+  }
+  return false;
+}
+
 export function buildEngineRowsFromSheet(
   sheet: ExcelSheetData,
   config: SheetImportConfig,
   mapping: SheetColumnMapping,
 ): ParsedImportMotorRow[] {
   const serialIndex = inferSerialColumnIndex(sheet, mapping);
-  if (serialIndex == null) return [];
+  const motorCatalogSheet =
+    isLikelyMotorCatalogName(sheet.name) || isLikelySoldSheetName(sheet.name);
+
+  if (serialIndex == null && !motorCatalogSheet) return [];
+  if (serialIndex == null && !sheetHasImportableDataRows(sheet, mapping, null)) return [];
 
   const soldSheetHint = isLikelySoldSheetName(sheet.name);
   const sheetBrand = effectiveBrand(config);
@@ -82,9 +181,14 @@ export function buildEngineRowsFromSheet(
 
   for (let rowIndex = dataStartIndex; rowIndex < sheet.rows.length; rowIndex += 1) {
     const row = sheet.rows[rowIndex] ?? [];
-    const serialCode = getCell(row, serialIndex);
+    let serialCode = serialIndex != null ? getCell(row, serialIndex) : "";
+    if (!serialCode) {
+      serialCode = extractSerialFromRow(row, { sheetName: sheet.name, skipColumnIndex: serialIndex });
+    }
+
     if (!serialCode) {
       if (!rowHasMeaningfulData(row, serialIndex)) continue;
+      if (!motorCatalogSheet) continue;
     }
 
     const arrivalDate = parseExcelDateValue(getCell(row, columnIndexFor(mapping, "arrivalDate")) || null);
@@ -112,6 +216,7 @@ export function buildEngineRowsFromSheet(
       soldDate,
       brandName: coerced.brand || "Не указан",
       engineCode: coerced.engine || "—",
+      rawRowCells: summarizeRawCells(row),
     });
   }
 

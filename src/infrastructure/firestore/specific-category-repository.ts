@@ -1,6 +1,7 @@
 import {
   FirestoreError,
   collection,
+  deleteField,
   deleteDoc,
   doc,
   getDocs,
@@ -18,6 +19,14 @@ import {
   SpecificColumnDef,
   SpecificRecordEntity,
 } from "@/domain/specific-category";
+import {
+  InventoryGroupId,
+  InventorySubcategoryId,
+  isInventoryGroupId,
+  isInventorySubcategoryId,
+  resolveGroupForCategoryName,
+  resolveSubcategoryForCategoryName,
+} from "@/domain/inventory-taxonomy";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 import { notifyFirestoreSnapshotError } from "@/lib/firestore/snapshot-errors";
 import { createActivityLogRepository } from "@/infrastructure/firestore/activity-log-repository";
@@ -41,6 +50,14 @@ function mapCategory(
   companyId: string,
 ): SpecificCategoryEntity {
   const localId = readNumber(data.localId ?? data.id);
+  const name = String(data.name ?? "");
+  const resolvedSubcategory = resolveSubcategoryForCategoryName(name);
+  const groupId = isInventoryGroupId(data.groupId)
+    ? data.groupId
+    : (resolvedSubcategory?.groupId ?? resolveGroupForCategoryName(name));
+  const subcategoryId = isInventorySubcategoryId(data.subcategoryId)
+    ? data.subcategoryId
+    : resolvedSubcategory?.id;
   const rawSchema = data.columnSchema;
   const columnSchema =
     Array.isArray(rawSchema) && rawSchema.length > 0
@@ -50,8 +67,10 @@ function mapCategory(
   return {
     id,
     localId,
-    name: String(data.name ?? ""),
+    name,
     companyId: String(data.companyId ?? companyId),
+    groupId,
+    subcategoryId,
     columnSchema,
   };
 }
@@ -98,13 +117,29 @@ function nextLocalId(items: { localId: number }[]): number {
   return max + 1;
 }
 
+function categoryDedupeKey(category: Pick<SpecificCategoryEntity, "name" | "groupId">): string {
+  return `${category.groupId}:${category.name.trim().toLocaleLowerCase("ru")}`;
+}
+
+function resolveCategoryTaxonomy(
+  name: string,
+  groupId?: InventoryGroupId,
+  subcategoryId?: InventorySubcategoryId,
+): { groupId: InventoryGroupId; subcategoryId?: InventorySubcategoryId } {
+  const resolvedSubcategory = resolveSubcategoryForCategoryName(name);
+  const nextGroupId = groupId ?? resolvedSubcategory?.groupId ?? resolveGroupForCategoryName(name);
+  const nextSubcategoryId =
+    resolvedSubcategory?.groupId === nextGroupId ? resolvedSubcategory.id : subcategoryId;
+  return { groupId: nextGroupId, subcategoryId: nextSubcategoryId };
+}
+
 function dedupeCategories(
   companyId: string,
   categories: SpecificCategoryEntity[],
 ): SpecificCategoryEntity[] {
   const groups = new Map<string, SpecificCategoryEntity[]>();
   for (const category of categories) {
-    const key = category.name.trim().toLocaleLowerCase("ru");
+    const key = categoryDedupeKey(category);
     if (!key) continue;
     groups.set(key, [...(groups.get(key) ?? []), category]);
   }
@@ -137,9 +172,9 @@ function relatedCategoryLocalIds(
   category: SpecificCategoryEntity,
   categories: SpecificCategoryEntity[],
 ): number[] {
-  const key = category.name.trim().toLocaleLowerCase("ru");
+  const key = categoryDedupeKey(category);
   const ids = categories
-    .filter((item) => item.name.trim().toLocaleLowerCase("ru") === key)
+    .filter((item) => categoryDedupeKey(item) === key)
     .map((item) => item.localId)
     .filter((item) => item > 0);
   return [...new Set(ids.length > 0 ? ids : [category.localId])];
@@ -193,12 +228,17 @@ export function createSpecificCategoryRepository() {
       existing: SpecificCategoryEntity[],
       actorUid?: string,
       columnSchema: SpecificColumnDef[] = createDefaultColumnSchema(),
+      groupId?: InventoryGroupId,
+      subcategoryId?: InventorySubcategoryId,
     ): Promise<SpecificCategoryEntity> {
       const trimmed = name.trim();
       if (!trimmed) throw new Error("Название листа не может быть пустым");
+      const taxonomy = resolveCategoryTaxonomy(trimmed, groupId, subcategoryId);
 
       const duplicate = existing.find(
-        (item) => item.name.localeCompare(trimmed, "ru", { sensitivity: "accent" }) === 0,
+        (item) =>
+          item.groupId === taxonomy.groupId &&
+          item.name.localeCompare(trimmed, "ru", { sensitivity: "accent" }) === 0,
       );
       if (duplicate) {
         throw new Error(`Лист «${trimmed}» уже существует`);
@@ -211,17 +251,27 @@ export function createSpecificCategoryRepository() {
         localId,
         name: trimmed,
         companyId,
+        groupId: taxonomy.groupId,
         columnSchema: normalizeColumnSchema(columnSchema),
       };
+      if (taxonomy.subcategoryId) {
+        payload.subcategoryId = taxonomy.subcategoryId;
+      }
 
-      await setDoc(categoryRef, {
+      const writePayload: Record<string, unknown> = {
         companyId,
         localId,
         name: trimmed,
+        groupId: taxonomy.groupId,
         columnSchema: payload.columnSchema,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
+      };
+      if (taxonomy.subcategoryId) {
+        writePayload.subcategoryId = taxonomy.subcategoryId;
+      }
+
+      await setDoc(categoryRef, writePayload);
 
       if (actorUid) {
         await activity.append(companyId, {
@@ -237,7 +287,9 @@ export function createSpecificCategoryRepository() {
     async updateCategory(
       companyId: string,
       category: SpecificCategoryEntity,
-      patch: Partial<Pick<SpecificCategoryEntity, "name" | "columnSchema">>,
+      patch: Partial<
+        Pick<SpecificCategoryEntity, "name" | "columnSchema" | "groupId" | "subcategoryId">
+      >,
     ): Promise<SpecificCategoryEntity> {
       const canonicalId = scopedCategoryDocumentId(companyId, category.localId);
       const categoryRef = doc(db, "specificCategories", canonicalId);
@@ -245,6 +297,19 @@ export function createSpecificCategoryRepository() {
         updatedAt: serverTimestamp(),
       };
       if (patch.name != null) updatePayload.name = patch.name.trim();
+      if (patch.name != null || patch.groupId != null || patch.subcategoryId != null) {
+        const taxonomy = resolveCategoryTaxonomy(
+          patch.name?.trim() ?? category.name,
+          patch.groupId ?? category.groupId,
+          patch.subcategoryId ?? category.subcategoryId,
+        );
+        updatePayload.groupId = taxonomy.groupId;
+        if (taxonomy.subcategoryId) {
+          updatePayload.subcategoryId = taxonomy.subcategoryId;
+        } else {
+          updatePayload.subcategoryId = deleteField();
+        }
+      }
       if (patch.columnSchema != null) {
         updatePayload.columnSchema = normalizeColumnSchema(patch.columnSchema);
       }
@@ -254,6 +319,16 @@ export function createSpecificCategoryRepository() {
         ...category,
         id: canonicalId,
         name: patch.name?.trim() ?? category.name,
+        groupId:
+          typeof updatePayload.groupId === "string"
+            ? (updatePayload.groupId as InventoryGroupId)
+            : category.groupId,
+        subcategoryId:
+          typeof updatePayload.subcategoryId === "string"
+            ? (updatePayload.subcategoryId as InventorySubcategoryId)
+            : patch.name != null || patch.groupId != null || patch.subcategoryId != null
+              ? undefined
+              : category.subcategoryId,
         columnSchema: patch.columnSchema
           ? normalizeColumnSchema(patch.columnSchema)
           : category.columnSchema,
@@ -351,29 +426,47 @@ export function createSpecificCategoryRepository() {
       name: string,
       existing: SpecificCategoryEntity[],
       actorUid?: string,
+      groupId?: InventoryGroupId,
+      subcategoryId?: InventorySubcategoryId,
     ): Promise<SpecificCategoryEntity> {
       const trimmed = name.trim();
+      const taxonomy = resolveCategoryTaxonomy(trimmed, groupId, subcategoryId);
       const match = existing.find(
-        (item) => item.name.localeCompare(trimmed, "ru", { sensitivity: "accent" }) === 0,
+        (item) =>
+          item.groupId === taxonomy.groupId &&
+          item.name.localeCompare(trimmed, "ru", { sensitivity: "accent" }) === 0,
       );
       if (match) {
         const canonicalId = scopedCategoryDocumentId(companyId, match.localId);
         if (match.id !== canonicalId) {
+          const writePayload: Record<string, unknown> = {
+            companyId,
+            localId: match.localId,
+            name: match.name,
+            groupId: match.groupId,
+            updatedAt: serverTimestamp(),
+          };
+          if (match.subcategoryId) {
+            writePayload.subcategoryId = match.subcategoryId;
+          }
           await setDoc(
             doc(db, "specificCategories", canonicalId),
-            {
-              companyId,
-              localId: match.localId,
-              name: match.name,
-              updatedAt: serverTimestamp(),
-            },
+            writePayload,
             { merge: true },
           );
         }
         return { ...match, id: canonicalId };
       }
 
-      return this.createCategory(companyId, trimmed, existing, actorUid);
+      return this.createCategory(
+        companyId,
+        trimmed,
+        existing,
+        actorUid,
+        createDefaultColumnSchema(),
+        taxonomy.groupId,
+        taxonomy.subcategoryId,
+      );
     },
 
     async findCategoryByName(

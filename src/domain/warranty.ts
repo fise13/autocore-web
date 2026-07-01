@@ -21,12 +21,15 @@ export type EngineWarranty = {
   termsText?: string;
   restrictionsText?: string;
   warrantyLabel?: string;
+  warrantyDays?: number;
+  /** @deprecated Legacy field; interpreted as months × 30 when warrantyDays is absent. */
   warrantyMonths?: number;
   warrantyKm?: number;
   verificationToken: string;
   status: WarrantyStatus;
   pdfStoragePath?: string;
   downloadUrl?: string;
+  soldByUserId?: string;
   createdAt: Date;
 };
 

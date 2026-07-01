@@ -32,11 +32,16 @@ import { useWarehousesRealtime } from "@/hooks/use-warehouses-realtime";
 import { can } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { filterWarehouseItems } from "@/lib/warehouse/warehouse-grid-data-store";
+import {
+  backfillInventoryTaxonomyUseCase,
+  hasCompletedInventoryTaxonomyBackfill,
+} from "@/application/use-cases/warehouse/backfill-inventory-taxonomy";
 import { projectItemsForWarehouse } from "@/lib/warehouse/warehouse-stock-projection";
 import { cn } from "@/lib/utils";
 import { createBarcodeMappingRepository } from "@/infrastructure/firestore/barcode-mapping-repository";
 import { createFinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
 import { createInventoryDocumentRepository } from "@/infrastructure/firestore/inventory-document-repository";
+import { createInventoryCategoryRepository } from "@/infrastructure/firestore/inventory-category-repository";
 import { createInventoryImportRepository } from "@/infrastructure/firestore/inventory-import-repository";
 import { createInventoryItemRepository } from "@/infrastructure/firestore/inventory-item-repository";
 import { createInventoryMovementRepository } from "@/infrastructure/firestore/inventory-movement-repository";
@@ -50,6 +55,7 @@ const movementRepository = createInventoryMovementRepository();
 const warehouseRepository = createWarehouseRepository();
 const financialRepository = createFinancialOperationRepository();
 const documentRepository = createInventoryDocumentRepository();
+const categoryRepository = createInventoryCategoryRepository();
 const barcodeRepository = createBarcodeMappingRepository();
 const importRepository = createInventoryImportRepository();
 const presenceRepository = createWarehousePresenceRepository();
@@ -112,7 +118,12 @@ export function WarehouseWorkspace() {
 
   useEffect(() => {
     if (!companyId || !canEdit) return;
-    void ensureDefaultWarehouseUseCase(warehouseRepository, companyId, actorUserId).catch(() => undefined);
+    void ensureDefaultWarehouseUseCase(
+      warehouseRepository,
+      companyId,
+      actorUserId,
+      categoryRepository,
+    ).catch(() => undefined);
   }, [actorUserId, canEdit, companyId]);
 
   useEffect(() => {
@@ -133,28 +144,36 @@ export function WarehouseWorkspace() {
     };
   }, [actorUserId, canView, companyId, dialog, profile?.displayName, profile?.email]);
 
+  useEffect(() => {
+    if (!companyId || !canEdit || hasCompletedInventoryTaxonomyBackfill(companyId)) return;
+    void backfillInventoryTaxonomyUseCase(itemRepository, companyId).catch(() => undefined);
+  }, [canEdit, companyId]);
+
   const items = itemsQuery.data ?? [];
   const stockLevels = stockLevelsQuery.stockLevels;
   const warehouseItems = useMemo(
     () =>
       activeWarehouseId
-        ? projectItemsForWarehouse(items, stockLevels, activeWarehouseId, warehouses)
+        ? projectItemsForWarehouse(items, stockLevels, activeWarehouseId, warehouses).filter(
+            (item) => (item.inventoryGroup ?? "consumables") === "consumables",
+          )
         : [],
     [activeWarehouseId, items, stockLevels, warehouses],
   );
+  const scopedWarehouseItems = warehouseItems;
   const filteredItems = useMemo(
-    () => filterWarehouseItems(warehouseItems, search),
-    [warehouseItems, search],
+    () => filterWarehouseItems(scopedWarehouseItems, search),
+    [scopedWarehouseItems, search],
   );
   const isGridReady = !itemsQuery.isBootstrapping;
   const warehouseSearchSuggestions = useMemo(
-    () => buildWarehouseSearchSuggestions(warehouseItems),
-    [warehouseItems],
+    () => buildWarehouseSearchSuggestions(scopedWarehouseItems),
+    [scopedWarehouseItems],
   );
 
   useEffect(() => {
-    setCounts(filteredItems.length, warehouseItems.length);
-  }, [filteredItems.length, warehouseItems.length, setCounts]);
+    setCounts(filteredItems.length, scopedWarehouseItems.length);
+  }, [filteredItems.length, scopedWarehouseItems.length, setCounts]);
 
   useEffect(() => {
     if (!canView) {
@@ -181,7 +200,6 @@ export function WarehouseWorkspace() {
       const header = [
         "Артикул",
         "Название",
-        "Категория",
         "Бренд",
         "На складе",
         "Резерв",
@@ -197,7 +215,6 @@ export function WarehouseWorkspace() {
         [
           item.sku,
           item.name,
-          item.categoryPath?.join(" / ") ?? "",
           item.brandName ?? "",
           item.totalOnHand,
           item.totalReserved,
@@ -305,9 +322,10 @@ export function WarehouseWorkspace() {
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sidebar-border bg-sidebar px-4 py-2 text-xs text-muted-foreground">
         <span>
-          Склад:{" "}
-          <span className="font-medium text-foreground">
-            {activeWarehouse?.name ?? "выберите в меню слева"}
+          Расходники
+          <span className="text-muted-foreground">
+            {" "}
+            · {activeWarehouse?.name ?? "выберите склад в меню слева"}
           </span>
           {warehouses.length > 1 ? (
             <span className="text-muted-foreground"> · остатки только этого склада</span>
@@ -326,7 +344,12 @@ export function WarehouseWorkspace() {
               type="button"
               className="rounded-md border px-2 py-1 text-foreground transition-colors hover:bg-muted"
               onClick={() => {
-                void ensureDefaultWarehouseUseCase(warehouseRepository, companyId, actorUserId);
+                void ensureDefaultWarehouseUseCase(
+                  warehouseRepository,
+                  companyId,
+                  actorUserId,
+                  categoryRepository,
+                );
               }}
             >
               Создать основной склад

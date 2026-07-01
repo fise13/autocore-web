@@ -2,6 +2,7 @@ import {
   SpecificCategoryEntity,
   SpecificCategoryRepository,
 } from "@/infrastructure/firestore/specific-category-repository";
+import type { InventoryGroupId, InventorySubcategoryId } from "@/domain/inventory-taxonomy";
 
 export async function createSpecificCategoryUseCase(
   repository: SpecificCategoryRepository,
@@ -10,6 +11,8 @@ export async function createSpecificCategoryUseCase(
     name: string;
     existingCategories: SpecificCategoryEntity[];
     actorUid: string;
+    groupId?: InventoryGroupId;
+    subcategoryId?: InventorySubcategoryId;
   },
 ): Promise<SpecificCategoryEntity> {
   return repository.createCategory(
@@ -17,5 +20,8 @@ export async function createSpecificCategoryUseCase(
     params.name,
     params.existingCategories,
     params.actorUid,
+    undefined,
+    params.groupId,
+    params.subcategoryId,
   );
 }

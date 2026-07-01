@@ -22,6 +22,31 @@ export function autocompleteSuffixForMatch(input: string, match: string | null):
   return match.slice(input.length);
 }
 
+/** Filter and rank column candidates for the editor dropdown. */
+export function filterColumnSuggestions(
+  input: string,
+  candidates: string[],
+  limit = 30,
+): string[] {
+  const query = input.trim().toLowerCase();
+  const unique = [...new Set(candidates.map((item) => item.trim()).filter(Boolean))];
+
+  if (!query) return unique.slice(0, limit);
+
+  const scored = unique
+    .map((candidate) => {
+      const lower = candidate.toLowerCase();
+      if (lower === query) return { candidate, score: 1000 };
+      if (lower.startsWith(query)) return { candidate, score: 900 - (candidate.length - query.length) };
+      if (lower.includes(query)) return { candidate, score: 600 - (candidate.length - query.length) };
+      return null;
+    })
+    .filter((item): item is { candidate: string; score: number } => item !== null)
+    .sort((a, b) => b.score - a.score || a.candidate.localeCompare(b.candidate, "ru"));
+
+  return scored.slice(0, limit).map((item) => item.candidate);
+}
+
 export function resolveGridColumnAutocomplete(
   editor: { cell: GridCellAddress; value: string } | null,
   rowCount: number,

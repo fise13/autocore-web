@@ -84,7 +84,7 @@ export function SoldSpecificsWorkspace() {
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-        Загрузка проданных специфичных…
+        Загрузка проданных позиций каталога…
       </div>
     );
   }
@@ -92,9 +92,9 @@ export function SoldSpecificsWorkspace() {
   if (soldGroups.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-        <p className="text-sm font-medium">Проданных специфичных пока нет</p>
+        <p className="text-sm font-medium">Проданных позиций каталога пока нет</p>
         <p className="text-sm text-muted-foreground">
-          Отметьте продажу в разделе «Специфичные» — запись появится здесь автоматически.
+          Отметьте продажу в разделе «Учёт» — запись появится здесь автоматически.
         </p>
       </div>
     );

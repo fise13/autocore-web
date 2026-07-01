@@ -35,7 +35,7 @@ export function MotorExcelImportResultDialog({
             {result.specificRecordsImported > 0 ? (
               <>
                 {" "}
-                Специфичные записи: {result.specificRecordsImported}
+                Записи каталога: {result.specificRecordsImported}
                 {result.specificCategoriesUpdated > 0
                   ? ` (категорий: ${result.specificCategoriesUpdated})`
                   : ""}

@@ -556,7 +556,7 @@ export function WorkOrderComposer({
                 {quickSpecificCategories.length > 0 ? (
                   <TabsTrigger value="specific" className="gap-1.5">
                     <Package className="size-3.5" />
-                    Специфичные
+                    Каталог
                     {specificPartLines.length > 0 ? (
                       <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
                         {specificPartLines.length}
@@ -866,7 +866,7 @@ export function WorkOrderComposer({
                     </Button>
                   </AddRowCard>
                   <LineItems
-                    empty="Специфичные позиции не добавлены"
+                    empty="Позиции каталога не добавлены"
                     items={specificPartLines.map((line) => {
                       const category = line.specificCategoryName ? `${line.specificCategoryName} · ` : "";
                       return `${category}${line.name} = ${money(line.unitPrice)}`;
@@ -905,7 +905,7 @@ export function WorkOrderComposer({
                   {form.partLines.filter((line) => line.source !== "specific_quick").length}
                 </li>
                 {specificPartLines.length > 0 ? (
-                  <li>Специфичных: {specificPartLines.length}</li>
+                  <li>Позиций каталога: {specificPartLines.length}</li>
                 ) : null}
                 <li>Двигателей: {form.motorLines.length}</li>
                 {form.comment ? <li className="pt-2 text-foreground">«{form.comment}»</li> : null}

@@ -3,7 +3,7 @@ import { WARRANTY_TEMPLATE_PRESETS } from "@/lib/documents/warranty/warranty-tem
 const ENGINE_PRESET = WARRANTY_TEMPLATE_PRESETS.contract_engine;
 
 /** Canonical defaults — aligned with warranty template presets (not hardcoded in PDF). */
-export const ENGINE_WARRANTY_MONTHS = ENGINE_PRESET.months;
+export const ENGINE_WARRANTY_DAYS = ENGINE_PRESET.days;
 export const ENGINE_WARRANTY_KM = ENGINE_PRESET.km;
 
 export const ENGINE_WARRANTY_CONDITIONS = [

@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { AuthDebugPanel } from "@/components/auth/auth-debug-panel";
 import { LoginScreen } from "@/components/auth/login-screen";
@@ -25,6 +25,8 @@ import { userCopy } from "@/lib/user-copy";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const deckSource = searchParams.get("source") === "deck";
   const { firebaseUser, profile, isLoading, isFirebaseReady, refreshProfile } = useAuth();
   const [authReady, setAuthReady] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
@@ -33,8 +35,12 @@ export default function LoginPage() {
   );
 
   const goToApp = useCallback(() => {
+    if (deckSource) {
+      router.replace("/deck/callback");
+      return;
+    }
     void navigateToAppAfterAuth(router, "replace");
-  }, [router]);
+  }, [deckSource, router]);
 
   useEffect(() => {
     logAuthDebug("login-page", "mounted");
@@ -134,21 +140,25 @@ export default function LoginPage() {
     if (!isFirebaseReady || isLoading || !authReady) return;
     if (!isAuthed) return;
 
-    logAuthDebug("login-page", "redirect → /", {
+    logAuthDebug("login-page", deckSource ? "redirect → /deck/callback" : "redirect → /", {
       firebaseUser: firebaseUser?.uid ?? null,
       currentUser: currentUser?.uid ?? null,
     });
 
-    void navigateToAppAfterAuth(router, "replace");
+    if (deckSource) {
+      router.replace("/deck/callback");
+    } else {
+      void navigateToAppAfterAuth(router, "replace");
+    }
 
     const fallbackTimer = window.setTimeout(() => {
       if (window.location.pathname.startsWith("/login")) {
-        window.location.assign("/");
+        window.location.assign(deckSource ? "/deck/callback" : "/");
       }
     }, 4000);
 
     return () => window.clearTimeout(fallbackTimer);
-  }, [authReady, currentUser?.uid, firebaseUser?.uid, isAuthed, isFirebaseReady, isLoading, router]);
+  }, [authReady, currentUser?.uid, deckSource, firebaseUser?.uid, isAuthed, isFirebaseReady, isLoading, router]);
 
   const debugSnapshot = buildAuthDebugSnapshot({
     firebaseUserUid: firebaseUser?.uid ?? null,

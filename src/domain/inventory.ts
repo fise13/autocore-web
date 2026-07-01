@@ -1,3 +1,5 @@
+import type { InventoryGroupId, InventorySubcategoryId } from "@/domain/inventory-taxonomy";
+
 export const INVENTORY_ITEM_TYPES = [
   "consumable",
   "oil",
@@ -31,6 +33,8 @@ export type InventoryItem = {
 
   categoryId?: string;
   categoryPath?: string[];
+  inventoryGroup?: InventoryGroupId;
+  subcategoryId?: InventorySubcategoryId;
   unit: string;
 
   purchasePrice?: number;
@@ -73,6 +77,8 @@ export type UpsertInventoryItemInput = {
   notes?: string;
   categoryId?: string;
   categoryPath?: string[];
+  inventoryGroup?: InventoryGroupId;
+  subcategoryId?: InventorySubcategoryId;
   unit?: string;
   purchasePrice?: number;
   averageCost?: number;

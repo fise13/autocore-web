@@ -1,11 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { parseCollectionFromSearchParams } from "@/lib/navigation/inventory-collections";
+import {
+  collectionUsesSpecificSheets,
+  resolveDefaultGearboxCategory,
+} from "@/lib/navigation/specific-categories-for-collection";
+import { isPinnedFilterId, motorMatchesPinnedFilter } from "@/lib/navigation/pinned-filters";
 import { AnimatePresence, motion } from "framer-motion";
 import { LayoutGrid, X } from "lucide-react";
 
 import { sellMotorWithFinancialOperationUseCase } from "@/application/use-cases/sell-motor-with-financial-operation";
+import { quickCreateClientUseCase } from "@/application/use-cases/work-orders/quick-create-client";
 import { enqueueMotorSoldEffects } from "@/lib/motors/enqueue-motor-sold-effects";
 import { unsellMotorWithFinancialOperationUseCase } from "@/application/use-cases/unsell-motor-with-financial-operation";
 import { MotorSaleSuccessOverlay } from "@/components/motors/motor-sale-success-overlay";
@@ -23,6 +30,7 @@ import { SpecificRecordsWorkspace } from "@/components/specific/specific-records
 import { useMotorImportIslandAction } from "@/components/motors/motor-import-trigger-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MotorEntity } from "@/domain/motor";
+import { useClientsRealtime } from "@/hooks/use-clients-realtime";
 import { useDeepAction } from "@/hooks/use-deep-action";
 import { useEffectiveCatalog } from "@/hooks/use-effective-catalog";
 import { useMotorsRealtime } from "@/hooks/use-motors-realtime";
@@ -33,12 +41,14 @@ import { userCopy } from "@/lib/user-copy";
 import { type DeepAction } from "@/lib/navigation/deep-actions";
 import { cn } from "@/lib/utils";
 import { createCatalogRepository } from "@/infrastructure/firestore/catalog-repository";
+import { createClientRepository } from "@/infrastructure/firestore/client-repository";
 import { createFinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
 import { createMotorRepository } from "@/infrastructure/firestore/motor-repository";
 import { createSpecificCategoryRepository } from "@/infrastructure/firestore/specific-category-repository";
 import { useSpecificCategoriesRealtime } from "@/hooks/use-specific-categories-realtime";
 
 const motorRepository = createMotorRepository();
+const clientRepository = createClientRepository();
 const financialRepository = createFinancialOperationRepository();
 const catalogRepository = createCatalogRepository();
 const specificCategoryRepository = createSpecificCategoryRepository();
@@ -73,6 +83,13 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
   } = useWorkspace();
   const openImportIsland = useMotorImportIslandAction();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  const collectionContext = useMemo(
+    () => parseCollectionFromSearchParams(searchParams, pathname),
+    [pathname, searchParams],
+  );
+  const pinnedFilter = isPinnedFilterId(collectionContext.filter) ? collectionContext.filter : null;
 
   const { brands, engines } = useEffectiveCatalog(catalogRepository, motorRepository, uid, companyId, {
     loadMotorsForCatalog: true,
@@ -88,6 +105,16 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
     () => specificCategories.find((item) => item.id === selectedSpecificCategoryId) ?? null,
     [selectedSpecificCategoryId, specificCategories],
   );
+
+  const transmissionsCategory = useMemo(() => {
+    if (collectionContext.collection !== "transmissions") return null;
+    return resolveDefaultGearboxCategory(specificCategories);
+  }, [collectionContext.collection, specificCategories]);
+
+  const activeSpecificCategory =
+    collectionContext.collection === "transmissions"
+      ? (selectedSpecificCategory ?? transmissionsCategory)
+      : selectedSpecificCategory;
 
   const selectedBrandName = useMemo(
     () => brands.find((brand) => brand.localId === workspace.selectedBrandLocalId)?.name,
@@ -109,6 +136,8 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
     engineCode: selectedEngineCode,
   });
 
+  const { clients } = useClientsRealtime(clientRepository, companyId, Boolean(companyId));
+
   const allMotorsQuery = useMotorsRealtime(motorRepository, {
     uid,
     companyId,
@@ -116,7 +145,11 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
     includeDeleted: preferences.importExport.includeDeleted,
   });
 
-  const rowData = motorsQuery.data ?? [];
+  const rowData = useMemo(() => {
+    const base = motorsQuery.data ?? [];
+    if (!pinnedFilter) return base;
+    return base.filter((motor) => motorMatchesPinnedFilter(motor, pinnedFilter));
+  }, [motorsQuery.data, pinnedFilter]);
   const isGridReady = !motorsQuery.isBootstrapping;
   const { setCounts, setSearchSuggestions } = workspace;
   const motorCount = motorsQuery.data?.length ?? 0;
@@ -220,6 +253,25 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
     const { motor, mode } = sellDialog;
 
     if (mode === "sell") {
+      const clientName = payload.clientName?.trim() ?? "";
+      const clientPhone = payload.clientPhone?.trim() ?? "";
+      if (clientName.length < 2 || clientPhone.length < 3) {
+        throw new Error("Укажите покупателя и телефон");
+      }
+
+      const client =
+        clients.find((entry) => entry.id === payload.clientId) ??
+        (await quickCreateClientUseCase(clientRepository, {
+          companyId,
+          fullName: clientName,
+          phone: clientPhone,
+          createdByUserId: profile.id,
+        }));
+
+      const saleComment =
+        payload.comment?.trim() ||
+        `Продажа · ${motor.serialCode} · ${client.fullName}`;
+
       await sellMotorWithFinancialOperationUseCase(motorRepository, financialRepository, {
         uid,
         motor,
@@ -228,14 +280,17 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
         amount: payload.amount,
         account: payload.account,
         paymentMethod: payload.paymentMethod,
-        comment: payload.comment,
+        comment: saleComment,
       });
 
       void enqueueMotorSoldEffects(motor, {
         amount: payload.amount,
         account: payload.account,
         paymentMethod: payload.paymentMethod,
-        comment: payload.comment,
+        comment: saleComment,
+        clientId: client.id,
+        clientName: client.fullName,
+        clientPhone: client.phone,
         warrantyOverride: payload.warrantyOverride,
       });
 
@@ -314,8 +369,42 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
     );
   }
 
-  if (selectedSpecificCategory) {
-    return <SpecificRecordsWorkspace category={selectedSpecificCategory} embedded />;
+  if (collectionContext.collection === "transmissions") {
+    if (activeSpecificCategory) {
+      return <SpecificRecordsWorkspace category={activeSpecificCategory} embedded />;
+    }
+
+    return (
+      <div className="flex h-full flex-col items-center justify-center px-6">
+        <EmptyState
+          icon={LayoutGrid}
+          title="КПП"
+          description="Лист КПП появится после первого импорта или настройки компании."
+          className="max-w-lg border-none bg-transparent"
+        />
+      </div>
+    );
+  }
+
+  if (collectionUsesSpecificSheets(collectionContext.collection)) {
+    if (activeSpecificCategory) {
+      return <SpecificRecordsWorkspace category={activeSpecificCategory} embedded />;
+    }
+
+    return (
+      <div className="flex h-full flex-col items-center justify-center px-6">
+        <EmptyState
+          icon={LayoutGrid}
+          title={userCopy.specificSheets.selectSheet}
+          description={userCopy.specificSheets.selectSheetHint}
+          className="max-w-lg border-none bg-transparent"
+        />
+      </div>
+    );
+  }
+
+  if (activeSpecificCategory) {
+    return <SpecificRecordsWorkspace category={activeSpecificCategory} embedded />;
   }
 
   if (soldOnly && isGridReady && rowData.length === 0) {

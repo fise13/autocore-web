@@ -39,7 +39,7 @@ import {
   selectWholeRowActiveStart,
 } from "@/lib/grid/selection-controller";
 import { GridCellAddress, GridRange, isCellInsideRange, normalizeRange } from "@/lib/grid/grid-types";
-import { resolveGridColumnAutocomplete } from "@/lib/grid/grid-column-autocomplete";
+import { filterColumnSuggestions, resolveGridColumnAutocomplete } from "@/lib/grid/grid-column-autocomplete";
 import { gridPalette } from "@/lib/grid/grid-palette";
 import {
   applyWarehouseDraftField,
@@ -73,11 +73,7 @@ import {
   WAREHOUSE_READ_ONLY_COLUMNS,
   warehouseCellFrame,
 } from "@/lib/warehouse/warehouse-grid-layout-engine";
-import {
-  categoryLabelFromPath,
-  categoryPathFromLabel,
-  normalizeBarcode,
-} from "@/lib/warehouse/warehouse-search";
+import { normalizeBarcode } from "@/lib/warehouse/warehouse-search";
 import { InventoryItemRepository } from "@/infrastructure/firestore/inventory-item-repository";
 import { InventoryMovementRepository } from "@/infrastructure/firestore/inventory-movement-repository";
 import { InventoryStockLevelRepository } from "@/infrastructure/firestore/inventory-stock-level-repository";
@@ -152,28 +148,26 @@ function valueAtCell(row: WarehouseGridRow, column: number): string {
       case 2:
         return row.name;
       case 3:
-        return categoryLabelFromPath(row.categoryPath);
-      case 4:
         return row.brandName ?? "";
-      case 5:
+      case 4:
         return formatOptionalGridNumber(row.totalOnHand);
-      case 6:
+      case 5:
         return formatOptionalGridNumber(row.totalReserved);
-      case 7:
+      case 6:
         return formatOptionalGridNumber(row.totalAvailable);
-      case 8:
+      case 7:
         return formatOptionalGridNumber(row.purchasePrice);
-      case 9:
+      case 8:
         return formatOptionalGridNumber(row.sellPrice);
-      case 10:
+      case 9:
         return row.supplierName ?? "";
-      case 11:
+      case 10:
         return row.barcodes[0] ?? "";
-      case 12:
+      case 11:
         return row.warehouseLocation ?? "";
-      case 13:
+      case 12:
         return formatOptionalGridNumber(row.lowStockThreshold);
-      case 14:
+      case 13:
         return formatWarehouseUpdatedAt(row.updatedAt);
       default:
         return "";
@@ -185,22 +179,20 @@ function valueAtCell(row: WarehouseGridRow, column: number): string {
     case 2:
       return row.draft.name;
     case 3:
-      return row.draft.category;
-    case 4:
       return row.draft.brandName;
-    case 5:
+    case 4:
       return formatDraftGridNumber(row.draft.onHand);
-    case 8:
+    case 7:
       return formatDraftGridNumber(row.draft.purchasePrice);
-    case 9:
+    case 8:
       return formatDraftGridNumber(row.draft.sellPrice);
-    case 10:
+    case 9:
       return row.draft.supplierName;
-    case 11:
+    case 10:
       return row.draft.barcode;
-    case 12:
+    case 11:
       return row.draft.warehouseLocation;
-    case 13:
+    case 12:
       return formatDraftGridNumber(row.draft.lowStockThreshold);
     default:
       return "";
@@ -218,35 +210,32 @@ function applyCellValue(row: WarehouseGridRow, column: number, value: string): W
         next.name = value;
         break;
       case 3:
-        next.categoryPath = categoryPathFromLabel(value);
-        break;
-      case 4:
         next.brandName = value;
         break;
-      case 5: {
+      case 4: {
         const onHand = parseGridNumber(value) ?? 0;
         next.totalOnHand = onHand;
         next.totalAvailable = onHand - next.totalReserved;
         break;
       }
-      case 8:
+      case 7:
         next.purchasePrice = parseGridNumber(value);
         break;
-      case 9:
+      case 8:
         next.sellPrice = parseGridNumber(value);
         break;
-      case 10:
+      case 9:
         next.supplierName = value;
         break;
-      case 11: {
+      case 10: {
         const barcode = normalizeBarcode(value);
         next.barcodes = barcode ? [barcode] : [];
         break;
       }
-      case 12:
+      case 11:
         next.warehouseLocation = value;
         break;
-      case 13:
+      case 12:
         next.lowStockThreshold = parseGridNumber(value);
         break;
       default:
@@ -260,22 +249,20 @@ function applyCellValue(row: WarehouseGridRow, column: number, value: string): W
     case 2:
       return applyWarehouseDraftField(row, "name", value);
     case 3:
-      return applyWarehouseDraftField(row, "category", value);
-    case 4:
       return applyWarehouseDraftField(row, "brandName", value);
-    case 5:
+    case 4:
       return applyWarehouseDraftField(row, "onHand", value);
-    case 8:
+    case 7:
       return applyWarehouseDraftField(row, "purchasePrice", value);
-    case 9:
+    case 8:
       return applyWarehouseDraftField(row, "sellPrice", value);
-    case 10:
+    case 9:
       return applyWarehouseDraftField(row, "supplierName", value);
-    case 11:
+    case 10:
       return applyWarehouseDraftField(row, "barcode", value);
-    case 12:
+    case 11:
       return applyWarehouseDraftField(row, "warehouseLocation", value);
-    case 13:
+    case 12:
       return applyWarehouseDraftField(row, "lowStockThreshold", value);
     default:
       return row;
@@ -463,16 +450,25 @@ export function WarehouseExcelGrid({
     return { rowStart, rowEnd, colStart, colEnd };
   }, [columnWidths, layout.rowHeight, rows.length, scroll.height, scroll.left, scroll.top, scroll.width]);
 
-  const editorAutocompleteMatch = useMemo(
-    () =>
-      resolveGridColumnAutocomplete(
-        editor,
-        rows.length,
-        (row, column) => valueAtCell(rows[row], column),
-        (column) => isEditableColumn(column) && !WAREHOUSE_READ_ONLY_COLUMNS.has(column),
-      ),
-    [editor, rows],
-  );
+  const editorAutocompleteMatch = useMemo(() => {
+    return resolveGridColumnAutocomplete(
+      editor,
+      rows.length,
+      (row, column) => valueAtCell(rows[row], column),
+      (column) => isEditableColumn(column) && !WAREHOUSE_READ_ONLY_COLUMNS.has(column),
+    );
+  }, [editor, rows]);
+
+  const editorSuggestionList = useMemo(() => {
+    if (!editor) return [] as string[];
+    const fromRows: string[] = [];
+    for (let row = 0; row < rows.length; row += 1) {
+      if (row === editor.cell.row) continue;
+      const cellValue = valueAtCell(rows[row], editor.cell.column).trim();
+      if (cellValue) fromRows.push(cellValue);
+    }
+    return filterColumnSuggestions(editor.value, fromRows);
+  }, [editor, rows]);
 
   const scheduleDirtyStatus = useCallback(() => {
     if (dirtyStatusScheduledRef.current) return;
@@ -959,9 +955,10 @@ export function WarehouseExcelGrid({
     warehouseBarcodePrefill,
   ]);
 
-  const commitEditor = useCallback((direction?: "down" | "up" | "left" | "right") => {
+  const commitEditor = useCallback((direction?: "down" | "up" | "left" | "right", valueOverride?: string) => {
     if (!editor) return;
-    const { cell, value } = editor;
+    const { cell } = editor;
+    const value = valueOverride ?? editor.value;
     setCell(cell, value);
     editingRowIdRef.current = null;
     setEditor(null);
@@ -1757,9 +1754,11 @@ export function WarehouseExcelGrid({
                   selectAll={editor.selectAll}
                   frame={warehouseCellFrame(layout, editor.cell)}
                   onChange={(value) => setEditor((current) => (current ? { ...current, value } : current))}
-                  onCommit={(direction) => commitEditor(direction)}
+                  onCommit={(direction, value) => commitEditor(direction, value)}
                   onCancel={endEdit}
                   autocompleteMatch={editorAutocompleteMatch}
+                  columnSuggestions={editorSuggestionList}
+                  domainCategory={layout.columns[editor.cell.column]?.domainCategory}
                 />
               ) : null}
             </div>

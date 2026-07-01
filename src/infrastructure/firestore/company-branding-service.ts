@@ -37,7 +37,7 @@ export type SaveCompanyBrandingInput = {
   qrLinkUrl?: string;
   documentFooter?: string;
   invoiceValidityDays?: string;
-  customWarrantyMonths?: string;
+  customWarrantyDays?: string;
   customWarrantyKm?: string;
 };
 
@@ -147,10 +147,10 @@ export async function saveCompanyBranding(companyId: string, input: SaveCompanyB
     const parsed = Number(invoiceDays);
     if (Number.isFinite(parsed) && parsed > 0) payload.invoiceValidityDays = parsed;
   }
-  const customMonths = input.customWarrantyMonths?.trim();
-  if (customMonths) {
-    const parsed = Number(customMonths);
-    if (Number.isFinite(parsed) && parsed > 0) payload.customWarrantyMonths = parsed;
+  const customDays = input.customWarrantyDays?.trim();
+  if (customDays) {
+    const parsed = Number(customDays);
+    if (Number.isFinite(parsed) && parsed > 0) payload.customWarrantyDays = parsed;
   }
   const customKm = input.customWarrantyKm?.trim();
   if (customKm) {

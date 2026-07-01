@@ -8,7 +8,8 @@ import { SearchIcon } from "lucide-react";
 import { ActivityLogEntry } from "@/domain/rbac";
 import { ActivitySeverity } from "@/domain/activity-log";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Avatar, AvatarBadge, AvatarFallback } from "@/components/ui/avatar";
+import { GradientAvatarFallback } from "@/components/account/gradient-avatar-fallback";
+import { Avatar, AvatarBadge } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -36,7 +37,6 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  actorInitials,
   filterActivityEntries,
   formatActivityTargetName,
   groupActivityEntriesByDay,
@@ -173,7 +173,7 @@ const ActivityJournalRow = memo(function ActivityJournalRow({
       )}
     >
       <Avatar size="sm" className="row-span-2 sm:row-span-1">
-        <AvatarFallback className="text-[10px] font-semibold">{actorInitials(actorName)}</AvatarFallback>
+        <GradientAvatarFallback seed={entry.actor || actorName} />
         <AvatarBadge className={severityBadgeClass[severity] ?? severityBadgeClass.info} />
       </Avatar>
 

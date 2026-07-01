@@ -115,6 +115,9 @@ export type MotorImportAiRequest =
         rawTransmission?: string;
         rawNotes?: string;
         rawSheet?: string;
+        sheetBrand?: string;
+        sheetEngine?: string;
+        rawRowCells?: string;
         rawRow?: string;
       }>;
       aiPrompts?: MotorImportAiPrompts;

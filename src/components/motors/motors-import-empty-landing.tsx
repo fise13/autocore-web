@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { FileSpreadsheet, PenLine, Sparkles, Upload, X } from "lucide-react";
+import { ArrowRight, FileSpreadsheet, PenLine, Sparkles, Upload, X } from "lucide-react";
 
 import {
   MotorImportProgressState,
@@ -258,6 +259,17 @@ export function MotorsImportEmptyLanding({
               <p className="mt-3 text-center text-[10px] leading-relaxed text-muted-foreground/80">
                 {userCopy.motors.emptyImportAiHint}
               </p>
+
+              <div className="mt-4 border-t pt-3">
+                <Link
+                  href="/migration"
+                  className="flex items-center justify-center gap-1.5 text-xs font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  <Sparkles className="size-3.5" aria-hidden />
+                  Переносите целый бизнес? Откройте миграцию
+                  <ArrowRight className="size-3.5" aria-hidden />
+                </Link>
+              </div>
             </LandingCard>
           </motion.div>
         ) : null}

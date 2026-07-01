@@ -225,9 +225,27 @@ function DemoWarehouse() {
 
 function DemoWorkOrders() {
   const orders = [
-    { num: "НЗ-2026-0142", client: "Алексей К.", vehicle: "Hyundai Sonata", status: "Завершён" },
-    { num: "НЗ-2026-0148", client: "Марат С.", vehicle: "Toyota Camry", status: "В работе" },
-    { num: "НЗ-2026-0151", client: "Олег В.", vehicle: "Kia Optima", status: "Ожидает запчасти" },
+    {
+      num: "НЗ-2026-0142",
+      client: "Алексей К.",
+      vehicle: "Hyundai Sonata",
+      status: "Выдан",
+      tone: "is-success" as const,
+    },
+    {
+      num: "НЗ-2026-0148",
+      client: "Марат С.",
+      vehicle: "Toyota Camry",
+      status: "В работе",
+      tone: "is-info" as const,
+    },
+    {
+      num: "НЗ-2026-0151",
+      client: "Олег В.",
+      vehicle: "Kia Optima",
+      status: "Ждём запчасти",
+      tone: "is-warn" as const,
+    },
   ];
 
   return (
@@ -248,16 +266,7 @@ function DemoWorkOrders() {
                 {order.client} · {order.vehicle}
               </p>
             </div>
-            <span
-              className={cn(
-                "landing-demo-badge",
-                order.status === "Завершён" && "is-success",
-                order.status === "В работе" && "is-info",
-                order.status === "Ожидает запчасти" && "is-warn",
-              )}
-            >
-              {order.status}
-            </span>
+            <span className={cn("landing-demo-badge", order.tone)}>{order.status}</span>
           </div>
         ))}
       </div>

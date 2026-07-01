@@ -24,7 +24,7 @@ function previewWarrantyCopy(input: BrandingLivePreviewInput) {
     };
   }
 
-  if (preset.months <= 0) {
+  if (preset.days <= 0) {
     return {
       warrantyLabel: preset.name,
       warrantyText: preset.conditions[0] ?? preset.name,
@@ -32,7 +32,7 @@ function previewWarrantyCopy(input: BrandingLivePreviewInput) {
   }
 
   return {
-    warrantyLabel: `${preset.months} мес · ${preset.km.toLocaleString("ru-KZ")} км`,
+    warrantyLabel: `${preset.days} дн · ${preset.km.toLocaleString("ru-KZ")} км`,
     warrantyText: [...preset.conditions, ...preset.restrictions].join("\n"),
   };
 }

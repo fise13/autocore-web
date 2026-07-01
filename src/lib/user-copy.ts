@@ -254,11 +254,11 @@ export const userCopy = {
     deleteMotorsConfirmTitle: "Удалить все моторы?",
     deleteMotorsConfirmDescription:
       "Все моторы компании в облаке будут удалены вместе с брендами и двигателями в боковом меню. Локальные копии в приложении для Mac не затрагиваются.",
-    deleteSpecificsTitle: "Удалить специфичные",
-    deleteSpecificsDescription: "Удаляет все категории и записи раздела «Специфичные».",
-    deleteSpecificsConfirmTitle: "Удалить все специфичные?",
+    deleteSpecificsTitle: "Удалить каталог учёта",
+    deleteSpecificsDescription: "Удаляет все листы и записи каталога учёта.",
+    deleteSpecificsConfirmTitle: "Удалить весь каталог учёта?",
     deleteSpecificsConfirmDescription:
-      "Все категории и строки специфичных будут удалены без возможности восстановления.",
+      "Все листы и строки каталога учёта будут удалены без возможности восстановления.",
     deleteAccountingSuccess: (count: number) =>
       count > 0 ? `Бухгалтерия очищена: удалено ${count} записей` : "Бухгалтерия уже была пустой",
     deleteMotorsSuccess: (count: number) =>
@@ -266,7 +266,7 @@ export const userCopy = {
         ? `Моторы и каталог брендов очищены: удалено ${count} записей`
         : "Моторы и бренды в облаке уже отсутствовали",
     deleteSpecificsSuccess: (count: number) =>
-      count > 0 ? `Специфичные удалены: ${count} записей` : "Специфичные уже были пустыми",
+      count > 0 ? `Каталог учёта очищен: ${count} записей` : "Каталог учёта уже был пустым",
     deleteWarehouseTitle: "Очистить склад",
     deleteWarehouseDescription: "Удалить все позиции, движения, склады и импорты компании.",
     deleteWarehouseConfirmTitle: "Очистить склад?",
@@ -365,9 +365,9 @@ export const userCopy = {
   },
 
   specificSheets: {
-    addTitle: "Новый специфичный лист",
+    addTitle: "Новый лист учёта",
     addHint: "Лист появится в сайдбаре с семью базовыми колонками. Дополнительные колонки можно добавить позже.",
-    addPlaceholder: "Например, Коробки",
+    addPlaceholder: "Например, Насосы",
     renameTitle: "Переименовать лист",
     renameHint: "Двойной клик по листу открывает это окно.",
     renamePlaceholder: "Новое название листа",
@@ -379,7 +379,7 @@ export const userCopy = {
     columnsHint: "Базовые колонки можно переименовать. Дополнительные — добавить, переименовать или удалить.",
     importHint: "Загрузить данные — через Magic Import в разделе «Все моторы», выбрав существующий лист.",
     selectSheet: "Выберите лист",
-    selectSheetHint: "Создайте лист в сайдбаре «Специфичные», если нужного ещё нет.",
+    selectSheetHint: "Создайте лист в сайдбаре «Учёт», если нужного ещё нет.",
   },
 
   demo: {
@@ -532,6 +532,13 @@ function extractAuthErrorCode(error: unknown): string {
 const GRID_FIELD_LABELS: Record<string, string> = {
   sku: "Артикул",
   name: "Название",
+  serialCode: "Номер двигателя",
+  brandName: "Бренд",
+  engineCode: "Двигатель",
+  configuration: "Комплектация",
+  notes: "Особые отметки",
+  quantity: "Кол-во",
+  transmission: "Коробка",
 };
 
 function mapValidationError(error: unknown): string | null {

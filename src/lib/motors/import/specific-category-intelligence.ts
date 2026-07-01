@@ -5,34 +5,38 @@ import {
 } from "@/lib/motors/import/brand-engine-intelligence";
 
 const SPECIFIC_CATEGORY_ALIASES: Record<string, string> = {
-  коробки: "Коробки",
-  коробка: "Коробки",
-  кпп: "Коробки",
-  akpp: "Коробки",
-  mkpp: "Коробки",
-  gearbox: "Коробки",
-  transmission: "Коробки",
+  коробки: "КПП",
+  коробка: "КПП",
+  кпп: "КПП",
+  akpp: "КПП",
+  mkpp: "КПП",
+  gearbox: "КПП",
+  transmission: "КПП",
   раздатки: "Раздатки",
   раздатка: "Раздатки",
   transfer: "Раздатки",
   tcase: "Раздатки",
-  эбу: "ЭБУ",
-  ecu: "ЭБУ",
-  блоки: "ЭБУ",
+  эбу: "Электрика",
+  ecu: "Электрика",
+  блоки: "Электрика",
+  генератор: "Электрика",
+  генераторы: "Электрика",
+  стартер: "Электрика",
+  стартеры: "Электрика",
   turbo: "Турбины",
   турбины: "Турбины",
   турбо: "Турбины",
   редуктор: "Редукторы",
   редукторы: "Редукторы",
-  мост: "Мосты",
-  мосты: "Мосты",
-  axle: "Мосты",
+  мост: "Редукторы",
+  мосты: "Редукторы",
+  axle: "Редукторы",
   насос: "Насосы",
   насосы: "Насосы",
 };
 
 const SPECIFIC_SHEET_HINTS =
-  /короб|кпп|gearbox|transmission|раздат|transfer|эбу|ecu|турб|turbo|редуктор|мост|насос|акпп|mkpp/i;
+  /короб|кпп|gearbox|transmission|раздат|transfer|эбу|ecu|генератор|стартер|турб|turbo|редуктор|мост|насос|акпп|mkpp/i;
 
 const MISC_SPECIFIC_SHEET_HINTS = /после\s|дэн|разное|прочее|проч|misc|список|каталог/i;
 
@@ -58,7 +62,7 @@ function isKnownSpecificPartsName(name: string): boolean {
 
 /**
  * Sheet/category name looks like a motor brand, model line, or engine-family tab —
- * belongs in motors inventory, NOT in «Специфичные» (Коробки, ПОСЛЕ ДЭНА, …).
+ * belongs in motors inventory, NOT in the accounting catalog (КПП, ПОСЛЕ ДЭНА, …).
  */
 export function isLikelyMotorCatalogName(name: string): boolean {
   const trimmed = name.trim();
@@ -94,7 +98,8 @@ export function resolveSpecificCategoryName(
     const match = existingCategoryNames.find(
       (existing) => normalizeCategoryKey(existing) === normalizeCategoryKey(canonical),
     );
-    return match?.trim() ?? "";
+    if (match?.trim()) return match.trim();
+    return canonical;
   }
 
   for (const existing of existingCategoryNames) {
@@ -116,11 +121,10 @@ export function resolveSpecificCategoryName(
       const match = existingCategoryNames.find(
         (existing) => normalizeCategoryKey(existing) === normalizeCategoryKey(canonical),
       );
-      return match?.trim() ?? "";
+      if (match?.trim()) return match.trim();
+      return canonical;
     }
   }
-
-  if (existingCategoryNames.length > 0) return "";
 
   if (/^[a-zA-Zа-яА-Я0-9\s-]{2,}$/.test(trimmed)) {
     return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);

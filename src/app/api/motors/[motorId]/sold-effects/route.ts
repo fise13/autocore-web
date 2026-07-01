@@ -34,6 +34,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       account: String(body.account ?? "cashbox"),
       paymentMethod: String(body.paymentMethod ?? "cash"),
       comment: typeof body.comment === "string" ? body.comment : undefined,
+      clientId: typeof body.clientId === "string" ? body.clientId : undefined,
+      clientName: typeof body.clientName === "string" ? body.clientName : undefined,
+      clientPhone: typeof body.clientPhone === "string" ? body.clientPhone : undefined,
       warrantyOverride:
         body.warrantyOverride && typeof body.warrantyOverride === "object"
           ? {
@@ -45,11 +48,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
                 typeof (body.warrantyOverride as { warrantyText?: unknown }).warrantyText === "string"
                   ? (body.warrantyOverride as { warrantyText: string }).warrantyText
                   : undefined,
-              customWarrantyMonths:
-                typeof (body.warrantyOverride as { customWarrantyMonths?: unknown }).customWarrantyMonths ===
+              customWarrantyDays:
+                typeof (body.warrantyOverride as { customWarrantyDays?: unknown }).customWarrantyDays ===
                 "number"
-                  ? (body.warrantyOverride as { customWarrantyMonths: number }).customWarrantyMonths
-                  : undefined,
+                  ? (body.warrantyOverride as { customWarrantyDays: number }).customWarrantyDays
+                  : typeof (body.warrantyOverride as { customWarrantyMonths?: unknown }).customWarrantyMonths ===
+                      "number"
+                    ? (body.warrantyOverride as { customWarrantyMonths: number }).customWarrantyMonths * 30
+                    : undefined,
               customWarrantyKm:
                 typeof (body.warrantyOverride as { customWarrantyKm?: unknown }).customWarrantyKm === "number"
                   ? (body.warrantyOverride as { customWarrantyKm: number }).customWarrantyKm

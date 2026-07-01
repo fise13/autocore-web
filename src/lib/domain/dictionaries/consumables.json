@@ -1,0 +1,18 @@
+[
+  { "id": "oil_5w30", "name": "Масло 5W30", "category": "Масла", "aliases": ["масло 5w-30", "5w30", "5w 30", "oil 5w30"], "type": "consumable" },
+  { "id": "oil_5w40", "name": "Масло 5W40", "category": "Масла", "aliases": ["масло 5w-40", "5w40", "5w 40", "oil 5w40"], "type": "consumable" },
+  { "id": "oil_0w20", "name": "Масло 0W20", "category": "Масла", "aliases": ["масло 0w-20", "0w20", "0w 20", "oil 0w20"], "type": "consumable" },
+  { "id": "oil_10w40", "name": "Масло 10W40", "category": "Масла", "aliases": ["масло 10w-40", "10w40", "10w 40"], "type": "consumable" },
+  { "id": "oil_atf", "name": "Масло ATF", "category": "Масла", "aliases": ["атф", "масло акпп", "atf", "трансмиссионное масло"], "type": "consumable" },
+  { "id": "antifreeze_green", "name": "Антифриз зелёный G11", "category": "Антифриз", "aliases": ["антифриз g11", "тосол", "coolant g11"], "type": "consumable" },
+  { "id": "antifreeze_red", "name": "Антифриз красный G12", "category": "Антифриз", "aliases": ["антифриз g12", "coolant g12"], "type": "consumable" },
+  { "id": "oil_filter", "name": "Фильтр масляный", "category": "Фильтры", "aliases": ["масляный фильтр", "фильтр масла", "oil filter"], "type": "consumable" },
+  { "id": "air_filter", "name": "Фильтр воздушный", "category": "Фильтры", "aliases": ["воздушный фильтр", "фильтр воздуха", "air filter"], "type": "consumable" },
+  { "id": "cabin_filter", "name": "Фильтр салонный", "category": "Фильтры", "aliases": ["салонный фильтр", "фильтр салона", "cabin filter"], "type": "consumable" },
+  { "id": "fuel_filter", "name": "Фильтр топливный", "category": "Фильтры", "aliases": ["топливный фильтр", "фильтр топлива", "fuel filter"], "type": "consumable" },
+  { "id": "spark_plug", "name": "Свечи зажигания", "category": "Свечи", "aliases": ["свеча", "свечи", "spark plug"], "type": "consumable" },
+  { "id": "brake_pads_front", "name": "Колодки передние", "category": "Тормоза", "aliases": ["передние колодки", "колодки пер", "brake pads front"], "type": "consumable" },
+  { "id": "brake_pads_rear", "name": "Колодки задние", "category": "Тормоза", "aliases": ["задние колодки", "колодки зад", "brake pads rear"], "type": "consumable" },
+  { "id": "sealant", "name": "Герметик", "category": "Герметики", "aliases": ["герметик", "sealant"], "type": "consumable" },
+  { "id": "brake_fluid", "name": "Тормозная жидкость DOT4", "category": "Жидкости", "aliases": ["тормозуха", "dot4", "brake fluid"], "type": "consumable" }
+]

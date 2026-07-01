@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { EllipsisIcon, UsersIcon } from "lucide-react";
 
+import { GradientAvatarFallback } from "@/components/account/gradient-avatar-fallback";
 import { StatusIndicator } from "@/components/indicator";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -22,13 +23,6 @@ import { formatRole } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 const ONLINE_WINDOW_MS = 15 * 60 * 1000;
-
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .map((word) => word.charAt(0).toUpperCase())
-    .join("");
-}
 
 function isOnline(employee: CompanyEmployee, now: number) {
   const lastActive = employee.lastActiveAt?.getTime() ?? 0;
@@ -93,8 +87,8 @@ export function TeamOnDutyList({
             className="group flex items-center gap-3 px-3 py-3 transition-colors hover:bg-muted/30"
             key={employee.id}
           >
-            <Avatar className="size-9 border shadow-sm">
-              <AvatarFallback className="text-xs">{getInitials(employee.fullName)}</AvatarFallback>
+            <Avatar className="size-9 shadow-sm ring-1 ring-border/30">
+              <GradientAvatarFallback seed={employee.uid || employee.id} />
             </Avatar>
             <div className="min-w-0 flex-1 pr-1">
               <p className="truncate text-sm font-medium leading-snug">{employee.fullName}</p>

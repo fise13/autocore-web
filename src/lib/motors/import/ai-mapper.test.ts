@@ -68,6 +68,6 @@ describe("motor ai mapper", () => {
     });
 
     assert.equal(next.importType, "specific");
-    assert.equal(next.categoryName, "Коробки");
+    assert.equal(next.categoryName, "КПП");
   });
 });

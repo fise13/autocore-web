@@ -28,7 +28,7 @@ import {
   motorSaleDocumentMeta,
 } from "@/lib/documents/motor-sale-document";
 import { DocumentSlug, isDocumentSlug } from "@/lib/documents/document-types";
-import { addMonths, formatDocumentDate, formatDocumentMoney } from "@/lib/documents/format";
+import { addDays, addMonths, formatDocumentDate, formatDocumentMoney } from "@/lib/documents/format";
 import {
   DOCUMENT_TEMPLATE_LAYOUT,
   DOCUMENT_TEMPLATE_META,
@@ -95,14 +95,14 @@ function buildUnifiedLineItems(context: DocumentContext): DocumentLineItem[] {
 function buildPrimaryValue(
   context: DocumentContext,
   slug: DocumentSlug,
-  warrantyMonths: number,
+  warrantyDays: number,
   warrantyKm: number,
 ): string {
   const { order } = context;
   const motor = documentPrimaryMotor(context);
 
   if (slug === "engine-warranty") {
-    return `${warrantyMonths} мес · ${warrantyKm.toLocaleString("ru-KZ")} км`;
+    return `${warrantyDays} дн · ${warrantyKm.toLocaleString("ru-KZ")} км`;
   }
   if (slug === "engine-waybill" && motor) {
     return formatDocumentMoney(motor.unitPrice);
@@ -137,7 +137,7 @@ function buildSections(
   const motorOnlyTotal = order.pricing.motorsTotal;
   const warrantyNote = warranty.note;
   const recommendations = order.comment?.trim() || null;
-  const expiresAt = formatDocumentDate(addMonths(documentOrderDate(context), warranty.months));
+  const expiresAt = formatDocumentDate(addDays(documentOrderDate(context), warranty.days));
 
   const laborLines = buildLaborLinesForDocument(context);
   const partLines = buildPartLinesForDocument(context);
@@ -184,7 +184,7 @@ function buildSections(
             title: meta.title,
             lead: meta.lead,
             primaryLabel: meta.primaryLabel,
-            primaryValue: buildPrimaryValue(context, slug, warranty.months, warranty.km),
+            primaryValue: buildPrimaryValue(context, slug, warranty.days, warranty.km),
             primaryHint:
               slug === "engine-warranty"
                 ? `до ${expiresAt}`
@@ -485,7 +485,7 @@ export function buildDocumentRenderModel(
       orderLabel: context.orderLabel,
       documentDate: formatDocumentDate(documentOrderDate(context)),
       primaryLabel: meta.primaryLabel,
-      primaryValue: buildPrimaryValue(context, slug, resolvedWarranty.months, resolvedWarranty.km),
+      primaryValue: buildPrimaryValue(context, slug, resolvedWarranty.days, resolvedWarranty.km),
       primaryHint: null,
       executorName: documentAssigneeSummary(context),
     },

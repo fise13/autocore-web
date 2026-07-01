@@ -9,6 +9,8 @@ import { ProfileNameStep } from "@/components/auth/auth-journey-steps/profile-na
 import { AuthJourneyReveal } from "@/components/auth/auth-journey-reveal";
 import { AuthJourneyShell } from "@/components/auth/auth-journey-shell";
 import { SetupWizard } from "@/components/onboarding/setup-wizard";
+import { BusinessImportOnboardingStep } from "@/components/onboarding/business-import-onboarding-step";
+import { DomainDictionaryProvider } from "@/components/domain/domain-dictionary-provider";
 import {
   AUTH_JOURNEY_STEP_LABELS,
   useAuthJourneyStep,
@@ -27,7 +29,8 @@ type AuthJourneyCoordinatorProps = {
 export function AuthJourneyCoordinator({ children }: AuthJourneyCoordinatorProps) {
   const { profile } = useAuth();
   const [savedProfileName, setSavedProfileName] = useState<string | null>(null);
-  const [wizardDone, setWizardDone] = useState(false);
+  const [importDone, setImportDone] = useState(false);
+  const [pendingBusinessImport, setPendingBusinessImport] = useState(false);
   const step = useAuthJourneyStep(savedProfileName);
   const companyId = profile?.companyId?.trim() || null;
   const { config, loaded } = useCompanyAppConfig(companyId);
@@ -39,13 +42,27 @@ export function AuthJourneyCoordinator({ children }: AuthJourneyCoordinatorProps
   }, [config?.onboardingCompleted, companyId]);
 
   useEffect(() => {
-    if (wizardDone || step === "app") {
+    if (importDone || step === "app") {
       resetDissolveVeil();
     }
-  }, [step, wizardDone]);
+  }, [importDone, step]);
 
-  if (wizardDone || step === "app") {
+  if (importDone || step === "app") {
     return <>{children}</>;
+  }
+
+  if ((step === "business-import" || pendingBusinessImport) && companyId && !importDone) {
+    return (
+      <DomainDictionaryProvider>
+        <BusinessImportOnboardingStep
+          companyId={companyId}
+          onDone={() => {
+            setImportDone(true);
+            setPendingBusinessImport(false);
+          }}
+        />
+      </DomainDictionaryProvider>
+    );
   }
 
   const resolvedStep = step === "loading" ? "boot" : step;
@@ -71,7 +88,10 @@ export function AuthJourneyCoordinator({ children }: AuthJourneyCoordinatorProps
         <SetupWizardJourneyStep
           companyId={companyId}
           loaded={loaded}
-          onCompleted={() => setWizardDone(true)}
+          onCompleted={() => {
+            if (companyId) markWizardCompleted(companyId);
+            setPendingBusinessImport(true);
+          }}
         />
       ) : null}
     </AuthJourneyShell>

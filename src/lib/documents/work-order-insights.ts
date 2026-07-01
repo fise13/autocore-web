@@ -14,7 +14,7 @@ import {
   documentPrimaryMotor,
   documentPrimaryMotorEntity,
 } from "@/lib/documents/document-helpers";
-import { addMonths,
+import { addDays, addMonths,
   coerceDocumentDate,
   daysBetween,
   formatDocumentDateShort,
@@ -23,7 +23,7 @@ import { resolveWarrantyForDocument } from "@/lib/documents/warranty/resolve-war
 import { getAppUrl } from "@/lib/site-urls";
 
 export type WarrantyInsight = {
-  months: number;
+  days: number;
   km: number;
   untilDate: Date;
   untilMileage: number;
@@ -187,9 +187,9 @@ export function buildWarrantyInsight(context: DocumentContext): WarrantyInsight 
   const installDate = documentOrderDate(context);
   const mileage = context.order.mileage || 0;
 
-  if (warranty.months <= 0 || warranty.km <= 0) {
+  if (warranty.days <= 0 || warranty.km <= 0) {
     return {
-      months: 0,
+      days: 0,
       km: 0,
       untilDate: installDate,
       untilMileage: mileage,
@@ -198,10 +198,10 @@ export function buildWarrantyInsight(context: DocumentContext): WarrantyInsight 
     };
   }
 
-  const untilDate = addMonths(installDate, warranty.months);
+  const untilDate = addDays(installDate, warranty.days);
 
   return {
-    months: warranty.months,
+    days: warranty.days,
     km: warranty.km,
     untilDate,
     untilMileage: mileage + warranty.km,

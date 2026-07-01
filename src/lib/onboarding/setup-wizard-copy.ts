@@ -16,20 +16,20 @@ import type {
   SpecificCategoryMode,
 } from "@/domain/company-config";
 import { SETUP_WIZARD_CATEGORY_PRESETS } from "@/domain/company-config";
+import type { InventoryGroupId } from "@/domain/inventory-taxonomy";
 
 export type SetupWizardCategoryId =
   | "gearboxes"
   | "transfer_cases"
   | "turbos"
-  | "pumps"
-  | "ecu"
-  | "alternators"
-  | "starters"
-  | "bumpers"
-  | "headlights"
-  | "fenders";
+  | "reducers"
+  | "body"
+  | "optics"
+  | "interior"
+  | "suspension"
+  | "electrical";
 
-export type SetupWizardCategoryGroupId = "mechanics" | "electrical" | "body";
+export type SetupWizardCategoryGroupId = InventoryGroupId;
 
 export type SetupWizardCategoryGroup = {
   id: SetupWizardCategoryGroupId;
@@ -38,9 +38,9 @@ export type SetupWizardCategoryGroup = {
 };
 
 export const SETUP_WIZARD_CATEGORY_GROUPS = [
-  { id: "mechanics", label: "Агрегаты", ids: ["gearboxes", "transfer_cases", "turbos", "pumps"] },
-  { id: "electrical", label: "Электрика", ids: ["ecu", "alternators", "starters"] },
-  { id: "body", label: "Кузов", ids: ["bumpers", "headlights", "fenders"] },
+  { id: "aggregates", label: "Агрегаты", ids: ["gearboxes", "turbos", "reducers", "transfer_cases"] },
+  { id: "parts", label: "Запчасти", ids: ["body", "optics", "interior", "suspension", "electrical"] },
+  { id: "consumables", label: "Расходники", ids: [] },
 ] as const satisfies readonly SetupWizardCategoryGroup[];
 
 export function categoriesInGroup(group: SetupWizardCategoryGroup): CompanySpecificCategoryConfig[] {
@@ -112,8 +112,8 @@ export const SETUP_WIZARD_COPY = {
   },
   modules: {
     motors: {
-      label: "Моторы",
-      description: "Продажи и гарантия",
+      label: "Двигатели",
+      description: "Агрегаты и продажи",
     },
     workOrders: {
       label: "Заказ-наряды",
@@ -124,12 +124,12 @@ export const SETUP_WIZARD_COPY = {
       description: "Операции и счета",
     },
     warehouse: {
-      label: "Склад",
-      description: "Остатки",
+      label: "Расходники",
+      description: "Масла, фильтры, склад",
     },
     specifics: {
-      label: "Каталог",
-      description: "Запчасти",
+      label: "Каталог учёта",
+      description: "Агрегаты и запчасти",
     },
   } satisfies Record<CompanyModuleKey, { label: string; description: string }>,
   moduleIcons: {
@@ -140,7 +140,7 @@ export const SETUP_WIZARD_COPY = {
     specifics: Package,
   } satisfies Record<CompanyModuleKey, LucideIcon>,
   categories: {
-    specificsDisabled: "Включите «Каталог» на шаге 1 или пропустите.",
+    specificsDisabled: "Включите «Каталог учёта» на шаге 1 или пропустите.",
     emptyHint: "",
     trackedHint: "Склад",
     quickHint: "Без склада",
@@ -192,14 +192,14 @@ export function modulesForPreset(preset: BusinessPresetId): Record<CompanyModule
         workOrders: true,
         accounting: true,
         warehouse: true,
-        specifics: false,
+        specifics: true,
       };
     case "dismantling":
       return {
         motors: true,
         workOrders: true,
         accounting: true,
-        warehouse: false,
+        warehouse: true,
         specifics: true,
       };
     case "full":
@@ -224,9 +224,9 @@ export function categoriesForPreset(preset: BusinessPresetId): CompanySpecificCa
     case "service":
       return [];
     case "dismantling":
-      return byId(["gearboxes", "transfer_cases", "alternators"]);
+      return byId(["gearboxes", "transfer_cases", "turbos", "body", "optics"]);
     case "full":
     default:
-      return byId(["gearboxes", "transfer_cases", "alternators", "bumpers"]);
+      return byId(["gearboxes", "transfer_cases", "turbos", "reducers", "body", "optics", "electrical"]);
   }
 }

@@ -141,6 +141,9 @@ export async function requestAiMotorNormalizeBatch(
     rawTransmission?: string;
     rawNotes?: string;
     rawSheet?: string;
+    sheetBrand?: string;
+    sheetEngine?: string;
+    rawRowCells?: string;
     rawRow?: string;
   }>,
 ): Promise<MotorNormalizeBatchResponse> {

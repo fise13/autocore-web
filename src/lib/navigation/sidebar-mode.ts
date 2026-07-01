@@ -25,7 +25,7 @@ export function resolveSidebarMode(pathname: string): SidebarMode {
 }
 
 export function showSpecificCategoriesInSidebar(mode: SidebarMode): boolean {
-  return mode === "motors";
+  return mode === "motors" || mode === "warehouse";
 }
 
 export function showBrandFiltersInSidebar(mode: SidebarMode): boolean {

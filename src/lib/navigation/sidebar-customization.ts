@@ -90,8 +90,8 @@ export const SIDEBAR_BLOCK_META: Record<
     icon: Users,
   },
   specific: {
-    label: "Специфичные",
-    description: "Коробки, раздатки, ЭБУ — не бренды моторов",
+    label: "Учёт",
+    description: "Агрегаты, запчасти, расходники",
     icon: FileText,
   },
   brands: {
@@ -110,13 +110,13 @@ export const SIDEBAR_NAV_META: Record<
   SidebarNavItemId,
   { label: string; href: string; icon: LucideIcon }
 > = {
-  home: { label: "Центр управления", href: "/", icon: Radar },
-  motors: { label: "Все моторы", href: "/motors", icon: LayoutGrid },
-  sold: { label: "Проданные", href: "/sold", icon: Receipt },
+  home: { label: "Дашборд", href: "/", icon: Radar },
+  motors: { label: "Двигатели", href: "/motors?collection=engines", icon: LayoutGrid },
+  sold: { label: "Продажи", href: "/sold", icon: Receipt },
   work_orders: { label: "Заказ-наряды", href: "/work-orders", icon: ClipboardList },
   my_earnings: { label: "Мои начисления", href: "/my-earnings", icon: Wallet },
   accounting: { label: "Бухгалтерия", href: "/accounting", icon: Folder },
-  warehouse: { label: "Склад", href: "/warehouse", icon: Package },
+  warehouse: { label: "Расходники", href: "/warehouse", icon: Package },
 };
 
 export const DEFAULT_SIDEBAR_CUSTOMIZATION: SidebarCustomization = {
@@ -140,7 +140,7 @@ export const DEFAULT_SIDEBAR_CUSTOMIZATION: SidebarCustomization = {
     work_orders: { enabled: true },
     my_earnings: { enabled: true },
     accounting: { enabled: true },
-    warehouse: { enabled: true },
+    warehouse: { enabled: false },
   },
 };
 

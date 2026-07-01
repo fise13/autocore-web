@@ -4,7 +4,7 @@ export const WARRANTY_TEMPLATE_PRESETS: Record<WarrantyTemplateId, WarrantyTempl
   contract_engine: {
     id: "contract_engine",
     name: "Контрактный двигатель",
-    months: 6,
+    days: 180,
     km: 10_000,
     statusColor: "#059669",
     statusLabel: "Гарантия активна",
@@ -21,7 +21,7 @@ export const WARRANTY_TEMPLATE_PRESETS: Record<WarrantyTemplateId, WarrantyTempl
   contract_transmission: {
     id: "contract_transmission",
     name: "Контрактная АКПП",
-    months: 3,
+    days: 90,
     km: 5_000,
     statusColor: "#2563eb",
     statusLabel: "Гарантия на КПП",
@@ -37,7 +37,7 @@ export const WARRANTY_TEMPLATE_PRESETS: Record<WarrantyTemplateId, WarrantyTempl
   contract_starter: {
     id: "contract_starter",
     name: "Контрактный стартер",
-    months: 3,
+    days: 90,
     km: 8_000,
     statusColor: "#7c3aed",
     statusLabel: "Гарантия на стартер",
@@ -47,7 +47,7 @@ export const WARRANTY_TEMPLATE_PRESETS: Record<WarrantyTemplateId, WarrantyTempl
   contract_alternator: {
     id: "contract_alternator",
     name: "Контрактный генератор",
-    months: 3,
+    days: 90,
     km: 8_000,
     statusColor: "#d97706",
     statusLabel: "Гарантия на генератор",
@@ -57,7 +57,7 @@ export const WARRANTY_TEMPLATE_PRESETS: Record<WarrantyTemplateId, WarrantyTempl
   no_warranty: {
     id: "no_warranty",
     name: "Без гарантии",
-    months: 0,
+    days: 0,
     km: 0,
     statusColor: "#6b7280",
     statusLabel: "Без гарантийных обязательств",
@@ -67,7 +67,7 @@ export const WARRANTY_TEMPLATE_PRESETS: Record<WarrantyTemplateId, WarrantyTempl
   custom: {
     id: "custom",
     name: "Своя гарантия",
-    months: 6,
+    days: 180,
     km: 10_000,
     statusColor: "#111827",
     statusLabel: "Индивидуальные условия",

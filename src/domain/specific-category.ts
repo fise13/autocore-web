@@ -1,3 +1,5 @@
+import type { InventoryGroupId, InventorySubcategoryId } from "@/domain/inventory-taxonomy";
+
 export type SpecificColumnKind = "canonical" | "custom";
 
 export type SpecificColumnDef = {
@@ -15,6 +17,8 @@ export type SpecificCategoryEntity = {
   localId: number;
   name: string;
   companyId: string;
+  groupId: InventoryGroupId;
+  subcategoryId?: InventorySubcategoryId;
   columnSchema: SpecificColumnDef[];
 };
 

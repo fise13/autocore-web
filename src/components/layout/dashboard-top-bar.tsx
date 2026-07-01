@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
@@ -14,8 +14,8 @@ import {
   Upload,
 } from "lucide-react";
 
-import { AccountMenu } from "@/components/account/account-menu";
 import { AppBreadcrumbs } from "@/components/app-breadcrumbs";
+import { AccountMenu } from "@/components/account/account-menu";
 import { AppLogo } from "@/components/brand/app-logo";
 import { useDashboardLayout } from "@/components/layout/dashboard-layout-context";
 import {
@@ -25,6 +25,7 @@ import {
 import { WorkspaceSearchField } from "@/components/layout/workspace-search-field";
 import { MotorImportTriggerButton } from "@/components/motors/motor-import-trigger-button";
 import { WarehouseImportTriggerButton } from "@/components/warehouse/warehouse-import-trigger-button";
+import { WarehouseTopBarSelector } from "@/components/warehouse/warehouse-top-bar-selector";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
@@ -40,14 +41,17 @@ import { MotorAvailability } from "@/infrastructure/firestore/motor-repository";
 import { useSpecificCategoriesRealtime } from "@/hooks/use-specific-categories-realtime";
 import { createSpecificCategoryRepository } from "@/infrastructure/firestore/specific-category-repository";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { businessNavCopy, inventoryCollectionLabel } from "@/lib/navigation/business-nav-copy";
+import { parseCollectionFromSearchParams } from "@/lib/navigation/inventory-collections";
+import { pinnedFilterMeta } from "@/lib/navigation/pinned-filters";
 
 const specificCategoryRepository = createSpecificCategoryRepository();
 
 const WORKSPACE_TITLES: Partial<Record<SidebarMode, string>> = {
-  motors: "Все моторы",
-  sold: "Проданные",
-  specific: "Специфичные",
-  warehouse: "Склад",
+  motors: businessNavCopy.inventoryCollection.engines,
+  sold: businessNavCopy.business.sales,
+  specific: "Склад",
+  warehouse: businessNavCopy.inventoryCollection.consumables,
 };
 
 const availabilityOptions: { value: MotorAvailability; label: string }[] = [
@@ -119,6 +123,7 @@ function AnimatedSlot({
 
 export function DashboardTopBar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { profile } = useAuth();
   const { sidebarCollapsed, toggleSidebar, toggleMobileSidebar } = useDashboardLayout();
   const {
@@ -156,10 +161,21 @@ export function DashboardTopBar() {
   const isWarehouseRoute = pathname === "/warehouse";
   const isSoldRoute = pathname === "/sold";
   const isMissionControlRoute = pathname === "/";
+  const collectionContext = parseCollectionFromSearchParams(searchParams, pathname);
   const workspaceTitle =
     isSpecificView && selectedSpecificCategory
-      ? selectedSpecificCategory.name
-      : WORKSPACE_TITLES[sidebarMode];
+      ? `Склад · ${selectedSpecificCategory.name}`
+      : isWarehouseRoute
+        ? businessNavCopy.inventoryCollection.consumables
+        : isSoldRoute
+          ? businessNavCopy.business.sales
+          : isMotorsRoute
+            ? `Склад · ${inventoryCollectionLabel(collectionContext.collection)}${
+                collectionContext.filter
+                  ? ` · ${pinnedFilterMeta(collectionContext.filter).label}`
+                  : ""
+              }`
+            : WORKSPACE_TITLES[sidebarMode];
   const showAvailabilityFilter = (pathname === "/motors" || isSpecificView) && !isSoldRoute;
   const showExcelIo = (isMotorRoute || isWarehouseRoute) && !isSpecificView;
   const canViewMotors = canAccessMotorsArea(profile);
@@ -235,12 +251,13 @@ export function DashboardTopBar() {
           variant="ghost"
           size="icon-sm"
           onClick={toggleSidebar}
-          title="Свернуть боковую панель (⌘B)"
+          title={sidebarCollapsed ? "Развернуть боковую панель (⌘B)" : "Свернуть боковую панель (⌘B)"}
+          aria-label={sidebarCollapsed ? "Развернуть боковую панель" : "Свернуть боковую панель"}
           className="hidden md:inline-flex"
         >
           <PanelLeft
             className={cn(
-              "size-4 transition-transform duration-200 ease-linear motion-reduce:transition-none",
+              "size-4 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
               sidebarCollapsed && "rotate-180",
             )}
           />
@@ -250,7 +267,7 @@ export function DashboardTopBar() {
           {isMissionControlRoute ? (
             <AppBreadcrumbs
               page={{
-                title: "Центр управления",
+                title: businessNavCopy.workspace.dashboard,
                 icon: <Radar className="size-3.5" />,
               }}
             />
@@ -273,6 +290,8 @@ export function DashboardTopBar() {
           className="flex w-full items-center justify-center gap-3 px-1"
         >
           <DashboardImportProgress variant="compact" />
+
+          {isWarehouseRoute ? <WarehouseTopBarSelector /> : null}
 
           {showAvailabilityFilter ? (
             <div className="autocore-segmented-tabs inline-flex rounded-lg p-0.5">
@@ -404,6 +423,7 @@ export function DashboardTopBar() {
               size="icon-sm"
               title="Настройки"
               render={<Link href="/settings" />}
+              nativeButton={false}
             >
               <Settings className="size-4" />
             </Button>
@@ -413,6 +433,7 @@ export function DashboardTopBar() {
               size="sm"
               className="text-muted-foreground"
               render={<Link href="/settings" />}
+              nativeButton={false}
             >
               Настройки
             </Button>

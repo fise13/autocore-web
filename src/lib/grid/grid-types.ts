@@ -33,6 +33,8 @@ export type GridColumnDefinition = {
   editable: boolean;
   align?: "left" | "center";
   modelField?: "serialCode" | "configuration" | "notes" | "quantity" | "transmission" | "arrivalDate" | "soldDate" | string;
+  /** When set, the cell editor opens the Domain autocomplete for this category. */
+  domainCategory?: import("@/lib/domain/types").DomainCategory;
 };
 
 export function makeSingleCellRange(cell: GridCellAddress): GridRange {

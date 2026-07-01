@@ -17,7 +17,6 @@ import {
 
 import { AnimatedSidebarSlot } from "@/components/layout/animated-sidebar-slot";
 import { WorkOrdersSidebarContext } from "@/components/work-orders/work-orders-sidebar-context";
-import { WarehouseSidebarContext } from "@/components/warehouse/warehouse-sidebar-context";
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -191,9 +190,7 @@ function SidebarContextContent({ mode }: SidebarContextPanelProps) {
 
   if (mode === "warehouse") {
     return (
-      <>
-        <WarehouseSidebarContext />
-        <PanelSection title="Действия">
+      <PanelSection title="Действия">
         <ActionButton
           icon={Barcode}
           label="Сканер штрихкода"
@@ -222,7 +219,6 @@ function SidebarContextContent({ mode }: SidebarContextPanelProps) {
           Приход, продажа и перемещение — через контекстное меню строки.
         </p>
         </PanelSection>
-      </>
     );
   }
 

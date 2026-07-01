@@ -15,6 +15,12 @@ import {
   SpecificRecordEntity,
 } from "@/infrastructure/firestore/specific-category-repository";
 import {
+  isInventoryGroupId,
+  isInventorySubcategoryId,
+  resolveGroupForCategoryName,
+  resolveSubcategoryForCategoryName,
+} from "@/domain/inventory-taxonomy";
+import {
   createDefaultColumnSchema,
   normalizeColumnSchema,
 } from "@/lib/specific/specific-category-schema";
@@ -132,6 +138,14 @@ export async function loadMotorImportServerContext(
 
   const existingSpecificCategories = categoriesSnap.docs.map((item) => {
     const data = item.data() as Record<string, unknown>;
+    const name = String(data.name ?? "");
+    const resolvedSubcategory = resolveSubcategoryForCategoryName(name);
+    const groupId = isInventoryGroupId(data.groupId)
+      ? data.groupId
+      : (resolvedSubcategory?.groupId ?? resolveGroupForCategoryName(name));
+    const subcategoryId = isInventorySubcategoryId(data.subcategoryId)
+      ? data.subcategoryId
+      : resolvedSubcategory?.id;
     const rawSchema = data.columnSchema;
     const columnSchema =
       Array.isArray(rawSchema) && rawSchema.length > 0
@@ -140,8 +154,10 @@ export async function loadMotorImportServerContext(
     return {
       id: item.id,
       localId: readNumber(data.localId ?? data.id),
-      name: String(data.name ?? ""),
+      name,
       companyId: String(data.companyId ?? normalizedCompanyId),
+      groupId,
+      subcategoryId,
       columnSchema,
     };
   });
@@ -266,27 +282,38 @@ export function createAdminMotorImportRepositories(uid: string, companyId: strin
     ): Promise<SpecificCategoryEntity> {
       void actorUid;
       const trimmed = name.trim();
+      const resolvedSubcategory = resolveSubcategoryForCategoryName(trimmed);
+      const groupId = resolvedSubcategory?.groupId ?? resolveGroupForCategoryName(trimmed);
       const match = existing.find(
-        (item) => item.name.localeCompare(trimmed, "ru", { sensitivity: "accent" }) === 0,
+        (item) =>
+          item.groupId === groupId &&
+          item.name.localeCompare(trimmed, "ru", { sensitivity: "accent" }) === 0,
       );
       if (match) return match;
 
       const localId = nextLocalId(existing);
       const docId = scopedCategoryDocumentId(normalizedCompanyId, localId);
       const columnSchema = normalizeColumnSchema(createDefaultColumnSchema());
-      await db.collection("specificCategories").doc(docId).set({
+      const payload: Record<string, unknown> = {
         companyId: normalizedCompanyId,
         localId,
         name: trimmed,
+        groupId,
         columnSchema,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
-      });
+      };
+      if (resolvedSubcategory) {
+        payload.subcategoryId = resolvedSubcategory.id;
+      }
+      await db.collection("specificCategories").doc(docId).set(payload);
       return {
         id: docId,
         localId,
         name: trimmed,
         companyId: normalizedCompanyId,
+        groupId,
+        subcategoryId: resolvedSubcategory?.id,
         columnSchema,
       };
     },
