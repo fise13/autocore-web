@@ -24,8 +24,13 @@ import { userCopy } from "@/lib/user-copy";
 
 type Phase = "input" | "success";
 
-export function EmailVerificationStep() {
-  const { firebaseUser, sendEmailVerification, verifyEmailWithCode, logout } = useAuth();
+type EmailVerificationStepProps = {
+  onVerified?: () => void;
+};
+
+export function EmailVerificationStep({ onVerified }: EmailVerificationStepProps) {
+  const { firebaseUser, sendEmailVerification, verifyEmailWithCode, reloadFirebaseUser, logout } =
+    useAuth();
   const [phase, setPhase] = useState<Phase>("input");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +72,7 @@ export function EmailVerificationStep() {
         if (verified) {
           setPhase("success");
           setStatus(userCopy.auth.verifyEmailSuccess);
+          window.setTimeout(() => onVerified?.(), 420);
           return;
         }
         setStatus(userCopy.auth.verifyEmailNotYet);
@@ -88,7 +94,29 @@ export function EmailVerificationStep() {
     return () => {
       cancelled = true;
     };
-  }, [code, verifyEmailWithCode]);
+  }, [code, onVerified, verifyEmailWithCode]);
+
+  useEffect(() => {
+    if (phase !== "success") return;
+
+    let cancelled = false;
+    let attempts = 0;
+
+    const sync = async () => {
+      if (cancelled || attempts > 12) return;
+      attempts += 1;
+      await reloadFirebaseUser().catch(() => false);
+      if (!cancelled) {
+        window.setTimeout(() => void sync(), 400);
+      }
+    };
+
+    void sync();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [phase, reloadFirebaseUser]);
 
   async function onResend() {
     setBusy(true);
@@ -119,6 +147,10 @@ export function EmailVerificationStep() {
           <AuthJourneySuccessCard
             title={userCopy.auth.verifyEmailSuccessTitle}
             description={userCopy.auth.verifyEmailSuccess}
+          />
+          <Loader2
+            className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none"
+            aria-hidden
           />
         </motion.div>
       ) : (

@@ -2,7 +2,7 @@ import { marketingSiteContent } from "@/components/marketing/content/marketing-s
 import { PricingExperience } from "@/components/marketing/pricing/pricing-experience";
 import { MarketingExtraJsonLd } from "@/components/marketing/seo/marketing-json-ld";
 import { buildMarketingMetadata } from "@/lib/seo/build-marketing-metadata";
-import { buildBreadcrumbJsonLd, buildFaqJsonLd } from "@/lib/seo/marketing-seo";
+import { buildBreadcrumbJsonLd, buildFaqJsonLd, buildPricingOfferJsonLd } from "@/lib/seo/marketing-seo";
 import { buildWebPageJsonLd } from "@/lib/seo/build-webpage-jsonld";
 
 const copy = marketingSiteContent.pricing;
@@ -18,6 +18,7 @@ export default function PricingPage() {
         extra={[
           buildWebPageJsonLd("pricing"),
           buildBreadcrumbJsonLd("pricing"),
+          buildPricingOfferJsonLd(),
           buildFaqJsonLd([...copy.faq]),
         ]}
       />

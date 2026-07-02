@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
+import { hasEmailVerificationComplete } from "@/lib/performance/session-flags";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +33,10 @@ export function EmailVerificationGate({ children }: EmailVerificationGateProps) 
 
   const provider = firebaseUser ? getAccountProviderInfo(firebaseUser) : null;
   const needsVerification =
-    Boolean(firebaseUser) && provider?.kind === "email" && !firebaseUser?.emailVerified;
+    Boolean(firebaseUser) &&
+    provider?.kind === "email" &&
+    !firebaseUser?.emailVerified &&
+    !hasEmailVerificationComplete(firebaseUser?.uid ?? "");
 
   useEffect(() => {
     if (!needsVerification || autoSentRef.current) return;

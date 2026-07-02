@@ -44,6 +44,7 @@ export type SidebarCustomization = {
 };
 
 export const SIDEBAR_CUSTOMIZATION_STORAGE_KEY = "autocore-sidebar-customization-v1";
+const WAREHOUSE_NAV_MIGRATION_KEY = "autocore-sidebar-warehouse-nav-v2";
 
 export const DEFAULT_BLOCK_ORDER: SidebarBlockId[] = [
   "navigation",
@@ -140,7 +141,7 @@ export const DEFAULT_SIDEBAR_CUSTOMIZATION: SidebarCustomization = {
     work_orders: { enabled: true },
     my_earnings: { enabled: true },
     accounting: { enabled: true },
-    warehouse: { enabled: false },
+    warehouse: { enabled: true },
   },
 };
 
@@ -201,7 +202,25 @@ export function readSidebarCustomization(): SidebarCustomization {
   try {
     const raw = localStorage.getItem(SIDEBAR_CUSTOMIZATION_STORAGE_KEY);
     if (!raw) return DEFAULT_SIDEBAR_CUSTOMIZATION;
-    return normalizeSidebarCustomization(JSON.parse(raw) as Partial<SidebarCustomization>);
+    let customization = normalizeSidebarCustomization(JSON.parse(raw) as Partial<SidebarCustomization>);
+
+    // Consumables live under inventory nav and share the warehouse toggle.
+    // v1 shipped with warehouse disabled — restore visibility once per browser.
+    if (!localStorage.getItem(WAREHOUSE_NAV_MIGRATION_KEY)) {
+      localStorage.setItem(WAREHOUSE_NAV_MIGRATION_KEY, "1");
+      if (customization.navItems.warehouse?.enabled === false) {
+        customization = {
+          ...customization,
+          navItems: {
+            ...customization.navItems,
+            warehouse: { enabled: true },
+          },
+        };
+        writeSidebarCustomization(customization);
+      }
+    }
+
+    return customization;
   } catch {
     return DEFAULT_SIDEBAR_CUSTOMIZATION;
   }

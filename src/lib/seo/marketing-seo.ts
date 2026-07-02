@@ -18,6 +18,11 @@ export const MARKETING_BRAND = {
   themeColor: "#0a0a0a",
 } as const;
 
+const marketingUrl = getMarketingUrl();
+const appUrl = getAppUrl();
+const supportUrl = `${marketingUrl.replace(/\/$/, "")}/contact`;
+const defaultOgImage = `${marketingUrl.replace(/\/$/, "")}/opengraph-image`;
+
 /** Human-readable titles for breadcrumb JSON-LD. */
 const MARKETING_BREADCRUMB_TITLES: Record<MarketingPathKey, string> = {
   home: "Главная",
@@ -99,8 +104,8 @@ export const MARKETING_SEO_PAGES: Record<MarketingPathKey, MarketingSeoPageConfi
     key: "download",
     title: "Скачать AutoCore — desktop, web и mobile в одной экосистеме",
     description:
-      "Установите AutoCore на Windows и macOS или откройте в браузере и на телефоне. Один аккаунт, синхронизация склада и нарядов в реальном времени.",
-    keywords: ["скачать AutoCore", "программа для автосервиса mac", "desktop авторазборка", "синхронизация склад"],
+      "Установите AutoCore на Windows или откройте в браузере и на телефоне. Один аккаунт, синхронизация склада и нарядов в реальном времени.",
+    keywords: ["скачать AutoCore", "desktop авторазборка", "веб программа для автосервиса", "синхронизация склад"],
   },
   downloadMobile: {
     key: "downloadMobile",
@@ -171,19 +176,25 @@ export function buildFaqJsonLd(items: ReadonlyArray<{ readonly q: string; readon
 }
 
 export function buildMarketingJsonLd() {
-  const marketingUrl = getMarketingUrl();
-  const appUrl = getAppUrl();
-
   return [
     {
       "@context": "https://schema.org",
       "@type": "Organization",
+      "@id": `${marketingUrl}#organization`,
       name: MARKETING_BRAND.name,
       url: marketingUrl,
       logo: `${marketingUrl}/icon`,
       description: MARKETING_BRAND.shortDescription,
       email: MARKETING_BRAND.supportEmail,
       telephone: MARKETING_BRAND.supportPhone,
+      contactPoint: {
+        "@type": "ContactPoint",
+        contactType: "customer support",
+        email: MARKETING_BRAND.supportEmail,
+        telephone: MARKETING_BRAND.supportPhone,
+        url: supportUrl,
+        availableLanguage: ["ru"],
+      },
       areaServed: { "@type": "Country", name: "RU" },
       knowsAbout: [
         "авторазборка",
@@ -196,21 +207,24 @@ export function buildMarketingJsonLd() {
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
+      "@id": `${marketingUrl}#website`,
       name: MARKETING_BRAND.name,
       url: marketingUrl,
       description: MARKETING_BRAND.shortDescription,
       inLanguage: MARKETING_BRAND.language,
-      publisher: { "@type": "Organization", name: MARKETING_BRAND.name },
+      publisher: { "@id": `${marketingUrl}#organization` },
     },
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
+      "@id": `${marketingUrl}#software`,
       name: MARKETING_BRAND.name,
       applicationCategory: "BusinessApplication",
       applicationSubCategory: "Automotive repair shop management software",
-      operatingSystem: "Web, iOS, macOS, Windows",
+      operatingSystem: "Web, iOS, Windows",
       description: MARKETING_BRAND.shortDescription,
       inLanguage: MARKETING_BRAND.language,
+      image: defaultOgImage,
       offers: {
         "@type": "Offer",
         price: "0",
@@ -218,7 +232,7 @@ export function buildMarketingJsonLd() {
         description: "14-дневный пробный период",
       },
       url: appUrl,
-      downloadUrl: marketingAbsoluteUrl("home"),
+      downloadUrl: marketingAbsoluteUrl("download"),
       audience: {
         "@type": "BusinessAudience",
         audienceType: "Авторазборки, автосервисы, магазины автозапчастей",
@@ -233,4 +247,96 @@ export function buildMarketingJsonLd() {
       ],
     },
   ];
+}
+
+export function buildCollectionPageJsonLd(
+  key: MarketingPathKey,
+  name: string,
+  description: string,
+  items?: ReadonlyArray<string>,
+) {
+  const url = marketingAbsoluteUrl(key);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "@id": `${url}#collection`,
+    url,
+    name,
+    description,
+    isPartOf: { "@id": `${marketingUrl}#website` },
+    ...(items?.length
+      ? {
+          mainEntity: {
+            "@type": "ItemList",
+            itemListElement: items.map((item, index) => ({
+              "@type": "ListItem",
+              position: index + 1,
+              name: item,
+            })),
+          },
+        }
+      : {}),
+  };
+}
+
+export function buildContactPageJsonLd() {
+  const url = marketingAbsoluteUrl("contact");
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "ContactPage",
+    "@id": `${url}#contact-page`,
+    url,
+    name: "Связаться с AutoCore",
+    description: "Контакты AutoCore для демо, продаж, поддержки и партнёрств.",
+    isPartOf: { "@id": `${marketingUrl}#website` },
+    about: { "@id": `${marketingUrl}#organization` },
+    mainEntity: {
+      "@type": "Organization",
+      "@id": `${marketingUrl}#organization`,
+      name: MARKETING_BRAND.name,
+      email: MARKETING_BRAND.supportEmail,
+      telephone: MARKETING_BRAND.supportPhone,
+      url: supportUrl,
+    },
+  };
+}
+
+export function buildPricingOfferJsonLd() {
+  const url = marketingAbsoluteUrl("pricing");
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Offer",
+    "@id": `${url}#offer`,
+    url,
+    category: "SaaS subscription",
+    price: "15",
+    priceCurrency: "USD",
+    priceSpecification: {
+      "@type": "UnitPriceSpecification",
+      price: "15",
+      priceCurrency: "USD",
+      billingDuration: "P1M",
+      referenceQuantity: {
+        "@type": "QuantitativeValue",
+        value: 1,
+        unitText: "company",
+      },
+    },
+    eligibleDuration: {
+      "@type": "QuantitativeValue",
+      value: 14,
+      unitCode: "DAY",
+    },
+    itemOffered: {
+      "@type": "SoftwareApplication",
+      "@id": `${marketingUrl}#software`,
+      name: MARKETING_BRAND.name,
+    },
+    seller: { "@id": `${marketingUrl}#organization` },
+    availability: "https://schema.org/InStock",
+    description: "Полный доступ к AutoCore для одной компании с 14-дневным пробным периодом.",
+  };
 }

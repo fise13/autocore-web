@@ -190,7 +190,7 @@ export const siteContent = {
         x: 2220,
         y: 240,
         question: "Веб и native?",
-        answer: "Один UI: браузер, macOS, iPhone — одна модель, не три продукта.",
+        answer: "Один UI: браузер, desktop и iPhone — одна модель, не три продукта.",
         href: `${marketingRoutes.home}#platform`,
         hrefLabel: "Платформы",
       },
@@ -309,7 +309,7 @@ export const siteContent = {
   },
   platform: {
     title: "Одна экосистема",
-    items: ["Веб — полная глубина", "macOS — native + hotkeys", "iPhone — пол и склад"],
+    items: ["Веб — полная глубина", "Desktop — hotkeys + realtime", "iPhone — пол и склад"],
   },
   faq: [
     {

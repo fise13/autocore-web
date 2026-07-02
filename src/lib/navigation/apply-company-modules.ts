@@ -21,7 +21,7 @@ export function applyCompanyModulesToSidebar(
       sold: { enabled: modules.motors },
       work_orders: { enabled: modules.workOrders },
       accounting: { enabled: modules.accounting },
-      warehouse: { enabled: false },
+      warehouse: { enabled: modules.warehouse },
     },
     blocks: {
       ...customization.blocks,

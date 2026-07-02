@@ -2,7 +2,7 @@ import { DownloadExperience } from "@/components/marketing/download/download-exp
 import { marketingSiteContent } from "@/components/marketing/content/marketing-site-content";
 import { MarketingExtraJsonLd } from "@/components/marketing/seo/marketing-json-ld";
 import { buildMarketingMetadata } from "@/lib/seo/build-marketing-metadata";
-import { buildBreadcrumbJsonLd, buildFaqJsonLd } from "@/lib/seo/marketing-seo";
+import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd, buildFaqJsonLd } from "@/lib/seo/marketing-seo";
 import { buildWebPageJsonLd } from "@/lib/seo/build-webpage-jsonld";
 
 const copy = marketingSiteContent.download;
@@ -18,6 +18,12 @@ export default function DownloadPage() {
         extra={[
           buildWebPageJsonLd("download"),
           buildBreadcrumbJsonLd("download"),
+          buildCollectionPageJsonLd(
+            "download",
+            "Скачать AutoCore",
+            copy.meta.description,
+            copy.platforms.map((platform) => platform.title),
+          ),
           buildFaqJsonLd([...copy.faq]),
         ]}
       />

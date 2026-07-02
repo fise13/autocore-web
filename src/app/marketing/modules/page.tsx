@@ -3,7 +3,8 @@ import { MarketingExtraJsonLd } from "@/components/marketing/seo/marketing-json-
 import { MarketingSubpage } from "@/components/marketing/site/marketing-subpage";
 import { ModulesPageContent } from "@/components/marketing/site/modules-page-content";
 import { buildMarketingMetadata } from "@/lib/seo/build-marketing-metadata";
-import { buildBreadcrumbJsonLd } from "@/lib/seo/marketing-seo";
+import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/seo/marketing-seo";
+import { buildWebPageJsonLd } from "@/lib/seo/build-webpage-jsonld";
 
 const copy = marketingSiteContent.modules;
 
@@ -14,7 +15,18 @@ export const revalidate = 3600;
 export default function ModulesPage() {
   return (
     <>
-      <MarketingExtraJsonLd extra={buildBreadcrumbJsonLd("modules")} />
+      <MarketingExtraJsonLd
+        extra={[
+          buildWebPageJsonLd("modules"),
+          buildBreadcrumbJsonLd("modules"),
+          buildCollectionPageJsonLd(
+            "modules",
+            "Каталог модулей AutoCore",
+            copy.meta.description,
+            copy.items.map((item) => item.title),
+          ),
+        ]}
+      />
       <MarketingSubpage
         title="Каталог модулей для авторазборок и автосервисов"
         description={copy.meta.description}

@@ -115,7 +115,7 @@ function DesktopDownloadBadge({
   onUnavailable,
 }: DesktopDownloadBadgeProps) {
   const isMac = platform === "mac";
-  const label = isMac ? "Mac OS" : "Windows";
+  const label = isMac ? "Desktop" : "Windows";
   const className = cn(
     "desktop-download-badge",
     mini && "is-mini",
@@ -240,7 +240,7 @@ export function DesktopDownloadHint({ className }: { className?: string }) {
   return (
     <p className={cn("text-sm text-muted-foreground", className)}>
       <Download className="me-1.5 inline size-3.5 opacity-70" aria-hidden />
-      Установщики для macOS (.dmg) и Windows (.exe). После установки войдите через браузер или Apple ID.
+      Установщики для desktop-приложения и Windows. После установки войдите через браузер или Apple ID.
     </p>
   );
 }

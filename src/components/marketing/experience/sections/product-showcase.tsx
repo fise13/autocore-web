@@ -33,14 +33,14 @@ export function ProductShowcase() {
     <section className="exp-section">
       <div className="exp-section-inner">
         <SectionIntro title={copy.title} description={copy.description} />
-        <div className="mt-8 flex flex-wrap gap-2">
+        <div className="exp-showcase-tabs mt-8 flex flex-wrap gap-2">
           {copy.scenes.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => setScene(item.id)}
               className={cn(
-                "cursor-pointer rounded-full border px-4 py-2 text-sm transition-colors duration-200",
+                "exp-showcase-tab cursor-pointer rounded-full border px-4 py-2 text-sm transition-colors duration-200",
                 scene === item.id
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground",

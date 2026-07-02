@@ -173,6 +173,6 @@ export const productContent = {
     primary: "Начать бесплатно",
     secondary: "Скачать приложение",
     secondaryHref: marketingRoutes.download,
-    trust: ["14 дней бесплатно", "Без карты", "Демо-компания", "Windows и macOS"],
+    trust: ["14 дней бесплатно", "Без карты", "Демо-компания", "Windows и desktop"],
   },
 } as const;

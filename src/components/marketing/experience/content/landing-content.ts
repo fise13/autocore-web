@@ -90,7 +90,7 @@ export const landingContent = {
       { label: "14 дней бесплатно", icon: "calendar" as const },
       { label: "Без карты", icon: "card" as const },
       { label: "Демо-компания", icon: "building" as const },
-      { label: "Windows и macOS", icon: "desktop" as const },
+      { label: "Windows и desktop", icon: "desktop" as const },
     ],
   },
 } as const;

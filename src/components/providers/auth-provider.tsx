@@ -73,6 +73,10 @@ import {
 } from "@/lib/motion/auth-session-transition";
 import { prefersReducedMotion } from "@/lib/motion/cross-route-transition";
 import {
+  clearEmailVerificationComplete,
+  markEmailVerificationComplete,
+} from "@/lib/performance/session-flags";
+import {
   describeFirebaseUser,
   logAuthDebug,
 } from "@/lib/auth/auth-debug";
@@ -290,6 +294,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [refreshProfile]);
 
   useEffect(() => {
+    const uid = firebaseUser?.uid;
+    if (!uid || !firebaseUser.emailVerified) return;
+    clearEmailVerificationComplete(uid);
+  }, [firebaseUser?.emailVerified, firebaseUser?.uid]);
+
+  useEffect(() => {
     if (!isFirebaseReady) {
       return;
     }
@@ -480,10 +490,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (!user) throw new Error(mapAuthError(new Error("auth/invalid-credential")));
         assertEmailProvider(user);
         await verifyEmailCodeViaApi(user, code);
-        await user.reload();
-        await user.getIdToken(true);
+        markEmailVerificationComplete(user.uid);
+
+        const syncVerifiedUser = async (): Promise<boolean> => {
+          const current = auth.currentUser;
+          if (!current) return false;
+          await current.reload();
+          await current.getIdToken(true);
+          const refreshed = auth.currentUser;
+          if (!refreshed?.emailVerified) return false;
+          setFirebaseUser(refreshed);
+          return true;
+        };
+
+        if (await syncVerifiedUser()) {
+          clearEmailVerificationComplete(user.uid);
+          return true;
+        }
+
+        for (let attempt = 0; attempt < 6; attempt += 1) {
+          await new Promise((resolve) => window.setTimeout(resolve, 350));
+          if (await syncVerifiedUser()) {
+            clearEmailVerificationComplete(user.uid);
+            return true;
+          }
+        }
+
         setFirebaseUser(auth.currentUser);
-        return Boolean(auth.currentUser?.emailVerified);
+        return true;
       },
       async reloadFirebaseUser() {
         if (!isFirebaseReady) return false;

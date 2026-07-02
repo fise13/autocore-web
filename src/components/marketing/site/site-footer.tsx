@@ -26,9 +26,9 @@ export function SiteFooter() {
 
   return (
     <footer className="exp-site-footer mt-auto border-t border-border/60">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-12 sm:px-6 md:py-14">
-        <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
-          <div className="flex max-w-sm flex-col gap-4">
+      <div className="exp-site-footer-inner mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-12 sm:px-6 md:py-14">
+        <div className="exp-site-footer-top flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
+          <div className="exp-site-footer-brand flex max-w-sm flex-col gap-4">
             <Link href={marketingRoutes.home} className="inline-flex w-fit items-center gap-2.5">
               <AppLogo size={28} />
               <span className="text-sm font-semibold tracking-tight">AutoCore</span>
@@ -37,7 +37,7 @@ export function SiteFooter() {
             <DesktopDownloadIcons size="mini" />
           </div>
 
-          <nav aria-label="Подвал" className="grid grid-cols-2 gap-x-8 gap-y-2 sm:grid-cols-4">
+          <nav aria-label="Подвал" className="exp-site-footer-nav grid grid-cols-2 gap-x-8 gap-y-2 sm:grid-cols-4">
             {FOOTER_LINKS.map((link) => (
               <Link
                 key={link.href}
@@ -50,9 +50,9 @@ export function SiteFooter() {
           </nav>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-border/50 pt-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <div className="exp-site-footer-bottom flex flex-col gap-3 border-t border-border/50 pt-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>© {year} AutoCore</p>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <div className="exp-site-footer-meta flex flex-wrap items-center gap-x-4 gap-y-1">
             <a href={contacts.mailtoHref} className="hover:text-foreground">
               {contacts.email}
             </a>

@@ -53,6 +53,7 @@ export const marketingSitemapEntries: Array<{
   { key: "security", changeFrequency: "monthly", priority: 0.8 },
   { key: "contact", changeFrequency: "monthly", priority: 0.7 },
   { key: "download", changeFrequency: "monthly", priority: 0.75 },
+  { key: "downloadMobile", changeFrequency: "monthly", priority: 0.7 },
   { key: "privacy", changeFrequency: "yearly", priority: 0.4 },
   { key: "terms", changeFrequency: "yearly", priority: 0.4 },
 ];

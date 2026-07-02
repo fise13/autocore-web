@@ -82,11 +82,11 @@ export const marketingSiteContent = {
       ],
     },
     platforms: {
-      title: "Веб, macOS и iPhone",
+      title: "Веб, desktop и iPhone",
       description: "Один интерфейс и одна модель данных на всех устройствах.",
       items: [
         { name: "Веб", detail: "Полный Mission Control и все модули в браузере — для офиса и администратора." },
-        { name: "macOS", detail: "Нативное приложение с горячими клавишами для склада и realtime-синхронизацией." },
+        { name: "Desktop", detail: "Приложение с горячими клавишами для склада и realtime-синхронизацией." },
         { name: "iPhone", detail: "Сканирование, остатки, наряды и согласования прямо с пола." },
       ],
     },
@@ -401,7 +401,7 @@ export const marketingSiteContent = {
     meta: {
       title: "Скачать",
       description:
-        "AutoCore на Windows, macOS, в браузере и на телефоне. Один аккаунт, одно пространство, синхронизация в реальном времени.",
+        "AutoCore на Windows, в браузере и на телефоне. Один аккаунт, одно пространство, синхронизация в реальном времени.",
     },
     hero: {
       titleLine1: "Одно пространство.",
@@ -419,9 +419,9 @@ export const marketingSiteContent = {
       },
       {
         id: "mac",
-        title: "macOS",
-        description: "Приложение для Mac. Тот же интерфейс, что в браузере и на телефоне.",
-        action: "Скачать для macOS",
+        title: "Desktop",
+        description: "Десктопное приложение. Тот же интерфейс, что в браузере и на телефоне.",
+        action: "Скачать desktop-приложение",
         kind: "mac",
       },
       {
@@ -458,7 +458,7 @@ export const marketingSiteContent = {
     requirements: {
       title: "Системные требования",
       items: [
-        { platform: "macOS", detail: "Monterey 12 или новее, Apple Silicon или Intel" },
+        { platform: "Desktop", detail: "Современное десктопное приложение для вашей рабочей среды" },
         { platform: "Windows", detail: "Windows 10 или 11, 64-bit" },
         { platform: "Web", detail: "Актуальные Chrome, Safari, Firefox или Edge" },
         { platform: "Mobile", detail: "iOS 15+ или Android 10+ в браузере" },
@@ -466,8 +466,8 @@ export const marketingSiteContent = {
     },
     faq: [
       {
-        q: "Как установить на macOS?",
-        a: "Скачайте .dmg, откройте файл и перетащите AutoCore в папку «Программы». Запустите приложение и войдите через тот же аккаунт, что в браузере.",
+        q: "Как установить desktop-приложение?",
+        a: "Скачайте установщик, откройте файл и завершите установку. Затем войдите через тот же аккаунт, что и в браузере.",
       },
       {
         q: "Как установить на Windows?",
@@ -532,7 +532,7 @@ export const marketingSiteContent = {
       },
       {
         q: "Нужен программист для внедрения?",
-        a: "Нет. Браузер на app.myautocore.com, регистрация, приглашение команды. Есть macOS, Windows и iPhone с тем же интерфейсом.",
+        a: "Нет. Браузер на app.myautocore.com, регистрация, приглашение команды. Есть desktop, Windows и iPhone с тем же интерфейсом.",
       },
       {
         q: "Как устроена безопасность?",

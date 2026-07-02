@@ -5,6 +5,7 @@ import { Check, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { AppLogo } from "@/components/brand/app-logo";
+import { CompanyPlanLabel } from "@/components/billing/company-plan-label";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -145,7 +146,7 @@ export function CompanySwitcherMenu({ onClose, variant = "dropdown" }: CompanySw
           <CompanyAvatar companyId={company.companyId} name={company.name} size="sm" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">{company.name}</p>
-            <p className="text-xs text-muted-foreground">{userCopy.billing.planFree}</p>
+            <CompanyPlanLabel isActiveCompany={active} />
           </div>
           {active ? <Check className="shrink-0 text-foreground" /> : null}
         </>

@@ -15,7 +15,7 @@ import {
   AUTH_JOURNEY_STEP_LABELS,
   useAuthJourneyStep,
 } from "@/hooks/use-auth-journey-step";
-import { markWizardCompleted } from "@/lib/performance/session-flags";
+import { markWizardCompleted, hasEmailVerificationComplete } from "@/lib/performance/session-flags";
 import { SETUP_WIZARD_COPY } from "@/lib/onboarding/setup-wizard-copy";
 import { userCopy } from "@/lib/user-copy";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -27,13 +27,22 @@ type AuthJourneyCoordinatorProps = {
 };
 
 export function AuthJourneyCoordinator({ children }: AuthJourneyCoordinatorProps) {
-  const { profile } = useAuth();
+  const { profile, firebaseUser } = useAuth();
   const [savedProfileName, setSavedProfileName] = useState<string | null>(null);
+  const [emailVerifiedHandoff, setEmailVerifiedHandoff] = useState(false);
   const [importDone, setImportDone] = useState(false);
   const [pendingBusinessImport, setPendingBusinessImport] = useState(false);
-  const step = useAuthJourneyStep(savedProfileName);
+  const step = useAuthJourneyStep(savedProfileName, emailVerifiedHandoff);
   const companyId = profile?.companyId?.trim() || null;
   const { config, loaded } = useCompanyAppConfig(companyId);
+
+  useEffect(() => {
+    const uid = firebaseUser?.uid;
+    if (!uid) return;
+    if (hasEmailVerificationComplete(uid)) {
+      setEmailVerifiedHandoff(true);
+    }
+  }, [firebaseUser?.uid]);
 
   useEffect(() => {
     if (config?.onboardingCompleted && companyId) {
@@ -81,7 +90,9 @@ export function AuthJourneyCoordinator({ children }: AuthJourneyCoordinatorProps
       layout="center"
     >
       {step === "loading" ? <AuthJourneyBootStep /> : null}
-      {step === "verify-email" ? <EmailVerificationStep /> : null}
+      {step === "verify-email" ? (
+        <EmailVerificationStep onVerified={() => setEmailVerifiedHandoff(true)} />
+      ) : null}
       {step === "profile-name" ? <ProfileNameStep onSaved={setSavedProfileName} /> : null}
       {step === "company" ? <CompanyOnboardingStep /> : null}
       {step === "setup-wizard" ? (

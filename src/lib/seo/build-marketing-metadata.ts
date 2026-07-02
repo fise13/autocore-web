@@ -11,6 +11,7 @@ import {
 import { getMarketingUrl } from "@/lib/site-urls";
 
 type BuildMarketingMetadataOverrides = Partial<Omit<MarketingSeoPageConfig, "key">>;
+const defaultOgImagePath = "/opengraph-image";
 
 /** Search-console verification, opt-in via env (Google Search Console / Yandex Webmaster). */
 function marketingVerification(): Metadata["verification"] | undefined {
@@ -56,11 +57,20 @@ export function buildMarketingMetadata(
       title: ogTitle,
       description: page.description,
       url: canonical,
+      images: [
+        {
+          url: defaultOgImagePath,
+          width: 1200,
+          height: 630,
+          alt: ogTitle,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
       title: ogTitle,
       description: page.description,
+      images: [defaultOgImagePath],
     },
     robots: {
       index: true,
@@ -92,11 +102,28 @@ export function buildMarketingRootMetadata(): Metadata {
     authors: [{ name: MARKETING_BRAND.name, url: marketingUrl }],
     creator: MARKETING_BRAND.name,
     publisher: MARKETING_BRAND.name,
+    manifest: "/manifest.webmanifest",
     formatDetection: { telephone: false, email: false, address: false },
+    referrer: "origin-when-cross-origin",
     appleWebApp: {
       capable: true,
       title: MARKETING_BRAND.name,
       statusBarStyle: "black-translucent",
+    },
+    openGraph: {
+      ...buildMarketingMetadata("home").openGraph,
+      images: [
+        {
+          url: defaultOgImagePath,
+          width: 1200,
+          height: 630,
+          alt: home.title,
+        },
+      ],
+    },
+    twitter: {
+      ...buildMarketingMetadata("home").twitter,
+      images: [defaultOgImagePath],
     },
     verification: marketingVerification(),
   };

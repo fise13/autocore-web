@@ -22,7 +22,7 @@ export const landingCopy = {
     ctaExplore: "Зачем AutoCore",
     ctaModules: "Все модули",
     ctaProduct: "О продукте",
-    footnote: "Веб, macOS и iPhone — один интерфейс, одна модель данных, одна правда для всей команды.",
+    footnote: "Веб, desktop и iPhone — один интерфейс, одна модель данных, одна правда для всей команды.",
   },
   whyBusiness: {
     label: "Зачем AutoCore",
@@ -232,7 +232,7 @@ export const landingCopy = {
   marquee: {
     modules: ["Склад", "Онлайн: 6", "Низкий остаток", "Проводка", "Журнал", "Заказ-наряды", "Mission Control"],
     skus: ["ALT-12V · Альтернатор", "OIL-04152 · Фильтр масла", "BRK-PAD-F · Колодки", "WTR-PMP · Помпа"],
-    platforms: ["Веб", "macOS", "iPhone", "Realtime sync", "Единый интерфейс"],
+    platforms: ["Веб", "Desktop", "iPhone", "Realtime sync", "Единый интерфейс"],
   },
   workflow: {
     label: "Связанные процессы",
@@ -298,10 +298,10 @@ export const landingCopy = {
   platform: {
     label: "Одна экосистема",
     title: "Тот же центр управления на каждом устройстве",
-    description: "Веб, macOS и iPhone — один язык интерфейса и одна операционная модель.",
+    description: "Веб, desktop и iPhone — один язык интерфейса и одна операционная модель.",
     items: [
       { name: "Веб", detail: "Mission Control в браузере — полная глубина операций." },
-      { name: "macOS", detail: "Нативная оболочка с тем же realtime и горячими клавишами." },
+      { name: "Desktop", detail: "Приложение с тем же realtime и горячими клавишами." },
       { name: "iPhone", detail: "Сканирование, остатки и согласования с пола." },
     ],
     footnote: "Правка на iPhone в цехе — в офисе уже видна в бухгалтерии и Mission Control.",
@@ -347,7 +347,7 @@ export const landingCopy = {
       },
       {
         q: "Нужно ли устанавливать отдельные программы?",
-        a: "Достаточно браузера. Есть нативные клиенты для macOS и iPhone с тем же интерфейсом и синхронизацией.",
+        a: "Достаточно браузера. Есть desktop-приложение и iPhone-версия с тем же интерфейсом и синхронизацией.",
       },
       {
         q: "Как устроены права сотрудников?",

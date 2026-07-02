@@ -8,7 +8,11 @@ import { useCompanyAppConfig } from "@/hooks/use-company-app-config";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
 import { can } from "@/lib/auth/permissions";
 import { isDemoSession } from "@/lib/demo/demo-config";
-import { hasMigrationOfferCompleted, hasWizardCompleted } from "@/lib/performance/session-flags";
+import {
+  hasEmailVerificationComplete,
+  hasMigrationOfferCompleted,
+  hasWizardCompleted,
+} from "@/lib/performance/session-flags";
 
 export type AuthJourneyStep =
   | "loading"
@@ -32,7 +36,10 @@ export const AUTH_JOURNEY_STEP_LABELS: Record<Exclude<AuthJourneyStep, "loading"
   "business-import": "Перенос данных",
 };
 
-export function useAuthJourneyStep(localProfileName?: string | null): AuthJourneyStep {
+export function useAuthJourneyStep(
+  localProfileName?: string | null,
+  emailVerifiedHandoff = false,
+): AuthJourneyStep {
   const { firebaseUser, profile, isLoading } = useAuth();
   const companyId = profile?.companyId?.trim() || null;
   const { config, loaded } = useCompanyAppConfig(companyId);
@@ -55,7 +62,11 @@ export function useAuthJourneyStep(localProfileName?: string | null): AuthJourne
     }
 
     const provider = getAccountProviderInfo(firebaseUser);
-    if (provider?.kind === "email" && !firebaseUser.emailVerified) {
+    const emailVerified =
+      firebaseUser.emailVerified ||
+      emailVerifiedHandoff ||
+      hasEmailVerificationComplete(firebaseUser.uid);
+    if (provider?.kind === "email" && !emailVerified) {
       return "verify-email";
     }
 
@@ -103,6 +114,7 @@ export function useAuthJourneyStep(localProfileName?: string | null): AuthJourne
     cachedCompleted,
     companyId,
     config?.onboardingCompleted,
+    emailVerifiedHandoff,
     firebaseUser,
     isLoading,
     loaded,

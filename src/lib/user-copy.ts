@@ -56,10 +56,10 @@ export const userCopy = {
   company: {
     welcomeTitle: "Добро пожаловать в AutoCore Web",
     welcomeDescription: "Подключите существующие данные или создайте новое рабочее пространство.",
-    macQuestion: "У вас уже есть AutoCore на Mac?",
+    macQuestion: "У вас уже есть AutoCore?",
     macDescription:
-      "Продолжите с теми же моторами и операциями, что в приложении AutoCore на Mac.",
-    macButton: "Продолжить с Mac",
+      "Продолжите с теми же моторами и операциями, что уже есть в вашем рабочем пространстве AutoCore.",
+    macButton: "Продолжить с существующими данными",
     newTeamTitle: "Новая команда?",
     newTeamDescription: "Создайте отдельное рабочее пространство для новой компании.",
     companyNameLabel: "Название компании",
@@ -70,8 +70,8 @@ export const userCopy = {
     inviteDescription: "Введите код, который вам отправил администратор компании.",
     connectTitle: "Подключение к данным",
     connectDescription:
-      "Чтобы видеть те же моторы и операции, что в приложении AutoCore на Mac.",
-    connectButton: "Подключить данные с Mac",
+      "Чтобы видеть те же моторы и операции, что уже есть в вашем рабочем пространстве AutoCore.",
+    connectButton: "Подключить существующие данные",
     createTitle: "Создать компанию",
     createDescription: "Отдельное рабочее пространство для новой команды.",
     joinTitle: "Присоединиться по приглашению",
@@ -82,7 +82,7 @@ export const userCopy = {
 
   desktop: {
     downloadUnavailableTitle: "Установщик пока недоступен",
-    macUnavailable: "Сборка для macOS ещё не опубликована. Напишите в поддержку — пришлём ссылку.",
+    macUnavailable: "Десктопная сборка ещё не опубликована. Напишите в поддержку — пришлём ссылку.",
     windowsUnavailable:
       "Сборка для Windows готовится. Напишите в поддержку — пришлём установщик, как только он будет готов.",
   },
@@ -141,7 +141,7 @@ export const userCopy = {
         { label: "Облачное хранение данных", free: false, pro: true },
         { label: "Импорт и экспорт Excel", free: false, pro: true },
         { label: "Команда и роли", free: false, pro: true },
-        { label: "Доступ с Mac и web", free: false, pro: true },
+        { label: "Доступ из приложения и web", free: false, pro: true },
       ],
     },
     paywall: {
@@ -180,7 +180,7 @@ export const userCopy = {
       benefits: [
         {
           title: "Облачные данные",
-          description: "Моторы и операции доступны в браузере и в приложении для Mac.",
+          description: "Моторы и операции доступны в браузере и в десктопном приложении.",
         },
         {
           title: "Импорт и экспорт Excel",
@@ -253,7 +253,7 @@ export const userCopy = {
       "Удаляет моторы компании, а также бренды и двигатели в левом меню.",
     deleteMotorsConfirmTitle: "Удалить все моторы?",
     deleteMotorsConfirmDescription:
-      "Все моторы компании в облаке будут удалены вместе с брендами и двигателями в боковом меню. Локальные копии в приложении для Mac не затрагиваются.",
+      "Все моторы компании в облаке будут удалены вместе с брендами и двигателями в боковом меню. Локальные копии в десктопном приложении не затрагиваются.",
     deleteSpecificsTitle: "Удалить каталог учёта",
     deleteSpecificsDescription: "Удаляет все листы и записи каталога учёта.",
     deleteSpecificsConfirmTitle: "Удалить весь каталог учёта?",
@@ -274,8 +274,8 @@ export const userCopy = {
       "Будут удалены товары, движения, остатки, склады, поставщики и история импортов. Восстановить данные будет нельзя.",
     deleteWarehouseSuccess: (count: number) =>
       count > 0 ? `Склад очищен: удалено ${count} записей` : "Склад уже был пустым",
-    macOnly: "Mac",
-    macOnlyHint: "Внешний вид, резервные копии и расширенные параметры доступны в приложении AutoCore для Mac.",
+    macOnly: "Десктопное приложение",
+    macOnlyHint: "Внешний вид, резервные копии и расширенные параметры доступны в десктопном приложении AutoCore.",
     billing: "Подписка",
     role: "Роль",
     company: "Компания",
