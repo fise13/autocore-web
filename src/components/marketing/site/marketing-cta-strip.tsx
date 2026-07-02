@@ -35,11 +35,11 @@ export function MarketingCtaStrip({
           {description}
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3" data-cta-strip-reveal>
-          <Button size="lg" render={<Link href={appDemoUrl()} />}>
+          <Button size="lg" render={<Link href={appDemoUrl()} />} nativeButton={false}>
             {defaults.primary}
             <ArrowRight className="size-4" data-icon="inline-end" />
           </Button>
-          <Button variant="outline" size="lg" render={<Link href={marketingRoutes.modules} />}>
+          <Button variant="outline" size="lg" render={<Link href={marketingRoutes.modules} />} nativeButton={false}>
             {defaults.secondary}
           </Button>
         </div>

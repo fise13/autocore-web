@@ -1,4 +1,4 @@
-import { getAppUrl, getMarketingUrl, getUrlHost } from "@/lib/site-urls";
+import { getAppUrl, getMarketingUrl, getUrlHost, isLocalDevSite } from "@/lib/site-urls";
 
 /** Clean public paths on the marketing domain (myautocore.com). */
 export const marketingCleanPaths = {
@@ -9,6 +9,7 @@ export const marketingCleanPaths = {
   security: "/security",
   contact: "/contact",
   download: "/download",
+  downloadMobile: "/download/mobile",
   privacy: "/legal/privacy",
   terms: "/legal/terms",
 } as const;
@@ -22,6 +23,7 @@ export const marketingInternalPaths = {
   security: "/marketing/security",
   contact: "/marketing/contact",
   download: "/marketing/download",
+  downloadMobile: "/marketing/download/mobile",
   privacy: "/marketing/legal/privacy",
   terms: "/marketing/legal/terms",
 } as const;
@@ -36,16 +38,17 @@ const CLEAN_TO_INTERNAL: Record<string, string> = {
   [marketingCleanPaths.security]: marketingInternalPaths.security,
   [marketingCleanPaths.contact]: marketingInternalPaths.contact,
   [marketingCleanPaths.download]: marketingInternalPaths.download,
+  [marketingCleanPaths.downloadMobile]: marketingInternalPaths.downloadMobile,
   [marketingCleanPaths.privacy]: marketingInternalPaths.privacy,
   [marketingCleanPaths.terms]: marketingInternalPaths.terms,
 };
 
-/** Public links, sitemap and SEO always use clean paths (never /marketing/...). */
+/** Production + SEO use clean paths; localhost dev uses internal /marketing/* routes. */
 export function usesCleanMarketingPaths(): boolean {
-  return true;
+  return !isLocalDevSite();
 }
 
-/** Public URL segment for links and canonicals. */
+/** Public URL segment for links. Local dev uses clean paths + middleware rewrites to /marketing/*. */
 export function resolveMarketingPath(key: MarketingPathKey): string {
   return marketingCleanPaths[key];
 }

@@ -51,12 +51,9 @@ export const siteNavigation = {
     ],
   } satisfies SiteNavGroup,
   primaryLinks: [
-    { href: `${marketingRoutes.home}#story`, label: "Как работает" },
     { href: marketingRoutes.pricing, label: "Тарифы" },
     { href: marketingRoutes.download, label: "Скачать" },
-    { href: `${marketingRoutes.home}#faq`, label: "FAQ" },
-    { href: marketingRoutes.security, label: "Безопасность" },
-    { href: marketingRoutes.contact, label: "Контакты" },
+    { href: marketingRoutes.contact, label: "Связаться" },
   ] satisfies SiteNavLink[],
   footer: {
     product: [
@@ -69,7 +66,7 @@ export const siteNavigation = {
     company: [
       { href: marketingRoutes.pricing, label: "Тарифы" },
       { href: marketingRoutes.security, label: "Безопасность" },
-      { href: marketingRoutes.contact, label: "Контакты" },
+      { href: marketingRoutes.contact, label: "Связаться" },
     ],
   },
 } as const;
@@ -78,7 +75,7 @@ export const siteNavigation = {
 export function isMarketingNavActive(pathname: string, href: string): boolean {
   const path = href.split("#")[0] || href;
   if (path === marketingRoutes.home) {
-    return pathname === marketingRoutes.home;
+    return pathname === marketingRoutes.home || pathname === "/marketing";
   }
   return pathname === path || pathname.startsWith(`${path}/`);
 }

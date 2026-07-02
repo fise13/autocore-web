@@ -326,7 +326,7 @@ export const landingCopy = {
       { href: `${marketingRoutes.home}#why-business`, label: "Зачем AutoCore" },
       { href: marketingRoutes.product, label: "О продукте" },
       { href: marketingRoutes.pricing, label: "Тарифы" },
-      { href: marketingRoutes.contact, label: "Контакты" },
+      { href: marketingRoutes.contact, label: "Связаться" },
     ],
   },
   footer: {
@@ -379,11 +379,11 @@ export const landingCopy = {
     },
     pricing: {
       title: "Тарифы",
-      description: "Планы для команд любого размера. Пробный период — без обязательств.",
+      description: "Одна подписка. Полный продукт. 14 дней бесплатно.",
     },
     contact: {
-      title: "Контакты",
-      description: "Свяжитесь с нами по вопросам внедрения, демо и корпоративного доступа.",
+      title: "Связаться",
+      description: "Напишите команде AutoCore по вопросам демо, поддержки и партнёрства.",
     },
     privacy: {
       title: "Политика конфиденциальности",

@@ -332,7 +332,7 @@ export const siteContent = {
       { href: marketingRoutes.product, label: "О продукте" },
       { href: marketingRoutes.security, label: "Безопасность" },
       { href: marketingRoutes.pricing, label: "Тарифы" },
-      { href: marketingRoutes.contact, label: "Контакты" },
+      { href: marketingRoutes.contact, label: "Связаться" },
     ],
   },
 } as const;

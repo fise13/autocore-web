@@ -1,21 +1,45 @@
 import type { MetadataRoute } from "next";
 
-import { marketingCleanPaths } from "@/lib/seo/marketing-paths";
+import { marketingCleanPaths, resolveMarketingPath } from "@/lib/seo/marketing-paths";
 import type { MarketingPathKey } from "@/lib/seo/marketing-paths";
 import { getMarketingUrl } from "@/lib/site-urls";
 
-/** Public marketing URLs — always clean paths (/pricing, never /marketing/pricing). */
+/** Marketing URLs — clean paths in production, /marketing/* on localhost dev. */
 export const marketingRoutes = {
-  home: marketingCleanPaths.home,
-  product: marketingCleanPaths.product,
-  modules: marketingCleanPaths.modules,
-  pricing: marketingCleanPaths.pricing,
-  security: marketingCleanPaths.security,
-  contact: marketingCleanPaths.contact,
-  download: marketingCleanPaths.download,
-  privacy: marketingCleanPaths.privacy,
-  terms: marketingCleanPaths.terms,
-} as const;
+  get home() {
+    return resolveMarketingPath("home");
+  },
+  get product() {
+    return resolveMarketingPath("product");
+  },
+  get modules() {
+    return resolveMarketingPath("modules");
+  },
+  get pricing() {
+    return resolveMarketingPath("pricing");
+  },
+  get security() {
+    return resolveMarketingPath("security");
+  },
+  get contact() {
+    return resolveMarketingPath("contact");
+  },
+  get download() {
+    return resolveMarketingPath("download");
+  },
+  get downloadMobile() {
+    return resolveMarketingPath("downloadMobile");
+  },
+  get privacy() {
+    return resolveMarketingPath("privacy");
+  },
+  get terms() {
+    return resolveMarketingPath("terms");
+  },
+} as const satisfies Record<MarketingPathKey, string>;
+
+/** Canonical clean paths for sitemap and production SEO only. */
+export const marketingCanonicalRoutes = marketingCleanPaths;
 
 export const marketingSitemapEntries: Array<{
   key: MarketingPathKey;
@@ -34,5 +58,5 @@ export const marketingSitemapEntries: Array<{
 ];
 
 export function marketingSitemapPaths(): string[] {
-  return marketingSitemapEntries.map((entry) => marketingRoutes[entry.key]);
+  return marketingSitemapEntries.map((entry) => marketingCanonicalRoutes[entry.key]);
 }

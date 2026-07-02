@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ReactNode } from "react";
 
-import "@/styles/marketing-landing.css";
+import "@/styles/marketing-experience.css";
 
 import { MarketingJsonLd } from "@/components/marketing/seo/marketing-json-ld";
 import { MarketingBarbaLayout } from "@/components/marketing/motion/marketing-barba-layout";

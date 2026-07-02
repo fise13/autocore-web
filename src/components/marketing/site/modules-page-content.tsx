@@ -74,9 +74,9 @@ const RELATED: Record<string, { label: string; href: string }[]> = {
 
 const RELATED_SECTIONS = [
   { href: marketingRoutes.product, label: "Обзор продукта", hint: "Mission Control и процессы" },
-  { href: marketingRoutes.pricing, label: "Тарифы", hint: "Пробный период и Pro" },
+  { href: marketingRoutes.pricing, label: "Тарифы", hint: "Одна подписка, всё включено" },
   { href: marketingRoutes.security, label: "Безопасность", hint: "RBAC и аудит" },
-  { href: marketingRoutes.contact, label: "Контакты", hint: "Демо и внедрение" },
+  { href: marketingRoutes.contact, label: "Связаться", hint: "Демо и поддержка" },
 ];
 
 export function ModulesPageContent() {

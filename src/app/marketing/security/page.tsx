@@ -1,11 +1,8 @@
-import { marketingSiteContent } from "@/components/marketing/content/marketing-site-content";
+import { SecurityExperience } from "@/components/marketing/security/security-experience";
 import { MarketingExtraJsonLd } from "@/components/marketing/seo/marketing-json-ld";
-import { MarketingSubpage } from "@/components/marketing/site/marketing-subpage";
-import { SecurityPageContent } from "@/components/marketing/site/security-page-content";
 import { buildMarketingMetadata } from "@/lib/seo/build-marketing-metadata";
 import { buildBreadcrumbJsonLd } from "@/lib/seo/marketing-seo";
-
-const copy = marketingSiteContent.security;
+import { buildWebPageJsonLd } from "@/lib/seo/build-webpage-jsonld";
 
 export const metadata = buildMarketingMetadata("security");
 
@@ -14,16 +11,10 @@ export const revalidate = 3600;
 export default function SecurityPage() {
   return (
     <>
-      <MarketingExtraJsonLd extra={buildBreadcrumbJsonLd("security")} />
-      <MarketingSubpage
-        title={copy.hero.title}
-        description={copy.hero.description}
-        breadcrumbLabel="Безопасность"
-        eyebrow="Enterprise-ready"
-        pathKey="security"
-      >
-        <SecurityPageContent />
-      </MarketingSubpage>
+      <MarketingExtraJsonLd
+        extra={[buildWebPageJsonLd("security"), buildBreadcrumbJsonLd("security")]}
+      />
+      <SecurityExperience />
     </>
   );
 }

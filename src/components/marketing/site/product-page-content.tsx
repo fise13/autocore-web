@@ -50,11 +50,11 @@ export function ProductPageContent() {
             в realtime, как в продукте.
           </p>
           <div className="flex flex-wrap gap-3">
-            <Button size="lg" render={<Link href={appDemoUrl()} />}>
+            <Button size="lg" render={<Link href={appDemoUrl()} />} nativeButton={false}>
               Попробовать демо
               <ArrowRight className="size-4" data-icon="inline-end" />
             </Button>
-            <Button variant="outline" size="lg" render={<Link href={marketingRoutes.modules} />}>
+            <Button variant="outline" size="lg" render={<Link href={marketingRoutes.modules} />} nativeButton={false}>
               Каталог модулей
             </Button>
           </div>
@@ -150,7 +150,7 @@ export function ProductPageContent() {
           </Link>
           {" · "}
           <Link href={marketingRoutes.contact} className="font-medium text-primary hover:underline">
-            Контакты
+            Связаться
           </Link>
         </p>
       </MarketingSection>

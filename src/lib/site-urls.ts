@@ -7,6 +7,26 @@ export function normalizeHost(host: string): string {
   return (host.split(":")[0] ?? "").toLowerCase();
 }
 
+export function isLocalDevHost(host: string): boolean {
+  if (!host.trim()) return false;
+  const normalized = normalizeHost(host);
+  if (normalized === "localhost" || normalized === "127.0.0.1") return true;
+  if (process.env.NODE_ENV !== "development") return false;
+  const appHost = getUrlHost(getAppUrl());
+  const marketingHost = getUrlHost(getMarketingUrl());
+  return Boolean(appHost && appHost === marketingHost && normalized === appHost);
+}
+
+/** True when app + marketing share one origin in `next dev` (e.g. localhost:3000). */
+export function isLocalDevSite(): boolean {
+  if (process.env.NODE_ENV !== "development") return false;
+  const app = getAppUrl().replace(/\/$/, "");
+  const marketing = getMarketingUrl().replace(/\/$/, "");
+  if (app === marketing) return true;
+  const appHost = getUrlHost(app);
+  return appHost === "localhost" || appHost === "127.0.0.1";
+}
+
 export function getUrlHost(url: string): string | null {
   try {
     return normalizeHost(new URL(url).host);
@@ -133,6 +153,7 @@ export function appDashboardUrl(): string {
 /** Absolute marketing URL for a path; relative on unified localhost dev. */
 export function marketingPageUrl(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`;
+  if (isLocalDevSite()) return normalized;
   const marketing = getMarketingUrl().replace(/\/$/, "");
   const app = getAppUrl().replace(/\/$/, "");
   if (marketing === app) return normalized;

@@ -12,6 +12,7 @@ import {
   getMarketingUrl,
   getUrlHost,
   isAppRoute,
+  isLocalDevHost,
   isMarketingPublicPath,
   normalizeHost,
 } from "@/lib/site-urls";
@@ -76,7 +77,10 @@ function handleMarketingRoutes(request: NextRequest, pathname: string, isMarketi
     return NextResponse.rewrite(new URL(internalFromClean + request.nextUrl.search, request.url));
   }
 
-  if (pathname.startsWith("/marketing")) {
+  const isLocalDev = isLocalDevHost(request.headers.get("host") ?? "");
+
+  // Localhost dev: serve /marketing/* directly (no clean-URL redirect).
+  if (!isLocalDev && pathname.startsWith("/marketing")) {
     const clean = cleanPathFromInternal(pathname);
     if (clean) {
       return NextResponse.redirect(new URL(clean + request.nextUrl.search, request.url), 301);
@@ -94,6 +98,12 @@ export function middleware(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
   const kind = getHostKind(host);
   const { pathname } = request.nextUrl;
+  const isLocalDev = isLocalDevHost(host);
+
+  // Unified localhost: / serves marketing (internal /marketing), URL stays /.
+  if (kind === "local" && isLocalDev && pathname === "/") {
+    return NextResponse.rewrite(new URL("/marketing" + request.nextUrl.search, request.url));
+  }
 
   if (kind === "marketing") {
     return handleMarketingRoutes(request, pathname, true);
@@ -101,6 +111,11 @@ export function middleware(request: NextRequest) {
 
   if (kind === "local" && isMarketingContentPath(pathname) && !isAppRoute(pathname)) {
     return handleMarketingRoutes(request, pathname, false);
+  }
+
+  // Unified localhost: /marketing/* served directly (no redirect to /).
+  if (kind === "local" && isLocalDev && pathname.startsWith("/marketing")) {
+    return NextResponse.next();
   }
 
   if (kind === "app") {

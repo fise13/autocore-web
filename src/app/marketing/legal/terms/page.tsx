@@ -1,5 +1,8 @@
-import { MarketingSubpage } from "@/components/marketing/site/marketing-subpage";
+import { LegalExperience } from "@/components/marketing/legal/legal-experience";
+import { MarketingExtraJsonLd } from "@/components/marketing/seo/marketing-json-ld";
 import { buildMarketingMetadata } from "@/lib/seo/build-marketing-metadata";
+import { buildBreadcrumbJsonLd } from "@/lib/seo/marketing-seo";
+import { buildWebPageJsonLd } from "@/lib/seo/build-webpage-jsonld";
 
 export const metadata = buildMarketingMetadata("terms");
 
@@ -7,51 +10,11 @@ export const revalidate = 3600;
 
 export default function TermsPage() {
   return (
-    <MarketingSubpage
-      title="Условия использования"
-      description="Правила использования облачной программы AutoCore для авторазборок и автосервисов."
-      breadcrumbLabel="Условия"
-      pathKey="terms"
-      showCta={false}
-    >
-      <article className="marketing-legal-article">
-        <section>
-          <h2>1. Предмет соглашения</h2>
-          <p>
-            AutoCore предоставляет программное обеспечение для авторазборок и автосервисов: склад запчастей,
-            заказ-наряды, бухгалтерия и команда. Условия регулируют использование веб-приложения и связанных сервисов.
-          </p>
-        </section>
-        <section>
-          <h2>2. Учётная запись</h2>
-          <p>
-            Пользователь обязан обеспечивать конфиденциальность учётных данных. Администратор компании управляет
-            доступом сотрудников и несёт ответственность за действия в рамках организации.
-          </p>
-        </section>
-        <section>
-          <h2>3. Использование сервиса</h2>
-          <p>
-            Запрещается нарушать работу системы, обходить ограничения доступа, использовать сервис вне законных
-            целей. Операционные данные остаются собственностью клиента.
-          </p>
-        </section>
-        <section>
-          <h2>4. Подписка и оплата</h2>
-          <p>
-            Платные функции активируются согласно выбранному тарифу. Условия оплаты и отмены указываются при оформлении
-            подписки в приложении.
-          </p>
-        </section>
-        <section>
-          <h2>5. Ограничение ответственности</h2>
-          <p>
-            Сервис предоставляется в рамках разумных технических возможностей. Клиент обязан сверять критичные
-            финансовые и складские операции согласно внутренним процедурам.
-          </p>
-        </section>
-        <p className="marketing-legal-updated">Последнее обновление: май 2026</p>
-      </article>
-    </MarketingSubpage>
+    <>
+      <MarketingExtraJsonLd
+        extra={[buildWebPageJsonLd("terms"), buildBreadcrumbJsonLd("terms")]}
+      />
+      <LegalExperience documentKey="terms" />
+    </>
   );
 }

@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { DeskConnectionRecord, DeskConnectionsSnapshot } from "@autocore/types";
+import type { DeskConnectionRecord, DeskConnectionsSnapshot } from "@/lib/desktop/desk-connection-types";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 
 const ACTIVE_FIELD = "deskActiveConnectionId";

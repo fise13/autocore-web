@@ -13,17 +13,19 @@ const toneDot: Record<SimulatedFeedEvent["tone"], string> = {
 type FeedListProps = {
   events: SimulatedFeedEvent[];
   compact?: boolean;
+  minimal?: boolean;
 };
 
-export function FeedList({ events, compact }: FeedListProps) {
+export function FeedList({ events, compact, minimal }: FeedListProps) {
   return (
-    <ul className="space-y-2">
+    <ul className={cn(minimal ? "divide-y divide-border" : "flex flex-col gap-2")}>
       {events.map((event) => (
         <li
           key={event.id}
           className={cn(
-            "flex items-start gap-3 rounded-lg border border-border/80 bg-background px-3 py-2.5",
-            compact && "py-2",
+            "flex items-start gap-3",
+            minimal ? "py-2.5 first:pt-0" : "rounded-lg border border-border bg-background px-3 py-2.5",
+            compact && !minimal && "py-2",
           )}
         >
           <span className={cn("mt-1.5 size-2 shrink-0 rounded-full", toneDot[event.tone])} />

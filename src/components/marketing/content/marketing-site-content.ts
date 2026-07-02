@@ -194,87 +194,64 @@ export const marketingSiteContent = {
   pricing: {
     meta: {
       title: "Тарифы",
-      description: "Пробный период без обязательств. Pro — полный контур для растущей команды автобизнеса.",
+      description:
+        "Одна подписка $15 в месяц. Полный AutoCore без скрытых ограничений. 14 дней бесплатно, без карты.",
     },
     hero: {
-      title: "Прозрачные тарифы",
-      description: "Начните бесплатно. Масштабируйтесь, когда команда и процессы готовы.",
+      titleLine1: "Одна подписка.",
+      titleLine2: "Всё включено.",
     },
-    billing: {
-      monthlyLabel: "Месяц",
-      yearlyLabel: "Год",
-      yearlySave: "−17%",
-      perMonthSuffix: "/ мес",
-      yearlyNote: "оплата 75 000 ₸ в год",
+    plan: {
+      price: "$15",
+      period: "/ месяц",
+      note: "за компанию",
     },
-    plans: [
-      {
-        id: "trial",
-        name: "Пробный",
-        billing: "free" as const,
-        priceMonthly: 0,
-        priceYearly: 0,
-        period: "14 дней",
-        description: "Оцените Mission Control, склад и наряды без привязки карты.",
-        features: [
-          "Mission Control и базовые модули",
-          "Склад и импорт прайсов",
-          "До 3 пользователей",
-          "Связь по email",
-        ],
-        cta: "Попробовать бесплатно",
-        highlighted: false,
-      },
-      {
-        id: "pro",
-        name: "Pro",
-        billing: "subscription" as const,
-        priceMonthly: 7500,
-        priceYearly: 6250,
-        period: "за компанию",
-        description: "Полный операционный контур для разборки, СТО или магазина запчастей.",
-        features: [
-          "Все модули без ограничений",
-          "Realtime на веб, macOS и iPhone",
-          "Роли, аудит, журнал действий",
-          "Генерация документов и PDF",
-          "Приоритетная поддержка",
-        ],
-        cta: "Оплатить Pro",
-        highlighted: true,
-        popularLabel: "Рекомендуем",
-      },
-      {
-        id: "enterprise",
-        name: "Enterprise",
-        billing: "custom" as const,
-        customPriceLabel: "Индивидуально",
-        period: "несколько точек",
-        description: "Несколько площадок, расширенный онбординг и выделенная поддержка.",
-        features: [
-          "Всё из Pro",
-          "Несколько точек / филиалов",
-          "Помощь с миграцией из Excel",
-          "Выделенный менеджер",
-          "SLA и кастомные интеграции",
-        ],
-        cta: "Связаться с нами",
-        highlighted: false,
-      },
-    ],
-    compare: {
-      title: "Что входит",
-      rows: [
-        { feature: "Mission Control", trial: true, pro: true, enterprise: true },
-        { feature: "Склад и штрихкод", trial: true, pro: true, enterprise: true },
-        { feature: "Заказ-наряды", trial: "Базово", pro: true, enterprise: true },
-        { feature: "Продажа моторов + документы", trial: false, pro: true, enterprise: true },
-        { feature: "Бухгалтерия", trial: false, pro: true, enterprise: true },
-        { feature: "RBAC и аудит", trial: "Базово", pro: true, enterprise: true },
-        { feature: "macOS / iPhone", trial: true, pro: true, enterprise: true },
-        { feature: "Несколько точек", trial: false, pro: false, enterprise: true },
+    cta: {
+      primary: "Начать бесплатно",
+      trialDays: "14 дней бесплатно",
+      noCard: "Без карты",
+    },
+    closing: {
+      line: "Полный продукт с первого дня.",
+      button: "Начать бесплатно",
+    },
+    included: {
+      title: "Всё включено.",
+      items: [
+        "Склад",
+        "Заказ-наряды",
+        "Документы",
+        "Mobile",
+        "Desktop",
+        "Cloud Sync",
+        "AI Import",
+        "Mission Control",
+        "Аналитика",
       ],
     },
+    philosophy: {
+      title: "Почему один тариф?",
+      statement: "Мы не прячем инструменты за дорогими планами.",
+      body: "Каждый клиент получает полный AutoCore. Вам нужно только решить, подходит ли продукт вашему бизнесу.",
+    },
+    faq: [
+      {
+        q: "Нужна ли карта для пробного периода?",
+        a: "Нет. 14 дней без привязки карты.",
+      },
+      {
+        q: "Что будет после пробного периода?",
+        a: "Подписка $15 в месяц за компанию или пауза. Данные сохраняются.",
+      },
+      {
+        q: "Есть ли доплаты за модули?",
+        a: "Нет. Одна цена открывает весь продукт.",
+      },
+      {
+        q: "Можно ли отменить подписку?",
+        a: "Да, в любой момент. Доступ до конца оплаченного периода.",
+      },
+    ],
   },
   security: {
     meta: {
@@ -375,41 +352,166 @@ export const marketingSiteContent = {
   },
   contact: {
     meta: {
-      title: "Контакты",
-      description: "Демо, внедрение, корпоративный доступ и миграция из Excel.",
+      title: "Связаться",
+      description:
+        "Напишите команде AutoCore: демо, поддержка, партнёрство или общий вопрос. Ответим в течение рабочего дня.",
     },
     hero: {
       title: "Свяжитесь с нами",
-      description: "Поможем начать, перенести склад из таблиц и настроить роли для команды.",
+      description:
+        "Вопросы об AutoCore? Нужна помощь с выбором процессов? Хотите запланировать демо? Мы на связи.",
     },
-    channels: [
+    intents: [
       {
-        title: "Попробовать демо",
-        body: "Зарегистрируйтесь, создайте компанию и пригласите команду — полный доступ на пробный период.",
-        action: "Открыть приложение",
-        href: "app",
+        title: "Продажи",
+        topics: ["Узнать больше об AutoCore", "Запланировать демо", "Вопросы по тарифу"],
+        mailSubject: "Sales Inquiry",
       },
       {
-        title: "Внедрение и миграция",
-        body: "Помогаем перенести прайсы и остатки из Excel, настроить первый Mission Control и роли.",
-        action: `Написать на ${supportContacts.email}`,
-        href: supportContacts.mailtoHref,
+        title: "Поддержка",
+        topics: ["Техническая помощь", "Сообщить об ошибке", "Для действующих клиентов"],
+        mailSubject: "Technical Support",
       },
       {
-        title: "Enterprise и филиалы",
-        body: "Несколько точек, выделенный онбординг, SLA — обсудим индивидуальный план.",
-        action: "Запросить консультацию",
-        href: "mailto:enterprise@autocore.app",
+        title: "Партнёрство",
+        topics: ["Интеграции", "Бизнес-возможности"],
+        mailSubject: "Partnership",
+      },
+      {
+        title: "Общие вопросы",
+        topics: ["Всё остальное"],
+        mailSubject: "General Question",
       },
     ],
-    steps: {
-      title: "Как начать за 15 минут",
+    methods: {
+      emailLabel: "Email",
+      email: supportContacts.email,
+      responseLabel: "Время ответа",
+      response: "Обычно в течение одного рабочего дня",
+      languagesLabel: "Языки",
+      languages: ["English", "Русский", "Қазақша"],
+    },
+    closing: {
+      line: "Остались вопросы?",
+      subline: "Начните бесплатный пробный период или напишите нам в любое время.",
+      button: "Начать бесплатно",
+    },
+  },
+  download: {
+    meta: {
+      title: "Скачать",
+      description:
+        "AutoCore на Windows, macOS, в браузере и на телефоне. Один аккаунт, одно пространство, синхронизация в реальном времени.",
+    },
+    hero: {
+      titleLine1: "Одно пространство.",
+      titleLine2: "На каждом устройстве.",
+      description:
+        "Desktop, телефон и браузер. Один аккаунт. Одна рабочая среда для всей команды.",
+    },
+    platforms: [
+      {
+        id: "windows",
+        title: "Windows",
+        description: "Нативное приложение для офиса и склада. Синхронизация с облаком в фоне.",
+        action: "Скачать для Windows",
+        kind: "windows",
+      },
+      {
+        id: "mac",
+        title: "macOS",
+        description: "Приложение для Mac. Тот же интерфейс, что в браузере и на телефоне.",
+        action: "Скачать для macOS",
+        kind: "mac",
+      },
+      {
+        id: "web",
+        title: "Web",
+        description: "Полный продукт в браузере. Без установки, с тем же аккаунтом.",
+        action: "Открыть в браузере",
+        kind: "web",
+      },
+      {
+        id: "mobile",
+        title: "Mobile",
+        description: "Сканирование, приёмка и наряды с телефона. Данные сразу на всех устройствах.",
+        action: "Выбрать платформу",
+        kind: "mobile",
+      },
+    ],
+    ecosystem: {
+      title: "Одна экосистема",
+      description:
+        "Изменение на телефоне мгновенно видно на компьютере. Облако держит единую правду для всей команды.",
+    },
+    travels: {
+      title: "Всё путешествует с вами",
       items: [
-        { step: "01", title: "Регистрация", body: "Войдите через email или Apple ID." },
-        { step: "02", title: "Компания", body: "Создайте организацию или присоединитесь по приглашению." },
-        { step: "03", title: "Склад", body: "Импортируйте прайс или добавьте первые позиции." },
-        { step: "04", title: "Команда", body: "Пригласите кладовщика, мастера и бухгалтера с нужными ролями." },
+        "Один аккаунт",
+        "Один склад",
+        "Один наряд",
+        "Одна база клиентов",
+        "Одна история документов",
+        "Cloud Sync",
       ],
+    },
+    requirements: {
+      title: "Системные требования",
+      items: [
+        { platform: "macOS", detail: "Monterey 12 или новее, Apple Silicon или Intel" },
+        { platform: "Windows", detail: "Windows 10 или 11, 64-bit" },
+        { platform: "Web", detail: "Актуальные Chrome, Safari, Firefox или Edge" },
+        { platform: "Mobile", detail: "iOS 15+ или Android 10+ в браузере" },
+      ],
+    },
+    faq: [
+      {
+        q: "Как установить на macOS?",
+        a: "Скачайте .dmg, откройте файл и перетащите AutoCore в папку «Программы». Запустите приложение и войдите через тот же аккаунт, что в браузере.",
+      },
+      {
+        q: "Как установить на Windows?",
+        a: "Скачайте .exe и следуйте мастеру установки. После завершения откройте AutoCore и войдите в аккаунт.",
+      },
+      {
+        q: "Нужен ли интернет после установки?",
+        a: "Для входа и синхронизации нужна сеть. Локальные действия сохраняются и отправляются в облако, когда связь восстанавливается.",
+      },
+      {
+        q: "Как войти после установки?",
+        a: "Используйте тот же email или Apple ID, что и в веб-версии. Одна учётная запись на всех устройствах.",
+      },
+    ],
+    closing: {
+      line: "Уже установили?",
+      button: "Войти в AutoCore",
+    },
+  },
+  downloadMobile: {
+    backLabel: "Все платформы",
+    hero: {
+      title: "Mobile",
+      description: "Выберите iOS или Android. Отсканируйте QR-код или откройте ссылку на устройстве.",
+    },
+    platforms: [
+      {
+        id: "ios",
+        title: "iOS",
+        description: "iPhone и iPad. Тот же склад и наряды, что на desktop.",
+        action: "Скачать для iPhone",
+      },
+      {
+        id: "android",
+        title: "Android",
+        description: "Телефоны и планшеты Android. Синхронизация с облаком в реальном времени.",
+        action: "Скачать для Android",
+      },
+    ],
+    reveal: {
+      qrLabel: "Сканируйте камерой",
+      linkLabel: "Или откройте ссылку",
+      placeholderQr: "QR-код появится, когда ссылка будет готова",
+      placeholderLink: "Ссылка на установку скоро будет доступна",
     },
   },
   faq: {
@@ -440,4 +542,5 @@ export const marketingSiteContent = {
   },
 } as const;
 
-export type MarketingPlanId = (typeof marketingSiteContent.pricing.plans)[number]["id"];
+export type MarketingPricingIncludedItem =
+  (typeof marketingSiteContent.pricing.included.items)[number];

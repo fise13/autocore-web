@@ -65,11 +65,15 @@ function mapInventoryItem(id: string, data: Record<string, unknown>): InventoryI
     brandName: typeof data.brandName === "string" ? data.brandName : String(data.brand ?? ""),
     status: (String(data.status ?? "active") as InventoryItem["status"]) || "active",
     totalOnHand,
+    totalReserved: Number(data.totalReserved ?? 0),
     totalAvailable: Number(data.totalAvailable ?? totalOnHand),
     averageCost: Number(data.averageCost ?? data.purchasePrice ?? 0),
     stockValue: Number(data.stockValue ?? 0),
     lowStockThreshold: Number(data.lowStockThreshold ?? 1),
     inventoryGroup: "consumables",
+    searchTokens: Array.isArray(data.searchTokens)
+      ? data.searchTokens.map(String)
+      : [String(data.sku ?? id), String(data.name ?? "")].filter(Boolean),
     createdAt: toDate(data.createdAt) ?? new Date(),
     updatedAt: toDate(data.updatedAt) ?? new Date(),
   };
