@@ -18,7 +18,16 @@
     margin: 0 !important;
     width: 100% !important;
     max-width: none !important;
+    min-height: 0 !important;
+    height: auto !important;
     box-sizing: border-box !important;
     box-shadow: none !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .documents-pdf-export .doc-pdf-page__surface {
+    min-height: 0 !important;
+    height: auto !important;
   }
 }

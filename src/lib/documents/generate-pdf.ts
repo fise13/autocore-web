@@ -80,26 +80,33 @@ export async function generatePdfFromRenderUrl(params: PdfFromUrlOptions): Promi
     const pageSelectors = [...PDF_PAGE_ROOT_SELECTORS];
     const measureArgs = { targetWidthPx, pageSelectors };
 
+    // Tall viewport — measure full natural height before scaling to A4.
+    await page.setViewport({
+      width: targetWidthPx,
+      height: Math.min(10_000, targetHeightPx * 4),
+      deviceScaleFactor: 1,
+    });
+
     let content = await page.evaluate(measurePdfPageScript, measureArgs);
     let fitScale = computePdfFitScale(content.contentHeight, targetHeightPx);
 
-    if (fitScale < 0.999) {
-      await page.setViewport({
-        width: targetWidthPx,
-        height: Math.min(Math.ceil(content.contentHeight + 48), 10_000),
-        deviceScaleFactor: 1,
-      });
-      content = await page.evaluate(measurePdfPageScript, measureArgs);
-      fitScale = computePdfFitScale(content.contentHeight, targetHeightPx);
-    }
-
-    await page.setViewport({ width: targetWidthPx, height: targetHeightPx, deviceScaleFactor: 1 });
     await page.evaluate(applyPdfExportLayoutScript, {
-      fitScale,
-      contentHeight: content.contentHeight,
       targetWidthPx,
-      targetHeightPx,
       pageSelectors,
+    });
+
+    // Re-measure after shell reset for accurate scale.
+    content = await page.evaluate(measurePdfPageScript, measureArgs);
+    fitScale = computePdfFitScale(content.contentHeight, targetHeightPx);
+
+    const captureHeightPx = Math.max(
+      targetHeightPx,
+      Math.min(Math.ceil(content.contentHeight), 10_000),
+    );
+    await page.setViewport({
+      width: targetWidthPx,
+      height: captureHeightPx,
+      deviceScaleFactor: 1,
     });
 
     const pdf = await page.pdf({
@@ -107,10 +114,17 @@ export async function generatePdfFromRenderUrl(params: PdfFromUrlOptions): Promi
       preferCSSPageSize: false,
       pageRanges: "1",
       ...(isServiceTag
-        ? { width: "70mm", height: "100mm", margin: { top: "0", right: "0", bottom: "0", left: "0" } }
-        : {
-            format: "A4",
+        ? {
+            width: "70mm",
+            height: "100mm",
             margin: { top: "0", right: "0", bottom: "0", left: "0" },
+            scale: fitScale,
+          }
+        : {
+            width: `${targetWidthPx}px`,
+            height: `${targetHeightPx}px`,
+            margin: { top: "0", right: "0", bottom: "0", left: "0" },
+            scale: fitScale,
           }),
     });
 

@@ -23,17 +23,15 @@ export type MeasurePdfPageResult = {
 };
 
 export type ApplyPdfExportLayoutOptions = {
-  fitScale: number;
-  contentHeight: number;
   targetWidthPx: number;
-  targetHeightPx: number;
   pageSelectors: readonly string[];
 };
 
+/** Scale factor to fit natural content height onto one A4 sheet (never upscale). */
 export function computePdfFitScale(contentHeight: number, targetHeightPx: number): number {
   if (contentHeight <= 0) return 1;
   const scale = Math.min(1, targetHeightPx / contentHeight);
-  return Math.round(scale * 1000) / 1000;
+  return Math.floor(scale * 10000) / 10000;
 }
 
 /** Self-contained for page.evaluate() — measures natural content height in print layout. */
@@ -50,26 +48,23 @@ export function measurePdfPageScript(options: MeasurePdfPageOptions): MeasurePdf
     return { contentHeight: 0 };
   }
 
+  pageEl.style.setProperty("zoom", "1", "important");
+  pageEl.style.setProperty("transform", "none", "important");
   pageEl.style.setProperty("width", `${targetWidthPx}px`, "important");
   pageEl.style.setProperty("max-width", `${targetWidthPx}px`, "important");
   pageEl.style.setProperty("margin", "0", "important");
   pageEl.style.setProperty("min-height", "0", "important");
   pageEl.style.setProperty("height", "auto", "important");
   pageEl.style.setProperty("max-height", "none", "important");
-  pageEl.style.setProperty("transform", "none", "important");
 
   return {
     contentHeight: Math.max(Math.ceil(pageEl.scrollHeight), 1),
   };
 }
 
-/**
- * Self-contained for page.evaluate().
- * Fits content to one sheet via CSS zoom (affects layout box in Chromium — unlike transform).
- */
+/** Self-contained for page.evaluate() — print shell reset, no clipping, scaling done via page.pdf({ scale }). */
 export function applyPdfExportLayoutScript(options: ApplyPdfExportLayoutOptions): void {
-  const { fitScale, contentHeight, targetWidthPx, targetHeightPx, pageSelectors } = options;
-  const needsScale = fitScale < 0.999;
+  const { targetWidthPx, pageSelectors } = options;
 
   const resetShell = (el: HTMLElement) => {
     el.style.setProperty("margin", "0", "important");
@@ -77,6 +72,7 @@ export function applyPdfExportLayoutScript(options: ApplyPdfExportLayoutOptions)
     el.style.setProperty("background", "#ffffff", "important");
     el.style.setProperty("min-height", "0", "important");
     el.style.setProperty("height", "auto", "important");
+    el.style.setProperty("max-height", "none", "important");
     el.style.setProperty("overflow", "visible", "important");
   };
 
@@ -100,26 +96,19 @@ export function applyPdfExportLayoutScript(options: ApplyPdfExportLayoutOptions)
   }
   if (!pageEl) return;
 
+  pageEl.style.setProperty("zoom", "1", "important");
+  pageEl.style.setProperty("transform", "none", "important");
   pageEl.style.setProperty("margin", "0", "important");
   pageEl.style.setProperty("box-shadow", "none", "important");
   pageEl.style.setProperty("box-sizing", "border-box", "important");
   pageEl.style.setProperty("position", "relative", "important");
-  pageEl.style.setProperty("overflow", "hidden", "important");
+  pageEl.style.setProperty("overflow", "visible", "important");
   pageEl.style.setProperty("print-color-adjust", "exact", "important");
   pageEl.style.setProperty("-webkit-print-color-adjust", "exact", "important");
-  pageEl.style.setProperty("transform", "none", "important");
   pageEl.style.setProperty("width", `${targetWidthPx}px`, "important");
   pageEl.style.setProperty("max-width", `${targetWidthPx}px`, "important");
   pageEl.style.setProperty("min-width", `${targetWidthPx}px`, "important");
   pageEl.style.setProperty("min-height", "0", "important");
   pageEl.style.setProperty("height", "auto", "important");
-
-  if (needsScale) {
-    pageEl.style.setProperty("zoom", String(fitScale), "important");
-    const fittedHeight = Math.min(Math.ceil(contentHeight * fitScale), targetHeightPx);
-    pageEl.style.setProperty("max-height", `${fittedHeight}px`, "important");
-  } else {
-    pageEl.style.setProperty("zoom", "1", "important");
-    pageEl.style.setProperty("max-height", `${targetHeightPx}px`, "important");
-  }
+  pageEl.style.setProperty("max-height", "none", "important");
 }
