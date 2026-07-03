@@ -2,15 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useAuth } from "@/components/providers/auth-provider";
 import { FinancialOperation } from "@/domain/financial-operation";
 import { MotorEntity } from "@/domain/motor";
-import { useMotorWarrantyRealtime } from "@/hooks/use-motor-warranty-realtime";
-import { getFirebaseAuth } from "@/infrastructure/firebase/client";
 import { enqueueMotorSoldEffects } from "@/lib/motors/enqueue-motor-sold-effects";
 import {
-  clearMotorWarrantySeed,
   readMotorWarrantySeed,
+  readOperationWarrantySeed,
+  writeMotorWarrantySeed,
+  writeOperationWarrantySeed,
 } from "@/lib/motors/motor-warranty-session";
 
 export type MotorSaleDocumentsPayload = {
@@ -21,30 +20,31 @@ export type MotorSaleDocumentsPayload = {
   warrantyId: string | null;
 };
 
-export type MotorSaleDocumentsStatus = "loading" | "forming" | "ready" | "failed" | "unavailable";
+export type MotorSaleDocumentsStatus = "ready" | "loading" | "error";
 
 type UseMotorSaleDocumentsOptions = {
   operation?: FinancialOperation | null;
 };
 
-async function fetchWarrantyIdFromApi(motorId: string): Promise<string | null> {
-  const token = await getFirebaseAuth().currentUser?.getIdToken();
-  if (!token) return null;
-
-  const response = await fetch(`/api/motors/${encodeURIComponent(motorId)}/documents`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  });
-  if (!response.ok) return null;
-
-  const data = (await response.json()) as { warrantyId?: string | null };
-  return data.warrantyId ?? null;
-}
-
 function parseClientNameFromComment(comment?: string | null): string | undefined {
   if (!comment?.trim()) return undefined;
   const parts = comment.split("·").map((part) => part.trim()).filter(Boolean);
   return parts.length >= 3 ? parts[parts.length - 1] : undefined;
+}
+
+function readCachedWarrantyId(
+  motorId: string | null,
+  operation: FinancialOperation | null,
+  motor?: MotorEntity | null,
+): string | null {
+  if (!motorId) return null;
+  return (
+    operation?.relatedWarrantyId ??
+    (operation?.id ? readOperationWarrantySeed(operation.id) : null) ??
+    readMotorWarrantySeed(motorId) ??
+    motor?.warrantyId ??
+    null
+  );
 }
 
 export function useMotorSaleDocuments(
@@ -57,125 +57,80 @@ export function useMotorSaleDocuments(
   status: MotorSaleDocumentsStatus;
   retry: () => void;
 } {
-  const { profile } = useAuth();
-  const companyId = profile?.companyId ?? "";
   const operation = options?.operation ?? null;
   const motorId = motor?.id ?? operation?.relatedMotorId ?? null;
-  const seedWarrantyId = motorId ? readMotorWarrantySeed(motorId) : null;
-  const [polledWarrantyId, setPolledWarrantyId] = useState<string | null>(null);
-  const [isPolling, setIsPolling] = useState(false);
-  const [isEnsuring, setIsEnsuring] = useState(false);
-  const [ensureFailed, setEnsureFailed] = useState(false);
-  const [retryNonce, setRetryNonce] = useState(0);
-  const ensureAttemptedRef = useRef(false);
-
-  const { warranty, isLoading: warrantyLoading } = useMotorWarrantyRealtime(
-    companyId,
-    motorId ?? undefined,
-    enabled && Boolean(motorId && companyId),
+  const [warrantyId, setWarrantyId] = useState<string | null>(() =>
+    enabled ? readCachedWarrantyId(motorId, operation, motor) : null,
   );
+  const [status, setStatus] = useState<MotorSaleDocumentsStatus>(() =>
+    readCachedWarrantyId(motorId, operation, motor) ? "ready" : "loading",
+  );
+  const [retryNonce, setRetryNonce] = useState(0);
+  const requestIdRef = useRef(0);
 
-  const resolvedWarrantyId =
-    warranty?.id ?? polledWarrantyId ?? seedWarrantyId ?? motor?.warrantyId ?? null;
+  const syncDocuments = useCallback(
+    async (requestId: number) => {
+      if (!motorId || !motor) {
+        setStatus("error");
+        return;
+      }
 
-  const ensureDocuments = useCallback(async () => {
-    if (!motor || !motorId || ensureAttemptedRef.current) return null;
-    ensureAttemptedRef.current = true;
-    setIsEnsuring(true);
-    setEnsureFailed(false);
+      setStatus("loading");
 
-    try {
       const result = await enqueueMotorSoldEffects(motor, {
         amount: operation?.amount ?? 0,
         account: operation?.account ?? "cashbox",
         paymentMethod: operation?.paymentMethod ?? "cash",
         comment: operation?.comment ?? operation?.description ?? "Продажа мотора",
+        clientId: operation?.relatedClientId ?? undefined,
         clientName: parseClientNameFromComment(operation?.comment ?? operation?.description),
       });
+
+      if (requestId !== requestIdRef.current) return;
+
       if (result.warrantyId) {
-        return result.warrantyId;
-      }
-      if (!result.ok || result.warrantyId == null) {
-        setEnsureFailed(true);
-      }
-      return null;
-    } finally {
-      setIsEnsuring(false);
-    }
-  }, [motor, motorId, operation]);
-
-  useEffect(() => {
-    if (!enabled || !motorId || !companyId || resolvedWarrantyId) {
-      return;
-    }
-
-    let cancelled = false;
-    let attempt = 0;
-    const maxAttempts = 20;
-
-    async function poll() {
-      if (!motorId) return;
-      setIsPolling(true);
-      setEnsureFailed(false);
-
-      while (!cancelled && attempt < maxAttempts) {
-        attempt += 1;
-        const warrantyId = await fetchWarrantyIdFromApi(motorId);
-        if (cancelled) return;
-        if (warrantyId) {
-          setPolledWarrantyId(warrantyId);
-          setIsPolling(false);
-          return;
+        setWarrantyId(result.warrantyId);
+        writeMotorWarrantySeed(motorId, result.warrantyId);
+        if (operation?.id) {
+          writeOperationWarrantySeed(operation.id, result.warrantyId);
         }
-
-        if (attempt === 3 && motor) {
-          const ensuredId = await ensureDocuments();
-          if (cancelled) return;
-          if (ensuredId) {
-            setPolledWarrantyId(ensuredId);
-            setIsPolling(false);
-            return;
-          }
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, 400));
+        setStatus("ready");
+        return;
       }
 
-      if (!cancelled) {
-        if (motor) {
-          const ensuredId = await ensureDocuments();
-          if (!cancelled && ensuredId) {
-            setPolledWarrantyId(ensuredId);
-          } else if (!cancelled && !ensuredId) {
-            setEnsureFailed(true);
-          }
-        } else {
-          setEnsureFailed(true);
-        }
-        setIsPolling(false);
-      }
-    }
-
-    void poll();
-    return () => {
-      cancelled = true;
-    };
-  }, [companyId, enabled, ensureDocuments, motor, motorId, resolvedWarrantyId, retryNonce]);
-
-  useEffect(() => {
-    if (!motorId || !warranty?.id || !seedWarrantyId) return;
-    clearMotorWarrantySeed(motorId);
-  }, [motorId, seedWarrantyId, warranty?.id]);
+      setStatus(result.ok ? "error" : "error");
+    },
+    [motor, motorId, operation],
+  );
 
   useEffect(() => {
     if (!enabled) {
-      ensureAttemptedRef.current = false;
-      setEnsureFailed(false);
-      setPolledWarrantyId(null);
-      setIsPolling(false);
-      setIsEnsuring(false);
+      setWarrantyId(null);
+      setStatus("loading");
+      requestIdRef.current += 1;
+      return;
     }
-  }, [enabled, motorId]);
+
+    if (!motorId) {
+      setStatus("error");
+      return;
+    }
+
+    const cached = readCachedWarrantyId(motorId, operation, motor);
+    if (cached) {
+      setWarrantyId(cached);
+      setStatus("ready");
+      return;
+    }
+
+    if (!motor) {
+      setStatus("error");
+      return;
+    }
+
+    const requestId = ++requestIdRef.current;
+    void syncDocuments(requestId);
+  }, [enabled, motor, motorId, operation, retryNonce, syncDocuments]);
 
   const documents = useMemo<MotorSaleDocumentsPayload | null>(() => {
     if (!motorId) return null;
@@ -184,37 +139,17 @@ export function useMotorSaleDocuments(
       serialCode: motor?.serialCode ?? operation?.description?.split(" ").pop() ?? "",
       brandName: motor?.brandName,
       engineCode: motor?.engineCode,
-      warrantyId: resolvedWarrantyId,
+      warrantyId,
     };
-  }, [motor, motorId, operation?.description, resolvedWarrantyId]);
-
-  const isAwaitingWarranty =
-    enabled && Boolean(motorId && companyId) && !resolvedWarrantyId;
-
-  const status: MotorSaleDocumentsStatus = resolvedWarrantyId
-    ? "ready"
-    : !motorId
-      ? "unavailable"
-      : ensureFailed && !isPolling && !isEnsuring && !warrantyLoading
-        ? "failed"
-        : isAwaitingWarranty && (warrantyLoading || isPolling || isEnsuring)
-          ? "loading"
-          : isAwaitingWarranty
-            ? "forming"
-            : "unavailable";
-
-  const isLoading = status === "loading";
+  }, [motor, motorId, operation?.description, warrantyId]);
 
   const retry = useCallback(() => {
-    ensureAttemptedRef.current = false;
-    setEnsureFailed(false);
-    setPolledWarrantyId(null);
     setRetryNonce((value) => value + 1);
   }, []);
 
   return {
     documents,
-    isLoading,
+    isLoading: status === "loading",
     status,
     retry,
   };

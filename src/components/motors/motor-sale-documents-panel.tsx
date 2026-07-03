@@ -16,13 +16,6 @@ import type { LucideIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MotorSaleDocumentsPayload, MotorSaleDocumentsStatus } from "@/hooks/use-motor-sale-documents";
@@ -142,23 +135,10 @@ function MotorSaleSummary({
   );
 }
 
-function LoadingState() {
-  return (
-    <div className="flex flex-col gap-4">
-      <Skeleton className="h-28 w-full rounded-xl" />
-      <div className="flex flex-col gap-2">
-        <Skeleton className="h-4 w-24" />
-        <Skeleton className="h-14 w-full rounded-xl" />
-        <Skeleton className="h-14 w-full rounded-xl" />
-      </div>
-    </div>
-  );
-}
-
 export function MotorSaleDocumentsPanel({
   documents,
   isLoading,
-  status = "unavailable",
+  status = "loading",
   onRetry,
   motorLabel,
   serialCode,
@@ -169,13 +149,16 @@ export function MotorSaleDocumentsPanel({
   const [busy, setBusy] = useState<BusyKind>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const warrantyId = documents?.warrantyId ?? null;
+  const actionsDisabled = busy != null || isLoading || !warrantyId;
+
   async function runAction(
     kind: Exclude<BusyKind, null>,
     slug: "engine-warranty" | "invoice",
     mode: "print" | "download",
   ) {
-    if (!documents?.warrantyId) {
-      setError("Документы ещё формируются. Подождите несколько секунд и попробуйте снова.");
+    if (!warrantyId) {
+      setError("Документы ещё подготавливаются. Подождите секунду.");
       return;
     }
 
@@ -183,12 +166,12 @@ export function MotorSaleDocumentsPanel({
     setError(null);
     try {
       if (mode === "print") {
-        await printDocumentPdf(slug, documents.warrantyId, { aggregateType: "warranty" });
+        await printDocumentPdf(slug, warrantyId, { aggregateType: "warranty" });
       } else {
         await downloadDocumentPdf(
           slug,
-          documents.warrantyId,
-          `${slug}-${documents.serialCode}.pdf`,
+          warrantyId,
+          `${slug}-${documents?.serialCode ?? warrantyId}.pdf`,
           { aggregateType: "warranty" },
         );
       }
@@ -198,8 +181,6 @@ export function MotorSaleDocumentsPanel({
       setBusy(null);
     }
   }
-
-  const actionsDisabled = busy != null || isLoading || !documents?.warrantyId;
 
   return (
     <div className="flex flex-col gap-4">
@@ -220,9 +201,7 @@ export function MotorSaleDocumentsPanel({
         </div>
       ) : null}
 
-      {isLoading ? <LoadingState /> : null}
-
-      {!isLoading && error ? (
+      {error ? (
         <div
           role="alert"
           className="flex items-start gap-2 rounded-xl border border-destructive/25 bg-destructive/5 px-3.5 py-3 text-sm text-destructive"
@@ -232,112 +211,100 @@ export function MotorSaleDocumentsPanel({
         </div>
       ) : null}
 
-      {!isLoading && status === "ready" && documents?.warrantyId ? (
-        <div className="flex flex-col gap-4">
-          <section className="flex flex-col gap-2">
-            <div className="flex items-center gap-2 px-0.5">
-              <ShieldCheck className="size-3.5 text-primary" aria-hidden />
-              <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                Гарантия
-              </h3>
-            </div>
-            <div className="flex flex-col gap-2">
-              <DocumentActionRow
-                icon={Printer}
-                tone="primary"
-                title={busy === "warranty-print" ? "Открываем печать…" : "Печать гарантийного талона"}
-                description="Официальный талон на двигатель"
-                busy={busy === "warranty-print"}
-                disabled={actionsDisabled}
-                onClick={() => void runAction("warranty-print", "engine-warranty", "print")}
-              />
-              <DocumentActionRow
-                icon={Download}
-                title={busy === "warranty-download" ? "Скачиваем PDF…" : "Скачать гарантийный талон"}
-                description="PDF для отправки клиенту"
-                busy={busy === "warranty-download"}
-                disabled={actionsDisabled}
-                onClick={() => void runAction("warranty-download", "engine-warranty", "download")}
-              />
-            </div>
-          </section>
-
-          <Separator />
-
-          <section className="flex flex-col gap-2">
-            <div className="flex items-center gap-2 px-0.5">
-              <Receipt className="size-3.5 text-primary" aria-hidden />
-              <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Счёт</h3>
-            </div>
-            <div className="flex flex-col gap-2">
-              <DocumentActionRow
-                icon={Printer}
-                tone="primary"
-                title={busy === "invoice-print" ? "Открываем печать…" : "Печать счёта на двигатель"}
-                description="Счёт на оплату контрактного двигателя"
-                busy={busy === "invoice-print"}
-                disabled={actionsDisabled}
-                onClick={() => void runAction("invoice-print", "invoice", "print")}
-              />
-              <DocumentActionRow
-                icon={Download}
-                title={busy === "invoice-download" ? "Скачиваем PDF…" : "Скачать счёт на двигатель"}
-                description="PDF для бухгалтерии и клиента"
-                busy={busy === "invoice-download"}
-                disabled={actionsDisabled}
-                onClick={() => void runAction("invoice-download", "invoice", "download")}
-              />
-            </div>
-          </section>
-        </div>
-      ) : null}
-
-      {!isLoading && status === "forming" && documents && !documents.warrantyId ? (
-        <Empty className="shrink-0 border border-border/70 border-dashed bg-muted/10 py-8">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <Loader2 className="animate-spin" aria-hidden />
-            </EmptyMedia>
-            <EmptyTitle>Документы формируются</EmptyTitle>
-            <EmptyDescription>
-              Гарантия и счёт появятся автоматически — обычно это занимает несколько секунд.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      ) : null}
-
-      {!isLoading && status === "failed" ? (
-        <Empty className="shrink-0 border border-border/70 border-dashed bg-muted/10 py-8">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <AlertCircle aria-hidden />
-            </EmptyMedia>
-            <EmptyTitle>Не удалось подготовить документы</EmptyTitle>
-            <EmptyDescription>
-              Попробуйте ещё раз. Если проблема повторится, проверьте настройки гарантии в профиле компании.
-            </EmptyDescription>
-          </EmptyHeader>
+      {status === "error" ? (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/25 bg-destructive/5 px-3.5 py-3 text-sm text-destructive">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <p>Не удалось подготовить документы продажи.</p>
+          </div>
           {onRetry ? (
             <Button type="button" variant="outline" size="sm" onClick={onRetry}>
               Повторить
             </Button>
           ) : null}
-        </Empty>
+        </div>
       ) : null}
 
-      {!isLoading && status === "unavailable" && !motorMissing ? (
-        <Empty className="shrink-0 border border-border/70 border-dashed bg-muted/10 py-8">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <FileStack aria-hidden />
-            </EmptyMedia>
-            <EmptyTitle>Документы недоступны</EmptyTitle>
-            <EmptyDescription>
-              Не удалось связать операцию с двигателем. Откройте карточку мотора в разделе «Моторы».
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      ) : null}
+      <div className="flex flex-col gap-4">
+        {isLoading ? (
+          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-muted/10 px-3.5 py-3 text-sm text-muted-foreground">
+            <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+            <span>Подготавливаем гарантию и счёт…</span>
+          </div>
+        ) : null}
+
+        <section className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 px-0.5">
+            <ShieldCheck className="size-3.5 text-primary" aria-hidden />
+            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Гарантия</h3>
+          </div>
+          <div className="flex flex-col gap-2">
+            {isLoading ? (
+              <>
+                <Skeleton className="h-14 w-full rounded-xl" />
+                <Skeleton className="h-14 w-full rounded-xl" />
+              </>
+            ) : (
+              <>
+                <DocumentActionRow
+                  icon={Printer}
+                  tone="primary"
+                  title={busy === "warranty-print" ? "Открываем печать…" : "Печать гарантийного талона"}
+                  description="Официальный талон на двигатель"
+                  busy={busy === "warranty-print"}
+                  disabled={actionsDisabled}
+                  onClick={() => void runAction("warranty-print", "engine-warranty", "print")}
+                />
+                <DocumentActionRow
+                  icon={Download}
+                  title={busy === "warranty-download" ? "Скачиваем PDF…" : "Скачать гарантийный талон"}
+                  description="PDF для отправки клиенту"
+                  busy={busy === "warranty-download"}
+                  disabled={actionsDisabled}
+                  onClick={() => void runAction("warranty-download", "engine-warranty", "download")}
+                />
+              </>
+            )}
+          </div>
+        </section>
+
+        <Separator />
+
+        <section className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 px-0.5">
+            <Receipt className="size-3.5 text-primary" aria-hidden />
+            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Счёт</h3>
+          </div>
+          <div className="flex flex-col gap-2">
+            {isLoading ? (
+              <>
+                <Skeleton className="h-14 w-full rounded-xl" />
+                <Skeleton className="h-14 w-full rounded-xl" />
+              </>
+            ) : (
+              <>
+                <DocumentActionRow
+                  icon={Printer}
+                  tone="primary"
+                  title={busy === "invoice-print" ? "Открываем печать…" : "Печать счёта на двигатель"}
+                  description="Счёт на оплату контрактного двигателя"
+                  busy={busy === "invoice-print"}
+                  disabled={actionsDisabled}
+                  onClick={() => void runAction("invoice-print", "invoice", "print")}
+                />
+                <DocumentActionRow
+                  icon={Download}
+                  title={busy === "invoice-download" ? "Скачиваем PDF…" : "Скачать счёт на двигатель"}
+                  description="PDF для бухгалтерии и клиента"
+                  busy={busy === "invoice-download"}
+                  disabled={actionsDisabled}
+                  onClick={() => void runAction("invoice-download", "invoice", "download")}
+                />
+              </>
+            )}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

@@ -56,6 +56,8 @@ export const createFinancialOperationSchema = z.object({
   changeGiven: z.number().nonnegative().nullable().optional(),
   relatedMotorID: z.number().int().nullable().optional(),
   relatedMotorId: z.string().trim().nullable().optional(),
+  relatedWarrantyId: z.string().trim().nullable().optional(),
+  relatedClientId: z.string().trim().nullable().optional(),
   relatedInventoryItemId: z.string().trim().nullable().optional(),
   relatedMovementId: z.string().trim().nullable().optional(),
   relatedWarehouseId: z.string().trim().nullable().optional(),

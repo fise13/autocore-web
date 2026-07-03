@@ -14,7 +14,7 @@ import { LayoutGrid, X } from "lucide-react";
 import { sellMotorWithFinancialOperationUseCase } from "@/application/use-cases/sell-motor-with-financial-operation";
 import { quickCreateClientUseCase } from "@/application/use-cases/work-orders/quick-create-client";
 import { enqueueMotorSoldEffects } from "@/lib/motors/enqueue-motor-sold-effects";
-import { writeMotorWarrantySeed } from "@/lib/motors/motor-warranty-session";
+import { writeMotorWarrantySeed, writeOperationWarrantySeed } from "@/lib/motors/motor-warranty-session";
 import { unsellMotorWithFinancialOperationUseCase } from "@/application/use-cases/unsell-motor-with-financial-operation";
 import { MotorSaleSuccessOverlay } from "@/components/motors/motor-sale-success-overlay";
 import { useWorkspace } from "@/components/layout/workspace-context";
@@ -273,17 +273,6 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
         payload.comment?.trim() ||
         `Продажа · ${motor.serialCode} · ${client.fullName}`;
 
-      await sellMotorWithFinancialOperationUseCase(motorRepository, financialRepository, {
-        uid,
-        motor,
-        companyId,
-        createdByUserId: profile.id,
-        amount: payload.amount,
-        account: payload.account,
-        paymentMethod: payload.paymentMethod,
-        comment: saleComment,
-      });
-
       const effects = await enqueueMotorSoldEffects(motor, {
         amount: payload.amount,
         account: payload.account,
@@ -294,8 +283,34 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
         clientPhone: client.phone,
         warrantyOverride: payload.warrantyOverride,
       });
+
       if (effects.warrantyId) {
         writeMotorWarrantySeed(motor.id, effects.warrantyId);
+      }
+
+      const operationId = await sellMotorWithFinancialOperationUseCase(
+        motorRepository,
+        financialRepository,
+        {
+          uid,
+          motor,
+          companyId,
+          createdByUserId: profile.id,
+          amount: payload.amount,
+          account: payload.account,
+          paymentMethod: payload.paymentMethod,
+          comment: saleComment,
+          relatedWarrantyId: effects.warrantyId ?? null,
+          relatedClientId: client.id,
+        },
+      );
+
+      if (operationId && effects.warrantyId) {
+        writeOperationWarrantySeed(operationId, effects.warrantyId);
+      }
+
+      if (!effects.ok && effects.error) {
+        console.warn("[motor-sell] sold-effects:", effects.error);
       }
 
       setSellSuccess({ serialCode: motor.serialCode, amount: payload.amount });

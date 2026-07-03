@@ -17,8 +17,10 @@ export async function sellMotorWithFinancialOperationUseCase(
     account: OperationAccount;
     paymentMethod: PaymentMethod;
     comment?: string;
+    relatedWarrantyId?: string | null;
+    relatedClientId?: string | null;
   },
-) {
+): Promise<string | null> {
   const relatedMotorID = params.motor.localId ?? Number(params.motor.id);
   const soldDate = new Date();
   const arrivalDate = params.motor.arrivalDate ?? soldDate;
@@ -40,20 +42,26 @@ export async function sellMotorWithFinancialOperationUseCase(
     brandName: params.motor.brandName,
     engineCode: params.motor.engineCode,
     engineId: params.motor.engineId,
+    warrantyId: params.relatedWarrantyId ?? params.motor.warrantyId ?? undefined,
+    status: "sold",
   });
 
-  if (params.amount > 0) {
-    await createSaleOperationUseCase(financialRepository, {
-      companyId: params.companyId,
-      amount: params.amount,
-      account: params.account,
-      paymentMethod: params.paymentMethod,
-      relatedMotorID: Number.isFinite(relatedMotorID) ? relatedMotorID : null,
-      relatedMotorId: params.motor.id,
-      category: MOTOR_SALE_CATEGORY,
-      description: motorDescription,
-      comment: params.comment ?? "Продажа мотора",
-      createdByUserId: params.createdByUserId,
-    });
+  if (params.amount <= 0) {
+    return null;
   }
+
+  return createSaleOperationUseCase(financialRepository, {
+    companyId: params.companyId,
+    amount: params.amount,
+    account: params.account,
+    paymentMethod: params.paymentMethod,
+    relatedMotorID: Number.isFinite(relatedMotorID) ? relatedMotorID : null,
+    relatedMotorId: params.motor.id,
+    relatedWarrantyId: params.relatedWarrantyId ?? null,
+    relatedClientId: params.relatedClientId ?? null,
+    category: MOTOR_SALE_CATEGORY,
+    description: motorDescription,
+    comment: params.comment ?? "Продажа мотора",
+    createdByUserId: params.createdByUserId,
+  });
 }

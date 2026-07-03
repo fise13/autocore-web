@@ -72,6 +72,8 @@ function mapOperation(id: string, data: Record<string, unknown>): FinancialOpera
     changeGiven: data.changeGiven == null ? null : readAmount(data.changeGiven),
     relatedMotorID: data.relatedMotorID == null ? null : Number(data.relatedMotorID),
     relatedMotorId: typeof data.relatedMotorId === "string" ? data.relatedMotorId : null,
+    relatedWarrantyId: typeof data.relatedWarrantyId === "string" ? data.relatedWarrantyId : null,
+    relatedClientId: typeof data.relatedClientId === "string" ? data.relatedClientId : null,
     relatedInventoryItemId:
       typeof data.relatedInventoryItemId === "string" ? data.relatedInventoryItemId : null,
     relatedMovementId: typeof data.relatedMovementId === "string" ? data.relatedMovementId : null,
