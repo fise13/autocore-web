@@ -25,6 +25,8 @@ export type PdfFromUrlOptions = {
 
 type PdfPage = Awaited<ReturnType<Awaited<ReturnType<typeof getPuppeteerBrowser>>["newPage"]>>;
 
+const PDF_PAGE_SELECTOR = ".doc-pdf-page, .doc-racing-page, .doc-sr-page, .doc-page";
+
 async function waitForPdfAssets(page: PdfPage) {
   await page.evaluate(() => document.fonts.ready).catch(() => undefined);
   await page
@@ -36,6 +38,17 @@ async function waitForPdfAssets(page: PdfPage) {
       { timeout: 12_000 },
     )
     .catch(() => undefined);
+}
+
+async function assertPdfRenderContent(page: PdfPage): Promise<void> {
+  const hasContent = await page.evaluate((selector) => {
+    const root = document.querySelector(selector);
+    return Boolean(root && (root.textContent?.trim().length ?? 0) > 20);
+  }, PDF_PAGE_SELECTOR);
+
+  if (!hasContent) {
+    throw new Error("Документ не содержит данных для PDF. Проверьте контекст гарантии или счёта.");
+  }
 }
 
 export async function generatePdfFromRenderUrl(params: PdfFromUrlOptions): Promise<Buffer> {
@@ -57,10 +70,11 @@ export async function generatePdfFromRenderUrl(params: PdfFromUrlOptions): Promi
       throw new Error(`Страница рендера PDF недоступна (${status}): ${url}`);
     }
 
-    await page.waitForSelector(".doc-pdf-page, .doc-racing-page, .doc-sr-page, .doc-page", {
+    await page.waitForSelector(PDF_PAGE_SELECTOR, {
       timeout: 20_000,
     });
     await waitForPdfAssets(page);
+    await assertPdfRenderContent(page);
     await page.emulateMediaType("print");
 
     const pageSelectors = [...PDF_PAGE_ROOT_SELECTORS];
@@ -82,6 +96,7 @@ export async function generatePdfFromRenderUrl(params: PdfFromUrlOptions): Promi
     await page.setViewport({ width: targetWidthPx, height: targetHeightPx, deviceScaleFactor: 1 });
     await page.evaluate(applyPdfExportLayoutScript, {
       fitScale,
+      contentHeight: content.contentHeight,
       targetWidthPx,
       targetHeightPx,
       pageSelectors,
@@ -94,8 +109,7 @@ export async function generatePdfFromRenderUrl(params: PdfFromUrlOptions): Promi
       ...(isServiceTag
         ? { width: "70mm", height: "100mm", margin: { top: "0", right: "0", bottom: "0", left: "0" } }
         : {
-            width: `${targetWidthPx}px`,
-            height: `${targetHeightPx}px`,
+            format: "A4",
             margin: { top: "0", right: "0", bottom: "0", left: "0" },
           }),
     });

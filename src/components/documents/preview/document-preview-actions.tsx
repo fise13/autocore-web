@@ -77,12 +77,9 @@ export function DocumentPreviewActions({
     onError?.(null);
     onNotice?.(null);
     try {
-      const { blob, prefetched } = await resolvePdfBlob();
+      const { blob } = await resolvePdfBlob();
       const filename = `${definition.slug}-${orderId}.pdf`;
-      const result = deliverPdfToUser(blob, filename, prefetched ? "instant" : "async");
-      if (result === "opened-tab") {
-        onNotice?.("PDF открыт в новой вкладке. Сохраните его через меню браузера (⌘S / Ctrl+S).");
-      }
+      deliverPdfToUser(blob, filename);
     } catch (error) {
       onError?.(mapDocumentError(error, "Не удалось скачать PDF"));
     } finally {

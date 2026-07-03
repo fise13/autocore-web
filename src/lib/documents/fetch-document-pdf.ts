@@ -56,42 +56,30 @@ export async function fetchDocumentPdf(
   return blob;
 }
 
+function toPdfBlob(blob: Blob): Blob {
+  if (blob.type === "application/pdf") return blob;
+  return new Blob([blob], { type: "application/pdf" });
+}
+
 export function downloadPdfBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
+  const pdfBlob = toPdfBlob(blob);
+  const url = URL.createObjectURL(pdfBlob);
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
   anchor.rel = "noopener";
+  anchor.style.display = "none";
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-export type PdfDeliveryResult = "downloaded" | "opened-tab";
+export type PdfDeliveryResult = "downloaded";
 
-/** After async PDF generation, browsers block programmatic download — open the PDF in a new tab. */
-export function deliverPdfToUser(
-  blob: Blob,
-  filename: string,
-  mode: "instant" | "async" = "async",
-): PdfDeliveryResult {
-  const url = URL.createObjectURL(blob);
-  const scheduleRevoke = () => window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
-
-  if (mode === "instant") {
-    downloadPdfBlob(blob, filename);
-    return "downloaded";
-  }
-
-  const popup = window.open(url, "_blank", "noopener,noreferrer");
-  if (!popup) {
-    URL.revokeObjectURL(url);
-    throw new Error("Браузер заблокировал открытие PDF. Разрешите всплывающие окна для этого сайта.");
-  }
-
-  scheduleRevoke();
-  return "opened-tab";
+export function deliverPdfToUser(blob: Blob, filename: string): PdfDeliveryResult {
+  downloadPdfBlob(blob, filename);
+  return "downloaded";
 }
 
 export async function downloadDocumentPdfFromUrl(downloadUrl: string, filename: string): Promise<void> {
@@ -124,83 +112,70 @@ export async function downloadDocumentPdf(
   }
 
   const blob = await fetchDocumentPdf(slug, aggregateId, options);
-  return deliverPdfToUser(blob, resolvedFilename, "async");
+  return deliverPdfToUser(blob, resolvedFilename);
 }
 
-export async function printPdfBlob(blob: Blob): Promise<void> {
-  const url = URL.createObjectURL(blob);
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+async function waitForPdfFrame(frame: HTMLIFrameElement, timeoutMs = 15_000): Promise<void> {
+  if (frame.contentDocument?.readyState === "complete") {
+    await sleep(900);
+    return;
+  }
 
   await new Promise<void>((resolve, reject) => {
-    let settled = false;
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
+    const timer = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("PDF не успел загрузиться для печати"));
+    }, timeoutMs);
+
+    const onLoad = () => {
+      cleanup();
       resolve();
     };
 
-    const popup = window.open(url, "_blank", "noopener,noreferrer");
-    if (popup) {
-      const triggerPrint = () => {
-        try {
-          popup.focus();
-          popup.print();
-        } catch {
-          // Browser may block programmatic print — user can print from the tab.
-        }
-        finish();
-      };
+    const cleanup = () => {
+      window.clearTimeout(timer);
+      frame.removeEventListener("load", onLoad);
+    };
 
-      popup.addEventListener("load", triggerPrint);
-      window.setTimeout(triggerPrint, 450);
-      return;
-    }
+    frame.addEventListener("load", onLoad, { once: true });
+  });
 
+  await sleep(900);
+}
+
+export async function printPdfBlob(blob: Blob): Promise<void> {
+  const pdfBlob = toPdfBlob(blob);
+  const url = URL.createObjectURL(pdfBlob);
+
+  try {
     const frame = document.createElement("iframe");
     frame.setAttribute("title", "Печать PDF");
     frame.style.cssText =
-      "position:fixed;inset:0;width:100%;height:100%;border:0;z-index:99999;background:#0a0a0a;";
+      "position:fixed;left:0;top:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none;";
     frame.src = url;
+    document.body.appendChild(frame);
 
-    const cleanup = () => {
-      frame.remove();
-      finish();
-    };
-
-    const triggerFramePrint = () => {
+    try {
+      await waitForPdfFrame(frame);
       const printWindow = frame.contentWindow;
       if (!printWindow) {
-        cleanup();
-        reject(new Error("Браузер не открыл PDF для печати"));
-        return;
+        throw new Error("Браузер не открыл PDF для печати");
       }
 
-      try {
-        printWindow.focus();
-        printWindow.print();
-      } catch {
-        reject(
-          new Error("Браузер заблокировал печать. Разрешите всплывающие окна или скачайте PDF."),
-        );
-        frame.remove();
-        URL.revokeObjectURL(url);
-        return;
-      }
-
-      printWindow.addEventListener("afterprint", cleanup, { once: true });
-      window.setTimeout(cleanup, 120_000);
-    };
-
-    frame.onload = triggerFramePrint;
-    frame.onerror = () => {
-      frame.remove();
-      URL.revokeObjectURL(url);
-      reject(new Error("Не удалось загрузить PDF для печати"));
-    };
-
-    document.body.appendChild(frame);
-    window.setTimeout(triggerFramePrint, 450);
-  });
+      printWindow.focus();
+      printWindow.print();
+    } finally {
+      window.setTimeout(() => frame.remove(), 120_000);
+    }
+  } finally {
+    window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
+  }
 }
 
 export async function printDocumentPdf(
