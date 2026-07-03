@@ -27,6 +27,7 @@ type MotorSaleDocumentsPanelProps = {
   documents: MotorSaleDocumentsPayload | null;
   isLoading: boolean;
   status?: MotorSaleDocumentsStatus;
+  errorMessage?: string | null;
   onRetry?: () => void;
   motorLabel: string;
   serialCode?: string;
@@ -64,7 +65,8 @@ function DocumentActionRow({
       className={cn(
         "group flex w-full cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors duration-200",
         "border-border/70 bg-card hover:border-primary/25 hover:bg-muted/30",
-        "disabled:pointer-events-none disabled:opacity-50",
+        "active:scale-[0.99]",
+        "disabled:pointer-events-none disabled:opacity-45",
       )}
     >
       <span
@@ -135,10 +137,23 @@ function MotorSaleSummary({
   );
 }
 
+function DocumentActionSkeleton() {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-card/60 px-3.5 py-3">
+      <Skeleton className="size-9 rounded-lg" />
+      <div className="min-w-0 flex-1 space-y-2">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-3 w-56 max-w-full" />
+      </div>
+    </div>
+  );
+}
+
 export function MotorSaleDocumentsPanel({
   documents,
   isLoading,
   status = "loading",
+  errorMessage = null,
   onRetry,
   motorLabel,
   serialCode,
@@ -147,23 +162,21 @@ export function MotorSaleDocumentsPanel({
   motorMissing = false,
 }: MotorSaleDocumentsPanelProps) {
   const [busy, setBusy] = useState<BusyKind>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const warrantyId = documents?.warrantyId ?? null;
   const actionsDisabled = busy != null || isLoading || !warrantyId;
+  const isReady = status === "ready" && Boolean(warrantyId);
 
   async function runAction(
     kind: Exclude<BusyKind, null>,
     slug: "engine-warranty" | "invoice",
     mode: "print" | "download",
   ) {
-    if (!warrantyId) {
-      setError("Документы ещё подготавливаются. Подождите секунду.");
-      return;
-    }
+    if (!warrantyId) return;
 
     setBusy(kind);
-    setError(null);
+    setActionError(null);
     try {
       if (mode === "print") {
         await printDocumentPdf(slug, warrantyId, { aggregateType: "warranty" });
@@ -176,7 +189,7 @@ export function MotorSaleDocumentsPanel({
         );
       }
     } catch (e) {
-      setError(mapServerError(e, mode === "print" ? "Не удалось напечатать документ" : "Не удалось скачать документ"));
+      setActionError(mapServerError(e, mode === "print" ? "Не удалось напечатать документ" : "Не удалось скачать документ"));
     } finally {
       setBusy(null);
     }
@@ -201,35 +214,46 @@ export function MotorSaleDocumentsPanel({
         </div>
       ) : null}
 
-      {error ? (
+      {status === "error" && errorMessage ? (
         <div
           role="alert"
-          className="flex items-start gap-2 rounded-xl border border-destructive/25 bg-destructive/5 px-3.5 py-3 text-sm text-destructive"
+          className="flex items-start justify-between gap-3 rounded-xl border border-destructive/25 bg-destructive/5 px-3.5 py-3 text-sm text-destructive"
         >
-          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <p>{error}</p>
-        </div>
-      ) : null}
-
-      {status === "error" ? (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/25 bg-destructive/5 px-3.5 py-3 text-sm text-destructive">
           <div className="flex items-start gap-2">
             <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
-            <p>Не удалось подготовить документы продажи.</p>
+            <p>{errorMessage}</p>
           </div>
           {onRetry ? (
-            <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+            <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={onRetry}>
               Повторить
             </Button>
           ) : null}
         </div>
       ) : null}
 
+      {actionError ? (
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-xl border border-destructive/25 bg-destructive/5 px-3.5 py-3 text-sm text-destructive"
+        >
+          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <p>{actionError}</p>
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-4">
         {isLoading ? (
-          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-muted/10 px-3.5 py-3 text-sm text-muted-foreground">
-            <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+          <div
+            className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-muted/10 px-3.5 py-3 text-sm text-muted-foreground"
+            aria-live="polite"
+          >
+            <Loader2 className="size-4 shrink-0 animate-spin text-primary" aria-hidden />
             <span>Подготавливаем гарантию и счёт…</span>
+          </div>
+        ) : isReady ? (
+          <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-3.5 py-2.5 text-sm text-emerald-700 dark:text-emerald-300">
+            <ShieldCheck className="size-4 shrink-0" aria-hidden />
+            <span>Документы готовы к печати и отправке</span>
           </div>
         ) : null}
 
@@ -241,8 +265,8 @@ export function MotorSaleDocumentsPanel({
           <div className="flex flex-col gap-2">
             {isLoading ? (
               <>
-                <Skeleton className="h-14 w-full rounded-xl" />
-                <Skeleton className="h-14 w-full rounded-xl" />
+                <DocumentActionSkeleton />
+                <DocumentActionSkeleton />
               </>
             ) : (
               <>
@@ -278,8 +302,8 @@ export function MotorSaleDocumentsPanel({
           <div className="flex flex-col gap-2">
             {isLoading ? (
               <>
-                <Skeleton className="h-14 w-full rounded-xl" />
-                <Skeleton className="h-14 w-full rounded-xl" />
+                <DocumentActionSkeleton />
+                <DocumentActionSkeleton />
               </>
             ) : (
               <>

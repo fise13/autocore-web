@@ -17,30 +17,44 @@ function resolveRenderBaseUrl(): string {
   return getAppUrl().replace(/\/$/, "");
 }
 
+function isDeployedProduction(): boolean {
+  if (process.env.NODE_ENV !== "production") return false;
+
+  const localHints = [
+    process.env.PDF_RENDER_BASE_URL,
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.APP_URL,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (localHints.includes("localhost") || localHints.includes("127.0.0.1")) {
+    return false;
+  }
+
+  return process.env.VERCEL === "1" || Boolean(process.env.VERCEL_ENV);
+}
+
 function renderSecret(): string {
   const dedicated = process.env.DOCUMENT_RENDER_SECRET?.trim();
   if (dedicated) return dedicated;
 
-  const isProduction =
-    process.env.NODE_ENV === "production" ||
-    process.env.VERCEL === "1" ||
-    Boolean(process.env.VERCEL_ENV);
+  if (!isDeployedProduction()) {
+    const inlineServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
+    if (inlineServiceAccount && !inlineServiceAccount.includes("...")) {
+      return inlineServiceAccount;
+    }
 
-  if (isProduction) {
-    throw new Error(
-      "DOCUMENT_RENDER_SECRET is required in production. Set a random string of at least 32 characters.",
-    );
+    const pathSecret = process.env.FIREBASE_SERVICE_ACCOUNT_PATH?.trim();
+    if (pathSecret) return pathSecret;
+
+    return "autocore-document-render-dev-secret-32ch";
   }
 
-  const inlineServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
-  if (inlineServiceAccount && !inlineServiceAccount.includes("...")) {
-    return inlineServiceAccount;
-  }
-
-  const pathSecret = process.env.FIREBASE_SERVICE_ACCOUNT_PATH?.trim();
-  if (pathSecret) return pathSecret;
-
-  return "autocore-document-render-dev";
+  throw new Error(
+    "DOCUMENT_RENDER_SECRET is required in production. Set a random string of at least 32 characters.",
+  );
 }
 
 type RenderTokenPayload = {

@@ -72,7 +72,7 @@ export function MotorSaleDocumentsSheet({
     () => buildMotorContext(operation, motors, companyId),
     [companyId, operation, motors],
   );
-  const { documents, isLoading, status, retry } = useMotorSaleDocuments(motor, open, { operation });
+  const { documents, isLoading, status, errorMessage, retry } = useMotorSaleDocuments(motor, open, { operation });
 
   const motorLabel = documents
     ? [documents.brandName, documents.engineCode, documents.serialCode].filter(Boolean).join(" · ")
@@ -102,6 +102,7 @@ export function MotorSaleDocumentsSheet({
             documents={documents}
             isLoading={isLoading}
             status={status}
+            errorMessage={errorMessage}
             onRetry={retry}
             motorLabel={motorLabel}
             serialCode={documents?.serialCode ?? motor?.serialCode}
