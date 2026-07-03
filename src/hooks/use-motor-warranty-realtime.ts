@@ -53,7 +53,11 @@ export function useMotorWarrantyRealtime(companyId: string, motorId: string | un
   });
 
   useEffect(() => {
-    if (!active || !motorId) return;
+    if (!active) {
+      setSnapshotKey(null);
+      return;
+    }
+    if (!motorId) return;
 
     const q = firestoreQuery(
       collection(getFirestoreDb(), "companies", normalizeCompanyId(companyId), "warranties"),
@@ -73,8 +77,21 @@ export function useMotorWarrantyRealtime(companyId: string, motorId: string | un
     );
   }, [active, activeKey, companyId, motorId, queryClient, queryKey]);
 
+  const [listenerTimedOut, setListenerTimedOut] = useState(false);
+  useEffect(() => {
+    if (!active) {
+      setListenerTimedOut(false);
+      return;
+    }
+    setListenerTimedOut(false);
+    const timeout = window.setTimeout(() => setListenerTimedOut(true), 2_500);
+    return () => window.clearTimeout(timeout);
+  }, [active, activeKey]);
+
+  const listenerPending = active && snapshotKey !== activeKey && !listenerTimedOut;
+
   return {
     warranty: active ? warrantyQuery.data ?? null : null,
-    isLoading: active ? snapshotKey !== activeKey : false,
+    isLoading: listenerPending,
   };
 }

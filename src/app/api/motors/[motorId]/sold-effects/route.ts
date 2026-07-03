@@ -65,17 +65,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
     });
 
     if (result.jobId) {
-      await Promise.race([
-        fetch(`${request.nextUrl.origin}/api/documents/process-queue`, {
-          method: "POST",
-          headers: {
-            Authorization: request.headers.get("authorization") ?? "",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ jobId: result.jobId }),
-        }).catch(() => undefined),
-        new Promise((resolve) => setTimeout(resolve, 8_000)),
-      ]);
+      void fetch(`${request.nextUrl.origin}/api/documents/process-queue`, {
+        method: "POST",
+        headers: {
+          Authorization: request.headers.get("authorization") ?? "",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ jobId: result.jobId }),
+      }).catch(() => undefined);
     }
 
     return NextResponse.json(result);

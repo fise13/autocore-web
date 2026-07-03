@@ -148,6 +148,13 @@ async function resolveMotorSaleClientId(params: {
 
   const fullName = params.clientName?.trim() ?? "";
   const phone = params.clientPhone?.trim() ?? "";
+  if (fullName.length >= 2 && phone.length < 3) {
+    const byName = await clientsRef.where("fullName", "==", fullName).limit(1).get();
+    if (!byName.empty) {
+      return byName.docs[0].id;
+    }
+  }
+
   if (fullName.length < 2 || phone.length < 3) {
     throw new Error("Укажите покупателя и телефон");
   }

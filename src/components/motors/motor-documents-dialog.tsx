@@ -20,7 +20,7 @@ type MotorDocumentsDialogProps = {
 };
 
 export function MotorDocumentsDialog({ motor, open, onOpenChange }: MotorDocumentsDialogProps) {
-  const { documents, isLoading } = useMotorSaleDocuments(motor, open);
+  const { documents, isLoading, status, retry } = useMotorSaleDocuments(motor, open);
 
   const motorLabel = documents
     ? [documents.brandName, documents.engineCode, documents.serialCode].filter(Boolean).join(" · ")
@@ -47,6 +47,8 @@ export function MotorDocumentsDialog({ motor, open, onOpenChange }: MotorDocumen
           <MotorSaleDocumentsPanel
             documents={documents}
             isLoading={isLoading}
+            status={status}
+            onRetry={retry}
             motorLabel={motorLabel}
             serialCode={motor?.serialCode}
             saleDate={motor?.soldDate ?? undefined}

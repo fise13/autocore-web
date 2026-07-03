@@ -15,6 +15,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Empty,
   EmptyDescription,
@@ -24,7 +25,7 @@ import {
 } from "@/components/ui/empty";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MotorSaleDocumentsPayload } from "@/hooks/use-motor-sale-documents";
+import { MotorSaleDocumentsPayload, MotorSaleDocumentsStatus } from "@/hooks/use-motor-sale-documents";
 import { downloadDocumentPdf, printDocumentPdf } from "@/lib/documents/fetch-document-pdf";
 import { mapServerError } from "@/lib/errors/map-server-error";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,8 @@ import { cn } from "@/lib/utils";
 type MotorSaleDocumentsPanelProps = {
   documents: MotorSaleDocumentsPayload | null;
   isLoading: boolean;
+  status?: MotorSaleDocumentsStatus;
+  onRetry?: () => void;
   motorLabel: string;
   serialCode?: string;
   amount?: number;
@@ -155,6 +158,8 @@ function LoadingState() {
 export function MotorSaleDocumentsPanel({
   documents,
   isLoading,
+  status = "unavailable",
+  onRetry,
   motorLabel,
   serialCode,
   amount,
@@ -227,7 +232,7 @@ export function MotorSaleDocumentsPanel({
         </div>
       ) : null}
 
-      {!isLoading && documents?.warrantyId ? (
+      {!isLoading && status === "ready" && documents?.warrantyId ? (
         <div className="flex flex-col gap-4">
           <section className="flex flex-col gap-2">
             <div className="flex items-center gap-2 px-0.5">
@@ -287,8 +292,8 @@ export function MotorSaleDocumentsPanel({
         </div>
       ) : null}
 
-      {!isLoading && documents && !documents.warrantyId ? (
-        <Empty className="border-border/70 bg-muted/10 py-8">
+      {!isLoading && status === "forming" && documents && !documents.warrantyId ? (
+        <Empty className="shrink-0 border border-border/70 border-dashed bg-muted/10 py-8">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <Loader2 className="animate-spin" aria-hidden />
@@ -296,6 +301,39 @@ export function MotorSaleDocumentsPanel({
             <EmptyTitle>Документы формируются</EmptyTitle>
             <EmptyDescription>
               Гарантия и счёт появятся автоматически — обычно это занимает несколько секунд.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : null}
+
+      {!isLoading && status === "failed" ? (
+        <Empty className="shrink-0 border border-border/70 border-dashed bg-muted/10 py-8">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <AlertCircle aria-hidden />
+            </EmptyMedia>
+            <EmptyTitle>Не удалось подготовить документы</EmptyTitle>
+            <EmptyDescription>
+              Попробуйте ещё раз. Если проблема повторится, проверьте настройки гарантии в профиле компании.
+            </EmptyDescription>
+          </EmptyHeader>
+          {onRetry ? (
+            <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+              Повторить
+            </Button>
+          ) : null}
+        </Empty>
+      ) : null}
+
+      {!isLoading && status === "unavailable" && !motorMissing ? (
+        <Empty className="shrink-0 border border-border/70 border-dashed bg-muted/10 py-8">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <FileStack aria-hidden />
+            </EmptyMedia>
+            <EmptyTitle>Документы недоступны</EmptyTitle>
+            <EmptyDescription>
+              Не удалось связать операцию с двигателем. Откройте карточку мотора в разделе «Моторы».
             </EmptyDescription>
           </EmptyHeader>
         </Empty>

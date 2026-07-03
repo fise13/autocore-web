@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useAuth } from "@/components/providers/auth-provider";
 import { MotorSaleDocumentsPanel } from "@/components/motors/motor-sale-documents-panel";
 import { FinancialOperation } from "@/domain/financial-operation";
 import { MotorEntity } from "@/domain/motor";
@@ -37,14 +38,41 @@ function resolveMotor(operation: FinancialOperation | null, motors: MotorEntity[
   );
 }
 
+function buildMotorContext(
+  operation: FinancialOperation | null,
+  motors: MotorEntity[],
+  companyId: string,
+): MotorEntity | null {
+  const resolved = resolveMotor(operation, motors);
+  if (resolved) return resolved;
+  if (!operation?.relatedMotorId) return null;
+
+  return {
+    id: operation.relatedMotorId,
+    companyId,
+    serialCode: operation.description ?? operation.relatedMotorId,
+    configuration: "",
+    notes: "",
+    quantity: 1,
+    transmission: "",
+    arrivalDate: null,
+    soldDate: operation.createdAt,
+  };
+}
+
 export function MotorSaleDocumentsSheet({
   operation,
   motors,
   open,
   onOpenChange,
 }: MotorSaleDocumentsSheetProps) {
-  const motor = useMemo(() => resolveMotor(operation, motors), [operation, motors]);
-  const { documents, isLoading } = useMotorSaleDocuments(motor, open);
+  const { profile } = useAuth();
+  const companyId = profile?.companyId ?? "";
+  const motor = useMemo(
+    () => buildMotorContext(operation, motors, companyId),
+    [companyId, operation, motors],
+  );
+  const { documents, isLoading, status, retry } = useMotorSaleDocuments(motor, open, { operation });
 
   const motorLabel = documents
     ? [documents.brandName, documents.engineCode, documents.serialCode].filter(Boolean).join(" · ")
@@ -73,11 +101,13 @@ export function MotorSaleDocumentsSheet({
           <MotorSaleDocumentsPanel
             documents={documents}
             isLoading={isLoading}
+            status={status}
+            onRetry={retry}
             motorLabel={motorLabel}
             serialCode={documents?.serialCode ?? motor?.serialCode}
             amount={operation?.amount}
             saleDate={operation?.createdAt}
-            motorMissing={Boolean(operation && !motor)}
+            motorMissing={Boolean(operation && !operation.relatedMotorId && !motor)}
           />
         </div>
       </DialogContent>
