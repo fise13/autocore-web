@@ -1,5 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth } from 'firebase/auth';
+import * as FirebaseAuth from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -12,22 +13,53 @@ const firebaseConfig = {
 };
 
 let app: FirebaseApp;
-let auth: Auth;
+let auth: FirebaseAuth.Auth;
 let db: Firestore;
 
+export function isFirebaseConfigured(): boolean {
+  return Object.values(firebaseConfig).every((value) => typeof value === 'string' && value.length > 0);
+}
+
 export function getFirebaseApp(): FirebaseApp {
+  if (!isFirebaseConfigured()) {
+    throw new Error('Firebase environment variables are missing.');
+  }
   if (!getApps().length) {
     app = initializeApp(firebaseConfig);
   }
   return app ?? getApps()[0]!;
 }
 
-export function getFirebaseAuth(): Auth {
-  if (!auth) auth = getAuth(getFirebaseApp());
+export function getFirebaseAuth(): FirebaseAuth.Auth {
+  if (!auth) {
+    const firebaseApp = getFirebaseApp();
+    const getReactNativePersistence = (
+      FirebaseAuth as typeof FirebaseAuth & {
+        getReactNativePersistence?: (storage: typeof AsyncStorage) => unknown;
+      }
+    ).getReactNativePersistence;
+
+    if (getReactNativePersistence) {
+      try {
+        auth = FirebaseAuth.initializeAuth(firebaseApp, {
+          persistence: getReactNativePersistence(AsyncStorage) as never,
+        });
+        return auth;
+      } catch {
+        // initializeAuth throws when Auth was already initialized for this app.
+      }
+    }
+
+    auth = FirebaseAuth.getAuth(firebaseApp);
+  }
   return auth;
 }
 
 export function getFirebaseDb(): Firestore {
-  if (!db) db = getFirestore(getFirebaseApp());
+  if (!db) {
+    // Use default Firestore init — persistentLocalCache targets web IndexedDB and can
+    // stall listeners on React Native / Expo Go.
+    db = getFirestore(getFirebaseApp());
+  }
   return db;
 }

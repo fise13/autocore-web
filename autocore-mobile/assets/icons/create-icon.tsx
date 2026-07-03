@@ -76,7 +76,7 @@ export function createIcon(IconComponent: LucideIcon, displayName?: string) {
     return icon;
   });
 
-  Icon.displayName = displayName ?? IconComponent.displayName ?? 'Icon';
+  Icon.displayName = displayName ?? IconComponent?.displayName ?? 'Icon';
   return Icon;
 }
 

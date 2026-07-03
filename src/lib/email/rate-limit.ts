@@ -22,25 +22,27 @@ function remainingCooldown(lastSentAt: Date | null, now = Date.now()): number {
   return Math.max(0, COOLDOWN_MS - elapsed);
 }
 
-export async function assertVerificationEmailRateLimit(uid: string): Promise<void> {
+/** Atomically reserves a verification email slot to prevent parallel duplicate sends. */
+export async function reserveVerificationEmailSlot(uid: string): Promise<void> {
   const db = getAdminFirestore();
   const ref = db.collection("users").doc(uid);
-  const snap = await ref.get();
-  const raw = snap.data()?.lastVerificationEmailAt;
-  const lastSentAt =
-    raw instanceof Timestamp ? raw.toDate() : raw instanceof Date ? raw : null;
-  const remaining = remainingCooldown(lastSentAt);
-  if (remaining > 0) {
-    throw new EmailRateLimitError(Math.ceil(remaining / 1000));
-  }
-}
 
-export async function markVerificationEmailSent(uid: string): Promise<void> {
-  const db = getAdminFirestore();
-  await db.collection("users").doc(uid).set(
-    { lastVerificationEmailAt: FieldValue.serverTimestamp() },
-    { merge: true },
-  );
+  await db.runTransaction(async (transaction) => {
+    const snap = await transaction.get(ref);
+    const raw = snap.data()?.lastVerificationEmailAt;
+    const lastSentAt =
+      raw instanceof Timestamp ? raw.toDate() : raw instanceof Date ? raw : null;
+    const remaining = remainingCooldown(lastSentAt);
+    if (remaining > 0) {
+      throw new EmailRateLimitError(Math.ceil(remaining / 1000));
+    }
+
+    transaction.set(
+      ref,
+      { lastVerificationEmailAt: FieldValue.serverTimestamp() },
+      { merge: true },
+    );
+  });
 }
 
 export async function assertPasswordResetRateLimit(email: string): Promise<void> {

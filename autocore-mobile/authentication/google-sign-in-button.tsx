@@ -1,0 +1,153 @@
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+import { useEffect } from 'react';
+
+import { AUTH_BUTTON_HEIGHT, AUTH_BUTTON_RADIUS } from '@/authentication/auth-button-metrics';
+import { Button } from '@/components/ui';
+import { GoogleIcon } from '@/authentication/auth-brand-icons';
+import {
+  getGoogleOAuthEnv,
+  isGoogleOAuthConfigured,
+  OAUTH_REDIRECT_PATH,
+} from '@/lib/auth/oauth-config';
+import {
+  canUseNativeGoogleSignIn,
+  mapNativeGoogleSignInError,
+  signInWithGoogleNative,
+} from '@/services/auth/google-sign-in';
+import { mapAuthError } from '@/utils/auth-error';
+
+WebBrowser.maybeCompleteAuthSession();
+
+type GoogleSignInButtonProps = {
+  disabled?: boolean;
+  loading?: boolean;
+  onStart?: () => void;
+  onSuccess: (idToken: string) => Promise<void>;
+  onError: (message: string) => void;
+};
+
+function ExpoGoogleSignInButton({
+  disabled,
+  loading,
+  onStart,
+  onSuccess,
+  onError,
+}: GoogleSignInButtonProps) {
+  const { iosClientId, androidClientId, webClientId } = getGoogleOAuthEnv();
+
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest(
+    {
+      iosClientId,
+      androidClientId,
+      webClientId,
+      scopes: ['openid', 'profile', 'email'],
+      selectAccount: true,
+    },
+    {
+      scheme: 'autocoremobile',
+      path: OAUTH_REDIRECT_PATH,
+    },
+  );
+
+  useEffect(() => {
+    async function completeGoogleSignIn() {
+      if (!response) return;
+      if (response.type === 'dismiss' || response.type === 'cancel') return;
+
+      if (response.type !== 'success') {
+        if (response.type === 'error') {
+          onError(response.error?.message ?? 'Не удалось войти через Google.');
+        }
+        return;
+      }
+
+      const idToken =
+        ('params' in response && typeof response.params?.id_token === 'string'
+          ? response.params.id_token
+          : null) ??
+        ('authentication' in response && typeof response.authentication?.idToken === 'string'
+          ? response.authentication.idToken
+          : null);
+
+      if (!idToken) {
+        onError('Google не вернул токен. Добавьте redirect URI в Google Cloud Console.');
+        return;
+      }
+
+      try {
+        await onSuccess(idToken);
+      } catch (error) {
+        onError(mapAuthError(error));
+      }
+    }
+
+    void completeGoogleSignIn();
+  }, [onError, onSuccess, response]);
+
+  const onPress = async () => {
+    if (!isGoogleOAuthConfigured()) {
+      onError('Добавьте Google OAuth client IDs в `autocore-mobile/.env.local`.');
+      return;
+    }
+
+    try {
+      onStart?.();
+      await promptAsync();
+    } catch (error) {
+      onError(mapAuthError(error));
+    }
+  };
+
+  return (
+    <Button
+      size="default"
+      variant="secondary"
+      disabled={disabled || loading || !request}
+      loading={loading}
+      onPress={onPress}
+      leftIcon={<GoogleIcon />}
+      style={{ width: '100%', height: AUTH_BUTTON_HEIGHT, borderRadius: AUTH_BUTTON_RADIUS }}
+    >
+      Войти через Google
+    </Button>
+  );
+}
+
+export function GoogleSignInButton(props: GoogleSignInButtonProps) {
+  const onPressNative = async () => {
+    if (!isGoogleOAuthConfigured()) {
+      props.onError('Добавьте Google OAuth client IDs в `autocore-mobile/.env.local`.');
+      return;
+    }
+
+    try {
+      props.onStart?.();
+      const idToken = await signInWithGoogleNative();
+      await props.onSuccess(idToken);
+    } catch (error) {
+      if (typeof error === 'object' && error !== null && 'code' in error) {
+        if ((error as { code?: string }).code === 'auth/cancelled') return;
+      }
+      props.onError(mapAuthError(mapNativeGoogleSignInError(error)));
+    }
+  };
+
+  if (canUseNativeGoogleSignIn()) {
+    return (
+      <Button
+        size="default"
+        variant="secondary"
+        disabled={props.disabled || props.loading}
+        loading={props.loading}
+        onPress={onPressNative}
+        leftIcon={<GoogleIcon />}
+        style={{ width: '100%', height: AUTH_BUTTON_HEIGHT, borderRadius: AUTH_BUTTON_RADIUS }}
+      >
+        Войти через Google
+      </Button>
+    );
+  }
+
+  return <ExpoGoogleSignInButton {...props} />;
+}

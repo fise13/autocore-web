@@ -27,6 +27,8 @@
     "generate:document-templates": "node scripts/generate-document-templates.mjs",
     "install:browser": "npx puppeteer browsers install chrome",
     "test:import-motors": "node --import tsx --test src/lib/import/import-engine.test.ts src/lib/import/ingestion.test.ts src/lib/domain/domain-dictionary.test.ts src/domain/inventory-taxonomy.test.ts src/lib/navigation/sidebar-edit-model.test.ts src/lib/warehouse/inventory-subcategory-index.test.ts src/lib/motors/import/sheet-mapper.test.ts src/lib/motors/import/ai-mapper.test.ts src/lib/motors/import/excel-import-engine-rows.test.ts src/lib/motors/import/sheet-recovery.test.ts src/lib/motors/import/specific-category-intelligence.test.ts src/lib/motors/import/brand-engine-intelligence.test.ts src/lib/motors/import/import-row-integrity.test.ts src/lib/navigation/business-navigation.test.ts src/lib/navigation/inventory-collections.test.ts src/lib/navigation/pinned-filters.test.ts",
+    "test:scan": "node --import tsx --test src/lib/mobile/scan-normalize.test.ts",
+    "scan:export-events": "node --import tsx scripts/export-scan-events.mjs",
     "tauri:sync-url": "node scripts/sync-tauri-app-url.mjs",
     "tauri": "tauri",
     "tauri:dev": "node scripts/sync-tauri-app-url.mjs && tauri dev",

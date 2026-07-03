@@ -1,43 +1,62 @@
 import { Tabs } from 'expo-router';
 
-import { LayoutGridIcon, SettingsIcon } from '@/assets/icons';
-import { useTheme } from '@/hooks';
-import { layout, spacing } from '@/theme';
+import { AppTabBar } from '@/components/navigation/app-tab-bar';
+import { TabTransitionProvider } from '@/components/navigation/tab-transition-context';
 
 export default function TabLayout() {
-  const { colors } = useTheme();
-
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.mutedForeground,
-        tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopColor: colors.border,
-          height: layout.tabBarHeight,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '500',
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Design System',
-          tabBarIcon: ({ color }) => <LayoutGridIcon size="md" color={String(color)} />,
+    <TabTransitionProvider>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: { display: 'none' },
+          lazy: true,
         }}
-      />
-      <Tabs.Screen
-        name="two"
-        options={{
-          title: 'Settings',
-          tabBarIcon: ({ color }) => <SettingsIcon size="md" color={String(color)} />,
-        }}
-      />
-    </Tabs>
+        tabBar={(props) => <AppTabBar {...props} />}
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Home',
+          }}
+        />
+        <Tabs.Screen
+          name="search"
+          options={{
+            title: 'Search',
+          }}
+        />
+        <Tabs.Screen
+          name="scan"
+          options={{
+            title: 'Scan',
+          }}
+        />
+        <Tabs.Screen
+          name="orders"
+          options={{
+            title: 'Orders',
+          }}
+        />
+        <Tabs.Screen
+          name="accounting"
+          options={{
+            title: 'Accounting',
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: 'Profile',
+          }}
+        />
+        <Tabs.Screen
+          name="two"
+          options={{
+            href: null,
+          }}
+        />
+      </Tabs>
+    </TabTransitionProvider>
   );
 }

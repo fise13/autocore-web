@@ -4,35 +4,58 @@ import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { normalizeBarcode } from "@/lib/warehouse/warehouse-sync-ids";
 
-export type MobileScanStockLevel = {
-  warehouseId: string;
-  warehouseName: string;
-  onHand: number;
-  reserved: number;
-  available: number;
+import { rankFuzzyScanCandidates } from "./scan-fuzzy.server";
+import { buildScanCodeVariants, primaryScanCode, scanToken } from "./scan-normalize";
+import type {
+  MobileScanCandidate,
+  MobileScanItem,
+  MobileScanMatchType,
+  MobileScanResolveResult,
+  MobileScanStockLevel,
+} from "./scan-types";
+
+export type {
+  MobileScanCandidate,
+  MobileScanItem,
+  MobileScanMatchType,
+  MobileScanResolveResult,
+  MobileScanStockLevel,
+} from "./scan-types";
+
+type ResolveCacheEntry = {
+  expiresAt: number;
+  result: MobileScanResolveResult;
 };
 
-export type MobileScanItem = {
-  id: string;
-  sku: string;
-  name: string;
-  unit: string;
-  warehouseLocation?: string;
-  sellPrice?: number;
-  purchasePrice?: number;
-  totalOnHand: number;
-  totalReserved: number;
-  totalAvailable: number;
-  lowStockThreshold?: number;
-};
+const RESOLVE_CACHE = new Map<string, ResolveCacheEntry>();
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_LIMIT = 500;
 
-export type MobileScanResolveResult = {
-  found: boolean;
-  barcode: string;
-  matchType: "barcode_mapping" | "sku" | null;
-  item: MobileScanItem | null;
-  stockLevels: MobileScanStockLevel[];
-};
+function cacheKey(companyId: string, barcode: string): string {
+  return `${companyId}::${barcode}`;
+}
+
+function readCache(companyId: string, barcode: string): MobileScanResolveResult | null {
+  const key = cacheKey(companyId, barcode);
+  const entry = RESOLVE_CACHE.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt < Date.now()) {
+    RESOLVE_CACHE.delete(key);
+    return null;
+  }
+  return entry.result;
+}
+
+function writeCache(companyId: string, barcode: string, result: MobileScanResolveResult): void {
+  if (RESOLVE_CACHE.size >= CACHE_LIMIT) {
+    const firstKey = RESOLVE_CACHE.keys().next().value;
+    if (firstKey) RESOLVE_CACHE.delete(firstKey);
+  }
+  RESOLVE_CACHE.set(cacheKey(companyId, barcode), {
+    expiresAt: Date.now() + CACHE_TTL_MS,
+    result,
+  });
+}
 
 function mapItem(id: string, data: Record<string, unknown>): MobileScanItem {
   const totalOnHand = Number(data.totalOnHand ?? data.quantity ?? 0);
@@ -42,6 +65,8 @@ function mapItem(id: string, data: Record<string, unknown>): MobileScanItem {
     sku: String(data.sku ?? ""),
     name: String(data.name ?? ""),
     unit: typeof data.unit === "string" ? data.unit : "шт",
+    barcodes: Array.isArray(data.barcodes) ? data.barcodes.map(String) : [],
+    brandName: typeof data.brandName === "string" ? data.brandName : undefined,
     warehouseLocation:
       typeof data.warehouseLocation === "string" ? data.warehouseLocation : undefined,
     sellPrice: data.sellPrice == null ? undefined : Number(data.sellPrice),
@@ -72,66 +97,20 @@ async function loadWarehouseNames(
   return names;
 }
 
-export async function resolveMobileScan(
+async function loadStockLevels(
   companyId: string,
-  rawBarcode: string,
-): Promise<MobileScanResolveResult> {
-  const barcode = normalizeBarcode(rawBarcode);
-  const normalizedCompanyId = normalizeCompanyId(companyId);
-  const empty: MobileScanResolveResult = {
-    found: false,
-    barcode,
-    matchType: null,
-    item: null,
-    stockLevels: [],
-  };
-
-  if (!barcode) return empty;
-
+  itemId: string,
+): Promise<MobileScanStockLevel[]> {
   const db = getAdminFirestore();
-
-  const mappingSnap = await db
-    .collection("barcodeMappings")
-    .where("companyId", "==", normalizedCompanyId)
-    .where("barcode", "==", barcode)
-    .limit(1)
-    .get();
-
-  let itemId: string | null = null;
-  let matchType: MobileScanResolveResult["matchType"] = null;
-
-  if (!mappingSnap.empty) {
-    itemId = String(mappingSnap.docs[0]!.data().itemId ?? "");
-    matchType = "barcode_mapping";
-  } else {
-    const skuSnap = await db
-      .collection("inventoryItems")
-      .where("companyId", "==", normalizedCompanyId)
-      .where("sku", "==", barcode)
-      .limit(1)
-      .get();
-    if (!skuSnap.empty) {
-      itemId = skuSnap.docs[0]!.id;
-      matchType = "sku";
-    }
-  }
-
-  if (!itemId) return empty;
-
-  const itemSnap = await db.collection("inventoryItems").doc(itemId).get();
-  if (!itemSnap.exists) return empty;
-
-  const item = mapItem(itemSnap.id, itemSnap.data() as Record<string, unknown>);
-
   const stockSnap = await db
     .collection("inventoryStockLevels")
-    .where("companyId", "==", normalizedCompanyId)
+    .where("companyId", "==", normalizeCompanyId(companyId))
     .where("itemId", "==", itemId)
     .limit(20)
     .get();
 
   const warehouseIds = stockSnap.docs.map((doc) => String(doc.data().warehouseId ?? ""));
-  const warehouseNames = await loadWarehouseNames(normalizedCompanyId, warehouseIds);
+  const warehouseNames = await loadWarehouseNames(companyId, warehouseIds);
 
   const stockLevels = stockSnap.docs.map((doc) => {
     const data = doc.data() as Record<string, unknown>;
@@ -148,12 +127,206 @@ export async function resolveMobileScan(
   });
 
   stockLevels.sort((a, b) => b.onHand - a.onHand);
+  return stockLevels;
+}
 
+async function loadItem(
+  companyId: string,
+  itemId: string,
+): Promise<MobileScanItem | null> {
+  const db = getAdminFirestore();
+  const itemSnap = await db.collection("inventoryItems").doc(itemId).get();
+  if (!itemSnap.exists) return null;
+  const data = itemSnap.data() as Record<string, unknown>;
+  if (normalizeCompanyId(String(data.companyId ?? "")) !== normalizeCompanyId(companyId)) {
+    return null;
+  }
+  return mapItem(itemSnap.id, data);
+}
+
+async function resolveExactTier(
+  companyId: string,
+  variants: string[],
+): Promise<{ itemId: string; matchType: MobileScanMatchType } | null> {
+  const db = getAdminFirestore();
+  const normalizedCompanyId = normalizeCompanyId(companyId);
+
+  for (const variant of variants) {
+    const mappingSnap = await db
+      .collection("barcodeMappings")
+      .where("companyId", "==", normalizedCompanyId)
+      .where("barcode", "==", variant)
+      .limit(1)
+      .get();
+    if (!mappingSnap.empty) {
+      const itemId = String(mappingSnap.docs[0]!.data().itemId ?? "");
+      if (itemId) return { itemId, matchType: "barcode_mapping" };
+    }
+  }
+
+  for (const variant of variants) {
+    const skuSnap = await db
+      .collection("inventoryItems")
+      .where("companyId", "==", normalizedCompanyId)
+      .where("sku", "==", variant)
+      .limit(1)
+      .get();
+    if (!skuSnap.empty) {
+      return { itemId: skuSnap.docs[0]!.id, matchType: "sku" };
+    }
+  }
+
+  for (const variant of variants) {
+    const barcodeSnap = await db
+      .collection("inventoryItems")
+      .where("companyId", "==", normalizedCompanyId)
+      .where("barcodes", "array-contains", variant)
+      .limit(1)
+      .get();
+    if (!barcodeSnap.empty) {
+      return { itemId: barcodeSnap.docs[0]!.id, matchType: "barcode_field" };
+    }
+  }
+
+  const tokens = [...new Set(variants.map(scanToken).filter((token) => token.length >= 3))];
+  for (const token of tokens) {
+    const tokenSnap = await db
+      .collection("inventoryItems")
+      .where("companyId", "==", normalizedCompanyId)
+      .where("searchTokens", "array-contains", token)
+      .limit(1)
+      .get();
+    if (!tokenSnap.empty) {
+      return { itemId: tokenSnap.docs[0]!.id, matchType: "search_token" };
+    }
+  }
+
+  return null;
+}
+
+async function loadFuzzyInventoryPool(companyId: string): Promise<MobileScanItem[]> {
+  const db = getAdminFirestore();
+  const snap = await db
+    .collection("inventoryItems")
+    .where("companyId", "==", normalizeCompanyId(companyId))
+    .where("status", "==", "active")
+    .limit(250)
+    .get();
+
+  return snap.docs.map((doc) => mapItem(doc.id, doc.data() as Record<string, unknown>));
+}
+
+function emptyResult(barcode: string): MobileScanResolveResult {
+  return {
+    found: false,
+    confidence: 0,
+    barcode,
+    matchType: null,
+    item: null,
+    candidates: [],
+    stockLevels: [],
+  };
+}
+
+function successResult(
+  barcode: string,
+  matchType: MobileScanMatchType,
+  item: MobileScanItem,
+  stockLevels: MobileScanStockLevel[],
+  confidence: number,
+  candidates: MobileScanCandidate[] = [],
+  aiReasoning?: string,
+): MobileScanResolveResult {
   return {
     found: true,
+    confidence,
     barcode,
     matchType,
     item,
+    candidates,
     stockLevels,
+    aiReasoning,
   };
+}
+
+export async function resolveMobileScan(
+  companyId: string,
+  rawBarcode: string,
+  options?: { skipCache?: boolean; skipFuzzy?: boolean },
+): Promise<MobileScanResolveResult> {
+  const barcode = primaryScanCode(rawBarcode) || normalizeBarcode(rawBarcode);
+  const normalizedCompanyId = normalizeCompanyId(companyId);
+
+  if (!barcode) return emptyResult("");
+
+  if (!options?.skipCache) {
+    const cached = readCache(normalizedCompanyId, barcode);
+    if (cached) return cached;
+  }
+
+  const variants = buildScanCodeVariants(rawBarcode);
+  const exact = await resolveExactTier(normalizedCompanyId, variants);
+  if (exact) {
+    const item = await loadItem(normalizedCompanyId, exact.itemId);
+    if (!item) return emptyResult(barcode);
+    const stockLevels = await loadStockLevels(normalizedCompanyId, exact.itemId);
+    const result = successResult(barcode, exact.matchType, item, stockLevels, 1);
+    writeCache(normalizedCompanyId, barcode, result);
+    return result;
+  }
+
+  if (options?.skipFuzzy) {
+    const result = emptyResult(barcode);
+    writeCache(normalizedCompanyId, barcode, result);
+    return result;
+  }
+
+  const pool = await loadFuzzyInventoryPool(normalizedCompanyId);
+  const ranked = rankFuzzyScanCandidates(barcode, pool, 5);
+  if (ranked.length === 0) {
+    const result = emptyResult(barcode);
+    writeCache(normalizedCompanyId, barcode, result);
+    return result;
+  }
+
+  const top = ranked[0]!;
+  const stockLevels = await loadStockLevels(normalizedCompanyId, top.item.id);
+  const candidates = ranked.map((entry) => ({
+    item: entry.item,
+    score: entry.score,
+    reason: entry.reason,
+  }));
+
+  const ambiguous = ranked.length > 1 && ranked[1]!.score >= top.score - 0.1;
+  if (ambiguous || top.score < 0.8) {
+    const result: MobileScanResolveResult = {
+      found: false,
+      confidence: top.score,
+      barcode,
+      matchType: "fuzzy",
+      item: null,
+      candidates,
+      stockLevels: [],
+    };
+    writeCache(normalizedCompanyId, barcode, result);
+    return result;
+  }
+
+  const result = successResult(barcode, "fuzzy", top.item, stockLevels, top.score, candidates);
+  writeCache(normalizedCompanyId, barcode, result);
+  return result;
+}
+
+export async function resolveMobileScanForItemId(
+  companyId: string,
+  rawBarcode: string,
+  itemId: string,
+  matchType: MobileScanMatchType = "fuzzy",
+  confidence = 0.9,
+): Promise<MobileScanResolveResult> {
+  const barcode = primaryScanCode(rawBarcode) || normalizeBarcode(rawBarcode);
+  const item = await loadItem(companyId, itemId);
+  if (!item) return emptyResult(barcode);
+  const stockLevels = await loadStockLevels(companyId, itemId);
+  return successResult(barcode, matchType, item, stockLevels, confidence);
 }

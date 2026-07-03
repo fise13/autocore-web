@@ -1,0 +1,16 @@
+export const profileLayout = {
+  pad: 20,
+  section: 28,
+  groupRadius: 14,
+  cardRadius: 18,
+  hairline: 1,
+  logo: 32,
+  title: 34,
+  subtitle: 13,
+  sectionTitle: 15,
+  avatar: 80,
+  actionMinHeight: 72,
+  rowMinHeight: 48,
+  iconBox: 32,
+  stagger: 40,
+} as const;

@@ -33,7 +33,7 @@ export const AUTH_JOURNEY_STEP_LABELS: Record<Exclude<AuthJourneyStep, "loading"
   "profile-name": "Ваш профиль",
   company: "Команда и доступ",
   "setup-wizard": "Настройка пространства",
-  "business-import": "Перенос данных",
+  "business-import": "Шаг 5 · Перенос данных",
 };
 
 export function useAuthJourneyStep(

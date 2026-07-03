@@ -23,6 +23,7 @@ export const layout = {
     md: 40,
     lg: 48,
     xl: 64,
+    '2xl': 80,
   },
   card: {
     padding: spacing[4],

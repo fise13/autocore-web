@@ -31,7 +31,6 @@ export function AuthJourneyCoordinator({ children }: AuthJourneyCoordinatorProps
   const [savedProfileName, setSavedProfileName] = useState<string | null>(null);
   const [emailVerifiedHandoff, setEmailVerifiedHandoff] = useState(false);
   const [importDone, setImportDone] = useState(false);
-  const [pendingBusinessImport, setPendingBusinessImport] = useState(false);
   const step = useAuthJourneyStep(savedProfileName, emailVerifiedHandoff);
   const companyId = profile?.companyId?.trim() || null;
   const { config, loaded } = useCompanyAppConfig(companyId);
@@ -60,27 +59,13 @@ export function AuthJourneyCoordinator({ children }: AuthJourneyCoordinatorProps
     return <>{children}</>;
   }
 
-  if ((step === "business-import" || pendingBusinessImport) && companyId && !importDone) {
-    return (
-      <DomainDictionaryProvider>
-        <BusinessImportOnboardingStep
-          companyId={companyId}
-          onDone={() => {
-            setImportDone(true);
-            setPendingBusinessImport(false);
-          }}
-        />
-      </DomainDictionaryProvider>
-    );
-  }
-
   const resolvedStep = step === "loading" ? "boot" : step;
   const stepLabel =
     step === "loading"
       ? "Подготовка пространства"
       : AUTH_JOURNEY_STEP_LABELS[step];
   const contentWidth =
-    step === "setup-wizard" ? "xl" : step === "company" ? "md" : "md";
+    step === "setup-wizard" || step === "business-import" ? "xl" : step === "company" ? "md" : "md";
 
   return (
     <AuthJourneyShell
@@ -95,13 +80,18 @@ export function AuthJourneyCoordinator({ children }: AuthJourneyCoordinatorProps
       ) : null}
       {step === "profile-name" ? <ProfileNameStep onSaved={setSavedProfileName} /> : null}
       {step === "company" ? <CompanyOnboardingStep /> : null}
-      {step === "setup-wizard" ? (
+      {step === "setup-wizard" || step === "business-import" ? (
         <SetupWizardJourneyStep
           companyId={companyId}
           loaded={loaded}
+          initialStage={step === "business-import" ? "import" : "wizard"}
+          shouldRunImport={Boolean(profile?.isCompanyOwner)}
+          onImportDone={() => setImportDone(true)}
           onCompleted={() => {
             if (companyId) markWizardCompleted(companyId);
-            setPendingBusinessImport(true);
+            if (!profile?.isCompanyOwner) {
+              setImportDone(true);
+            }
           }}
         />
       ) : null}
@@ -128,14 +118,37 @@ function AuthJourneyBootStep() {
 function SetupWizardJourneyStep({
   companyId,
   loaded,
+  initialStage,
+  shouldRunImport,
+  onImportDone,
   onCompleted,
 }: {
   companyId: string | null;
   loaded: boolean;
+  initialStage: "wizard" | "import";
+  shouldRunImport: boolean;
+  onImportDone: () => void;
   onCompleted: () => void;
 }) {
+  const [stage, setStage] = useState<"wizard" | "import">(initialStage);
+
+  useEffect(() => {
+    setStage(initialStage);
+  }, [initialStage]);
+
   if (!companyId || !loaded) {
     return <SetupWizardLoadingCard />;
+  }
+
+  if (stage === "import") {
+    return (
+      <DomainDictionaryProvider>
+        <BusinessImportOnboardingStep
+          companyId={companyId}
+          onDone={onImportDone}
+        />
+      </DomainDictionaryProvider>
+    );
   }
 
   return (
@@ -144,6 +157,10 @@ function SetupWizardJourneyStep({
       companyId={companyId}
       onCompleted={() => {
         markWizardCompleted(companyId);
+        if (shouldRunImport) {
+          setStage("import");
+          return;
+        }
         onCompleted();
       }}
     />

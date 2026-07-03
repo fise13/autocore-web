@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import {
-  assertVerificationEmailRateLimit,
-  EmailRateLimitError,
-  markVerificationEmailSent,
-} from "@/lib/email/rate-limit";
+import { EmailRateLimitError, reserveVerificationEmailSlot } from "@/lib/email/rate-limit";
 import { getNoreplyFrom, getResend, isResendConfigured } from "@/lib/email/resend-client";
 import {
   buildVerificationCodeEmailHtml,
@@ -45,7 +41,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, alreadyVerified: true });
     }
 
-    await assertVerificationEmailRateLimit(access.uid);
+    await reserveVerificationEmailSlot(access.uid);
 
     const code = generateVerificationCode();
     await storeVerificationCode(access.uid, code);
@@ -60,8 +56,6 @@ export async function POST(request: NextRequest) {
         userName: userRecord.displayName,
       }),
     });
-
-    await markVerificationEmailSent(access.uid);
 
     return NextResponse.json({ ok: true });
   } catch (error) {

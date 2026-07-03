@@ -668,6 +668,14 @@ service cloud.firestore {
             isSignedIn()
             && exists(employeeRef(companyId, request.auth.uid))
           );
+        // Cheap owner onboarding path — avoids RBAC get() budget exhaustion while seeding system roles.
+        allow create: if isSignedIn()
+          && request.resource.data.isSystem == true
+          && request.resource.data.companyId == companyId
+          && isOwnerOfCompany(companyId);
+        allow update, delete: if isSignedIn()
+          && resource.data.isSystem == true
+          && isOwnerOfCompany(companyId);
         allow create, update, delete: if canManageEmployees(companyId)
           || (
             isSignedIn()

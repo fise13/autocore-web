@@ -9,6 +9,7 @@ import {
   Easing,
   type SharedValue,
 } from 'react-native-reanimated';
+import { useEffect } from 'react';
 
 import { useReducedMotion } from '@/hooks';
 import { autocoreEase, cardPress, cardLift, duration, enterValues, motionTiming, skeletonPulse, spring, staggerDelay } from '@/theme/motion';
@@ -21,11 +22,13 @@ export function useFadeIn(delayMs = 0, config: { duration: number; easing: typeo
   const animDuration = reduced ? duration.fast : config.duration;
   const easing = config.easing;
 
-  opacity.value = withDelay(delayMs, withTiming(1, { duration: animDuration, easing }));
-  translateY.value = withDelay(
-    delayMs,
-    withTiming(reduced ? 0 : enterValues.fadeInUp.translateY[1], { duration: animDuration, easing }),
-  );
+  useEffect(() => {
+    opacity.value = withDelay(delayMs, withTiming(1, { duration: animDuration, easing }));
+    translateY.value = withDelay(
+      delayMs,
+      withTiming(reduced ? 0 : enterValues.fadeInUp.translateY[1], { duration: animDuration, easing }),
+    );
+  }, [animDuration, delayMs, easing, opacity, reduced, translateY]);
 
   const style = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -86,13 +89,18 @@ export function useShimmer(active = true) {
   const reduced = useReducedMotion();
   const progress = useSharedValue(0);
 
-  if (active && !reduced) {
-    progress.value = withRepeat(
-      withTiming(1, { duration: skeletonPulse.duration, easing: skeletonPulse.easing }),
-      -1,
-      false,
-    );
-  }
+  useEffect(() => {
+    if (active && !reduced) {
+      progress.value = withRepeat(
+        withTiming(1, { duration: skeletonPulse.duration, easing: skeletonPulse.easing }),
+        -1,
+        false,
+      );
+      return;
+    }
+
+    progress.value = withTiming(0, { duration: duration.fast, easing: motionTiming.fast.easing });
+  }, [active, progress, reduced]);
 
   const style = useAnimatedStyle(() => ({
     opacity: skeletonPulse.minOpacity + progress.value * (skeletonPulse.maxOpacity - skeletonPulse.minOpacity),
@@ -108,11 +116,13 @@ export function useScaleEnter(delayMs = 0) {
 
   const animDuration = reduced ? duration.fast : duration.slow;
 
-  opacity.value = withDelay(delayMs, withTiming(1, { duration: animDuration, easing: motionTiming.slow.easing }));
-  scale.value = withDelay(
-    delayMs,
-    withTiming(reduced ? 1 : enterValues.authCard.scale[1], { duration: animDuration, easing: motionTiming.slow.easing }),
-  );
+  useEffect(() => {
+    opacity.value = withDelay(delayMs, withTiming(1, { duration: animDuration, easing: motionTiming.slow.easing }));
+    scale.value = withDelay(
+      delayMs,
+      withTiming(reduced ? 1 : enterValues.authCard.scale[1], { duration: animDuration, easing: motionTiming.slow.easing }),
+    );
+  }, [animDuration, delayMs, opacity, reduced, scale]);
 
   return useAnimatedStyle(() => ({
     opacity: opacity.value,

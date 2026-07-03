@@ -17,10 +17,13 @@ import {
   ChevronsUpDown,
   ClipboardList,
   Clock,
+  Cloud,
   Coins,
+  Download,
   ExternalLink,
   FileStack,
   FileText,
+  Flashlight,
   HelpCircle,
   Images,
   LayoutGrid,
@@ -33,9 +36,12 @@ import {
   Package,
   Phone,
   Plus,
+  Printer,
   Receipt,
+  ScanSearch,
   Search,
   Settings2,
+  Share2,
   ShoppingCart,
   Sparkles,
   Store,
@@ -63,6 +69,7 @@ export const ActivityIcon = createIcon(Activity, 'ActivityIcon');
 
 // Actions
 export const SearchIcon = createIcon(Search, 'SearchIcon');
+export const ScanSearchIcon = createIcon(ScanSearch, 'ScanSearchIcon');
 export const PlusIcon = createIcon(Plus, 'PlusIcon');
 export const ArrowRightIcon = createIcon(ArrowRight, 'ArrowRightIcon');
 export const ArrowLeftIcon = createIcon(ArrowLeft, 'ArrowLeftIcon');
@@ -75,6 +82,7 @@ export const XIcon = createIcon(X, 'XIcon');
 export const Loader2Icon = createIcon(Loader2, 'Loader2Icon');
 export const BellIcon = createIcon(Bell, 'BellIcon');
 export const ExternalLinkIcon = createIcon(ExternalLink, 'ExternalLinkIcon');
+export const FlashlightIcon = createIcon(Flashlight, 'FlashlightIcon');
 
 // Business domain
 export const PackageIcon = createIcon(Package, 'PackageIcon');
@@ -88,6 +96,7 @@ export const FileStackIcon = createIcon(FileStack, 'FileStackIcon');
 export const MapPinIcon = createIcon(MapPin, 'MapPinIcon');
 export const TagIcon = createIcon(Tag, 'TagIcon');
 export const ClockIcon = createIcon(Clock, 'ClockIcon');
+export const CloudIcon = createIcon(Cloud, 'CloudIcon');
 export const ImagesIcon = createIcon(Images, 'ImagesIcon');
 
 // Analytics
@@ -105,6 +114,9 @@ export const LogOutIcon = createIcon(LogOut, 'LogOutIcon');
 export const LifeBuoyIcon = createIcon(LifeBuoy, 'LifeBuoyIcon');
 export const MailIcon = createIcon(Mail, 'MailIcon');
 export const PhoneIcon = createIcon(Phone, 'PhoneIcon');
+export const DownloadIcon = createIcon(Download, 'DownloadIcon');
+export const Share2Icon = createIcon(Share2, 'Share2Icon');
+export const PrinterIcon = createIcon(Printer, 'PrinterIcon');
 
 /** Registry map for dynamic icon lookup */
 export const iconRegistry = {
@@ -118,6 +130,7 @@ export const iconRegistry = {
   helpCircle: HelpCircleIcon,
   activity: ActivityIcon,
   search: SearchIcon,
+  scanSearch: ScanSearchIcon,
   plus: PlusIcon,
   package: PackageIcon,
   box: BoxIcon,

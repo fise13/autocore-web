@@ -32,11 +32,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
     }
 
-    const payload: Record<string, string> = {};
+    const payload: Record<string, unknown> = {};
     if (name !== undefined) payload.name = name ?? "";
     if (phone !== undefined) payload.phone = phone ?? "";
 
-    await getAdminFirestore().collection("users").doc(access.uid).set(payload, { merge: true });
+    const userRef = getAdminFirestore().collection("users").doc(access.uid);
+    const existing = await userRef.get();
+    const existingData = existing.data() ?? {};
+    const authUser = await getAdminAuth().getUser(access.uid);
+
+    if (!existingData.email) {
+      payload.email = authUser.email ?? "";
+    }
+    if (!existingData.role) {
+      payload.role = "employee";
+    }
+    if (existingData.companyId === undefined || existingData.companyId === null) {
+      payload.companyId = "";
+    }
+    if (!Array.isArray(existingData.permissions)) {
+      payload.permissions = [];
+    }
+    if (existingData.isActive === undefined) {
+      payload.isActive = true;
+    }
+
+    await userRef.set(payload, { merge: true });
 
     if (name !== undefined && name) {
       try {

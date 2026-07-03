@@ -9,6 +9,8 @@ import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
+import { AuthGate } from '@/authentication/auth-gate';
+import { AuthProvider } from '@/authentication/auth-provider';
 import { ThemeProvider, useTheme } from '@/hooks';
 import { ToastProvider } from '@/components/ui';
 
@@ -34,8 +36,12 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <RootNavigator />
-          <ToastProvider />
+          <AuthProvider>
+            <AuthGate>
+              <RootNavigator />
+            </AuthGate>
+            <ToastProvider />
+          </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>
@@ -45,11 +51,16 @@ export default function RootLayout() {
 function RootNavigator() {
   const { isDark } = useTheme();
 
+  useEffect(() => {
+    SplashScreen.hideAsync();
+  }, []);
+
   return (
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(auth)" />
         <Stack.Screen name="design-system" options={{ presentation: 'card' }} />
       </Stack>
     </>

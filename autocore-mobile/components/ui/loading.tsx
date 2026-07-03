@@ -1,5 +1,6 @@
 import { View, ActivityIndicator } from 'react-native';
 
+import { AppLoadingScreen } from '@/components/ui/app-loading-screen';
 import { useTheme } from '@/hooks';
 import { spacing } from '@/theme';
 import { Text } from './text';
@@ -7,21 +8,24 @@ import { Text } from './text';
 type LoadingProps = {
   message?: string;
   fullScreen?: boolean;
+  compact?: boolean;
 };
 
-/** Mirrors app-loading-screen pattern */
-export function Loading({ message, fullScreen = false }: LoadingProps) {
+/** Inline spinner, or full-screen brand loader matching web AppLoadingScreen. */
+export function Loading({ message, fullScreen = false, compact = false }: LoadingProps) {
   const { colors } = useTheme();
+
+  if (fullScreen || compact) {
+    return <AppLoadingScreen compact={compact} message={message} />;
+  }
 
   return (
     <View
       style={{
-        flex: fullScreen ? 1 : undefined,
         alignItems: 'center',
         justifyContent: 'center',
         padding: spacing[8],
         gap: spacing[3],
-        backgroundColor: fullScreen ? colors.background : 'transparent',
       }}
     >
       <ActivityIndicator size="large" color={colors.primary} />

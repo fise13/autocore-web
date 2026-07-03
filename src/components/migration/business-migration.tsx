@@ -78,6 +78,10 @@ export function BusinessMigration(props: BusinessMigrationProps) {
     isOnboarding &&
     props.onManualSetup &&
     (m.phase === "idle" || m.phase === "recognition" || m.phase === "error");
+  const shellTitle = isOnboarding ? "Шаг 5 · Перенос данных" : "Перенос в AutoCore";
+  const shellSubtitle = isOnboarding
+    ? "Загрузите прайсы, склад или список позиций сейчас, либо пропустите и заполните всё позже."
+    : "Загрузите файл и перенесите позиции в AutoCore.";
 
   const handleAttachPhotoPath = (rowId: string, path: string) => {
     const image = m.images.find((item) => item.path === path);
@@ -111,7 +115,7 @@ export function BusinessMigration(props: BusinessMigrationProps) {
             )}
             <span className="flex items-center gap-2 font-heading text-sm font-medium">
               <Sparkles className="size-4 text-emerald-600" />
-              Перенос в AutoCore
+              {shellTitle}
             </span>
           </div>
           <div className="flex items-center gap-1">
@@ -142,6 +146,22 @@ export function BusinessMigration(props: BusinessMigrationProps) {
           <AnimatePresence mode="wait">
             {m.phase === "idle" && (
               <motion.div key="idle" {...fade} className="flex flex-col">
+                {isOnboarding ? (
+                  <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-6 pb-6 pt-8 text-center">
+                    <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/8 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-emerald-600">
+                      <Sparkles className="size-3.5" aria-hidden />
+                      Финальный шаг
+                    </div>
+                    <div className="space-y-2">
+                      <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
+                        Перенесите данные в AutoCore
+                      </h1>
+                      <p className="mx-auto max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                        {shellSubtitle}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
                 <MigrationDropzone onFiles={m.acceptFiles} />
                 {canManualSkip && (
                   <div className="flex justify-center pb-10">

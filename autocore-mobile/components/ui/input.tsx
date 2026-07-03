@@ -1,5 +1,5 @@
 import { forwardRef, memo } from 'react';
-import { TextInput, type TextInputProps } from 'react-native';
+import { TextInput, type TextInputProps, type TextStyle } from 'react-native';
 
 import { useDesignLanguage } from '@/hooks';
 
@@ -20,7 +20,7 @@ export const Input = memo(
         ref={ref}
         placeholderTextColor={dl.colors.mutedForeground}
         style={[
-          dl.styles.createInputStyle({ scheme: dl.scheme, colors: dl.colors }, { invalid, large: size === 'lg' }),
+          dl.styles.createInputStyle({ scheme: dl.scheme, colors: dl.colors }, { invalid, large: size === 'lg' }) as TextStyle,
           dl.styles.createInputTextStyle({ scheme: dl.scheme, colors: dl.colors }),
           style,
         ]}

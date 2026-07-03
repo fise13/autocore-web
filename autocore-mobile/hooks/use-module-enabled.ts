@@ -1,0 +1,39 @@
+import type { CompanyModuleKey } from '@/types/company-config';
+import { useSession } from '@/hooks/use-session';
+import { MODULE_DEFINITIONS } from '@/features/settings/data/modules';
+import { useModulesConfigStore } from '@/features/settings/store/modules-config-store';
+import type { ProductModuleId } from '@/features/settings/types';
+
+export function useModuleEnabled(module: CompanyModuleKey): boolean {
+  const { companyConfig } = useSession();
+  if (!companyConfig) return true;
+  return companyConfig.modules[module] !== false;
+}
+
+const MODULE_KEY_TO_PRODUCT: Partial<Record<CompanyModuleKey, ProductModuleId>> = {
+  motors: 'engines',
+  workOrders: 'orders',
+  warehouse: 'warehouse',
+  accounting: 'accounting',
+  specifics: 'parts',
+};
+
+export function useProductModuleEnabled(moduleId: ProductModuleId): boolean {
+  const storeEnabled = useModulesConfigStore((state) => state.enabled[moduleId] !== false);
+  const definition = MODULE_DEFINITIONS[moduleId];
+  const { companyConfig } = useSession();
+
+  if (!storeEnabled) return false;
+
+  if (!definition.companyModuleKey) return true;
+  if (!companyConfig) return true;
+  return companyConfig.modules[definition.companyModuleKey] !== false;
+}
+
+export function useCompanyModuleEnabled(module: CompanyModuleKey): boolean {
+  const productId = MODULE_KEY_TO_PRODUCT[module];
+  if (productId) {
+    return useProductModuleEnabled(productId);
+  }
+  return useModuleEnabled(module);
+}

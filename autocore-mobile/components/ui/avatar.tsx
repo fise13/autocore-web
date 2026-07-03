@@ -1,4 +1,5 @@
-import { Image, View, type ImageSourcePropType } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Image, type ImageSourcePropType } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '@/hooks';
@@ -9,6 +10,7 @@ type AvatarSize = keyof typeof layout.avatar;
 
 type AvatarProps = {
   source?: ImageSourcePropType;
+  uri?: string | null;
   name?: string;
   size?: AvatarSize;
 };
@@ -22,24 +24,8 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-export function Avatar({ source, name = '', size = 'md' }: AvatarProps) {
+function AvatarFallback({ name, size, dimension }: { name: string; size: AvatarSize; dimension: number }) {
   const { colors, gradients } = useTheme();
-  const dimension = layout.avatar[size];
-
-  if (source) {
-    return (
-      <Image
-        source={source}
-        style={{
-          width: dimension,
-          height: dimension,
-          borderRadius: dimension / 2,
-          borderWidth: 1,
-          borderColor: colors.border,
-        }}
-      />
-    );
-  }
 
   return (
     <LinearGradient
@@ -62,4 +48,50 @@ export function Avatar({ source, name = '', size = 'md' }: AvatarProps) {
       </Text>
     </LinearGradient>
   );
+}
+
+export function Avatar({ source, uri, name = '', size = 'md' }: AvatarProps) {
+  const { colors } = useTheme();
+  const dimension = layout.avatar[size];
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [uri, source]);
+
+  const imageStyle = {
+    width: dimension,
+    height: dimension,
+    borderRadius: dimension / 2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.muted,
+  };
+
+  if (uri && !imageFailed) {
+    return (
+      <Image
+        key={uri}
+        source={{ uri }}
+        style={imageStyle}
+        resizeMode="cover"
+        accessibilityIgnoresInvertColors
+        onError={() => setImageFailed(true)}
+      />
+    );
+  }
+
+  if (source && !imageFailed) {
+    return (
+      <Image
+        source={source}
+        style={imageStyle}
+        resizeMode="cover"
+        accessibilityIgnoresInvertColors
+        onError={() => setImageFailed(true)}
+      />
+    );
+  }
+
+  return <AvatarFallback name={name} size={size} dimension={dimension} />;
 }
