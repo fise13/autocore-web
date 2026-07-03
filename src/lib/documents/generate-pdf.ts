@@ -12,6 +12,7 @@ import {
   PDF_SERVICE_TAG_HEIGHT_PX,
   PDF_SERVICE_TAG_WIDTH_PX,
 } from "@/lib/documents/fit-pdf-page";
+import { buildDocumentRenderHtml } from "@/lib/documents/build-document-render-html";
 import { getPuppeteerBrowser } from "@/lib/documents/puppeteer-browser";
 import { documentRenderUrl } from "@/lib/documents/render-token";
 
@@ -23,7 +24,26 @@ export type PdfFromUrlOptions = {
   theme?: DocumentTheme;
 };
 
-async function waitForPdfAssets(page: Awaited<ReturnType<Awaited<ReturnType<typeof getPuppeteerBrowser>>["newPage"]>>) {
+type PdfPage = Awaited<ReturnType<Awaited<ReturnType<typeof getPuppeteerBrowser>>["newPage"]>>;
+
+async function loadPdfRenderPage(page: PdfPage, params: PdfFromUrlOptions): Promise<void> {
+  try {
+    const html = await buildDocumentRenderHtml(params);
+    await page.setContent(html, { waitUntil: "load", timeout: 45_000 });
+    return;
+  } catch (inlineError) {
+    console.warn("[pdf] inline HTML render failed, falling back to render URL", inlineError);
+  }
+
+  const url = documentRenderUrl({ ...params, export: true });
+  const response = await page.goto(url, { waitUntil: "networkidle0", timeout: 45_000 });
+  if (!response || !response.ok()) {
+    const status = response?.status() ?? "no response";
+    throw new Error(`Страница рендера PDF недоступна (${status}): ${url}`);
+  }
+}
+
+async function waitForPdfAssets(page: PdfPage) {
   await page.evaluate(() => document.fonts.ready).catch(() => undefined);
   await page
     .waitForFunction(
@@ -41,19 +61,13 @@ export async function generatePdfFromRenderUrl(params: PdfFromUrlOptions): Promi
   const isServiceTag = definition.pageSize === "service-tag";
   const targetWidthPx = isServiceTag ? PDF_SERVICE_TAG_WIDTH_PX : PDF_A4_WIDTH_PX;
   const targetHeightPx = isServiceTag ? PDF_SERVICE_TAG_HEIGHT_PX : PDF_A4_HEIGHT_PX;
-  const url = documentRenderUrl({ ...params, export: true });
-
   const browser = await getPuppeteerBrowser();
   const page = await browser.newPage();
 
   try {
     await page.setViewport({ width: targetWidthPx, height: targetHeightPx, deviceScaleFactor: 1 });
 
-    const response = await page.goto(url, { waitUntil: "networkidle0", timeout: 45_000 });
-    if (!response || !response.ok()) {
-      const status = response?.status() ?? "no response";
-      throw new Error(`Страница рендера PDF недоступна (${status}): ${url}`);
-    }
+    await loadPdfRenderPage(page, params);
 
     await page.waitForSelector(".doc-pdf-page, .doc-racing-page, .doc-sr-page, .doc-page", {
       timeout: 20_000,

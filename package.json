@@ -8,6 +8,7 @@
   "scripts": {
     "predev": "node scripts/ensure-puppeteer-browser.mjs",
     "dev": "next dev",
+    "insta:dev": "node insta-demo/server.mjs",
     "dev:desktop": "node scripts/dev-desktop.mjs",
     "prebuild": "python3 scripts/generate-favicon-ico.py && node scripts/build-documents-css.mjs",
     "build": "next build",

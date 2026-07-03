@@ -29,5 +29,13 @@ export function mapDocumentError(error: unknown, fallback = "Не удалось
     return "Firebase Storage не настроен. Включите Storage в Firebase Console (Build → Storage) или укажите FIREBASE_STORAGE_BUCKET в .env.local. PDF можно скачать кнопкой «PDF» — файл генерируется по запросу.";
   }
 
+  if (
+    message.includes("ERR_CONNECTION_REFUSED") ||
+    message.includes("ECONNREFUSED") ||
+    message.includes("Страница рендера PDF недоступна")
+  ) {
+    return "Не удалось сгенерировать PDF. Перезапустите dev-сервер (`npm run dev`) и попробуйте снова.";
+  }
+
   return message || fallback;
 }

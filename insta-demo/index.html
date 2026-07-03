@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>AutoCore · Поиск — Insta demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <p class="page-hint">Отдельный демо-сервер · белая тема · нажмите на поиск</p>
+
+    <main class="story" aria-label="AutoCore search demo">
+      <div class="overlay" id="overlay" aria-hidden="true"></div>
+
+      <div class="status-bar" aria-hidden="true">
+        <span>9:41</span>
+        <span class="status-icons">●●●</span>
+      </div>
+
+      <div class="story-inner">
+        <header class="topbar">
+          <div class="brand">
+            <div class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <circle cx="12" cy="12" r="2.2" />
+                <path d="M12 2v2M12 20v2M2 12h2M20 12h2" />
+              </svg>
+            </div>
+            <div class="brand-title">Дашборд</div>
+          </div>
+
+          <div class="search-wrap">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+            <input
+              id="search-input"
+              class="search-field"
+              type="search"
+              placeholder="Поиск по номеру, бренду, комплектации…"
+              autocomplete="off"
+              spellcheck="false"
+              aria-expanded="false"
+              aria-controls="search-panel"
+              role="combobox"
+            />
+
+            <section id="search-panel" class="search-panel" aria-label="Варианты поиска">
+              <ul id="search-list" class="panel-list" role="listbox"></ul>
+            </section>
+          </div>
+        </header>
+
+        <section id="dashboard" class="dashboard" aria-hidden="true"></section>
+
+        <p class="caption">
+          <strong>Очень сильный маркетинговый приём.</strong><br />
+          Один поиск — двигатель, клиент, заказ и VIN.
+        </p>
+      </div>
+
+      <div id="tap-hint" class="tap-hint">Нажмите на поиск ↑</div>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
