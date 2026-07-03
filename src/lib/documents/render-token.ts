@@ -5,11 +5,31 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { DocumentSlug, resolveDocumentSlug } from "@/lib/documents/document-types";
 import { getAppUrl } from "@/lib/site-urls";
 
+function isLocalRenderUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  return lower.includes("localhost") || lower.includes("127.0.0.1");
+}
+
 function resolveRenderBaseUrl(): string {
   const override = process.env.PDF_RENDER_BASE_URL?.trim();
-  if (override) return override.replace(/\/$/, "");
+  if (override) {
+    const normalized = override.replace(/\/$/, "");
+    // Never loop back to localhost on deployed environments (Vercel production/preview).
+    if (process.env.VERCEL === "1" && isLocalRenderUrl(normalized)) {
+      return getAppUrl().replace(/\/$/, "");
+    }
+    return normalized;
+  }
 
   if (process.env.NODE_ENV === "development") {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+    if (appUrl) {
+      try {
+        return new URL(appUrl).origin;
+      } catch {
+        // fall through
+      }
+    }
     const port = process.env.PORT?.trim() || "3000";
     return `http://127.0.0.1:${port}`;
   }
