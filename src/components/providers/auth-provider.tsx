@@ -25,7 +25,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 
@@ -76,6 +75,11 @@ import {
   clearEmailVerificationComplete,
   markEmailVerificationComplete,
 } from "@/lib/performance/session-flags";
+import {
+  clearCachedProfile,
+  readCachedProfile,
+  writeCachedProfile,
+} from "@/lib/performance/profile-session-cache";
 import {
   describeFirebaseUser,
   logAuthDebug,
@@ -221,50 +225,51 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const missingEmail = !existingData.email && user.email;
     const missingName = !existingData.name && user.displayName;
     const missingPhoto = !existingData.photoURL?.trim() && user.photoURL?.trim();
-    if (missingEmail || missingName || missingPhoto) {
+    const missingRole = !existingData.role;
+    const missingCompanyId = existingData.companyId === undefined || existingData.companyId === null;
+    const missingPermissions = !Array.isArray(existingData.permissions);
+    const missingIsActive = existingData.isActive === undefined;
+
+    if (
+      missingEmail ||
+      missingName ||
+      missingPhoto ||
+      missingRole ||
+      missingCompanyId ||
+      missingPermissions ||
+      missingIsActive
+    ) {
       await updateDoc(userRef, {
         ...(missingEmail ? { email: user.email } : {}),
         ...(missingName ? { name: user.displayName } : {}),
         ...(missingPhoto ? { photoURL: user.photoURL!.trim() } : {}),
+        ...(missingRole ? { role: defaultRole } : {}),
+        ...(missingCompanyId ? { companyId: "" } : {}),
+        ...(missingPermissions ? { permissions: [] } : {}),
+        ...(missingIsActive ? { isActive: true } : {}),
       });
     }
   }, []);
 
-  const refreshProfile = useCallback(async () => {
-    if (!isFirebaseConfigured()) {
-      setProfile(null);
-      return;
-    }
-    const auth = getFirebaseAuth();
+  const loadProfileForUser = useCallback(async (user: User): Promise<UserEntity> => {
     const db = getFirestoreDb();
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-      setProfile(null);
-      return;
-    }
-
-    await upsertDefaultUserDoc(currentUser);
-
-    const userRef = doc(db, "users", currentUser.uid);
+    const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
     const userDoc = snap.exists() ? (snap.data() as UserDoc) : null;
     const companyId = userDoc?.companyId?.trim();
 
     if (!companyId) {
-      setProfile(mapUserDoc(currentUser.uid, currentUser, userDoc));
-      markSyncAuthPrepared(currentUser.uid);
-      return;
+      return mapUserDoc(user.uid, user, userDoc);
     }
 
     const companyRef = doc(db, "companies", companyId);
-    const employeeRef = doc(db, "companies", companyId, "employees", currentUser.uid);
-
+    const employeeRef = doc(db, "companies", companyId, "employees", user.uid);
     const [companySnap, employeeSnap] = await Promise.all([getDoc(companyRef), getDoc(employeeRef)]);
 
     let isCompanyOwner = false;
     if (companySnap.exists()) {
       const ownerId = (companySnap.data() as { ownerId?: string }).ownerId;
-      isCompanyOwner = ownerId === currentUser.uid;
+      isCompanyOwner = ownerId === user.uid;
     }
 
     let employeeDoc: EmployeeProfileSlice | null = null;
@@ -278,20 +283,38 @@ export function AuthProvider({ children }: AuthProviderProps) {
       };
     }
 
-    const mapped = mapUserDoc(currentUser.uid, currentUser, userDoc);
-    setProfile({ ...mergeProfileWithEmployee(mapped, employeeDoc), isCompanyOwner });
+    const mapped = mapUserDoc(user.uid, user, userDoc);
+    return { ...mergeProfileWithEmployee(mapped, employeeDoc), isCompanyOwner };
+  }, []);
+
+  const applyProfile = useCallback((user: User, nextProfile: UserEntity) => {
+    setProfile(nextProfile);
+    writeCachedProfile(user.uid, nextProfile);
+  }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (!isFirebaseConfigured()) {
+      setProfile(null);
+      return;
+    }
+    const auth = getFirebaseAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      setProfile(null);
+      return;
+    }
+
+    const nextProfile = await loadProfileForUser(currentUser);
+    applyProfile(currentUser, nextProfile);
     markSyncAuthPrepared(currentUser.uid);
 
     void prepareSyncAuth(currentUser.uid).catch((error) => {
       console.warn("Auth prep skipped during profile refresh:", error);
     });
-  }, [upsertDefaultUserDoc]);
-
-  const refreshProfileRef = useRef(refreshProfile);
-
-  useEffect(() => {
-    refreshProfileRef.current = refreshProfile;
-  }, [refreshProfile]);
+    void upsertDefaultUserDoc(currentUser).catch((error) => {
+      console.warn("User doc sync deferred:", error);
+    });
+  }, [applyProfile, loadProfileForUser, upsertDefaultUserDoc]);
 
   useEffect(() => {
     const uid = firebaseUser?.uid;
@@ -317,30 +340,46 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return;
       }
 
-      setIsLoading(true);
+      const cachedProfile = readCachedProfile(nextUser.uid);
+      if (cachedProfile) {
+        setProfile(cachedProfile);
+        setIsLoading(false);
+      } else {
+        setIsLoading(true);
+      }
 
       void (async () => {
         try {
-          await upsertDefaultUserDoc(nextUser);
-          const db = getFirestoreDb();
-          const snap = await getDoc(doc(db, "users", nextUser.uid));
-          const userDoc = snap.exists() ? (snap.data() as UserDoc) : null;
-          setProfile(mapUserDoc(nextUser.uid, nextUser, userDoc));
+          const nextProfile = await loadProfileForUser(nextUser);
+          applyProfile(nextUser, nextProfile);
+          markSyncAuthPrepared(nextUser.uid);
+          void prepareSyncAuth(nextUser.uid).catch((error) => {
+            console.warn("Auth prep skipped during boot:", error);
+          });
         } catch (error) {
-          logAuthDebug("auth-provider", "fast profile load error", error);
-          setProfile(mapUserDoc(nextUser.uid, nextUser, null));
-        }
-
-        try {
-          await refreshProfileRef.current();
-        } catch (error) {
-          logAuthDebug("auth-provider", "onAuthStateChanged refreshProfile error", error);
-          console.error("Failed to refresh profile after auth", error);
+          logAuthDebug("auth-provider", "profile load error", error);
+          if (!cachedProfile) {
+            setProfile(mapUserDoc(nextUser.uid, nextUser, null));
+          }
         } finally {
           setIsLoading(false);
         }
+
+        void upsertDefaultUserDoc(nextUser).catch((error) => {
+          console.warn("User doc sync deferred:", error);
+        });
       })();
     });
+
+    const restoredUser = auth.currentUser;
+    if (restoredUser) {
+      const cachedProfile = readCachedProfile(restoredUser.uid);
+      if (cachedProfile) {
+        setFirebaseUser(restoredUser);
+        setProfile(cachedProfile);
+        setIsLoading(false);
+      }
+    }
 
     void auth.authStateReady().then(() => {
       logAuthDebug("auth-provider", "initial authStateReady", {
@@ -596,6 +635,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
 
         await signOut(auth);
+        if (uid) clearCachedProfile(uid);
         resetSyncAuthCache(uid);
         markAuthSessionTransition("sign-out");
 

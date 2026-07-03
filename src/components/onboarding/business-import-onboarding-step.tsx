@@ -7,7 +7,7 @@ import { BusinessMigration } from "@/components/migration/business-migration";
 import { createApiCommitPort } from "@/components/migration/api-commit-port";
 import type { MigrationLearnFn } from "@/components/migration/migration-types";
 import { useAuth } from "@/components/providers/auth-provider";
-import { markMigrationOfferCompleted } from "@/lib/performance/session-flags";
+import { markBusinessImportCompleted } from "@/lib/onboarding/mark-business-import-completed";
 import { RECORD_TYPE_DOMAINS } from "@/lib/import";
 import type { DomainCategory } from "@/lib/domain/types";
 
@@ -40,9 +40,13 @@ export function BusinessImportOnboardingStep({ companyId, onDone }: BusinessImpo
   );
 
   const finish = useCallback(() => {
-    markMigrationOfferCompleted(companyId);
+    const userId = profile?.id;
+    if (userId) {
+      void markBusinessImportCompleted(companyId, userId).finally(onDone);
+      return;
+    }
     onDone();
-  }, [companyId, onDone]);
+  }, [companyId, onDone, profile?.id]);
 
   return (
     <BusinessMigration

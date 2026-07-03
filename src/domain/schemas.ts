@@ -85,7 +85,7 @@ export const upsertMotorSchema = z.object({
   notes: z.string().default(""),
   quantity: z.number().int().positive().default(1),
   transmission: z.string().default(""),
-  arrivalDate: z.date().default(() => new Date()),
+  arrivalDate: z.date().nullable().optional(),
   soldDate: z.date().nullable().optional(),
   deletedAt: z.date().nullable().optional(),
   brandName: z.string().default(""),

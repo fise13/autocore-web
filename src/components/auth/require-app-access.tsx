@@ -1,20 +1,31 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useSyncExternalStore } from "react";
 
 import { useAuth } from "@/components/providers/auth-provider";
+import { DashboardShellSkeleton } from "@/components/layout/dashboard-shell-skeleton";
 import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
 import { canAccessPath, defaultAppPath } from "@/lib/auth/app-access";
+import { hasSeenAuthSession } from "@/lib/performance/session-flags";
 
 type RequireAppAccessProps = {
   children: ReactNode;
 };
 
+function useReturningAuthSession(): boolean {
+  return useSyncExternalStore(
+    () => () => {},
+    () => hasSeenAuthSession(),
+    () => false,
+  );
+}
+
 export function RequireAppAccess({ children }: RequireAppAccessProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { profile, isLoading } = useAuth();
+  const returningSession = useReturningAuthSession();
 
   const allowed = profile ? canAccessPath(profile, pathname) : false;
   const fallbackPath = profile ? defaultAppPath(profile) : "/";
@@ -26,12 +37,16 @@ export function RequireAppAccess({ children }: RequireAppAccessProps) {
     }
   }, [fallbackPath, isLoading, pathname, profile, router]);
 
-  if (isLoading || !profile) {
-    return <AppLoadingScreen message="Загрузка…" />;
+  if (isLoading && !profile) {
+    return returningSession ? <DashboardShellSkeleton /> : <AppLoadingScreen message="Загрузка…" />;
+  }
+
+  if (!profile) {
+    return returningSession ? <DashboardShellSkeleton /> : <AppLoadingScreen message="Загрузка…" />;
   }
 
   if (!allowed) {
-    return <AppLoadingScreen message="Загрузка…" />;
+    return <DashboardShellSkeleton />;
   }
 
   return <>{children}</>;

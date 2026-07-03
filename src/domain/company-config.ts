@@ -16,6 +16,7 @@ export type CompanySpecificCategoryConfig = {
 
 export type CompanyAppConfig = {
   onboardingCompleted: boolean;
+  businessImportCompleted?: boolean;
   modules: Record<CompanyModuleKey, boolean>;
   specificCategories: CompanySpecificCategoryConfig[];
   defaultWarrantyTemplate: WarrantyTemplateId | "no_warranty";

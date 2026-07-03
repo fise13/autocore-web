@@ -21,6 +21,8 @@ export async function sellMotorWithFinancialOperationUseCase(
 ) {
   const relatedMotorID = params.motor.localId ?? Number(params.motor.id);
   const soldDate = new Date();
+  const arrivalDate = params.motor.arrivalDate ?? soldDate;
+
   const motorDescription = [params.motor.brandName, params.motor.engineCode, params.motor.serialCode]
     .filter(Boolean)
     .join(" ");
@@ -33,7 +35,7 @@ export async function sellMotorWithFinancialOperationUseCase(
     notes: params.motor.notes,
     quantity: params.motor.quantity,
     transmission: params.motor.transmission,
-    arrivalDate: params.motor.arrivalDate,
+    arrivalDate,
     soldDate,
     brandName: params.motor.brandName,
     engineCode: params.motor.engineCode,

@@ -10,9 +10,9 @@ import { can } from "@/lib/auth/permissions";
 import { isDemoSession } from "@/lib/demo/demo-config";
 import {
   hasEmailVerificationComplete,
-  hasMigrationOfferCompleted,
   hasWizardCompleted,
 } from "@/lib/performance/session-flags";
+import { hasCompletedBusinessImport } from "@/lib/onboarding/mark-business-import-completed";
 
 export type AuthJourneyStep =
   | "loading"
@@ -81,14 +81,13 @@ export function useAuthJourneyStep(
 
     if (!loaded) {
       if (
-        cachedCompleted &&
-        profile.isCompanyOwner &&
         companyId &&
-        !hasMigrationOfferCompleted(companyId)
+        cachedCompleted &&
+        hasCompletedBusinessImport(companyId, null)
       ) {
-        return "business-import";
+        return "app";
       }
-      return cachedCompleted ? "app" : "loading";
+      return "loading";
     }
 
     const needsWizard =
@@ -103,7 +102,7 @@ export function useAuthJourneyStep(
     const needsBusinessImport =
       profile.isCompanyOwner &&
       config?.onboardingCompleted &&
-      !hasMigrationOfferCompleted(companyId);
+      !hasCompletedBusinessImport(companyId, config);
 
     if (needsBusinessImport) {
       return "business-import";

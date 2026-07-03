@@ -92,6 +92,7 @@ function mapCompanyAppConfig(data: Record<string, unknown> | undefined): Company
 
   return {
     onboardingCompleted: Boolean(data.onboardingCompleted ?? false),
+    businessImportCompleted: Boolean(data.businessImportCompleted ?? false),
     modules,
     specificCategories,
     defaultWarrantyTemplate,
@@ -141,6 +142,7 @@ export function createCompanyConfigRepository() {
         companyConfigRef(companyId),
         {
           onboardingCompleted: config.onboardingCompleted,
+          businessImportCompleted: Boolean(config.businessImportCompleted),
           modules: config.modules,
           specificCategories: sanitizeSpecificCategories(config.specificCategories),
           defaultWarrantyTemplate: config.defaultWarrantyTemplate,
