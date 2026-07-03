@@ -16,7 +16,7 @@ export async function enqueueMotorSoldEffects(
     clientPhone?: string;
     warrantyOverride?: MotorSaleWarrantyOverride;
   },
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; warrantyId?: string | null; error?: string }> {
   try {
     const auth = getFirebaseAuth();
     const token = await auth.currentUser?.getIdToken();
@@ -45,11 +45,14 @@ export async function enqueueMotorSoldEffects(
       }),
     });
 
-    const data = (await response.json().catch(() => ({}))) as { error?: string };
+    const data = (await response.json().catch(() => ({}))) as {
+      error?: string;
+      warrantyId?: string | null;
+    };
     if (!response.ok) {
       return { ok: false, error: data.error ?? "Не удалось оформить документы продажи" };
     }
-    return { ok: true };
+    return { ok: true, warrantyId: data.warrantyId ?? null };
   } catch (error) {
     return {
       ok: false,

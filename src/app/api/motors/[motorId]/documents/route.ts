@@ -11,7 +11,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const access = await verifyDocumentAccess(request);
     const { motorId } = await context.params;
-    const documents = await getMotorSaleDocuments(access.companyId, motorId.trim());
+    const documents = await getMotorSaleDocuments(access.companyId, motorId.trim(), access.uid);
     return NextResponse.json(documents);
   } catch (error) {
     if (error instanceof DocumentAccessError) {

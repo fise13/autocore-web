@@ -39,19 +39,21 @@ export async function processStandaloneMotorSold(params: {
     return { warrantyId: existingWarranty.id, jobId: "", operationId: null };
   }
 
-  const clientId = await resolveMotorSaleClientId({
-    companyId: params.companyId,
-    actorUserId: params.actorUserId,
-    clientId: params.clientId,
-    clientName: params.clientName,
-    clientPhone: params.clientPhone,
-  });
+  const [clientId, companySnap] = await Promise.all([
+    resolveMotorSaleClientId({
+      companyId: params.companyId,
+      actorUserId: params.actorUserId,
+      clientId: params.clientId,
+      clientName: params.clientName,
+      clientPhone: params.clientPhone,
+    }),
+    getAdminFirestore()
+      .collection("companies")
+      .doc(normalizeCompanyId(params.companyId))
+      .get(),
+  ]);
 
   const soldAt = new Date();
-  const companySnap = await getAdminFirestore()
-    .collection("companies")
-    .doc(normalizeCompanyId(params.companyId))
-    .get();
   const companyData = (companySnap.data() ?? {}) as Record<string, unknown>;
   const branding = companyBrandingFromRecord(companyData);
   const documentConfig = parseCompanyDocumentConfig(companyData);

@@ -295,7 +295,7 @@ export function MotorSaleDocumentsPanel({
             </EmptyMedia>
             <EmptyTitle>Документы формируются</EmptyTitle>
             <EmptyDescription>
-              Гарантия и счёт появятся через несколько секунд после продажи. Закройте окно и откройте снова.
+              Гарантия и счёт появятся автоматически — обычно это занимает несколько секунд.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>

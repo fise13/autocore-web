@@ -14,6 +14,7 @@ import { LayoutGrid, X } from "lucide-react";
 import { sellMotorWithFinancialOperationUseCase } from "@/application/use-cases/sell-motor-with-financial-operation";
 import { quickCreateClientUseCase } from "@/application/use-cases/work-orders/quick-create-client";
 import { enqueueMotorSoldEffects } from "@/lib/motors/enqueue-motor-sold-effects";
+import { writeMotorWarrantySeed } from "@/lib/motors/motor-warranty-session";
 import { unsellMotorWithFinancialOperationUseCase } from "@/application/use-cases/unsell-motor-with-financial-operation";
 import { MotorSaleSuccessOverlay } from "@/components/motors/motor-sale-success-overlay";
 import { useWorkspace } from "@/components/layout/workspace-context";
@@ -283,7 +284,7 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
         comment: saleComment,
       });
 
-      void enqueueMotorSoldEffects(motor, {
+      const effects = await enqueueMotorSoldEffects(motor, {
         amount: payload.amount,
         account: payload.account,
         paymentMethod: payload.paymentMethod,
@@ -293,6 +294,9 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
         clientPhone: client.phone,
         warrantyOverride: payload.warrantyOverride,
       });
+      if (effects.warrantyId) {
+        writeMotorWarrantySeed(motor.id, effects.warrantyId);
+      }
 
       setSellSuccess({ serialCode: motor.serialCode, amount: payload.amount });
       return;
@@ -326,12 +330,15 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
           paymentMethod: "cash",
           comment: "Продажа мотора",
         });
-        void enqueueMotorSoldEffects(motor, {
+        const effects = await enqueueMotorSoldEffects(motor, {
           amount: 0,
           account: "cashbox",
           paymentMethod: "cash",
           comment: "Продажа мотора",
         });
+        if (effects.warrantyId) {
+          writeMotorWarrantySeed(motor.id, effects.warrantyId);
+        }
       }
     } finally {
       setCloudPending(false);
