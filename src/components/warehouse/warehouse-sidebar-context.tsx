@@ -26,10 +26,12 @@ import {
   readSelectedWarehouseId,
   writeSelectedWarehouseId,
 } from "@/lib/warehouse/warehouse-selection-storage";
+import { createInventoryCategoryRepository } from "@/infrastructure/firestore/inventory-category-repository";
 import { createWarehouseRepository } from "@/infrastructure/firestore/warehouse-repository";
 import { cn } from "@/lib/utils";
 
 const warehouseRepository = createWarehouseRepository();
+const categoryRepository = createInventoryCategoryRepository();
 
 const navSpring = { type: "spring" as const, stiffness: 420, damping: 34, mass: 0.85 };
 
@@ -62,18 +64,26 @@ export function WarehouseSidebarContext() {
     [warehouses],
   );
 
+  const needsDefault =
+    !loading && (warehouses.length === 0 || !warehouses.some((warehouse) => warehouse.isDefault));
+
   useEffect(() => {
-    if (!companyId || loading || warehouses.length > 0 || ensuringRef.current) return;
+    if (!companyId || !needsDefault || ensuringRef.current) return;
 
     ensuringRef.current = true;
     setEnsuringDefault(true);
-    void ensureDefaultWarehouseUseCase(warehouseRepository, companyId, actorUserId)
+    void ensureDefaultWarehouseUseCase(
+      warehouseRepository,
+      companyId,
+      actorUserId,
+      categoryRepository,
+    )
       .catch(() => undefined)
       .finally(() => {
         ensuringRef.current = false;
         setEnsuringDefault(false);
       });
-  }, [actorUserId, companyId, loading, warehouses.length]);
+  }, [actorUserId, companyId, needsDefault]);
 
   useEffect(() => {
     if (!companyId || loading) return;

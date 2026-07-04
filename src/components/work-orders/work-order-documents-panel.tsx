@@ -150,6 +150,8 @@ export function WorkOrderDocumentsPanel({
                 <div className="flex shrink-0 items-center gap-1.5">
                   <Link
                     href={`/documents/${orderId}/${definition.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="inline-flex h-7 shrink-0 items-center gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] font-medium hover:bg-muted"
                   >
                     <Eye className="size-4" />

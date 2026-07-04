@@ -100,11 +100,8 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isLocalDev = isLocalDevHost(host);
 
-  // Unified localhost: / serves marketing (internal /marketing), URL stays /.
-  if (kind === "local" && isLocalDev && pathname === "/") {
-    return NextResponse.rewrite(new URL("/marketing" + request.nextUrl.search, request.url));
-  }
-
+  // Unified localhost: `/` is the app (Mission Control). Marketing lives at
+  // `/marketing` and clean paths (`/pricing`, `/product`, …).
   if (kind === "marketing") {
     return handleMarketingRoutes(request, pathname, true);
   }

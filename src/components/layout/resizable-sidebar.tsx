@@ -31,12 +31,15 @@ export function ResizableSidebar({
       data-editing={isEditing ? "true" : undefined}
       className={cn(
         "app-sidebar-shell relative hidden h-full shrink-0 overflow-hidden md:flex md:flex-col",
-        "motion-reduce:transition-none",
+        "transition-[border-color] duration-300 motion-reduce:transition-none",
         position === "right" ? "border-l border-sidebar-border" : "border-r border-sidebar-border",
       )}
       style={{ width: effectiveWidth }}
     >
-      <div className="flex h-full flex-col bg-sidebar motion-reduce:transition-none" style={{ width: effectiveWidth }}>
+      <div
+        className="flex h-full flex-col bg-sidebar transition-[width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
+        style={{ width: effectiveWidth }}
+      >
         {children}
       </div>
     </aside>

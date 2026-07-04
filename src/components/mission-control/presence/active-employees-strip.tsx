@@ -2,10 +2,12 @@
 
 import { memo } from "react";
 
+import { UserAvatar } from "@/components/account/user-avatar";
+import { useAuth } from "@/components/providers/auth-provider";
 import { CompanyEmployee } from "@/domain/rbac";
+import { getAccountProviderInfo } from "@/lib/auth/account-info";
 import { isEmployeeOnline } from "@/lib/mission-control/compute-overview-metrics";
 import { formatRole } from "@/lib/user-copy";
-import { userAvatarStyle } from "@/lib/user/user-avatar-style";
 import { cn } from "@/lib/utils";
 
 type ActiveEmployeesStripProps = {
@@ -17,6 +19,10 @@ export const ActiveEmployeesStrip = memo(function ActiveEmployeesStrip({
   employees,
   isLoading,
 }: ActiveEmployeesStripProps) {
+  const { profile, firebaseUser } = useAuth();
+  const accountInfo = firebaseUser ? getAccountProviderInfo(firebaseUser) : null;
+  const selfPhotoURL = profile?.photoURL ?? accountInfo?.photoURL ?? null;
+  const selfUid = profile?.id ?? firebaseUser?.uid ?? "";
   const active = employees.filter((employee) => employee.isActive);
   const online = active.filter(isEmployeeOnline);
 
@@ -34,6 +40,7 @@ export const ActiveEmployeesStrip = memo(function ActiveEmployeesStrip({
       <div className="flex flex-wrap gap-1.5">
         {active.slice(0, 6).map((employee) => {
           const onlineNow = isEmployeeOnline(employee);
+          const isSelf = employee.uid === selfUid || employee.id === selfUid;
           return (
             <div
               key={employee.uid}
@@ -44,11 +51,14 @@ export const ActiveEmployeesStrip = memo(function ActiveEmployeesStrip({
                   : "border-border/50 bg-background/40",
               )}
             >
-              <span
-                style={userAvatarStyle(employee.uid || employee.id)}
-                className="relative size-6 shrink-0 rounded-full ring-1 ring-border/20"
-                aria-hidden="true"
-              >
+              <span className="relative shrink-0">
+                <UserAvatar
+                  photoURL={isSelf ? selfPhotoURL ?? employee.photoURL : employee.photoURL}
+                  displayName={employee.fullName}
+                  email={employee.email}
+                  seed={employee.uid || employee.id}
+                  size="xs"
+                />
                 {onlineNow ? (
                   <span className="absolute -right-0.5 -bottom-0.5 size-1.5 rounded-full bg-emerald-500 ring-2 ring-background" />
                 ) : null}

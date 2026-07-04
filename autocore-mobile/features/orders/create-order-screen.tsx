@@ -492,7 +492,19 @@ export function CreateOrderScreen() {
                     value={vehicleMake}
                     onValueChange={(value) => {
                       detachVehicleLink();
+                      const previousMake = vehicleMake.trim();
+                      const nextMake = value.trim();
                       setVehicleMake(value);
+                      if (!nextMake) {
+                        if (vehicleModel.trim()) setVehicleModel('');
+                        return;
+                      }
+                      // Only reset model when a different known brand is committed, not while typing.
+                      if (previousMake.toLowerCase() === nextMake.toLowerCase()) return;
+                      const known = composerOptions.vehicleMakeOptionsList.some(
+                        (option) => option.value.toLowerCase() === nextMake.toLowerCase(),
+                      );
+                      if (known && vehicleModel.trim()) setVehicleModel('');
                     }}
                     options={composerOptions.vehicleMakeOptionsList}
                   />

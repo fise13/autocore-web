@@ -294,7 +294,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
               ) : null}
 
               {showNavigation && can(profile, "accounting_edit") ? (
-                <Command.Group heading="Бухгалтерия">
+                <Command.Group heading="Финансы">
                   <CommandItem icon={Wallet} onSelect={() => navigate(deepActionRoutes.expense())}>
                     Добавить расход
                   </CommandItem>

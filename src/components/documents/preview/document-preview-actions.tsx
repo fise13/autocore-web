@@ -108,10 +108,16 @@ export function DocumentPreviewActions({
         variant="ghost"
         size="sm"
         className="text-neutral-200 hover:bg-white/10 hover:text-white"
-        onClick={() => router.back()}
+        onClick={() => {
+          if (typeof window !== "undefined" && window.history.length <= 1) {
+            window.close();
+            return;
+          }
+          router.back();
+        }}
       >
         <ArrowLeft className="size-4" />
-        Назад
+        Закрыть
       </Button>
       <div className="min-w-0 text-center">
         <p className="truncate text-sm font-medium text-white">{definition.title}</p>

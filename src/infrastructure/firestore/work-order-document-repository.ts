@@ -54,6 +54,26 @@ export function createWorkOrderDocumentRepository() {
       );
     },
 
+    subscribeAll(
+      companyId: string,
+      onData: (documents: WorkOrderDocument[]) => void,
+      onError?: (error: Error) => void,
+      max = 300,
+    ) {
+      if (!companyId) {
+        onData([]);
+        return () => undefined;
+      }
+
+      const q = query(documentsRef(companyId), orderBy("createdAt", "desc"), limit(max));
+      return onSnapshot(
+        q,
+        (snapshot) =>
+          onData(snapshot.docs.map((item) => mapWorkOrderDocument(item.id, item.data() as Record<string, unknown>))),
+        (error) => notifyFirestoreSnapshotError(error, onError),
+      );
+    },
+
     collectionRef: documentsRef,
     mapWorkOrderDocument,
   };

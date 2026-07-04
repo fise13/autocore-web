@@ -6,9 +6,11 @@ import { ensureDefaultWarehouseUseCase } from "@/application/use-cases/warehouse
 import { useAuth } from "@/components/providers/auth-provider";
 import { useWarehousesRealtime } from "@/hooks/use-warehouses-realtime";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { createInventoryCategoryRepository } from "@/infrastructure/firestore/inventory-category-repository";
 import { createWarehouseRepository } from "@/infrastructure/firestore/warehouse-repository";
 
 const warehouseRepository = createWarehouseRepository();
+const categoryRepository = createInventoryCategoryRepository();
 
 export function useEnsureDefaultWarehouse(enabled = true) {
   const { profile } = useAuth();
@@ -17,20 +19,28 @@ export function useEnsureDefaultWarehouse(enabled = true) {
   const active = enabled && Boolean(companyId);
   const ensuringRef = useRef(false);
 
-  const { warehouses, loading } = useWarehousesRealtime(
+  const { warehouses, defaultWarehouse, loading } = useWarehousesRealtime(
     warehouseRepository,
     companyId,
     active,
   );
 
+  const needsDefault =
+    !loading && (warehouses.length === 0 || !warehouses.some((warehouse) => warehouse.isDefault));
+
   useEffect(() => {
-    if (!active || loading || warehouses.length > 0 || ensuringRef.current) return;
+    if (!active || !needsDefault || ensuringRef.current) return;
 
     ensuringRef.current = true;
-    void ensureDefaultWarehouseUseCase(warehouseRepository, companyId, actorUserId)
+    void ensureDefaultWarehouseUseCase(
+      warehouseRepository,
+      companyId,
+      actorUserId,
+      categoryRepository,
+    )
       .catch(() => undefined)
       .finally(() => {
         ensuringRef.current = false;
       });
-  }, [active, actorUserId, companyId, loading, warehouses.length]);
+  }, [active, actorUserId, companyId, defaultWarehouse?.id, needsDefault]);
 }

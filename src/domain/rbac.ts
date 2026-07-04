@@ -7,6 +7,8 @@ export type CompanyEmployee = {
   companyId: string;
   email: string;
   fullName: string;
+  /** Profile photo — same source as account menu / sidebar. */
+  photoURL?: string | null;
   role: UserRole;
   permissions: Permission[];
   invitedBy: string;

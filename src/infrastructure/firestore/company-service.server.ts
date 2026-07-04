@@ -4,6 +4,7 @@ import { FieldValue } from "firebase-admin/firestore";
 
 import { ROLE_PERMISSIONS, UserRole } from "@/domain/user";
 import { getAdminAuth, getAdminFirestore } from "@/infrastructure/firebase/admin";
+import { ensureDefaultWarehouseAdmin } from "@/lib/warehouse/ensure-default-warehouse.server";
 
 export async function createCompanyAsAdmin(ownerId: string, name: string): Promise<string> {
   const db = getAdminFirestore();
@@ -100,6 +101,13 @@ export async function createCompanyAsAdmin(ownerId: string, name: string): Promi
       provider: "internal",
       updatedAt: FieldValue.serverTimestamp(),
     });
+  }
+
+  // Consumables workspace: main warehouse + расходники categories.
+  try {
+    await ensureDefaultWarehouseAdmin(companyId);
+  } catch (error) {
+    console.warn("[createCompanyAsAdmin] default warehouse skipped:", error);
   }
 
   return companyId;

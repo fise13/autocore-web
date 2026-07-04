@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Copy, Trash2 } from "lucide-react";
 
 import { canManageEmployees, canViewEmployees } from "@/lib/auth/permissions";
 import { useAuth } from "@/components/providers/auth-provider";
 import { ProFeatureGate } from "@/components/billing/pro-feature-gate";
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
+import { EmployeeProfileSheet } from "@/components/employees/employee-profile-sheet";
 import { useDeepAction } from "@/hooks/use-deep-action";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { CompanyEmployee, InviteDocument } from "@/domain/rbac";
@@ -96,12 +98,13 @@ function permissionsSummary(employee: CompanyEmployee): string {
 const ASSIGNABLE_ROLES = USER_ROLES.filter((role) => role !== "owner");
 
 export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } = {}) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { profile } = useAuth();
   const companyId = normalizeCompanyId(profile?.companyId);
   const [employees, setEmployees] = useState<CompanyEmployee[]>([]);
   const [invites, setInvites] = useState<InviteDocument[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [invitesLoaded, setInvitesLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteRole, setInviteRole] = useState<UserRole>("mechanic");
@@ -111,8 +114,10 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
   const [emailInviteSent, setEmailInviteSent] = useState<string | null>(null);
   const [emailInviteJoinUrl, setEmailInviteJoinUrl] = useState<string | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<CompanyEmployee | null>(null);
+  const [profileEmployee, setProfileEmployee] = useState<CompanyEmployee | null>(null);
   const [busy, setBusy] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState<Set<Permission>>(new Set());
+  const memberId = searchParams.get("member");
 
   const canView = canViewEmployees(profile);
   const canManage = canManageEmployees(profile);
@@ -136,16 +141,17 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
   }, [companyId, subscriptionsEnabled]);
 
   useEffect(() => {
-    if (!subscriptionsEnabled || !canManage) return;
+    if (!subscriptionsEnabled || !canManage) {
+      setInvites([]);
+      return;
+    }
+
     const unsubscribe = inviteRepository.subscribeInvites(
       companyId,
-      (next) => {
-        setInvites(next);
-        setInvitesLoaded(true);
-      },
+      (next) => setInvites(next),
       (nextError) => {
         setError(mapEmployeeError(nextError));
-        setInvitesLoaded(true);
+        setInvites([]);
       },
     );
     return () => unsubscribe();
@@ -174,6 +180,28 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
     expectedAction: "invite",
     onAction: openInviteDialog,
   });
+
+  useEffect(() => {
+    if (!memberId || employees.length === 0) return;
+    const found = employees.find(
+      (employee) => employee.id === memberId || employee.uid === memberId,
+    );
+    if (found) setProfileEmployee(found);
+  }, [employees, memberId]);
+
+  function clearMemberParam() {
+    if (!memberId) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("member");
+    const query = params.toString();
+    router.replace(query ? `/team?${query}` : embedded ? "/team?tab=employees" : "/team?tab=employees", {
+      scroll: false,
+    });
+  }
+
+  function openProfile(employee: CompanyEmployee) {
+    setProfileEmployee(employee);
+  }
 
   function openPermissions(employee: CompanyEmployee) {
     setSelectedEmployee(employee);
@@ -368,7 +396,11 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                 {(subscriptionsEnabled ? employees : []).map((employee) => {
                   const isSelf = employee.uid === profile?.id;
                   return (
-                    <TableRow key={employee.id}>
+                    <TableRow
+                      key={employee.id}
+                      className="cursor-pointer"
+                      onClick={() => openProfile(employee)}
+                    >
                       <TableCell className="font-medium">
                         {employeeDisplayName(employee, profile ?? undefined)}
                         {isSelf ? (
@@ -376,7 +408,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                         ) : null}
                       </TableCell>
                       <TableCell>{employee.email}</TableCell>
-                      <TableCell>
+                      <TableCell onClick={(event) => event.stopPropagation()}>
                         {canManage && !isSelf && employee.role !== "owner" ? (
                           <Select
                             value={employee.role}
@@ -404,7 +436,17 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                       </TableCell>
                       <TableCell className="text-muted-foreground">{permissionsSummary(employee)}</TableCell>
                       <TableCell className="text-right">
-                        <div className="inline-flex items-center gap-2">
+                        <div
+                          className="inline-flex items-center gap-2"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openProfile(employee)}
+                          >
+                            Профиль
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
@@ -450,9 +492,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {!invitesLoaded ? (
-              <p className="text-sm text-muted-foreground">Загрузка приглашений…</p>
-            ) : activeInvites.length === 0 ? (
+            {activeInvites.length === 0 ? (
               <p className="text-sm text-muted-foreground">Нет активных кодов приглашения.</p>
             ) : (
               <Table>
@@ -612,6 +652,27 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <EmployeeProfileSheet
+        employee={
+          profileEmployee
+            ? (employees.find(
+                (employee) =>
+                  employee.id === profileEmployee.id || employee.uid === profileEmployee.uid,
+              ) ?? profileEmployee)
+            : null
+        }
+        open={profileEmployee != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setProfileEmployee(null);
+            clearMemberParam();
+          }
+        }}
+        onOpenPermissions={(employee) => {
+          openPermissions(employee);
+        }}
+      />
 
       <Dialog open={selectedEmployee != null} onOpenChange={(open) => !open && setSelectedEmployee(null)}>
         <DialogContent>

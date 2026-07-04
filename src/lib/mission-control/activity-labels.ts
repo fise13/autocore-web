@@ -93,7 +93,7 @@ export function moduleLabel(module: ActivityModule): string {
     case "inventory":
       return "Учёт";
     case "accounting":
-      return "Бухгалтерия";
+      return "Финансы";
     case "employees":
       return "Команда";
     case "work_orders":

@@ -24,14 +24,36 @@ export function hasWizardCompleted(companyId: string): boolean {
 
 const MIGRATION_OFFER_PREFIX = "autocore-migration-offered:";
 
+/** Survives full reloads and browser restarts (unlike wizard session flags). */
 export function markMigrationOfferCompleted(companyId: string): void {
   if (typeof window === "undefined" || !companyId) return;
-  sessionStorage.setItem(`${MIGRATION_OFFER_PREFIX}${companyId}`, "1");
+  const key = `${MIGRATION_OFFER_PREFIX}${companyId}`;
+  try {
+    localStorage.setItem(key, "1");
+  } catch {
+    // Fall back when storage is unavailable (private mode quotas, etc.).
+  }
+  // Keep session copy so in-tab reads stay consistent with older builds.
+  try {
+    sessionStorage.setItem(key, "1");
+  } catch {
+    // Ignore.
+  }
 }
 
 export function hasMigrationOfferCompleted(companyId: string): boolean {
   if (typeof window === "undefined" || !companyId) return false;
-  return sessionStorage.getItem(`${MIGRATION_OFFER_PREFIX}${companyId}`) === "1";
+  const key = `${MIGRATION_OFFER_PREFIX}${companyId}`;
+  try {
+    if (localStorage.getItem(key) === "1") return true;
+  } catch {
+    // Ignore.
+  }
+  try {
+    return sessionStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
 }
 
 export function markEmailVerificationComplete(uid: string): void {

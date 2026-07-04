@@ -46,7 +46,7 @@ export function WorkOrderFinancePanel({
     <div className="space-y-4">
       {!isCompleted ? (
         <p className="rounded-lg border border-dashed bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-          Бухгалтерия и зарплаты появятся после завершения заказ-наряда (статус «Готов»).
+          Финансы и зарплаты появятся после завершения заказ-наряда (статус «Готов»).
         </p>
       ) : null}
 

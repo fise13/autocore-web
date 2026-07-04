@@ -1,6 +1,6 @@
 import {
+  CircleDollarSign,
   FileText,
-  Folder,
   LayoutGrid,
   Package,
   ClipboardList,
@@ -116,7 +116,7 @@ export const SIDEBAR_NAV_META: Record<
   sold: { label: "Продажи", href: "/sold", icon: Receipt },
   work_orders: { label: "Заказ-наряды", href: "/work-orders", icon: ClipboardList },
   my_earnings: { label: "Мои начисления", href: "/my-earnings", icon: Wallet },
-  accounting: { label: "Бухгалтерия", href: "/accounting", icon: Folder },
+  accounting: { label: "Финансы", href: "/accounting", icon: CircleDollarSign },
   warehouse: { label: "Расходники", href: "/warehouse", icon: Package },
 };
 

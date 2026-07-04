@@ -131,3 +131,28 @@ export async function persistDocumentPdf(params: {
     });
   }
 }
+
+/** Bump history timestamp when an already-saved PDF is downloaded/printed again. */
+export async function touchWorkOrderDocumentAccess(params: {
+  companyId: string;
+  workOrderId: string;
+  type: WorkOrderDocumentType;
+}): Promise<void> {
+  const db = getAdminFirestore();
+  const normalizedCompanyId = normalizeCompanyId(params.companyId);
+  const existing = await db
+    .collection("companies")
+    .doc(normalizedCompanyId)
+    .collection(COLLECTION)
+    .where("workOrderId", "==", params.workOrderId)
+    .where("type", "==", params.type)
+    .limit(1)
+    .get();
+
+  if (existing.empty) return;
+
+  await existing.docs[0].ref.set(
+    { createdAt: Timestamp.fromDate(new Date()) },
+    { merge: true },
+  );
+}

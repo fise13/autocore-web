@@ -1,8 +1,8 @@
 import {
+  CircleDollarSign,
   ClipboardList,
   Cog,
   FileText,
-  Folder,
   LayoutGrid,
   Package,
   Puzzle,
@@ -123,7 +123,7 @@ export function buildBusinessNavTree(user: UserEntity | null | undefined): {
       id: "accounting",
       label: businessNavCopy.business.accounting,
       href: "/accounting",
-      icon: Folder,
+      icon: CircleDollarSign,
     });
   }
 

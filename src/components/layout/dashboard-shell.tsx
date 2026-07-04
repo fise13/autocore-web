@@ -2,6 +2,7 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
+import { motion, useReducedMotion } from "framer-motion";
 import { ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 import { useBarbaNavigation } from "@/hooks/use-barba-navigation";
@@ -73,6 +74,10 @@ function DashboardShellInner({ children }: DashboardShellProps) {
   const { collapsed, width, setWidth, toggleCollapsed } = useSidebarLayout();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const sidebarOnRight = preferences.position === "right";
+  const reduceMotion = useReducedMotion();
+  const sidebarLayoutTransition = reduceMotion
+    ? { duration: 0 }
+    : { duration: 0.45, ease: [0.32, 0.72, 0, 1] as const };
   const companyId = normalizeCompanyId(profile?.companyId);
   const uid = profile?.id ?? "";
   const canViewMotors = canAccessMotorsArea(profile);
@@ -244,7 +249,9 @@ function DashboardShellInner({ children }: DashboardShellProps) {
               sidebarOnRight && "flex-row-reverse",
             )}
           >
-            <div
+            <motion.div
+              layout
+              transition={sidebarLayoutTransition}
               data-app-reveal
               data-barba-prevent
               className="relative z-40 hidden h-full shrink-0 md:block"
@@ -258,7 +265,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
               >
                 <AppSidebar {...sidebarProps} collapsed={isEditing ? false : collapsed} />
               </ResizableSidebar>
-            </div>
+            </motion.div>
 
             <div
               data-mobile-sidebar-backdrop
@@ -272,7 +279,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
               <button
                 type="button"
                 className={cn(
-                  "absolute inset-0 bg-black/45 transition-opacity duration-200",
+                  "absolute inset-0 bg-black/45 transition-opacity duration-300",
                   mobileSidebarOpen ? "opacity-100" : "opacity-0",
                 )}
                 aria-label="Закрыть меню"
@@ -282,7 +289,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
               <aside
                 data-mobile-sidebar
                 className={cn(
-                  "absolute inset-y-0 flex w-[min(88vw,20rem)] flex-col border-r bg-sidebar shadow-2xl transition-transform duration-200 ease-out",
+                  "absolute inset-y-0 flex w-[min(88vw,20rem)] flex-col border-r bg-sidebar shadow-2xl transition-[transform,left,right] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
                   sidebarOnRight ? "right-0 border-r-0 border-l" : "left-0",
                   mobileSidebarOpen
                     ? "translate-x-0"
@@ -299,7 +306,9 @@ function DashboardShellInner({ children }: DashboardShellProps) {
               </aside>
             </div>
 
-            <div
+            <motion.div
+              layout
+              transition={sidebarLayoutTransition}
               ref={barbaWrapperRef}
               data-barba="wrapper"
               className="relative flex min-w-0 flex-1 flex-col"
@@ -326,7 +335,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
               </main>
 
               {isWorkspaceRoute ? <WorkspaceStatusBar /> : null}
-            </div>
+            </motion.div>
           </div>
         </CommandPaletteProvider>
       </DashboardLayoutProvider>

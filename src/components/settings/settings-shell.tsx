@@ -2,7 +2,7 @@
 
 import { ReactNode, useMemo, useState } from "react";
 import { LayoutGroup, motion } from "framer-motion";
-import { Building2, Laptop, Palette, Receipt, Settings2, Sparkles, Trash2, UserCircle } from "lucide-react";
+import { Building2, CircleDollarSign, Palette, Settings2, Sparkles, Trash2, UserCircle } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { can } from "@/lib/auth/permissions";
@@ -15,17 +15,15 @@ export type SettingsSectionId =
   | "appConfig"
   | "branding"
   | "accounting"
-  | "dataCleanup"
-  | "macOnly";
+  | "dataCleanup";
 
 const allSections: { id: SettingsSectionId; label: string; icon: typeof UserCircle }[] = [
   { id: "account", label: userCopy.settings.account, icon: UserCircle },
   { id: "company", label: userCopy.settings.company, icon: Building2 },
   { id: "appConfig", label: userCopy.settings.appConfig, icon: Sparkles },
   { id: "branding", label: "Брендинг", icon: Palette },
-  { id: "accounting", label: userCopy.settings.accounting, icon: Receipt },
+  { id: "accounting", label: userCopy.settings.accounting, icon: CircleDollarSign },
   { id: "dataCleanup", label: userCopy.settings.dataCleanup, icon: Trash2 },
-  { id: "macOnly", label: userCopy.settings.macOnly, icon: Laptop },
 ];
 
 const sectionSubtitles: Record<SettingsSectionId, string> = {
@@ -35,7 +33,6 @@ const sectionSubtitles: Record<SettingsSectionId, string> = {
   branding: "Фирменный стиль PDF: логотип, тема, шапка и живое превью документа.",
   accounting: userCopy.settings.subtitleAccounting,
   dataCleanup: userCopy.settings.subtitleDataCleanup,
-  macOnly: userCopy.settings.macOnlyHint,
 };
 
 const navSpring = { type: "spring" as const, stiffness: 420, damping: 34, mass: 0.85 };
@@ -58,7 +55,6 @@ export function SettingsShell({ children, initialSection = "account" }: Settings
         if (section.id === "branding") return hasCompany && can(profile, "settings_manage");
         if (section.id === "accounting") return can(profile, "accounting_view");
         if (section.id === "dataCleanup") return canCleanupData;
-        if (section.id === "macOnly") return can(profile, "settings_manage");
         return true;
       }),
     [canCleanupData, hasCompany, profile],

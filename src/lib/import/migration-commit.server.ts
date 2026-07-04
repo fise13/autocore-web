@@ -7,7 +7,7 @@ import type { MotorEntity } from "@/domain/motor";
 import { upsertInventoryItemSchema, upsertMotorSchema } from "@/domain/schemas";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { normalizeCompanyId } from "@/lib/company-id";
-import { defaultWarehouseDocId } from "@/lib/warehouse/default-warehouse-id";
+import { ensureDefaultWarehouseAdmin } from "@/lib/warehouse/ensure-default-warehouse.server";
 import { normalizeInventoryTaxonomyInput } from "@/lib/warehouse/inventory-taxonomy-normalize";
 import { applyMovementToStock, computeAvailable } from "@/lib/warehouse/movement-logic";
 import { buildInventorySearchTokens } from "@/lib/warehouse/warehouse-search";
@@ -71,36 +71,8 @@ function parseQuantity(raw: string | undefined): number {
   return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : 1;
 }
 
-export async function ensureMigrationWarehouseAdmin(companyId: string, actorUserId: string): Promise<string> {
-  const db = getAdminFirestore();
-  const normalized = normalizeCompanyId(companyId);
-  const docId = defaultWarehouseDocId(companyId);
-  const ref = db.collection("warehouses").doc(docId);
-  const snap = await ref.get();
-
-  if (!snap.exists) {
-    await ref.set({
-      companyId: normalized,
-      name: "Основной склад",
-      code: "MAIN",
-      isDefault: true,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-  }
-
-  const existing = await db
-    .collection("warehouses")
-    .where("companyId", "==", normalized)
-    .where("isDefault", "==", true)
-    .limit(1)
-    .get();
-
-  if (!existing.empty) {
-    return existing.docs[0].id;
-  }
-
-  return docId;
+export async function ensureMigrationWarehouseAdmin(companyId: string, _actorUserId: string): Promise<string> {
+  return ensureDefaultWarehouseAdmin(companyId);
 }
 
 async function loadExistingMotorsAdmin(uid: string): Promise<MotorEntity[]> {

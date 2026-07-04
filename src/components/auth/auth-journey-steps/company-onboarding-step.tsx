@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Laptop, Loader2, Users } from "lucide-react";
+import { Loader2, Users } from "lucide-react";
 
 import { AuthJourneyReveal } from "@/components/auth/auth-journey-reveal";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -16,7 +16,7 @@ import { mapAuthError, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 export function CompanyOnboardingStep() {
-  const { createCompany, joinCompanyWithInvite, joinCompanyWithInviteToken, ensureDefaultCompany } = useAuth();
+  const { createCompany, joinCompanyWithInvite, joinCompanyWithInviteToken } = useAuth();
   const [companyName, setCompanyName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [showInvite, setShowInvite] = useState(false);
@@ -105,27 +105,6 @@ export function CompanyOnboardingStep() {
 
       <div className="space-y-6 text-left">
         <AuthJourneyReveal index={2} className="space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-muted/15">
-              <Laptop className="size-4 text-primary" aria-hidden />
-            </div>
-            <div className="space-y-1">
-              <p className="font-medium">{userCopy.company.macQuestion}</p>
-              <p className="text-sm text-muted-foreground">{userCopy.company.macDescription}</p>
-            </div>
-          </div>
-          <Button
-            type="button"
-            className="h-11 w-full"
-            onClick={() => runAction(() => ensureDefaultCompany(), "Подключение данных…")}
-          >
-            {userCopy.company.macButton}
-          </Button>
-        </AuthJourneyReveal>
-
-        <div className="h-px bg-border/60" />
-
-        <AuthJourneyReveal index={3} className="space-y-4">
           <div className="space-y-1">
             <p className="font-medium">{userCopy.company.newTeamTitle}</p>
             <p className="text-sm text-muted-foreground">{userCopy.company.newTeamDescription}</p>
@@ -141,14 +120,14 @@ export function CompanyOnboardingStep() {
                 required
               />
             </div>
-            <Button type="submit" variant="secondary" className="h-11 w-full">
+            <Button type="submit" className="h-11 w-full">
               {userCopy.company.createButton}
             </Button>
           </form>
         </AuthJourneyReveal>
       </div>
 
-      <AuthJourneyReveal index={4}>
+      <AuthJourneyReveal index={3}>
         <button
           type="button"
           className="cursor-pointer text-sm text-muted-foreground underline-offset-4 transition-colors duration-200 hover:text-foreground hover:underline"

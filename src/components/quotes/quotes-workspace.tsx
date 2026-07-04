@@ -98,9 +98,11 @@ export function QuotesWorkspace() {
                 <div className="flex flex-wrap gap-2">
                   <Link
                     href={`/documents/${quote.id}/commercial-proposal`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="inline-flex h-8 items-center rounded-md border px-3 text-sm hover:bg-muted"
                   >
-                    PDF
+                    Предпросмотр
                   </Link>
                   {quote.status !== "converted" ? (
                     <Button

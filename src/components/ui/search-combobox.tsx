@@ -58,7 +58,11 @@ export function SearchCombobox({
       isItemEqualToValue={(a, b) => a.value === b.value}
       filter={(item, query) => matchComboboxItem(item, query)}
       onInputValueChange={(next) => onValueChange(next)}
-      onValueChange={(next) => onValueChange(next?.value ?? "")}
+      onValueChange={(next) => {
+        // Free-typed values are not in `items`, so selection becomes null while typing.
+        // Only commit when an option is chosen — never wipe the input on null.
+        if (next) onValueChange(next.value);
+      }}
     >
       <Combobox.InputGroup
         className={cn(

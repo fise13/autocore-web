@@ -224,7 +224,7 @@ function SidebarContextContent({ mode }: SidebarContextPanelProps) {
 
   if (mode === "accounting") {
     return (
-      <PanelSection title="Бухгалтерия">
+      <PanelSection title="Финансы">
         {ACCOUNTING_TABS.map((tab) => {
           const href = `/accounting?tab=${tab.value}`;
           const active = pathname === "/accounting" && accountingTab === tab.value;

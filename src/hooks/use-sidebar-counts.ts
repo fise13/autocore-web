@@ -7,6 +7,7 @@ import type { UserEntity } from "@/domain/user";
 import type { InventorySubcategoryId } from "@/domain/inventory-taxonomy";
 import type { InventoryCollectionId } from "@/lib/navigation/inventory-collections";
 import { INVENTORY_COLLECTIONS } from "@/lib/navigation/inventory-collections";
+import { specificCategoriesForCollection } from "@/lib/navigation/specific-categories-for-collection";
 import { buildConsumablesSubcategoryIndex } from "@/lib/warehouse/inventory-subcategory-index";
 import {
   countInventoryByFilter,
@@ -15,18 +16,26 @@ import {
   type PinnedFilterId,
 } from "@/lib/navigation/pinned-filters";
 import { countMotorsByBrand } from "@/lib/catalog-brand-counts";
+import { useAllSpecificRecordsRealtime } from "@/hooks/use-all-specific-records-realtime";
 import { useInventoryRealtime } from "@/hooks/use-inventory-realtime";
 import { useMotorsRealtime } from "@/hooks/use-motors-realtime";
+import { useSpecificCategoriesRealtime } from "@/hooks/use-specific-categories-realtime";
 import { useWorkOrdersRealtime } from "@/hooks/use-work-orders-realtime";
 import { canAccessMotorsArea, isNavAllowed } from "@/lib/auth/app-access";
 import { can } from "@/lib/auth/permissions";
 import { createInventoryItemRepository } from "@/infrastructure/firestore/inventory-item-repository";
 import { createMotorRepository } from "@/infrastructure/firestore/motor-repository";
+import { createSpecificCategoryRepository } from "@/infrastructure/firestore/specific-category-repository";
 import { createWorkOrderRepository } from "@/infrastructure/firestore/work-order-repository";
+import {
+  buildSpecificHeaderMapping,
+  isSpecificRecordSold,
+} from "@/lib/specific/specific-header-mapping";
 
 const motorRepository = createMotorRepository();
 const inventoryItemRepository = createInventoryItemRepository();
 const workOrderRepository = createWorkOrderRepository();
+const specificCategoryRepository = createSpecificCategoryRepository();
 
 type UseSidebarCountsParams = {
   profile: UserEntity | null;
@@ -91,11 +100,22 @@ export function useSidebarCounts({
     active && canWorkOrders,
   );
 
+  const specificCategories = useSpecificCategoriesRealtime(
+    specificCategoryRepository,
+    companyId,
+    active && canMotors,
+  );
+  const specificRecordsQuery = useAllSpecificRecordsRealtime(
+    specificCategoryRepository,
+    active && canMotors ? companyId : "",
+  );
+
   return useMemo(() => {
     const motors = (motorsQuery.data ?? []).filter((motor) => !motor.deletedAt);
     const soldMotors = (soldMotorsQuery.data ?? []).filter((motor) => !motor.deletedAt);
     const warehouseItems = warehouseQuery.data ?? [];
     const workOrders = workOrdersQuery.orders ?? [];
+    const specificRecords = specificRecordsQuery.records ?? [];
 
     const availableMotors = motors.filter((motor) => !motor.soldDate);
     const brandSource = soldOnly ? soldMotors : availableMotors;
@@ -115,9 +135,32 @@ export function useSidebarCounts({
     const consumableSubcategoryCounts = consumablesIndex.counts;
     const consumableUncategorizedCount = consumablesIndex.uncategorizedCount;
 
+    const specificMapping = buildSpecificHeaderMapping(specificRecords);
+    const availableSpecificRecords = soldOnly
+      ? specificRecords.filter((record) => isSpecificRecordSold(record, specificMapping))
+      : specificRecords.filter((record) => !isSpecificRecordSold(record, specificMapping));
+
+    const transmissionCategoryIds = new Set(
+      specificCategoriesForCollection("transmissions", specificCategories).map(
+        (category) => category.id,
+      ),
+    );
+    const partsCategoryIds = new Set(
+      specificCategoriesForCollection("parts", specificCategories).map((category) => category.id),
+    );
+
+    const transmissionsCount = availableSpecificRecords.filter((record) =>
+      transmissionCategoryIds.has(record.categoryId),
+    ).length;
+    const partsCount = availableSpecificRecords.filter((record) =>
+      partsCategoryIds.has(record.categoryId),
+    ).length;
+
     const inventoryByCollection = INVENTORY_COLLECTIONS.reduce(
       (acc, id) => {
         if (id === "engines") acc[id] = availableMotors.length;
+        else if (id === "transmissions") acc[id] = transmissionsCount;
+        else if (id === "parts") acc[id] = partsCount;
         else if (id === "consumables") acc[id] = consumablesCount;
         else acc[id] = 0;
         return acc;
@@ -143,6 +186,8 @@ export function useSidebarCounts({
     motorsQuery.data,
     soldMotorsQuery.data,
     soldOnly,
+    specificCategories,
+    specificRecordsQuery.records,
     warehouseQuery.data,
     workOrdersQuery.orders,
   ]);

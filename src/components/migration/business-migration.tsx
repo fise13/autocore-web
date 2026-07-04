@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, LifeBuoy, Loader2, Sparkles, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, MessageCircleQuestion, Sparkles, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -104,9 +104,21 @@ export function BusinessMigration(props: BusinessMigrationProps) {
 
   return (
     <TooltipProvider delay={150}>
-      <div className="flex min-h-[100dvh] flex-col bg-background">
+      <div
+        className={cn(
+          "flex min-h-[100dvh] flex-col",
+          isOnboarding
+            ? "fixed inset-0 z-10 overflow-y-auto bg-background/70 backdrop-blur-md"
+            : "bg-background",
+        )}
+      >
         {/* Top bar */}
-        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm">
+        <header
+          className={cn(
+            "sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b px-4 backdrop-blur-sm",
+            isOnboarding ? "border-border/60 bg-background/50" : "bg-background/80",
+          )}
+        >
           <div className="flex items-center gap-2.5">
             {canStartOver && (
               <Button variant="ghost" size="icon-sm" aria-label="Начать заново" onClick={m.reset}>
@@ -124,8 +136,17 @@ export function BusinessMigration(props: BusinessMigrationProps) {
                 Всё вручную
               </Button>
             )}
-            <Button variant="ghost" size="sm" onClick={() => setSupportOpen(true)}>
-              <LifeBuoy data-icon="inline-start" />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSupportOpen(true)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <MessageCircleQuestion
+                data-icon="inline-start"
+                className="size-3.5 opacity-80 transition-opacity group-hover/button:opacity-100"
+                strokeWidth={1.75}
+              />
               Не получается импортировать?
             </Button>
             {canExit && props.onExit && (
@@ -315,7 +336,7 @@ function ErrorState({
       </div>
       <div className="flex items-center gap-2">
         <Button variant="outline" onClick={onSupport}>
-          <LifeBuoy data-icon="inline-start" />
+          <MessageCircleQuestion data-icon="inline-start" className="size-3.5" strokeWidth={1.75} />
           Запросить помощь
         </Button>
         <Button onClick={onRetry}>Попробовать другой файл</Button>

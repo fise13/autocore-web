@@ -36,6 +36,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { EMPLOYEE_ROLE_LABELS } from "@/lib/work-order/work-order-display";
 import {
+  listVehicleMakes,
+  listVehicleModels,
   vehicleMakeOptions as buildVehicleMakeOptions,
   vehicleModelOptions as buildVehicleModelOptions,
 } from "@/lib/vehicles/vehicle-catalog";
@@ -444,15 +446,28 @@ export function WorkOrderComposer({
                     value={form.vehicleMake}
                     onValueChange={(value) => {
                       detachVehicleLink();
+                      const previousMake = form.vehicleMake.trim();
+                      const nextMake = value.trim();
                       onFormChange("vehicleMake", value);
-                      if (
-                        form.vehicleModel &&
-                        !buildVehicleModelOptions(value, [form.vehicleModel]).some(
-                          (option) => option.value.toLowerCase() === form.vehicleModel.toLowerCase(),
-                        )
-                      ) {
-                        onFormChange("vehicleModel", "");
+
+                      // While typing a free-form brand, keep the model.
+                      // Clear only when brand is wiped or replaced with another known catalog make.
+                      if (!nextMake) {
+                        if (form.vehicleModel) onFormChange("vehicleModel", "");
+                        return;
                       }
+                      const nextIsKnownBrand = listVehicleMakes().some(
+                        (entry) => entry.toLowerCase() === nextMake.toLowerCase(),
+                      );
+                      if (!nextIsKnownBrand) return;
+                      if (previousMake.toLowerCase() === nextMake.toLowerCase()) return;
+
+                      const model = form.vehicleModel.trim();
+                      if (!model) return;
+                      const modelAllowed = listVehicleModels(value).some(
+                        (entry) => entry.toLowerCase() === model.toLowerCase(),
+                      );
+                      if (!modelAllowed) onFormChange("vehicleModel", "");
                     }}
                     options={vehicleMakeOptionsList}
                     placeholder="Toyota"
@@ -794,7 +809,6 @@ export function WorkOrderComposer({
                             {getWarrantyTemplate(id).name}
                           </option>
                         ))}
-                        <option value="no_warranty">Без гарантии</option>
                       </select>
                     </Field>
                   </div>
@@ -853,7 +867,7 @@ export function WorkOrderComposer({
                           }
                         >
                           <option value="none">Без гарантии</option>
-                          {WARRANTY_TEMPLATE_IDS.map((id) => (
+                          {WARRANTY_TEMPLATE_IDS.filter((id) => id !== "no_warranty").map((id) => (
                             <option key={id} value={id}>
                               {getWarrantyTemplate(id).name}
                             </option>

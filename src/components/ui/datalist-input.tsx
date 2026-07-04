@@ -200,10 +200,23 @@ export function DatalistInput({
             input.selectionEnd === value.length &&
             input.selectionStart === input.selectionEnd;
 
-          if (atEnd && event.key === "Tab" && !event.shiftKey && (suggestion || matchMode === "flexible")) {
-            event.preventDefault();
-            acceptSuggestion();
-            return;
+          // Tab accepts an inline suggestion only when there is something to commit.
+          // Otherwise let the browser move focus to the next field (e.g. Госномер → VIN).
+          if (atEnd && event.key === "Tab" && !event.shiftKey) {
+            if (suggestion) {
+              event.preventDefault();
+              acceptSuggestion();
+              return;
+            }
+            if (matchMode === "flexible") {
+              const best = findBestFlexibleMatch(value, options);
+              if (best && best !== value) {
+                event.preventDefault();
+                onValueChange(best);
+                onOptionCommit?.(best);
+                return;
+              }
+            }
           }
 
           if (suggestion && atEnd && event.key === "ArrowRight") {

@@ -54,28 +54,19 @@ export const userCopy = {
   },
 
   company: {
-    welcomeTitle: "Добро пожаловать в AutoCore Web",
-    welcomeDescription: "Подключите существующие данные или создайте новое рабочее пространство.",
-    macQuestion: "У вас уже есть AutoCore?",
-    macDescription:
-      "Продолжите с теми же моторами и операциями, что уже есть в вашем рабочем пространстве AutoCore.",
-    macButton: "Продолжить с существующими данными",
-    newTeamTitle: "Новая команда?",
-    newTeamDescription: "Создайте отдельное рабочее пространство для новой компании.",
+    welcomeTitle: "Добро пожаловать в AutoCore",
+    welcomeDescription: "Создайте рабочее пространство или присоединитесь по приглашению.",
+    newTeamTitle: "Создать компанию",
+    newTeamDescription: "Отдельное рабочее пространство для вашей команды.",
     companyNameLabel: "Название компании",
     companyNamePlaceholder: "Например: МоторЛенд",
     createButton: "Создать компанию",
     inviteLink: "Есть код приглашения?",
     inviteTitle: "Присоединиться по приглашению",
     inviteDescription: "Введите код, который вам отправил администратор компании.",
-    connectTitle: "Подключение к данным",
-    connectDescription:
-      "Чтобы видеть те же моторы и операции, что уже есть в вашем рабочем пространстве AutoCore.",
-    connectButton: "Подключить существующие данные",
+    inviteLabel: "Код приглашения",
     createTitle: "Создать компанию",
     createDescription: "Отдельное рабочее пространство для новой команды.",
-    joinTitle: "Присоединиться по приглашению",
-    inviteLabel: "Код приглашения",
     defaultTaken:
       "Общее рабочее пространство уже занято. Присоединитесь по коду приглашения или создайте новую команду.",
   },
@@ -207,7 +198,7 @@ export const userCopy = {
     subtitle: "Профиль, команда и управление данными.",
     subtitleAccount: "Профиль, безопасность и краткий статус подписки.",
     subtitleCompany: "Название компании, подписка и команда на Pro.",
-    subtitleAccounting: "Бухгалтерия, списки сотрудников и импорт/экспорт.",
+    subtitleAccounting: "Финансы, списки сотрудников и импорт/экспорт.",
     subtitleSync: "Поведение списка моторов.",
     subtitleDataCleanup: "Безвозвратное удаление данных компании из облака.",
     interface: "Интерфейс",
@@ -222,7 +213,7 @@ export const userCopy = {
     account: "Аккаунт",
     employees: "Сотрудники",
     roles: "Роли",
-    accounting: "Бухгалтерия",
+    accounting: "Финансы",
     sync: "Поведение",
     importExport: "Импорт и экспорт",
     workflow: "Поведение",
@@ -243,9 +234,9 @@ export const userCopy = {
       "Безвозвратное удаление данных компании из облака. Перед очисткой убедитесь, что нужные данные экспортированы.",
     dataCleanupNoAccess: "У вас нет прав на удаление данных компании.",
     dataCleanupError: "Не удалось выполнить удаление",
-    deleteAccountingTitle: "Удалить бухгалтерию",
+    deleteAccountingTitle: "Удалить финансы",
     deleteAccountingDescription: "Удаляет все финансовые операции текущей компании из облака.",
-    deleteAccountingConfirmTitle: "Удалить всю бухгалтерию?",
+    deleteAccountingConfirmTitle: "Удалить все финансы?",
     deleteAccountingConfirmDescription:
       "Все операции кассы, расходов, продаж и авансов будут удалены без возможности восстановления.",
     deleteMotorsTitle: "Удалить моторы",
@@ -260,7 +251,7 @@ export const userCopy = {
     deleteSpecificsConfirmDescription:
       "Все листы и строки каталога учёта будут удалены без возможности восстановления.",
     deleteAccountingSuccess: (count: number) =>
-      count > 0 ? `Бухгалтерия очищена: удалено ${count} записей` : "Бухгалтерия уже была пустой",
+      count > 0 ? `Финансы очищены: удалено ${count} записей` : "Финансы уже были пустыми",
     deleteMotorsSuccess: (count: number) =>
       count > 0
         ? `Моторы и каталог брендов очищены: удалено ${count} записей`
@@ -274,15 +265,13 @@ export const userCopy = {
       "Будут удалены товары, движения, остатки, склады, поставщики и история импортов. Восстановить данные будет нельзя.",
     deleteWarehouseSuccess: (count: number) =>
       count > 0 ? `Склад очищен: удалено ${count} записей` : "Склад уже был пустым",
-    macOnly: "Десктопное приложение",
-    macOnlyHint: "Внешний вид, резервные копии и расширенные параметры доступны в десктопном приложении AutoCore.",
     billing: "Подписка",
     role: "Роль",
     company: "Компания",
   },
 
   accounting: {
-    title: "Бухгалтерия",
+    title: "Финансы",
     syncOn: "Данные: онлайн",
     syncOff: "Данные: офлайн",
     loadError: "Не удалось загрузить операции",
@@ -481,9 +470,9 @@ export function formatPermission(permission: string | undefined | null): string 
     case "vehicles_manage":
       return "Управление автомобилями";
     case "accounting_view":
-      return "Просмотр бухгалтерии";
+      return "Просмотр финансов";
     case "accounting_edit":
-      return "Редактирование бухгалтерии";
+      return "Редактирование финансов";
     case "accounting_delete":
       return "Удаление операций";
     case "employee_manage":

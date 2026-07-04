@@ -14,10 +14,21 @@ import { DEFAULT_COMPANY_ID } from "@/lib/company-id";
 import { userCopy } from "@/lib/user-copy";
 import { seedFreeCompanyBilling } from "@/infrastructure/firestore/billing-repository";
 import { recordUserCompanyMembership } from "@/infrastructure/firestore/user-company-membership-service";
+import { createInventoryCategoryRepository } from "@/infrastructure/firestore/inventory-category-repository";
 import { createWarehouseRepository } from "@/infrastructure/firestore/warehouse-repository";
 import { ensureDefaultWarehouseUseCase } from "@/application/use-cases/warehouse/ensure-default-warehouse";
 
 const warehouseRepository = createWarehouseRepository();
+const categoryRepository = createInventoryCategoryRepository();
+
+function ensureCompanyConsumablesWorkspace(companyId: string, ownerId: string) {
+  return ensureDefaultWarehouseUseCase(
+    warehouseRepository,
+    companyId,
+    ownerId,
+    categoryRepository,
+  ).catch(() => undefined);
+}
 
 function rethrowStep(step: string, error: unknown): never {
   if (error instanceof FirebaseError) {
@@ -53,16 +64,18 @@ async function seedCompanyRoles(companyId: string): Promise<void> {
 async function upsertOwnerEmployee(
   companyId: string,
   ownerId: string,
-  profile: { email: string; fullName: string },
+  profile: { email: string; fullName: string; photoURL?: string | null },
 ): Promise<void> {
   const db = getFirestoreDb();
   const employeeRef = doc(db, "companies", companyId, "employees", ownerId);
   const employeeSnap = await getDoc(employeeRef);
+  const photoURL = profile.photoURL?.trim() || null;
   const payload = {
     uid: ownerId,
     companyId,
     email: profile.email,
     fullName: profile.fullName,
+    ...(photoURL ? { photoURL } : {}),
     role: "owner" as const,
     permissions: [] as string[],
     invitedBy: ownerId,
@@ -113,13 +126,20 @@ async function linkUserToCompany(
   }
 }
 
-async function readOwnerProfile(ownerId: string): Promise<{ email: string; fullName: string }> {
+async function readOwnerProfile(
+  ownerId: string,
+): Promise<{ email: string; fullName: string; photoURL: string | null }> {
   const db = getFirestoreDb();
   const userSnap = await getDoc(doc(db, "users", ownerId));
   const userData = userSnap.data() ?? {};
+  const photoURL =
+    typeof userData.photoURL === "string" && userData.photoURL.trim()
+      ? userData.photoURL.trim()
+      : null;
   return {
     email: String(userData.email ?? ""),
     fullName: String(userData.name ?? ""),
+    photoURL,
   };
 }
 
@@ -146,10 +166,15 @@ export async function createCompany(ownerId: string, name: string): Promise<stri
 
   const profile = await readOwnerProfile(ownerId);
   await upsertOwnerEmployee(companyRef.id, ownerId, profile);
+  // Once the user doc is linked, the account has a company — later steps must not
+  // strand the UI on an error (reload would otherwise "magically" apply the company).
   await linkUserToCompany(ownerId, companyRef.id, "owner");
-  await recordUserCompanyMembership(ownerId, companyRef.id, "owner");
+
+  await recordUserCompanyMembership(ownerId, companyRef.id, "owner").catch((error) => {
+    console.warn("[createCompany] membership record skipped:", error);
+  });
   await seedFreeCompanyBilling(companyRef.id);
-  await ensureDefaultWarehouseUseCase(warehouseRepository, companyRef.id, ownerId).catch(() => undefined);
+  await ensureCompanyConsumablesWorkspace(companyRef.id, ownerId);
 
   return companyRef.id;
 }
@@ -180,9 +205,7 @@ export async function ensureDefaultCompany(ownerId: string) {
     await linkUserToCompany(ownerId, DEFAULT_COMPANY_ID, "owner");
     await recordUserCompanyMembership(ownerId, DEFAULT_COMPANY_ID, "owner");
     await seedFreeCompanyBilling(DEFAULT_COMPANY_ID);
-    await ensureDefaultWarehouseUseCase(warehouseRepository, DEFAULT_COMPANY_ID, ownerId).catch(
-      () => undefined,
-    );
+    await ensureCompanyConsumablesWorkspace(DEFAULT_COMPANY_ID, ownerId);
   } catch (error) {
     if (
       !companyDocReady

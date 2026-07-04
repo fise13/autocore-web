@@ -57,23 +57,31 @@ export function SidebarCustomizeSheet({
           Готово
         </button>
 
-        <div className="flex shrink-0 rounded-md border border-sidebar-border/80 p-0.5 text-[10px]">
-          {(["left", "right"] as SidebarPosition[]).map((side) => (
-            <button
-              key={side}
-              type="button"
-              onClick={() => setSidebarPosition(side)}
-              className={cn(
-                "inline-flex items-center gap-1 rounded px-2 py-0.5 font-medium transition-colors duration-200",
-                customization.position === side
-                  ? "bg-sidebar-accent text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {side === "left" ? <PanelLeft className="size-3" /> : <PanelRight className="size-3" />}
-              {side === "left" ? "Слева" : "Справа"}
-            </button>
-          ))}
+        <div className="relative flex shrink-0 rounded-md border border-sidebar-border/80 p-0.5 text-[10px]">
+          {(["left", "right"] as SidebarPosition[]).map((side) => {
+            const active = customization.position === side;
+            return (
+              <button
+                key={side}
+                type="button"
+                onClick={() => setSidebarPosition(side)}
+                className={cn(
+                  "relative z-10 inline-flex items-center gap-1 rounded px-2 py-0.5 font-medium transition-colors duration-200",
+                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {active ? (
+                  <motion.span
+                    layoutId="sidebar-position-pill"
+                    className="absolute inset-0 -z-10 rounded bg-sidebar-accent"
+                    transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.8 }}
+                  />
+                ) : null}
+                {side === "left" ? <PanelLeft className="size-3" /> : <PanelRight className="size-3" />}
+                {side === "left" ? "Слева" : "Справа"}
+              </button>
+            );
+          })}
         </div>
       </div>
 

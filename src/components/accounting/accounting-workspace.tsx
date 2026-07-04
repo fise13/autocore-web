@@ -214,7 +214,7 @@ export function AccountingWorkspace() {
     <section className="mx-auto flex w-full max-w-[1400px] flex-col gap-5">
       <header className="animate-autocore-fade-in-up flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="text-2xl font-semibold tracking-tight">Бухгалтерия</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">Финансы</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="transition-colors">

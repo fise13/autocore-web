@@ -2,20 +2,20 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useMemo } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   CarIcon,
   EyeIcon,
   FileStackIcon,
   FileTextIcon,
+  HistoryIcon,
   PaletteIcon,
   ReceiptIcon,
   WrenchIcon,
 } from "lucide-react";
 
-import { DocumentPreviewDialog } from "@/components/documents/document-preview-dialog";
-import { RenderDocument } from "@/components/documents/registry/render-document";
+import { DocumentsHistoryPanel } from "@/components/documents/documents-history-panel";
 import { EnterpriseAnimatedPanel } from "@/components/layout/enterprise-animated-panel";
 import { EnterpriseWorkspaceNav } from "@/components/layout/enterprise-workspace-nav";
 import { EnterpriseWorkspaceShell } from "@/components/layout/enterprise-workspace-shell";
@@ -28,17 +28,20 @@ import {
   type DocumentDefinition,
   type DocumentSlug,
 } from "@/lib/documents/document-types";
-import { demoDocumentContext } from "@/lib/marketing/demo-document-context";
+import {
+  documentTemplatePreviewPath,
+  openDocumentPreviewInNewTab,
+} from "@/lib/documents/open-document-preview";
 import { canManageSettings } from "@/lib/auth/permissions";
 import { cn } from "@/lib/utils";
 
-type DocumentCategory = "all" | "service" | "sales" | "engine";
+type DocumentCategory = "all" | "service" | "sales" | "engine" | "history";
 
 const CATEGORY_NAV: {
   id: DocumentCategory;
   label: string;
   icon: typeof FileStackIcon;
-  match: (doc: DocumentDefinition) => boolean;
+  match?: (doc: DocumentDefinition) => boolean;
 }[] = [
   { id: "all", label: "Все шаблоны", icon: FileStackIcon, match: () => true },
   {
@@ -62,10 +65,17 @@ const CATEGORY_NAV: {
     match: (doc) =>
       ["engine-warranty", "engine-waybill", "service-tag"].includes(doc.slug),
   },
+  {
+    id: "history",
+    label: "Распечатанные",
+    icon: HistoryIcon,
+  },
 ];
 
 function resolveCategory(value: string | null): DocumentCategory {
-  if (value === "service" || value === "sales" || value === "engine") return value;
+  if (value === "service" || value === "sales" || value === "engine" || value === "history") {
+    return value;
+  }
   return "all";
 }
 
@@ -75,56 +85,46 @@ function DocumentsWorkspaceContent() {
   const { profile } = useAuth();
   const canManage = canManageSettings(profile);
   const reduceMotion = useReducedMotion();
-  const selectedSlug = searchParams.get("doc");
   const category = resolveCategory(searchParams.get("category"));
-  const [previewSlug, setPreviewSlug] = useState<DocumentSlug | null>(
-    selectedSlug && DOCUMENT_DEFINITIONS.some((doc) => doc.slug === selectedSlug)
-      ? (selectedSlug as DocumentSlug)
-      : null,
-  );
+  const isHistory = category === "history";
 
   const filteredDocuments = useMemo(() => {
+    if (isHistory) return [];
     const matcher = CATEGORY_NAV.find((item) => item.id === category)?.match ?? (() => true);
     return DOCUMENT_DEFINITIONS.filter(matcher);
-  }, [category]);
+  }, [category, isHistory]);
 
   function setCategory(next: DocumentCategory) {
     const params = new URLSearchParams(searchParams.toString());
     if (next === "all") params.delete("category");
     else params.set("category", next);
     params.delete("doc");
-    setPreviewSlug(null);
     const query = params.toString();
     router.replace(query ? `/documents?${query}` : "/documents", { scroll: false });
   }
 
   function openPreview(slug: DocumentSlug) {
-    setPreviewSlug(slug);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("doc", slug);
-    router.replace(`/documents?${params.toString()}`, { scroll: false });
+    openDocumentPreviewInNewTab(documentTemplatePreviewPath(slug));
   }
-
-  function closePreview() {
-    setPreviewSlug(null);
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("doc");
-    const query = params.toString();
-    router.replace(query ? `/documents?${query}` : "/documents", { scroll: false });
-  }
-
-  const previewDefinition = previewSlug
-    ? DOCUMENT_DEFINITIONS.find((document) => document.slug === previewSlug) ?? null
-    : null;
 
   return (
     <EnterpriseWorkspaceShell
       title="Документы"
-      description="PDF-шаблоны для заказ-нарядов, актов, гарантий и продаж — с фирменным брендингом компании."
+      description={
+        isHistory
+          ? "Все PDF, которые когда-либо формировались по заказ-нарядам — с поиском по дате и типу."
+          : "PDF-шаблоны для заказ-нарядов, актов, гарантий и продаж — с фирменным брендингом компании."
+      }
       meta={
         <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary">{DOCUMENT_DEFINITIONS.length} шаблонов</Badge>
-          <Badge variant="outline">{filteredDocuments.length} в разделе</Badge>
+          {isHistory ? (
+            <Badge variant="secondary">История PDF</Badge>
+          ) : (
+            <>
+              <Badge variant="secondary">{DOCUMENT_DEFINITIONS.length} шаблонов</Badge>
+              <Badge variant="outline">{filteredDocuments.length} в разделе</Badge>
+            </>
+          )}
         </div>
       }
       action={
@@ -145,10 +145,11 @@ function DocumentsWorkspaceContent() {
         />
 
         <EnterpriseAnimatedPanel panelKey={category}>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredDocuments.map((document, index) => {
-              const active = selectedSlug === document.slug;
-              return (
+          {isHistory ? (
+            <DocumentsHistoryPanel />
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {filteredDocuments.map((document, index) => (
                 <motion.div
                   key={document.slug}
                   initial={reduceMotion ? false : { opacity: 0, y: 12 }}
@@ -163,7 +164,6 @@ function DocumentsWorkspaceContent() {
                     className={cn(
                       "group h-full cursor-pointer gap-0 overflow-hidden shadow-none transition-[border-color,box-shadow] duration-200 ease-out dark:ring-0 motion-reduce:transition-none",
                       "hover:border-primary/30 hover:shadow-md",
-                      active && "border-primary/40 ring-1 ring-primary/20",
                     )}
                     onClick={() => openPreview(document.slug)}
                   >
@@ -180,7 +180,7 @@ function DocumentsWorkspaceContent() {
                       <CardDescription className="line-clamp-2">{document.description}</CardDescription>
                     </CardHeader>
                     <CardContent className="flex items-center justify-between gap-2 p-4">
-                      <span className="text-xs text-muted-foreground">Нажмите для превью</span>
+                      <span className="text-xs text-muted-foreground">Откроется в новой вкладке</span>
                       <Button
                         type="button"
                         size="sm"
@@ -196,21 +196,11 @@ function DocumentsWorkspaceContent() {
                     </CardContent>
                   </Card>
                 </motion.div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
         </EnterpriseAnimatedPanel>
       </div>
-
-      <DocumentPreviewDialog
-        open={previewSlug != null}
-        onOpenChange={(open) => !open && closePreview()}
-        title={previewDefinition?.title ?? "Превью документа"}
-        description={previewDefinition?.description}
-        pageLabel={previewDefinition?.pageSize === "A4" ? "A4" : "70×100"}
-      >
-        {previewSlug ? <RenderDocument slug={previewSlug} context={demoDocumentContext} /> : null}
-      </DocumentPreviewDialog>
     </EnterpriseWorkspaceShell>
   );
 }

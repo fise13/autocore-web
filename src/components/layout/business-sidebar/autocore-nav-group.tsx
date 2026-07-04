@@ -42,8 +42,11 @@ type NavCollapsibleItemProps = {
 
 function NavItemCountBadge({ count }: { count: number }) {
   return (
-    <span className="flex h-5 min-w-5 items-center justify-center rounded-md px-1 text-xs font-medium tabular-nums text-muted-foreground">
-      {count > 99 ? "99+" : count}
+    <span
+      title={count.toLocaleString("ru-RU")}
+      className="shrink-0 text-xs tabular-nums tracking-tight text-muted-foreground"
+    >
+      {count.toLocaleString("ru-RU")}
     </span>
   );
 }
@@ -176,7 +179,10 @@ function NavCollapsibleItem({
                 }
               >
                 {subItem.icon}
-                <span>{subItem.title}</span>
+                <span className="min-w-0 flex-1 truncate">{subItem.title}</span>
+                {subItem.badge != null && subItem.badge > 0 ? (
+                  <NavItemCountBadge count={subItem.badge} />
+                ) : null}
               </SidebarMenuSubButton>
             </SidebarMenuSubItem>
           ))}

@@ -153,10 +153,17 @@ export function appDashboardUrl(): string {
 /** Absolute marketing URL for a path; relative on unified localhost dev. */
 export function marketingPageUrl(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`;
-  if (isLocalDevSite()) return normalized;
+  if (isLocalDevSite()) {
+    // App owns `/` on localhost; marketing home is the internal route.
+    if (normalized === "/") return "/marketing";
+    return normalized;
+  }
   const marketing = getMarketingUrl().replace(/\/$/, "");
   const app = getAppUrl().replace(/\/$/, "");
-  if (marketing === app) return normalized;
+  if (marketing === app) {
+    if (normalized === "/") return "/marketing";
+    return normalized;
+  }
   return `${marketing}${normalized}`;
 }
 

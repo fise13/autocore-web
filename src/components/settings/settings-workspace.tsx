@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Download, Laptop, Receipt, Workflow } from "lucide-react";
+import { CircleDollarSign, Download, Workflow } from "lucide-react";
 
 import { AccountSettingsPanel } from "@/components/account/account-settings-panel";
 import { SidebarSettingsCard } from "@/components/settings/sidebar-settings-card";
@@ -41,7 +41,6 @@ function resolveSection(section: string | null): SettingsSectionId {
     case "branding":
     case "accounting":
     case "dataCleanup":
-    case "macOnly":
       return section;
     case "billing":
       return "company";
@@ -125,7 +124,7 @@ export function SettingsWorkspace() {
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2">
-                    <Receipt className="size-4 text-primary" />
+                    <CircleDollarSign className="size-4 text-primary" />
                     <CardTitle>{userCopy.settings.accounting}</CardTitle>
                   </div>
                   <CardDescription>Списки сотрудников и категорий для операций.</CardDescription>
@@ -143,7 +142,7 @@ export function SettingsWorkspace() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Специфика бухгалтерии</Label>
+                      <Label>Специфика финансов</Label>
                       <Textarea
                         value={specificsValue}
                         onChange={(event) => setSpecificsDraft(event.target.value)}
@@ -163,19 +162,19 @@ export function SettingsWorkspace() {
                         await savePreferences({ employees, specifics, isConfigured: true });
                         setEmployeesDraft(null);
                         setSpecificsDraft(null);
-                        setStatus("Настройки бухгалтерии сохранены");
+                        setStatus("Настройки финансов сохранены");
                       } catch (error) {
                         setStatus(
                           error instanceof Error
                             ? error.message
-                            : "Не удалось сохранить настройки бухгалтерии",
+                            : "Не удалось сохранить настройки финансов",
                         );
                       } finally {
                         setSavingAccounting(false);
                       }
                     }}
                   >
-                    {savingAccounting ? "Сохраняем…" : "Сохранить настройки бухгалтерии"}
+                    {savingAccounting ? "Сохраняем…" : "Сохранить настройки финансов"}
                   </Button>
                 </CardContent>
               </Card>
@@ -268,20 +267,6 @@ export function SettingsWorkspace() {
         return (
           <FadeIn>
             <DataCleanupPanel onStatus={setStatus} />
-          </FadeIn>
-        );
-      case "macOnly":
-        return (
-          <FadeIn>
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Laptop className="size-4 text-primary" />
-                  <CardTitle>{userCopy.settings.macOnly}</CardTitle>
-                </div>
-                <CardDescription>{userCopy.settings.macOnlyHint}</CardDescription>
-              </CardHeader>
-            </Card>
           </FadeIn>
         );
       default:

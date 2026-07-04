@@ -165,7 +165,7 @@ export function WorkOrderDetailPanel({
             </TabsTrigger>
             <TabsTrigger value="finance" className="gap-1.5 transition-all duration-200">
               <Banknote className="size-3.5" />
-              Бухгалтерия
+              Финансы
               {operations.length > 0 ? (
                 <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
                   {operations.length}

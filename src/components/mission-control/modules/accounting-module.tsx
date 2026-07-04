@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useMemo } from "react";
-import { Receipt, TrendingDown, TrendingUp } from "lucide-react";
+import { CircleDollarSign, TrendingDown, TrendingUp } from "lucide-react";
 import { subDays } from "date-fns";
 
 import { FinancialOperation } from "@/domain/financial-operation";
@@ -53,7 +53,7 @@ export const AccountingModule = memo(function AccountingModule({
 
   return (
     <article className="mc-module-card">
-      <McModuleHeader icon={Receipt} title="Бухгалтерия" href="/accounting" accent="blue" />
+      <McModuleHeader icon={CircleDollarSign} title="Финансы" href="/accounting" accent="blue" />
       <div className="mc-module-body space-y-3">
         <div className="grid grid-cols-2 gap-2.5">
           <StatChip icon={TrendingUp} label="Доход" value={todayIncome} tone="text-emerald-500" />

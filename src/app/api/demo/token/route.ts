@@ -22,7 +22,7 @@ export async function POST(): Promise<NextResponse<DemoAuthResponse | { error: s
       return NextResponse.json(
         {
           error:
-            "Demo account is not configured. Set FIREBASE_SERVICE_ACCOUNT_PATH locally or DEMO_ACCOUNT_PASSWORD for fallback login.",
+            "Demo account is not configured. On Vercel set FIREBASE_SERVICE_ACCOUNT_JSON (full service-account JSON). Locally use FIREBASE_SERVICE_ACCOUNT_PATH, or set DEMO_ACCOUNT_PASSWORD as fallback.",
         },
         { status: 503 },
       );

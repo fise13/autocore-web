@@ -40,12 +40,7 @@ export function BusinessImportOnboardingStep({ companyId, onDone }: BusinessImpo
   );
 
   const finish = useCallback(() => {
-    const userId = profile?.id;
-    if (userId) {
-      void markBusinessImportCompleted(companyId, userId).finally(onDone);
-      return;
-    }
-    onDone();
+    void markBusinessImportCompleted(companyId, profile?.id ?? "").finally(onDone);
   }, [companyId, onDone, profile?.id]);
 
   return (

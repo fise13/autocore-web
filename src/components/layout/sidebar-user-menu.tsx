@@ -91,25 +91,27 @@ export function SidebarUserMenu({ collapsed = false }: SidebarUserMenuProps) {
             align={collapsed ? "start" : "start"}
             className="w-64"
           >
-            <DropdownMenuLabel className="p-0 font-normal">
-              <div className="flex items-center gap-3 px-2 py-2">
-                <UserAvatar
-                  photoURL={photoURL}
-                  displayName={displayName}
-                  email={email}
-                  seed={userSeed}
-                  provider={accountInfo?.kind}
-                  showProviderBadge
-                  size="lg"
-                />
-                <div className="min-w-0 flex-1">
-                  {displayName ? (
-                    <p className="truncate text-sm font-medium">{displayName}</p>
-                  ) : null}
-                  <p className="truncate text-xs text-muted-foreground">{email || "—"}</p>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="p-0 font-normal">
+                <div className="flex items-center gap-3 px-2 py-2">
+                  <UserAvatar
+                    photoURL={photoURL}
+                    displayName={displayName}
+                    email={email}
+                    seed={userSeed}
+                    provider={accountInfo?.kind}
+                    showProviderBadge
+                    size="lg"
+                  />
+                  <div className="min-w-0 flex-1">
+                    {displayName ? (
+                      <p className="truncate text-sm font-medium">{displayName}</p>
+                    ) : null}
+                    <p className="truncate text-xs text-muted-foreground">{email || "—"}</p>
+                  </div>
                 </div>
-              </div>
-            </DropdownMenuLabel>
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <CompanySwitcherMenu />
             <DropdownMenuSeparator />

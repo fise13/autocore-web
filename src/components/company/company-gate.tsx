@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
-import { Laptop, Users } from "lucide-react";
+import { Users } from "lucide-react";
 
 import { AppLogo } from "@/components/brand/app-logo";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -23,7 +23,6 @@ export function CompanyGate({ children }: CompanyGateProps) {
     createCompany,
     joinCompanyWithInvite,
     joinCompanyWithInviteToken,
-    ensureDefaultCompany,
     isLoading,
   } = useAuth();
   const [companyName, setCompanyName] = useState("");
@@ -108,32 +107,6 @@ export function CompanyGate({ children }: CompanyGateProps) {
         </div>
 
         <Card className="overflow-hidden border-border/70 shadow-sm">
-          <CardHeader className="border-b border-border/50 bg-muted/20 pb-4">
-            <div className="flex items-start gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-background">
-                <Laptop className="size-4 text-primary" />
-              </div>
-              <div className="space-y-1">
-                <CardTitle className="text-base">{userCopy.company.macQuestion}</CardTitle>
-                <CardDescription>{userCopy.company.macDescription}</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3 pt-4">
-            <Button
-              type="button"
-              className="w-full"
-              disabled={isSubmitting}
-              onClick={() =>
-                runAction(() => ensureDefaultCompany(), "Подключение данных…")
-              }
-            >
-              {userCopy.company.macButton}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="overflow-hidden border-border/70 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">{userCopy.company.newTeamTitle}</CardTitle>
             <CardDescription>{userCopy.company.newTeamDescription}</CardDescription>
@@ -150,7 +123,7 @@ export function CompanyGate({ children }: CompanyGateProps) {
                   required
                 />
               </div>
-              <Button type="submit" variant="secondary" disabled={isSubmitting} className="w-full">
+              <Button type="submit" disabled={isSubmitting} className="w-full">
                 {userCopy.company.createButton}
               </Button>
             </form>

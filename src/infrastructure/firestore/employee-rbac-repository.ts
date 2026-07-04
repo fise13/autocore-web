@@ -2,6 +2,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   onSnapshot,
   orderBy,
   query,
@@ -15,6 +16,51 @@ import { CompanyEmployee, RoleDefinition } from "@/domain/rbac";
 import { toDateFromFirestore } from "@/lib/firestore-timestamp";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 import { createActivityLogRepository } from "@/infrastructure/firestore/activity-log-repository";
+
+function mapEmployee(companyId: string, id: string, data: Record<string, unknown>): CompanyEmployee {
+  const photoURL =
+    typeof data.photoURL === "string" && data.photoURL.trim() ? data.photoURL.trim() : null;
+  return {
+    id,
+    uid: String(data.uid ?? id),
+    companyId: String(data.companyId ?? companyId),
+    email: String(data.email ?? ""),
+    fullName: String(data.fullName ?? ""),
+    photoURL,
+    role: String(data.role ?? "employee") as UserRole,
+    permissions: Array.isArray(data.permissions) ? (data.permissions as Permission[]) : [],
+    invitedBy: String(data.invitedBy ?? ""),
+    createdAt: toDateFromFirestore(data.createdAt),
+    lastActiveAt: toDateFromFirestore(data.lastActiveAt),
+    isActive: Boolean(data.isActive ?? true),
+  };
+}
+
+async function enrichEmployeesWithProfilePhotos(
+  employees: CompanyEmployee[],
+): Promise<CompanyEmployee[]> {
+  const db = getFirestoreDb();
+  return Promise.all(
+    employees.map(async (employee) => {
+      if (employee.photoURL) return employee;
+      const uid = employee.uid?.trim();
+      if (!uid) return employee;
+      try {
+        const userSnap = await getDoc(doc(db, "users", uid));
+        const photoURL = userSnap.data()?.photoURL;
+        if (typeof photoURL !== "string" || !photoURL.trim()) return employee;
+        const nextPhotoURL = photoURL.trim();
+        // Cache on employee doc so team lists stay in sync with account avatar.
+        void updateDoc(doc(db, "companies", employee.companyId, "employees", employee.id), {
+          photoURL: nextPhotoURL,
+        }).catch(() => undefined);
+        return { ...employee, photoURL: nextPhotoURL };
+      } catch {
+        return employee;
+      }
+    }),
+  );
+}
 
 type InviteEmployeeInput = {
   uid: string;
@@ -46,25 +92,17 @@ export function createEmployeeRbacRepository() {
       return onSnapshot(
         employeesQuery,
         (snapshot) => {
-          const employees: CompanyEmployee[] = snapshot.docs.map((item) => {
-            const data = item.data() as Record<string, unknown>;
-            return {
-              id: item.id,
-              uid: String(data.uid ?? item.id),
-              companyId: String(data.companyId ?? companyId),
-              email: String(data.email ?? ""),
-              fullName: String(data.fullName ?? ""),
-              role: (String(data.role ?? "employee") as UserRole),
-              permissions: Array.isArray(data.permissions)
-                ? (data.permissions as Permission[])
-                : [],
-              invitedBy: String(data.invitedBy ?? ""),
-              createdAt: toDateFromFirestore(data.createdAt),
-              lastActiveAt: toDateFromFirestore(data.lastActiveAt),
-              isActive: Boolean(data.isActive ?? true),
-            };
-          });
+          const employees = snapshot.docs.map((item) =>
+            mapEmployee(companyId, item.id, item.data() as Record<string, unknown>),
+          );
           onData(employees);
+          void enrichEmployeesWithProfilePhotos(employees)
+            .then((enriched) => {
+              if (enriched.some((employee, index) => employee.photoURL !== employees[index]?.photoURL)) {
+                onData(enriched);
+              }
+            })
+            .catch(() => undefined);
         },
         (error) => onError?.(error),
       );
@@ -125,6 +163,15 @@ export function createEmployeeRbacRepository() {
     },
 
     async inviteEmployee(companyId: string, input: InviteEmployeeInput): Promise<void> {
+      let photoURL: string | null = null;
+      try {
+        const userSnap = await getDoc(doc(db, "users", input.uid));
+        const fromUser = userSnap.data()?.photoURL;
+        if (typeof fromUser === "string" && fromUser.trim()) photoURL = fromUser.trim();
+      } catch {
+        // Best-effort avatar sync.
+      }
+
       await setDoc(
         doc(db, "companies", companyId, "employees", input.uid),
         {
@@ -132,6 +179,7 @@ export function createEmployeeRbacRepository() {
           companyId,
           email: input.email,
           fullName: input.fullName,
+          ...(photoURL ? { photoURL } : {}),
           role: input.role,
           permissions: input.permissions ?? [],
           invitedBy: input.invitedBy,

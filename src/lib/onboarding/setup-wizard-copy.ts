@@ -120,7 +120,7 @@ export const SETUP_WIZARD_COPY = {
       description: "Приём и цех",
     },
     accounting: {
-      label: "Бухгалтерия",
+      label: "Финансы",
       description: "Операции и счета",
     },
     warehouse: {

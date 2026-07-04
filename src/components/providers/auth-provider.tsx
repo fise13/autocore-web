@@ -44,6 +44,7 @@ import { signInWithAppleLikeMacOS } from "@/lib/auth/sign-in-with-apple-credenti
 import { AppleJsRedirectStarted, isAppleUserCancellationError } from "@/lib/auth/apple-js-sign-in";
 import { signInWithAppleFirebase } from "@/lib/auth/sign-in-with-apple-web";
 import { mergeProfileWithEmployee, EmployeeProfileSlice } from "@/lib/auth/resolve-effective-profile";
+import { createCompanyViaApi } from "@/lib/auth/create-company-via-api";
 import { markSyncAuthPrepared, prepareSyncAuth, resetSyncAuthCache } from "@/lib/auth/prepare-sync-auth";
 import { tryClaimPendingMarketingCheckout } from "@/lib/billing/claim-marketing-checkout";
 import {
@@ -314,6 +315,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     void upsertDefaultUserDoc(currentUser).catch((error) => {
       console.warn("User doc sync deferred:", error);
     });
+
+    // Keep team avatars in sync with the account photo.
+    const companyId = nextProfile.companyId?.trim();
+    const photoURL = nextProfile.photoURL?.trim();
+    if (companyId && photoURL) {
+      void updateDoc(doc(getFirestoreDb(), "companies", companyId, "employees", currentUser.uid), {
+        photoURL,
+      }).catch(() => undefined);
+    }
   }, [applyProfile, loadProfileForUser, upsertDefaultUserDoc]);
 
   useEffect(() => {
@@ -649,13 +659,51 @@ export function AuthProvider({ children }: AuthProviderProps) {
       async createCompany(name) {
         if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));
         const auth = getFirebaseAuth();
-        if (!auth.currentUser) throw new Error(mapAuthError(new Error("auth/invalid-credential")));
-        const companyId = await createCompanyRecord(auth.currentUser.uid, name);
-        await ensureCompanyTrial(companyId);
-        await claimPendingBillingIntent(companyId);
-        await tryClaimPendingMarketingCheckout(companyId);
-        await prepareSyncAuth(auth.currentUser.uid, { force: true });
-        await refreshProfile();
+        const user = auth.currentUser;
+        if (!user) throw new Error(mapAuthError(new Error("auth/invalid-credential")));
+
+        const recoverIfLinked = async (): Promise<boolean> => {
+          try {
+            const recovered = await loadProfileForUser(user);
+            if (!recovered.companyId?.trim()) return false;
+            applyProfile(user, recovered);
+            markSyncAuthPrepared(user.uid);
+            return true;
+          } catch (recoveryError) {
+            console.warn("[createCompany] profile recovery failed:", recoveryError);
+            return false;
+          }
+        };
+
+        let companyId: string;
+        try {
+          try {
+            companyId = await createCompanyViaApi(user, name);
+          } catch (apiError) {
+            console.warn("[createCompany] API path failed, using client:", apiError);
+            companyId = await createCompanyRecord(user.uid, name);
+          }
+        } catch (error) {
+          // Partial client write may have already linked users/{uid}.companyId.
+          if (await recoverIfLinked()) return;
+          throw error;
+        }
+
+        try {
+          await ensureCompanyTrial(companyId);
+          await claimPendingBillingIntent(companyId);
+          await tryClaimPendingMarketingCheckout(companyId);
+          try {
+            await prepareSyncAuth(user.uid, { force: true });
+          } catch (prepError) {
+            console.warn("[createCompany] auth prep skipped:", prepError);
+          }
+          await refreshProfile();
+        } catch (error) {
+          // Company is already linked — don't strand the user on the form.
+          if (await recoverIfLinked()) return;
+          throw error;
+        }
       },
       async switchCompany(companyId) {
         if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));
@@ -696,7 +744,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
       },
       refreshProfile,
     }),
-    [firebaseUser, profile, isFirebaseReady, isLoading, refreshProfile, router],
+    [
+      applyProfile,
+      firebaseUser,
+      isFirebaseReady,
+      isLoading,
+      loadProfileForUser,
+      profile,
+      refreshProfile,
+      router,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

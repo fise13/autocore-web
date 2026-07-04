@@ -31,7 +31,6 @@ import {
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuAction,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
@@ -241,11 +240,14 @@ export function BrandsSidebarGroup({
               const brandCount = brandCounts?.get(brand.localId) ?? 0;
               const isActive = activeBrandLocalId === brand.localId;
 
+              const showActions = canManage && !isEditing;
+
               return (
                 <SidebarMenuItem key={brand.id} className="group/menu-item">
                   <SidebarMenuButton
                     isActive={isActive}
                     tooltip={brand.name}
+                    className={cn(showActions && "pr-8")}
                     render={
                       isEditing ? undefined : <Link href={href} onClick={() => onNavigate?.()} />
                     }
@@ -254,13 +256,15 @@ export function BrandsSidebarGroup({
                       openRename(brand);
                     }}
                   >
-                    <span className="truncate">{brand.name}</span>
+                    <span className="min-w-0 flex-1 truncate">{brand.name}</span>
                     {brandCount > 0 ? (
-                      <SidebarMenuBadge>{brandCount > 99 ? "99+" : brandCount}</SidebarMenuBadge>
+                      <span className="shrink-0 text-xs tabular-nums tracking-tight text-muted-foreground">
+                        {brandCount.toLocaleString("ru-RU")}
+                      </span>
                     ) : null}
                   </SidebarMenuButton>
 
-                  {canManage && !isEditing ? (
+                  {showActions ? (
                     <DropdownMenu>
                       <DropdownMenuTrigger
                         render={

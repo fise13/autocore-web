@@ -12,22 +12,45 @@ type UserAvatarProps = {
   /** Stable id for gradient selection when photo is missing. */
   seed?: string;
   provider?: AuthProviderKind;
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
   showProviderBadge?: boolean;
   className?: string;
 };
 
 const sizeClasses = {
+  xs: "size-6",
   sm: "size-8",
   md: "size-9",
   lg: "size-14",
 } as const;
 
+const monogramSizeClasses = {
+  xs: "text-[9px]",
+  sm: "text-[10px]",
+  md: "text-xs",
+  lg: "text-sm",
+} as const;
+
 const badgeSizeClasses = {
+  xs: "size-3",
   sm: "size-3.5",
   md: "size-4",
   lg: "size-5",
 } as const;
+
+function avatarMonogram(displayName?: string | null, email?: string): string {
+  const name = displayName?.trim();
+  if (name) {
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return `${parts[0]!.charAt(0)}${parts[1]!.charAt(0)}`.toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  }
+  const local = email?.split("@")[0]?.trim();
+  if (local) return local.slice(0, 2).toUpperCase();
+  return "?";
+}
 
 export function UserAvatar({
   photoURL,
@@ -40,6 +63,7 @@ export function UserAvatar({
   className,
 }: UserAvatarProps) {
   const gradientSeed = seed ?? (email.trim() || displayName?.trim() || "user");
+  const monogram = avatarMonogram(displayName, email);
 
   return (
     <span className={cn("relative inline-flex shrink-0", className)}>
@@ -57,9 +81,15 @@ export function UserAvatar({
       ) : (
         <span
           style={userAvatarStyle(gradientSeed)}
-          className={cn("inline-block rounded-full ring-1 ring-border/20", sizeClasses[size])}
+          className={cn(
+            "inline-flex items-center justify-center rounded-full font-semibold text-white ring-1 ring-border/20",
+            sizeClasses[size],
+            monogramSizeClasses[size],
+          )}
           aria-hidden="true"
-        />
+        >
+          {monogram}
+        </span>
       )}
 
       {showProviderBadge && provider && provider !== "email" && provider !== "unknown" ? (

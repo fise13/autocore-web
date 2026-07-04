@@ -33,7 +33,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
     await assertOrderCompanyAccess(access.companyId, documentContext.order.companyId);
 
     const forceFresh = request.nextUrl.searchParams.get("fresh") === "1";
+    const definition = DOCUMENT_BY_SLUG[slug];
     let pdf: Buffer | null = null;
+    let servedFromCache = false;
 
     if (!forceFresh && aggregateType === "work_order") {
       const { readCachedWorkOrderPdf } = await import("@/lib/documents/resolve-cached-document-pdf");
@@ -42,6 +44,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         workOrderId: orderId,
         slug,
       });
+      servedFromCache = Boolean(pdf);
     }
 
     if (!pdf) {
@@ -51,7 +54,33 @@ export async function GET(request: NextRequest, context: RouteContext) {
         aggregateType,
       });
     }
-    const definition = DOCUMENT_BY_SLUG[slug];
+
+    // Persist on download/print so the document appears in «Распечатанные».
+    if (aggregateType === "work_order" && pdf) {
+      try {
+        const { persistDocumentPdf, touchWorkOrderDocumentAccess } = await import(
+          "@/lib/documents/persist-document-pdf"
+        );
+        if (servedFromCache) {
+          await touchWorkOrderDocumentAccess({
+            companyId: access.companyId,
+            workOrderId: orderId,
+            type: definition.type,
+          });
+        } else {
+          await persistDocumentPdf({
+            companyId: access.companyId,
+            workOrderId: orderId,
+            type: definition.type,
+            pdf,
+          });
+        }
+      } catch (persistError) {
+        // Serving the PDF is more important than history write.
+        console.warn("[pdf] history persist skipped:", persistError);
+      }
+    }
+
     const inline = request.nextUrl.searchParams.get("inline") === "1";
     const filename = `${definition.slug}-${orderId}.pdf`;
 

@@ -4,17 +4,15 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Barcode,
   PanelLeft,
-  Radar,
   Settings,
   Settings2,
   Upload,
 } from "lucide-react";
 
-import { AppBreadcrumbs } from "@/components/app-breadcrumbs";
 import { AccountMenu } from "@/components/account/account-menu";
 import { AppLogo } from "@/components/brand/app-logo";
 import { useDashboardLayout } from "@/components/layout/dashboard-layout-context";
@@ -47,12 +45,14 @@ import { pinnedFilterMeta } from "@/lib/navigation/pinned-filters";
 
 const specificCategoryRepository = createSpecificCategoryRepository();
 
-const WORKSPACE_TITLES: Partial<Record<SidebarMode, string>> = {
-  motors: businessNavCopy.inventoryCollection.engines,
-  sold: businessNavCopy.business.sales,
-  specific: "Склад",
-  warehouse: businessNavCopy.inventoryCollection.consumables,
-};
+function TopBarPageLabel({ title }: { title: string }) {
+  return (
+    <div className="flex min-w-0 items-center gap-2.5">
+      <AppLogo size={20} className="shrink-0 rounded-md" alt="AutoCore" />
+      <span className="truncate text-sm font-semibold tracking-tight">{title}</span>
+    </div>
+  );
+}
 
 const availabilityOptions: { value: MotorAvailability; label: string }[] = [
   { value: "all", label: "Все" },
@@ -64,9 +64,8 @@ function isWorkspaceRoute(pathname: string): boolean {
   return pathname === "/motors" || pathname === "/sold" || pathname === "/warehouse";
 }
 
-function topBarLeftKey(mode: SidebarMode, workspace: boolean): string {
-  if (workspace) return `workspace-${mode}`;
-  return "app-brand";
+function topBarLeftKey(mode: SidebarMode, pageTitle: string): string {
+  return `page-${mode}-${pageTitle}`;
 }
 
 function topBarCenterKey(mode: SidebarMode, workspace: boolean, specificView: boolean): string {
@@ -162,20 +161,51 @@ export function DashboardTopBar() {
   const isSoldRoute = pathname === "/sold";
   const isMissionControlRoute = pathname === "/";
   const collectionContext = parseCollectionFromSearchParams(searchParams, pathname);
-  const workspaceTitle =
-    isSpecificView && selectedSpecificCategory
-      ? `Склад · ${selectedSpecificCategory.name}`
-      : isWarehouseRoute
-        ? businessNavCopy.inventoryCollection.consumables
-        : isSoldRoute
-          ? businessNavCopy.business.sales
-          : isMotorsRoute
-            ? `Склад · ${inventoryCollectionLabel(collectionContext.collection)}${
-                collectionContext.filter
-                  ? ` · ${pinnedFilterMeta(collectionContext.filter).label}`
-                  : ""
-              }`
-            : WORKSPACE_TITLES[sidebarMode];
+
+  const topBarTitle = useMemo(() => {
+    if (isMissionControlRoute) return businessNavCopy.workspace.dashboard;
+
+    if (isSpecificView && selectedSpecificCategory) {
+      return selectedSpecificCategory.name;
+    }
+
+    if (isMotorsRoute) {
+      const filterLabel = collectionContext.filter
+        ? ` · ${pinnedFilterMeta(collectionContext.filter).label}`
+        : "";
+      return `${inventoryCollectionLabel(collectionContext.collection)}${filterLabel}`;
+    }
+
+    if (isWarehouseRoute) return businessNavCopy.inventoryCollection.consumables;
+    if (isSoldRoute) return businessNavCopy.business.sales;
+
+    const sectionByMode: Partial<Record<SidebarMode, string>> = {
+      work_orders: businessNavCopy.business.workOrders,
+      accounting: businessNavCopy.business.accounting,
+      documents: businessNavCopy.business.documents,
+      team: businessNavCopy.business.team,
+      activity: "Активность",
+    };
+
+    if (sectionByMode[sidebarMode]) return sectionByMode[sidebarMode]!;
+    if (pathname.startsWith("/my-earnings")) return businessNavCopy.business.myEarnings;
+    if (pathname.startsWith("/settings")) return "Настройки";
+    if (pathname.startsWith("/help")) return "Помощь";
+
+    return userCopy.appName;
+  }, [
+    collectionContext.collection,
+    collectionContext.filter,
+    isMissionControlRoute,
+    isMotorsRoute,
+    isSoldRoute,
+    isSpecificView,
+    isWarehouseRoute,
+    pathname,
+    selectedSpecificCategory,
+    sidebarMode,
+  ]);
+
   const showAvailabilityFilter = (pathname === "/motors" || isSpecificView) && !isSoldRoute;
   const showExcelIo = (isMotorRoute || isWarehouseRoute) && !isSpecificView;
   const canViewMotors = canAccessMotorsArea(profile);
@@ -222,7 +252,7 @@ export function DashboardTopBar() {
     if (!requirePro("export", () => void runExport())) return;
   }
 
-  const leftKey = topBarLeftKey(sidebarMode, workspace);
+  const leftKey = topBarLeftKey(sidebarMode, topBarTitle);
   const centerKey = topBarCenterKey(sidebarMode, workspace, isSpecificView);
   const rightKey = topBarRightKey(sidebarMode, workspace);
 
@@ -264,23 +294,7 @@ export function DashboardTopBar() {
         </Button>
         <Separator orientation="vertical" className="hidden h-4 md:block" />
         <AnimatedSlot slotKey={leftKey} className="flex min-w-0 items-center gap-2">
-          {isMissionControlRoute ? (
-            <AppBreadcrumbs
-              page={{
-                title: businessNavCopy.workspace.dashboard,
-                icon: <Radar className="size-3.5" />,
-              }}
-            />
-          ) : workspace ? (
-            <span className="truncate text-sm font-semibold tracking-tight">
-              {workspaceTitle ?? "AutoCore"}
-            </span>
-          ) : (
-            <div className="flex items-center gap-2.5">
-              <AppLogo size={24} className="rounded-md" alt="AutoCore" />
-              <span className="hidden text-sm font-semibold tracking-tight sm:block">AutoCore</span>
-            </div>
-          )}
+          <TopBarPageLabel title={topBarTitle} />
         </AnimatedSlot>
       </div>
 

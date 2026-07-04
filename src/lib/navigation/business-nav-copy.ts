@@ -8,7 +8,7 @@ export const businessNavCopy = {
     inventory: "Склад",
     sales: "Продажи",
     workOrders: "Заказ-наряды",
-    accounting: "Бухгалтерия",
+    accounting: "Финансы",
     documents: "Документы",
     myEarnings: "Мои начисления",
     team: "Команда",
