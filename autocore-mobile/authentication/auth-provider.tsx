@@ -76,6 +76,7 @@ const AuthActionsContext = createContext<AuthActions | null>(null);
 
 const FAST_PROFILE_TIMEOUT_MS = 2_500;
 const SESSION_ENRICH_TIMEOUT_MS = 30_000;
+const SESSION_SYNC_MAX_MS = 45_000;
 const ENRICH_RETRY_DELAYS_MS = [2_000, 5_000] as const;
 
 type HydrationPayload = {
@@ -165,6 +166,7 @@ function useAuthActionsController(): AuthActions {
   const hydrateGenerationRef = useRef(0);
   const hydratedUidRef = useRef<string | null>(null);
   const requireFullSessionRef = useRef(false);
+  const manualOAuthHydrateRef = useRef(false);
   const hydrateInflightRef = useRef(new Map<string, Promise<void>>());
 
   const hydrateUser = useCallback(async (user: User) => {
@@ -294,8 +296,14 @@ function useAuthActionsController(): AuthActions {
     };
 
     const enrichSessionBlocking = async () => {
+      const syncStartedAt = Date.now();
+
       for (let attempt = 0; attempt <= ENRICH_RETRY_DELAYS_MS.length; attempt += 1) {
         if (generation !== hydrateGenerationRef.current) return;
+        if (Date.now() - syncStartedAt > SESSION_SYNC_MAX_MS) {
+          console.warn('Session sync timed out — continuing with partial hydration');
+          return;
+        }
 
         try {
           const apiHydrated = await fetchSessionBootstrapFromApi(user);
@@ -519,6 +527,9 @@ function useAuthActionsController(): AuthActions {
         useAuthStore.getState().reset();
         return;
       }
+      if (manualOAuthHydrateRef.current) {
+        return;
+      }
       await hydrateUser(user);
     });
 
@@ -555,13 +566,25 @@ function useAuthActionsController(): AuthActions {
 
   const withFullSessionHydration = useCallback(
     async (authenticate: () => Promise<User>) => {
-      requireFullSessionRef.current = true;
-      useAuthStore.getState().setHydrating(true);
+      manualOAuthHydrateRef.current = true;
       try {
         const user = await authenticate();
-        await hydrateUser(user);
+
+        requireFullSessionRef.current = true;
+        useAuthStore.getState().setHydrating(true);
+        try {
+          await hydrateUser(user);
+        } catch (error) {
+          useAuthStore.getState().setHydrating(false);
+          throw error;
+        } finally {
+          requireFullSessionRef.current = false;
+        }
+      } catch (error) {
+        useAuthStore.getState().setHydrating(false);
+        throw error;
       } finally {
-        requireFullSessionRef.current = false;
+        manualOAuthHydrateRef.current = false;
       }
     },
     [hydrateUser],
@@ -641,11 +664,7 @@ function useAuthActionsController(): AuthActions {
     if (!useAuthStore.getState().isOnline) {
       throw new Error('Нет подключения к интернету.');
     }
-    await withFullSessionHydration(async () => {
-      const user = await signInWithAppleNative();
-      await user.reload();
-      return getFirebaseAuth().currentUser ?? user;
-    });
+    await withFullSessionHydration(signInWithAppleNative);
   }, [withFullSessionHydration]);
 
   const sendPasswordReset = useCallback(

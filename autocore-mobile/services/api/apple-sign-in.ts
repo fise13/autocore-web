@@ -1,4 +1,5 @@
 import { getPublicApiBaseUrl } from '@/services/api/api-base-url';
+import { fetchJsonWithTimeout } from '@/lib/network/fetch-json';
 
 export type AppleSignInApiPayload = {
   idToken: string;
@@ -8,26 +9,36 @@ export type AppleSignInApiPayload = {
   fullName?: string | null;
 };
 
+type AppleSignInApiResponse = {
+  customToken?: string;
+  error?: string;
+};
+
 export async function exchangeAppleSignInViaApi(
   payload: AppleSignInApiPayload,
 ): Promise<string> {
-  const response = await fetch(`${getPublicApiBaseUrl()}/api/mobile/auth/apple`, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
+  const { ok, status, data } = await fetchJsonWithTimeout<AppleSignInApiResponse>(
+    `${getPublicApiBaseUrl()}/api/mobile/auth/apple`,
+    {
+      method: 'POST',
+      timeoutMs: 12_000,
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
     },
-    body: JSON.stringify(payload),
-  });
+  );
 
-  const body = (await response.json().catch(() => ({}))) as {
-    customToken?: string;
-    error?: string;
-  };
-
-  if (!response.ok || !body.customToken?.trim()) {
-    throw new Error(body.error?.trim() || 'Не удалось подтвердить вход через Apple');
+  if (status === 404) {
+    throw new Error(
+      'Вход через Apple на сервере ещё не обновлён. Войдите по email или попробуйте позже.',
+    );
   }
 
-  return body.customToken.trim();
+  if (!ok || !data.customToken?.trim()) {
+    throw new Error(data.error?.trim() || 'Не удалось подтвердить вход через Apple');
+  }
+
+  return data.customToken.trim();
 }

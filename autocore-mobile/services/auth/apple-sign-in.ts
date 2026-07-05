@@ -37,6 +37,23 @@ async function applyAppleProfileFromCredential(
   return user;
 }
 
+function buildAppleApiPayload(
+  credential: AppleAuthentication.AppleAuthenticationCredential,
+  rawNonce: string,
+) {
+  const givenName = credential.fullName?.givenName?.trim();
+  const familyName = credential.fullName?.familyName?.trim();
+  const fullName = [givenName, familyName].filter(Boolean).join(' ').trim() || null;
+
+  return {
+    idToken: credential.identityToken!,
+    rawNonce,
+    authorizationCode: credential.authorizationCode ?? null,
+    email: credential.email?.trim() || null,
+    fullName,
+  };
+}
+
 async function completeAppleFirebaseSignIn(
   credential: AppleAuthentication.AppleAuthenticationCredential,
   rawNonce: string,
@@ -45,26 +62,7 @@ async function completeAppleFirebaseSignIn(
     throw new Error('Apple не вернул identity token. Проверьте Sign in with Apple в Apple Developer.');
   }
 
-  const givenName = credential.fullName?.givenName?.trim();
-  const familyName = credential.fullName?.familyName?.trim();
-  const fullName = [givenName, familyName].filter(Boolean).join(' ').trim() || null;
-  const email = credential.email?.trim() || null;
-  const apiPayload = {
-    idToken: credential.identityToken,
-    rawNonce,
-    authorizationCode: credential.authorizationCode ?? null,
-    email,
-    fullName,
-  };
-
-  const preferServerExchange =
-    process.env.EXPO_PUBLIC_USE_PROD_API?.trim().toLowerCase() === 'true';
-
-  if (preferServerExchange) {
-    const customToken = await exchangeAppleSignInViaApi(apiPayload);
-    const user = await signInWithFirebaseCustomToken(customToken);
-    return applyAppleProfileFromCredential(user, credential);
-  }
+  const apiPayload = buildAppleApiPayload(credential, rawNonce);
 
   try {
     const user = await signInWithAppleIdentityToken(credential.identityToken, rawNonce);
@@ -73,11 +71,11 @@ async function completeAppleFirebaseSignIn(
     if (getAuthErrorCode(error) !== 'auth/invalid-credential') {
       throw error;
     }
-
-    const customToken = await exchangeAppleSignInViaApi(apiPayload);
-    const user = await signInWithFirebaseCustomToken(customToken);
-    return applyAppleProfileFromCredential(user, credential);
   }
+
+  const customToken = await exchangeAppleSignInViaApi(apiPayload);
+  const user = await signInWithFirebaseCustomToken(customToken);
+  return applyAppleProfileFromCredential(user, credential);
 }
 
 export async function signInWithAppleNative(): Promise<User> {

@@ -161,8 +161,7 @@ export function useSidebarCounts({
         if (id === "engines") acc[id] = availableMotors.length;
         else if (id === "transmissions") acc[id] = transmissionsCount;
         else if (id === "parts") acc[id] = partsCount;
-        else if (id === "consumables") acc[id] = consumablesCount;
-        else acc[id] = 0;
+        else acc[id] = consumablesCount;
         return acc;
       },
       {} as Record<InventoryCollectionId, number>,
