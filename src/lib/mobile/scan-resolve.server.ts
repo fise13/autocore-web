@@ -4,7 +4,7 @@ import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { normalizeBarcode } from "@/lib/warehouse/warehouse-sync-ids";
 
-import { rankFuzzyScanCandidates } from "./scan-fuzzy.server";
+import { isBarcodeLikeCode, rankFuzzyScanCandidates } from "./scan-fuzzy.server";
 import { buildScanCodeVariants, primaryScanCode, scanToken } from "./scan-normalize";
 import type {
   MobileScanCandidate,
