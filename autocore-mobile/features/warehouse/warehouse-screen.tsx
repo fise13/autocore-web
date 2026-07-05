@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { BoxIcon } from '@/assets/icons';
@@ -13,6 +13,7 @@ import {
   useCompanyModuleEnabled,
   useInventoryCatalog,
   useOptimisticStockAdjust,
+  useRealtimeReconnect,
   useSession,
 } from '@/hooks';
 
@@ -33,9 +34,17 @@ export function WarehouseScreen() {
   const { items, isBootstrapping, errorMessage } = useInventoryCatalog(companyId, { keepAlive: true });
   const addToOrderFlow = useAddToOrderFlow();
   const { getDisplayAvailable, adjust } = useOptimisticStockAdjust(companyId);
+  const reconnectRealtime = useRealtimeReconnect();
 
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<WarehouseFilter>(params.lowStock === '1' ? 'low' : 'all');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    reconnectRealtime(companyId ? [['realtime', 'inventory-items', companyId]] : undefined);
+    setRefreshing(false);
+  }, [companyId, reconnectRealtime]);
 
   useEffect(() => {
     if (params.lowStock === '1') setFilter('low');
@@ -121,6 +130,7 @@ export function WarehouseScreen() {
         data={filteredItems}
         keyExtractor={(item) => item.id}
         keyboardShouldPersistTaps="handled"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListHeaderComponent={
           <View style={{ gap: wh.section, paddingBottom: wh.section }}>
             <WarehouseHeader itemCount={stats.total} lowStockCount={stats.lowStockCount} />

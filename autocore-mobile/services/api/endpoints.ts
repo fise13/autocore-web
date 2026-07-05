@@ -12,6 +12,7 @@ export const mobileApi = {
   scanExportEvents: '/api/mobile/scan/export-events',
   inventoryQuickReceive: '/api/mobile/inventory/quick-receive',
   inventoryQuickAdjust: '/api/mobile/inventory/quick-adjust',
+  inventoryCreateItem: '/api/mobile/inventory/create-item',
   notificationsInbox: '/api/mobile/notifications/inbox',
   notificationsPreferences: '/api/mobile/notifications/preferences',
   notificationsRegisterDevice: '/api/mobile/notifications/register-device',

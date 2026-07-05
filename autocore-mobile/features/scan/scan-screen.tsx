@@ -24,11 +24,17 @@ import { ScanHeader } from './components/scan-header';
 import { ScanIdleIndicator } from './components/scan-idle-indicator';
 import { ScanModeStrip, scanModeHint, type ScanCaptureMode } from './components/scan-mode-strip';
 import { ScanNotFoundSheet } from './components/scan-not-found-sheet';
+import { ScanOrderContextBanner } from './components/scan-order-context-banner';
 import { ScanProductSheet } from './components/scan-product-sheet';
 import { useScanExperience } from './hooks/use-scan-experience';
 import type { RecentScan, ScanCandidate } from './types';
+import { scanContextStore } from '@/services/scan';
 
-export function ScanScreen() {
+type ScanScreenProps = {
+  onClose?: () => void;
+};
+
+export function ScanScreen({ onClose }: ScanScreenProps = {}) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const isFocused = useIsFocused();
@@ -73,6 +79,14 @@ export function ScanScreen() {
   const showShutter = captureMode !== 'auto';
   const activeResult = snapshot.activeResult;
   const isOrderContext = snapshot.context.mode === 'order';
+  const orderLabel = snapshot.context.mode === 'order' ? snapshot.context.orderLabel : undefined;
+
+  const handleClose = useCallback(() => {
+    if (isOrderContext) {
+      scanContextStore.cancel();
+    }
+    onClose?.();
+  }, [isOrderContext, onClose]);
 
   const onCameraLayout = useCallback(
     (event: LayoutChangeEvent) => {
@@ -219,11 +233,17 @@ export function ScanScreen() {
           onToggleTorch={() => setTorchOn((value) => !value)}
           onSettingsPress={() => router.navigate('/(tabs)/profile' as const)}
           orderContext={isOrderContext}
+          orderLabel={orderLabel}
+          onBackPress={isOrderContext ? handleClose : undefined}
         />
 
-        <View style={[styles.modeArea, { bottom: Math.max(insets.bottom, 8) + 148 }]} pointerEvents="box-none">
+        {isOrderContext ? <ScanOrderContextBanner orderLabel={orderLabel} /> : null}
+
+        <View style={[styles.modeArea, { bottom: Math.max(insets.bottom, 8) + (isOrderContext ? 108 : 148) }]} pointerEvents="box-none">
           <Text variant="caption" style={styles.hint}>
-            {isOrderContext ? 'Наведите на штрихкод запчасти' : scanModeHint(captureMode)}
+            {isOrderContext
+              ? 'Наведите камеру на штрихкод — позиция добавится в наряд'
+              : scanModeHint(captureMode)}
           </Text>
           {!isOrderContext ? (
             <ScanModeStrip mode={captureMode} onChange={setCaptureMode} />

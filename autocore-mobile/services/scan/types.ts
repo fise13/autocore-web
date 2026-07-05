@@ -18,7 +18,7 @@ export type ScanInputKind =
 
 export type ScanContext =
   | { mode: 'standalone' }
-  | { mode: 'order'; orderId?: string };
+  | { mode: 'order'; orderId?: string; orderLabel?: string };
 
 export type ScanPhase = 'idle' | 'tracking' | 'resolving' | 'confirmed' | 'paused';
 

@@ -38,6 +38,7 @@ type OrderCompositionStepProps = {
   specificsEnabled: boolean;
   motorsEnabled: boolean;
   orderId?: string;
+  orderLabel?: string;
   onScanResult?: (result: ScanOrderResult) => void;
 };
 
@@ -62,6 +63,7 @@ export function OrderCompositionStep({
   specificsEnabled,
   motorsEnabled,
   orderId,
+  orderLabel,
   onScanResult,
 }: OrderCompositionStepProps) {
   const { colors } = useTheme();
@@ -181,7 +183,13 @@ export function OrderCompositionStep({
             <CompositionAddCard
               title="Добавить запчасть"
               description="Со склада или разово — цена попадёт в накладную и бухгалтерию"
-              footer={<ScanLauncherRow orderId={orderId} onScanResult={onScanResult} />}
+              footer={
+                <ScanLauncherRow
+                  orderId={orderId}
+                  orderLabel={orderLabel}
+                  onScanResult={onScanResult}
+                />
+              }
             >
               <CompositionField label="Артикул (необяз.)">
                 <AutocompleteInput

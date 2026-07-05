@@ -54,6 +54,10 @@ export class ScanService {
   private listeners = new Set<ScanServiceListener>();
   private commitTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingCommitPayload: string | null = null;
+  private stablePayload: string | null = null;
+  private stableHits = 0;
+  private readonly minStableHits = 2;
+  private readonly commitDelayMs = 240;
   private snapshot: ScanServiceSnapshot = {
     phase: 'idle',
     context: { mode: 'standalone' },
@@ -90,13 +94,27 @@ export class ScanService {
     }
     if (!this.debounce.canTrack(detection.payload)) return;
 
-    this.debounce.noteSeen(detection.payload);
+    if (detection.payload === this.stablePayload) {
+      this.stableHits += 1;
+    } else {
+      this.stablePayload = detection.payload;
+      this.stableHits = 1;
+    }
+
     this.patch({
       phase: 'tracking',
       detection,
     });
 
+    if (this.stableHits < this.minStableHits) return;
+
+    this.debounce.noteSeen(detection.payload);
     this.scheduleCommit(detection.payload);
+  }
+
+  private resetStableReads(): void {
+    this.stablePayload = null;
+    this.stableHits = 0;
   }
 
   private scheduleCommit(payload: string): void {
@@ -114,7 +132,7 @@ export class ScanService {
       if (this.snapshot.phase === 'paused' || this.snapshot.phase === 'resolving') return;
       if (this.snapshot.detection?.payload !== payload) return;
       void this.commitPayload(payload, 'camera').catch(() => undefined);
-    }, 180);
+    }, this.commitDelayMs);
   }
 
   private clearCommitTimer(): void {
@@ -212,6 +230,7 @@ export class ScanService {
 
   resume(): void {
     this.clearCommitTimer();
+    this.resetStableReads();
     this.debounce.reset();
     this.patch({
       phase: 'idle',
@@ -225,6 +244,7 @@ export class ScanService {
 
   dismissSheet(): void {
     this.clearCommitTimer();
+    this.resetStableReads();
     this.debounce.fullReset();
     this.resume();
   }

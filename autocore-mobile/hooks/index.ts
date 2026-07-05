@@ -4,6 +4,7 @@ export { useAdaptiveLayout } from './use-adaptive-layout';
 export { useDesignLanguage } from './use-design-language';
 export { useSession } from './use-session';
 export { useRealtimeQuery } from './use-realtime-query';
+export { useRealtimeReconnect } from './use-realtime-reconnect';
 export { useCompanyAppConfig } from './use-company-app-config';
 export { useFloatingTabBarInset } from './use-floating-tab-bar-inset';
 export { useModalBottomSheet } from './use-modal-bottom-sheet';
@@ -13,6 +14,7 @@ export { useModuleEnabled, useProductModuleEnabled, useCompanyModuleEnabled } fr
 export { useMobileScanResolve, useMobileScanDisambiguate, useMobileScanOcr, useMobileScanFeedback } from './use-mobile-scan';
 export { useMobileQuickReceive } from './use-mobile-quick-receive';
 export { useMobileStockAdjust } from './use-mobile-stock-adjust';
+export { useMobileCreateInventoryItem } from './use-mobile-create-inventory-item';
 export { useOptimisticStockAdjust } from './use-optimistic-stock-adjust';
 export { useCompanySubscription } from './use-company-subscription';
 export { useActiveCompanyName } from './use-active-company-name';

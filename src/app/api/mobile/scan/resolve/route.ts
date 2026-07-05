@@ -33,7 +33,9 @@ export async function POST(request: NextRequest) {
 
     const result = useDisambiguate
       ? await disambiguateMobileScan(access.companyId, barcode)
-      : await resolveMobileScan(access.companyId, barcode);
+      : await resolveMobileScan(access.companyId, barcode, {
+          strictBarcode: source === "camera",
+        });
 
     void recordScanEvent({
       companyId: access.companyId,

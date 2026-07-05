@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 
 import { useAuthStore } from '@/store/auth-store';
 import { useClientsRealtime } from '@/hooks/use-clients-realtime';
@@ -12,7 +13,7 @@ import { useVehiclesRealtime } from '@/hooks/use-vehicles-realtime';
 import { useWorkOrdersRealtime } from '@/hooks/use-work-orders-realtime';
 import { isProductionCompanyId, normalizeCompanyId } from '@/lib/company-id';
 import { preloadSessionSnapshots } from '@/lib/realtime/preload-session-snapshots';
-import { clearRealtimeSubscriptions } from '@/lib/realtime/subscription-registry';
+import { clearRealtimeSubscriptions, reconnectRealtimeSubscriptions } from '@/lib/realtime/subscription-registry';
 import { hydrateSearchIdleCache } from '@/lib/search/search-idle-cache';
 
 const KEEP = { keepAlive: true } as const;
@@ -49,6 +50,18 @@ export function SessionRealtimeHead() {
       clearRealtimeSubscriptions();
     }
   }, [companyId]);
+
+  useEffect(() => {
+    if (!active) return;
+
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        reconnectRealtimeSubscriptions();
+      }
+    });
+
+    return () => subscription.remove();
+  }, [active]);
 
   useCompanyAppConfig(active ? companyId : null, KEEP);
   useWorkOrdersRealtime(active ? companyId : null, KEEP);

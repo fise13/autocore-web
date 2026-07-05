@@ -91,6 +91,13 @@ export type MobileQuickReceiveResult = {
 
 export type MobileQuickAdjustResult = MobileQuickReceiveResult;
 
+export type MobileCreateInventoryItemResult = {
+  itemId: string;
+  sku: string;
+  name: string;
+  barcode: string;
+};
+
 export type ScanOcrResolveResponse = {
   ocr: {
     rawText?: string;

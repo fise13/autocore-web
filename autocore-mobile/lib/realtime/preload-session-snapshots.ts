@@ -1,10 +1,9 @@
 import { queryClient } from '@/lib/query-client';
 import { readRealtimeSnapshotSync } from '@/lib/realtime/snapshot-cache';
 import { sessionBootstrapQueryKeys } from '@/lib/realtime/session-bootstrap-keys';
-import { seedRealtimeRegistryEntry } from '@/lib/realtime/subscription-registry';
 import { markStartup } from '@/lib/performance/startup-tracer';
 
-/** Sync-hydrate session realtime snapshots into registry + React Query. */
+/** Sync-hydrate session realtime snapshots into React Query (listeners start separately). */
 export function preloadSessionSnapshots(companyId: string, uid: string | null): number {
   let hydrated = 0;
   const keys = sessionBootstrapQueryKeys(companyId, uid);
@@ -13,7 +12,6 @@ export function preloadSessionSnapshots(companyId: string, uid: string | null): 
     const cached = readRealtimeSnapshotSync<unknown>(queryKey);
     if (cached === null) continue;
 
-    seedRealtimeRegistryEntry(queryKey, cached);
     queryClient.setQueryData(queryKey, cached);
     hydrated += 1;
   }

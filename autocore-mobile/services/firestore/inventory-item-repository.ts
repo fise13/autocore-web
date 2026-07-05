@@ -89,7 +89,11 @@ export function createInventoryItemRepository() {
       return onSnapshot(
         q,
         (snapshot) =>
-          onData(snapshot.docs.map((item) => mapItem(item.id, item.data() as Record<string, unknown>))),
+          onData(
+            snapshot.docs
+              .map((item) => mapItem(item.id, item.data() as Record<string, unknown>))
+              .filter((item) => item.status === 'active' || item.status === 'discontinued'),
+          ),
         (error) => notifyFirestoreSnapshotError(error, onError),
       );
     },

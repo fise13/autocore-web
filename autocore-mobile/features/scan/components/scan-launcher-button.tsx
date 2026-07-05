@@ -9,6 +9,7 @@ import { haptics } from '@/theme';
 
 type ScanLauncherButtonProps = {
   orderId?: string;
+  orderLabel?: string;
   label?: string;
   compact?: boolean;
   onScanResult?: (result: ScanOrderResult) => void;
@@ -16,25 +17,31 @@ type ScanLauncherButtonProps = {
 
 export function ScanLauncherButton({
   orderId,
-  label = 'Сканировать',
+  orderLabel,
+  label,
   compact,
   onScanResult,
 }: ScanLauncherButtonProps) {
   const { colors } = useTheme();
   const router = useRouter();
+  const isOrderFlow = onScanResult != null;
+  const buttonLabel = label ?? (isOrderFlow ? 'Сканировать запчасть' : 'Сканировать');
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={buttonLabel}
       onPress={() => {
         haptics.light();
         scanContextStore.begin({
           mode: 'order',
           orderId,
+          orderLabel,
           onComplete: onScanResult,
         });
-        router.push('/(tabs)/scan' as Href);
+        router.push(
+          (isOrderFlow ? '/(tabs)/orders/scan' : '/(tabs)/scan') as Href,
+        );
       }}
       style={{
         flexDirection: 'row',
@@ -51,7 +58,7 @@ export function ScanLauncherButton({
     >
       <ScanSearchIcon size="sm" color={colors.primary} strokeWidth={1.85} />
       <Text variant="caption" style={{ fontWeight: '700', color: colors.primary }}>
-        {label}
+        {buttonLabel}
       </Text>
     </Pressable>
   );
@@ -59,14 +66,26 @@ export function ScanLauncherButton({
 
 export function ScanLauncherRow({
   orderId,
+  orderLabel,
   onScanResult,
 }: {
   orderId?: string;
+  orderLabel?: string;
   onScanResult?: (result: ScanOrderResult) => void;
 }) {
+  const { colors } = useTheme();
+
   return (
-    <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-      <ScanLauncherButton orderId={orderId} onScanResult={onScanResult} compact />
+    <View style={{ gap: 8, alignItems: 'flex-end' }}>
+      <Text variant="caption" style={{ color: colors.mutedForeground, textAlign: 'right' }}>
+        Штрихкод добавит позицию в этот заказ-наряд
+      </Text>
+      <ScanLauncherButton
+        orderId={orderId}
+        orderLabel={orderLabel}
+        onScanResult={onScanResult}
+        compact
+      />
     </View>
   );
 }

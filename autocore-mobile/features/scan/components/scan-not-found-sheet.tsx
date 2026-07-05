@@ -131,7 +131,7 @@ export const ScanNotFoundSheet = forwardRef<BottomSheetModal, ScanNotFoundSheetP
           {!isUrl ? (
             <>
               <OptionButton
-                label={orderContext ? 'Создать товар' : 'Создать новый товар'}
+                label={orderContext ? 'Создать товар на складе' : 'Создать новый товар'}
                 onPress={onCreateItem}
                 primary
               />

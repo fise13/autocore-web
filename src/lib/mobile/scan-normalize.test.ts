@@ -32,4 +32,9 @@ describe("scan-fuzzy", () => {
     assert.equal(ranked[0]?.item.id, "1");
     assert.ok(ranked[0]!.score > 0.5);
   });
+
+  it("does not fuzzy-match numeric barcodes by prefix or typo", () => {
+    const ranked = rankFuzzyScanCandidates("4012345678902", items, 3);
+    assert.equal(ranked.length, 0);
+  });
 });

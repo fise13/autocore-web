@@ -11,11 +11,19 @@ type Subscriber<T> = {
   onError: (error: RealtimeError) => void;
 };
 
+type SubscribeFactory = (
+  onData: (data: unknown) => void,
+  onError: (error: RealtimeError) => void,
+) => () => void;
+
 type RegistryEntry = {
+  queryKey: readonly unknown[];
   unsubscribe: () => void;
   subscribers: Set<Subscriber<unknown>>;
   keepAlive: boolean;
   ready: boolean;
+  listening: boolean;
+  subscribeFactory?: SubscribeFactory;
   lastData?: unknown;
   lastError?: RealtimeError | null;
 };
@@ -44,28 +52,45 @@ function applyCachedSnapshot<T>(key: string, cached: T): void {
   notifyReadyListeners();
 }
 
-/** Seed in-memory registry from MMKV preload without starting a listener. */
+function attachListener(entry: RegistryEntry): void {
+  if (!entry.subscribeFactory || entry.listening) return;
+
+  entry.unsubscribe = entry.subscribeFactory(
+    (data) => {
+      const wasReady = entry.ready;
+      entry.ready = true;
+      entry.lastData = data;
+      entry.lastError = null;
+      writeRealtimeSnapshotSync(entry.queryKey, data);
+      for (const sub of entry.subscribers) {
+        (sub.onData as (value: unknown) => void)(data);
+      }
+      if (!wasReady) notifyReadyListeners();
+    },
+    (error) => {
+      const wasReady = entry.ready;
+      entry.ready = true;
+      entry.lastError = error;
+      for (const sub of entry.subscribers) {
+        sub.onError(error);
+      }
+      if (!wasReady) notifyReadyListeners();
+    },
+  );
+  entry.listening = true;
+}
+
+/** Update an existing live entry from MMKV preload — never creates phantom entries. */
 export function seedRealtimeRegistryEntry<T>(queryKey: readonly unknown[], data: T): void {
   const key = keyOf(queryKey);
-  let entry = registry.get(key);
+  const entry = registry.get(key);
+  if (!entry) return;
 
-  if (!entry) {
-    entry = {
-      unsubscribe: () => undefined,
-      subscribers: new Set(),
-      keepAlive: false,
-      ready: true,
-      lastData: data,
-      lastError: null,
-    };
-    registry.set(key, entry);
-  } else {
-    entry.ready = true;
-    entry.lastData = data;
-    entry.lastError = null;
-    for (const sub of entry.subscribers) {
-      (sub.onData as (value: T) => void)(data);
-    }
+  entry.ready = true;
+  entry.lastData = data;
+  entry.lastError = null;
+  for (const sub of entry.subscribers) {
+    (sub.onData as (value: T) => void)(data);
   }
 
   notifyReadyListeners();
@@ -89,48 +114,33 @@ export function acquireRealtimeSubscription<T>(
 
   if (!entry) {
     const subscribers = new Set<Subscriber<unknown>>();
-    const created: RegistryEntry = {
+    entry = {
+      queryKey,
       unsubscribe: () => undefined,
       subscribers,
       keepAlive: Boolean(options?.keepAlive),
       ready: false,
+      listening: false,
       lastError: null,
+      subscribeFactory: subscribe as SubscribeFactory,
     };
 
     const cached = readRealtimeSnapshotSync<T>(queryKey);
     if (cached !== null) {
-      created.ready = true;
-      created.lastData = cached;
+      entry.ready = true;
+      entry.lastData = cached;
     }
 
-    created.unsubscribe = subscribe(
-      (data) => {
-        const wasReady = created.ready;
-        created.ready = true;
-        created.lastData = data;
-        created.lastError = null;
-        writeRealtimeSnapshotSync(queryKey, data);
-        for (const sub of created.subscribers) {
-          (sub.onData as (value: T) => void)(data);
-        }
-        if (!wasReady) notifyReadyListeners();
-      },
-      (error) => {
-        const wasReady = created.ready;
-        created.ready = true;
-        created.lastError = error;
-        for (const sub of created.subscribers) {
-          sub.onError(error);
-        }
-        if (!wasReady) notifyReadyListeners();
-      },
-    );
-
-    registry.set(key, created);
-    entry = created;
+    registry.set(key, entry);
+    attachListener(entry);
 
     if (cached !== null) {
       applyCachedSnapshot(key, cached);
+    }
+  } else {
+    entry.subscribeFactory = subscribe as SubscribeFactory;
+    if (!entry.listening) {
+      attachListener(entry);
     }
   }
 
@@ -157,9 +167,27 @@ export function acquireRealtimeSubscription<T>(
 
     if (current.subscribers.size === 0 && !current.keepAlive) {
       current.unsubscribe();
+      current.listening = false;
       registry.delete(key);
     }
   };
+}
+
+/** Restart Firestore listeners to pick up changes missed while backgrounded. */
+export function reconnectRealtimeSubscriptions(
+  queryKeys?: readonly (readonly unknown[])[],
+): void {
+  const keys = queryKeys?.map(keyOf) ?? [...registry.keys()];
+
+  for (const key of keys) {
+    const entry = registry.get(key);
+    if (!entry?.listening || !entry.subscribeFactory) continue;
+    if (!entry.keepAlive && entry.subscribers.size === 0) continue;
+
+    entry.unsubscribe();
+    entry.listening = false;
+    attachListener(entry);
+  }
 }
 
 /** Tear down every shared listener (sign-out or company switch). */

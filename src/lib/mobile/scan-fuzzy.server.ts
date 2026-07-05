@@ -16,6 +16,14 @@ const WEIGHTS = {
   stock: 0.08,
 } as const;
 
+/** GTIN/EAN-style codes must match exactly — no prefix or typo guessing. */
+export function isBarcodeLikeCode(value: string): boolean {
+  const c = compact(value);
+  if (c.length < 8) return false;
+  if (/^\d{8,14}$/.test(c)) return true;
+  return /^[A-Z0-9]{10,}$/i.test(c) && /\d{4,}/.test(c);
+}
+
 function isSubsequence(needle: string, haystack: string): boolean {
   if (!needle) return false;
   let i = 0;
@@ -37,6 +45,11 @@ function scoreCode(query: string, code: string): { score: number; reason: string
   const c = compact(code);
   if (!q || !c) return null;
   if (q === c) return { score: WEIGHTS.exact, reason: "Точное совпадение кода" };
+
+  if (isBarcodeLikeCode(query) || isBarcodeLikeCode(code)) {
+    return null;
+  }
+
   if (c.startsWith(q) || q.startsWith(c)) {
     return { score: WEIGHTS.prefix, reason: "Совпадение по префиксу" };
   }
@@ -81,7 +94,7 @@ export function rankFuzzyScanCandidates(
     }
 
     const nameScore = scoreCode(query, item.name);
-    if (nameScore && nameScore.score >= WEIGHTS.prefix * 0.85) {
+    if (nameScore && nameScore.score >= WEIGHTS.prefix * 0.85 && !isBarcodeLikeCode(query)) {
       const candidate: FuzzyScanCandidate = {
         item,
         score: nameScore.score * 0.7 + WEIGHTS.stock * stockSignal(item),

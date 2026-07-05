@@ -7,10 +7,6 @@ import { useRouter, type Href } from 'expo-router';
 import { toast } from '@/components/ui';
 import { useAddToOrderFlow } from '@/features/orders/hooks/use-add-to-order-flow';
 import {
-  navigateEditOrderWithPart,
-  navigateNewOrderWithPart,
-} from '@/features/orders/lib/order-composition-nav';
-import {
   useMobileScanDisambiguate,
   useMobileScanFeedback,
   useMobileScanOcr,
@@ -206,7 +202,6 @@ export function useScanExperience(initialContext?: ScanContext) {
 
       if (outcome.kind === 'product') {
         const itemId = outcome.result.id;
-        const ctx = snapshotRef.current.context;
         scanContextStore.complete({ type: 'added', itemId });
         presentedKeyRef.current = null;
         service.dismissSheet();
@@ -215,16 +210,11 @@ export function useScanExperience(initialContext?: ScanContext) {
         notFoundSheetRef.current?.dismiss();
 
         requestAnimationFrame(() => {
-          if (ctx.mode === 'order' && ctx.orderId) {
-            navigateEditOrderWithPart(router, ctx.orderId, itemId);
-          } else {
-            navigateNewOrderWithPart(router, itemId);
-          }
           if (router.canGoBack()) router.back();
         });
 
         haptics.success();
-        toast({ title: 'Добавлено в наряд', variant: 'success' });
+        toast({ title: 'Запчасть добавлена в наряд', variant: 'success' });
         return true;
       }
 
@@ -313,16 +303,12 @@ export function useScanExperience(initialContext?: ScanContext) {
           void rememberRecentScan({ payload, label: outcome.result.title, itemId: outcome.result.id });
 
           if (snapshotRef.current.context.mode === 'order') {
-            const ctx = snapshotRef.current.context;
-            if (ctx.mode === 'order') {
-              scanContextStore.complete({ type: 'added', itemId: outcome.result.id });
-              if (ctx.orderId) {
-                navigateEditOrderWithPart(router, ctx.orderId, outcome.result.id);
-              } else {
-                navigateNewOrderWithPart(router, outcome.result.id);
-              }
+            scanContextStore.complete({ type: 'added', itemId: outcome.result.id });
+            requestAnimationFrame(() => {
               if (router.canGoBack()) router.back();
-            }
+            });
+            haptics.success();
+            toast({ title: 'Запчасть добавлена в наряд', variant: 'success' });
             return;
           }
 
@@ -372,27 +358,20 @@ export function useScanExperience(initialContext?: ScanContext) {
   const handleCreateItem = useCallback(() => {
     const state = snapshotRef.current;
     const payload = state.pendingPayload ?? '';
+    if (!payload.trim()) return;
+
     const orderMode = state.context.mode === 'order';
     const orderId = state.context.mode === 'order' ? state.context.orderId : undefined;
+    const orderLabel = state.context.mode === 'order' ? state.context.orderLabel : undefined;
 
     dismissSheet(notFoundSheetRef, () => {
+      const query = new URLSearchParams({ barcode: payload.trim() });
       if (orderMode) {
-        scanContextStore.complete({ type: 'create-item', barcode: payload });
-        if (router.canGoBack()) {
-          router.back();
-        } else if (orderId) {
-          router.navigate(`/(tabs)/orders/${encodeURIComponent(orderId)}/edit` as Href);
-        } else {
-          router.navigate('/(tabs)/orders/new' as Href);
-        }
-        return;
+        query.set('context', 'order');
+        if (orderId) query.set('orderId', orderId);
+        if (orderLabel) query.set('orderLabel', orderLabel);
       }
-
-      router.navigate(
-        payload
-          ? (`/(tabs)/search?q=${encodeURIComponent(payload)}` as Href)
-          : ('/(tabs)/search' as Href),
-      );
+      router.push(`/(tabs)/orders/create-item?${query.toString()}` as Href);
     });
   }, [dismissSheet, router]);
 

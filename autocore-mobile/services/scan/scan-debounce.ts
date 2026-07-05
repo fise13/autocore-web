@@ -24,7 +24,7 @@ export class ScanDebounce {
   }
 
   private get stableMs() {
-    return this.options.stableMs ?? 160;
+    return this.options.stableMs ?? 200;
   }
 
   /** Visual tracking — always allowed while camera is active. */

@@ -1,5 +1,5 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { Keyboard, TextInput, View } from 'react-native';
+import { Keyboard, RefreshControl, TextInput, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Loading, Screen, ScreenScroll, Surface, Text, toast } from '@/components/ui';
@@ -19,6 +19,7 @@ import {
   useSearchIdleData,
   useMotorsRealtime,
   useCompanyModuleEnabled,
+  useRealtimeReconnect,
 } from '@/hooks';
 import { rememberSearchQuery } from '@/lib/search/recent-queries';
 import { isMotorStale, isWarehouseLowStock, motorMatchesSearchQuery } from '@/lib/inventory/is-low-stock';
@@ -82,6 +83,25 @@ export function SearchScreen() {
   const idleData = useSearchIdleData(companyId);
   const addToOrderFlow = useAddToOrderFlow();
   const sellSheetRef = useRef<SellMotorSheetRef>(null);
+  const reconnectRealtime = useRealtimeReconnect();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refreshSearchData = useCallback(() => {
+    if (!companyId) return;
+    reconnectRealtime([
+      ['realtime', 'inventory-items', companyId],
+      ['realtime', 'clients', companyId],
+      ['realtime', 'work-orders', companyId],
+      ...(uid ? [['realtime', 'motors', companyId, uid] as const] : []),
+    ]);
+  }, [companyId, reconnectRealtime, uid]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    refreshSearchData();
+    idleData.refreshRecentQueries();
+    setRefreshing(false);
+  }, [idleData.refreshRecentQueries, refreshSearchData]);
 
   const handleSellMotor = useCallback(
     (motorId: string) => {
@@ -254,7 +274,12 @@ export function SearchScreen() {
 
   return (
     <Screen>
-      <ScreenScroll tabBarInset onScrollBeginDrag={Keyboard.dismiss} decelerationRate="normal">
+      <ScreenScroll
+        tabBarInset
+        onScrollBeginDrag={Keyboard.dismiss}
+        decelerationRate="normal"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
         <SearchHeader onSettingsPress={() => router.navigate('/(tabs)/profile')} />
 
         <Surface inset style={{ marginTop: rhythm.tight, gap: rhythm.stack, marginBottom: rhythm.tight }}>

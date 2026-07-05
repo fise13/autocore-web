@@ -230,6 +230,41 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
 
   const handleScanResult = useCallback(
     (result: ScanOrderResult) => {
+      if (result.type === 'added') {
+        const item = inventoryItems.find((entry) => entry.id === result.itemId);
+        if (!item) {
+          toast({
+            title: 'Позиция не найдена',
+            description: 'Обновите каталог и попробуйте снова',
+            variant: 'warning',
+          });
+          return;
+        }
+        composition.setPartLines((lines) => {
+          if (lines.some((line) => line.itemId === item.id)) return lines;
+          return [
+            ...lines,
+            {
+              id: nextComposerLineId('part'),
+              name: item.name,
+              quantity: 1,
+              unitPrice: resolveInventoryUnitPrice(item),
+              sku: item.sku,
+              itemId: item.id,
+              source: 'warehouse',
+              unitCost: item.purchasePrice ?? 0,
+            },
+          ];
+        });
+        setTab('parts');
+        setStep(2);
+        toast({
+          title: 'Запчасть добавлена',
+          description: item.name,
+          variant: 'success',
+        });
+        return;
+      }
       if (result.type === 'adhoc') {
         composition.setPartSku(result.barcode);
         if (result.name) composition.setPartName(result.name);
@@ -242,19 +277,13 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
         });
         return;
       }
-      if (result.type === 'create-item') {
-        composition.setPartSku(result.barcode);
-        setTab('parts');
-        setStep(2);
-        toast({
-          title: 'Новый товар',
-          description: `Штрихкод ${result.barcode} готов к созданию`,
-          variant: 'default',
-        });
-      }
     },
-    [composition],
+    [composition, inventoryItems, setTab],
   );
+
+  const orderScanLabel = isEdit
+    ? `наряд №${existingOrder?.number ?? ''}`
+    : 'новый заказ-наряд';
 
   useEffect(() => {
     if (!isEdit || !existingOrder || hydrated) return;
@@ -683,6 +712,7 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
             specificsEnabled={specificsEnabled}
             motorsEnabled={motorsEnabled}
             orderId={orderId}
+            orderLabel={orderScanLabel}
             onScanResult={handleScanResult}
           />
         </Animated.View>

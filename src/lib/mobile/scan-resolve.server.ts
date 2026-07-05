@@ -31,12 +31,16 @@ const RESOLVE_CACHE = new Map<string, ResolveCacheEntry>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const CACHE_LIMIT = 500;
 
-function cacheKey(companyId: string, barcode: string): string {
-  return `${companyId}::${barcode}`;
+function cacheKey(companyId: string, barcode: string, strict = false): string {
+  return `${companyId}::${strict ? "strict:" : "loose:"}${barcode}`;
 }
 
-function readCache(companyId: string, barcode: string): MobileScanResolveResult | null {
-  const key = cacheKey(companyId, barcode);
+function readCache(
+  companyId: string,
+  barcode: string,
+  strict = false,
+): MobileScanResolveResult | null {
+  const key = cacheKey(companyId, barcode, strict);
   const entry = RESOLVE_CACHE.get(key);
   if (!entry) return null;
   if (entry.expiresAt < Date.now()) {
@@ -46,12 +50,17 @@ function readCache(companyId: string, barcode: string): MobileScanResolveResult 
   return entry.result;
 }
 
-function writeCache(companyId: string, barcode: string, result: MobileScanResolveResult): void {
+function writeCache(
+  companyId: string,
+  barcode: string,
+  result: MobileScanResolveResult,
+  strict = false,
+): void {
   if (RESOLVE_CACHE.size >= CACHE_LIMIT) {
     const firstKey = RESOLVE_CACHE.keys().next().value;
     if (firstKey) RESOLVE_CACHE.delete(firstKey);
   }
-  RESOLVE_CACHE.set(cacheKey(companyId, barcode), {
+  RESOLVE_CACHE.set(cacheKey(companyId, barcode, strict), {
     expiresAt: Date.now() + CACHE_TTL_MS,
     result,
   });
@@ -147,9 +156,11 @@ async function loadItem(
 async function resolveExactTier(
   companyId: string,
   variants: string[],
+  options?: { includeSearchTokens?: boolean },
 ): Promise<{ itemId: string; matchType: MobileScanMatchType } | null> {
   const db = getAdminFirestore();
   const normalizedCompanyId = normalizeCompanyId(companyId);
+  const includeSearchTokens = options?.includeSearchTokens ?? true;
 
   for (const variant of variants) {
     const mappingSnap = await db
@@ -186,6 +197,10 @@ async function resolveExactTier(
     if (!barcodeSnap.empty) {
       return { itemId: barcodeSnap.docs[0]!.id, matchType: "barcode_field" };
     }
+  }
+
+  if (!includeSearchTokens) {
+    return null;
   }
 
   const tokens = [...new Set(variants.map(scanToken).filter((token) => token.length >= 3))];
@@ -252,32 +267,35 @@ function successResult(
 export async function resolveMobileScan(
   companyId: string,
   rawBarcode: string,
-  options?: { skipCache?: boolean; skipFuzzy?: boolean },
+  options?: { skipCache?: boolean; skipFuzzy?: boolean; strictBarcode?: boolean },
 ): Promise<MobileScanResolveResult> {
   const barcode = primaryScanCode(rawBarcode) || normalizeBarcode(rawBarcode);
   const normalizedCompanyId = normalizeCompanyId(companyId);
+  const strictBarcode = options?.strictBarcode ?? false;
 
   if (!barcode) return emptyResult("");
 
   if (!options?.skipCache) {
-    const cached = readCache(normalizedCompanyId, barcode);
+    const cached = readCache(normalizedCompanyId, barcode, strictBarcode);
     if (cached) return cached;
   }
 
   const variants = buildScanCodeVariants(rawBarcode);
-  const exact = await resolveExactTier(normalizedCompanyId, variants);
+  const exact = await resolveExactTier(normalizedCompanyId, variants, {
+    includeSearchTokens: !strictBarcode,
+  });
   if (exact) {
     const item = await loadItem(normalizedCompanyId, exact.itemId);
     if (!item) return emptyResult(barcode);
     const stockLevels = await loadStockLevels(normalizedCompanyId, exact.itemId);
     const result = successResult(barcode, exact.matchType, item, stockLevels, 1);
-    writeCache(normalizedCompanyId, barcode, result);
+    writeCache(normalizedCompanyId, barcode, result, strictBarcode);
     return result;
   }
 
-  if (options?.skipFuzzy) {
+  if (options?.skipFuzzy || strictBarcode) {
     const result = emptyResult(barcode);
-    writeCache(normalizedCompanyId, barcode, result);
+    writeCache(normalizedCompanyId, barcode, result, strictBarcode);
     return result;
   }
 
@@ -285,7 +303,7 @@ export async function resolveMobileScan(
   const ranked = rankFuzzyScanCandidates(barcode, pool, 5);
   if (ranked.length === 0) {
     const result = emptyResult(barcode);
-    writeCache(normalizedCompanyId, barcode, result);
+    writeCache(normalizedCompanyId, barcode, result, strictBarcode);
     return result;
   }
 
@@ -298,7 +316,8 @@ export async function resolveMobileScan(
   }));
 
   const ambiguous = ranked.length > 1 && ranked[1]!.score >= top.score - 0.1;
-  if (ambiguous || top.score < 0.8) {
+  const autoAcceptThreshold = isBarcodeLikeCode(barcode) ? 0.99 : 0.8;
+  if (ambiguous || top.score < autoAcceptThreshold) {
     const result: MobileScanResolveResult = {
       found: false,
       confidence: top.score,
@@ -308,12 +327,12 @@ export async function resolveMobileScan(
       candidates,
       stockLevels: [],
     };
-    writeCache(normalizedCompanyId, barcode, result);
+    writeCache(normalizedCompanyId, barcode, result, strictBarcode);
     return result;
   }
 
   const result = successResult(barcode, "fuzzy", top.item, stockLevels, top.score, candidates);
-  writeCache(normalizedCompanyId, barcode, result);
+  writeCache(normalizedCompanyId, barcode, result, strictBarcode);
   return result;
 }
 

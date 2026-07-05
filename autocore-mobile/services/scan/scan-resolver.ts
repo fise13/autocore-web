@@ -65,7 +65,7 @@ export async function resolveScanPhoto(
   if (mapped.kind === 'document') return mapped;
 
   if (ocrResult.resolve) {
-    return mapApiResolve(ocrResult.extractedCodes[0] ?? uri, ocrResult.resolve);
+    return mapApiResolve(ocrResult.extractedCodes[0] ?? uri, ocrResult.resolve, 'ocr');
   }
 
   return resolveScanPayload(deps, {

@@ -30,11 +30,23 @@ export function classifyPayloadOutcome(payload: string): ScanOutcome | 'barcode'
   return 'barcode';
 }
 
-export function mapApiResolve(payload: string, apiResult: MobileScanResolveResult | null): ScanOutcome {
+export function mapApiResolve(
+  payload: string,
+  apiResult: MobileScanResolveResult | null,
+  source?: ScanResolveRequest['source'],
+): ScanOutcome {
   if (apiResult) {
-    const mapped = mapResolveResultToScanResult(apiResult);
-    if (mapped) {
-      return { kind: 'product', result: mapped, payload };
+    const weakMatch =
+      apiResult.matchType === 'fuzzy' ||
+      apiResult.matchType === 'search_token' ||
+      apiResult.matchType === 'ai';
+    const strictCamera = source === 'camera';
+
+    if (apiResult.found && apiResult.item && !(strictCamera && weakMatch)) {
+      const mapped = mapResolveResultToScanResult(apiResult);
+      if (mapped) {
+        return { kind: 'product', result: mapped, payload };
+      }
     }
 
     if (apiResult.candidates.length > 0) {
@@ -79,7 +91,7 @@ export async function resolveBarcodePayload(
   if (request.canInventoryView) {
     try {
       const result = await apiResolve(request.payload, request.source);
-      return mapApiResolve(request.payload, result);
+      return mapApiResolve(request.payload, result, request.source);
     } catch {
       if (request.allowMock) {
         const mock = resolveScanPayload(request.payload);
@@ -126,5 +138,5 @@ export function mapOcrResponse(
   const classified = classifyPayloadOutcome(code);
   if (classified !== 'barcode') return classified;
 
-  return mapApiResolve(code, ocrResult.resolve);
+  return mapApiResolve(code, ocrResult.resolve, 'ocr');
 }

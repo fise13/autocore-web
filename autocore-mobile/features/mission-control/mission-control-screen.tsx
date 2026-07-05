@@ -1,9 +1,8 @@
 import { memo, useCallback, useState } from 'react';
 import { RefreshControl, View } from 'react-native';
-import { useQueryClient } from '@tanstack/react-query';
 
 import { Screen, ScreenScroll } from '@/components/ui';
-import { useMissionControlData } from '@/hooks';
+import { useMissionControlData, useRealtimeReconnect } from '@/hooks';
 
 import { McActivityFeed } from './components/mc-activity-feed';
 import { McFeaturedInsight } from './components/mc-featured-insight';
@@ -33,14 +32,14 @@ function MissionControlBody() {
 const MemoBody = memo(MissionControlBody);
 
 export function MissionControlScreen() {
-  const queryClient = useQueryClient();
+  const reconnectRealtime = useRealtimeReconnect();
   const [refreshing, setRefreshing] = useState(false);
 
-  const onRefresh = useCallback(async () => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
-    await queryClient.invalidateQueries({ queryKey: ['realtime'] });
+    reconnectRealtime();
     setRefreshing(false);
-  }, [queryClient]);
+  }, [reconnectRealtime]);
 
   return (
     <Screen>
