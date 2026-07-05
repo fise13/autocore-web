@@ -1,14 +1,14 @@
 import { Pressable, View } from 'react-native';
-import Animated from 'react-native-reanimated';
+import Reanimated from 'react-native-reanimated';
 
-import { CarIcon } from '@/assets/icons';
 import { Badge, Text } from '@/components/ui';
-import { useTheme } from '@/hooks';
 import { usePressAnimation } from '@/animations';
+import { useTheme } from '@/hooks';
 import { haptics } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
 
-import { formatPrice, formatVin } from '../lib/format';
+import { searchTimeline, useSearchEnter } from '../animation';
+import { formatPrice, formatVin, inventoryCardSubtitle, normalizeInventoryCode } from '../lib/format';
 import { statusLabel, statusVariant } from '../lib/status';
 import { searchLayout } from '../layout';
 import type { SearchEngine, SearchResultItem } from '../types';
@@ -16,6 +16,7 @@ import type { SearchEngine, SearchResultItem } from '../types';
 type SearchEngineCardProps = {
   engine: SearchEngine | SearchResultItem;
   compact?: boolean;
+  index?: number;
   onPress?: () => void;
 };
 
@@ -23,15 +24,37 @@ function isEngine(entity: SearchEngine | SearchResultItem): entity is SearchEngi
   return 'code' in entity && 'vehicle' in entity;
 }
 
-export function SearchEngineCard({ engine, compact = false, onPress }: SearchEngineCardProps) {
+function hasShelfValue(shelf?: string): shelf is string {
+  const trimmed = shelf?.trim();
+  return Boolean(trimmed && trimmed !== '—' && trimmed !== '-');
+}
+
+export function SearchEngineCard({
+  engine,
+  compact = false,
+  index = 0,
+  onPress,
+}: SearchEngineCardProps) {
   const { colors } = useTheme();
   const { style: pressStyle, onPressIn, onPressOut } = usePressAnimation(0.98);
-  const code = isEngine(engine) ? engine.code : engine.title;
-  const vehicle = isEngine(engine) ? engine.vehicle : engine.subtitle ?? '';
+  const enterStyle = useSearchEnter({
+    delay: searchTimeline.idleViewed + index * 40,
+    translateY: 8,
+    duration: 280,
+  });
+
+  const rawCode = isEngine(engine) ? engine.code : engine.title;
+  const code = normalizeInventoryCode(rawCode);
+  const rawVehicle = isEngine(engine) ? engine.vehicle : engine.subtitle ?? engine.meta ?? '';
+  const subtitle = isEngine(engine)
+    ? engine.vehicle.trim() || undefined
+    : (inventoryCardSubtitle(code, rawVehicle) ?? rawVehicle.trim()) || undefined;
   const status = engine.status ?? 'in_stock';
   const shelf = engine.shelf;
   const price = engine.price;
   const vin = engine.vin;
+  const showShelf = hasShelfValue(shelf);
+  const showPrice = typeof price === 'number' && price > 0;
 
   const content = (
     <View
@@ -40,64 +63,106 @@ export function SearchEngineCard({ engine, compact = false, onPress }: SearchEng
         borderWidth: searchLayout.hairline,
         borderColor: colors.border,
         backgroundColor: colors.card,
-        padding: compact ? 12 : 14,
-        minHeight: compact ? 96 : searchLayout.engineCardHeight,
-        gap: 8,
+        overflow: 'hidden',
+        minHeight: compact ? 92 : searchLayout.engineCardHeight,
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-        <View style={{ flex: 1, gap: 3 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <Text variant="body" style={{ fontSize: compact ? 15 : 16, fontWeight: '700', letterSpacing: -0.2 }}>
-              {code}
-            </Text>
-            <Badge variant={statusVariant[status]}>{statusLabel[status]}</Badge>
-          </View>
-          <Text variant="caption" color="muted" style={{ fontSize: searchLayout.meta, lineHeight: 16 }}>
-            {vehicle}
-          </Text>
-        </View>
-        <View
+      <View
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: searchLayout.accentWidth,
+          backgroundColor: colors.primary,
+        }}
+      />
+
+      <View style={{ padding: compact ? 12 : 14, paddingLeft: compact ? 14 : 16, gap: compact ? 6 : 8 }}>
+        <Text
+          variant="body"
+          numberOfLines={1}
           style={{
-            width: compact ? 38 : searchLayout.engineThumb,
-            height: compact ? 38 : searchLayout.engineThumb,
-            borderRadius: 10,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: toneBackground(colors.mutedForeground, 0.08),
-            borderWidth: searchLayout.hairline,
-            borderColor: colors.border,
+            fontSize: compact ? 15 : 16,
+            fontWeight: '700',
+            letterSpacing: -0.3,
+            fontVariant: ['tabular-nums'],
           }}
         >
-          <CarIcon size="sm" color={colors.mutedForeground} strokeWidth={1.75} />
-        </View>
-      </View>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        {shelf ? (
-          <Text variant="caption" color="muted" style={{ fontSize: searchLayout.meta }}>
-            Полка {shelf}
-          </Text>
-        ) : null}
-        {price ? (
-          <Text variant="body" style={{ fontSize: compact ? 13 : 14, fontWeight: '700', fontVariant: ['tabular-nums'] }}>
-            {formatPrice(price)}
-          </Text>
-        ) : null}
-      </View>
-
-      {vin ? (
-        <Text variant="caption" color="muted" style={{ fontSize: 10, fontVariant: ['tabular-nums'] }}>
-          VIN {formatVin(vin)}
+          {code}
         </Text>
-      ) : null}
+
+        {subtitle ? (
+          <Text
+            variant="caption"
+            color="muted"
+            numberOfLines={1}
+            style={{ fontSize: searchLayout.meta, lineHeight: 16 }}
+          >
+            {subtitle}
+          </Text>
+        ) : null}
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <Badge variant={statusVariant[status]}>{statusLabel[status]}</Badge>
+          {showShelf || showPrice ? (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                flexShrink: 1,
+                justifyContent: 'flex-end',
+              }}
+            >
+              {showShelf ? (
+                <Text variant="caption" color="muted" numberOfLines={1} style={{ fontSize: searchLayout.meta }}>
+                  {shelf}
+                </Text>
+              ) : null}
+              {showPrice ? (
+                <Text
+                  variant="body"
+                  numberOfLines={1}
+                  style={{
+                    fontSize: compact ? 13 : 14,
+                    fontWeight: '700',
+                    fontVariant: ['tabular-nums'],
+                    color: colors.primary,
+                  }}
+                >
+                  {formatPrice(price!)}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+
+        {vin ? (
+          <View
+            style={{
+              alignSelf: 'flex-start',
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              borderRadius: 6,
+              backgroundColor: toneBackground(colors.mutedForeground, 0.08),
+            }}
+          >
+            <Text variant="caption" color="muted" style={{ fontSize: 10, fontVariant: ['tabular-nums'] }}>
+              VIN {formatVin(vin)}
+            </Text>
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 
-  if (!onPress) return content;
+  if (!onPress) {
+    return <Reanimated.View style={enterStyle}>{content}</Reanimated.View>;
+  }
 
   return (
-    <Animated.View style={pressStyle}>
+    <Reanimated.View style={[enterStyle, pressStyle]}>
       <Pressable
         accessibilityRole="button"
         onPress={() => {
@@ -109,6 +174,6 @@ export function SearchEngineCard({ engine, compact = false, onPress }: SearchEng
       >
         {content}
       </Pressable>
-    </Animated.View>
+    </Reanimated.View>
   );
 }

@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 
-import { useAuth } from '@/authentication/auth-provider';
+import { useAuthStore } from '@/store/auth-store';
 import { isCompleteFullName } from '@/lib/auth/profile-name';
-import { isProductionCompanyId } from '@/lib/company-id';
+import { resolveSessionCompanyId } from '@/lib/session/merge-hydration';
 
 export type AuthJourneyStep =
   | 'loading'
@@ -23,13 +23,18 @@ function isEmailPasswordUser(email: string | null | undefined, providerIds: stri
 }
 
 export function useAuthJourneyStep(localProfileName?: string | null): AuthJourneyStep {
-  const { firebaseUser, profile, isReady } = useAuth();
-  const companyId = profile?.companyId?.trim() || null;
+  const status = useAuthStore((s) => s.status);
+  const isHydrating = useAuthStore((s) => s.isHydrating);
+  const firebaseUser = useAuthStore((s) => s.firebaseUser);
+  const profile = useAuthStore((s) => s.profile);
+  const memberships = useAuthStore((s) => s.memberships);
+  const isReady = status !== 'booting' && !isHydrating;
+  const companyId = resolveSessionCompanyId(profile, memberships);
 
   return useMemo(() => {
     if (!isReady) return 'loading';
     if (!firebaseUser) return 'app';
-    if (!profile) return 'company';
+    if (!profile) return 'loading';
 
     const providerIds = firebaseUser.providerData.map((entry) => entry.providerId);
     const emailVerified = firebaseUser.emailVerified;
@@ -42,7 +47,7 @@ export function useAuthJourneyStep(localProfileName?: string | null): AuthJourne
       return 'profile-name';
     }
 
-    if (!isProductionCompanyId(companyId)) {
+    if (!companyId) {
       return 'company';
     }
 

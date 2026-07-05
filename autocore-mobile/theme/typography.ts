@@ -1,9 +1,10 @@
-import type { TextStyle } from 'react-native';
+import { Platform, type TextStyle } from 'react-native';
 
+/** System UI fonts — no custom font files required, correct metrics on iOS/Android. */
 export const fontFamily = {
-  sans: 'GeistSans',
-  mono: 'GeistMono',
-  system: 'System',
+  sans: Platform.select({ ios: 'System', android: 'sans-serif', default: 'System' }) ?? 'System',
+  mono: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }) ?? 'monospace',
+  system: Platform.select({ ios: 'System', android: 'sans-serif', default: 'System' }) ?? 'System',
 } as const;
 
 export const fontWeight = {
@@ -51,10 +52,35 @@ export const typography = {
     lineHeight: 30,
     letterSpacing: letterSpacing.tight,
   },
+  /** Tab / stack page titles — Mission Control, Orders, Profile, Search, Accounting */
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: fontWeight.bold,
+    lineHeight: 34,
+    letterSpacing: letterSpacing.tighter,
+  },
+  pageSubtitle: {
+    fontSize: 13,
+    fontWeight: fontWeight.regular,
+    lineHeight: 18,
+    letterSpacing: letterSpacing.normal,
+  },
   body: {
     fontSize: 14,
     fontWeight: fontWeight.regular,
     lineHeight: 20,
+    letterSpacing: letterSpacing.normal,
+  },
+  bodyStrong: {
+    fontSize: 14,
+    fontWeight: fontWeight.semibold,
+    lineHeight: 20,
+    letterSpacing: letterSpacing.normal,
+  },
+  meta: {
+    fontSize: 11,
+    fontWeight: fontWeight.regular,
+    lineHeight: 14,
     letterSpacing: letterSpacing.normal,
   },
   bodyLarge: {

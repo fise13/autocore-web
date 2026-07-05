@@ -1,15 +1,22 @@
+import { screenMotion } from '@/theme/screen';
+
+const s = screenMotion.stagger;
+
 /** Search screen entrance timeline */
 export const searchTimeline = {
-  searchBar: 0,
-  filters: 80,
-  idleRecent: 140,
-  idleViewed: 220,
-  idleCategories: 300,
-  results: 0,
+  header: 0,
+  searchBar: s,
+  filters: s * 2,
+  idleRecent: s * 3,
+  idleViewed: s * 4,
+  idleCategories: s * 5,
+  results: s,
+  resultGroup: s * 2,
+  resultRow: 28,
 } as const;
 
 export const searchSpring = {
-  enter: { damping: 34, stiffness: 320, mass: 0.9 },
-  focus: { damping: 28, stiffness: 360, mass: 0.8 },
-  press: { damping: 28, stiffness: 420, mass: 0.75 },
+  enter: screenMotion.spring,
+  focus: screenMotion.press,
+  press: screenMotion.press,
 } as const;

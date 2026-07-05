@@ -1,7 +1,14 @@
 import { spacing } from '@/theme/spacing';
 
-/** Floating pill tab bar: 58pt items + vertical padding + border. */
-export const FLOATING_TAB_PILL_HEIGHT = 58 + spacing[2] * 2 + 2;
+/** Inner tab row height — keep in sync with AppTabBar. */
+export const TAB_BAR_ROW_HEIGHT = 52;
+
+/** Vertical padding inside the floating pill. */
+export const TAB_BAR_VERTICAL_PADDING = spacing[2];
+
+/** Floating pill tab bar: row + vertical padding + hairline border. */
+export const FLOATING_TAB_PILL_HEIGHT =
+  TAB_BAR_ROW_HEIGHT + TAB_BAR_VERTICAL_PADDING * 2 + 2;
 
 /** Breathing room between the tab pill and screen edges / footers. */
 export const FLOATING_TAB_BAR_GAP = spacing[3];

@@ -1,7 +1,7 @@
-import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
 import { Button, Text } from '@/components/ui';
+import { useGuardedRouter } from '@/hooks/use-guarded-router';
 import {
   useCompanyAppConfig,
   useCompanyProfile,
@@ -36,7 +36,7 @@ const MODULE_LABELS: Record<CompanyModuleKey, string> = {
 
 export function CompanyScreen() {
   const { colors } = useTheme();
-  const router = useRouter();
+  const router = useGuardedRouter();
   const { profile, companyId } = useSession();
   const { name, isLoading } = useCompanyProfile(companyId);
   const { config } = useCompanyAppConfig(companyId);

@@ -1,20 +1,20 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Linking, View } from 'react-native';
 
-import { Button, Text } from '@/components/ui';
+import { Button, SettingsSectionCard, Text } from '@/components/ui';
 import { useCompanySubscription, useSession } from '@/hooks';
 import { useTheme } from '@/hooks/use-theme';
+import { getWebAppUrl, WEB_SUBSCRIPTION_PATH } from '@/lib/app-web-url';
 import {
   formatNextBillingDate,
   subscriptionHint,
   subscriptionPlanLabel,
 } from '@/lib/billing/format-renewal';
-import { canManageSettings } from '@/lib/permissions';
-import { activateCompanyPro, refreshCompanyBilling, startCompanyTrial } from '@/services/api/billing';
-import { haptics } from '@/theme';
+import { refreshCompanyBilling } from '@/services/api/billing';
+import { haptics, rhythm } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
 
-import { ProfileMetaCard, ProfileMetaRow } from '../components/profile-meta-card';
+import { ProfileMetaRow } from '../components/profile-meta-card';
 import { ProfileScreenShell } from '../components/profile-screen-shell';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -28,27 +28,30 @@ const STATUS_LABELS: Record<string, string> = {
 
 export function SubscriptionScreen() {
   const { colors } = useTheme();
-  const { profile, companyId } = useSession();
+  const { companyId } = useSession();
   const { subscription, isPro, isLoading } = useCompanySubscription(companyId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
 
-  const canManage = Boolean(profile?.isCompanyOwner || canManageSettings(profile));
   const plan = subscriptionPlanLabel(isPro);
   const billingStatus = subscription?.status ? STATUS_LABELS[subscription.status] ?? subscription.status : '—';
   const renewal = formatNextBillingDate(subscription?.currentPeriodEnd);
 
-  const run = async (action: () => Promise<unknown>, message: string) => {
+  const openWebsite = () => {
+    void Linking.openURL(getWebAppUrl(WEB_SUBSCRIPTION_PATH));
+  };
+
+  const refresh = async () => {
     if (!companyId) return;
     setBusy(true);
     setError(null);
     try {
-      await action();
-      setStatus(message);
-      haptics.success();
+      await refreshCompanyBilling(companyId);
+      setStatus('Статус подписки обновлён');
+      haptics.selection();
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : 'Не удалось обновить подписку');
+      setError(nextError instanceof Error ? nextError.message : 'Не удалось обновить статус');
     } finally {
       setBusy(false);
     }
@@ -56,98 +59,64 @@ export function SubscriptionScreen() {
 
   return (
     <ProfileScreenShell title="Подписка" subtitle={subscriptionHint(subscription, isPro)}>
-      <ProfileMetaCard title="Текущий план" delay={80}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+      <SettingsSectionCard title="Текущий план" description={isPro ? 'Все модули включены' : 'Требуется активная подписка'}>
+        <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
           <View
             style={{
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 999,
-              backgroundColor: isPro ? colors.primary : colors.muted,
+              alignSelf: 'flex-start',
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: isPro ? toneBackground(colors.primary, 0.3) : colors.border,
+              backgroundColor: isPro ? toneBackground(colors.primary, 0.08) : 'transparent',
             }}
           >
             <Text
               variant="caption"
-              style={{ fontWeight: '700', color: isPro ? colors.primaryForeground : colors.foreground }}
+              style={{ fontWeight: '600', color: isPro ? colors.primary : colors.mutedForeground }}
             >
               {isLoading ? '…' : plan}
             </Text>
           </View>
-          <Text variant="caption" color="muted">
-            {isPro ? 'Все модули включены' : 'Базовые возможности'}
-          </Text>
+          <ProfileMetaRow label="Статус" value={isLoading ? '…' : billingStatus} />
+          {isPro ? <ProfileMetaRow label="Следующее списание" value={isLoading ? '…' : renewal} /> : null}
         </View>
-        <ProfileMetaRow label="Статус" value={isLoading ? '…' : billingStatus} />
-        {isPro ? <ProfileMetaRow label="Следующее списание" value={isLoading ? '…' : renewal} /> : null}
-      </ProfileMetaCard>
+      </SettingsSectionCard>
 
-      <ProfileMetaCard title="Возможности Pro" delay={120}>
-        <View style={{ gap: 8 }}>
+      <SettingsSectionCard title="Возможности Pro">
+        <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: 8 }}>
           {['Команда и роли', 'Расширенная аналитика', 'Все модули компании', 'Приглашения сотрудников'].map(
             (feature) => (
-              <View
-                key={feature}
-                style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderRadius: 10,
-                  backgroundColor: toneBackground(colors.primary, isPro ? 0.1 : 0.06),
-                }}
-              >
-                <Text variant="caption" style={{ fontWeight: '600' }}>
-                  {feature}
-                </Text>
-              </View>
+              <Text key={feature} variant="caption" color="muted">
+                · {feature}
+              </Text>
             ),
           )}
         </View>
-      </ProfileMetaCard>
+      </SettingsSectionCard>
 
-      {canManage ? (
-        <ProfileMetaCard delay={160}>
-          {!isPro ? (
-            <View style={{ gap: 10 }}>
-              <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-                Подключите Pro прямо в приложении — команда и расширенные возможности откроются сразу.
-              </Text>
-              <Button loading={busy} onPress={() => void run(() => startCompanyTrial(companyId!), 'Пробный период активирован')}>
-                Попробовать Pro
-              </Button>
-              <Button
-                variant="secondary"
-                loading={busy}
-                onPress={() => void run(() => activateCompanyPro(companyId!), 'Подписка Pro активирована')}
-              >
-                Подключить Pro
-              </Button>
-            </View>
-          ) : (
-            <View style={{ gap: 10 }}>
-              <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-                Подписка активна. Обновите статус, если недавно меняли тариф.
-              </Text>
-              <Button
-                variant="secondary"
-                loading={busy}
-                onPress={() => void run(() => refreshCompanyBilling(companyId!), 'Статус подписки обновлён')}
-              >
-                Обновить статус
-              </Button>
-            </View>
-          )}
-        </ProfileMetaCard>
-      ) : null}
-
-      {status ? (
-        <Text variant="caption" style={{ color: colors.success }}>
-          {status}
-        </Text>
-      ) : null}
-      {error ? (
-        <Text variant="caption" style={{ color: colors.destructive }}>
-          {error}
-        </Text>
-      ) : null}
+      <SettingsSectionCard
+        title="Управление"
+        description="Управление подпиской доступно на сайте. В приложении нет экранов оплаты."
+      >
+        <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
+          <Button onPress={openWebsite}>Открыть сайт</Button>
+          <Button variant="secondary" loading={busy} onPress={() => void refresh()}>
+            Обновить статус
+          </Button>
+          {status ? (
+            <Text variant="caption" style={{ color: colors.success }}>
+              {status}
+            </Text>
+          ) : null}
+          {error ? (
+            <Text variant="caption" style={{ color: colors.destructive }}>
+              {error}
+            </Text>
+          ) : null}
+        </View>
+      </SettingsSectionCard>
     </ProfileScreenShell>
   );
 }

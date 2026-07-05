@@ -1,18 +1,31 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Keyboard, ScrollView, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { Keyboard, TextInput, View } from 'react-native';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 
-import { Loading, Text } from '@/components/ui';
+import { Loading, Screen, ScreenScroll, Surface, Text, toast } from '@/components/ui';
+import { OrderPickerSheet } from '@/features/orders/components/order-picker-sheet';
+import { useAddToOrderFlow } from '@/features/orders/hooks/use-add-to-order-flow';
+import type { SearchEmptyActionId } from '@/features/search/components/search-empty-state';
 import {
-  useTheme,
+  SellMotorSheet,
+  type SellMotorSheetRef,
+} from '@/features/search/components/sell-motor-sheet';
+import { orderStatusLabel } from '@/features/orders/lib/status';
+import {
   useSession,
   useInventorySearch,
   useClientsRealtime,
   useWorkOrdersRealtime,
   useSearchIdleData,
+  useMotorsRealtime,
+  useCompanyModuleEnabled,
 } from '@/hooks';
 import { rememberSearchQuery } from '@/lib/search/recent-queries';
+import { isMotorStale, isWarehouseLowStock, motorMatchesSearchQuery } from '@/lib/inventory/is-low-stock';
+import { joinSearchFields, matchesSearchQuery } from '@/lib/search/match-query';
+import { mapInventoryItemToSearchResult } from '@/lib/search/map-inventory-to-search';
+import { mapMotorToSearchResult } from '@/lib/search/map-motor-to-search';
+import { rhythm } from '@/theme';
 
 import { searchFilters } from './data/search-filters';
 import { SearchBar } from './components/search-bar';
@@ -23,51 +36,132 @@ import { SearchResults } from './components/search-results';
 import { searchLayout } from './layout';
 import type { SearchFilterId, SearchResultGroup } from './types';
 
+function parseFilter(value: string | string[] | undefined): SearchFilterId | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw) return null;
+  const allowed: SearchFilterId[] = ['all', 'parts', 'motors', 'clients', 'orders'];
+  return allowed.includes(raw as SearchFilterId) ? (raw as SearchFilterId) : null;
+}
+
 export function SearchScreen() {
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
-  const params = useLocalSearchParams<{ q?: string }>();
-  const { profile, can } = useSession();
+  const params = useLocalSearchParams<{ q?: string; filter?: string; lowStock?: string; stale?: string }>();
+  const { profile, can, uid } = useSession();
   const companyId = profile?.companyId?.trim() || null;
+  const motorsEnabled = useCompanyModuleEnabled('motors');
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<SearchFilterId>('all');
+  const searchInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     const initial = typeof params.q === 'string' ? params.q : '';
     if (initial) setQuery(initial);
-  }, [params.q]);
+    const nextFilter = parseFilter(params.filter);
+    if (nextFilter) setFilter(nextFilter);
+  }, [params.filter, params.q]);
 
   const trimmedQuery = query.trim();
+  const deferredQuery = useDeferredValue(trimmedQuery);
   const hasQuery = trimmedQuery.length > 0;
-  const { results: inventoryResults, isBootstrapping: inventoryLoading } = useInventorySearch(
-    companyId,
-    trimmedQuery,
-  );
+  const lowStockOnly = params.lowStock === '1';
+  const staleMotorsOnly = params.stale === '1';
+  const showPresetList = lowStockOnly || staleMotorsOnly;
+
+  const {
+    results: inventoryResults,
+    items: catalogItems,
+    isBootstrapping: inventoryLoading,
+  } = useInventorySearch(companyId, deferredQuery);
   const { clients, isBootstrapping: clientsLoading } = useClientsRealtime(companyId);
   const { orders, isBootstrapping: ordersLoading } = useWorkOrdersRealtime(companyId);
+  const { availableMotors, isBootstrapping: motorsLoading } = useMotorsRealtime(
+    companyId,
+    uid,
+    motorsEnabled,
+  );
   const idleData = useSearchIdleData(companyId);
+  const addToOrderFlow = useAddToOrderFlow();
+  const sellSheetRef = useRef<SellMotorSheetRef>(null);
+
+  const handleSellMotor = useCallback(
+    (motorId: string) => {
+      const motor = availableMotors.find((entry) => entry.id === motorId);
+      if (!motor) {
+        toast({
+          title: 'Мотор не найден',
+          description: 'Обновите список и попробуйте снова',
+          variant: 'destructive',
+        });
+        return;
+      }
+      sellSheetRef.current?.present(motor);
+    },
+    [availableMotors],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      idleData.refreshRecentQueries();
+    }, [idleData.refreshRecentQueries]),
+  );
 
   useEffect(() => {
     if (!hasQuery) return;
-    void rememberSearchQuery(trimmedQuery);
-  }, [hasQuery, trimmedQuery]);
+    void rememberSearchQuery(trimmedQuery).then(idleData.syncRecentQueries);
+  }, [hasQuery, idleData.syncRecentQueries, trimmedQuery]);
 
   const groups = useMemo<SearchResultGroup[]>(() => {
-    if (!hasQuery) return [];
-    const q = trimmedQuery.toLowerCase();
     const next: SearchResultGroup[] = [];
 
     if ((filter === 'all' || filter === 'parts') && can('inventory_view')) {
-      const items = inventoryResults;
-      if (items.length > 0) {
-        next.push({ id: 'parts', title: 'Склад', filter: 'parts', items });
+      let partItems = inventoryResults;
+
+      if (lowStockOnly) {
+        partItems = catalogItems
+          .filter(isWarehouseLowStock)
+          .map(mapInventoryItemToSearchResult)
+          .slice(0, 40);
+      }
+
+      if (partItems.length > 0) {
+        next.push({
+          id: 'parts',
+          title: lowStockOnly ? 'Позиции на исходе' : 'Склад',
+          filter: 'parts',
+          items: partItems,
+        });
       }
     }
 
-    if ((filter === 'all' || filter === 'clients') && can('clients_manage')) {
+    if ((filter === 'all' || filter === 'motors') && motorsEnabled && can('inventory_view')) {
+      const motorItems = availableMotors
+        .filter((motor) => {
+          if (staleMotorsOnly) return isMotorStale(motor);
+          if (!hasQuery && !showPresetList) return false;
+          return motorMatchesSearchQuery(motor, deferredQuery);
+        })
+        .slice(0, 20)
+        .map(mapMotorToSearchResult);
+
+      if (motorItems.length > 0) {
+        next.push({
+          id: 'motors',
+          title: staleMotorsOnly ? 'Моторы давно на складе' : 'Моторы',
+          filter: 'motors',
+          items: motorItems,
+        });
+      }
+    }
+
+    if ((filter === 'all' || filter === 'clients') && can('clients_manage') && hasQuery) {
       const items = clients
-        .filter((client) => [client.fullName, client.phone, client.email].filter(Boolean).join(' ').toLowerCase().includes(q))
+        .filter((client) =>
+          matchesSearchQuery(
+            joinSearchFields(client.fullName, client.email),
+            deferredQuery,
+            { phones: client.phone ? [client.phone] : [] },
+          ),
+        )
         .slice(0, 20)
         .map((client) => ({
           id: client.id,
@@ -81,14 +175,19 @@ export function SearchScreen() {
       }
     }
 
-    if ((filter === 'all' || filter === 'orders') && can('work_orders_view')) {
+    if ((filter === 'all' || filter === 'orders') && can('work_orders_view') && hasQuery) {
       const items = orders
         .filter((order) =>
-          [order.number, order.customer, order.vehicle, order.engine, order.licensePlate]
-            .filter(Boolean)
-            .join(' ')
-            .toLowerCase()
-            .includes(q),
+          matchesSearchQuery(
+            joinSearchFields(
+              order.number,
+              order.customer,
+              order.vehicle,
+              order.engine,
+              order.licensePlate,
+            ),
+            deferredQuery,
+          ),
         )
         .slice(0, 20)
         .map((order) => ({
@@ -96,73 +195,142 @@ export function SearchScreen() {
           kind: 'order' as const,
           title: order.number,
           subtitle: order.customer,
-          meta: order.vehicle,
-          status: order.status === 'completed' ? ('sold' as const) : ('in_stock' as const),
+          meta: [order.vehicle, orderStatusLabel[order.status]].filter(Boolean).join(' · '),
         }));
       if (items.length > 0) {
-        next.push({ id: 'orders', title: 'Заказы', filter: 'orders', items });
+        next.push({ id: 'orders', title: 'Заказ-наряды', filter: 'orders', items });
       }
     }
 
     return next;
-  }, [can, clients, filter, hasQuery, inventoryResults, orders, trimmedQuery]);
+  }, [
+    availableMotors,
+    can,
+    catalogItems,
+    clients,
+    deferredQuery,
+    filter,
+    hasQuery,
+    inventoryResults,
+    lowStockOnly,
+    motorsEnabled,
+    orders,
+    showPresetList,
+    staleMotorsOnly,
+  ]);
 
-  const isSearching = inventoryLoading || clientsLoading || ordersLoading;
+  const isBootstrapping = inventoryLoading || clientsLoading || ordersLoading || motorsLoading;
+  const showInitialLoading = isBootstrapping && groups.length === 0 && (hasQuery || showPresetList);
+
+  const handleEmptyAction = (action: SearchEmptyActionId) => {
+    if (action === 'scan') {
+      router.navigate('/(tabs)/scan');
+      return;
+    }
+    if (action === 'new-order') {
+      router.navigate('/(tabs)/orders/new');
+      return;
+    }
+    if (action === 'parts-filter') {
+      setFilter('parts');
+      searchInputRef.current?.focus();
+      return;
+    }
+    if (action === 'motors-filter') {
+      setFilter('motors');
+      searchInputRef.current?.focus();
+    }
+  };
 
   if (!companyId) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center', padding: 24 }}>
+      <Screen style={{ justifyContent: 'center', padding: rhythm.section }}>
         <Text variant="body" color="muted" style={{ textAlign: 'center' }}>
           Выберите рабочее пространство, чтобы искать по складу, клиентам и заказам.
         </Text>
-      </View>
+      </Screen>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        decelerationRate="normal"
-        contentContainerStyle={{
-          paddingBottom: Math.max(insets.bottom, 12) + 88,
-        }}
-        onScrollBeginDrag={Keyboard.dismiss}
-      >
+    <Screen>
+      <ScreenScroll tabBarInset onScrollBeginDrag={Keyboard.dismiss} decelerationRate="normal">
         <SearchHeader onSettingsPress={() => router.navigate('/(tabs)/profile')} />
-        <View style={{ gap: 14 }}>
-          <SearchBar value={query} onChangeText={setQuery} />
-          <SearchFilters filters={searchFilters} activeFilter={filter} onFilterChange={setFilter} />
-        </View>
 
-        <View style={{ paddingTop: searchLayout.section }}>
-          {hasQuery ? (
-            isSearching && groups.length === 0 ? (
-              <View style={{ paddingHorizontal: searchLayout.pad, paddingTop: 24 }}>
+        <Surface inset style={{ marginTop: rhythm.tight, gap: rhythm.stack, marginBottom: rhythm.tight }}>
+          <SearchBar value={query} onChangeText={setQuery} inputRef={searchInputRef} />
+          <SearchFilters filters={searchFilters} activeFilter={filter} onFilterChange={setFilter} />
+        </Surface>
+
+        <View>
+          {hasQuery || showPresetList ? (
+            showInitialLoading ? (
+              <View style={{ paddingHorizontal: searchLayout.pad, paddingTop: rhythm.section }}>
                 <Loading message="Ищем в базе…" />
               </View>
             ) : (
-              <SearchResults key={`${trimmedQuery}-${filter}`} query={trimmedQuery} groups={groups} />
+              <SearchResults
+                key={`${deferredQuery}-${filter}-${lowStockOnly}-${staleMotorsOnly}`}
+                query={trimmedQuery}
+                groups={groups}
+                onEmptyAction={handleEmptyAction}
+                addToOrder={{
+                  addPart: addToOrderFlow.addPartToOrder,
+                  addMotor: addToOrderFlow.addMotorToOrder,
+                }}
+                motorActions={{
+                  onSell: handleSellMotor,
+                  addToOrder: (motorId) => addToOrderFlow.addMotorToOrder(motorId, 'install'),
+                }}
+              />
             )
           ) : (
             <SearchIdle
               recentQueries={idleData.recentQueries}
               recentlyViewed={idleData.recentlyViewed}
+              recentMotors={idleData.recentMotors}
               quickCategories={idleData.quickCategories}
               isBootstrapping={idleData.isBootstrapping}
-              hasData={idleData.hasInventory}
+              hasData={idleData.hasInventory || idleData.recentQueries.length > 0}
+              motorsEnabled={idleData.motorsEnabled}
               onRecentPress={(value) => {
                 setQuery(value);
                 setFilter('all');
               }}
               onCategoryPress={(nextFilter) => {
                 setFilter(nextFilter);
+                searchInputRef.current?.focus();
+              }}
+              onMotorPress={(motorId) => {
+                setQuery(motorId);
+                setFilter('motors');
               }}
             />
           )}
         </View>
-      </ScrollView>
-    </View>
+      </ScreenScroll>
+      <OrderPickerSheet
+        ref={addToOrderFlow.pickerRef}
+        drafts={addToOrderFlow.drafts}
+        onSelectNew={addToOrderFlow.handleSelectNew}
+        onSelectOrder={addToOrderFlow.handleSelectOrder}
+        onDismiss={addToOrderFlow.handlePickerDismiss}
+      />
+      {companyId && uid ? (
+        <SellMotorSheet
+          ref={sellSheetRef}
+          companyId={companyId}
+          uid={uid}
+          userId={profile?.id ?? uid}
+          onSold={(motor) => {
+            toast({
+              title: 'Мотор продан',
+              description: motor.serialCode,
+              variant: 'success',
+            });
+          }}
+        />
+      ) : null}
+    </Screen>
   );
 }

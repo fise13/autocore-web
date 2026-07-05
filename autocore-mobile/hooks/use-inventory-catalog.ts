@@ -3,15 +3,22 @@ import { useMemo } from 'react';
 import { useRealtimeQuery } from '@/hooks/use-realtime-query';
 import { isProductionCompanyId } from '@/lib/company-id';
 import { inventoryMatchesQuery, mapInventoryItemToSearchResult } from '@/lib/search/map-inventory-to-search';
-import { inventoryItemRepository } from '@/services/firestore/inventory-item-repository';
+import {
+  inventoryItemRepository,
+  normalizeInventoryItem,
+} from '@/services/firestore/inventory-item-repository';
 import type { InventoryItem } from '@/types/inventory';
 
-export function useInventoryCatalog(companyId: string | null | undefined) {
+export function useInventoryCatalog(
+  companyId: string | null | undefined,
+  options?: { keepAlive?: boolean },
+) {
   const enabled = isProductionCompanyId(companyId);
 
   const { data, isBootstrapping, errorMessage } = useRealtimeQuery<InventoryItem[]>({
     queryKey: ['realtime', 'inventory-items', companyId],
     enabled,
+    keepAlive: options?.keepAlive,
     initialData: [],
     subscribe: (onData, onError) => {
       if (!companyId) {
@@ -26,8 +33,13 @@ export function useInventoryCatalog(companyId: string | null | undefined) {
     },
   });
 
+  const items = useMemo(
+    () => (data ?? []).map(normalizeInventoryItem),
+    [data],
+  );
+
   return {
-    items: data,
+    items,
     isBootstrapping,
     errorMessage,
     enabled,
@@ -47,5 +59,5 @@ export function useInventorySearch(companyId: string | null | undefined, query: 
       .map(mapInventoryItemToSearchResult);
   }, [items, trimmed]);
 
-  return { results, isBootstrapping, errorMessage, enabled };
+  return { results, items, isBootstrapping, errorMessage, enabled };
 }

@@ -4,6 +4,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 
 import { Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/hooks';
+import { toneBackground } from '@/theme/color-utils';
 
 import { ordersSpring } from '../animation/orders-timeline';
 import type { ComposerTab } from '../animation/use-composer-tab-state';
@@ -17,6 +18,7 @@ export type ComposerTabOption = {
   id: ComposerTab;
   label: string;
   icon: TabIcon;
+  badge?: number;
 };
 
 type ComposerTabBarProps = {
@@ -118,16 +120,38 @@ export function ComposerTabBar({ tabs, activeTab, onTabChange }: ComposerTabBarP
             }}
           >
             <Icon size="sm" color={selected ? colors.primary : colors.mutedForeground} strokeWidth={1.85} />
-            <Text
-              variant="caption"
-              style={{
-                fontSize: 10,
-                fontWeight: selected ? '600' : '500',
-                color: selected ? colors.foreground : colors.mutedForeground,
-              }}
-            >
-              {item.label}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text
+                variant="caption"
+                style={{
+                  fontSize: 10,
+                  fontWeight: selected ? '600' : '500',
+                  color: selected ? colors.foreground : colors.mutedForeground,
+                }}
+              >
+                {item.label}
+              </Text>
+              {item.badge && item.badge > 0 ? (
+                <View
+                  style={{
+                    minWidth: 16,
+                    height: 16,
+                    borderRadius: 8,
+                    paddingHorizontal: 4,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: toneBackground(colors.primary, 0.12),
+                  }}
+                >
+                  <Text
+                    variant="caption"
+                    style={{ fontSize: 9, fontWeight: '700', color: colors.primary, lineHeight: 12 }}
+                  >
+                    {item.badge}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
           </Pressable>
         );
       })}

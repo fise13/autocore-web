@@ -1,14 +1,16 @@
-import { View } from 'react-native';
-import Animated from 'react-native-reanimated';
+import { StyleSheet, View } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { toneBackground } from '@/theme/color-utils';
+import { rhythm } from '@/theme';
+import { radius } from '@/theme/radius';
 import { useMcEnter } from '@/features/mission-control/animation';
+import { McSectionTitle } from '@/features/mission-control/components/mc-primitives';
+import { mcType } from '@/features/mission-control/layout';
 
 import { acTimeline } from '../animation/timeline';
 import { ac } from '../layout';
-import { AcDivider, AcSectionTitle } from './ac-primitives';
 import { formatSignedKzt } from '../utils/format';
 import type { AccountingSnapshot, TransactionStatus } from '../types';
 
@@ -16,12 +18,6 @@ type AcTransactionsProps = {
   items: AccountingSnapshot['transactions'];
   onShowAll?: () => void;
 };
-
-function statusLabel(status: TransactionStatus): string {
-  if (status === 'pending') return 'Ожидает';
-  if (status === 'overdue') return 'Просрочено';
-  return 'Завершено';
-}
 
 function statusColor(status: TransactionStatus, colors: ReturnType<typeof useTheme>['colors']) {
   if (status === 'overdue') return colors.destructive;
@@ -31,93 +27,118 @@ function statusColor(status: TransactionStatus, colors: ReturnType<typeof useThe
 
 function TransactionRow({
   item,
-  index,
   isLast,
 }: {
   item: AccountingSnapshot['transactions'][number];
-  index: number;
   isLast: boolean;
 }) {
   const { colors } = useTheme();
   const Icon = item.icon;
   const amountColor = item.direction === 'in' ? colors.success : colors.foreground;
-  const rowStyle = useMcEnter({
-    delay: acTimeline.transactionBase + index * acTimeline.transactionStagger,
-    translateY: 14,
-    spring: true,
-    duration: 320,
-  });
 
   return (
-    <Animated.View style={rowStyle}>
+    <>
       <View
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 12,
-          minHeight: ac.row,
-          paddingVertical: 8,
+          gap: ac.rowGap,
+          minHeight: ac.rowHeight,
+          paddingHorizontal: ac.rowPadX,
+          paddingVertical: ac.rowPadY,
         }}
       >
         <View
           style={{
-            width: 40,
-            height: 40,
-            borderRadius: 12,
+            width: ac.iconBox,
+            height: ac.iconBox,
+            borderRadius: radius.xl,
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: colors.border,
+            backgroundColor: colors.surfaceElevated,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: toneBackground(colors.primary, 0.1),
           }}
         >
-          <Icon size="sm" color={colors.primary} strokeWidth={2} />
+          <Icon size="sm" color={colors.mutedForeground} strokeWidth={1.75} />
         </View>
-        <View style={{ flex: 1, gap: 3 }}>
-          <Text variant="body" style={{ fontSize: 14, fontWeight: '700', letterSpacing: -0.1 }}>
-            {item.title}
-          </Text>
-          <Text variant="caption" color="muted" style={{ fontSize: ac.meta, lineHeight: 16 }}>
-            {item.description}
-            {item.employee ? ` · ${item.employee}` : ''}
-          </Text>
-        </View>
-        <View style={{ alignItems: 'flex-end', gap: 4 }}>
-          <Text
-            variant="body"
+
+        <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+          <View
             style={{
-              fontSize: 14,
-              fontWeight: '700',
-              fontVariant: ['tabular-nums'],
-              color: amountColor,
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              gap: rhythm.inline,
             }}
           >
-            {formatSignedKzt(item.amount, item.direction)}
-          </Text>
-          <Text variant="caption" style={{ fontSize: 10, color: statusColor(item.status, colors) }}>
-            {item.time} · {statusLabel(item.status)}
+            <Text variant="caption" style={mcType.rowTitle} numberOfLines={1}>
+              {item.title}
+            </Text>
+            <Text
+              variant="bodyStrong"
+              numberOfLines={1}
+              style={{
+                flexShrink: 0,
+                fontVariant: ['tabular-nums'],
+                color: amountColor,
+                ...mcType.quietValue,
+              }}
+            >
+              {formatSignedKzt(item.amount, item.direction)}
+            </Text>
+          </View>
+          <Text variant="meta" color="muted" numberOfLines={2} style={mcType.rowMeta}>
+            {item.description}
+            {item.employee ? ` · ${item.employee}` : ''}
+            <Text variant="meta" style={{ color: statusColor(item.status, colors) }}>
+              {' · '}
+              {item.time}
+            </Text>
           </Text>
         </View>
       </View>
-      {!isLast ? <AcDivider inset={52} /> : null}
-    </Animated.View>
+
+      {!isLast ? (
+        <View
+          style={{
+            height: StyleSheet.hairlineWidth,
+            backgroundColor: colors.border,
+            marginLeft: ac.rowPadX + ac.iconBox + ac.rowGap,
+            opacity: 0.7,
+          }}
+        />
+      ) : null}
+    </>
   );
 }
 
 export function AcTransactions({ items, onShowAll }: AcTransactionsProps) {
-  const titleStyle = useMcEnter({ delay: acTimeline.transactionsTitle, translateY: 8, duration: 300 });
+  const { colors } = useTheme();
+  const titleStyle = useMcEnter({ delay: acTimeline.transactionsTitle, translateY: 4, fade: true });
+  const cardStyle = useMcEnter({ delay: acTimeline.transactionsTitle + 40, translateY: 6, fade: true, scaleFrom: 0.985 });
+
+  if (items.length === 0) return null;
+
+  const visible = items.slice(0, 6);
 
   return (
-    <View>
-      <Animated.View style={titleStyle}>
-        <AcSectionTitle title="Недавние операции" actionLabel="Все" onAction={onShowAll} />
-      </Animated.View>
-      {items.map((item, index) => (
-        <TransactionRow
-          key={item.id}
-          item={item}
-          index={index}
-          isLast={index === items.length - 1}
-        />
-      ))}
-    </View>
+    <Reanimated.View style={[{ gap: ac.sectionGap }, titleStyle]}>
+      <McSectionTitle title="Недавние операции" actionLabel="Все" onAction={onShowAll} />
+      <Reanimated.View
+        style={[
+          cardStyle,
+          {
+            backgroundColor: colors.card,
+            borderRadius: radius['3xl'],
+            overflow: 'hidden',
+          },
+        ]}
+      >
+        {visible.map((item, index) => (
+          <TransactionRow key={item.id} item={item} isLast={index === visible.length - 1} />
+        ))}
+      </Reanimated.View>
+    </Reanimated.View>
   );
 }

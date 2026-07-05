@@ -6,3 +6,11 @@ export function resolveGreeting(date = new Date()): string {
   if (hour >= 18 && hour < 23) return 'Добрый вечер';
   return 'Доброй ночи';
 }
+
+/** First name for the MC header — not the company title. */
+export function resolveProfileHeadline(displayName: string | null | undefined): string {
+  const trimmed = displayName?.trim();
+  if (!trimmed) return 'Профиль';
+  const [firstName] = trimmed.split(/\s+/);
+  return firstName || trimmed;
+}

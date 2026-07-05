@@ -1,43 +1,44 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 
-import { subscribeCompanySubscription } from '@/services/firestore/billing-repository';
-import { isFirebaseConfigured } from '@/services/firebase';
-import { isProSubscription, type CompanySubscription } from '@/types/billing';
+import {
+  acquireCompanySubscription,
+  getSubscriptionSnapshot,
+  subscribeSubscriptionRegistry,
+} from '@/lib/billing/subscription-registry';
+import { isProSubscription } from '@/types/billing';
+
+const noop = () => undefined;
 
 export function useCompanySubscription(companyId: string | null | undefined) {
-  const [subscription, setSubscription] = useState<CompanySubscription | null>(null);
-  const [isLoading, setIsLoading] = useState(Boolean(companyId));
-  const [error, setError] = useState<string | null>(null);
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => {
+      if (!companyId) return () => undefined;
 
-  useEffect(() => {
-    if (!companyId || !isFirebaseConfigured()) {
-      setSubscription(null);
-      setIsLoading(false);
-      setError(null);
-      return;
-    }
+      // Listener lifecycle only — updates flow through subscribeSubscriptionRegistry + getSnapshot.
+      const release = acquireCompanySubscription(companyId, {
+        onData: noop,
+        onError: noop,
+      });
+      const unsubscribeRegistry = subscribeSubscriptionRegistry(onStoreChange);
+      return () => {
+        release();
+        unsubscribeRegistry();
+      };
+    },
+    [companyId],
+  );
 
-    setIsLoading(true);
-    const unsubscribe = subscribeCompanySubscription(
-      companyId,
-      (next) => {
-        setSubscription(next);
-        setIsLoading(false);
-        setError(null);
-      },
-      (nextError) => {
-        setError(nextError.message);
-        setIsLoading(false);
-      },
-    );
+  const getSnapshot = useCallback(
+    () => getSubscriptionSnapshot(companyId),
+    [companyId],
+  );
 
-    return unsubscribe;
-  }, [companyId]);
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   return {
-    subscription,
-    isLoading,
-    error,
-    isPro: isProSubscription(subscription),
+    subscription: snapshot.subscription,
+    isLoading: snapshot.isLoading,
+    error: snapshot.error,
+    isPro: isProSubscription(snapshot.subscription),
   };
 }

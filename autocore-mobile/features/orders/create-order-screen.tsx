@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,56 +12,48 @@ import {
   CheckCircle2Icon,
   ClipboardListIcon,
   PackageIcon,
+  TagIcon,
   UserRoundIcon,
   WrenchIcon,
 } from '@/assets/icons';
-import { Button, AutocompleteInput, IconButton, Input, Text } from '@/components/ui';
+import { Button, AutocompleteInput, IconButton, Input, Text, toast } from '@/components/ui';
 import { ScreenActionFooter } from '@/components/navigation/screen-action-footer';
 import {
   useClientsRealtime,
+  useEmployeesRealtime,
   useFloatingTabBarInset,
   useInventoryCatalog,
   useMotorsRealtime,
   useSession,
   useTheme,
   useVehiclesRealtime,
+  useCompanyAppConfig,
+  useCompanyModuleEnabled,
+  useWorkOrdersRealtime,
 } from '@/hooks';
 import { haptics } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
 import { formatPrice } from '@/features/search/lib/format';
+import { nextComposerLineId } from '@/lib/work-order/composer-utils';
 import { formatMotorLineLabel } from '@/lib/motors/format-motor-display-name';
 import { clientRepository } from '@/services/firestore/client-repository';
 import { vehicleRepository } from '@/services/firestore/vehicle-repository';
 import { workOrderRepository } from '@/services/firestore/work-order-repository';
 import { calculateWorkOrderPricing } from '@/types/work-order';
-
+import {
+  compositionGrandTotal,
+  isSellOnlyComposition,
+  mapCompositionToWorkOrderLines,
+  mapOrderToCompositionDrafts,
+} from './lib/composition-mappers';
 import { useComposerTabState } from './animation/use-composer-tab-state';
-import { ComposerTabBar } from './components/composer-tab-bar';
-import { ComposerTabPanel } from './components/composer-tab-panel';
+import { OrderCompositionStep } from './components/composition/order-composition-step';
+import { useOrderCompositionForm } from './hooks/use-order-composition-form';
 import {
   resolveInventoryUnitPrice,
   useWorkOrderComposerOptions,
 } from './hooks/use-work-order-composer-options';
 import { ordersLayout } from './layout';
-
-type PartLineDraft = {
-  name: string;
-  price: number;
-  sku?: string;
-  itemId?: string;
-  source: 'warehouse' | 'adhoc';
-  unitCost: number;
-};
-
-type MotorLineDraft = {
-  label: string;
-  price: number;
-  motorId: string;
-  serialCode: string;
-  brandName?: string;
-  engineCode?: string;
-  configuration?: string;
-};
 
 const STEPS = [
   { id: 1, label: 'Клиент и авто', icon: UserRoundIcon },
@@ -181,20 +173,32 @@ function StepIndicator({ step }: { step: number }) {
   );
 }
 
-export function CreateOrderScreen() {
+export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
+  const isEdit = Boolean(orderId?.trim());
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { scrollBottom } = useFloatingTabBarInset();
   const router = useRouter();
   const { companyId, uid, can } = useSession();
+  const params = useLocalSearchParams<{ vin?: string; itemId?: string; motorId?: string; outcome?: string }>();
+  const specificsEnabled = useCompanyModuleEnabled('specifics');
+  const motorsEnabled = useCompanyModuleEnabled('motors');
+  const { config: companyConfig } = useCompanyAppConfig(companyId);
   const { clients } = useClientsRealtime(companyId);
   const { vehicles } = useVehiclesRealtime(companyId);
+  const { employees } = useEmployeesRealtime(companyId);
   const { items: inventoryItems } = useInventoryCatalog(companyId);
   const { availableMotors } = useMotorsRealtime(companyId, uid);
+  const { domainOrders } = useWorkOrdersRealtime(companyId);
+  const existingOrder = isEdit ? domainOrders.find((entry) => entry.id === orderId) : undefined;
+  const orderEditable =
+    !isEdit || existingOrder?.status === 'draft' || existingOrder?.status === 'confirmed';
 
   const [step, setStep] = useState(1);
   const { tab, setTab, direction } = useComposerTabState('labor');
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [hydrated, setHydrated] = useState(!isEdit);
 
   const [clientId, setClientId] = useState('');
   const [vehicleId, setVehicleId] = useState('');
@@ -207,17 +211,13 @@ export function CreateOrderScreen() {
   const [mileage, setMileage] = useState('');
   const [comment, setComment] = useState('');
 
-  const [laborTitle, setLaborTitle] = useState('');
-  const [laborPrice, setLaborPrice] = useState('');
-  const [partSku, setPartSku] = useState('');
-  const [partName, setPartName] = useState('');
-  const [partPrice, setPartPrice] = useState('');
-  const [motorSerial, setMotorSerial] = useState('');
-  const [motorPrice, setMotorPrice] = useState('');
-
-  const [laborLines, setLaborLines] = useState<{ title: string; price: number }[]>([]);
-  const [partLines, setPartLines] = useState<PartLineDraft[]>([]);
-  const [motorLines, setMotorLines] = useState<MotorLineDraft[]>([]);
+  const composition = useOrderCompositionForm({
+    employees,
+    inventoryItems,
+    availableMotors,
+    companyConfig,
+    currentUserId: uid ?? undefined,
+  });
 
   const composerOptions = useWorkOrderComposerOptions({
     clients,
@@ -226,6 +226,32 @@ export function CreateOrderScreen() {
     availableMotors,
     form: { clientId, vehicleId, vehicleMake, vehicleModel, licensePlate, vin },
   });
+
+  useEffect(() => {
+    if (!isEdit || !existingOrder || hydrated) return;
+    const drafts = mapOrderToCompositionDrafts(existingOrder);
+    setClientId(existingOrder.clientId);
+    setClientName(existingOrder.clientName ?? '');
+    setClientPhone(existingOrder.clientPhone ?? '');
+    setVehicleId(existingOrder.vehicleId);
+    setVin(existingOrder.vin ?? '');
+    setLicensePlate(existingOrder.licensePlate ?? '');
+    setMileage(existingOrder.mileage ? String(existingOrder.mileage) : '');
+    setComment(existingOrder.comment ?? '');
+    composition.setLaborLines(drafts.laborLines);
+    composition.setPartLines(drafts.partLines);
+    composition.setMotorLines(drafts.motorLines);
+    const vehicle = vehicles.find((entry) => entry.id === existingOrder.vehicleId);
+    if (vehicle) {
+      setVehicleMake(vehicle.make);
+      setVehicleModel(vehicle.model);
+    } else if (existingOrder.vehicleLabel) {
+      const [make, ...rest] = existingOrder.vehicleLabel.split(' ');
+      setVehicleMake(make ?? '');
+      setVehicleModel(rest.join(' '));
+    }
+    setHydrated(true);
+  }, [composition, existingOrder, hydrated, isEdit, vehicles]);
 
   const selectClient = (nextClientId: string) => {
     const client = clients.find((entry) => entry.id === nextClientId);
@@ -253,107 +279,108 @@ export function CreateOrderScreen() {
     if (vehicle.currentMileage > 0) setMileage(String(vehicle.currentMileage));
   };
 
-  const detachVehicleLink = () => setVehicleId('');
+  // Prefill from scanner VIN — match existing vehicle or leave VIN for a new one.
+  useEffect(() => {
+    const incoming = typeof params.vin === 'string' ? params.vin.trim().toUpperCase() : '';
+    if (!incoming) return;
 
-  const fillPartFromInventory = (skuOrName: string, by: 'sku' | 'name') => {
-    const item =
-      by === 'sku'
-        ? composerOptions.activeInventory.find((entry) => entry.sku === skuOrName)
-        : composerOptions.activeInventory.find((entry) => entry.name === skuOrName);
+    const match = vehicles.find((entry) => entry.vin.trim().toUpperCase() === incoming);
+    if (match) {
+      if (vehicleId !== match.id) {
+        setVehicleId(match.id);
+        setClientId(match.clientId);
+        setVehicleMake(match.make);
+        setVehicleModel(match.model);
+        setLicensePlate(match.licensePlate);
+        setVin(match.vin);
+        if (match.currentMileage > 0) setMileage(String(match.currentMileage));
+      }
+      const client = clients.find((entry) => entry.id === match.clientId);
+      if (client && clientId !== client.id) {
+        setClientId(client.id);
+        setClientName(client.fullName);
+        setClientPhone(client.phone);
+      }
+      return;
+    }
+
+    if (vin.toUpperCase() !== incoming) setVin(incoming);
+  }, [clientId, clients, params.vin, vehicleId, vehicles, vin]);
+
+  useEffect(() => {
+    const itemId = typeof params.itemId === 'string' ? params.itemId.trim() : '';
+    if (!itemId) return;
+    const item = inventoryItems.find((entry) => entry.id === itemId);
     if (!item) return;
-    setPartSku(item.sku);
-    setPartName(item.name);
-    setPartPrice(String(resolveInventoryUnitPrice(item)));
-  };
-
-  const stepOneValid =
-    clientName.trim().length > 1 &&
-    clientPhone.trim().length > 5 &&
-    (vin.trim().length > 5 || licensePlate.trim().length > 2);
-
-  const vehicleLabel = [vehicleMake.trim(), vehicleModel.trim()].filter(Boolean).join(' ') || '—';
-
-  const grandTotal = useMemo(
-    () =>
-      [...laborLines, ...partLines, ...motorLines].reduce((sum, line) => sum + line.price, 0),
-    [laborLines, motorLines, partLines],
-  );
-
-  const addLabor = () => {
-    const price = Number.parseInt(laborPrice.replace(/\s/g, ''), 10);
-    if (!laborTitle.trim() || !Number.isFinite(price)) return;
-    setLaborLines((lines) => [...lines, { title: laborTitle.trim(), price }]);
-    setLaborTitle('');
-    setLaborPrice('');
-    haptics.light();
-  };
-
-  const addPart = () => {
-    const name = partName.trim();
-    const sku = partSku.trim();
-    const price = Number.parseInt(partPrice.replace(/\s/g, ''), 10);
-    if (!name) return;
-
-    const item =
-      composerOptions.activeInventory.find((entry) => sku && entry.sku === sku) ??
-      composerOptions.activeInventory.find((entry) => entry.name.toLowerCase() === name.toLowerCase());
-
-    if (item) {
-      const unitPrice = Number.isFinite(price) && price > 0 ? price : resolveInventoryUnitPrice(item);
-      setPartLines((lines) => [
+    composition.setPartLines((lines) => {
+      if (lines.some((line) => line.itemId === item.id)) return lines;
+      return [
         ...lines,
         {
+          id: nextComposerLineId('part'),
           name: item.name,
-          price: unitPrice,
+          quantity: 1,
+          unitPrice: resolveInventoryUnitPrice(item),
           sku: item.sku,
           itemId: item.id,
           source: 'warehouse',
           unitCost: item.purchasePrice ?? 0,
         },
-      ]);
-      setPartSku('');
-      setPartName('');
-      setPartPrice('');
-      haptics.light();
-      return;
-    }
+      ];
+    });
+    setTab('parts');
+    setStep(2);
+  }, [composition, inventoryItems, params.itemId, setTab]);
 
-    if (!Number.isFinite(price) || price <= 0) return;
-    setPartLines((lines) => [...lines, { name, price, source: 'adhoc', unitCost: 0 }]);
-    setPartSku('');
-    setPartName('');
-    setPartPrice('');
-    haptics.light();
-  };
+  useEffect(() => {
+    const motorId = typeof params.motorId === 'string' ? params.motorId.trim() : '';
+    if (!motorId) return;
+    const motor = availableMotors.find((entry) => entry.id === motorId);
+    if (!motor) return;
+    const outcome =
+      params.outcome === 'sell' ? ('sell' as const) : ('install' as const);
+    composition.setMotorLines((lines) => {
+      if (lines.some((line) => line.motorId === motor.id)) return lines;
+      return [
+        ...lines,
+        {
+          id: nextComposerLineId('motor'),
+          label: formatMotorLineLabel(motor, { includeSerial: true }),
+          unitPrice: 0,
+          motorId: motor.id,
+          serialCode: motor.serialCode,
+          brandName: motor.brandName,
+          engineCode: motor.engineCode,
+          configuration: motor.configuration,
+          outcome,
+        },
+      ];
+    });
+    composition.setMotorOutcome(outcome);
+    setTab('motors');
+    setStep(2);
+  }, [availableMotors, composition, params.motorId, params.outcome, setTab]);
 
-  const addMotor = () => {
-    const serial = motorSerial.trim();
-    const motor = composerOptions.availableMotors.find((entry) => entry.serialCode === serial);
-    if (!motor) {
-      haptics.warning();
-      return;
-    }
-    const price = Number.parseInt(motorPrice.replace(/\s/g, ''), 10);
-    if (!Number.isFinite(price) || price <= 0) return;
-    setMotorLines((lines) => [
-      ...lines,
-      {
-        label: formatMotorLineLabel(motor, { includeSerial: true }),
-        price,
-        motorId: motor.id,
-        serialCode: motor.serialCode,
-        brandName: motor.brandName,
-        engineCode: motor.engineCode,
-        configuration: motor.configuration,
-      },
-    ]);
-    setMotorSerial('');
-    setMotorPrice('');
-    haptics.light();
-  };
+  const detachVehicleLink = () => setVehicleId('');
+
+  const stepOneValid =
+    clientName.trim().length > 1 &&
+    clientPhone.trim().length > 5 &&
+    (isSellOnlyComposition(composition.partLines, composition.motorLines) ||
+      vin.trim().length > 5 ||
+      licensePlate.trim().length > 2);
+
+  const vehicleLabel = [vehicleMake.trim(), vehicleModel.trim()].filter(Boolean).join(' ') || '—';
+
+  const grandTotal = useMemo(
+    () => compositionGrandTotal(composition.laborLines, composition.partLines, composition.motorLines),
+    [composition.laborLines, composition.motorLines, composition.partLines],
+  );
 
   const handleSave = async () => {
-    if (!companyId || !uid || !can('work_orders_edit')) return;
+    if (!companyId || !uid || !can('work_orders_edit') || !orderEditable) return;
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     try {
       let client = clientId ? clients.find((entry) => entry.id === clientId) : undefined;
@@ -382,37 +409,39 @@ export function CreateOrderScreen() {
 
       const parsedMileage = Number.parseInt(mileage.replace(/\s/g, ''), 10) || vehicle.currentMileage || 0;
 
-      const mappedLaborLines = laborLines.map((line, index) => ({
-        id: `labor-${index + 1}`,
-        title: line.title,
-        hours: 1,
-        unitPrice: line.price,
-        assigneeIds: [],
-        assigneeRole: 'mechanic' as const,
-        pricingMode: 'fixed' as const,
-      }));
-      const mappedPartLines = partLines.map((line, index) => ({
-        id: `part-${index + 1}`,
-        ...(line.itemId ? { itemId: line.itemId } : {}),
-        ...(line.sku ? { sku: line.sku } : {}),
-        name: line.name,
-        quantity: 1,
-        unitPrice: line.price,
-        unitCost: line.unitCost,
-        source: line.source,
-      }));
-      const mappedMotorLines = motorLines.map((line, index) => ({
-        id: `motor-${index + 1}`,
-        motorId: line.motorId,
-        serialCode: line.serialCode,
-        ...(line.brandName ? { brandName: line.brandName } : {}),
-        ...(line.engineCode ? { engineCode: line.engineCode } : {}),
-        ...(line.configuration ? { configuration: line.configuration } : {}),
-        unitPrice: line.price,
-        outcome: 'install' as const,
-      }));
-
+      const { mappedLaborLines, mappedPartLines, mappedMotorLines } = mapCompositionToWorkOrderLines(
+        composition.laborLines,
+        composition.partLines,
+        composition.motorLines,
+      );
       const pricing = calculateWorkOrderPricing(mappedLaborLines, mappedPartLines, mappedMotorLines);
+
+      if (isEdit && orderId) {
+        await workOrderRepository.update(companyId, orderId, {
+          clientId: client.id,
+          clientName: client.fullName,
+          clientPhone: client.phone,
+          vehicleId: vehicle.id,
+          vehicleLabel,
+          vin: vin.trim(),
+          licensePlate: licensePlate.trim(),
+          mileage: parsedMileage,
+          comment: comment.trim() || undefined,
+          laborLines: mappedLaborLines,
+          partLines: mappedPartLines,
+          motorLines: mappedMotorLines,
+          pricing,
+          updatedByUserId: uid,
+        });
+        haptics.success();
+        toast({
+          title: 'Наряд обновлён',
+          description: existingOrder ? `№${existingOrder.number}` : undefined,
+          variant: 'success',
+        });
+        router.back();
+        return;
+      }
 
       const order = await workOrderRepository.create({
         companyId,
@@ -434,10 +463,17 @@ export function CreateOrderScreen() {
       });
 
       haptics.success();
+      toast({ title: 'Наряд создан', description: `№${order.number}`, variant: 'success' });
       router.replace(`/(tabs)/orders/${order.id}`);
-    } catch {
+    } catch (error) {
       haptics.warning();
+      toast({
+        title: 'Не удалось создать наряд',
+        description: error instanceof Error ? error.message : undefined,
+        variant: 'destructive',
+      });
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
@@ -576,95 +612,48 @@ export function CreateOrderScreen() {
 
     if (step === 2) {
       const tabs = [
-        { id: 'labor' as const, label: 'Работы', icon: WrenchIcon },
-        { id: 'parts' as const, label: 'Запчасти', icon: PackageIcon },
-        { id: 'motors' as const, label: 'Двигатели', icon: BoxIcon },
+        { id: 'labor' as const, label: 'Работы', icon: WrenchIcon, badge: composition.laborLines.length },
+        {
+          id: 'parts' as const,
+          label: 'Запчасти',
+          icon: PackageIcon,
+          badge: composition.regularPartLines.length,
+        },
+        ...(motorsEnabled
+          ? [
+              {
+                id: 'motors' as const,
+                label: 'Двигатели',
+                icon: BoxIcon,
+                badge: composition.motorLines.length,
+              },
+            ]
+          : []),
+        ...(specificsEnabled && composition.quickSpecificCategories.length > 0
+          ? [
+              {
+                id: 'specific' as const,
+                label: 'Каталог',
+                icon: TagIcon,
+                badge: composition.specificPartLines.length,
+              },
+            ]
+          : []),
       ];
 
       return (
-        <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={{ gap: 14 }}>
-          <ComposerTabBar tabs={tabs} activeTab={tab} onTabChange={setTab} />
-
-          <ComposerTabPanel tab={tab} direction={direction}>
-            {tab === 'labor' ? (
-              <SectionCard title="Работы" icon={WrenchIcon}>
-                <Field label="Наименование">
-                  <Input placeholder="Снятие/установка двигателя" value={laborTitle} onChangeText={setLaborTitle} />
-                </Field>
-                <Field label="Сумма, ₸">
-                  <Input placeholder="45 000" value={laborPrice} onChangeText={setLaborPrice} keyboardType="number-pad" />
-                </Field>
-                <Button variant="outline" onPress={addLabor}>
-                  Добавить работу
-                </Button>
-                {laborLines.map((line, index) => (
-                  <View key={`${line.title}-${index}`} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text variant="body" style={{ fontSize: 13, flex: 1 }}>{line.title}</Text>
-                    <Text variant="body" style={{ fontSize: 13, fontWeight: '600' }}>{formatPrice(line.price)}</Text>
-                  </View>
-                ))}
-              </SectionCard>
-            ) : tab === 'parts' ? (
-              <SectionCard title="Запчасти" icon={PackageIcon}>
-                <Field label="Артикул">
-                  <AutocompleteInput
-                    placeholder="SKU-001"
-                    value={partSku}
-                    onValueChange={setPartSku}
-                    options={composerOptions.partSkuOptions}
-                    matchMode="flexible"
-                    onOptionSelect={(value) => fillPartFromInventory(value, 'sku')}
-                  />
-                </Field>
-                <Field label="Название">
-                  <AutocompleteInput
-                    placeholder="Фильтр масляный Mann"
-                    value={partName}
-                    onValueChange={setPartName}
-                    options={composerOptions.partNameOptions}
-                    matchMode="flexible"
-                    onOptionSelect={(value) => fillPartFromInventory(value, 'name')}
-                  />
-                </Field>
-                <Field label="Сумма, ₸">
-                  <Input placeholder="12 500" value={partPrice} onChangeText={setPartPrice} keyboardType="number-pad" />
-                </Field>
-                <Button variant="outline" onPress={addPart}>
-                  Добавить запчасть
-                </Button>
-                {partLines.map((line, index) => (
-                  <View key={`${line.name}-${index}`} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text variant="body" style={{ fontSize: 13, flex: 1 }}>{line.name}</Text>
-                    <Text variant="body" style={{ fontSize: 13, fontWeight: '600' }}>{formatPrice(line.price)}</Text>
-                  </View>
-                ))}
-              </SectionCard>
-            ) : (
-              <SectionCard title="Двигатели" icon={BoxIcon}>
-                <Field label="Серийный номер / код">
-                  <AutocompleteInput
-                    placeholder="Номер двигателя"
-                    value={motorSerial}
-                    onValueChange={setMotorSerial}
-                    options={composerOptions.motorSerialOptions}
-                    matchMode="flexible"
-                  />
-                </Field>
-                <Field label="Сумма, ₸">
-                  <Input placeholder="185 000" value={motorPrice} onChangeText={setMotorPrice} keyboardType="number-pad" />
-                </Field>
-                <Button variant="outline" onPress={addMotor}>
-                  Добавить двигатель
-                </Button>
-                {motorLines.map((line, index) => (
-                  <View key={`${line.serialCode}-${index}`} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text variant="body" style={{ fontSize: 13, flex: 1 }}>{line.label}</Text>
-                    <Text variant="body" style={{ fontSize: 13, fontWeight: '600' }}>{formatPrice(line.price)}</Text>
-                  </View>
-                ))}
-              </SectionCard>
-            )}
-          </ComposerTabPanel>
+        <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)}>
+          <OrderCompositionStep
+            tab={tab}
+            direction={direction}
+            tabs={tabs}
+            onTabChange={setTab}
+            composition={composition}
+            composerOptions={composerOptions}
+            currentUserId={uid ?? undefined}
+            specificsEnabled={specificsEnabled}
+            motorsEnabled={motorsEnabled}
+          />
         </Animated.View>
       );
     }
@@ -677,9 +666,10 @@ export function CreateOrderScreen() {
             <SummaryRow label="Телефон" value={clientPhone || '—'} />
             <SummaryRow label="Авто" value={vehicleLabel} />
             <SummaryRow label="Госномер / VIN" value={licensePlate || vin || '—'} />
-            <SummaryRow label="Работы" value={String(laborLines.length)} />
-            <SummaryRow label="Запчасти" value={String(partLines.length)} />
-            <SummaryRow label="Двигатели" value={String(motorLines.length)} />
+            <SummaryRow label="Работы" value={String(composition.laborLines.length)} />
+            <SummaryRow label="Запчасти" value={String(composition.regularPartLines.length)} />
+            <SummaryRow label="Каталог" value={String(composition.specificPartLines.length)} />
+            <SummaryRow label="Двигатели" value={String(composition.motorLines.length)} />
           </View>
         </SectionCard>
 
@@ -706,6 +696,40 @@ export function CreateOrderScreen() {
     );
   };
 
+  if (isEdit && !existingOrder) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <Text variant="body" color="muted">
+          Наряд не найден
+        </Text>
+        <Button variant="outline" onPress={() => router.back()} style={{ marginTop: 16 }}>
+          Назад
+        </Button>
+      </View>
+    );
+  }
+
+  if (isEdit && existingOrder && !orderEditable) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.background,
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24,
+        }}
+      >
+        <Text variant="body" color="muted" style={{ textAlign: 'center' }}>
+          Редактирование доступно только для черновиков и подтверждённых нарядов
+        </Text>
+        <Button variant="outline" onPress={() => router.back()} style={{ marginTop: 16 }}>
+          Назад
+        </Button>
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -727,10 +751,10 @@ export function CreateOrderScreen() {
           </IconButton>
           <View style={{ flex: 1 }}>
             <Text variant="caption" color="muted" style={{ fontSize: 11 }}>
-              Новый заказ-наряд
+              {isEdit ? `Редактирование №${existingOrder?.number ?? ''}` : 'Новый заказ-наряд'}
             </Text>
             <Text variant="heading" style={{ fontSize: 20, fontWeight: '700', letterSpacing: -0.3 }}>
-              Создание
+              {isEdit ? 'Редактирование' : 'Создание'}
             </Text>
           </View>
         </View>
@@ -768,7 +792,7 @@ export function CreateOrderScreen() {
           </Button>
         ) : (
           <Button onPress={handleSave} loading={saving} style={{ flex: 1 }} leftIcon={<ClipboardListIcon size="sm" color="#fff" strokeWidth={2} />}>
-            Сохранить черновик
+            {isEdit ? 'Сохранить изменения' : 'Сохранить черновик'}
           </Button>
         )}
       </ScreenActionFooter>

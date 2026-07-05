@@ -21,6 +21,5 @@ export function canSwitchCompanyViaInvite(companyId: string | null | undefined):
 }
 
 export function isProductionCompanyId(companyId: string | null | undefined): boolean {
-  const normalized = normalizeCompanyId(companyId);
-  return normalized !== DEFAULT_COMPANY_ID;
+  return !isUnassignedCompanyId(companyId);
 }

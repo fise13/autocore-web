@@ -2,20 +2,25 @@ import type { User } from 'firebase/auth';
 import { updateProfile } from 'firebase/auth';
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
+  limit,
+  query,
   serverTimestamp,
   setDoc,
+  where,
 } from 'firebase/firestore';
 
-import { normalizeCompanyId } from '@/lib/company-id';
+import { DEFAULT_COMPANY_ID, normalizeCompanyId, isProductionCompanyId } from '@/lib/company-id';
 import { readCompanyDisplayName } from '@/lib/company-display-name';
 import { resolveActiveCompanyName } from '@/lib/resolve-active-company-name';
 import type { CompanyAppConfig } from '@/types/company-config';
 import type { EmployeeProfileSlice, UserCompanyMembership } from '@/types/rbac';
 import type { Permission, UserEntity, UserRole } from '@/types/user';
 
+import { ensureFirestoreAuthReady } from './auth';
 import { loadCompanyAppConfig } from './company-config';
 import { getFirebaseDb } from './index';
 
@@ -135,15 +140,71 @@ export function buildFallbackProfile(authUser: User): UserEntity {
   return mapUserDoc(authUser.uid, authUser, undefined);
 }
 
-/** Fast path: user doc only — matches web auth bootstrap before full profile refresh. */
-export async function loadFastUserProfile(authUser: User): Promise<UserEntity> {
+/** Fast path: user doc + memberships — no company reads (safe before RBAC bootstrap). */
+export async function loadFastSessionBootstrap(authUser: User): Promise<{
+  profile: UserEntity;
+  memberships: UserCompanyMembership[];
+}> {
   try {
-    await ensureUserDocument(authUser);
-    const snapshot = await getDoc(doc(getFirebaseDb(), 'users', authUser.uid));
-    return mapUserDoc(authUser.uid, authUser, snapshot.data() as UserDocShape | undefined);
-  } catch {
-    return buildFallbackProfile(authUser);
+    await ensureFirestoreAuthReady(authUser);
+    const db = getFirebaseDb();
+
+    let userDoc: UserDocShape | undefined;
+    try {
+      const userSnapshot = await getDoc(doc(db, 'users', authUser.uid));
+      userDoc = userSnapshot.data() as UserDocShape | undefined;
+    } catch (error) {
+      console.warn('User doc read skipped:', error);
+    }
+
+    let memberships: UserCompanyMembership[] = [];
+    try {
+      const membershipsSnapshot = await getDocs(collection(db, 'users', authUser.uid, 'memberships'));
+      memberships = membershipsSnapshot.docs
+        .filter((entry) => isProductionCompanyId(entry.id))
+        .map((entry) => {
+          const companyId = normalizeCompanyId(entry.id);
+          const data = entry.data() as { role?: UserRole };
+          return {
+            companyId,
+            role: data.role ?? 'employee',
+            name: companyId,
+          };
+        });
+    } catch (error) {
+      console.warn('Memberships read skipped:', error);
+    }
+
+    let profile = mapUserDoc(authUser.uid, authUser, userDoc);
+    let companyId = resolveCompanyIdFromMemberships(profile.companyId, memberships);
+
+    if (!companyId) {
+      companyId = await resolveOwnedCompanyId(authUser.uid);
+    }
+
+    if (companyId) {
+      const membership = memberships.find((entry) => normalizeCompanyId(entry.companyId) === companyId);
+      profile = {
+        ...profile,
+        companyId,
+        role: membership?.role ?? profile.role,
+      };
+    }
+
+    return { profile, memberships };
+  } catch (error) {
+    console.warn('Fast session bootstrap fallback:', error);
+    return {
+      profile: buildFallbackProfile(authUser),
+      memberships: [],
+    };
   }
+}
+
+/** @deprecated Use loadFastSessionBootstrap */
+export async function loadFastUserProfile(authUser: User): Promise<UserEntity> {
+  const session = await loadFastSessionBootstrap(authUser);
+  return session.profile;
 }
 
 async function loadMemberships(uid: string): Promise<UserCompanyMembership[]> {
@@ -152,16 +213,19 @@ async function loadMemberships(uid: string): Promise<UserCompanyMembership[]> {
     snapshot.docs.map(async (entry) => {
       const companyId = normalizeCompanyId(entry.id);
       const data = entry.data() as { role?: UserRole };
-      const companySnapshot = await getDoc(doc(getFirebaseDb(), 'companies', companyId));
-      const companyName = resolveActiveCompanyName(
-        companyId,
-        companySnapshot.exists() ? readCompanyDisplayName(companySnapshot.data(), companyId) : null,
-        [],
-      );
+      let companyName: string | null = null;
+      try {
+        const companySnapshot = await getDoc(doc(getFirebaseDb(), 'companies', companyId));
+        companyName = companySnapshot.exists()
+          ? readCompanyDisplayName(companySnapshot.data(), companyId)
+          : null;
+      } catch {
+        companyName = null;
+      }
       return {
         companyId,
         role: data.role ?? 'employee',
-        name: companyName,
+        name: resolveActiveCompanyName(companyId, companyName, []),
       };
     }),
   );
@@ -170,65 +234,142 @@ async function loadMemberships(uid: string): Promise<UserCompanyMembership[]> {
   return memberships;
 }
 
+function resolveCompanyIdFromMemberships(
+  companyId: string | null | undefined,
+  memberships: UserCompanyMembership[],
+): string | null {
+  if (isProductionCompanyId(companyId)) {
+    return normalizeCompanyId(companyId);
+  }
+  const membership = memberships.find((entry) => isProductionCompanyId(entry.companyId));
+  return membership ? normalizeCompanyId(membership.companyId) : null;
+}
+
+/** When users/{uid}.companyId is empty, resolve workspace from owned companies. */
+export async function resolveOwnedCompanyId(uid: string): Promise<string | null> {
+  try {
+    const db = getFirebaseDb();
+    const owned = await getDocs(
+      query(collection(db, 'companies'), where('ownerId', '==', uid), limit(10)),
+    );
+    if (!owned.empty) {
+      const preferred = owned.docs.find((entry) => entry.id !== DEFAULT_COMPANY_ID);
+      return preferred?.id ?? owned.docs[0]?.id ?? null;
+    }
+
+    const defaultSnap = await getDoc(doc(db, 'companies', DEFAULT_COMPANY_ID));
+    if (!defaultSnap.exists()) return null;
+    const ownerId = (defaultSnap.data() as { ownerId?: string }).ownerId;
+    return ownerId === uid ? DEFAULT_COMPANY_ID : null;
+  } catch (error) {
+    console.warn('Owned company resolve skipped:', error);
+    return null;
+  }
+}
+
 export async function hydrateEffectiveProfile(authUser: User): Promise<{
   profile: UserEntity;
   companyConfig: CompanyAppConfig | null;
   memberships: UserCompanyMembership[];
   activeCompanyName: string | null;
 }> {
-  await ensureUserDocument(authUser);
+  try {
+    await ensureFirestoreAuthReady(authUser);
+    try {
+      await ensureUserDocument(authUser);
+    } catch (error) {
+      console.warn('User doc ensure skipped:', error);
+    }
 
-  const db = getFirebaseDb();
-  const userRef = doc(db, 'users', authUser.uid);
-  const userSnapshot = await getDoc(userRef);
-  const userDoc = userSnapshot.data() as UserDocShape | undefined;
-  const baseProfile = mapUserDoc(authUser.uid, authUser, userDoc);
-  const memberships = await loadMemberships(authUser.uid);
+    const db = getFirebaseDb();
+    const userRef = doc(db, 'users', authUser.uid);
+    let userDoc: UserDocShape | undefined;
+    try {
+      const userSnapshot = await getDoc(userRef);
+      userDoc = userSnapshot.data() as UserDocShape | undefined;
+    } catch (error) {
+      console.warn('User doc enrich skipped:', error);
+    }
+    const baseProfile = mapUserDoc(authUser.uid, authUser, userDoc);
+    let memberships: UserCompanyMembership[] = [];
+    try {
+      memberships = await loadMemberships(authUser.uid);
+    } catch (error) {
+      console.warn('Memberships enrich skipped:', error);
+    }
 
-  if (!baseProfile.companyId) {
+    let companyId = resolveCompanyIdFromMemberships(baseProfile.companyId, memberships);
+    if (!companyId) {
+      companyId = await resolveOwnedCompanyId(authUser.uid);
+    }
+
+    if (!companyId) {
+      return {
+        profile: baseProfile,
+        companyConfig: null,
+        memberships,
+        activeCompanyName: null,
+      };
+    }
+
+    const companyRef = doc(db, 'companies', companyId);
+    const employeeRef = doc(db, 'companies', companyId, 'employees', authUser.uid);
+
+    let companySnapshot: Awaited<ReturnType<typeof getDoc>> | null = null;
+    let employeeSnapshot: Awaited<ReturnType<typeof getDoc>> | null = null;
+    let companyConfig: CompanyAppConfig | null = null;
+
+    try {
+      [companySnapshot, employeeSnapshot, companyConfig] = await Promise.all([
+        getDoc(companyRef),
+        getDoc(employeeRef),
+        loadCompanyAppConfig(companyId),
+      ]);
+    } catch (error) {
+      console.warn('Company profile enrich partial:', error);
+    }
+
+    const companyDoc = companySnapshot?.exists()
+      ? ((companySnapshot.data() as CompanyDocShape | undefined) ?? undefined)
+      : undefined;
+    const employeeDoc = employeeSnapshot?.exists()
+      ? (employeeSnapshot.data() as {
+          role?: UserRole;
+          permissions?: Permission[];
+          isActive?: boolean;
+          fullName?: string;
+        })
+      : null;
+
+    const merged = mergeProfileWithEmployee({ ...baseProfile, companyId }, employeeDoc);
+    const activeCompanyName = companySnapshot?.exists()
+      ? readCompanyDisplayName(companyDoc, companyId)
+      : memberships.find((entry) => normalizeCompanyId(entry.companyId) === companyId)?.name ?? null;
+
     return {
-      profile: baseProfile,
-      companyConfig: null,
+      profile: {
+        ...merged,
+        companyId,
+        isCompanyOwner: companyDoc?.ownerId === authUser.uid,
+      },
+      companyConfig,
       memberships,
+      activeCompanyName,
+    };
+  } catch (error) {
+    console.warn('Profile hydrate fallback:', error);
+    const fast = await loadFastSessionBootstrap(authUser);
+    let companyId = resolveCompanyIdFromMemberships(fast.profile.companyId, fast.memberships);
+    if (!companyId) {
+      companyId = await resolveOwnedCompanyId(authUser.uid);
+    }
+    return {
+      profile: companyId ? { ...fast.profile, companyId, isCompanyOwner: true } : fast.profile,
+      companyConfig: null,
+      memberships: fast.memberships,
       activeCompanyName: null,
     };
   }
-
-  const companyId = normalizeCompanyId(baseProfile.companyId);
-  const companyRef = doc(db, 'companies', companyId);
-  const employeeRef = doc(db, 'companies', companyId, 'employees', authUser.uid);
-
-  const [companySnapshot, employeeSnapshot, companyConfig] = await Promise.all([
-    getDoc(companyRef),
-    getDoc(employeeRef),
-    loadCompanyAppConfig(companyId),
-  ]);
-
-  const companyDoc = (companySnapshot.data() as CompanyDocShape | undefined) ?? undefined;
-  const employeeDoc = employeeSnapshot.exists()
-    ? (employeeSnapshot.data() as {
-        role?: UserRole;
-        permissions?: Permission[];
-        isActive?: boolean;
-        fullName?: string;
-      })
-    : null;
-
-  const merged = mergeProfileWithEmployee(baseProfile, employeeDoc);
-  const activeCompanyName = companySnapshot.exists()
-    ? readCompanyDisplayName(companyDoc, companyId)
-    : memberships.find((entry) => normalizeCompanyId(entry.companyId) === companyId)?.name ?? null;
-
-  return {
-    profile: {
-      ...merged,
-      companyId,
-      isCompanyOwner: companyDoc?.ownerId === authUser.uid,
-    },
-    companyConfig,
-    memberships,
-    activeCompanyName,
-  };
 }
 
 export async function updateUserProfileName(uid: string, name: string): Promise<void> {
@@ -274,5 +415,39 @@ export async function updateUserAccountProfile(
         { merge: true },
       );
     }
+  }
+}
+
+/**
+ * Best-effort cleanup before Auth user deletion.
+ * Marks company membership inactive and removes the user profile document.
+ * Company business data is intentionally kept for other members.
+ */
+export async function deleteUserAccountData(authUser: User): Promise<void> {
+  const db = getFirebaseDb();
+  const userRef = doc(db, 'users', authUser.uid);
+
+  try {
+    const snapshot = await getDoc(userRef);
+    const companyId = String((snapshot.data() as UserDocShape | undefined)?.companyId ?? '').trim();
+    if (companyId) {
+      await setDoc(
+        doc(db, 'companies', normalizeCompanyId(companyId), 'employees', authUser.uid),
+        {
+          isActive: false,
+          deletedAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+    }
+  } catch (error) {
+    console.warn('Employee deactivation deferred:', error);
+  }
+
+  try {
+    await deleteDoc(userRef);
+  } catch (error) {
+    console.warn('User profile delete deferred:', error);
   }
 }

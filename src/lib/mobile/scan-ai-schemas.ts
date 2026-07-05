@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 export const scanOcrResponseSchema = z.object({
+  /** Full visible text transcription — used by deterministic document parsers. */
+  rawText: z.string().default(""),
   barcodes: z.array(z.string()).default([]),
   partNumbers: z.array(z.string()).default([]),
   brand: z.string().optional(),

@@ -111,7 +111,7 @@ export function useProfileSnapshot(): ProfileSnapshot {
         {
           id: 'notifications',
           title: 'Уведомления',
-          value: notificationPreferences.pushEnabled ? 'Включены' : 'Выключены',
+          value: notificationPreferences.channels.push ? 'Включены' : 'Выключены',
           icon: BellIcon,
         },
       ],
@@ -126,7 +126,10 @@ export function useProfileSnapshot(): ProfileSnapshot {
             : membership.role,
         companyId: membership.companyId,
       })),
-      dangerZone: [{ id: 'sign-out', title: 'Выйти из аккаунта' }],
+      dangerZone: [
+        { id: 'sign-out', title: 'Выйти из аккаунта' },
+        { id: 'delete-account', title: 'Удалить аккаунт' },
+      ],
     };
-  }, [companyName, firebaseUser?.email, firebaseUser?.providerData, isPro, memberships, notificationPreferences.pushEnabled, photoURL, preference, profile, subscription]);
+  }, [companyName, firebaseUser?.email, firebaseUser?.providerData, isPro, memberships, notificationPreferences.channels.push, photoURL, preference, profile, subscription]);
 }

@@ -24,8 +24,8 @@ import {
 export const cornerStyle = {
   continuous: true,
   default: radius.lg,
-  card: radius.xl,
-  sheet: radius['2xl'],
+  card: radius['2xl'],
+  sheet: radius['3xl'],
   modal: radius['2xl'],
   chip: radius.full,
   control: radius.lg,
@@ -89,8 +89,8 @@ export const buttonHeight = {
   xs: 24,
   sm: touchTarget.iconSm,
   default: touchTarget.icon,
-  lg: touchTarget.iconLg,
-  xl: touchTarget.comfortable,
+  lg: 40,
+  xl: 40,
 } as const;
 
 /** Icon system defaults */
@@ -152,9 +152,9 @@ export const layoutRhythm = {
   sidebar: sidebarWidth,
   cardPadding: spacing[4],
   cardPaddingSm: spacing[3],
-  cardGap: spacing[4],
+  cardGap: spacing[3],
   sectionGap: spacing[6],
-  listGap: spacing[2],
+  listGap: spacing[2.5],
   inlineGap: spacing[2],
   stackGap: spacing[3],
 } as const;

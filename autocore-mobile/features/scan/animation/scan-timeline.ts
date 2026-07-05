@@ -1,11 +1,15 @@
+import { screenMotion } from '@/theme/screen';
+
+const s = screenMotion.stagger;
+
 export const scanTimeline = {
   camera: 0,
-  header: 60,
-  panel: 140,
-  detectOutline: 180,
+  header: s,
+  panel: s * 2,
+  detectOutline: s * 3,
 } as const;
 
 export const scanSpring = {
-  panel: { damping: 28, stiffness: 380, mass: 0.8 },
-  detect: { damping: 22, stiffness: 420, mass: 0.7 },
+  panel: screenMotion.spring,
+  detect: screenMotion.press,
 } as const;

@@ -4,13 +4,18 @@ import { useRealtimeQuery } from '@/hooks/use-realtime-query';
 import { subscribeCompanyEmployees } from '@/services/firestore/employee-rbac-service';
 import type { CompanyEmployee } from '@/types/rbac';
 
-export function useEmployeesRealtime(companyId: string | null | undefined, enabled = true) {
+export function useEmployeesRealtime(
+  companyId: string | null | undefined,
+  enabled = true,
+  options?: { keepAlive?: boolean },
+) {
   const active = Boolean(enabled && companyId?.trim());
   const queryKey = useMemo(() => ['realtime', 'employees', companyId] as const, [companyId]);
 
   const { data, isBootstrapping, errorMessage } = useRealtimeQuery<CompanyEmployee[]>({
     queryKey,
     enabled: active,
+    keepAlive: options?.keepAlive,
     initialData: [],
     subscribe: (onData, onError) => {
       if (!companyId) {

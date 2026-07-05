@@ -1,39 +1,55 @@
-import { ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { memo, useCallback, useState } from 'react';
+import { RefreshControl, View } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 
-import { useTheme } from '@/hooks';
-
+import { Screen, ScreenScroll } from '@/components/ui';
 import { useMissionControlData } from '@/hooks';
+
 import { McActivityFeed } from './components/mc-activity-feed';
-import { McAttentionBanner } from './components/mc-attention-banner';
+import { McFeaturedInsight } from './components/mc-featured-insight';
 import { McHeader } from './components/mc-header';
-import { McOverview } from './components/mc-overview';
 import { McQuickActions } from './components/mc-quick-actions';
+import { McRevenueCard } from './components/mc-revenue-card';
+import { McStatTiles } from './components/mc-stat-tiles';
 import { mc } from './layout';
 
-export function MissionControlScreen() {
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
+function MissionControlBody() {
   const data = useMissionControlData();
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        decelerationRate="normal"
-        contentContainerStyle={{
-          paddingBottom: Math.max(insets.bottom, 10) + 80,
-        }}
-      >
-        <McHeader />
+    <>
+      <McHeader />
+      <View style={{ paddingHorizontal: mc.pad, gap: mc.section, paddingBottom: mc.section }}>
+        <McRevenueCard revenue={data.revenue} />
+        <McStatTiles tiles={data.statTiles} />
+        <McQuickActions actions={data.quickActions} />
+        <McFeaturedInsight insight={data.featuredInsight} />
+        <McActivityFeed items={data.activity} />
+      </View>
+    </>
+  );
+}
 
-        <View style={{ paddingHorizontal: mc.pad, gap: mc.section }}>
-          {data.attention.items.length > 0 ? <McAttentionBanner attention={data.attention} /> : null}
-          <McOverview metrics={data.overview} />
-          <McQuickActions actions={data.quickActions} />
-          <McActivityFeed items={data.activity} />
-        </View>
-      </ScrollView>
-    </View>
+const MemoBody = memo(MissionControlBody);
+
+export function MissionControlScreen() {
+  const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await queryClient.invalidateQueries({ queryKey: ['realtime'] });
+    setRefreshing(false);
+  }, [queryClient]);
+
+  return (
+    <Screen>
+      <ScreenScroll
+        tabBarInset
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        <MemoBody />
+      </ScreenScroll>
+    </Screen>
   );
 }

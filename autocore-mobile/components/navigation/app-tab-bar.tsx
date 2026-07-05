@@ -1,17 +1,12 @@
 import { BlurView } from 'expo-blur';
-import { useRouter, useSegments } from 'expo-router';
+import { useRouter } from 'expo-router';
 import type React from 'react';
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Platform, Pressable, View } from 'react-native';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { ActionSheetIOS, Alert, Platform, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
-  interpolate,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
-  withRepeat,
-  withSequence,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
@@ -25,30 +20,36 @@ import {
 import type { NavItemId } from '@/features/settings/types';
 import { useReducedMotion, useTheme, useCompanyModuleEnabled } from '@/hooks';
 import { Text } from '@/components/ui';
-import { autocoreEase, spring } from '@/theme/motion';
-import { haptics, spacing } from '@/theme';
-import { toneBackground } from '@/theme/color-utils';
+import {
+  TAB_BAR_ROW_HEIGHT,
+  TAB_BAR_VERTICAL_PADDING,
+} from '@/lib/navigation/floating-tab-bar-inset';
+import { tabNavigationGuard } from '@/lib/navigation/navigation-guard';
+import { shouldHideTabBarFromNavState } from '@/lib/navigation/should-hide-tab-bar';
+import { autocoreEase, duration } from '@/theme/motion';
+import { haptics, rhythm, spacing } from '@/theme';
 
 import { resolveTabRouteName, useTabTransition } from './tab-transition-context';
 
 type TabVisual = {
   label: string;
   icon: React.ComponentType<{ size?: 'sm' | 'md' | 'lg'; color?: string; strokeWidth?: number }>;
-  emphasized?: boolean;
 };
 
-const TAB_PATHS: Record<string, '/(tabs)' | '/(tabs)/search' | '/(tabs)/scan' | '/(tabs)/orders' | '/(tabs)/accounting' | '/(tabs)/profile'> = {
-  index: '/(tabs)',
-  search: '/(tabs)/search',
-  scan: '/(tabs)/scan',
-  orders: '/(tabs)/orders',
-  accounting: '/(tabs)/accounting',
-  profile: '/(tabs)/profile',
+const TAB_ICON_STROKE = { active: 2, inactive: 1.75 } as const;
+const TAB_MOTION_MS = duration.normal;
+
+type TabRoute = {
+  key: string;
+  name: string;
+  params?: object;
+  state?: {
+    index?: number;
+    routes?: TabRoute[];
+  };
 };
 
-type TabRoute = { key: string; name: string; params?: object };
-
-type AppTabBarProps = {
+export type AppTabBarProps = {
   state: { index: number; routes: TabRoute[] };
   navigation: {
     emit: (event: { type: 'tabPress' | 'tabLongPress'; target: string; canPreventDefault?: boolean }) => unknown;
@@ -56,68 +57,30 @@ type AppTabBarProps = {
   };
 };
 
-function AppTabBarItem({
+const AppTabBarItem = memo(function AppTabBarItem({
   label,
   Icon,
   active,
-  emphasized = false,
-  color,
-  mutedColor,
+  activeColor,
+  inactiveIconColor,
+  inactiveLabelColor,
   onPress,
   onLongPress,
 }: {
   label: string;
   Icon: TabVisual['icon'];
   active: boolean;
-  emphasized?: boolean;
-  color: string;
-  mutedColor: string;
+  activeColor: string;
+  inactiveIconColor: string;
+  inactiveLabelColor: string;
   onPress: () => void;
   onLongPress: () => void;
 }) {
   const reducedMotion = useReducedMotion();
-  const progress = useSharedValue(active ? 1 : 0);
   const pressed = useSharedValue(1);
-  const breathe = useSharedValue(1);
-
-  useEffect(() => {
-    if (reducedMotion) {
-      progress.value = active ? 1 : 0;
-      return;
-    }
-    progress.value = withSpring(active ? 1 : 0, { damping: 22, stiffness: 220, mass: 0.75 });
-  }, [active, progress, reducedMotion]);
-
-  useEffect(() => {
-    if (!emphasized || reducedMotion) return;
-    breathe.value = withDelay(
-      2000,
-      withRepeat(
-        withSequence(
-          withTiming(1.04, { duration: 1800, easing: autocoreEase }),
-          withTiming(1, { duration: 1800, easing: autocoreEase }),
-          withTiming(1, { duration: 2600 }),
-        ),
-        -1,
-        false,
-      ),
-    );
-  }, [breathe, emphasized, reducedMotion]);
 
   const iconStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: interpolate(progress.value, [0, 1], [0, emphasized ? -1.5 : -1]) },
-      {
-        scale:
-          pressed.value *
-          (emphasized && !active ? breathe.value : 1) *
-          interpolate(progress.value, [0, 1], [0.95, 1]),
-      },
-    ],
-  }));
-
-  const labelStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 1], [0.72, 1]),
+    transform: [{ scale: pressed.value }],
   }));
 
   return (
@@ -128,24 +91,43 @@ function AppTabBarItem({
       onLongPress={onLongPress}
       onPressIn={() => {
         if (reducedMotion) return;
-        pressed.value = withTiming(0.97, { duration: 120, easing: autocoreEase });
+        pressed.value = withTiming(0.96, { duration: duration.fast, easing: autocoreEase });
       }}
       onPressOut={() => {
-        pressed.value = withSpring(1, spring.snappy);
+        pressed.value = withTiming(1, { duration: duration.fast, easing: autocoreEase });
       }}
-      style={{ flex: 1, minHeight: 58, alignItems: 'center', justifyContent: 'center', gap: spacing[1], borderRadius: 18 }}
+      style={{
+        flex: 1,
+        minHeight: TAB_BAR_ROW_HEIGHT,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 3,
+        borderRadius: rhythm.cardRadius,
+      }}
     >
       <Animated.View style={iconStyle}>
-        <Icon size={emphasized ? 'lg' : 'md'} color={active ? color : mutedColor} strokeWidth={active ? (emphasized ? 2.5 : 2.4) : emphasized ? 2 : 1.8} />
+        <Icon
+          size="md"
+          color={active ? activeColor : inactiveIconColor}
+          strokeWidth={active ? TAB_ICON_STROKE.active : TAB_ICON_STROKE.inactive}
+        />
       </Animated.View>
-      <Animated.View style={labelStyle}>
-        <Text variant="caption" style={{ color: active ? color : mutedColor, fontWeight: active ? '600' : '500', fontSize: 11, lineHeight: 14 }}>
-          {label}
-        </Text>
-      </Animated.View>
+      <Text
+        variant="meta"
+        numberOfLines={1}
+        style={{
+          fontSize: 10,
+          lineHeight: 12,
+          fontWeight: active ? '600' : '500',
+          letterSpacing: 0.15,
+          color: active ? activeColor : inactiveLabelColor,
+        }}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
-}
+});
 
 function isNavItemModuleEnabled(
   id: NavItemId,
@@ -159,15 +141,12 @@ function isNavItemModuleEnabled(
   return true;
 }
 
-export function AppTabBar({ state, navigation }: AppTabBarProps) {
+export const AppTabBar = memo(function AppTabBar({ state, navigation }: AppTabBarProps) {
   const { colors, isDark, shadows } = useTheme();
   const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion();
   const router = useRouter();
-  const segments = useSegments();
-  const hideTabBar =
-    segments[0] === '(tabs)' &&
-    ((segments[1] === 'orders' && segments.length > 2) || (segments[1] === 'profile' && segments.length > 2));
+  const hideTabBar = shouldHideTabBarFromNavState(state.routes, state.index);
   const workOrdersEnabled = useCompanyModuleEnabled('workOrders');
   const warehouseEnabled = useCompanyModuleEnabled('warehouse');
   const accountingModuleEnabled = useCompanyModuleEnabled('accounting');
@@ -176,18 +155,6 @@ export function AppTabBar({ state, navigation }: AppTabBarProps) {
   const { beginTransition } = useTabTransition();
   const [containerWidth, setContainerWidth] = useState(0);
   const capsuleX = useSharedValue(0);
-  const barY = useSharedValue(reducedMotion ? 0 : 28);
-  const barOpacity = useSharedValue(reducedMotion ? 1 : 0);
-
-  useEffect(() => {
-    if (reducedMotion) {
-      barY.value = 0;
-      barOpacity.value = 1;
-      return;
-    }
-    barOpacity.value = withDelay(180, withTiming(1, { duration: 380, easing: autocoreEase }));
-    barY.value = withDelay(180, withSpring(0, spring.gentle));
-  }, [barOpacity, barY, reducedMotion]);
 
   const tabEntries = useMemo(() => {
     return resolveTabBarEntries(navOrder, navEnabled).filter((entry) => {
@@ -196,9 +163,9 @@ export function AppTabBar({ state, navigation }: AppTabBarProps) {
     });
   }, [navOrder, navEnabled, workOrdersEnabled, warehouseEnabled, accountingModuleEnabled]);
 
-  const horizontalPadding = spacing[6];
+  const horizontalPadding = spacing[4];
   const itemWidth = tabEntries.length > 0 ? Math.max((containerWidth - horizontalPadding * 2) / tabEntries.length, 0) : 0;
-  const capsuleWidth = Math.max(itemWidth - spacing[1], 0);
+  const capsuleWidth = Math.max(itemWidth - spacing[1.5], 0);
   const activeRouteKey = state.routes[state.index]?.key;
   const activeRouteName = state.routes[state.index]?.name;
 
@@ -211,13 +178,19 @@ export function AppTabBar({ state, navigation }: AppTabBarProps) {
   }, [activeRouteKey, state.routes, tabEntries]);
 
   useEffect(() => {
+    tabNavigationGuard.release();
+  }, []);
+
+  useEffect(() => {
+    tabNavigationGuard.release();
+  }, [state.index, activeRouteKey]);
+
+  useEffect(() => {
     if (!itemWidth || activeVisibleIndex < 0) return;
     const nextX = activeVisibleIndex * itemWidth + (itemWidth - capsuleWidth) / 2;
-    if (reducedMotion) {
-      capsuleX.value = nextX;
-      return;
-    }
-    capsuleX.value = withSpring(nextX, { damping: 22, stiffness: 220, mass: 0.75 });
+    capsuleX.value = reducedMotion
+      ? nextX
+      : withTiming(nextX, { duration: TAB_MOTION_MS, easing: autocoreEase });
   }, [activeVisibleIndex, capsuleWidth, capsuleX, itemWidth, reducedMotion]);
 
   const capsuleStyle = useAnimatedStyle(() => ({
@@ -225,41 +198,129 @@ export function AppTabBar({ state, navigation }: AppTabBarProps) {
     opacity: itemWidth ? 1 : 0,
   }));
 
-  const barEnterStyle = useAnimatedStyle(() => ({
-    opacity: barOpacity.value,
-    transform: [{ translateY: barY.value }],
-  }));
+  const inactiveIconColor = colors.mutedForeground;
+  const inactiveLabelColor = colors.textSecondary;
 
-  const openMore = (items: NavItemId[]) => {
-    const options = items
-      .filter((id) => isNavItemModuleEnabled(id, workOrdersEnabled, warehouseEnabled, accountingModuleEnabled))
-      .map((id) => ({
-        text: getNavVisual(id).label,
-        onPress: () => {
-          const href = getNavItemHref(id);
-          if (href) router.push(href);
-        },
-      }));
-    options.push({ text: 'Отмена', onPress: () => {} });
-    Alert.alert('Ещё', 'Дополнительные разделы', options, { cancelable: true });
-  };
+  const handleTabPress = useCallback(
+    (route: TabRoute, focused: boolean) => {
+      if (focused || tabNavigationGuard.isLocked) return;
+
+      haptics.selection();
+      const event = navigation.emit({
+        type: 'tabPress',
+        target: route.key,
+        canPreventDefault: true,
+      }) as { defaultPrevented?: boolean } | undefined;
+
+      if (event?.defaultPrevented) return;
+
+      tabNavigationGuard.tryNavigate(() => {
+        const fromTab = resolveTabRouteName(activeRouteName ?? '');
+        const toTab = resolveTabRouteName(route.name);
+        if (fromTab && toTab) beginTransition(fromTab, toTab);
+        navigation.navigate(route.name);
+      });
+    },
+    [activeRouteName, beginTransition, navigation],
+  );
+
+  const handleTabLongPress = useCallback(
+    (routeKey: string) => {
+      navigation.emit({ type: 'tabLongPress', target: routeKey });
+    },
+    [navigation],
+  );
+
+  const openMore = useCallback(
+    (items: NavItemId[]) => {
+      const enabled = items.filter((id) =>
+        isNavItemModuleEnabled(id, workOrdersEnabled, warehouseEnabled, accountingModuleEnabled),
+      );
+      const labels = enabled.map((id) => getNavVisual(id).label);
+
+      const go = (index: number) => {
+        const id = enabled[index];
+        if (!id) return;
+        const href = getNavItemHref(id);
+        if (!href || tabNavigationGuard.isLocked) return;
+        tabNavigationGuard.tryNavigate(() => {
+          router.push(href);
+        });
+      };
+
+      if (Platform.OS === 'ios') {
+        ActionSheetIOS.showActionSheetWithOptions(
+          {
+            options: [...labels, 'Отмена'],
+            cancelButtonIndex: labels.length,
+            userInterfaceStyle: isDark ? 'dark' : 'light',
+          },
+          (buttonIndex) => {
+            if (buttonIndex === labels.length) return;
+            go(buttonIndex);
+          },
+        );
+        return;
+      }
+
+      Alert.alert(
+        'Ещё',
+        undefined,
+        [
+          ...enabled.map((id, index) => ({
+            text: getNavVisual(id).label,
+            onPress: () => go(index),
+          })),
+          { text: 'Отмена', style: 'cancel' as const },
+        ],
+        { cancelable: true },
+      );
+    },
+    [accountingModuleEnabled, isDark, router, warehouseEnabled, workOrdersEnabled],
+  );
+
+  const tabPressHandlers = useMemo(() => {
+    const handlers = new Map<string, () => void>();
+    for (const entry of tabEntries) {
+      if (entry.kind === 'more') continue;
+      const route = state.routes.find((r) => r.name === entry.expoName);
+      if (!route) continue;
+      const focused = route.key === activeRouteKey;
+      handlers.set(route.key, () => handleTabPress(route, focused));
+    }
+    return handlers;
+  }, [activeRouteKey, handleTabPress, state.routes, tabEntries]);
+
+  const tabLongPressHandlers = useMemo(() => {
+    const handlers = new Map<string, () => void>();
+    for (const entry of tabEntries) {
+      if (entry.kind === 'more') continue;
+      const route = state.routes.find((r) => r.name === entry.expoName);
+      if (!route) continue;
+      handlers.set(route.key, () => handleTabLongPress(route.key));
+    }
+    return handlers;
+  }, [handleTabLongPress, state.routes, tabEntries]);
 
   if (hideTabBar) return null;
 
+  const shellPadding = {
+    paddingHorizontal: horizontalPadding,
+    paddingVertical: TAB_BAR_VERTICAL_PADDING,
+  };
+
   const renderTabs = () => (
-    <View style={{ height: 64, justifyContent: 'center' }}>
+    <View style={{ height: TAB_BAR_ROW_HEIGHT, justifyContent: 'center' }}>
       <Animated.View
         pointerEvents="none"
         style={[
           {
             position: 'absolute',
-            top: spacing[1],
-            bottom: spacing[1],
+            top: 2,
+            bottom: 2,
             width: capsuleWidth,
-            borderRadius: 22,
-            backgroundColor: toneBackground(colors.primary, isDark ? 0.16 : 0.1),
-            borderWidth: 1,
-            borderColor: toneBackground(colors.primary, 0.22),
+            borderRadius: rhythm.cardRadius,
+            backgroundColor: colors.sidebarAccent,
           },
           capsuleStyle,
         ]}
@@ -273,8 +334,9 @@ export function AppTabBar({ state, navigation }: AppTabBarProps) {
                   label={`Ещё${entry.items.length > 1 ? ` (${entry.items.length})` : ''}`}
                   Icon={LayoutGridIcon}
                   active={false}
-                  color={colors.primary}
-                  mutedColor={colors.mutedForeground}
+                  activeColor={colors.primary}
+                  inactiveIconColor={inactiveIconColor}
+                  inactiveLabelColor={inactiveLabelColor}
                   onPress={() => {
                     haptics.selection();
                     openMore(entry.items);
@@ -296,26 +358,11 @@ export function AppTabBar({ state, navigation }: AppTabBarProps) {
                 label={visual.label}
                 Icon={visual.icon}
                 active={focused}
-                emphasized={visual.emphasized}
-                color={colors.primary}
-                mutedColor={colors.mutedForeground}
-                onPress={() => {
-                  haptics.selection();
-                  const event = navigation.emit({
-                    type: 'tabPress',
-                    target: route.key,
-                    canPreventDefault: true,
-                  }) as { defaultPrevented?: boolean } | undefined;
-                  if (focused) return;
-                  if (!event?.defaultPrevented) {
-                    const fromTab = resolveTabRouteName(activeRouteName);
-                    const toTab = resolveTabRouteName(route.name);
-                    if (fromTab && toTab) beginTransition(fromTab, toTab);
-                    const nextPath = TAB_PATHS[route.name];
-                    if (nextPath) router.navigate(nextPath);
-                  }
-                }}
-                onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
+                activeColor={colors.primary}
+                inactiveIconColor={inactiveIconColor}
+                inactiveLabelColor={inactiveLabelColor}
+                onPress={tabPressHandlers.get(route.key) ?? (() => handleTabPress(route, focused))}
+                onLongPress={tabLongPressHandlers.get(route.key) ?? (() => handleTabLongPress(route.key))}
               />
             </View>
           );
@@ -325,24 +372,40 @@ export function AppTabBar({ state, navigation }: AppTabBarProps) {
   );
 
   return (
-    <Animated.View
+    <View
       pointerEvents="box-none"
-      style={[{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: spacing[3], paddingBottom: Math.max(insets.bottom, spacing[2]) }, barEnterStyle]}
+      style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        paddingHorizontal: spacing[3],
+        paddingBottom: Math.max(insets.bottom, spacing[2]),
+      }}
     >
       <View
         onLayout={(event) => setContainerWidth(event.nativeEvent.layout.width)}
-        style={{ borderRadius: 28, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, backgroundColor: Platform.OS === 'ios' ? 'transparent' : colors.glass, ...shadows.sm }}
+        style={{
+          borderRadius: rhythm.panelRadius,
+          overflow: 'hidden',
+          borderWidth: rhythm.hairline,
+          borderColor: colors.borderMuted,
+          backgroundColor: Platform.OS === 'ios' ? 'transparent' : colors.glass,
+          ...shadows.xs,
+        }}
       >
         {Platform.OS === 'ios' ? (
-          <BlurView intensity={isDark ? 28 : 40} tint={isDark ? 'dark' : 'light'} style={{ paddingHorizontal: horizontalPadding, paddingVertical: spacing[2], backgroundColor: colors.glass }}>
+          <BlurView
+            intensity={isDark ? 22 : 32}
+            tint={isDark ? 'dark' : 'light'}
+            style={{ ...shellPadding, backgroundColor: colors.glass }}
+          >
             {renderTabs()}
           </BlurView>
         ) : (
-          <View style={{ paddingHorizontal: horizontalPadding, paddingVertical: spacing[2], backgroundColor: colors.glass }}>
-            {renderTabs()}
-          </View>
+          <View style={{ ...shellPadding, backgroundColor: colors.glass }}>{renderTabs()}</View>
         )}
       </View>
-    </Animated.View>
+    </View>
   );
-}
+});

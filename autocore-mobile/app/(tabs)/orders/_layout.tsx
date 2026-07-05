@@ -5,9 +5,10 @@ import { OrderTransitionProvider } from '@/features/orders/animation/order-trans
 export default function OrdersLayout() {
   return (
     <OrderTransitionProvider>
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack screenOptions={{ headerShown: false, freezeOnBlur: true }}>
         <Stack.Screen name="index" />
-        <Stack.Screen name="[id]" options={{ animation: 'fade', animationDuration: 220 }} />
+        <Stack.Screen name="[id]/index" options={{ animation: 'fade', animationDuration: 220 }} />
+        <Stack.Screen name="[id]/edit" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="new" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       </Stack>
     </OrderTransitionProvider>

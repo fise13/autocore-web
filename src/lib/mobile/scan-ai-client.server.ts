@@ -76,7 +76,7 @@ export async function runScanOcr(imageBase64: string, mimeType: string): Promise
         content: [
           {
             type: "text",
-            text: "Extract barcodes and automotive part numbers from this label photo. Return JSON: { barcodes, partNumbers, brand?, confidence, warnings }.",
+            text: "You are an OCR engine. Transcribe all visible text exactly (rawText). Also extract barcodes, VINs, and automotive part numbers. Return JSON: { rawText, barcodes, partNumbers, brand?, confidence, warnings }. Do not classify or invent fields — only extract what is visible.",
           },
           { type: "image_url", image_url: { url: dataUrl } },
         ],

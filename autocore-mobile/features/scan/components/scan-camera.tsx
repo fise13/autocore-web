@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import Animated from 'react-native-reanimated';
@@ -9,18 +9,41 @@ import { useScanEnter } from '../animation/use-scan-enter';
 import { scanTimeline } from '../animation/scan-timeline';
 import { scanLayout } from '../layout';
 
+export type ScanCameraHandle = {
+  takePicture: () => Promise<string | null>;
+};
+
 type ScanCameraProps = {
   torch: boolean;
   active: boolean;
   onBarcode: (payload: string) => void;
 };
 
-export function ScanCamera({ torch, active, onBarcode }: ScanCameraProps) {
+export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function ScanCamera(
+  { torch, active, onBarcode },
+  ref,
+) {
   const { colors } = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const enterStyle = useScanEnter({ delay: scanTimeline.camera, scaleFrom: 0.98, duration: 380 });
+  const cameraRef = useRef<CameraView>(null);
   const lastScanRef = useRef<string | null>(null);
   const lastScanAtRef = useRef(0);
+
+  useImperativeHandle(ref, () => ({
+    async takePicture() {
+      if (!cameraRef.current) return null;
+      try {
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 0.8,
+          skipProcessing: true,
+        });
+        return photo?.uri ?? null;
+      } catch {
+        return null;
+      }
+    },
+  }));
 
   useEffect(() => {
     if (!permission?.granted && permission?.canAskAgain) {
@@ -78,20 +101,25 @@ export function ScanCamera({ torch, active, onBarcode }: ScanCameraProps) {
     );
   }
 
+  if (!active) {
+    return <View style={[styles.fill, { backgroundColor: '#0d0f14' }]} />;
+  }
+
   return (
     <Animated.View style={[styles.fill, enterStyle]}>
       <CameraView
+        ref={cameraRef}
         style={styles.fill}
         facing="back"
         enableTorch={torch}
         barcodeScannerSettings={{
           barcodeTypes: ['qr', 'ean13', 'ean8', 'code128', 'code39', 'datamatrix', 'pdf417'],
         }}
-        onBarcodeScanned={active ? handleBarcode : undefined}
+        onBarcodeScanned={handleBarcode}
       />
     </Animated.View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   fill: {

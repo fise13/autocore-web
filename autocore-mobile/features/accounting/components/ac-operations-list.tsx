@@ -1,21 +1,27 @@
-import { format, isToday } from 'date-fns';
+import { memo } from 'react';
+import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 
-import { ReceiptIcon } from '@/assets/icons';
-import { Text } from '@/components/ui';
+import { FileStackIcon } from '@/assets/icons';
+import { ListGroup, Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { toneBackground } from '@/theme/color-utils';
+import {
+  isMotorSaleOperation,
+  motorSaleDetail,
+} from '@/lib/accounting/motor-sale';
 import {
   operationAccountLabel,
   operationCategoryLabel,
   operationTypeLabel,
-  paymentMethodLabel,
 } from '@/lib/accounting/labels';
-import type { FinancialOperation } from '@/types/financial-operation';
+import { haptics, rhythm } from '@/theme';
+import type { FinancialOperation, OperationType } from '@/types/financial-operation';
+import { McSectionTitle } from '@/features/mission-control/components/mc-primitives';
+import { mcType } from '@/features/mission-control/layout';
 
 import { ac } from '../layout';
-import { AcDivider } from './ac-primitives';
 import { formatKzt } from '../utils/format';
 
 type AcOperationsListProps = {
@@ -25,88 +31,146 @@ type AcOperationsListProps = {
   emptyLabel?: string;
   showWorkOrder?: boolean;
   workOrderNumbers?: Record<string, string>;
+  canEdit?: boolean;
+  onDelete?: (operation: FinancialOperation) => void;
+  onMotorSaleSelect?: (operation: FinancialOperation) => void;
 };
 
-function formatOperationTime(date: Date): string {
-  if (isToday(date)) return format(date, 'HH:mm');
-  return format(date, 'd MMM, HH:mm', { locale: ru });
+function typeBadgeColors(
+  type: OperationType,
+  colors: ReturnType<typeof useTheme>['colors'],
+): { bg: string; fg: string } {
+  switch (type) {
+    case 'sale':
+      return { bg: toneBackground(colors.primary, 0.14), fg: colors.primary };
+    case 'income':
+      return { bg: toneBackground(colors.success, 0.14), fg: colors.success };
+    case 'expense':
+    case 'refund':
+      return { bg: toneBackground(colors.destructive, 0.14), fg: colors.destructive };
+    default:
+      return { bg: colors.secondary, fg: colors.textSecondary };
+  }
 }
 
-function amountTone(type: FinancialOperation['type'], colors: ReturnType<typeof useTheme>['colors']) {
-  if (type === 'income' || type === 'sale') return colors.success;
-  if (type === 'expense' || type === 'refund') return colors.destructive;
-  return colors.foreground;
-}
-
-function OperationRow({
+const OperationRow = memo(function OperationRow({
   operation,
-  isLast,
   showWorkOrder,
   workOrderNumbers,
+  canEdit,
+  onDelete,
+  onMotorSaleSelect,
 }: {
   operation: FinancialOperation;
-  isLast: boolean;
   showWorkOrder?: boolean;
   workOrderNumbers?: Record<string, string>;
+  canEdit?: boolean;
+  onDelete?: (operation: FinancialOperation) => void;
+  onMotorSaleSelect?: (operation: FinancialOperation) => void;
 }) {
   const { colors } = useTheme();
+  const motorSale = isMotorSaleOperation(operation);
   const category = operationCategoryLabel(operation.category);
+  const detail = motorSaleDetail(operation);
+  const badge = typeBadgeColors(operation.type, colors);
   const workOrderLabel =
     showWorkOrder && operation.relatedWorkOrderId
       ? workOrderNumbers?.[operation.relatedWorkOrderId] ?? operation.relatedWorkOrderId
       : null;
 
+  const confirmDelete = () => {
+    Alert.alert('Удалить операцию?', 'Запись будет удалена из журнала.', [
+      { text: 'Отмена', style: 'cancel' },
+      {
+        text: 'Удалить',
+        style: 'destructive',
+        onPress: () => {
+          haptics.warning();
+          onDelete?.(operation);
+        },
+      },
+    ]);
+  };
+
   return (
-    <View>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 10 }}>
-        <View
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: 11,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: toneBackground(colors.primary, 0.1),
-          }}
-        >
-          <ReceiptIcon size="sm" color={colors.primary} strokeWidth={1.9} />
-        </View>
-        <View style={{ flex: 1, gap: 3 }}>
-          <Text variant="body" style={{ fontSize: 14, fontWeight: '700' }}>
-            {operationTypeLabel(operation.type)}
-            {category !== '—' ? ` · ${category}` : ''}
-          </Text>
-          <Text variant="caption" color="muted" style={{ fontSize: 12, lineHeight: 16 }}>
-            {operationAccountLabel(operation.account)} · {paymentMethodLabel(operation.paymentMethod)}
-            {workOrderLabel ? ` · ${workOrderLabel}` : ''}
-          </Text>
-          {operation.comment ? (
-            <Text variant="caption" color="muted" style={{ fontSize: 12 }}>
-              {operation.comment}
+    <Pressable
+      accessibilityRole={motorSale && onMotorSaleSelect ? 'button' : undefined}
+      onPress={() => {
+        if (motorSale && onMotorSaleSelect) {
+          haptics.selection();
+          onMotorSaleSelect(operation);
+        }
+      }}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: ac.rowGap,
+        paddingVertical: ac.rowPadY,
+        paddingHorizontal: ac.rowPadX,
+        minHeight: ac.rowHeight,
+      }}
+    >
+      <View style={{ flex: 1, gap: 3, minWidth: 0 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: rhythm.inline }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+            <Text variant="caption" numberOfLines={1} style={{ flexShrink: 1, ...mcType.rowTitle }}>
+              {category}
             </Text>
-          ) : null}
-        </View>
-        <View style={{ alignItems: 'flex-end', gap: 4 }}>
+            <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: badge.bg }}>
+              <Text variant="caption" style={{ fontSize: 10, fontWeight: '600', color: badge.fg }}>
+                {operationTypeLabel(operation.type)}
+              </Text>
+            </View>
+          </View>
           <Text
-            variant="body"
-            style={{
-              fontSize: 14,
-              fontWeight: '700',
-              fontVariant: ['tabular-nums'],
-              color: amountTone(operation.type, colors),
-            }}
+            variant="bodyStrong"
+            style={{ flexShrink: 0, fontVariant: ['tabular-nums'], ...mcType.quietValue }}
           >
             {formatKzt(operation.amount)}
           </Text>
-          <Text variant="caption" color="muted" style={{ fontSize: 10 }}>
-            {formatOperationTime(operation.createdAt)}
-          </Text>
         </View>
+        <Text variant="meta" color="muted" numberOfLines={2} style={mcType.rowMeta}>
+          {[detail, workOrderLabel, operationAccountLabel(operation.account)]
+            .filter(Boolean)
+            .join(' · ')}
+          <Text variant="meta" color="muted" style={{ fontVariant: ['tabular-nums'] }}>
+            {' · '}
+            {format(operation.createdAt, 'd MMM, HH:mm', { locale: ru })}
+          </Text>
+        </Text>
       </View>
-      {!isLast ? <AcDivider inset={50} /> : null}
-    </View>
+
+      {(motorSale && onMotorSaleSelect) || (onDelete && canEdit) ? (
+        <View style={{ alignItems: 'flex-end', gap: 6 }}>
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+          {motorSale && onMotorSaleSelect ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="PDF"
+              onPress={() => {
+                haptics.selection();
+                onMotorSaleSelect(operation);
+              }}
+              hitSlop={4}
+            >
+              <FileStackIcon size="sm" color={colors.primary} strokeWidth={1.75} />
+            </Pressable>
+          ) : null}
+          {onDelete && canEdit ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="Удалить" onPress={confirmDelete} hitSlop={4}>
+              <Text variant="caption" style={{ fontSize: 11, fontWeight: '600', color: colors.destructive }}>
+                Удалить
+              </Text>
+            </Pressable>
+          ) : null}
+          </View>
+        </View>
+      ) : null}
+    </Pressable>
   );
-}
+});
+
+const MAX_VISIBLE_ROWS = 50;
 
 export function AcOperationsList({
   title,
@@ -115,58 +179,46 @@ export function AcOperationsList({
   emptyLabel = 'Операций пока нет',
   showWorkOrder,
   workOrderNumbers,
+  canEdit,
+  onDelete,
+  onMotorSaleSelect,
 }: AcOperationsListProps) {
-  const { colors } = useTheme();
+  const visible = rows.slice(0, MAX_VISIBLE_ROWS);
 
   return (
-    <View
-      style={{
-        borderWidth: ac.hairline,
-        borderColor: colors.border,
-        backgroundColor: colors.card,
-        borderRadius: ac.cardRadius,
-        overflow: 'hidden',
-      }}
-    >
-      <View
-        style={{
-          paddingHorizontal: 14,
-          paddingVertical: 12,
-          borderBottomWidth: ac.hairline,
-          borderBottomColor: colors.border,
-          backgroundColor: toneBackground(colors.muted, 0.35),
-          gap: 3,
-        }}
-      >
-        <Text variant="body" style={{ fontSize: 15, fontWeight: '700' }}>
-          {title}
+    <View style={{ gap: ac.sectionGap }}>
+      <McSectionTitle title={title} />
+      {description ? (
+        <Text variant="meta" color="muted" style={{ ...mcType.rowMeta, marginTop: -4 }}>
+          {description}
         </Text>
-        {description ? (
-          <Text variant="caption" color="muted" style={{ fontSize: 12 }}>
-            {description}
-          </Text>
-        ) : null}
-      </View>
+      ) : null}
 
-      {rows.length === 0 ? (
-        <View style={{ padding: 20 }}>
-          <Text variant="caption" color="muted" style={{ textAlign: 'center', fontSize: 13 }}>
-            {emptyLabel}
-          </Text>
-        </View>
+      {visible.length === 0 ? (
+        <Text variant="caption" color="muted" style={{ paddingVertical: rhythm.section }}>
+          {emptyLabel}
+        </Text>
       ) : (
-        <View style={{ paddingHorizontal: 14 }}>
-          {rows.map((operation, index) => (
+        <ListGroup inset={false}>
+          {visible.map((operation) => (
             <OperationRow
               key={operation.id}
               operation={operation}
-              isLast={index === rows.length - 1}
               showWorkOrder={showWorkOrder}
               workOrderNumbers={workOrderNumbers}
+              canEdit={canEdit}
+              onDelete={onDelete}
+              onMotorSaleSelect={onMotorSaleSelect}
             />
           ))}
-        </View>
+        </ListGroup>
       )}
+
+      {rows.length > MAX_VISIBLE_ROWS ? (
+        <Text variant="caption" color="muted" style={{ textAlign: 'center', paddingTop: rhythm.tight }}>
+          Показаны первые {MAX_VISIBLE_ROWS} из {rows.length}
+        </Text>
+      ) : null}
     </View>
   );
 }

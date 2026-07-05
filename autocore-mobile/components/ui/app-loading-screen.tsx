@@ -1,16 +1,10 @@
 import { useEffect } from 'react';
 import { View, type ViewProps } from 'react-native';
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
 
 import { AppLoadingLogo } from '@/components/brand/app-loading-logo';
 import { Text } from '@/components/ui/text';
-import { useReducedMotion, useTheme } from '@/hooks';
-import { autocoreEase } from '@/theme/motion';
+import { useTheme } from '@/hooks';
+import { hideNativeSplashOnce } from '@/lib/splash';
 
 const APP_NAME = 'AutoCore';
 
@@ -27,20 +21,10 @@ export function AppLoadingScreen({
   ...props
 }: AppLoadingScreenProps) {
   const { colors } = useTheme();
-  const reducedMotion = useReducedMotion();
-  const opacity = useSharedValue(reducedMotion ? 1 : 0);
-  const translateY = useSharedValue(reducedMotion ? 0 : 10);
 
   useEffect(() => {
-    if (reducedMotion) return;
-    opacity.value = withTiming(1, { duration: 420, easing: autocoreEase });
-    translateY.value = withTiming(0, { duration: 420, easing: Easing.bezier(0.22, 1, 0.36, 1) });
-  }, [opacity, reducedMotion, translateY]);
-
-  const labelStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }],
-  }));
+    hideNativeSplashOnce();
+  }, []);
 
   return (
     <View
@@ -60,7 +44,7 @@ export function AppLoadingScreen({
       {...props}
     >
       <AppLoadingLogo size={compact ? 56 : 80} />
-      <Animated.View style={[{ alignItems: 'center', gap: 6 }, labelStyle]}>
+      <View style={{ alignItems: 'center', gap: 6 }}>
         <Text
           variant="body"
           style={{
@@ -75,7 +59,7 @@ export function AppLoadingScreen({
         <Text variant="caption" style={{ fontSize: 12, color: colors.mutedForeground }}>
           {message}
         </Text>
-      </Animated.View>
+      </View>
     </View>
   );
 }

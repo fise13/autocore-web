@@ -9,7 +9,8 @@ const SETTINGS_ROUTES: Record<SettingsRouteId, Href> = {
   modules: '/(tabs)/profile/modules',
   company: '/(tabs)/profile/company',
   team: '/(tabs)/profile/team',
-  accounting: '/(tabs)/accounting',
+  accounting: '/(tabs)/profile/finance',
+  finance: '/(tabs)/profile/finance',
   appearance: '/(tabs)/profile/appearance',
   notifications: '/(tabs)/profile/notifications',
   advanced: '/(tabs)/profile/advanced',
@@ -17,6 +18,11 @@ const SETTINGS_ROUTES: Record<SettingsRouteId, Href> = {
   subscription: '/(tabs)/profile/subscription',
   language: '/(tabs)/profile/language',
   currency: '/(tabs)/profile/currency',
+  security: '/(tabs)/profile/security',
+  taxes: '/(tabs)/profile/taxes',
+  cache: '/(tabs)/profile/cache',
+  diagnostics: '/(tabs)/profile/diagnostics',
+  version: '/(tabs)/profile/version',
 };
 
 export function settingsRouteHref(id: SettingsRouteId): Href {

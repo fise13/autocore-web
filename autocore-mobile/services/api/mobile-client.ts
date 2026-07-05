@@ -86,6 +86,13 @@ export function mobilePost<T>(path: string, body?: unknown): Promise<T> {
   });
 }
 
+export function mobilePatch<T>(path: string, body?: unknown): Promise<T> {
+  return mobileFetch<T>(path, {
+    method: 'PATCH',
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
 export async function mobilePostFlexible<T>(
   path: string,
   body?: unknown,

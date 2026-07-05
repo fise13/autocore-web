@@ -15,29 +15,53 @@ import type { InventoryItem, InventoryItemStatus, InventoryItemType } from '@/ty
 
 const COLLECTION = 'inventoryItems';
 
+function coerceInventoryString(value: unknown, fallback = ''): string {
+  if (typeof value === 'string') return value;
+  if (value instanceof Date) return value.toLocaleDateString('ru-RU');
+  if (value == null) return fallback;
+  return String(value);
+}
+
+export function normalizeInventoryItem(item: InventoryItem): InventoryItem {
+  return {
+    ...item,
+    sku: coerceInventoryString(item.sku),
+    name: coerceInventoryString(item.name),
+    unit: coerceInventoryString(item.unit, 'шт'),
+    description: item.description != null ? coerceInventoryString(item.description) : undefined,
+    brandName: item.brandName != null ? coerceInventoryString(item.brandName) : undefined,
+    warehouseLocation:
+      item.warehouseLocation != null ? coerceInventoryString(item.warehouseLocation) : undefined,
+    barcodes: item.barcodes.map((entry) => coerceInventoryString(entry)),
+  };
+}
+
 function mapItem(id: string, data: Record<string, unknown>): InventoryItem {
   const totalOnHand = Number(data.totalOnHand ?? data.quantity ?? 0);
   const totalReserved = Number(data.totalReserved ?? 0);
-  return {
+  return normalizeInventoryItem({
     id,
-    companyId: String(data.companyId ?? ''),
+    companyId: coerceInventoryString(data.companyId),
     type: (data.type as InventoryItemType) ?? 'generic',
-    sku: String(data.sku ?? ''),
-    name: String(data.name ?? ''),
-    description: typeof data.description === 'string' ? data.description : undefined,
-    barcodes: Array.isArray(data.barcodes) ? data.barcodes.map(String) : [],
-    brandName: typeof data.brandName === 'string' ? data.brandName : undefined,
+    sku: coerceInventoryString(data.sku),
+    name: coerceInventoryString(data.name),
+    description:
+      data.description == null ? undefined : coerceInventoryString(data.description),
+    barcodes: Array.isArray(data.barcodes) ? data.barcodes.map((entry) => coerceInventoryString(entry)) : [],
+    brandName: data.brandName == null ? undefined : coerceInventoryString(data.brandName),
     warehouseLocation:
-      typeof data.warehouseLocation === 'string' ? data.warehouseLocation : undefined,
-    unit: typeof data.unit === 'string' ? data.unit : 'шт',
+      data.warehouseLocation == null ? undefined : coerceInventoryString(data.warehouseLocation),
+    unit: coerceInventoryString(data.unit, 'шт'),
     sellPrice: data.sellPrice == null ? undefined : Number(data.sellPrice),
     purchasePrice: data.purchasePrice == null ? undefined : Number(data.purchasePrice),
     totalOnHand,
     totalReserved,
     totalAvailable: Number(data.totalAvailable ?? totalOnHand - totalReserved),
+    lowStockThreshold:
+      data.lowStockThreshold == null ? undefined : Number(data.lowStockThreshold),
     status: (data.status as InventoryItemStatus) ?? 'active',
     updatedAt: toDateFromFirestore(data.updatedAt) ?? undefined,
-  };
+  });
 }
 
 export function createInventoryItemRepository() {

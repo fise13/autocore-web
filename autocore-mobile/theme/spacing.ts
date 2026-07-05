@@ -27,15 +27,15 @@ export function space(key: SpacingKey): number {
   return spacing[key];
 }
 
-/** Common layout paddings from app-mobile.css */
+/** Common layout paddings — matches `theme/screen.ts` rhythm */
 export const screenPadding = {
-  horizontal: spacing[3],
+  horizontal: spacing[5],
   vertical: spacing[3],
-  safeHorizontal: spacing[3],
+  safeHorizontal: spacing[5],
 } as const;
 
-/** Minimum touch target — 36px from web mobile styles */
-export const minTouchTarget = 36;
+/** Minimum touch target — Apple HIG 44pt */
+export const minTouchTarget = 44;
 
 /** Header height from dashboard mobile */
 export const headerHeight = 52;

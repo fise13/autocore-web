@@ -6,11 +6,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui';
 import { usePageEnter, useScaleEnter } from '@/animations';
 import { useTheme } from '@/hooks';
-import { spacing } from '@/theme';
+import { form, rhythm, spacing } from '@/theme';
 
 type AuthShellProps = {
   title: string;
-  description: string;
+  description?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
 };
@@ -19,7 +19,7 @@ function AuthMark() {
   return (
     <Image
       source={require('../assets/branding/login-logo.png')}
-      style={{ width: 38, height: 38 }}
+      style={{ width: rhythm.logo, height: rhythm.logo }}
       resizeMode="contain"
     />
   );
@@ -29,6 +29,7 @@ export function AuthShell({ title, description, children, footer }: AuthShellPro
   const { colors } = useTheme();
   const headerStyle = usePageEnter();
   const contentStyle = useScaleEnter(80);
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <KeyboardAvoidingView
@@ -39,37 +40,38 @@ export function AuthShell({ title, description, children, footer }: AuthShellPro
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{
             flexGrow: 1,
-            paddingHorizontal: spacing[3],
-            paddingVertical: spacing[2],
+            paddingHorizontal: rhythm.pad,
+            paddingVertical: spacing[4],
           }}
         >
-          <View style={{ flex: 1, justifyContent: 'center', gap: spacing[4] }}>
+          <View style={{ flex: 1, justifyContent: 'center', gap: form.sectionGap, maxWidth: 420, width: '100%', alignSelf: 'center' }}>
             <Animated.View style={headerStyle.style}>
-              <View style={{ alignItems: 'center', gap: spacing[2], paddingHorizontal: spacing[1] }}>
+              <View style={{ alignItems: 'center', gap: rhythm.inline, paddingHorizontal: spacing[1] }}>
                 <AuthMark />
-                <View style={{ gap: spacing[1], alignItems: 'center' }}>
+                <View style={{ gap: rhythm.micro, alignItems: 'center' }}>
                   <Text
-                    variant="title"
-                    style={{ textAlign: 'center', fontSize: 30, lineHeight: 34, fontWeight: '600' }}
+                    variant="pageTitle"
+                    style={{ textAlign: 'center', color: colors.foreground, maxWidth: 320 }}
                   >
                     {title}
                   </Text>
-                  <Text
-                    variant="small"
-                    color="muted"
-                    style={{ textAlign: 'center', maxWidth: 280, lineHeight: 18 }}
-                  >
-                    {description}
-                  </Text>
+                  {description ? (
+                    <Text
+                      variant="pageSubtitle"
+                      style={{ textAlign: 'center', maxWidth: 280, color: colors.mutedForeground }}
+                    >
+                      {description}
+                    </Text>
+                  ) : null}
                 </View>
               </View>
             </Animated.View>
 
-            <Animated.View style={contentStyle}>
-              <View style={{ gap: spacing[3], width: '100%' }}>{children}</View>
-            </Animated.View>
+            <Animated.View style={[contentStyle, { width: '100%', gap: form.groupGap }]}>{children}</Animated.View>
 
-            <View style={{ alignItems: 'center', gap: spacing[1.5] }}>{footer}</View>
+            {footer ? (
+              <View style={{ alignItems: 'center', gap: rhythm.tight, paddingHorizontal: spacing[2] }}>{footer}</View>
+            ) : null}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

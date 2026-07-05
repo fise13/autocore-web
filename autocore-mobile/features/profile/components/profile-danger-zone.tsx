@@ -1,10 +1,10 @@
-import Animated from 'react-native-reanimated';
+import { View } from 'react-native';
 
 import { Text } from '@/components/ui';
+import { useTheme } from '@/hooks';
+import { rhythm } from '@/theme';
 
-import { useProfileEnter } from '../animation/use-profile-enter';
 import { ProfileNavCard, ProfileSettingsGroup } from './profile-nav-card';
-import { profileLayout } from '../layout';
 import type { ProfileDangerAction } from '../types';
 
 type ProfileDangerZoneProps = {
@@ -13,17 +13,19 @@ type ProfileDangerZoneProps = {
 };
 
 export function ProfileDangerZone({ items, onAction }: ProfileDangerZoneProps) {
-  const enterStyle = useProfileEnter({ delay: 780, translateY: 12, duration: 350 });
+  const { colors } = useTheme();
 
   return (
-    <Animated.View style={[{ gap: 10 }, enterStyle]}>
+    <View style={{ gap: rhythm.tight }}>
       <Text
-        variant="body"
+        variant="caption"
         style={{
-          fontSize: profileLayout.sectionTitle,
+          paddingHorizontal: rhythm.pad,
+          fontSize: 12,
           fontWeight: '600',
-          paddingHorizontal: profileLayout.pad,
-          letterSpacing: -0.2,
+          letterSpacing: 0.4,
+          textTransform: 'uppercase',
+          color: colors.mutedForeground,
         }}
       >
         Опасная зона
@@ -39,6 +41,6 @@ export function ProfileDangerZone({ items, onAction }: ProfileDangerZoneProps) {
           />
         ))}
       </ProfileSettingsGroup>
-    </Animated.View>
+    </View>
   );
 }

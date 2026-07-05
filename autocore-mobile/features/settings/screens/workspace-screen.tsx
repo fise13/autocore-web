@@ -1,7 +1,5 @@
-import { useRouter } from 'expo-router';
-import { View } from 'react-native';
-
 import { useAuth } from '@/authentication/auth-provider';
+import { useGuardedRouter } from '@/hooks/use-guarded-router';
 import { useSession, useCompanySubscription, useActiveCompanyName } from '@/hooks';
 import { switchActiveCompany } from '@/services/firestore/company-membership-service';
 import { haptics } from '@/theme';
@@ -15,7 +13,7 @@ import { WorkspaceStorageCard } from '../components/workspace-storage-card';
 import { WorkspaceSubscriptionCard } from '../components/workspace-subscription-card';
 
 export function WorkspaceScreen() {
-  const router = useRouter();
+  const router = useGuardedRouter();
   const { firebaseUser, memberships, refreshProfile } = useAuth();
   const { profile, companyId } = useSession();
   const { companyName, isLoading: isCompanyNameLoading } = useActiveCompanyName();
@@ -25,40 +23,38 @@ export function WorkspaceScreen() {
 
   return (
     <ProfileScreenShell title="Рабочее пространство" subtitle="Компания, подписка и синхронизация">
-      <View style={{ gap: 14 }}>
-        <WorkspaceHeroCard
-          companyName={companyName}
-          role={profile?.role ?? 'employee'}
-          isOwner={profile?.isCompanyOwner === true}
-          isPro={isPro}
-          isLoading={isCompanyNameLoading}
-        />
+      <WorkspaceHeroCard
+        companyName={companyName}
+        role={profile?.role ?? 'employee'}
+        isOwner={profile?.isCompanyOwner === true}
+        isPro={isPro}
+        isLoading={isCompanyNameLoading}
+      />
 
-        <WorkspaceSubscriptionCard
-          isPro={isPro}
-          subscription={subscription}
-          onManage={() => router.push(settingsRouteHref('subscription'))}
-        />
+      <WorkspaceSubscriptionCard
+        isPro={isPro}
+        subscription={subscription}
+        onManage={() => router.push(settingsRouteHref('subscription'))}
+      />
 
-        <WorkspaceStorageCard
-          usedLabel={WORKSPACE_DEMO.storageUsed.label}
-          usedPct={storagePct}
-          syncStatus={WORKSPACE_DEMO.cloudSync.status}
-          syncMeta={`${WORKSPACE_DEMO.cloudSync.lastSync} · ${WORKSPACE_DEMO.cloudSync.devices} устройства`}
-        />
+      <WorkspaceStorageCard
+        usedLabel={WORKSPACE_DEMO.storageUsed.label}
+        usedPct={storagePct}
+        syncStatus={WORKSPACE_DEMO.cloudSync.status}
+        syncMeta={`${WORKSPACE_DEMO.cloudSync.lastSync} · ${WORKSPACE_DEMO.cloudSync.devices} устройства`}
+      />
 
-        <WorkspaceCompaniesSection
-          memberships={memberships}
-          activeCompanyId={companyId}
-          onCreateCompany={() => {}}
-          onSwitchCompany={async (nextCompanyId) => {
-            if (!firebaseUser) return;
-            await switchActiveCompany(firebaseUser.uid, nextCompanyId);
-            await refreshProfile();
-            haptics.success();
-          }}
-        />
-      </View>
+      <WorkspaceCompaniesSection
+        memberships={memberships}
+        activeCompanyId={companyId}
+        onCreateCompany={() => {}}
+        onSwitchCompany={async (nextCompanyId) => {
+          if (!firebaseUser) return;
+          await switchActiveCompany(firebaseUser.uid, nextCompanyId);
+          await refreshProfile();
+          haptics.selection();
+        }}
+      />
     </ProfileScreenShell>
   );
 }

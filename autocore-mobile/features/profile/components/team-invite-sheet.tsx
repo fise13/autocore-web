@@ -1,16 +1,13 @@
 import {
-  BottomSheetBackdrop,
   BottomSheetModal,
   BottomSheetScrollView,
-  type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
-import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MailIcon } from '@/assets/icons';
 import { Button, Input, Text } from '@/components/ui';
-import { useTheme } from '@/hooks';
+import { useModalBottomSheet, useTheme } from '@/hooks';
 import {
   INVITE_ROLE_HINTS,
   INVITE_ROLES,
@@ -45,9 +42,8 @@ const TTL_OPTIONS = [
 export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetProps>(
   function TeamInviteSheet({ companyId, userId, onShareCode, onShareLink }, ref) {
     const { colors } = useTheme();
-    const insets = useSafeAreaInsets();
+    const sheet = useModalBottomSheet();
     const sheetRef = useRef<BottomSheetModal>(null);
-    const snapPoints = useMemo(() => ['92%'], []);
 
     const [email, setEmail] = useState('');
     const [inviteRole, setInviteRole] = useState<UserRole>('mechanic');
@@ -76,12 +72,7 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
       dismiss: () => sheetRef.current?.dismiss(),
     }));
 
-    const renderBackdrop = useCallback(
-      (props: BottomSheetBackdropProps) => (
-        <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
-      ),
-      [],
-    );
+    const renderBackdrop = sheet.renderBackdrop;
 
     async function handleSendEmail() {
       setBusy(true);
@@ -139,20 +130,18 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
     return (
       <BottomSheetModal
         ref={sheetRef}
+        {...sheet.sheetLayout}
         index={0}
-        snapPoints={snapPoints}
+        snapPoints={sheet.formSnapPoints}
+        topInset={sheet.topInset}
         enablePanDownToClose
         backdropComponent={renderBackdrop}
-        backgroundStyle={{ backgroundColor: colors.card }}
-        handleIndicatorStyle={{ backgroundColor: colors.mutedForeground, width: 40 }}
+        backgroundStyle={sheet.backgroundStyle}
+        handleIndicatorStyle={sheet.handleIndicatorStyle}
       >
         <BottomSheetScrollView
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{
-            paddingHorizontal: profileLayout.pad,
-            paddingBottom: Math.max(insets.bottom, 16) + 16,
-            gap: 18,
-          }}
+          contentContainerStyle={{ ...sheet.formContentStyle, gap: 18 }}
         >
           <View style={{ gap: 4 }}>
             <Text variant="heading" style={{ fontSize: 22, fontWeight: '700', letterSpacing: -0.4 }}>
@@ -163,31 +152,20 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
             </Text>
           </View>
 
-          <View style={{ gap: 8 }}>
-            <Text variant="caption" color="muted" style={{ fontSize: 11, fontWeight: '600' }}>
-              EMAIL СОТРУДНИКА
-            </Text>
-            <View style={{ position: 'relative' }}>
-              <View style={{ position: 'absolute', left: 14, top: 0, bottom: 0, justifyContent: 'center', zIndex: 1 }}>
-                <MailIcon size="sm" color={colors.mutedForeground} strokeWidth={1.9} />
-              </View>
-              <Input
-                value={email}
-                onChangeText={setEmail}
-                placeholder="colleague@company.ru"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                style={{ paddingLeft: 42 }}
-              />
-            </View>
-            <Button loading={busy} disabled={!email.trim()} onPress={() => void handleSendEmail()}>
-              Отправить на email
-            </Button>
-            <Text variant="caption" color="muted" style={{ fontSize: 12, lineHeight: 16 }}>
-              Сотрудник получит письмо со ссылкой для входа в команду.
-            </Text>
-          </View>
+          <Input
+            label="Email сотрудника"
+            helperText="Сотрудник получит письмо со ссылкой для входа в команду."
+            value={email}
+            onChangeText={setEmail}
+            placeholder="colleague@company.ru"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            leftIcon={<MailIcon size="sm" color={colors.mutedForeground} strokeWidth={1.9} />}
+          />
+          <Button loading={busy} disabled={!email.trim()} onPress={() => void handleSendEmail()}>
+            Отправить на email
+          </Button>
 
           {successMessage ? (
             <View

@@ -1,12 +1,9 @@
-import { useState } from 'react';
-import { View } from 'react-native';
+import { Linking, View } from 'react-native';
 
 import { Button, Text } from '@/components/ui';
 import { useCompanySubscription, useSession } from '@/hooks';
-import { activateCompanyPro, startCompanyTrial } from '@/services/api/billing';
-import { canManageSettings } from '@/lib/permissions';
+import { getWebAppUrl, WEB_SUBSCRIPTION_PATH } from '@/lib/app-web-url';
 import { subscriptionPlanLabel } from '@/lib/billing/format-renewal';
-import { haptics } from '@/theme';
 
 import { ProfileMetaCard } from './profile-meta-card';
 
@@ -15,29 +12,8 @@ type TeamProGateProps = {
 };
 
 export function TeamProGate({ children }: TeamProGateProps) {
-  const { profile, companyId } = useSession();
+  const { companyId } = useSession();
   const { isPro, isLoading } = useCompanySubscription(companyId);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
-  const canManage = Boolean(profile?.isCompanyOwner || canManageSettings(profile));
-
-  const runBilling = async (action: () => Promise<unknown>, success: string) => {
-    if (!companyId) return;
-    setBusy(true);
-    setError(null);
-    setStatus(null);
-    try {
-      await action();
-      setStatus(success);
-      haptics.success();
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : 'Не удалось обновить подписку');
-      haptics.warning();
-    } finally {
-      setBusy(false);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -56,39 +32,14 @@ export function TeamProGate({ children }: TeamProGateProps) {
   return (
     <ProfileMetaCard title="Команда на Pro" delay={80}>
       <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-        Сотрудники, роли и коды приглашений доступны на тарифе {subscriptionPlanLabel(true)}.
+        Сотрудники, роли и коды приглашений доступны на тарифе {subscriptionPlanLabel(true)}. Управление
+        подпиской — на сайте.
       </Text>
-      {canManage ? (
-        <View style={{ gap: 8 }}>
-          <Button
-            loading={busy}
-            onPress={() => void runBilling(() => startCompanyTrial(companyId!), 'Пробный период активирован')}
-          >
-            Попробовать Pro
-          </Button>
-          <Button
-            variant="secondary"
-            loading={busy}
-            onPress={() => void runBilling(() => activateCompanyPro(companyId!), 'Подписка Pro активирована')}
-          >
-            Подключить Pro
-          </Button>
-        </View>
-      ) : (
-        <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-          Попросите владельца компании подключить тариф Pro.
-        </Text>
-      )}
-      {status ? (
-        <Text variant="caption" style={{ color: '#16a34a' }}>
-          {status}
-        </Text>
-      ) : null}
-      {error ? (
-        <Text variant="caption" style={{ color: '#ef4444' }}>
-          {error}
-        </Text>
-      ) : null}
+      <View style={{ gap: 8 }}>
+        <Button onPress={() => void Linking.openURL(getWebAppUrl(WEB_SUBSCRIPTION_PATH))}>
+          Открыть сайт
+        </Button>
+      </View>
     </ProfileMetaCard>
   );
 }

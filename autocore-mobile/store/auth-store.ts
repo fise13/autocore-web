@@ -36,7 +36,7 @@ const initialState: AuthSnapshot = {
   memberships: [],
   activeCompanyName: null,
   isOnline: true,
-  isHydrating: true,
+  isHydrating: false,
   error: null,
 };
 
@@ -61,7 +61,6 @@ export const useAuthStore = create<AuthStore>((set) => ({
       memberships,
       activeCompanyName,
       status: profile ? 'authenticated' : 'unauthenticated',
-      isHydrating: false,
       error: null,
     }),
   setHydrating: (isHydrating) => set({ isHydrating }),

@@ -20,6 +20,8 @@ const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 type ScanFrameOverlayProps = {
   detected: boolean;
+  width?: number;
+  height?: number;
   onDetectComplete?: () => void;
 };
 
@@ -31,12 +33,23 @@ function CornerMark({ color, flipX, flipY }: { color: string; flipX?: boolean; f
   );
 }
 
-export function ScanFrameOverlay({ detected, onDetectComplete }: ScanFrameOverlayProps) {
+export function ScanFrameOverlay({
+  detected,
+  width = scanLayout.frameSize,
+  height = scanLayout.frameSize,
+  onDetectComplete,
+}: ScanFrameOverlayProps) {
   const { colors } = useTheme();
   const reduced = useReducedMotion();
   const detect = useSharedValue(0);
   const breathe = useSharedValue(0);
-  const size = scanLayout.frameSize;
+  const frameW = useSharedValue(width);
+  const frameH = useSharedValue(height);
+
+  useEffect(() => {
+    frameW.value = withSpring(width, scanSpring.detect);
+    frameH.value = withSpring(height, scanSpring.detect);
+  }, [frameH, frameW, height, width]);
 
   useEffect(() => {
     if (!detected) {
@@ -54,6 +67,8 @@ export function ScanFrameOverlay({ detected, onDetectComplete }: ScanFrameOverla
   }, [breathe, reduced]);
 
   const frameStyle = useAnimatedStyle(() => ({
+    width: frameW.value,
+    height: frameH.value,
     transform: [{ scale: 1 + detect.value * 0.025 + breathe.value * 0.008 }],
     opacity: 0.78 + detect.value * 0.22,
   }));
@@ -64,13 +79,14 @@ export function ScanFrameOverlay({ detected, onDetectComplete }: ScanFrameOverla
 
   const idleStroke = 'rgba(255,255,255,0.34)';
   const cornerColor = detected ? colors.primary : 'rgba(255,255,255,0.78)';
+  const r = scanLayout.frameRadius;
 
   return (
     <View pointerEvents="none" style={{ alignItems: 'center', justifyContent: 'center' }}>
-      <Animated.View style={[{ width: size, height: size }, frameStyle]}>
-        <Svg width={size} height={size} style={{ position: 'absolute' }}>
+      <Animated.View style={frameStyle}>
+        <Svg width="100%" height="100%" style={{ position: 'absolute' }} viewBox={`0 0 ${width} ${height}`}>
           <AnimatedPath
-            d={`M ${scanLayout.frameRadius} 1 H ${size - scanLayout.frameRadius} Q ${size - 1} 1 ${size - 1} ${scanLayout.frameRadius} V ${size - scanLayout.frameRadius} Q ${size - 1} ${size - 1} ${size - scanLayout.frameRadius} ${size - 1} H ${scanLayout.frameRadius} Q 1 ${size - 1} 1 ${size - scanLayout.frameRadius} V ${scanLayout.frameRadius} Q 1 1 ${scanLayout.frameRadius} 1`}
+            d={`M ${r} 1 H ${width - r} Q ${width - 1} 1 ${width - 1} ${r} V ${height - r} Q ${width - 1} ${height - 1} ${width - r} ${height - 1} H ${r} Q 1 ${height - 1} 1 ${height - r} V ${r} Q 1 1 ${r} 1`}
             stroke={detected ? colors.primary : idleStroke}
             strokeWidth={detected ? 2.5 : 1.5}
             fill="none"

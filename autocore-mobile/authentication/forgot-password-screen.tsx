@@ -1,21 +1,16 @@
 import { Link } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { View } from 'react-native';
 
-import { Alert, Button, Input, Text } from '@/components/ui';
-import { useTheme } from '@/hooks';
-import { spacing } from '@/theme';
-import { mapAuthError } from '@/utils/auth-error';
-
+import { Alert, Button, Input } from '@/components/ui';
 import { useAuth } from './auth-provider';
 import { AuthShell } from './auth-shell';
+import { mapAuthError } from '@/utils/auth-error';
 
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
 export function ForgotPasswordScreen() {
-  const { colors } = useTheme();
   const { sendPasswordReset, isOnline, clearError } = useAuth();
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,26 +63,22 @@ export function ForgotPasswordScreen() {
       {success ? <Alert variant="success" title="Письмо отправлено" description={success} /> : null}
       {error ? <Alert variant="destructive" title="Не удалось отправить письмо" description={error} /> : null}
 
-      <View style={{ gap: spacing[2] }}>
-        <Text variant="caption" color="muted">
-          Email
-        </Text>
-        <Input
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          textContentType="username"
-          autoCapitalize="none"
-          autoCorrect={false}
-          placeholder="you@company.com"
-          invalid={Boolean(emailError)}
-          returnKeyType="send"
-          onSubmitEditing={onSubmit}
-        />
-        {emailError ? <Text variant="caption" style={{ color: colors.destructive }}>{emailError}</Text> : null}
-      </View>
+      <Input
+        label="Email"
+        size="lg"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        textContentType="username"
+        autoCapitalize="none"
+        autoCorrect={false}
+        placeholder="you@company.com"
+        error={emailError ?? undefined}
+        returnKeyType="send"
+        onSubmitEditing={onSubmit}
+      />
 
-      <Button size="lg" loading={isSubmitting} disabled={submitDisabled} onPress={onSubmit}>
+      <Button size="lg" loading={isSubmitting} disabled={submitDisabled} onPress={onSubmit} style={{ width: '100%' }}>
         Отправить ссылку
       </Button>
     </AuthShell>

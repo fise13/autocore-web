@@ -1,110 +1,309 @@
 import { useMemo } from 'react';
 
 import {
+  BarChart3Icon,
+  BoxIcon,
   ClipboardListIcon,
   PackageIcon,
   PlusIcon,
   ScanSearchIcon,
-  SearchIcon,
   ShoppingCartIcon,
 } from '@/assets/icons';
+import { useClientsRealtime } from '@/hooks/use-clients-realtime';
 import { useInventoryCatalog } from '@/hooks/use-inventory-catalog';
+import { useMotorsRealtime } from '@/hooks/use-motors-realtime';
+import { useOperationsRealtime } from '@/hooks/use-operations-realtime';
 import { useSession } from '@/hooks/use-session';
 import { useWorkOrdersRealtime } from '@/hooks/use-work-orders-realtime';
-import type { MissionControlSnapshot } from '@/features/mission-control/types';
-import { formatPrice } from '@/features/search/lib/format';
+import { useCompanyModuleEnabled } from '@/hooks/use-module-enabled';
+import type {
+  MissionControlActivity,
+  MissionControlAttentionItem,
+  MissionControlInsight,
+  MissionControlSnapshot,
+  MissionControlStatTile,
+  MissionControlWeekBar,
+} from '@/features/mission-control/types';
+import { formatActivityTime } from '@/features/mission-control/utils/relative-time';
+import { resolveMissionControlRevenue } from '@/features/mission-control/lib/revenue-from-operations';
+import { calculateCashBalance } from '@/lib/accounting/calculate-cash-balance';
+import { coerceToDate } from '@/lib/firestore-timestamp';
+import { isMotorStale, isWarehouseLowStock } from '@/lib/inventory/is-low-stock';
+import { isOpenStatus, STATUS_LABELS } from '@/lib/work-order/work-order-utils';
+import type { WorkOrder, WorkOrderStatus } from '@/types/work-order';
+
+const WEEKDAY_SHORT_RU = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'] as const;
+
+function weekDayShortLabel(date: Date): string {
+  return WEEKDAY_SHORT_RU[date.getDay()] ?? '';
+}
+
+function orderRevenue(order: WorkOrder): number {
+  const total = order.pricing?.grandTotal;
+  if (typeof total === 'number' && Number.isFinite(total)) return total;
+
+  const { laborTotal = 0, partsTotal = 0, motorsTotal = 0, discount = 0 } = order.pricing ?? {};
+  return Math.max(0, laborTotal + partsTotal + motorsTotal - discount);
+}
+
+function safePercent(numerator: number, denominator: number): number | null {
+  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0) {
+    return null;
+  }
+  return ((numerator - denominator) / denominator) * 100;
+}
+
+function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function closedRevenueForDay(orders: WorkOrder[], day: Date): number {
+  return orders
+    .filter((order) => {
+      if (!['completed', 'delivered'].includes(order.status)) return false;
+      const closedAt = coerceToDate(order.completedAt) ?? coerceToDate(order.updatedAt);
+      return closedAt ? isSameDay(closedAt, day) : false;
+    })
+    .reduce((sum, order) => sum + orderRevenue(order), 0);
+}
+
+function sumRevenueForRange(orders: WorkOrder[], endDay: Date, days: number): number {
+  let total = 0;
+  for (let offset = 0; offset < days; offset += 1) {
+    const day = new Date(endDay);
+    day.setDate(day.getDate() - offset);
+    total += closedRevenueForDay(orders, day);
+  }
+  return total;
+}
+
+function buildWeekBars(orders: WorkOrder[], now: Date): MissionControlWeekBar[] {
+  const bars: MissionControlWeekBar[] = [];
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const day = new Date(now);
+    day.setDate(day.getDate() - offset);
+    bars.push({
+      label: weekDayShortLabel(day),
+      value: closedRevenueForDay(orders, day),
+    });
+  }
+  return bars;
+}
+
+function statusTone(status: WorkOrderStatus): MissionControlActivity['statusTone'] {
+  if (status === 'waiting_parts') return 'warning';
+  if (status === 'completed' || status === 'delivered') return 'success';
+  if (status === 'cancelled') return 'muted';
+  return 'default';
+}
 
 export function useMissionControlData(): MissionControlSnapshot {
-  const { companyId } = useSession();
+  const { companyId, uid } = useSession();
+  const motorsEnabled = useCompanyModuleEnabled('motors');
+  const accountingEnabled = useCompanyModuleEnabled('accounting');
   const { domainOrders, meta } = useWorkOrdersRealtime(companyId);
+  const { operations } = useOperationsRealtime(companyId, { keepAlive: true });
   const { items } = useInventoryCatalog(companyId);
+  const { availableMotors } = useMotorsRealtime(companyId, uid, motorsEnabled);
+  useClientsRealtime(companyId, { keepAlive: true });
 
   return useMemo(() => {
-    const inProgress = domainOrders.filter((order) => order.status === 'in_progress').length;
+    const now = new Date();
+    const openOrders = domainOrders.filter((order) => isOpenStatus(order.status));
     const waitingParts = domainOrders.filter((order) => order.status === 'waiting_parts').length;
-    const salesToday = domainOrders
-      .filter((order) => ['completed', 'delivered'].includes(order.status))
-      .reduce((sum, order) => sum + order.pricing.grandTotal, 0);
 
-    const lowStock = items.filter(
-      (item) => item.totalAvailable > 0 && item.totalAvailable <= 3,
-    ).length;
+    const orderWeekRevenue = sumRevenueForRange(domainOrders, now, 7);
+    const orderWeekBars = buildWeekBars(domainOrders, now);
+    const orderWeekGrowth = safePercent(
+      orderWeekRevenue,
+      sumRevenueForRange(
+        domainOrders,
+        new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7),
+        7,
+      ),
+    );
+    const balanceTotal = calculateCashBalance(operations).total;
+
+    const revenue = resolveMissionControlRevenue({
+      accountingEnabled,
+      operations,
+      orderWeekRevenue,
+      orderWeekBars,
+      orderWeekGrowth,
+      balanceTotal,
+      now,
+    });
+    const weekRevenue = revenue.value;
+
+    const newOrdersWeek = domainOrders.filter((order) => {
+      const created = coerceToDate(order.createdAt);
+      if (!created) return false;
+      const weekAgo = new Date(now);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return created >= weekAgo;
+    }).length;
+
+    const lowStock = items.filter(isWarehouseLowStock).length;
+    const staleMotors = motorsEnabled ? availableMotors.filter((m) => isMotorStale(m)).length : 0;
+
+    const attentionItems: MissionControlAttentionItem[] = [];
+    if (waitingParts > 0) {
+      attentionItems.push({
+        count: waitingParts,
+        text: 'ждут запчасти',
+        tone: 'warning',
+        route: '/(tabs)/orders',
+      });
+    }
+    if (lowStock > 0) {
+      attentionItems.push({
+        count: lowStock,
+        text: 'на исходе',
+        tone: 'warning',
+        route: '/(tabs)/warehouse',
+        routeParams: { lowStock: '1' },
+      });
+    }
+    if (staleMotors > 0) {
+      attentionItems.push({
+        count: staleMotors,
+        text: 'моторов залежались',
+        tone: 'warning',
+        route: '/(tabs)/search',
+        routeParams: { filter: 'motors', stale: '1' },
+      });
+    }
+
+    const statTiles: MissionControlStatTile[] = [
+      {
+        id: 'new-orders',
+        label: 'Новые наряды',
+        value: newOrdersWeek,
+        format: 'integer',
+        icon: ShoppingCartIcon,
+        route: '/(tabs)/orders',
+      },
+      {
+        id: 'inventory',
+        label: 'Позиций на складе',
+        value: items.length,
+        format: 'grouped',
+        icon: BoxIcon,
+        route: '/(tabs)/warehouse',
+      },
+    ];
+
+    const insights: MissionControlInsight[] = [];
+    let featuredInsight: MissionControlInsight | null = null;
+
+    if (staleMotors > 0) {
+      featuredInsight = {
+        id: 'stale-motors',
+        title: `${staleMotors} моторов залежались на складе`,
+        detail: 'Позиции давно без движения — стоит пересмотреть цену или продвижение.',
+        body: 'Обновление цен может ускорить продажи и освободить оборотные средства.',
+        cta: 'Смотреть рекомендации',
+        tone: 'neutral',
+        route: '/(tabs)/search',
+        routeParams: { filter: 'motors', stale: '1' },
+      };
+    } else if (lowStock > 0) {
+      featuredInsight = {
+        id: 'low-stock',
+        title: `${lowStock} позиций на исходе`,
+        detail: 'Запасы подходят к минимуму — риск простоя в нарядах.',
+        body: 'Пополните склад заранее, чтобы не задерживать закрытие нарядов.',
+        cta: 'Открыть список',
+        tone: 'warning',
+        route: '/(tabs)/warehouse',
+        routeParams: { lowStock: '1' },
+      };
+    } else if (openOrders.length > 0 && now.getHours() >= 18) {
+      featuredInsight = {
+        id: 'open-evening',
+        title: `${openOrders.length} нарядов ещё открыты`,
+        detail: 'К концу дня стоит закрыть или обновить статусы.',
+        cta: 'Перейти к нарядам',
+        tone: 'neutral',
+        route: '/(tabs)/orders',
+      };
+    } else if (weekRevenue > 0 && meta.total > 0) {
+      const closedShare = Math.round(
+        (domainOrders.filter((o) => ['completed', 'delivered'].includes(o.status)).length / meta.total) *
+          100,
+      );
+      if (closedShare >= 40 && closedShare < 100) {
+        featuredInsight = {
+          id: 'close-rate',
+          title: 'Хороший темп закрытия нарядов',
+          detail: `${closedShare}% нарядов уже закрыто.`,
+          body: 'Сохраняйте ритм — это помогает точнее планировать выручку.',
+          cta: 'Смотреть наряды',
+          tone: 'positive',
+          route: '/(tabs)/orders',
+        };
+      }
+    }
+
+    if (openOrders.length > 0 && now.getHours() >= 18 && featuredInsight?.id !== 'open-evening') {
+      insights.push({
+        id: 'open-evening-secondary',
+        title: 'Незакрытые наряды',
+        detail: `${openOrders.length} к концу дня`,
+        tone: 'neutral',
+        route: '/(tabs)/orders',
+      });
+    }
+
+    const recentOrders = [...domainOrders].sort((a, b) => {
+      const aTime = coerceToDate(a.updatedAt)?.getTime() ?? 0;
+      const bTime = coerceToDate(b.updatedAt)?.getTime() ?? 0;
+      return bTime - aTime;
+    });
+
+    const activity: MissionControlActivity[] = recentOrders.slice(0, 20).map((order) => {
+      const updated = coerceToDate(order.updatedAt) ?? now;
+      return {
+        id: order.id,
+        title: `№${order.number}`,
+        detail: order.vehicleLabel || order.clientName || '—',
+        time: formatActivityTime(updated, now),
+        statusLabel: STATUS_LABELS[order.status],
+        statusTone: statusTone(order.status),
+        category: 'order' as const,
+        icon: order.partLines.length > 0 ? PackageIcon : ClipboardListIcon,
+      };
+    });
 
     return {
       attention: {
-        title: 'Требует внимания',
-        items: [
-          ...(waitingParts > 0
-            ? [{ count: waitingParts, text: 'нарядов ждут запчасти', tone: 'warning' as const }]
-            : []),
-          ...(lowStock > 0
-            ? [{ count: lowStock, text: 'позиций на исходе', tone: 'warning' as const }]
-            : []),
-        ],
+        title: 'Нужно действие',
+        items: attentionItems,
       },
-      overview: [
-        {
-          id: 'sales',
-          label: 'Закрыто',
-          value: formatPrice(salesToday),
-          numericValue: salesToday,
-          hint: 'выручка по закрытым',
-          hintTone: 'muted',
-          trend: [salesToday * 0.7, salesToday * 0.8, salesToday * 0.9, salesToday],
-          trendTone: 'primary',
-        },
-        {
-          id: 'orders',
-          label: 'Наряды',
-          value: String(meta.total),
-          numericValue: meta.total,
-          hint: `${inProgress} в работе`,
-          hintTone: 'muted',
-          trend: [meta.openCount, meta.total, inProgress, waitingParts],
-          trendTone: 'success',
-        },
-        {
-          id: 'reservations',
-          label: 'Открытые',
-          value: String(meta.openCount),
-          numericValue: meta.openCount,
-          hint: 'активные',
-          hintTone: 'muted',
-          trend: [meta.openCount, meta.openCount, meta.openCount, meta.openCount],
-          trendTone: 'chart2',
-        },
-        {
-          id: 'warehouse',
-          label: 'Склад',
-          value: String(items.length),
-          numericValue: items.length,
-          hint: 'позиции',
-          hintTone: 'muted',
-          trend: [items.length, items.length, items.length, items.length],
-          trendTone: 'muted',
-        },
-      ],
+      revenue,
+      statTiles,
       quickActions: [
-        {
-          id: 'scan',
-          label: 'Сканировать QR',
-          icon: ScanSearchIcon,
-          route: '/(tabs)/scan',
-          primary: true,
-        },
-        { id: 'order', label: 'Новый наряд', icon: PlusIcon, route: '/(tabs)/orders' },
-        { id: 'search', label: 'Поиск', icon: SearchIcon, route: '/(tabs)/search' },
-        { id: 'sale', label: 'Продажа', icon: ShoppingCartIcon },
+        { id: 'order', label: 'Наряд', icon: PlusIcon, route: '/(tabs)/orders/new' },
+        { id: 'scan', label: 'Скан', icon: ScanSearchIcon, route: '/(tabs)/scan' },
+        { id: 'inventory', label: 'Склад', icon: BoxIcon, route: '/(tabs)/warehouse' },
+        { id: 'finance', label: 'Финансы', icon: BarChart3Icon, route: '/(tabs)/accounting' },
       ],
-      activity: domainOrders.slice(0, 6).map((order) => ({
-        id: order.id,
-        title: `Заказ-наряд №${order.number}`,
-        detail: order.vehicleLabel || order.clientName || 'Обновление',
-        time: order.updatedAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
-        category: 'order' as const,
-        icon: order.partLines.length > 0 ? PackageIcon : ClipboardListIcon,
-      })),
+      featuredInsight,
+      insights: insights.slice(0, 2),
+      activity,
       companies: [],
     };
-  }, [domainOrders, items.length, meta.openCount, meta.total]);
+  }, [
+    accountingEnabled,
+    availableMotors,
+    domainOrders,
+    items.length,
+    meta.total,
+    motorsEnabled,
+    operations,
+  ]);
 }

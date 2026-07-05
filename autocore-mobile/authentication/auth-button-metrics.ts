@@ -1,3 +1,5 @@
-/** Shared OAuth / primary auth control height — matches web `h-10` (40px). */
-export const AUTH_BUTTON_HEIGHT = 40;
-export const AUTH_BUTTON_RADIUS = 10;
+import { form } from '@/theme/form';
+import { radius } from '@/theme/radius';
+
+export const AUTH_BUTTON_HEIGHT = form.controlHeightLg;
+export const AUTH_BUTTON_RADIUS = radius.lg;

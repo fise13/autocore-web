@@ -1,39 +1,45 @@
 import { View } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 
-import { Text } from '@/components/ui';
+import { ListGroup, Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { toneBackground } from '@/theme/color-utils';
+import { useMcEnter } from '@/features/mission-control/animation';
+import { McSectionTitle } from '@/features/mission-control/components/mc-primitives';
+import { mcType } from '@/features/mission-control/layout';
 import type { AdvanceSnapshot } from '@/lib/accounting/advances';
 
 import { ac } from '../layout';
+import { acTimeline } from '../animation/timeline';
 import { formatKzt } from '../utils/format';
 
 type AcAdvancesOverviewProps = {
   snapshot: AdvanceSnapshot;
 };
 
-function MetricCard({ label, value, tone }: { label: string; value: string; tone?: 'default' | 'success' | 'warning' }) {
+function AdvanceRow({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   const { colors } = useTheme();
-  const valueColor =
-    tone === 'success' ? colors.success : tone === 'warning' ? colors.warning : colors.foreground;
 
   return (
     <View
       style={{
-        flex: 1,
-        minWidth: '30%',
-        borderWidth: ac.hairline,
-        borderColor: colors.border,
-        backgroundColor: colors.card,
-        borderRadius: ac.radius,
-        padding: 12,
-        gap: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: ac.rowPadY,
+        paddingHorizontal: ac.rowPadX,
+        minHeight: ac.rowHeight,
       }}
     >
-      <Text variant="caption" color="muted" style={{ fontSize: 11 }}>
+      <Text variant="body" style={mcType.rowTitle}>
         {label}
       </Text>
-      <Text variant="body" style={{ fontSize: 16, fontWeight: '700', color: valueColor, fontVariant: ['tabular-nums'] }}>
+      <Text
+        variant="bodyStrong"
+        style={{
+          fontVariant: ['tabular-nums'],
+          color: accent ? colors.primary : colors.foreground,
+        }}
+      >
         {value}
       </Text>
     </View>
@@ -41,27 +47,19 @@ function MetricCard({ label, value, tone }: { label: string; value: string; tone
 }
 
 export function AcAdvancesOverview({ snapshot }: AcAdvancesOverviewProps) {
-  const { colors } = useTheme();
+  const style = useMcEnter({ delay: acTimeline.attention, translateY: 6, fade: true });
 
   return (
-    <View style={{ gap: 10 }}>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        <MetricCard label="Получено" value={formatKzt(snapshot.received)} tone="success" />
-        <MetricCard label="Выдано" value={formatKzt(snapshot.paid)} tone="warning" />
-        <MetricCard label="Баланс" value={formatKzt(snapshot.balance)} />
-      </View>
-      <View
-        style={{
-          borderRadius: ac.radius,
-          paddingHorizontal: 12,
-          paddingVertical: 8,
-          backgroundColor: toneBackground(colors.primary, 0.06),
-        }}
-      >
-        <Text variant="caption" color="muted" style={{ fontSize: 12 }}>
-          Авансовых операций: {snapshot.totalCount}
-        </Text>
-      </View>
-    </View>
+    <Reanimated.View style={[{ gap: ac.sectionGap }, style]}>
+      <McSectionTitle title="Авансы" />
+      <ListGroup inset={false}>
+        <AdvanceRow label="Получено" value={formatKzt(snapshot.received)} />
+        <AdvanceRow label="Выдано" value={formatKzt(snapshot.paid)} />
+        <AdvanceRow label="Баланс" value={formatKzt(snapshot.balance)} accent />
+      </ListGroup>
+      <Text variant="meta" color="muted" style={mcType.rowMeta}>
+        {snapshot.totalCount} авансовых операций
+      </Text>
+    </Reanimated.View>
   );
 }

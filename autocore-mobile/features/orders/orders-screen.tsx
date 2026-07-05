@@ -1,11 +1,15 @@
-import { useMemo, useState } from 'react';
-import { Keyboard, ScrollView, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { Keyboard, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { ListRenderItemInfo } from '@shopify/flash-list';
 
-import { Text, Loading } from '@/components/ui';
-import { useTheme, useSession, useWorkOrdersRealtime, useModuleEnabled } from '@/hooks';
+import { ClipboardListIcon } from '@/assets/icons';
+import { EmptyState, FlashList, Loading, Screen, Text, toast } from '@/components/ui';
+import { useSession, useWorkOrdersRealtime, useModuleEnabled, useFloatingTabBarInset } from '@/hooks';
 import { filterMobileOrders, computeMobileOrdersMeta } from '@/lib/work-order/map-to-mobile-card';
+import { transitionWorkOrder } from '@/services/api/work-orders';
+import { haptics, rhythm } from '@/theme';
+import { openPhone } from '@/utils/open-phone';
 
 import { orderFilters } from './data/mock-orders';
 import { OrderCard } from './components/order-card';
@@ -17,9 +21,8 @@ import { ordersLayout } from './layout';
 import type { OrderFilterId, WorkOrder } from './types';
 
 export function OrdersScreen() {
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { scrollBottom } = useFloatingTabBarInset();
   const { companyId, profile, can } = useSession();
   const workOrdersEnabled = useModuleEnabled('workOrders');
   const { orders, isBootstrapping, errorMessage, enabled } = useWorkOrdersRealtime(companyId);
@@ -35,79 +38,162 @@ export function OrdersScreen() {
   );
 
   const canCreate = can('work_orders_edit') && workOrdersEnabled;
+  const canEdit = can('work_orders_edit');
 
-  const openOrder = (order: WorkOrder) => {
-    router.push(`/(tabs)/orders/${order.id}`);
-  };
+  const openOrder = useCallback(
+    (order: WorkOrder) => {
+      router.push(`/(tabs)/orders/${order.id}`);
+    },
+    [router],
+  );
+
+  const markReady = useCallback(
+    async (order: WorkOrder) => {
+      if (!canEdit) {
+        toast({ title: 'Нет прав на изменение наряда', variant: 'warning' });
+        return;
+      }
+      if (order.status === 'completed' || order.status === 'ready') {
+        openOrder(order);
+        return;
+      }
+      try {
+        haptics.medium();
+        await transitionWorkOrder(order.id, 'completed');
+        haptics.success();
+        toast({ title: 'Наряд отмечен выполненным', variant: 'success' });
+      } catch (error) {
+        haptics.warning();
+        toast({
+          title: 'Не удалось обновить статус',
+          description: error instanceof Error ? error.message : undefined,
+          variant: 'destructive',
+        });
+      }
+    },
+    [canEdit, openOrder],
+  );
+
+  const callCustomer = useCallback(async (order: WorkOrder) => {
+    haptics.light();
+    await openPhone(order.phone);
+  }, []);
+
+  const renderItem = useCallback(
+    ({ item, index }: ListRenderItemInfo<WorkOrder>) => (
+      <View style={{ paddingHorizontal: ordersLayout.pad, marginBottom: rhythm.inline }}>
+        <OrderCard order={item} index={index} onMarkReady={markReady} onCall={callCustomer} />
+      </View>
+    ),
+    [callCustomer, markReady],
+  );
+
+  const keyExtractor = useCallback((item: WorkOrder) => item.id, []);
+
+  const listHeader = useMemo(
+    () => (
+      <View>
+        <OrdersHeader meta={meta} />
+        {canCreate ? (
+          <OrdersPrimaryAction onPress={() => router.push('/(tabs)/orders/new')} />
+        ) : null}
+        <View style={{ gap: rhythm.stack, marginTop: rhythm.stack }}>
+          <OrdersSearch value={query} onChangeText={setQuery} />
+          <OrdersFilters filters={orderFilters} activeFilter={filter} onFilterChange={setFilter} />
+        </View>
+        {errorMessage ? (
+          <Text
+            variant="caption"
+            color="destructive"
+            style={{ paddingHorizontal: ordersLayout.pad, marginTop: rhythm.inline }}
+          >
+            {errorMessage}
+          </Text>
+        ) : null}
+        <View style={{ height: ordersLayout.section }} />
+      </View>
+    ),
+    [canCreate, errorMessage, filter, meta, query, router],
+  );
+
+  const listEmpty = useMemo(
+    () => (
+      <View style={{ paddingHorizontal: ordersLayout.pad }}>
+        {isBootstrapping && orders.length === 0 ? (
+          <Loading message="Загружаем наряды…" />
+        ) : (
+          <EmptyState
+            icon={ClipboardListIcon}
+            title={orders.length === 0 ? 'Нарядов пока нет' : 'Ничего не найдено'}
+            description={
+              orders.length === 0
+                ? 'Создайте первый заказ-наряд — это займёт меньше минуты.'
+                : 'Измените фильтр или поисковый запрос.'
+            }
+            primaryAction={
+              canCreate && orders.length === 0
+                ? {
+                    label: 'Создать наряд',
+                    onPress: () => router.push('/(tabs)/orders/new'),
+                  }
+                : query
+                  ? {
+                      label: 'Сбросить поиск',
+                      onPress: () => {
+                        setQuery('');
+                        setFilter('open');
+                      },
+                      variant: 'outline',
+                    }
+                  : undefined
+            }
+          />
+        )}
+      </View>
+    ),
+    [canCreate, filter, isBootstrapping, orders.length, query, router],
+  );
 
   if (!enabled || !profile?.companyId) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center', padding: 24 }}>
-        <Text variant="body" color="muted" style={{ textAlign: 'center' }}>
-          Выберите рабочее пространство, чтобы видеть заказ-наряды.
-        </Text>
-      </View>
+      <Screen style={{ justifyContent: 'center', paddingHorizontal: ordersLayout.pad }}>
+        <EmptyState
+          icon={ClipboardListIcon}
+          title="Нет рабочего пространства"
+          description="Выберите компанию в профиле, чтобы видеть заказ-наряды."
+          primaryAction={{
+            label: 'Открыть профиль',
+            onPress: () => router.navigate('/(tabs)/profile'),
+          }}
+        />
+      </Screen>
     );
   }
 
   if (!can('work_orders_view')) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center', padding: 24 }}>
-        <Text variant="body" color="muted" style={{ textAlign: 'center' }}>
-          Нет прав на просмотр заказ-нарядов.
-        </Text>
-      </View>
+      <Screen style={{ justifyContent: 'center', paddingHorizontal: ordersLayout.pad }}>
+        <EmptyState
+          icon={ClipboardListIcon}
+          title="Нет доступа"
+          description="У вашей роли нет прав на просмотр заказ-нарядов."
+        />
+      </Screen>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {isBootstrapping ? <Loading message="Загружаем наряды…" /> : null}
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        decelerationRate="normal"
+    <Screen>
+      <FlashList
+        data={filteredOrders}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={listEmpty}
+        contentContainerStyle={{ paddingBottom: scrollBottom }}
         onScrollBeginDrag={Keyboard.dismiss}
-        contentContainerStyle={{
-          paddingBottom: Math.max(insets.bottom, 12) + 88,
-        }}
-      >
-        <OrdersHeader meta={meta} />
-        {canCreate ? (
-          <OrdersPrimaryAction onPress={() => router.push('/(tabs)/orders/new')} />
-        ) : null}
-
-        <View style={{ gap: 12, marginTop: 16 }}>
-          <OrdersSearch value={query} onChangeText={setQuery} />
-          <OrdersFilters filters={orderFilters} activeFilter={filter} onFilterChange={setFilter} />
-        </View>
-
-        {errorMessage ? (
-          <Text variant="caption" color="destructive" style={{ paddingHorizontal: ordersLayout.pad, marginTop: 8 }}>
-            {errorMessage}
-          </Text>
-        ) : null}
-
-        <View style={{ marginTop: ordersLayout.section, paddingHorizontal: ordersLayout.pad, gap: 10 }}>
-          {filteredOrders.length === 0 ? (
-            <View style={{ paddingVertical: 48, alignItems: 'center', gap: 6 }}>
-              <Text variant="body" color="muted" style={{ fontSize: 14 }}>
-                {orders.length === 0 ? 'Нарядов пока нет' : 'Ничего не найдено'}
-              </Text>
-            </View>
-          ) : (
-            filteredOrders.map((order, index) => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                index={index}
-                onMarkReady={openOrder}
-                onCall={openOrder}
-              />
-            ))
-          )}
-        </View>
-      </ScrollView>
-    </View>
+        keyboardDismissMode="on-drag"
+      />
+    </Screen>
   );
 }

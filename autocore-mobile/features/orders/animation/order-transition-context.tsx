@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -21,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { formatPrice } from '@/features/search/lib/format';
+import { orderOpenGuard } from '@/lib/navigation/navigation-guard';
 
 import { OrderStatusBadge } from '../components/order-status-badge';
 import { OrderWorkflowProgress } from '../components/order-workflow-progress';
@@ -114,15 +116,28 @@ export function OrderTransitionProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [overlay, setOverlay] = useState<{ order: WorkOrder; source: SourceLayout } | null>(null);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+  const activeOrderIdRef = useRef<string | null>(null);
 
   const openOrder = useCallback(
     (order: WorkOrder, source: SourceLayout) => {
-      setActiveOrderId(order.id);
-      setOverlay({ order, source });
-      router.push(`/(tabs)/orders/${order.id}`);
+      if (activeOrderIdRef.current === order.id || orderOpenGuard.isLocked) return;
+
+      orderOpenGuard.tryNavigate(() => {
+        activeOrderIdRef.current = order.id;
+        setActiveOrderId(order.id);
+        setOverlay({ order, source });
+        router.push(`/(tabs)/orders/${order.id}`);
+      });
     },
     [router],
   );
+
+  const clearOverlay = useCallback(() => {
+    setOverlay(null);
+    activeOrderIdRef.current = null;
+    setActiveOrderId(null);
+    orderOpenGuard.release();
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -139,7 +154,7 @@ export function OrderTransitionProvider({ children }: { children: ReactNode }) {
         <OrderOpenOverlay
           order={overlay.order}
           source={overlay.source}
-          onDone={() => setOverlay(null)}
+          onDone={clearOverlay}
         />
       ) : null}
     </OrderTransitionContext.Provider>

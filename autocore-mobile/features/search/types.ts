@@ -3,6 +3,7 @@ export type SearchFilterId =
   | 'engines'
   | 'gearboxes'
   | 'parts'
+  | 'motors'
   | 'documents'
   | 'clients'
   | 'sales'
@@ -21,6 +22,7 @@ export type SearchResultKind =
   | 'engine'
   | 'gearbox'
   | 'part'
+  | 'motor'
   | 'document'
   | 'client'
   | 'sale'
@@ -33,7 +35,7 @@ export type SearchEngine = {
   code: string;
   vehicle: string;
   status: InventoryStatus;
-  shelf: string;
+  shelf?: string;
   price: number;
   vin?: string;
 };
@@ -48,6 +50,8 @@ export type SearchResultItem = {
   shelf?: string;
   price?: number;
   vin?: string;
+  /** Motor serial / inventory code for compact action-sheet titles. */
+  serialCode?: string;
 };
 
 export type SearchResultGroup = {

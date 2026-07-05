@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import GorhomBottomSheet, {
   BottomSheetBackdrop,
   BottomSheetView,
@@ -7,8 +7,8 @@ import GorhomBottomSheet, {
   type BottomSheetProps,
 } from '@gorhom/bottom-sheet';
 
-import { useTheme } from '@/hooks';
-import { layout, radius, spacing } from '@/theme';
+import { useModalBottomSheet } from '@/hooks';
+import { rhythm } from '@/theme';
 
 type BottomSheetComponentProps = Omit<BottomSheetProps, 'children'> & {
   children: React.ReactNode;
@@ -17,8 +17,8 @@ type BottomSheetComponentProps = Omit<BottomSheetProps, 'children'> & {
 
 export const BottomSheet = forwardRef<GorhomBottomSheet, BottomSheetComponentProps>(
   function BottomSheet({ children, snapPoints: customSnapPoints, ...props }, ref) {
-    const { colors } = useTheme();
-    const snapPoints = useMemo(() => customSnapPoints ?? ['50%', '90%'], [customSnapPoints]);
+    const sheet = useModalBottomSheet({ backdropOpacity: 0.45 });
+    const snapPoints = useMemo(() => customSnapPoints ?? ['100%'], [customSnapPoints]);
 
     const renderBackdrop = useCallback(
       (backdropProps: BottomSheetBackdropProps) => (
@@ -30,23 +30,17 @@ export const BottomSheet = forwardRef<GorhomBottomSheet, BottomSheetComponentPro
     return (
       <GorhomBottomSheet
         ref={ref}
+        {...sheet.sheetLayout}
         index={-1}
         enablePanDownToClose
         snapPoints={snapPoints}
+        topInset={sheet.topInset}
         backdropComponent={renderBackdrop}
-        handleIndicatorStyle={{
-          width: layout.bottomSheet.handleWidth,
-          height: layout.bottomSheet.handleHeight,
-          backgroundColor: colors.mutedForeground,
-        }}
-        backgroundStyle={{
-          backgroundColor: colors.card,
-          borderTopLeftRadius: layout.bottomSheet.borderRadius,
-          borderTopRightRadius: layout.bottomSheet.borderRadius,
-        }}
+        handleIndicatorStyle={sheet.handleIndicatorStyle}
+        backgroundStyle={sheet.backgroundStyle}
         {...props}
       >
-        <BottomSheetView style={{ padding: spacing[4] }}>{children}</BottomSheetView>
+        <BottomSheetView style={{ padding: rhythm.pad, paddingBottom: sheet.scrollBottom }}>{children}</BottomSheetView>
       </GorhomBottomSheet>
     );
   },

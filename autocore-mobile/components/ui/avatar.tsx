@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
-import { Image, type ImageSourcePropType } from 'react-native';
+import { memo, useEffect, useState } from 'react';
+import { type ImageSourcePropType } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '@/hooks';
-import { layout, radius } from '@/theme';
+import { layout } from '@/theme';
+
 import { Text } from './text';
 
 type AvatarSize = keyof typeof layout.avatar;
@@ -50,7 +52,7 @@ function AvatarFallback({ name, size, dimension }: { name: string; size: AvatarS
   );
 }
 
-export function Avatar({ source, uri, name = '', size = 'md' }: AvatarProps) {
+export const Avatar = memo(function Avatar({ source, uri, name = '', size = 'md' }: AvatarProps) {
   const { colors } = useTheme();
   const dimension = layout.avatar[size];
   const [imageFailed, setImageFailed] = useState(false);
@@ -74,9 +76,12 @@ export function Avatar({ source, uri, name = '', size = 'md' }: AvatarProps) {
         key={uri}
         source={{ uri }}
         style={imageStyle}
-        resizeMode="cover"
-        accessibilityIgnoresInvertColors
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        recyclingKey={uri}
+        transition={120}
         onError={() => setImageFailed(true)}
+        accessibilityIgnoresInvertColors
       />
     );
   }
@@ -86,12 +91,14 @@ export function Avatar({ source, uri, name = '', size = 'md' }: AvatarProps) {
       <Image
         source={source}
         style={imageStyle}
-        resizeMode="cover"
-        accessibilityIgnoresInvertColors
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        transition={120}
         onError={() => setImageFailed(true)}
+        accessibilityIgnoresInvertColors
       />
     );
   }
 
   return <AvatarFallback name={name} size={size} dimension={dimension} />;
-}
+});

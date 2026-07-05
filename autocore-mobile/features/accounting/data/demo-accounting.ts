@@ -64,24 +64,28 @@ export const demoAccountingSnapshot: AccountingSnapshot = {
       title: '3 неоплаченных счёта',
       subtitle: 'На сумму 890 000 ₸',
       tone: 'warning',
+      action: 'operations',
     },
     {
       id: 'overdue',
       title: '2 просроченных платежа',
       subtitle: 'Toyota Center · Japan Motors',
       tone: 'danger',
+      action: 'operations',
     },
     {
       id: 'salary',
       title: 'Зарплата завтра',
       subtitle: '12 сотрудников · 2 160 000 ₸',
       tone: 'warning',
+      action: 'payroll',
     },
     {
       id: 'supplier',
       title: 'Поставщик ожидает оплату',
       subtitle: 'Japan Motors Ltd. · 480 000 ₸',
       tone: 'neutral',
+      action: 'expenses',
     },
   ],
   transactions: [

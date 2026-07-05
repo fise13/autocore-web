@@ -3,17 +3,42 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Skeleton } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { toneBackground } from '@/theme/color-utils';
+import { rhythm } from '@/theme';
+import { radius } from '@/theme/radius';
 
 import { ac } from '../layout';
 
-function SectionLabelSkeleton() {
-  return <Skeleton width={140} height={16} rounded="sm" />;
+function ChipSkeleton() {
+  return <Skeleton width={88} height={ac.filterHeight} rounded="full" />;
 }
 
-function RowSkeleton({ inset = 0 }: { inset?: number }) {
+function TileSkeleton() {
+  const { colors } = useTheme();
+
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, paddingLeft: inset }}>
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: colors.card,
+        borderRadius: radius['3xl'],
+        padding: rhythm.stack + 4,
+        minHeight: 132,
+        gap: rhythm.stack,
+        justifyContent: 'space-between',
+      }}
+    >
+      <Skeleton width={36} height={36} rounded="lg" />
+      <View style={{ gap: 8 }}>
+        <Skeleton width="70%" height={24} rounded="sm" />
+        <Skeleton width="50%" height={12} rounded="sm" />
+      </View>
+    </View>
+  );
+}
+
+function RowSkeleton() {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 }}>
       <Skeleton width={40} height={40} rounded="lg" />
       <View style={{ flex: 1, gap: 8 }}>
         <Skeleton width="72%" height={14} rounded="sm" />
@@ -35,146 +60,68 @@ export function AcAccountingSkeleton() {
         paddingBottom: Math.max(insets.bottom, 12) + 96,
       }}
     >
-      <View style={{ paddingTop: insets.top + 6, paddingBottom: 8, alignItems: 'center', gap: 10 }}>
-        <Skeleton width={ac.logo} height={ac.logo} rounded="lg" />
-        <Skeleton width={128} height={22} rounded="md" />
-        <Skeleton width={200} height={32} rounded="md" />
-        <Skeleton width={160} height={12} rounded="sm" />
+      <View style={{ paddingTop: insets.top + 6, paddingHorizontal: ac.pad, paddingBottom: 8, gap: 6 }}>
+        <Skeleton width={120} height={28} rounded="md" />
+        <Skeleton width={220} height={14} rounded="sm" />
       </View>
 
       <View style={{ paddingHorizontal: ac.pad, gap: ac.section }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          {Array.from({ length: 4 }).map((_, index) => (
+            <ChipSkeleton key={index} />
+          ))}
+        </ScrollView>
+
         <View
           style={{
-            borderRadius: ac.heroRadius,
-            borderWidth: ac.hairline,
-            borderColor: colors.border,
-            backgroundColor: toneBackground(colors.primary, 0.06),
-            padding: 20,
-            gap: 18,
+            backgroundColor: colors.card,
+            borderRadius: radius['3xl'],
+            padding: rhythm.stack + 4,
+            gap: rhythm.stack,
           }}
         >
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <View style={{ gap: 8 }}>
-              <Skeleton width={110} height={12} rounded="sm" />
-              <Skeleton width={88} height={11} rounded="sm" />
-            </View>
-            <Skeleton width={88} height={32} rounded="md" />
+            <Skeleton width={100} height={12} rounded="sm" />
+            <Skeleton width={64} height={24} rounded="full" />
           </View>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>
-            {Array.from({ length: 4 }).map((_, index) => (
-              <View key={index} style={{ width: '46%', gap: 8 }}>
-                <Skeleton width={64} height={11} rounded="sm" />
-                <Skeleton width="80%" height={16} rounded="sm" />
-                <Skeleton width="55%" height={10} rounded="sm" />
-              </View>
+          <Skeleton width="75%" height={36} rounded="md" />
+          <Skeleton width="55%" height={12} rounded="sm" />
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, height: 72, marginTop: 4 }}>
+            {Array.from({ length: 7 }).map((_, index) => (
+              <Skeleton key={index} width={28} height={24 + index * 6} rounded="sm" style={{ flex: 1 }} />
             ))}
           </View>
         </View>
 
-        <View>
-          <SectionLabelSkeleton />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
-            {Array.from({ length: 4 }).map((_, index) => (
-              <View
-                key={index}
-                style={{
-                  flex: 1,
-                  minWidth: '47%',
-                  borderRadius: ac.cardRadius,
-                  borderWidth: ac.hairline,
-                  borderColor: colors.border,
-                  backgroundColor: colors.card,
-                  padding: 14,
-                  gap: 10,
-                }}
-              >
-                <Skeleton width={72} height={11} rounded="sm" />
-                <Skeleton width="70%" height={18} rounded="sm" />
-                <Skeleton width="90%" height={10} rounded="sm" />
-                <Skeleton width="100%" height={20} rounded="sm" />
-              </View>
-            ))}
-          </View>
-        </View>
-
-        <View>
-          <SectionLabelSkeleton />
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 10, paddingRight: ac.pad, marginTop: 12 }}
-          >
-            {Array.from({ length: 4 }).map((_, index) => (
-              <View
-                key={index}
-                style={{
-                  width: ac.actionTileWide,
-                  minHeight: ac.actionTile,
-                  borderRadius: ac.cardRadius,
-                  borderWidth: ac.hairline,
-                  borderColor: colors.border,
-                  backgroundColor: colors.card,
-                  padding: 14,
-                  gap: 12,
-                  justifyContent: 'space-between',
-                }}
-              >
-                <Skeleton width={36} height={36} rounded="lg" />
-                <Skeleton width={72} height={13} rounded="sm" />
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-
-        <View style={{ gap: 10 }}>
-          <SectionLabelSkeleton />
-          {Array.from({ length: 2 }).map((_, index) => (
-            <View
-              key={index}
-              style={{
-                borderRadius: ac.cardRadius,
-                borderWidth: ac.hairline,
-                borderColor: colors.border,
-                backgroundColor: colors.card,
-                padding: 14,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
-              }}
-            >
-              <Skeleton width={32} height={32} rounded="md" />
-              <View style={{ flex: 1, gap: 8 }}>
-                <Skeleton width="68%" height={14} rounded="sm" />
-                <Skeleton width="84%" height={11} rounded="sm" />
-              </View>
-            </View>
-          ))}
+        <View style={{ flexDirection: 'row', gap: rhythm.stack }}>
+          <TileSkeleton />
+          <TileSkeleton />
         </View>
 
         <View style={{ gap: 12 }}>
-          <SectionLabelSkeleton />
-          {Array.from({ length: 4 }).map((_, index) => (
-            <RowSkeleton key={index} />
-          ))}
+          <Skeleton width={140} height={16} rounded="sm" />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            {Array.from({ length: 4 }).map((_, index) => (
+              <View key={index} style={{ alignItems: 'center', gap: 8 }}>
+                <Skeleton width={56} height={56} rounded="full" />
+                <Skeleton width={64} height={11} rounded="sm" />
+              </View>
+            ))}
+          </View>
         </View>
 
-        <View
-          style={{
-            borderRadius: ac.cardRadius,
-            borderWidth: ac.hairline,
-            borderColor: colors.border,
-            backgroundColor: colors.card,
-            padding: 16,
-            gap: 14,
-          }}
-        >
-          <Skeleton width={120} height={16} rounded="sm" />
-          <Skeleton width="100%" height={36} rounded="lg" />
-          <Skeleton width="100%" height={120} rounded="lg" />
-          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 16 }}>
-            <Skeleton width={64} height={11} rounded="sm" />
-            <Skeleton width={64} height={11} rounded="sm" />
-            <Skeleton width={64} height={11} rounded="sm" />
+        <View style={{ gap: 8 }}>
+          <Skeleton width={160} height={16} rounded="sm" />
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderRadius: radius['3xl'],
+              overflow: 'hidden',
+            }}
+          >
+            {Array.from({ length: 4 }).map((_, index) => (
+              <RowSkeleton key={index} />
+            ))}
           </View>
         </View>
       </View>

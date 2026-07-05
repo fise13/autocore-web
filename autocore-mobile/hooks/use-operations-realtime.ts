@@ -3,12 +3,16 @@ import { isProductionCompanyId } from '@/lib/company-id';
 import { financialOperationRepository } from '@/services/firestore/financial-operation-repository';
 import type { FinancialOperation } from '@/types/financial-operation';
 
-export function useOperationsRealtime(companyId: string | null | undefined) {
+export function useOperationsRealtime(
+  companyId: string | null | undefined,
+  options?: { keepAlive?: boolean },
+) {
   const enabled = isProductionCompanyId(companyId);
 
   const { data, isBootstrapping, errorMessage } = useRealtimeQuery<FinancialOperation[]>({
     queryKey: ['realtime', 'financial-operations', companyId],
     enabled,
+    keepAlive: options?.keepAlive,
     initialData: [],
     subscribe: (onData, onError) => {
       if (!companyId) {

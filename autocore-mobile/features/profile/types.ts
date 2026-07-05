@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react';
 
-import type { SettingsHubSectionId } from '@/features/settings/types';
+import type { SettingsHubRouteId } from '@/features/settings/types';
 
 export type ProfileRouteId =
   | 'edit-profile'
@@ -11,12 +11,14 @@ export type ProfileRouteId =
   | 'language'
   | 'currency'
   | 'notifications'
-  | 'workspace-company'
-  | 'workspace-plan'
-  | 'workspace-employees'
-  | 'workspace-permissions';
+  | 'security'
+  | 'taxes'
+  | 'cache'
+  | 'diagnostics'
+  | 'version'
+  | 'finance';
 
-export type ProfileHubRouteId = ProfileRouteId | SettingsHubSectionId;
+export type ProfileHubRouteId = ProfileRouteId | SettingsHubRouteId;
 
 export type ProfileUser = {
   id: string;
@@ -45,7 +47,7 @@ export type ProfilePreferenceRow = {
 };
 
 export type ProfileWorkspaceRow = {
-  id: ProfileRouteId;
+  id: ProfileRouteId | 'workspace-company' | 'workspace-plan' | 'workspace-employees' | 'workspace-permissions';
   title: string;
   value: string;
   companyId?: string;
@@ -65,9 +67,6 @@ export type ProfileSnapshot = {
 };
 
 export type ProfileHubData = ProfileSnapshot & {
-  workspaceSettings: ProfilePreferenceRow[];
-  configuration: ProfilePreferenceRow[];
-  business: ProfilePreferenceRow[];
-  appSettings: ProfilePreferenceRow[];
-  system: ProfilePreferenceRow[];
+  /** Optional trailing values for settings hub rows */
+  rowValues: Partial<Record<SettingsHubRouteId, string>>;
 };

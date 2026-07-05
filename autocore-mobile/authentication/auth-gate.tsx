@@ -1,53 +1,111 @@
-import { useEffect } from 'react';
-import { useRouter, useSegments } from 'expo-router';
+import { memo, useCallback, useEffect, useState } from 'react';
 
-import { useAuth } from '@/authentication/auth-provider';
+import { useAuthStore } from '@/store/auth-store';
 import { AuthLoadingScreen } from '@/authentication/auth-loading-screen';
-import { journeyPathForStep, useAuthJourneyStep } from '@/hooks/use-auth-journey-step';
+import { AuthRedirectEffect } from '@/authentication/auth-redirect-effect';
+import { SubscriptionRequiredScreen } from '@/authentication/subscription-required-screen';
+import { useAuthHasAccess } from '@/authentication/auth-provider';
+import { useCompanySubscription } from '@/hooks/use-company-subscription';
+import { useAuthJourneyStep } from '@/hooks/use-auth-journey-step';
+import { resolveSessionCompanyId } from '@/lib/session/merge-hydration';
+import { usePushNotifications } from '@/hooks/use-push-notifications';
+import { markStartup } from '@/lib/performance/startup-tracer';
+import { hideNativeSplashOnce } from '@/lib/splash';
+import { SessionBootstrapGate } from '@/providers/session-bootstrap-gate';
+import { SessionRealtimeHead } from '@/providers/session-realtime-head';
+import { MoneyFormatSync } from '@/providers/money-format-sync';
+import { refreshCompanyBilling } from '@/services/api/billing';
+
+const MemoAppTree = memo(function MemoAppTree({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <SessionRealtimeHead />
+      <MoneyFormatSync />
+      <SessionBootstrapGate>{children}</SessionBootstrapGate>
+    </>
+  );
+});
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const segments = useSegments();
-  const { firebaseUser, isReady, hasAccess } = useAuth();
+  const status = useAuthStore((s) => s.status);
+  const isHydrating = useAuthStore((s) => s.isHydrating);
+  const firebaseUser = useAuthStore((s) => s.firebaseUser);
+  const profile = useAuthStore((s) => s.profile);
+  const memberships = useAuthStore((s) => s.memberships);
+
+  const isReady = status !== 'booting' && !isHydrating;
+  const hasAccess = useAuthHasAccess();
+  usePushNotifications(hasAccess);
+
   const journeyStep = useAuthJourneyStep();
+  const companyId = resolveSessionCompanyId(profile, memberships);
+  const { isPro, isLoading: subscriptionLoading } = useCompanySubscription(companyId);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const needsSubscription =
+    Boolean(firebaseUser) && journeyStep === 'app' && hasAccess && !subscriptionLoading && !isPro;
+
+  const refreshSubscription = useCallback(async () => {
+    if (!companyId) return;
+    setRefreshing(true);
+    try {
+      await refreshCompanyBilling(companyId);
+    } catch {
+      // Listener will pick up changes when billing updates on the web.
+    } finally {
+      setRefreshing(false);
+    }
+  }, [companyId]);
 
   useEffect(() => {
-    if (!isReady) return;
-
-    const root = segments[0];
-    const inAuthGroup = root === '(auth)';
-    const inTabs = root === '(tabs)';
-    const inJourney = inAuthGroup && segments[1] === 'journey';
-    const onLogin = inAuthGroup && segments[1] === 'login';
-    const onForgot = inAuthGroup && segments[1] === 'forgot-password';
-
-    if (!firebaseUser) {
-      if (!onLogin && !onForgot) {
-        router.replace('/(auth)/login');
-      }
-      return;
+    if (isReady) {
+      markStartup('auth_ready');
+      hideNativeSplashOnce();
     }
-
-    if (journeyStep !== 'app') {
-      const target = journeyPathForStep(journeyStep);
-      if (target && (!inJourney || segments[2] !== journeyStep)) {
-        router.replace(target as never);
-      }
-      return;
-    }
-
-    if (hasAccess && !inTabs) {
-      router.replace('/(tabs)');
-    }
-  }, [firebaseUser, hasAccess, isReady, journeyStep, router, segments]);
+  }, [isReady]);
 
   if (!isReady) {
-    return <AuthLoadingScreen message="Загрузка…" />;
+    return (
+      <>
+        <AuthRedirectEffect />
+        <AuthLoadingScreen
+          message={firebaseUser ? 'Синхронизация данных…' : 'Загрузка…'}
+        />
+      </>
+    );
   }
 
   if (firebaseUser && journeyStep === 'loading') {
-    return <AuthLoadingScreen message="Подготовка рабочего пространства…" />;
+    return (
+      <>
+        <AuthRedirectEffect />
+        <AuthLoadingScreen message="Подготовка рабочего пространства…" />
+      </>
+    );
   }
 
-  return children;
+  if (needsSubscription) {
+    return (
+      <>
+        <AuthRedirectEffect />
+        <SubscriptionRequiredScreen onRefresh={() => void refreshSubscription()} refreshing={refreshing} />
+      </>
+    );
+  }
+
+  if (hasAccess && (isPro || subscriptionLoading)) {
+    return (
+      <>
+        <AuthRedirectEffect />
+        <MemoAppTree>{children}</MemoAppTree>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <AuthRedirectEffect />
+      {children}
+    </>
+  );
 }

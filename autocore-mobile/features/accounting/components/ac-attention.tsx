@@ -1,19 +1,24 @@
+import { memo, useCallback } from 'react';
 import { View } from 'react-native';
-import Animated from 'react-native-reanimated';
+import Reanimated from 'react-native-reanimated';
 
 import { AlertTriangleIcon, ChevronRightIcon } from '@/assets/icons';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { haptics } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
-import { McPressable, useMcEnter } from '@/features/mission-control/animation';
+import { McPressable, useMcEnter, useMcNavigatePress } from '@/features/mission-control/animation';
+import { McSectionTitle } from '@/features/mission-control/components/mc-primitives';
+import { mcType } from '@/features/mission-control/layout';
+import { radius } from '@/theme/radius';
 
 import { acTimeline } from '../animation/timeline';
 import { ac } from '../layout';
-import type { AccountingSnapshot, AttentionTone } from '../types';
+import type { AccountingAttentionAction, AccountingSnapshot, AttentionTone } from '../types';
 
 type AcAttentionProps = {
   items: AccountingSnapshot['attention'];
+  onItemPress?: (action: AccountingAttentionAction) => void;
 };
 
 function toneColor(tone: AttentionTone, colors: ReturnType<typeof useTheme>['colors']) {
@@ -22,74 +27,85 @@ function toneColor(tone: AttentionTone, colors: ReturnType<typeof useTheme>['col
   return colors.primary;
 }
 
-function AttentionCard({
+const AttentionCard = memo(function AttentionCard({
   item,
   index,
+  onItemPress,
 }: {
   item: AccountingSnapshot['attention'][number];
   index: number;
+  onItemPress?: (action: AccountingAttentionAction) => void;
 }) {
   const { colors } = useTheme();
   const accent = toneColor(item.tone, colors);
   const delay = acTimeline.attentionItem + index * 50;
-  const style = useMcEnter({ delay, translateY: 12, spring: true, duration: 320 });
+  const enterStyle = useMcEnter({ delay, translateY: 8, fade: true, duration: 300 });
+
+  const navigate = useCallback(() => {
+    onItemPress?.(item.action);
+  }, [item.action, onItemPress]);
+
+  const { exitStyle, press } = useMcNavigatePress(navigate);
+
+  const handlePress = useCallback(() => {
+    haptics.light();
+    press();
+  }, [press]);
 
   return (
-    <Animated.View style={style}>
+    <Reanimated.View style={[enterStyle, exitStyle]}>
       <McPressable
         accessibilityRole="button"
-        liftOnPress
-        onPress={() => haptics.light()}
+        accessibilityLabel={`${item.title}. ${item.subtitle}`}
+        onPress={handlePress}
         style={{
-          borderRadius: ac.cardRadius,
-          borderWidth: ac.hairline,
-          borderColor: item.tone !== 'neutral' ? toneBackground(accent, 0.25) : colors.border,
-          backgroundColor: item.tone !== 'neutral' ? toneBackground(accent, 0.06) : colors.card,
-          padding: 14,
+          borderRadius: radius['3xl'],
+          backgroundColor: colors.card,
+          paddingHorizontal: ac.rowPadX,
+          paddingVertical: ac.rowPadY + 4,
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 12,
+          gap: ac.rowGap,
+          minHeight: ac.rowHeight,
         }}
       >
         <View
           style={{
-            width: 32,
-            height: 32,
-            borderRadius: 10,
+            width: ac.iconBox,
+            height: ac.iconBox,
+            borderRadius: radius.xl,
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: toneBackground(accent, 0.12),
           }}
         >
-          <AlertTriangleIcon size="sm" color={accent} strokeWidth={2} />
+          <AlertTriangleIcon size="sm" color={accent} strokeWidth={1.75} />
         </View>
         <View style={{ flex: 1, gap: 3 }}>
-          <Text variant="body" style={{ fontSize: 14, fontWeight: '700', letterSpacing: -0.1 }}>
+          <Text variant="bodyStrong" style={mcType.rowTitle}>
             {item.title}
           </Text>
-          <Text variant="caption" color="muted" style={{ lineHeight: 16 }}>
+          <Text variant="meta" color="muted" style={mcType.rowMeta}>
             {item.subtitle}
           </Text>
         </View>
-        <ChevronRightIcon size="sm" color={colors.mutedForeground} strokeWidth={2} />
+        <ChevronRightIcon size="sm" color={colors.mutedForeground} strokeWidth={1.75} />
       </McPressable>
-    </Animated.View>
+    </Reanimated.View>
   );
-}
+});
 
-export function AcAttention({ items }: AcAttentionProps) {
-  const titleStyle = useMcEnter({ delay: acTimeline.attention, translateY: 8, duration: 300 });
+export function AcAttention({ items, onItemPress }: AcAttentionProps) {
+  const titleStyle = useMcEnter({ delay: acTimeline.attention, translateY: 4, fade: true });
+
+  if (items.length === 0) return null;
 
   return (
-    <View style={{ gap: 10 }}>
-      <Animated.View style={titleStyle}>
-        <Text variant="body" style={{ fontSize: ac.sectionTitle, fontWeight: '700', letterSpacing: -0.2 }}>
-          Требует внимания
-        </Text>
-      </Animated.View>
+    <Reanimated.View style={[{ gap: ac.sectionGap }, titleStyle]}>
+      <McSectionTitle title="Требует внимания" />
       {items.map((item, index) => (
-        <AttentionCard key={item.id} item={item} index={index} />
+        <AttentionCard key={item.id} item={item} index={index} onItemPress={onItemPress} />
       ))}
-    </View>
+    </Reanimated.View>
   );
 }

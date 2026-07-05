@@ -1,18 +1,17 @@
 import type { ComponentType } from 'react';
-import { useMemo, useRef, useState } from 'react';
-import { ScrollView, View } from 'react-native';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { RefreshControl, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { BarChart3Icon, type IconProps } from '@/assets/icons';
-import { EmptyState, Tabs, Text } from '@/components/ui';
-import {
-  useEmployeesRealtime,
-  useSession,
-  useTheme,
-  useWorkOrdersRealtime,
-} from '@/hooks';
+import { EmptyState, Screen, ScreenScroll, Text, toast } from '@/components/ui';
+import { useEmployeesRealtime, useSession, useWorkOrdersRealtime } from '@/hooks';
+import { financialOperationRepository } from '@/services/firestore/financial-operation-repository';
+import type { FinancialOperation } from '@/types/financial-operation';
+import { haptics } from '@/theme';
 import { buildAdvanceSnapshot, filterAdvanceOperations, advanceDirectionLabel, type AdvanceDirection } from '@/lib/accounting/advances';
+import { shareOperationsCsv } from '@/lib/accounting/export-operations-csv';
 import {
   filterCashboxOperations,
   filterExpenseOperations,
@@ -23,38 +22,43 @@ import { ProfileSegmentedControl } from '@/features/profile/components/profile-a
 
 import { AcAccountingEmptyState } from './components/ac-accounting-empty-state';
 import { AcAccountingSkeleton } from './components/ac-accounting-skeleton';
+import { AcAccountTiles } from './components/ac-account-tiles';
 import { AcAdvancesOverview } from './components/ac-advances-overview';
 import { AcAttention } from './components/ac-attention';
-import { AcBalanceHero } from './components/ac-balance-hero';
-import { AcCashFlow } from './components/ac-cash-flow';
-import { AcExpenses } from './components/ac-expenses';
-import { AcFinanceToolbar } from './components/ac-finance-toolbar';
+import { AcBalanceCard } from './components/ac-balance-card';
 import { AcHeader } from './components/ac-header';
-import { AcInvoices } from './components/ac-invoices';
-import { AcNewOperationSheet, type AcNewOperationSheetRef } from './components/ac-new-operation-sheet';
+import {
+  AcMotorSaleDocumentsSheet,
+  type AcMotorSaleDocumentsSheetRef,
+} from './components/ac-motor-sale-documents-sheet';
 import { AcOperationsList } from './components/ac-operations-list';
 import { AcPayrollList } from './components/ac-payroll-list';
 import { AcQuickActions } from './components/ac-quick-actions';
-import { AcSummaryGrid } from './components/ac-summary-grid';
-import { AcTopCustomers } from './components/ac-top-customers';
+import { AcTabBar, AcTabPanel } from './components/ac-tab-bar';
 import { AcTransactions } from './components/ac-transactions';
-import { ACCOUNTING_TABS, type AccountingTab } from './constants/tabs';
+import { AcTransferSheet, type AcTransferSheetRef } from './components/ac-transfer-sheet';
+import type { AccountingTab } from './constants/tabs';
 import { useAccountingData } from './hooks/use-accounting-data';
+import { newOperationHref, type NewOperationPreset } from './navigation';
+import type { AccountingAttentionAction, AccountingQuickActionId } from './types';
 import { ac } from './layout';
 
 export function AccountingScreen() {
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
   const { profile, companyId } = useSession();
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<AccountingTab>('overview');
   const [advanceDirection, setAdvanceDirection] = useState<AdvanceDirection>('all');
-  const newOperationRef = useRef<AcNewOperationSheetRef>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const transferSheetRef = useRef<AcTransferSheetRef>(null);
+  const motorSaleSheetRef = useRef<AcMotorSaleDocumentsSheetRef>(null);
 
   const {
     data,
     operations,
     payroll,
     operationCount,
+    balanceSnapshot,
     isBootstrapping,
     isEmpty,
     isDemo,
@@ -91,8 +95,108 @@ export function AccountingScreen() {
     [advanceDirection, operations],
   );
 
-  const openNewOperation = (type: 'expense' | 'income' = 'expense') => {
-    newOperationRef.current?.present(type);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await queryClient.invalidateQueries({ queryKey: ['realtime'] });
+    setRefreshing(false);
+  }, [queryClient]);
+
+  const openNewOperation = useCallback((preset?: NewOperationPreset | 'expense' | 'income') => {
+    if (!canEdit || isDemo) {
+      toast({ title: 'Нет прав на создание операций', variant: 'warning' });
+      return;
+    }
+    router.push(newOperationHref(preset ?? 'expense'));
+  }, [canEdit, isDemo, router]);
+
+  const handleAttentionPress = useCallback((action: AccountingAttentionAction) => {
+    setActiveTab(action);
+  }, []);
+
+  const handleQuickAction = useCallback(
+    async (id: AccountingQuickActionId) => {
+      switch (id) {
+        case 'invoice':
+          openNewOperation({
+            type: 'income',
+            paymentMethod: 'transfer',
+            comment: 'Выставленный счёт',
+          });
+          return;
+        case 'payment':
+          openNewOperation({
+            type: 'income',
+            paymentMethod: 'cash',
+            comment: 'Поступление оплаты',
+          });
+          return;
+        case 'expense':
+          openNewOperation({ type: 'expense' });
+          return;
+        case 'salary':
+          setActiveTab('payroll');
+          return;
+        case 'transfer':
+          if (!canEdit || isDemo) {
+            toast({ title: 'Нет прав на перевод', variant: 'warning' });
+            return;
+          }
+          transferSheetRef.current?.present();
+          return;
+        case 'export':
+          if (operations.length === 0) {
+            toast({ title: 'Нет операций для экспорта', variant: 'warning' });
+            return;
+          }
+          try {
+            await shareOperationsCsv(operations);
+            haptics.success();
+          } catch (error) {
+            haptics.warning();
+            toast({
+              title: 'Не удалось экспортировать',
+              description: error instanceof Error ? error.message : undefined,
+              variant: 'destructive',
+            });
+          }
+          return;
+        default:
+          return;
+      }
+    },
+    [canEdit, isDemo, openNewOperation, operations],
+  );
+
+  const handleDeleteOperation = useCallback(
+    async (operation: FinancialOperation) => {
+      if (!canEdit || isDemo) {
+        toast({ title: 'Нет прав на удаление', variant: 'warning' });
+        return;
+      }
+      try {
+        await financialOperationRepository.delete(operation.id);
+        haptics.success();
+        toast({ title: 'Операция удалена', variant: 'success' });
+      } catch (error) {
+        haptics.warning();
+        toast({
+          title: 'Не удалось удалить',
+          description: error instanceof Error ? error.message : undefined,
+          variant: 'destructive',
+        });
+      }
+    },
+    [canEdit, isDemo],
+  );
+
+  const handleMotorSaleSelect = useCallback((operation: FinancialOperation) => {
+    motorSaleSheetRef.current?.present(operation);
+  }, []);
+
+  const operationsListProps = {
+    canEdit: canEdit && !isDemo,
+    onDelete: handleDeleteOperation,
+    onMotorSaleSelect: handleMotorSaleSelect,
   };
 
   if (!enabled || !profile?.companyId) {
@@ -115,171 +219,161 @@ export function AccountingScreen() {
     );
   }
 
-  if (isBootstrapping) {
+  if (isBootstrapping && isEmpty) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <Screen>
         <AcAccountingSkeleton />
-      </View>
+      </Screen>
     );
   }
 
-  const showDetailSections = !isEmpty || isDemo;
-
   return (
-    <BottomSheetModalProvider>
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          decelerationRate="normal"
-          contentContainerStyle={{
-            paddingBottom: Math.max(insets.bottom, 12) + 96,
-          }}
-        >
-          <AcHeader balance={data.balance.available} />
+    <Screen>
+      <ScreenScroll
+        tabBarInset
+        decelerationRate="normal"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        <AcHeader
+          operationCount={operationCount}
+          canEdit={canEdit && !isDemo}
+          onNewOperation={() => openNewOperation('expense')}
+        />
 
-          <View style={{ paddingHorizontal: ac.pad, gap: ac.section }}>
-            {isDemo ? (
-              <Text variant="caption" color="muted" style={{ textAlign: 'center', marginBottom: -8 }}>
-                Демо-данные · подключите компанию для live-синхронизации
-              </Text>
+        <View style={{ paddingHorizontal: ac.pad, gap: ac.section, paddingBottom: ac.section }}>
+          {isDemo ? (
+            <Text variant="caption" color="muted" style={{ textAlign: 'center' }}>
+              Демо-данные · подключите компанию для live-синхронизации
+            </Text>
+          ) : null}
+
+          {errorMessage ? (
+            <Text variant="caption" color="destructive">
+              {errorMessage}
+            </Text>
+          ) : null}
+
+          <AcTabBar value={activeTab} onChange={setActiveTab} />
+
+          <AcTabPanel tab={activeTab}>
+            {activeTab === 'overview' ? (
+              <View style={{ gap: ac.section }}>
+                <AcBalanceCard
+                  balance={balanceSnapshot}
+                  profit={data.balance}
+                  cashFlow7d={data.cashFlow['7d']}
+                  operations={operations}
+                />
+                <AcAccountTiles balance={balanceSnapshot} />
+                <AcQuickActions actions={data.quickActions} onAction={handleQuickAction} />
+                {isEmpty ? (
+                  <AcAccountingEmptyState canEdit={canEdit && !isDemo} onAddExpense={() => openNewOperation('expense')} />
+                ) : null}
+                {data.attention.length > 0 ? (
+                  <AcAttention items={data.attention} onItemPress={handleAttentionPress} />
+                ) : null}
+                {data.transactions.length > 0 ? (
+                  <AcTransactions items={data.transactions} onShowAll={() => setActiveTab('operations')} />
+                ) : null}
+                {!isDemo && advanceSnapshot.totalCount > 0 ? (
+                  <AcAdvancesOverview snapshot={advanceSnapshot} />
+                ) : null}
+              </View>
             ) : null}
 
-            <AcFinanceToolbar
-              operationCount={operationCount}
-              canEdit={canEdit && !isDemo}
-              onNewOperation={() => openNewOperation('expense')}
-            />
-
-            {errorMessage ? (
-              <Text variant="caption" color="destructive">
-                {errorMessage}
-              </Text>
+            {activeTab === 'cashbox' ? (
+              <AcOperationsList
+                title="Касса"
+                description="Операции по счёту «Касса»"
+                rows={filterCashboxOperations(operations)}
+                {...operationsListProps}
+              />
             ) : null}
 
-            <Tabs
-              tabs={[...ACCOUNTING_TABS]}
-              value={activeTab}
-              onValueChange={(value) => setActiveTab(value as AccountingTab)}
-            >
-              {activeTab === 'overview' ? (
-                <View style={{ gap: ac.section }}>
-                  <AcBalanceHero balance={data.balance} />
-                  <AcSummaryGrid items={data.summary} />
-                  <AcQuickActions
-                    actions={data.quickActions}
-                    onAction={(id) => {
-                      if (id === 'expense' || id === 'payment') openNewOperation('expense');
-                      if (id === 'invoice') openNewOperation('income');
-                    }}
-                  />
-                  {isEmpty ? (
-                    <AcAccountingEmptyState canEdit={canEdit && !isDemo} onAddExpense={() => openNewOperation('expense')} />
-                  ) : null}
-                  {showDetailSections ? (
-                    <>
-                      {!isDemo ? <AcAdvancesOverview snapshot={advanceSnapshot} /> : null}
-                      {data.attention.length > 0 ? <AcAttention items={data.attention} /> : null}
-                      {data.transactions.length > 0 ? (
-                        <AcTransactions items={data.transactions} onShowAll={() => setActiveTab('operations')} />
-                      ) : null}
-                      <AcCashFlow data={data.cashFlow} />
-                      {data.invoices.length > 0 ? <AcInvoices items={data.invoices} /> : null}
-                      {data.topCustomers.length > 0 ? <AcTopCustomers items={data.topCustomers} /> : null}
-                      {data.expenses.length > 0 ? <AcExpenses items={data.expenses} /> : null}
-                    </>
-                  ) : null}
-                </View>
-              ) : null}
+            {activeTab === 'expenses' ? (
+              <AcOperationsList
+                title="Расходы"
+                description="Все расходные операции компании"
+                rows={filterExpenseOperations(operations)}
+                {...operationsListProps}
+              />
+            ) : null}
 
-              {activeTab === 'cashbox' ? (
-                <AcOperationsList
-                  title="Касса"
-                  description="Операции по счёту «Касса»."
-                  rows={filterCashboxOperations(operations)}
-                />
-              ) : null}
+            {activeTab === 'operations' ? (
+              <AcOperationsList
+                title="Все операции"
+                description="Полный журнал финансовых записей"
+                rows={operations}
+                {...operationsListProps}
+              />
+            ) : null}
 
-              {activeTab === 'expenses' ? (
-                <AcOperationsList
-                  title="Расходы"
-                  description="Все расходные операции компании."
-                  rows={filterExpenseOperations(operations)}
-                />
-              ) : null}
+            {activeTab === 'work_orders' ? (
+              <AcOperationsList
+                title="Заказ-наряды"
+                description="Доход и расходы по нарядам"
+                rows={filterWorkOrderOperations(operations)}
+                showWorkOrder
+                workOrderNumbers={workOrderNumbers}
+                {...operationsListProps}
+              />
+            ) : null}
 
-              {activeTab === 'operations' ? (
-                <AcOperationsList
-                  title="Все операции"
-                  description="Полный журнал финансовых записей."
-                  rows={operations}
-                />
-              ) : null}
-
-              {activeTab === 'work_orders' ? (
-                <AcOperationsList
-                  title="Заказ-наряды"
-                  description="Доход, себестоимость запчастей и зарплата по заказ-нарядам."
-                  rows={filterWorkOrderOperations(operations)}
-                  showWorkOrder
+            {activeTab === 'payroll' ? (
+              <View style={{ gap: ac.section }}>
+                <AcPayrollList
+                  rows={payroll}
+                  employeeNames={employeeNames}
                   workOrderNumbers={workOrderNumbers}
                 />
-              ) : null}
-
-              {activeTab === 'payroll' ? (
-                <View style={{ gap: ac.section }}>
-                  <AcPayrollList
-                    rows={payroll}
-                    employeeNames={employeeNames}
-                    workOrderNumbers={workOrderNumbers}
-                  />
-                  {filterPayrollExpenseOperations(operations).length > 0 ? (
-                    <AcOperationsList
-                      title="Расходы на зарплату"
-                      description="Проводки по зарплате в бухгалтерии."
-                      rows={filterPayrollExpenseOperations(operations)}
-                      showWorkOrder
-                      workOrderNumbers={workOrderNumbers}
-                    />
-                  ) : null}
-                </View>
-              ) : null}
-
-              {activeTab === 'advances' ? (
-                <View style={{ gap: ac.section }}>
-                  <AcAdvancesOverview snapshot={advanceSnapshot} />
-                  <ProfileSegmentedControl
-                    value={advanceDirection}
-                    onChange={setAdvanceDirection}
-                    options={(
-                      ['all', 'received', 'paid'] as const
-                    ).map((value) => ({
-                      value,
-                      label: advanceDirectionLabel(value),
-                    }))}
-                    delay={0}
-                  />
+                {filterPayrollExpenseOperations(operations).length > 0 ? (
                   <AcOperationsList
-                    title="Журнал авансов"
-                    description="Операции с признаками аванса в категории или комментарии."
-                    rows={advancesRows}
-                    emptyLabel="Авансовых операций пока нет"
+                    title="Расходы на зарплату"
+                    description="Проводки по зарплате"
+                    rows={filterPayrollExpenseOperations(operations)}
+                    showWorkOrder
+                    workOrderNumbers={workOrderNumbers}
+                    {...operationsListProps}
                   />
-                </View>
-              ) : null}
-            </Tabs>
-          </View>
-        </ScrollView>
+                ) : null}
+              </View>
+            ) : null}
 
-        {profile?.id ? (
-          <AcNewOperationSheet
-            ref={newOperationRef}
-            companyId={profile.companyId}
-            userId={profile.id}
-            disabled={!canEdit || isDemo}
-          />
-        ) : null}
-      </View>
-    </BottomSheetModalProvider>
+            {activeTab === 'advances' ? (
+              <View style={{ gap: ac.section }}>
+                <AcAdvancesOverview snapshot={advanceSnapshot} />
+                <ProfileSegmentedControl
+                  value={advanceDirection}
+                  onChange={setAdvanceDirection}
+                  options={(['all', 'received', 'paid'] as const).map((value) => ({
+                    value,
+                    label: advanceDirectionLabel(value),
+                  }))}
+                  delay={0}
+                />
+                <AcOperationsList
+                  title="Журнал авансов"
+                  description="Операции с признаками аванса"
+                  rows={advancesRows}
+                  emptyLabel="Авансовых операций пока нет"
+                  {...operationsListProps}
+                />
+              </View>
+            ) : null}
+          </AcTabPanel>
+        </View>
+      </ScreenScroll>
+
+      {profile?.id ? (
+        <AcTransferSheet
+          ref={transferSheetRef}
+          companyId={profile.companyId}
+          userId={profile.id}
+          disabled={!canEdit || isDemo}
+        />
+      ) : null}
+      <AcMotorSaleDocumentsSheet ref={motorSaleSheetRef} />
+    </Screen>
   );
 }
 
@@ -292,20 +386,9 @@ function ScreenPlaceholder({
   title: string;
   description: string;
 }) {
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: colors.background,
-        justifyContent: 'center',
-        paddingHorizontal: 24,
-        paddingBottom: insets.bottom + 24,
-      }}
-    >
+    <Screen style={{ justifyContent: 'center', paddingHorizontal: ac.pad }}>
       <EmptyState icon={icon} title={title} description={description} />
-    </View>
+    </Screen>
   );
 }

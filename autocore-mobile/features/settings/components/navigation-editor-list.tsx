@@ -1,27 +1,23 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { Pressable, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  FadeIn,
-  FadeOut,
-  Layout,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 
-import { ChevronsUpDownIcon } from '@/assets/icons';
+import { GripVerticalIcon } from '@/assets/icons';
 import { Switch, Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { haptics } from '@/theme';
-import { toneBackground } from '@/theme/color-utils';
+import { haptics, rhythm } from '@/theme';
 
 import { NAV_ITEM_DEFINITIONS } from '../data/navigation-items';
-import { profileLayout } from '@/features/profile/layout';
 import type { NavItemId } from '../types';
 
-const ROW_HEIGHT = 72;
+const ROW_HEIGHT = 48;
+const ROW_STRIDE = ROW_HEIGHT;
 
 type NavigationEditorListProps = {
   order: NavItemId[];
@@ -32,7 +28,6 @@ type NavigationEditorListProps = {
 
 export function NavigationEditorList({ order, enabled, onToggle, onMove }: NavigationEditorListProps) {
   const { colors } = useTheme();
-  const [draggingId, setDraggingId] = useState<NavItemId | null>(null);
 
   const handleMove = useCallback(
     (from: number, to: number) => {
@@ -44,69 +39,92 @@ export function NavigationEditorList({ order, enabled, onToggle, onMove }: Navig
   );
 
   return (
-    <View style={{ gap: 8, paddingHorizontal: profileLayout.pad }}>
+    <View>
       {order.map((id, index) => {
         const def = NAV_ITEM_DEFINITIONS[id];
-        const Icon = def.icon;
         const isEnabled = enabled[id];
-        const isDragging = draggingId === id;
 
         return (
-          <NavEditorRow
-            key={id}
-            index={index}
-            total={order.length}
-            isDragging={isDragging}
-            onDragStart={() => setDraggingId(id)}
-            onDragEnd={() => setDraggingId(null)}
-            onSwap={(direction) => {
-              const target = direction === 'up' ? index - 1 : index + 1;
-              if (target >= 0 && target < order.length) handleMove(index, target);
-            }}
-          >
-            <Animated.View
-              entering={FadeIn.duration(220)}
-              exiting={FadeOut.duration(160)}
-              layout={Layout.springify()}
-              style={{
-                borderRadius: profileLayout.groupRadius,
-                borderWidth: profileLayout.hairline,
-                borderColor: isDragging ? colors.primary : colors.border,
-                backgroundColor: colors.card,
-                opacity: isEnabled ? 1 : 0.72,
-              }}
+          <View key={id}>
+            {index > 0 ? (
+              <View
+                style={{
+                  height: rhythm.hairline,
+                  backgroundColor: colors.border,
+                  marginLeft: rhythm.cardPadX,
+                }}
+              />
+            ) : null}
+            <NavEditorRow
+              index={index}
+              total={order.length}
+              onMoveTo={(to) => handleMove(index, to)}
             >
               <View
                 style={{
                   minHeight: ROW_HEIGHT,
                   flexDirection: 'row',
                   alignItems: 'center',
-                  gap: 12,
-                  paddingLeft: 12,
-                  paddingRight: 16,
-                  paddingVertical: 12,
+                  gap: rhythm.inline,
+                  paddingLeft: rhythm.cardPadX - 4,
+                  paddingRight: rhythm.cardPadX,
+                  opacity: isEnabled ? 1 : 0.45,
                 }}
               >
                 <View
                   style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 10,
+                    width: 28,
+                    height: ROW_HEIGHT,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: toneBackground(colors.primary, isEnabled ? 0.12 : 0.06),
                   }}
                 >
-                  <Icon size="sm" color={isEnabled ? colors.primary : colors.mutedForeground} strokeWidth={2} />
+                  <GripVerticalIcon size="sm" color={colors.mutedForeground} strokeWidth={1.8} />
                 </View>
-                <View style={{ flex: 1, gap: 3 }}>
-                  <Text variant="body" style={{ fontSize: 15, fontWeight: '700', letterSpacing: -0.1 }}>
-                    {def.title}
+
+                <Text
+                  variant="body"
+                  style={{ flex: 1, fontSize: 15, fontWeight: '500', color: colors.foreground }}
+                  numberOfLines={1}
+                >
+                  {def.title}
+                </Text>
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Выше"
+                  disabled={index === 0}
+                  hitSlop={8}
+                  onPress={() => {
+                    if (index === 0) return;
+                    handleMove(index, index - 1);
+                  }}
+                  style={{ paddingHorizontal: 6, opacity: index === 0 ? 0.25 : 0.7 }}
+                >
+                  <Text variant="caption" style={{ color: colors.mutedForeground }}>
+                    ↑
                   </Text>
-                  <Text variant="caption" color="muted" style={{ lineHeight: 16 }}>
-                    {def.description}
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Ниже"
+                  disabled={index === order.length - 1}
+                  hitSlop={8}
+                  onPress={() => {
+                    if (index === order.length - 1) return;
+                    handleMove(index, index + 1);
+                  }}
+                  style={{
+                    paddingHorizontal: 6,
+                    marginRight: 4,
+                    opacity: index === order.length - 1 ? 0.25 : 0.7,
+                  }}
+                >
+                  <Text variant="caption" style={{ color: colors.mutedForeground }}>
+                    ↓
                   </Text>
-                </View>
+                </Pressable>
+
                 <Switch
                   value={isEnabled}
                   onValueChange={() => {
@@ -115,8 +133,8 @@ export function NavigationEditorList({ order, enabled, onToggle, onMove }: Navig
                   }}
                 />
               </View>
-            </Animated.View>
-          </NavEditorRow>
+            </NavEditorRow>
+          </View>
         );
       })}
     </View>
@@ -127,72 +145,51 @@ type NavEditorRowProps = {
   children: React.ReactNode;
   index: number;
   total: number;
-  isDragging: boolean;
-  onDragStart: () => void;
-  onDragEnd: () => void;
-  onSwap: (direction: 'up' | 'down') => void;
+  onMoveTo: (to: number) => void;
 };
 
-function NavEditorRow({
-  children,
-  index,
-  total,
-  isDragging,
-  onDragStart,
-  onDragEnd,
-  onSwap,
-}: NavEditorRowProps) {
-  const { colors } = useTheme();
+function NavEditorRow({ children, index, total, onMoveTo }: NavEditorRowProps) {
   const translateY = useSharedValue(0);
-  const scale = useSharedValue(1);
+  const indexSV = useSharedValue(index);
+  const totalSV = useSharedValue(total);
+
+  useEffect(() => {
+    indexSV.value = index;
+    totalSV.value = total;
+  }, [index, indexSV, total, totalSV]);
+
+  const commitMove = useCallback(
+    (from: number, translationY: number, count: number) => {
+      const delta = Math.round(translationY / ROW_STRIDE);
+      const to = Math.max(0, Math.min(count - 1, from + delta));
+      if (to !== from) onMoveTo(to);
+    },
+    [onMoveTo],
+  );
 
   const pan = Gesture.Pan()
-    .activateAfterLongPress(180)
-    .onStart(() => {
-      runOnJS(onDragStart)();
-      scale.value = withSpring(1.02);
-    })
+    .activateAfterLongPress(140)
+    .activeOffsetY([-6, 6])
+    .failOffsetX([-20, 20])
     .onUpdate((event) => {
       translateY.value = event.translationY;
-      if (event.translationY < -ROW_HEIGHT * 0.45 && index > 0) {
-        runOnJS(onSwap)('up');
-        translateY.value = 0;
-      } else if (event.translationY > ROW_HEIGHT * 0.45 && index < total - 1) {
-        runOnJS(onSwap)('down');
-        translateY.value = 0;
-      }
     })
-    .onEnd(() => {
-      translateY.value = withSpring(0);
-      scale.value = withSpring(1);
-      runOnJS(onDragEnd)();
+    .onEnd((event) => {
+      runOnJS(commitMove)(indexSV.value, event.translationY, totalSV.value);
+      translateY.value = withTiming(0, { duration: 120 });
+    })
+    .onFinalize(() => {
+      translateY.value = withTiming(0, { duration: 120 });
     });
 
   const dragStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }, { scale: scale.value }],
-    zIndex: isDragging ? 10 : 0,
+    transform: [{ translateY: translateY.value }],
+    zIndex: translateY.value === 0 ? 0 : 10,
   }));
 
   return (
-    <Animated.View style={dragStyle} layout={Layout.springify()}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <GestureDetector gesture={pan}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Перетащить"
-            onPressIn={() => haptics.light()}
-            style={{
-              width: 32,
-              height: ROW_HEIGHT,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <ChevronsUpDownIcon size="sm" color={colors.mutedForeground} strokeWidth={2} />
-          </Pressable>
-        </GestureDetector>
-        <View style={{ flex: 1 }}>{children}</View>
-      </View>
-    </Animated.View>
+    <GestureDetector gesture={pan}>
+      <Animated.View style={dragStyle}>{children}</Animated.View>
+    </GestureDetector>
   );
 }

@@ -54,7 +54,15 @@ export function computeOverviewMetrics(input: {
     .reduce((sum, item) => sum + item.amount, 0);
 
   const availableMotors = motors.filter((motor) => !motor.deletedAt && !motor.soldDate);
-  const lowStockCount = availableMotors.filter((motor) => (motor.quantity ?? 1) <= 1).length;
+  const now = new Date();
+  const lowStockCount = availableMotors.filter((motor) => {
+    if (motor.soldDate || motor.deletedAt) return false;
+    if (motor.status === "sold" || motor.status === "installed") return false;
+    if (!motor.arrivalDate) return false;
+    const days =
+      (now.getTime() - motor.arrivalDate.getTime()) / (1000 * 60 * 60 * 24);
+    return days >= 90;
+  }).length;
 
   const activeWarehouseItems = warehouseItems.filter((item) => item.status === "active");
   const warehouseLowStockCount = activeWarehouseItems.filter((item) => {
@@ -63,11 +71,10 @@ export function computeOverviewMetrics(input: {
   }).length;
   const warehouseStockValue = activeWarehouseItems.reduce((sum, item) => sum + (item.stockValue ?? 0), 0);
 
-  const now = Date.now();
   const activeEmployees = employees.filter((employee) => employee.isActive);
   const onlineEmployeesCount = activeEmployees.filter((employee) => {
     const lastActive = employee.lastActiveAt?.getTime() ?? 0;
-    return lastActive > 0 && now - lastActive <= ONLINE_WINDOW_MS;
+    return lastActive > 0 && now.getTime() - lastActive <= ONLINE_WINDOW_MS;
   }).length;
 
   const todayStart = startOfToday();

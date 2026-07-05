@@ -1,27 +1,29 @@
 import { View, type ViewProps } from 'react-native';
 
 import { useTheme } from '@/hooks';
-import { layout, radius, spacing } from '@/theme';
+import { rhythm } from '@/theme';
+
 import { Text } from './text';
 
 type CardProps = ViewProps & {
   size?: 'default' | 'sm';
 };
 
+/** Design-system card — aliases Surface tokens for compound Card API. */
 export function Card({ size = 'default', style, children, ...props }: CardProps) {
-  const { colors, ring, shadows } = useTheme();
-  const padding = size === 'sm' ? layout.card.paddingSm : layout.card.padding;
+  const { colors } = useTheme();
+  const padding = size === 'sm' ? rhythm.cardPadY : rhythm.cardPadX + 2;
 
   return (
     <View
       style={[
         {
           backgroundColor: colors.card,
-          borderRadius: radius.xl,
+          borderRadius: rhythm.cardRadius,
+          borderWidth: rhythm.hairline,
+          borderColor: colors.border,
           padding,
-          gap: layout.card.gap,
-          ...ring,
-          ...shadows.xs,
+          gap: rhythm.stack,
         },
         style,
       ]}
@@ -34,7 +36,7 @@ export function Card({ size = 'default', style, children, ...props }: CardProps)
 
 export function CardHeader({ style, children, ...props }: ViewProps) {
   return (
-    <View style={[{ gap: spacing[1] }, style]} {...props}>
+    <View style={[{ gap: rhythm.micro }, style]} {...props}>
       {children}
     </View>
   );
@@ -49,7 +51,11 @@ export function CardTitle({ children, ...props }: { children: React.ReactNode })
 }
 
 export function CardDescription({ children }: { children: React.ReactNode }) {
-  return <Text variant="body" color="muted">{children}</Text>;
+  return (
+    <Text variant="body" color="muted">
+      {children}
+    </Text>
+  );
 }
 
 export function CardContent({ style, children, ...props }: ViewProps) {
@@ -70,18 +76,19 @@ export function CardAction({ style, children, ...props }: ViewProps) {
 
 export function CardFooter({ style, children, ...props }: ViewProps) {
   const { colors } = useTheme();
+  const pad = rhythm.cardPadX + 2;
   return (
     <View
       style={[
         {
-          borderTopWidth: 1,
+          borderTopWidth: rhythm.hairline,
           borderTopColor: colors.border,
           backgroundColor: `${colors.muted}80`,
-          marginHorizontal: -layout.card.padding,
-          marginBottom: -layout.card.padding,
-          padding: layout.card.padding,
-          borderBottomLeftRadius: radius.xl,
-          borderBottomRightRadius: radius.xl,
+          marginHorizontal: -pad,
+          marginBottom: -pad,
+          padding: pad,
+          borderBottomLeftRadius: rhythm.cardRadius,
+          borderBottomRightRadius: rhythm.cardRadius,
         },
         style,
       ]}

@@ -1,13 +1,10 @@
 import { View } from 'react-native';
-import Animated, { FadeIn, Layout, LinearTransition } from 'react-native-reanimated';
 
 import { Switch, Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { haptics } from '@/theme';
-import { toneBackground } from '@/theme/color-utils';
+import { haptics, rhythm } from '@/theme';
 
 import { MODULE_DEFINITIONS, MODULE_ORDER } from '../data/modules';
-import { profileLayout } from '@/features/profile/layout';
 import type { ProductModuleId } from '../types';
 
 type ModulesEditorListProps = {
@@ -19,59 +16,50 @@ export function ModulesEditorList({ enabled, onToggle }: ModulesEditorListProps)
   const { colors } = useTheme();
 
   return (
-    <Animated.View layout={LinearTransition.springify()} style={{ gap: 10, paddingHorizontal: profileLayout.pad }}>
+    <View>
       {MODULE_ORDER.map((id, index) => {
         const def = MODULE_DEFINITIONS[id];
-        const Icon = def.icon;
         const isOn = enabled[id];
 
         return (
-          <Animated.View
-            key={id}
-            entering={FadeIn.delay(index * 30).duration(280)}
-            layout={Layout.springify()}
-            style={{
-              borderRadius: profileLayout.cardRadius,
-              borderWidth: profileLayout.hairline,
-              borderColor: colors.border,
-              backgroundColor: colors.card,
-              padding: 16,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 14,
-              opacity: isOn ? 1 : 0.78,
-            }}
-          >
+          <View key={id}>
+            {index > 0 ? (
+              <View
+                style={{
+                  height: rhythm.hairline,
+                  backgroundColor: colors.border,
+                  marginLeft: rhythm.cardPadX,
+                }}
+              />
+            ) : null}
             <View
               style={{
-                width: 44,
-                height: 44,
-                borderRadius: 12,
+                minHeight: 48,
+                flexDirection: 'row',
                 alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: toneBackground(colors.primary, isOn ? 0.12 : 0.06),
+                gap: rhythm.inline,
+                paddingHorizontal: rhythm.cardPadX,
+                opacity: isOn ? 1 : 0.45,
               }}
             >
-              <Icon size="md" color={isOn ? colors.primary : colors.mutedForeground} strokeWidth={2} />
-            </View>
-            <View style={{ flex: 1, gap: 4 }}>
-              <Text variant="body" style={{ fontSize: 15, fontWeight: '700' }}>
+              <Text
+                variant="body"
+                style={{ flex: 1, fontSize: 15, fontWeight: '500', color: colors.foreground }}
+                numberOfLines={1}
+              >
                 {def.title}
               </Text>
-              <Text variant="caption" color="muted" style={{ lineHeight: 17 }}>
-                {def.description}
-              </Text>
+              <Switch
+                value={isOn}
+                onValueChange={() => {
+                  haptics.selection();
+                  onToggle(id);
+                }}
+              />
             </View>
-            <Switch
-              value={isOn}
-              onValueChange={() => {
-                haptics.selection();
-                onToggle(id);
-              }}
-            />
-          </Animated.View>
+          </View>
         );
       })}
-    </Animated.View>
+    </View>
   );
 }

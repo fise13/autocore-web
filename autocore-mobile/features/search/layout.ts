@@ -1,18 +1,22 @@
-/** Search screen rhythm — airy, Spotlight-like */
+import { rhythm } from '@/theme/screen';
+
+/** Search — aliases unified screen rhythm */
 export const searchLayout = {
-  pad: 16,
-  section: 28,
-  hairline: 1,
-  radius: 14,
-  cardRadius: 16,
-  logo: 40,
-  title: 22,
-  subtitle: 13,
-  sectionTitle: 14,
-  label: 11,
-  meta: 11,
-  searchHeight: 58,
-  filterHeight: 34,
+  pad: rhythm.pad,
+  section: rhythm.section,
+  hairline: rhythm.hairline,
+  radius: rhythm.radius,
+  cardRadius: rhythm.cardRadius,
+  logo: rhythm.logo,
+  title: rhythm.pageTitle,
+  subtitle: rhythm.pageSubtitle,
+  sectionTitle: rhythm.sectionTitle,
+  label: rhythm.label,
+  meta: rhythm.meta,
+  searchHeight: rhythm.searchHeight,
+  filterHeight: rhythm.filterHeight,
   engineCardHeight: 108,
   engineThumb: 44,
+  iconWell: 40,
+  accentWidth: 3,
 } as const;

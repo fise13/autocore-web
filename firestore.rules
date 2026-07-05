@@ -322,10 +322,18 @@ service cloud.firestore {
         && get(userRef()).data.companyId == companyId;
     }
 
+    function hasMembership(companyId) {
+      return isSignedIn()
+        && companyId != null
+        && companyId != ""
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid)/memberships/$(companyId));
+    }
+
     function canAccessCompanyDoc(companyId) {
       return isOwnerOfCompany(companyId)
         || sameCompany(companyId)
-        || canReadByCompanyDoc(companyId);
+        || canReadByCompanyDoc(companyId)
+        || hasMembership(companyId);
     }
 
     function canWriteCompanyDoc(companyId) {
@@ -530,6 +538,14 @@ service cloud.firestore {
         allow read, write: if isSignedIn() && request.auth.uid == userId;
       }
 
+      match /notificationPreferences/{docId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      match /devices/{deviceId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+
       // Incremental motor mirror (macOS / web → users/{uid}/motors/{localId}).
       match /motors/{motorDocId} {
         // Owner always reads/writes their mirror; teammates read by companyId.
@@ -663,7 +679,8 @@ service cloud.firestore {
       }
 
       match /roles/{roleId} {
-        allow read: if canViewEmployees(companyId)
+        allow read: if isOwnerOfCompany(companyId)
+          || canViewEmployees(companyId)
           || (
             isSignedIn()
             && exists(employeeRef(companyId, request.auth.uid))
@@ -705,7 +722,12 @@ service cloud.firestore {
       }
 
       match /billing/{docId} {
-        allow read: if docId == 'subscription' && isCompanyMember(companyId);
+        allow read: if docId == 'subscription'
+          && (
+            isOwnerOfCompany(companyId)
+            || isCompanyBillingManager(companyId)
+            || isCompanyMember(companyId)
+          );
         allow create: if docId == 'subscription'
           && isCompanyBillingManager(companyId)
           && request.resource.data.plan == 'free'
@@ -715,7 +737,9 @@ service cloud.firestore {
       }
 
       match /settings/{settingId} {
-        allow read: if canManageCompanySettings(companyId) || isCompanyMember(companyId);
+        allow read: if isOwnerOfCompany(companyId)
+          || canManageCompanySettings(companyId)
+          || isCompanyMember(companyId);
         allow create, update: if canManageCompanySettings(companyId);
         allow delete: if false;
       }

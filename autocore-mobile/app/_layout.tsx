@@ -1,68 +1,77 @@
 import 'react-native-gesture-handler';
 import '../global.css';
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import { StatusBar } from 'expo-status-bar';
+import { useSyncExternalStore } from 'react';
 import 'react-native-reanimated';
 
 import { AuthGate } from '@/authentication/auth-gate';
 import { AuthProvider } from '@/authentication/auth-provider';
-import { ThemeProvider, useTheme } from '@/hooks';
+import { RootNavigator } from '@/components/navigation/root-navigator';
+import { ThemeProvider } from '@/hooks';
 import { ToastProvider } from '@/components/ui';
+import { markStartup } from '@/lib/performance/startup-tracer';
+import { queryClient } from '@/lib/query-client';
+import {
+  getQueryPersistBuster,
+  mmkvQueryPersister,
+  subscribeQueryPersistBuster,
+} from '@/lib/storage/mmkv-query-persister';
+import { ensureAsyncStorageMigrated } from '@/lib/storage/migrate-async-storage';
+import { warmSessionCacheFromDisk } from '@/lib/startup/warm-session-cache';
 
 export { ErrorBoundary } from 'expo-router';
 
+markStartup('js_bundle_eval');
+void ensureAsyncStorageMigrated();
+warmSessionCacheFromDisk();
+
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 60_000,
-      retry: 1,
-    },
-  },
-});
-
-export default function RootLayout() {
-  useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
+function AppProviders({ children }: { children: React.ReactNode }) {
+  const buster = useSyncExternalStore(
+    subscribeQueryPersistBuster,
+    getQueryPersistBuster,
+    getQueryPersistBuster,
+  );
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <AuthProvider>
-            <AuthGate>
-              <RootNavigator />
-            </AuthGate>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister: mmkvQueryPersister,
+        maxAge: 1000 * 60 * 60 * 24 * 7,
+        buster,
+        dehydrateOptions: {
+          shouldDehydrateQuery: (query) =>
+            query.queryKey[0] === 'realtime' || query.queryKey[0] === 'api',
+        },
+      }}
+      onSuccess={() => {
+        void queryClient.resumePausedMutations();
+      }}
+    >
+      <ThemeProvider>
+        <AuthProvider>
+          <BottomSheetModalProvider>
+            <AuthGate>{children}</AuthGate>
             <ToastProvider />
-          </AuthProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </GestureHandlerRootView>
+          </BottomSheetModalProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </PersistQueryClientProvider>
   );
 }
 
-function RootNavigator() {
-  const { isDark } = useTheme();
-
-  useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
-
+export default function RootLayout() {
   return (
-    <>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-      <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="design-system" options={{ presentation: 'card' }} />
-      </Stack>
-    </>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AppProviders>
+        <RootNavigator />
+      </AppProviders>
+    </GestureHandlerRootView>
   );
 }

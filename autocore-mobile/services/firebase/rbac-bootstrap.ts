@@ -2,6 +2,7 @@ import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 
 import { ROLE_PERMISSIONS, type UserRole } from '@/types/user';
 
+import { resolveOwnedCompanyId } from './profile';
 import { getFirebaseDb } from './index';
 
 type BootstrapUserDoc = {
@@ -25,15 +26,28 @@ async function trySetDoc(
   }
 }
 
-export async function ensureRbacBootstrap(uid: string): Promise<void> {
+export async function ensureRbacBootstrap(
+  uid: string,
+  options?: { companyId?: string | null },
+): Promise<void> {
   const db = getFirebaseDb();
   const userRef = doc(db, 'users', uid);
   const userSnap = await getDoc(userRef);
   if (!userSnap.exists()) return;
 
   const userData = userSnap.data() as BootstrapUserDoc;
-  const companyId = userData.companyId?.trim();
+  let companyId = options?.companyId?.trim() || userData.companyId?.trim() || null;
+  if (!companyId) {
+    companyId = await resolveOwnedCompanyId(uid);
+  }
   if (!companyId) return;
+
+  if (!userData.companyId?.trim()) {
+    await trySetDoc('user companyId', userRef, {
+      companyId,
+      updatedAt: serverTimestamp(),
+    });
+  }
 
   let ownerId: string | undefined;
   try {

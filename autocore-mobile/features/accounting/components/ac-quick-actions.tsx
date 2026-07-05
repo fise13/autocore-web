@@ -1,96 +1,101 @@
+import { memo, useCallback } from 'react';
 import { ScrollView, View } from 'react-native';
-import Animated from 'react-native-reanimated';
+import Reanimated from 'react-native-reanimated';
 
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { toneBackground } from '@/theme/color-utils';
-import { McPressable, useMcEnter } from '@/features/mission-control/animation';
-import { haptics } from '@/theme';
+import { haptics, rhythm } from '@/theme';
+import { radius } from '@/theme/radius';
+import { McPressable, useMcEnter, useMcNavigatePress } from '@/features/mission-control/animation';
+import { McSectionTitle } from '@/features/mission-control/components/mc-primitives';
+import { mcType } from '@/features/mission-control/layout';
 
 import { acTimeline } from '../animation/timeline';
-import { ac } from '../layout';
-import type { AccountingSnapshot } from '../types';
+import type { AccountingQuickActionId, AccountingSnapshot } from '../types';
 
 type AcQuickActionsProps = {
   actions: AccountingSnapshot['quickActions'];
-  onAction?: (id: string) => void;
+  onAction?: (id: AccountingQuickActionId) => void;
 };
 
-function QuickActionCard({
+const QUICK_ACTION_SIZE = 56;
+const QUICK_ACTION_SLOT = 72;
+
+const QuickActionButton = memo(function QuickActionButton({
   action,
   index,
   onAction,
 }: {
   action: AccountingSnapshot['quickActions'][number];
   index: number;
-  onAction?: (id: string) => void;
+  onAction?: (id: AccountingQuickActionId) => void;
 }) {
   const { colors } = useTheme();
   const Icon = action.icon;
   const delay = acTimeline.quickBase + index * acTimeline.quickStagger;
-  const enterStyle = useMcEnter({ delay, translateY: 14, spring: true, duration: 340 });
-  const primary = action.primary === true;
+  const buttonStyle = useMcEnter({ delay, translateY: 6, fade: true, scaleFrom: 0.92 });
+
+  const runAction = useCallback(() => {
+    onAction?.(action.id);
+  }, [action.id, onAction]);
+
+  const { exitStyle, press } = useMcNavigatePress(runAction);
+
+  const handlePress = useCallback(() => {
+    haptics.light();
+    press();
+  }, [press]);
+
+  if (!Icon) return null;
 
   return (
-    <Animated.View style={enterStyle}>
+    <Reanimated.View
+      style={[{ width: QUICK_ACTION_SLOT, alignItems: 'center', gap: rhythm.tight }, buttonStyle, exitStyle]}
+    >
       <McPressable
         accessibilityRole="button"
-        liftOnPress
-        onPress={() => {
-          haptics.light();
-          onAction?.(action.id);
-        }}
+        accessibilityLabel={action.label}
+        onPress={handlePress}
         style={{
-          width: ac.actionTileWide,
-          minHeight: ac.actionTile,
-          borderRadius: ac.cardRadius,
-          borderWidth: ac.hairline,
-          borderColor: primary ? toneBackground(colors.primary, 0.35) : colors.border,
-          backgroundColor: primary ? toneBackground(colors.primary, 0.1) : colors.card,
-          padding: 14,
-          gap: 10,
-          justifyContent: 'space-between',
+          width: QUICK_ACTION_SIZE,
+          height: QUICK_ACTION_SIZE,
+          borderRadius: radius.full,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.surfaceElevated,
         }}
       >
-        <View
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 11,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: toneBackground(colors.primary, primary ? 0.18 : 0.1),
-          }}
-        >
-          <Icon size="md" color={colors.primary} strokeWidth={2} />
-        </View>
-        <Text variant="body" style={{ fontSize: 13, fontWeight: '700', letterSpacing: -0.1 }}>
-          {action.label}
-        </Text>
+        <Icon size="md" color={colors.primary} strokeWidth={1.75} />
       </McPressable>
-    </Animated.View>
+      <Text
+        variant="caption"
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
+        style={{ ...mcType.statLabel, color: colors.foreground, textAlign: 'center', width: '100%' }}
+      >
+        {action.label}
+      </Text>
+    </Reanimated.View>
   );
-}
+});
 
 export function AcQuickActions({ actions, onAction }: AcQuickActionsProps) {
-  const titleStyle = useMcEnter({ delay: acTimeline.quickTitle, translateY: 8, duration: 300 });
+  const sectionStyle = useMcEnter({ delay: acTimeline.quickTitle, translateY: 4, fade: true });
 
   return (
-    <View>
-      <Animated.View style={titleStyle}>
-        <Text variant="body" style={{ fontSize: ac.sectionTitle, fontWeight: '700', marginBottom: 12, letterSpacing: -0.2 }}>
-          Быстрые действия
-        </Text>
-      </Animated.View>
+    <Reanimated.View style={sectionStyle}>
+      <McSectionTitle title="Быстрые действия" />
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 10, paddingRight: ac.pad }}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ gap: rhythm.tight, paddingRight: rhythm.tight }}
       >
         {actions.map((action, index) => (
-          <QuickActionCard key={action.id} action={action} index={index} onAction={onAction} />
+          <QuickActionButton key={action.id} action={action} index={index} onAction={onAction} />
         ))}
       </ScrollView>
-    </View>
+    </Reanimated.View>
   );
 }

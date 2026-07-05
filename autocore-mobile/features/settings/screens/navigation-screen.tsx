@@ -1,8 +1,7 @@
-import { Text } from '@/components/ui';
+import { SettingsSectionCard } from '@/components/ui';
 
 import { NavigationEditorList } from '../components/navigation-editor-list';
 import { NavigationPreview } from '../components/navigation-preview';
-import { ProfileMetaCard } from '@/features/profile/components/profile-meta-card';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
 import { useNavigationConfigStore } from '../store/navigation-config-store';
 
@@ -13,21 +12,25 @@ export function NavigationScreen() {
   const moveItem = useNavigationConfigStore((s) => s.moveItem);
 
   return (
-    <ProfileScreenShell title="Навигация" subtitle="Нижняя панель под ваш рабочий процесс">
-      <ProfileMetaCard delay={60}>
-        <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-          Включайте, отключайте и меняйте порядок. В панели до пяти вкладок, остальное уходит в «Ещё».
-        </Text>
-      </ProfileMetaCard>
+    <ProfileScreenShell title="Навигация" subtitle="Нижняя панель">
+      <SettingsSectionCard
+        title="Предпросмотр"
+        description="До 5 вкладок · остальное в «Ещё»"
+      >
+        <NavigationPreview order={order} enabled={enabled} />
+      </SettingsSectionCard>
 
-      <NavigationPreview order={order} enabled={enabled} />
-
-      <NavigationEditorList
-        order={order}
-        enabled={enabled}
-        onToggle={toggleItem}
-        onMove={moveItem}
-      />
+      <SettingsSectionCard
+        title="Разделы"
+        description="Удерживайте строку, чтобы перетащить, или используйте ↑ ↓"
+      >
+        <NavigationEditorList
+          order={order}
+          enabled={enabled}
+          onToggle={toggleItem}
+          onMove={moveItem}
+        />
+      </SettingsSectionCard>
     </ProfileScreenShell>
   );
 }

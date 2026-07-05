@@ -52,19 +52,19 @@ export function NotificationsScreen() {
             <ToggleRow
               title="Push-уведомления"
               subtitle="Разрешить уведомления от AutoCore на этом устройстве."
-              value={preferences.pushEnabled}
+              value={preferences.channels.push}
               onValueChange={(value) => void updatePreference('pushEnabled', value)}
             />
             <ToggleRow
               title="Наряды"
               subtitle="Изменения статуса и назначения в нарядах."
-              value={preferences.orderUpdates}
+              value={preferences.categories.work_orders}
               onValueChange={(value) => void updatePreference('orderUpdates', value)}
             />
             <ToggleRow
               title="Сканирование"
               subtitle="Результаты сканирования и быстрый приём."
-              value={preferences.scanAlerts}
+              value={preferences.categories.scan}
               onValueChange={(value) => void updatePreference('scanAlerts', value)}
             />
           </>

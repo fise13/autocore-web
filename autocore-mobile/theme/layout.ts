@@ -1,6 +1,7 @@
 import { spacing, screenPadding, headerHeight, minTouchTarget } from './spacing';
 import { radius } from './radius';
 import { sidebarWidth, contentMaxWidth } from './breakpoints';
+import { rhythm } from './screen';
 
 /** Layout constants from Autocore app shell */
 export const layout = {
@@ -10,6 +11,7 @@ export const layout = {
   tabBarHeight: 52,
   bottomBarHeight: 56,
   floatingButtonSize: 56,
+  rhythm,
   iconSize: {
     xs: 12,
     sm: 14,
@@ -23,26 +25,27 @@ export const layout = {
     md: 40,
     lg: 48,
     xl: 64,
-    '2xl': 80,
+    '2xl': rhythm.avatar,
   },
   card: {
     padding: spacing[4],
     paddingSm: spacing[3],
     gap: spacing[4],
-    borderRadius: radius.xl,
+    borderRadius: rhythm.cardRadius,
   },
   input: {
     height: 32,
-    heightLg: 36,
-    heightXl: 44,
-    paddingHorizontal: spacing[2.5],
+    heightCompact: 32,
+    heightLg: 40,
+    heightXl: 40,
+    paddingHorizontal: 10,
     borderRadius: radius.lg,
   },
   button: {
     height: 32,
     heightSm: 28,
-    heightLg: 36,
-    heightXl: 44,
+    heightLg: 40,
+    heightXl: 40,
     iconSize: 32,
     borderRadius: radius.lg,
   },

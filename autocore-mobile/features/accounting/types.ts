@@ -6,6 +6,10 @@ export type TrendTone = 'up' | 'down' | 'neutral';
 
 export type AttentionTone = 'warning' | 'danger' | 'neutral';
 
+export type AccountingQuickActionId = 'invoice' | 'payment' | 'expense' | 'salary' | 'export' | 'transfer';
+
+export type AccountingAttentionAction = 'payroll' | 'expenses' | 'operations' | 'cashbox' | 'advances';
+
 export type TransactionStatus = 'completed' | 'pending' | 'overdue';
 
 export type InvoiceStatus = 'paid' | 'waiting' | 'overdue';
@@ -28,7 +32,7 @@ export type AccountingSnapshot = {
     sparkline: number[];
   }>;
   quickActions: Array<{
-    id: string;
+    id: AccountingQuickActionId;
     label: string;
     icon: ComponentType<{ size?: 'sm' | 'md' | 'lg'; color?: string; strokeWidth?: number }>;
     primary?: boolean;
@@ -38,6 +42,7 @@ export type AccountingSnapshot = {
     title: string;
     subtitle: string;
     tone: AttentionTone;
+    action: AccountingAttentionAction;
   }>;
   transactions: Array<{
     id: string;

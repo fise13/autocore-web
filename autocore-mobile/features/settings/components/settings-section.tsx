@@ -1,9 +1,9 @@
+import { Children, type ReactNode } from 'react';
 import { View } from 'react-native';
-import Animated from 'react-native-reanimated';
 
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { useProfileEnter } from '@/features/profile/animation/use-profile-enter';
+import { rhythm } from '@/theme';
 
 import { settingsLayout } from '../layout';
 
@@ -13,47 +13,78 @@ type SettingsSectionTitleProps = {
   delay?: number;
 };
 
-export function SettingsSectionTitle({ title, subtitle, delay = 0 }: SettingsSectionTitleProps) {
+export function SettingsSectionTitle({ title, subtitle }: SettingsSectionTitleProps) {
   const { colors } = useTheme();
-  const style = useProfileEnter({ delay, translateY: 8, duration: 300 });
 
   return (
-    <Animated.View style={[{ paddingHorizontal: settingsLayout.pad, gap: 4 }, style]}>
-      <Text variant="caption" color="muted" style={{ fontSize: 12, fontWeight: '600', letterSpacing: 0.6, textTransform: 'uppercase' }}>
+    <View style={{ paddingHorizontal: settingsLayout.pad, gap: 4 }}>
+      <Text
+        variant="caption"
+        style={{
+          fontSize: 12,
+          fontWeight: '600',
+          letterSpacing: 0.4,
+          textTransform: 'uppercase',
+          color: colors.mutedForeground,
+        }}
+      >
         {title}
       </Text>
       {subtitle ? (
-        <Text variant="caption" color="muted" style={{ fontSize: 13, lineHeight: 18 }}>
+        <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
           {subtitle}
         </Text>
       ) : null}
-    </Animated.View>
+    </View>
   );
 }
 
 type SettingsGroupProps = {
-  children: React.ReactNode;
+  children: ReactNode;
 };
 
 export function SettingsGroup({ children }: SettingsGroupProps) {
   const { colors } = useTheme();
+  const items = Children.toArray(children).filter(Boolean);
+
   return (
     <View
       style={{
         marginHorizontal: settingsLayout.pad,
-        borderRadius: settingsLayout.groupRadius,
+        borderRadius: rhythm.cardRadius,
         borderWidth: settingsLayout.hairline,
         borderColor: colors.border,
         backgroundColor: colors.card,
         overflow: 'hidden',
       }}
     >
-      {children}
+      {items.map((child, index) => (
+        <View key={index}>
+          {child}
+          {index < items.length - 1 ? (
+            <View
+              style={{
+                height: settingsLayout.hairline,
+                backgroundColor: colors.border,
+                marginLeft: rhythm.cardPadX,
+              }}
+            />
+          ) : null}
+        </View>
+      ))}
     </View>
   );
 }
 
 export function SettingsGroupDivider() {
   const { colors } = useTheme();
-  return <View style={{ height: settingsLayout.hairline, backgroundColor: colors.border, marginLeft: 56 }} />;
+  return (
+    <View
+      style={{
+        height: settingsLayout.hairline,
+        backgroundColor: colors.border,
+        marginLeft: rhythm.cardPadX,
+      }}
+    />
+  );
 }

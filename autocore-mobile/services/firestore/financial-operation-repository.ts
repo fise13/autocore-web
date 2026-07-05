@@ -1,6 +1,8 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
+  doc,
   onSnapshot,
   orderBy,
   query,
@@ -57,6 +59,8 @@ function mapOperation(id: string, data: Record<string, unknown>): FinancialOpera
     changeGiven: data.changeGiven == null ? null : readAmount(data.changeGiven),
     relatedMotorID: data.relatedMotorID == null ? null : Number(data.relatedMotorID),
     relatedMotorId: typeof data.relatedMotorId === 'string' ? data.relatedMotorId : null,
+    relatedWarrantyId: typeof data.relatedWarrantyId === 'string' ? data.relatedWarrantyId : null,
+    relatedClientId: typeof data.relatedClientId === 'string' ? data.relatedClientId : null,
     relatedInventoryItemId:
       typeof data.relatedInventoryItemId === 'string' ? data.relatedInventoryItemId : null,
     relatedMovementId: typeof data.relatedMovementId === 'string' ? data.relatedMovementId : null,
@@ -127,12 +131,19 @@ export function createFinancialOperationRepository() {
         description: input.description?.trim() || null,
         source: input.source?.trim() || null,
         details: input.details?.trim() || null,
+        relatedClientId: input.relatedClientId?.trim() || null,
+        relatedMotorId: input.relatedMotorId?.trim() || null,
+        relatedMotorID: input.relatedMotorID ?? null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
 
       const docRef = await addDoc(collection(getFirebaseDb(), COLLECTION_NAME), payload);
       return docRef.id;
+    },
+
+    async delete(id: string): Promise<void> {
+      await deleteDoc(doc(getFirebaseDb(), COLLECTION_NAME, id));
     },
   };
 }

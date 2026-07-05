@@ -1,25 +1,24 @@
-import { memo, useCallback } from 'react';
+import { memo } from 'react';
 import { FlashList as ShopifyFlashList, type FlashListProps } from '@shopify/flash-list';
 
-import { useDesignLanguage } from '@/hooks';
-import { listStagger } from '@/theme/motion';
+import { rhythm } from '@/theme';
 
 type OptimizedListProps<T> = FlashListProps<T> & {
-  estimatedItemSize: number;
+  /** Apply horizontal page padding to content */
+  padded?: boolean;
 };
 
-/** FlashList wrapper with Autocore defaults */
-function FlashListInner<T>({ contentContainerStyle, ...props }: OptimizedListProps<T>) {
-  const dl = useDesignLanguage();
-
+/** FlashList with Autocore defaults for 60fps scrolling (FlashList v2). */
+function FlashListInner<T>({
+  contentContainerStyle,
+  padded = false,
+  ...props
+}: OptimizedListProps<T>) {
   return (
     <ShopifyFlashList
       showsVerticalScrollIndicator={false}
-      removeClippedSubviews
-      contentContainerStyle={[
-        { paddingHorizontal: dl.layout.screenPadding.horizontal },
-        contentContainerStyle,
-      ]}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={[padded ? { paddingHorizontal: rhythm.pad } : null, contentContainerStyle]}
       {...props}
     />
   );
@@ -27,11 +26,6 @@ function FlashListInner<T>({ contentContainerStyle, ...props }: OptimizedListPro
 
 export const FlashList = memo(FlashListInner) as typeof FlashListInner;
 
-export function useListStaggerDelay(index: number) {
-  const dl = useDesignLanguage();
-  return dl.staggerDelay(index, listStagger.baseMs);
-}
-
-export function useStableCallback<T extends (...args: never[]) => unknown>(fn: T): T {
-  return useCallback(fn, [fn]) as T;
+export function useListStaggerDelay(index: number, baseMs = 40) {
+  return Math.min(index, 6) * baseMs;
 }

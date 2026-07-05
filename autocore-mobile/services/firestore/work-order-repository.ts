@@ -27,6 +27,24 @@ import type {
 
 const COLLECTION = 'workOrders';
 
+function normalizePricing(pricing: unknown): WorkOrder['pricing'] {
+  if (typeof pricing !== 'object' || pricing == null) {
+    return { laborTotal: 0, partsTotal: 0, motorsTotal: 0, discount: 0, grandTotal: 0 };
+  }
+
+  const raw = pricing as Record<string, unknown>;
+  const laborTotal = Number(raw.laborTotal) || 0;
+  const partsTotal = Number(raw.partsTotal) || 0;
+  const motorsTotal = Number(raw.motorsTotal) || 0;
+  const discount = Number(raw.discount) || 0;
+  const storedTotal = Number(raw.grandTotal);
+  const grandTotal = Number.isFinite(storedTotal)
+    ? storedTotal
+    : Math.max(0, laborTotal + partsTotal + motorsTotal - discount);
+
+  return { laborTotal, partsTotal, motorsTotal, discount, grandTotal };
+}
+
 function mapWorkOrder(id: string, data: Record<string, unknown>): WorkOrder {
   const createdAt = toDateFromFirestore(data.createdAt) ?? new Date();
   return {
@@ -46,10 +64,7 @@ function mapWorkOrder(id: string, data: Record<string, unknown>): WorkOrder {
     laborLines: Array.isArray(data.laborLines) ? (data.laborLines as WorkOrder['laborLines']) : [],
     partLines: Array.isArray(data.partLines) ? (data.partLines as WorkOrder['partLines']) : [],
     motorLines: Array.isArray(data.motorLines) ? (data.motorLines as WorkOrder['motorLines']) : [],
-    pricing:
-      typeof data.pricing === 'object' && data.pricing != null
-        ? (data.pricing as WorkOrder['pricing'])
-        : { laborTotal: 0, partsTotal: 0, motorsTotal: 0, discount: 0, grandTotal: 0 },
+    pricing: normalizePricing(data.pricing),
     createdByUserId: String(data.createdByUserId ?? ''),
     updatedByUserId: typeof data.updatedByUserId === 'string' ? data.updatedByUserId : undefined,
     createdAt,

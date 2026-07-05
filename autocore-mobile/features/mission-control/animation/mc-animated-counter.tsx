@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { TextInput, type TextStyle, type StyleProp } from 'react-native';
 import Animated, {
   Easing,
@@ -12,17 +12,23 @@ import { useReducedMotion } from '@/hooks';
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
-export type McCounterFormat = 'integer' | 'grouped' | 'currency-rub';
+export type McCounterFormat = 'integer' | 'grouped' | 'currency' | 'currency-rub';
 
 export function formatGroupedInteger(value: number): string {
-  return Math.round(value)
+  return Math.round(Number.isFinite(value) ? value : 0)
     .toString()
     .replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
 
-function formatCounterWorklet(value: number, format: McCounterFormat): string {
+function formatCounterWorklet(
+  value: number,
+  format: McCounterFormat,
+  currencyPrefix: string,
+  currencySuffix: string,
+): string {
   'worklet';
-  const rounded = Math.round(value).toString();
+  const safe = Number.isFinite(value) ? value : 0;
+  const rounded = Math.round(safe).toString();
 
   if (format === 'integer') {
     return rounded;
@@ -41,7 +47,12 @@ function formatCounterWorklet(value: number, format: McCounterFormat): string {
     }
   }
 
-  return format === 'currency-rub' ? `${grouped} ₽` : grouped;
+  if (format === 'currency' || format === 'currency-rub') {
+    const suffix = format === 'currency-rub' ? ' ₽' : currencySuffix;
+    return `${currencyPrefix}${grouped}${suffix}`;
+  }
+
+  return grouped;
 }
 
 type McAnimatedCounterProps = {
@@ -49,6 +60,8 @@ type McAnimatedCounterProps = {
   delay?: number;
   duration?: number;
   format?: McCounterFormat;
+  currencyPrefix?: string;
+  currencySuffix?: string;
   style?: StyleProp<TextStyle>;
 };
 
@@ -57,25 +70,32 @@ export function McAnimatedCounter({
   delay = 0,
   duration = 500,
   format = 'grouped',
+  currencyPrefix = '',
+  currencySuffix = '',
   style,
 }: McAnimatedCounterProps) {
   const reduced = useReducedMotion();
-  const progress = useSharedValue(reduced ? 1 : 0);
+  const safeValue = Number.isFinite(value) ? value : 0;
+  const displayValue = useSharedValue(reduced ? safeValue : 0);
+  const hasAnimatedRef = useRef(false);
 
   useEffect(() => {
     if (reduced) {
-      progress.value = 1;
+      displayValue.value = safeValue;
       return;
     }
-    progress.value = withDelay(
-      delay,
-      withTiming(1, { duration, easing: Easing.out(Easing.cubic) }),
+
+    const enterDelay = hasAnimatedRef.current ? 0 : delay;
+    hasAnimatedRef.current = true;
+
+    displayValue.value = withDelay(
+      enterDelay,
+      withTiming(safeValue, { duration, easing: Easing.out(Easing.cubic) }),
     );
-  }, [delay, duration, progress, reduced]);
+  }, [delay, displayValue, duration, reduced, safeValue]);
 
   const animatedProps = useAnimatedProps(() => {
-    const current = progress.value * value;
-    const text = formatCounterWorklet(current, format);
+    const text = formatCounterWorklet(displayValue.value, format, currencyPrefix, currencySuffix);
     return { text, defaultValue: text };
   });
 

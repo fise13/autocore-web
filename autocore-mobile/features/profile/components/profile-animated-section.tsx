@@ -1,13 +1,10 @@
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
-import Animated from 'react-native-reanimated';
 
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { haptics } from '@/theme';
-
-import { useProfileEnter } from '../animation/use-profile-enter';
-import { profileLayout } from '../layout';
+import { radius } from '@/theme/radius';
 
 type ProfileSegmentedControlProps<T extends string> = {
   value: T;
@@ -20,25 +17,18 @@ export function ProfileSegmentedControl<T extends string>({
   value,
   onChange,
   options,
-  delay = 0,
 }: ProfileSegmentedControlProps<T>) {
   const { colors } = useTheme();
-  const enterStyle = useProfileEnter({ delay, translateY: 8, duration: 300 });
 
   return (
-    <Animated.View
-      style={[
-        {
-          flexDirection: 'row',
-          borderRadius: 12,
-          borderWidth: profileLayout.hairline,
-          borderColor: colors.border,
-          backgroundColor: colors.muted,
-          padding: 4,
-          gap: 4,
-        },
-        enterStyle,
-      ]}
+    <View
+      style={{
+        flexDirection: 'row',
+        borderRadius: radius['3xl'],
+        backgroundColor: colors.surfaceElevated,
+        padding: 4,
+        gap: 4,
+      }}
     >
       {options.map((option) => {
         const active = value === option.value;
@@ -54,19 +44,26 @@ export function ProfileSegmentedControl<T extends string>({
             style={{
               flex: 1,
               minHeight: 40,
-              borderRadius: 8,
+              borderRadius: radius['2xl'],
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: active ? colors.card : 'transparent',
             }}
           >
-            <Text variant="caption" style={{ fontWeight: active ? '700' : '500' }}>
+            <Text
+              variant="caption"
+              style={{
+                fontWeight: active ? '600' : '500',
+                fontSize: 13,
+                color: active ? colors.foreground : colors.mutedForeground,
+              }}
+            >
               {option.label}
             </Text>
           </Pressable>
         );
       })}
-    </Animated.View>
+    </View>
   );
 }
 
@@ -75,7 +72,6 @@ type ProfileAnimatedSectionProps = {
   delay?: number;
 };
 
-export function ProfileAnimatedSection({ children, delay = 0 }: ProfileAnimatedSectionProps) {
-  const style = useProfileEnter({ delay, translateY: 12, duration: 340 });
-  return <Animated.View style={[{ gap: 16 }, style]}>{children}</Animated.View>;
+export function ProfileAnimatedSection({ children }: ProfileAnimatedSectionProps) {
+  return <View style={{ gap: 16 }}>{children}</View>;
 }

@@ -1,5 +1,6 @@
 import { doc, getDoc, onSnapshot, type Timestamp } from 'firebase/firestore';
 
+import { toDateFromFirestore } from '@/lib/firestore-timestamp';
 import { getFirebaseDb } from '@/services/firebase';
 import type { BillingPlan, BillingStatus, CompanySubscription } from '@/types/billing';
 
@@ -18,11 +19,7 @@ type SubscriptionDoc = {
 };
 
 function toDate(value: unknown): Date | null {
-  if (value && typeof value === 'object' && 'toDate' in value) {
-    return (value as Timestamp).toDate();
-  }
-  if (value instanceof Date) return value;
-  return null;
+  return toDateFromFirestore(value) ?? (value instanceof Date ? value : null);
 }
 
 function mapSubscription(data: SubscriptionDoc | undefined): CompanySubscription | null {

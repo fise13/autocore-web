@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { memo, useRef } from 'react';
 import { Pressable, View } from 'react-native';
 import type { View as RNView } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -9,7 +9,7 @@ import { UserRoundIcon } from '@/assets/icons';
 import { Text } from '@/components/ui';
 import { usePressAnimation } from '@/animations';
 import { useTheme } from '@/hooks';
-import { haptics } from '@/theme';
+import { haptics, rhythm } from '@/theme';
 import { formatPrice } from '@/features/search/lib/format';
 
 import { useOrderTransition } from '../animation/order-transition-context';
@@ -48,22 +48,30 @@ function SwipeAction({
         backgroundColor: color,
       }}
     >
-      <Text variant="caption" style={{ color: '#fff', fontWeight: '600', fontSize: 11 }}>
+      <Text variant="meta" style={{ color: '#fff', fontWeight: '600' }}>
         {label}
       </Text>
     </Pressable>
   );
 }
 
-export function OrderCard({ order, index, onMarkReady, onCall }: OrderCardProps) {
+const ANIMATE_FIRST = 8;
+
+export const OrderCard = memo(function OrderCard({
+  order,
+  index,
+  onMarkReady,
+  onCall,
+}: OrderCardProps) {
   const { colors } = useTheme();
   const { openOrder } = useOrderTransition();
   const cardRef = useRef<RNView>(null);
   const { style: pressStyle, onPressIn, onPressOut } = usePressAnimation(0.98);
+  const animate = index < ANIMATE_FIRST;
   const enterStyle = useOrdersEnter({
-    delay: ordersTimeline.listBase + index * ordersTimeline.listStagger,
-    translateY: 12,
-    duration: 280,
+    delay: animate ? ordersTimeline.listBase + index * ordersTimeline.listStagger : 0,
+    translateY: animate ? 12 : 0,
+    enabled: animate,
   });
 
   const handleOpen = () => {
@@ -85,24 +93,36 @@ export function OrderCard({ order, index, onMarkReady, onCall }: OrderCardProps)
           borderWidth: ordersLayout.hairline,
           borderColor: colors.border,
           backgroundColor: colors.card,
-          paddingHorizontal: 14,
-          paddingVertical: 12,
-          gap: 10,
+          paddingHorizontal: rhythm.cardPadX,
+          paddingVertical: rhythm.cardPadY,
+          gap: rhythm.inline,
         }}
       >
-        <View ref={cardRef} collapsable={false} style={{ gap: 10 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-            <View style={{ flex: 1, gap: 3 }}>
-              <Text variant="body" style={{ fontSize: 14, fontWeight: '600', letterSpacing: -0.15 }}>
-                {formatWorkOrderLabel(order.number)}
-              </Text>
-              <Text variant="caption" color="muted" style={{ fontSize: 12 }}>
+        <View ref={cardRef} collapsable={false} style={{ gap: rhythm.inline }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              gap: rhythm.inline,
+            }}
+          >
+            <View style={{ flex: 1, gap: rhythm.micro / 2 }}>
+              <Text variant="bodyStrong">{formatWorkOrderLabel(order.number)}</Text>
+              <Text variant="caption" color="muted">
                 {order.customer}
               </Text>
               {order.assignee ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: rhythm.micro,
+                    marginTop: rhythm.micro / 2,
+                  }}
+                >
                   <UserRoundIcon size="sm" color={colors.mutedForeground} strokeWidth={1.75} />
-                  <Text variant="caption" color="muted" style={{ fontSize: 11 }}>
+                  <Text variant="meta" color="muted">
                     {order.assignee}
                   </Text>
                 </View>
@@ -111,11 +131,18 @@ export function OrderCard({ order, index, onMarkReady, onCall }: OrderCardProps)
             <OrderStatusBadge status={order.status} />
           </View>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-            <Text variant="caption" color="muted" style={{ fontSize: 12, flex: 1 }} numberOfLines={1}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: rhythm.inline,
+            }}
+          >
+            <Text variant="caption" color="muted" style={{ flex: 1 }} numberOfLines={1}>
               {formatOrderVehicleLine(order)}
             </Text>
-            <Text variant="body" style={{ fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] }}>
+            <Text variant="small" style={{ fontWeight: '600', fontVariant: ['tabular-nums'] }}>
               {formatPrice(order.price)}
             </Text>
           </View>
@@ -132,32 +159,41 @@ export function OrderCard({ order, index, onMarkReady, onCall }: OrderCardProps)
         renderLeftActions={(_progress, drag) => (
           <SwipeAction label="Открыть" color={colors.primary} drag={drag} onPress={handleOpen} />
         )}
-        renderRightActions={(_progress, drag) => (
-          <View style={{ flexDirection: 'row' }}>
-            <SwipeAction
-              label="Готов"
-              color={colors.success}
-              drag={drag}
-              onPress={() => {
-                haptics.medium();
-                onMarkReady(order);
-              }}
-            />
-            <SwipeAction
-              label="Звонок"
-              color={colors.warning}
-              drag={drag}
-              onPress={() => {
-                haptics.light();
-                onCall(order);
-              }}
-            />
-            <SwipeAction label="Ещё" color={colors.mutedForeground} drag={drag} onPress={handleOpen} />
-          </View>
-        )}
+        renderRightActions={(_progress, drag) => {
+          const canReady = order.status !== 'completed' && order.status !== 'ready';
+          const canCall = Boolean(order.phone);
+          if (!canReady && !canCall) return null;
+
+          return (
+            <View style={{ flexDirection: 'row' }}>
+              {canReady ? (
+                <SwipeAction
+                  label="Готов"
+                  color={colors.success}
+                  drag={drag}
+                  onPress={() => {
+                    haptics.medium();
+                    onMarkReady(order);
+                  }}
+                />
+              ) : null}
+              {canCall ? (
+                <SwipeAction
+                  label="Звонок"
+                  color={colors.warning}
+                  drag={drag}
+                  onPress={() => {
+                    haptics.light();
+                    onCall(order);
+                  }}
+                />
+              ) : null}
+            </View>
+          );
+        }}
       >
         {card}
       </ReanimatedSwipeable>
     </Animated.View>
   );
-}
+});

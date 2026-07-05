@@ -7,8 +7,10 @@ import {
   markEventProcessed,
   processWorkOrderEvent,
 } from "@/infrastructure/firestore/admin/work-order-effects-admin";
+import type { DomainEvent } from "@/domain/domain-event";
 import { loadDocumentContext } from "@/lib/documents/load-document-context";
 import { resolveDocumentsFromPendingEvents } from "@/lib/documents/policy/document-policy";
+import { emitNotificationsFromDomainEvents } from "@/lib/notifications/from-domain-event.server";
 
 export type ProcessWorkOrderEventsResult = {
   processed: number;
@@ -34,17 +36,28 @@ export async function processWorkOrderEventsUseCase(params: {
 
   let processed = 0;
   let failed = 0;
+  const processedEvents: DomainEvent[] = [];
 
   for (const event of events) {
     try {
       await processWorkOrderEvent(order, event, params.actorUserId);
       await markEventProcessed(params.companyId, event.id);
       processed += 1;
+      processedEvents.push(event);
     } catch (error) {
       failed += 1;
       const message = error instanceof Error ? error.message : "Unknown error";
       await markEventProcessed(params.companyId, event.id, message);
     }
+  }
+
+  if (processedEvents.length > 0) {
+    void emitNotificationsFromDomainEvents({
+      events: processedEvents,
+      actorUserId: params.actorUserId,
+    }).catch((error) => {
+      console.error("[process-work-order-events] notification emit failed", error);
+    });
   }
 
   let context;

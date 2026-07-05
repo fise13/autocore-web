@@ -18,6 +18,8 @@ export type FinancialOperation = {
   changeGiven?: number | null;
   relatedMotorID?: number | null;
   relatedMotorId?: string | null;
+  relatedWarrantyId?: string | null;
+  relatedClientId?: string | null;
   relatedInventoryItemId?: string | null;
   relatedMovementId?: string | null;
   relatedWarehouseId?: string | null;
@@ -43,6 +45,8 @@ export type CreateFinancialOperationInput = {
   changeGiven?: number | null;
   relatedMotorID?: number | null;
   relatedMotorId?: string | null;
+  relatedWarrantyId?: string | null;
+  relatedClientId?: string | null;
   relatedInventoryItemId?: string | null;
   relatedMovementId?: string | null;
   relatedWarehouseId?: string | null;

@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import {
   useAnimatedStyle,
   useSharedValue,
@@ -6,11 +5,12 @@ import {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { useEffect } from 'react';
 
 import { useReducedMotion } from '@/hooks';
 import { autocoreEase } from '@/theme/motion';
 
-import { mcSpring } from './mc-timeline';
+import { mcMotion } from './mc-motion';
 
 type McEnterConfig = {
   delay?: number;
@@ -19,21 +19,23 @@ type McEnterConfig = {
   scaleFrom?: number;
   duration?: number;
   spring?: boolean;
+  fade?: boolean;
 };
 
 export function useMcEnter({
   delay = 0,
-  translateY = 12,
+  translateY = mcMotion.translateY,
   translateX = 0,
   scaleFrom,
-  duration = 340,
-  spring = false,
+  duration = mcMotion.duration,
+  spring: useSpringMotion = true,
+  fade = false,
 }: McEnterConfig = {}) {
-  const reduced = useReducedMotion();
-  const opacity = useSharedValue(reduced ? 1 : 0);
-  const y = useSharedValue(reduced ? 0 : translateY);
-  const x = useSharedValue(reduced ? 0 : translateX);
-  const scale = useSharedValue(reduced ? 1 : (scaleFrom ?? 1));
+  const reduced = useReducedMotion() || !mcMotion.enabled;
+  const opacity = useSharedValue(1);
+  const y = useSharedValue(0);
+  const x = useSharedValue(0);
+  const scale = useSharedValue(1);
 
   useEffect(() => {
     if (reduced) {
@@ -44,29 +46,29 @@ export function useMcEnter({
       return;
     }
 
-    opacity.value = withDelay(delay, withTiming(1, { duration, easing: autocoreEase }));
+    opacity.value = fade ? 0 : 1;
+    y.value = translateY;
+    x.value = translateX;
+    scale.value = scaleFrom ?? 1;
 
-    const yAnim = spring
-      ? withSpring(0, mcSpring.enter)
-      : withTiming(0, { duration, easing: autocoreEase });
-    const xAnim = spring
-      ? withSpring(0, mcSpring.enter)
-      : withTiming(0, { duration, easing: autocoreEase });
+    if (fade) {
+      opacity.value = withDelay(delay, withTiming(1, { duration, easing: autocoreEase }));
+    }
 
-    y.value = withDelay(delay, yAnim);
-    x.value = withDelay(delay, xAnim);
+    const settle = useSpringMotion
+      ? (to: number) => withSpring(to, mcMotion.spring)
+      : (to: number) => withTiming(to, { duration, easing: autocoreEase });
+
+    y.value = withDelay(delay, settle(0));
+    x.value = withDelay(delay, settle(0));
 
     if (scaleFrom !== undefined) {
-      scale.value = withDelay(delay, withSpring(1, mcSpring.enter));
+      scale.value = withDelay(delay, withTiming(1, { duration, easing: autocoreEase }));
     }
-  }, [delay, duration, opacity, reduced, scale, scaleFrom, spring, x, y]);
+  }, [delay, duration, fade, opacity, reduced, scale, scaleFrom, translateX, translateY, useSpringMotion, x, y]);
 
   return useAnimatedStyle(() => ({
     opacity: opacity.value,
-    transform: [
-      { translateY: y.value },
-      { translateX: x.value },
-      { scale: scale.value },
-    ],
+    transform: [{ translateY: y.value }, { translateX: x.value }, { scale: scale.value }],
   }));
 }

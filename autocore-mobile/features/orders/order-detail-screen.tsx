@@ -7,20 +7,23 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ArrowLeftIcon,
   CheckCircle2Icon,
+  ClipboardListIcon,
   ClockIcon,
   PhoneIcon,
   ReceiptIcon,
   TagIcon,
 } from '@/assets/icons';
-import { Button, IconButton, Text } from '@/components/ui';
-import { ScreenActionFooter } from '@/components/navigation/screen-action-footer';
-import { useTheme, useSession, useWorkOrdersRealtime, useFloatingTabBarInset } from '@/hooks';
-import { haptics } from '@/theme';
+import { Button, IconButton, Text, toast } from '@/components/ui';
+import { useTheme, useSession, useEmployeesRealtime, useWorkOrdersRealtime, useFloatingTabBarInset } from '@/hooks';
+import { haptics, rhythm } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
 import { formatPrice } from '@/features/search/lib/format';
+import { laborLineLabel } from '@/lib/work-order/composer-utils';
+import { laborLineTotal } from '@/lib/work-order/labor-pricing';
 import { nextStatuses, STATUS_LABELS } from '@/lib/work-order/work-order-utils';
 import { transitionWorkOrder } from '@/services/api/work-orders';
 import type { WorkOrderStatus } from '@/types/work-order';
+import { openPhone } from '@/utils/open-phone';
 
 import {
   useOrderDetailContentEnter,
@@ -28,7 +31,9 @@ import {
 } from './animation/use-order-detail-enter';
 import { OrderStatusBadge } from './components/order-status-badge';
 import { OrderDocumentsSection } from './components/order-documents-section';
+import { OrderLinesList } from './components/order-lines-list';
 import { OrderWorkflowProgress } from './components/order-workflow-progress';
+import { navigateOrderEdit } from './lib/order-composition-nav';
 import { orderStatusLabel } from './lib/status';
 import { formatOrderVehicleLine, formatWorkOrderLabel } from './lib/order-display';
 import { ordersLayout } from './layout';
@@ -47,11 +52,11 @@ type ActionItem = {
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <View style={{ flex: 1, minWidth: '45%', gap: 4 }}>
-      <Text variant="caption" color="muted" style={{ fontSize: 10, fontWeight: '500', letterSpacing: 0.2 }}>
+    <View style={{ flex: 1, minWidth: '45%', gap: rhythm.micro }}>
+      <Text variant="meta" color="muted" style={{ fontWeight: '500' }}>
         {label}
       </Text>
-      <Text variant="body" style={{ fontSize: 15, fontWeight: '600', letterSpacing: -0.15 }}>
+      <Text variant="bodyStrong" style={{ fontSize: rhythm.valueStrong }}>
         {value}
       </Text>
     </View>
@@ -65,6 +70,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
   const router = useRouter();
   const { companyId, can } = useSession();
   const { orders, domainOrders } = useWorkOrdersRealtime(companyId);
+  const { employees } = useEmployeesRealtime(companyId);
   const order = orders.find((entry) => entry.id === orderId);
   const domainOrder = domainOrders.find((entry) => entry.id === orderId);
   const [transitioning, setTransitioning] = useState(false);
@@ -86,21 +92,66 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
   }
 
   const setDomainStatus = async (status: WorkOrderStatus) => {
-    if (!can('work_orders_edit')) return;
+    if (!can('work_orders_edit')) {
+      toast({ title: 'Нет прав на изменение наряда', variant: 'warning' });
+      return;
+    }
     setTransitioning(true);
     haptics.light();
     try {
       await transitionWorkOrder(orderId, status);
-    } catch {
+      haptics.success();
+      toast({
+        title: STATUS_LABELS[status],
+        description: `Наряд ${formatWorkOrderLabel(order.number)} обновлён`,
+        variant: 'success',
+      });
+    } catch (error) {
       haptics.warning();
+      toast({
+        title: 'Не удалось обновить статус',
+        description: error instanceof Error ? error.message : undefined,
+        variant: 'destructive',
+      });
     } finally {
       setTransitioning(false);
     }
   };
 
   const availableTransitions = domainOrder ? nextStatuses(domainOrder.status) : [];
+  const canEditOrder =
+    Boolean(domainOrder) &&
+    (domainOrder?.status === 'draft' || domainOrder?.status === 'confirmed') &&
+    can('work_orders_edit');
 
-  const actions: ActionItem[] = availableTransitions.slice(0, 4).map((status) => ({
+  const laborLines = domainOrder?.laborLines.map((line) => ({
+    id: line.id,
+    label: laborLineLabel(line, employees),
+    price: laborLineTotal(line),
+  })) ?? [];
+  const partLines = domainOrder?.partLines
+    .filter((line) => line.source !== 'specific_quick')
+    .map((line) => ({
+      id: line.id,
+      label: line.name,
+      detail: line.sku,
+      price: line.quantity * line.unitPrice,
+    })) ?? [];
+  const catalogLines = domainOrder?.partLines
+    .filter((line) => line.source === 'specific_quick')
+    .map((line) => ({
+      id: line.id,
+      label: line.specificCategoryName ? `${line.specificCategoryName} · ${line.name}` : line.name,
+      price: line.quantity * line.unitPrice,
+    })) ?? [];
+  const motorLines = domainOrder?.motorLines.map((line) => ({
+    id: line.id,
+    label: [line.brandName, line.engineCode, line.serialCode].filter(Boolean).join(' ') || line.serialCode,
+    detail: line.outcome === 'sell' ? 'Продажа' : 'Установка',
+    price: line.unitPrice,
+  })) ?? [];
+
+  const actions: ActionItem[] = availableTransitions.slice(0, 3).map((status) => ({
     id: status,
     label: STATUS_LABELS[status],
     icon: status === 'completed' || status === 'delivered' ? CheckCircle2Icon : ClockIcon,
@@ -113,40 +164,60 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
     onPress: () => void setDomainStatus(status),
   }));
 
-  actions.push(
-    {
+  if (canEditOrder) {
+    actions.unshift({
+      id: 'edit',
+      label: 'Редактировать',
+      icon: ClipboardListIcon,
+      tone: 'primary',
+      onPress: () => {
+        haptics.selection();
+        navigateOrderEdit(router, orderId);
+      },
+    });
+  }
+
+  if (order.phone) {
+    actions.push({
       id: 'call',
       label: 'Позвонить',
       icon: PhoneIcon,
       tone: 'primary',
-      onPress: () => haptics.selection(),
+      onPress: () => {
+        haptics.selection();
+        void openPhone(order.phone);
+      },
+    });
+  }
+
+  actions.push({
+    id: 'payment',
+    label: 'Оплата',
+    icon: ReceiptIcon,
+    tone: 'muted',
+    onPress: () => {
+      haptics.selection();
+      router.navigate('/(tabs)/accounting');
     },
-    {
-      id: 'payment',
-      label: 'Оплата',
-      icon: ReceiptIcon,
-      tone: 'muted',
-      onPress: () => haptics.selection(),
-    },
-  );
+  });
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View
         style={{
-          paddingTop: insets.top + 6,
+          paddingTop: insets.top + rhythm.headerTop,
           paddingHorizontal: ordersLayout.pad,
-          paddingBottom: 8,
+          paddingBottom: rhythm.inline,
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 8,
+          gap: rhythm.inline,
         }}
       >
         <IconButton accessibilityLabel="Назад" variant="ghost" size="sm" onPress={() => router.back()}>
           <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
         </IconButton>
         <View style={{ flex: 1 }}>
-          <Text variant="caption" color="muted" style={{ fontSize: 11 }}>
+          <Text variant="meta" color="muted">
             {formatWorkOrderLabel(order.number)}
           </Text>
         </View>
@@ -168,37 +239,38 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
               borderWidth: ordersLayout.hairline,
               borderColor: colors.border,
               backgroundColor: colors.card,
-              padding: 20,
-              gap: 16,
+              borderRadius: ordersLayout.cardRadius,
+              padding: rhythm.pad,
+              gap: rhythm.stack,
               overflow: 'hidden',
             },
             heroStyle,
           ]}
         >
-          <View style={{ gap: 6 }}>
-            <Text variant="heading" style={{ fontSize: 28, fontWeight: '700', letterSpacing: -0.6, lineHeight: 32 }}>
+          <View style={{ gap: rhythm.tight }}>
+            <Text variant="pageTitle">
               {order.vehicle}
             </Text>
-            <Text variant="body" color="muted" style={{ fontSize: 16, fontWeight: '500' }}>
+            <Text variant="bodyLarge" color="muted" style={{ fontWeight: '500' }}>
               {order.engine}
             </Text>
-            <Text variant="caption" color="muted" style={{ fontSize: 13, marginTop: 2 }}>
+            <Text variant="pageSubtitle" color="muted" style={{ marginTop: rhythm.micro / 2 }}>
               {order.customer}
             </Text>
           </View>
 
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <OrderStatusBadge status={order.status} size="md" />
-            <Text variant="body" style={{ fontSize: 20, fontWeight: '700', fontVariant: ['tabular-nums'], letterSpacing: -0.3 }}>
+            <Text variant="title" style={{ fontWeight: '700', fontVariant: ['tabular-nums'] }}>
               {formatPrice(order.price)}
             </Text>
           </View>
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Text variant="caption" color="muted" style={{ fontSize: 11 }}>
+            <Text variant="meta" color="muted">
               Срок: {order.estimated}
             </Text>
-            <Text variant="caption" color="muted" style={{ fontSize: 11 }}>
+            <Text variant="meta" color="muted">
               {orderStatusLabel[order.status]}
             </Text>
           </View>
@@ -213,6 +285,18 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
             <DetailRow label="Двигатель" value={order.engine} />
             <DetailRow label="Срок" value={order.estimated} />
             {order.vin ? <DetailRow label="VIN" value={order.vin} /> : null}
+          </View>
+
+          <View style={{ gap: 12 }}>
+            <Text variant="body" style={{ fontSize: 15, fontWeight: '600', letterSpacing: -0.2 }}>
+              Состав наряда
+            </Text>
+            <OrderLinesList
+              laborLines={laborLines}
+              partLines={partLines}
+              catalogLines={catalogLines}
+              motorLines={motorLines}
+            />
           </View>
 
           <View style={{ gap: 12 }}>
@@ -233,10 +317,14 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
                           ? colors.mutedForeground
                           : colors.primary;
 
+                const isStatusAction = availableTransitions.some((status) => status === action.id);
+                const disabled = transitioning && isStatusAction;
+
                 return (
                   <Pressable
                     key={action.id}
                     accessibilityRole="button"
+                    disabled={disabled}
                     onPress={action.onPress}
                     style={{
                       width: '47%',
@@ -250,6 +338,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
                       flexDirection: 'row',
                       alignItems: 'center',
                       gap: 10,
+                      opacity: disabled ? 0.55 : 1,
                     }}
                   >
                     <View
@@ -329,20 +418,6 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
           ) : null}
         </Animated.View>
       </ScrollView>
-
-      <ScreenActionFooter horizontalPadding={ordersLayout.pad} absolute>
-        <Button
-          disabled={transitioning || availableTransitions.length === 0 || !can('work_orders_edit')}
-          loading={transitioning}
-          onPress={() => {
-            const next = availableTransitions[0];
-            if (next) void setDomainStatus(next);
-          }}
-          style={{ flex: 1 }}
-        >
-          Обновить статус
-        </Button>
-      </ScreenActionFooter>
     </View>
   );
 }

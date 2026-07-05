@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 
 import { haptics } from '@/theme';
 
-export const COMPOSER_TAB_ORDER = ['labor', 'parts', 'motors'] as const;
+export const COMPOSER_TAB_ORDER = ['labor', 'parts', 'motors', 'specific'] as const;
 
 export type ComposerTab = (typeof COMPOSER_TAB_ORDER)[number];
 

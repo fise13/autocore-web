@@ -1,7 +1,7 @@
 import type { Href } from 'expo-router';
 
 import { settingsRouteHref } from '@/features/settings/navigation';
-import type { SettingsRouteId } from '@/features/settings/types';
+import type { SettingsHubRouteId } from '@/features/settings/types';
 
 import type { ProfileHubRouteId, ProfileRouteId } from './types';
 
@@ -14,10 +14,12 @@ const PROFILE_ROUTES: Record<ProfileRouteId, Href> = {
   language: '/(tabs)/profile/language',
   currency: '/(tabs)/profile/currency',
   notifications: '/(tabs)/profile/notifications',
-  'workspace-company': '/(tabs)/profile/company',
-  'workspace-plan': '/(tabs)/profile/subscription',
-  'workspace-employees': '/(tabs)/profile/team',
-  'workspace-permissions': '/(tabs)/profile/team',
+  security: '/(tabs)/profile/security',
+  taxes: '/(tabs)/profile/taxes',
+  cache: '/(tabs)/profile/cache',
+  diagnostics: '/(tabs)/profile/diagnostics',
+  version: '/(tabs)/profile/version',
+  finance: '/(tabs)/profile/finance',
 };
 
 export function profileRouteHref(id: ProfileRouteId): Href {
@@ -28,5 +30,5 @@ export function profileHubRouteHref(id: ProfileHubRouteId): Href {
   if (id in PROFILE_ROUTES) {
     return PROFILE_ROUTES[id as ProfileRouteId];
   }
-  return settingsRouteHref(id as SettingsRouteId);
+  return settingsRouteHref(id as SettingsHubRouteId);
 }

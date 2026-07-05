@@ -1,11 +1,12 @@
 import { Pressable, View } from 'react-native';
 
 import { CheckIcon } from '@/assets/icons';
-import { Text } from '@/components/ui';
+import { SettingsSectionCard, Text } from '@/components/ui';
 import { themePreferenceLabel, useTheme, type ThemePreference } from '@/hooks/use-theme';
+import { rhythm } from '@/theme';
+import { toneBackground } from '@/theme/color-utils';
 
 import { ProfileSegmentedControl } from '@/features/profile/components/profile-animated-section';
-import { ProfileMetaCard } from '@/features/profile/components/profile-meta-card';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
 import { ACCENT_COLORS, useAppearanceSettingsStore } from '../store/appearance-settings-store';
 import type { AccentColorId } from '../types';
@@ -25,21 +26,30 @@ export function AppearanceSettingsScreen() {
   const setLargeText = useAppearanceSettingsStore((s) => s.setLargeText);
 
   return (
-    <ProfileScreenShell title="Оформление" subtitle="Тема, акцент и плотность интерфейса">
-      <ProfileMetaCard title="Тема" delay={60}>
-        <ProfileSegmentedControl
-          value={preference}
-          onChange={setPreference}
-          options={THEME_OPTIONS.map((option) => ({ value: option, label: themePreferenceLabel(option) }))}
-          delay={80}
-        />
-        <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-          Системная тема подстраивается под настройки устройства.
-        </Text>
-      </ProfileMetaCard>
+    <ProfileScreenShell title="Тема" subtitle="Светлая, тёмная и акцент">
+      <SettingsSectionCard title="Тема" description="Системная тема следует настройкам устройства">
+        <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
+          <ProfileSegmentedControl
+            value={preference}
+            onChange={setPreference}
+            options={THEME_OPTIONS.map((option) => ({
+              value: option,
+              label: themePreferenceLabel(option),
+            }))}
+          />
+        </View>
+      </SettingsSectionCard>
 
-      <ProfileMetaCard title="Акцентный цвет" delay={100}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+      <SettingsSectionCard title="Акцентный цвет">
+        <View
+          style={{
+            paddingHorizontal: rhythm.cardPadX,
+            paddingBottom: rhythm.cardPadX,
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 10,
+          }}
+        >
           {(Object.keys(ACCENT_COLORS) as AccentColorId[]).map((id) => {
             const active = accentColor === id;
             const swatch = ACCENT_COLORS[id];
@@ -49,51 +59,66 @@ export function AppearanceSettingsScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
                 onPress={() => setAccentColor(id)}
-                style={{ alignItems: 'center', gap: 6, minWidth: 72 }}
+                style={{
+                  alignItems: 'center',
+                  gap: 6,
+                  minWidth: 64,
+                  padding: 8,
+                  borderRadius: rhythm.radius,
+                  borderWidth: 1,
+                  borderColor: active ? toneBackground(colors.primary, 0.35) : colors.border,
+                  backgroundColor: active ? toneBackground(colors.primary, 0.08) : 'transparent',
+                }}
               >
                 <View
                   style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
                     backgroundColor: swatch.hex,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    borderWidth: active ? 2 : 0,
-                    borderColor: colors.foreground,
                   }}
                 >
                   {active ? <CheckIcon size="xs" color="#fff" strokeWidth={3} /> : null}
                 </View>
-                <Text variant="caption" style={{ fontWeight: active ? '700' : '500' }}>
+                <Text
+                  variant="caption"
+                  style={{
+                    fontWeight: active ? '600' : '500',
+                    color: active ? colors.primary : colors.mutedForeground,
+                  }}
+                >
                   {swatch.label}
                 </Text>
               </Pressable>
             );
           })}
         </View>
-      </ProfileMetaCard>
+      </SettingsSectionCard>
 
-      <ProfileMetaCard delay={140}>
-        <SettingsToggleRow
-          label="Анимации"
-          subtitle="Плавные переходы и появление карточек"
-          value={animationsEnabled}
-          onValueChange={setAnimationsEnabled}
-        />
-        <SettingsToggleRow
-          label="Компактный режим"
-          subtitle="Меньше отступов и более плотные списки"
-          value={compactMode}
-          onValueChange={setCompactMode}
-        />
-        <SettingsToggleRow
-          label="Крупный текст"
-          subtitle="Увеличенные подписи для лучшей читаемости"
-          value={largeText}
-          onValueChange={setLargeText}
-        />
-      </ProfileMetaCard>
+      <SettingsSectionCard title="Интерфейс">
+        <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: 4 }}>
+          <SettingsToggleRow
+            label="Анимации"
+            subtitle="Плавные переходы"
+            value={animationsEnabled}
+            onValueChange={setAnimationsEnabled}
+          />
+          <SettingsToggleRow
+            label="Компактный режим"
+            subtitle="Меньше отступов"
+            value={compactMode}
+            onValueChange={setCompactMode}
+          />
+          <SettingsToggleRow
+            label="Крупный текст"
+            subtitle="Улучшенная читаемость"
+            value={largeText}
+            onValueChange={setLargeText}
+          />
+        </View>
+      </SettingsSectionCard>
     </ProfileScreenShell>
   );
 }

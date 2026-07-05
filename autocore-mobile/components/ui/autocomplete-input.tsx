@@ -1,15 +1,15 @@
 import { memo, useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View, type TextInputProps } from 'react-native';
 
-import { useDesignLanguage } from '@/hooks';
+import { InputField } from '@/components/ui/input/input-field';
+import { useTheme } from '@/hooks';
 import { filterAutocompleteOptions } from '@/lib/autocomplete/filter-options';
 import type { AutocompleteOption } from '@/lib/autocomplete/types';
 import { haptics } from '@/theme';
 
-import { Input } from './input';
 import { Text } from './text';
 
-type AutocompleteInputProps = Omit<TextInputProps, 'value' | 'onChangeText'> & {
+type AutocompleteInputProps = Omit<TextInputProps, 'value' | 'onChangeText' | 'style'> & {
   value: string;
   onValueChange: (value: string) => void;
   options: AutocompleteOption[];
@@ -17,7 +17,6 @@ type AutocompleteInputProps = Omit<TextInputProps, 'value' | 'onChangeText'> & {
   matchMode?: 'prefix' | 'flexible';
   maxSuggestions?: number;
   invalid?: boolean;
-  size?: 'default' | 'lg';
 };
 
 export const AutocompleteInput = memo(function AutocompleteInput({
@@ -28,12 +27,11 @@ export const AutocompleteInput = memo(function AutocompleteInput({
   matchMode = 'prefix',
   maxSuggestions = 8,
   invalid,
-  size = 'default',
   onFocus,
   onBlur,
   ...props
 }: AutocompleteInputProps) {
-  const dl = useDesignLanguage();
+  const { colors } = useTheme();
   const [focused, setFocused] = useState(false);
 
   const suggestions = useMemo(
@@ -55,11 +53,10 @@ export const AutocompleteInput = memo(function AutocompleteInput({
 
   return (
     <View style={{ zIndex: showSuggestions ? 40 : 1 }}>
-      <Input
+      <InputField
         {...props}
         value={value}
         invalid={invalid}
-        size={size}
         onChangeText={onValueChange}
         onFocus={(event) => {
           setFocused(true);
@@ -81,8 +78,8 @@ export const AutocompleteInput = memo(function AutocompleteInput({
             marginTop: 4,
             borderRadius: 12,
             borderWidth: 1,
-            borderColor: dl.colors.border,
-            backgroundColor: dl.colors.card,
+            borderColor: colors.border,
+            backgroundColor: colors.card,
             maxHeight: 220,
             overflow: 'hidden',
             shadowColor: '#000',
@@ -100,7 +97,7 @@ export const AutocompleteInput = memo(function AutocompleteInput({
                 style={({ pressed }) => ({
                   paddingHorizontal: 12,
                   paddingVertical: 11,
-                  backgroundColor: pressed ? dl.colors.muted : 'transparent',
+                  backgroundColor: pressed ? colors.muted : 'transparent',
                 })}
               >
                 <Text variant="body" style={{ fontSize: 14, fontWeight: '500' }} numberOfLines={1}>

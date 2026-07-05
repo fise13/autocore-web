@@ -229,6 +229,7 @@ const groupTitles: Record<SearchFilterId | 'vehicles', string> = {
   all: 'Все',
   engines: 'Двигатели',
   gearboxes: 'КПП',
+  motors: 'Моторы',
   parts: 'Запчасти',
   documents: 'Документы',
   clients: 'Клиенты',

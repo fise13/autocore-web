@@ -1,12 +1,11 @@
 /**
  * Shared style factories — eliminates duplicated inline styles across UI components.
  */
-import type { TextStyle, ViewStyle } from 'react-native';
+import { Platform, type TextStyle, type ViewStyle } from 'react-native';
 
 import type { ColorScheme, SemanticColors } from './colors';
 import {
   borderStyle,
-  buttonHeight,
   cornerStyle,
   defaultShadow,
   layoutRhythm,
@@ -17,6 +16,7 @@ import { withAlpha } from './color-utils';
 import { ringBorder } from './shadow';
 import { spacing } from './spacing';
 import { typography } from './typography';
+import { layout } from './layout';
 
 type ThemeSlice = {
   scheme: ColorScheme;
@@ -24,8 +24,9 @@ type ThemeSlice = {
 };
 
 export function createInputStyle({ colors }: ThemeSlice, options?: { invalid?: boolean; large?: boolean }): ViewStyle {
+  const height = options?.large ? touchTarget.large : layout.input.heightXl;
   return {
-    height: options?.large ? buttonHeight.xl : buttonHeight.default,
+    height,
     width: '100%',
     borderRadius: cornerStyle.control,
     borderWidth: 1,
@@ -35,13 +36,24 @@ export function createInputStyle({ colors }: ThemeSlice, options?: { invalid?: b
   };
 }
 
+export function inputPaddingVertical(large = false): number {
+  const height = large ? touchTarget.large : layout.input.heightXl;
+  return Math.max(0, Math.round((height - typography.body.lineHeight) / 2));
+}
+
 import { fontFamily } from './typography';
 
-export function createInputTextStyle({ colors }: ThemeSlice): TextStyle {
+export function createInputTextStyle({ colors }: ThemeSlice, options?: { large?: boolean }): TextStyle {
   return {
     fontSize: typography.body.fontSize,
     fontFamily: fontFamily.sans,
     color: colors.foreground,
+    paddingVertical: inputPaddingVertical(options?.large),
+    paddingHorizontal: 0,
+    margin: 0,
+    ...(Platform.OS === 'android'
+      ? { textAlignVertical: 'center' as const, includeFontPadding: false }
+      : {}),
   };
 }
 

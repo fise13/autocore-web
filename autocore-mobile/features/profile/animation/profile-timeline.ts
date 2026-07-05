@@ -1,17 +1,21 @@
+import { screenMotion } from '@/theme/screen';
+
+const s = screenMotion.stagger;
+
 export const profileTimeline = {
   header: 0,
-  hero: 40,
-  quickBase: 120,
-  quickStagger: 40,
-  preferencesTitle: 380,
-  preferencesBase: 420,
-  preferencesStagger: 40,
-  workspaceTitle: 580,
-  workspaceBase: 620,
-  workspaceStagger: 40,
-  danger: 780,
+  hero: s,
+  quickBase: s * 2,
+  quickStagger: s,
+  preferencesTitle: s * 4,
+  preferencesBase: s * 5,
+  preferencesStagger: s,
+  workspaceTitle: s * 7,
+  workspaceBase: s * 8,
+  workspaceStagger: s,
+  danger: s * 10,
 } as const;
 
 export const profileSpring = {
-  press: { damping: 26, stiffness: 420, mass: 0.72 },
+  press: screenMotion.press,
 } as const;

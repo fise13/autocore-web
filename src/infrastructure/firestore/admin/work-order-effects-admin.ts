@@ -285,7 +285,7 @@ export async function processWorkOrderEvent(
       for (const line of order.laborLines) {
         const amount = laborLinePayrollPerAssignee(line);
         if (amount <= 0) continue;
-        for (const assigneeId of line.assigneeIds) {
+        for (const assigneeId of line.assigneeIds ?? []) {
           await createPayrollTransaction(companyId, {
             employeeId: assigneeId,
             workOrderId: order.id,

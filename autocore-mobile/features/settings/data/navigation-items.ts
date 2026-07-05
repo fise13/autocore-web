@@ -37,7 +37,7 @@ export const NAV_ITEM_DEFINITIONS: Record<NavItemId, NavItemDefinition> = {
     title: 'Поиск',
     description: 'Быстрый поиск по складу и каталогу',
     icon: SearchIcon,
-    route: '/(tabs)/search',
+    route: '/(tabs)/warehouse',
   },
   scan: {
     id: 'scan',

@@ -29,6 +29,7 @@ export type InventoryItem = {
   totalOnHand: number;
   totalReserved: number;
   totalAvailable: number;
+  lowStockThreshold?: number;
   status: InventoryItemStatus;
   updatedAt?: Date;
 };
@@ -88,8 +89,11 @@ export type MobileQuickReceiveResult = {
   itemTotalAvailable: number;
 };
 
+export type MobileQuickAdjustResult = MobileQuickReceiveResult;
+
 export type ScanOcrResolveResponse = {
   ocr: {
+    rawText?: string;
     barcodes: string[];
     partNumbers: string[];
     brand?: string;

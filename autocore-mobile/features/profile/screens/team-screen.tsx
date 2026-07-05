@@ -1,8 +1,9 @@
 import { useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, Share, View } from 'react-native';
+import { Alert, ScrollView, Share, View } from 'react-native';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import Animated from 'react-native-reanimated';
 
-import { Button, Dialog, Dropdown, Switch, Text } from '@/components/ui';
+import { Button, Dialog, Switch, Text } from '@/components/ui';
 import {
   useCompanyInvites,
   useCompanySubscription,
@@ -10,14 +11,12 @@ import {
   useSession,
 } from '@/hooks';
 import { useTheme } from '@/hooks/use-theme';
+import { useMcEnter } from '@/features/mission-control/animation';
 import {
   ALL_PERMISSIONS,
-  ASSIGNABLE_ROLES,
   employeeDisplayName,
-  formatInviteExpiry,
   formatPermission,
   formatRole,
-  permissionsSummary,
 } from '@/lib/team/format';
 import { getPublicApiBaseUrl } from '@/services/api/api-base-url';
 import { canManageEmployees, canViewEmployees } from '@/lib/permissions';
@@ -29,19 +28,19 @@ import {
 } from '@/services/firestore/employee-rbac-service';
 import { deleteCompanyInvite } from '@/services/firestore/invite-service';
 import type { Permission, UserRole } from '@/types/user';
-import { haptics } from '@/theme';
-import { toneBackground } from '@/theme/color-utils';
+import { haptics, rhythm } from '@/theme';
 import { ROLE_PERMISSIONS, USER_ROLES } from '@/types/user';
+import type { CompanyEmployee } from '@/types/rbac';
 
-import { ProfileMetaCard, ProfileMetaRow } from '../components/profile-meta-card';
 import { ProfileScreenShell } from '../components/profile-screen-shell';
 import { ProfileSegmentedControl } from '../components/profile-animated-section';
 import { TeamInviteSheet, type TeamInviteSheetRef } from '../components/team-invite-sheet';
 import { TeamProGate } from '../components/team-pro-gate';
-import type { CompanyEmployee } from '@/types/rbac';
+import { TeamEmployeeCard } from '../components/team/team-employee-card';
+import { TeamInviteRow } from '../components/team/team-invite-card';
+import { TeamSectionLabel, TeamSurface } from '../components/team/team-primitives';
+import { TeamRoleCard } from '../components/team/team-role-card';
 import { PERMISSION_GROUPS } from '@/features/settings/data/demo-data';
-
-import { profileLayout } from '../layout';
 
 type TeamTab = 'employees' | 'roles';
 
@@ -74,8 +73,13 @@ export function TeamScreen() {
   const [permissionsEmployee, setPermissionsEmployee] = useState<CompanyEmployee | null>(null);
   const [selectedPermissions, setSelectedPermissions] = useState<Set<Permission>>(new Set());
 
+  const tabsStyle = useMcEnter({ delay: 60, translateY: 6, fade: true });
+
   const activeEmployees = useMemo(() => employees.filter((entry) => entry.isActive), [employees]);
-  const activeInvites = useMemo(() => invites.filter((invite) => !invite.used && invite.status !== 'expired'), [invites]);
+  const activeInvites = useMemo(
+    () => invites.filter((invite) => !invite.used && invite.status !== 'expired'),
+    [invites],
+  );
 
   const runAction = async (action: () => Promise<void>) => {
     setBusy(true);
@@ -122,330 +126,226 @@ export function TeamScreen() {
     );
   };
 
-  const renderTabs = () => (
-    <ProfileSegmentedControl
-      value={tab}
-      onChange={setTab}
-      options={[
-        { value: 'employees', label: 'Сотрудники' },
-        { value: 'roles', label: 'Роли' },
-      ]}
-      delay={90}
-    />
-  );
-
-  const renderEmployeeCard = (employee: CompanyEmployee) => {
-    const isSelf = employee.uid === uid;
-    const name = employeeDisplayName(employee, profile ?? undefined);
-
-    return (
-      <View
-        key={employee.id}
-        style={{
-          borderWidth: profileLayout.hairline,
-          borderColor: colors.border,
-          borderRadius: 14,
-          padding: 14,
-          gap: 12,
-          backgroundColor: colors.card,
-        }}
-      >
-        <View style={{ gap: 4 }}>
-          <Text variant="body" style={{ fontWeight: '700', fontSize: 15 }}>
-            {name}
-            {isSelf ? (
-              <Text variant="caption" color="muted">
-                {' '}
-                (вы)
-              </Text>
-            ) : null}
-          </Text>
-          <Text variant="caption" color="muted">
-            {employee.email || '—'}
-          </Text>
-        </View>
-
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: colors.muted }}>
-            <Text variant="caption" style={{ fontWeight: '600' }}>
-              {formatRole(employee.role)}
-            </Text>
-          </View>
-          <View
-            style={{
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-              borderRadius: 999,
-              backgroundColor: employee.isActive ? toneBackground(colors.primary, 0.12) : colors.muted,
-            }}
-          >
-            <Text variant="caption" style={{ fontWeight: '600', color: employee.isActive ? colors.primary : colors.mutedForeground }}>
-              {employee.isActive ? 'Активен' : 'Отключён'}
-            </Text>
-          </View>
-          <Text variant="caption" color="muted" style={{ alignSelf: 'center' }}>
-            {permissionsSummary(employee)}
-          </Text>
-        </View>
-
-        {canManage && !isSelf && employee.role !== 'owner' ? (
-          <View style={{ gap: 10 }}>
-            <Dropdown
-              value={employee.role}
-              onValueChange={(value) => {
-                if (!companyId) return;
-                void runAction(() => setEmployeeRole(companyId, employee.uid, value as UserRole));
-              }}
-              options={ASSIGNABLE_ROLES.map((role) => ({ value: role, label: formatRole(role) }))}
-              placeholder="Роль"
-            />
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              <Button
-                variant="secondary"
-                size="sm"
-                onPress={() => openPermissions(employee)}
-              >
-                Права
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onPress={() => {
-                  if (!companyId) return;
-                  void runAction(() => setEmployeeActive(companyId, employee.uid, !employee.isActive));
-                }}
-              >
-                {employee.isActive ? 'Отключить' : 'Включить'}
-              </Button>
-              <Button variant="destructive" size="sm" onPress={() => confirmRemove(employee)}>
-                Удалить
-              </Button>
-            </View>
-          </View>
-        ) : null}
-      </View>
-    );
-  };
-
   const renderEmployeesTab = () => (
-    <View style={{ gap: 16 }}>
-      <ProfileMetaCard delay={120}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text variant="body" style={{ fontWeight: '700' }}>
-              Сотрудники
-            </Text>
-            <Text variant="caption" color="muted">
-              Активно: {activeEmployees.length} из {employees.length}
-            </Text>
-          </View>
-          {canManage ? (
-            <Button size="sm" onPress={() => inviteSheetRef.current?.present()}>
-              Пригласить
-            </Button>
-          ) : null}
-        </View>
-      </ProfileMetaCard>
+    <View style={{ gap: rhythm.section }}>
+      <TeamSurface delay={100}>
+        <TeamSectionLabel
+          title="Сотрудники"
+          action={
+            canManage ? (
+              <Button size="sm" onPress={() => inviteSheetRef.current?.present()}>
+                Пригласить
+              </Button>
+            ) : undefined
+          }
+        />
+        <Text variant="meta" color="muted">
+          Активно {activeEmployees.length} из {employees.length}
+        </Text>
+      </TeamSurface>
 
       {isLoading ? (
-        <Text variant="caption" color="muted">
+        <Text variant="meta" color="muted">
           Загрузка сотрудников…
         </Text>
       ) : (
-        <View style={{ gap: 10 }}>{employees.map(renderEmployeeCard)}</View>
+        <View style={{ gap: rhythm.stack }}>
+          {employees.map((employee, index) => (
+            <TeamEmployeeCard
+              key={employee.id}
+              employee={employee}
+              index={index}
+              isSelf={employee.uid === uid}
+              canManage={canManage}
+              profile={profile}
+              onOpenPermissions={openPermissions}
+              onToggleActive={(entry) => {
+                if (!companyId) return;
+                void runAction(() => setEmployeeActive(companyId, entry.uid, !entry.isActive));
+              }}
+              onRemove={confirmRemove}
+              onRoleChange={(entry, role) => {
+                if (!companyId) return;
+                void runAction(() => setEmployeeRole(companyId, entry.uid, role));
+              }}
+            />
+          ))}
+        </View>
       )}
 
       {canManage ? (
-        <ProfileMetaCard title="Коды приглашений" delay={160}>
-          <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-            Активных кодов: {activeInvites.length}. Новый сотрудник вводит код при входе в AutoCore.
+        <TeamSurface delay={180}>
+          <TeamSectionLabel title="Коды приглашений" />
+          <Text variant="meta" color="muted" style={{ lineHeight: 18 }}>
+            Новый сотрудник вводит код при входе в AutoCore.
           </Text>
           {invitesLoading ? (
-            <Text variant="caption" color="muted">
+            <Text variant="meta" color="muted">
               Загрузка…
             </Text>
           ) : activeInvites.length === 0 ? (
-            <Text variant="caption" color="muted">
-              Нет активных кодов приглашения.
+            <Text variant="meta" color="muted">
+              Нет активных кодов
             </Text>
           ) : (
-            activeInvites.map((invite) => (
-              <View
-                key={invite.id}
-                style={{
-                  borderWidth: profileLayout.hairline,
-                  borderColor: colors.border,
-                  borderRadius: 12,
-                  padding: 12,
-                  gap: 8,
-                }}
-              >
-                <Text variant="body" style={{ fontWeight: '700', letterSpacing: 1.5 }}>
-                  {invite.code}
-                </Text>
-                <Text variant="caption" color="muted">
-                  {invite.email ? `${invite.email} · ` : ''}
-                  {formatRole(invite.role)} · до {formatInviteExpiry(invite.expiresAt)}
-                </Text>
-                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-                  <Button variant="secondary" size="sm" onPress={() => void shareCode(invite.code)}>
-                    Код
-                  </Button>
-                  {invite.token ? (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onPress={() => void shareLink(buildInviteJoinUrl(invite.token!))}
-                    >
-                      Ссылка
-                    </Button>
-                  ) : null}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onPress={() => void runAction(() => deleteCompanyInvite(invite.id))}
-                  >
-                    Удалить
-                  </Button>
-                </View>
-              </View>
-            ))
+            <View style={{ gap: rhythm.stack }}>
+              {activeInvites.map((invite) => (
+                <TeamInviteRow
+                  key={invite.id}
+                  invite={invite}
+                  onShareCode={(code) => void shareCode(code)}
+                  onShareLink={(url) => void shareLink(url)}
+                  onDelete={() => void runAction(() => deleteCompanyInvite(invite.id))}
+                  buildJoinUrl={buildInviteJoinUrl}
+                />
+              ))}
+            </View>
           )}
-        </ProfileMetaCard>
+        </TeamSurface>
       ) : null}
     </View>
   );
 
   const renderRolesTab = () => (
-    <View style={{ gap: 10 }}>
+    <View style={{ gap: rhythm.stack }}>
       {USER_ROLES.filter((role) => role !== 'owner').map((role, index) => (
-        <ProfileMetaCard key={role} delay={130 + index * 40}>
-          <ProfileMetaRow label={formatRole(role)} value={`${ROLE_PERMISSIONS[role].length} прав`} />
-          <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-            {ROLE_PERMISSIONS[role].slice(0, 4).map(formatPermission).join(' · ')}
-            {ROLE_PERMISSIONS[role].length > 4 ? ' …' : ''}
-          </Text>
-        </ProfileMetaCard>
+        <TeamRoleCard key={role} role={role} index={index} />
       ))}
-      <ProfileMetaCard title="Группы прав" delay={320}>
-        <View style={{ gap: 12 }}>
+
+      <TeamSurface delay={320}>
+        <TeamSectionLabel title="Группы прав" />
+        <View style={{ gap: rhythm.stack }}>
           {(Object.keys(PERMISSION_GROUPS) as Array<keyof typeof PERMISSION_GROUPS>).map((groupId) => (
-            <View key={groupId} style={{ gap: 6 }}>
-              <Text variant="body" style={{ fontWeight: '700', fontSize: 14 }}>
+            <View key={groupId} style={{ gap: 4 }}>
+              <Text variant="body" style={{ fontSize: 14, fontWeight: '600' }}>
                 {PERMISSION_GROUPS[groupId].title}
               </Text>
-              <Text variant="caption" color="muted" style={{ lineHeight: 17 }}>
+              <Text variant="meta" color="muted" style={{ lineHeight: 17 }}>
                 {PERMISSION_GROUPS[groupId].permissions.map((p) => p.label).join(' · ')}
               </Text>
             </View>
           ))}
         </View>
-      </ProfileMetaCard>
+      </TeamSurface>
     </View>
   );
 
   return (
     <BottomSheetModalProvider>
       <ProfileScreenShell title="Команда и роли" subtitle="Сотрудники, роли и права доступа">
-      <TeamProGate>
-        {!canView ? (
-          <ProfileMetaCard title="Доступ ограничен" delay={120}>
-            <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-              У вас нет прав на просмотр сотрудников компании.
-            </Text>
-          </ProfileMetaCard>
-        ) : (
-          <>
-            {renderTabs()}
-            {tab === 'employees' ? renderEmployeesTab() : renderRolesTab()}
-          </>
-        )}
-      </TeamProGate>
+        <TeamProGate>
+          {!canView ? (
+            <TeamSurface delay={100}>
+              <Text variant="body" style={{ fontWeight: '600' }}>
+                Доступ ограничен
+              </Text>
+              <Text variant="meta" color="muted" style={{ lineHeight: 18 }}>
+                У вас нет прав на просмотр сотрудников компании.
+              </Text>
+            </TeamSurface>
+          ) : (
+            <View style={{ gap: rhythm.section }}>
+              <Animated.View style={tabsStyle}>
+                <ProfileSegmentedControl
+                  value={tab}
+                  onChange={setTab}
+                  options={[
+                    { value: 'employees', label: 'Сотрудники' },
+                    { value: 'roles', label: 'Роли' },
+                  ]}
+                />
+              </Animated.View>
+              {tab === 'employees' ? renderEmployeesTab() : renderRolesTab()}
+            </View>
+          )}
+        </TeamProGate>
 
-      {(error ?? employeesError) ? (
-        <Text variant="caption" style={{ color: colors.destructive }}>
-          {error ?? employeesError}
-        </Text>
-      ) : null}
+        {(error ?? employeesError) ? (
+          <Text variant="caption" style={{ color: colors.destructive, marginTop: rhythm.stack }}>
+            {error ?? employeesError}
+          </Text>
+        ) : null}
 
-      {companyId && uid ? (
-        <TeamInviteSheet
-          ref={inviteSheetRef}
-          companyId={companyId}
-          userId={uid}
-          onShareCode={(code) => void shareCode(code)}
-          onShareLink={(url) => void shareLink(url)}
-        />
-      ) : null}
+        {companyId && uid ? (
+          <TeamInviteSheet
+            ref={inviteSheetRef}
+            companyId={companyId}
+            userId={uid}
+            onShareCode={(code) => void shareCode(code)}
+            onShareLink={(url) => void shareLink(url)}
+          />
+        ) : null}
 
-      <Dialog
-        open={Boolean(permissionsEmployee)}
-        onOpenChange={(open) => {
-          if (!open) setPermissionsEmployee(null);
-        }}
-        title="Дополнительные права"
-        description={
-          permissionsEmployee
-            ? `${employeeDisplayName(permissionsEmployee, profile ?? undefined)} · базовые права по роли ${formatRole(permissionsEmployee.role)}`
-            : undefined
-        }
-        footer={
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Button variant="secondary" onPress={() => setPermissionsEmployee(null)}>
-              Отмена
-            </Button>
-            <Button
-              loading={busy}
-              onPress={() => {
-                if (!companyId || !permissionsEmployee) return;
-                void runAction(async () => {
-                  await setEmployeePermissionOverrides(companyId, permissionsEmployee.uid, [
-                    ...selectedPermissions,
-                  ]);
-                  setPermissionsEmployee(null);
-                });
-              }}
-            >
-              Сохранить
-            </Button>
-          </View>
-        }
-      >
-        <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
-          <View style={{ gap: 12 }}>
-            {ALL_PERMISSIONS.map((permission) => {
-              const enabled = selectedPermissions.has(permission);
-              const inRole = ROLE_PERMISSIONS[permissionsEmployee?.role ?? 'employee'].includes(permission);
-              return (
-                <View key={permission} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text variant="body" style={{ fontSize: 14, fontWeight: '500' }}>
-                      {formatPermission(permission)}
-                    </Text>
-                    {inRole ? (
-                      <Text variant="caption" color="muted">
-                        Уже входит в роль
+        <Dialog
+          open={Boolean(permissionsEmployee)}
+          onOpenChange={(open) => {
+            if (!open) setPermissionsEmployee(null);
+          }}
+          title="Дополнительные права"
+          description={
+            permissionsEmployee
+              ? `${employeeDisplayName(permissionsEmployee, profile ?? undefined)} · базовые права по роли ${formatRole(permissionsEmployee.role)}`
+              : undefined
+          }
+          footer={
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Button variant="secondary" onPress={() => setPermissionsEmployee(null)}>
+                Отмена
+              </Button>
+              <Button
+                loading={busy}
+                onPress={() => {
+                  if (!companyId || !permissionsEmployee) return;
+                  void runAction(async () => {
+                    await setEmployeePermissionOverrides(companyId, permissionsEmployee.uid, [
+                      ...selectedPermissions,
+                    ]);
+                    setPermissionsEmployee(null);
+                  });
+                }}
+              >
+                Сохранить
+              </Button>
+            </View>
+          }
+        >
+          <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+            <View style={{ gap: 12 }}>
+              {ALL_PERMISSIONS.map((permission) => {
+                const enabled = selectedPermissions.has(permission);
+                const inRole = ROLE_PERMISSIONS[permissionsEmployee?.role ?? 'employee'].includes(
+                  permission,
+                );
+                return (
+                  <View key={permission} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text variant="body" style={{ fontSize: 14, fontWeight: '500' }}>
+                        {formatPermission(permission)}
                       </Text>
-                    ) : null}
+                      {inRole ? (
+                        <Text variant="caption" color="muted">
+                          Уже входит в роль
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Switch
+                      value={enabled}
+                      disabled={inRole}
+                      onValueChange={(value) => {
+                        setSelectedPermissions((current) => {
+                          const next = new Set(current);
+                          if (value) next.add(permission);
+                          else next.delete(permission);
+                          return next;
+                        });
+                      }}
+                    />
                   </View>
-                  <Switch
-                    value={enabled}
-                    disabled={inRole}
-                    onValueChange={(value) => {
-                      setSelectedPermissions((current) => {
-                        const next = new Set(current);
-                        if (value) next.add(permission);
-                        else next.delete(permission);
-                        return next;
-                      });
-                    }}
-                  />
-                </View>
-              );
-            })}
-          </View>
-        </ScrollView>
-      </Dialog>
+                );
+              })}
+            </View>
+          </ScrollView>
+        </Dialog>
       </ProfileScreenShell>
     </BottomSheetModalProvider>
   );

@@ -1,52 +1,72 @@
+import type { ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import Animated from 'react-native-reanimated';
+import Reanimated from 'react-native-reanimated';
 
-import { Loading, Text } from '@/components/ui';
+import {
+  CarIcon,
+  ClockIcon,
+  FileTextIcon,
+  PackageIcon,
+  UserRoundIcon,
+} from '@/assets/icons';
+import { Loading, SectionHeader, Surface, Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { haptics } from '@/theme';
+import { haptics, rhythm } from '@/theme';
+import { toneBackground } from '@/theme/color-utils';
 
 import { searchTimeline, useSearchEnter } from '../animation';
 import { searchLayout } from '../layout';
-import type { QuickCategory, SearchEngine, SearchFilterId } from '../types';
+import type { QuickCategory, SearchEngine, SearchFilterId, SearchResultItem } from '../types';
 import { SearchEngineCard } from './search-engine-card';
 
 type SearchIdleProps = {
   recentQueries: string[];
   recentlyViewed: SearchEngine[];
+  recentMotors?: SearchResultItem[];
   quickCategories: QuickCategory[];
   isBootstrapping?: boolean;
   hasData?: boolean;
+  motorsEnabled?: boolean;
   onRecentPress: (query: string) => void;
   onCategoryPress: (filter: SearchFilterId) => void;
+  onMotorPress?: (motorId: string) => void;
 };
 
-function SectionTitle({ title, delay }: { title: string; delay: number }) {
-  const style = useSearchEnter({ delay, translateY: 6, duration: 280 });
+const CATEGORY_ICONS = {
+  parts: PackageIcon,
+  motors: CarIcon,
+  clients: UserRoundIcon,
+  orders: FileTextIcon,
+} as const;
 
-  return (
-    <Animated.View style={style}>
-      <Text variant="body" style={{ fontSize: searchLayout.sectionTitle, fontWeight: '600' }}>
-        {title}
-      </Text>
-    </Animated.View>
-  );
+function AnimatedSection({
+  children,
+  delay,
+  style,
+}: {
+  children: ReactNode;
+  delay: number;
+  style?: object;
+}) {
+  const enterStyle = useSearchEnter({ delay, translateY: 8, duration: 300, spring: true });
+  return <Reanimated.View style={[enterStyle, style]}>{children}</Reanimated.View>;
 }
 
 export function SearchIdle({
   recentQueries,
   recentlyViewed,
+  recentMotors = [],
   quickCategories,
   isBootstrapping = false,
   hasData = false,
+  motorsEnabled = false,
   onRecentPress,
   onCategoryPress,
+  onMotorPress,
 }: SearchIdleProps) {
   const { colors } = useTheme();
-  const recentStyle = useSearchEnter({ delay: searchTimeline.idleRecent, translateY: 10, spring: true });
-  const viewedStyle = useSearchEnter({ delay: searchTimeline.idleViewed, translateY: 10, spring: true });
-  const categoriesStyle = useSearchEnter({ delay: searchTimeline.idleCategories, translateY: 10, spring: true });
 
-  if (isBootstrapping) {
+  if (isBootstrapping && !hasData) {
     return (
       <View style={{ paddingHorizontal: searchLayout.pad, paddingTop: 24 }}>
         <Loading message="Загружаем каталог…" />
@@ -55,97 +75,158 @@ export function SearchIdle({
   }
 
   return (
-    <View style={{ gap: searchLayout.section, paddingTop: 8 }}>
+    <View style={{ gap: searchLayout.section, paddingTop: rhythm.tight }}>
       {recentQueries.length > 0 ? (
-        <Animated.View style={[{ gap: 10, paddingHorizontal: searchLayout.pad }, recentStyle]}>
-          <SectionTitle title="Недавние запросы" delay={searchTimeline.idleRecent} />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {recentQueries.map((query) => (
+        <AnimatedSection delay={searchTimeline.idleRecent}>
+          <View style={{ paddingHorizontal: searchLayout.pad, gap: rhythm.inline }}>
+            <SectionHeader title="Недавние запросы" />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ gap: 8 }}
+            >
+              {recentQueries.map((query) => (
+                <Pressable
+                  key={query}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    haptics.selection();
+                    onRecentPress(query);
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingHorizontal: 14,
+                    paddingVertical: 9,
+                    borderRadius: 20,
+                    backgroundColor: colors.sidebarAccent,
+                    borderWidth: searchLayout.hairline,
+                    borderColor: colors.borderMuted,
+                  }}
+                >
+                  <ClockIcon size="sm" color={colors.mutedForeground} strokeWidth={1.75} />
+                  <Text
+                    variant="caption"
+                    style={{ fontSize: searchLayout.label, fontWeight: '600', color: colors.foreground }}
+                  >
+                    {query}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </AnimatedSection>
+      ) : null}
+
+      <AnimatedSection delay={searchTimeline.idleViewed}>
+        <View style={{ gap: rhythm.inline }}>
+          <View style={{ paddingHorizontal: searchLayout.pad }}>
+            <SectionHeader
+              title={hasData ? 'Недавно на складе' : 'Каталог пуст'}
+              actionLabel={hasData && recentlyViewed.length > 0 ? 'Склад' : undefined}
+              onAction={
+                hasData && recentlyViewed.length > 0
+                  ? () => onCategoryPress('parts')
+                  : undefined
+              }
+            />
+            {!hasData ? (
+              <Text variant="caption" color="muted" style={{ lineHeight: 18, marginTop: -4 }}>
+                Добавьте товары через приёмку или импорт — они появятся здесь.
+              </Text>
+            ) : null}
+          </View>
+          {recentlyViewed.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: searchLayout.pad, gap: 10 }}
+            >
+              {recentlyViewed.map((engine, index) => (
+                <View key={engine.id} style={{ width: 252 }}>
+                  <SearchEngineCard
+                    engine={engine}
+                    compact
+                    index={index}
+                    onPress={() => onRecentPress(engine.code)}
+                  />
+                </View>
+              ))}
+            </ScrollView>
+          ) : null}
+        </View>
+      </AnimatedSection>
+
+      {motorsEnabled && recentMotors.length > 0 ? (
+        <AnimatedSection delay={searchTimeline.idleViewed + 40}>
+          <View style={{ gap: rhythm.inline }}>
+            <View style={{ paddingHorizontal: searchLayout.pad }}>
+              <SectionHeader title="Доступные моторы" />
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: searchLayout.pad, gap: 10 }}
+            >
+              {recentMotors.map((motor, index) => (
+                <View key={motor.id} style={{ width: 252 }}>
+                  <SearchEngineCard
+                    engine={motor}
+                    compact
+                    index={index}
+                    onPress={() => {
+                      haptics.selection();
+                      onMotorPress?.(motor.subtitle ?? motor.title);
+                    }}
+                  />
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </AnimatedSection>
+      ) : null}
+
+      <AnimatedSection delay={searchTimeline.idleCategories} style={{ paddingHorizontal: searchLayout.pad }}>
+        <SectionHeader title="Быстрый переход" />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+          {quickCategories.map((category) => {
+            const Icon = CATEGORY_ICONS[category.id as keyof typeof CATEGORY_ICONS] ?? PackageIcon;
+            return (
               <Pressable
-                key={query}
+                key={category.id}
                 accessibilityRole="button"
                 onPress={() => {
                   haptics.selection();
-                  onRecentPress(query);
+                  onCategoryPress(category.id);
                 }}
-                style={{
-                  paddingHorizontal: 14,
-                  paddingVertical: 8,
-                  borderRadius: 20,
-                  backgroundColor: colors.secondary,
-                  borderWidth: searchLayout.hairline,
-                  borderColor: colors.border,
-                }}
+                style={{ width: '48%' }}
               >
-                <Text variant="caption" style={{ fontSize: searchLayout.label, fontWeight: '600' }}>
-                  {query}
-                </Text>
+                <Surface compact style={{ minHeight: 64, justifyContent: 'center' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: toneBackground(colors.primary, 0.1),
+                      }}
+                    >
+                      <Icon size="sm" color={colors.primary} strokeWidth={1.75} />
+                    </View>
+                    <Text variant="body" style={{ fontSize: 14, fontWeight: '600', flex: 1 }}>
+                      {category.label}
+                    </Text>
+                  </View>
+                </Surface>
               </Pressable>
-            ))}
-          </View>
-        </Animated.View>
-      ) : null}
-
-      <Animated.View style={[{ gap: 12 }, viewedStyle]}>
-        <View style={{ paddingHorizontal: searchLayout.pad }}>
-          <SectionTitle
-            title={hasData ? 'Недавно обновлённые позиции' : 'Каталог пуст'}
-            delay={searchTimeline.idleViewed}
-          />
-          {!hasData ? (
-            <Text variant="caption" color="muted" style={{ marginTop: 6, lineHeight: 18 }}>
-              На складе пока нет позиций. Добавьте товары через приёмку или импорт.
-            </Text>
-          ) : null}
+            );
+          })}
         </View>
-        {recentlyViewed.length > 0 ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingHorizontal: searchLayout.pad,
-              gap: 10,
-            }}
-          >
-            {recentlyViewed.map((engine) => (
-              <View key={engine.id} style={{ width: 248 }}>
-                <SearchEngineCard engine={engine} compact onPress={() => onRecentPress(engine.code)} />
-              </View>
-            ))}
-          </ScrollView>
-        ) : null}
-      </Animated.View>
-
-      <Animated.View style={[{ gap: 12, paddingHorizontal: searchLayout.pad }, categoriesStyle]}>
-        <SectionTitle title="Быстрые категории" delay={searchTimeline.idleCategories} />
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {quickCategories.map((category) => (
-            <Pressable
-              key={category.id}
-              accessibilityRole="button"
-              onPress={() => {
-                haptics.selection();
-                onCategoryPress(category.id);
-              }}
-              style={{
-                width: '48%',
-                minHeight: 52,
-                paddingHorizontal: 14,
-                paddingVertical: 12,
-                borderRadius: searchLayout.radius,
-                backgroundColor: colors.card,
-                borderWidth: searchLayout.hairline,
-                borderColor: colors.border,
-                justifyContent: 'center',
-              }}
-            >
-              <Text variant="body" style={{ fontSize: 14, fontWeight: '600' }}>
-                {category.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      </Animated.View>
+      </AnimatedSection>
     </View>
   );
 }

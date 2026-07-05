@@ -5,12 +5,16 @@ import type { ClientEntity } from '@/types/client';
 
 const clientRepository = createClientRepository();
 
-export function useClientsRealtime(companyId: string | null | undefined) {
+export function useClientsRealtime(
+  companyId: string | null | undefined,
+  options?: { keepAlive?: boolean },
+) {
   const enabled = isProductionCompanyId(companyId);
 
   const { data, isBootstrapping, errorMessage } = useRealtimeQuery<ClientEntity[]>({
     queryKey: ['realtime', 'clients', companyId],
     enabled,
+    keepAlive: options?.keepAlive,
     initialData: [],
     subscribe: (onData, onError) => {
       if (!companyId) {

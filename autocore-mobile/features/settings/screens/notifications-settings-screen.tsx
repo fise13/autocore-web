@@ -1,39 +1,52 @@
 import { View } from 'react-native';
-
-import { Text } from '@/components/ui';
+import { router } from 'expo-router';
+import { Button, Text } from '@/components/ui';
+import {
+  NOTIFICATION_CATEGORIES,
+  NOTIFICATION_CATEGORY_LABELS,
+  QUIET_HOUR_OPTIONS,
+} from '@/types/notifications';
+import { useNotificationInbox } from '@/hooks/use-notification-inbox';
 import { useNotificationPreferences } from '@/hooks/use-notification-preferences';
 
 import { ProfileMetaCard } from '@/features/profile/components/profile-meta-card';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
 import { SettingsToggleRow } from '../components/settings-toggle-row';
 
-const BUSINESS_TOGGLES = [
-  { key: 'orders' as const, title: 'Наряды', subtitle: 'Статусы, назначения и дедлайны' },
-  { key: 'reservations' as const, title: 'Бронирования', subtitle: 'Новые записи и изменения слотов' },
-  { key: 'warranty' as const, title: 'Гарантия', subtitle: 'Гарантийные случаи и продления' },
-  { key: 'inventory' as const, title: 'Склад', subtitle: 'Низкие остатки и инвентаризация' },
-  { key: 'payments' as const, title: 'Платежи', subtitle: 'Поступления и просрочки' },
-  { key: 'invoices' as const, title: 'Счета', subtitle: 'Выставление и оплата счетов' },
-  { key: 'team' as const, title: 'Команда', subtitle: 'Приглашения и изменения ролей' },
-];
-
-const DEMO_BUSINESS_PREFS = {
-  orders: true,
-  reservations: true,
-  warranty: false,
-  inventory: true,
-  payments: true,
-  invoices: true,
-  team: true,
-  emailEnabled: true,
+const CATEGORY_HINTS: Record<(typeof NOTIFICATION_CATEGORIES)[number], string> = {
+  work_orders: 'Статусы, назначения и дедлайны',
+  reservations: 'Бронирования моторов и слотов',
+  warranty: 'Гарантийные случаи и продления',
+  inventory: 'Низкие остатки и импорт',
+  payments: 'Поступления и просрочки',
+  invoices: 'Выставление и оплата счетов',
+  team: 'Приглашения и изменения ролей',
+  scan: 'Результаты сканирования',
+  sales: 'Крупные продажи и итоги дня',
+  system: 'Подписка, синхронизация и ошибки',
 };
 
 export function NotificationsSettingsScreen() {
-  const { preferences, loaded, updatePreference } = useNotificationPreferences();
+  const { preferences, loaded, syncing, error, updateChannel, updateCategory, updateQuietHours, updateEmailDigest } =
+    useNotificationPreferences();
+  const { unreadCount } = useNotificationInbox('active');
 
   return (
-    <ProfileScreenShell title="Уведомления" subtitle="Push, email и бизнес-события">
-      <ProfileMetaCard title="Push-уведомления" delay={60}>
+    <ProfileScreenShell
+      title="Уведомления"
+      subtitle="Каналы, категории и тихие часы"
+    >
+      <ProfileMetaCard title="Центр уведомлений" delay={40}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onPress={() => router.push('/(tabs)/profile/inbox' as never)}
+        >
+          {unreadCount > 0 ? `Открыть inbox · ${unreadCount}` : 'Открыть inbox'}
+        </Button>
+      </ProfileMetaCard>
+
+      <ProfileMetaCard title="Каналы доставки" delay={60}>
         {!loaded ? (
           <Text variant="caption" color="muted">
             Загрузка…
@@ -42,43 +55,94 @@ export function NotificationsSettingsScreen() {
           <>
             <SettingsToggleRow
               label="Push на этом устройстве"
-              subtitle="Разрешить уведомления от AutoCore"
-              value={preferences.pushEnabled}
-              onValueChange={(value) => void updatePreference('pushEnabled', value)}
+              subtitle="Мгновенные уведомления (критичные — даже в тихие часы)"
+              value={preferences.channels.push}
+              onValueChange={(value) => void updateChannel('push', value)}
             />
             <SettingsToggleRow
-              label="Сканирование"
-              subtitle="Результаты QR и быстрый приём"
-              value={preferences.scanAlerts}
-              onValueChange={(value) => void updatePreference('scanAlerts', value)}
+              label="Inbox в приложении"
+              subtitle="История и центр уведомлений"
+              value={preferences.channels.inbox}
+              onValueChange={(value) => void updateChannel('inbox', value)}
+            />
+            <SettingsToggleRow
+              label="Email"
+              subtitle="Дублировать важные события на почту (скоро)"
+              value={preferences.channels.email}
+              onValueChange={(value) => void updateChannel('email', value)}
             />
           </>
         )}
       </ProfileMetaCard>
 
-      <ProfileMetaCard title="Бизнес-события" delay={100}>
-        {BUSINESS_TOGGLES.map((item) => (
+      <ProfileMetaCard title="Категории событий" delay={100}>
+        {NOTIFICATION_CATEGORIES.map((category) => (
           <SettingsToggleRow
-            key={item.key}
-            label={item.title}
-            subtitle={item.subtitle}
-            value={DEMO_BUSINESS_PREFS[item.key]}
-            onValueChange={() => {}}
+            key={category}
+            label={NOTIFICATION_CATEGORY_LABELS[category]}
+            subtitle={CATEGORY_HINTS[category]}
+            value={preferences.categories[category]}
+            onValueChange={(value) => void updateCategory(category, value)}
           />
         ))}
       </ProfileMetaCard>
 
-      <ProfileMetaCard title="Email" delay={140}>
+      <ProfileMetaCard title="Тихие часы" delay={140}>
         <SettingsToggleRow
-          label="Email-уведомления"
-          subtitle="Дублировать важные события на почту"
-          value={DEMO_BUSINESS_PREFS.emailEnabled}
-          onValueChange={() => {}}
+          label="Тихий режим"
+          subtitle="Push отключается, кроме критичных событий"
+          value={preferences.quietHours.enabled}
+          onValueChange={(value) => void updateQuietHours({ enabled: value })}
         />
         <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-          Ежедневный дайджест отправляется в 09:00 по времени компании.
+          С {preferences.quietHours.startHour}:00 до {preferences.quietHours.endHour}:00 (
+          {preferences.quietHours.timezone})
         </Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+          {QUIET_HOUR_OPTIONS.map((hour) => (
+            <Button
+              key={`start-${hour}`}
+              size="sm"
+              variant={preferences.quietHours.startHour === hour ? 'default' : 'secondary'}
+              onPress={() => void updateQuietHours({ startHour: hour })}
+            >
+              Начало {hour}:00
+            </Button>
+          ))}
+        </View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+          {QUIET_HOUR_OPTIONS.map((hour) => (
+            <Button
+              key={`end-${hour}`}
+              size="sm"
+              variant={preferences.quietHours.endHour === hour ? 'default' : 'secondary'}
+              onPress={() => void updateQuietHours({ endHour: hour })}
+            >
+              Конец {hour}:00
+            </Button>
+          ))}
+        </View>
       </ProfileMetaCard>
+
+      <ProfileMetaCard title="Email-дайджест" delay={180}>
+        <SettingsToggleRow
+          label="Ежедневный дайджест"
+          subtitle="Сводка в 09:00 по времени компании (скоро)"
+          value={preferences.emailDigestEnabled}
+          onValueChange={(value) => void updateEmailDigest(value)}
+        />
+      </ProfileMetaCard>
+
+      {syncing ? (
+        <Text variant="caption" color="muted">
+          Синхронизация…
+        </Text>
+      ) : null}
+      {error ? (
+        <Text variant="caption" color="destructive">
+          {error}
+        </Text>
+      ) : null}
     </ProfileScreenShell>
   );
 }

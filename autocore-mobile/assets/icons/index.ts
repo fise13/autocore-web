@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  ArrowUpRight,
   BarChart3,
   Bell,
   Box,
@@ -14,7 +15,9 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   ChevronsUpDown,
+  GripVertical,
   ClipboardList,
   Clock,
   Cloud,
@@ -73,9 +76,12 @@ export const ScanSearchIcon = createIcon(ScanSearch, 'ScanSearchIcon');
 export const PlusIcon = createIcon(Plus, 'PlusIcon');
 export const ArrowRightIcon = createIcon(ArrowRight, 'ArrowRightIcon');
 export const ArrowLeftIcon = createIcon(ArrowLeft, 'ArrowLeftIcon');
+export const ArrowUpRightIcon = createIcon(ArrowUpRight, 'ArrowUpRightIcon');
 export const ChevronDownIcon = createIcon(ChevronDown, 'ChevronDownIcon');
+export const ChevronUpIcon = createIcon(ChevronUp, 'ChevronUpIcon');
 export const ChevronRightIcon = createIcon(ChevronRight, 'ChevronRightIcon');
 export const ChevronsUpDownIcon = createIcon(ChevronsUpDown, 'ChevronsUpDownIcon');
+export const GripVerticalIcon = createIcon(GripVertical, 'GripVerticalIcon');
 export const CheckIcon = createIcon(Check, 'CheckIcon');
 export const CheckCircle2Icon = createIcon(CheckCircle2, 'CheckCircle2Icon');
 export const XIcon = createIcon(X, 'XIcon');

@@ -14,7 +14,7 @@ type AppleSignInButtonProps = {
 };
 
 export function AppleSignInButton({ disabled, loading, onPress }: AppleSignInButtonProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
   if (Platform.OS === 'ios') {
     return (
@@ -23,8 +23,12 @@ export function AppleSignInButton({ disabled, loading, onPress }: AppleSignInBut
         pointerEvents={disabled || loading ? 'none' : 'auto'}
       >
         <AppleAuthentication.AppleAuthenticationButton
-          buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-          buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+          buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+          buttonStyle={
+            isDark
+              ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+              : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+          }
           cornerRadius={AUTH_BUTTON_RADIUS}
           style={{ width: '100%', height: AUTH_BUTTON_HEIGHT }}
           onPress={onPress}
@@ -43,7 +47,7 @@ export function AppleSignInButton({ disabled, loading, onPress }: AppleSignInBut
       leftIcon={<AppleIcon color={colors.foreground} />}
       style={{ width: '100%', height: AUTH_BUTTON_HEIGHT, borderRadius: AUTH_BUTTON_RADIUS }}
     >
-      Войти через Apple
+      Продолжить с Apple
     </Button>
   );
 }

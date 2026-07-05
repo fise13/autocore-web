@@ -43,6 +43,9 @@ export type WorkOrderPartLine = {
   unitPrice: number;
   unitCost: number;
   warehouseId?: string;
+  specificCategoryId?: string;
+  specificCategoryName?: string;
+  warrantyTemplateId?: string;
 };
 
 export type WorkOrderMotorLine = {
@@ -54,6 +57,7 @@ export type WorkOrderMotorLine = {
   configuration?: string;
   unitPrice: number;
   outcome: WorkOrderMotorOutcome;
+  warrantyTemplateId?: string;
 };
 
 export type WorkOrderPricing = {

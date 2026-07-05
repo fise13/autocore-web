@@ -10,18 +10,23 @@ export type SettingsRouteId =
   | 'company'
   | 'team'
   | 'accounting'
+  | 'finance'
   | 'appearance'
   | 'notifications'
   | 'advanced'
   | 'edit-profile'
   | 'subscription'
   | 'language'
-  | 'currency';
+  | 'currency'
+  | 'security'
+  | 'taxes'
+  | 'cache'
+  | 'diagnostics'
+  | 'version';
 
-export type SettingsHubSectionId = Exclude<
-  SettingsRouteId,
-  'edit-profile' | 'subscription' | 'language' | 'currency'
->;
+export type SettingsHubRouteId = SettingsRouteId;
+
+export type SettingsHubSectionId = SettingsRouteId;
 
 export type NavItemId =
   | 'mission'

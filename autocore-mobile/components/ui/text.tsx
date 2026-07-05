@@ -10,7 +10,7 @@ type TextProps = RNTextProps & {
 };
 
 const colorMap = {
-  primary: 'textPrimary',
+  primary: 'foreground',
   secondary: 'textSecondary',
   muted: 'mutedForeground',
   accent: 'primary',
@@ -28,7 +28,7 @@ export const Text = memo(function Text({
   const dl = useDesignLanguage();
   const variantStyle = dl.type[variant] as TextStyle;
   const colorKey = colorMap[color];
-  const textColor = colorKey ? dl.colors[colorKey as keyof typeof dl.colors] : undefined;
+  const themeColor = colorKey ? dl.colors[colorKey as keyof typeof dl.colors] : undefined;
 
   const scaledStyle: TextStyle = {
     fontSize: dl.scaledSize(variantStyle.fontSize ?? 14),
@@ -38,7 +38,10 @@ export const Text = memo(function Text({
   return (
     <RNText
       style={[
-        { fontFamily: dl.typeFamily.sans, color: textColor ?? dl.colors.textPrimary },
+        {
+          fontFamily: dl.typeFamily.sans,
+          color: themeColor ?? dl.colors.foreground,
+        },
         variantStyle,
         scaledStyle,
         style,

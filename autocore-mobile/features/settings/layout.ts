@@ -1,13 +1,16 @@
+import { rhythm, screenMotion } from '@/theme/screen';
+
+/** Settings — aliases unified screen rhythm */
 export const settingsLayout = {
-  pad: 20,
-  section: 24,
-  cardRadius: 20,
-  groupRadius: 16,
-  hairline: 1,
+  pad: rhythm.pad,
+  section: rhythm.section,
+  cardRadius: rhythm.cardRadius,
+  groupRadius: rhythm.cardRadius,
+  hairline: rhythm.hairline,
   hubCardMinHeight: 88,
-  rowMinHeight: 52,
-  iconBox: 36,
-  stagger: 45,
+  rowMinHeight: rhythm.rowMinHeight,
+  iconBox: rhythm.iconBox,
+  stagger: screenMotion.stagger,
   maxVisibleTabs: 6,
   maxPrimaryTabs: 5,
 } as const;

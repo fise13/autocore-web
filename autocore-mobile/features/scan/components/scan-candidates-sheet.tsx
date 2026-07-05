@@ -1,15 +1,10 @@
-import { forwardRef, useCallback, useMemo } from 'react';
+import { forwardRef } from 'react';
 import { Pressable, View } from 'react-native';
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetScrollView,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 
 import { Text } from '@/components/ui';
-import { useTheme } from '@/hooks';
-import { haptics, layout } from '@/theme';
+import { useModalBottomSheet, useTheme } from '@/hooks';
+import { haptics } from '@/theme';
 import { formatPrice } from '@/features/search/lib/format';
 
 import type { ScanCandidate, ScanResult } from '../types';
@@ -25,32 +20,22 @@ type ScanCandidatesSheetProps = {
 export const ScanCandidatesSheet = forwardRef<BottomSheetModal, ScanCandidatesSheetProps>(
   function ScanCandidatesSheet({ result, payload, onPick, onSearch, onDismiss }, ref) {
     const { colors } = useTheme();
-    const snapPoints = useMemo(() => ['52%'], []);
+    const sheet = useModalBottomSheet();
     const candidates = result?.candidates ?? [];
-
-    const renderBackdrop = useCallback(
-      (props: BottomSheetBackdropProps) => (
-        <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
-      ),
-      [],
-    );
 
     return (
       <BottomSheetModal
         ref={ref}
+        {...sheet.sheetLayout}
         index={0}
-        snapPoints={snapPoints}
+        snapPoints={sheet.compactSnapPoints(52)}
         enablePanDownToClose
         onDismiss={onDismiss}
-        backdropComponent={renderBackdrop}
-        handleIndicatorStyle={{ backgroundColor: colors.mutedForeground, width: layout.bottomSheet.handleWidth }}
-        backgroundStyle={{
-          backgroundColor: colors.card,
-          borderTopLeftRadius: layout.bottomSheet.borderRadius,
-          borderTopRightRadius: layout.bottomSheet.borderRadius,
-        }}
+        backdropComponent={sheet.renderBackdrop}
+        backgroundStyle={sheet.backgroundStyle}
+        handleIndicatorStyle={sheet.handleIndicatorStyle}
       >
-        <BottomSheetScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24, gap: 12 }}>
+        <BottomSheetScrollView contentContainerStyle={{ ...sheet.compactContentStyle, gap: 12 }}>
           <View style={{ gap: 4 }}>
             <Text variant="heading" style={{ fontSize: 20, fontWeight: '700' }}>
               Выберите позицию

@@ -9,7 +9,7 @@ import { createWorkOrderUseCase } from "@/application/use-cases/work-orders/crea
 import { updateWorkOrderUseCase } from "@/application/use-cases/work-orders/update-work-order";
 import { quickCreateClientUseCase } from "@/application/use-cases/work-orders/quick-create-client";
 import { quickCreateVehicleUseCase } from "@/application/use-cases/work-orders/quick-create-vehicle";
-import { transitionWorkOrderStatusUseCase } from "@/application/use-cases/work-orders/transition-work-order-status";
+import { WorkOrderStatus } from "@/domain/work-order";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { useToast } from "@/components/ui/toast-provider";
@@ -67,6 +67,8 @@ import { createPayrollTransactionRepository } from "@/infrastructure/firestore/p
 import { createVehicleRepository } from "@/infrastructure/firestore/vehicle-repository";
 import { generateWorkOrderDocuments } from "@/lib/documents/fetch-document-pdf";
 import { triggerWorkOrderEventProcessing } from "@/lib/work-orders/process-work-order-events";
+import { transitionWorkOrder } from "@/lib/work-orders/transition-work-order";
+import { STATUS_LABELS } from "@/components/work-orders/work-order-copy";
 import { createWorkOrderDocumentRepository } from "@/infrastructure/firestore/work-order-document-repository";
 import { createWorkOrderRepository } from "@/infrastructure/firestore/work-order-repository";
 
@@ -667,20 +669,17 @@ export function WorkOrdersWorkspace() {
     return () => window.removeEventListener("keydown", handler);
   }, [isCreating]);
 
-  async function transition(nextStatus: Parameters<typeof transitionWorkOrderStatusUseCase>[2]["nextStatus"]) {
-    if (!profile?.id || !companyId || !selectedOrder) return;
+  async function transition(nextStatus: WorkOrderStatus) {
+    if (!profile?.id || !companyId || !selectedOrder || !canEdit) return;
     setSaving(true);
     setError(null);
     try {
-      await transitionWorkOrderStatusUseCase(workOrderRepository, domainEventRepository, {
-        companyId,
-        workOrderId: selectedOrder.id,
-        nextStatus,
-        actorUserId: profile.id,
+      await transitionWorkOrder(selectedOrder.id, nextStatus);
+      toast({
+        title: STATUS_LABELS[nextStatus],
+        description: `Заказ-наряд ${formatWorkOrderLabel(selectedOrder, workOrderDisplayIndex)} обновлён`,
+        variant: "success",
       });
-      if (nextStatus === "completed") {
-        void triggerWorkOrderEventProcessing(selectedOrder.id).catch(() => undefined);
-      }
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Не удалось изменить статус");
     } finally {

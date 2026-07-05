@@ -1,19 +1,30 @@
 import type { SearchEngine, SearchResultItem } from '@/features/search/types';
+import { inventoryCardSubtitle, normalizeInventoryCode } from '@/features/search/lib/format';
+import { joinSearchFields, matchesSearchQuery } from '@/lib/search/match-query';
 import type { InventoryItem } from '@/types/inventory';
 
 function inventoryStatus(item: InventoryItem): SearchEngine['status'] {
   if (item.totalAvailable <= 0) return 'deficit';
-  if (item.totalAvailable <= 3) return 'reserved';
   return 'in_stock';
 }
 
+function inventoryVehicleLabel(item: InventoryItem): string {
+  if (item.brandName && item.name && item.brandName !== item.name) {
+    return `${item.brandName} · ${item.name}`;
+  }
+  return item.brandName ?? item.name ?? '';
+}
+
 export function mapInventoryItemToSearchEngine(item: InventoryItem): SearchEngine {
+  const code = normalizeInventoryCode(item.sku?.trim() || item.name);
+  const vehicle = inventoryCardSubtitle(code, inventoryVehicleLabel(item)) ?? '';
+
   return {
     id: item.id,
-    code: item.sku || item.name,
-    vehicle: item.brandName ? `${item.brandName} · ${item.name}` : item.name,
+    code,
+    vehicle,
     status: inventoryStatus(item),
-    shelf: item.warehouseLocation ?? '—',
+    shelf: item.warehouseLocation?.trim() || undefined,
     price: item.sellPrice ?? 0,
   };
 }
@@ -32,9 +43,13 @@ export function mapInventoryItemToSearchResult(item: InventoryItem): SearchResul
 }
 
 export function inventoryMatchesQuery(item: InventoryItem, query: string): boolean {
-  const haystack = [item.name, item.sku, item.brandName, item.description, ...(item.barcodes ?? [])]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-  return haystack.includes(query);
+  const haystack = joinSearchFields(
+    item.name,
+    item.sku,
+    item.brandName,
+    item.description,
+    item.warehouseLocation,
+    ...(item.barcodes ?? []),
+  );
+  return matchesSearchQuery(haystack, query);
 }

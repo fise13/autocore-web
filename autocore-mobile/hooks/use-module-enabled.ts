@@ -1,11 +1,11 @@
 import type { CompanyModuleKey } from '@/types/company-config';
-import { useSession } from '@/hooks/use-session';
+import { useAuthStore } from '@/store/auth-store';
 import { MODULE_DEFINITIONS } from '@/features/settings/data/modules';
 import { useModulesConfigStore } from '@/features/settings/store/modules-config-store';
 import type { ProductModuleId } from '@/features/settings/types';
 
 export function useModuleEnabled(module: CompanyModuleKey): boolean {
-  const { companyConfig } = useSession();
+  const companyConfig = useAuthStore((s) => s.companyConfig);
   if (!companyConfig) return true;
   return companyConfig.modules[module] !== false;
 }
@@ -21,7 +21,7 @@ const MODULE_KEY_TO_PRODUCT: Partial<Record<CompanyModuleKey, ProductModuleId>> 
 export function useProductModuleEnabled(moduleId: ProductModuleId): boolean {
   const storeEnabled = useModulesConfigStore((state) => state.enabled[moduleId] !== false);
   const definition = MODULE_DEFINITIONS[moduleId];
-  const { companyConfig } = useSession();
+  const companyConfig = useAuthStore((s) => s.companyConfig);
 
   if (!storeEnabled) return false;
 

@@ -3,7 +3,7 @@ import Animated, { FadeIn, FadeOut, SlideInDown } from 'react-native-reanimated'
 
 import { useTheme } from '@/hooks';
 import { XIcon } from '@/assets/icons';
-import { radius, spacing, zIndex } from '@/theme';
+import { rhythm, zIndex } from '@/theme';
 import { IconButton } from './icon-button';
 import { Text } from './text';
 
@@ -29,7 +29,7 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
           backgroundColor: colors.overlay,
           alignItems: 'center',
           justifyContent: 'center',
-          padding: spacing[4],
+          padding: rhythm.pad,
           zIndex: zIndex.modal,
         }}
       >
@@ -40,8 +40,8 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
             width: '100%',
             maxWidth: 400,
             backgroundColor: colors.card,
-            borderRadius: radius['2xl'],
-            borderWidth: 1,
+            borderRadius: rhythm.cardRadius,
+            borderWidth: rhythm.hairline,
             borderColor: colors.border,
             ...shadows.elevated,
           }}
@@ -51,11 +51,11 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
               flexDirection: 'row',
               alignItems: 'flex-start',
               justifyContent: 'space-between',
-              padding: spacing[4],
-              gap: spacing[3],
+              padding: rhythm.pad,
+              gap: rhythm.stack,
             }}
           >
-            <View style={{ flex: 1, gap: spacing[1] }}>
+            <View style={{ flex: 1, gap: rhythm.micro }}>
               <Text variant="title">{title}</Text>
               {description ? <Text variant="body" color="muted">{description}</Text> : null}
             </View>
@@ -64,16 +64,18 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
             </IconButton>
           </View>
 
-          {children ? <View style={{ paddingHorizontal: spacing[4], paddingBottom: spacing[4] }}>{children}</View> : null}
+          {children ? (
+            <View style={{ paddingHorizontal: rhythm.pad, paddingBottom: rhythm.pad }}>{children}</View>
+          ) : null}
 
           {footer ? (
             <View
               style={{
                 flexDirection: 'row',
                 justifyContent: 'flex-end',
-                gap: spacing[2],
-                padding: spacing[4],
-                borderTopWidth: 1,
+                gap: rhythm.inline,
+                padding: rhythm.pad,
+                borderTopWidth: rhythm.hairline,
                 borderTopColor: colors.border,
               }}
             >

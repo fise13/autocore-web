@@ -1,3 +1,4 @@
+import { coerceToDate } from '@/lib/firestore-timestamp';
 import type { WorkOrder } from '@/types/work-order';
 import { isOpenStatus } from '@/lib/work-order/work-order-utils';
 import type { OrderFilterId, OrderStatus, WorkOrder as MobileWorkOrder } from '@/features/orders/types';
@@ -31,7 +32,8 @@ function estimateProgress(status: WorkOrder['status']): number {
   }
 }
 
-function formatTimeLabel(date: Date): string {
+function formatTimeLabel(value: Date): string {
+  const date = coerceToDate(value) ?? new Date();
   const now = new Date();
   const sameDay =
     date.getFullYear() === now.getFullYear() &&

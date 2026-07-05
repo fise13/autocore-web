@@ -1,8 +1,11 @@
 import {
   collection,
   collectionGroup,
+  doc,
   onSnapshot,
   query,
+  serverTimestamp,
+  setDoc,
   where,
 } from 'firebase/firestore';
 
@@ -121,10 +124,49 @@ function applyMotorFilters(motors: MotorEntity[], filters: MotorFilters): MotorE
   return mapped;
 }
 
+function motorDocRef(uid: string, motorId: string) {
+  return doc(getFirebaseDb(), 'users', uid, 'motors', motorId);
+}
+
 export function createMotorRepository() {
   const db = getFirebaseDb();
 
   return {
+    /**
+     * Marks a motor as sold under the current user path (web-parity).
+     * Uses merge so company-scoped motors from collectionGroup still resolve.
+     */
+    async sell(uid: string, motor: MotorEntity, soldDate: Date = new Date()): Promise<string> {
+      const motorId = String(motor.localId ?? motor.id);
+      const localId = motor.localId ?? Number(motorId);
+      const companyId = normalizeCompanyId(motor.companyId);
+
+      await setDoc(
+        motorDocRef(uid, motorId),
+        {
+          companyId,
+          localId: Number.isFinite(localId) ? localId : null,
+          engineId: motor.engineId ?? null,
+          serialCode: motor.serialCode.trim(),
+          configuration: motor.configuration ?? '',
+          notes: motor.notes ?? '',
+          quantity: motor.quantity ?? 1,
+          transmission: motor.transmission ?? '',
+          arrivalDate: motor.arrivalDate ?? soldDate,
+          soldDate,
+          brandName: (motor.brandName ?? '').trim() || 'Не указан',
+          engineCode: (motor.engineCode ?? '').trim() || '—',
+          status: 'sold',
+          reservedForWorkOrderId: motor.reservedForWorkOrderId ?? null,
+          installedOnVehicleId: motor.installedOnVehicleId ?? null,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+
+      return motorId;
+    },
+
     subscribe(
       filters: MotorFilters,
       onData: (motors: MotorEntity[]) => void,

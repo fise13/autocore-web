@@ -1,98 +1,101 @@
 import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import { AlertTriangleIcon, ChevronRightIcon } from '@/assets/icons';
+import { useNavigateTab } from '@/components/navigation/use-navigate-tab';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { haptics } from '@/theme';
+import { haptics, rhythm } from '@/theme';
+import { toneBackground } from '@/theme/color-utils';
 
-import {
-  McAnimatedCounter,
-  McPressable,
-  mcTimeline,
-  useMcEnter,
-} from '../animation';
-import { mc } from '../layout';
+import { memo, useCallback } from 'react';
+import { McPressable, mcTimeline, useMcEnter } from '../animation';
 import type { MissionControlAttention, MissionControlAttentionItem } from '../types';
+import { mcType } from '../layout';
+import { McSectionTitle } from './mc-primitives';
 
 type McAttentionBannerProps = {
   attention: MissionControlAttention;
 };
 
-function countColor(tone: MissionControlAttentionItem['tone'], colors: ReturnType<typeof useTheme>['colors']) {
-  return tone === 'danger' ? colors.destructive : colors.warning;
-}
-
-function AttentionColumn({ item, index }: { item: MissionControlAttentionItem; index: number }) {
+function AttentionRow({
+  item,
+  index,
+  onPress,
+}: {
+  item: MissionControlAttentionItem;
+  index: number;
+  onPress: () => void;
+}) {
   const { colors } = useTheme();
-  const accent = countColor(item.tone, colors);
-  const columnStyle = useMcEnter({
-    delay: mcTimeline.attentionCountBase + index * mcTimeline.attentionCountStagger,
-    translateY: 8,
-    duration: 280,
+  const accent = item.tone === 'danger' ? colors.destructive : colors.warning;
+  const rowStyle = useMcEnter({
+    delay: mcTimeline.attentionRow + index * mcTimeline.attentionRowStagger,
+    translateY: 4,
+    fade: true,
   });
 
   return (
-    <Animated.View style={[{ flex: 1, gap: 2 }, columnStyle]}>
-      <McAnimatedCounter
-        value={item.count}
-        delay={mcTimeline.attentionCountBase + index * mcTimeline.attentionCountStagger + 60}
-        duration={mcTimeline.counterDuration}
-        format="integer"
-        style={{
-          fontSize: mc.attentionCount,
-          fontWeight: '700',
-          color: accent,
-          fontVariant: ['tabular-nums'],
-          letterSpacing: -0.3,
-        }}
-      />
-      <Text variant="caption" color="muted" style={{ fontSize: mc.meta, lineHeight: 13 }}>
-        {item.text}
-      </Text>
-    </Animated.View>
-  );
-}
-
-export function McAttentionBanner({ attention }: McAttentionBannerProps) {
-  const { colors } = useTheme();
-  const cardStyle = useMcEnter({
-    delay: mcTimeline.attention,
-    translateY: -12,
-    scaleFrom: 0.98,
-    duration: 380,
-  });
-
-  return (
-    <Animated.View style={cardStyle}>
+    <Animated.View style={rowStyle}>
       <McPressable
         accessibilityRole="button"
-        liftOnPress
-        onPress={() => haptics.light()}
+        onPress={onPress}
         style={{
-          borderRadius: mc.cardRadius,
-          borderWidth: mc.hairline,
-          borderColor: colors.border,
-          backgroundColor: colors.card,
-          paddingHorizontal: 12,
-          paddingVertical: 11,
-          gap: 10,
+          flexDirection: 'row',
+          alignItems: 'baseline',
+          gap: rhythm.inline,
+          paddingVertical: rhythm.tight,
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <AlertTriangleIcon size="sm" color={colors.warning} strokeWidth={1.9} />
-          <Text variant="body" style={{ flex: 1, fontSize: 13, fontWeight: '600' }}>
-            {attention.title}
-          </Text>
-          <ChevronRightIcon size="sm" color={colors.mutedForeground} strokeWidth={1.75} />
-        </View>
-
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {attention.items.map((item, index) => (
-            <AttentionColumn key={`${item.count}-${index}`} item={item} index={index} />
-          ))}
-        </View>
+        <Text
+          style={{
+            ...mcType.attentionCount,
+            minWidth: 24,
+            fontVariant: ['tabular-nums'],
+            color: accent,
+          }}
+        >
+          {item.count}
+        </Text>
+        <Text variant="caption" color="muted" style={{ flex: 1, ...mcType.rowMeta }}>
+          {item.text}
+        </Text>
       </McPressable>
     </Animated.View>
   );
 }
+
+export const McAttentionBanner = memo(function McAttentionBanner({ attention }: McAttentionBannerProps) {
+  const { colors } = useTheme();
+  const navigateTab = useNavigateTab();
+  const blockStyle = useMcEnter({ delay: mcTimeline.attention, translateY: 4, fade: true });
+
+  const navigateItem = (item: MissionControlAttentionItem) => {
+    haptics.light();
+    const route = item.route ?? '/(tabs)/orders';
+    if (item.routeParams) {
+      navigateTab({ pathname: route, params: item.routeParams });
+      return;
+    }
+    navigateTab(route);
+  };
+
+  return (
+    <View>
+      <McSectionTitle title={attention.title} />
+      <Animated.View
+        style={[
+          {
+            paddingLeft: rhythm.tight,
+            borderLeftWidth: 2,
+            borderLeftColor: toneBackground(colors.warning, 0.55),
+          },
+          blockStyle,
+        ]}
+      >
+        {attention.items.map((item, index) => (
+          <AttentionRow key={`${item.text}-${index}`} item={item} index={index} onPress={() => navigateItem(item)} />
+        ))}
+      </Animated.View>
+    </View>
+  );
+});

@@ -6,6 +6,8 @@ export type MissionControlAttentionItem = {
   count: number;
   text: string;
   tone: 'warning' | 'danger';
+  route?: '/(tabs)/orders' | '/(tabs)/search' | '/(tabs)/warehouse' | '/(tabs)/accounting';
+  routeParams?: Record<string, string>;
 };
 
 export type MissionControlAttention = {
@@ -13,25 +15,53 @@ export type MissionControlAttention = {
   items: MissionControlAttentionItem[];
 };
 
-export type OverviewTrendTone = 'primary' | 'success' | 'chart2' | 'muted';
+export type TodayStatFormat = 'integer' | 'currency-rub' | 'grouped';
 
-export type MissionControlOverviewMetric = {
+export type StatEmphasis = 'hero' | 'default' | 'quiet';
+
+export type MissionControlTodayStat = {
   id: string;
   label: string;
-  value: string;
-  numericValue: number;
+  value: number;
+  format: TodayStatFormat;
+  emphasis?: StatEmphasis;
+  tone?: 'default' | 'warning' | 'success';
+  route?: '/(tabs)/orders' | '/(tabs)/search' | '/(tabs)/warehouse' | '/(tabs)/accounting';
+  routeParams?: Record<string, string>;
+};
+
+export type KpiTone = 'primary' | 'success' | 'warning' | 'muted';
+
+/** @deprecated Merged into `today` — kept for mock snapshots */
+export type MissionControlKpi = {
+  id: string;
+  label: string;
+  value: number;
+  format: TodayStatFormat | 'grouped';
   hint?: string;
-  hintTone?: 'success' | 'muted';
-  trend: number[];
-  trendTone: OverviewTrendTone;
+  tone: KpiTone;
+  route?: '/(tabs)/orders' | '/(tabs)/search' | '/(tabs)/warehouse' | '/(tabs)/accounting';
+  routeParams?: Record<string, string>;
 };
 
 export type MissionControlQuickAction = {
   id: string;
   label: string;
   icon: ComponentType<{ size?: 'sm' | 'md' | 'lg'; color?: string; strokeWidth?: number }>;
-  route?: '/(tabs)/scan' | '/(tabs)/search' | '/(tabs)/orders';
-  primary?: boolean;
+  route?: '/(tabs)/scan' | '/(tabs)/search' | '/(tabs)/warehouse' | '/(tabs)/orders' | '/(tabs)/orders/new' | '/(tabs)/accounting';
+};
+
+export type InsightTone = 'neutral' | 'positive' | 'warning';
+
+export type MissionControlInsight = {
+  id: string;
+  title: string;
+  detail?: string;
+  body?: string;
+  cta?: string;
+  tone: InsightTone;
+  route?: '/(tabs)/orders' | '/(tabs)/search' | '/(tabs)/warehouse' | '/(tabs)/accounting';
+  routeParams?: Record<string, string>;
 };
 
 export type MissionControlActivity = {
@@ -39,6 +69,8 @@ export type MissionControlActivity = {
   title: string;
   detail: string;
   time: string;
+  statusLabel: string;
+  statusTone: 'default' | 'warning' | 'success' | 'muted';
   category: ActivityCategory;
   icon: ComponentType<{ size?: 'sm' | 'md' | 'lg'; color?: string; strokeWidth?: number }>;
 };
@@ -49,10 +81,42 @@ export type MissionControlCompany = {
   role: string;
 };
 
+export type MissionControlWeekBar = {
+  label: string;
+  value: number;
+};
+
+export type MissionControlRevenue = {
+  label: string;
+  value: number;
+  growthPercent: number | null;
+  weekBars: MissionControlWeekBar[];
+  todayNet?: number;
+  todayIncome?: number;
+  todayExpense?: number;
+  route?: '/(tabs)/orders' | '/(tabs)/search' | '/(tabs)/warehouse' | '/(tabs)/accounting';
+  routeParams?: Record<string, string>;
+};
+
+export type MissionControlStatTile = {
+  id: string;
+  label: string;
+  value: number;
+  format: 'integer' | 'grouped';
+  icon: ComponentType<{ size?: 'sm' | 'md' | 'lg'; color?: string; strokeWidth?: number }>;
+  route?: '/(tabs)/orders' | '/(tabs)/search' | '/(tabs)/warehouse' | '/(tabs)/accounting';
+  routeParams?: Record<string, string>;
+};
+
 export type MissionControlSnapshot = {
   attention: MissionControlAttention;
-  overview: MissionControlOverviewMetric[];
+  revenue: MissionControlRevenue;
+  statTiles: MissionControlStatTile[];
   quickActions: MissionControlQuickAction[];
+  featuredInsight: MissionControlInsight | null;
+  insights: MissionControlInsight[];
   activity: MissionControlActivity[];
   companies: MissionControlCompany[];
+  /** @deprecated Use `revenue` + `statTiles` */
+  today?: MissionControlTodayStat[];
 };

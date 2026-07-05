@@ -2,9 +2,7 @@ import { View } from 'react-native';
 
 import { Switch, Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { haptics } from '@/theme';
-
-import { settingsLayout } from '../layout';
+import { haptics, rhythm } from '@/theme';
 
 type SettingsToggleRowProps = {
   label: string;
@@ -18,16 +16,15 @@ export function SettingsToggleRow({ label, subtitle, value, onValueChange, disab
   return (
     <View
       style={{
-        minHeight: subtitle ? 68 : settingsLayout.rowMinHeight,
+        minHeight: subtitle ? 52 : 48,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
-        paddingHorizontal: 16,
-        paddingVertical: subtitle ? 12 : 10,
+        gap: rhythm.inline,
+        paddingVertical: subtitle ? 8 : 4,
       }}
     >
-      <View style={{ flex: 1, gap: subtitle ? 4 : 0 }}>
-        <Text variant="body" style={{ fontSize: 15, fontWeight: '600', letterSpacing: -0.1 }}>
+      <View style={{ flex: 1, gap: subtitle ? 2 : 0 }}>
+        <Text variant="body" style={{ fontSize: 15, fontWeight: '500' }}>
           {label}
         </Text>
         {subtitle ? (
@@ -60,13 +57,15 @@ export function SettingsChip({ label, active }: SettingsChipProps) {
       style={{
         paddingHorizontal: 12,
         paddingVertical: 8,
-        borderRadius: 999,
-        backgroundColor: active ? colors.primary : colors.muted,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: active ? colors.primary : colors.border,
+        backgroundColor: active ? `${colors.primary}14` : 'transparent',
       }}
     >
       <Text
         variant="caption"
-        style={{ fontWeight: '600', color: active ? colors.primaryForeground : colors.foreground }}
+        style={{ fontWeight: '600', color: active ? colors.primary : colors.mutedForeground }}
       >
         {label}
       </Text>

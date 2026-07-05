@@ -9,12 +9,14 @@ export function useMotorsRealtime(
   companyId: string | null | undefined,
   uid: string | null | undefined,
   enabled = true,
+  options?: { keepAlive?: boolean },
 ) {
   const active = Boolean(enabled && isProductionCompanyId(companyId) && uid?.trim());
 
   const { data, isBootstrapping, errorMessage } = useRealtimeQuery<MotorEntity[]>({
     queryKey: ['realtime', 'motors', companyId, uid],
     enabled: active,
+    keepAlive: options?.keepAlive,
     initialData: [],
     subscribe: (onData, onError) => {
       if (!companyId || !uid) {

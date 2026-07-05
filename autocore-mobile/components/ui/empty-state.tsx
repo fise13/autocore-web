@@ -2,7 +2,8 @@ import { View } from 'react-native';
 
 import { useTheme } from '@/hooks';
 import type { IconProps } from '@/assets/icons';
-import { radius, spacing } from '@/theme';
+import { rhythm } from '@/theme';
+
 import { Button, type ButtonVariant } from './button';
 import { Text } from './text';
 
@@ -20,7 +21,6 @@ type EmptyStateProps = {
   secondaryAction?: EmptyStateAction;
 };
 
-/** Mirrors src/components/ui/empty-state.tsx */
 export function EmptyState({
   icon: Icon,
   title,
@@ -35,10 +35,10 @@ export function EmptyState({
       style={{
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: spacing[6],
-        paddingVertical: spacing[14],
-        borderRadius: radius.xl,
-        borderWidth: 1,
+        paddingHorizontal: rhythm.section,
+        paddingVertical: rhythm.section * 2,
+        borderRadius: rhythm.cardRadius,
+        borderWidth: rhythm.hairline,
         borderStyle: 'dashed',
         borderColor: `${colors.border}B3`,
         backgroundColor: `${colors.muted}26`,
@@ -46,27 +46,38 @@ export function EmptyState({
     >
       <View
         style={{
-          width: 48,
-          height: 48,
+          width: rhythm.rowMinHeight,
+          height: rhythm.rowMinHeight,
           alignItems: 'center',
           justifyContent: 'center',
-          borderRadius: radius.xl,
-          borderWidth: 1,
+          borderRadius: rhythm.cardRadius,
+          borderWidth: rhythm.hairline,
           borderColor: `${colors.border}99`,
           backgroundColor: colors.background,
-          marginBottom: spacing[4],
+          marginBottom: rhythm.stack,
         }}
       >
         <Icon size="lg" color={colors.primary} />
       </View>
 
       <Text variant="heading">{title}</Text>
-      <Text variant="body" color="muted" style={{ marginTop: spacing[2], textAlign: 'center', maxWidth: 320 }}>
+      <Text
+        variant="body"
+        color="muted"
+        style={{ marginTop: rhythm.inline, textAlign: 'center', maxWidth: 320 }}
+      >
         {description}
       </Text>
 
-      {(primaryAction || secondaryAction) && (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2], marginTop: spacing[6] }}>
+      {primaryAction || secondaryAction ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: rhythm.inline,
+            marginTop: rhythm.section,
+          }}
+        >
           {primaryAction ? (
             <Button variant={primaryAction.variant ?? 'default'} onPress={primaryAction.onPress}>
               {primaryAction.label}
@@ -78,7 +89,7 @@ export function EmptyState({
             </Button>
           ) : null}
         </View>
-      )}
+      ) : null}
     </View>
   );
 }

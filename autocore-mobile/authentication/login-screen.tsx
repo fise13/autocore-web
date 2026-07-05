@@ -1,13 +1,12 @@
-import { AUTH_BUTTON_HEIGHT, AUTH_BUTTON_RADIUS } from '@/authentication/auth-button-metrics';
 import { Link } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import Animated, { FadeInLeft, FadeInRight, FadeOutLeft, FadeOutRight } from 'react-native-reanimated';
 
-import { CheckIcon, Loader2Icon, XIcon } from '@/assets/icons';
-import { Alert, Button, Input, Text } from '@/components/ui';
+import { CheckIcon, Loader2Icon, MailIcon, XIcon } from '@/assets/icons';
+import { Alert, Button, FormStack, Input, Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/hooks';
-import { spacing } from '@/theme';
+import { form, spacing } from '@/theme';
 import { mapAuthError } from '@/utils/auth-error';
 import { getPasswordStrengthState, validateSignupPassword } from '@/utils/password-validation';
 import { resolveEmailSignInMode, type EmailSignInMode } from '@/utils/resolve-email-sign-in-mode';
@@ -245,13 +244,21 @@ export function LoginScreen() {
     setCredentialAttempted(false);
   };
 
+  const authTitle = emailStep
+    ? emailMode === 'signup'
+      ? 'Создайте аккаунт AutoCore'
+      : emailMode === 'oauth'
+        ? 'Продолжите вход'
+        : 'Введите пароль'
+    : 'Войдите в свой аккаунт AutoCore.';
+
   const authDescription = emailStep
     ? emailMode === 'signup'
-      ? 'Создайте пароль и укажите имя для аккаунта AutoCore.'
+      ? 'Укажите пароль и имя.'
       : emailMode === 'oauth'
-        ? 'Войдите тем же способом, который привязан к этому email.'
-        : 'Введите пароль для входа в AutoCore.'
-    : 'Вход в AutoCore или регистрация новой команды.';
+        ? 'Используйте тот же способ, что привязан к email.'
+        : undefined
+    : undefined;
 
   const stepKey = !emailStep ? 'entry' : emailMode;
   const entering = reducedMotion
@@ -267,7 +274,7 @@ export function LoginScreen() {
 
   return (
     <AuthShell
-      title="Войти или создать аккаунт"
+      title={authTitle}
       description={authDescription}
       footer={
         <Text variant="caption" color="muted" style={{ textAlign: 'center', maxWidth: 300, lineHeight: 16 }}>
@@ -291,10 +298,10 @@ export function LoginScreen() {
         />
       ) : null}
 
-      <Animated.View key={stepKey} entering={entering} exiting={exiting} style={{ width: '100%', gap: spacing[3] }}>
+      <Animated.View key={stepKey} entering={entering} exiting={exiting} style={{ width: '100%', gap: form.groupGap }}>
       {!emailStep ? (
         <>
-          <View style={{ gap: spacing[2], width: '100%' }}>
+          <View style={{ gap: form.labelGap, width: '100%' }}>
             <GoogleSignInButton
               disabled={submitDisabled}
               loading={oauthLoading === 'google'}
@@ -316,29 +323,29 @@ export function LoginScreen() {
 
           <AuthDivider>ИЛИ</AuthDivider>
 
-          <View style={{ gap: spacing[2], width: '100%' }}>
-            <Text variant="caption" color="muted">Email для входа или создания аккаунта</Text>
-            <Input
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              textContentType="username"
-              autoCapitalize="none"
-              autoCorrect={false}
-              placeholder="ваш@email.ru"
-              invalid={Boolean(emailError)}
-              returnKeyType="done"
-              onSubmitEditing={onEmailContinue}
-            />
-            {emailError ? <Text variant="caption" style={{ color: colors.destructive }}>{emailError}</Text> : null}
-          </View>
+          <Input
+            label="Email для входа или создания аккаунта"
+            labelVariant="caption"
+            size="lg"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            textContentType="username"
+            autoCapitalize="none"
+            autoCorrect={false}
+            placeholder="ваш@email.ru"
+            error={emailError ?? undefined}
+            returnKeyType="done"
+            onSubmitEditing={onEmailContinue}
+            leftIcon={<MailIcon size="sm" color={colors.mutedForeground} strokeWidth={1.85} />}
+          />
 
           <Button
-            size="default"
+            size="lg"
             disabled={submitDisabled}
             onPress={onEmailContinue}
             leftIcon={isDetecting ? <Loader2Icon size="sm" color={colors.primaryForeground} /> : undefined}
-            style={{ width: '100%', height: AUTH_BUTTON_HEIGHT, borderRadius: AUTH_BUTTON_RADIUS }}
+            style={{ width: '100%' }}
           >
             {isDetecting ? 'Проверяем email…' : 'Продолжить с email'}
           </Button>
@@ -357,10 +364,7 @@ export function LoginScreen() {
         </>
       ) : emailMode === 'oauth' ? (
         <>
-          <View style={{ gap: spacing[1.5], width: '100%' }}>
-            <Text variant="caption" color="muted">Email</Text>
-            <Input value={email} editable={false} selectTextOnFocus={false} />
-          </View>
+          <Input label="Email" value={email} editable={false} selectTextOnFocus={false} size="lg" />
 
           <Text variant="small" color="muted">
             Этот email зарегистрирован через{' '}
@@ -396,9 +400,9 @@ export function LoginScreen() {
         </>
       ) : (
         <>
-          <View style={{ gap: spacing[2], width: '100%' }}>
+          <FormStack gap={form.fieldGap}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text variant="caption" color="muted">
+              <Text variant="caption" color="muted" style={{ fontSize: form.labelFontSize, fontWeight: form.labelFontWeight }}>
                 Email
               </Text>
               <Button variant="link" size="sm" style={{ height: undefined, minHeight: undefined }} onPress={changeEmail}>
@@ -415,47 +419,37 @@ export function LoginScreen() {
               placeholder="ваш@email.ru"
               returnKeyType="next"
               editable={!isSubmitting}
+              size="lg"
+              leftIcon={<MailIcon size="sm" color={colors.mutedForeground} strokeWidth={1.85} />}
             />
-          </View>
 
-          {isSignUp ? (
-            <View style={{ gap: spacing[2], width: '100%' }}>
-              <View style={{ gap: spacing[2] }}>
-                <Text variant="caption" color="muted">
-                  Имя
-                </Text>
+            {isSignUp ? (
+              <>
                 <Input
+                  label="Имя"
+                  size="lg"
                   value={firstName}
                   onChangeText={setFirstName}
                   textContentType="givenName"
                   autoCapitalize="words"
                   placeholder="Имя"
-                  invalid={Boolean(nameError)}
+                  error={nameError ?? undefined}
                 />
-              </View>
-              <View style={{ gap: spacing[2] }}>
-                <Text variant="caption" color="muted">
-                  Фамилия
-                </Text>
                 <Input
+                  label="Фамилия"
+                  size="lg"
                   value={lastName}
                   onChangeText={setLastName}
                   textContentType="familyName"
                   autoCapitalize="words"
                   placeholder="Фамилия"
-                  invalid={Boolean(nameError)}
                 />
-              </View>
-            </View>
-          ) : null}
+              </>
+            ) : null}
 
-          {nameError ? <Text variant="caption" style={{ color: colors.destructive }}>{nameError}</Text> : null}
-
-          <View style={{ gap: spacing[2], width: '100%' }}>
-            <Text variant="caption" color="muted">
-              {isSignUp ? 'Придумайте пароль' : 'Пароль'}
-            </Text>
             <Input
+              label={isSignUp ? 'Придумайте пароль' : 'Пароль'}
+              size="lg"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -463,11 +457,10 @@ export function LoginScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               placeholder={isSignUp ? '' : 'Введите пароль'}
-              invalid={Boolean(passwordError)}
+              error={passwordError ?? undefined}
               returnKeyType="done"
               onSubmitEditing={onSubmit}
             />
-            {passwordError ? <Text variant="caption" style={{ color: colors.destructive }}>{passwordError}</Text> : null}
             {isSignUp ? (
               <View style={{ gap: spacing[2] }}>
                 <View
@@ -521,14 +514,14 @@ export function LoginScreen() {
                 </View>
               </View>
             ) : null}
-          </View>
+          </FormStack>
 
           <Button
-            size="default"
+            size="lg"
             loading={isSubmitting}
             disabled={submitDisabled}
             onPress={onSubmit}
-            style={{ width: '100%', height: AUTH_BUTTON_HEIGHT, borderRadius: AUTH_BUTTON_RADIUS }}
+            style={{ width: '100%' }}
           >
             {isSubmitting ? (isSignUp ? 'Создание аккаунта…' : 'Вход…') : isSignUp ? 'Создать аккаунт' : 'Войти по почте'}
           </Button>

@@ -1,15 +1,10 @@
-import { forwardRef, useCallback, useMemo, useState } from 'react';
+import { forwardRef } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetScrollView,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 
 import { Text } from '@/components/ui';
-import { useTheme } from '@/hooks';
-import { haptics, layout } from '@/theme';
+import { useModalBottomSheet, useTheme } from '@/hooks';
+import { haptics } from '@/theme';
 import { formatPrice } from '@/features/search/lib/format';
 import { matchTypeLabel } from '@/lib/scan/map-resolve-result';
 
@@ -19,6 +14,7 @@ import type { ScanResult } from '../types';
 type ScanResultSheetProps = {
   result: ScanResult | null;
   onOpen: () => void;
+  onAddToOrder?: () => void;
   onReceive: () => void;
   onReserve: () => void;
   onSearch: () => void;
@@ -74,35 +70,24 @@ function ActionRow({
 }
 
 export const ScanResultSheet = forwardRef<BottomSheetModal, ScanResultSheetProps>(function ScanResultSheet(
-  { result, onOpen, onReceive, onReserve, onSearch, isReceiving, onDismiss },
+  { result, onOpen, onAddToOrder, onReceive, onReserve, onSearch, isReceiving, onDismiss },
   ref,
 ) {
   const { colors } = useTheme();
-  const snapPoints = useMemo(() => ['54%'], []);
-
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
-    ),
-    [],
-  );
+  const sheet = useModalBottomSheet();
+  const modalProps = {
+    ...sheet.sheetLayout,
+    index: 0 as const,
+    enablePanDownToClose: true,
+    onDismiss,
+    backdropComponent: sheet.renderBackdrop,
+    backgroundStyle: sheet.backgroundStyle,
+    handleIndicatorStyle: sheet.handleIndicatorStyle,
+  };
 
   if (!result) {
     return (
-      <BottomSheetModal
-        ref={ref}
-        index={0}
-        snapPoints={snapPoints}
-        enablePanDownToClose
-        onDismiss={onDismiss}
-        backdropComponent={renderBackdrop}
-        handleIndicatorStyle={{ backgroundColor: colors.mutedForeground, width: layout.bottomSheet.handleWidth }}
-        backgroundStyle={{
-          backgroundColor: colors.card,
-          borderTopLeftRadius: layout.bottomSheet.borderRadius,
-          borderTopRightRadius: layout.bottomSheet.borderRadius,
-        }}
-      >
+      <BottomSheetModal ref={ref} {...modalProps} snapPoints={sheet.compactSnapPoints(54)}>
         <View style={{ minHeight: 1 }} />
       </BottomSheetModal>
     );
@@ -120,21 +105,8 @@ export const ScanResultSheet = forwardRef<BottomSheetModal, ScanResultSheetProps
   const matchLabel = matchTypeLabel(result.matchType);
 
   return (
-    <BottomSheetModal
-      ref={ref}
-      index={0}
-      snapPoints={snapPoints}
-      enablePanDownToClose
-      onDismiss={onDismiss}
-      backdropComponent={renderBackdrop}
-      handleIndicatorStyle={{ backgroundColor: colors.mutedForeground, width: layout.bottomSheet.handleWidth }}
-      backgroundStyle={{
-        backgroundColor: colors.card,
-        borderTopLeftRadius: layout.bottomSheet.borderRadius,
-        borderTopRightRadius: layout.bottomSheet.borderRadius,
-      }}
-    >
-      <BottomSheetScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24, gap: 16 }}>
+    <BottomSheetModal ref={ref} {...modalProps} snapPoints={sheet.compactSnapPoints(54)}>
+      <BottomSheetScrollView contentContainerStyle={{ ...sheet.compactContentStyle, gap: 16 }}>
         <View style={{ gap: 6 }}>
           <Text variant="heading" style={{ fontSize: 24, fontWeight: '700', letterSpacing: -0.4 }}>
             {result.title}
@@ -205,8 +177,11 @@ export const ScanResultSheet = forwardRef<BottomSheetModal, ScanResultSheetProps
 
         <View style={{ height: 1, backgroundColor: colors.border }} />
 
+        {onAddToOrder ? (
+          <ActionRow label="В наряд" primary onPress={onAddToOrder} />
+        ) : null}
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <ActionRow label="Открыть" primary onPress={onOpen} />
+          <ActionRow label="Открыть" primary={!onAddToOrder} onPress={onOpen} />
           <ActionRow
             label={isReceiving ? 'Приёмка…' : '+1 на склад'}
             disabled={isReceiving}

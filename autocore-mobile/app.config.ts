@@ -19,9 +19,10 @@ function googleIosUrlScheme(iosClientId: string): string | null {
 const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?.trim() ?? '';
 const iosUrlScheme = googleIosUrlScheme(iosClientId);
 
-const appleSignInEnabled =
-  process.env.EXPO_PUBLIC_ENABLE_APPLE_SIGN_IN === '1' ||
-  process.env.EXPO_PUBLIC_ENABLE_APPLE_SIGN_IN === 'true';
+// Apple Sign In is required when Google is offered (App Store guideline 4.8).
+// Opt out only with EXPO_PUBLIC_ENABLE_APPLE_SIGN_IN=0|false.
+const appleSignInFlag = process.env.EXPO_PUBLIC_ENABLE_APPLE_SIGN_IN?.trim().toLowerCase();
+const appleSignInEnabled = appleSignInFlag !== '0' && appleSignInFlag !== 'false';
 
 const plugins: ExpoConfig['plugins'] = [
   'expo-router',
@@ -50,6 +51,13 @@ const plugins: ExpoConfig['plugins'] = [
     },
   ],
   'expo-sharing',
+  [
+    'expo-notifications',
+    {
+      icon: './assets/branding/login-logo.png',
+      color: '#0d0e12',
+    },
+  ],
 ];
 
 if (appleSignInEnabled) {
@@ -72,6 +80,7 @@ export default (): ExpoConfig => ({
   userInterfaceStyle: 'automatic',
   ios: {
     supportsTablet: true,
+    appleTeamId: '45W7LA3QFP',
     ...(appleSignInEnabled ? { usesAppleSignIn: true } : {}),
     bundleIdentifier: 'com.wise.autocore.mobile',
     icon: './assets/branding/login-logo.png',

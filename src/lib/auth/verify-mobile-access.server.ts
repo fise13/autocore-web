@@ -53,7 +53,7 @@ export async function verifyMobileAccess(
   }
 
   const trimmedCompanyId = String(user.companyId ?? "").trim();
-  if (!trimmedCompanyId || trimmedCompanyId === "default") {
+  if (!trimmedCompanyId) {
     throw new MobileAccessError("Сначала присоединитесь к компании", 403);
   }
 

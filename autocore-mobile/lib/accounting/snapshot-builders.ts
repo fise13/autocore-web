@@ -12,8 +12,10 @@ import {
   UsersIcon,
   WrenchIcon,
 } from '@/assets/icons';
-import { CATEGORY_ICONS } from '@/lib/accounting/quick-actions';
+import { CATEGORY_ICONS } from '@/lib/accounting/category-icons';
+import { growthPercent } from '@/lib/accounting/growth-percent';
 import type {
+  AccountingAttentionAction,
   AccountingSnapshot,
   AttentionTone,
   CashFlowPeriod,
@@ -23,6 +25,7 @@ import type {
 } from '@/features/accounting/types';
 import { calculateCashBalance } from '@/lib/accounting/calculate-cash-balance';
 import { normalizeSparkline } from '@/lib/charts/sparkline-points';
+import { coerceToDate } from '@/lib/firestore-timestamp';
 import type { FinancialOperation } from '@/types/financial-operation';
 import type { PayrollTransaction } from '@/types/payroll-transaction';
 
@@ -70,16 +73,15 @@ function sumInRange(
   const toMs = to.getTime();
   return operations
     .filter((operation) => {
-      const ts = operation.createdAt.getTime();
+      const createdAt = coerceToDate(operation.createdAt);
+      if (!createdAt) return false;
+      const ts = createdAt.getTime();
       return ts >= fromMs && ts <= toMs && predicate(operation);
     })
     .reduce((sum, operation) => sum + operation.amount, 0);
 }
 
-export function growthPercent(first: number, second: number): number {
-  if (!first) return second > 0 ? 100 : 0;
-  return Math.round(((second - first) / first) * 100);
-}
+export { growthPercent } from '@/lib/accounting/growth-percent';
 
 export function sumIncomeInMonth(operations: FinancialOperation[], reference: Date): number {
   const start = startOfMonth(reference);
@@ -103,7 +105,10 @@ function buildDailySeries(
     const day = subDays(today, days - 1 - index);
     const key = day.toDateString();
     return operations
-      .filter((operation) => operation.createdAt.toDateString() === key && predicate(operation))
+      .filter((operation) => {
+        const createdAt = coerceToDate(operation.createdAt);
+        return createdAt != null && createdAt.toDateString() === key && predicate(operation);
+      })
       .reduce((sum, operation) => sum + operation.amount, 0);
   });
 }
@@ -326,7 +331,13 @@ export function buildAttentionItems(
   payroll: PayrollTransaction[],
   totalBalance: number,
 ): AccountingSnapshot['attention'] {
-  const items: Array<{ id: string; title: string; subtitle: string; tone: AttentionTone }> = [];
+  const items: Array<{
+    id: string;
+    title: string;
+    subtitle: string;
+    tone: AttentionTone;
+    action: AccountingAttentionAction;
+  }> = [];
   const pendingPayroll = payroll.filter((item) => item.status === 'pending');
   const pendingPayrollTotal = pendingPayroll.reduce((sum, item) => sum + item.amount, 0);
   const todayExpenses = operations
@@ -343,6 +354,7 @@ export function buildAttentionItems(
           : `${pendingPayroll.length} начислений зарплаты`,
       subtitle: `${pendingPayrollTotal.toLocaleString('ru-RU')} ₸ ожидают выплаты`,
       tone: 'warning',
+      action: 'payroll',
     });
   }
 
@@ -352,6 +364,7 @@ export function buildAttentionItems(
       title: refunds.length === 1 ? '1 возврат' : `${refunds.length} возврата`,
       subtitle: 'Проверьте гарантийные кейсы',
       tone: 'danger',
+      action: 'operations',
     });
   }
 
@@ -361,6 +374,7 @@ export function buildAttentionItems(
       title: 'Отрицательный баланс',
       subtitle: `${totalBalance.toLocaleString('ru-RU')} ₸ на счетах`,
       tone: 'danger',
+      action: 'cashbox',
     });
   }
 
@@ -370,6 +384,7 @@ export function buildAttentionItems(
       title: 'Расходы сегодня',
       subtitle: `${todayExpenses.toLocaleString('ru-RU')} ₸`,
       tone: 'neutral',
+      action: 'expenses',
     });
   }
 
@@ -454,12 +469,13 @@ export function buildExpenseCategories(operations: FinancialOperation[]): Accoun
     .slice(0, 8)
     .map(([category, amount], index) => {
       const iconKey = category in CATEGORY_ICONS ? (category as keyof typeof CATEGORY_ICONS) : 'default';
+      const icon = CATEGORY_ICONS[iconKey] ?? CATEGORY_ICONS.default;
       return {
         id: `expense-${index}`,
         label: CATEGORY_LABELS[category] ?? category,
         amount,
         pct: Math.round((amount / total) * 100),
-        icon: CATEGORY_ICONS[iconKey],
+        icon,
       };
     });
 }

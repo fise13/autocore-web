@@ -1,21 +1,20 @@
-import { forwardRef, useCallback, useMemo } from 'react';
+import { forwardRef } from 'react';
 import { Pressable, View } from 'react-native';
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetView,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 
 import { Text } from '@/components/ui';
-import { useTheme } from '@/hooks';
-import { haptics, layout } from '@/theme';
+import { useModalBottomSheet, useTheme } from '@/hooks';
+import { haptics } from '@/theme';
+
+import { isHttpUrl } from '../lib/classify-payload';
 
 type ScanUnknownSheetProps = {
   payload: string | null;
   onBindPart: () => void;
   onTryAi: () => void;
   onSearch: () => void;
+  /** Shown only when the payload is a foreign URL QR. */
+  onOpenUrl?: () => void;
   isAiLoading?: boolean;
   onDismiss: () => void;
 };
@@ -24,10 +23,12 @@ function OptionRow({
   label,
   onPress,
   disabled,
+  primary,
 }: {
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  primary?: boolean;
 }) {
   const { colors } = useTheme();
 
@@ -46,48 +47,86 @@ function OptionRow({
         paddingHorizontal: 14,
         justifyContent: 'center',
         opacity: disabled ? 0.5 : 1,
-        backgroundColor: colors.secondary,
-        borderWidth: 1,
+        backgroundColor: primary ? colors.primary : colors.secondary,
+        borderWidth: primary ? 0 : 1,
         borderColor: colors.border,
       }}
     >
-      <Text variant="body" style={{ fontSize: 14, fontWeight: '600' }}>
+      <Text
+        variant="body"
+        style={{
+          fontSize: 14,
+          fontWeight: '600',
+          color: primary ? colors.primaryForeground : colors.foreground,
+        }}
+      >
         {label}
       </Text>
     </Pressable>
   );
 }
 
+function ScanUnknownSheetContent({
+  payload,
+  onBindPart,
+  onTryAi,
+  onSearch,
+  onOpenUrl,
+  isAiLoading,
+}: Omit<ScanUnknownSheetProps, 'onDismiss'>) {
+  const isUrl = isHttpUrl(payload);
+
+  if (!payload) return <View style={{ minHeight: 1 }} />;
+
+  let host = payload;
+  if (isUrl) {
+    try {
+      host = new URL(payload).host;
+    } catch {
+      host = payload;
+    }
+  }
+
+  return (
+    <View style={{ gap: 14 }}>
+      <View style={{ gap: 4 }}>
+        <Text variant="heading" style={{ fontSize: 20, fontWeight: '700' }}>
+          {isUrl ? 'Внешняя ссылка' : 'Код не найден'}
+        </Text>
+        <Text variant="caption" color="muted" numberOfLines={2}>
+          {isUrl ? host : payload}
+        </Text>
+      </View>
+
+      {isUrl && onOpenUrl ? <OptionRow label="Открыть ссылку" onPress={onOpenUrl} primary /> : null}
+      {!isUrl ? <OptionRow label="Привязать к запчасти" onPress={onBindPart} primary /> : null}
+      {!isUrl ? (
+        <OptionRow label={isAiLoading ? 'Ищем…' : 'Распознать с AI'} onPress={onTryAi} disabled={isAiLoading} />
+      ) : null}
+      <OptionRow label="Поиск вручную" onPress={onSearch} />
+    </View>
+  );
+}
+
 export const ScanUnknownSheet = forwardRef<BottomSheetModal, ScanUnknownSheetProps>(function ScanUnknownSheet(
-  { payload, onBindPart, onTryAi, onSearch, isAiLoading, onDismiss },
+  props,
   ref,
 ) {
-  const { colors } = useTheme();
-  const snapPoints = useMemo(() => ['38%'], []);
+  const sheet = useModalBottomSheet();
+  const modalProps = {
+    ...sheet.sheetLayout,
+    index: 0 as const,
+    snapPoints: sheet.compactSnapPoints(42),
+    enablePanDownToClose: true,
+    onDismiss: props.onDismiss,
+    backdropComponent: sheet.renderBackdrop,
+    backgroundStyle: sheet.backgroundStyle,
+    handleIndicatorStyle: sheet.handleIndicatorStyle,
+  };
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
-    ),
-    [],
-  );
-
-  if (!payload) {
+  if (!props.payload) {
     return (
-      <BottomSheetModal
-        ref={ref}
-        index={0}
-        snapPoints={snapPoints}
-        enablePanDownToClose
-        onDismiss={onDismiss}
-        backdropComponent={renderBackdrop}
-        handleIndicatorStyle={{ backgroundColor: colors.mutedForeground, width: layout.bottomSheet.handleWidth }}
-        backgroundStyle={{
-          backgroundColor: colors.card,
-          borderTopLeftRadius: layout.bottomSheet.borderRadius,
-          borderTopRightRadius: layout.bottomSheet.borderRadius,
-        }}
-      >
+      <BottomSheetModal ref={ref} {...modalProps}>
         <BottomSheetView style={{ minHeight: 1 }}>
           <View />
         </BottomSheetView>
@@ -96,35 +135,9 @@ export const ScanUnknownSheet = forwardRef<BottomSheetModal, ScanUnknownSheetPro
   }
 
   return (
-    <BottomSheetModal
-      ref={ref}
-      index={0}
-      snapPoints={snapPoints}
-      enablePanDownToClose
-      onDismiss={onDismiss}
-      backdropComponent={renderBackdrop}
-      handleIndicatorStyle={{ backgroundColor: colors.mutedForeground, width: layout.bottomSheet.handleWidth }}
-      backgroundStyle={{
-        backgroundColor: colors.card,
-        borderTopLeftRadius: layout.bottomSheet.borderRadius,
-        borderTopRightRadius: layout.bottomSheet.borderRadius,
-      }}
-    >
-      <BottomSheetView style={{ paddingHorizontal: 20, paddingBottom: 24, gap: 14 }}>
-        <View style={{ gap: 4 }}>
-          <Text variant="heading" style={{ fontSize: 20, fontWeight: '700' }}>
-            Код не найден
-          </Text>
-          <Text variant="caption" color="muted" style={{ fontVariant: ['tabular-nums'] }}>
-            {payload}
-          </Text>
-        </View>
-
-        <View style={{ gap: 8 }}>
-          <OptionRow label="Найти через AI" onPress={onTryAi} disabled={isAiLoading} />
-          <OptionRow label="Привязать к позиции" onPress={onBindPart} />
-          <OptionRow label="Поиск вручную" onPress={onSearch} />
-        </View>
+    <BottomSheetModal ref={ref} {...modalProps}>
+      <BottomSheetView style={sheet.compactContentStyle}>
+        <ScanUnknownSheetContent {...props} />
       </BottomSheetView>
     </BottomSheetModal>
   );

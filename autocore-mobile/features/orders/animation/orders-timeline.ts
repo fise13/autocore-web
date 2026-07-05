@@ -1,12 +1,16 @@
+import { screenMotion } from '@/theme/screen';
+
+const s = screenMotion.stagger;
+
 export const ordersTimeline = {
   header: 0,
-  search: 80,
-  filters: 120,
-  listBase: 180,
-  listStagger: 36,
+  search: s * 2,
+  filters: s * 3,
+  listBase: s * 4,
+  listStagger: s,
 } as const;
 
 export const ordersSpring = {
-  chip: { damping: 26, stiffness: 380, mass: 0.72 },
-  hero: { damping: 22, stiffness: 280, mass: 0.85 },
+  chip: screenMotion.press,
+  hero: screenMotion.spring,
 } as const;

@@ -12,8 +12,12 @@ const LOCAL_DEV_API_ORIGIN = 'http://localhost:3000';
  * Note: myautocore.com is the marketing site; APIs live on the app host.
  */
 export function getPublicApiBaseUrl(): string {
+  const useProdInDev = process.env.EXPO_PUBLIC_USE_PROD_API?.trim() === 'true';
+  if (__DEV__ && !useProdInDev) {
+    const devOverride = process.env.EXPO_PUBLIC_DEV_API_BASE_URL?.trim();
+    return (devOverride || LOCAL_DEV_API_ORIGIN).replace(/\/$/, '');
+  }
   const configured = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
   if (configured) return configured.replace(/\/$/, '');
-  if (__DEV__) return LOCAL_DEV_API_ORIGIN;
   return DEFAULT_APP_API_ORIGIN;
 }
