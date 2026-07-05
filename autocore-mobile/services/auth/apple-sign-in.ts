@@ -2,11 +2,10 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { updateProfile, type User } from 'firebase/auth';
 import { Platform } from 'react-native';
 
-import { createRandomNonce, sha256Nonce } from '@/lib/auth/apple-nonce';
+import { createRandomNonce, sha256NonceHex } from '@/lib/auth/apple-nonce';
 import { formatAppleNativeErrorForUi } from '@/lib/auth/apple-native-setup';
-import { getAuthErrorCode } from '@/utils/auth-error';
 import { exchangeAppleSignInViaApi } from '@/services/api/apple-sign-in';
-import { signInWithAppleIdentityToken, signInWithFirebaseCustomToken } from '@/services/firebase/auth';
+import { signInWithFirebaseCustomToken } from '@/services/firebase/auth';
 
 export async function isAppleSignInAvailable(): Promise<boolean> {
   if (Platform.OS !== 'ios') return false;
@@ -62,18 +61,9 @@ async function completeAppleFirebaseSignIn(
     throw new Error('Apple не вернул identity token. Проверьте Sign in with Apple в Apple Developer.');
   }
 
-  const apiPayload = buildAppleApiPayload(credential, rawNonce);
-
-  try {
-    const user = await signInWithAppleIdentityToken(credential.identityToken, rawNonce);
-    return applyAppleProfileFromCredential(user, credential);
-  } catch (error) {
-    if (getAuthErrorCode(error) !== 'auth/invalid-credential') {
-      throw error;
-    }
-  }
-
-  const customToken = await exchangeAppleSignInViaApi(apiPayload);
+  // Native iOS hashes the nonce inside the identity token (base64url).
+  // Firebase JS on-device compares hex and fails — exchange via server instead.
+  const customToken = await exchangeAppleSignInViaApi(buildAppleApiPayload(credential, rawNonce));
   const user = await signInWithFirebaseCustomToken(customToken);
   return applyAppleProfileFromCredential(user, credential);
 }
@@ -89,7 +79,8 @@ export async function signInWithAppleNative(): Promise<User> {
   }
 
   const rawNonce = createRandomNonce();
-  const hashedNonce = await sha256Nonce(rawNonce);
+  // Expo SDK 56 passes nonce to ASAuthorizationAppleIDRequest as-is (no auto-hash).
+  const hashedNonce = await sha256NonceHex(rawNonce);
 
   let credential: AppleAuthentication.AppleAuthenticationCredential;
   try {

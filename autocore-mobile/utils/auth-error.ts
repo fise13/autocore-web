@@ -31,6 +31,8 @@ export function mapAuthError(error: unknown): string {
       return 'Нужно подтвердить личность ещё раз, затем повторите удаление.';
     case 'auth/invalid-credential':
       return 'Не удалось подтвердить вход. Попробуйте ещё раз.';
+    case 'auth/missing-or-invalid-nonce':
+      return 'Ошибка безопасности Apple Sign In. Обновите приложение и попробуйте снова.';
     case 'auth/account-exists-with-different-credential':
       return 'Этот email уже связан с другим способом входа.';
     case 'auth/email-already-in-use':

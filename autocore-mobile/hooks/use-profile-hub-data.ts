@@ -18,7 +18,7 @@ export function useProfileHubData(): ProfileHubData {
     const rowValues: Partial<Record<SettingsHubRouteId, string>> = {
       appearance: themePreferenceLabel(preference),
       notifications: notificationPreferences.channels.push ? 'Вкл' : 'Выкл',
-      version: Constants.expoConfig?.version ?? '1.0.0',
+      version: `${Constants.expoConfig?.version ?? '1.0.0'} · BETA`,
     };
 
     return {
