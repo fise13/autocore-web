@@ -1411,7 +1411,16 @@ export function MotorsExcelGrid({
               window.addEventListener("mouseup", onMouseUp);
               return;
             }
-            if (editor) setEditor(null);
+            if (editor) {
+              const target = event.target;
+              if (
+                target instanceof Element &&
+                target.closest("[data-grid-editor-suggestions]")
+              ) {
+                return;
+              }
+              setEditor(null);
+            }
           }}
         >
           <div

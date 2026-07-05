@@ -40,6 +40,19 @@ function resolveProjectRoot(): string {
   return process.cwd();
 }
 
+function discoverServiceAccountUpwards(startDir?: string): string | null {
+  let cursor = startDir ?? process.cwd();
+  for (let depth = 0; depth < 12; depth += 1) {
+    const discovered = discoverServiceAccountInDir(cursor);
+    if (discovered) return discovered;
+
+    const parent = dirname(cursor);
+    if (parent === cursor) break;
+    cursor = parent;
+  }
+  return null;
+}
+
 function candidatePaths(configuredPath?: string): string[] {
   const projectRoot = resolveProjectRoot();
   const cwd = process.cwd();
@@ -63,7 +76,36 @@ function candidatePaths(configuredPath?: string): string[] {
     }
   }
 
+  const upwards = discoverServiceAccountUpwards(projectRoot);
+  if (upwards) {
+    candidates.push(upwards);
+  }
+
   return [...new Set(candidates)];
+}
+
+function isServerlessDeploy(): boolean {
+  return Boolean(process.env.VERCEL?.trim() || process.env.AWS_LAMBDA_FUNCTION_NAME?.trim());
+}
+
+function serviceAccountSetupHint(configuredPath?: string): string {
+  if (isServerlessDeploy()) {
+    return (
+      "На Vercel/сервере файл ключа недоступен. Задайте FIREBASE_SERVICE_ACCOUNT_JSON " +
+      "(полный JSON сервисного аккаунта одной строкой) в Environment Variables и redeploy. " +
+      "Удалите FIREBASE_SERVICE_ACCOUNT_PATH из Vercel — он работает только локально."
+    );
+  }
+
+  const hint = configuredPath
+    ? `Путь из FIREBASE_SERVICE_ACCOUNT_PATH не найден: ${configuredPath}`
+    : "FIREBASE_SERVICE_ACCOUNT_PATH не задан";
+
+  return (
+    `${hint}. Скачайте ключ в Firebase Console → Project settings → Service accounts, ` +
+    "сохраните *-firebase-adminsdk-*.json в корень проекта и укажите " +
+    "FIREBASE_SERVICE_ACCOUNT_PATH=./имя-файла.json (перезапустите dev-сервер)."
+  );
 }
 
 export function resolveServiceAccountFilePath(): string {
@@ -74,13 +116,7 @@ export function resolveServiceAccountFilePath(): string {
   const found = candidatePaths(configured).find((path) => existsSync(path));
   if (found) return found;
 
-  const hint = configured
-    ? `Путь из FIREBASE_SERVICE_ACCOUNT_PATH не найден: ${configured}`
-    : "FIREBASE_SERVICE_ACCOUNT_PATH не задан";
-
-  throw new Error(
-    `${hint}. Скачайте ключ в Firebase Console → Project settings → Service accounts, сохраните *-firebase-adminsdk-*.json в корень проекта и укажите FIREBASE_SERVICE_ACCOUNT_PATH=./имя-файла.json (перезапустите dev-сервер).`,
-  );
+  throw new Error(serviceAccountSetupHint(configured));
 }
 
 export function readServiceAccountFromDisk(): Record<string, unknown> {
@@ -111,18 +147,45 @@ export function parseInlineServiceAccount(raw: string): Record<string, unknown> 
 }
 
 function canReadServiceAccountFromDisk(): boolean {
+  if (isServerlessDeploy()) return false;
+
   const configured =
     process.env.FIREBASE_SERVICE_ACCOUNT_PATH?.trim() ||
     process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
-  const projectRoot = resolveProjectRoot();
+
+  if (configured) {
+    return candidatePaths(configured).some((path) => existsSync(path));
+  }
+
   return Boolean(
-    configured ||
-      discoverServiceAccountInDir(projectRoot) ||
-      discoverServiceAccountInDir(process.cwd()),
+    discoverServiceAccountInDir(resolveProjectRoot()) ||
+      discoverServiceAccountInDir(process.cwd()) ||
+      discoverServiceAccountUpwards(),
   );
 }
 
+function parseServiceAccountOnServerless(): Record<string, unknown> {
+  const inline = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
+  const configuredPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH?.trim();
+
+  if (!inline || isPlaceholderServiceAccountJson(inline)) {
+    const pathHint = configuredPath
+      ? ` Сейчас задан FIREBASE_SERVICE_ACCOUNT_PATH=${configuredPath}, но файл на Vercel недоступен — удалите эту переменную.`
+      : "";
+    throw new Error(
+      "На Vercel задайте FIREBASE_SERVICE_ACCOUNT_JSON (полный JSON сервисного аккаунта одной строкой) и redeploy." +
+        pathHint,
+    );
+  }
+
+  return parseInlineServiceAccount(inline);
+}
+
 export function parseServiceAccount(): Record<string, unknown> {
+  if (isServerlessDeploy()) {
+    return parseServiceAccountOnServerless();
+  }
+
   const inline = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
 
   if (inline && !isPlaceholderServiceAccountJson(inline)) {
@@ -152,6 +215,7 @@ export function parseServiceAccount(): Record<string, unknown> {
   }
 
   throw new Error(
-    "Firebase Admin не настроен. Задайте FIREBASE_SERVICE_ACCOUNT_PATH (локально) или FIREBASE_SERVICE_ACCOUNT_JSON (Vercel).",
+    "Firebase Admin не настроен локально. Задайте FIREBASE_SERVICE_ACCOUNT_PATH в .env.local " +
+      "(файл *-firebase-adminsdk-*.json в корне проекта) или FIREBASE_SERVICE_ACCOUNT_JSON.",
   );
 }

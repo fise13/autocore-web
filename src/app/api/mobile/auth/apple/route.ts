@@ -34,10 +34,14 @@ export async function POST(request: Request) {
     return NextResponse.json(result);
   } catch (error) {
     console.error("[mobile/auth/apple]", error);
-    const message =
+    const raw =
       error instanceof Error && error.message.trim()
-        ? error.message
+        ? error.message.trim()
         : "Не удалось выполнить вход через Apple";
+    const message =
+      /FIREBASE_SERVICE_ACCOUNT|Firebase Admin/i.test(raw)
+        ? "Сервер входа через Apple не настроен (Firebase Admin). Обратитесь в поддержку."
+        : raw;
     return NextResponse.json({ error: message }, { status: 401 });
   }
 }

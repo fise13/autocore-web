@@ -1,13 +1,10 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
-import Animated from 'react-native-reanimated';
 
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { useScanEnter } from '../animation/use-scan-enter';
-import { scanTimeline } from '../animation/scan-timeline';
-import { scanLayout } from '../layout';
+import type { ScanDetection } from '@/services/scan';
 
 export type ScanCameraHandle = {
   takePicture: () => Promise<string | null>;
@@ -16,19 +13,54 @@ export type ScanCameraHandle = {
 type ScanCameraProps = {
   torch: boolean;
   active: boolean;
-  onBarcode: (payload: string) => void;
+  onDetection: (detection: ScanDetection) => void;
 };
 
+const BARCODE_TYPES = [
+  'qr',
+  'ean13',
+  'ean8',
+  'upc_a',
+  'upc_e',
+  'code128',
+  'code39',
+  'code93',
+  'itf14',
+  'codabar',
+  'datamatrix',
+  'pdf417',
+  'aztec',
+] as const;
+
+function toDetection(result: BarcodeScanningResult): ScanDetection | null {
+  const payload = result.data?.trim();
+  if (!payload) return null;
+  return {
+    payload,
+    symbology: result.type,
+    bounds: result.bounds,
+    cornerPoints: result.cornerPoints ?? [],
+  };
+}
+
 export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function ScanCamera(
-  { torch, active, onBarcode },
+  { torch, active, onDetection },
   ref,
 ) {
   const { colors } = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
-  const enterStyle = useScanEnter({ delay: scanTimeline.camera, scaleFrom: 0.98, duration: 380 });
   const cameraRef = useRef<CameraView>(null);
-  const lastScanRef = useRef<string | null>(null);
-  const lastScanAtRef = useRef(0);
+  const activeRef = useRef(active);
+  const onDetectionRef = useRef(onDetection);
+  const readyRef = useRef(false);
+
+  useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
+
+  useEffect(() => {
+    onDetectionRef.current = onDetection;
+  }, [onDetection]);
 
   useImperativeHandle(ref, () => ({
     async takePicture() {
@@ -51,24 +83,21 @@ export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function
     }
   }, [permission, requestPermission]);
 
-  const handleBarcode = (result: BarcodeScanningResult) => {
-    if (!active) return;
-    const now = Date.now();
-    const payload = result.data?.trim();
-    if (!payload) return;
-    if (lastScanRef.current === payload && now - lastScanAtRef.current < 2200) return;
-    lastScanRef.current = payload;
-    lastScanAtRef.current = now;
-    onBarcode(payload);
-  };
+  // Keep handler stable — toggling undefined disables native barcodeScannerEnabled in release.
+  const handleBarcode = useCallback((result: BarcodeScanningResult) => {
+    if (!activeRef.current || !readyRef.current) return;
+    const detection = toDetection(result);
+    if (!detection) return;
+    onDetectionRef.current(detection);
+  }, []);
 
   if (!permission) {
-    return <View style={[styles.fill, { backgroundColor: '#0d0f14' }]} />;
+    return <View style={[styles.fill, { backgroundColor: '#000' }]} />;
   }
 
   if (!permission.granted) {
     return (
-      <View style={[styles.fill, styles.permission, { backgroundColor: '#0d0f14' }]}>
+      <View style={[styles.fill, styles.permission, { backgroundColor: '#000' }]}>
         <Text variant="body" style={{ color: '#f5f5f7', fontWeight: '600', marginBottom: 8 }}>
           Камера
         </Text>
@@ -101,33 +130,33 @@ export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function
     );
   }
 
-  if (!active) {
-    return <View style={[styles.fill, { backgroundColor: '#0d0f14' }]} />;
-  }
-
   return (
-    <Animated.View style={[styles.fill, enterStyle]}>
-      <CameraView
-        ref={cameraRef}
-        style={styles.fill}
-        facing="back"
-        enableTorch={torch}
-        barcodeScannerSettings={{
-          barcodeTypes: ['qr', 'ean13', 'ean8', 'code128', 'code39', 'datamatrix', 'pdf417'],
-        }}
-        onBarcodeScanned={handleBarcode}
-      />
-    </Animated.View>
+    <CameraView
+      ref={cameraRef}
+      style={styles.fill}
+      facing="back"
+      enableTorch={torch}
+      autofocus="on"
+      active
+      onCameraReady={() => {
+        readyRef.current = true;
+      }}
+      barcodeScannerSettings={{
+        barcodeTypes: [...BARCODE_TYPES],
+      }}
+      onBarcodeScanned={handleBarcode}
+    />
   );
 });
 
 const styles = StyleSheet.create({
   fill: {
     flex: 1,
+    backgroundColor: '#000',
   },
   permission: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: scanLayout.pad,
+    paddingHorizontal: 24,
   },
 });

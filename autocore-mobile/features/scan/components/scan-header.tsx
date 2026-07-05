@@ -9,15 +9,16 @@ type ScanHeaderProps = {
   torchOn: boolean;
   onToggleTorch: () => void;
   onSettingsPress: () => void;
+  orderContext?: boolean;
 };
 
-export function ScanHeader({ torchOn, onToggleTorch, onSettingsPress }: ScanHeaderProps) {
+export function ScanHeader({ torchOn, onToggleTorch, onSettingsPress, orderContext }: ScanHeaderProps) {
   const { colors } = useTheme();
 
   return (
     <PageHeader
       title="Scan"
-      subtitle="QR • VIN • Barcode • Document"
+      subtitle={orderContext ? 'Добавление в наряд' : 'Умная камера'}
       inverted
       overlay
       trailing={

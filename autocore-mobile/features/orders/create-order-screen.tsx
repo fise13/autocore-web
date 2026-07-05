@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -46,6 +46,7 @@ import {
   mapCompositionToWorkOrderLines,
   mapOrderToCompositionDrafts,
 } from './lib/composition-mappers';
+import type { ScanOrderResult } from '@/services/scan';
 import { useComposerTabState } from './animation/use-composer-tab-state';
 import { OrderCompositionStep } from './components/composition/order-composition-step';
 import { useOrderCompositionForm } from './hooks/use-order-composition-form';
@@ -226,6 +227,34 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
     availableMotors,
     form: { clientId, vehicleId, vehicleMake, vehicleModel, licensePlate, vin },
   });
+
+  const handleScanResult = useCallback(
+    (result: ScanOrderResult) => {
+      if (result.type === 'adhoc') {
+        composition.setPartSku(result.barcode);
+        if (result.name) composition.setPartName(result.name);
+        setTab('parts');
+        setStep(2);
+        toast({
+          title: 'Произвольная запчасть',
+          description: 'Проверьте название и цену перед добавлением',
+          variant: 'default',
+        });
+        return;
+      }
+      if (result.type === 'create-item') {
+        composition.setPartSku(result.barcode);
+        setTab('parts');
+        setStep(2);
+        toast({
+          title: 'Новый товар',
+          description: `Штрихкод ${result.barcode} готов к созданию`,
+          variant: 'default',
+        });
+      }
+    },
+    [composition],
+  );
 
   useEffect(() => {
     if (!isEdit || !existingOrder || hydrated) return;
@@ -653,6 +682,8 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
             currentUserId={uid ?? undefined}
             specificsEnabled={specificsEnabled}
             motorsEnabled={motorsEnabled}
+            orderId={orderId}
+            onScanResult={handleScanResult}
           />
         </Animated.View>
       );

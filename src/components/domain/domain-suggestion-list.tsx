@@ -115,9 +115,11 @@ export function DomainSuggestionList({
       {showCreate ? (
         <button
           type="button"
-          onMouseDown={(event) => event.preventDefault()}
+          onMouseDown={(event) => {
+            event.preventDefault();
+            onCreate?.();
+          }}
           onMouseEnter={() => onActiveIndexChange(results.length)}
-          onClick={() => onCreate?.()}
           className={cn(
             "flex shrink-0 items-center gap-2 border-t border-border/60 px-3 py-2.5 text-left text-[13px] transition-colors",
             activeIndex === results.length
@@ -156,9 +158,11 @@ function SuggestionRow({ category, entry, active, onHover, onSelect }: Suggestio
       type="button"
       role="option"
       aria-selected={active}
-      onMouseDown={(event) => event.preventDefault()}
+      onMouseDown={(event) => {
+        event.preventDefault();
+        onSelect();
+      }}
       onMouseMove={onHover}
-      onClick={onSelect}
       className={cn(
         "flex min-h-[44px] w-full items-center gap-2.5 rounded-[6px] px-2.5 py-1.5 text-left transition-colors",
         active

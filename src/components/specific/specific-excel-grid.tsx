@@ -47,6 +47,7 @@ import {
 } from "@/lib/motor-grid-layout";
 import {
   applySpecificCellValue,
+  buildSavedSpecificRowFromUpsert,
   buildSpecificGridRows,
   growSpecificRows,
   hasSpecificRowContent,
@@ -54,6 +55,7 @@ import {
   specificCellValue,
   SpecificGridRow,
 } from "@/lib/specific/specific-grid-data-store";
+import { scopedRecordDocumentId } from "@/lib/specific/specific-sync-ids";
 import {
   buildSpecificMotorGridLayout,
   isSpecificSchemaColumnEditable,
@@ -517,7 +519,10 @@ export function SpecificExcelGrid({
       const actorUid = getFirebaseAuth().currentUser?.uid;
       const snapshotRows = rows;
       const baselineById = new Map(recordsRef.current.map((record) => [record.id, record]));
-      for (const rowId of dirtyRowsRef.current) {
+      const rowReplacements = new Map<string, SpecificGridRow>();
+      const dirtyRowIds = [...dirtyRowsRef.current];
+
+      for (const rowId of dirtyRowIds) {
         const row = snapshotRows.find((item) => item.rowId === rowId);
         if (!row) continue;
         if (row.rowKind === "empty" && !hasSpecificRowContent(row, headerMapping, columnSchema)) continue;
@@ -538,8 +543,30 @@ export function SpecificExcelGrid({
           buildRowPayloadFromSchema(row.data, columnSchema),
           actorUid,
         );
+
+        if (row.rowKind === "empty") {
+          const recordId = scopedRecordDocumentId(companyId, category.localId, row.rowIndex);
+          rowReplacements.set(
+            rowId,
+            buildSavedSpecificRowFromUpsert(
+              row,
+              recordId,
+              companyId,
+              category.id,
+              category.localId,
+            ),
+          );
+          dirtyRowsRef.current.delete(rowId);
+        }
       }
-      const pushedRowIds = [...dirtyRowsRef.current];
+
+      if (rowReplacements.size > 0) {
+        setRows((current) =>
+          current.map((currentRow) => rowReplacements.get(currentRow.rowId) ?? currentRow),
+        );
+      }
+
+      const pushedRowIds = dirtyRowIds.map((rowId) => rowReplacements.get(rowId)?.rowId ?? rowId);
       dirtyRowsRef.current.clear();
       localSaveAckRef.current.clear();
       setDirtyRowIdSet(new Set());
@@ -556,7 +583,18 @@ export function SpecificExcelGrid({
       setSaveError(message);
       throw new Error(message);
     }
-  }, [canEdit, category, columnSchema, companyId, flushEditor, repository, rows, setSaveError, setSaveStatus]);
+  }, [
+    canEdit,
+    category,
+    columnSchema,
+    companyId,
+    flushEditor,
+    headerMapping,
+    repository,
+    rows,
+    setSaveError,
+    setSaveStatus,
+  ]);
 
   const syncNow = useCallback(async () => {
     runSave();
@@ -1382,7 +1420,16 @@ export function SpecificExcelGrid({
             );
           }}
           onMouseDown={() => {
-            if (editor) setEditor(null);
+            if (editor) {
+              const target = event.target;
+              if (
+                target instanceof Element &&
+                target.closest("[data-grid-editor-suggestions]")
+              ) {
+                return;
+              }
+              setEditor(null);
+            }
           }}
         >
           <div

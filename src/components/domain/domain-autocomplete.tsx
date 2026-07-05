@@ -2,6 +2,7 @@
 
 import {
   forwardRef,
+  useEffect,
   useId,
   useImperativeHandle,
   useMemo,
@@ -56,6 +57,7 @@ export const DomainAutocomplete = forwardRef<DomainAutocompleteHandle, DomainAut
     const domain = useDomainAutocomplete(category);
     const inputRef = useRef<HTMLInputElement>(null);
     const userNavigatedRef = useRef(false);
+    const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const listId = useId();
 
     const [open, setOpen] = useState(false);
@@ -69,6 +71,12 @@ export const DomainAutocomplete = forwardRef<DomainAutocompleteHandle, DomainAut
     );
 
     const maxIndex = Math.max(results.length - 1, 0);
+
+    useEffect(() => {
+      return () => {
+        if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
+      };
+    }, []);
 
     function commitEntry(entry: DomainEntry) {
       onValueChange(entry.name);
@@ -171,9 +179,15 @@ export const DomainAutocomplete = forwardRef<DomainAutocompleteHandle, DomainAut
               setOpen(true);
               setActiveIndex(0);
             }}
-            onFocus={() => setOpen(true)}
+            onFocus={() => {
+              if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
+              setOpen(true);
+            }}
             onBlur={() => {
-              void commitResolvedValue();
+              if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
+              blurTimeoutRef.current = setTimeout(() => {
+                void commitResolvedValue();
+              }, 140);
             }}
             onKeyDown={handleKeyDown}
           />
@@ -183,6 +197,7 @@ export const DomainAutocomplete = forwardRef<DomainAutocompleteHandle, DomainAut
           <div
             id={listId}
             className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-lg border border-border/80 bg-popover text-popover-foreground shadow-xl ring-1 ring-foreground/10"
+            onMouseDown={(event) => event.preventDefault()}
           >
             <DomainSuggestionList
               category={category}

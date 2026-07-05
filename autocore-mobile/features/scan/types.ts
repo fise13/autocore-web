@@ -45,6 +45,9 @@ export type ScanCandidate = {
   reason: string;
   sellPrice?: number;
   totalAvailable: number;
+  brandName?: string;
+  warehouseLocation?: string;
+  imageUrl?: string;
 };
 
 export type ScanResult = {
@@ -53,6 +56,7 @@ export type ScanResult = {
   code: string;
   title: string;
   subtitle?: string;
+  imageUrl?: string;
   shelf?: string;
   status?: ScanInventoryStatus;
   price?: number;

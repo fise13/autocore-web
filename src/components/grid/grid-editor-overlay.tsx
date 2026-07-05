@@ -190,6 +190,7 @@ export function GridEditorOverlay({
   }
 
   function selectEntry(entry: DomainEntry, direction?: CommitDirection) {
+    if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
     onChange(entry.name);
     onCommit(direction, entry.name);
   }
@@ -294,6 +295,7 @@ export function GridEditorOverlay({
     suggestionsVisible && dropdownRect && typeof document !== "undefined"
       ? createPortal(
           <div
+            data-grid-editor-suggestions
             className="overflow-hidden rounded-lg border border-border/80 bg-popover text-popover-foreground shadow-xl ring-1 ring-foreground/10"
             style={{
               position: "fixed",
@@ -329,7 +331,10 @@ export function GridEditorOverlay({
                         userNavigatedRef.current = true;
                         setActiveIndex(index);
                       }}
-                      onClick={() => selectEntry(result.entry, "right")}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        selectEntry(result.entry, "right");
+                      }}
                     >
                       {result.entry.name}
                     </button>

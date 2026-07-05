@@ -29,6 +29,8 @@ export function mapResolveResultToScanResult(result: MobileScanResolveResult): S
       reason: candidate.reason,
       sellPrice: candidate.item.sellPrice,
       totalAvailable: candidate.item.totalAvailable,
+      brandName: candidate.item.brandName,
+      warehouseLocation: candidate.item.warehouseLocation,
     })),
   };
 }

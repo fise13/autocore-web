@@ -1479,6 +1479,7 @@ export function WarehouseExcelGrid({
           onMouseDown={(event) => {
             if (!editor) return;
             const target = event.target;
+            if (target instanceof Element && target.closest("[data-grid-editor-suggestions]")) return;
             if (target instanceof Node && gridRef.current?.contains(target)) return;
             endEdit();
           }}

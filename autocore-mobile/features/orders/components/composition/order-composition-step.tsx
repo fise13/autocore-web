@@ -13,6 +13,8 @@ import { toneBackground } from '@/theme/color-utils';
 import { warrantyTemplateLabel, warrantyTemplateOptions } from '@/lib/work-order/warranty-templates';
 import type { WorkOrderMotorOutcome } from '@/types/work-order';
 
+import { ScanLauncherRow } from '@/features/scan/components/scan-launcher-button';
+import type { ScanOrderResult } from '@/services/scan';
 import { ComposerTabBar } from '../composer-tab-bar';
 import { ComposerTabPanel } from '../composer-tab-panel';
 import type { ComposerTab } from '../../animation/use-composer-tab-state';
@@ -35,6 +37,8 @@ type OrderCompositionStepProps = {
   currentUserId?: string;
   specificsEnabled: boolean;
   motorsEnabled: boolean;
+  orderId?: string;
+  onScanResult?: (result: ScanOrderResult) => void;
 };
 
 const PAYMENT_TYPE_OPTIONS = [
@@ -57,6 +61,8 @@ export function OrderCompositionStep({
   currentUserId,
   specificsEnabled,
   motorsEnabled,
+  orderId,
+  onScanResult,
 }: OrderCompositionStepProps) {
   const { colors } = useTheme();
   const isHourly = composition.laborDraft.pricingMode === 'hourly';
@@ -175,6 +181,7 @@ export function OrderCompositionStep({
             <CompositionAddCard
               title="Добавить запчасть"
               description="Со склада или разово — цена попадёт в накладную и бухгалтерию"
+              footer={<ScanLauncherRow orderId={orderId} onScanResult={onScanResult} />}
             >
               <CompositionField label="Артикул (необяз.)">
                 <AutocompleteInput

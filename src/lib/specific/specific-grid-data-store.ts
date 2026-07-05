@@ -129,6 +129,34 @@ export function growSpecificRows(rows: SpecificGridRow[], growBy: number): Speci
   return next;
 }
 
+export function buildSavedSpecificRowFromUpsert(
+  row: SpecificGridRow & { rowKind: "empty" },
+  recordId: string,
+  companyId: string,
+  categoryId: string,
+  categoryLocalId: number,
+): SpecificGridRow & { rowKind: "saved" } {
+  return {
+    id: recordId,
+    companyId,
+    categoryId,
+    categoryLocalId,
+    rowIndex: row.rowIndex,
+    data: { ...row.data },
+    rowKind: "saved",
+    rowId: `saved-${recordId}`,
+  };
+}
+
+function emptyRowConflictsWithSaved(
+  row: SpecificGridRow & { rowKind: "empty" },
+  saved: SpecificGridRow[],
+): boolean {
+  return saved.some(
+    (savedRow) => savedRow.rowKind === "saved" && savedRow.rowIndex === row.rowIndex,
+  );
+}
+
 export function reconcileSpecificRowsWithRemote(
   currentRows: SpecificGridRow[],
   incomingRecords: SpecificRecordEntity[],
@@ -160,12 +188,14 @@ export function reconcileSpecificRowsWithRemote(
     });
   }
 
-  const dirtyDraftRows = currentRows.filter(
-    (row) => row.rowKind === "empty" && dirtyRowIds.has(row.rowId),
-  );
-  const preservedEmptyRows = currentRows.filter(
-    (row) => row.rowKind === "empty" && !dirtyRowIds.has(row.rowId),
-  );
+  const dirtyDraftRows = currentRows.filter((row) => {
+    if (row.rowKind !== "empty" || !dirtyRowIds.has(row.rowId)) return false;
+    return !emptyRowConflictsWithSaved(row, saved);
+  });
+  const preservedEmptyRows = currentRows.filter((row) => {
+    if (row.rowKind !== "empty" || dirtyRowIds.has(row.rowId)) return false;
+    return !emptyRowConflictsWithSaved(row, saved);
+  });
 
   const targetCount = Math.max(currentRows.length, saved.length + dirtyDraftRows.length, 40);
   const nextRows: SpecificGridRow[] = [...saved, ...dirtyDraftRows];

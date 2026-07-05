@@ -7,6 +7,7 @@ import { useModalBottomSheet, useTheme } from '@/hooks';
 import { haptics } from '@/theme';
 import { formatPrice } from '@/features/search/lib/format';
 
+import { ScanProductThumb } from './scan-product-thumb';
 import type { ScanCandidate, ScanResult } from '../types';
 
 type ScanCandidatesSheetProps = {
@@ -61,31 +62,36 @@ export const ScanCandidatesSheet = forwardRef<BottomSheetModal, ScanCandidatesSh
                 onPick(candidate);
               }}
               style={{
-                borderRadius: 12,
+                borderRadius: 14,
                 borderWidth: 1,
                 borderColor: colors.border,
                 backgroundColor: colors.secondary,
                 padding: 14,
-                gap: 4,
+                flexDirection: 'row',
+                gap: 12,
+                alignItems: 'center',
               }}
             >
-              <Text variant="body" style={{ fontSize: 15, fontWeight: '600' }}>
-                {candidate.name}
-              </Text>
-              <Text variant="caption" color="muted">
-                {candidate.sku} · {candidate.reason}
-              </Text>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                {candidate.sellPrice != null ? (
-                  <Text variant="caption" style={{ fontWeight: '600' }}>
-                    {formatPrice(candidate.sellPrice)}
-                  </Text>
-                ) : (
-                  <View />
-                )}
-                <Text variant="caption" color="muted">
-                  Доступно {candidate.totalAvailable}
+              <ScanProductThumb name={candidate.name} imageUrl={candidate.imageUrl} size={52} />
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text variant="body" style={{ fontSize: 15, fontWeight: '600' }}>
+                  {candidate.name}
                 </Text>
+                <Text variant="caption" color="muted">
+                  {candidate.sku} · {candidate.reason}
+                </Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}>
+                  {candidate.sellPrice != null ? (
+                    <Text variant="caption" style={{ fontWeight: '600' }}>
+                      {formatPrice(candidate.sellPrice)}
+                    </Text>
+                  ) : (
+                    <View />
+                  )}
+                  <Text variant="caption" color="muted">
+                    Остаток {candidate.totalAvailable}
+                  </Text>
+                </View>
               </View>
             </Pressable>
           ))}
