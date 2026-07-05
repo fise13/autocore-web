@@ -1419,7 +1419,7 @@ export function SpecificExcelGrid({
               Math.floor((target.scrollTop + target.clientHeight) / layout.rowHeight),
             );
           }}
-          onMouseDown={() => {
+          onMouseDown={(event) => {
             if (editor) {
               const target = event.target;
               if (
