@@ -2,8 +2,11 @@ import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { doc, setDoc } from 'firebase/firestore';
 
 import { registerNotificationDevice } from '@/services/api/notification-api';
+import { MobileApiError } from '@/services/api/mobile-client';
+import { getFirebaseAuth, getFirebaseDb } from '@/services/firebase';
 import { getString, setString } from '@/lib/storage/kv';
 
 import { openNotificationDeepLink } from './deep-link-resolver';
@@ -87,12 +90,43 @@ export async function setupPushToken(): Promise<PushSetupResult> {
 }
 
 export async function registerPushDevice(pushToken: string): Promise<void> {
-  await registerNotificationDevice({
-    deviceId: getStableDeviceId(),
-    platform: Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web',
-    pushToken,
-    appVersion: Constants.expoConfig?.version,
-  });
+  const deviceId = getStableDeviceId();
+  const platform = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
+  const appVersion = Constants.expoConfig?.version;
+
+  try {
+    await registerNotificationDevice({
+      deviceId,
+      platform,
+      pushToken,
+      appVersion,
+    });
+    return;
+  } catch (apiError) {
+    if (apiError instanceof MobileApiError && (apiError.status === 401 || apiError.status === 403)) {
+      throw apiError;
+    }
+    if (__DEV__) {
+      console.warn('[push] API register failed, falling back to Firestore', apiError);
+    }
+  }
+
+  const uid = getFirebaseAuth().currentUser?.uid;
+  if (!uid) {
+    throw new Error('Требуется авторизация для push-уведомлений');
+  }
+
+  await setDoc(
+    doc(getFirebaseDb(), 'users', uid, 'devices', deviceId),
+    {
+      id: deviceId,
+      platform,
+      pushToken,
+      ...(appVersion ? { appVersion } : {}),
+      lastSeenAt: new Date().toISOString(),
+    },
+    { merge: true },
+  );
 }
 
 export async function setBadgeCount(count: number): Promise<void> {

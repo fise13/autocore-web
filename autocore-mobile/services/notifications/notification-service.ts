@@ -31,6 +31,8 @@ import {
   setBadgeCount,
   setupPushToken,
 } from './push-channel';
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
 import {
   resolveDeliveryChannels,
   resolveLiveEditingChannels,
@@ -59,6 +61,35 @@ type InitOptions = {
 
 let teardownFns: Array<() => void> = [];
 let registeredToken: string | null = null;
+let pushRegistrationPromise: Promise<void> | null = null;
+
+async function registerPushTokenIfNeeded(pushEnabled: boolean): Promise<void> {
+  if (!pushEnabled || !Device.isDevice) return;
+
+  if (pushRegistrationPromise) {
+    await pushRegistrationPromise;
+    return;
+  }
+
+  pushRegistrationPromise = (async () => {
+    const { token, permission } = await setupPushToken();
+    if (permission !== 'granted' || !token) return;
+    if (token === registeredToken) return;
+
+    await registerPushDevice(token);
+    registeredToken = token;
+  })();
+
+  try {
+    await pushRegistrationPromise;
+  } catch (error) {
+    if (__DEV__) {
+      console.warn('[notifications] push registration failed', error);
+    }
+  } finally {
+    pushRegistrationPromise = null;
+  }
+}
 
 function createId(): string {
   return `local-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -172,6 +203,7 @@ export const NotificationService = {
 
     teardownFns.push(
       attachPushListeners((data) => {
+        void NotificationService.syncInbox();
         const deepLink = typeof data?.deepLink === 'string' ? data.deepLink : undefined;
         void openNotificationDeepLink(deepLink);
       }),
@@ -183,6 +215,8 @@ export const NotificationService = {
         const title = notification.request.content.title ?? '';
         const body = notification.request.content.body ?? '';
         const deepLink = typeof data?.deepLink === 'string' ? data.deepLink : undefined;
+
+        void NotificationService.syncInbox();
 
         store.showBanner({
           title: title || 'Уведомление',
@@ -196,13 +230,12 @@ export const NotificationService = {
       }),
     );
 
-    if (options.pushEnabled !== false) {
-      const { token } = await setupPushToken();
-      if (token && token !== registeredToken) {
-        registeredToken = token;
-        await registerPushDevice(token);
-      }
-    }
+    const receivedSub = Notifications.addNotificationReceivedListener(() => {
+      void NotificationService.syncInbox();
+    });
+    teardownFns.push(() => receivedSub.remove());
+
+    await registerPushTokenIfNeeded(options.pushEnabled !== false);
 
     store.setInitialized(true);
     void NotificationService.syncInbox();
@@ -212,7 +245,12 @@ export const NotificationService = {
     for (const fn of teardownFns) fn();
     teardownFns = [];
     registeredToken = null;
+    pushRegistrationPromise = null;
     getNotificationStore().reset();
+  },
+
+  async ensurePushRegistration(pushEnabled = true): Promise<void> {
+    await registerPushTokenIfNeeded(pushEnabled);
   },
 
   updatePreferences(prefs: NotificationPreferences): void {

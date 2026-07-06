@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 
 import { useNotificationPreferences } from '@/hooks/use-notification-preferences';
 import { useNotificationInboxRealtime } from '@/hooks/use-notification-inbox-realtime';
@@ -65,6 +66,21 @@ export function NotificationProvider({ enabled, children }: NotificationProvider
     }, 30_000);
     return () => clearInterval(interval);
   }, [canRun, initialized]);
+
+  useEffect(() => {
+    if (!canRun || !initialized) return;
+
+    void NotificationService.ensurePushRegistration(preferences.channels.push);
+
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void NotificationService.syncInbox();
+        void NotificationService.ensurePushRegistration(preferences.channels.push);
+      }
+    });
+
+    return () => subscription.remove();
+  }, [canRun, companyId, initialized, preferences.channels.push]);
 
   return children ?? null;
 }

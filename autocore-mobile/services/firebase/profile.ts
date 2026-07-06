@@ -25,6 +25,7 @@ import type { Permission, UserEntity, UserRole } from '@/types/user';
 import { ensureFirestoreAuthReady } from './auth';
 import { loadCompanyAppConfig } from './company-config';
 import { getFirebaseDb } from './index';
+import { listUserCompanyMemberships } from '@/services/firestore/company-membership-service';
 
 const ROLE_RANK: Record<UserRole, number> = {
   owner: 5,
@@ -161,18 +162,7 @@ export async function loadFastSessionBootstrap(authUser: User): Promise<{
 
     let memberships: UserCompanyMembership[] = [];
     try {
-      const membershipsSnapshot = await getDocs(collection(db, 'users', authUser.uid, 'memberships'));
-      memberships = membershipsSnapshot.docs
-        .filter((entry) => isProductionCompanyId(entry.id))
-        .map((entry) => {
-          const companyId = normalizeCompanyId(entry.id);
-          const data = entry.data() as { role?: UserRole };
-          return {
-            companyId,
-            role: data.role ?? 'employee',
-            name: companyId,
-          };
-        });
+      memberships = await listUserCompanyMemberships(authUser.uid);
     } catch (error) {
       console.warn('Memberships read skipped:', error);
     }
@@ -210,30 +200,7 @@ export async function loadFastUserProfile(authUser: User): Promise<UserEntity> {
 }
 
 async function loadMemberships(uid: string): Promise<UserCompanyMembership[]> {
-  const snapshot = await getDocs(collection(getFirebaseDb(), 'users', uid, 'memberships'));
-  const memberships = await Promise.all(
-    snapshot.docs.map(async (entry) => {
-      const companyId = normalizeCompanyId(entry.id);
-      const data = entry.data() as { role?: UserRole };
-      let companyName: string | null = null;
-      try {
-        const companySnapshot = await getDoc(doc(getFirebaseDb(), 'companies', companyId));
-        companyName = companySnapshot.exists()
-          ? readCompanyDisplayName(companySnapshot.data(), companyId)
-          : null;
-      } catch {
-        companyName = null;
-      }
-      return {
-        companyId,
-        role: data.role ?? 'employee',
-        name: resolveActiveCompanyName(companyId, companyName, []),
-      };
-    }),
-  );
-
-  memberships.sort((left, right) => left.name.localeCompare(right.name, 'ru'));
-  return memberships;
+  return listUserCompanyMemberships(uid);
 }
 
 function resolveCompanyIdFromMemberships(

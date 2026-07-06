@@ -6,7 +6,11 @@ import { ROLE_PERMISSIONS, UserRole } from "@/domain/user";
 import { getAdminAuth, getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { ensureDefaultWarehouseAdmin } from "@/lib/warehouse/ensure-default-warehouse.server";
 
-export async function createCompanyAsAdmin(ownerId: string, name: string): Promise<string> {
+export async function createCompanyAsAdmin(
+  ownerId: string,
+  name: string,
+  options?: { switchActive?: boolean },
+): Promise<string> {
   const db = getAdminFirestore();
   const trimmedName = name.trim();
   if (!trimmedName) {
@@ -14,10 +18,7 @@ export async function createCompanyAsAdmin(ownerId: string, name: string): Promi
   }
 
   const userSnap = await db.collection("users").doc(ownerId).get();
-  const existingCompanyId = String(userSnap.data()?.companyId ?? "").trim();
-  if (existingCompanyId) {
-    throw new Error("У аккаунта уже есть компания");
-  }
+  const previousCompanyId = String(userSnap.data()?.companyId ?? "").trim();
 
   const companyRef = db.collection("companies").doc();
   const companyId = companyRef.id;
@@ -66,10 +67,14 @@ export async function createCompanyAsAdmin(ownerId: string, name: string): Promi
 
   await db.collection("users").doc(ownerId).set(
     {
-      companyId,
-      role: "owner",
-      permissions: [],
-      isActive: true,
+      ...(options?.switchActive === false && previousCompanyId
+        ? {}
+        : {
+            companyId,
+            role: "owner",
+            permissions: [],
+            isActive: true,
+          }),
       ...(email ? { email } : {}),
       ...(fullName ? { name: fullName } : {}),
     },
@@ -85,11 +90,32 @@ export async function createCompanyAsAdmin(ownerId: string, name: string): Promi
       {
         companyId,
         role: "owner",
+        name: trimmedName,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true },
     );
+
+  if (previousCompanyId && previousCompanyId !== companyId) {
+    const previousCompanySnap = await db.collection("companies").doc(previousCompanyId).get();
+    const previousRole =
+      String(previousCompanySnap.data()?.ownerId ?? "") === ownerId ? "owner" : "employee";
+    await db
+      .collection("users")
+      .doc(ownerId)
+      .collection("memberships")
+      .doc(previousCompanyId)
+      .set(
+        {
+          companyId: previousCompanyId,
+          role: previousRole,
+          name: String(previousCompanySnap.data()?.name ?? previousCompanyId),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+  }
 
   const billingRef = companyRef.collection("billing").doc("subscription");
   const billingSnap = await billingRef.get();

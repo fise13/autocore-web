@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.claimMarketingCheckout = exports.syncCompanyBilling = exports.createBillingPortalSession = exports.createCheckoutSession = exports.createMarketingCheckoutSession = void 0;
+exports.onNotificationCreatedPush = exports.claimMarketingCheckout = exports.syncCompanyBilling = exports.createBillingPortalSession = exports.createCheckoutSession = exports.createMarketingCheckoutSession = void 0;
 const app_1 = require("firebase-admin/app");
 const firestore_1 = require("firebase-admin/firestore");
 const functions = __importStar(require("firebase-functions/v1"));
@@ -261,7 +261,10 @@ exports.claimMarketingCheckout = billingFunctions.https.onCall(async (data, cont
     }
     const checkoutEmail = (0, stripe_shared_1.checkoutSessionEmail)(session);
     const userSnap = await db.collection("users").doc(context.auth.uid).get();
-    const userEmail = String(userSnap.data()?.email ?? "")
+    const authEmail = String(context.auth.token.email ?? "")
+        .trim()
+        .toLowerCase();
+    const userEmail = String(userSnap.data()?.email ?? authEmail)
         .trim()
         .toLowerCase();
     if (checkoutEmail && userEmail && checkoutEmail !== userEmail) {
@@ -303,4 +306,6 @@ exports.claimMarketingCheckout = billingFunctions.https.onCall(async (data, cont
         .set(patch, { merge: true });
     return { proActive: true };
 });
+var notification_push_1 = require("./notification-push");
+Object.defineProperty(exports, "onNotificationCreatedPush", { enumerable: true, get: function () { return notification_push_1.onNotificationCreatedPush; } });
 //# sourceMappingURL=index.js.map

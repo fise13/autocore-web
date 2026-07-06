@@ -364,3 +364,5 @@ export const claimMarketingCheckout = billingFunctions.https.onCall(async (data,
 
   return { proActive: true };
 });
+
+export { onNotificationCreatedPush } from "./notification-push";

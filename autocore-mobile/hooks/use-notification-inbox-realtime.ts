@@ -1,12 +1,10 @@
 import { useEffect, useRef } from 'react';
-import { AppState } from 'react-native';
 
 import { isProductionCompanyId } from '@/lib/company-id';
-import { NotificationService } from '@/services/notifications';
 import { subscribeInboxRealtime } from '@/services/notifications/inbox-sync';
 
 /**
- * Keeps the notification inbox in sync via Firestore realtime + foreground refresh.
+ * Keeps the notification inbox in sync via Firestore realtime.
  */
 export function useNotificationInboxRealtime(enabled: boolean, companyId: string | null): void {
   const companyRef = useRef<string | null>(null);
@@ -26,17 +24,5 @@ export function useNotificationInboxRealtime(enabled: boolean, companyId: string
     return () => {
       unsubscribe?.();
     };
-  }, [companyId, enabled]);
-
-  useEffect(() => {
-    if (!enabled || !isProductionCompanyId(companyId)) return;
-
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
-        void NotificationService.syncInbox();
-      }
-    });
-
-    return () => subscription.remove();
   }, [companyId, enabled]);
 }

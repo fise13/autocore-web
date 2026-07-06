@@ -150,6 +150,9 @@ export async function createCompany(ownerId: string, name: string): Promise<stri
     throw new Error("Укажите название компании");
   }
 
+  const userSnap = await getDoc(doc(db, "users", ownerId));
+  const previousCompanyId = String(userSnap.data()?.companyId ?? "").trim();
+
   const companyRef = doc(collection(db, "companies"));
   try {
     await setDoc(companyRef, {
@@ -170,9 +173,27 @@ export async function createCompany(ownerId: string, name: string): Promise<stri
   // strand the UI on an error (reload would otherwise "magically" apply the company).
   await linkUserToCompany(ownerId, companyRef.id, "owner");
 
-  await recordUserCompanyMembership(ownerId, companyRef.id, "owner").catch((error) => {
+  await recordUserCompanyMembership(ownerId, companyRef.id, "owner", trimmedName).catch((error) => {
     console.warn("[createCompany] membership record skipped:", error);
   });
+
+  if (previousCompanyId && previousCompanyId !== companyRef.id) {
+    const [previousCompanySnap, previousEmployeeSnap] = await Promise.all([
+      getDoc(doc(db, "companies", previousCompanyId)),
+      getDoc(doc(db, "companies", previousCompanyId, "employees", ownerId)),
+    ]);
+    const previousRole: UserRole =
+      String(previousCompanySnap.data()?.ownerId ?? "") === ownerId
+        ? "owner"
+        : ((previousEmployeeSnap.data()?.role as UserRole) ?? "employee");
+    const previousName = String(previousCompanySnap.data()?.name ?? previousCompanyId);
+    await recordUserCompanyMembership(ownerId, previousCompanyId, previousRole, previousName).catch(
+      (error) => {
+        console.warn("[createCompany] previous membership record skipped:", error);
+      },
+    );
+  }
+
   await seedFreeCompanyBilling(companyRef.id);
   await ensureCompanyConsumablesWorkspace(companyRef.id, ownerId);
 

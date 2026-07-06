@@ -1,12 +1,16 @@
 import {
   collection,
+  collectionGroup,
   doc,
   getDoc,
   getDocs,
+  limit,
   onSnapshot,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
   type Unsubscribe,
 } from "firebase/firestore";
 
@@ -26,6 +30,46 @@ function readMembershipName(
 ): string {
   const stored = typeof data.name === "string" ? data.name.trim() : "";
   return stored || companyId;
+}
+
+function rolePriority(role: UserRole): number {
+  if (role === "owner") return 3;
+  if (role === "admin") return 2;
+  return 1;
+}
+
+function mergeCompanyMemberships(entries: UserCompanyMembership[]): UserCompanyMembership[] {
+  const byId = new Map<string, UserCompanyMembership>();
+
+  for (const entry of entries) {
+    const companyId = normalizeCompanyId(entry.companyId);
+    if (!companyId) continue;
+
+    const existing = byId.get(companyId);
+    if (!existing) {
+      byId.set(companyId, { ...entry, companyId });
+      continue;
+    }
+
+    const nextRole =
+      rolePriority(entry.role) >= rolePriority(existing.role) ? entry.role : existing.role;
+    const nextName =
+      existing.name && existing.name !== existing.companyId
+        ? existing.name
+        : entry.name && entry.name !== entry.companyId
+          ? entry.name
+          : existing.name || entry.name;
+
+    byId.set(companyId, {
+      companyId,
+      role: nextRole,
+      name: nextName,
+    });
+  }
+
+  const merged = Array.from(byId.values());
+  merged.sort((left, right) => left.name.localeCompare(right.name, "ru"));
+  return merged;
 }
 
 async function resolveCompanyName(companyId: string, storedName?: string): Promise<string> {
@@ -71,30 +115,106 @@ export async function recordUserCompanyMembership(
   );
 }
 
-export async function listUserCompanyMembershipIds(userId: string): Promise<string[]> {
-  if (!userId) return [];
+function mapMembershipDocs(
+  snapshot: { docs: Array<{ id: string; data: () => Record<string, unknown> }> },
+): UserCompanyMembership[] {
+  return snapshot.docs.map((membershipDoc) => {
+    const companyId = normalizeCompanyId(membershipDoc.id);
+    const data = membershipDoc.data();
+    const role = (data.role as UserRole) ?? "employee";
+    return {
+      companyId,
+      role,
+      name: readMembershipName(data, companyId),
+    };
+  });
+}
+
+async function loadStoredMemberships(userId: string): Promise<UserCompanyMembership[]> {
   const db = getFirestoreDb();
   const snapshot = await getDocs(collection(db, "users", userId, "memberships"));
-  return snapshot.docs.map((entry) => normalizeCompanyId(entry.id));
+  return mapMembershipDocs(snapshot);
+}
+
+async function loadOwnedCompanyMemberships(userId: string): Promise<UserCompanyMembership[]> {
+  const db = getFirestoreDb();
+  const owned = await getDocs(
+    query(collection(db, "companies"), where("ownerId", "==", userId), limit(25)),
+  );
+
+  return owned.docs.map((companyDoc) => ({
+    companyId: normalizeCompanyId(companyDoc.id),
+    role: "owner" as const,
+    name: String(companyDoc.data()?.name ?? companyDoc.id),
+  }));
+}
+
+async function loadEmployeeCompanyMemberships(userId: string): Promise<UserCompanyMembership[]> {
+  const db = getFirestoreDb();
+  try {
+    const snapshot = await getDocs(
+      query(collectionGroup(db, "employees"), where("uid", "==", userId), limit(25)),
+    );
+
+    return snapshot.docs
+      .filter((employeeDoc) => employeeDoc.data()?.isActive !== false)
+      .map((employeeDoc) => {
+        const companyId = normalizeCompanyId(employeeDoc.ref.parent.parent?.id ?? "");
+        const data = employeeDoc.data();
+        return {
+          companyId,
+          role: (data.role as UserRole) ?? "employee",
+          name: companyId,
+        };
+      })
+      .filter((entry) => entry.companyId);
+  } catch {
+    return [];
+  }
+}
+
+async function hydrateMembershipNames(entries: UserCompanyMembership[]): Promise<UserCompanyMembership[]> {
+  return Promise.all(
+    entries.map(async (entry) => ({
+      ...entry,
+      name: await resolveCompanyName(entry.companyId, entry.name),
+    })),
+  );
+}
+
+async function repairMissingMemberships(
+  userId: string,
+  companies: UserCompanyMembership[],
+  stored: UserCompanyMembership[],
+): Promise<void> {
+  const storedIds = new Set(stored.map((entry) => entry.companyId));
+  const missing = companies.filter((entry) => !storedIds.has(entry.companyId));
+  if (missing.length === 0) return;
+
+  await Promise.all(
+    missing.map((entry) =>
+      recordUserCompanyMembership(userId, entry.companyId, entry.role, entry.name).catch(() => undefined),
+    ),
+  );
+}
+
+export async function listUserCompanyMembershipIds(userId: string): Promise<string[]> {
+  const companies = await loadUserCompanyMemberships(userId);
+  return companies.map((entry) => entry.companyId);
 }
 
 export async function loadUserCompanyMemberships(userId: string): Promise<UserCompanyMembership[]> {
   if (!userId) return [];
 
-  const db = getFirestoreDb();
-  const snapshot = await getDocs(collection(db, "users", userId, "memberships"));
-  const memberships = await Promise.all(
-    snapshot.docs.map(async (membershipDoc) => {
-      const companyId = normalizeCompanyId(membershipDoc.id);
-      const data = membershipDoc.data();
-      const role = (data.role as UserRole) ?? "employee";
-      const name = await resolveCompanyName(companyId, readMembershipName(data, companyId));
-      return { companyId, role, name };
-    }),
-  );
-
-  memberships.sort((left, right) => left.name.localeCompare(right.name, "ru"));
-  return memberships;
+  const stored = await loadStoredMemberships(userId);
+  const [owned, employees] = await Promise.all([
+    loadOwnedCompanyMemberships(userId),
+    loadEmployeeCompanyMemberships(userId),
+  ]);
+  const merged = mergeCompanyMemberships([...stored, ...owned, ...employees]);
+  const hydrated = await hydrateMembershipNames(merged);
+  void repairMissingMemberships(userId, hydrated, stored);
+  return hydrated;
 }
 
 export function subscribeUserCompanyMemberships(
@@ -109,73 +229,127 @@ export function subscribeUserCompanyMemberships(
 
   const db = getFirestoreDb();
   let hydrateGeneration = 0;
+  let storedMemberships: UserCompanyMembership[] = [];
+  let ownedMemberships: UserCompanyMembership[] = [];
+  let employeeMemberships: UserCompanyMembership[] = [];
 
-  return onSnapshot(
+  const publish = () => {
+    const generation = ++hydrateGeneration;
+    const merged = mergeCompanyMemberships([
+      ...storedMemberships,
+      ...ownedMemberships,
+      ...employeeMemberships,
+    ]);
+
+    onChange(merged);
+    void repairMissingMemberships(userId, merged, storedMemberships);
+
+    const missingNames = merged.filter((entry) => entry.name === entry.companyId);
+    if (missingNames.length === 0) return;
+
+    void hydrateMembershipNames(merged)
+      .then((hydrated) => {
+        if (generation !== hydrateGeneration) return;
+        onChange(hydrated);
+      })
+      .catch(() => undefined);
+  };
+
+  const refreshEmployees = () => {
+    void loadEmployeeCompanyMemberships(userId)
+      .then((entries) => {
+        employeeMemberships = entries;
+        publish();
+      })
+      .catch(() => undefined);
+  };
+
+  const unsubMemberships = onSnapshot(
     collection(db, "users", userId, "memberships"),
     (snapshot) => {
-      const generation = ++hydrateGeneration;
-
-      const entries: UserCompanyMembership[] = snapshot.docs.map((membershipDoc) => {
-        const companyId = normalizeCompanyId(membershipDoc.id);
-        const data = membershipDoc.data();
-        const role = (data.role as UserRole) ?? "employee";
-        return {
-          companyId,
-          role,
-          name: readMembershipName(data, companyId),
-        };
-      });
-
-      entries.sort((a, b) => a.name.localeCompare(b.name, "ru"));
-      onChange(entries);
-
-      const missingNames = entries.filter((entry) => entry.name === entry.companyId);
-      if (missingNames.length === 0) return;
-
-      void Promise.all(
-        missingNames.map(async (entry) => {
-          const name = await resolveCompanyName(entry.companyId);
-          return { ...entry, name };
-        }),
-      )
-        .then((hydrated) => {
-          if (generation !== hydrateGeneration) return;
-          const byId = new Map(hydrated.map((entry) => [entry.companyId, entry.name]));
-          const next = entries.map((entry) => ({
-            ...entry,
-            name: byId.get(entry.companyId) ?? entry.name,
-          }));
-          next.sort((a, b) => a.name.localeCompare(b.name, "ru"));
-          onChange(next);
-        })
-        .catch(() => undefined);
+      storedMemberships = mapMembershipDocs(snapshot);
+      publish();
+      refreshEmployees();
     },
     (error) => onError?.(error),
   );
+
+  const unsubOwned = onSnapshot(
+    query(collection(db, "companies"), where("ownerId", "==", userId), limit(25)),
+    (snapshot) => {
+      ownedMemberships = snapshot.docs.map((companyDoc) => ({
+        companyId: normalizeCompanyId(companyDoc.id),
+        role: "owner" as const,
+        name: String(companyDoc.data()?.name ?? companyDoc.id),
+      }));
+      publish();
+    },
+    (error) => onError?.(error),
+  );
+
+  refreshEmployees();
+
+  return () => {
+    unsubMemberships();
+    unsubOwned();
+  };
+}
+
+async function resolveCompanyAccess(
+  userId: string,
+  companyId: string,
+): Promise<{ role: UserRole; permissions: string[]; isActive: boolean }> {
+  const db = getFirestoreDb();
+  const normalizedCompanyId = normalizeCompanyId(companyId);
+
+  const [membershipSnap, employeeSnap, companySnap] = await Promise.all([
+    getDoc(doc(db, "users", userId, "memberships", normalizedCompanyId)),
+    getDoc(doc(db, "companies", normalizedCompanyId, "employees", userId)),
+    getDoc(doc(db, "companies", normalizedCompanyId)),
+  ]);
+
+  const employeeData = employeeSnap.exists() ? employeeSnap.data() : null;
+  const isOwner = companySnap.exists() && String(companySnap.data()?.ownerId ?? "") === userId;
+
+  if (employeeData?.isActive === false && !isOwner) {
+    throw new Error("Нет доступа к этой компании");
+  }
+
+  let role: UserRole = "employee";
+  if (membershipSnap.exists()) {
+    role = (membershipSnap.data()?.role as UserRole) ?? "employee";
+  } else if (employeeData?.role) {
+    role = employeeData.role as UserRole;
+  } else if (isOwner) {
+    role = "owner";
+  } else {
+    throw new Error("Нет доступа к этой компании");
+  }
+
+  const permissions = Array.isArray(employeeData?.permissions) ? employeeData.permissions : [];
+
+  return {
+    role,
+    permissions,
+    isActive: employeeData?.isActive !== false,
+  };
 }
 
 export async function switchActiveCompany(userId: string, companyId: string): Promise<void> {
   const normalizedCompanyId = normalizeCompanyId(companyId);
   const db = getFirestoreDb();
-  const membershipSnap = await getDoc(
-    doc(db, "users", userId, "memberships", normalizedCompanyId),
-  );
-  if (!membershipSnap.exists()) {
-    throw new Error("Нет доступа к этой компании");
-  }
-
-  const membership = membershipSnap.data();
-  const role = (membership?.role as UserRole) ?? "employee";
-  const employeeSnap = await getDoc(
-    doc(db, "companies", normalizedCompanyId, "employees", userId),
-  );
-  const employeeData = employeeSnap.exists() ? employeeSnap.data() : null;
-  const permissions = Array.isArray(employeeData?.permissions) ? employeeData.permissions : [];
+  const access = await resolveCompanyAccess(userId, normalizedCompanyId);
 
   await updateDoc(doc(db, "users", userId), {
     companyId: normalizedCompanyId,
-    role,
-    permissions,
-    isActive: employeeData?.isActive !== false,
+    role: access.role,
+    permissions: access.permissions,
+    isActive: access.isActive,
   });
+
+  const companySnap = await getDoc(doc(db, "companies", normalizedCompanyId));
+  const companyName = companySnap.exists() ? String(companySnap.data()?.name ?? "") : undefined;
+  await recordUserCompanyMembership(userId, normalizedCompanyId, access.role, companyName).catch(
+    () => undefined,
+  );
 }

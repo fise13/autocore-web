@@ -62,17 +62,62 @@ async function resolveOwnedCompanyId(
 async function readUserMemberships(uid: string): Promise<UserCompanyMembership[]> {
   const db = getAdminFirestore();
   const membershipsSnap = await db.collection("users").doc(uid).collection("memberships").get();
-  return membershipsSnap.docs
+  const stored = membershipsSnap.docs
     .filter((entry) => isAssignedCompanyId(entry.id))
     .map((entry) => {
       const companyId = normalizeCompanyId(entry.id);
-      const data = entry.data() as { role?: UserRole };
+      const data = entry.data() as { role?: UserRole; name?: string };
       return {
         companyId,
         role: data.role ?? "employee",
-        name: companyId,
+        name: typeof data.name === "string" && data.name.trim() ? data.name.trim() : companyId,
       };
     });
+
+  const ownedSnap = await db.collection("companies").where("ownerId", "==", uid).limit(25).get();
+  const owned = ownedSnap.docs.map((entry) => ({
+    companyId: normalizeCompanyId(entry.id),
+    role: "owner" as const,
+    name: String(entry.data()?.name ?? entry.id),
+  }));
+
+  let employees: UserCompanyMembership[] = [];
+  try {
+    const employeeSnap = await db.collectionGroup("employees").where("uid", "==", uid).limit(25).get();
+    employees = employeeSnap.docs
+      .filter((entry) => entry.data()?.isActive !== false)
+      .map((entry) => {
+        const companyId = normalizeCompanyId(entry.ref.parent.parent?.id ?? "");
+        return {
+          companyId,
+          role: (entry.data()?.role as UserRole) ?? "employee",
+          name: companyId,
+        };
+      })
+      .filter((entry) => entry.companyId);
+  } catch {
+    employees = [];
+  }
+
+  const byId = new Map<string, UserCompanyMembership>();
+  const rolePriority = (role: UserRole) => {
+    if (role === "owner") return 3;
+    if (role === "admin") return 2;
+    return 1;
+  };
+
+  for (const entry of [...stored, ...owned, ...employees]) {
+    const existing = byId.get(entry.companyId);
+    if (!existing) {
+      byId.set(entry.companyId, entry);
+      continue;
+    }
+    if (rolePriority(entry.role) >= rolePriority(existing.role)) {
+      byId.set(entry.companyId, { ...entry, name: existing.name !== existing.companyId ? existing.name : entry.name });
+    }
+  }
+
+  return Array.from(byId.values()).sort((left, right) => left.name.localeCompare(right.name, "ru"));
 }
 
 /** Same company resolution as mobile session bootstrap (profile → membership → owned company). */
