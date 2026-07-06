@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
@@ -37,6 +37,7 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
   );
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const autoAcceptStarted = useRef(false);
 
   const loadPreview = useCallback(async () => {
     setLoading(true);
@@ -112,6 +113,17 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
       setBusy(false);
     }
   }
+
+  const tryAutoAccept = useCallback(() => {
+    if (autoAcceptStarted.current || loading || busy) return;
+    if (!firebaseUser || !preview?.canAccept || emailMismatch) return;
+    autoAcceptStarted.current = true;
+    void handleAccept(true);
+  }, [busy, emailMismatch, firebaseUser, loading, preview?.canAccept]);
+
+  useEffect(() => {
+    tryAutoAccept();
+  }, [tryAutoAccept]);
 
   async function handleDecline() {
     setBusy(true);
@@ -191,6 +203,17 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
               <Button variant="ghost" onClick={() => void logout()}>
                 Сменить аккаунт
               </Button>
+            </div>
+          </>
+        ) : preview && busy && preview.canAccept && !emailMismatch ? (
+          <>
+            <ScreenHeading
+              title="Приглашение в команду"
+              subtitle="Присоединяем к команде…"
+            />
+            <InviteCompanyCard preview={preview} />
+            <div className="flex justify-center py-2">
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
             </div>
           </>
         ) : preview ? (

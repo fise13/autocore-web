@@ -14,6 +14,7 @@ import { UserAvatar } from '@/components/account/user-avatar';
 import { Button, IconButton, Input, Text } from '@/components/ui';
 import { useAuth } from '@/authentication/auth-provider';
 import { useTheme, useUserPhotoUrl } from '@/hooks';
+import { goBackOrReplace } from '@/lib/navigation/stack-back';
 import { uploadUserAvatar } from '@/services/api/account';
 import { getFirebaseAuth } from '@/services/firebase';
 import { updateUserAccountProfile } from '@/services/firebase/profile';
@@ -161,7 +162,7 @@ export function EditProfileScreen() {
           gap: 8,
         }}
       >
-        <IconButton accessibilityLabel="Назад" variant="ghost" size="sm" onPress={() => router.back()}>
+        <IconButton accessibilityLabel="Назад" variant="ghost" size="sm" onPress={() => goBackOrReplace(router)}>
           <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
         </IconButton>
         <Text variant="heading" style={{ fontSize: 20, fontWeight: '700' }}>

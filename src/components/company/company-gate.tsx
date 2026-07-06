@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
-import { readInviteToken } from "@/lib/invites/pending-invite";
+import { clearInviteToken, readInviteToken } from "@/lib/invites/pending-invite";
 import { mapAuthError, userCopy } from "@/lib/user-copy";
 
 type CompanyGateProps = {
@@ -19,7 +19,7 @@ type CompanyGateProps = {
 };
 
 export function CompanyGate({ children }: CompanyGateProps) {
-  const { profile, createCompany, joinCompanyWithInvite, isLoading } = useAuth();
+  const { profile, createCompany, joinCompanyWithInvite, joinCompanyWithInviteToken, isLoading } = useAuth();
   const router = useRouter();
   const [companyName, setCompanyName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
@@ -35,8 +35,22 @@ export function CompanyGate({ children }: CompanyGateProps) {
     const token = readInviteToken();
     if (!token) return;
     pendingInviteAttempted.current = true;
-    router.replace(`/invite/${encodeURIComponent(token)}`);
-  }, [hasCompany, isLoading, profile, router]);
+
+    void (async () => {
+      setIsSubmitting(true);
+      setSubmitMessage("Присоединяем к команде…");
+      setError(null);
+      try {
+        await joinCompanyWithInviteToken(token);
+        clearInviteToken();
+      } catch (e) {
+        setError(mapAuthError(e, { surface: "onboarding" }));
+        setIsSubmitting(false);
+        setSubmitMessage(null);
+        router.replace(`/invite/${encodeURIComponent(token)}`);
+      }
+    })();
+  }, [hasCompany, isLoading, joinCompanyWithInviteToken, profile, router]);
 
   if (isLoading || !profile) {
     return <AppLoadingScreen message={userCopy.auth.completing} />;

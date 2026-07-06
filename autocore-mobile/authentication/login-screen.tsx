@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { Link, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import Animated, { FadeInLeft, FadeInRight, FadeOutLeft, FadeOutRight } from 'react-native-reanimated';
@@ -11,6 +11,7 @@ import { mapAuthError } from '@/utils/auth-error';
 import { getPasswordStrengthState, validateSignupPassword } from '@/utils/password-validation';
 import { resolveEmailSignInMode, type EmailSignInMode } from '@/utils/resolve-email-sign-in-mode';
 import { isAppleSignInCancellation } from '@/services/auth/apple-sign-in';
+import { readInviteEmail, readInviteToken } from '@/lib/invites/pending-invite';
 
 import { AuthDivider } from './auth-divider';
 import { AppleSignInButton } from './apple-sign-in-button';
@@ -24,6 +25,7 @@ function isValidEmail(value: string): boolean {
 
 export function LoginScreen() {
   const { colors } = useTheme();
+  const params = useLocalSearchParams<{ invite?: string; mode?: string }>();
   const {
     signIn,
     signUp,
@@ -56,6 +58,9 @@ export function LoginScreen() {
   const reducedMotion = useReducedMotion();
   const isSignUp = emailMode === 'signup';
   const displayError = error ?? authError;
+  const inviteEmail = useMemo(() => readInviteEmail(), []);
+  const inviteToken = useMemo(() => readInviteToken(), []);
+  const inviteSignupMode = params.mode === 'signup' && Boolean(params.invite || inviteToken);
 
   useEffect(() => {
     import('@/services/auth/apple-sign-in')
@@ -63,6 +68,23 @@ export function LoginScreen() {
       .then(setAppleAvailable)
       .catch(() => setAppleAvailable(false));
   }, []);
+
+  useEffect(() => {
+    if (!inviteSignupMode || !inviteEmail) return;
+
+    setEmail(inviteEmail);
+    setEmailAttempted(true);
+    setStepDirection(1);
+    setEmailMode('signup');
+    setEmailStep(true);
+    setCredentialAttempted(false);
+    setPassword('');
+    setFirstName('');
+    setLastName('');
+    setError(null);
+    clearError();
+    setResetSent(false);
+  }, [clearError, inviteEmail, inviteSignupMode]);
 
   const passwordStrength = useMemo(() => getPasswordStrengthState(password), [password]);
   const emailError = emailAttempted && !isValidEmail(email) ? 'Введите корректный email.' : null;
@@ -254,7 +276,7 @@ export function LoginScreen() {
 
   const authDescription = emailStep
     ? emailMode === 'signup'
-      ? 'Укажите пароль и имя.'
+      ? 'Укажите пароль, имя и фамилию.'
       : emailMode === 'oauth'
         ? 'Используйте тот же способ, что привязан к email.'
         : undefined
@@ -418,7 +440,8 @@ export function LoginScreen() {
               autoCorrect={false}
               placeholder="ваш@email.ru"
               returnKeyType="next"
-              editable={!isSubmitting}
+              editable={!isSubmitting && !inviteSignupMode}
+              selectTextOnFocus={!inviteSignupMode}
               size="lg"
               leftIcon={<MailIcon size="sm" color={colors.mutedForeground} strokeWidth={1.85} />}
             />

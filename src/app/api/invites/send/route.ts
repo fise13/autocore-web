@@ -11,6 +11,8 @@ import {
 } from "@/lib/email/templates/invite-email";
 import { AccountAccessError, verifyAccountAccess } from "@/lib/auth/verify-account-access";
 import { verifyCompanyManager } from "@/lib/auth/verify-company-manager.server";
+import { getPublicAppUrl } from "@/lib/site-urls";
+import { emitEmployeeInvitedNotification } from "@/lib/notifications/team-events.server";
 
 export const runtime = "nodejs";
 
@@ -75,9 +77,7 @@ export async function POST(request: NextRequest) {
       status: "pending",
     });
 
-    const appOrigin =
-      process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+    const appOrigin = getPublicAppUrl();
 
     if (!isResendConfigured()) {
       return NextResponse.json(
@@ -102,6 +102,18 @@ export async function POST(request: NextRequest) {
         role,
         expiresAt,
       }),
+    });
+
+    const inviterSnap = await db.collection("users").doc(access.uid).get();
+    const inviterName = inviterSnap.exists ? String(inviterSnap.data()?.name ?? "") : "";
+
+    void emitEmployeeInvitedNotification({
+      companyId: manager.companyId,
+      actorUserId: access.uid,
+      actorName: inviterName || undefined,
+      email,
+      role,
+      inviteId: inviteRef.id,
     });
 
     return NextResponse.json({

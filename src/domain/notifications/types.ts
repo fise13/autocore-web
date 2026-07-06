@@ -55,6 +55,8 @@ export const NOTIFICATION_EVENT_TYPES = [
   "inventory.low_stock",
   "customer.created",
   "employee.invited",
+  "employee.joined_by_invite",
+  "employee.joined_welcome",
   "role.changed",
   "warranty.expiring",
   "subscription.expiring",

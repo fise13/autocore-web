@@ -254,6 +254,40 @@ export const NOTIFICATION_EVENT_REGISTRY: Record<
     }),
     buildDeepLink: () => "autocoremobile://profile/team",
   },
+  "employee.joined_by_invite": {
+    eventType: "employee.joined_by_invite",
+    category: "team",
+    priority: "high",
+    defaultChannels: ["inbox", "push"],
+    roles: [...TEAM_ROLES],
+    permissions: ["employee_manage"],
+    groupable: false,
+    groupWindowMinutes: 0,
+    buildGroupKey: (ctx) => `employee-joined:${ctx.aggregateId ?? "unknown"}`,
+    buildCopy: (ctx) => ({
+      title: "Новый сотрудник",
+      body: String(ctx.payload?.summary ?? `${actorLabel(ctx)} присоединился к команде`),
+    }),
+    buildDeepLink: () => "autocoremobile://profile/team",
+  },
+  "employee.joined_welcome": {
+    eventType: "employee.joined_welcome",
+    category: "team",
+    priority: "medium",
+    defaultChannels: ["inbox", "push"],
+    roles: ["owner", "admin", "manager", "employee", "mechanic", "accountant", "diagnostician"],
+    groupable: false,
+    groupWindowMinutes: 0,
+    buildGroupKey: (ctx) => `employee-welcome:${ctx.recipientUserIds?.[0] ?? "unknown"}`,
+    buildCopy: (ctx) => ({
+      title: "Добро пожаловать в команду",
+      body: String(
+        ctx.payload?.summary ??
+          `Вы присоединились к «${String(ctx.payload?.companyName ?? "компании")}»`,
+      ),
+    }),
+    buildDeepLink: () => "autocoremobile://",
+  },
   "role.changed": {
     eventType: "role.changed",
     category: "team",

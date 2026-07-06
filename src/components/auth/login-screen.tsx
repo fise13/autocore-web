@@ -4,7 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { AtSign, ChevronLeft, Loader2, UserRound } from "lucide-react";
+import { AtSign, ChevronLeft, Loader2 } from "lucide-react";
 
 import { AppleIcon, GoogleIcon } from "@/components/auth/auth-brand-icons";
 import { AuthDivider } from "@/components/auth/auth-divider";
@@ -12,6 +12,7 @@ import { AuthJourneyReveal } from "@/components/auth/auth-journey-reveal";
 import { AuthJourneyShell } from "@/components/auth/auth-journey-shell";
 import { PasswordField } from "@/components/auth/password-field";
 import { PasswordStrengthField } from "@/components/auth/password-strength-field";
+import { ProfileNameFields } from "@/components/auth/profile-name-fields";
 import { useAuth } from "@/components/providers/auth-provider";
 import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -68,7 +69,8 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [paidCheckoutPending, setPaidCheckoutPending] = useState(false);
   const [emailStep, setEmailStep] = useState(false);
   const [emailMode, setEmailMode] = useState<EmailSignInMode>("login");
@@ -138,9 +140,10 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
         const methods = await resolveSignInMethodsForEmail(inviteEmail);
         if (cancelled) return;
         const resolved = resolveEmailSignInMode(methods);
+        const forcedSignup = searchParams.get("mode") === "signup";
         setAuthStepDirection(1);
         setAuthStepAnimated(true);
-        setEmailMode(resolved.mode);
+        setEmailMode(forcedSignup ? "signup" : resolved.mode);
         setOauthProviders(resolved.oauthProviders);
         setEmailStep(true);
       } catch (e) {
@@ -158,7 +161,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
     return () => {
       cancelled = true;
     };
-  }, [resolveSignInMethodsForEmail]);
+  }, [resolveSignInMethodsForEmail, searchParams]);
 
   async function runAuth(action: () => Promise<void>, provider: PendingAuth) {
     logAuthDebug("login-screen", "runAuth start", { provider });
@@ -211,7 +214,8 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
       const resolved = resolveEmailSignInMode(methods);
       setAuthStepDirection(1);
       setAuthStepAnimated(true);
-      setEmailMode(resolved.mode);
+      const forcedSignup = searchParams.get("mode") === "signup";
+      setEmailMode(forcedSignup ? "signup" : resolved.mode);
       setOauthProviders(resolved.oauthProviders);
       setEmailStep(true);
     } catch (e) {
@@ -233,8 +237,8 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
         setError(passwordError);
         return;
       }
-      if (!fullName.trim()) {
-        setError("Укажите имя.");
+      if (!firstName.trim() || !lastName.trim()) {
+        setError("Укажите имя и фамилию.");
         return;
       }
     } else if (password.length < 6) {
@@ -244,7 +248,10 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
     await runAuth(async () => {
       try {
         if (isSignUp) {
-          await signUpWithEmail(email.trim(), password, { fullName: fullName.trim() });
+          await signUpWithEmail(email.trim(), password, {
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+          });
         } else {
           await signInWithEmail(email.trim(), password);
         }
@@ -271,6 +278,8 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
     setAuthStepAnimated(true);
     setEmailStep(false);
     setPassword("");
+    setFirstName("");
+    setLastName("");
     setError(null);
     setResetSent(false);
   }
@@ -590,25 +599,15 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.24, ease: authStepEase, delay: 0.04 }}
                 >
-                  <div className="flex flex-col gap-1.5">
-                    <label htmlFor="signup-full-name" className="text-sm font-medium">
-                      Имя
-                    </label>
-                    <InputGroup>
-                      <InputGroupInput
-                        id="signup-full-name"
-                        value={fullName}
-                        onChange={(event) => setFullName(event.target.value)}
-                        autoComplete="name"
-                        placeholder="Иван"
-                        disabled={isBusy}
-                        required
-                      />
-                      <InputGroupAddon align="inline-start">
-                        <UserRound className="size-4" aria-hidden />
-                      </InputGroupAddon>
-                    </InputGroup>
-                  </div>
+                  <ProfileNameFields
+                    firstName={firstName}
+                    lastName={lastName}
+                    onFirstNameChange={setFirstName}
+                    onLastNameChange={setLastName}
+                    disabled={isBusy}
+                    firstNameId="signup-first-name"
+                    lastNameId="signup-last-name"
+                  />
                 </motion.div>
               ) : null}
 

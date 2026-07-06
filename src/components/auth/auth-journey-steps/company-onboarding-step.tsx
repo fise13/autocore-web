@@ -16,7 +16,7 @@ import { mapAuthError, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 export function CompanyOnboardingStep() {
-  const { createCompany, joinCompanyWithInvite } = useAuth();
+  const { createCompany, joinCompanyWithInvite, joinCompanyWithInviteToken } = useAuth();
   const [companyName, setCompanyName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [showInvite, setShowInvite] = useState(false);
@@ -31,8 +31,22 @@ export function CompanyOnboardingStep() {
     const token = readInviteToken();
     if (!token) return;
     pendingInviteAttempted.current = true;
-    window.location.assign(`/invite/${encodeURIComponent(token)}`);
-  }, []);
+
+    void (async () => {
+      setIsSubmitting(true);
+      setSubmitMessage("Присоединяем к команде…");
+      setError(null);
+      try {
+        await joinCompanyWithInviteToken(token);
+        clearInviteToken();
+      } catch (e) {
+        setError(mapAuthError(e, { surface: "onboarding" }));
+        setIsSubmitting(false);
+        setSubmitMessage(null);
+        window.location.assign(`/invite/${encodeURIComponent(token)}`);
+      }
+    })();
+  }, [joinCompanyWithInviteToken]);
 
   async function runAction(action: () => Promise<void>, message: string) {
     setIsSubmitting(true);

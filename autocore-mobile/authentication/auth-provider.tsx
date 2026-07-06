@@ -1,5 +1,5 @@
 import NetInfo from '@react-native-community/netinfo';
-import { updateProfile, type User } from 'firebase/auth';
+import { reload, updateProfile, type User } from 'firebase/auth';
 import { AppState } from 'react-native';
 import {
   createContext,
@@ -44,7 +44,7 @@ import { setQueryPersistBuster } from '@/lib/storage/mmkv-query-persister';
 import { ensureAsyncStorageMigrated } from '@/lib/storage/migrate-async-storage';
 import { markSyncAuthPrepared, prepareSyncAuth } from '@/services/firebase/prepare-sync-auth';
 import { ensureRbacBootstrap } from '@/services/firebase/rbac-bootstrap';
-import { buildFallbackProfile, hydrateEffectiveProfile, loadFastSessionBootstrap, resolveOwnedCompanyId } from '@/services/firebase/profile';
+import { buildFallbackProfile, hydrateEffectiveProfile, loadFastSessionBootstrap, resolveOwnedCompanyId, updateUserProfileName } from '@/services/firebase/profile';
 import { fetchSessionBootstrapFromApi } from '@/services/api/session-bootstrap';
 import { useAuthStore } from '@/store/auth-store';
 import type { AuthStatus } from '@/types/auth';
@@ -615,6 +615,8 @@ function useAuthActionsController(): AuthActions {
         const fullName = [profile?.firstName?.trim(), profile?.lastName?.trim()].filter(Boolean).join(' ').trim();
         if (fullName) {
           await updateProfile(user, { displayName: fullName });
+          await updateUserProfileName(user.uid, fullName);
+          await reload(user);
         }
         return user;
       });

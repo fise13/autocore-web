@@ -104,6 +104,16 @@ export function getAppUrl(): string {
   return resolveUrlFromEnv(process.env.NEXT_PUBLIC_APP_URL, DEFAULT_APP_ORIGIN);
 }
 
+/** Public app origin safe for emails and external links. Never returns localhost. */
+export function getPublicAppUrl(): string {
+  const appUrl = getAppUrl();
+  const host = getUrlHost(appUrl);
+  if (host && isLocalDevHost(host)) {
+    return DEFAULT_APP_ORIGIN;
+  }
+  return appUrl;
+}
+
 /** Public marketing site host (myautocore.com). */
 export function getMarketingUrl(): string {
   return resolveUrlFromEnv(process.env.NEXT_PUBLIC_MARKETING_URL, DEFAULT_MARKETING_ORIGIN);

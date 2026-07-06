@@ -12,6 +12,8 @@ import {
   buildInviteEmailHtml,
   buildInviteEmailSubject,
 } from "@/lib/email/templates/invite-email";
+import { getPublicAppUrl } from "@/lib/site-urls";
+import { emitEmployeeJoinedByInviteNotifications } from "@/lib/notifications/team-events.server";
 import {
   type AcceptInviteResult,
   type InvitePreview,
@@ -218,6 +220,16 @@ export async function acceptInviteAsUser(params: {
     );
   }
 
+  void emitEmployeeJoinedByInviteNotifications({
+    companyId,
+    companyName,
+    uid: params.uid,
+    userName: params.userName ?? "",
+    userEmail,
+    role,
+    inviteId: found.id,
+  });
+
   return {
     companyId,
     companyName,
@@ -320,11 +332,7 @@ export async function resendInviteAsAdmin(params: {
   );
 
   const companyName = await getCompanyName(params.companyId);
-  const joinUrl = buildInviteUrl(
-    token,
-    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined),
-  );
+  const joinUrl = buildInviteUrl(token, getPublicAppUrl());
 
   if (isResendConfigured()) {
     const resend = getResend();

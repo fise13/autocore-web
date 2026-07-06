@@ -53,6 +53,7 @@ const CATALOG: Record<string, ActivityLabel> = {
   "work_order.status.cancelled": { label: "отменил заказ-наряд", module: "work_orders", severity: "warning" },
   "employee.invited": { label: "пригласил сотрудника", module: "employees", severity: "info" },
   "employee.joined_by_invite": { label: "присоединился по приглашению", module: "employees", severity: "info" },
+  "employee.joined_welcome": { label: "присоединился к команде", module: "employees", severity: "info" },
   "employee.role_changed": { label: "изменил роль сотрудника", module: "employees", severity: "warning" },
   "employee.permissions_changed": { label: "изменил права сотрудника", module: "employees", severity: "warning" },
   "employee.activated": { label: "активировал сотрудника", module: "employees", severity: "info" },

@@ -214,7 +214,16 @@ export const AppTabBar = memo(function AppTabBar({ state, navigation }: AppTabBa
 
   const handleTabPress = useCallback(
     (route: TabRoute, focused: boolean) => {
-      if (focused || tabNavigationGuard.isLocked) return;
+      if (tabNavigationGuard.isLocked) return;
+
+      if (focused) {
+        if (isNestedTabStackActive(state.routes, state.index)) {
+          tabNavigationGuard.tryNavigate(() => {
+            router.navigate(`/(tabs)/${route.name}` as never);
+          });
+        }
+        return;
+      }
 
       haptics.selection();
       const event = navigation.emit({
@@ -232,7 +241,7 @@ export const AppTabBar = memo(function AppTabBar({ state, navigation }: AppTabBa
         navigation.navigate(route.name);
       });
     },
-    [activeRouteName, beginTransition, navigation],
+    [activeRouteName, beginTransition, navigation, router, state.index, state.routes],
   );
 
   const handleTabLongPress = useCallback(

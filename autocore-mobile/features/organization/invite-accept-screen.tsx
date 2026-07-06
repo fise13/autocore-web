@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 
@@ -7,6 +7,7 @@ import { Button, Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { clearPendingInvite, storePendingInvite } from '@/lib/invites/pending-invite';
 import { acceptInvite, declineInvite, fetchInvitePreview } from '@/services/api/org-api';
+import { NotificationService } from '@/services/notifications';
 import { inviteRequiresEmailMatch, INVITE_STATUS_LABELS, type InvitePreview } from '@autocore/org';
 import { mapAuthError } from '@/utils/auth-error';
 import { rhythm } from '@/theme';
@@ -33,6 +34,7 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const autoAcceptStarted = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -63,20 +65,28 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
   const emailMismatch =
     preview && firebaseUser ? inviteRequiresEmailMatch(preview.email, userEmail) : false;
 
-  const handleAccept = async (switchToCompany: boolean) => {
+  const handleAccept = useCallback(async (switchToCompany: boolean) => {
     setBusy(true);
     setError(null);
     try {
       await acceptInvite(token, switchToCompany);
       clearPendingInvite();
       await refreshProfile();
+      void NotificationService.syncInbox();
       router.replace('/(tabs)');
     } catch (cause) {
       setError(mapAuthError(cause));
     } finally {
       setBusy(false);
     }
-  };
+  }, [refreshProfile, router, token]);
+
+  useEffect(() => {
+    if (autoAcceptStarted.current || loading || busy) return;
+    if (!firebaseUser || !preview?.canAccept || emailMismatch) return;
+    autoAcceptStarted.current = true;
+    void handleAccept(true);
+  }, [busy, emailMismatch, firebaseUser, handleAccept, loading, preview?.canAccept]);
 
   const handleDecline = async () => {
     setBusy(true);
@@ -121,7 +131,10 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
         <Button onPress={() => router.push(`/(auth)/login?invite=${encodeURIComponent(token)}`)}>
           Войти
         </Button>
-        <Button variant="outline" onPress={() => router.push(`/(auth)/login?invite=${encodeURIComponent(token)}`)}>
+        <Button
+          variant="outline"
+          onPress={() => router.push(`/(auth)/login?invite=${encodeURIComponent(token)}&mode=signup`)}
+        >
           Создать аккаунт
         </Button>
       </View>
@@ -141,6 +154,17 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
         <Button variant="ghost" onPress={() => void signOut()}>
           Сменить аккаунт
         </Button>
+      </View>
+    );
+  }
+
+  if (busy && preview.canAccept && !emailMismatch) {
+    return (
+      <View style={{ flex: 1, padding: rhythm.stack, justifyContent: 'center', gap: rhythm.stack }}>
+        <InviteCard preview={preview} />
+        <Text variant="body" color="muted" style={{ textAlign: 'center' }}>
+          Присоединяем к команде…
+        </Text>
       </View>
     );
   }

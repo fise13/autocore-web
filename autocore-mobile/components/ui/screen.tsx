@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, View, type ScrollViewProps, type StyleProp, type ViewStyle } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ArrowLeftIcon } from '@/assets/icons';
 import { useFloatingTabBarInset, useReleaseStackNavigationOnFocus, useTheme } from '@/hooks';
+import { goBackOrReplace, PROFILE_SETTINGS_HUB_HREF } from '@/lib/navigation/stack-back';
 import { rhythm, spacing } from '@/theme';
 
 import { IconButton } from './icon-button';
@@ -75,10 +76,19 @@ type StackScreenProps = {
   /** Gap between child blocks */
   gap?: number;
   refreshControl?: ScrollViewProps['refreshControl'];
+  /** Route when stack history is empty (deep links, bell → inbox). */
+  backFallbackHref?: Href;
 };
 
 /** Stack sub-screen: back chevron, title, scroll body. Section cards provide horizontal inset. */
-export function StackScreen({ title, subtitle, children, gap = spacing[3], refreshControl }: StackScreenProps) {
+export function StackScreen({
+  title,
+  subtitle,
+  children,
+  gap = spacing[3],
+  refreshControl,
+  backFallbackHref = PROFILE_SETTINGS_HUB_HREF,
+}: StackScreenProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -96,7 +106,12 @@ export function StackScreen({ title, subtitle, children, gap = spacing[3], refre
           gap: rhythm.inline,
         }}
       >
-        <IconButton accessibilityLabel="Назад" variant="ghost" size="sm" onPress={() => router.back()}>
+        <IconButton
+          accessibilityLabel="Назад"
+          variant="ghost"
+          size="sm"
+          onPress={() => goBackOrReplace(router, backFallbackHref)}
+        >
           <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
         </IconButton>
         <View style={{ flex: 1, gap: 1 }}>
