@@ -101,7 +101,7 @@ type AuthContextValue = {
   signUpWithEmail: (
     email: string,
     password: string,
-    profile?: { firstName: string; lastName: string },
+    profile?: { fullName?: string; firstName?: string; lastName?: string },
   ) => Promise<void>;
   resolveSignInMethodsForEmail: (email: string) => Promise<string[]>;
   sendPasswordResetForEmail: (email: string) => Promise<void>;
@@ -470,22 +470,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
           const auth = getFirebaseAuth();
           const db = getFirestoreDb();
           const result = await createUserWithEmailAndPassword(auth, email, password);
+          const explicitFullName = profileNames?.fullName?.trim() ?? "";
           const trimmedFirst = profileNames?.firstName?.trim() ?? "";
           const trimmedLast = profileNames?.lastName?.trim() ?? "";
-          if (trimmedFirst && trimmedLast) {
-            const fullName = `${trimmedFirst} ${trimmedLast}`;
+          const fullName =
+            explicitFullName || [trimmedFirst, trimmedLast].filter(Boolean).join(" ").trim();
+
+          if (fullName) {
             await updateProfile(result.user, { displayName: fullName });
-            await setDoc(doc(db, "users", result.user.uid), {
-              name: fullName,
-              email: result.user.email ?? email.trim(),
-              role: defaultRole,
-              companyId: "",
-              permissions: [],
-              isActive: true,
-              onboardingCompleted: true,
-              createdAt: serverTimestamp(),
-            });
           }
+          await setDoc(doc(db, "users", result.user.uid), {
+            ...(fullName ? { name: fullName } : {}),
+            email: result.user.email ?? email.trim(),
+            role: defaultRole,
+            companyId: "",
+            permissions: [],
+            isActive: true,
+            onboardingCompleted: true,
+            createdAt: serverTimestamp(),
+          });
           await finalizeSignedInUser(auth, result.user, refreshProfile, setFirebaseUser, setIsLoading);
           try {
             await sendVerificationEmailViaApi(result.user);

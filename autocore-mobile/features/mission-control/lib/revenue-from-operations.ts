@@ -2,7 +2,6 @@ import { startOfMonth, subDays, subMonths, startOfDay } from 'date-fns';
 
 import { buildAccountingHeroMetrics } from '@/lib/accounting/hero-balance-metrics';
 import { growthPercent } from '@/lib/accounting/growth-percent';
-import { calculateCashBalance } from '@/lib/accounting/calculate-cash-balance';
 import { sumIncomeInMonth } from '@/lib/accounting/snapshot-builders';
 import { coerceToDate } from '@/lib/firestore-timestamp';
 import type { FinancialOperation } from '@/types/financial-operation';
@@ -59,44 +58,12 @@ export function buildWeekRevenueBars(
   return bars;
 }
 
-/** Cumulative cash balance at end of each day — for charts when income bars are empty. */
-export function buildWeekBalanceBars(
-  operations: FinancialOperation[],
-  now = new Date(),
-): MissionControlWeekBar[] {
-  const today = startOfDay(now);
-  const bars: MissionControlWeekBar[] = [];
-
-  for (let offset = 6; offset >= 0; offset -= 1) {
-    const day = subDays(today, offset);
-    const dayEndMs = day.getTime() + 86_399_999;
-    const subset = operations.filter((operation) => {
-      const createdAt = operationDate(operation);
-      return createdAt != null && createdAt.getTime() <= dayEndMs;
-    });
-
-    bars.push({
-      label: WEEKDAY_SHORT_RU[day.getDay()] ?? '',
-      value: calculateCashBalance(subset).total,
-    });
-  }
-
-  return bars;
-}
-
-export function hasWeekChartActivity(bars: MissionControlWeekBar[]): boolean {
-  return bars.some((bar) => bar.value !== 0);
-}
-
-/** Prefer primary bars; fall back to cumulative balance when the week is flat. */
+/** Weekly chart bars — only daily cash flow; no cumulative balance fallback. */
 export function resolveWeekChartBars(
-  operations: FinancialOperation[],
+  _operations: FinancialOperation[],
   primaryBars: MissionControlWeekBar[],
-  now: Date,
+  _now: Date,
 ): MissionControlWeekBar[] {
-  if (hasWeekChartActivity(primaryBars)) return primaryBars;
-  const balanceBars = buildWeekBalanceBars(operations, now);
-  if (hasWeekChartActivity(balanceBars)) return balanceBars;
   return primaryBars;
 }
 

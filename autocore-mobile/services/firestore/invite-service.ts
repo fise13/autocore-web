@@ -24,7 +24,12 @@ function mapInviteDoc(id: string, companyId: string, data: Record<string, unknow
   if (!expiresAt) return null;
   const used = Boolean(data.used ?? false);
   const status =
-    data.status === 'used' || data.status === 'expired' || data.status === 'pending'
+    data.status === 'used' ||
+    data.status === 'expired' ||
+    data.status === 'pending' ||
+    data.status === 'accepted' ||
+    data.status === 'cancelled' ||
+    data.status === 'declined'
       ? data.status
       : used
         ? 'used'

@@ -1,11 +1,19 @@
-import { getAppUrl } from "@/lib/site-urls";
+import { DEFAULT_APP_ORIGIN, getAppUrl } from "@/lib/site-urls";
+
+function resolveAuthActionOrigin(): string {
+  const appUrl = getAppUrl().replace(/\/$/, "");
+  if (appUrl.startsWith("http://localhost") || appUrl.startsWith("http://127.0.0.1")) {
+    return DEFAULT_APP_ORIGIN;
+  }
+  return appUrl;
+}
 
 export function buildAuthActionPath(): string {
   return "/auth/action";
 }
 
 export function buildAuthActionUrl(): string {
-  return `${getAppUrl().replace(/\/$/, "")}${buildAuthActionPath()}`;
+  return `${resolveAuthActionOrigin()}${buildAuthActionPath()}`;
 }
 
 /**

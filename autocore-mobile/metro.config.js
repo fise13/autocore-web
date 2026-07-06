@@ -10,9 +10,9 @@ config.watchFolders = [
   path.resolve(__dirname, '../packages/org'),
 ];
 config.resolver.extraNodeModules = {
-  '@autocore/rbac': path.resolve(__dirname, '../packages/rbac/src'),
-  '@autocore/domain-search': path.resolve(__dirname, '../packages/domain-search/src'),
-  '@autocore/org': path.resolve(__dirname, '../packages/org/src'),
+  '@autocore/rbac': path.resolve(__dirname, '../packages/rbac'),
+  '@autocore/domain-search': path.resolve(__dirname, '../packages/domain-search'),
+  '@autocore/org': path.resolve(__dirname, '../packages/org'),
 };
 
 module.exports = withNativeWind(config, { input: './global.css' });

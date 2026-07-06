@@ -4,7 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { AtSign, ChevronLeft, Loader2 } from "lucide-react";
+import { AtSign, ChevronLeft, Loader2, UserRound } from "lucide-react";
 
 import { AppleIcon, GoogleIcon } from "@/components/auth/auth-brand-icons";
 import { AuthDivider } from "@/components/auth/auth-divider";
@@ -17,7 +17,6 @@ import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { ProfileNameFields } from "@/components/auth/profile-name-fields";
 import { formatAppleAuthErrorForUi, logAppleAuthError } from "@/lib/auth/apple-auth-log";
 import { isAppleJsAuthMode } from "@/lib/auth/apple-auth-mode";
 import { getAppleJsSetupIssue } from "@/lib/auth/apple-js-setup";
@@ -69,8 +68,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [fullName, setFullName] = useState("");
   const [paidCheckoutPending, setPaidCheckoutPending] = useState(false);
   const [emailStep, setEmailStep] = useState(false);
   const [emailMode, setEmailMode] = useState<EmailSignInMode>("login");
@@ -235,8 +233,8 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
         setError(passwordError);
         return;
       }
-      if (!firstName.trim() || !lastName.trim()) {
-        setError("Укажите имя и фамилию.");
+      if (!fullName.trim()) {
+        setError("Укажите имя.");
         return;
       }
     } else if (password.length < 6) {
@@ -246,10 +244,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
     await runAuth(async () => {
       try {
         if (isSignUp) {
-          await signUpWithEmail(email.trim(), password, {
-            firstName: firstName.trim(),
-            lastName: lastName.trim(),
-          });
+          await signUpWithEmail(email.trim(), password, { fullName: fullName.trim() });
         } else {
           await signInWithEmail(email.trim(), password);
         }
@@ -595,15 +590,25 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.24, ease: authStepEase, delay: 0.04 }}
                 >
-                  <ProfileNameFields
-                    firstName={firstName}
-                    lastName={lastName}
-                    onFirstNameChange={setFirstName}
-                    onLastNameChange={setLastName}
-                    disabled={isBusy}
-                    firstNameId="signup-first-name"
-                    lastNameId="signup-last-name"
-                  />
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="signup-full-name" className="text-sm font-medium">
+                      Имя
+                    </label>
+                    <InputGroup>
+                      <InputGroupInput
+                        id="signup-full-name"
+                        value={fullName}
+                        onChange={(event) => setFullName(event.target.value)}
+                        autoComplete="name"
+                        placeholder="Иван"
+                        disabled={isBusy}
+                        required
+                      />
+                      <InputGroupAddon align="inline-start">
+                        <UserRound className="size-4" aria-hidden />
+                      </InputGroupAddon>
+                    </InputGroup>
+                  </div>
                 </motion.div>
               ) : null}
 

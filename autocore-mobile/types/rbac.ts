@@ -1,3 +1,5 @@
+import type { InviteStatus as OrgInviteStatus } from '@autocore/org';
+
 import type { Permission, UserRole } from './user';
 
 export type CompanyEmployee = {
@@ -23,7 +25,7 @@ export type RoleDefinition = {
   updatedAt?: Date;
 };
 
-export type InviteStatus = 'pending' | 'used' | 'expired';
+export type InviteStatus = OrgInviteStatus | 'used';
 
 export type InviteDocument = {
   id: string;
