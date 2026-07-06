@@ -47,19 +47,27 @@ export function useNotificationPreferences() {
     return unsubscribe;
   }, [uid]);
 
-  const persist = useCallback(
-    async (next: NotificationPreferences) => {
+  const applyChange = useCallback(
+    async (build: (current: NotificationPreferences) => NotificationPreferences) => {
       if (!uid) return;
 
-      setPreferences(next);
+      let next = DEFAULT_NOTIFICATION_PREFERENCES;
+      setPreferences((current) => {
+        next = build(current);
+        return next;
+      });
       setJson(CACHE_KEY, next);
       setSyncing(true);
       setError(null);
 
       try {
         await saveNotificationPreferences(uid, next);
-      } catch {
-        setError('Не удалось сохранить настройки');
+      } catch (cause) {
+        const message =
+          cause instanceof Error && cause.message.trim()
+            ? cause.message
+            : 'Не удалось сохранить настройки';
+        setError(message);
       } finally {
         setSyncing(false);
       }
@@ -69,38 +77,42 @@ export function useNotificationPreferences() {
 
   const updateChannel = useCallback(
     async (key: keyof NotificationPreferences['channels'], value: boolean) => {
-      await persist({
-        ...preferences,
-        channels: { ...preferences.channels, [key]: value },
-      });
+      await applyChange((current) => ({
+        ...current,
+        channels: { ...current.channels, [key]: value },
+      }));
     },
-    [persist, preferences],
+    [applyChange],
   );
+
   const updateCategory = useCallback(
     async (category: NotificationCategory, value: boolean) => {
-      await persist({
-        ...preferences,
-        categories: { ...preferences.categories, [category]: value },
-      });
+      await applyChange((current) => ({
+        ...current,
+        categories: { ...current.categories, [category]: value },
+      }));
     },
-    [persist, preferences],
+    [applyChange],
   );
 
   const updateQuietHours = useCallback(
     async (patch: Partial<NotificationPreferences['quietHours']>) => {
-      await persist({
-        ...preferences,
-        quietHours: { ...preferences.quietHours, ...patch },
-      });
+      await applyChange((current) => ({
+        ...current,
+        quietHours: { ...current.quietHours, ...patch },
+      }));
     },
-    [persist, preferences],
+    [applyChange],
   );
 
   const updateEmailDigest = useCallback(
     async (value: boolean) => {
-      await persist({ ...preferences, emailDigestEnabled: value });
+      await applyChange((current) => ({
+        ...current,
+        emailDigestEnabled: value,
+      }));
     },
-    [persist, preferences],
+    [applyChange],
   );
 
   const summary = useMemo(() => {

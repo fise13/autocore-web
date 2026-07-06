@@ -22,6 +22,6 @@ export function mergeNotificationPreferences(
     },
     emailDigestEnabled:
       partial.emailDigestEnabled ?? DEFAULT_NOTIFICATION_PREFERENCES.emailDigestEnabled,
-    updatedAt: partial.updatedAt,
+    ...(partial.updatedAt ? { updatedAt: partial.updatedAt } : {}),
   };
 }

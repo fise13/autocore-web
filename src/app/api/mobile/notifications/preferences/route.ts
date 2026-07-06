@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import type { NotificationPreferences } from "@/domain/notifications";
-import { MobileAccessError, verifyMobileAccess } from "@/lib/auth/verify-mobile-access.server";
+import { AccountAccessError, verifyAccountAccess } from "@/lib/auth/verify-account-access";
 import {
   readNotificationPreferences,
   writeNotificationPreferences,
@@ -12,11 +12,11 @@ export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   try {
-    const access = await verifyMobileAccess(request);
+    const access = await verifyAccountAccess(request);
     const preferences = await readNotificationPreferences(access.uid);
     return NextResponse.json({ preferences });
   } catch (error) {
-    if (error instanceof MobileAccessError) {
+    if (error instanceof AccountAccessError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     console.error("[mobile/notifications/preferences GET]", error);
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const access = await verifyMobileAccess(request);
+    const access = await verifyAccountAccess(request);
     const body = (await request.json()) as Partial<NotificationPreferences>;
     const current = await readNotificationPreferences(access.uid);
     const next = mergeNotificationPreferences({
@@ -40,7 +40,7 @@ export async function PATCH(request: NextRequest) {
     await writeNotificationPreferences(access.uid, next);
     return NextResponse.json({ preferences: next });
   } catch (error) {
-    if (error instanceof MobileAccessError) {
+    if (error instanceof AccountAccessError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     console.error("[mobile/notifications/preferences PATCH]", error);

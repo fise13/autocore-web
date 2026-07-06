@@ -46,7 +46,7 @@ export function ProfileScreen() {
     rows: section.rows.filter((row) => {
       if (row.id === 'team') return rbac.nav.canViewEmployees;
       if (row.id === 'company') return rbac.nav.canManageSettings || rbac.isOwner;
-      if (row.id === 'navigation' || row.id === 'advanced') return rbac.nav.canManageSettings;
+      if (row.id === 'advanced') return rbac.nav.canManageSettings;
       if (row.id === 'finance') return rbac.scopes.accounting !== 'none';
       return true;
     }),
