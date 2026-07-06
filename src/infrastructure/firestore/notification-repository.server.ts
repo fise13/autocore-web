@@ -13,6 +13,7 @@ import { hasPermission, USER_ROLES, type UserEntity, type UserRole } from "@/dom
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { mapAdminUser } from "@/infrastructure/firestore/admin-mappers";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { stripUndefinedDeep } from "@/lib/firestore/strip-undefined";
 import {
   buildGroupBucketId,
   buildGroupedCopy,
@@ -261,7 +262,7 @@ export async function createInboxNotification(params: {
     createdAt: now,
   };
 
-  await ref.set(record);
+  await ref.set(stripUndefinedDeep(record));
   return record;
 }
 
