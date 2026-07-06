@@ -1,6 +1,6 @@
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
-import { Chip, SegmentedControl } from '@/components/ui';
+import { HorizontalFilterBar, SegmentedControl } from '@/components/ui';
 import { Text } from '@/components/ui/text';
 import {
   APP_CATEGORY_LABELS,
@@ -8,12 +8,20 @@ import {
   type AppNotificationCategory,
 } from '@/services/notifications';
 import { useNotificationStore } from '@/stores/notification-store';
-import { rhythm, spacing } from '@/theme';
+import { spacing } from '@/theme';
 
 const READ_FILTERS = [
   { id: 'all' as const, label: 'Все' },
   { id: 'unread' as const, label: 'Новые' },
   { id: 'read' as const, label: 'Прочитанные' },
+];
+
+const CATEGORY_OPTIONS = [
+  { value: 'all' as const, label: 'Все' },
+  ...APP_NOTIFICATION_CATEGORIES.map((category) => ({
+    value: category,
+    label: APP_CATEGORY_LABELS[category],
+  })),
 ];
 
 type ActivityFeedFiltersProps = {
@@ -34,25 +42,11 @@ export function ActivityFeedFilters({
         <Text variant="meta" color="muted" style={{ paddingHorizontal: 2 }}>
           Категория
         </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={{ flexDirection: 'row', gap: spacing[2], paddingVertical: 2 }}>
-            <Chip
-              selected={categoryFilter === 'all'}
-              onPress={() => onCategoryChange?.('all')}
-            >
-              Все
-            </Chip>
-            {APP_NOTIFICATION_CATEGORIES.map((category) => (
-              <Chip
-                key={category}
-                selected={categoryFilter === category}
-                onPress={() => onCategoryChange?.(category)}
-              >
-                {APP_CATEGORY_LABELS[category]}
-              </Chip>
-            ))}
-          </View>
-        </ScrollView>
+        <HorizontalFilterBar
+          options={CATEGORY_OPTIONS}
+          value={categoryFilter}
+          onChange={(value) => onCategoryChange?.(value)}
+        />
       </View>
 
       <View style={{ gap: spacing[1.5] }}>

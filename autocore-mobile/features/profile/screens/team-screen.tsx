@@ -1,9 +1,18 @@
 import { useMemo, useRef, useState } from 'react';
 import { Alert, ScrollView, Share, View } from 'react-native';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import Animated from 'react-native-reanimated';
 
-import { Button, Dialog, Switch, Text } from '@/components/ui';
+import {
+  Button,
+  Dialog,
+  EmptyState,
+  ListGroup,
+  SettingsSectionCard,
+  Skeleton,
+  Switch,
+  Text,
+} from '@/components/ui';
+import { UsersIcon } from '@/assets/icons';
 import {
   useCompanyInvites,
   useCompanySubscription,
@@ -11,7 +20,6 @@ import {
   useSession,
 } from '@/hooks';
 import { useTheme } from '@/hooks/use-theme';
-import { useMcEnter } from '@/features/mission-control/animation';
 import {
   ALL_PERMISSIONS,
   employeeDisplayName,
@@ -30,7 +38,8 @@ import {
 import type { Permission, UserRole } from '@/types/user';
 import { haptics, rhythm } from '@/theme';
 import { ROLE_PERMISSIONS, USER_ROLES } from '@/types/user';
-import type { CompanyEmployee } from '@/types/rbac';
+import type { CompanyEmployee, InviteDocument } from '@/types/rbac';
+import { coerceToDate } from '@/lib/firestore-timestamp';
 
 import { ProfileScreenShell } from '../components/profile-screen-shell';
 import { ProfileSegmentedControl } from '../components/profile-animated-section';
@@ -39,8 +48,9 @@ import { TeamProGate } from '../components/team-pro-gate';
 import { TeamEmployeeCard } from '../components/team/team-employee-card';
 import { TeamInviteStatusFilters } from '../components/team/team-invite-status-filters';
 import { TeamInviteRow } from '../components/team/team-invite-card';
-import { TeamSectionLabel, TeamSurface } from '../components/team/team-primitives';
+import { TeamSectionHeader } from '../components/team/team-primitives';
 import { TeamRoleCard } from '../components/team/team-role-card';
+import { TeamSummaryCard } from '../components/team/team-summary-card';
 import { PERMISSION_GROUPS } from '@/features/settings/data/demo-data';
 import { canManageEmployees, canViewEmployees } from '@/lib/permissions';
 
@@ -48,6 +58,14 @@ type TeamTab = 'employees' | 'roles';
 
 function buildInviteJoinUrl(token: string): string {
   return buildInviteUrl(token, getPublicApiBaseUrl());
+}
+
+function getInviteStatus(invite: Pick<InviteDocument, 'status' | 'used' | 'expiresAt'>): InviteStatus {
+  return normalizeInviteStatus({
+    status: invite.status,
+    used: invite.used,
+    expiresAt: coerceToDate(invite.expiresAt)?.toISOString() ?? new Date(0).toISOString(),
+  });
 }
 
 function mapEmployeeError(error: unknown): string {
@@ -75,22 +93,15 @@ export function TeamScreen() {
   const [permissionsEmployee, setPermissionsEmployee] = useState<CompanyEmployee | null>(null);
   const [selectedPermissions, setSelectedPermissions] = useState<Set<Permission>>(new Set());
 
-  const tabsStyle = useMcEnter({ delay: 60, translateY: 6, fade: true });
-
   const activeEmployees = useMemo(() => employees.filter((entry) => entry.isActive), [employees]);
-  const activeInvites = useMemo(
-    () => invites.filter((invite) => !invite.used && invite.status !== 'expired'),
+  const pendingInvites = useMemo(
+    () => invites.filter((invite) => getInviteStatus(invite) === 'pending').length,
     [invites],
   );
   const filteredInvites = useMemo(() => {
     return invites.filter((invite) => {
       if (inviteStatusFilter === 'all') return true;
-      const status = normalizeInviteStatus({
-        status: invite.status,
-        used: invite.used,
-        expiresAt: invite.expiresAt.toISOString(),
-      });
-      return status === inviteStatusFilter;
+      return getInviteStatus(invite) === inviteStatusFilter;
     });
   }, [inviteStatusFilter, invites]);
 
@@ -141,133 +152,136 @@ export function TeamScreen() {
 
   const renderEmployeesTab = () => (
     <View style={{ gap: rhythm.section }}>
-      <TeamSurface delay={100}>
-        <TeamSectionLabel
-          title="Сотрудники"
-          action={
-            canManage ? (
-              <Button size="sm" onPress={() => inviteSheetRef.current?.present()}>
-                Пригласить
-              </Button>
-            ) : undefined
-          }
-        />
-        <Text variant="meta" color="muted">
-          Активно {activeEmployees.length} из {employees.length}
-        </Text>
-      </TeamSurface>
+      <TeamSummaryCard
+        activeEmployees={activeEmployees.length}
+        totalEmployees={employees.length}
+        pendingInvites={pendingInvites}
+      />
 
-      {isLoading ? (
-        <View style={{ gap: rhythm.stack }}>
-          {Array.from({ length: 3 }).map((_, index) => (
-            <View
-              key={index}
-              style={{
-                height: 88,
-                borderRadius: 16,
-                backgroundColor: colors.muted,
-                opacity: 0.35,
-              }}
+      <View>
+        <TeamSectionHeader
+          title="Сотрудники"
+          actionLabel={canManage ? 'Пригласить' : undefined}
+          onAction={canManage ? () => inviteSheetRef.current?.present() : undefined}
+        />
+        {isLoading ? (
+          <View style={{ gap: rhythm.tight, paddingHorizontal: rhythm.pad }}>
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Skeleton key={index} height={72} rounded="xl" />
+            ))}
+          </View>
+        ) : employees.length === 0 ? (
+          <View style={{ paddingHorizontal: rhythm.pad }}>
+            <EmptyState
+              icon={UsersIcon}
+              title="Пока нет сотрудников"
+              description="Пригласите первого участника команды по коду или ссылке."
+              primaryAction={
+                canManage
+                  ? { label: 'Пригласить', onPress: () => inviteSheetRef.current?.present() }
+                  : undefined
+              }
             />
-          ))}
-        </View>
-      ) : employees.length === 0 ? (
-        <Text variant="meta" color="muted">
-          Пока нет сотрудников. Пригласите первого участника команды.
-        </Text>
-      ) : (
-        <View style={{ gap: rhythm.stack }}>
-          {employees.map((employee, index) => (
-            <TeamEmployeeCard
-              key={employee.id}
-              employee={employee}
-              index={index}
-              isSelf={employee.uid === uid}
-              canManage={canManage}
-              profile={profile}
-              onOpenPermissions={openPermissions}
-              onToggleActive={(entry) => {
-                if (!companyId) return;
-                void runAction(() => setEmployeeActive(companyId, entry.uid, !entry.isActive));
-              }}
-              onRemove={confirmRemove}
-              onRoleChange={(entry, role) => {
-                if (!companyId) return;
-                void runAction(() => setEmployeeRole(companyId, entry.uid, role));
-              }}
-            />
-          ))}
-        </View>
-      )}
+          </View>
+        ) : (
+          <ListGroup>
+            {employees.map((employee, index) => (
+              <TeamEmployeeCard
+                key={employee.id}
+                employee={employee}
+                index={index}
+                isSelf={employee.uid === uid}
+                canManage={canManage}
+                profile={profile}
+                onOpenPermissions={openPermissions}
+                onToggleActive={(entry) => {
+                  if (!companyId) return;
+                  void runAction(() => setEmployeeActive(companyId, entry.uid, !entry.isActive));
+                }}
+                onRemove={confirmRemove}
+                onRoleChange={(entry, role) => {
+                  if (!companyId) return;
+                  void runAction(() => setEmployeeRole(companyId, entry.uid, role));
+                }}
+              />
+            ))}
+          </ListGroup>
+        )}
+      </View>
 
       {canManage ? (
-        <TeamSurface delay={180}>
-          <TeamSectionLabel title="Коды приглашений" />
-          <TeamInviteStatusFilters value={inviteStatusFilter} onChange={setInviteStatusFilter} />
-          <Text variant="meta" color="muted" style={{ lineHeight: 18 }}>
-            Активных: {activeInvites.length}
-          </Text>
-          {invitesLoading ? (
-            <Text variant="meta" color="muted">
-              Загрузка…
-            </Text>
-          ) : filteredInvites.length === 0 ? (
-            <Text variant="meta" color="muted">
-              Нет приглашений с выбранным статусом.
-            </Text>
-          ) : (
-            <View style={{ gap: rhythm.stack }}>
-              {filteredInvites.map((invite) => (
-                <TeamInviteRow
-                  key={invite.id}
-                  invite={invite}
-                  onShareCode={(code) => void shareCode(code)}
-                  onShareLink={(url) => void shareLink(url)}
-                  onDelete={() =>
-                    void runAction(async () => {
-                      await revokeInvite(invite.id);
-                    })
-                  }
-                  onResend={
-                    invite.email
-                      ? () =>
-                          void runAction(async () => {
-                            const result = await resendInvite(invite.id);
-                            if (result.joinUrl) await shareLink(result.joinUrl);
-                          })
-                      : undefined
-                  }
-                  buildJoinUrl={buildInviteJoinUrl}
-                />
-              ))}
-            </View>
-          )}
-        </TeamSurface>
+        <SettingsSectionCard
+          title="Коды приглашений"
+          description="Делитесь кодом или ссылкой, чтобы добавить сотрудника в компанию"
+        >
+          <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
+            <TeamInviteStatusFilters value={inviteStatusFilter} onChange={setInviteStatusFilter} />
+            {invitesLoading ? (
+              <View style={{ gap: rhythm.tight }}>
+                <Skeleton height={88} rounded="xl" />
+                <Skeleton height={88} rounded="xl" />
+              </View>
+            ) : filteredInvites.length === 0 ? (
+              <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
+                Нет приглашений с выбранным статусом.
+              </Text>
+            ) : (
+              <ListGroup inset={false}>
+                {filteredInvites.map((invite) => (
+                  <TeamInviteRow
+                    key={invite.id}
+                    invite={invite}
+                    onShareCode={(code) => void shareCode(code)}
+                    onShareLink={(url) => void shareLink(url)}
+                    onDelete={() =>
+                      void runAction(async () => {
+                        await revokeInvite(invite.id);
+                      })
+                    }
+                    onResend={
+                      invite.email
+                        ? () =>
+                            void runAction(async () => {
+                              const result = await resendInvite(invite.id);
+                              if (result.joinUrl) await shareLink(result.joinUrl);
+                            })
+                        : undefined
+                    }
+                    buildJoinUrl={buildInviteJoinUrl}
+                  />
+                ))}
+              </ListGroup>
+            )}
+          </View>
+        </SettingsSectionCard>
       ) : null}
     </View>
   );
 
   const renderRolesTab = () => (
-    <View style={{ gap: rhythm.stack }}>
-      {USER_ROLES.filter((role) => role !== 'owner').map((role, index) => (
-        <TeamRoleCard key={role} role={role} index={index} />
-      ))}
+    <View style={{ gap: rhythm.section }}>
+      <SettingsSectionCard title="Роли" description="Базовые наборы прав для каждой роли в компании">
+        <ListGroup inset={false}>
+          {USER_ROLES.filter((role) => role !== 'owner').map((role, index) => (
+            <TeamRoleCard key={role} role={role} index={index} />
+          ))}
+        </ListGroup>
+      </SettingsSectionCard>
 
-      <TeamSurface delay={320}>
-        <TeamSectionLabel title="Группы прав" />
-        <View style={{ gap: rhythm.stack }}>
+      <SettingsSectionCard title="Группы прав" description="Что входит в каждую область доступа">
+        <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
           {(Object.keys(PERMISSION_GROUPS) as Array<keyof typeof PERMISSION_GROUPS>).map((groupId) => (
             <View key={groupId} style={{ gap: 4 }}>
               <Text variant="body" style={{ fontSize: 14, fontWeight: '600' }}>
                 {PERMISSION_GROUPS[groupId].title}
               </Text>
-              <Text variant="meta" color="muted" style={{ lineHeight: 17 }}>
+              <Text variant="caption" color="muted" style={{ lineHeight: 17 }}>
                 {PERMISSION_GROUPS[groupId].permissions.map((p) => p.label).join(' · ')}
               </Text>
             </View>
           ))}
         </View>
-      </TeamSurface>
+      </SettingsSectionCard>
     </View>
   );
 
@@ -276,26 +290,26 @@ export function TeamScreen() {
       <ProfileScreenShell title="Команда и роли" subtitle="Сотрудники, роли и права доступа">
         <TeamProGate>
           {!canView ? (
-            <TeamSurface delay={100}>
-              <Text variant="body" style={{ fontWeight: '600' }}>
-                Доступ ограничен
-              </Text>
-              <Text variant="meta" color="muted" style={{ lineHeight: 18 }}>
-                У вас нет прав на просмотр сотрудников компании.
-              </Text>
-            </TeamSurface>
+            <SettingsSectionCard title="Доступ ограничен">
+              <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: 4 }}>
+                <Text variant="body" style={{ fontWeight: '600' }}>
+                  Недостаточно прав
+                </Text>
+                <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
+                  У вас нет прав на просмотр сотрудников компании.
+                </Text>
+              </View>
+            </SettingsSectionCard>
           ) : (
             <View style={{ gap: rhythm.section }}>
-              <Animated.View style={tabsStyle}>
-                <ProfileSegmentedControl
-                  value={tab}
-                  onChange={setTab}
-                  options={[
-                    { value: 'employees', label: 'Сотрудники' },
-                    { value: 'roles', label: 'Роли' },
-                  ]}
-                />
-              </Animated.View>
+              <ProfileSegmentedControl
+                value={tab}
+                onChange={setTab}
+                options={[
+                  { value: 'employees', label: 'Сотрудники' },
+                  { value: 'roles', label: 'Роли' },
+                ]}
+              />
               {tab === 'employees' ? renderEmployeesTab() : renderRolesTab()}
             </View>
           )}

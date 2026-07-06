@@ -67,18 +67,7 @@ export function SearchEngineCard({
         minHeight: compact ? 92 : searchLayout.engineCardHeight,
       }}
     >
-      <View
-        style={{
-          position: 'absolute',
-          left: 0,
-          top: 0,
-          bottom: 0,
-          width: searchLayout.accentWidth,
-          backgroundColor: colors.primary,
-        }}
-      />
-
-      <View style={{ padding: compact ? 12 : 14, paddingLeft: compact ? 14 : 16, gap: compact ? 6 : 8 }}>
+      <View style={{ padding: compact ? 14 : 16, gap: compact ? 8 : 10 }}>
         <Text
           variant="body"
           numberOfLines={1}
@@ -128,7 +117,7 @@ export function SearchEngineCard({
                     fontSize: compact ? 13 : 14,
                     fontWeight: '700',
                     fontVariant: ['tabular-nums'],
-                    color: colors.primary,
+                    color: colors.foreground,
                   }}
                 >
                   {formatPrice(price!)}

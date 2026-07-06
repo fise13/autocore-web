@@ -31,7 +31,7 @@ export function SearchGroupHeader({ title, count, delay = 0 }: SearchGroupHeader
         style,
       ]}
     >
-      <Text variant="sectionLabel" color="muted">
+      <Text variant="bodyStrong" style={{ fontSize: 15 }}>
         {title}
       </Text>
       <View
@@ -42,7 +42,7 @@ export function SearchGroupHeader({ title, count, delay = 0 }: SearchGroupHeader
           borderRadius: 11,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: colors.sidebarAccent,
+          backgroundColor: colors.surfaceElevated,
         }}
       >
         <Text

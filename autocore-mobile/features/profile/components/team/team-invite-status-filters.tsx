@@ -1,9 +1,5 @@
-import { ScrollView, View } from 'react-native';
-
-import { Chip } from '@/components/ui';
-import { Text } from '@/components/ui/text';
+import { HorizontalFilterBar } from '@/components/ui';
 import { INVITE_STATUS_LABELS, type InviteStatus } from '@autocore/org';
-import { rhythm, spacing } from '@/theme';
 
 export type InviteStatusFilter = InviteStatus | 'all';
 
@@ -22,31 +18,10 @@ type TeamInviteStatusFiltersProps = {
 
 export function TeamInviteStatusFilters({ value, onChange }: TeamInviteStatusFiltersProps) {
   return (
-    <View style={{ gap: spacing[1.5] }}>
-      <Text variant="meta" color="muted" style={{ paddingHorizontal: 2 }}>
-        Статус приглашения
-      </Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{
-          flexDirection: 'row',
-          gap: rhythm.tight,
-          paddingVertical: 2,
-          paddingRight: rhythm.pad,
-        }}
-      >
-        {INVITE_FILTER_OPTIONS.map((option) => (
-          <Chip
-            key={option.value}
-            selected={value === option.value}
-            onPress={() => onChange(option.value)}
-            style={{ flexShrink: 0 }}
-          >
-            {option.label}
-          </Chip>
-        ))}
-      </ScrollView>
-    </View>
+    <HorizontalFilterBar
+      options={INVITE_FILTER_OPTIONS}
+      value={value}
+      onChange={onChange}
+    />
   );
 }

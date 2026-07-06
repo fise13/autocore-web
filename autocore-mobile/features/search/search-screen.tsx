@@ -2,7 +2,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { Keyboard, RefreshControl, TextInput, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 
-import { Loading, Screen, ScreenScroll, Surface, Text, toast } from '@/components/ui';
+import { Loading, Screen, ScreenScroll, Text, toast } from '@/components/ui';
 import { OrderPickerSheet } from '@/features/orders/components/order-picker-sheet';
 import { useAddToOrderFlow } from '@/features/orders/hooks/use-add-to-order-flow';
 import type { SearchEmptyActionId } from '@/features/search/components/search-empty-state';
@@ -282,10 +282,10 @@ export function SearchScreen() {
       >
         <SearchHeader onSettingsPress={() => router.navigate('/(tabs)/profile')} />
 
-        <Surface inset style={{ marginTop: rhythm.tight, gap: rhythm.stack, marginBottom: rhythm.tight }}>
+        <View style={{ paddingHorizontal: rhythm.pad, marginTop: rhythm.tight, gap: rhythm.stack, marginBottom: rhythm.tight }}>
           <SearchBar value={query} onChangeText={setQuery} inputRef={searchInputRef} />
           <SearchFilters filters={searchFilters} activeFilter={filter} onFilterChange={setFilter} />
-        </Surface>
+        </View>
 
         <View>
           {hasQuery || showPresetList ? (

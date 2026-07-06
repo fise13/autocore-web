@@ -6,9 +6,9 @@ import { INVITE_STATUS_LABELS, normalizeInviteStatus } from '@autocore/org';
 import { formatRole } from '@/lib/team/format';
 import type { InviteDocument } from '@/types/rbac';
 import { rhythm } from '@/theme';
-import { toneBackground } from '@/theme/color-utils';
-import { useTheme } from '@/hooks';
-import { radius } from '@/theme/radius';
+import { coerceToDate } from '@/lib/firestore-timestamp';
+
+import { TeamBadge, TeamInlineActions } from './team-primitives';
 
 type TeamInviteCardProps = {
   invite: InviteDocument;
@@ -19,6 +19,13 @@ type TeamInviteCardProps = {
   buildJoinUrl: (token: string) => string;
 };
 
+function inviteStatusTone(status: ReturnType<typeof normalizeInviteStatus>) {
+  if (status === 'pending') return 'primary' as const;
+  if (status === 'accepted') return 'success' as const;
+  if (status === 'expired' || status === 'cancelled' || status === 'declined') return 'muted' as const;
+  return 'default' as const;
+}
+
 export const TeamInviteRow = memo(function TeamInviteRow({
   invite,
   onShareCode,
@@ -27,55 +34,55 @@ export const TeamInviteRow = memo(function TeamInviteRow({
   onResend,
   buildJoinUrl,
 }: TeamInviteCardProps) {
-  const { colors } = useTheme();
   const status = normalizeInviteStatus({
     status: invite.status,
     used: invite.used,
-    expiresAt: invite.expiresAt.toISOString(),
+    expiresAt: coerceToDate(invite.expiresAt)?.toISOString() ?? new Date(0).toISOString(),
   });
+  const canManage = status === 'pending';
 
   return (
-    <View
-      style={{
-        borderRadius: radius['2xl'],
-        backgroundColor: toneBackground(colors.primary, 0.06),
-        padding: rhythm.stack + 2,
-        gap: rhythm.tight,
-      }}
-    >
-      <Text
-        variant="title"
-        style={{
-          fontSize: 22,
-          fontWeight: '700',
-          letterSpacing: 3,
-          fontVariant: ['tabular-nums'],
-        }}
-      >
-        {invite.code}
-      </Text>
-      <Text variant="meta" color="muted">
-        {invite.email ? `${invite.email} · ` : ''}
-        {formatRole(invite.role)} · {INVITE_STATUS_LABELS[status]}
-      </Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        <Button variant="secondary" size="sm" onPress={() => onShareCode(invite.code)}>
-          Код
-        </Button>
-        {invite.token ? (
-          <Button variant="secondary" size="sm" onPress={() => onShareLink(buildJoinUrl(invite.token!))}>
-            Ссылка
-          </Button>
-        ) : null}
-        {onResend && invite.email && status === 'pending' ? (
-          <Button variant="secondary" size="sm" onPress={onResend}>
-            Повтор
-          </Button>
-        ) : null}
-        <Button variant="ghost" size="sm" onPress={onDelete}>
-          Отменить
-        </Button>
+    <View style={{ paddingHorizontal: rhythm.cardPadX, paddingVertical: 12, gap: rhythm.tight }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <Text
+          variant="bodyStrong"
+          style={{
+            fontSize: 18,
+            fontWeight: '700',
+            letterSpacing: 2,
+            fontVariant: ['tabular-nums'],
+          }}
+        >
+          {invite.code}
+        </Text>
+        <TeamBadge label={INVITE_STATUS_LABELS[status]} tone={inviteStatusTone(status)} />
       </View>
+
+      <Text variant="caption" color="muted" numberOfLines={2}>
+        {invite.email ? `${invite.email} · ` : ''}
+        {formatRole(invite.role)}
+      </Text>
+
+      {canManage ? (
+        <TeamInlineActions>
+          <Button variant="secondary" size="sm" onPress={() => onShareCode(invite.code)}>
+            Код
+          </Button>
+          {invite.token ? (
+            <Button variant="secondary" size="sm" onPress={() => onShareLink(buildJoinUrl(invite.token!))}>
+              Ссылка
+            </Button>
+          ) : null}
+          {onResend && invite.email ? (
+            <Button variant="secondary" size="sm" onPress={onResend}>
+              Повтор
+            </Button>
+          ) : null}
+          <Button variant="ghost" size="sm" onPress={onDelete}>
+            Отменить
+          </Button>
+        </TeamInlineActions>
+      ) : null}
     </View>
   );
 });

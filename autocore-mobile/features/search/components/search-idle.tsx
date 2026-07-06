@@ -100,10 +100,10 @@ export function SearchIdle({
                     gap: 6,
                     paddingHorizontal: 14,
                     paddingVertical: 9,
-                    borderRadius: 20,
-                    backgroundColor: colors.sidebarAccent,
+                    borderRadius: 18,
+                    backgroundColor: colors.card,
                     borderWidth: searchLayout.hairline,
-                    borderColor: colors.borderMuted,
+                    borderColor: colors.border,
                   }}
                 >
                   <ClockIcon size="sm" color={colors.mutedForeground} strokeWidth={1.75} />
@@ -124,7 +124,7 @@ export function SearchIdle({
         <View style={{ gap: rhythm.inline }}>
           <View style={{ paddingHorizontal: searchLayout.pad }}>
             <SectionHeader
-              title={hasData ? 'Недавно на складе' : 'Каталог пуст'}
+              title={hasData ? 'Недавно просмотренные' : 'Каталог пуст'}
               actionLabel={hasData && recentlyViewed.length > 0 ? 'Склад' : undefined}
               onAction={
                 hasData && recentlyViewed.length > 0
@@ -189,7 +189,7 @@ export function SearchIdle({
       ) : null}
 
       <AnimatedSection delay={searchTimeline.idleCategories} style={{ paddingHorizontal: searchLayout.pad }}>
-        <SectionHeader title="Быстрый переход" />
+        <SectionHeader title="Категории" />
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           {quickCategories.map((category) => {
             const Icon = CATEGORY_ICONS[category.id as keyof typeof CATEGORY_ICONS] ?? PackageIcon;
@@ -203,7 +203,7 @@ export function SearchIdle({
                 }}
                 style={{ width: '48%' }}
               >
-                <Surface compact style={{ minHeight: 64, justifyContent: 'center' }}>
+                <Surface compact style={{ minHeight: 64, justifyContent: 'center', backgroundColor: colors.card }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                     <View
                       style={{
@@ -212,7 +212,7 @@ export function SearchIdle({
                         borderRadius: 10,
                         alignItems: 'center',
                         justifyContent: 'center',
-                        backgroundColor: toneBackground(colors.primary, 0.1),
+                        backgroundColor: toneBackground(colors.foreground, 0.05),
                       }}
                     >
                       <Icon size="sm" color={colors.primary} strokeWidth={1.75} />

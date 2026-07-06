@@ -42,10 +42,13 @@ export function SearchBar({
   const inputRef = externalRef ?? internalRef;
   const focused = useSharedValue(0);
   const enterStyle = useSearchEnter({ delay: searchTimeline.searchBar, translateY: 6, scaleFrom: 0.99, duration: 240 });
+  const focusedBorderColor = toneBackground(colors.primary, 0.26);
+  const clearButtonColor = toneBackground(colors.foreground, 0.05);
+  const scanButtonColor = toneBackground(colors.primary, 0.1);
 
   const shellStyle = useAnimatedStyle(() => ({
-    borderColor: interpolateColor(focused.value, [0, 1], [colors.border, colors.primary]),
-    backgroundColor: interpolateColor(focused.value, [0, 1], [colors.background, colors.surfaceElevated]),
+    borderColor: interpolateColor(focused.value, [0, 1], [colors.border, focusedBorderColor]),
+    backgroundColor: interpolateColor(focused.value, [0, 1], [colors.card, colors.card]),
   }));
 
   const onFocusChange = (isFocused: boolean) => {
@@ -64,33 +67,22 @@ export function SearchBar({
             flexDirection: 'row',
             alignItems: 'center',
             minHeight: searchLayout.searchHeight,
-            borderRadius: searchLayout.radius + 2,
+            borderRadius: 18,
             borderWidth: searchLayout.hairline,
-            paddingLeft: 14,
-            paddingRight: 6,
+            paddingLeft: 12,
+            paddingRight: 8,
             gap: 8,
           },
           shellStyle,
         ]}
       >
-        <View
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 8,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: toneBackground(colors.primary, 0.1),
-          }}
-        >
-          <SearchIcon size="sm" color={colors.primary} strokeWidth={2} />
-        </View>
+        <SearchIcon size="sm" color={colors.mutedForeground} strokeWidth={2} />
 
         <TextInput
           ref={inputRef}
           value={value}
           onChangeText={onChangeText}
-          placeholder="Артикул, VIN, клиент, наряд…"
+          placeholder="Поиск"
           placeholderTextColor={colors.mutedForeground}
           onFocus={() => {
             onFocusChange(true);
@@ -131,7 +123,7 @@ export function SearchBar({
               alignItems: 'center',
               justifyContent: 'center',
               borderRadius: 14,
-              backgroundColor: colors.sidebarAccent,
+              backgroundColor: clearButtonColor,
             }}
           >
             <XIcon size="sm" color={colors.mutedForeground} strokeWidth={2} />
@@ -151,8 +143,8 @@ export function SearchBar({
             height: 40,
             alignItems: 'center',
             justifyContent: 'center',
-            borderRadius: 10,
-            backgroundColor: toneBackground(colors.primary, 0.12),
+            borderRadius: 14,
+            backgroundColor: scanButtonColor,
           }}
         >
           <ScanSearchIcon size="sm" color={colors.primary} strokeWidth={2} />

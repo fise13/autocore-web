@@ -22,9 +22,9 @@ export function SearchHeader({ onSettingsPress }: SearchHeaderProps) {
     <Reanimated.View style={enterStyle}>
       <PageHeader
         title="Поиск"
-        subtitle="Артикул, VIN, клиент или наряд"
+        subtitle="Быстрый доступ к складу, моторам и заказам"
         logo={null}
-        align="start"
+        align="center"
         trailing={
           <Pressable
             accessibilityRole="button"
@@ -39,7 +39,7 @@ export function SearchHeader({ onSettingsPress }: SearchHeaderProps) {
               borderRadius: searchLayout.radius,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: toneBackground(colors.mutedForeground, 0.08),
+              backgroundColor: toneBackground(colors.foreground, 0.05),
             }}
           >
             <SettingsIcon size="sm" color={colors.mutedForeground} strokeWidth={1.75} />

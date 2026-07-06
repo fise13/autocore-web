@@ -76,7 +76,7 @@ export function SearchResultRow({ item, query, index = 0, onPress }: SearchResul
             flexDirection: 'row',
             alignItems: 'center',
             gap: rhythm.inline,
-            paddingVertical: rhythm.inline + 2,
+            paddingVertical: 14,
             paddingHorizontal: rhythm.cardPadX,
             minHeight: rhythm.rowMinHeight,
           }}
@@ -85,10 +85,10 @@ export function SearchResultRow({ item, query, index = 0, onPress }: SearchResul
             style={{
               width: searchLayout.iconWell,
               height: searchLayout.iconWell,
-              borderRadius: 12,
+              borderRadius: 14,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: toneBackground(colors.primary, visual.bgOpacity),
+              backgroundColor: toneBackground(colors.foreground, 0.05),
             }}
           >
             <Icon
@@ -105,7 +105,7 @@ export function SearchResultRow({ item, query, index = 0, onPress }: SearchResul
                 query={query}
                 variant="bodyStrong"
                 numberOfLines={1}
-                style={{ flexShrink: 1, letterSpacing: item.kind === 'part' ? -0.2 : 0 }}
+                style={{ flexShrink: 1, letterSpacing: item.kind === 'part' ? -0.2 : 0, fontSize: 15 }}
               />
               {showStatusBadge(item) && item.status ? (
                 <Badge variant={statusVariant[item.status]}>{statusLabel[item.status]}</Badge>
@@ -118,6 +118,7 @@ export function SearchResultRow({ item, query, index = 0, onPress }: SearchResul
                 variant="meta"
                 color="muted"
                 numberOfLines={1}
+                style={{ fontSize: 12 }}
               />
             ) : null}
             {item.shelf ? (

@@ -2,12 +2,19 @@ import { memo } from 'react';
 import { View } from 'react-native';
 
 import { Avatar, Button, Dropdown, Text } from '@/components/ui';
-import { ASSIGNABLE_ROLES, employeeDisplayName, formatLastActive, formatRole, permissionsSummary } from '@/lib/team/format';
+import { useTheme } from '@/hooks';
+import {
+  ASSIGNABLE_ROLES,
+  employeeDisplayName,
+  formatLastActive,
+  formatRole,
+  permissionsSummary,
+} from '@/lib/team/format';
 import type { CompanyEmployee } from '@/types/rbac';
 import type { UserEntity, UserRole } from '@/types/user';
 import { rhythm } from '@/theme';
 
-import { TeamBadge, TeamSurface } from './team-primitives';
+import { TeamBadge, TeamInlineActions } from './team-primitives';
 
 type TeamEmployeeCardProps = {
   employee: CompanyEmployee;
@@ -23,7 +30,6 @@ type TeamEmployeeCardProps = {
 
 export const TeamEmployeeCard = memo(function TeamEmployeeCard({
   employee,
-  index,
   isSelf,
   canManage,
   profile,
@@ -32,61 +38,62 @@ export const TeamEmployeeCard = memo(function TeamEmployeeCard({
   onRemove,
   onRoleChange,
 }: TeamEmployeeCardProps) {
+  const { colors } = useTheme();
   const name = employeeDisplayName(employee, profile ?? undefined);
   const showActions = canManage && !isSelf && employee.role !== 'owner';
 
   return (
-    <TeamSurface delay={140 + index * 40}>
-      <View style={{ flexDirection: 'row', gap: rhythm.stack, alignItems: 'flex-start' }}>
+    <View style={{ paddingHorizontal: rhythm.cardPadX, paddingVertical: 12, gap: rhythm.stack }}>
+      <View style={{ flexDirection: 'row', gap: rhythm.stack, alignItems: 'center' }}>
         <Avatar name={name} size="md" />
-        <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
-          <Text variant="body" style={{ fontSize: 16, fontWeight: '600', letterSpacing: -0.25 }}>
-            {name}
-            {isSelf ? (
-              <Text variant="caption" color="muted" style={{ fontWeight: '500' }}>
-                {' '}
-                (вы)
-              </Text>
-            ) : null}
-          </Text>
-          <Text variant="meta" color="muted" numberOfLines={1}>
+        <View style={{ flex: 1, gap: 3, minWidth: 0 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <Text variant="body" style={{ fontSize: 15, fontWeight: '600', letterSpacing: -0.2 }} numberOfLines={1}>
+              {name}
+            </Text>
+            {isSelf ? <TeamBadge label="Вы" tone="muted" /> : null}
+          </View>
+          <Text variant="caption" color="muted" numberOfLines={1}>
             {employee.email || '—'}
           </Text>
+          <Text variant="caption" color="muted" numberOfLines={1}>
+            {formatLastActive(employee.lastActiveAt)} · {permissionsSummary(employee)}
+          </Text>
         </View>
-      </View>
-
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        <TeamBadge label={formatRole(employee.role)} />
-        <TeamBadge label={employee.isActive ? 'Активен' : 'Отключён'} tone={employee.isActive ? 'primary' : 'muted'} />
-        <Text variant="meta" color="muted">
-          {formatLastActive(employee.lastActiveAt)}
-        </Text>
-        <Text variant="meta" color="muted">
-          {permissionsSummary(employee)}
-        </Text>
+        <TeamBadge
+          label={formatRole(employee.role)}
+          tone={employee.isActive ? 'primary' : 'muted'}
+        />
       </View>
 
       {showActions ? (
-        <View style={{ gap: rhythm.stack, paddingTop: 4 }}>
+        <View
+          style={{
+            gap: rhythm.stack,
+            paddingTop: rhythm.tight,
+            borderTopWidth: rhythm.hairline,
+            borderTopColor: colors.border,
+          }}
+        >
           <Dropdown
             value={employee.role}
             onValueChange={(value) => onRoleChange(employee, value as UserRole)}
             options={ASSIGNABLE_ROLES.map((role) => ({ value: role, label: formatRole(role) }))}
             placeholder="Роль"
           />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          <TeamInlineActions>
             <Button variant="secondary" size="sm" onPress={() => onOpenPermissions(employee)}>
               Права
             </Button>
             <Button variant="secondary" size="sm" onPress={() => onToggleActive(employee)}>
               {employee.isActive ? 'Отключить' : 'Включить'}
             </Button>
-            <Button variant="destructive" size="sm" onPress={() => onRemove(employee)}>
+            <Button variant="ghost" size="sm" onPress={() => onRemove(employee)}>
               Удалить
             </Button>
-          </View>
+          </TeamInlineActions>
         </View>
       ) : null}
-    </TeamSurface>
+    </View>
   );
 });

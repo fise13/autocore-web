@@ -35,6 +35,7 @@ export { RadioGroup } from './radio';
 export { Avatar } from './avatar';
 export { Badge } from './badge';
 export { Chip } from './chip';
+export { HorizontalFilterBar, type HorizontalFilterOption } from './horizontal-filter-bar';
 export { Dropdown } from './dropdown';
 export { Tabs } from './tabs';
 export { SegmentedControl } from './segmented-control';
