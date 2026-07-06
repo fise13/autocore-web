@@ -2,13 +2,12 @@ import {
   BottomSheetModal,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
-import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { AutocompleteInput, Button, Dropdown, Input, Text } from '@/components/ui';
 import { useClientsRealtime, useModalBottomSheet, useTheme } from '@/hooks';
 import { accountOptions, paymentMethodOptions } from '@/lib/accounting/labels';
-import type { AutocompleteOption } from '@/lib/autocomplete/types';
 import { sellMotor } from '@/services/motors/sell-motor';
 import { haptics, rhythm } from '@/theme';
 import type { OperationAccount, PaymentMethod } from '@/types/financial-operation';
@@ -53,24 +52,6 @@ export const SellMotorSheet = forwardRef<SellMotorSheetRef, SellMotorSheetProps>
     const [comment, setComment] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    const clientNameOptions = useMemo<AutocompleteOption[]>(
-      () =>
-        clients.map((client) => ({
-          value: client.fullName,
-          label: client.phone,
-        })),
-      [clients],
-    );
-
-    const clientPhoneOptions = useMemo<AutocompleteOption[]>(
-      () =>
-        clients.map((client) => ({
-          value: client.phone,
-          label: client.fullName,
-        })),
-      [clients],
-    );
 
     const resetForm = useCallback((nextMotor: MotorEntity) => {
       setMotor(nextMotor);
@@ -234,12 +215,13 @@ export const SellMotorSheet = forwardRef<SellMotorSheetRef, SellMotorSheetProps>
             </Text>
             <AutocompleteInput
               value={clientName}
+              source="customer"
+              context={{ field: 'name' }}
               onValueChange={(value) => {
                 setClientName(value);
                 setClientId(undefined);
               }}
               onOptionSelect={selectClientByName}
-              options={clientNameOptions}
               placeholder="Имя"
               matchMode="flexible"
             />
@@ -251,12 +233,13 @@ export const SellMotorSheet = forwardRef<SellMotorSheetRef, SellMotorSheetProps>
             </Text>
             <AutocompleteInput
               value={clientPhone}
+              source="customer"
+              context={{ field: 'phone' }}
               onValueChange={(value) => {
                 setClientPhone(value);
                 setClientId(undefined);
               }}
               onOptionSelect={selectClientByPhone}
-              options={clientPhoneOptions}
               placeholder="+7…"
               keyboardType="phone-pad"
               matchMode="flexible"

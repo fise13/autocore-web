@@ -545,12 +545,13 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
               <AutocompleteInput
                 placeholder="Алексей Смирнов"
                 value={clientName}
+                source="customer"
+                context={{ field: 'name' }}
                 onValueChange={(value) => {
                   setClientName(value);
                   setClientId('');
                   setVehicleId('');
                 }}
-                options={composerOptions.clientNameOptions}
                 onOptionSelect={(value) => {
                   const client = clients.find((entry) => entry.fullName === value);
                   if (client) selectClient(client.id);
@@ -561,12 +562,13 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
               <AutocompleteInput
                 placeholder="+7 701 234 56 78"
                 value={clientPhone}
+                source="customer"
+                context={{ field: 'phone' }}
                 onValueChange={(value) => {
                   setClientPhone(value);
                   setClientId('');
                   setVehicleId('');
                 }}
-                options={composerOptions.clientPhoneOptions}
                 matchMode="flexible"
                 keyboardType="phone-pad"
                 onOptionSelect={(value) => {
@@ -584,6 +586,8 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
                   <AutocompleteInput
                     placeholder="BMW"
                     value={vehicleMake}
+                    source="manufacturer"
+                    context={{ field: 'make' }}
                     onValueChange={(value) => {
                       detachVehicleLink();
                       const previousMake = vehicleMake.trim();
@@ -593,14 +597,12 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
                         if (vehicleModel.trim()) setVehicleModel('');
                         return;
                       }
-                      // Only reset model when a different known brand is committed, not while typing.
                       if (previousMake.toLowerCase() === nextMake.toLowerCase()) return;
                       const known = composerOptions.vehicleMakeOptionsList.some(
                         (option) => option.value.toLowerCase() === nextMake.toLowerCase(),
                       );
                       if (known && vehicleModel.trim()) setVehicleModel('');
                     }}
-                    options={composerOptions.vehicleMakeOptionsList}
                   />
                 </Field>
               </View>
@@ -609,11 +611,12 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
                   <AutocompleteInput
                     placeholder={vehicleMake.trim() ? '320d F30' : 'Сначала марка'}
                     value={vehicleModel}
+                    source="manufacturer"
+                    context={{ field: 'model', make: vehicleMake }}
                     onValueChange={(value) => {
                       detachVehicleLink();
                       setVehicleModel(value);
                     }}
-                    options={composerOptions.vehicleModelOptionsList}
                     editable={Boolean(vehicleMake.trim())}
                   />
                 </Field>
@@ -623,13 +626,15 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
               <AutocompleteInput
                 placeholder="A 123 BC 02"
                 value={licensePlate}
+                source="previousValue"
+                fieldKey="licensePlate"
                 onValueChange={(value) => {
                   detachVehicleLink();
                   setLicensePlate(value.toUpperCase());
                 }}
-                options={composerOptions.licensePlateOptions}
                 matchMode="flexible"
                 autoCapitalize="characters"
+                context={{ field: 'licensePlate' }}
                 onOptionSelect={(value) => {
                   const vehicle = composerOptions.clientVehicles.find(
                     (entry) => entry.licensePlate.toLowerCase() === value.trim().toLowerCase(),
@@ -642,11 +647,13 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
               <AutocompleteInput
                 placeholder="WBA3B1C50EK123456"
                 value={vin}
+                source="previousValue"
+                fieldKey="vin"
                 onValueChange={(value) => {
                   detachVehicleLink();
                   setVin(value.toUpperCase());
                 }}
-                options={composerOptions.vinOptions}
+                context={{ field: 'vin' }}
                 matchMode="flexible"
                 autoCapitalize="characters"
                 onOptionSelect={(value) => {

@@ -2,27 +2,33 @@ import { memo, useCallback, useEffect, useState } from 'react';
 
 import { useAuthStore } from '@/store/auth-store';
 import { AuthLoadingScreen } from '@/authentication/auth-loading-screen';
+import { AuthenticatedLandingScreen } from '@/authentication/authenticated-landing-screen';
 import { AuthRedirectEffect } from '@/authentication/auth-redirect-effect';
 import { SubscriptionRequiredScreen } from '@/authentication/subscription-required-screen';
 import { useAuthHasAccess } from '@/authentication/auth-provider';
 import { useCompanySubscription } from '@/hooks/use-company-subscription';
 import { useAuthJourneyStep } from '@/hooks/use-auth-journey-step';
 import { resolveSessionCompanyId } from '@/lib/session/merge-hydration';
-import { usePushNotifications } from '@/hooks/use-push-notifications';
 import { markStartup } from '@/lib/performance/startup-tracer';
 import { hideNativeSplashOnce } from '@/lib/splash';
 import { SessionBootstrapGate } from '@/providers/session-bootstrap-gate';
 import { SessionRealtimeHead } from '@/providers/session-realtime-head';
+import { AutocompleteProvider } from '@/providers/autocomplete-provider';
+import { AutocompleteDataHead } from '@/providers/autocomplete-data-head';
 import { MoneyFormatSync } from '@/providers/money-format-sync';
+import { NotificationProvider } from '@/providers/notification-provider';
 import { refreshCompanyBilling } from '@/services/api/billing';
 
 const MemoAppTree = memo(function MemoAppTree({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <AutocompleteProvider>
       <SessionRealtimeHead />
+      <AutocompleteDataHead />
       <MoneyFormatSync />
-      <SessionBootstrapGate>{children}</SessionBootstrapGate>
-    </>
+      <NotificationProvider enabled>
+        <SessionBootstrapGate>{children}</SessionBootstrapGate>
+      </NotificationProvider>
+    </AutocompleteProvider>
   );
 });
 
@@ -35,12 +41,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   const isReady = status !== 'booting' && !isHydrating;
   const hasAccess = useAuthHasAccess();
-  usePushNotifications(hasAccess);
 
   const journeyStep = useAuthJourneyStep();
   const companyId = resolveSessionCompanyId(profile, memberships);
   const { isPro, isLoading: subscriptionLoading } = useCompanySubscription(companyId);
   const [refreshing, setRefreshing] = useState(false);
+  const isInactiveEmployee = Boolean(firebaseUser) && journeyStep === 'app' && profile?.isActive === false;
 
   const needsSubscription =
     Boolean(firebaseUser) && journeyStep === 'app' && hasAccess && !subscriptionLoading && !isPro;
@@ -89,6 +95,15 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       <>
         <AuthRedirectEffect />
         <SubscriptionRequiredScreen onRefresh={() => void refreshSubscription()} refreshing={refreshing} />
+      </>
+    );
+  }
+
+  if (firebaseUser && journeyStep === 'app' && !hasAccess) {
+    return (
+      <>
+        <AuthRedirectEffect />
+        <AuthenticatedLandingScreen inactive={isInactiveEmployee} />
       </>
     );
   }

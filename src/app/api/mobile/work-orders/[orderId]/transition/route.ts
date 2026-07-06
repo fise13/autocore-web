@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { WorkOrderStatus, WORK_ORDER_STATUSES } from "@/domain/work-order";
 import { MobileAccessError, verifyMobileAccess } from "@/lib/auth/verify-mobile-access.server";
-import { transitionMobileWorkOrder } from "@/lib/mobile/work-orders.server";
+import {
+  transitionMobileWorkOrder,
+  WorkOrderAccessError,
+} from "@/lib/mobile/work-orders.server";
 
 export const runtime = "nodejs";
 
@@ -34,12 +37,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
       workOrderId: trimmed,
       nextStatus,
       actorUserId: access.uid,
+      scope: access.scopes.workOrders,
     });
 
     return NextResponse.json({ order });
   } catch (error) {
     if (error instanceof MobileAccessError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if (error instanceof WorkOrderAccessError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
     }
     console.error("[mobile/work-orders/transition]", error);
     return NextResponse.json(

@@ -38,6 +38,7 @@ export function AuthRedirectEffect() {
     const root = segments[0];
     const inAuthGroup = root === '(auth)';
     const inTabs = root === '(tabs)';
+    const inInvite = root === 'invite';
     const inJourney = inAuthGroup && segments[1] === 'journey';
     const onLogin = inAuthGroup && segments[1] === 'login';
     const onForgot = inAuthGroup && segments[1] === 'forgot-password';
@@ -49,9 +50,13 @@ export function AuthRedirectEffect() {
     };
 
     if (!firebaseUser) {
-      if (!onLogin && !onForgot) {
+      if (!onLogin && !onForgot && !inInvite) {
         redirect('/(auth)/login');
       }
+      return;
+    }
+
+    if (inInvite) {
       return;
     }
 

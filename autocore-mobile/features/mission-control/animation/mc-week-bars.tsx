@@ -17,8 +17,9 @@ import { mcMotion } from './mc-motion';
 import type { MissionControlWeekBar } from '../types';
 
 const CHART_HEIGHT = 88;
-const MIN_BAR_HEIGHT = 6;
-const EMPTY_BAR_HEIGHT = 6;
+const MIN_BAR_HEIGHT = 8;
+const EMPTY_BAR_HEIGHT = 10;
+const EMPTY_BAR_ALPHA = 0.3;
 
 type McWeekBarsProps = {
   bars: MissionControlWeekBar[];
@@ -33,6 +34,7 @@ function McWeekBar({
   hasAnyData,
   isLatest,
   color,
+  warningColor,
   delay,
 }: {
   bar: MissionControlWeekBar;
@@ -42,40 +44,62 @@ function McWeekBar({
   hasAnyData: boolean;
   isLatest: boolean;
   color: string;
+  warningColor: string;
   delay: number;
 }) {
   const reduced = useReducedMotion();
-  const isEmptyStub = hasAnyData && bar.value <= 0;
+  const isEmptyStub = hasAnyData && bar.value === 0;
   const targetHeight = !hasAnyData
-    ? 0
-    : bar.value > 0
-      ? Math.max(MIN_BAR_HEIGHT, (bar.value / maxValue) * CHART_HEIGHT)
+    ? EMPTY_BAR_HEIGHT
+    : bar.value !== 0
+      ? Math.max(MIN_BAR_HEIGHT, (Math.abs(bar.value) / maxValue) * CHART_HEIGHT)
       : EMPTY_BAR_HEIGHT;
-  const height = useSharedValue(reduced ? targetHeight : 0);
+  const height = useSharedValue(targetHeight);
   const mutedness = isLatest ? 1 : 0.28 + (index / Math.max(totalBars - 1, 1)) * 0.45;
   const hasAnimatedRef = useRef(false);
+  const prevTargetRef = useRef(targetHeight);
 
   useEffect(() => {
     if (reduced) {
       height.value = targetHeight;
+      prevTargetRef.current = targetHeight;
       return;
     }
 
-    const enterDelay = hasAnimatedRef.current ? 0 : delay + index * 40;
-    hasAnimatedRef.current = true;
+    const isFirstPaint = !hasAnimatedRef.current;
+    const targetChanged = prevTargetRef.current !== targetHeight;
+    prevTargetRef.current = targetHeight;
 
-    height.value = withDelay(enterDelay, withSpring(targetHeight, mcMotion.spring));
+    if (isFirstPaint) {
+      hasAnimatedRef.current = true;
+      height.value = EMPTY_BAR_HEIGHT;
+      height.value = withDelay(
+        delay + index * 40,
+        withSpring(targetHeight, mcMotion.spring),
+      );
+      return;
+    }
+
+    if (targetChanged) {
+      height.value = withSpring(targetHeight, mcMotion.spring);
+    }
   }, [delay, height, index, reduced, targetHeight]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     height: height.value,
   }));
 
-  const barColor = isLatest
-    ? color
-    : isEmptyStub
-      ? toneBackground(color, 0.22)
-      : toneBackground(color, mutedness);
+  const barColor = !hasAnyData
+    ? toneBackground(color, EMPTY_BAR_ALPHA)
+    : isLatest
+      ? bar.value < 0
+        ? warningColor
+        : color
+      : isEmptyStub
+        ? toneBackground(color, 0.22)
+        : bar.value < 0
+          ? toneBackground(warningColor, mutedness)
+          : toneBackground(color, mutedness);
 
   return (
     <View style={{ flex: 1, alignItems: 'center', gap: rhythm.tight }}>
@@ -100,7 +124,7 @@ function McWeekBar({
 }
 export function McWeekBars({ bars, delay = 0 }: McWeekBarsProps) {
   const { colors } = useTheme();
-  const maxValue = Math.max(...bars.map((bar) => bar.value), 0);
+  const maxValue = Math.max(...bars.map((bar) => Math.abs(bar.value)), 0);
   const hasAnyData = maxValue > 0;
 
   return (
@@ -115,6 +139,7 @@ export function McWeekBars({ bars, delay = 0 }: McWeekBarsProps) {
           hasAnyData={hasAnyData}
           isLatest={index === bars.length - 1}
           color={colors.primary}
+          warningColor={colors.warning}
           delay={delay}
         />
       ))}

@@ -55,14 +55,17 @@ const plainItemClassName =
 type CompanySwitcherMenuProps = {
   onClose?: () => void;
   variant?: "dropdown" | "plain";
+  onOpenCreateDialog?: () => void;
 };
 
-export function CompanySwitcherMenu({ onClose, variant = "dropdown" }: CompanySwitcherMenuProps) {
+export function CompanySwitcherMenu({
+  onClose,
+  variant = "dropdown",
+  onOpenCreateDialog,
+}: CompanySwitcherMenuProps) {
   const router = useRouter();
-  const { createCompany, switchCompany } = useAuth();
-  const { companies, activeCompanyId, isLoading } = useUserCompanies();
-  const [createOpen, setCreateOpen] = useState(false);
-  const [companyName, setCompanyName] = useState("");
+  const { switchCompany } = useAuth();
+  const { companies, activeCompanyId, isLoading, isSyncing } = useUserCompanies();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,32 +87,6 @@ export function CompanySwitcherMenu({ onClose, variant = "dropdown" }: CompanySw
     } finally {
       setBusy(false);
     }
-  }
-
-  async function handleCreateCompany(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const trimmed = companyName.trim();
-    if (!trimmed) return;
-
-    setBusy(true);
-    setError(null);
-    try {
-      await createCompany(trimmed);
-      setCreateOpen(false);
-      setCompanyName("");
-      onClose?.();
-      router.refresh();
-    } catch (createError) {
-      setError(createError instanceof Error ? createError.message : "Не удалось создать компанию");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function openCreateDialog() {
-    setError(null);
-    setCompanyName("");
-    setCreateOpen(true);
   }
 
   const companyRows = isLoading ? (
@@ -181,12 +158,21 @@ export function CompanySwitcherMenu({ onClose, variant = "dropdown" }: CompanySw
 
   const createAction =
     variant === "dropdown" ? (
-      <DropdownMenuItem className="cursor-pointer gap-2" disabled={busy} onClick={openCreateDialog}>
+      <DropdownMenuItem
+        className="cursor-pointer gap-2"
+        disabled={busy}
+        onClick={() => onOpenCreateDialog?.()}
+      >
         <Plus />
         Создать компанию
       </DropdownMenuItem>
     ) : (
-      <button type="button" className={plainItemClassName} disabled={busy} onClick={openCreateDialog}>
+      <button
+        type="button"
+        className={plainItemClassName}
+        disabled={busy}
+        onClick={() => onOpenCreateDialog?.()}
+      >
         <Plus className="size-4 text-muted-foreground" />
         Создать компанию
       </button>
@@ -198,6 +184,9 @@ export function CompanySwitcherMenu({ onClose, variant = "dropdown" }: CompanySw
         <DropdownMenuGroup>
           <DropdownMenuLabel className="text-[11px] uppercase tracking-wide text-muted-foreground">
             Компании
+            {isSyncing && companies.length > 0 ? (
+              <span className="ml-1 normal-case text-muted-foreground/70">· обновление…</span>
+            ) : null}
           </DropdownMenuLabel>
           {companyRows}
         </DropdownMenuGroup>
@@ -218,39 +207,88 @@ export function CompanySwitcherMenu({ onClose, variant = "dropdown" }: CompanySw
   return (
     <>
       {menuBody}
-      {error && !createOpen ? (
+      {error ? (
         <p className="px-2 py-1.5 text-xs text-destructive">{error}</p>
       ) : null}
-
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{userCopy.company.createTitle}</DialogTitle>
-            <DialogDescription>{userCopy.company.createDescription}</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={(event) => void handleCreateCompany(event)} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="company-switcher-new-company">{userCopy.company.companyNameLabel}</Label>
-              <Input
-                id="company-switcher-new-company"
-                value={companyName}
-                onChange={(event) => setCompanyName(event.target.value)}
-                placeholder={userCopy.company.companyNamePlaceholder}
-                autoFocus
-              />
-            </div>
-            {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)} disabled={busy}>
-                Отмена
-              </Button>
-              <Button type="submit" disabled={busy || !companyName.trim()}>
-                {userCopy.company.createButton}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </>
+  );
+}
+
+type CreateCompanyDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreated?: () => void;
+};
+
+export function CreateCompanyDialog({
+  open,
+  onOpenChange,
+  onCreated,
+}: CreateCompanyDialogProps) {
+  const router = useRouter();
+  const { createCompany } = useAuth();
+  const [companyName, setCompanyName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleCreateCompany(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmed = companyName.trim();
+    if (!trimmed) return;
+
+    setBusy(true);
+    setError(null);
+    try {
+      await createCompany(trimmed);
+      setCompanyName("");
+      onOpenChange(false);
+      onCreated?.();
+      router.refresh();
+    } catch (createError) {
+      setError(createError instanceof Error ? createError.message : "Не удалось создать компанию");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          setCompanyName("");
+          setError(null);
+        }
+        onOpenChange(nextOpen);
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{userCopy.company.createTitle}</DialogTitle>
+          <DialogDescription>{userCopy.company.createDescription}</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={(event) => void handleCreateCompany(event)} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="company-switcher-new-company">{userCopy.company.companyNameLabel}</Label>
+            <Input
+              id="company-switcher-new-company"
+              value={companyName}
+              onChange={(event) => setCompanyName(event.target.value)}
+              placeholder={userCopy.company.companyNamePlaceholder}
+              autoFocus
+            />
+          </div>
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
+              Отмена
+            </Button>
+            <Button type="submit" disabled={busy || !companyName.trim()}>
+              {userCopy.company.createButton}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

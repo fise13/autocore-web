@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ChevronsUpDown } from "lucide-react";
 
 import { AppLogo } from "@/components/brand/app-logo";
 import {
   CompanyAvatar,
+  CreateCompanyDialog,
   CompanySwitcherMenu,
 } from "@/components/layout/company-switcher-menu";
 import {
@@ -25,6 +26,8 @@ import { cn } from "@/lib/utils";
 
 export function SidebarOrganizationSwitcher({ collapsed = false }: SidebarOrganizationSwitcherProps) {
   const { companies, activeCompanyId, isLoading } = useUserCompanies();
+  const canOpenSwitcher = companies.length > 0 || !isLoading;
+  const [createOpen, setCreateOpen] = useState(false);
 
   const activeCompany = useMemo(
     () => companies.find((company) => company.companyId === activeCompanyId) ?? companies[0] ?? null,
@@ -36,7 +39,7 @@ export function SidebarOrganizationSwitcher({ collapsed = false }: SidebarOrgani
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger
-            disabled={isLoading}
+            disabled={!canOpenSwitcher}
             render={
               <SidebarMenuButton
                 size={collapsed ? "default" : "lg"}
@@ -79,9 +82,10 @@ export function SidebarOrganizationSwitcher({ collapsed = false }: SidebarOrgani
             align="start"
             className="w-64"
           >
-            <CompanySwitcherMenu />
+            <CompanySwitcherMenu onOpenCreateDialog={() => setCreateOpen(true)} />
           </DropdownMenuContent>
         </DropdownMenu>
+        <CreateCompanyDialog open={createOpen} onOpenChange={setCreateOpen} />
       </SidebarMenuItem>
     </SidebarMenu>
   );

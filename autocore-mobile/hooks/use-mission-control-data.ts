@@ -7,13 +7,13 @@ import {
   PackageIcon,
   PlusIcon,
   ScanSearchIcon,
-  ShoppingCartIcon,
 } from '@/assets/icons';
 import { useClientsRealtime } from '@/hooks/use-clients-realtime';
 import { useInventoryCatalog } from '@/hooks/use-inventory-catalog';
 import { useMotorsRealtime } from '@/hooks/use-motors-realtime';
 import { useOperationsRealtime } from '@/hooks/use-operations-realtime';
 import { useSession } from '@/hooks/use-session';
+import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import { useWorkOrdersRealtime } from '@/hooks/use-work-orders-realtime';
 import { useCompanyModuleEnabled } from '@/hooks/use-module-enabled';
 import type {
@@ -103,13 +103,24 @@ function statusTone(status: WorkOrderStatus): MissionControlActivity['statusTone
 
 export function useMissionControlData(): MissionControlSnapshot {
   const { companyId, uid } = useSession();
+  const rbac = useRbacPolicy();
   const motorsEnabled = useCompanyModuleEnabled('motors');
-  const accountingEnabled = useCompanyModuleEnabled('accounting');
-  const { domainOrders, meta } = useWorkOrdersRealtime(companyId);
-  const { operations } = useOperationsRealtime(companyId, { keepAlive: true });
-  const { items } = useInventoryCatalog(companyId);
-  const { availableMotors } = useMotorsRealtime(companyId, uid, motorsEnabled);
-  useClientsRealtime(companyId, { keepAlive: true });
+  const accountingEnabled = useCompanyModuleEnabled('accounting') && rbac.scopes.accounting !== 'none';
+  const { domainOrders, meta } = useWorkOrdersRealtime(companyId, {
+    scope: rbac.scopes.workOrders,
+    uid,
+  });
+  const { operations } = useOperationsRealtime(
+    rbac.scopes.accounting !== 'none' ? companyId : null,
+    { keepAlive: true },
+  );
+  const { items } = useInventoryCatalog(rbac.scopes.inventory !== 'none' ? companyId : null);
+  const { availableMotors } = useMotorsRealtime(
+    rbac.scopes.motors !== 'none' ? companyId : null,
+    uid,
+    motorsEnabled && rbac.scopes.motors !== 'none',
+  );
+  useClientsRealtime(rbac.scopes.clients !== 'none' ? companyId : null, { keepAlive: true });
 
   return useMemo(() => {
     const now = new Date();
@@ -178,24 +189,29 @@ export function useMissionControlData(): MissionControlSnapshot {
       });
     }
 
-    const statTiles: MissionControlStatTile[] = [
-      {
+    const statTiles: MissionControlStatTile[] = [];
+
+    if (rbac.scopes.workOrders !== 'none') {
+      statTiles.push({
         id: 'new-orders',
         label: 'Новые наряды',
         value: newOrdersWeek,
         format: 'integer',
-        icon: ShoppingCartIcon,
+        icon: ClipboardListIcon,
         route: '/(tabs)/orders',
-      },
-      {
+      });
+    }
+
+    if (rbac.scopes.inventory !== 'none') {
+      statTiles.push({
         id: 'inventory',
         label: 'Позиций на складе',
         value: items.length,
         format: 'grouped',
         icon: BoxIcon,
         route: '/(tabs)/warehouse',
-      },
-    ];
+      });
+    }
 
     const insights: MissionControlInsight[] = [];
     let featuredInsight: MissionControlInsight | null = null;
@@ -279,19 +295,39 @@ export function useMissionControlData(): MissionControlSnapshot {
       };
     });
 
+    const quickActions = [
+      rbac.can('work_orders_edit')
+        ? { id: 'order', label: 'Наряд', icon: PlusIcon, route: '/(tabs)/orders/new' as const }
+        : null,
+      rbac.scopes.inventory !== 'none'
+        ? { id: 'scan', label: 'Скан', icon: ScanSearchIcon, route: '/(tabs)/scan' as const }
+        : null,
+      rbac.scopes.inventory !== 'none'
+        ? { id: 'inventory', label: 'Склад', icon: BoxIcon, route: '/(tabs)/warehouse' as const }
+        : null,
+      rbac.scopes.accounting !== 'none'
+        ? { id: 'finance', label: 'Финансы', icon: BarChart3Icon, route: '/(tabs)/accounting' as const }
+        : null,
+    ].filter((action): action is NonNullable<typeof action> => action !== null);
+
+    const visibleRevenue =
+      rbac.can('accounting_view') || rbac.can('analytics_view')
+        ? revenue
+        : {
+            ...revenue,
+            value: 0,
+            growthPercent: null,
+            weekBars: revenue.weekBars.map((bar) => ({ ...bar, value: 0 })),
+          };
+
     return {
       attention: {
         title: 'Нужно действие',
         items: attentionItems,
       },
-      revenue,
+      revenue: visibleRevenue,
       statTiles,
-      quickActions: [
-        { id: 'order', label: 'Наряд', icon: PlusIcon, route: '/(tabs)/orders/new' },
-        { id: 'scan', label: 'Скан', icon: ScanSearchIcon, route: '/(tabs)/scan' },
-        { id: 'inventory', label: 'Склад', icon: BoxIcon, route: '/(tabs)/warehouse' },
-        { id: 'finance', label: 'Финансы', icon: BarChart3Icon, route: '/(tabs)/accounting' },
-      ],
+      quickActions,
       featuredInsight,
       insights: insights.slice(0, 2),
       activity,
@@ -305,5 +341,6 @@ export function useMissionControlData(): MissionControlSnapshot {
     meta.total,
     motorsEnabled,
     operations,
+    rbac,
   ]);
 }

@@ -1,117 +1,167 @@
-import { formatDistanceToNow } from 'date-fns';
-import { ru } from 'date-fns/locale';
-import { useCallback } from 'react';
-import { Pressable, View } from 'react-native';
-import * as Linking from 'expo-linking';
-import { router } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
+import { Pressable, RefreshControl, View } from 'react-native';
 
-import { BellIcon } from '@/assets/icons';
-import { NotificationCard } from '@/components/business/notification-card';
-import { Button, EmptyState, Text } from '@/components/ui';
-import { useNotificationInbox } from '@/hooks/use-notification-inbox';
+import { AlertTriangleIcon, BellIcon } from '@/assets/icons';
+import { Badge, Button, EmptyState, SearchInput, Text } from '@/components/ui';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
-import type { NotificationRecord } from '@/types/notifications';
+import { useTheme } from '@/hooks';
+import { NotificationService } from '@/services/notifications';
+import type { AppNotification } from '@/services/notifications';
+import { useNotificationStore } from '@/stores/notification-store';
+import { rhythm, spacing } from '@/theme';
 
-function formatRelativeTime(iso: string): string {
-  try {
-    return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: ru });
-  } catch {
-    return '';
-  }
-}
-
-function openDeepLink(deepLink?: string) {
-  if (!deepLink) return;
-  if (deepLink.startsWith('autocoremobile://')) {
-    const path = deepLink.replace('autocoremobile://', '');
-    if (path.startsWith('orders/')) {
-      router.push(`/(tabs)/orders/${path.replace('orders/', '')}` as never);
-      return;
-    }
-    if (path === 'orders') {
-      router.push('/(tabs)/orders' as never);
-      return;
-    }
-    if (path.startsWith('profile/')) {
-      router.push(`/(tabs)/profile/${path.replace('profile/', '')}` as never);
-      return;
-    }
-    if (path === 'scan') {
-      router.push('/(tabs)/scan' as never);
-      return;
-    }
-    if (path.startsWith('accounting')) {
-      router.push('/(tabs)/accounting' as never);
-      return;
-    }
-    if (path.startsWith('search')) {
-      router.push('/(tabs)/search' as never);
-      return;
-    }
-    router.push('/(tabs)' as never);
-    return;
-  }
-  void Linking.openURL(deepLink);
-}
+import { ActivityDateGroup } from './components/activity-date-group';
+import { ActivityFeedFilters } from './components/activity-feed-filters';
+import { NotificationInboxSkeleton } from './components/notification-row-skeleton';
+import { groupNotificationsByDate } from './lib/group-by-date';
 
 export function NotificationInboxScreen() {
-  const { items, unreadCount, loading, error, refresh, markRead, markAllRead } =
-    useNotificationInbox('active');
+  const { colors } = useTheme();
+  const unreadCount = useNotificationStore((s) => s.unreadCount);
+  const loading = useNotificationStore((s) => s.loading);
+  const syncing = useNotificationStore((s) => s.syncing);
+  const error = useNotificationStore((s) => s.error);
+  const hasMore = useNotificationStore((s) => s.hasMore);
+  const categoryFilter = useNotificationStore((s) => s.categoryFilter);
+  const readFilter = useNotificationStore((s) => s.readFilter);
+  const searchQuery = useNotificationStore((s) => s.searchQuery);
+  const storeItems = useNotificationStore((s) => s.items);
 
-  const handlePress = useCallback(
-    async (item: NotificationRecord) => {
-      if (item.state === 'unread') {
-        await markRead(item.id);
-      }
-      openDeepLink(item.deepLink);
-    },
-    [markRead],
+  const [refreshing, setRefreshing] = useState(false);
+  const [localSearch, setLocalSearch] = useState(searchQuery);
+
+  const filteredItems = useMemo(
+    () => NotificationService.getFilteredItems(),
+    [categoryFilter, readFilter, searchQuery, storeItems],
   );
+
+  const groups = useMemo(() => groupNotificationsByDate(filteredItems), [filteredItems]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await NotificationService.syncInbox();
+    setRefreshing(false);
+  }, []);
+
+  const handlePress = useCallback((item: AppNotification) => {
+    NotificationService.open(item);
+  }, []);
+
+  const handleDelete = useCallback((id: string) => {
+    void NotificationService.delete(id);
+  }, []);
+
+  const handleSearch = useCallback((text: string) => {
+    setLocalSearch(text);
+    NotificationService.setSearchQuery(text);
+  }, []);
+
+  const subtitle =
+    syncing || refreshing
+      ? 'Синхронизация…'
+      : unreadCount > 0
+        ? `${unreadCount} непрочитанных`
+        : 'Все прочитано';
+
+  const showSkeleton = loading && filteredItems.length === 0 && !error;
+  const showEmpty = !loading && filteredItems.length === 0 && !error;
 
   return (
     <ProfileScreenShell
-      title="Центр уведомлений"
-      subtitle={unreadCount > 0 ? `${unreadCount} непрочитанных` : 'Все прочитано'}
+      title="Центр активности"
+      subtitle={subtitle}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={() => void handleRefresh()} />
+      }
     >
-      <View style={{ gap: 12 }}>
-        {unreadCount > 0 ? (
-          <Button variant="secondary" size="sm" onPress={() => void markAllRead()}>
-            Отметить все прочитанными
-          </Button>
-        ) : null}
+      <View style={{ gap: spacing[4] }}>
+        <SearchInput
+          value={localSearch}
+          onChangeText={handleSearch}
+          placeholder="Поиск уведомлений…"
+        />
 
-        {loading && items.length === 0 ? (
-          <Text variant="caption" color="muted">
-            Загрузка…
-          </Text>
+        <ActivityFeedFilters
+          onCategoryChange={(c) => NotificationService.setCategoryFilter(c)}
+          onReadFilterChange={(f) => NotificationService.setReadFilter(f)}
+        />
+
+        {unreadCount > 0 ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Badge variant="secondary">{`${unreadCount} новых`}</Badge>
+            <Button variant="ghost" size="sm" onPress={() => void NotificationService.markAllRead()}>
+              Прочитать все
+            </Button>
+          </View>
         ) : null}
 
         {error ? (
-          <Text variant="caption" color="destructive">
-            {error}
-          </Text>
+          <Pressable
+            onPress={() => void handleRefresh()}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              gap: spacing[3],
+              padding: spacing[3],
+              borderRadius: rhythm.cardRadius,
+              borderWidth: rhythm.hairline,
+              borderColor: `${colors.destructive}33`,
+              backgroundColor: `${colors.destructive}12`,
+            }}
+          >
+            <View
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: rhythm.radius,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: `${colors.destructive}1F`,
+              }}
+            >
+              <AlertTriangleIcon size="sm" color={colors.destructive} />
+            </View>
+            <View style={{ flex: 1, gap: spacing[1] }}>
+              <Text variant="bodyStrong">Не удалось загрузить</Text>
+              <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
+                {error}
+              </Text>
+              <Text
+                variant="caption"
+                style={{ color: colors.destructive, fontWeight: '600', marginTop: spacing[1] }}
+              >
+                Нажмите, чтобы повторить
+              </Text>
+            </View>
+          </Pressable>
         ) : null}
 
-        {!loading && items.length === 0 && !error ? (
+        {showSkeleton ? <NotificationInboxSkeleton /> : null}
+
+        {showEmpty ? (
           <EmptyState
             icon={BellIcon}
             title="Нет уведомлений"
-            description="Здесь появятся важные события по нарядам, складу и команде."
-            primaryAction={{ label: 'Обновить', onPress: () => void refresh() }}
+            description="Здесь появятся события по нарядам, финансам, команде и документам."
+            primaryAction={{ label: 'Обновить', onPress: () => void handleRefresh() }}
           />
         ) : null}
 
-        {items.map((item) => (
-          <Pressable key={item.id} onPress={() => void handlePress(item)}>
-            <NotificationCard
-              title={item.title}
-              body={item.body}
-              time={formatRelativeTime(item.createdAt)}
-              read={item.state !== 'unread'}
-              priority={item.priority}
-            />
-          </Pressable>
+        {groups.map((group) => (
+          <ActivityDateGroup
+            key={group.key}
+            label={group.label}
+            items={group.items}
+            onPress={handlePress}
+            onDelete={handleDelete}
+          />
         ))}
+
+        {hasMore ? (
+          <Button variant="secondary" size="sm" onPress={() => NotificationService.loadMore()}>
+            Загрузить ещё
+          </Button>
+        ) : null}
       </View>
     </ProfileScreenShell>
   );

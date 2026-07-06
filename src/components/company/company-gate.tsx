@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Users } from "lucide-react";
 
 import { AppLogo } from "@/components/brand/app-logo";
@@ -10,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
-import { clearInviteToken, readInviteToken } from "@/lib/invites/pending-invite";
+import { readInviteToken } from "@/lib/invites/pending-invite";
 import { mapAuthError, userCopy } from "@/lib/user-copy";
 
 type CompanyGateProps = {
@@ -18,13 +19,8 @@ type CompanyGateProps = {
 };
 
 export function CompanyGate({ children }: CompanyGateProps) {
-  const {
-    profile,
-    createCompany,
-    joinCompanyWithInvite,
-    joinCompanyWithInviteToken,
-    isLoading,
-  } = useAuth();
+  const { profile, createCompany, joinCompanyWithInvite, isLoading } = useAuth();
+  const router = useRouter();
   const [companyName, setCompanyName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [showInvite, setShowInvite] = useState(false);
@@ -39,18 +35,8 @@ export function CompanyGate({ children }: CompanyGateProps) {
     const token = readInviteToken();
     if (!token) return;
     pendingInviteAttempted.current = true;
-    setIsSubmitting(true);
-    setSubmitMessage("Присоединение по приглашению…");
-    setError(null);
-    void joinCompanyWithInviteToken(token)
-      .then(() => clearInviteToken())
-      .catch((e) => {
-        setError(mapAuthError(e, { surface: "onboarding" }));
-        setIsSubmitting(false);
-        setSubmitMessage(null);
-        setShowInvite(true);
-      });
-  }, [hasCompany, isLoading, joinCompanyWithInviteToken, profile]);
+    router.replace(`/invite/${encodeURIComponent(token)}`);
+  }, [hasCompany, isLoading, profile, router]);
 
   if (isLoading || !profile) {
     return <AppLoadingScreen message={userCopy.auth.completing} />;

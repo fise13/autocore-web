@@ -142,6 +142,7 @@ export function OrderCompositionStep({
                     <AutocompleteInput
                       placeholder="Сотрудник или ФИО"
                       value={composition.laborDraft.assigneeName}
+                      fieldKey="assignee"
                       onValueChange={(value) =>
                         composition.patchLaborDraft({ assigneeName: value, assigneeId: '' })
                       }
@@ -195,6 +196,7 @@ export function OrderCompositionStep({
                 <AutocompleteInput
                   placeholder="SKU-001"
                   value={composition.partSku}
+                  fieldKey="partSku"
                   onValueChange={composition.setPartSku}
                   options={composerOptions.partSkuOptions}
                   matchMode="flexible"
@@ -207,6 +209,7 @@ export function OrderCompositionStep({
                   <AutocompleteInput
                     placeholder="Фильтр масляный Mann"
                     value={composition.partName}
+                    fieldKey="partName"
                     onValueChange={composition.setPartName}
                     options={composerOptions.partNameOptions}
                     matchMode="flexible"
@@ -259,6 +262,8 @@ export function OrderCompositionStep({
                 <AutocompleteInput
                   placeholder="Номер двигателя · Tab ↹"
                   value={composition.motorSerial}
+                  fieldKey="motorSerial"
+                  source="engineCode"
                   onValueChange={composition.setMotorSerial}
                   options={composerOptions.motorSerialOptions}
                   matchMode="flexible"

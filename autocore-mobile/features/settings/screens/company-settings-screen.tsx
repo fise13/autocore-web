@@ -1,4 +1,5 @@
-import { View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, View } from 'react-native';
 
 import { Button, ListGroup, ListRow, Text } from '@/components/ui';
 import { useGuardedRouter } from '@/hooks/use-guarded-router';
@@ -18,10 +19,11 @@ import { haptics } from '@/theme';
 import type { CompanyModuleKey } from '@/types/company-config';
 import { toneBackground } from '@/theme/color-utils';
 
-import { WORKSPACE_DEMO } from '../data/demo-data';
 import { settingsRouteHref } from '../navigation';
 import { ProfileMetaCard, ProfileMetaRow } from '@/features/profile/components/profile-meta-card';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
+import { OrgDangerZone } from '@/features/organization/components/org-danger-zone';
+import { CompanySwitcherSheet } from '@/features/organization/components/company-switcher-sheet';
 
 const MODULE_LABELS: Record<CompanyModuleKey, string> = {
   motors: 'Двигатели',
@@ -41,6 +43,7 @@ export function CompanySettingsScreen() {
   const { isPro } = useCompanySubscription(companyId);
   const { employees } = useEmployeesRealtime(companyId, isPro);
   const activeCount = employees.filter((entry) => entry.isActive).length;
+  const [switcherOpen, setSwitcherOpen] = useState(false);
 
   const enabledModules = config
     ? (Object.entries(config.modules) as Array<[CompanyModuleKey, boolean]>)
@@ -50,6 +53,12 @@ export function CompanySettingsScreen() {
 
   return (
     <ProfileScreenShell title="Компания" subtitle="Профиль организации и инфраструктура">
+      {memberships.length > 0 ? (
+        <Button variant="secondary" onPress={() => setSwitcherOpen(true)}>
+          Сменить организацию ({memberships.length})
+        </Button>
+      ) : null}
+
       {memberships.length > 1 ? (
         <ListGroup>
           {memberships.map((membership) => (
@@ -69,25 +78,9 @@ export function CompanySettingsScreen() {
       ) : null}
 
       <ProfileMetaCard title="Основное" delay={60}>
-        <ProfileMetaRow label="Название" value={isLoading ? '…' : name ?? 'MotorLand Service'} />
+        <ProfileMetaRow label="Название" value={isLoading ? '…' : name ?? '—'} />
         <ProfileMetaRow label="Подписка" value={subscriptionPlanLabel(isPro)} />
         <ProfileMetaRow label="Сотрудники" value={`${activeCount} активных`} />
-      </ProfileMetaCard>
-
-      <ProfileMetaCard title="Инфраструктура" delay={100}>
-        <ProfileMetaRow label="Регион" value={WORKSPACE_DEMO.region} />
-        <ProfileMetaRow label="Часовой пояс" value={WORKSPACE_DEMO.timezone} />
-        <ProfileMetaRow label="Хранилище" value={WORKSPACE_DEMO.storageUsed.label} />
-        <ProfileMetaRow label="Облако" value={WORKSPACE_DEMO.cloudSync.status} />
-      </ProfileMetaCard>
-
-      <ProfileMetaCard title="Код приглашения" delay={140}>
-        <Text variant="heading" style={{ fontSize: 26, fontWeight: '700', letterSpacing: 2.5 }}>
-          {WORKSPACE_DEMO.inviteCode}
-        </Text>
-        <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-          Поделитесь кодом с новым сотрудником для быстрого подключения.
-        </Text>
       </ProfileMetaCard>
 
       <ProfileMetaCard title="Активные модули" delay={180}>
@@ -124,6 +117,14 @@ export function CompanySettingsScreen() {
           <Button onPress={() => router.push(settingsRouteHref('team'))}>Команда и роли</Button>
         </ProfileMetaCard>
       ) : null}
+
+      <OrgDangerZone
+        companyName={name ?? 'Компания'}
+        isOwner={profile?.isCompanyOwner === true}
+        onChanged={() => void refreshProfile()}
+      />
+
+      <CompanySwitcherSheet open={switcherOpen} onClose={() => setSwitcherOpen(false)} />
     </ProfileScreenShell>
   );
 }

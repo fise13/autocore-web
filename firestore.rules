@@ -130,6 +130,14 @@ service cloud.firestore {
         || (doc != null && doc.companyId == "default");
     }
 
+    // Multi-org: allow invite join when user is not already an employee of target company.
+    function canJoinCompany(companyId) {
+      return isSignedIn()
+        && companyId != null
+        && companyId != ""
+        && !exists(employeeRef(companyId, request.auth.uid));
+    }
+
     function isOnboardingCompanyLink(companyId) {
       return canJoinCompanyViaInvite()
         && companyId != null
@@ -173,7 +181,7 @@ service cloud.firestore {
         && invite.companyId == companyId
         && normalizedRole(invite.role != null && invite.role != "" ? invite.role : 'employee')
           == normalizedRole(role)
-        && canJoinCompanyViaInvite();
+        && canJoinCompany(companyId);
     }
 
     function roleAllows(role, permission) {
@@ -212,7 +220,6 @@ service cloud.firestore {
             'accounting_view',
             'employee_view',
             'analytics_view',
-            'settings_manage',
             'export_data',
             'import_data'
           ]
@@ -394,6 +401,42 @@ service cloud.firestore {
       return isOwnerOfCompany(companyId)
         || hasPermission(companyId, 'warehouse_manage')
         || hasPermission(companyId, 'inventory_edit');
+    }
+
+    function laborLineHasAssignee(line) {
+      return line.assigneeIds is list && request.auth.uid in line.assigneeIds;
+    }
+
+    function isAssignedToWorkOrder(order) {
+      return order.laborLines is list
+        && (
+          (order.laborLines.size() > 0 && laborLineHasAssignee(order.laborLines[0]))
+          || (order.laborLines.size() > 1 && laborLineHasAssignee(order.laborLines[1]))
+          || (order.laborLines.size() > 2 && laborLineHasAssignee(order.laborLines[2]))
+          || (order.laborLines.size() > 3 && laborLineHasAssignee(order.laborLines[3]))
+          || (order.laborLines.size() > 4 && laborLineHasAssignee(order.laborLines[4]))
+        );
+    }
+
+    function requiresAssignedWorkOrderScope(companyId) {
+      let role = memberRole(companyId);
+      return role == 'mechanic' || role == 'diagnostician';
+    }
+
+    function canReadWorkOrder(companyId, order) {
+      return isOwnerOfCompany(companyId)
+        || (
+          hasPermission(companyId, 'work_orders_view')
+          && (!requiresAssignedWorkOrderScope(companyId) || isAssignedToWorkOrder(order))
+        );
+    }
+
+    function canWriteWorkOrder(companyId, order) {
+      return isOwnerOfCompany(companyId)
+        || (
+          hasPermission(companyId, 'work_orders_edit')
+          && (!requiresAssignedWorkOrderScope(companyId) || isAssignedToWorkOrder(order))
+        );
     }
 
     function canWorkOrdersRead(companyId) {
@@ -585,7 +628,7 @@ service cloud.firestore {
       // Non-recursive owner read — required so get(companies/…) works during onboarding rules.
       // Guard resource != null: accessing resource.data on a missing doc errors and denies the whole get.
       allow read: if isSignedIn() && resource != null && resource.data.ownerId == request.auth.uid;
-      allow read: if resource != null && (sameCompany(companyId) || isOwnerOfCompany(companyId));
+      allow read: if resource != null && (sameCompany(companyId) || isOwnerOfCompany(companyId) || hasMembership(companyId));
       // Shared "Моя бухгалтерия" id: allow get even when doc is missing (web/mac onboarding).
       allow read: if isSignedIn() && companyId == 'default';
 
@@ -751,11 +794,11 @@ service cloud.firestore {
       }
 
       match /workOrders/{workOrderId} {
-        allow read: if canWorkOrdersRead(companyId);
+        allow read: if canReadWorkOrder(companyId, resource.data);
         allow create: if canWorkOrdersWrite(companyId)
           && request.resource.data.companyId == companyId
           && request.resource.data.createdByUserId == request.auth.uid;
-        allow update: if canWorkOrdersWrite(companyId)
+        allow update: if canWriteWorkOrder(companyId, resource.data)
           && request.resource.data.companyId == companyId
           && resource.data.companyId == companyId;
         allow delete: if false;
@@ -796,9 +839,12 @@ service cloud.firestore {
       }
 
       match /payrollTransactions/{transactionId} {
-        allow read: if canWorkOrdersRead(companyId)
-          || hasPermission(companyId, 'payroll_view_own')
-          || (isSignedIn() && resource.data.employeeId == request.auth.uid);
+        allow read: if isOwnerOfCompany(companyId)
+          || hasPermission(companyId, 'accounting_view')
+          || (
+            hasPermission(companyId, 'payroll_view_own')
+            && resource.data.employeeId == request.auth.uid
+          );
         allow create, delete: if false;
         allow update: if hasPermission(companyId, 'accounting_edit')
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paidAt'])
@@ -865,7 +911,7 @@ service cloud.firestore {
       allow update: if isSignedIn()
         && request.resource.data.used == true
         && resource.data.used != true
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used', 'status'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used', 'status', 'acceptedAt', 'acceptedBy'])
         && resource.data.companyId != null
         && exists(employeeRef(resource.data.companyId, request.auth.uid));
       allow update: if resource.data.companyId != null

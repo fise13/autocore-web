@@ -18,15 +18,15 @@ import {
   formatPermission,
   formatRole,
 } from '@/lib/team/format';
+import { buildInviteUrl, normalizeInviteStatus, type InviteStatus } from '@autocore/org';
 import { getPublicApiBaseUrl } from '@/services/api/api-base-url';
-import { canManageEmployees, canViewEmployees } from '@/lib/permissions';
+import { resendInvite, revokeInvite } from '@/services/api/org-api';
 import {
   removeEmployee,
   setEmployeeActive,
   setEmployeePermissionOverrides,
   setEmployeeRole,
 } from '@/services/firestore/employee-rbac-service';
-import { deleteCompanyInvite } from '@/services/firestore/invite-service';
 import type { Permission, UserRole } from '@/types/user';
 import { haptics, rhythm } from '@/theme';
 import { ROLE_PERMISSIONS, USER_ROLES } from '@/types/user';
@@ -37,16 +37,17 @@ import { ProfileSegmentedControl } from '../components/profile-animated-section'
 import { TeamInviteSheet, type TeamInviteSheetRef } from '../components/team-invite-sheet';
 import { TeamProGate } from '../components/team-pro-gate';
 import { TeamEmployeeCard } from '../components/team/team-employee-card';
+import { TeamInviteStatusFilters } from '../components/team/team-invite-status-filters';
 import { TeamInviteRow } from '../components/team/team-invite-card';
 import { TeamSectionLabel, TeamSurface } from '../components/team/team-primitives';
 import { TeamRoleCard } from '../components/team/team-role-card';
 import { PERMISSION_GROUPS } from '@/features/settings/data/demo-data';
+import { canManageEmployees, canViewEmployees } from '@/lib/permissions';
 
 type TeamTab = 'employees' | 'roles';
 
 function buildInviteJoinUrl(token: string): string {
-  const base = getPublicApiBaseUrl().replace(/\/$/, '');
-  return `${base}/join?token=${encodeURIComponent(token)}`;
+  return buildInviteUrl(token, getPublicApiBaseUrl());
 }
 
 function mapEmployeeError(error: unknown): string {
@@ -67,6 +68,7 @@ export function TeamScreen() {
   const { invites, isLoading: invitesLoading } = useCompanyInvites(companyId, isPro && canManage);
 
   const [tab, setTab] = useState<TeamTab>('employees');
+  const [inviteStatusFilter, setInviteStatusFilter] = useState<InviteStatus | 'all'>('all');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inviteSheetRef = useRef<TeamInviteSheetRef>(null);
@@ -80,6 +82,17 @@ export function TeamScreen() {
     () => invites.filter((invite) => !invite.used && invite.status !== 'expired'),
     [invites],
   );
+  const filteredInvites = useMemo(() => {
+    return invites.filter((invite) => {
+      if (inviteStatusFilter === 'all') return true;
+      const status = normalizeInviteStatus({
+        status: invite.status,
+        used: invite.used,
+        expiresAt: invite.expiresAt.toISOString(),
+      });
+      return status === inviteStatusFilter;
+    });
+  }, [inviteStatusFilter, invites]);
 
   const runAction = async (action: () => Promise<void>) => {
     setBusy(true);
@@ -145,8 +158,22 @@ export function TeamScreen() {
       </TeamSurface>
 
       {isLoading ? (
+        <View style={{ gap: rhythm.stack }}>
+          {Array.from({ length: 3 }).map((_, index) => (
+            <View
+              key={index}
+              style={{
+                height: 88,
+                borderRadius: 16,
+                backgroundColor: colors.muted,
+                opacity: 0.35,
+              }}
+            />
+          ))}
+        </View>
+      ) : employees.length === 0 ? (
         <Text variant="meta" color="muted">
-          Загрузка сотрудников…
+          Пока нет сотрудников. Пригласите первого участника команды.
         </Text>
       ) : (
         <View style={{ gap: rhythm.stack }}>
@@ -176,26 +203,40 @@ export function TeamScreen() {
       {canManage ? (
         <TeamSurface delay={180}>
           <TeamSectionLabel title="Коды приглашений" />
+          <TeamInviteStatusFilters value={inviteStatusFilter} onChange={setInviteStatusFilter} />
           <Text variant="meta" color="muted" style={{ lineHeight: 18 }}>
-            Новый сотрудник вводит код при входе в AutoCore.
+            Активных: {activeInvites.length}
           </Text>
           {invitesLoading ? (
             <Text variant="meta" color="muted">
               Загрузка…
             </Text>
-          ) : activeInvites.length === 0 ? (
+          ) : filteredInvites.length === 0 ? (
             <Text variant="meta" color="muted">
-              Нет активных кодов
+              Нет приглашений с выбранным статусом.
             </Text>
           ) : (
             <View style={{ gap: rhythm.stack }}>
-              {activeInvites.map((invite) => (
+              {filteredInvites.map((invite) => (
                 <TeamInviteRow
                   key={invite.id}
                   invite={invite}
                   onShareCode={(code) => void shareCode(code)}
                   onShareLink={(url) => void shareLink(url)}
-                  onDelete={() => void runAction(() => deleteCompanyInvite(invite.id))}
+                  onDelete={() =>
+                    void runAction(async () => {
+                      await revokeInvite(invite.id);
+                    })
+                  }
+                  onResend={
+                    invite.email
+                      ? () =>
+                          void runAction(async () => {
+                            const result = await resendInvite(invite.id);
+                            if (result.joinUrl) await shareLink(result.joinUrl);
+                          })
+                      : undefined
+                  }
                   buildJoinUrl={buildInviteJoinUrl}
                 />
               ))}

@@ -3,6 +3,8 @@ import { RefreshControl, View } from 'react-native';
 
 import { Screen, ScreenScroll } from '@/components/ui';
 import { useMissionControlData, useRealtimeReconnect } from '@/hooks';
+import { useRbacPolicy } from '@/hooks/use-rbac-policy';
+import { Text } from '@/components/ui';
 
 import { McActivityFeed } from './components/mc-activity-feed';
 import { McFeaturedInsight } from './components/mc-featured-insight';
@@ -32,6 +34,7 @@ function MissionControlBody() {
 const MemoBody = memo(MissionControlBody);
 
 export function MissionControlScreen() {
+  const rbac = useRbacPolicy();
   const reconnectRealtime = useRealtimeReconnect();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -40,6 +43,21 @@ export function MissionControlScreen() {
     reconnectRealtime();
     setRefreshing(false);
   }, [reconnectRealtime]);
+
+  if (!rbac.nav.canAccessMissionControl) {
+    return (
+      <Screen>
+        <ScreenScroll tabBarInset>
+          <View style={{ padding: mc.pad, gap: mc.section }}>
+            <Text variant="pageTitle">Mission Control</Text>
+            <Text variant="body" color="muted">
+              У вашей роли нет доступа к панели управления.
+            </Text>
+          </View>
+        </ScreenScroll>
+      </Screen>
+    );
+  }
 
   return (
     <Screen>

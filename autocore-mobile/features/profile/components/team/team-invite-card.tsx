@@ -2,7 +2,8 @@ import { memo } from 'react';
 import { View } from 'react-native';
 
 import { Button, Text } from '@/components/ui';
-import { formatInviteExpiry, formatRole } from '@/lib/team/format';
+import { INVITE_STATUS_LABELS, normalizeInviteStatus } from '@autocore/org';
+import { formatRole } from '@/lib/team/format';
 import type { InviteDocument } from '@/types/rbac';
 import { rhythm } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
@@ -14,6 +15,7 @@ type TeamInviteCardProps = {
   onShareCode: (code: string) => void;
   onShareLink: (url: string) => void;
   onDelete: () => void;
+  onResend?: () => void;
   buildJoinUrl: (token: string) => string;
 };
 
@@ -22,9 +24,15 @@ export const TeamInviteRow = memo(function TeamInviteRow({
   onShareCode,
   onShareLink,
   onDelete,
+  onResend,
   buildJoinUrl,
 }: TeamInviteCardProps) {
   const { colors } = useTheme();
+  const status = normalizeInviteStatus({
+    status: invite.status,
+    used: invite.used,
+    expiresAt: invite.expiresAt.toISOString(),
+  });
 
   return (
     <View
@@ -48,7 +56,7 @@ export const TeamInviteRow = memo(function TeamInviteRow({
       </Text>
       <Text variant="meta" color="muted">
         {invite.email ? `${invite.email} · ` : ''}
-        {formatRole(invite.role)} · до {formatInviteExpiry(invite.expiresAt)}
+        {formatRole(invite.role)} · {INVITE_STATUS_LABELS[status]}
       </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         <Button variant="secondary" size="sm" onPress={() => onShareCode(invite.code)}>
@@ -59,8 +67,13 @@ export const TeamInviteRow = memo(function TeamInviteRow({
             Ссылка
           </Button>
         ) : null}
+        {onResend && invite.email && status === 'pending' ? (
+          <Button variant="secondary" size="sm" onPress={onResend}>
+            Повтор
+          </Button>
+        ) : null}
         <Button variant="ghost" size="sm" onPress={onDelete}>
-          Удалить
+          Отменить
         </Button>
       </View>
     </View>

@@ -1,13 +1,16 @@
 import "server-only";
 
-import { Permission, hasPermission } from "@/domain/user";
+import { Permission, UserEntity, type AccessScopes } from "@autocore/rbac";
+import { hasPermission } from "@/domain/user";
 import { getAdminAuth, getAdminFirestore } from "@/infrastructure/firebase/admin";
-import { mapAdminUser } from "@/infrastructure/firestore/admin-mappers";
+import { resolveAccessProfile } from "@/lib/auth/resolve-access-profile.server";
 import { normalizeCompanyId } from "@/lib/company-id";
 
 export type VerifiedDesktopAccess = {
   uid: string;
   companyId: string;
+  profile: UserEntity;
+  scopes: AccessScopes;
 };
 
 function readBearerToken(request: Request): string | null {
@@ -41,25 +44,30 @@ export async function verifyDesktopAccess(
     throw new DesktopAccessError("Недействительный токен", 401);
   }
 
-  const userSnapshot = await getAdminFirestore().collection("users").doc(uid).get();
-  if (!userSnapshot.exists) {
+  const userSnap = await getAdminFirestore().collection("users").doc(uid).get();
+  if (!userSnap.exists) {
     throw new DesktopAccessError("Профиль пользователя не найден", 403);
   }
 
-  const user = mapAdminUser(userSnapshot.id, userSnapshot.data() as Record<string, unknown>);
-  const rawName = userSnapshot.data()?.name;
-  if (!user.displayName && typeof rawName === "string" && rawName.trim()) {
-    user.displayName = rawName.trim();
-  }
-
-  const trimmedCompanyId = String(user.companyId ?? "").trim();
+  const trimmedCompanyId = String(userSnap.data()?.companyId ?? "").trim();
   if (!trimmedCompanyId || trimmedCompanyId === "default") {
     throw new DesktopAccessError("Сначала присоединитесь к компании", 403);
   }
 
-  if (!hasPermission(user, requiredPermission)) {
+  const resolved = await resolveAccessProfile(uid, normalizeCompanyId(trimmedCompanyId));
+
+  if (resolved.profile.isActive === false) {
+    throw new DesktopAccessError("Аккаунт деактивирован", 403);
+  }
+
+  if (!hasPermission(resolved.profile, requiredPermission)) {
     throw new DesktopAccessError("Недостаточно прав для этого действия", 403);
   }
 
-  return { uid, companyId: normalizeCompanyId(trimmedCompanyId) };
+  return {
+    uid,
+    companyId: resolved.companyId,
+    profile: resolved.profile,
+    scopes: resolved.scopes,
+  };
 }

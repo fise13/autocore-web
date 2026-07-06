@@ -74,10 +74,11 @@ type StackScreenProps = {
   children: ReactNode;
   /** Gap between child blocks */
   gap?: number;
+  refreshControl?: ScrollViewProps['refreshControl'];
 };
 
 /** Stack sub-screen: back chevron, title, scroll body. Section cards provide horizontal inset. */
-export function StackScreen({ title, subtitle, children, gap = spacing[3] }: StackScreenProps) {
+export function StackScreen({ title, subtitle, children, gap = spacing[3], refreshControl }: StackScreenProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -116,7 +117,7 @@ export function StackScreen({ title, subtitle, children, gap = spacing[3] }: Sta
         </View>
       </View>
 
-      <ScreenScroll>
+      <ScreenScroll refreshControl={refreshControl}>
         <View style={{ gap }}>{children}</View>
       </ScreenScroll>
     </Screen>

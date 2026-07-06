@@ -15,6 +15,7 @@ import {
 
 import { InviteDocument } from "@/domain/rbac";
 import { UserRole } from "@/domain/user";
+import { normalizeInviteStatus } from "@autocore/org";
 import { toDateFromFirestore } from "@/lib/firestore-timestamp";
 import { generateInviteToken } from "@/lib/invites/invite-token";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
@@ -33,14 +34,11 @@ function mapInviteDoc(id: string, companyId: string, data: Record<string, unknow
   const expiresAt = toDateFromFirestore(data.expiresAt);
   if (!expiresAt) return null;
   const used = Boolean(data.used ?? false);
-  const status =
-    data.status === "used" || data.status === "expired" || data.status === "pending"
-      ? data.status
-      : used
-        ? "used"
-        : expiresAt.getTime() <= Date.now()
-          ? "expired"
-          : "pending";
+  const status = normalizeInviteStatus({
+    status: data.status as InviteDocument["status"],
+    used,
+    expiresAt: expiresAt.toISOString(),
+  });
 
   return {
     id,

@@ -21,6 +21,7 @@ import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { formatNextBillingDate } from "@/lib/billing/format-renewal";
 import { canViewEmployees } from "@/lib/auth/permissions";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
+import { OrgDangerZone } from "@/components/organization/org-danger-zone";
 import { userCopy } from "@/lib/user-copy";
 
 type CompanySettingsPanelProps = {
@@ -238,6 +239,14 @@ export function CompanySettingsPanel({
           </Card>
         </FadeIn>
       ) : null}
+
+      <FadeIn delay={180}>
+        <OrgDangerZone
+          companyId={companyId}
+          companyName={name ?? userCopy.appName}
+          isOwner={profile?.isCompanyOwner === true}
+        />
+      </FadeIn>
     </div>
   );
 }

@@ -1,23 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { UserRole } from "@/domain/user";
 import { MobileAccessError, verifyMobileAccess } from "@/lib/auth/verify-mobile-access.server";
 import { listMobileWorkOrders } from "@/lib/mobile/work-orders.server";
-import { getAdminFirestore } from "@/infrastructure/firebase/admin";
-import { mapAdminUser } from "@/infrastructure/firestore/admin-mappers";
 
 export const runtime = "nodejs";
-
-const MINE_ONLY_ROLES = new Set<UserRole>(["mechanic", "diagnostician"]);
 
 export async function GET(request: NextRequest) {
   try {
     const access = await verifyMobileAccess(request, "work_orders_view");
-    const userSnap = await getAdminFirestore().collection("users").doc(access.uid).get();
-    const user = mapAdminUser(access.uid, (userSnap.data() ?? {}) as Record<string, unknown>);
     const mineOnly =
       request.nextUrl.searchParams.get("mine") === "1" ||
-      MINE_ONLY_ROLES.has(user.role);
+      access.scopes.workOrders === "assigned_work_orders";
 
     const orders = await listMobileWorkOrders({
       companyId: access.companyId,

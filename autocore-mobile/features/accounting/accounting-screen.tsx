@@ -8,7 +8,9 @@ import { BarChart3Icon, type IconProps } from '@/assets/icons';
 import { EmptyState, Screen, ScreenScroll, Text, toast } from '@/components/ui';
 import { useEmployeesRealtime, useSession, useWorkOrdersRealtime } from '@/hooks';
 import { financialOperationRepository } from '@/services/firestore/financial-operation-repository';
+import { payrollTransactionRepository } from '@/services/firestore/payroll-transaction-repository';
 import type { FinancialOperation } from '@/types/financial-operation';
+import type { PayrollTransactionStatus } from '@/types/payroll-transaction';
 import { haptics } from '@/theme';
 import { buildAdvanceSnapshot, filterAdvanceOperations, advanceDirectionLabel, type AdvanceDirection } from '@/lib/accounting/advances';
 import { shareOperationsCsv } from '@/lib/accounting/export-operations-csv';
@@ -50,6 +52,7 @@ export function AccountingScreen() {
   const [activeTab, setActiveTab] = useState<AccountingTab>('overview');
   const [advanceDirection, setAdvanceDirection] = useState<AdvanceDirection>('all');
   const [refreshing, setRefreshing] = useState(false);
+  const [payrollUpdatingId, setPayrollUpdatingId] = useState<string | null>(null);
   const transferSheetRef = useRef<AcTransferSheetRef>(null);
   const motorSaleSheetRef = useRef<AcMotorSaleDocumentsSheetRef>(null);
 
@@ -189,6 +192,35 @@ export function AccountingScreen() {
     [canEdit, isDemo],
   );
 
+  const handlePayrollStatusChange = useCallback(
+    async (id: string, status: PayrollTransactionStatus) => {
+      if (!canEdit || isDemo || !companyId) {
+        toast({ title: 'Нет прав на изменение начислений', variant: 'warning' });
+        return;
+      }
+      setPayrollUpdatingId(id);
+      try {
+        haptics.light();
+        await payrollTransactionRepository.updateStatus(companyId, id, status);
+        haptics.success();
+        toast({
+          title: status === 'paid' ? 'Зарплата отмечена выплаченной' : 'Статус начисления обновлён',
+          variant: 'success',
+        });
+      } catch (error) {
+        haptics.warning();
+        toast({
+          title: 'Не удалось обновить начисление',
+          description: error instanceof Error ? error.message : undefined,
+          variant: 'destructive',
+        });
+      } finally {
+        setPayrollUpdatingId(null);
+      }
+    },
+    [canEdit, companyId, isDemo],
+  );
+
   const handleMotorSaleSelect = useCallback((operation: FinancialOperation) => {
     motorSaleSheetRef.current?.present(operation);
   }, []);
@@ -325,6 +357,9 @@ export function AccountingScreen() {
                   rows={payroll}
                   employeeNames={employeeNames}
                   workOrderNumbers={workOrderNumbers}
+                  canEdit={canEdit && !isDemo}
+                  updatingId={payrollUpdatingId}
+                  onStatusChange={(id, status) => void handlePayrollStatusChange(id, status)}
                 />
                 {filterPayrollExpenseOperations(operations).length > 0 ? (
                   <AcOperationsList

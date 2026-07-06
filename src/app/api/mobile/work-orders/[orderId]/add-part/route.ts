@@ -4,6 +4,7 @@ import { MobileAccessError, verifyMobileAccess } from "@/lib/auth/verify-mobile-
 import {
   addPartByBarcodeToMobileWorkOrder,
   addPartToMobileWorkOrder,
+  WorkOrderAccessError,
 } from "@/lib/mobile/work-orders.server";
 
 export const runtime = "nodejs";
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const quantity = body.quantity == null ? 1 : Number(body.quantity);
     const itemId = typeof body.itemId === "string" ? body.itemId.trim() : "";
     const barcode = typeof body.barcode === "string" ? body.barcode.trim() : "";
+    const scope = access.scopes.workOrders;
 
     const order =
       itemId
@@ -40,6 +42,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
             actorUserId: access.uid,
             itemId,
             quantity,
+            scope,
           })
         : barcode
           ? await addPartByBarcodeToMobileWorkOrder({
@@ -48,6 +51,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
               actorUserId: access.uid,
               barcode,
               quantity,
+              scope,
             })
           : null;
 
@@ -59,6 +63,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
   } catch (error) {
     if (error instanceof MobileAccessError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if (error instanceof WorkOrderAccessError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
     }
     console.error("[mobile/work-orders/add-part]", error);
     return NextResponse.json(

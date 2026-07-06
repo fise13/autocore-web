@@ -1,5 +1,9 @@
 import { Permission, UserEntity, UserRole } from "@/domain/user";
 import {
+  canAccessMissionControl,
+  canAccessMyEarnings,
+} from "@autocore/rbac";
+import {
   getEnabledNavItems,
   SIDEBAR_NAV_META,
   type SidebarCustomization,
@@ -7,11 +11,7 @@ import {
 } from "@/lib/navigation/sidebar-customization";
 import { can } from "@/lib/auth/permissions";
 
-/** Only shop-floor mechanics see own payroll in navigation. */
-export function canAccessMyEarnings(user: UserEntity | null | undefined): boolean {
-  if (!user) return false;
-  return user.role === "mechanic" && can(user, "payroll_view_own");
-}
+export { canAccessMyEarnings, canAccessMissionControl };
 
 /** Restricted roles see only these sidebar sections (owner/manager use permissions). */
 const ROLE_NAV_ALLOWLIST: Partial<Record<UserRole, readonly SidebarNavItemId[]>> = {
@@ -43,18 +43,6 @@ function navPermission(navId: SidebarNavItemId): Permission | null {
     default:
       return null;
   }
-}
-
-export function canAccessMissionControl(user: UserEntity | null | undefined): boolean {
-  if (!user) return false;
-  const allowlist = roleNavAllowlist(user.role);
-  if (allowlist) return allowlist.includes("home");
-  return (
-    can(user, "accounting_view") ||
-    can(user, "inventory_view") ||
-    can(user, "work_orders_view") ||
-    can(user, "employee_view")
-  );
 }
 
 export function isNavAllowed(

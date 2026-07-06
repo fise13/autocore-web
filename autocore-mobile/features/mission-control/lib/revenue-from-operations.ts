@@ -84,19 +84,20 @@ export function buildWeekBalanceBars(
   return bars;
 }
 
-function hasBarData(bars: MissionControlWeekBar[]): boolean {
-  return bars.some((bar) => bar.value > 0);
+export function hasWeekChartActivity(bars: MissionControlWeekBar[]): boolean {
+  return bars.some((bar) => bar.value !== 0);
 }
 
-function resolveChartBars(
+/** Prefer primary bars; fall back to cumulative balance when the week is flat. */
+export function resolveWeekChartBars(
   operations: FinancialOperation[],
-  incomeBars: MissionControlWeekBar[],
+  primaryBars: MissionControlWeekBar[],
   now: Date,
 ): MissionControlWeekBar[] {
-  if (hasBarData(incomeBars)) return incomeBars;
+  if (hasWeekChartActivity(primaryBars)) return primaryBars;
   const balanceBars = buildWeekBalanceBars(operations, now);
-  if (hasBarData(balanceBars)) return balanceBars;
-  return incomeBars;
+  if (hasWeekChartActivity(balanceBars)) return balanceBars;
+  return primaryBars;
 }
 
 export function computeWeekRevenueGrowth(

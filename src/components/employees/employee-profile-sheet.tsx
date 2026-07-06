@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   ChevronRight,
   ClipboardList,
@@ -41,6 +42,31 @@ import { cn } from "@/lib/utils";
 const employeeRepository = createEmployeeRbacRepository();
 const ASSIGNABLE_ROLES = USER_ROLES.filter((role) => role !== "owner");
 const ONLINE_WINDOW_MS = 15 * 60 * 1000;
+
+const sheetReveal = {
+  hidden: { opacity: 0, x: 56, scale: 0.985 },
+  show: {
+    opacity: 1,
+    x: 0,
+    scale: 1,
+    transition: {
+      duration: 0.34,
+      ease: [0.22, 1, 0.36, 1] as const,
+      staggerChildren: 0.06,
+      delayChildren: 0.12,
+    },
+  },
+};
+
+const sheetRevealItem = {
+  hidden: { opacity: 0, x: 18, y: 4 },
+  show: {
+    opacity: 1,
+    x: 0,
+    y: 0,
+    transition: { duration: 0.26, ease: [0.22, 1, 0.36, 1] as const },
+  },
+};
 
 type EmployeeProfileSheetProps = {
   employee: CompanyEmployee | null;
@@ -82,6 +108,7 @@ export function EmployeeProfileSheet({
   const { profile } = useAuth();
   const companyId = normalizeCompanyId(profile?.companyId);
   const canManage = canManageEmployees(profile);
+  const reduceMotion = useReducedMotion();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draftRole, setDraftRole] = useState<UserRole>("employee");
@@ -96,17 +123,18 @@ export function EmployeeProfileSheet({
     }
   }, [employee]);
 
-  if (!displayEmployee) return null;
-
   const activeEmployee = employee ?? displayEmployee;
-  const isSelf = activeEmployee.uid === profile?.id;
+  if (!activeEmployee) return null;
+  const member = activeEmployee;
+
+  const isSelf = member.uid === profile?.id;
   const now = Date.now();
-  const lastActive = activeEmployee.lastActiveAt?.getTime() ?? 0;
+  const lastActive = member.lastActiveAt?.getTime() ?? 0;
   const online =
-    activeEmployee.isActive && lastActive > 0 && now - lastActive <= ONLINE_WINDOW_MS;
+    member.isActive && lastActive > 0 && now - lastActive <= ONLINE_WINDOW_MS;
   const displayName =
-    activeEmployee.fullName?.trim() ||
-    (activeEmployee.email.includes("@") ? activeEmployee.email.split("@")[0] : null) ||
+    member.fullName?.trim() ||
+    (member.email.includes("@") ? member.email.split("@")[0] : null) ||
     "Сотрудник";
   const openOrdersLabel =
     typeof assignmentCount === "number"
@@ -118,11 +146,11 @@ export function EmployeeProfileSheet({
               : "заказ-нарядов"
         }`
       : null;
-  const rolePermissions = ROLE_PERMISSIONS[activeEmployee.role]?.length ?? 0;
+  const rolePermissions = ROLE_PERMISSIONS[member.role]?.length ?? 0;
   const permissionsLabel =
-    activeEmployee.permissions.length === 0
+    member.permissions.length === 0
       ? `По роли (${rolePermissions})`
-      : `По роли +${activeEmployee.permissions.length}`;
+      : `По роли +${member.permissions.length}`;
 
   async function runAction(action: () => Promise<void>) {
     setBusy(true);
@@ -137,10 +165,10 @@ export function EmployeeProfileSheet({
   }
 
   async function handleRoleChange(role: UserRole) {
-    if (!profile || !companyId || isSelf || activeEmployee.role === "owner") return;
+    if (!profile || !companyId || isSelf || member.role === "owner") return;
     setDraftRole(role);
     await runAction(() =>
-      employeeRepository.setEmployeeRole(companyId, profile.id, activeEmployee.uid, role),
+      employeeRepository.setEmployeeRole(companyId, profile.id, member.uid, role),
     );
   }
 
@@ -150,8 +178,8 @@ export function EmployeeProfileSheet({
       employeeRepository.setEmployeeActive(
         companyId,
         profile.id,
-        activeEmployee.uid,
-        !activeEmployee.isActive,
+        member.uid,
+        !member.isActive,
       ),
     );
   }
@@ -159,7 +187,7 @@ export function EmployeeProfileSheet({
   async function handleRemove() {
     if (!profile || !companyId || isSelf) return;
     await runAction(async () => {
-      await employeeRepository.removeEmployee(companyId, profile.id, activeEmployee.uid);
+      await employeeRepository.removeEmployee(companyId, profile.id, member.uid);
       onOpenChange(false);
     });
   }
@@ -168,10 +196,18 @@ export function EmployeeProfileSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full gap-0 border-l bg-background p-0 sm:max-w-md"
+        className="w-full gap-0 overflow-hidden border-l bg-background p-0 sm:max-w-md"
         showCloseButton
       >
-        <SheetHeader className="border-b border-border/70 px-5 py-5 text-left">
+        <motion.div
+          key={member.uid || member.id}
+          className="flex h-full min-h-0 flex-col"
+          variants={reduceMotion ? undefined : sheetReveal}
+          initial={reduceMotion ? false : "hidden"}
+          animate={reduceMotion ? undefined : "show"}
+        >
+          <motion.div variants={reduceMotion ? undefined : sheetRevealItem}>
+            <SheetHeader className="border-b border-border/70 px-5 py-5 text-left">
           <SheetTitle className="sr-only">Профиль сотрудника</SheetTitle>
           <SheetDescription className="sr-only">
             Карточка сотрудника {displayName}
@@ -179,10 +215,10 @@ export function EmployeeProfileSheet({
 
           <div className="flex flex-col items-center gap-4 pt-2 text-center">
             <UserAvatar
-              photoURL={activeEmployee.photoURL}
+              photoURL={member.photoURL}
               displayName={displayName}
-              email={activeEmployee.email}
-              seed={activeEmployee.uid || activeEmployee.id}
+              email={member.email}
+              seed={member.uid || member.id}
               size="lg"
               className="[&>img]:size-20 [&>span]:size-20 [&>span]:text-lg"
             />
@@ -195,25 +231,29 @@ export function EmployeeProfileSheet({
               </p>
               <p className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
                 <Mail className="size-3.5 shrink-0" />
-                <span className="truncate">{activeEmployee.email || "—"}</span>
+                <span className="truncate">{member.email || "—"}</span>
               </p>
               <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
                 <Badge variant="secondary" className="gap-1.5 font-normal">
                   <StatusIndicator color={online ? "emerald" : "amber"} pulse={online} />
-                  {online ? "Онлайн" : activeEmployee.isActive ? "Не в сети" : "Отключён"}
+                  {online ? "Онлайн" : member.isActive ? "Не в сети" : "Отключён"}
                 </Badge>
                 <Badge variant="outline" className="font-normal">
-                  {formatRole(activeEmployee.role)}
+                  {formatRole(member.role)}
                 </Badge>
               </div>
             </div>
-          </div>
-        </SheetHeader>
+            </div>
+          </SheetHeader>
+          </motion.div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-5">
+          <motion.div
+            variants={reduceMotion ? undefined : sheetRevealItem}
+            className="flex-1 overflow-y-auto px-5 py-5"
+          >
           <div className="overflow-hidden rounded-xl border border-border/70 bg-card">
             <ProfileRow label="Роль">
-              {canManage && !isSelf && activeEmployee.role !== "owner" ? (
+              {canManage && !isSelf && member.role !== "owner" ? (
                 <Select
                   value={draftRole}
                   onValueChange={(value) => void handleRoleChange(value as UserRole)}
@@ -231,7 +271,7 @@ export function EmployeeProfileSheet({
                   </SelectContent>
                 </Select>
               ) : (
-                formatRole(activeEmployee.role)
+                formatRole(member.role)
               )}
             </ProfileRow>
 
@@ -245,11 +285,11 @@ export function EmployeeProfileSheet({
                   disabled={busy}
                   onClick={() => void handleToggleActive()}
                 >
-                  {activeEmployee.isActive ? "Активен" : "Отключён"}
+                  {member.isActive ? "Активен" : "Отключён"}
                   <ChevronRight className="size-3.5 text-muted-foreground" />
                 </Button>
               ) : (
-                <span>{activeEmployee.isActive ? "Активен" : "Отключён"}</span>
+                <span>{member.isActive ? "Активен" : "Отключён"}</span>
               )}
             </ProfileRow>
 
@@ -260,7 +300,7 @@ export function EmployeeProfileSheet({
                   variant="ghost"
                   size="sm"
                   className="h-8 px-2"
-                  onClick={() => onOpenPermissions(activeEmployee)}
+                  onClick={() => onOpenPermissions(member)}
                 >
                   {permissionsLabel}
                   <ChevronRight className="size-3.5 text-muted-foreground" />
@@ -286,13 +326,13 @@ export function EmployeeProfileSheet({
           <div className="mt-4 overflow-hidden rounded-xl border border-border/70 bg-card">
             <ProfileRow label="ID">
               <span className="font-mono text-xs text-muted-foreground">
-                {(activeEmployee.uid || activeEmployee.id).slice(0, 12)}…
+                {(member.uid || member.id).slice(0, 12)}…
               </span>
             </ProfileRow>
-            {activeEmployee.lastActiveAt ? (
+            {member.lastActiveAt ? (
               <ProfileRow label="Был в сети">
                 <span className="text-muted-foreground">
-                  {activeEmployee.lastActiveAt.toLocaleString("ru-RU", {
+                  {member.lastActiveAt.toLocaleString("ru-RU", {
                     day: "2-digit",
                     month: "short",
                     hour: "2-digit",
@@ -319,7 +359,7 @@ export function EmployeeProfileSheet({
                 onClick={() => void handleToggleActive()}
               >
                 <UserRound className="size-4" />
-                {activeEmployee.isActive ? "Отключить доступ" : "Включить доступ"}
+                {member.isActive ? "Отключить доступ" : "Включить доступ"}
               </Button>
               <Button
                 type="button"
@@ -339,13 +379,14 @@ export function EmployeeProfileSheet({
               type="button"
               variant="secondary"
               className="mt-3 w-full justify-start gap-2"
-              onClick={() => onOpenPermissions(activeEmployee)}
+              onClick={() => onOpenPermissions(member)}
             >
               <Shield className="size-4" />
               Дополнительные права
             </Button>
           ) : null}
-        </div>
+          </motion.div>
+        </motion.div>
       </SheetContent>
     </Sheet>
   );

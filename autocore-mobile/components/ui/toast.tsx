@@ -1,5 +1,5 @@
 import { Pressable, View } from 'react-native';
-import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
+import Animated, { SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/hooks';
@@ -15,16 +15,16 @@ export function ToastProvider() {
   const toasts = useToastStore((s) => s.toasts);
   const dismiss = useToastStore((s) => s.dismiss);
 
-  const variantBorder = (variant: ToastVariant = 'default') => {
+  const variantStyles = (variant: ToastVariant = 'default') => {
     switch (variant) {
       case 'success':
-        return colors.success;
+        return { border: colors.success, accent: colors.success };
       case 'destructive':
-        return colors.destructive;
+        return { border: colors.destructive, accent: colors.destructive };
       case 'warning':
-        return colors.warning;
+        return { border: colors.warning, accent: colors.warning };
       default:
-        return colors.border;
+        return { border: colors.border, accent: colors.primary };
     }
   };
 
@@ -33,41 +33,70 @@ export function ToastProvider() {
       pointerEvents="box-none"
       style={{
         position: 'absolute',
-        top: insets.top + spacing[2],
+        bottom: insets.bottom + spacing[20],
         left: spacing[4],
         right: spacing[4],
         zIndex: zIndex.toast,
         gap: spacing[2],
       }}
     >
-      {toasts.map((item) => (
-        <Animated.View
-          key={item.id}
-          entering={FadeInUp.duration(280)}
-          exiting={FadeOutUp.duration(200)}
-        >
-          <Pressable
-            onPress={() => dismiss(item.id)}
-            style={{
-              backgroundColor: colors.card,
-              borderRadius: radius.lg,
-              borderWidth: 1,
-              borderColor: variantBorder(item.variant),
-              padding: spacing[4],
-              ...shadows.soft,
-            }}
+      {toasts.map((item) => {
+        const vs = variantStyles(item.variant);
+        return (
+          <Animated.View
+            key={item.id}
+            entering={SlideInDown.springify().damping(22).stiffness(280)}
+            exiting={SlideOutDown.duration(200)}
           >
-            <Text variant="heading" style={{ fontSize: 14 }}>
-              {item.title}
-            </Text>
-            {item.description ? (
-              <Text variant="caption" color="muted" style={{ marginTop: spacing[1] }}>
-                {item.description}
-              </Text>
-            ) : null}
-          </Pressable>
-        </Animated.View>
-      ))}
+            <View
+              style={{
+                backgroundColor: colors.card,
+                borderRadius: radius.xl,
+                borderWidth: 1,
+                borderColor: vs.border,
+                paddingVertical: spacing[3],
+                paddingHorizontal: spacing[4],
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing[3],
+                ...shadows.soft,
+              }}
+            >
+              <View
+                style={{
+                  width: 3,
+                  alignSelf: 'stretch',
+                  borderRadius: radius.full,
+                  backgroundColor: vs.accent,
+                }}
+              />
+              <Pressable style={{ flex: 1 }} onPress={() => dismiss(item.id)}>
+                <Text variant="heading" style={{ fontSize: 14 }}>
+                  {item.title}
+                </Text>
+                {item.description ? (
+                  <Text variant="caption" color="muted" style={{ marginTop: spacing[0.5] }}>
+                    {item.description}
+                  </Text>
+                ) : null}
+              </Pressable>
+              {item.action ? (
+                <Pressable
+                  onPress={() => {
+                    item.action?.onPress();
+                    dismiss(item.id);
+                  }}
+                  hitSlop={8}
+                >
+                  <Text variant="caption" style={{ color: vs.accent, fontWeight: '600' }}>
+                    {item.action.label}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          </Animated.View>
+        );
+      })}
     </View>
   );
 }

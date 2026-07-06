@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import type { ListRenderItemInfo } from '@shopify/flash-list';
 
 import { ClipboardListIcon } from '@/assets/icons';
-import { EmptyState, FlashList, Loading, Screen, Text, toast } from '@/components/ui';
+import { EmptyState, FlashList, Screen, Text, toast } from '@/components/ui';
 import { useSession, useWorkOrdersRealtime, useModuleEnabled, useFloatingTabBarInset } from '@/hooks';
 import { filterMobileOrders, computeMobileOrdersMeta } from '@/lib/work-order/map-to-mobile-card';
 import { transitionWorkOrder } from '@/services/api/work-orders';
@@ -13,6 +13,7 @@ import { openPhone } from '@/utils/open-phone';
 
 import { orderFilters } from './data/mock-orders';
 import { OrderCard } from './components/order-card';
+import { OrdersLoadingState } from './components/order-card-skeleton';
 import { OrdersFilters } from './components/orders-filters';
 import { OrdersHeader } from './components/orders-header';
 import { OrdersPrimaryAction } from './components/orders-primary-action';
@@ -120,7 +121,7 @@ export function OrdersScreen() {
     () => (
       <View style={{ paddingHorizontal: ordersLayout.pad }}>
         {isBootstrapping && orders.length === 0 ? (
-          <Loading message="Загружаем наряды…" />
+          <OrdersLoadingState />
         ) : (
           <EmptyState
             icon={ClipboardListIcon}

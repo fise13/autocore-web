@@ -9,6 +9,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { UserRoundIcon } from '@/assets/icons';
+import { NotificationBellButton } from '@/components/notifications';
 import { useNavigateTab } from '@/components/navigation/use-navigate-tab';
 import { Avatar, Text } from '@/components/ui';
 import { useReducedMotion, useSession, useTheme, useUserPhotoUrl } from '@/hooks';
@@ -85,41 +86,44 @@ export function McHeader() {
           </Text>
         </View>
 
-        <Animated.View style={exitStyle}>
-          <McPressable
-            accessibilityRole="button"
-            accessibilityLabel="Профиль"
-            onPress={handleProfilePress}
-          >
-            <View
-              style={{
-                width: ACCOUNT_BUTTON,
-                height: ACCOUNT_BUTTON,
-                borderRadius: radius.full,
-                backgroundColor: colors.card,
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden',
-              }}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: rhythm.tight }}>
+          <NotificationBellButton size="sm" />
+          <Animated.View style={exitStyle}>
+            <McPressable
+              accessibilityRole="button"
+              accessibilityLabel="Профиль"
+              onPress={handleProfilePress}
             >
-              {photoURL ? (
-                <Avatar name={headline} uri={photoURL} size="sm" />
-              ) : (
-                <View
-                  style={{
-                    width: ACCOUNT_BUTTON,
-                    height: ACCOUNT_BUTTON,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: toneBackground(colors.primary, 0.1),
-                  }}
-                >
-                  <UserRoundIcon size="md" color={colors.foreground} strokeWidth={1.75} />
-                </View>
-              )}
-            </View>
-          </McPressable>
-        </Animated.View>
+              <View
+                style={{
+                  width: ACCOUNT_BUTTON,
+                  height: ACCOUNT_BUTTON,
+                  borderRadius: radius.full,
+                  backgroundColor: colors.card,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                }}
+              >
+                {photoURL ? (
+                  <Avatar name={headline} uri={photoURL} size="sm" />
+                ) : (
+                  <View
+                    style={{
+                      width: ACCOUNT_BUTTON,
+                      height: ACCOUNT_BUTTON,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: toneBackground(colors.primary, 0.1),
+                    }}
+                  >
+                    <UserRoundIcon size="md" color={colors.foreground} strokeWidth={1.75} />
+                  </View>
+                )}
+              </View>
+            </McPressable>
+          </Animated.View>
+        </View>
       </Animated.View>
     </Animated.View>
   );

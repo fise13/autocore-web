@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { MobileAccessError, verifyMobileAccess } from "@/lib/auth/verify-mobile-access.server";
-import { getMobileWorkOrderDetail } from "@/lib/mobile/work-orders.server";
+import {
+  getMobileWorkOrderDetail,
+  WorkOrderAccessError,
+} from "@/lib/mobile/work-orders.server";
 
 export const runtime = "nodejs";
 
@@ -22,6 +25,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       companyId: access.companyId,
       workOrderId: trimmed,
       uid: access.uid,
+      scope: access.scopes.workOrders,
     });
 
     if (!order) {
@@ -32,6 +36,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
   } catch (error) {
     if (error instanceof MobileAccessError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if (error instanceof WorkOrderAccessError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
     }
     console.error("[mobile/work-orders/[orderId]]", error);
     return NextResponse.json(

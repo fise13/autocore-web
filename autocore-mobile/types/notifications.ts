@@ -33,6 +33,8 @@ export type NotificationPreferences = {
     push: boolean;
     email: boolean;
     inbox: boolean;
+    /** In-app banners (foreground alerts). */
+    inApp?: boolean;
   };
   categories: CategoryPreferences;
   quietHours: QuietHoursConfig;
@@ -78,7 +80,7 @@ export const NOTIFICATION_CATEGORY_LABELS: Record<NotificationCategory, string> 
 };
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
-  channels: { push: true, email: false, inbox: true },
+  channels: { push: true, email: false, inbox: true, inApp: true },
   categories: {
     work_orders: true,
     reservations: true,

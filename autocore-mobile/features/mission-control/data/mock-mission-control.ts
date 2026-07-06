@@ -39,7 +39,7 @@ export const mockMissionControlSnapshot: MissionControlSnapshot = {
     ],
   },
   statTiles: [
-    { id: 'orders', label: 'Новые наряды', value: 24, format: 'integer', icon: PackageIcon },
+    { id: 'orders', label: 'Новые наряды', value: 24, format: 'integer', icon: ClipboardListIcon },
     { id: 'stock', label: 'Позиций на складе', value: 1284, format: 'grouped', icon: BoxIcon },
   ],
   quickActions: [

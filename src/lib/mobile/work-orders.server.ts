@@ -22,6 +22,23 @@ import { mapAdminWorkOrder } from "@/infrastructure/firestore/admin-mappers";
 import { fetchWorkOrder } from "@/infrastructure/firestore/admin/work-order-effects-admin";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { resolveMobileScan } from "@/lib/mobile/scan-resolve.server";
+import { isAssignedToWorkOrder, type DataScope } from "@autocore/rbac";
+
+export class WorkOrderAccessError extends Error {
+  constructor(message = "Нет доступа к этому наряду") {
+    super(message);
+    this.name = "WorkOrderAccessError";
+  }
+}
+
+export function assertWorkOrderAccess(order: WorkOrder, uid: string, scope: DataScope): void {
+  if (scope === "none") {
+    throw new WorkOrderAccessError();
+  }
+  if (scope === "assigned_work_orders" && !isAssignedToWorkOrder(order, uid)) {
+    throw new WorkOrderAccessError();
+  }
+}
 
 const MOBILE_OPEN_STATUSES = new Set<WorkOrderStatus>([
   "confirmed",
@@ -108,15 +125,6 @@ async function appendDomainEventsAdmin(
   }
 }
 
-function isAssignedToOrder(order: WorkOrder, uid: string): boolean {
-  for (const line of order.laborLines ?? []) {
-    for (const assigneeId of line.assigneeIds ?? []) {
-      if (assigneeId === uid) return true;
-    }
-  }
-  return false;
-}
-
 function timestampFieldForStatus(status: WorkOrderStatus): string | null {
   if (status === "confirmed") return "confirmedAt";
   if (status === "completed") return "completedAt";
@@ -144,7 +152,7 @@ function toSummary(order: WorkOrder, uid: string): MobileWorkOrderSummary {
     laborLineCount: order.laborLines.length,
     grandTotal: order.pricing.grandTotal,
     updatedAt: order.updatedAt.toISOString(),
-    assignedToMe: isAssignedToOrder(order, uid),
+    assignedToMe: isAssignedToWorkOrder(order, uid),
     nextStatuses: transitions,
   };
 }
@@ -189,7 +197,7 @@ export async function listMobileWorkOrders(params: {
 
   return orders
     .filter((order) => MOBILE_OPEN_STATUSES.has(order.status))
-    .filter((order) => (params.mineOnly ? isAssignedToOrder(order, params.uid) : true))
+    .filter((order) => (params.mineOnly ? isAssignedToWorkOrder(order, params.uid) : true))
     .map((order) => toSummary(order, params.uid));
 }
 
@@ -197,9 +205,13 @@ export async function getMobileWorkOrderDetail(params: {
   companyId: string;
   workOrderId: string;
   uid: string;
+  scope?: DataScope;
 }): Promise<MobileWorkOrderDetail | null> {
   const order = await fetchWorkOrder(params.companyId, params.workOrderId);
   if (!order) return null;
+  if (params.scope) {
+    assertWorkOrderAccess(order, params.uid, params.scope);
+  }
   return toDetail(order, params.uid);
 }
 
@@ -208,10 +220,15 @@ export async function transitionMobileWorkOrder(params: {
   workOrderId: string;
   nextStatus: WorkOrderStatus;
   actorUserId: string;
+  scope?: DataScope;
 }): Promise<MobileWorkOrderDetail> {
   const order = await fetchWorkOrder(params.companyId, params.workOrderId);
   if (!order) {
     throw new Error("Заказ-наряд не найден");
+  }
+
+  if (params.scope) {
+    assertWorkOrderAccess(order, params.actorUserId, params.scope);
   }
 
   if (!canTransitionWorkOrderStatus(order.status, params.nextStatus)) {
@@ -272,10 +289,15 @@ export async function addPartToMobileWorkOrder(params: {
   actorUserId: string;
   itemId: string;
   quantity?: number;
+  scope?: DataScope;
 }): Promise<MobileWorkOrderDetail> {
   const order = await fetchWorkOrder(params.companyId, params.workOrderId);
   if (!order) {
     throw new Error("Заказ-наряд не найден");
+  }
+
+  if (params.scope) {
+    assertWorkOrderAccess(order, params.actorUserId, params.scope);
   }
 
   if (!MOBILE_OPEN_STATUSES.has(order.status)) {
@@ -357,6 +379,7 @@ export async function addPartByBarcodeToMobileWorkOrder(params: {
   actorUserId: string;
   barcode: string;
   quantity?: number;
+  scope?: DataScope;
 }): Promise<MobileWorkOrderDetail> {
   const resolved = await resolveMobileScan(params.companyId, params.barcode);
   if (!resolved.found || !resolved.item) {
@@ -369,5 +392,6 @@ export async function addPartByBarcodeToMobileWorkOrder(params: {
     actorUserId: params.actorUserId,
     itemId: resolved.item.id,
     quantity: params.quantity,
+    scope: params.scope,
   });
 }

@@ -1,29 +1,23 @@
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { UserAvatar } from '@/components/account/user-avatar';
 import { Text } from '@/components/ui';
-import { rhythm } from '@/theme';
+import { haptics, rhythm } from '@/theme';
 
 import type { ProfileUser } from '../types';
 
 type ProfileHeroCardProps = {
   user: ProfileUser;
+  onPress?: () => void;
+  showSwitcherHint?: boolean;
 };
 
 /** Compact identity strip — details live on dedicated screens, not repeated in lists. */
-export function ProfileHeroCard({ user }: ProfileHeroCardProps) {
+export function ProfileHeroCard({ user, onPress, showSwitcherHint }: ProfileHeroCardProps) {
   const meta = [user.role, user.planLabel, user.company].filter(Boolean).join(' · ');
 
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: rhythm.stack,
-        paddingHorizontal: rhythm.pad,
-        paddingVertical: 4,
-      }}
-    >
+  const content = (
+    <>
       <UserAvatar
         photoURL={user.photoURL}
         displayName={user.name}
@@ -38,7 +32,47 @@ export function ProfileHeroCard({ user }: ProfileHeroCardProps) {
         <Text variant="caption" color="muted" numberOfLines={1}>
           {meta}
         </Text>
+        {showSwitcherHint ? (
+          <Text variant="caption" color="muted" numberOfLines={1}>
+            Нажмите, чтобы сменить организацию
+          </Text>
+        ) : null}
       </View>
-    </View>
+    </>
+  );
+
+  if (!onPress) {
+    return (
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: rhythm.stack,
+          paddingHorizontal: rhythm.pad,
+          paddingVertical: 4,
+        }}
+      >
+        {content}
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      onPress={() => {
+        haptics.selection();
+        onPress();
+      }}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: rhythm.stack,
+        paddingHorizontal: rhythm.pad,
+        paddingVertical: 4,
+        opacity: pressed ? 0.85 : 1,
+      })}
+    >
+      {content}
+    </Pressable>
   );
 }

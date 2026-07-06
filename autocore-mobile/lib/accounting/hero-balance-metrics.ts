@@ -1,11 +1,37 @@
+import { format, isToday, startOfDay, subDays } from 'date-fns';
+import { ru } from 'date-fns/locale';
+
+import { resolveWeekChartBars } from '@/features/mission-control/lib/revenue-from-operations';
 import type { MissionControlWeekBar } from '@/features/mission-control/types';
 import type { FinancialOperation } from '@/types/financial-operation';
+import { coerceToDate } from '@/lib/firestore-timestamp';
 
 import { calculateCashBalance } from './calculate-cash-balance';
-import { buildCashFlow, sumExpensesInMonth, sumIncomeInMonth } from './snapshot-builders';
+import { sumExpensesInMonth, sumIncomeInMonth } from './snapshot-builders';
 
 function isIncomeOperation(operation: FinancialOperation): boolean {
   return operation.type === 'sale' || operation.type === 'income';
+}
+
+function buildRawWeekBars(operations: FinancialOperation[], now: Date): MissionControlWeekBar[] {
+  const today = startOfDay(now);
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const day = subDays(today, 6 - index);
+    const label = format(day, 'EEE', { locale: ru }).slice(0, 2).toLowerCase();
+    const key = day.toDateString();
+    let income = 0;
+    let expense = 0;
+
+    for (const operation of operations) {
+      const createdAt = coerceToDate(operation.createdAt);
+      if (!createdAt || createdAt.toDateString() !== key) continue;
+      if (isIncomeOperation(operation)) income += operation.amount;
+      if (operation.type === 'expense') expense += operation.amount;
+    }
+
+    return { label, value: income - expense };
+  });
 }
 
 export type AccountingHeroMetrics = {
@@ -30,19 +56,15 @@ export function buildAccountingHeroMetrics(
   const growthPercent =
     monthlyRevenue > 0 && Number.isFinite(profit) ? (profit / monthlyRevenue) * 100 : null;
 
-  const cashFlow7d = buildCashFlow(operations)['7d'];
-  const weekBars = cashFlow7d.labels.map((label, index) => ({
-    label: label.slice(0, 2).toLowerCase(),
-    value: cashFlow7d.profit[index] ?? 0,
-  }));
+  const weekBars = resolveWeekChartBars(operations, buildRawWeekBars(operations, now), now);
 
-  const todayKey = now.toDateString();
   let todayIncome = 0;
   let todayExpense = 0;
-  for (const op of operations) {
-    if (op.createdAt.toDateString() !== todayKey) continue;
-    if (isIncomeOperation(op)) todayIncome += op.amount;
-    if (op.type === 'expense') todayExpense += op.amount;
+  for (const operation of operations) {
+    const createdAt = coerceToDate(operation.createdAt);
+    if (!createdAt || !isToday(createdAt)) continue;
+    if (isIncomeOperation(operation)) todayIncome += operation.amount;
+    if (operation.type === 'expense') todayExpense += operation.amount;
   }
 
   return {

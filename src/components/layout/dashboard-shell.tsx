@@ -30,6 +30,7 @@ import { SidebarEditBlur } from "@/components/layout/sidebar-edit-blur";
 import { WorkspaceProvider, useWorkspace } from "@/components/layout/workspace-context";
 import { WorkspaceStatusBar } from "@/components/layout/workspace-status-bar";
 import { FirestoreListenerGuard } from "@/components/providers/firestore-listener-guard";
+import { PresenceHeartbeatHead } from "@/components/layout/presence-heartbeat-head";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useEffectiveCatalog } from "@/hooks/use-effective-catalog";
 import { useMotorsRealtime } from "@/hooks/use-motors-realtime";
@@ -352,6 +353,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
           <BarcodeScanProvider>
             <DomainDictionaryProvider>
               <FirestoreListenerGuard />
+              <PresenceHeartbeatHead />
               <DashboardShellInner>{children}</DashboardShellInner>
             </DomainDictionaryProvider>
           </BarcodeScanProvider>

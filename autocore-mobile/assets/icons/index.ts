@@ -22,6 +22,7 @@ import {
   Clock,
   Cloud,
   Coins,
+  Copy,
   Download,
   ExternalLink,
   FileStack,
@@ -83,6 +84,7 @@ export const ChevronRightIcon = createIcon(ChevronRight, 'ChevronRightIcon');
 export const ChevronsUpDownIcon = createIcon(ChevronsUpDown, 'ChevronsUpDownIcon');
 export const GripVerticalIcon = createIcon(GripVertical, 'GripVerticalIcon');
 export const CheckIcon = createIcon(Check, 'CheckIcon');
+export const CopyIcon = createIcon(Copy, 'CopyIcon');
 export const CheckCircle2Icon = createIcon(CheckCircle2, 'CheckCircle2Icon');
 export const XIcon = createIcon(X, 'XIcon');
 export const Loader2Icon = createIcon(Loader2, 'Loader2Icon');

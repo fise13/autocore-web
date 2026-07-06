@@ -76,7 +76,6 @@ export function useNotificationPreferences() {
     },
     [persist, preferences],
   );
-
   const updateCategory = useCallback(
     async (category: NotificationCategory, value: boolean) => {
       await persist({

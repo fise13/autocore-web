@@ -25,7 +25,9 @@ import {
   TAB_BAR_VERTICAL_PADDING,
 } from '@/lib/navigation/floating-tab-bar-inset';
 import { tabNavigationGuard } from '@/lib/navigation/navigation-guard';
+import { isMobileNavItemAllowed } from '@/lib/rbac/navigation-policy';
 import { shouldHideTabBarFromNavState } from '@/lib/navigation/should-hide-tab-bar';
+import { useSession } from '@/hooks/use-session';
 import { autocoreEase, duration } from '@/theme/motion';
 import { haptics, rhythm, spacing } from '@/theme';
 
@@ -143,6 +145,7 @@ function isNavItemModuleEnabled(
 
 export const AppTabBar = memo(function AppTabBar({ state, navigation }: AppTabBarProps) {
   const { colors, isDark, shadows } = useTheme();
+  const { profile } = useSession();
   const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion();
   const router = useRouter();
@@ -158,10 +161,18 @@ export const AppTabBar = memo(function AppTabBar({ state, navigation }: AppTabBa
 
   const tabEntries = useMemo(() => {
     return resolveTabBarEntries(navOrder, navEnabled).filter((entry) => {
-      if (entry.kind === 'more') return entry.items.length > 0;
-      return isNavItemModuleEnabled(entry.navId, workOrdersEnabled, warehouseEnabled, accountingModuleEnabled);
+      if (entry.kind === 'more') {
+        return entry.items.some((id) =>
+          isNavItemModuleEnabled(id, workOrdersEnabled, warehouseEnabled, accountingModuleEnabled) &&
+          isMobileNavItemAllowed(profile, id),
+        );
+      }
+      return (
+        isNavItemModuleEnabled(entry.navId, workOrdersEnabled, warehouseEnabled, accountingModuleEnabled) &&
+        isMobileNavItemAllowed(profile, entry.navId)
+      );
     });
-  }, [navOrder, navEnabled, workOrdersEnabled, warehouseEnabled, accountingModuleEnabled]);
+  }, [navOrder, navEnabled, workOrdersEnabled, warehouseEnabled, accountingModuleEnabled, profile]);
 
   const horizontalPadding = spacing[4];
   const itemWidth = tabEntries.length > 0 ? Math.max((containerWidth - horizontalPadding * 2) / tabEntries.length, 0) : 0;
@@ -233,8 +244,10 @@ export const AppTabBar = memo(function AppTabBar({ state, navigation }: AppTabBa
 
   const openMore = useCallback(
     (items: NavItemId[]) => {
-      const enabled = items.filter((id) =>
-        isNavItemModuleEnabled(id, workOrdersEnabled, warehouseEnabled, accountingModuleEnabled),
+      const enabled = items.filter(
+        (id) =>
+          isNavItemModuleEnabled(id, workOrdersEnabled, warehouseEnabled, accountingModuleEnabled) &&
+          isMobileNavItemAllowed(profile, id),
       );
       const labels = enabled.map((id) => getNavVisual(id).label);
 
@@ -276,7 +289,7 @@ export const AppTabBar = memo(function AppTabBar({ state, navigation }: AppTabBa
         { cancelable: true },
       );
     },
-    [accountingModuleEnabled, isDark, router, warehouseEnabled, workOrdersEnabled],
+    [accountingModuleEnabled, isDark, profile, router, warehouseEnabled, workOrdersEnabled],
   );
 
   const tabPressHandlers = useMemo(() => {

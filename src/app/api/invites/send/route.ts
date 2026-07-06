@@ -28,14 +28,7 @@ function normalizeRole(role: string): UserRole {
   return USER_ROLES.includes(role as UserRole) ? (role as UserRole) : "employee";
 }
 
-function appJoinUrl(token: string): string {
-  const base =
-    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    process.env.VERCEL_URL?.trim() ||
-    "http://localhost:3000";
-  const origin = base.startsWith("http") ? base : `https://${base}`;
-  return `${origin.replace(/\/$/, "")}/join?token=${encodeURIComponent(token)}`;
-}
+import { buildInviteUrl } from "@autocore/org";
 
 export async function POST(request: NextRequest) {
   try {
@@ -82,18 +75,22 @@ export async function POST(request: NextRequest) {
       status: "pending",
     });
 
+    const appOrigin =
+      process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
     if (!isResendConfigured()) {
       return NextResponse.json(
         {
           error: "Email service not configured",
           inviteId: inviteRef.id,
-          joinUrl: appJoinUrl(token),
+          joinUrl: buildInviteUrl(token, appOrigin),
         },
         { status: 503 },
       );
     }
 
-    const joinUrl = appJoinUrl(token);
+    const joinUrl = buildInviteUrl(token, appOrigin);
     const resend = getResend();
     await resend.emails.send({
       from: getSupportFrom(),

@@ -312,23 +312,23 @@ export async function listInboxNotifications(params: {
   limit?: number;
 }): Promise<NotificationRecord[]> {
   const limit = params.limit ?? 50;
-  let query = getAdminFirestore()
+  const normalizedCompanyId = normalizeCompanyId(params.companyId);
+  const snap = await getAdminFirestore()
     .collection(NOTIFICATIONS)
     .where("userId", "==", params.userId)
-    .where("companyId", "==", normalizeCompanyId(params.companyId))
-    .orderBy("createdAt", "desc")
-    .limit(limit);
+    .get();
 
-  if (params.state && params.state !== "active") {
-    query = query.where("state", "==", params.state);
-  }
-
-  const snap = await query.get();
-  const items = snap.docs.map((doc) => doc.data() as NotificationRecord);
-
-  if (params.state === "active") {
-    return items.filter((item) => item.state === "unread" || item.state === "read");
-  }
+  const items = snap.docs
+    .map((doc) => doc.data() as NotificationRecord)
+    .filter((item) => item.companyId === normalizedCompanyId)
+    .filter((item) => {
+      if (!params.state || params.state === "active") {
+        return item.state === "unread" || item.state === "read";
+      }
+      return item.state === params.state;
+    })
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+    .slice(0, limit);
 
   return items;
 }
@@ -337,13 +337,15 @@ export async function countUnreadNotifications(
   userId: string,
   companyId: string,
 ): Promise<number> {
+  const normalizedCompanyId = normalizeCompanyId(companyId);
   const snap = await getAdminFirestore()
     .collection(NOTIFICATIONS)
     .where("userId", "==", userId)
-    .where("companyId", "==", normalizeCompanyId(companyId))
-    .where("state", "==", "unread")
     .get();
-  return snap.size;
+  return snap.docs.reduce((count, doc) => {
+    const item = doc.data() as NotificationRecord;
+    return count + (item.companyId === normalizedCompanyId && item.state === "unread" ? 1 : 0);
+  }, 0);
 }
 
 export async function updateNotificationState(params: {
@@ -368,20 +370,23 @@ export async function markAllNotificationsRead(
   userId: string,
   companyId: string,
 ): Promise<number> {
+  const normalizedCompanyId = normalizeCompanyId(companyId);
   const snap = await getAdminFirestore()
     .collection(NOTIFICATIONS)
     .where("userId", "==", userId)
-    .where("companyId", "==", normalizeCompanyId(companyId))
-    .where("state", "==", "unread")
     .get();
 
   const batch = getAdminFirestore().batch();
   const now = new Date().toISOString();
+  let updated = 0;
   for (const doc of snap.docs) {
+    const item = doc.data() as NotificationRecord;
+    if (item.companyId !== normalizedCompanyId || item.state !== "unread") continue;
     batch.set(doc.ref, { state: "read", readAt: now }, { merge: true });
+    updated += 1;
   }
   await batch.commit();
-  return snap.size;
+  return updated;
 }
 
 export function channelsForDefinition(

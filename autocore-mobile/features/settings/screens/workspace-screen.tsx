@@ -1,8 +1,12 @@
+import { useState } from 'react';
+
 import { useAuth } from '@/authentication/auth-provider';
 import { useGuardedRouter } from '@/hooks/use-guarded-router';
 import { useSession, useCompanySubscription, useActiveCompanyName } from '@/hooks';
 import { switchActiveCompany } from '@/services/firestore/company-membership-service';
 import { haptics } from '@/theme';
+import { Button } from '@/components/ui';
+import { CompanySwitcherSheet } from '@/features/organization/components/company-switcher-sheet';
 
 import { WORKSPACE_DEMO } from '../data/demo-data';
 import { settingsRouteHref } from '../navigation';
@@ -18,11 +22,18 @@ export function WorkspaceScreen() {
   const { profile, companyId } = useSession();
   const { companyName, isLoading: isCompanyNameLoading } = useActiveCompanyName();
   const { subscription, isPro } = useCompanySubscription(companyId);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
 
   const storagePct = (WORKSPACE_DEMO.storageUsed.usedGb / WORKSPACE_DEMO.storageUsed.totalGb) * 100;
 
   return (
     <ProfileScreenShell title="Рабочее пространство" subtitle="Компания, подписка и синхронизация">
+      {memberships.length > 1 ? (
+        <Button variant="secondary" onPress={() => setSwitcherOpen(true)}>
+          Сменить организацию ({memberships.length})
+        </Button>
+      ) : null}
+
       <WorkspaceHeroCard
         companyName={companyName}
         role={profile?.role ?? 'employee'}
@@ -55,6 +66,7 @@ export function WorkspaceScreen() {
           haptics.selection();
         }}
       />
+      <CompanySwitcherSheet open={switcherOpen} onClose={() => setSwitcherOpen(false)} />
     </ProfileScreenShell>
   );
 }

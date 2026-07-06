@@ -75,6 +75,26 @@ export function permissionsSummary(employee: CompanyEmployee): string {
   return `+${extra} доп.`;
 }
 
+export function formatLastActive(lastActiveAt?: Date): string {
+  if (!lastActiveAt) return '—';
+  const deltaMs = Date.now() - lastActiveAt.getTime();
+  if (deltaMs < 5 * 60 * 1000) return 'Сейчас';
+  if (deltaMs < 60 * 60 * 1000) {
+    const minutes = Math.max(1, Math.round(deltaMs / 60_000));
+    return `${minutes} мин. назад`;
+  }
+  if (deltaMs < 24 * 60 * 60 * 1000) {
+    const hours = Math.max(1, Math.round(deltaMs / 3_600_000));
+    return `${hours} ч. назад`;
+  }
+  return lastActiveAt.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export function employeeDisplayName(
   employee: CompanyEmployee,
   self?: { id?: string; displayName?: string | null; email?: string },

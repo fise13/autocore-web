@@ -1,20 +1,30 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import { AuthShell } from '@/authentication/auth-shell';
 import { useAuth } from '@/authentication/auth-provider';
 import { Button, Input, Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
+import { readInviteToken } from '@/lib/invites/pending-invite';
 import { joinCompanyWithInviteCode } from '@/services/firestore/join-company-service';
 import { switchActiveCompany } from '@/services/firestore/company-membership-service';
 import { mapAuthError } from '@/utils/auth-error';
 
 export function CompanyJourneyScreen() {
+  const router = useRouter();
   const { memberships, firebaseUser, refreshProfile } = useAuth();
   const { colors } = useTheme();
   const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const token = readInviteToken();
+    if (token) {
+      router.replace(`/invite/${encodeURIComponent(token)}` as never);
+    }
+  }, [router]);
 
   const handleJoin = async () => {
     if (!firebaseUser) return;

@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ArrowLeftIcon, BoxIcon } from '@/assets/icons';
 import { ScreenActionFooter } from '@/components/navigation/screen-action-footer';
-import { Button, IconButton, Input, Screen, Surface, Text, toast } from '@/components/ui';
+import { Button, AutocompleteInput, IconButton, Input, Screen, Surface, Text, toast } from '@/components/ui';
 import {
   useMobileCreateInventoryItem,
   useSession,
@@ -240,18 +240,30 @@ export function CreateInventoryItemScreen() {
               onChangeText={setSku}
               helperText="По умолчанию совпадает со штрихкодом"
             />
-            <Input
-              label="Бренд"
-              placeholder="Mann, Bosch…"
-              value={brandName}
-              onChangeText={setBrandName}
-            />
-            <Input
-              label="Ячейка склада"
-              placeholder="A-12"
-              value={warehouseLocation}
-              onChangeText={setWarehouseLocation}
-            />
+            <View style={{ gap: 6 }}>
+              <Text variant="caption" color="muted">
+                Бренд
+              </Text>
+              <AutocompleteInput
+                source="manufacturer"
+                context={{ field: 'brand' }}
+                placeholder="Mann, Bosch…"
+                value={brandName}
+                onValueChange={setBrandName}
+              />
+            </View>
+            <View style={{ gap: 6 }}>
+              <Text variant="caption" color="muted">
+                Ячейка склада
+              </Text>
+              <AutocompleteInput
+                source="previousValue"
+                fieldKey="warehouseLocation"
+                placeholder="A-12"
+                value={warehouseLocation}
+                onValueChange={setWarehouseLocation}
+              />
+            </View>
             <View style={{ flexDirection: 'row', gap: rhythm.inline }}>
               <View style={{ flex: 1 }}>
                 <Input

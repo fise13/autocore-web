@@ -2,12 +2,18 @@ import { create } from 'zustand';
 
 import type { ToastVariant } from './toast';
 
+export type ToastAction = {
+  label: string;
+  onPress: () => void;
+};
+
 type ToastItem = {
   id: string;
   title: string;
   description?: string;
   variant?: ToastVariant;
   duration?: number;
+  action?: ToastAction;
 };
 
 type ToastStore = {

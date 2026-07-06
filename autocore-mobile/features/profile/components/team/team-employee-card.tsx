@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { View } from 'react-native';
 
 import { Avatar, Button, Dropdown, Text } from '@/components/ui';
-import { ASSIGNABLE_ROLES, employeeDisplayName, formatRole, permissionsSummary } from '@/lib/team/format';
+import { ASSIGNABLE_ROLES, employeeDisplayName, formatLastActive, formatRole, permissionsSummary } from '@/lib/team/format';
 import type { CompanyEmployee } from '@/types/rbac';
 import type { UserEntity, UserRole } from '@/types/user';
 import { rhythm } from '@/theme';
@@ -58,6 +58,9 @@ export const TeamEmployeeCard = memo(function TeamEmployeeCard({
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
         <TeamBadge label={formatRole(employee.role)} />
         <TeamBadge label={employee.isActive ? 'Активен' : 'Отключён'} tone={employee.isActive ? 'primary' : 'muted'} />
+        <Text variant="meta" color="muted">
+          {formatLastActive(employee.lastActiveAt)}
+        </Text>
         <Text variant="meta" color="muted">
           {permissionsSummary(employee)}
         </Text>

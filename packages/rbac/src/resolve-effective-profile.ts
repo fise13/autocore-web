@@ -1,0 +1,61 @@
+import type { Permission, UserEntity, UserRole } from './user';
+
+const ROLE_RANK: Record<UserRole, number> = {
+  owner: 5,
+  admin: 4,
+  manager: 3,
+  accountant: 2,
+  employee: 1,
+  mechanic: 1,
+  diagnostician: 1,
+};
+
+export type EmployeeProfileSlice = {
+  role?: UserRole;
+  permissions?: Permission[];
+  isActive?: boolean;
+  fullName?: string;
+};
+
+function resolveMemberRole(userRole: UserRole, employeeRole?: UserRole): UserRole {
+  const employee = employeeRole ?? userRole;
+  return ROLE_RANK[userRole] > ROLE_RANK[employee] ? userRole : employee;
+}
+
+/** Align client RBAC with Firestore rules: memberRole + employee-only custom permissions. */
+export function mergeProfileWithEmployee(
+  profile: UserEntity,
+  employee: EmployeeProfileSlice | null | undefined,
+): UserEntity {
+  const withoutUserDocPermissions: UserEntity = {
+    ...profile,
+    permissions: [],
+  };
+
+  if (!employee) return withoutUserDocPermissions;
+
+  const employeeRole = employee.role ?? profile.role;
+  const role = resolveMemberRole(profile.role, employeeRole);
+  const permissions = Array.isArray(employee.permissions) ? employee.permissions : [];
+
+  const employeeName = employee.fullName?.trim();
+  const userName = profile.displayName?.trim();
+  const resolvedName =
+    (employeeName && employeeName.split(/\s+/).filter(Boolean).length >= 2 ? employeeName : null) ??
+    (userName && userName.split(/\s+/).filter(Boolean).length >= 2 ? userName : null) ??
+    employeeName ??
+    userName ??
+    null;
+
+  return {
+    ...withoutUserDocPermissions,
+    role,
+    permissions,
+    isActive: employee.isActive ?? profile.isActive,
+    displayName: resolvedName,
+  };
+}
+
+export function resolveMemberRoleRank(userRole: UserRole, employeeRole?: UserRole): UserRole {
+  return resolveMemberRole(userRole, employeeRole);
+}

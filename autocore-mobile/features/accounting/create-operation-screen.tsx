@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ArrowLeftIcon } from '@/assets/icons';
 import { ScreenActionFooter } from '@/components/navigation/screen-action-footer';
-import { Button, Checkbox, Dropdown, IconButton, Input, Text, toast } from '@/components/ui';
+import { Button, AutocompleteInput, Checkbox, Dropdown, IconButton, Input, Text, toast } from '@/components/ui';
 import { useFloatingTabBarInset, useSession, useTheme } from '@/hooks';
 import { appendAdvanceMarker } from '@/lib/accounting/advances';
 import {
@@ -213,9 +213,10 @@ export function CreateOperationScreen() {
           <Text variant="caption" color="muted">
             Категория
           </Text>
-          <Input
+          <AutocompleteInput
+            source="category"
             value={categoryInput}
-            onChangeText={setCategoryInput}
+            onValueChange={setCategoryInput}
             placeholder="Например: зарплата"
           />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>

@@ -6,6 +6,8 @@ const withGoogleModularHeaders = require('./plugins/with-google-modular-headers'
 const withGoogleIosUrlScheme = require('./plugins/with-google-ios-url-scheme');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const withOptionalAppleSignIn = require('./plugins/with-optional-apple-sign-in');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const withDisableSwiftUICoreAutolink = require('./plugins/with-disable-swiftuicore-autolink');
 
 function googleIosUrlScheme(iosClientId: string): string | null {
   const trimmed = iosClientId.trim();
@@ -68,7 +70,12 @@ if (iosUrlScheme) {
   plugins.splice(3, 0, ['@react-native-google-signin/google-signin', { iosUrlScheme }]);
 }
 
-plugins.push(withGoogleModularHeaders, withGoogleIosUrlScheme, withOptionalAppleSignIn);
+plugins.push(
+  withGoogleModularHeaders,
+  withGoogleIosUrlScheme,
+  withOptionalAppleSignIn,
+  withDisableSwiftUICoreAutolink,
+);
 
 export default (): ExpoConfig => ({
   name: 'AutoCore',
@@ -81,6 +88,7 @@ export default (): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     appleTeamId: '45W7LA3QFP',
+    associatedDomains: ['applinks:app.myautocore.com'],
     ...(appleSignInEnabled ? { usesAppleSignIn: true } : {}),
     bundleIdentifier: 'com.wise.autocore.mobile',
     icon: './assets/branding/login-logo.png',

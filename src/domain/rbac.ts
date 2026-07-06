@@ -42,7 +42,7 @@ export type ActivityLogEntry = {
   metadata?: Record<string, string | number | boolean | null>;
 };
 
-export type InviteStatus = "pending" | "used" | "expired";
+export type InviteStatus = "pending" | "used" | "expired" | "accepted" | "cancelled" | "declined";
 
 export type InviteDocument = {
   id: string;

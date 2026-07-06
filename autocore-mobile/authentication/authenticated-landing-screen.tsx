@@ -8,7 +8,7 @@ import { useActiveCompanyName } from '@/hooks/use-active-company-name';
 
 import { useAuth } from './auth-provider';
 
-export function AuthenticatedLandingScreen() {
+export function AuthenticatedLandingScreen({ inactive = false }: { inactive?: boolean }) {
   const { colors } = useTheme();
   const { profile, error, requiresCompanySelection, hasAccess, signOut } = useAuth();
   const { companyName } = useActiveCompanyName('Не найдена');
@@ -34,7 +34,7 @@ export function AuthenticatedLandingScreen() {
             Компания: {companyLabel}
           </Text>
           <Text variant="body">
-            Статус доступа: {hasAccess ? 'Активен' : 'Нужна проверка роли или сотрудника'}
+            Статус доступа: {hasAccess ? 'Активен' : inactive ? 'Сотрудник деактивирован' : 'Нужна проверка роли или сотрудника'}
           </Text>
         </CardContent>
       </Card>
@@ -55,7 +55,9 @@ export function AuthenticatedLandingScreen() {
           <CardHeader>
             <CardTitle>Доступ ограничен</CardTitle>
             <CardDescription>
-              Сотрудник может быть неактивен или ещё не получил нужные права. Проверьте роль в разделе сотрудников компании.
+              {inactive
+                ? 'Ваш доступ к компании отключён администратором. Обратитесь к владельцу компании для восстановления.'
+                : 'Сотрудник может быть неактивен или ещё не получил нужные права. Проверьте роль в разделе сотрудников компании.'}
             </CardDescription>
           </CardHeader>
         </Card>

@@ -1,118 +1,92 @@
-import { memo, useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, View, type TextInputProps } from 'react-native';
+import { memo, useCallback } from 'react';
+import type { TextInputProps } from 'react-native';
 
 import { InputField } from '@/components/ui/input/input-field';
-import { useTheme } from '@/hooks';
-import { filterAutocompleteOptions } from '@/lib/autocomplete/filter-options';
-import type { AutocompleteOption } from '@/lib/autocomplete/types';
-import { haptics } from '@/theme';
-
-import { Text } from './text';
+import { useAutocomplete } from '@/hooks/use-autocomplete';
+import type { AutocompleteConfig, AutocompleteOption, AutocompleteSourceId } from '@/lib/autocomplete/types';
 
 type AutocompleteInputProps = Omit<TextInputProps, 'value' | 'onChangeText' | 'style'> & {
   value: string;
   onValueChange: (value: string) => void;
-  options: AutocompleteOption[];
+  /** Registry source. When omitted, `options` override is used. */
+  source?: AutocompleteSourceId;
+  fieldKey?: string;
+  context?: Record<string, string>;
+  options?: AutocompleteOption[];
   onOptionSelect?: (value: string) => void;
-  matchMode?: 'prefix' | 'flexible';
-  maxSuggestions?: number;
+  replaceMode?: AutocompleteConfig['replaceMode'];
+  matchMode?: AutocompleteConfig['matchMode'];
+  debounceMs?: number;
+  minQueryLength?: number;
   invalid?: boolean;
 };
 
 export const AutocompleteInput = memo(function AutocompleteInput({
   value,
   onValueChange,
+  source = 'previousValue',
+  fieldKey,
+  context,
   options,
   onOptionSelect,
+  replaceMode = 'full',
   matchMode = 'prefix',
-  maxSuggestions = 8,
+  debounceMs,
+  minQueryLength,
   invalid,
   onFocus,
   onBlur,
+  onSubmitEditing,
   ...props
 }: AutocompleteInputProps) {
-  const { colors } = useTheme();
-  const [focused, setFocused] = useState(false);
+  const { inputProps } = useAutocomplete({
+    source,
+    fieldKey,
+    context,
+    value,
+    onValueChange,
+    onOptionSelect,
+    options,
+    replaceMode,
+    matchMode,
+    debounceMs,
+    minQueryLength,
+  });
 
-  const suggestions = useMemo(
-    () => filterAutocompleteOptions(value, options, matchMode, maxSuggestions),
-    [matchMode, maxSuggestions, options, value],
+  const handleFocus = useCallback<NonNullable<TextInputProps['onFocus']>>(
+    (event) => {
+      inputProps.onFocus?.(event);
+      onFocus?.(event);
+    },
+    [inputProps, onFocus],
   );
 
-  const showSuggestions = focused && suggestions.length > 0;
-
-  const commitOption = useCallback(
-    (next: string) => {
-      onValueChange(next);
-      onOptionSelect?.(next);
-      haptics.selection();
-      setFocused(false);
+  const handleBlur = useCallback<NonNullable<TextInputProps['onBlur']>>(
+    (event) => {
+      inputProps.onBlur?.(event);
+      onBlur?.(event);
     },
-    [onOptionSelect, onValueChange],
+    [inputProps, onBlur],
+  );
+
+  const handleSubmit = useCallback<NonNullable<TextInputProps['onSubmitEditing']>>(
+    (event) => {
+      inputProps.onSubmitEditing?.(event);
+      onSubmitEditing?.(event);
+    },
+    [inputProps, onSubmitEditing],
   );
 
   return (
-    <View style={{ zIndex: showSuggestions ? 40 : 1 }}>
-      <InputField
-        {...props}
-        value={value}
-        invalid={invalid}
-        onChangeText={onValueChange}
-        onFocus={(event) => {
-          setFocused(true);
-          onFocus?.(event);
-        }}
-        onBlur={(event) => {
-          setTimeout(() => setFocused(false), 140);
-          onBlur?.(event);
-        }}
-      />
-
-      {showSuggestions ? (
-        <View
-          style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            marginTop: 4,
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: colors.border,
-            backgroundColor: colors.card,
-            maxHeight: 220,
-            overflow: 'hidden',
-            shadowColor: '#000',
-            shadowOpacity: 0.12,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 6 },
-            elevation: 8,
-          }}
-        >
-          <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled showsVerticalScrollIndicator={false}>
-            {suggestions.map((option) => (
-              <Pressable
-                key={`${option.value}-${option.label ?? ''}`}
-                onPress={() => commitOption(option.value)}
-                style={({ pressed }) => ({
-                  paddingHorizontal: 12,
-                  paddingVertical: 11,
-                  backgroundColor: pressed ? colors.muted : 'transparent',
-                })}
-              >
-                <Text variant="body" style={{ fontSize: 14, fontWeight: '500' }} numberOfLines={1}>
-                  {option.label ?? option.value}
-                </Text>
-                {option.label && option.label !== option.value ? (
-                  <Text variant="caption" color="muted" style={{ fontSize: 11, marginTop: 2 }} numberOfLines={1}>
-                    {option.value}
-                  </Text>
-                ) : null}
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-      ) : null}
-    </View>
+    <InputField
+      {...props}
+      {...inputProps}
+      value={value}
+      invalid={invalid}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      onSubmitEditing={handleSubmit}
+      returnKeyType={props.returnKeyType ?? 'done'}
+    />
   );
 });

@@ -28,8 +28,18 @@ type ButtonProps = Omit<PressableProps, 'style'> & {
   inline?: boolean;
 };
 
-function isPlainLabel(children: ReactNode): children is string | number {
-  return typeof children === 'string' || typeof children === 'number';
+function getTextLabel(children: ReactNode): string | null {
+  if (children == null || children === false) return null;
+  if (typeof children === 'string' || typeof children === 'number') return String(children);
+  if (Array.isArray(children)) {
+    const flat = children.flat();
+    if (flat.length === 0) return null;
+    if (flat.every((child) => child == null || typeof child === 'string' || typeof child === 'number')) {
+      return flat.map((child) => (child == null ? '' : String(child))).join('');
+    }
+    return null;
+  }
+  return null;
 }
 
 export const Button = memo(
@@ -109,6 +119,8 @@ export const Button = memo(
 
     const textVariant = size === 'xs' || size === 'sm' ? 'buttonSmall' : 'button';
 
+    const textLabel = getTextLabel(children);
+
     return (
       <Pressable
         ref={ref}
@@ -149,7 +161,7 @@ export const Button = memo(
                 {leftIcon ? (
                   <View style={{ alignItems: 'center', justifyContent: 'center' }}>{leftIcon}</View>
                 ) : null}
-                {!isIconOnly && isPlainLabel(children) ? (
+                {!isIconOnly && textLabel ? (
                   <Text
                     variant={textVariant}
                     style={{
@@ -158,7 +170,7 @@ export const Button = memo(
                       textAlign: 'center',
                     }}
                   >
-                    {children}
+                    {textLabel}
                   </Text>
                 ) : !isIconOnly && children ? (
                   children

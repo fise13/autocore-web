@@ -6,10 +6,12 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 import { useSyncExternalStore } from 'react';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import 'react-native-reanimated';
 
 import { AuthGate } from '@/authentication/auth-gate';
 import { AuthProvider } from '@/authentication/auth-provider';
+import { InAppBannerProvider } from '@/components/notifications';
 import { RootNavigator } from '@/components/navigation/root-navigator';
 import { ThemeProvider } from '@/hooks';
 import { ToastProvider } from '@/components/ui';
@@ -58,6 +60,7 @@ function AppProviders({ children }: { children: React.ReactNode }) {
         <AuthProvider>
           <BottomSheetModalProvider>
             <AuthGate>{children}</AuthGate>
+            <InAppBannerProvider />
             <ToastProvider />
           </BottomSheetModalProvider>
         </AuthProvider>
@@ -69,9 +72,11 @@ function AppProviders({ children }: { children: React.ReactNode }) {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AppProviders>
-        <RootNavigator />
-      </AppProviders>
+      <KeyboardProvider>
+        <AppProviders>
+          <RootNavigator />
+        </AppProviders>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }

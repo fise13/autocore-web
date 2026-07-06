@@ -1,6 +1,7 @@
 export { Text } from './text';
 export { Button, type ButtonVariant, type ButtonSize } from './button';
 export { IconButton } from './icon-button';
+export { CopyButton, type CopyButtonProps, type CopyButtonVariant, type CopyButtonSize } from './copy-button';
 export {
   Card,
   CardHeader,

@@ -1,0 +1,249 @@
+"use client";
+
+import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, Loader2, LogOut, Trash2 } from "lucide-react";
+
+import { useAuth } from "@/components/providers/auth-provider";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { getFirebaseAuth } from "@/infrastructure/firebase/client";
+import { cn } from "@/lib/utils";
+
+type OrgDangerZoneProps = {
+  companyId: string;
+  companyName: string;
+  isOwner: boolean;
+};
+
+type DangerActionRowProps = {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  actionLabel: string;
+  onAction: () => void;
+  tone?: "default" | "destructive";
+};
+
+function DangerActionRow({
+  icon,
+  title,
+  description,
+  actionLabel,
+  onAction,
+  tone = "default",
+}: DangerActionRowProps) {
+  const destructive = tone === "destructive";
+
+  return (
+    <div
+      className={cn(
+        "flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors",
+        destructive
+          ? "border-destructive/25 bg-destructive/[0.06] hover:bg-destructive/[0.09]"
+          : "border-border/70 bg-background/40 hover:bg-muted/30",
+      )}
+    >
+      <div
+        className={cn(
+          "mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg border",
+          destructive
+            ? "border-destructive/20 bg-destructive/10 text-destructive"
+            : "border-border/70 bg-muted/40 text-muted-foreground",
+        )}
+      >
+        {icon}
+      </div>
+
+      <div className="min-w-0 flex-1 space-y-1">
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        <p className="text-xs leading-relaxed text-muted-foreground">{description}</p>
+      </div>
+
+      <Button
+        type="button"
+        size="sm"
+        variant={destructive ? "destructive" : "outline"}
+        className={cn(
+          "mt-0.5 shrink-0",
+          destructive &&
+            "border-transparent bg-destructive text-white shadow-sm hover:bg-destructive/90 dark:text-white",
+        )}
+        onClick={onAction}
+      >
+        {actionLabel}
+      </Button>
+    </div>
+  );
+}
+
+export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZoneProps) {
+  const router = useRouter();
+  const { refreshProfile } = useAuth();
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [confirmName, setConfirmName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function authFetch(path: string, body: Record<string, unknown>) {
+    const token = await getFirebaseAuth().currentUser?.getIdToken();
+    if (!token) throw new Error("Требуется авторизация");
+    const response = await fetch(path, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.error ?? "Не удалось выполнить действие");
+    }
+    return payload;
+  }
+
+  async function handleLeave() {
+    setBusy(true);
+    setError(null);
+    try {
+      await authFetch("/api/org/leave", { companyId });
+      setLeaveOpen(false);
+      await refreshProfile();
+      router.refresh();
+      router.replace("/");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDelete(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await authFetch("/api/org/delete", { companyId, confirmationName: confirmName });
+      setDeleteOpen(false);
+      await refreshProfile();
+      router.replace("/");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card className="border-destructive/20 bg-destructive/[0.03] shadow-none">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base text-destructive">
+          <span className="flex size-7 items-center justify-center rounded-lg border border-destructive/20 bg-destructive/10">
+            <AlertTriangle className="size-3.5" />
+          </span>
+          Опасная зона
+        </CardTitle>
+        <CardDescription>Необратимые действия с организацией</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2.5">
+        <DangerActionRow
+          icon={<LogOut className="size-4" />}
+          title="Покинуть организацию"
+          description={`Вы потеряете доступ к «${companyName}». Данные команды сохранятся.`}
+          actionLabel="Покинуть"
+          onAction={() => {
+            setError(null);
+            setLeaveOpen(true);
+          }}
+        />
+        {isOwner ? (
+          <DangerActionRow
+            icon={<Trash2 className="size-4" />}
+            title="Удалить организацию"
+            description="Заказы, клиенты, склад и все настройки будут удалены безвозвратно."
+            actionLabel="Удалить"
+            tone="destructive"
+            onAction={() => {
+              setError(null);
+              setConfirmName("");
+              setDeleteOpen(true);
+            }}
+          />
+        ) : null}
+      </CardContent>
+
+      <Dialog open={leaveOpen} onOpenChange={setLeaveOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Покинуть организацию?</DialogTitle>
+            <DialogDescription>
+              Вы потеряете доступ к {companyName}. Данные организации останутся у команды.
+            </DialogDescription>
+          </DialogHeader>
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setLeaveOpen(false)}>
+              Отмена
+            </Button>
+            <Button
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => void handleLeave()}
+              disabled={busy}
+            >
+              {busy ? <Loader2 className="size-4 animate-spin" /> : "Покинуть"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Удалить организацию навсегда?</DialogTitle>
+            <DialogDescription>
+              Будут удалены заказы, клиенты, склад, документы и все настройки. Введите «{companyName}»
+              для подтверждения.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={(event) => void handleDelete(event)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="confirm-name">Название организации</Label>
+              <Input
+                id="confirm-name"
+                value={confirmName}
+                onChange={(event) => setConfirmName(event.target.value)}
+                placeholder={companyName}
+                autoComplete="off"
+              />
+            </div>
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setDeleteOpen(false)}>
+                Отмена
+              </Button>
+              <Button
+                type="submit"
+                className="bg-destructive text-white hover:bg-destructive/90 disabled:opacity-50"
+                disabled={busy || confirmName.trim() !== companyName}
+              >
+                {busy ? <Loader2 className="size-4 animate-spin" /> : "Удалить навсегда"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}

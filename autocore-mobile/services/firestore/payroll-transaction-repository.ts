@@ -1,16 +1,20 @@
 import {
   collection,
+  deleteField,
+  doc,
   limit,
   onSnapshot,
   orderBy,
   query,
+  serverTimestamp,
+  updateDoc,
 } from 'firebase/firestore';
 
 import { normalizeCompanyId } from '@/lib/company-id';
 import { toDateFromFirestore } from '@/lib/firestore-timestamp';
 import { notifyFirestoreSnapshotError } from '@/lib/firestore/snapshot-errors';
 import { getFirebaseDb } from '@/services/firebase';
-import type { PayrollTransaction } from '@/types/payroll-transaction';
+import type { PayrollTransaction, PayrollTransactionStatus } from '@/types/payroll-transaction';
 
 const COLLECTION = 'payrollTransactions';
 
@@ -58,6 +62,14 @@ export function createPayrollTransactionRepository() {
           ),
         (error) => notifyFirestoreSnapshotError(error, onError),
       );
+    },
+
+    async updateStatus(companyId: string, id: string, status: PayrollTransactionStatus) {
+      const ref = doc(getFirebaseDb(), 'companies', normalizeCompanyId(companyId), COLLECTION, id);
+      await updateDoc(ref, {
+        status,
+        paidAt: status === 'paid' ? serverTimestamp() : deleteField(),
+      });
     },
   };
 }

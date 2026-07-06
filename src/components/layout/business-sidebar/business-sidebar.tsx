@@ -11,6 +11,7 @@ import {
 import { BrandsSidebarGroup } from "@/components/layout/business-sidebar/brands-sidebar-group";
 import { SpecificCategoriesSidebarGroup } from "@/components/layout/business-sidebar/specific-categories-sidebar-group";
 import { SidebarFooter } from "@/components/layout/business-sidebar/sidebar-footer";
+import { SidebarOrganizationSwitcher } from "@/components/layout/sidebar-organization-switcher";
 import { SidebarCustomizeSheet } from "@/components/layout/sidebar-customize-sheet";
 import { useSidebarCustomization } from "@/components/providers/sidebar-customization-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -193,6 +194,11 @@ function BusinessSidebarInner({
           <Sidebar collapsible="none" variant="inset" className="border-none bg-transparent shadow-none">
             <SidebarContent className={cn("min-h-0 gap-0 pt-2", effectiveCollapsed && "px-1 pt-1")}>
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                {!isEditing ? (
+                  <div className={cn("shrink-0", effectiveCollapsed ? "px-0" : "px-2 pb-2")}>
+                    <SidebarOrganizationSwitcher collapsed={effectiveCollapsed} />
+                  </div>
+                ) : null}
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
                   {visibleNavGroups.map((group, index) => (
                     <AutocoreNavGroup

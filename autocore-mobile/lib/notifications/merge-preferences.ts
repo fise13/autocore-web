@@ -10,6 +10,7 @@ export function mergeNotificationPreferences(
     channels: {
       ...DEFAULT_NOTIFICATION_PREFERENCES.channels,
       ...partial.channels,
+      inApp: partial.channels?.inApp ?? DEFAULT_NOTIFICATION_PREFERENCES.channels.inApp,
     },
     categories: {
       ...DEFAULT_NOTIFICATION_PREFERENCES.categories,

@@ -14,7 +14,7 @@ import {
 import { UserRole, USER_ROLES } from "@/domain/user";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 import { recordUserCompanyMembership } from "@/infrastructure/firestore/user-company-membership-service";
-import { canSwitchCompanyViaInvite } from "@/lib/company-id";
+import { normalizeCompanyId } from "@/lib/company-id";
 import { mapAuthError } from "@/lib/user-copy";
 
 function normalizeRole(role: string): UserRole {
@@ -100,7 +100,7 @@ type InviteJoinInput = {
 async function joinCompanyWithInviteRecord(uid: string, input: InviteJoinInput): Promise<void> {
   const db = getFirestoreDb();
   const invite = input.invite;
-  const companyId = String(invite.companyId ?? "");
+  const companyId = normalizeCompanyId(String(invite.companyId ?? ""));
   const role = normalizeRole(String(invite.role ?? "employee"));
   if (!companyId) {
     throw new Error("Некорректные данные приглашения");
@@ -113,6 +113,13 @@ async function joinCompanyWithInviteRecord(uid: string, input: InviteJoinInput):
   const userEmail = String(userData.email ?? "").trim().toLowerCase();
   const existingCompanyId = String(userData.companyId ?? "").trim();
 
+  const employeeRef = doc(db, "companies", companyId, "employees", uid);
+  const employeeSnap = await getDoc(employeeRef);
+  if (employeeSnap.exists()) {
+    await recordUserCompanyMembership(uid, companyId, role);
+    return;
+  }
+
   const inviteEmail = typeof invite.email === "string" ? invite.email.trim().toLowerCase() : "";
   if (inviteEmail && userEmail && inviteEmail !== userEmail) {
     throw new Error("Это приглашение отправлено на другой email. Войдите под указанным адресом.");
@@ -121,16 +128,7 @@ async function joinCompanyWithInviteRecord(uid: string, input: InviteJoinInput):
     throw new Error("Войдите под email, на который пришло приглашение.");
   }
 
-  if (existingCompanyId === companyId) {
-    return;
-  }
-  if (!canSwitchCompanyViaInvite(existingCompanyId)) {
-    throw new Error("Вы уже привязаны к другой компании. Выйдите и войдите другим аккаунтом.");
-  }
-
-  const employeeRef = doc(db, "companies", companyId, "employees", uid);
-  const employeeSnap = await getDoc(employeeRef);
-  const inviteAlreadyUsed = invite.used === true;
+  const inviteAlreadyUsed = invite.used === true || invite.status === "accepted" || invite.status === "used";
 
   if (inviteAlreadyUsed && !employeeSnap.exists()) {
     throw new Error("Приглашение уже использовано");
@@ -169,23 +167,26 @@ async function joinCompanyWithInviteRecord(uid: string, input: InviteJoinInput):
 
   if (!inviteAlreadyUsed) {
     try {
-      await updateDoc(doc(db, "invites", input.inviteDocId), { used: true, status: "used" });
+      await updateDoc(doc(db, "invites", input.inviteDocId), {
+        used: true,
+        status: "accepted",
+        acceptedAt: new Date().toISOString(),
+        acceptedBy: uid,
+      });
     } catch (error) {
       rethrowStep("Не удалось подтвердить приглашение", error);
     }
   }
 
   try {
-    await linkUserProfile(userRef, companyId, role);
     await recordUserCompanyMembership(uid, companyId, role);
+    const shouldSwitch =
+      !existingCompanyId || existingCompanyId === "default" || existingCompanyId === companyId;
+    if (shouldSwitch) {
+      await linkUserProfile(userRef, companyId, role);
+    }
   } catch (error) {
     rethrowStep("Не удалось привязать аккаунт к компании", error);
-  }
-
-  const verifySnap = await getDoc(userRef);
-  const linkedCompanyId = String(verifySnap.data()?.companyId ?? "").trim();
-  if (linkedCompanyId !== companyId) {
-    throw new Error("Не удалось привязать аккаунт к компании (профиль не обновился)");
   }
 }
 

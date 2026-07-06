@@ -5,6 +5,24 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@autocore/rbac": [
+        "../packages/rbac/src"
+      ],
+      "@autocore/rbac/*": [
+        "../packages/rbac/src/*"
+      ],
+      "@autocore/domain-search": [
+        "../packages/domain-search/src"
+      ],
+      "@autocore/domain-search/*": [
+        "../packages/domain-search/src/*"
+      ],
+      "@autocore/org": [
+        "../packages/org/src"
+      ],
+      "@autocore/org/*": [
+        "../packages/org/src/*"
       ]
     }
   },
@@ -14,5 +32,8 @@
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
     "nativewind-env.d.ts"
+  ],
+  "exclude": [
+    "**/*.test.ts"
   ]
 }

@@ -11,6 +11,7 @@ import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { EmployeeProfileSheet } from "@/components/employees/employee-profile-sheet";
 import { useDeepAction } from "@/hooks/use-deep-action";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { buildInviteUrl, INVITE_STATUS_LABELS, normalizeInviteStatus, type InviteStatus } from "@autocore/org";
 import { CompanyEmployee, InviteDocument } from "@/domain/rbac";
 import { PERMISSIONS, Permission, ROLE_PERMISSIONS, USER_ROLES, UserRole } from "@/domain/user";
 import { getFirebaseAuth } from "@/infrastructure/firebase/client";
@@ -21,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -66,6 +68,26 @@ function formatInviteExpiry(expiresAt: Date): string {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatLastActive(lastActiveAt?: Date): string {
+  if (!lastActiveAt) return "—";
+  const deltaMs = Date.now() - lastActiveAt.getTime();
+  if (deltaMs < 5 * 60 * 1000) return "Сейчас";
+  if (deltaMs < 60 * 60 * 1000) {
+    const minutes = Math.max(1, Math.round(deltaMs / 60_000));
+    return `${minutes} мин. назад`;
+  }
+  if (deltaMs < 24 * 60 * 60 * 1000) {
+    const hours = Math.max(1, Math.round(deltaMs / 3_600_000));
+    return `${hours} ч. назад`;
+  }
+  return lastActiveAt.toLocaleString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -117,6 +139,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
   const [profileEmployee, setProfileEmployee] = useState<CompanyEmployee | null>(null);
   const [busy, setBusy] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState<Set<Permission>>(new Set());
+  const [inviteStatusFilter, setInviteStatusFilter] = useState<InviteStatus | "all">("all");
   const memberId = searchParams.get("member");
 
   const canView = canViewEmployees(profile);
@@ -163,9 +186,70 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
   );
 
   const activeInvites = useMemo(
-    () => invites.filter((invite) => !invite.used),
+    () =>
+      invites.filter((invite) => {
+        const status = normalizeInviteStatus({
+          status: invite.status,
+          used: invite.used,
+          expiresAt: invite.expiresAt.toISOString(),
+        });
+        return status === "pending";
+      }),
     [invites],
   );
+
+  const filteredInvites = useMemo(() => {
+    return invites.filter((invite) => {
+      if (inviteStatusFilter === "all") return true;
+      const status = normalizeInviteStatus({
+        status: invite.status,
+        used: invite.used,
+        expiresAt: invite.expiresAt.toISOString(),
+      });
+      return status === inviteStatusFilter;
+    });
+  }, [inviteStatusFilter, invites]);
+
+  async function resendInvite(invite: InviteDocument) {
+    setBusy(true);
+    try {
+      const token = await getFirebaseAuth().currentUser?.getIdToken();
+      const response = await fetch("/api/invites/resend", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ inviteId: invite.id }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Не удалось отправить повторно");
+      if (payload.joinUrl) {
+        await navigator.clipboard.writeText(payload.joinUrl);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function revokeInvite(invite: InviteDocument) {
+    setBusy(true);
+    try {
+      const token = await getFirebaseAuth().currentUser?.getIdToken();
+      const response = await fetch("/api/invites/revoke", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ inviteId: invite.id }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Не удалось отменить");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function openInviteDialog() {
     requirePro("invite", () => {
@@ -379,7 +463,13 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
         </CardHeader>
         <CardContent>
           {!loaded && subscriptionsEnabled ? (
-            <p className="text-sm text-muted-foreground">Загрузка сотрудников…</p>
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton key={index} className="h-12 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : employees.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Пока нет сотрудников. Пригласите первого участника команды.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -388,6 +478,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                   <TableHead>{userCopy.account.emailLabel}</TableHead>
                   <TableHead>Роль</TableHead>
                   <TableHead>Статус</TableHead>
+                  <TableHead>Активность</TableHead>
                   <TableHead>Права</TableHead>
                   <TableHead className="text-right">Действия</TableHead>
                 </TableRow>
@@ -433,6 +524,9 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                         <Badge variant={employee.isActive ? "outline" : "secondary"}>
                           {employee.isActive ? "Активен" : "Отключен"}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatLastActive(employee.lastActiveAt)}
                       </TableCell>
                       <TableCell className="text-muted-foreground">{permissionsSummary(employee)}</TableCell>
                       <TableCell className="text-right">
@@ -485,33 +579,78 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
 
       {canManage ? (
         <Card>
-          <CardHeader>
-            <CardTitle>Коды приглашений</CardTitle>
-            <CardDescription>
-              Активных кодов: {activeInvites.length}. Новый сотрудник вводит код при входе в AutoCore.
-            </CardDescription>
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+            <div>
+              <CardTitle>Коды приглашений</CardTitle>
+              <CardDescription>
+                Активных кодов: {activeInvites.length}. Новый сотрудник вводит код при входе в AutoCore.
+              </CardDescription>
+            </div>
+            <Select
+              value={inviteStatusFilter}
+              onValueChange={(value) => setInviteStatusFilter(value as InviteStatus | "all")}
+            >
+              <SelectTrigger className="w-44">
+                <SelectValue>
+                  {inviteStatusFilter === "all"
+                    ? "Все статусы"
+                    : (INVITE_STATUS_LABELS[inviteStatusFilter] ?? inviteStatusFilter)}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все статусы</SelectItem>
+                {(Object.keys(INVITE_STATUS_LABELS) as InviteStatus[]).map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {INVITE_STATUS_LABELS[status]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </CardHeader>
           <CardContent>
-            {activeInvites.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Нет активных кодов приглашения.</p>
+            {filteredInvites.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Нет приглашений с выбранным статусом.</p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Код</TableHead>
                     <TableHead>Роль</TableHead>
+                    <TableHead>Статус</TableHead>
                     <TableHead>Действует до</TableHead>
                     <TableHead className="text-right">Действия</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {activeInvites.map((invite) => (
+                  {filteredInvites.map((invite) => {
+                    const status = normalizeInviteStatus({
+                      status: invite.status,
+                      used: invite.used,
+                      expiresAt: invite.expiresAt.toISOString(),
+                    });
+                    return (
                     <TableRow key={invite.id}>
                       <TableCell className="font-mono tracking-wider">{invite.code}</TableCell>
                       <TableCell>{formatRole(invite.role)}</TableCell>
+                      <TableCell>
+                        <Badge variant={status === "pending" ? "secondary" : "outline"}>
+                          {INVITE_STATUS_LABELS[status] ?? status}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{formatInviteExpiry(invite.expiresAt)}</TableCell>
                       <TableCell className="text-right">
                         <div className="inline-flex items-center gap-2">
+                          {invite.token ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                void navigator.clipboard.writeText(buildInviteUrl(invite.token!))
+                              }
+                            >
+                              Ссылка
+                            </Button>
+                          ) : null}
                           <Button
                             variant="outline"
                             size="sm"
@@ -519,17 +658,27 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                           >
                             <Copy className="size-4" />
                           </Button>
+                          {status === "pending" && invite.email ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => void resendInvite(invite)}
+                            >
+                              Повтор
+                            </Button>
+                          ) : null}
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => void deleteInvite(invite)}
+                            onClick={() => void revokeInvite(invite)}
                           >
                             <Trash2 className="size-4" />
                           </Button>
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}

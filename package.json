@@ -23,7 +23,7 @@
     "setup:stripe-secret": "bash scripts/setup-stripe-firebase-secret.sh",
     "assets:sync-from-native": "bash scripts/sync-brand-assets-from-native.sh",
     "assets:generate-favicon": "python3 scripts/generate-favicon-ico.py",
-    "test:import": "node --import tsx --test src/lib/accounting/labels.test.ts src/lib/warehouse/import/preprocessor.test.ts src/lib/warehouse/import/validation.test.ts src/lib/warehouse/import/format-presets.test.ts src/lib/warehouse/import/firestore-sanitize.test.ts src/lib/warehouse/import/sku-resolver.test.ts src/lib/company/upload-company-logo-utils.test.ts src/lib/grid/grid-column-autocomplete.test.ts",
+    "test:import": "node --import tsx --test src/lib/accounting/labels.test.ts src/lib/warehouse/import/preprocessor.test.ts src/lib/warehouse/import/validation.test.ts src/lib/warehouse/import/format-presets.test.ts src/lib/warehouse/import/firestore-sanitize.test.ts src/lib/warehouse/import/sku-resolver.test.ts src/lib/company/upload-company-logo-utils.test.ts src/lib/grid/grid-column-autocomplete.test.ts packages/rbac/src/rbac.test.ts packages/org/src/org.test.ts",
     "build:documents-css": "node scripts/build-documents-css.mjs",
     "generate:document-templates": "node scripts/generate-document-templates.mjs",
     "install:browser": "npx puppeteer browsers install chrome",
