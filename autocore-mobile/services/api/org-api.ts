@@ -22,6 +22,16 @@ export function acceptInvite(
   });
 }
 
+export function acceptInviteByCode(
+  code: string,
+  switchToCompany = true,
+): Promise<{ ok: boolean; result: AcceptInviteResult }> {
+  return mobilePost<{ ok: boolean; result: AcceptInviteResult }>('/api/invites/accept-code', {
+    code,
+    switchToCompany,
+  });
+}
+
 export function declineInvite(token: string): Promise<{ ok: boolean }> {
   return mobilePost<{ ok: boolean }>('/api/invites/decline', { token });
 }

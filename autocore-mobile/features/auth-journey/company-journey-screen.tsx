@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
+import { UsersIcon } from '@/assets/icons';
 import { AuthShell } from '@/authentication/auth-shell';
 import { useAuth } from '@/authentication/auth-provider';
 import { Button, Input, Text } from '@/components/ui';
@@ -86,21 +87,40 @@ export function CompanyJourneyScreen() {
 
   return (
     <AuthShell
-      title="Команда и доступ"
-      description="Введите код приглашения от администратора или выберите рабочее пространство."
+      title="Присоединиться по приглашению"
+      description="Введите код, который вам отправил администратор компании."
     >
       <View style={{ gap: 16 }}>
         <View style={{ gap: 8 }}>
-          <Text variant="caption" color="muted">
-            Код приглашения
-          </Text>
-          <Input
-            placeholder="ABCD-1234"
-            value={inviteCode}
-            onChangeText={setInviteCode}
-            autoCapitalize="characters"
-          />
-          <Button onPress={handleJoin} loading={loading}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+            <View
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: colors.border,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: colors.card,
+              }}
+            >
+              <UsersIcon size="sm" color={colors.mutedForeground} strokeWidth={1.8} />
+            </View>
+            <View style={{ flex: 1, gap: 8 }}>
+              <Text variant="caption" color="muted">
+                Код приглашения
+              </Text>
+              <Input
+                placeholder="Например: 6SD2BL"
+                value={inviteCode}
+                onChangeText={setInviteCode}
+                autoCapitalize="characters"
+                autoCorrect={false}
+              />
+            </View>
+          </View>
+          <Button onPress={handleJoin} loading={loading} disabled={!inviteCode.trim()}>
             Присоединиться
           </Button>
         </View>

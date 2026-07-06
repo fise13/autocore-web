@@ -56,12 +56,62 @@ function generateInviteCode(length = 6): string {
   return code;
 }
 
+function normalizeInviteCode(input: string): string {
+  const map: Record<string, string> = {
+    А: "A", В: "B", С: "C", Е: "E", Н: "H", К: "K", М: "M", О: "O",
+    Р: "P", Т: "T", У: "Y", Х: "X",
+    а: "A", в: "B", с: "C", е: "E", н: "H", к: "K", м: "M", о: "O",
+    р: "P", т: "T", у: "Y", х: "X",
+  };
+  return input
+    .trim()
+    .toUpperCase()
+    .split("")
+    .map((char) => map[char] ?? char)
+    .join("");
+}
+
+async function findInviteByCode(code: string) {
+  const db = getAdminFirestore();
+  const snapshot = await db.collection(INVITES).where("code", "==", code).limit(1).get();
+  if (snapshot.empty) return null;
+  const doc = snapshot.docs[0]!;
+  return { id: doc.id, data: doc.data() };
+}
+
 async function findInviteByToken(token: string) {
   const db = getAdminFirestore();
   const snapshot = await db.collection(INVITES).where("token", "==", token.trim()).limit(1).get();
   if (snapshot.empty) return null;
   const doc = snapshot.docs[0]!;
   return { id: doc.id, data: doc.data() };
+}
+
+export async function acceptInviteByCodeAsUser(params: {
+  uid: string;
+  rawCode: string;
+  userEmail: string;
+  userName?: string;
+  switchToCompany?: boolean;
+}): Promise<AcceptInviteResult> {
+  const inviteCode = normalizeInviteCode(params.rawCode);
+  if (!inviteCode) {
+    throw new OrgError("invite_invalid_token", 400);
+  }
+
+  const found = await findInviteByCode(inviteCode);
+  if (!found) throw new OrgError("invite_not_found", 404);
+
+  const token = typeof found.data.token === "string" ? found.data.token.trim() : "";
+  if (!token) throw new OrgError("invite_invalid_token", 400);
+
+  return acceptInviteAsUser({
+    uid: params.uid,
+    token,
+    userEmail: params.userEmail,
+    userName: params.userName,
+    switchToCompany: params.switchToCompany,
+  });
 }
 
 async function getCompanyName(companyId: string): Promise<string> {
@@ -243,16 +293,20 @@ export async function acceptInviteAsUser(params: {
     );
   }
 
-  await emitEmployeeJoinedByInviteNotifications({
-    companyId,
-    companyName,
-    uid: params.uid,
-    userName: params.userName ?? "",
-    userEmail,
-    role,
-    inviteId: found.id,
-    inviterUserId: String(invite.createdBy ?? ""),
-  });
+  try {
+    await emitEmployeeJoinedByInviteNotifications({
+      companyId,
+      companyName,
+      uid: params.uid,
+      userName: params.userName ?? "",
+      userEmail,
+      role,
+      inviteId: found.id,
+      inviterUserId: String(invite.createdBy ?? ""),
+    });
+  } catch (error) {
+    console.error("[acceptInviteAsUser] notification emit failed", error);
+  }
 
   return {
     companyId,
