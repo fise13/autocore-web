@@ -16,6 +16,7 @@ const NAV_TO_TAB: Partial<Record<NavItemId, MobileTabId>> = {
   search: 'search',
   scan: 'scan',
   orders: 'orders',
+  my_earnings: 'my-earnings',
   accounting: 'accounting',
   profile: 'profile',
 };

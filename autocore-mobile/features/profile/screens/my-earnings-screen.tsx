@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { View } from 'react-native';
 
-import { Text } from '@/components/ui';
+import { PageHeader, Screen, ScreenScroll, Text } from '@/components/ui';
 import { usePayrollTransactionsRealtime } from '@/hooks/use-payroll-transactions-realtime';
 import { useSession, useWorkOrdersRealtime } from '@/hooks';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
@@ -14,7 +14,11 @@ function formatMoney(value: number): string {
   return `${Math.round(value).toLocaleString('ru-RU')} ₸`;
 }
 
-export function MyEarningsScreen() {
+type MyEarningsScreenProps = {
+  variant?: 'tab' | 'stack';
+};
+
+export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
   const { colors } = useTheme();
   const { uid } = useSession();
   const rbac = useRbacPolicy();
@@ -42,21 +46,17 @@ export function MyEarningsScreen() {
     return { pending, paid, cancelled };
   }, [payroll]);
 
-  if (!allowed) {
-    return (
-      <ProfileScreenShell title="Мои начисления">
-        <View style={{ padding: rhythm.pad, gap: rhythm.tight }}>
-          <Text variant="body" color="muted">
-            Раздел доступен механикам с правом просмотра своих выплат.
-          </Text>
-        </View>
-      </ProfileScreenShell>
-    );
-  }
+  const body = useMemo(() => {
+    if (!allowed) {
+      return (
+        <Text variant="body" color="muted">
+          Раздел доступен с правом просмотра своих выплат.
+        </Text>
+      );
+    }
 
-  return (
-    <ProfileScreenShell title="Мои начисления" subtitle="Начисления по закрытым нарядам">
-      <View style={{ padding: rhythm.pad, gap: rhythm.section }}>
+    return (
+      <>
         <View style={{ flexDirection: 'row', gap: rhythm.stack }}>
           {[
             { label: 'К выплате', value: summary.pending },
@@ -113,7 +113,32 @@ export function MyEarningsScreen() {
             })
           )}
         </View>
-      </View>
+      </>
+    );
+  }, [allowed, colors.card, domainOrders, payroll, summary.cancelled, summary.paid, summary.pending]);
+
+  if (variant === 'tab') {
+    return (
+      <Screen>
+        <PageHeader
+          title="Мои начисления"
+          subtitle={allowed ? 'Начисления по закрытым нарядам' : undefined}
+          logo={null}
+          align="start"
+        />
+        <ScreenScroll tabBarInset contentStyle={{ padding: rhythm.pad, gap: rhythm.section }}>
+          {body}
+        </ScreenScroll>
+      </Screen>
+    );
+  }
+
+  return (
+    <ProfileScreenShell
+      title="Мои начисления"
+      subtitle={allowed ? 'Начисления по закрытым нарядам' : undefined}
+    >
+      <View style={{ padding: rhythm.pad, gap: rhythm.section }}>{body}</View>
     </ProfileScreenShell>
   );
 }

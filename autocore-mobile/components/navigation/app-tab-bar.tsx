@@ -25,8 +25,11 @@ import {
   TAB_BAR_VERTICAL_PADDING,
 } from '@/lib/navigation/floating-tab-bar-inset';
 import { tabNavigationGuard } from '@/lib/navigation/navigation-guard';
-import { isMobileNavItemAllowed } from '@/lib/rbac/navigation-policy';
-import { shouldHideTabBarFromNavState } from '@/lib/navigation/should-hide-tab-bar';
+import { isNavItemVisible } from '@/lib/navigation/nav-item-availability';
+import {
+  isNestedTabStackActive,
+  shouldHideTabBarFromNavState,
+} from '@/lib/navigation/should-hide-tab-bar';
 import { useSession } from '@/hooks/use-session';
 import { autocoreEase, duration } from '@/theme/motion';
 import { haptics, rhythm, spacing } from '@/theme';
@@ -131,18 +134,6 @@ const AppTabBarItem = memo(function AppTabBarItem({
   );
 });
 
-function isNavItemModuleEnabled(
-  id: NavItemId,
-  workOrders: boolean,
-  warehouse: boolean,
-  accounting: boolean,
-): boolean {
-  if (id === 'orders') return workOrders;
-  if (id === 'search' || id === 'scan') return warehouse;
-  if (id === 'accounting') return accounting;
-  return true;
-}
-
 export const AppTabBar = memo(function AppTabBar({ state, navigation }: AppTabBarProps) {
   const { colors, isDark, shadows } = useTheme();
   const { profile } = useSession();
@@ -160,17 +151,16 @@ export const AppTabBar = memo(function AppTabBar({ state, navigation }: AppTabBa
   const capsuleX = useSharedValue(0);
 
   const tabEntries = useMemo(() => {
+    const modules = {
+      workOrders: workOrdersEnabled,
+      warehouse: warehouseEnabled,
+      accounting: accountingModuleEnabled,
+    };
     return resolveTabBarEntries(navOrder, navEnabled).filter((entry) => {
       if (entry.kind === 'more') {
-        return entry.items.some((id) =>
-          isNavItemModuleEnabled(id, workOrdersEnabled, warehouseEnabled, accountingModuleEnabled) &&
-          isMobileNavItemAllowed(profile, id),
-        );
+        return entry.items.some((id) => isNavItemVisible(id, profile, modules));
       }
-      return (
-        isNavItemModuleEnabled(entry.navId, workOrdersEnabled, warehouseEnabled, accountingModuleEnabled) &&
-        isMobileNavItemAllowed(profile, entry.navId)
-      );
+      return isNavItemVisible(entry.navId, profile, modules);
     });
   }, [navOrder, navEnabled, workOrdersEnabled, warehouseEnabled, accountingModuleEnabled, profile]);
 
@@ -253,11 +243,11 @@ export const AppTabBar = memo(function AppTabBar({ state, navigation }: AppTabBa
 
   const openMore = useCallback(
     (items: NavItemId[]) => {
-      const enabled = items.filter(
-        (id) =>
-          isNavItemModuleEnabled(id, workOrdersEnabled, warehouseEnabled, accountingModuleEnabled) &&
-          isMobileNavItemAllowed(profile, id),
-      );
+      const enabled = items.filter((id) => isNavItemVisible(id, profile, {
+        workOrders: workOrdersEnabled,
+        warehouse: warehouseEnabled,
+        accounting: accountingModuleEnabled,
+      }));
       const labels = enabled.map((id) => getNavVisual(id).label);
 
       const go = (index: number) => {

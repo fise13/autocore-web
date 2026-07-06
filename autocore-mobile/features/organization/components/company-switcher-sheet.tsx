@@ -9,6 +9,7 @@ import { useCompanySubscription, useSession, useTheme } from '@/hooks';
 import { subscriptionPlanLabel } from '@/lib/billing/format-renewal';
 import { resolveActiveCompanyName } from '@/lib/resolve-active-company-name';
 import { switchActiveCompany } from '@/services/firestore/company-membership-service';
+import { NotificationService } from '@/services/notifications';
 import { haptics, rhythm } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
 
@@ -58,6 +59,7 @@ export function CompanySwitcherSheet({ open, onClose }: CompanySwitcherSheetProp
                 haptics.selection();
                 await switchActiveCompany(firebaseUser.uid, membership.companyId);
                 await refreshProfile();
+                await NotificationService.syncInbox();
                 onClose();
               }}
               style={{

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
 import { useDemoSession } from "@/hooks/use-demo-session";
 import { formatRole, userCopy } from "@/lib/user-copy";
+import { resolveUserAvatarSeed } from "@/lib/user/user-avatar-style";
 import { cn } from "@/lib/utils";
 
 type AccountMenuProps = {
@@ -122,7 +123,11 @@ export function AccountMenu({ compact = false }: AccountMenuProps) {
   const displayName = profile?.displayName ?? accountInfo?.displayName ?? null;
   const photoURL = profile?.photoURL ?? accountInfo?.photoURL ?? null;
   const email = profile?.email ?? accountInfo?.email ?? "";
-  const userSeed = profile?.id ?? firebaseUser?.uid ?? email;
+  const userSeed = resolveUserAvatarSeed({
+    profileId: profile?.id,
+    uid: firebaseUser?.uid,
+    email,
+  });
 
   useLayoutEffect(() => {
     if (!open || !anchorRef.current) {

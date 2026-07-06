@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
 import { userCopy } from "@/lib/user-copy";
+import { resolveUserAvatarSeed } from "@/lib/user/user-avatar-style";
 import { cn } from "@/lib/utils";
 
 type SidebarUserMenuProps = {
@@ -38,7 +39,11 @@ export function SidebarUserMenu({ collapsed = false }: SidebarUserMenuProps) {
   const displayName = profile?.displayName ?? accountInfo?.displayName ?? null;
   const photoURL = profile?.photoURL ?? accountInfo?.photoURL ?? null;
   const email = profile?.email ?? accountInfo?.email ?? "";
-  const userSeed = profile?.id ?? firebaseUser.uid ?? email;
+  const userSeed = resolveUserAvatarSeed({
+    profileId: profile?.id,
+    uid: firebaseUser.uid,
+    email,
+  });
   const shortLabel = displayName || email.split("@")[0] || userCopy.account.menuTitle;
 
   function navigate(href: string) {

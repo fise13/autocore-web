@@ -9,6 +9,7 @@ import {
 } from '@/types/notifications';
 import { useNotificationInbox } from '@/hooks/use-notification-inbox';
 import { useNotificationPreferences } from '@/hooks/use-notification-preferences';
+import { notificationInboxHref } from '@/lib/navigation/open-notification-inbox';
 import {
   APP_CATEGORY_LABELS,
   APP_NOTIFICATION_CATEGORIES,
@@ -74,7 +75,7 @@ export function NotificationsSettingsScreen() {
         <Button
           variant="secondary"
           size="sm"
-          onPress={() => router.push('/(tabs)/profile/inbox' as never)}
+          onPress={() => router.push(notificationInboxHref('notifications'))}
         >
           {unreadCount > 0 ? `Открыть · ${unreadCount} новых` : 'Открыть центр активности'}
         </Button>

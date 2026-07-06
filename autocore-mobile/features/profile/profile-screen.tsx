@@ -95,7 +95,7 @@ export function ProfileScreen() {
                   value={row.id === 'my-earnings' ? undefined : data.rowValues[row.id as SettingsHubRouteId]}
                   onPress={() => {
                     if (row.id === 'my-earnings') {
-                      router.push('/(tabs)/profile/my-earnings');
+                      router.push('/(tabs)/my-earnings');
                       return;
                     }
                     open(row.id as SettingsHubRouteId);

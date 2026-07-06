@@ -1,26 +1,33 @@
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useSegments } from 'expo-router';
 
 import { BellIcon } from '@/assets/icons';
+import { useNavigateTab } from '@/components/navigation/use-navigate-tab';
 import { IconButton } from '@/components/ui/icon-button';
 import { Text } from '@/components/ui/text';
 import { useTheme } from '@/hooks';
+import {
+  notificationInboxHref,
+  openNotificationInbox,
+  resolveInboxReturnToFromTab,
+} from '@/lib/navigation/open-notification-inbox';
 import { useNotificationStore } from '@/stores/notification-store';
 import { haptics, radius } from '@/theme';
 
 type NotificationBellButtonProps = {
   size?: 'sm' | 'default';
-  href?: string;
 };
 
-export function NotificationBellButton({
-  size = 'default',
-  href = '/(tabs)/profile/inbox',
-}: NotificationBellButtonProps) {
+export function NotificationBellButton({ size = 'default' }: NotificationBellButtonProps) {
   const router = useRouter();
+  const navigateTab = useNavigateTab();
+  const segments = useSegments();
   const { colors } = useTheme();
   const unreadCount = useNotificationStore((s) => s.unreadCount);
   const buttonSize = size === 'sm' ? 'sm' : 'default';
+  const onProfileTab = segments.some((segment) => segment === 'profile');
+  const returnTo = resolveInboxReturnToFromTab(undefined);
+  const inboxHref = notificationInboxHref(returnTo);
 
   return (
     <View>
@@ -32,7 +39,11 @@ export function NotificationBellButton({
         }
         onPress={() => {
           haptics.light();
-          router.push(href as never);
+          if (onProfileTab) {
+            openNotificationInbox(router, { returnTo });
+            return;
+          }
+          navigateTab(inboxHref as string);
         }}
       >
         <BellIcon

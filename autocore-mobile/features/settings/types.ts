@@ -33,6 +33,7 @@ export type NavItemId =
   | 'search'
   | 'scan'
   | 'orders'
+  | 'my_earnings'
   | 'profile'
   | 'accounting'
   | 'warehouse'

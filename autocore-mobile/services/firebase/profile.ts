@@ -16,6 +16,8 @@ import {
 import { DEFAULT_COMPANY_ID, normalizeCompanyId, isProductionCompanyId } from '@/lib/company-id';
 import { readCompanyDisplayName } from '@/lib/company-display-name';
 import { resolveActiveCompanyName } from '@/lib/resolve-active-company-name';
+import type { WorkspaceAccessBlock } from '@/types/workspace-access';
+import { resolveWorkspaceAccessBlock } from '@/lib/workspace-access';
 import type { CompanyAppConfig } from '@/types/company-config';
 import type { EmployeeProfileSlice, UserCompanyMembership } from '@/types/rbac';
 import type { Permission, UserEntity, UserRole } from '@/types/user';
@@ -272,6 +274,7 @@ export async function hydrateEffectiveProfile(authUser: User): Promise<{
   companyConfig: CompanyAppConfig | null;
   memberships: UserCompanyMembership[];
   activeCompanyName: string | null;
+  workspaceBlock: WorkspaceAccessBlock | null;
 }> {
   try {
     await ensureFirestoreAuthReady(authUser);
@@ -309,6 +312,14 @@ export async function hydrateEffectiveProfile(authUser: User): Promise<{
         companyConfig: null,
         memberships,
         activeCompanyName: null,
+        workspaceBlock: resolveWorkspaceAccessBlock({
+          companyId: null,
+          companyName: null,
+          isCompanyOwner: false,
+          employeeExists: false,
+          employeeIsActive: null,
+          membershipsCount: memberships.length,
+        }),
       };
     }
 
@@ -346,15 +357,26 @@ export async function hydrateEffectiveProfile(authUser: User): Promise<{
       ? readCompanyDisplayName(companyDoc, companyId)
       : memberships.find((entry) => normalizeCompanyId(entry.companyId) === companyId)?.name ?? null;
 
+    const isCompanyOwner = companyDoc?.ownerId === authUser.uid;
+    const workspaceBlock = resolveWorkspaceAccessBlock({
+      companyId,
+      companyName: activeCompanyName,
+      isCompanyOwner: isCompanyOwner === true,
+      employeeExists: employeeSnapshot?.exists() === true,
+      employeeIsActive: employeeDoc?.isActive ?? null,
+      membershipsCount: memberships.length,
+    });
+
     return {
       profile: {
         ...merged,
         companyId,
-        isCompanyOwner: companyDoc?.ownerId === authUser.uid,
+        isCompanyOwner: isCompanyOwner === true,
       },
       companyConfig,
       memberships,
       activeCompanyName,
+      workspaceBlock,
     };
   } catch (error) {
     console.warn('Profile hydrate fallback:', error);
@@ -368,6 +390,7 @@ export async function hydrateEffectiveProfile(authUser: User): Promise<{
       companyConfig: null,
       memberships: fast.memberships,
       activeCompanyName: null,
+      workspaceBlock: null,
     };
   }
 }

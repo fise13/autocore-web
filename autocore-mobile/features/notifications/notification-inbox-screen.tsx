@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, View } from 'react-native';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 
 import { AlertTriangleIcon, BellIcon } from '@/assets/icons';
 import { Badge, Button, EmptyState, SearchInput, Text } from '@/components/ui';
@@ -14,8 +15,15 @@ import { ActivityDateGroup } from './components/activity-date-group';
 import { ActivityFeedFilters } from './components/activity-feed-filters';
 import { NotificationInboxSkeleton } from './components/notification-row-skeleton';
 import { groupNotificationsByDate } from './lib/group-by-date';
+import { resolveNotificationInboxReturnHref } from '@/lib/navigation/open-notification-inbox';
 
 export function NotificationInboxScreen() {
+  const router = useRouter();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const backFallbackHref = useMemo(
+    () => resolveNotificationInboxReturnHref(returnTo),
+    [returnTo],
+  );
   const { colors } = useTheme();
   const unreadCount = useNotificationStore((s) => s.unreadCount);
   const loading = useNotificationStore((s) => s.loading);
@@ -42,6 +50,12 @@ export function NotificationInboxScreen() {
     await NotificationService.syncInbox();
     setRefreshing(false);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void NotificationService.syncInbox();
+    }, []),
+  );
 
   const handlePress = useCallback((item: AppNotification) => {
     NotificationService.open(item);
@@ -70,6 +84,8 @@ export function NotificationInboxScreen() {
     <ProfileScreenShell
       title="Центр активности"
       subtitle={subtitle}
+      backFallbackHref={backFallbackHref}
+      onBack={() => router.replace(backFallbackHref)}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={() => void handleRefresh()} />
       }

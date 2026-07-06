@@ -192,3 +192,55 @@ export async function emitEmployeeInvitedNotification(params: {
     console.error("[team-notifications] invite notification failed", error);
   }
 }
+
+export async function emitMemberRemovedFromCompanyNotification(params: {
+  companyId: string;
+  companyName: string;
+  targetUserId: string;
+  actorUserId: string;
+}): Promise<void> {
+  const ctx: NotificationEventContext = {
+    companyId: params.companyId,
+    eventType: "employee.removed_from_company",
+    actorUserId: params.actorUserId,
+    aggregateType: "company",
+    aggregateId: params.companyId,
+    payload: {
+      companyName: params.companyName,
+      summary: `Вас удалили из «${params.companyName}»`,
+    },
+    deepLink: "autocoremobile://profile/workspace",
+  };
+
+  try {
+    await deliverInboxNotification(params.targetUserId, params.companyId, ctx);
+  } catch (error) {
+    console.error("[team-notifications] member removed notification failed", error);
+  }
+}
+
+export async function emitMemberAccessSuspendedNotification(params: {
+  companyId: string;
+  companyName: string;
+  targetUserId: string;
+  actorUserId: string;
+}): Promise<void> {
+  const ctx: NotificationEventContext = {
+    companyId: params.companyId,
+    eventType: "employee.access_suspended",
+    actorUserId: params.actorUserId,
+    aggregateType: "company",
+    aggregateId: params.companyId,
+    payload: {
+      companyName: params.companyName,
+      summary: `Доступ к «${params.companyName}» приостановлен администратором`,
+    },
+    deepLink: "autocoremobile://profile/workspace",
+  };
+
+  try {
+    await deliverInboxNotification(params.targetUserId, params.companyId, ctx);
+  } catch (error) {
+    console.error("[team-notifications] member suspended notification failed", error);
+  }
+}

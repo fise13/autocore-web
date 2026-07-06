@@ -1,6 +1,15 @@
 import { createContext, useCallback, useContext, useMemo, useRef, type ReactNode } from 'react';
 
-export const TAB_ORDER = ['index', 'search', 'warehouse', 'scan', 'orders', 'accounting', 'profile'] as const;
+export const TAB_ORDER = [
+  'index',
+  'search',
+  'warehouse',
+  'scan',
+  'orders',
+  'my-earnings',
+  'accounting',
+  'profile',
+] as const;
 export type TabRouteName = (typeof TAB_ORDER)[number];
 
 type TabTransitionContextValue = {

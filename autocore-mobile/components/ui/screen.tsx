@@ -78,6 +78,8 @@ type StackScreenProps = {
   refreshControl?: ScrollViewProps['refreshControl'];
   /** Route when stack history is empty (deep links, bell → inbox). */
   backFallbackHref?: Href;
+  /** Override default back behaviour (e.g. cross-tab inbox). */
+  onBack?: () => void;
 };
 
 /** Stack sub-screen: back chevron, title, scroll body. Section cards provide horizontal inset. */
@@ -88,11 +90,20 @@ export function StackScreen({
   gap = spacing[3],
   refreshControl,
   backFallbackHref = PROFILE_SETTINGS_HUB_HREF,
+  onBack,
 }: StackScreenProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   useReleaseStackNavigationOnFocus();
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+      return;
+    }
+    goBackOrReplace(router, backFallbackHref);
+  };
 
   return (
     <Screen>
@@ -110,7 +121,7 @@ export function StackScreen({
           accessibilityLabel="Назад"
           variant="ghost"
           size="sm"
-          onPress={() => goBackOrReplace(router, backFallbackHref)}
+          onPress={handleBack}
         >
           <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
         </IconButton>

@@ -1,6 +1,5 @@
 import {
   collection,
-  deleteDoc,
   doc,
   onSnapshot,
   orderBy,
@@ -10,6 +9,7 @@ import {
 } from 'firebase/firestore';
 
 import { toDateFromFirestore } from '@/lib/firestore-timestamp';
+import { removeMemberFromCompany, setMemberActive as setMemberActiveViaApi } from '@/services/api/org-api';
 import { getFirebaseDb } from '@/services/firebase';
 import type { CompanyEmployee } from '@/types/rbac';
 import type { Permission, UserRole } from '@/types/user';
@@ -66,11 +66,7 @@ export async function setEmployeeActive(
   employeeId: string,
   isActive: boolean,
 ): Promise<void> {
-  await updateDoc(doc(getFirebaseDb(), 'companies', companyId, 'employees', employeeId), {
-    isActive,
-    updatedAt: serverTimestamp(),
-  });
-  await updateDoc(doc(getFirebaseDb(), 'users', employeeId), { isActive });
+  await setMemberActiveViaApi(companyId, employeeId, isActive);
 }
 
 export async function setEmployeePermissionOverrides(
@@ -86,11 +82,5 @@ export async function setEmployeePermissionOverrides(
 }
 
 export async function removeEmployee(companyId: string, employeeId: string): Promise<void> {
-  await deleteDoc(doc(getFirebaseDb(), 'companies', companyId, 'employees', employeeId));
-  await updateDoc(doc(getFirebaseDb(), 'users', employeeId), {
-    companyId: '',
-    role: 'employee',
-    permissions: [],
-    isActive: false,
-  });
+  await removeMemberFromCompany(companyId, employeeId);
 }

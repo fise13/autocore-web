@@ -288,6 +288,42 @@ export const NOTIFICATION_EVENT_REGISTRY: Record<
     }),
     buildDeepLink: () => "autocoremobile://",
   },
+  "employee.removed_from_company": {
+    eventType: "employee.removed_from_company",
+    category: "team",
+    priority: "high",
+    defaultChannels: ["inbox", "push"],
+    roles: ["owner", "admin", "manager", "employee", "mechanic", "accountant", "diagnostician"],
+    groupable: false,
+    groupWindowMinutes: 0,
+    buildGroupKey: (ctx) => `employee-removed:${ctx.recipientUserIds?.[0] ?? "unknown"}`,
+    buildCopy: (ctx) => ({
+      title: "Доступ к компании закрыт",
+      body: String(
+        ctx.payload?.summary ??
+          `Вас удалили из «${String(ctx.payload?.companyName ?? "компании")}»`,
+      ),
+    }),
+    buildDeepLink: () => "autocoremobile://profile/workspace",
+  },
+  "employee.access_suspended": {
+    eventType: "employee.access_suspended",
+    category: "team",
+    priority: "high",
+    defaultChannels: ["inbox", "push"],
+    roles: ["owner", "admin", "manager", "employee", "mechanic", "accountant", "diagnostician"],
+    groupable: false,
+    groupWindowMinutes: 0,
+    buildGroupKey: (ctx) => `employee-suspended:${ctx.recipientUserIds?.[0] ?? "unknown"}`,
+    buildCopy: (ctx) => ({
+      title: "Доступ приостановлен",
+      body: String(
+        ctx.payload?.summary ??
+          `Администратор приостановил ваш доступ к «${String(ctx.payload?.companyName ?? "компании")}»`,
+      ),
+    }),
+    buildDeepLink: () => "autocoremobile://profile/workspace",
+  },
   "role.changed": {
     eventType: "role.changed",
     category: "team",

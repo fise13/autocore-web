@@ -57,6 +57,8 @@ export const NOTIFICATION_EVENT_TYPES = [
   "employee.invited",
   "employee.joined_by_invite",
   "employee.joined_welcome",
+  "employee.removed_from_company",
+  "employee.access_suspended",
   "role.changed",
   "warranty.expiring",
   "subscription.expiring",

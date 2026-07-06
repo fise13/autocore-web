@@ -2,10 +2,11 @@ import { memo, useCallback, useEffect, useState } from 'react';
 
 import { useAuthStore } from '@/store/auth-store';
 import { AuthLoadingScreen } from '@/authentication/auth-loading-screen';
-import { AuthenticatedLandingScreen } from '@/authentication/authenticated-landing-screen';
 import { AuthRedirectEffect } from '@/authentication/auth-redirect-effect';
 import { SubscriptionRequiredScreen } from '@/authentication/subscription-required-screen';
+import { WorkspaceAccessScreen } from '@/authentication/workspace-access-screen';
 import { useAuthHasAccess } from '@/authentication/auth-provider';
+import { useWorkspaceAccessRealtime } from '@/hooks/use-workspace-access-realtime';
 import { useCompanySubscription } from '@/hooks/use-company-subscription';
 import { useAuthJourneyStep } from '@/hooks/use-auth-journey-step';
 import { resolveSessionCompanyId } from '@/lib/session/merge-hydration';
@@ -38,15 +39,20 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const firebaseUser = useAuthStore((s) => s.firebaseUser);
   const profile = useAuthStore((s) => s.profile);
   const memberships = useAuthStore((s) => s.memberships);
+  const workspaceBlock = useAuthStore((s) => s.workspaceBlock);
 
   const isReady = status !== 'booting' && !isHydrating;
   const hasAccess = useAuthHasAccess();
+  const isWorkspaceBlocked = Boolean(workspaceBlock);
 
   const journeyStep = useAuthJourneyStep();
   const companyId = resolveSessionCompanyId(profile, memberships);
   const { isPro, isLoading: subscriptionLoading } = useCompanySubscription(companyId);
   const [refreshing, setRefreshing] = useState(false);
-  const isInactiveEmployee = Boolean(firebaseUser) && journeyStep === 'app' && profile?.isActive === false;
+
+  useWorkspaceAccessRealtime(
+    Boolean(firebaseUser) && journeyStep === 'app' && hasAccess && !isWorkspaceBlocked,
+  );
 
   const needsSubscription =
     Boolean(firebaseUser) && journeyStep === 'app' && hasAccess && !subscriptionLoading && !isPro;
@@ -99,11 +105,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (firebaseUser && journeyStep === 'app' && !hasAccess) {
+  if (firebaseUser && journeyStep === 'app' && (isWorkspaceBlocked || !hasAccess)) {
     return (
       <>
         <AuthRedirectEffect />
-        <AuthenticatedLandingScreen inactive={isInactiveEmployee} />
+        <WorkspaceAccessScreen />
       </>
     );
   }

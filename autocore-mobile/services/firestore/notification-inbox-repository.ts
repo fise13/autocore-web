@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   getDocs,
+  onSnapshot,
   query,
   updateDoc,
   where,
@@ -52,6 +53,25 @@ function filterByState(
   return items.filter((item) => item.state === state);
 }
 
+function mapCompanyInbox(
+  docs: Array<{ id: string; data: () => Record<string, unknown> }>,
+  companyId: string,
+  state: NotificationInboxState | 'active',
+  limit: number,
+): { items: NotificationRecord[]; unreadCount: number } {
+  const normalizedCompanyId = normalizeCompanyId(companyId);
+  const companyItems = docs
+    .map((docSnap) => mapNotificationRecord(docSnap.id, docSnap.data()))
+    .filter((item) => normalizeCompanyId(item.companyId) === normalizedCompanyId);
+
+  const unreadCount = companyItems.filter((item) => item.state === 'unread').length;
+  const items = filterByState(companyItems, state)
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+    .slice(0, limit);
+
+  return { items, unreadCount };
+}
+
 export async function fetchInboxFromFirestore(params: {
   userId: string;
   companyId: string;
@@ -59,22 +79,37 @@ export async function fetchInboxFromFirestore(params: {
   limit?: number;
 }): Promise<{ items: NotificationRecord[]; unreadCount: number }> {
   const limit = params.limit ?? 50;
-  const normalizedCompanyId = normalizeCompanyId(params.companyId);
 
   const snap = await getDocs(
     query(collection(getFirebaseDb(), COLLECTION), where('userId', '==', params.userId)),
   );
 
-  const companyItems = snap.docs
-    .map((docSnap) => mapNotificationRecord(docSnap.id, docSnap.data()))
-    .filter((item) => normalizeCompanyId(item.companyId) === normalizedCompanyId);
+  return mapCompanyInbox(snap.docs, params.companyId, params.state ?? 'active', limit);
+}
 
-  const unreadCount = companyItems.filter((item) => item.state === 'unread').length;
-  const items = filterByState(companyItems, params.state ?? 'active')
-    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
-    .slice(0, limit);
+export function subscribeInboxFromFirestore(params: {
+  userId: string;
+  companyId: string;
+  state?: NotificationInboxState | 'active';
+  limit?: number;
+  onData: (payload: { items: NotificationRecord[]; unreadCount: number }) => void;
+  onError?: (error: Error) => void;
+}): () => void {
+  const limit = params.limit ?? 50;
+  const inboxQuery = query(
+    collection(getFirebaseDb(), COLLECTION),
+    where('userId', '==', params.userId),
+  );
 
-  return { items, unreadCount };
+  return onSnapshot(
+    inboxQuery,
+    (snapshot) => {
+      params.onData(
+        mapCompanyInbox(snapshot.docs, params.companyId, params.state ?? 'active', limit),
+      );
+    },
+    (error) => params.onError?.(error),
+  );
 }
 
 export async function updateInboxNotificationState(

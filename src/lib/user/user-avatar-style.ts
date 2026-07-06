@@ -37,3 +37,21 @@ export function userAvatarGradientCss(seed: string): string {
   const { from, to } = pickUserAvatarGradient(seed);
   return `linear-gradient(135deg, ${from} 0%, ${to} 100%)`;
 }
+
+/** Stable gradient key — always prefer profile id / auth uid over email. */
+export function resolveUserAvatarSeed(params: {
+  profileId?: string | null;
+  uid?: string | null;
+  email?: string | null;
+}): string {
+  const profileId = params.profileId?.trim();
+  if (profileId) return profileId;
+
+  const uid = params.uid?.trim();
+  if (uid) return uid;
+
+  const email = params.email?.trim();
+  if (email) return email;
+
+  return "user";
+}

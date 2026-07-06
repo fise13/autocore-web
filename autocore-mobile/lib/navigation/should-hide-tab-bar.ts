@@ -10,6 +10,7 @@ const TAB_ROOTS = new Set([
   '/(tabs)/search',
   '/(tabs)/scan',
   '/(tabs)/orders',
+  '/(tabs)/my-earnings',
   '/(tabs)/accounting',
   '/(tabs)/profile',
   '/search',

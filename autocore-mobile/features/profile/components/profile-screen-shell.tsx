@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { ScrollViewProps } from 'react-native';
+import type { Href } from 'expo-router';
 
 import { StackScreen } from '@/components/ui';
 
@@ -8,6 +9,8 @@ type ProfileScreenShellProps = {
   subtitle?: string;
   children: ReactNode;
   refreshControl?: ScrollViewProps['refreshControl'];
+  backFallbackHref?: Href;
+  onBack?: () => void;
 };
 
 /** @deprecated Prefer StackScreen from design system — kept as alias for feature imports. */
@@ -16,9 +19,17 @@ export function ProfileScreenShell({
   subtitle,
   children,
   refreshControl,
+  backFallbackHref,
+  onBack,
 }: ProfileScreenShellProps) {
   return (
-    <StackScreen title={title} subtitle={subtitle} refreshControl={refreshControl}>
+    <StackScreen
+      title={title}
+      subtitle={subtitle}
+      refreshControl={refreshControl}
+      backFallbackHref={backFallbackHref}
+      onBack={onBack}
+    >
       {children}
     </StackScreen>
   );

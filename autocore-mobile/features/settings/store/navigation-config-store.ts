@@ -49,20 +49,31 @@ export const useNavigationConfigStore = create<NavigationConfigState>()(
     {
       name: 'autocore-nav-config',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 2,
+      version: 3,
       migrate: (persisted, version) => {
         const state = persisted as Pick<NavigationConfigState, 'order' | 'enabled'> | undefined;
         if (!state || typeof state !== 'object') return persisted;
+
+        let order = Array.isArray(state.order) ? [...state.order] : [...DEFAULT_NAV_ORDER];
+        let enabled = { ...DEFAULT_NAV_ENABLED, ...state.enabled };
+
         if (version < 2) {
-          return {
-            ...state,
-            enabled: {
-              ...state.enabled,
-              accounting: true,
-            },
-          };
+          enabled = { ...enabled, accounting: true };
         }
-        return state;
+
+        if (version < 3) {
+          if (!order.includes('my_earnings')) {
+            const ordersIndex = order.indexOf('orders');
+            if (ordersIndex >= 0) {
+              order.splice(ordersIndex + 1, 0, 'my_earnings');
+            } else {
+              order.unshift('my_earnings');
+            }
+          }
+          enabled.my_earnings = true;
+        }
+
+        return { ...state, order, enabled };
       },
       onRehydrateStorage: () => (state) => {
         state?.setHydrated(true);

@@ -21,6 +21,7 @@ import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { uploadUserAvatar } from "@/infrastructure/firestore/user-profile-service";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
 import { formatRole, mapAuthError, userCopy } from "@/lib/user-copy";
+import { resolveUserAvatarSeed } from "@/lib/user/user-avatar-style";
 
 type AccountSettingsPanelProps = {
   onStatus?: (message: string | null) => void;
@@ -176,6 +177,11 @@ export function AccountSettingsPanel({ onStatus }: AccountSettingsPanelProps) {
   }
 
   const isEmailProvider = accountInfo?.kind === "email";
+  const userSeed = resolveUserAvatarSeed({
+    profileId: uid,
+    uid: firebaseUser?.uid,
+    email: profile?.email ?? accountInfo?.email,
+  });
 
   return (
     <>
@@ -215,6 +221,7 @@ export function AccountSettingsPanel({ onStatus }: AccountSettingsPanelProps) {
                   photoURL={photoURL}
                   displayName={displayName}
                   email={profile?.email ?? accountInfo?.email}
+                  seed={userSeed}
                   provider={accountInfo?.kind}
                   showProviderBadge
                   size="lg"

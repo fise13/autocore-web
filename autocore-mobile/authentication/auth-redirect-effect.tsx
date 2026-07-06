@@ -5,7 +5,11 @@ import { useAuthStore } from '@/store/auth-store';
 import { useCompanySubscription } from '@/hooks/use-company-subscription';
 import { journeyPathForStep, useAuthJourneyStep } from '@/hooks/use-auth-journey-step';
 import { isProductionCompanyId } from '@/lib/company-id';
+import { resolveInitialTabHref } from '@/lib/navigation/nav-item-availability';
+import { canAccessMissionControl } from '@/lib/rbac/navigation-policy';
 import { resolveSessionCompanyId } from '@/lib/session/merge-hydration';
+import { useNavigationConfigStore } from '@/features/settings/store/navigation-config-store';
+import { useCompanyModuleEnabled } from '@/hooks/use-module-enabled';
 
 /**
  * Headless auth routing — owns segment subscriptions so AuthGate UI
@@ -15,22 +19,30 @@ export function AuthRedirectEffect() {
   const router = useRouter();
   const segments = useSegments();
   const lastRedirectRef = useRef<string | null>(null);
+  const sessionTabBootRef = useRef(false);
 
   const status = useAuthStore((s) => s.status);
   const isHydrating = useAuthStore((s) => s.isHydrating);
   const firebaseUser = useAuthStore((s) => s.firebaseUser);
   const profile = useAuthStore((s) => s.profile);
   const memberships = useAuthStore((s) => s.memberships);
+  const workspaceBlock = useAuthStore((s) => s.workspaceBlock);
 
   const isReady = status !== 'booting' && !isHydrating;
   const companyId = resolveSessionCompanyId(profile, memberships);
   const hasAccess =
     status === 'authenticated' &&
+    !workspaceBlock &&
     profile?.isActive !== false &&
     isProductionCompanyId(companyId);
 
   const journeyStep = useAuthJourneyStep();
   const { isPro, isLoading: subscriptionLoading } = useCompanySubscription(companyId);
+  const navOrder = useNavigationConfigStore((s) => s.order);
+  const navEnabled = useNavigationConfigStore((s) => s.enabled);
+  const workOrdersEnabled = useCompanyModuleEnabled('workOrders');
+  const warehouseEnabled = useCompanyModuleEnabled('warehouse');
+  const accountingModuleEnabled = useCompanyModuleEnabled('accounting');
 
   useEffect(() => {
     if (!isReady) return;
@@ -48,6 +60,21 @@ export function AuthRedirectEffect() {
       lastRedirectRef.current = href;
       router.replace(href as never);
     };
+
+    const isGenericTabEntry =
+      inTabs &&
+      (segments.length === 1 || (segments.length === 2 && segments[1] === 'index'));
+
+    const initialTab = resolveInitialTabHref({
+      profile,
+      navOrder,
+      navEnabled,
+      modules: {
+        workOrders: workOrdersEnabled,
+        warehouse: warehouseEnabled,
+        accounting: accountingModuleEnabled,
+      },
+    });
 
     if (!firebaseUser) {
       if (!onLogin && !onForgot && !inInvite) {
@@ -72,8 +99,26 @@ export function AuthRedirectEffect() {
       return;
     }
 
-    if (hasAccess && (isPro || subscriptionLoading) && !inTabs) {
-      redirect('/(tabs)');
+    if (hasAccess && (isPro || subscriptionLoading)) {
+      if (!inTabs) {
+        redirect(initialTab);
+        return;
+      }
+
+      if (isGenericTabEntry && !sessionTabBootRef.current) {
+        sessionTabBootRef.current = true;
+        redirect(initialTab);
+        return;
+      }
+
+      const onMission =
+        segments.length === 2 &&
+        segments[1] === 'index' &&
+        profile &&
+        !canAccessMissionControl(profile);
+      if (onMission) {
+        redirect(initialTab);
+      }
     }
   }, [
     firebaseUser,
@@ -84,6 +129,12 @@ export function AuthRedirectEffect() {
     router,
     segments,
     subscriptionLoading,
+    profile,
+    navOrder,
+    navEnabled,
+    workOrdersEnabled,
+    warehouseEnabled,
+    accountingModuleEnabled,
   ]);
 
   useEffect(() => {

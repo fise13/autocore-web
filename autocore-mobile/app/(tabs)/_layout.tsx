@@ -30,6 +30,7 @@ export default function TabLayout() {
         <Tabs.Screen name="warehouse" options={{ href: null, title: 'Warehouse' }} />
         <Tabs.Screen name="scan" options={{ title: 'Scan' }} />
         <Tabs.Screen name="orders" options={{ title: 'Orders' }} />
+        <Tabs.Screen name="my-earnings" options={{ title: 'My earnings' }} />
         <Tabs.Screen name="accounting" options={{ title: 'Accounting' }} />
         <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
       </Tabs>

@@ -1,6 +1,7 @@
 import {
   BarChart3Icon,
   ClipboardListIcon,
+  CoinsIcon,
   FileStackIcon,
   FileTextIcon,
   LayoutGridIcon,
@@ -52,6 +53,13 @@ export const NAV_ITEM_DEFINITIONS: Record<NavItemId, NavItemDefinition> = {
     description: 'Рабочие заказы и статусы',
     icon: FileTextIcon,
     route: '/(tabs)/orders',
+  },
+  my_earnings: {
+    id: 'my_earnings',
+    title: 'Мои начисления',
+    description: 'Выплаты по закрытым нарядам',
+    icon: CoinsIcon,
+    route: '/(tabs)/my-earnings',
   },
   profile: {
     id: 'profile',
@@ -105,12 +113,13 @@ export const NAV_ITEM_DEFINITIONS: Record<NavItemId, NavItemDefinition> = {
 };
 
 export const DEFAULT_NAV_ORDER: NavItemId[] = [
-  'mission',
+  'orders',
+  'my_earnings',
   'search',
   'scan',
-  'orders',
   'accounting',
   'profile',
+  'mission',
   'warehouse',
   'sales',
   'documents',
@@ -123,6 +132,7 @@ export const DEFAULT_NAV_ENABLED: Record<NavItemId, boolean> = {
   search: true,
   scan: true,
   orders: true,
+  my_earnings: true,
   accounting: true,
   profile: true,
   warehouse: false,

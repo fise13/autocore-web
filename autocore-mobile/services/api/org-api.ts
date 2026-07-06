@@ -26,6 +26,28 @@ export function declineInvite(token: string): Promise<{ ok: boolean }> {
   return mobilePost<{ ok: boolean }>('/api/invites/decline', { token });
 }
 
+export function removeMemberFromCompany(
+  companyId: string,
+  userId: string,
+): Promise<{ ok: boolean; nextCompanyId: string | null }> {
+  return mobilePost<{ ok: boolean; nextCompanyId: string | null }>('/api/org/members/remove', {
+    companyId,
+    userId,
+  });
+}
+
+export function setMemberActive(
+  companyId: string,
+  userId: string,
+  isActive: boolean,
+): Promise<{ ok: boolean }> {
+  return mobilePost<{ ok: boolean }>('/api/org/members/set-active', {
+    companyId,
+    userId,
+    isActive,
+  });
+}
+
 export function leaveOrganization(companyId: string): Promise<{ ok: boolean; nextCompanyId: string | null }> {
   return mobilePost<{ ok: boolean; nextCompanyId: string | null }>('/api/org/leave', { companyId });
 }

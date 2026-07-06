@@ -257,34 +257,42 @@ export function createEmployeeRbacRepository() {
       employeeId: string,
       isActive: boolean,
     ): Promise<void> {
-      await updateDoc(doc(db, "companies", companyId, "employees", employeeId), {
+      await postOrgMemberAction("/api/org/members/set-active", {
+        companyId,
+        userId: employeeId,
         isActive,
-        updatedAt: serverTimestamp(),
-      });
-      await updateDoc(doc(db, "users", employeeId), {
-        isActive,
-      });
-      await activity.append(companyId, {
-        actor: actorId,
-        action: isActive ? "employee.activated" : "employee.deactivated",
-        target: `employee:${employeeId}`,
       });
     },
 
     async removeEmployee(companyId: string, actorId: string, employeeId: string): Promise<void> {
-      await deleteDoc(doc(db, "companies", companyId, "employees", employeeId));
-      await updateDoc(doc(db, "users", employeeId), {
-        companyId: "",
-        role: "employee",
-        permissions: [],
-        isActive: false,
-      });
-      await activity.append(companyId, {
-        actor: actorId,
-        action: "employee.removed",
-        target: `employee:${employeeId}`,
+      void actorId;
+      await postOrgMemberAction("/api/org/members/remove", {
+        companyId,
+        userId: employeeId,
       });
     },
   };
+}
+
+async function postOrgMemberAction(path: string, body: Record<string, unknown>): Promise<void> {
+  const { getFirebaseAuth } = await import("@/infrastructure/firebase/client");
+  const token = await getFirebaseAuth().currentUser?.getIdToken();
+  if (!token) {
+    throw new Error("Требуется авторизация");
+  }
+
+  const response = await fetch(path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const payload = (await response.json()) as { error?: string };
+  if (!response.ok) {
+    throw new Error(payload.error ?? "Не удалось выполнить действие");
+  }
 }
 

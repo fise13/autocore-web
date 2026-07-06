@@ -53,6 +53,7 @@ export function CompanyJourneyScreen() {
     try {
       await joinCompanyWithInviteCode(firebaseUser.uid, inviteCode);
       await refreshProfile();
+      await NotificationService.syncInbox();
     } catch (cause) {
       setError(mapAuthError(cause));
     } finally {

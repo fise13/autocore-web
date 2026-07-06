@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
     const inviterSnap = await db.collection("users").doc(access.uid).get();
     const inviterName = inviterSnap.exists ? String(inviterSnap.data()?.name ?? "") : "";
 
-    void emitEmployeeInvitedNotification({
+    await emitEmployeeInvitedNotification({
       companyId: manager.companyId,
       actorUserId: access.uid,
       actorName: inviterName || undefined,

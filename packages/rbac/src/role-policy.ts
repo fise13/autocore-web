@@ -1,7 +1,14 @@
 import { hasPermission, type Permission, type UserEntity, type UserRole } from './user';
 import { getDataScope } from './data-scopes';
 
-export type MobileTabId = 'index' | 'search' | 'scan' | 'orders' | 'accounting' | 'profile';
+export type MobileTabId =
+  | 'index'
+  | 'search'
+  | 'scan'
+  | 'orders'
+  | 'accounting'
+  | 'profile'
+  | 'my-earnings';
 
 export type WebNavItemId =
   | 'home'
@@ -34,7 +41,7 @@ function roleNavAllowlist(role: UserRole | undefined): readonly WebNavItemId[] |
 
 export function canAccessMyEarnings(user: UserEntity | null | undefined): boolean {
   if (!user) return false;
-  return user.role === 'mechanic' && hasPermission(user, 'payroll_view_own');
+  return hasPermission(user, 'payroll_view_own');
 }
 
 export function canAccessMissionControl(user: UserEntity | null | undefined): boolean {
@@ -77,6 +84,8 @@ export function isMobileTabAllowed(
 
   if (tabId === 'profile') return true;
 
+  if (tabId === 'my-earnings') return canAccessMyEarnings(user);
+
   if (tabId === 'index') return canAccessMissionControl(user);
 
   const permission = MOBILE_TAB_PERMISSION[tabId];
@@ -115,6 +124,7 @@ export function defaultMobileTab(user: UserEntity | null | undefined): MobileTab
   if (!user) return 'profile';
   if (canAccessMissionControl(user)) return 'index';
   if (hasPermission(user, 'work_orders_view')) return 'orders';
+  if (canAccessMyEarnings(user)) return 'my-earnings';
   if (hasPermission(user, 'accounting_view')) return 'accounting';
   if (hasPermission(user, 'inventory_view')) return 'search';
   return 'profile';

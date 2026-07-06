@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 
 import { NotificationService } from '@/services/notifications';
 import type { NotificationInboxState, NotificationRecord } from '@/types/notifications';
@@ -19,6 +20,12 @@ export function useNotificationInbox(
       void NotificationService.syncInbox();
     }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void NotificationService.syncInbox();
+    }, []),
+  );
 
   const refresh = useCallback(async () => {
     await NotificationService.syncInbox();

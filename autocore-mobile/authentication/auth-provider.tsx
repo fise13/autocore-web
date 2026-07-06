@@ -51,6 +51,7 @@ import type { AuthStatus } from '@/types/auth';
 import type { CompanyAppConfig } from '@/types/company-config';
 import type { UserCompanyMembership } from '@/types/rbac';
 import type { UserEntity } from '@/types/user';
+import type { WorkspaceAccessBlock } from '@/types/workspace-access';
 import { mapAuthError } from '@/utils/auth-error';
 
 export type AuthActions = {
@@ -84,6 +85,7 @@ type HydrationPayload = {
   companyConfig: CompanyAppConfig | null;
   memberships: UserCompanyMembership[];
   activeCompanyName: string | null;
+  workspaceBlock?: WorkspaceAccessBlock | null;
 };
 
 function readHydrationFromStore(): HydrationPayload {
@@ -93,6 +95,7 @@ function readHydrationFromStore(): HydrationPayload {
     companyConfig: state.companyConfig,
     memberships: state.memberships,
     activeCompanyName: state.activeCompanyName,
+    workspaceBlock: state.workspaceBlock,
   };
 }
 
@@ -821,10 +824,12 @@ export function useAuthHasAccess(): boolean {
   const status = useAuthStore((s) => s.status);
   const profile = useAuthStore((s) => s.profile);
   const memberships = useAuthStore((s) => s.memberships);
+  const workspaceBlock = useAuthStore((s) => s.workspaceBlock);
   const companyId = resolveSessionCompanyId(profile, memberships);
 
   return (
     status === 'authenticated' &&
+    !workspaceBlock &&
     profile?.isActive !== false &&
     isProductionCompanyId(companyId)
   );
@@ -842,6 +847,7 @@ export function useAuth() {
   const companyConfig = useAuthStore((s) => s.companyConfig);
   const memberships = useAuthStore((s) => s.memberships);
   const activeCompanyName = useAuthStore((s) => s.activeCompanyName);
+  const workspaceBlock = useAuthStore((s) => s.workspaceBlock);
   const isOnline = useAuthStore((s) => s.isOnline);
   const isHydrating = useAuthStore((s) => s.isHydrating);
   const error = useAuthStore((s) => s.error);
@@ -851,6 +857,7 @@ export function useAuth() {
     status === 'authenticated' && !isProductionCompanyId(resolveSessionCompanyId(profile, memberships));
   const hasAccess =
     status === 'authenticated' &&
+    !workspaceBlock &&
     profile?.isActive !== false &&
     isProductionCompanyId(resolveSessionCompanyId(profile, memberships));
 
@@ -862,6 +869,7 @@ export function useAuth() {
       companyConfig,
       memberships,
       activeCompanyName,
+      workspaceBlock,
       isOnline,
       isHydrating,
       error,
@@ -884,6 +892,7 @@ export function useAuth() {
       profile,
       requiresCompanySelection,
       status,
+      workspaceBlock,
     ],
   );
 }

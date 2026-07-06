@@ -6,6 +6,7 @@ import { useAuth } from '@/authentication/auth-provider';
 import { Button, Input, Text } from '@/components/ui';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
 import { joinCompanyWithInviteCode } from '@/services/firestore/join-company-service';
+import { NotificationService } from '@/services/notifications';
 import { parseInviteTokenFromPath } from '@autocore/org';
 import { mapAuthError } from '@/utils/auth-error';
 import { rhythm } from '@/theme';
@@ -52,6 +53,7 @@ export function JoinCompanyScreen() {
 
       await joinCompanyWithInviteCode(firebaseUser.uid, parsed.code);
       await refreshProfile();
+      await NotificationService.syncInbox();
       router.back();
     } catch (cause) {
       setError(mapAuthError(cause));

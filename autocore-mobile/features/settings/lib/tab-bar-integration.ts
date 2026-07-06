@@ -9,6 +9,7 @@ export const NAV_TO_EXPO_TAB: Partial<Record<NavItemId, string>> = {
   search: 'search',
   scan: 'scan',
   orders: 'orders',
+  my_earnings: 'my-earnings',
   accounting: 'accounting',
   profile: 'profile',
   settings: 'profile',

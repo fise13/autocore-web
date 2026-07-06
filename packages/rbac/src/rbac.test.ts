@@ -98,8 +98,9 @@ describe('navigation policy', () => {
     assert.equal(isMobileTabAllowed(user('admin'), 'index'), true);
   });
 
-  it('my earnings is mechanic only', () => {
+  it('my earnings follows payroll_view_own permission', () => {
     assert.equal(canAccessMyEarnings(user('mechanic')), true);
+    assert.equal(isMobileTabAllowed(user('mechanic'), 'my-earnings'), true);
     assert.equal(canAccessMyEarnings(user('diagnostician')), false);
     assert.equal(canAccessMyEarnings(user('manager')), false);
   });
