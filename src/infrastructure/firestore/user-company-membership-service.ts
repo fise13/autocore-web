@@ -78,6 +78,25 @@ export async function listUserCompanyMembershipIds(userId: string): Promise<stri
   return snapshot.docs.map((entry) => normalizeCompanyId(entry.id));
 }
 
+export async function loadUserCompanyMemberships(userId: string): Promise<UserCompanyMembership[]> {
+  if (!userId) return [];
+
+  const db = getFirestoreDb();
+  const snapshot = await getDocs(collection(db, "users", userId, "memberships"));
+  const memberships = await Promise.all(
+    snapshot.docs.map(async (membershipDoc) => {
+      const companyId = normalizeCompanyId(membershipDoc.id);
+      const data = membershipDoc.data();
+      const role = (data.role as UserRole) ?? "employee";
+      const name = await resolveCompanyName(companyId, readMembershipName(data, companyId));
+      return { companyId, role, name };
+    }),
+  );
+
+  memberships.sort((left, right) => left.name.localeCompare(right.name, "ru"));
+  return memberships;
+}
+
 export function subscribeUserCompanyMemberships(
   userId: string,
   onChange: (memberships: UserCompanyMembership[]) => void,

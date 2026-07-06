@@ -161,6 +161,7 @@ export async function emitEmployeeInvitedNotification(params: {
   email: string;
   role: UserRole;
   inviteId: string;
+  summary?: string;
 }): Promise<void> {
   const roleLabel = ROLE_LABELS[params.role] ?? params.role;
 
@@ -174,24 +175,20 @@ export async function emitEmployeeInvitedNotification(params: {
     payload: {
       email: params.email,
       role: roleLabel,
-      summary: `Приглашение отправлено на ${params.email}`,
+      summary: params.summary ?? `Приглашение отправлено на ${params.email}`,
     },
     deepLink: "autocoremobile://profile/team",
   };
 
-  try {
-    const recipients = await listTeamAdminRecipients(params.companyId, params.actorUserId);
-    const recipientIds = new Set(recipients.map((user) => user.id));
-    recipientIds.add(params.actorUserId);
+  const recipients = await listTeamAdminRecipients(params.companyId, params.actorUserId);
+  const recipientIds = new Set(recipients.map((user) => user.id));
+  recipientIds.add(params.actorUserId);
 
-    await Promise.all(
-      Array.from(recipientIds).map((userId) =>
-        deliverInboxNotification(userId, params.companyId, ctx),
-      ),
-    );
-  } catch (error) {
-    console.error("[team-notifications] invite notification failed", error);
-  }
+  await Promise.all(
+    Array.from(recipientIds).map((userId) =>
+      deliverInboxNotification(userId, params.companyId, ctx),
+    ),
+  );
 }
 
 export async function emitMemberRemovedFromCompanyNotification(params: {

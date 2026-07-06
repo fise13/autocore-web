@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 import { UserRole, USER_ROLES } from "@/domain/user";
+import { createInviteAsAdmin } from "@/infrastructure/firestore/invite-org-service.server";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
-import { generateInviteToken } from "@/lib/invites/invite-token";
 import { getResend, getSupportFrom, isResendConfigured } from "@/lib/email/resend-client";
 import {
   buildInviteEmailHtml,
@@ -11,26 +11,12 @@ import {
 } from "@/lib/email/templates/invite-email";
 import { AccountAccessError, verifyAccountAccess } from "@/lib/auth/verify-account-access";
 import { verifyCompanyManager } from "@/lib/auth/verify-company-manager.server";
-import { getPublicAppUrl } from "@/lib/site-urls";
-import { emitEmployeeInvitedNotification } from "@/lib/notifications/team-events.server";
 
 export const runtime = "nodejs";
-
-const INVITE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-function generateInviteCode(length = 6): string {
-  let code = "";
-  for (let index = 0; index < length; index += 1) {
-    code += INVITE_ALPHABET[Math.floor(Math.random() * INVITE_ALPHABET.length)];
-  }
-  return code;
-}
 
 function normalizeRole(role: string): UserRole {
   return USER_ROLES.includes(role as UserRole) ? (role as UserRole) : "employee";
 }
-
-import { buildInviteUrl } from "@autocore/org";
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,66 +36,42 @@ export async function POST(request: NextRequest) {
 
     const role = normalizeRole(typeof body.role === "string" ? body.role : "employee");
     const ttlHours = Math.min(Math.max(Number(body.ttlHours) || 72, 1), 168);
-    const expiresAt = new Date(Date.now() + ttlHours * 3600 * 1000);
 
     const db = getAdminFirestore();
     const companySnap = await db.collection("companies").doc(manager.companyId).get();
     const companyName = String(companySnap.data()?.name ?? "AutoCore");
 
-    let code = generateInviteCode();
-    for (let attempt = 0; attempt < 8; attempt += 1) {
-      const existing = await db.collection("invites").where("code", "==", code).limit(1).get();
-      if (existing.empty) break;
-      code = generateInviteCode();
-    }
-
-    const token = generateInviteToken();
-    const inviteRef = await db.collection("invites").add({
-      code,
-      token,
-      email,
-      companyId: manager.companyId,
-      role,
-      createdAt: FieldValue.serverTimestamp(),
-      expiresAt: Timestamp.fromDate(expiresAt),
-      createdBy: access.uid,
-      used: false,
-      status: "pending",
-    });
-
-    const appOrigin = getPublicAppUrl();
-    const joinUrl = buildInviteUrl(token, appOrigin);
-
     const inviterSnap = await db.collection("users").doc(access.uid).get();
     const inviterName = inviterSnap.exists ? String(inviterSnap.data()?.name ?? "") : "";
 
-    await emitEmployeeInvitedNotification({
+    const created = await createInviteAsAdmin({
       companyId: manager.companyId,
-      actorUserId: access.uid,
-      actorName: inviterName || undefined,
+      createdBy: access.uid,
+      createdByName: inviterName || undefined,
       email,
       role,
-      inviteId: inviteRef.id,
+      ttlHours,
     });
 
     if (!isResendConfigured()) {
       return NextResponse.json(
         {
           error: "Email service not configured",
-          inviteId: inviteRef.id,
-          joinUrl,
+          inviteId: created.inviteId,
+          joinUrl: created.joinUrl,
         },
         { status: 503 },
       );
     }
 
+    const expiresAt = new Date(Date.now() + ttlHours * 3600 * 1000);
     const resend = getResend();
     await resend.emails.send({
       from: getSupportFrom(),
       to: email,
       subject: buildInviteEmailSubject(companyName),
       html: buildInviteEmailHtml({
-        joinUrl,
+        joinUrl: created.joinUrl,
         companyName,
         role,
         expiresAt,
@@ -117,8 +79,8 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({
-      inviteId: inviteRef.id,
-      joinUrl,
+      inviteId: created.inviteId,
+      joinUrl: created.joinUrl,
       email,
     });
   } catch (error) {

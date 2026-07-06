@@ -3,6 +3,7 @@ import "server-only";
 import { Permission, UserEntity, type AccessScopes } from "@autocore/rbac";
 import { hasPermission } from "@/domain/user";
 import { getAdminAuth } from "@/infrastructure/firebase/admin";
+import { normalizeCompanyId } from "@/lib/company-id";
 import { resolveAccessProfile } from "@/lib/auth/resolve-access-profile.server";
 import { resolveMobileWorkspaceCompanyId } from "@/lib/mobile/session-bootstrap.server";
 
@@ -44,7 +45,11 @@ export async function verifyMobileAccess(
     throw new MobileAccessError("Недействительный токен", 401);
   }
 
-  const companyId = await resolveMobileWorkspaceCompanyId(uid);
+  const headerCompanyId = request.headers.get("x-company-id")?.trim();
+  const companyId =
+    headerCompanyId && headerCompanyId.length > 0
+      ? normalizeCompanyId(headerCompanyId)
+      : await resolveMobileWorkspaceCompanyId(uid);
   if (!companyId) {
     throw new MobileAccessError("Сначала присоединитесь к компании", 403);
   }

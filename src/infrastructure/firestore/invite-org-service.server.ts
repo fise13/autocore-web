@@ -13,7 +13,7 @@ import {
   buildInviteEmailSubject,
 } from "@/lib/email/templates/invite-email";
 import { getPublicAppUrl } from "@/lib/site-urls";
-import { emitEmployeeJoinedByInviteNotifications } from "@/lib/notifications/team-events.server";
+import { emitEmployeeJoinedByInviteNotifications, emitEmployeeInvitedNotification } from "@/lib/notifications/team-events.server";
 import {
   type AcceptInviteResult,
   type InvitePreview,
@@ -85,6 +85,114 @@ async function findInviteByToken(token: string) {
   if (snapshot.empty) return null;
   const doc = snapshot.docs[0]!;
   return { id: doc.id, data: doc.data() };
+}
+
+export async function createInviteAsAdmin(params: {
+  companyId: string;
+  createdBy: string;
+  createdByName?: string;
+  role: UserRole;
+  ttlHours?: number;
+  email?: string;
+}): Promise<{
+  inviteId: string;
+  code: string;
+  token: string;
+  joinUrl: string;
+  email: string | null;
+}> {
+  const companyId = normalizeCompanyId(params.companyId);
+  const role = normalizeRole(params.role);
+  const ttlHours = Math.min(Math.max(Number(params.ttlHours) || 72, 1), 168);
+  const expiresAt = new Date(Date.now() + ttlHours * 3600 * 1000);
+  const email = params.email?.trim().toLowerCase() || null;
+
+  const db = getAdminFirestore();
+  let code = generateInviteCode();
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const existing = await db.collection(INVITES).where("code", "==", code).limit(1).get();
+    if (existing.empty) break;
+    code = generateInviteCode();
+  }
+
+  const token = generateInviteToken();
+  const inviteRef = await db.collection(INVITES).add({
+    code,
+    token,
+    email: email ?? "",
+    companyId,
+    role,
+    createdAt: FieldValue.serverTimestamp(),
+    expiresAt: Timestamp.fromDate(expiresAt),
+    createdBy: params.createdBy,
+    used: false,
+    status: "pending",
+  });
+
+  const joinUrl = buildInviteUrl(token, getPublicAppUrl());
+
+  await emitEmployeeInvitedNotification({
+    companyId,
+    actorUserId: params.createdBy,
+    actorName: params.createdByName,
+    email: email ?? code,
+    role,
+    inviteId: inviteRef.id,
+    summary: email
+      ? `Приглашение отправлено на ${email}`
+      : `Создан код приглашения ${code}`,
+  });
+
+  return {
+    inviteId: inviteRef.id,
+    code,
+    token,
+    joinUrl,
+    email,
+  };
+}
+
+async function acceptPendingInviteForExistingMember(params: {
+  inviteId: string;
+  invite: Record<string, unknown>;
+  companyId: string;
+  companyName: string;
+  uid: string;
+  userName: string;
+  userEmail: string;
+  role: UserRole;
+  status: InviteStatus;
+}): Promise<void> {
+  if (!inviteCanBeAccepted(params.status)) return;
+
+  const nowIso = new Date().toISOString();
+  await getAdminFirestore()
+    .collection(INVITES)
+    .doc(params.inviteId)
+    .set(
+      {
+        used: true,
+        status: "accepted",
+        acceptedAt: nowIso,
+        acceptedBy: params.uid,
+      },
+      { merge: true },
+    );
+
+  try {
+    await emitEmployeeJoinedByInviteNotifications({
+      companyId: params.companyId,
+      companyName: params.companyName,
+      uid: params.uid,
+      userName: params.userName,
+      userEmail: params.userEmail,
+      role: params.role,
+      inviteId: params.inviteId,
+      inviterUserId: String(params.invite.createdBy ?? ""),
+    });
+  } catch (error) {
+    console.error("[acceptInviteAsUser] existing-member notification emit failed", error);
+  }
 }
 
 export async function acceptInviteByCodeAsUser(params: {
@@ -209,6 +317,18 @@ export async function acceptInviteAsUser(params: {
 
   if (employeeSnap.exists) {
     await recordMembershipAdmin(params.uid, companyId, role);
+    await acceptPendingInviteForExistingMember({
+      inviteId: found.id,
+      invite,
+      companyId,
+      companyName,
+      uid: params.uid,
+      userName: params.userName ?? "",
+      userEmail,
+      role,
+      status,
+    });
+
     const shouldSwitch =
       params.switchToCompany === true && activeCompanyId !== companyId;
 
@@ -374,6 +494,8 @@ export async function revokeInviteAsAdmin(params: {
 export async function resendInviteAsAdmin(params: {
   inviteId: string;
   companyId: string;
+  actorUserId: string;
+  actorName?: string;
   ttlHours?: number;
 }): Promise<{ joinUrl: string }> {
   const db = getAdminFirestore();
@@ -411,6 +533,25 @@ export async function resendInviteAsAdmin(params: {
 
   const companyName = await getCompanyName(params.companyId);
   const joinUrl = buildInviteUrl(token, getPublicAppUrl());
+
+  const createdBy = String(data.createdBy ?? "");
+  const inviterName =
+    params.actorName ??
+    (createdBy
+      ? String(
+          (await db.collection("users").doc(createdBy).get()).data()?.name ?? "",
+        ).trim() || undefined
+      : undefined);
+
+  await emitEmployeeInvitedNotification({
+    companyId: params.companyId,
+    actorUserId: params.actorUserId,
+    actorName: inviterName,
+    email,
+    role: normalizeRole(String(data.role ?? "employee")),
+    inviteId: params.inviteId,
+    summary: `Приглашение повторно отправлено на ${email}`,
+  });
 
   if (isResendConfigured()) {
     const resend = getResend();

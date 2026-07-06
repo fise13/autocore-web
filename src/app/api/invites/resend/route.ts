@@ -17,9 +17,16 @@ export async function POST(request: NextRequest) {
     }
 
     const manager = await verifyCompanyManager(access.uid, "employee_manage");
+    const inviterSnap = await import("@/infrastructure/firebase/admin").then(({ getAdminFirestore }) =>
+      getAdminFirestore().collection("users").doc(access.uid).get(),
+    );
+    const inviterName = inviterSnap.exists ? String(inviterSnap.data()?.name ?? "") : "";
+
     const result = await resendInviteAsAdmin({
       inviteId,
       companyId: manager.companyId,
+      actorUserId: access.uid,
+      actorName: inviterName || undefined,
       ttlHours: typeof body.ttlHours === "number" ? body.ttlHours : undefined,
     });
 

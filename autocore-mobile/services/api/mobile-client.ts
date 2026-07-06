@@ -1,8 +1,16 @@
 import { getFirebaseAuth } from '@/services/firebase';
 import { getPublicApiBaseUrl } from '@/services/api/api-base-url';
+import { resolveSessionCompanyId } from '@/lib/session/merge-hydration';
+import { useAuthStore } from '@/store/auth-store';
 
 function getApiBaseUrl(): string {
   return getPublicApiBaseUrl();
+}
+
+function resolveApiCompanyIdHeader(): Record<string, string> {
+  const auth = useAuthStore.getState();
+  const companyId = resolveSessionCompanyId(auth.profile, auth.memberships);
+  return companyId ? { 'X-Company-Id': companyId } : {};
 }
 
 export class MobileApiError extends Error {
@@ -42,6 +50,7 @@ export async function mobileFetch<T>(
         Accept: 'application/json',
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
+        ...resolveApiCompanyIdHeader(),
         ...(requestInit.headers ?? {}),
       },
     });

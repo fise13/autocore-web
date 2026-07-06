@@ -2,13 +2,14 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Loader2, Users } from "lucide-react";
+import { Building2, Loader2, Users } from "lucide-react";
 
 import { AuthJourneyReveal } from "@/components/auth/auth-journey-reveal";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useUserCompanies } from "@/hooks/use-user-companies";
 import { clearInviteToken, readInviteToken } from "@/lib/invites/pending-invite";
 import { authJourneyPanelTransition } from "@/lib/motion/auth-journey-motion";
 import { prefersReducedMotion } from "@/lib/motion/cross-route-transition";
@@ -16,7 +17,8 @@ import { mapAuthError, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 export function CompanyOnboardingStep() {
-  const { createCompany, joinCompanyWithInvite, joinCompanyWithInviteToken } = useAuth();
+  const { createCompany, joinCompanyWithInvite, joinCompanyWithInviteToken, switchCompany } = useAuth();
+  const { companies, isLoading: companiesLoading } = useUserCompanies();
   const [companyName, setCompanyName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [showInvite, setShowInvite] = useState(false);
@@ -79,6 +81,12 @@ export function CompanyOnboardingStep() {
     }, "Присоединение к компании…");
   }
 
+  async function onSwitchCompany(companyId: string) {
+    await runAction(async () => {
+      await switchCompany(companyId);
+    }, "Переключение компании…");
+  }
+
   if (isSubmitting) {
     return (
       <motion.div
@@ -108,7 +116,40 @@ export function CompanyOnboardingStep() {
       </div>
 
       <div className="space-y-6 text-left">
-        <AuthJourneyReveal index={2} className="space-y-4">
+        {companies.length > 0 ? (
+          <AuthJourneyReveal index={2} className="space-y-4">
+            <div className="space-y-1">
+              <p className="font-medium">Ваши компании</p>
+              <p className="text-sm text-muted-foreground">
+                Активная компания не выбрана. Откройте существующее рабочее пространство.
+              </p>
+            </div>
+            <div className="space-y-2">
+              {companies.map((membership) => (
+                <button
+                  key={membership.companyId}
+                  type="button"
+                  onClick={() => void onSwitchCompany(membership.companyId)}
+                  disabled={isSubmitting || companiesLoading}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-xl border border-border/70 bg-card/60 px-4 py-3 text-left transition",
+                    "hover:border-border hover:bg-card disabled:opacity-60",
+                  )}
+                >
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/20">
+                    <Building2 className="size-4 text-muted-foreground" aria-hidden />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{membership.name}</p>
+                    <p className="text-xs text-muted-foreground">{membership.role}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </AuthJourneyReveal>
+        ) : null}
+
+        <AuthJourneyReveal index={companies.length > 0 ? 3 : 2} className="space-y-4">
           <div className="space-y-1">
             <p className="font-medium">{userCopy.company.newTeamTitle}</p>
             <p className="text-sm text-muted-foreground">{userCopy.company.newTeamDescription}</p>
@@ -131,7 +172,7 @@ export function CompanyOnboardingStep() {
         </AuthJourneyReveal>
       </div>
 
-      <AuthJourneyReveal index={3}>
+      <AuthJourneyReveal index={companies.length > 0 ? 4 : 3}>
         <button
           type="button"
           className="cursor-pointer text-sm text-muted-foreground underline-offset-4 transition-colors duration-200 hover:text-foreground hover:underline"

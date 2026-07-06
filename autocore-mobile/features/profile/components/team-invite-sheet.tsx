@@ -15,6 +15,7 @@ import {
 } from '@/lib/team/format';
 import { sendEmployeeInviteEmail } from '@/services/api/invites';
 import { createCompanyInvite } from '@/services/firestore/invite-service';
+import { NotificationService } from '@/services/notifications';
 import { haptics } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
 import type { UserRole } from '@/types/user';
@@ -93,9 +94,11 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
           setSuccessMessage(`Приглашение отправлено на ${result.email}`);
           setJoinUrl(result.joinUrl ?? null);
           setEmail('');
+          void NotificationService.syncInbox();
         } else {
           setSuccessMessage(result.message);
           setJoinUrl(result.joinUrl);
+          void NotificationService.syncInbox();
         }
       } catch (nextError) {
         haptics.warning();
@@ -118,6 +121,7 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
           ttlHours,
         });
         setGeneratedCode(invite.code);
+        void NotificationService.syncInbox();
         haptics.success();
       } catch (nextError) {
         haptics.warning();

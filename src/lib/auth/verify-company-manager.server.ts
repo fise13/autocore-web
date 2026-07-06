@@ -4,6 +4,8 @@ import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { Permission, UserRole, hasPermission } from "@/domain/user";
 import { AccountAccessError } from "@/lib/auth/verify-account-access";
 import { readCompanyProActive } from "@/lib/billing/verify-pro-subscription.server";
+import { resolveMobileWorkspaceCompanyId } from "@/lib/mobile/session-bootstrap.server";
+import { normalizeCompanyId } from "@/lib/company-id";
 
 type EmployeeDoc = {
   role?: UserRole;
@@ -53,15 +55,22 @@ export async function verifyCompanyManager(
     throw new AccountAccessError("User profile not found", 403);
   }
   const userData = userSnap.data() as UserDoc;
-  const companyId = String(userData.companyId ?? "").trim();
+
+  const companyId = await resolveMobileWorkspaceCompanyId(uid);
   if (!companyId) {
     throw new AccountAccessError("Company not linked", 403);
   }
+  const normalizedCompanyId = normalizeCompanyId(companyId);
 
-  const companySnap = await db.collection("companies").doc(companyId).get();
+  const companySnap = await db.collection("companies").doc(normalizedCompanyId).get();
   const isOwner = companySnap.exists && companySnap.data()?.ownerId === uid;
 
-  const employeeSnap = await db.collection("companies").doc(companyId).collection("employees").doc(uid).get();
+  const employeeSnap = await db
+    .collection("companies")
+    .doc(normalizedCompanyId)
+    .collection("employees")
+    .doc(uid)
+    .get();
   const employee = employeeSnap.exists ? (employeeSnap.data() as EmployeeDoc) : null;
 
   const effectiveUser = {
@@ -71,7 +80,7 @@ export async function verifyCompanyManager(
     phone: null,
     photoURL: null,
     role: (employee?.role ?? userData.role ?? "employee") as UserRole,
-    companyId,
+    companyId: normalizedCompanyId,
     permissions: employee?.permissions ?? userData.permissions ?? [],
     isActive: employee?.isActive ?? true,
     isCompanyOwner: isOwner,
@@ -81,10 +90,10 @@ export async function verifyCompanyManager(
     throw new AccountAccessError("Insufficient permissions", 403);
   }
 
-  const isPro = await readSubscriptionPro(companyId);
+  const isPro = await readSubscriptionPro(normalizedCompanyId);
   if (!isPro) {
     throw new AccountAccessError("Pro subscription required", 402);
   }
 
-  return { uid, companyId };
+  return { uid, companyId: normalizedCompanyId };
 }

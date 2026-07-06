@@ -74,32 +74,42 @@ export async function syncInboxFromServer(
 ): Promise<{ items: ReturnType<typeof fromServerRecord>[]; unreadCount: number }> {
   const { userId, companyId } = resolveInboxContext();
 
-  let response: { items: Parameters<typeof fromServerRecord>[0][]; unreadCount: number } | null = null;
+  let apiItems: Parameters<typeof fromServerRecord>[0][] = [];
+  let firestoreItems: Parameters<typeof fromServerRecord>[0][] = [];
 
   try {
-    response = await fetchNotificationInbox(filter);
-    if (response.items.length === 0) {
-      const firestoreResponse = await fetchInboxFromFirestore({ userId, companyId, state: filter });
-      if (firestoreResponse.items.length > 0) {
-        response = firestoreResponse;
-      }
-    }
+    const response = await fetchNotificationInbox(filter);
+    apiItems = response.items;
   } catch (apiError) {
     if (apiError instanceof MobileApiError && (apiError.status === 401 || apiError.status === 403)) {
       throw apiError;
     }
     if (__DEV__) {
-      console.warn('[notifications] API inbox failed, falling back to Firestore', apiError);
+      console.warn('[notifications] API inbox failed, using Firestore only', apiError);
     }
   }
 
-  if (!response) {
-    response = await fetchInboxFromFirestore({ userId, companyId, state: filter });
+  try {
+    const firestoreResponse = await fetchInboxFromFirestore({ userId, companyId, state: filter });
+    firestoreItems = firestoreResponse.items;
+  } catch (firestoreError) {
+    if (__DEV__) {
+      console.warn('[notifications] Firestore inbox failed', firestoreError);
+    }
   }
 
-  const serverItems = response.items.map(fromServerRecord);
-  applyInboxPayload(serverItems, response.unreadCount);
-  return { items: serverItems, unreadCount: response.unreadCount };
+  const mergedRecords = new Map<string, Parameters<typeof fromServerRecord>[0]>();
+  for (const item of [...apiItems, ...firestoreItems]) {
+    mergedRecords.set(item.id, item);
+  }
+
+  const serverItems = Array.from(mergedRecords.values())
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+    .map(fromServerRecord);
+
+  const unreadCount = serverItems.filter((item) => !item.read).length;
+  applyInboxPayload(serverItems, unreadCount);
+  return { items: serverItems, unreadCount };
 }
 
 export function subscribeInboxRealtime(

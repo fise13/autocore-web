@@ -29,6 +29,7 @@ import {
 import { buildInviteUrl, normalizeInviteStatus, type InviteStatus } from '@autocore/org';
 import { getPublicApiBaseUrl } from '@/services/api/api-base-url';
 import { resendInvite, revokeInvite } from '@/services/api/org-api';
+import { NotificationService } from '@/services/notifications';
 import {
   removeEmployee,
   setEmployeeActive,
@@ -243,6 +244,7 @@ export function TeamScreen() {
                         ? () =>
                             void runAction(async () => {
                               const result = await resendInvite(invite.id);
+                              await NotificationService.syncInbox();
                               if (result.joinUrl) await shareLink(result.joinUrl);
                             })
                         : undefined

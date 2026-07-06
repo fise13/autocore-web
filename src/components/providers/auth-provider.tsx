@@ -37,13 +37,19 @@ import {
   joinCompanyWithInviteCode,
   joinCompanyWithInviteToken,
 } from "@/infrastructure/firestore/join-company-service";
-import { switchActiveCompany } from "@/infrastructure/firestore/user-company-membership-service";
+import {
+  loadUserCompanyMemberships,
+  recordUserCompanyMembership,
+  switchActiveCompany,
+} from "@/infrastructure/firestore/user-company-membership-service";
 import { getAppleAuthMode, isFirebaseHandlerAppleAuthMode } from "@/lib/auth/apple-auth-mode";
 import { logAppleAuthError, logAppleAuthStep, logAppleJs } from "@/lib/auth/apple-auth-log";
 import { signInWithAppleLikeMacOS } from "@/lib/auth/sign-in-with-apple-credential";
 import { AppleJsRedirectStarted, isAppleUserCancellationError } from "@/lib/auth/apple-js-sign-in";
 import { signInWithAppleFirebase } from "@/lib/auth/sign-in-with-apple-web";
 import { mergeProfileWithEmployee, EmployeeProfileSlice } from "@/lib/auth/resolve-effective-profile";
+import { resolveWorkspaceCompanyId } from "@/lib/session/resolve-workspace-company.client";
+import { normalizeCompanyId } from "@/lib/company-id";
 import { createCompanyViaApi } from "@/lib/auth/create-company-via-api";
 import { markSyncAuthPrepared, prepareSyncAuth, resetSyncAuthCache } from "@/lib/auth/prepare-sync-auth";
 import { tryClaimPendingMarketingCheckout } from "@/lib/billing/claim-marketing-checkout";
@@ -257,10 +263,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
     const userDoc = snap.exists() ? (snap.data() as UserDoc) : null;
-    const companyId = userDoc?.companyId?.trim();
+
+    let memberships: Awaited<ReturnType<typeof loadUserCompanyMemberships>> = [];
+    try {
+      memberships = await loadUserCompanyMemberships(user.uid);
+    } catch (error) {
+      console.warn("Memberships read skipped:", error);
+    }
+
+    const companyId = await resolveWorkspaceCompanyId(user.uid, userDoc?.companyId, memberships);
 
     if (!companyId) {
       return mapUserDoc(user.uid, user, userDoc);
+    }
+
+    const profileCompanyId = userDoc?.companyId?.trim();
+    if (!profileCompanyId) {
+      try {
+        const normalized = normalizeCompanyId(companyId);
+        const hasMembership = memberships.some(
+          (entry) => normalizeCompanyId(entry.companyId) === normalized,
+        );
+        if (!hasMembership) {
+          await recordUserCompanyMembership(user.uid, normalized, "owner");
+        }
+        await switchActiveCompany(user.uid, normalized);
+      } catch (error) {
+        console.warn("Workspace repair skipped:", error);
+      }
     }
 
     const companyRef = doc(db, "companies", companyId);
@@ -285,7 +315,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     const mapped = mapUserDoc(user.uid, user, userDoc);
-    return { ...mergeProfileWithEmployee(mapped, employeeDoc), isCompanyOwner };
+    return {
+      ...mergeProfileWithEmployee({ ...mapped, companyId }, employeeDoc),
+      isCompanyOwner,
+    };
   }, []);
 
   const applyProfile = useCallback((user: User, nextProfile: UserEntity) => {

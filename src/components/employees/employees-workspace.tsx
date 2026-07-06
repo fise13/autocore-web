@@ -298,13 +298,25 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
     setError(null);
     setGeneratedCode(null);
     try {
-      const invite = await inviteRepository.createInvite({
-        companyId,
-        role: inviteRole,
-        createdBy: profile.id,
-        ttlHours: inviteTtlHours,
+      const user = getFirebaseAuth().currentUser;
+      if (!user) throw new Error("Войдите в аккаунт");
+      const token = await user.getIdToken();
+      const response = await fetch("/api/invites/create", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          role: inviteRole,
+          ttlHours: inviteTtlHours,
+        }),
       });
-      setGeneratedCode(invite.code);
+      const payload = (await response.json()) as { error?: string; code?: string };
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Не удалось создать приглашение");
+      }
+      setGeneratedCode(payload.code ?? null);
     } catch (nextError) {
       setError(mapEmployeeError(nextError));
     } finally {
