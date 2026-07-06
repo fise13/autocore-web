@@ -149,11 +149,38 @@ export async function acceptInviteAsUser(params: {
   }
 
   const db = getAdminFirestore();
+  const userRef = db.collection("users").doc(params.uid);
+  const userSnap = await userRef.get();
+  const userData = userSnap.data() ?? {};
+  const activeCompanyId = normalizeCompanyId(String(userData.companyId ?? ""));
+
   const employeeRef = db.collection(COMPANIES).doc(companyId).collection("employees").doc(params.uid);
   const employeeSnap = await employeeRef.get();
 
   if (employeeSnap.exists) {
     await recordMembershipAdmin(params.uid, companyId, role);
+    const shouldSwitch =
+      params.switchToCompany === true && activeCompanyId !== companyId;
+
+    if (shouldSwitch) {
+      await userRef.set(
+        {
+          companyId,
+          role,
+          permissions: [],
+          isActive: true,
+        },
+        { merge: true },
+      );
+      return {
+        companyId,
+        companyName,
+        role,
+        switched: true,
+        alreadyMember: true,
+      };
+    }
+
     return {
       companyId,
       companyName,
@@ -201,10 +228,6 @@ export async function acceptInviteAsUser(params: {
 
   await recordMembershipAdmin(params.uid, companyId, role);
 
-  const userRef = db.collection("users").doc(params.uid);
-  const userSnap = await userRef.get();
-  const userData = userSnap.data() ?? {};
-  const activeCompanyId = String(userData.companyId ?? "").trim();
   const shouldSwitch =
     params.switchToCompany === true || !activeCompanyId || activeCompanyId === "default";
 

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { clearInviteToken, storePendingInvite } from "@/lib/invites/pending-invite";
+import { normalizeCompanyId } from "@/lib/company-id";
 import { inviteRequiresEmailMatch, type InvitePreview } from "@autocore/org";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +31,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
   const router = useRouter();
-  const { firebaseUser, logout, refreshProfile } = useAuth();
+  const { firebaseUser, logout, refreshProfile, profile } = useAuth();
   const [preview, setPreview] = useState<InvitePreview | null>(null);
   const [error, setError] = useState<{ title: string; message: string; code?: string } | null>(
     null,
@@ -117,9 +118,17 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
   const tryAutoAccept = useCallback(() => {
     if (autoAcceptStarted.current || loading || busy) return;
     if (!firebaseUser || !preview?.canAccept || emailMismatch) return;
+
+    const activeCompanyId = normalizeCompanyId(profile?.companyId);
+    const inviteCompanyId = normalizeCompanyId(preview.companyId);
+    const hasOtherCompany = Boolean(
+      activeCompanyId && activeCompanyId !== "default" && activeCompanyId !== inviteCompanyId,
+    );
+    if (hasOtherCompany) return;
+
     autoAcceptStarted.current = true;
     void handleAccept(true);
-  }, [busy, emailMismatch, firebaseUser, loading, preview?.canAccept]);
+  }, [busy, emailMismatch, firebaseUser, loading, preview, profile?.companyId]);
 
   useEffect(() => {
     tryAutoAccept();
@@ -174,12 +183,28 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
             />
             <InviteCompanyCard preview={preview} />
             <div className="flex flex-col gap-2">
-              <Button onClick={() => router.push(`/login?invite=${encodeURIComponent(token)}`)}>
+              <Button
+                onClick={() => {
+                  storePendingInvite({
+                    token,
+                    email: preview.email ?? undefined,
+                    companyName: preview.companyName,
+                  });
+                  router.push(`/login?invite=${encodeURIComponent(token)}`);
+                }}
+              >
                 Войти
               </Button>
               <Button
                 variant="outline"
-                onClick={() => router.push(`/login?mode=signup&invite=${encodeURIComponent(token)}`)}
+                onClick={() => {
+                  storePendingInvite({
+                    token,
+                    email: preview.email ?? undefined,
+                    companyName: preview.companyName,
+                  });
+                  router.push(`/login?mode=signup&invite=${encodeURIComponent(token)}`);
+                }}
               >
                 Создать аккаунт
               </Button>

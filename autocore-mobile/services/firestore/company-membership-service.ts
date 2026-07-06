@@ -70,7 +70,18 @@ export async function switchActiveCompany(userId: string, companyId: string): Pr
     throw new Error('Нет доступа к этой компании');
   }
 
+  const membership = membershipSnap.data() as { role?: UserRole };
+  const role = membership.role ?? 'employee';
+  const employeeSnap = await getDoc(
+    doc(getFirebaseDb(), 'companies', normalizedCompanyId, 'employees', userId),
+  );
+  const employeeData = employeeSnap.exists() ? employeeSnap.data() : null;
+  const permissions = Array.isArray(employeeData?.permissions) ? employeeData.permissions : [];
+
   await updateDoc(doc(getFirebaseDb(), 'users', userId), {
     companyId: normalizedCompanyId,
+    role,
+    permissions,
+    isActive: employeeData?.isActive !== false,
   });
 }

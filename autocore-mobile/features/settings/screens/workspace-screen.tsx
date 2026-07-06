@@ -59,6 +59,7 @@ export function WorkspaceScreen() {
         memberships={memberships}
         activeCompanyId={companyId}
         onCreateCompany={() => {}}
+        onJoinCompany={() => router.push('/(tabs)/profile/join-company')}
         onSwitchCompany={async (nextCompanyId) => {
           if (!firebaseUser) return;
           await switchActiveCompany(firebaseUser.uid, nextCompanyId);

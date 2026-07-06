@@ -12,7 +12,6 @@ import {
   hasEmailVerificationComplete,
   hasWizardCompleted,
 } from "@/lib/performance/session-flags";
-import { hasCompletedBusinessImport } from "@/lib/onboarding/mark-business-import-completed";
 
 export type AuthJourneyStep =
   | "loading"
@@ -48,11 +47,6 @@ export function useAuthJourneyStep(
     () => (companyId ? hasWizardCompleted(companyId) : false),
     () => false,
   );
-  const migrationOfferCompleted = useSyncExternalStore(
-    () => () => {},
-    () => (companyId ? hasCompletedBusinessImport(companyId, null) : false),
-    () => false,
-  );
 
   return useMemo(() => {
     if (isLoading || !profile || !firebaseUser) return "loading";
@@ -84,11 +78,8 @@ export function useAuthJourneyStep(
       return "company";
     }
 
-    const importDone =
-      migrationOfferCompleted || hasCompletedBusinessImport(companyId, config);
-
     if (!loaded) {
-      if (companyId && cachedCompleted && importDone) {
+      if (companyId && (cachedCompleted || config?.onboardingCompleted)) {
         return "app";
       }
       return "loading";
@@ -103,15 +94,6 @@ export function useAuthJourneyStep(
       return "setup-wizard";
     }
 
-    const needsBusinessImport =
-      profile.isCompanyOwner &&
-      config?.onboardingCompleted &&
-      !importDone;
-
-    if (needsBusinessImport) {
-      return "business-import";
-    }
-
     return "app";
   }, [
     cachedCompleted,
@@ -122,7 +104,6 @@ export function useAuthJourneyStep(
     isLoading,
     loaded,
     localProfileName,
-    migrationOfferCompleted,
     profile,
   ]);
 }

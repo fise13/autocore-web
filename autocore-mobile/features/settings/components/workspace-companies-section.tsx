@@ -21,6 +21,7 @@ type WorkspaceCompaniesSectionProps = {
   memberships: UserCompanyMembership[];
   activeCompanyId: string;
   onCreateCompany?: () => void;
+  onJoinCompany?: () => void;
   onSwitchCompany: (companyId: string) => void;
 };
 
@@ -28,12 +29,21 @@ export function WorkspaceCompaniesSection({
   memberships,
   activeCompanyId,
   onCreateCompany,
+  onJoinCompany,
   onSwitchCompany,
 }: WorkspaceCompaniesSectionProps) {
   const { colors } = useTheme();
 
   return (
     <SettingsSectionCard title="Компании" description="Переключение рабочего пространства">
+      <SettingsLinkRow
+        title="Присоединиться к компании"
+        subtitle="По ссылке или коду приглашения"
+        onPress={() => {
+          haptics.selection();
+          onJoinCompany?.();
+        }}
+      />
       <SettingsLinkRow
         title="Создать компанию"
         subtitle="Новое рабочее пространство"

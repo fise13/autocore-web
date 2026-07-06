@@ -137,14 +137,26 @@ export function subscribeUserCompanyMemberships(
 
 export async function switchActiveCompany(userId: string, companyId: string): Promise<void> {
   const normalizedCompanyId = normalizeCompanyId(companyId);
+  const db = getFirestoreDb();
   const membershipSnap = await getDoc(
-    doc(getFirestoreDb(), "users", userId, "memberships", normalizedCompanyId),
+    doc(db, "users", userId, "memberships", normalizedCompanyId),
   );
   if (!membershipSnap.exists()) {
     throw new Error("Нет доступа к этой компании");
   }
 
-  await updateDoc(doc(getFirestoreDb(), "users", userId), {
+  const membership = membershipSnap.data();
+  const role = (membership?.role as UserRole) ?? "employee";
+  const employeeSnap = await getDoc(
+    doc(db, "companies", normalizedCompanyId, "employees", userId),
+  );
+  const employeeData = employeeSnap.exists() ? employeeSnap.data() : null;
+  const permissions = Array.isArray(employeeData?.permissions) ? employeeData.permissions : [];
+
+  await updateDoc(doc(db, "users", userId), {
     companyId: normalizedCompanyId,
+    role,
+    permissions,
+    isActive: employeeData?.isActive !== false,
   });
 }

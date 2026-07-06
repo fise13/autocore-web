@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 
 import { useAuth } from '@/authentication/auth-provider';
-import { Text } from '@/components/ui';
+import { Button, Text } from '@/components/ui';
 import { useCompanySubscription, useSession, useTheme } from '@/hooks';
 import { subscriptionPlanLabel } from '@/lib/billing/format-renewal';
 import { resolveActiveCompanyName } from '@/lib/resolve-active-company-name';
@@ -17,6 +18,7 @@ type CompanySwitcherSheetProps = {
 };
 
 export function CompanySwitcherSheet({ open, onClose }: CompanySwitcherSheetProps) {
+  const router = useRouter();
   const { colors } = useTheme();
   const { firebaseUser, memberships, refreshProfile } = useAuth();
   const { profile, companyId } = useSession();
@@ -75,6 +77,15 @@ export function CompanySwitcherSheet({ open, onClose }: CompanySwitcherSheetProp
             </Pressable>
           );
         })}
+        <Button
+          variant="outline"
+          onPress={() => {
+            onClose();
+            router.push('/(tabs)/profile/join-company' as never);
+          }}
+        >
+          Присоединиться к компании
+        </Button>
       </BottomSheetScrollView>
     </BottomSheet>
   );

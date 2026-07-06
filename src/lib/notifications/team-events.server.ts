@@ -1,11 +1,15 @@
 import "server-only";
 
+import { FieldValue } from "firebase-admin/firestore";
+
 import type { NotificationEventContext } from "@/domain/notifications";
 import type { UserRole } from "@/domain/user";
+import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import {
   createInboxNotification,
   listTeamAdminRecipients,
 } from "@/infrastructure/firestore/notification-repository.server";
+import { normalizeCompanyId } from "@/lib/company-id";
 import { dispatchPushForNotification } from "@/lib/notifications/dispatch.server";
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -34,6 +38,40 @@ async function deliverInboxNotification(
     await dispatchPushForNotification(userId, record);
   } catch (error) {
     console.warn("[team-notifications] push dispatch skipped", { userId, error });
+  }
+}
+
+async function appendTeamActivityLog(
+  companyId: string,
+  payload: {
+    action: string;
+    actor: string;
+    actorName: string;
+    target: string;
+    targetId: string;
+    targetName: string;
+  },
+): Promise<void> {
+  try {
+    const normalized = normalizeCompanyId(companyId);
+    await getAdminFirestore()
+      .collection("companies")
+      .doc(normalized)
+      .collection("activityLogs")
+      .add({
+        companyId: normalized,
+        action: payload.action,
+        actor: payload.actor,
+        actorName: payload.actorName,
+        target: payload.target,
+        targetId: payload.targetId,
+        targetName: payload.targetName,
+        module: "employees",
+        severity: "info",
+        timestamp: FieldValue.serverTimestamp(),
+      });
+  } catch (error) {
+    console.warn("[team-notifications] activity log skipped", error);
   }
 }
 
@@ -100,6 +138,15 @@ export async function emitEmployeeJoinedByInviteNotifications(params: {
         deliverInboxNotification(userId, params.companyId, adminCtx),
       ),
     );
+
+    await appendTeamActivityLog(params.companyId, {
+      action: "employee.joined_by_invite",
+      actor: params.uid,
+      actorName: displayName,
+      target: "employee",
+      targetId: params.uid,
+      targetName: displayName,
+    });
   } catch (error) {
     console.error("[team-notifications] join notifications failed", error);
     throw error;

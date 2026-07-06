@@ -6,6 +6,7 @@ import { useAuth } from '@/authentication/auth-provider';
 import { Button, Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { clearPendingInvite, storePendingInvite } from '@/lib/invites/pending-invite';
+import { normalizeCompanyId } from '@/lib/company-id';
 import { acceptInvite, declineInvite, fetchInvitePreview } from '@/services/api/org-api';
 import { NotificationService } from '@/services/notifications';
 import { inviteRequiresEmailMatch, INVITE_STATUS_LABELS, type InvitePreview } from '@autocore/org';
@@ -29,7 +30,7 @@ type InviteAcceptScreenProps = {
 export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
   const router = useRouter();
   const { colors } = useTheme();
-  const { firebaseUser, refreshProfile, signOut } = useAuth();
+  const { firebaseUser, refreshProfile, signOut, profile } = useAuth();
   const [preview, setPreview] = useState<InvitePreview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,9 +85,17 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
   useEffect(() => {
     if (autoAcceptStarted.current || loading || busy) return;
     if (!firebaseUser || !preview?.canAccept || emailMismatch) return;
+
+    const activeCompanyId = normalizeCompanyId(profile?.companyId);
+    const inviteCompanyId = normalizeCompanyId(preview.companyId);
+    const hasOtherCompany = Boolean(
+      activeCompanyId && activeCompanyId !== 'default' && activeCompanyId !== inviteCompanyId,
+    );
+    if (hasOtherCompany) return;
+
     autoAcceptStarted.current = true;
     void handleAccept(true);
-  }, [busy, emailMismatch, firebaseUser, handleAccept, loading, preview?.canAccept]);
+  }, [busy, emailMismatch, firebaseUser, handleAccept, loading, preview, profile?.companyId]);
 
   const handleDecline = async () => {
     setBusy(true);

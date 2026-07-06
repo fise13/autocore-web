@@ -8,6 +8,7 @@ import {
   CompanyAvatar,
   CreateCompanyDialog,
   CompanySwitcherMenu,
+  JoinCompanyDialog,
 } from "@/components/layout/company-switcher-menu";
 import {
   DropdownMenu,
@@ -28,6 +29,7 @@ export function SidebarOrganizationSwitcher({ collapsed = false }: SidebarOrgani
   const { companies, activeCompanyId, isLoading } = useUserCompanies();
   const canOpenSwitcher = companies.length > 0 || !isLoading;
   const [createOpen, setCreateOpen] = useState(false);
+  const [joinOpen, setJoinOpen] = useState(false);
 
   const activeCompany = useMemo(
     () => companies.find((company) => company.companyId === activeCompanyId) ?? companies[0] ?? null,
@@ -82,10 +84,14 @@ export function SidebarOrganizationSwitcher({ collapsed = false }: SidebarOrgani
             align="start"
             className="w-64"
           >
-            <CompanySwitcherMenu onOpenCreateDialog={() => setCreateOpen(true)} />
+            <CompanySwitcherMenu
+              onOpenCreateDialog={() => setCreateOpen(true)}
+              onOpenJoinDialog={() => setJoinOpen(true)}
+            />
           </DropdownMenuContent>
         </DropdownMenu>
         <CreateCompanyDialog open={createOpen} onOpenChange={setCreateOpen} />
+        <JoinCompanyDialog open={joinOpen} onOpenChange={setJoinOpen} />
       </SidebarMenuItem>
     </SidebarMenu>
   );

@@ -42,6 +42,8 @@ import {
 import {
   readInviteCompanyName,
   readInviteEmail,
+  readInviteToken,
+  storePendingInvite,
 } from "@/lib/invites/pending-invite";
 import { prefersReducedMotion } from "@/lib/motion/cross-route-transition";
 import { cn } from "@/lib/utils";
@@ -86,7 +88,8 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
   const inviteBootstrapRef = useRef(false);
 
   const isBusy = authPhase !== "idle";
-  const isInviteFlow = inviteFlowActive || Boolean(inviteCompanyName);
+  const isInviteFlow = inviteFlowActive || Boolean(inviteCompanyName) || Boolean(searchParams.get("invite")?.trim());
+  const inviteBootstrapping = isInviteFlow && authPhase === "detecting" && !emailStep;
   const appleSetupIssue = isAppleJsAuthMode() ? getAppleJsSetupIssue() : null;
   const isSignUp = emailMode === "signup";
   const reducedMotion = prefersReducedMotion();
@@ -123,22 +126,59 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
 
   useEffect(() => {
     if (inviteBootstrapRef.current) return;
+
+    const tokenFromUrl = searchParams.get("invite")?.trim() ?? "";
+    const token = tokenFromUrl || readInviteToken() || "";
     const pendingInviteEmail = readInviteEmail();
-    if (!pendingInviteEmail) return;
+
+    if (!token && !pendingInviteEmail) return;
     inviteBootstrapRef.current = true;
     setInviteFlowActive(true);
 
-    const inviteEmail = pendingInviteEmail;
     let cancelled = false;
     async function bootstrapInviteLogin() {
-      setEmail(inviteEmail);
-      setInviteCompanyName(readInviteCompanyName());
       setError(null);
       setResetSent(false);
       setAuthPhase("detecting");
+
       try {
+        let inviteEmail = pendingInviteEmail;
+        let companyName = readInviteCompanyName();
+
+        if (token) {
+          storePendingInvite({ token });
+          if (!inviteEmail || !companyName) {
+            const response = await fetch(`/api/invites/${encodeURIComponent(token)}`);
+            const payload = (await response.json()) as {
+              preview?: { email?: string | null; companyName?: string };
+            };
+            if (response.ok && payload.preview) {
+              inviteEmail =
+                (typeof payload.preview.email === "string" ? payload.preview.email : null) ??
+                inviteEmail;
+              companyName = payload.preview.companyName?.trim() || companyName;
+              storePendingInvite({
+                token,
+                email: inviteEmail ?? undefined,
+                companyName: companyName ?? undefined,
+              });
+            }
+          }
+        }
+
+        if (cancelled) return;
+
+        if (!inviteEmail?.trim()) {
+          setAuthPhase("idle");
+          return;
+        }
+
+        setEmail(inviteEmail);
+        setInviteCompanyName(companyName);
+
         const methods = await resolveSignInMethodsForEmail(inviteEmail);
         if (cancelled) return;
+
         const resolved = resolveEmailSignInMode(methods);
         const forcedSignup = searchParams.get("mode") === "signup";
         setAuthStepDirection(1);
@@ -340,34 +380,22 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
       <div className="space-y-4">
         <div className="flex flex-col space-y-1">
           <AuthJourneyReveal index={0} as="h1" className="text-2xl font-bold tracking-tight">
-            {isInviteFlow && inviteCompanyName
-              ? `Приглашение в ${inviteCompanyName}`
-              : "Войти или создать аккаунт"}
+            {isInviteFlow && emailStep && isSignUp
+              ? "Создать аккаунт"
+              : isInviteFlow && emailStep
+                ? "Вход в команду"
+                : "Войти или создать аккаунт"}
           </AuthJourneyReveal>
           <AuthJourneyReveal index={1} as="p" className="text-base text-muted-foreground">
-            {isInviteFlow
-              ? emailStep
-                ? isSignUp
-                  ? "Создайте пароль и укажите имя — email уже подставлен из приглашения."
-                  : "Введите пароль для входа — email уже подставлен из приглашения."
-                : "Загружаем данные приглашения…"
-              : `Вход в ${userCopy.appName} или регистрация новой команды.`}
+            {isInviteFlow && emailStep
+              ? isSignUp
+                ? "Email уже указан в приглашении — осталось придумать пароль и имя."
+                : "Email уже указан в приглашении — введите пароль."
+              : isInviteFlow
+                ? "Загружаем приглашение…"
+                : `Вход в ${userCopy.appName} или регистрация новой команды.`}
           </AuthJourneyReveal>
         </div>
-
-        {isInviteFlow && emailStep ? (
-          <AuthJourneyReveal index={2}>
-            <Alert>
-              <AlertTitle>Вы приглашены в команду</AlertTitle>
-              <AlertDescription>
-                {inviteCompanyName
-                  ? `Компания «${inviteCompanyName}». `
-                  : null}
-                После входа вы автоматически присоединитесь к команде.
-              </AlertDescription>
-            </Alert>
-          </AuthJourneyReveal>
-        ) : null}
 
         {paidCheckoutPending ? (
           <AuthJourneyReveal index={2}>
@@ -381,6 +409,12 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
           </AuthJourneyReveal>
         ) : null}
 
+        {inviteBootstrapping ? (
+          <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />
+            Загружаем приглашение…
+          </div>
+        ) : (
         <AnimatePresence mode="wait" custom={authStepDirection}>
           {!emailStep ? (
             <motion.div
@@ -521,6 +555,9 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                   Изменить
                 </button>
               </div>
+              {isInviteFlow ? (
+                <InviteFormNotice companyName={inviteCompanyName} />
+              ) : null}
               <p className="text-sm text-muted-foreground">
                 Этот email зарегистрирован через{" "}
                 {oauthProviders.includes("google.com") ? "Google" : "Apple"}
@@ -593,6 +630,10 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                 </InputGroup>
               </div>
 
+              {isInviteFlow ? (
+                <InviteFormNotice companyName={inviteCompanyName} />
+              ) : null}
+
               {isSignUp ? (
                 <motion.div
                   initial={reducedMotion ? false : { opacity: 0, y: 8 }}
@@ -662,6 +703,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
             </motion.div>
           )}
           </AnimatePresence>
+        )}
 
           {error ? (
             <p
@@ -692,5 +734,20 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
           </p>
       </div>
     </AuthJourneyShell>
+  );
+}
+
+function InviteFormNotice({ companyName }: { companyName: string | null }) {
+  return (
+    <p className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-2.5 text-sm leading-relaxed text-muted-foreground">
+      {companyName ? (
+        <>
+          Вы войдёте в компанию{" "}
+          <span className="font-medium text-foreground">«{companyName}»</span>
+        </>
+      ) : (
+        "После входа вы присоединитесь к команде по приглашению."
+      )}
+    </p>
   );
 }

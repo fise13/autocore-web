@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { Check, Plus } from "lucide-react";
+import { Check, Plus, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { AppLogo } from "@/components/brand/app-logo";
@@ -28,6 +28,7 @@ import { useUserCompanies } from "@/hooks/use-user-companies";
 import { companyAvatarStyle, companyMonogramLabel } from "@/lib/company/company-avatar-style";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
+import { parseInviteTokenFromPath } from "@autocore/org";
 
 type CompanyAvatarProps = {
   companyId: string;
@@ -56,12 +57,14 @@ type CompanySwitcherMenuProps = {
   onClose?: () => void;
   variant?: "dropdown" | "plain";
   onOpenCreateDialog?: () => void;
+  onOpenJoinDialog?: () => void;
 };
 
 export function CompanySwitcherMenu({
   onClose,
   variant = "dropdown",
   onOpenCreateDialog,
+  onOpenJoinDialog,
 }: CompanySwitcherMenuProps) {
   const router = useRouter();
   const { switchCompany } = useAuth();
@@ -156,6 +159,28 @@ export function CompanySwitcherMenu({
     })
   );
 
+  const joinAction =
+    variant === "dropdown" ? (
+      <DropdownMenuItem
+        className="cursor-pointer gap-2"
+        disabled={busy}
+        onClick={() => onOpenJoinDialog?.()}
+      >
+        <Users />
+        Присоединиться к компании
+      </DropdownMenuItem>
+    ) : (
+      <button
+        type="button"
+        className={plainItemClassName}
+        disabled={busy}
+        onClick={() => onOpenJoinDialog?.()}
+      >
+        <Users className="size-4 text-muted-foreground" />
+        Присоединиться к компании
+      </button>
+    );
+
   const createAction =
     variant === "dropdown" ? (
       <DropdownMenuItem
@@ -191,7 +216,10 @@ export function CompanySwitcherMenu({
           {companyRows}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuGroup>{createAction}</DropdownMenuGroup>
+        <DropdownMenuGroup>
+          {joinAction}
+          {createAction}
+        </DropdownMenuGroup>
       </>
     ) : (
       <>
@@ -200,6 +228,7 @@ export function CompanySwitcherMenu({
         </p>
         {companyRows}
         <div className="my-1 h-px bg-border/70" />
+        {joinAction}
         {createAction}
       </>
     );
@@ -285,6 +314,110 @@ export function CreateCompanyDialog({
             </Button>
             <Button type="submit" disabled={busy || !companyName.trim()}>
               {userCopy.company.createButton}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function parseInviteInput(raw: string): { type: "token"; token: string } | { type: "code"; code: string } {
+  const trimmed = raw.trim();
+  if (!trimmed) return { type: "code", code: "" };
+
+  const fromPath = parseInviteTokenFromPath(trimmed);
+  if (fromPath) return { type: "token", token: fromPath };
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const url = new URL(trimmed);
+      const fromUrl = parseInviteTokenFromPath(`${url.pathname}${url.search}`);
+      if (fromUrl) return { type: "token", token: fromUrl };
+    } catch {
+      // Fall through to invite code.
+    }
+  }
+
+  return { type: "code", code: trimmed };
+}
+
+type JoinCompanyDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onJoined?: () => void;
+};
+
+export function JoinCompanyDialog({ open, onOpenChange, onJoined }: JoinCompanyDialogProps) {
+  const router = useRouter();
+  const { joinCompanyWithInvite } = useAuth();
+  const [inviteInput, setInviteInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleJoinCompany(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const parsed = parseInviteInput(inviteInput);
+    if (parsed.type === "code" && !parsed.code) return;
+
+    setBusy(true);
+    setError(null);
+    try {
+      if (parsed.type === "token") {
+        onOpenChange(false);
+        setInviteInput("");
+        router.push(`/invite/${encodeURIComponent(parsed.token)}`);
+        return;
+      }
+
+      await joinCompanyWithInvite(parsed.code);
+      setInviteInput("");
+      onOpenChange(false);
+      onJoined?.();
+      router.refresh();
+    } catch (joinError) {
+      setError(joinError instanceof Error ? joinError.message : "Не удалось присоединиться");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          setInviteInput("");
+          setError(null);
+        }
+        onOpenChange(nextOpen);
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{userCopy.company.inviteTitle}</DialogTitle>
+          <DialogDescription>
+            Вставьте ссылку или код приглашения. Текущая компания останется в списке — можно переключиться позже.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={(event) => void handleJoinCompany(event)} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="company-switcher-join-invite">{userCopy.company.inviteLabel}</Label>
+            <Input
+              id="company-switcher-join-invite"
+              value={inviteInput}
+              onChange={(event) => setInviteInput(event.target.value)}
+              placeholder="Ссылка или код, например DUAVV5"
+              autoFocus
+            />
+          </div>
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
+              Отмена
+            </Button>
+            <Button type="submit" disabled={busy || !inviteInput.trim()}>
+              Присоединиться
             </Button>
           </DialogFooter>
         </form>
