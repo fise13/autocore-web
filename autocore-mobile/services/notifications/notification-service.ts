@@ -451,6 +451,13 @@ export const NotificationService = {
     });
   },
 
+  async backfillTeamHistory(): Promise<{ created: number }> {
+    const { backfillTeamNotifications } = await import('@/services/api/notification-api');
+    const result = await backfillTeamNotifications();
+    await this.syncInbox();
+    return { created: result.created };
+  },
+
   async syncInbox(): Promise<void> {
     const store = getNotificationStore();
     store.setSyncing(true);

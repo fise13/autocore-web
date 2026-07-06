@@ -7,6 +7,7 @@ import type { UserRole } from "@/domain/user";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import {
   createInboxNotification,
+  hasInboxNotification,
   listTeamAdminRecipients,
 } from "@/infrastructure/firestore/notification-repository.server";
 import { normalizeCompanyId } from "@/lib/company-id";
@@ -217,6 +218,110 @@ export async function emitMemberRemovedFromCompanyNotification(params: {
   } catch (error) {
     console.error("[team-notifications] member removed notification failed", error);
   }
+}
+
+export async function backfillTeamJoinNotificationsForCompany(params: {
+  companyId: string;
+  dryRun?: boolean;
+}): Promise<{ created: number; skipped: number; employees: number }> {
+  const companyId = normalizeCompanyId(params.companyId);
+  const db = getAdminFirestore();
+  const companySnap = await db.collection("companies").doc(companyId).get();
+  if (!companySnap.exists) {
+    return { created: 0, skipped: 0, employees: 0 };
+  }
+
+  const companyName = String(companySnap.data()?.name ?? "AutoCore");
+  const ownerId = String(companySnap.data()?.ownerId ?? "");
+  const employeesSnap = await db
+    .collection("companies")
+    .doc(companyId)
+    .collection("employees")
+    .where("isActive", "==", true)
+    .get();
+
+  let created = 0;
+  let skipped = 0;
+
+  for (const employeeDoc of employeesSnap.docs) {
+    const employeeUid = employeeDoc.id;
+    if (employeeUid === ownerId) continue;
+
+    const employeeData = employeeDoc.data();
+    const role = normalizeRole(String(employeeData.role ?? "employee"));
+    const displayName =
+      String(employeeData.fullName ?? "").trim() ||
+      String(employeeData.email ?? "").trim() ||
+      "Сотрудник";
+    const roleLabel = ROLE_LABELS[role] ?? role;
+    const inviteId = String(employeeData.inviteId ?? employeeUid);
+
+    const teamAdmins = await listTeamAdminRecipients(companyId, employeeUid);
+    const recipientIds = new Set(teamAdmins.map((user) => user.id));
+    const inviterId = String(employeeData.invitedBy ?? "").trim();
+    if (inviterId && inviterId !== employeeUid) {
+      recipientIds.add(inviterId);
+    }
+
+    const adminCtx: NotificationEventContext = {
+      companyId,
+      eventType: "employee.joined_by_invite",
+      actorUserId: employeeUid,
+      actorName: displayName,
+      aggregateType: "employee",
+      aggregateId: employeeUid,
+      eventId: `backfill:invite-accepted:${inviteId}`,
+      payload: {
+        summary: `${displayName} присоединился к команде`,
+        role: roleLabel,
+        email: String(employeeData.email ?? ""),
+      },
+      deepLink: "autocoremobile://profile/team",
+    };
+
+    let employeeSkipped = true;
+    for (const userId of recipientIds) {
+      const exists = await hasInboxNotification({
+        userId,
+        companyId,
+        eventType: "employee.joined_by_invite",
+        aggregateId: employeeUid,
+      });
+      if (exists) continue;
+
+      employeeSkipped = false;
+      if (!params.dryRun) {
+        await deliverInboxNotification(userId, companyId, adminCtx);
+      }
+      created += 1;
+    }
+
+    if (employeeSkipped) {
+      skipped += 1;
+    }
+  }
+
+  return {
+    created,
+    skipped,
+    employees: employeesSnap.size - (ownerId ? 1 : 0),
+  };
+}
+
+function normalizeRole(role: string): UserRole {
+  const normalized = role.trim().toLowerCase();
+  if (
+    normalized === "owner" ||
+    normalized === "admin" ||
+    normalized === "manager" ||
+    normalized === "employee" ||
+    normalized === "mechanic" ||
+    normalized === "accountant" ||
+    normalized === "diagnostician"
+  ) {
+    return normalized;
+  }
+  return "employee";
 }
 
 export async function emitMemberAccessSuspendedNotification(params: {

@@ -40,3 +40,10 @@ export function markNotificationState(notificationId: string, state: 'read' | 'a
 export function markAllNotificationsRead() {
   return mobilePost<{ updated: number }>(mobileApi.notificationsMarkAllRead);
 }
+
+export function backfillTeamNotifications() {
+  return mobilePost<{ ok: boolean; created: number; skipped: number; employees: number }>(
+    mobileApi.notificationsBackfillTeam,
+    {},
+  );
+}

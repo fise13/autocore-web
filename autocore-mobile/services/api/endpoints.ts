@@ -17,6 +17,7 @@ export const mobileApi = {
   notificationsPreferences: '/api/mobile/notifications/preferences',
   notificationsRegisterDevice: '/api/mobile/notifications/register-device',
   notificationsMarkAllRead: '/api/mobile/notifications/mark-all-read',
+  notificationsBackfillTeam: '/api/notifications/backfill-team',
   notification: (id: string) => `/api/mobile/notifications/${encodeURIComponent(id)}`,
   accountAvatar: '/api/account/avatar',
   invitesSend: '/api/invites/send',

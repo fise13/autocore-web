@@ -354,6 +354,28 @@ export async function upsertGroupedNotification(params: {
   return created;
 }
 
+export async function hasInboxNotification(params: {
+  userId: string;
+  companyId: string;
+  eventType: NotificationRecord["eventType"];
+  aggregateId: string;
+}): Promise<boolean> {
+  const normalizedCompanyId = normalizeCompanyId(params.companyId);
+  const snap = await getAdminFirestore()
+    .collection(NOTIFICATIONS)
+    .where("userId", "==", params.userId)
+    .get();
+
+  return snap.docs.some((doc) => {
+    const item = doc.data() as NotificationRecord;
+    return (
+      item.companyId === normalizedCompanyId &&
+      item.eventType === params.eventType &&
+      item.aggregateId === params.aggregateId
+    );
+  });
+}
+
 export async function listInboxNotifications(params: {
   userId: string;
   companyId: string;

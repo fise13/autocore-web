@@ -19,6 +19,7 @@
     "test": "npm run test:import && npm run test:import-motors",
     "migrate:rbac": "tsx scripts/migrate-rbac.ts",
     "migrate:billing": "tsx scripts/backfill-billing-subscriptions.ts",
+    "backfill:notifications": "tsx scripts/backfill-team-notifications.ts",
     "deploy:billing-functions": "bash scripts/deploy-billing-functions.sh",
     "setup:stripe-secret": "bash scripts/setup-stripe-firebase-secret.sh",
     "assets:sync-from-native": "bash scripts/sync-brand-assets-from-native.sh",

@@ -6,6 +6,7 @@ import { AlertTriangleIcon, BellIcon } from '@/assets/icons';
 import { Badge, Button, EmptyState, SearchInput, Text } from '@/components/ui';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
 import { useTheme } from '@/hooks';
+import { useSession } from '@/hooks/use-session';
 import { NotificationService } from '@/services/notifications';
 import type { AppNotification } from '@/services/notifications';
 import { useNotificationStore } from '@/stores/notification-store';
@@ -25,6 +26,8 @@ export function NotificationInboxScreen() {
     [returnTo],
   );
   const { colors } = useTheme();
+  const { can } = useSession();
+  const canManageTeam = can('employee_manage');
   const unreadCount = useNotificationStore((s) => s.unreadCount);
   const loading = useNotificationStore((s) => s.loading);
   const syncing = useNotificationStore((s) => s.syncing);
@@ -36,6 +39,7 @@ export function NotificationInboxScreen() {
   const storeItems = useNotificationStore((s) => s.items);
 
   const [refreshing, setRefreshing] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchQuery);
 
   const filteredItems = useMemo(
@@ -44,6 +48,15 @@ export function NotificationInboxScreen() {
   );
 
   const groups = useMemo(() => groupNotificationsByDate(filteredItems), [filteredItems]);
+
+  const handleBackfillTeam = useCallback(async () => {
+    setBackfilling(true);
+    try {
+      await NotificationService.backfillTeamHistory();
+    } finally {
+      setBackfilling(false);
+    }
+  }, []);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -158,8 +171,20 @@ export function NotificationInboxScreen() {
           <EmptyState
             icon={BellIcon}
             title="Нет уведомлений"
-            description="Здесь появятся события по нарядам, финансам, команде и документам."
+            description={
+              canManageTeam
+                ? 'События появляются в момент действия. Если сотрудники присоединились раньше, восстановите уведомления о команде.'
+                : 'Здесь появятся события по нарядам, финансам, команде и документам.'
+            }
             primaryAction={{ label: 'Обновить', onPress: () => void handleRefresh() }}
+            secondaryAction={
+              canManageTeam
+                ? {
+                    label: backfilling ? 'Восстановление…' : 'Восстановить команду',
+                    onPress: () => void handleBackfillTeam(),
+                  }
+                : undefined
+            }
           />
         ) : null}
 
