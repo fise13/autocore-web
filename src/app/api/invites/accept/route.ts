@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       uid: access.uid,
       token,
       userEmail: String(userData.email ?? ""),
-      userName: String(userData.name ?? ""),
+      userName: String(userData.name ?? userData.displayName ?? ""),
       switchToCompany: body.switchToCompany === true,
     });
 

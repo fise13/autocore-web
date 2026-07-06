@@ -9,7 +9,7 @@ import type {
   NotificationRecord,
 } from "@/domain/notifications";
 import { getNotificationEventDefinition, PRIORITY_CHANNELS } from "@/domain/notifications";
-import { hasPermission, type UserEntity } from "@/domain/user";
+import { hasPermission, USER_ROLES, type UserEntity, type UserRole } from "@/domain/user";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { mapAdminUser } from "@/infrastructure/firestore/admin-mappers";
 import { normalizeCompanyId } from "@/lib/company-id";
@@ -103,6 +103,9 @@ export async function listUserDevices(uid: string): Promise<NotificationDevice[]
 async function listCompanyEmployees(companyId: string): Promise<UserEntity[]> {
   const db = getAdminFirestore();
   const normalized = normalizeCompanyId(companyId);
+  const companySnap = await db.collection("companies").doc(normalized).get();
+  const ownerId = String(companySnap.data()?.ownerId ?? "");
+
   const employeesSnap = await db
     .collection("companies")
     .doc(normalized)
@@ -113,11 +116,55 @@ async function listCompanyEmployees(companyId: string): Promise<UserEntity[]> {
   const users: UserEntity[] = [];
   for (const employeeDoc of employeesSnap.docs) {
     const uid = employeeDoc.id;
+    const employeeData = employeeDoc.data();
     const userSnap = await db.collection("users").doc(uid).get();
     if (!userSnap.exists) continue;
-    users.push(mapAdminUser(uid, userSnap.data() as Record<string, unknown>));
+
+    const user = mapAdminUser(uid, userSnap.data() as Record<string, unknown>);
+    const employeeRole = String(employeeData.role ?? user.role);
+    const role = USER_ROLES.includes(employeeRole as UserRole)
+      ? (employeeRole as UserRole)
+      : user.role;
+
+    users.push({
+      ...user,
+      role,
+      companyId: normalized,
+      permissions: Array.isArray(employeeData.permissions)
+        ? employeeData.permissions
+        : user.permissions,
+      isActive: employeeData.isActive !== false,
+      isCompanyOwner: uid === ownerId || user.isCompanyOwner === true,
+    });
   }
+
+  if (ownerId && !users.some((user) => user.id === ownerId)) {
+    const ownerSnap = await db.collection("users").doc(ownerId).get();
+    if (ownerSnap.exists) {
+      users.push({
+        ...mapAdminUser(ownerId, ownerSnap.data() as Record<string, unknown>),
+        role: "owner",
+        companyId: normalized,
+        isCompanyOwner: true,
+        isActive: true,
+      });
+    }
+  }
+
   return users;
+}
+
+/** Owners/admins/managers who should receive team alerts. */
+export async function listTeamAdminRecipients(
+  companyId: string,
+  excludeUserId?: string,
+): Promise<UserEntity[]> {
+  const employees = await listCompanyEmployees(companyId);
+  return employees.filter((user) => {
+    if (excludeUserId && user.id === excludeUserId) return false;
+    if (!["owner", "admin", "manager"].includes(user.role)) return false;
+    return hasPermission(user, "employee_manage");
+  });
 }
 
 function shouldNotifyUser(params: {

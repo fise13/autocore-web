@@ -72,7 +72,7 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
       await acceptInvite(token, switchToCompany);
       clearPendingInvite();
       await refreshProfile();
-      void NotificationService.syncInbox();
+      await NotificationService.syncInbox();
       router.replace('/(tabs)');
     } catch (cause) {
       setError(mapAuthError(cause));

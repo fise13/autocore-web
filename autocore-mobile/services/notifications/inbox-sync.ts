@@ -2,6 +2,7 @@ import { FirebaseError } from 'firebase/app';
 
 import { normalizeCompanyId } from '@/lib/company-id';
 import { resolveSessionCompanyId } from '@/lib/session/merge-hydration';
+import { fetchNotificationInbox } from '@/services/api/notification-api';
 import { MobileApiError } from '@/services/api/mobile-client';
 import {
   fetchInboxFromFirestore,
@@ -61,7 +62,17 @@ export async function syncInboxFromServer(
 ): Promise<{ items: ReturnType<typeof fromServerRecord>[]; unreadCount: number }> {
   try {
     const { userId, companyId } = resolveInboxContext();
-    const response = await fetchInboxFromFirestore({ userId, companyId, state: filter });
+
+    let response: { items: Parameters<typeof fromServerRecord>[0][]; unreadCount: number };
+    try {
+      response = await fetchNotificationInbox(filter);
+    } catch (apiError) {
+      if (apiError instanceof MobileApiError && (apiError.status === 401 || apiError.status === 403)) {
+        throw apiError;
+      }
+      response = await fetchInboxFromFirestore({ userId, companyId, state: filter });
+    }
+
     const serverItems = response.items.map(fromServerRecord);
     const cache = loadInboxCache();
     const merged = mergeServerItems(cache.items, serverItems);

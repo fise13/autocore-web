@@ -220,7 +220,7 @@ export async function acceptInviteAsUser(params: {
     );
   }
 
-  void emitEmployeeJoinedByInviteNotifications({
+  await emitEmployeeJoinedByInviteNotifications({
     companyId,
     companyName,
     uid: params.uid,
@@ -228,6 +228,7 @@ export async function acceptInviteAsUser(params: {
     userEmail,
     role,
     inviteId: found.id,
+    inviterUserId: String(invite.createdBy ?? ""),
   });
 
   return {

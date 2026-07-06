@@ -36,7 +36,7 @@ export function CompanyJourneyScreen() {
         await acceptInvite(token, true);
         clearPendingInvite();
         await refreshProfile();
-        void NotificationService.syncInbox();
+        await NotificationService.syncInbox();
       } catch (cause) {
         router.replace(`/invite/${encodeURIComponent(token)}` as never);
         setError(mapAuthError(cause));
