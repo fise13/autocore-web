@@ -122,9 +122,10 @@ async function listCompanyEmployees(companyId: string): Promise<UserEntity[]> {
 
     const user = mapAdminUser(uid, userSnap.data() as Record<string, unknown>);
     const employeeRole = String(employeeData.role ?? user.role);
-    const role = USER_ROLES.includes(employeeRole as UserRole)
+    const roleFromEmployee = USER_ROLES.includes(employeeRole as UserRole)
       ? (employeeRole as UserRole)
       : user.role;
+    const role: UserRole = uid === ownerId ? "owner" : roleFromEmployee;
 
     users.push({
       ...user,
@@ -162,6 +163,7 @@ export async function listTeamAdminRecipients(
   const employees = await listCompanyEmployees(companyId);
   return employees.filter((user) => {
     if (excludeUserId && user.id === excludeUserId) return false;
+    if (user.isCompanyOwner) return true;
     if (!["owner", "admin", "manager"].includes(user.role)) return false;
     return hasPermission(user, "employee_manage");
   });

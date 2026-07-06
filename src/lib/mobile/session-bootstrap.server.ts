@@ -59,6 +59,37 @@ async function resolveOwnedCompanyId(
   return (preferred ?? owned.docs[0]).id;
 }
 
+async function readUserMemberships(uid: string): Promise<UserCompanyMembership[]> {
+  const db = getAdminFirestore();
+  const membershipsSnap = await db.collection("users").doc(uid).collection("memberships").get();
+  return membershipsSnap.docs
+    .filter((entry) => isAssignedCompanyId(entry.id))
+    .map((entry) => {
+      const companyId = normalizeCompanyId(entry.id);
+      const data = entry.data() as { role?: UserRole };
+      return {
+        companyId,
+        role: data.role ?? "employee",
+        name: companyId,
+      };
+    });
+}
+
+/** Same company resolution as mobile session bootstrap (profile → membership → owned company). */
+export async function resolveMobileWorkspaceCompanyId(uid: string): Promise<string | null> {
+  const db = getAdminFirestore();
+  const userSnap = await db.collection("users").doc(uid).get();
+  if (!userSnap.exists) return null;
+
+  const userDoc = userSnap.data() as UserDocShape;
+  const memberships = await readUserMemberships(uid);
+  let companyId = resolveCompanyId(userDoc.companyId, memberships);
+  if (!companyId) {
+    companyId = await resolveOwnedCompanyId(db, uid);
+  }
+  return companyId;
+}
+
 function readCompanyName(data: Record<string, unknown> | undefined, companyId: string): string {
   const name = String(data?.shortName ?? data?.name ?? data?.legalName ?? "").trim();
   return name || companyId;
@@ -91,18 +122,7 @@ export async function buildMobileSessionBootstrap(uid: string): Promise<MobileSe
   }
 
   const userDoc = userSnap.data() as UserDocShape;
-  const membershipsSnap = await db.collection("users").doc(uid).collection("memberships").get();
-  const memberships: UserCompanyMembership[] = membershipsSnap.docs
-    .filter((entry) => isAssignedCompanyId(entry.id))
-    .map((entry) => {
-      const companyId = normalizeCompanyId(entry.id);
-      const data = entry.data() as { role?: UserRole };
-      return {
-        companyId,
-        role: data.role ?? "employee",
-        name: companyId,
-      };
-    });
+  const memberships = await readUserMemberships(uid);
 
   let companyId = resolveCompanyId(userDoc.companyId, memberships);
   if (!companyId) {

@@ -80,9 +80,10 @@ export function resolveChannelsForUser(params: {
   preferences: NotificationPreferences;
   priority: "critical" | "high" | "medium" | "low";
   requested: Array<"inbox" | "push" | "badge" | "email">;
+  at?: Date;
 }): Array<"inbox" | "push" | "badge" | "email"> {
-  const { preferences, priority, requested } = params;
-  const quiet = isInQuietHours(preferences);
+  const { preferences, priority, requested, at } = params;
+  const quiet = isInQuietHours(preferences, at);
   const channels = new Set<"inbox" | "push" | "badge" | "email">();
 
   for (const channel of requested) {

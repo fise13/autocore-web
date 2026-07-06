@@ -78,6 +78,12 @@ export async function syncInboxFromServer(
 
   try {
     response = await fetchNotificationInbox(filter);
+    if (response.items.length === 0) {
+      const firestoreResponse = await fetchInboxFromFirestore({ userId, companyId, state: filter });
+      if (firestoreResponse.items.length > 0) {
+        response = firestoreResponse;
+      }
+    }
   } catch (apiError) {
     if (apiError instanceof MobileApiError && (apiError.status === 401 || apiError.status === 403)) {
       throw apiError;

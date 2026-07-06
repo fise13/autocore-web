@@ -2,9 +2,9 @@ import "server-only";
 
 import { Permission, UserEntity, type AccessScopes } from "@autocore/rbac";
 import { hasPermission } from "@/domain/user";
-import { getAdminAuth, getAdminFirestore } from "@/infrastructure/firebase/admin";
+import { getAdminAuth } from "@/infrastructure/firebase/admin";
 import { resolveAccessProfile } from "@/lib/auth/resolve-access-profile.server";
-import { normalizeCompanyId } from "@/lib/company-id";
+import { resolveMobileWorkspaceCompanyId } from "@/lib/mobile/session-bootstrap.server";
 
 export type VerifiedMobileAccess = {
   uid: string;
@@ -44,17 +44,12 @@ export async function verifyMobileAccess(
     throw new MobileAccessError("Недействительный токен", 401);
   }
 
-  const userSnap = await getAdminFirestore().collection("users").doc(uid).get();
-  if (!userSnap.exists) {
-    throw new MobileAccessError("Профиль пользователя не найден", 403);
-  }
-
-  const trimmedCompanyId = String(userSnap.data()?.companyId ?? "").trim();
-  if (!trimmedCompanyId) {
+  const companyId = await resolveMobileWorkspaceCompanyId(uid);
+  if (!companyId) {
     throw new MobileAccessError("Сначала присоединитесь к компании", 403);
   }
 
-  const resolved = await resolveAccessProfile(uid, normalizeCompanyId(trimmedCompanyId));
+  const resolved = await resolveAccessProfile(uid, companyId);
 
   if (resolved.profile.isActive === false) {
     throw new MobileAccessError("Аккаунт деактивирован", 403);

@@ -78,31 +78,7 @@ export async function POST(request: NextRequest) {
     });
 
     const appOrigin = getPublicAppUrl();
-
-    if (!isResendConfigured()) {
-      return NextResponse.json(
-        {
-          error: "Email service not configured",
-          inviteId: inviteRef.id,
-          joinUrl: buildInviteUrl(token, appOrigin),
-        },
-        { status: 503 },
-      );
-    }
-
     const joinUrl = buildInviteUrl(token, appOrigin);
-    const resend = getResend();
-    await resend.emails.send({
-      from: getSupportFrom(),
-      to: email,
-      subject: buildInviteEmailSubject(companyName),
-      html: buildInviteEmailHtml({
-        joinUrl,
-        companyName,
-        role,
-        expiresAt,
-      }),
-    });
 
     const inviterSnap = await db.collection("users").doc(access.uid).get();
     const inviterName = inviterSnap.exists ? String(inviterSnap.data()?.name ?? "") : "";
@@ -114,6 +90,30 @@ export async function POST(request: NextRequest) {
       email,
       role,
       inviteId: inviteRef.id,
+    });
+
+    if (!isResendConfigured()) {
+      return NextResponse.json(
+        {
+          error: "Email service not configured",
+          inviteId: inviteRef.id,
+          joinUrl,
+        },
+        { status: 503 },
+      );
+    }
+
+    const resend = getResend();
+    await resend.emails.send({
+      from: getSupportFrom(),
+      to: email,
+      subject: buildInviteEmailSubject(companyName),
+      html: buildInviteEmailHtml({
+        joinUrl,
+        companyName,
+        role,
+        expiresAt,
+      }),
     });
 
     return NextResponse.json({
