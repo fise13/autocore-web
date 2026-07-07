@@ -8,12 +8,10 @@ import { NotificationService } from '@/services/notifications';
 import { haptics } from '@/theme';
 import { CompanySwitcherSheet } from '@/features/organization/components/company-switcher-sheet';
 
-import { WORKSPACE_DEMO } from '../data/demo-data';
 import { settingsRouteHref } from '../navigation';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
 import { WorkspaceCompaniesSection } from '../components/workspace-companies-section';
 import { WorkspaceHeroCard } from '../components/workspace-hero-card';
-import { WorkspaceStorageCard } from '../components/workspace-storage-card';
 import { WorkspaceSubscriptionCard } from '../components/workspace-subscription-card';
 
 export function WorkspaceScreen() {
@@ -23,8 +21,6 @@ export function WorkspaceScreen() {
   const { companyName, isLoading: isCompanyNameLoading } = useActiveCompanyName();
   const { subscription, isPro } = useCompanySubscription(companyId);
   const [switcherOpen, setSwitcherOpen] = useState(false);
-
-  const storagePct = (WORKSPACE_DEMO.storageUsed.usedGb / WORKSPACE_DEMO.storageUsed.totalGb) * 100;
 
   const canSwitchOrg = memberships.length > 1;
 
@@ -46,17 +42,10 @@ export function WorkspaceScreen() {
         onManage={() => router.push(settingsRouteHref('subscription'))}
       />
 
-      <WorkspaceStorageCard
-        usedLabel={WORKSPACE_DEMO.storageUsed.label}
-        usedPct={storagePct}
-        syncStatus={WORKSPACE_DEMO.cloudSync.status}
-        syncMeta={`${WORKSPACE_DEMO.cloudSync.lastSync} · ${WORKSPACE_DEMO.cloudSync.devices} устройства`}
-      />
-
       <WorkspaceCompaniesSection
         memberships={memberships}
         activeCompanyId={companyId}
-        onCreateCompany={() => {}}
+        onCreateCompany={() => router.push('/(auth)/journey/company')}
         onJoinCompany={() => router.push('/(tabs)/profile/join-company')}
         onSwitchCompany={async (nextCompanyId) => {
           if (!firebaseUser) return;

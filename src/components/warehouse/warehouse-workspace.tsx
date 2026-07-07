@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { adjustStockUseCase } from "@/application/use-cases/warehouse/adjust-stock";
@@ -12,6 +12,7 @@ import { receiveStockUseCase } from "@/application/use-cases/warehouse/receive-s
 import { transferStockUseCase } from "@/application/use-cases/warehouse/transfer-stock";
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { buildWarehouseSearchSuggestions } from "@/components/layout/workspace-search-field";
+import { useToast } from "@/components/ui/toast-provider";
 import { MotorsGridSkeleton } from "@/components/motors/motors-grid-skeleton";
 import { WarehouseAdjustmentDialog } from "@/components/warehouse/warehouse-adjustment-dialog";
 import { WarehouseBarcodePanel } from "@/components/warehouse/warehouse-barcode-panel";
@@ -29,6 +30,7 @@ import { useInventoryMovementsRealtime } from "@/hooks/use-inventory-movements-r
 import { useInventoryRealtime } from "@/hooks/use-inventory-realtime";
 import { useStockLevelsRealtime } from "@/hooks/use-stock-levels-realtime";
 import { useWarehousesRealtime } from "@/hooks/use-warehouses-realtime";
+import { useLifecyclePausable } from "@/hooks/use-lifecycle-pausable";
 import { can } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { filterWarehouseItems } from "@/lib/warehouse/warehouse-grid-data-store";
@@ -62,9 +64,18 @@ const presenceRepository = createWarehousePresenceRepository();
 
 type DialogKind = "receipt" | "adjust" | "sale" | "transfer" | "history" | "barcode" | "import" | "import-history";
 
+function formatDirtyCount(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${count} изменение`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${count} изменения`;
+  return `${count} изменений`;
+}
+
 export function WarehouseWorkspace() {
   const { profile } = useAuth();
   const workspace = useWorkspace();
+  const { toast } = useToast();
   const {
     registerWarehouseExcelHandlers,
     setWarehouseExcelAvailability,
@@ -80,6 +91,7 @@ export function WarehouseWorkspace() {
     setCounts,
     setSearchSuggestions,
     selectedWarehouseId,
+    triggerSync,
   } = workspace;
   const searchParams = useSearchParams();
   const companyId = normalizeCompanyId(profile?.companyId);
@@ -109,6 +121,20 @@ export function WarehouseWorkspace() {
     stats: InventoryImportJob["stats"];
   } | null>(null);
   const [ioBusy, setIoBusy] = useState<"export" | "import" | null>(null);
+  const [cloudPending, setCloudPending] = useState(false);
+  const [dirtyCount, setDirtyCount] = useState(0);
+  const cloudPendingRef = useRef(false);
+  const prevDialogRef = useRef<DialogKind | null>(null);
+  cloudPendingRef.current = cloudPending;
+
+  const lifecycleRef = useLifecyclePausable({
+    enabled: canView,
+    onSuspend: () => {
+      if (cloudPendingRef.current) {
+        void triggerSync();
+      }
+    },
+  });
   const { movements, loading: movementsLoading } = useInventoryMovementsRealtime(
     movementRepository,
     companyId,
@@ -184,6 +210,17 @@ export function WarehouseWorkspace() {
   }, [canView, setSearchSuggestions, warehouseSearchSuggestions]);
 
   useEffect(() => () => setSearchSuggestions([]), [setSearchSuggestions]);
+
+  useEffect(() => {
+    if (prevDialogRef.current !== null && dialog === null && cloudPending) {
+      toast({
+        title: "Есть несинхронизированные правки в таблице",
+        description: "Нажмите ⌘S или дождитесь автосохранения",
+        durationMs: 4200,
+      });
+    }
+    prevDialogRef.current = dialog;
+  }, [cloudPending, dialog, toast]);
 
   useEffect(() => {
     const query = searchParams.get("search")?.trim();
@@ -302,7 +339,7 @@ export function WarehouseWorkspace() {
   const readOnly = !canEdit;
 
   return (
-    <div className="relative flex h-full min-h-0 flex-1 flex-col">
+    <div ref={lifecycleRef} className="relative flex h-full min-h-0 flex-1 flex-col">
       {readOnly ? (
         <div className="border-b border-amber-500/25 bg-amber-500/10 px-4 py-2 text-center text-xs text-amber-800 dark:text-amber-200">
           Режим просмотра — для редактирования нужна роль с правом «Редактирование инвентаря»
@@ -332,6 +369,11 @@ export function WarehouseWorkspace() {
           ) : null}
         </span>
         <div className="flex flex-wrap items-center gap-2">
+          {dirtyCount > 0 ? (
+            <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-800 dark:text-amber-200">
+              {formatDirtyCount(dirtyCount)}
+            </span>
+          ) : null}
           {lastBarcodeScan ? (
             <span className="rounded-full border bg-background px-2.5 py-1 text-[11px] text-foreground">
               {lastBarcodeScan.itemName
@@ -382,6 +424,9 @@ export function WarehouseWorkspace() {
             onSale={(item) => openDialog("sale", item)}
             onTransfer={(item) => openDialog("transfer", item)}
             onHistory={(item) => openDialog("history", item)}
+            onCloudPendingChange={setCloudPending}
+            onDirtyCountChange={setDirtyCount}
+            externalInteractionLocked={dialog !== null}
           />
         ) : isGridReady ? (
           <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">

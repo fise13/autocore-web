@@ -26,6 +26,9 @@ const iosUrlScheme = googleIosUrlScheme(iosClientId);
 const appleSignInFlag = process.env.EXPO_PUBLIC_ENABLE_APPLE_SIGN_IN?.trim().toLowerCase();
 const appleSignInEnabled = appleSignInFlag !== '0' && appleSignInFlag !== 'false';
 
+const universalLinksFlag = process.env.EXPO_PUBLIC_ENABLE_UNIVERSAL_LINKS?.trim().toLowerCase();
+const universalLinksEnabled = universalLinksFlag === '1' || universalLinksFlag === 'true';
+
 const plugins: ExpoConfig['plugins'] = [
   'expo-router',
   [
@@ -90,21 +93,29 @@ export default (): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     appleTeamId: '45W7LA3QFP',
-    associatedDomains: ['applinks:app.myautocore.com'],
+    ...(universalLinksEnabled ? { associatedDomains: ['applinks:app.myautocore.com'] } : {}),
     ...(appleSignInEnabled ? { usesAppleSignIn: true } : {}),
     bundleIdentifier: 'com.wise.autocore.mobile',
     icon: './assets/branding/login-logo.png',
-    ...(iosUrlScheme
-      ? {
-          infoPlist: {
+    infoPlist: {
+      NSUserNotificationsUsageDescription:
+        'AutoCore отправляет уведомления о нарядах, складе, платежах и других событиях вашей компании.',
+      ...(iosUrlScheme
+        ? {
             CFBundleURLTypes: [
               {
                 CFBundleURLSchemes: [iosUrlScheme, 'autocoremobile'],
               },
             ],
-          },
-        }
-      : {}),
+          }
+        : {
+            CFBundleURLTypes: [
+              {
+                CFBundleURLSchemes: ['autocoremobile'],
+              },
+            ],
+          }),
+    },
   },
   android: {
     package: 'com.wise.autocore.mobile',

@@ -9,6 +9,7 @@ import type { DomainCategory, DomainEntry, DomainSearchResult } from "@/lib/doma
 import { cn } from "@/lib/utils";
 
 const ROW_HEIGHT = 44;
+const ROW_HEIGHT_COMPACT = 36;
 const VIRTUALIZE_THRESHOLD = 40;
 
 export type DomainSuggestionListProps = {
@@ -23,6 +24,8 @@ export type DomainSuggestionListProps = {
   onCreate?: () => void;
   emptyLabel?: string;
   className?: string;
+  highlightQuery?: string;
+  compact?: boolean;
 };
 
 /**
@@ -41,12 +44,15 @@ export function DomainSuggestionList({
   onCreate,
   emptyLabel = "Ничего не найдено",
   className,
+  highlightQuery = "",
+  compact = false,
 }: DomainSuggestionListProps) {
+  const rowHeight = compact ? ROW_HEIGHT_COMPACT : ROW_HEIGHT;
   const scrollRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
     count: results.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => ROW_HEIGHT,
+    estimateSize: () => rowHeight,
     overscan: 8,
   });
 
@@ -91,6 +97,8 @@ export function DomainSuggestionList({
                     category={category}
                     entry={result.entry}
                     active={item.index === activeIndex}
+                    compact={compact}
+                    highlightQuery={highlightQuery}
                     onHover={() => onActiveIndexChange(item.index)}
                     onSelect={() => onSelect(result.entry)}
                   />
@@ -105,6 +113,8 @@ export function DomainSuggestionList({
               category={category}
               entry={result.entry}
               active={index === activeIndex}
+              compact={compact}
+              highlightQuery={highlightQuery}
               onHover={() => onActiveIndexChange(index)}
               onSelect={() => onSelect(result.entry)}
             />
@@ -144,11 +154,21 @@ type SuggestionRowProps = {
   category: DomainCategory;
   entry: DomainEntry;
   active: boolean;
+  compact?: boolean;
+  highlightQuery?: string;
   onHover: () => void;
   onSelect: () => void;
 };
 
-function SuggestionRow({ category, entry, active, onHover, onSelect }: SuggestionRowProps) {
+function SuggestionRow({
+  category,
+  entry,
+  active,
+  compact = false,
+  highlightQuery = "",
+  onHover,
+  onSelect,
+}: SuggestionRowProps) {
   const Icon = domainIconFor(category, entry);
   const secondary = entry.brand ?? entry.category;
   const meta = [secondary, entry.hint].filter(Boolean).join(" · ");
@@ -164,27 +184,30 @@ function SuggestionRow({ category, entry, active, onHover, onSelect }: Suggestio
       }}
       onMouseMove={onHover}
       className={cn(
-        "flex min-h-[44px] w-full items-center gap-2.5 rounded-[6px] px-2.5 py-1.5 text-left transition-colors",
+        "flex w-full items-center gap-2.5 rounded-[6px] px-2.5 text-left transition-colors",
+        compact ? "min-h-9 py-1" : "min-h-[44px] py-1.5",
         active
           ? "bg-primary text-primary-foreground"
           : "text-foreground hover:bg-muted/70",
       )}
     >
-      <span
-        className={cn(
-          "flex size-7 shrink-0 items-center justify-center rounded-[6px] border",
-          active
-            ? "border-primary-foreground/20 bg-primary-foreground/15"
-            : "border-border/70 bg-muted/50",
-        )}
-      >
-        <Icon
+      {!compact ? (
+        <span
           className={cn(
-            "size-3.5",
-            active ? "text-primary-foreground" : "text-foreground/70",
+            "flex size-7 shrink-0 items-center justify-center rounded-[6px] border",
+            active
+              ? "border-primary-foreground/20 bg-primary-foreground/15"
+              : "border-border/70 bg-muted/50",
           )}
-        />
-      </span>
+        >
+          <Icon
+            className={cn(
+              "size-3.5",
+              active ? "text-primary-foreground" : "text-foreground/70",
+            )}
+          />
+        </span>
+      ) : null}
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex items-center gap-1.5">
           <span
@@ -208,7 +231,7 @@ function SuggestionRow({ category, entry, active, onHover, onSelect }: Suggestio
             </span>
           ) : null}
         </span>
-        {meta ? (
+        {meta && !compact ? (
           <span
             className={cn(
               "truncate text-[12px] leading-tight",

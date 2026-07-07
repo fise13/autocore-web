@@ -2,6 +2,7 @@ import { Permission, UserEntity, UserRole } from "@/domain/user";
 import {
   canAccessMissionControl,
   canAccessMyEarnings,
+  isEmployeeMissionControlUser,
 } from "@autocore/rbac";
 import {
   getEnabledNavItems,
@@ -11,12 +12,12 @@ import {
 } from "@/lib/navigation/sidebar-customization";
 import { can } from "@/lib/auth/permissions";
 
-export { canAccessMyEarnings, canAccessMissionControl };
+export { canAccessMyEarnings, canAccessMissionControl, isEmployeeMissionControlUser };
 
 /** Restricted roles see only these sidebar sections (owner/manager use permissions). */
 const ROLE_NAV_ALLOWLIST: Partial<Record<UserRole, readonly SidebarNavItemId[]>> = {
-  mechanic: ["work_orders", "my_earnings"],
-  diagnostician: ["work_orders"],
+  mechanic: ["home", "work_orders", "my_earnings"],
+  diagnostician: ["home", "work_orders"],
   accountant: ["accounting"],
   admin: ["home", "work_orders", "warehouse"],
 };

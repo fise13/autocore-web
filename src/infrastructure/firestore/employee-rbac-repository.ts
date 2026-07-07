@@ -265,6 +265,17 @@ export function createEmployeeRbacRepository() {
       });
     },
 
+    async setEmployeeShiftOn(
+      companyId: string,
+      employeeId: string,
+      shiftOn: boolean,
+    ): Promise<void> {
+      await updateDoc(doc(db, "companies", companyId, "employees", employeeId), {
+        shiftOn,
+        updatedAt: serverTimestamp(),
+      });
+    },
+
     async removeEmployee(companyId: string, actorId: string, employeeId: string): Promise<void> {
       void actorId;
       await postOrgMemberAction("/api/org/members/remove", {

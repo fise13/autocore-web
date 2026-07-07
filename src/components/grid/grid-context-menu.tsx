@@ -1,5 +1,6 @@
 "use client";
 
+import { PackagePlus, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { Separator } from "@/components/ui/separator";
@@ -72,7 +73,7 @@ export function GridContextMenu({ x, y, onClose, children, className }: GridCont
       ref={menuRef}
       role="menu"
       className={cn(
-        "animate-tab-enter fixed z-40 min-w-[12rem] rounded-md border bg-popover p-1 shadow-md",
+        "animate-tab-enter fixed z-40 min-w-[11.5rem] rounded-md border bg-popover p-0.5 shadow-md",
         className,
       )}
       style={{ left: position.x, top: position.y }}
@@ -89,6 +90,7 @@ type GridContextMenuItemProps = {
   disabled?: boolean;
   destructive?: boolean;
   shortcut?: string;
+  icon?: LucideIcon;
 };
 
 export function GridContextMenuItem({
@@ -97,6 +99,7 @@ export function GridContextMenuItem({
   disabled,
   destructive,
   shortcut,
+  icon: Icon,
 }: GridContextMenuItemProps) {
   return (
     <button
@@ -104,13 +107,24 @@ export function GridContextMenuItem({
       role="menuitem"
       disabled={disabled}
       className={cn(
-        "flex w-full cursor-pointer items-center justify-between gap-4 rounded px-3 py-1.5 text-left text-sm transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40",
+        "flex w-full cursor-pointer items-center justify-between gap-3 rounded px-2.5 py-1.5 text-left text-[13px] transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40",
         destructive && "text-destructive hover:bg-destructive/10",
       )}
       onClick={onClick}
     >
-      <span>{children}</span>
-      {shortcut ? <span className="text-xs text-muted-foreground">{shortcut}</span> : null}
+      <span className="flex min-w-0 items-center gap-2">
+        {Icon ? (
+          <Icon
+            aria-hidden
+            className={cn(
+              "size-3.5 shrink-0 opacity-70",
+              destructive && "text-destructive",
+            )}
+          />
+        ) : null}
+        <span className="truncate">{children}</span>
+      </span>
+      {shortcut ? <span className="shrink-0 text-[11px] text-muted-foreground">{shortcut}</span> : null}
     </button>
   );
 }

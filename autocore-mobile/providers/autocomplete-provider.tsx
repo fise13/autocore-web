@@ -35,12 +35,14 @@ type AutocompleteContextValue = {
   setHighlightedIndex: (inputId: string, index: number) => void;
   commitHighlighted: (inputId: string) => void;
   activeInputId: string | null;
+  setChromeBottomInset: (height: number) => void;
 };
 
 const AutocompleteContext = createContext<AutocompleteContextValue | null>(null);
 
 export function AutocompleteProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AutocompleteSession | null>(null);
+  const [chromeBottomInset, setChromeBottomInset] = useState(0);
   const sessionRef = useRef<AutocompleteSession | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const blurRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -50,12 +52,21 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
   const runSearch = useCallback((next: AutocompleteSession) => {
     const data = getAutocompleteDataSnapshot();
     const suggestions = searchAutocomplete(next.query, next.config, data, next.customOptions);
-    setSession({
+    const updated: AutocompleteSession = {
       ...next,
       suggestions,
       visible: suggestions.length > 0,
       highlightedIndex: Math.min(next.highlightedIndex, Math.max(0, suggestions.length - 1)),
-    });
+    };
+    sessionRef.current = updated;
+    setSession(updated);
+  }, []);
+
+  const cancelBlurDismiss = useCallback(() => {
+    if (blurRef.current) {
+      clearTimeout(blurRef.current);
+      blurRef.current = null;
+    }
   }, []);
 
   const registerInput = useCallback((args: RegisterInputArgs) => {
@@ -77,6 +88,7 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
       onOptionSelect: args.onOptionSelect,
       customOptions: args.customOptions,
     };
+    sessionRef.current = next;
     setSession(next);
   }, []);
 
@@ -94,14 +106,15 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
       if (!current || current.inputId !== inputId) return;
 
       const next = { ...current, query, highlightedIndex: 0 };
-      setSession(next);
 
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
         const live = sessionRef.current;
         if (!live || live.inputId !== inputId) return;
-        runSearch({ ...live, query });
+        runSearch({ ...live, query: live.query });
       }, current.config.debounceMs ?? AUTOCOMPLETE_DEBOUNCE_MS);
+
+      runSearch(next);
     },
     [runSearch],
   );
@@ -120,6 +133,8 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
     const option = current.suggestions[index];
     if (!option) return;
 
+    cancelBlurDismiss();
+
     const nextValue = applySuggestion(current.query, option.value, current.replaceMode);
     current.onChange(nextValue);
     current.onOptionSelect?.(option.value);
@@ -134,7 +149,7 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
 
     setSession(null);
     Keyboard.dismiss();
-  }, []);
+  }, [cancelBlurDismiss]);
 
   const commitHighlighted = useCallback(
     (inputId: string) => {
@@ -147,13 +162,16 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    const sub = Keyboard.addListener('keyboardDidHide', () => setSession(null));
+    const sub = Keyboard.addListener('keyboardDidHide', () => {
+      cancelBlurDismiss();
+      setSession(null);
+    });
     return () => {
       sub.remove();
       if (debounceRef.current) clearTimeout(debounceRef.current);
       if (blurRef.current) clearTimeout(blurRef.current);
     };
-  }, []);
+  }, [cancelBlurDismiss]);
 
   const value = useMemo(
     () => ({
@@ -163,6 +181,7 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
       setHighlightedIndex,
       commitHighlighted,
       activeInputId: session?.inputId ?? null,
+      setChromeBottomInset,
     }),
     [commitHighlighted, registerInput, session?.inputId, setHighlightedIndex, setQuery, unregisterInput],
   );
@@ -172,9 +191,12 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
       {children}
       <AutocompleteOverlay
         session={session}
+        chromeBottomInset={chromeBottomInset}
+        onInteractionStart={cancelBlurDismiss}
         onSelect={(index) => {
-          if (!session) return;
-          commitSuggestion(session.inputId, index);
+          const current = sessionRef.current;
+          if (!current) return;
+          commitSuggestion(current.inputId, index);
         }}
       />
     </AutocompleteContext.Provider>
@@ -187,4 +209,18 @@ export function useAutocompleteContext(): AutocompleteContextValue {
     throw new Error('useAutocompleteContext must be used within AutocompleteProvider');
   }
   return ctx;
+}
+
+/** Registers bottom chrome (e.g. sticky footer) so autocomplete stays above it. */
+export function useRegisterAutocompleteChromeInset() {
+  const ctx = useContext(AutocompleteContext);
+  const setChromeBottomInset = ctx?.setChromeBottomInset;
+
+  const updateChromeInset = useCallback((height: number) => {
+    setChromeBottomInset?.(Math.max(0, Math.round(height)));
+  }, [setChromeBottomInset]);
+
+  useEffect(() => () => setChromeBottomInset?.(0), [setChromeBottomInset]);
+
+  return updateChromeInset;
 }

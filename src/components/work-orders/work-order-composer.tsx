@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -25,7 +25,7 @@ import { InventoryItem } from "@/domain/inventory";
 import { MotorEntity } from "@/domain/motor";
 import { CompanyEmployee } from "@/domain/rbac";
 import { Button } from "@/components/ui/button";
-import { DatalistInput, DatalistOption } from "@/components/ui/datalist-input";
+import { DatalistInput } from "@/components/ui/datalist-input";
 import { SearchCombobox } from "@/components/ui/search-combobox";
 import { FadeIn } from "@/components/ui/fade-in";
 import { GroupedNumberInput } from "@/components/ui/grouped-number-input";
@@ -42,7 +42,20 @@ import {
   vehicleModelOptions as buildVehicleModelOptions,
 } from "@/lib/vehicles/vehicle-catalog";
 import { ROLE_LABELS } from "@/components/work-orders/work-order-copy";
+import {
+  WORK_ORDERS_MOTION_EASE,
+} from "@/components/work-orders/work-orders-motion";
 import { laborLineLabel, money } from "@/components/work-orders/work-order-utils";
+import {
+  buildAssigneeOptions,
+  buildLaborTitleOptions,
+  buildMotorSerialOptions,
+  buildPartNameOptions,
+  buildPartSkuOptions,
+  buildPlateOptions,
+  buildVinOptions,
+} from "@/lib/work-order/build-composer-suggestions";
+import { rememberComposerFieldValue } from "@/lib/work-order/composer-field-memory";
 import { formatGroupedNumber } from "@/lib/money/format-number";
 
 export type LaborDraft = {
@@ -94,6 +107,8 @@ type WorkOrderComposerProps = {
   availableMotors: MotorEntity[];
   employees: CompanyEmployee[];
   currentUserId?: string;
+  companyId?: string;
+  orders?: WorkOrder[];
   quickSpecificCategories?: CompanySpecificCategoryConfig[];
   editingLabel?: string;
   pricing: WorkOrder["pricing"];
@@ -123,10 +138,6 @@ const STEPS = [
 ] as const;
 
 type VehicleFieldKey = "vehicleMake" | "vehicleModel" | "licensePlate" | "vin";
-
-function uniqueOptions(values: string[]): DatalistOption[] {
-  return [...new Set(values.filter(Boolean))].map((value) => ({ value }));
-}
 
 function vehiclesInContext(
   vehicles: VehicleEntity[],
@@ -171,6 +182,8 @@ export function WorkOrderComposer({
   availableMotors,
   employees,
   currentUserId,
+  companyId,
+  orders = [],
   quickSpecificCategories = [],
   editingLabel,
   pricing,
@@ -231,21 +244,23 @@ export function WorkOrderComposer({
   );
   const licensePlateOptions = useMemo(
     () =>
-      uniqueOptions(
+      buildPlateOptions(
+        companyId,
         vehiclesInContext(clientVehicles, form, "licensePlate")
           .map((vehicle) => vehicle.licensePlate)
           .filter(Boolean),
       ),
-    [clientVehicles, form],
+    [clientVehicles, companyId, form],
   );
   const vinOptions = useMemo(
     () =>
-      uniqueOptions(
+      buildVinOptions(
+        companyId,
         vehiclesInContext(clientVehicles, form, "vin")
           .map((vehicle) => vehicle.vin)
-          .filter(Boolean),
+          .filter(Boolean) as string[],
       ),
-    [clientVehicles, form],
+    [clientVehicles, companyId, form],
   );
 
   function detachVehicleLink() {
@@ -253,6 +268,7 @@ export function WorkOrderComposer({
   }
 
   function commitVehicleByPlate(value: string) {
+    rememberComposerFieldValue(companyId, "licensePlate", value);
     const vehicle = clientVehicles.find(
       (entry) => entry.licensePlate.toLowerCase() === value.trim().toLowerCase(),
     );
@@ -260,17 +276,39 @@ export function WorkOrderComposer({
   }
 
   function commitVehicleByVin(value: string) {
+    rememberComposerFieldValue(companyId, "vin", value);
     const vehicle = clientVehicles.find((entry) => entry.vin.toLowerCase() === value.trim().toLowerCase());
     if (vehicle) onVehicleSelect(vehicle.id);
   }
   const assigneeOptions = useMemo(
-    () =>
-      employees.map((employee) => ({
-        value: employee.fullName || employee.email,
-        label: EMPLOYEE_ROLE_LABELS[employee.role] ?? employee.role,
-      })),
-    [employees],
+    () => buildAssigneeOptions(companyId, employees),
+    [companyId, employees],
   );
+  const laborTitleOptions = useMemo(
+    () =>
+      buildLaborTitleOptions(
+        companyId,
+        orders,
+        form.laborLines.map((line) => line.title),
+      ),
+    [companyId, form.laborLines, orders],
+  );
+
+  const prevLaborCountRef = useRef(form.laborLines.length);
+  const [highlightLaborId, setHighlightLaborId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (form.laborLines.length > prevLaborCountRef.current) {
+      const added = form.laborLines[form.laborLines.length - 1];
+      if (added) {
+        setHighlightLaborId(added.id);
+        const timer = window.setTimeout(() => setHighlightLaborId(null), 1400);
+        prevLaborCountRef.current = form.laborLines.length;
+        return () => window.clearTimeout(timer);
+      }
+    }
+    prevLaborCountRef.current = form.laborLines.length;
+  }, [form.laborLines]);
 
   function resolveAssigneeRole(employee: CompanyEmployee): WorkOrderAssigneeRole {
     if (employee.role === "diagnostician") return "diagnostician";
@@ -286,6 +324,7 @@ export function WorkOrderComposer({
 
   function commitAssignee(value: string) {
     const employee = employees.find((entry) => (entry.fullName || entry.email) === value);
+    rememberComposerFieldValue(companyId, "assignee", value);
     if (!employee) return;
     onLaborDraftChange({
       assigneeName: employee.fullName || employee.email,
@@ -317,29 +356,19 @@ export function WorkOrderComposer({
     });
   }
   const partSkuOptions = useMemo(
-    () => inventoryItems.map((item) => ({ value: item.sku, label: item.name })),
-    [inventoryItems],
+    () => buildPartSkuOptions(companyId, inventoryItems),
+    [companyId, inventoryItems],
   );
   const partNameOptions = useMemo(
-    () =>
-      inventoryItems.map((item) => ({
-        value: item.name,
-        label: item.sku ? `${item.name} · ${item.sku}` : item.name,
-      })),
-    [inventoryItems],
+    () => buildPartNameOptions(companyId, inventoryItems),
+    [companyId, inventoryItems],
   );
   const motorSerialOptions = useMemo(
     () =>
-      availableMotors.map((motor) => ({
-        value: motor.serialCode,
-        label: [
-          formatMotorLineLabel(motor, { includeSerial: true }),
-          motor.serialCode !== formatMotorLineLabel(motor) ? motor.serialCode : null,
-        ]
-          .filter(Boolean)
-          .join(" · "),
-      })),
-    [availableMotors],
+      buildMotorSerialOptions(companyId, availableMotors, (motor) =>
+        formatMotorLineLabel(motor, { includeSerial: true }),
+      ),
+    [availableMotors, companyId],
   );
 
   const isHourlyLabor = form.laborDraft.pricingMode === "hourly";
@@ -417,6 +446,8 @@ export function WorkOrderComposer({
                     value={form.clientName}
                     onValueChange={(value) => onFormChange("clientName", value)}
                     options={clientNameOptions}
+                    cycleOnTab={clientNameOptions.length > 0}
+                    matchMode="flexible"
                     onOptionCommit={(value) => {
                       const client = clients.find((entry) => entry.fullName === value);
                       if (client) onClientSelect(client.id);
@@ -429,6 +460,8 @@ export function WorkOrderComposer({
                     value={form.clientPhone}
                     onValueChange={(value) => onFormChange("clientPhone", value)}
                     options={clientPhoneOptions}
+                    cycleOnTab={clientPhoneOptions.length > 0}
+                    matchMode="flexible"
                     onOptionCommit={(value) => {
                       const client = clients.find((entry) => entry.phone === value);
                       if (client) onClientSelect(client.id);
@@ -491,7 +524,7 @@ export function WorkOrderComposer({
                     disabled={!form.vehicleMake.trim()}
                   />
                 </Field>
-                <Field label="Госномер">
+                <Field label="Госномер" hint={licensePlateOptions.length > 0 ? "Tab ↹" : undefined}>
                   <DatalistInput
                     value={form.licensePlate}
                     onValueChange={(value) => {
@@ -499,12 +532,13 @@ export function WorkOrderComposer({
                       onFormChange("licensePlate", value.toUpperCase());
                     }}
                     options={licensePlateOptions}
+                    cycleOnTab={licensePlateOptions.length > 0}
                     matchMode="flexible"
                     onOptionCommit={commitVehicleByPlate}
                     placeholder="123 ABC 01"
                   />
                 </Field>
-                <Field label="VIN">
+                <Field label="VIN" hint={vinOptions.length > 0 ? "Tab ↹" : undefined}>
                   <DatalistInput
                     value={form.vin}
                     onValueChange={(value) => {
@@ -512,6 +546,7 @@ export function WorkOrderComposer({
                       onFormChange("vin", value.toUpperCase());
                     }}
                     options={vinOptions}
+                    cycleOnTab={vinOptions.length > 0}
                     matchMode="flexible"
                     onOptionCommit={commitVehicleByVin}
                     placeholder="JTDBT923…"
@@ -584,10 +619,13 @@ export function WorkOrderComposer({
               <TabsContent value="labor" className="space-y-4">
                 <AddRowCard title="Добавить работу">
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Наименование" required>
-                      <Input
+                    <Field label="Наименование" required hint={laborTitleOptions.length > 0 ? "Tab ↹" : undefined}>
+                      <DatalistInput
                         value={form.laborDraft.title}
-                        onChange={(event) => onLaborDraftChange({ title: event.target.value })}
+                        onValueChange={(value) => onLaborDraftChange({ title: value })}
+                        options={laborTitleOptions}
+                        cycleOnTab={laborTitleOptions.length > 0}
+                        matchMode="flexible"
                         placeholder="Замена двигателя"
                       />
                     </Field>
@@ -636,6 +674,8 @@ export function WorkOrderComposer({
                           }
                           options={assigneeOptions}
                           onOptionCommit={commitAssignee}
+                          cycleOnTab={assigneeOptions.length > 0}
+                          matchMode="flexible"
                           onBlur={(event) =>
                             tryResolveAssigneeByName((event.target as HTMLInputElement).value)
                           }
@@ -691,7 +731,11 @@ export function WorkOrderComposer({
                 </AddRowCard>
                 <LineItems
                   empty="Работы не добавлены — можно сохранить черновик и дополнить позже"
-                  items={form.laborLines.map((line) => laborLineLabel(line, employees))}
+                  items={form.laborLines.map((line) => ({
+                    id: line.id,
+                    label: laborLineLabel(line, employees),
+                    highlight: line.id === highlightLaborId,
+                  }))}
                   onRemove={onRemoveLabor}
                 />
               </TabsContent>
@@ -703,7 +747,10 @@ export function WorkOrderComposer({
                       value={form.partSku}
                       onValueChange={(value) => onFormChange("partSku", value)}
                       options={partSkuOptions}
+                      cycleOnTab={partSkuOptions.length > 0}
+                      matchMode="flexible"
                       onOptionCommit={(value) => {
+                        rememberComposerFieldValue(companyId, "partSku", value);
                         const item = inventoryItems.find((entry) => entry.sku === value);
                         if (item) {
                           onFormChange("partSku", item.sku);
@@ -720,7 +767,10 @@ export function WorkOrderComposer({
                       value={form.partName}
                       onValueChange={(value) => onFormChange("partName", value)}
                       options={partNameOptions}
+                      cycleOnTab={partNameOptions.length > 0}
+                      matchMode="flexible"
                       onOptionCommit={(value) => {
+                        rememberComposerFieldValue(companyId, "partName", value);
                         const item = inventoryItems.find((entry) => entry.name === value);
                         if (item) {
                           onFormChange("partSku", item.sku);
@@ -757,7 +807,10 @@ export function WorkOrderComposer({
                   empty="Запчасти не выбраны"
                   items={regularPartLines.map((line) => {
                     const tag = line.source === "adhoc" || !line.itemId ? " · разово" : "";
-                    return `${line.name}${tag} × ${line.quantity} = ${money(line.quantity * line.unitPrice)}`;
+                    return {
+                      id: line.id,
+                      label: `${line.name}${tag} × ${line.quantity} = ${money(line.quantity * line.unitPrice)}`,
+                    };
                   })}
                   onRemove={(index) => {
                     const line = regularPartLines[index];
@@ -773,7 +826,9 @@ export function WorkOrderComposer({
                       value={form.motorSerial}
                       onValueChange={(value) => onFormChange("motorSerial", value)}
                       options={motorSerialOptions}
+                      cycleOnTab={motorSerialOptions.length > 0}
                       matchMode="flexible"
+                      onOptionCommit={(value) => rememberComposerFieldValue(companyId, "motorSerial", value)}
                       placeholder="Номер двигателя · Tab ↹"
                     />
                     <select
@@ -815,10 +870,10 @@ export function WorkOrderComposer({
                 </AddRowCard>
                 <LineItems
                   empty="Двигатели не добавлены"
-                  items={form.motorLines.map(
-                    (line) =>
-                      `${formatMotorLineLabel(line, { includeSerial: true })} · ${line.outcome === "install" ? "установка" : "продажа"} · ${money(line.unitPrice)}`,
-                  )}
+                  items={form.motorLines.map((line) => ({
+                    id: line.id,
+                    label: `${formatMotorLineLabel(line, { includeSerial: true })} · ${line.outcome === "install" ? "установка" : "продажа"} · ${money(line.unitPrice)}`,
+                  }))}
                   onRemove={onRemoveMotor}
                 />
               </TabsContent>
@@ -883,7 +938,10 @@ export function WorkOrderComposer({
                     empty="Позиции каталога не добавлены"
                     items={specificPartLines.map((line) => {
                       const category = line.specificCategoryName ? `${line.specificCategoryName} · ` : "";
-                      return `${category}${line.name} = ${money(line.unitPrice)}`;
+                      return {
+                        id: line.id,
+                        label: `${category}${line.name} = ${money(line.unitPrice)}`,
+                      };
                     })}
                     onRemove={(index) => {
                       const line = specificPartLines[index];
@@ -1056,7 +1114,7 @@ function LineItems({
   onRemove,
 }: {
   empty: string;
-  items: string[];
+  items: Array<{ id: string; label: string; highlight?: boolean }>;
   onRemove: (index: number) => void;
 }) {
   if (items.length === 0) {
@@ -1067,19 +1125,26 @@ function LineItems({
     );
   }
   return (
-    <ul className="overflow-hidden rounded-xl border bg-card">
-      <AnimatePresence initial={false}>
+    <motion.ul
+      layout
+      className="overflow-hidden rounded-xl border bg-card"
+      initial={false}
+    >
+      <AnimatePresence initial={false} mode="popLayout">
         {items.map((item, index) => (
           <motion.li
-            key={`${index}-${item}`}
-            layout
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-            className="flex items-center justify-between gap-3 border-b px-3 py-2.5 text-sm last:border-b-0"
+            key={item.id}
+            layout="position"
+            initial={{ opacity: 0, y: -14, scale: 0.985 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, height: 0, transition: { duration: 0.16, ease: WORK_ORDERS_MOTION_EASE } }}
+            transition={{ duration: 0.24, ease: WORK_ORDERS_MOTION_EASE }}
+            className={cn(
+              "flex items-center justify-between gap-3 border-b px-3 py-2.5 text-sm last:border-b-0",
+              item.highlight && "bg-emerald-500/10",
+            )}
           >
-            <span className="min-w-0 truncate">{item}</span>
+            <span className="min-w-0 truncate">{item.label}</span>
             <button
               type="button"
               className="shrink-0 text-xs text-muted-foreground transition-colors hover:text-destructive"
@@ -1090,7 +1155,7 @@ function LineItems({
           </motion.li>
         ))}
       </AnimatePresence>
-    </ul>
+    </motion.ul>
   );
 }
 

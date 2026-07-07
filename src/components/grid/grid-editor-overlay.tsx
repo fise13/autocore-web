@@ -34,6 +34,11 @@ type GridEditorOverlayProps = {
   /** Company/catalog values for this column — merged with domain search. */
   columnSuggestions?: string[];
   domainCategory?: DomainCategory;
+  /** When true, new dictionary terms are queued instead of written immediately. */
+  deferDictionaryWrites?: boolean;
+  onDeferredDictionaryEntry?: (category: DomainCategory, name: string) => void;
+  onSuggestionsOpenChange?: (open: boolean) => void;
+  showSuggestionFooter?: boolean;
 };
 
 const DOMAIN_LIMIT = 30;
@@ -62,6 +67,10 @@ export function GridEditorOverlay({
   autocompleteMatch = null,
   columnSuggestions = [],
   domainCategory,
+  deferDictionaryWrites = false,
+  onDeferredDictionaryEntry,
+  onSuggestionsOpenChange,
+  showSuggestionFooter = false,
 }: GridEditorOverlayProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const userNavigatedRef = useRef(false);
@@ -103,6 +112,10 @@ export function GridEditorOverlay({
 
   const suggestionsVisible = suggestionsOpen && results.length > 0;
   const maxIndex = Math.max(results.length - 1, 0);
+
+  useEffect(() => {
+    onSuggestionsOpenChange?.(suggestionsVisible);
+  }, [onSuggestionsOpenChange, suggestionsVisible]);
 
   const autocompleteSuffix = useMemo(() => {
     if (suggestionsVisible) return "";
@@ -152,8 +165,20 @@ export function GridEditorOverlay({
   useEffect(() => {
     return () => {
       if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
+      onSuggestionsOpenChange?.(false);
     };
-  }, []);
+  }, [onSuggestionsOpenChange]);
+
+  async function persistDictionaryEntry(resolved: string) {
+    if (!domainCategory) return;
+    if (deferDictionaryWrites) {
+      onDeferredDictionaryEntry?.(domainCategory, resolved);
+      return;
+    }
+    if (domainValueNeedsCompanyEntry(resolved, results)) {
+      await domain.addToCompanyDictionary(resolved);
+    }
+  }
 
   async function commitDomainValue(direction?: CommitDirection) {
     const trimmed = value.trim();
@@ -170,9 +195,7 @@ export function GridEditorOverlay({
         userNavigatedRef.current,
       );
 
-      if (domainValueNeedsCompanyEntry(resolved, results)) {
-        await domain.addToCompanyDictionary(resolved);
-      }
+      await persistDictionaryEntry(resolved);
 
       onChange(resolved);
       onCommit(direction, resolved);
@@ -312,6 +335,8 @@ export function GridEditorOverlay({
                 category={domainCategory}
                 results={results}
                 activeIndex={activeIndex}
+                highlightQuery={value}
+                compact
                 onActiveIndexChange={(index) => {
                   userNavigatedRef.current = true;
                   setActiveIndex(index);
@@ -319,12 +344,12 @@ export function GridEditorOverlay({
                 onSelect={(entry) => selectEntry(entry, "right")}
               />
             ) : (
-              <ul className="max-h-80 overflow-y-auto p-1">
+              <ul className="max-h-80 overflow-y-auto p-0.5">
                 {results.map((result, index) => (
                   <li key={result.entry.id}>
                     <button
                       type="button"
-                      className={`flex w-full rounded-md px-3 py-2 text-left text-sm ${
+                      className={`flex min-h-9 w-full rounded-md px-3 py-1.5 text-left text-[13px] leading-5 ${
                         index === activeIndex ? "bg-accent text-accent-foreground" : "hover:bg-muted/60"
                       }`}
                       onMouseEnter={() => {
@@ -342,6 +367,11 @@ export function GridEditorOverlay({
                 ))}
               </ul>
             )}
+            {showSuggestionFooter ? (
+              <div className="border-t border-border/70 px-3 py-1.5 text-[11px] text-muted-foreground">
+                Enter — выбрать · Esc — закрыть без синхронизации
+              </div>
+            ) : null}
           </div>,
           document.body,
         )

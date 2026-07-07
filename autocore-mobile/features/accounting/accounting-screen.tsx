@@ -12,6 +12,7 @@ import { payrollTransactionRepository } from '@/services/firestore/payroll-trans
 import type { FinancialOperation } from '@/types/financial-operation';
 import type { PayrollTransactionStatus } from '@/types/payroll-transaction';
 import { haptics } from '@/theme';
+import { isProductionCompanyId } from '@/lib/company-id';
 import { buildAdvanceSnapshot, filterAdvanceOperations, advanceDirectionLabel, type AdvanceDirection } from '@/lib/accounting/advances';
 import { shareOperationsCsv } from '@/lib/accounting/export-operations-csv';
 import {
@@ -275,7 +276,11 @@ export function AccountingScreen() {
         <View style={{ paddingHorizontal: ac.pad, gap: ac.section, paddingBottom: ac.section }}>
           {isDemo ? (
             <Text variant="caption" color="muted" style={{ textAlign: 'center' }}>
-              Демо-данные · подключите компанию для live-синхронизации
+              Демо-данные · только в режиме разработки
+            </Text>
+          ) : !isProductionCompanyId(companyId) ? (
+            <Text variant="caption" color="muted" style={{ textAlign: 'center' }}>
+              Подключите компанию, чтобы видеть финансовые данные
             </Text>
           ) : null}
 

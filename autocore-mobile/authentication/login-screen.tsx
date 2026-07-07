@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Pressable, View } from 'react-native';
+import { Linking, Platform, Pressable, View } from 'react-native';
 import Animated, { FadeInLeft, FadeInRight, FadeOutLeft, FadeOutRight } from 'react-native-reanimated';
 
 import { CheckIcon, Loader2Icon, MailIcon, XIcon } from '@/assets/icons';
@@ -18,6 +18,7 @@ import {
   storePendingInvite,
 } from '@/lib/invites/pending-invite';
 import { fetchInvitePreview } from '@/services/api/org-api';
+import { isGoogleOAuthConfigured } from '@/lib/auth/oauth-config';
 
 import { AuthDivider } from './auth-divider';
 import { AuthEmailChip } from './auth-email-chip';
@@ -66,6 +67,9 @@ export function LoginScreen() {
   const [inviteCompanyName, setInviteCompanyName] = useState<string | null>(null);
   const inviteBootstrapRef = useRef(false);
 
+  const oauthConfigured = isGoogleOAuthConfigured();
+  const showGoogleSignIn = oauthConfigured && (Platform.OS !== 'ios' || appleAvailable);
+  const showAppleSignIn = Platform.OS === 'ios' && appleAvailable && oauthConfigured;
   const reducedMotion = useReducedMotion();
   const isSignUp = emailMode === 'signup';
   const displayError = error ?? authError;
@@ -397,7 +401,7 @@ export function LoginScreen() {
           {authDescription}
         </Text>
       </View>
-      {!isFirebaseReady ? (
+      {!isFirebaseReady && __DEV__ ? (
         <Alert
           variant="warning"
           title="Firebase не настроен"
@@ -425,17 +429,19 @@ export function LoginScreen() {
       {!emailStep ? (
         <>
           <View style={{ gap: spacing[2], width: '100%' }}>
-            <GoogleSignInButton
-              disabled={submitDisabled}
-              loading={oauthLoading === 'google'}
-              onStart={() => {
-                clearError();
-                setError(null);
-              }}
-              onSuccess={runGoogleSignIn}
-              onError={onGoogleError}
-            />
-            {appleAvailable ? (
+            {showGoogleSignIn ? (
+              <GoogleSignInButton
+                disabled={submitDisabled}
+                loading={oauthLoading === 'google'}
+                onStart={() => {
+                  clearError();
+                  setError(null);
+                }}
+                onSuccess={runGoogleSignIn}
+                onError={onGoogleError}
+              />
+            ) : null}
+            {showAppleSignIn ? (
               <AppleSignInButton
                 disabled={submitDisabled}
                 loading={oauthLoading === 'apple'}

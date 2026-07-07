@@ -5,7 +5,7 @@ import Animated from 'react-native-reanimated';
 import { useTheme } from '@/hooks';
 import { usePressAnimation } from '@/animations';
 import { haptics } from '@/theme';
-import { layout, radius } from '@/theme';
+import { layout, minTouchTarget, radius } from '@/theme';
 
 type IconButtonProps = Omit<PressableProps, 'style'> & {
   size?: 'xs' | 'sm' | 'default' | 'lg';
@@ -29,6 +29,7 @@ export const IconButton = forwardRef<React.ComponentRef<typeof Pressable>, IconB
     const { colors } = useTheme();
     const { style: pressStyle, onPressIn: animateIn, onPressOut: animateOut } = usePressAnimation();
     const dimension = sizes[size];
+    const hitSlop = Math.max(0, Math.ceil((minTouchTarget - dimension) / 2));
 
     const bg: ViewStyle = (() => {
       switch (variant) {
@@ -48,6 +49,7 @@ export const IconButton = forwardRef<React.ComponentRef<typeof Pressable>, IconB
         <Pressable
           ref={ref}
           accessibilityRole="button"
+          hitSlop={hitSlop}
           style={[
             {
               width: dimension,

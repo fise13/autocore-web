@@ -1,11 +1,11 @@
 import { useCallback, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ArrowLeftIcon, BoxIcon } from '@/assets/icons';
 import { ScreenActionFooter } from '@/components/navigation/screen-action-footer';
-import { Button, AutocompleteInput, IconButton, Input, Screen, Surface, Text, toast } from '@/components/ui';
+import { Button, AutocompleteInput, IconButton, Input, KeyboardFormShell, Screen, Surface, Text, toast } from '@/components/ui';
 import {
   useMobileCreateInventoryItem,
   useSession,
@@ -163,43 +163,50 @@ export function CreateInventoryItemScreen() {
 
   return (
     <Screen>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View
-          style={{
-            paddingTop: insets.top + 8,
-            paddingHorizontal: ordersLayout.pad,
-            paddingBottom: rhythm.tight,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: rhythm.inline,
-          }}
-        >
-          <IconButton accessibilityLabel="Назад" variant="ghost" onPress={handleClose}>
-            <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={1.85} />
-          </IconButton>
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text variant="bodyStrong" style={{ fontSize: 17, fontWeight: '700' }}>
-              Новый товар
-            </Text>
-            <Text variant="caption" color="muted" numberOfLines={1}>
-              {orderContext
-                ? `Будет добавлен в ${orderLabel}`
-                : 'Создание позиции на складе'}
-            </Text>
+      <KeyboardFormShell
+        contentContainerStyle={{
+          paddingHorizontal: ordersLayout.pad,
+          paddingBottom: 120 + insets.bottom,
+          gap: ordersLayout.section,
+        }}
+        header={
+          <View
+            style={{
+              paddingTop: insets.top + 8,
+              paddingHorizontal: ordersLayout.pad,
+              paddingBottom: rhythm.tight,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: rhythm.inline,
+            }}
+          >
+            <IconButton accessibilityLabel="Назад" variant="ghost" onPress={handleClose}>
+              <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={1.85} />
+            </IconButton>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text variant="bodyStrong" style={{ fontSize: 17, fontWeight: '700' }}>
+                Новый товар
+              </Text>
+              <Text variant="caption" color="muted" numberOfLines={1}>
+                {orderContext
+                  ? `Будет добавлен в ${orderLabel}`
+                  : 'Создание позиции на складе'}
+              </Text>
+            </View>
           </View>
-        </View>
-
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{
-            paddingHorizontal: ordersLayout.pad,
-            paddingBottom: 120 + insets.bottom,
-            gap: ordersLayout.section,
-          }}
-        >
+        }
+        footer={
+          <ScreenActionFooter>
+            <Button
+              onPress={() => void handleSubmit()}
+              loading={createItem.isPending}
+              disabled={!canEdit || createItem.isPending}
+            >
+              {submitLabel}
+            </Button>
+          </ScreenActionFooter>
+        }
+      >
           <Surface inset>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <View
@@ -293,18 +300,7 @@ export function CreateInventoryItemScreen() {
               helperText="Если указать количество, товар сразу оприходуется на склад"
             />
           </Surface>
-        </ScrollView>
-
-        <ScreenActionFooter>
-          <Button
-            onPress={() => void handleSubmit()}
-            loading={createItem.isPending}
-            disabled={!canEdit || createItem.isPending}
-          >
-            {submitLabel}
-          </Button>
-        </ScreenActionFooter>
-      </KeyboardAvoidingView>
+      </KeyboardFormShell>
     </Screen>
   );
 }

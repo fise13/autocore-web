@@ -7,7 +7,13 @@ With Universal Links configured, tapping the link on iPhone opens **AutoCore Mob
 
 1. [developer.apple.com](https://developer.apple.com) → **Identifiers** → `com.wise.autocore.mobile`
 2. Enable **Associated Domains** → **Save**
-3. Regenerate provisioning profile:
+3. In `autocore-mobile/.env.local` set:
+
+```bash
+EXPO_PUBLIC_ENABLE_UNIVERSAL_LINKS=true
+```
+
+4. Regenerate provisioning profile:
 
 ```bash
 cd autocore-mobile
@@ -16,7 +22,9 @@ npm run ios:provision
 
 ## 2. Rebuild the iOS app
 
-Associated Domains entitlement is added by `plugins/with-ios-universal-links.js`.
+Associated Domains entitlement is added by `plugins/with-ios-universal-links.js` when `EXPO_PUBLIC_ENABLE_UNIVERSAL_LINKS=true`.
+
+**Local device builds** omit Associated Domains by default so Xcode automatic signing works without the capability on the App ID.
 
 ```bash
 cd autocore-mobile

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { Button, ListGroup, ListRow, SectionHeader, Text } from '@/components/ui';
+import { Button, SectionHeader, Text } from '@/components/ui';
 import { useGuardedRouter } from '@/hooks/use-guarded-router';
 import { useAuth } from '@/authentication/auth-provider';
 import {
@@ -20,8 +20,9 @@ import { toneBackground } from '@/theme/color-utils';
 import { settingsRouteHref } from '../navigation';
 import { ProfileMetaCard, ProfileMetaRow } from '@/features/profile/components/profile-meta-card';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
-import { OrgDangerZone } from '@/features/organization/components/org-danger-zone';
 import { CompanySwitcherSheet } from '@/features/organization/components/company-switcher-sheet';
+import { OrganizationSwitchButton } from '@/features/organization/components/organization-switch-button';
+import { OrgDangerZone } from '@/features/organization/components/org-danger-zone';
 
 const MODULE_LABELS: Record<CompanyModuleKey, string> = {
   motors: 'Двигатели',
@@ -51,19 +52,13 @@ export function CompanySettingsScreen() {
 
   return (
     <ProfileScreenShell title="Компания" subtitle="Профиль организации и инфраструктура">
-      {memberships.length > 0 ? (
+      {memberships.length > 1 ? (
         <>
           <SectionHeader title="Организации" label inset />
-          <ListGroup inset>
-            <ListRow
-              title="Активная организация"
-              value={isLoading ? '…' : resolveActiveCompanyName(companyId, name, [])}
-              subtitle={
-                memberships.length > 1 ? `${memberships.length} доступно · нажмите для смены` : undefined
-              }
-              onPress={() => setSwitcherOpen(true)}
-            />
-          </ListGroup>
+          <OrganizationSwitchButton
+            companyName={isLoading ? '…' : resolveActiveCompanyName(companyId, name, [])}
+            onPress={() => setSwitcherOpen(true)}
+          />
         </>
       ) : null}
 

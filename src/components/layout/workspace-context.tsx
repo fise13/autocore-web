@@ -92,6 +92,8 @@ type WorkspaceContextValue = {
   setSaveStatus: (status: GridSaveStatus) => void;
   saveError: string | null;
   setSaveError: (error: string | null) => void;
+  gridInteractionLocked: boolean;
+  setGridInteractionLocked: (locked: boolean) => void;
   gridZoom: number;
   setGridZoom: (zoom: number) => void;
   registerSaveHandler: (handler: (() => void) | null) => void;
@@ -186,6 +188,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [totalCount, setTotalCount] = useState(0);
   const [saveStatus, setSaveStatus] = useState<GridSaveStatus>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [gridInteractionLocked, setGridInteractionLocked] = useState(false);
   const [gridZoom, setGridZoom] = useState(1);
   const [motorSyncState, setMotorSyncState] = useState<MotorSyncState>(initialMotorSyncState);
   const saveHandlerRef = useRef<(() => void) | null>(null);
@@ -601,6 +604,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       setSaveStatus,
       saveError,
       setSaveError,
+      gridInteractionLocked,
+      setGridInteractionLocked,
       gridZoom,
       setGridZoom,
       registerSaveHandler,
@@ -669,6 +674,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       setCounts,
       saveStatus,
       saveError,
+      gridInteractionLocked,
       gridZoom,
       registerSaveHandler,
       triggerSave,

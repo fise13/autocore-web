@@ -1,6 +1,7 @@
-import { Image, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { Image, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
@@ -61,21 +62,18 @@ export function AuthShell({ stepLabel, title, description, children, footer }: A
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.select({ ios: 'padding', android: undefined })}
-      >
-        <View style={{ flex: 1 }}>
-          <AuthBackdrop />
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{
-              flexGrow: 1,
-              paddingHorizontal: rhythm.pad,
-              paddingTop: spacing[6],
-              paddingBottom: spacing[8],
-            }}
-          >
+      <View style={{ flex: 1 }}>
+        <AuthBackdrop />
+        <KeyboardAwareScrollView
+          bottomOffset={24}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingHorizontal: rhythm.pad,
+            paddingTop: spacing[6],
+            paddingBottom: spacing[8],
+          }}
+        >
             <View
               style={{
                 width: '100%',
@@ -127,9 +125,8 @@ export function AuthShell({ stepLabel, title, description, children, footer }: A
 
               {footer ? <View style={{ paddingTop: spacing[2] }}>{footer}</View> : null}
             </View>
-          </ScrollView>
-        </View>
-      </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
+      </View>
     </SafeAreaView>
   );
 }

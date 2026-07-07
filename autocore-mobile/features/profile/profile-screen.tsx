@@ -19,10 +19,12 @@ type ProfileHubRow = {
 };
 import { CoinsIcon } from '@/assets/icons';
 
+import { CompanySwitcherSheet } from '@/features/organization/components/company-switcher-sheet';
+import { OrganizationSwitchButton } from '@/features/organization/components/organization-switch-button';
+
 import { DeleteAccountDialog } from './components/delete-account-dialog';
 import { ProfileHeader } from './components/profile-header';
 import { ProfileHeroCard } from './components/profile-hero-card';
-import { CompanySwitcherSheet } from '@/features/organization/components/company-switcher-sheet';
 import { profileHubRouteHref } from './navigation';
 
 const SECTION_GAP = spacing[4];
@@ -73,38 +75,54 @@ export function ProfileScreen() {
     }
   }
 
+  const openRow = (row: ProfileHubRow) => {
+    if (row.id === 'my-earnings') {
+      router.push('/(tabs)/my-earnings');
+      return;
+    }
+    open(row.id as SettingsHubRouteId);
+  };
+
   return (
     <Screen>
       <ScreenScroll tabBarInset contentStyle={{ gap: SECTION_GAP }}>
         <ProfileHeader />
-        <ProfileHeroCard
-          user={data.user}
-          onPress={canSwitchOrg ? () => setSwitcherOpen(true) : undefined}
-          showSwitcherHint={canSwitchOrg}
-        />
+        <ProfileHeroCard user={data.user} />
 
         {sections.map((section) => (
           <View key={section.id} style={{ gap: rhythm.micro }}>
             <SectionHeader title={section.label} label inset />
-            <ListGroup>
-              {section.rows.map((row) => (
-                <ListRow
-                  key={row.id}
-                  title={row.title}
-                  icon={row.icon}
-                  value={row.id === 'my-earnings' ? undefined : data.rowValues[row.id as SettingsHubRouteId]}
-                  onPress={() => {
-                    if (row.id === 'my-earnings') {
-                      router.push('/(tabs)/my-earnings');
-                      return;
-                    }
-                    open(row.id as SettingsHubRouteId);
-                  }}
+            <View style={{ gap: section.id === 'company' && canSwitchOrg ? rhythm.stack : 0 }}>
+              {section.id === 'company' && canSwitchOrg ? (
+                <OrganizationSwitchButton
+                  companyName={data.user.company || 'Организация'}
+                  onPress={() => setSwitcherOpen(true)}
                 />
-              ))}
-            </ListGroup>
+              ) : null}
+              <ListGroup>
+                {section.rows.map((row) => (
+                  <ListRow
+                    key={row.id}
+                    title={row.title}
+                    icon={row.icon}
+                    value={row.id === 'my-earnings' ? undefined : data.rowValues[row.id as SettingsHubRouteId]}
+                    onPress={() => openRow(row)}
+                  />
+                ))}
+              </ListGroup>
+            </View>
           </View>
         ))}
+
+        {canSwitchOrg && !sections.some((section) => section.id === 'company') ? (
+          <View style={{ gap: rhythm.micro }}>
+            <SectionHeader title="Компания" label inset />
+            <OrganizationSwitchButton
+              companyName={data.user.company || 'Организация'}
+              onPress={() => setSwitcherOpen(true)}
+            />
+          </View>
+        ) : null}
 
         <View style={{ gap: rhythm.micro }}>
           <SectionHeader title="Опасная зона" label inset />

@@ -15,7 +15,6 @@ import { useUserPhotoUrl } from '@/hooks/use-user-photo';
 import { themePreferenceLabel, useTheme } from '@/hooks/use-theme';
 import { rhythm } from '@/theme';
 
-import { DESKTOP_DEMO } from '../data/demo-data';
 import { settingsRouteHref } from '../navigation';
 import { DeleteAccountDialog } from '@/features/profile/components/delete-account-dialog';
 import { ProfileMetaRow } from '@/features/profile/components/profile-meta-card';
@@ -104,12 +103,10 @@ export function AccountScreen() {
 
       <SettingsSectionCard title="Подключение к компьютеру">
         <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
-          <ProfileMetaRow label="Статус" value={DESKTOP_DEMO.connected ? 'Подключено' : 'Не подключено'} />
-          <ProfileMetaRow label="Устройство" value={DESKTOP_DEMO.deviceName} />
-          <ProfileMetaRow label="Версия" value={DESKTOP_DEMO.appVersion} />
-          <ProfileMetaRow label="Синхронизация" value={DESKTOP_DEMO.syncStatus} />
-          <Text variant="caption" color="muted">
-            {DESKTOP_DEMO.lastSeen}
+          <ProfileMetaRow label="Статус" value="Не подключено" />
+          <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
+            Синхронизация с AutoCore Desktop появится в следующих обновлениях. Сейчас все данные
+            доступны в облаке и на веб-версии.
           </Text>
         </View>
       </SettingsSectionCard>

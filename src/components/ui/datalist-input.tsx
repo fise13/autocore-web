@@ -18,6 +18,8 @@ type DatalistInputProps = Omit<React.ComponentProps<typeof Input>, "value" | "on
   listId?: string;
   /** prefix (default) or flexible — Tab also commits substring match */
   matchMode?: "prefix" | "flexible";
+  /** Tab / Shift+Tab cycles through existing options instead of leaving the field */
+  cycleOnTab?: boolean;
 };
 
 type InlineSuggestion = {
@@ -84,6 +86,69 @@ function findBestFlexibleMatch(query: string, options: DatalistOption[]): string
   return null;
 }
 
+function optionMatchesQuery(
+  option: DatalistOption,
+  query: string,
+  matchMode: "prefix" | "flexible",
+): boolean {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return true;
+
+  const candidates = [option.value, option.label].filter(Boolean) as string[];
+  return candidates.some((candidate) => {
+    const candidateLower = candidate.toLowerCase();
+    return matchMode === "flexible"
+      ? candidateLower.includes(normalized)
+      : candidateLower.startsWith(normalized);
+  });
+}
+
+export function getTabCycleCandidates(
+  query: string,
+  options: DatalistOption[],
+  matchMode: "prefix" | "flexible",
+): DatalistOption[] {
+  if (options.length === 0) return [];
+
+  const trimmed = query.trim();
+  if (!trimmed) return options;
+
+  const normalized = trimmed.toLowerCase();
+  const filtered = options.filter((option) => optionMatchesQuery(option, trimmed, matchMode));
+  if (filtered.length === 0) return options;
+
+  const exactInList = options.some(
+    (option) =>
+      option.value.toLowerCase() === normalized || option.label?.toLowerCase() === normalized,
+  );
+  if (exactInList && filtered.length <= 1) return options;
+
+  return filtered;
+}
+
+export function cycleTabOption(
+  query: string,
+  options: DatalistOption[],
+  matchMode: "prefix" | "flexible",
+  direction: 1 | -1,
+): string | null {
+  const candidates = getTabCycleCandidates(query, options, matchMode);
+  if (candidates.length === 0) return null;
+
+  const normalized = query.trim().toLowerCase();
+  let currentIndex = candidates.findIndex(
+    (option) =>
+      option.value.toLowerCase() === normalized || option.label?.toLowerCase() === normalized,
+  );
+
+  if (currentIndex < 0) {
+    currentIndex = direction === 1 ? -1 : 0;
+  }
+
+  const nextIndex = (currentIndex + direction + candidates.length) % candidates.length;
+  return candidates[nextIndex]?.value ?? null;
+}
+
 export function DatalistInput({
   value,
   onValueChange,
@@ -91,6 +156,7 @@ export function DatalistInput({
   onOptionCommit,
   listId: _listId,
   matchMode = "prefix",
+  cycleOnTab = false,
   className,
   onBlur,
   onKeyDown,
@@ -135,6 +201,17 @@ export function DatalistInput({
         onOptionCommit?.(best);
       }
     }
+  }
+
+  function commitOption(nextValue: string) {
+    onValueChange(nextValue);
+    onOptionCommit?.(nextValue);
+  }
+
+  function cycleOption(direction: 1 | -1) {
+    const nextValue = cycleTabOption(value, options, matchMode, direction);
+    if (!nextValue) return;
+    commitOption(nextValue);
   }
 
   return (
@@ -200,21 +277,27 @@ export function DatalistInput({
             input.selectionEnd === value.length &&
             input.selectionStart === input.selectionEnd;
 
-          // Tab accepts an inline suggestion only when there is something to commit.
-          // Otherwise let the browser move focus to the next field (e.g. Госномер → VIN).
-          if (atEnd && event.key === "Tab" && !event.shiftKey) {
-            if (suggestion) {
+          if (atEnd && event.key === "Tab") {
+            if (!event.shiftKey && suggestion) {
               event.preventDefault();
               acceptSuggestion();
               return;
             }
-            if (matchMode === "flexible") {
-              const best = findBestFlexibleMatch(value, options);
-              if (best && best !== value) {
-                event.preventDefault();
-                onValueChange(best);
-                onOptionCommit?.(best);
-                return;
+
+            if (cycleOnTab && options.length > 0) {
+              event.preventDefault();
+              cycleOption(event.shiftKey ? -1 : 1);
+              return;
+            }
+
+            if (!event.shiftKey) {
+              if (matchMode === "flexible") {
+                const best = findBestFlexibleMatch(value, options);
+                if (best && best !== value) {
+                  event.preventDefault();
+                  commitOption(best);
+                  return;
+                }
               }
             }
           }

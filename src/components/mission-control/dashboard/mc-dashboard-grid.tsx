@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 
 import { McDashboardActivity } from "@/components/mission-control/dashboard/mc-dashboard-activity";
 import { McDashboardStats } from "@/components/mission-control/dashboard/mc-dashboard-stats";
@@ -14,6 +15,7 @@ import { QuickActionsPanel } from "@/components/mission-control/quick-actions/qu
 import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
 import { useMissionControlData } from "@/hooks/use-mission-control-data";
 import { buildDashboardStats } from "@/lib/mission-control/compute-dashboard-charts";
+import { mcPageVariants } from "@/lib/motion/mission-control-motion";
 
 type McDashboardGridProps = ReturnType<typeof useMissionControlData>;
 
@@ -43,8 +45,9 @@ export function McDashboardGrid(props: McDashboardGridProps) {
   );
 
   const motorAvailable = overview.activeInventoryCount;
+  const reducedMotion = useReducedMotion();
 
-  return (
+  const grid = (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <McDashboardStats stats={stats} isLoading={isLoading} />
 
@@ -87,5 +90,13 @@ export function McDashboardGrid(props: McDashboardGridProps) {
         <QuickActionsPanel variant="dashboard" />
       )}
     </div>
+  );
+
+  if (reducedMotion) return grid;
+
+  return (
+    <motion.div initial="hidden" animate="show" variants={mcPageVariants}>
+      {grid}
+    </motion.div>
   );
 }

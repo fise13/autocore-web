@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { useCompanySubscription } from '@/hooks/use-company-subscription';
 import { journeyPathForStep, useAuthJourneyStep } from '@/hooks/use-auth-journey-step';
 import { isProductionCompanyId } from '@/lib/company-id';
+import { isMissionControlIndexRoute, isTabRootEntry } from '@/lib/navigation/tab-segments';
 import { resolveInitialTabHref } from '@/lib/navigation/nav-item-availability';
 import { canAccessMissionControl } from '@/lib/rbac/navigation-policy';
 import { resolveSessionCompanyId } from '@/lib/session/merge-hydration';
@@ -62,9 +63,7 @@ export function AuthRedirectEffect() {
       router.replace(href as never);
     };
 
-    const isGenericTabEntry =
-      inTabs &&
-      (segments.length === 1 || (segments.length === 2 && segments[1] === 'index'));
+    const isGenericTabEntry = inTabs && isTabRootEntry(segments);
 
     const initialTab = resolveInitialTabHref({
       profile,
@@ -113,10 +112,7 @@ export function AuthRedirectEffect() {
       }
 
       const onMission =
-        segments.length === 2 &&
-        segments[1] === 'index' &&
-        profile &&
-        !canAccessMissionControl(profile);
+        isMissionControlIndexRoute(segments) && profile && !canAccessMissionControl(profile);
       if (onMission) {
         redirect(initialTab);
       }

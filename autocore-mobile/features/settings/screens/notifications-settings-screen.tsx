@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
-import { Button, Text } from '@/components/ui';
+import { Button, Text, toast } from '@/components/ui';
 import {
   NOTIFICATION_CATEGORIES,
   NOTIFICATION_CATEGORY_LABELS,
@@ -16,6 +16,7 @@ import {
   NotificationService,
   type AppNotificationCategory,
 } from '@/services/notifications';
+import { requestPushPermissionAndRegister } from '@/services/notifications/push-channel';
 import { useNotificationStore } from '@/stores/notification-store';
 
 import { ProfileMetaCard } from '@/features/profile/components/profile-meta-card';
@@ -51,7 +52,7 @@ const EXTENDED_CATEGORY_HINTS: Record<AppNotificationCategory, string> = {
 };
 
 export function NotificationsSettingsScreen() {
-  const { preferences, loaded, syncing, error, updateChannel, updateCategory, updateQuietHours, updateEmailDigest } =
+  const { preferences, loaded, syncing, error, updateChannel, updateCategory, updateQuietHours } =
     useNotificationPreferences();
   const { unreadCount } = useNotificationInbox('active');
   const [expandedCategory, setExpandedCategory] = useState<AppNotificationCategory | null>(null);
@@ -92,7 +93,20 @@ export function NotificationsSettingsScreen() {
               label="Push"
               subtitle="Мгновенные уведомления (критичные — даже в тихие часы)"
               value={preferences.channels.push}
-              onValueChange={(value) => void updateChannel('push', value)}
+              onValueChange={async (value) => {
+                if (value) {
+                  const granted = await requestPushPermissionAndRegister();
+                  if (!granted) {
+                    toast({
+                      title: 'Уведомления не включены',
+                      description: 'Разрешите уведомления в системных настройках iOS.',
+                      variant: 'warning',
+                    });
+                    return;
+                  }
+                }
+                await updateChannel('push', value);
+              }}
             />
             <SettingsToggleRow
               label="In-App"
@@ -108,9 +122,10 @@ export function NotificationsSettingsScreen() {
             />
             <SettingsToggleRow
               label="Email"
-              subtitle="Дублировать важные события на почту (скоро)"
-              value={preferences.channels.email}
-              onValueChange={(value) => void updateChannel('email', value)}
+              subtitle="Дублирование на почту появится в следующем обновлении"
+              value={false}
+              disabled
+              onValueChange={() => undefined}
             />
           </>
         )}
@@ -214,9 +229,10 @@ export function NotificationsSettingsScreen() {
       <ProfileMetaCard title="Email-дайджест" delay={180}>
         <SettingsToggleRow
           label="Ежедневный дайджест"
-          subtitle="Сводка в 09:00 по времени компании (скоро)"
-          value={preferences.emailDigestEnabled}
-          onValueChange={(value) => void updateEmailDigest(value)}
+          subtitle="Появится в следующем обновлении"
+          value={false}
+          disabled
+          onValueChange={() => undefined}
         />
       </ProfileMetaCard>
 

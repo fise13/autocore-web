@@ -21,7 +21,9 @@ export default function ProfileLayout() {
       <Stack.Screen name="security" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="taxes" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="cache" options={{ animation: 'slide_from_right' }} />
-      <Stack.Screen name="diagnostics" options={{ animation: 'slide_from_right' }} />
+      {__DEV__ ? (
+        <Stack.Screen name="diagnostics" options={{ animation: 'slide_from_right' }} />
+      ) : null}
       <Stack.Screen name="version" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="finance" options={{ animation: 'slide_from_right' }} />
     </Stack>

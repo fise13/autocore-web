@@ -8,6 +8,8 @@ import {
   DocumentAccessError,
   verifyDocumentAccess,
 } from "@/lib/documents/verify-document-access";
+import { fetchWorkOrder } from "@/infrastructure/firestore/admin/work-order-effects-admin";
+import { maybeEmitWorkOrderAvailableNotification } from "@/lib/notifications/emit-work-order-available.server";
 
 export const runtime = "nodejs";
 
@@ -38,6 +40,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
         "Content-Type": "application/json",
       },
     }).catch(() => undefined);
+
+    const order = await fetchWorkOrder(access.companyId, workOrderId);
+    if (order) {
+      void maybeEmitWorkOrderAvailableNotification({
+        companyId: access.companyId,
+        order,
+        actorUserId: access.uid,
+      }).catch((error) => {
+        console.error("[quotes/convert] available notification failed", error);
+      });
+    }
 
     return NextResponse.json({ workOrderId });
   } catch (error) {

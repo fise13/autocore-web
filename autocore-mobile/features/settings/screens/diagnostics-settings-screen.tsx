@@ -5,7 +5,6 @@ import { estimateCacheSizeBytes, formatCacheSize } from '@/lib/storage/kv';
 
 import { ProfileMetaCard, ProfileMetaRow } from '@/features/profile/components/profile-meta-card';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
-import { SettingsToggleRow } from '../components/settings-toggle-row';
 
 function formatMark(ms: number | undefined): string {
   if (ms === undefined) return '—';
@@ -34,12 +33,7 @@ export function DiagnosticsSettingsScreen() {
       </ProfileMetaCard>
 
       <ProfileMetaCard title="Отладка">
-        <SettingsToggleRow
-          label="Режим разработчика"
-          subtitle="Расширенные логи и диагностика"
-          value={__DEV__}
-          onValueChange={() => {}}
-        />
+        <ProfileMetaRow label="Режим разработчика" value={__DEV__ ? 'Включён' : 'Выключен'} />
       </ProfileMetaCard>
     </ProfileScreenShell>
   );

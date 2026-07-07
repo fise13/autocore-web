@@ -69,7 +69,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           haptics.selection();
           setPasswordVisible((current) => !current);
         }}
-        style={{ minHeight: 28, minWidth: 28, alignItems: 'center', justifyContent: 'center' }}
+        style={{ minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' }}
       >
         <Text style={{ fontSize: 12, fontWeight: '500', color: colors.mutedForeground }}>
           {passwordVisible ? 'Скрыть' : 'Показать'}

@@ -246,7 +246,7 @@ export async function switchActiveCompany(userId: string, companyId: string): Pr
   const companyName = companySnap.exists()
     ? readCompanyDisplayName(companySnap.data(), normalizedCompanyId)
     : undefined;
-  await recordUserCompanyMembership(userId, normalizedCompanyId, access.role, companyName).catch(
+  await recordUserCompanyMembership(userId, normalizedCompanyId, access.role, companyName ?? undefined).catch(
     () => undefined,
   );
 }

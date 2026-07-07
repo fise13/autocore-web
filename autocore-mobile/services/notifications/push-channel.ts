@@ -159,7 +159,7 @@ async function fetchExpoPushToken(): Promise<string> {
   return fetchExpoPushTokenViaExperienceId();
 }
 
-export async function setupPushToken(): Promise<PushSetupResult> {
+export async function setupPushToken(options?: { requestPermission?: boolean }): Promise<PushSetupResult> {
   if (!Device.isDevice) {
     return { token: null, permission: null };
   }
@@ -168,7 +168,7 @@ export async function setupPushToken(): Promise<PushSetupResult> {
 
   const current = await Notifications.getPermissionsAsync();
   let status = current.status;
-  if (status !== 'granted') {
+  if (status !== 'granted' && options?.requestPermission) {
     const requested = await Notifications.requestPermissionsAsync();
     status = requested.status;
   }
@@ -185,6 +185,17 @@ export async function setupPushToken(): Promise<PushSetupResult> {
   }
 }
 
+/** Ask for system permission — call only from an explicit user action (settings toggle). */
+export async function requestPushPermissionAndRegister(): Promise<boolean> {
+  const { token, permission } = await setupPushToken({ requestPermission: true });
+  if (permission !== 'granted' || !token) return false;
+  if (token === registeredToken) return true;
+
+  await registerPushDevice(token);
+  registeredToken = token;
+  return true;
+}
+
 export async function ensurePushDeviceRegistered(pushEnabled = true): Promise<void> {
   if (!pushEnabled || !Device.isDevice) return;
 
@@ -194,7 +205,7 @@ export async function ensurePushDeviceRegistered(pushEnabled = true): Promise<vo
   }
 
   pushRegistrationPromise = (async () => {
-    const { token, permission } = await setupPushToken();
+    const { token, permission } = await setupPushToken({ requestPermission: false });
     if (permission !== 'granted') {
       if (permission === 'denied') {
         logPushIssue('notification permission denied');
@@ -225,11 +236,50 @@ export function resetPushRegistrationState(): void {
   pushRegistrationPromise = null;
 }
 
+async function waitForFirebaseAuthUid(timeoutMs = 8000): Promise<string | null> {
+  const existing = getFirebaseAuth().currentUser?.uid;
+  if (existing) return existing;
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (uid: string | null) => {
+      if (settled) return;
+      settled = true;
+      unsubscribe();
+      clearTimeout(timer);
+      resolve(uid);
+    };
+
+    const unsubscribe = getFirebaseAuth().onAuthStateChanged((user) => {
+      if (user?.uid) finish(user.uid);
+    });
+
+    const timer = setTimeout(() => finish(null), timeoutMs);
+  });
+}
+
 export async function registerPushDevice(pushToken: string): Promise<void> {
   const deviceId = getStableDeviceId();
   const platform = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
   const appVersion = Constants.expoConfig?.version;
 
+  const uid = await waitForFirebaseAuthUid();
+  if (!uid) {
+    throw new MobileApiError('Требуется авторизация для push-уведомлений', 401);
+  }
+
+  const devicePayload = {
+    id: deviceId,
+    platform,
+    pushToken,
+    ...(appVersion ? { appVersion } : {}),
+    lastSeenAt: new Date().toISOString(),
+  };
+
+  // Primary path: direct Firestore write (Firebase Functions read users/{uid}/devices).
+  await setDoc(doc(getFirebaseDb(), 'users', uid, 'devices', deviceId), devicePayload, { merge: true });
+
+  // Best-effort server sync (validation, admin SDK timestamps).
   try {
     await registerNotificationDevice({
       deviceId,
@@ -237,30 +287,9 @@ export async function registerPushDevice(pushToken: string): Promise<void> {
       pushToken,
       appVersion,
     });
-    return;
   } catch (apiError) {
-    if (apiError instanceof MobileApiError && (apiError.status === 401 || apiError.status === 403)) {
-      throw apiError;
-    }
-    logPushIssue('API register failed, falling back to Firestore', apiError);
+    logPushIssue('API register sync failed (device saved in Firestore)', apiError);
   }
-
-  const uid = getFirebaseAuth().currentUser?.uid;
-  if (!uid) {
-    throw new Error('Требуется авторизация для push-уведомлений');
-  }
-
-  await setDoc(
-    doc(getFirebaseDb(), 'users', uid, 'devices', deviceId),
-    {
-      id: deviceId,
-      platform,
-      pushToken,
-      ...(appVersion ? { appVersion } : {}),
-      lastSeenAt: new Date().toISOString(),
-    },
-    { merge: true },
-  );
 }
 
 export async function setBadgeCount(count: number): Promise<void> {

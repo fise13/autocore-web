@@ -20,8 +20,8 @@ export type WebNavItemId =
   | 'accounting';
 
 const ROLE_NAV_ALLOWLIST: Partial<Record<UserRole, readonly WebNavItemId[]>> = {
-  mechanic: ['work_orders', 'my_earnings'],
-  diagnostician: ['work_orders'],
+  mechanic: ['home', 'work_orders', 'my_earnings'],
+  diagnostician: ['home', 'work_orders'],
   accountant: ['accounting'],
   admin: ['home', 'work_orders', 'warehouse'],
 };
@@ -42,6 +42,11 @@ function roleNavAllowlist(role: UserRole | undefined): readonly WebNavItemId[] |
 export function canAccessMyEarnings(user: UserEntity | null | undefined): boolean {
   if (!user) return false;
   return hasPermission(user, 'payroll_view_own');
+}
+
+export function isEmployeeMissionControlUser(user: UserEntity | null | undefined): boolean {
+  if (!user) return false;
+  return getDataScope(user, 'work_orders') === 'assigned_work_orders';
 }
 
 export function canAccessMissionControl(user: UserEntity | null | undefined): boolean {

@@ -8,7 +8,6 @@ import { estimateCacheSizeBytes, formatCacheSize } from '@/lib/storage/kv';
 
 import { ProfileMetaCard, ProfileMetaRow } from '@/features/profile/components/profile-meta-card';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
-import { SettingsToggleRow } from '../components/settings-toggle-row';
 
 export function CacheSettingsScreen() {
   const [cacheBytes, setCacheBytes] = useState(() => estimateCacheSizeBytes());
@@ -35,12 +34,7 @@ export function CacheSettingsScreen() {
       <ProfileMetaCard title="Локальный кэш">
         <ProfileMetaRow label="Объём" value={cacheLabel} />
         <ProfileMetaRow label="Хранилище" value="MMKV" />
-        <SettingsToggleRow
-          label="Офлайн-кэш"
-          subtitle="Справочники для работы без сети"
-          value
-          onValueChange={() => {}}
-        />
+        <ProfileMetaRow label="Офлайн-кэш" value="Включён" />
       </ProfileMetaCard>
 
       <View style={{ paddingHorizontal: rhythm.pad }}>

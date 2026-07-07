@@ -16,6 +16,8 @@ export const userCopy = {
     saved: "Сохранено",
     saving: "Сохранение…",
     pending: "Есть изменения · ⌘S",
+    pendingLocked: "Локальные изменения · синхронизация после закрытия меню",
+    warehouseSaving: "Синхронизация со складом…",
   },
 
   auth: {
@@ -317,6 +319,25 @@ export const userCopy = {
   },
 
   missionControl: {
+    employee: {
+      greetingMorning: "Доброе утро",
+      greetingDay: "Добрый день",
+      greetingEvening: "Добрый вечер",
+      greetingNight: "Доброй ночи",
+      subtitle: "Ваши наряды, продуктивность и выплаты",
+      attentionTitle: "Требует внимания",
+      charts: {
+        closedOrders: "Закрытые наряды",
+        closedOrdersHint: "За последние 7 дней",
+        earnings: "Начисления",
+        earningsHint: "Сумма по дням за неделю",
+        productivity: "Продуктивность",
+      },
+      openOrdersTitle: "Мои открытые наряды",
+      openOrdersEmpty: "Нет открытых нарядов — можно взять свободный из очереди.",
+      insightFallback: "Всё под контролем — хорошей смены!",
+      quickActionsTitle: "Быстрые действия",
+    },
     analytics: {
       title: "Аналитика разбора",
       revenueLabel: "Выручка от продаж моторов",
@@ -338,6 +359,51 @@ export const userCopy = {
       noSalesYet:
         "Продажи моторов пока не зафиксированы — выручка обновится после первых сделок.",
       inventoryEmpty: "Нет моторов в наличии",
+    },
+  },
+
+  myEarnings: {
+    title: "Мои начисления",
+    subtitle: "Начисления по закрытым заказ-нарядам, где вы указаны исполнителем.",
+    heroPaid: "Всего выплачено",
+    heroPending: "К выплате",
+    shiftTitle: "Смена",
+    shiftDescription: "Получайте уведомления о свободных нарядах и берите их в работу",
+    shiftOn: "На смене",
+    shiftOff: "Смена выключена",
+    shiftLimit: (limit: number) => `Лимит активных нарядов: ${limit}`,
+    charts: {
+      earnings: "Начисления по дням",
+      earningsHint: "Сумма начислений за выбранный период",
+      productivity: "Продуктивность",
+      productivityHint: "Закрытые наряды за 7 дней",
+      breakdown: "Состав выплат",
+      breakdownHint: "По статусам начислений",
+    },
+    filters: {
+      all: "Все",
+      pending: "К выплате",
+      paid: "Выплачено",
+      cancelled: "Не выплачивать",
+      period7d: "7 дней",
+      period30d: "30 дней",
+      periodAll: "Всё время",
+    },
+    kpi: {
+      avgPerOrder: "Средний чек",
+      closedMonth: "Закрыто в месяце",
+      myOpen: "Мои открытые",
+      freePool: "Свободные",
+    },
+    freeOrdersTitle: "Свободные наряды",
+    freeOrdersDescription: "Можно взять в работу",
+    freeOrdersCta: "Все наряды",
+    tableTitle: "История начислений",
+    emptyStates: {
+      noAccess: "Раздел «Мои начисления» доступен механикам и диагностам с правом просмотра своих выплат.",
+      noBreakdown: "Начислений пока нет — график появится после первых выплат.",
+      noFiltered: "Нет начислений по выбранным фильтрам.",
+      noPayroll: "Начислений пока нет. Они появятся после завершения заказ-наряда с работами и исполнителями.",
     },
   },
 

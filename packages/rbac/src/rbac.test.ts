@@ -8,6 +8,7 @@ import {
   filterWorkOrdersByScope,
   canAccessMissionControl,
   canAccessMyEarnings,
+  isEmployeeMissionControlUser,
   isMobileTabAllowed,
   hasPermission,
   ROLE_PERMISSIONS,
@@ -87,10 +88,15 @@ describe('work order assignee filter', () => {
 });
 
 describe('navigation policy', () => {
-  it('mechanic cannot access mission control tab', () => {
-    assert.equal(canAccessMissionControl(user('mechanic')), false);
-    assert.equal(isMobileTabAllowed(user('mechanic'), 'index'), false);
+  it('mechanic can access employee mission control tab', () => {
+    assert.equal(canAccessMissionControl(user('mechanic')), true);
+    assert.equal(isMobileTabAllowed(user('mechanic'), 'index'), true);
     assert.equal(isMobileTabAllowed(user('mechanic'), 'orders'), true);
+  });
+
+  it('diagnostician can access employee mission control tab', () => {
+    assert.equal(canAccessMissionControl(user('diagnostician')), true);
+    assert.equal(isMobileTabAllowed(user('diagnostician'), 'index'), true);
   });
 
   it('admin can access mission control', () => {
@@ -103,5 +109,12 @@ describe('navigation policy', () => {
     assert.equal(isMobileTabAllowed(user('mechanic'), 'my-earnings'), true);
     assert.equal(canAccessMyEarnings(user('diagnostician')), false);
     assert.equal(canAccessMyEarnings(user('manager')), false);
+  });
+
+  it('employee mission control user is assignee-scoped mechanic or diagnostician', () => {
+    assert.equal(isEmployeeMissionControlUser(user('mechanic')), true);
+    assert.equal(isEmployeeMissionControlUser(user('diagnostician')), true);
+    assert.equal(isEmployeeMissionControlUser(user('admin')), false);
+    assert.equal(isEmployeeMissionControlUser(user('manager')), false);
   });
 });

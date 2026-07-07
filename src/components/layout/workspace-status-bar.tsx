@@ -5,7 +5,8 @@ import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 export function WorkspaceStatusBar() {
-  const { shownCount, totalCount, saveStatus, saveError, triggerSync } = useWorkspace();
+  const { shownCount, totalCount, saveStatus, saveError, gridInteractionLocked, triggerSync } =
+    useWorkspace();
 
   const hasUnsaved = saveStatus === "pending";
   const isSaving = saveStatus === "saving";
@@ -18,8 +19,8 @@ export function WorkspaceStatusBar() {
 
   const saveStatusText = {
     idle: userCopy.sync.saved,
-    pending: userCopy.sync.pending,
-    saving: userCopy.sync.saving,
+    pending: gridInteractionLocked ? userCopy.sync.pendingLocked : userCopy.sync.pending,
+    saving: userCopy.sync.warehouseSaving,
     saved: userCopy.sync.saved,
     error: saveError ?? userCopy.sync.error,
   }[saveStatus];
@@ -44,7 +45,7 @@ export function WorkspaceStatusBar() {
       <button
         type="button"
         onClick={handleSaveClick}
-        disabled={!hasUnsaved || isSaving}
+        disabled={!hasUnsaved || isSaving || gridInteractionLocked}
         className="text-primary transition hover:text-primary/80 disabled:pointer-events-none disabled:opacity-40"
       >
         {userCopy.sync.saveLocal}

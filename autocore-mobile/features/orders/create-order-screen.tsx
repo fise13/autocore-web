@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { Keyboard, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -16,7 +16,7 @@ import {
   UserRoundIcon,
   WrenchIcon,
 } from '@/assets/icons';
-import { Button, AutocompleteInput, IconButton, Input, Text, toast } from '@/components/ui';
+import { Button, AutocompleteInput, IconButton, Input, KeyboardFormShell, Text, toast } from '@/components/ui';
 import { ScreenActionFooter } from '@/components/navigation/screen-action-footer';
 import {
   useClientsRealtime,
@@ -799,72 +799,68 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <View
-        style={{
-          paddingTop: insets.top + 6,
-          paddingHorizontal: ordersLayout.pad,
-          paddingBottom: 12,
-          gap: 14,
-          borderBottomWidth: ordersLayout.hairline,
-          borderBottomColor: colors.border,
-        }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <IconButton accessibilityLabel="Назад" variant="ghost" size="sm" onPress={() => router.back()}>
-            <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
-          </IconButton>
-          <View style={{ flex: 1 }}>
-            <Text variant="caption" color="muted" style={{ fontSize: 11 }}>
-              {isEdit ? `Редактирование №${existingOrder?.number ?? ''}` : 'Новый заказ-наряд'}
-            </Text>
-            <Text variant="heading" style={{ fontSize: 20, fontWeight: '700', letterSpacing: -0.3 }}>
-              {isEdit ? 'Редактирование' : 'Создание'}
-            </Text>
+    <KeyboardFormShell
+      backgroundColor={colors.background}
+      onScrollBeginDrag={Keyboard.dismiss}
+      contentContainerStyle={{
+        paddingHorizontal: ordersLayout.pad,
+        paddingTop: 16,
+        paddingBottom: scrollBottom,
+        gap: 14,
+      }}
+      header={
+        <View
+          style={{
+            paddingTop: insets.top + 6,
+            paddingHorizontal: ordersLayout.pad,
+            paddingBottom: 12,
+            gap: 14,
+            borderBottomWidth: ordersLayout.hairline,
+            borderBottomColor: colors.border,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <IconButton accessibilityLabel="Назад" variant="ghost" size="sm" onPress={() => router.back()}>
+              <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
+            </IconButton>
+            <View style={{ flex: 1 }}>
+              <Text variant="caption" color="muted" style={{ fontSize: 11 }}>
+                {isEdit ? `Редактирование №${existingOrder?.number ?? ''}` : 'Новый заказ-наряд'}
+              </Text>
+              <Text variant="heading" style={{ fontSize: 20, fontWeight: '700', letterSpacing: -0.3 }}>
+                {isEdit ? 'Редактирование' : 'Создание'}
+              </Text>
+            </View>
           </View>
+          <StepIndicator step={step} />
         </View>
-        <StepIndicator step={step} />
-      </View>
-
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: ordersLayout.pad,
-          paddingTop: 16,
-          paddingBottom: scrollBottom,
-          gap: 14,
-        }}
-        onScrollBeginDrag={Keyboard.dismiss}
-      >
-        {renderStep()}
-      </ScrollView>
-
-      <ScreenActionFooter horizontalPadding={ordersLayout.pad}>
-        {step > 1 ? (
-          <Button variant="outline" onPress={() => setStep((value) => value - 1)} style={{ flex: 1 }}>
-            Назад
-          </Button>
-        ) : null}
-        {step < 3 ? (
-          <Button
-            onPress={() => setStep((value) => value + 1)}
-            disabled={step === 1 && !stepOneValid}
-            style={{ flex: 1 }}
-            rightIcon={<ArrowRightIcon size="sm" color="#fff" strokeWidth={2} />}
-          >
-            Далее
-          </Button>
-        ) : (
-          <Button onPress={handleSave} loading={saving} style={{ flex: 1 }} leftIcon={<ClipboardListIcon size="sm" color="#fff" strokeWidth={2} />}>
-            {isEdit ? 'Сохранить изменения' : 'Сохранить черновик'}
-          </Button>
-        )}
-      </ScreenActionFooter>
-    </KeyboardAvoidingView>
+      }
+      footer={
+        <ScreenActionFooter horizontalPadding={ordersLayout.pad}>
+          {step > 1 ? (
+            <Button variant="outline" onPress={() => setStep((value) => value - 1)} style={{ flex: 1 }}>
+              Назад
+            </Button>
+          ) : null}
+          {step < 3 ? (
+            <Button
+              onPress={() => setStep((value) => value + 1)}
+              disabled={step === 1 && !stepOneValid}
+              style={{ flex: 1 }}
+              rightIcon={<ArrowRightIcon size="sm" color="#fff" strokeWidth={2} />}
+            >
+              Далее
+            </Button>
+          ) : (
+            <Button onPress={handleSave} loading={saving} style={{ flex: 1 }} leftIcon={<ClipboardListIcon size="sm" color="#fff" strokeWidth={2} />}>
+              {isEdit ? 'Сохранить изменения' : 'Сохранить черновик'}
+            </Button>
+          )}
+        </ScreenActionFooter>
+      }
+    >
+      {renderStep()}
+    </KeyboardFormShell>
   );
 }
 

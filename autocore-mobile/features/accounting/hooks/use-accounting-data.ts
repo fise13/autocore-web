@@ -34,6 +34,7 @@ export function useAccountingData(): UseAccountingDataResult {
   const accountingEnabled = useCompanyModuleEnabled('accounting');
   const production = isProductionCompanyId(companyId);
   const canView = can('accounting_view') && accountingEnabled;
+  const allowDemoPreview = !production && __DEV__;
 
   const {
     operations,
@@ -49,31 +50,37 @@ export function useAccountingData(): UseAccountingDataResult {
     enabled: payrollEnabled,
   } = usePayrollTransactionsRealtime(companyId);
 
-  const isDemo = !production;
+  const isDemo = allowDemoPreview;
   const isBootstrapping = production && (operationsLoading || payrollLoading);
-  const isEmpty = production && !isBootstrapping && operations.length === 0 && payroll.length === 0;
+  const isEmpty =
+    (production && !isBootstrapping && operations.length === 0 && payroll.length === 0) ||
+    (!production && !allowDemoPreview);
   const errorMessage = operationsError ?? payrollError;
   const canEdit = can('accounting_edit');
 
   const balanceSnapshot = useMemo<BalanceSnapshot>(() => {
     if (production) return calculateCashBalance(operations);
-    return {
-      cashbox: demoAccountingSnapshot.balance.available * 0.62,
-      kaspi: demoAccountingSnapshot.balance.available * 0.38,
-      total: demoAccountingSnapshot.balance.available,
-    };
-  }, [operations, production]);
+    if (allowDemoPreview) {
+      return {
+        cashbox: demoAccountingSnapshot.balance.available * 0.62,
+        kaspi: demoAccountingSnapshot.balance.available * 0.38,
+        total: demoAccountingSnapshot.balance.available,
+      };
+    }
+    return { cashbox: 0, kaspi: 0, total: 0 };
+  }, [allowDemoPreview, operations, production]);
 
   const data = useMemo(() => {
-    if (!production) return demoAccountingSnapshot;
-    return computeAccountingSnapshot({ operations, payroll });
-  }, [operations, payroll, production]);
+    if (production) return computeAccountingSnapshot({ operations, payroll });
+    if (allowDemoPreview) return demoAccountingSnapshot;
+    return computeAccountingSnapshot({ operations: [], payroll: [] });
+  }, [allowDemoPreview, operations, payroll, production]);
 
   return {
     data,
     operations: production ? operations : [],
     payroll: production ? payroll : [],
-    operationCount: production ? operations.length : demoAccountingSnapshot.transactions.length,
+    operationCount: production ? operations.length : allowDemoPreview ? demoAccountingSnapshot.transactions.length : 0,
     balanceSnapshot,
     isBootstrapping,
     isEmpty,

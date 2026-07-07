@@ -37,6 +37,7 @@ import {
 } from "@/components/work-orders/work-order-list-panel";
 import { isOpenStatus, nextId, nextStatuses as getNextStatuses } from "@/components/work-orders/work-order-utils";
 import { calculateWorkOrderPricing, WorkOrder } from "@/domain/work-order";
+import { rememberComposerFieldValue } from "@/lib/work-order/composer-field-memory";
 import { useClientsRealtime } from "@/hooks/use-clients-realtime";
 import { useDomainEventsRealtime } from "@/hooks/use-domain-events-realtime";
 import { useEmployeesRealtime } from "@/hooks/use-employees-realtime";
@@ -67,6 +68,7 @@ import { createPayrollTransactionRepository } from "@/infrastructure/firestore/p
 import { createVehicleRepository } from "@/infrastructure/firestore/vehicle-repository";
 import { generateWorkOrderDocuments } from "@/lib/documents/fetch-document-pdf";
 import { triggerWorkOrderEventProcessing } from "@/lib/work-orders/process-work-order-events";
+import { notifyWorkOrderAvailable } from "@/lib/work-orders/notify-work-order-available";
 import { transitionWorkOrder } from "@/lib/work-orders/transition-work-order";
 import { STATUS_LABELS } from "@/components/work-orders/work-order-copy";
 import { createWorkOrderDocumentRepository } from "@/infrastructure/firestore/work-order-document-repository";
@@ -327,6 +329,8 @@ export function WorkOrdersWorkspace() {
 
   const addLaborLine = useCallback(() => {
     let assigned = false;
+    let rememberedTitle = "";
+    let rememberedAssignee = "";
     setForm((current) => {
       const draft = current.laborDraft;
       if (!draft.title.trim()) return current;
@@ -364,6 +368,8 @@ export function WorkOrdersWorkspace() {
       }
       setError(null);
       assigned = true;
+      rememberedTitle = draft.title.trim();
+      rememberedAssignee = draft.assigneeName.trim();
       return {
         ...current,
         laborLines: [
@@ -385,7 +391,11 @@ export function WorkOrdersWorkspace() {
         },
       };
     });
-  }, [employees]);
+    if (assigned) {
+      rememberComposerFieldValue(companyId, "laborTitle", rememberedTitle);
+      if (rememberedAssignee) rememberComposerFieldValue(companyId, "assignee", rememberedAssignee);
+    }
+  }, [companyId, employees]);
 
   const addPartLine = useCallback(() => {
     const name = form.partName.trim();
@@ -404,6 +414,8 @@ export function WorkOrdersWorkspace() {
 
     if (item) {
       setError(null);
+      rememberComposerFieldValue(companyId, "partSku", item.sku);
+      rememberComposerFieldValue(companyId, "partName", item.name);
       setForm((current) => ({
         ...current,
         partLines: [
@@ -433,6 +445,8 @@ export function WorkOrdersWorkspace() {
     }
 
     setError(null);
+    rememberComposerFieldValue(companyId, "partName", name);
+    if (sku) rememberComposerFieldValue(companyId, "partSku", sku);
     setForm((current) => ({
       ...current,
       partLines: [
@@ -452,7 +466,7 @@ export function WorkOrdersWorkspace() {
       partQuantity: 1,
       partUnitPrice: 0,
     }));
-  }, [form.partName, form.partSku, form.partQuantity, form.partUnitPrice, inventoryItems]);
+  }, [companyId, form.partName, form.partSku, form.partQuantity, form.partUnitPrice, inventoryItems]);
 
   const handleBarcodeScan = useCallback(
     (item: InventoryItem) => {
@@ -497,6 +511,7 @@ export function WorkOrdersWorkspace() {
       return;
     }
     setError(null);
+    rememberComposerFieldValue(companyId, "motorSerial", motor.serialCode);
     setForm((current) => ({
       ...current,
       motorLines: [
@@ -521,7 +536,7 @@ export function WorkOrdersWorkspace() {
       motorPrice: 0,
       motorWarrantyTemplateId: "",
     }));
-  }, [availableMotors, form.motorSerial, form.motorWarrantyTemplateId]);
+  }, [availableMotors, companyId, form.motorOutcome, form.motorPrice, form.motorSerial, form.motorWarrantyTemplateId]);
 
   const addSpecificPartLine = useCallback(() => {
     const category = quickSpecificCategories.find((entry) => entry.id === form.specificCategoryId);
@@ -632,6 +647,7 @@ export function WorkOrdersWorkspace() {
           input: payload,
         });
         setSelectedOrderId(editingOrderId);
+        void notifyWorkOrderAvailable(editingOrderId).catch(() => undefined);
       } else {
         const order = await createWorkOrderUseCase(workOrderRepository, domainEventRepository, {
           companyId,
@@ -640,6 +656,7 @@ export function WorkOrdersWorkspace() {
         });
         setSelectedOrderId(order.id);
         void triggerWorkOrderEventProcessing(order.id).catch(() => undefined);
+        void notifyWorkOrderAvailable(order.id).catch(() => undefined);
       }
       resetComposer();
     } catch (nextError) {
@@ -805,6 +822,8 @@ export function WorkOrdersWorkspace() {
                         availableMotors={availableMotors}
                         employees={employees}
                         currentUserId={profile?.id}
+                        companyId={companyId}
+                        orders={orders}
                         quickSpecificCategories={quickSpecificCategories}
                         editingLabel={
                           editingOrderId

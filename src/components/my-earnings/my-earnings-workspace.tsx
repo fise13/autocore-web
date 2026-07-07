@@ -1,85 +1,96 @@
 "use client";
 
-import { useMemo } from "react";
-
-import { PayrollTable } from "@/components/accounting/payroll-table";
-import { useAuth } from "@/components/providers/auth-provider";
-import { EmptyState } from "@/components/ui/empty-state";
-import { KpiCard } from "@/components/ui/kpi-card";
-import { useMyPayrollTransactions } from "@/hooks/use-my-payroll-transactions";
-import { useWorkOrdersRealtime } from "@/hooks/use-work-orders-realtime";
-import { canAccessMyEarnings } from "@/lib/auth/app-access";
-import { can } from "@/lib/auth/permissions";
-import { normalizeCompanyId } from "@/lib/company-id";
-import { createPayrollTransactionRepository } from "@/infrastructure/firestore/payroll-transaction-repository";
-import { createWorkOrderRepository } from "@/infrastructure/firestore/work-order-repository";
+import { useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Wallet } from "lucide-react";
 
-const payrollRepository = createPayrollTransactionRepository();
-const workOrderRepository = createWorkOrderRepository();
+import { MyEarningsCharts } from "@/components/my-earnings/my-earnings-charts";
+import { MyEarningsFreeOrders } from "@/components/my-earnings/my-earnings-free-orders";
+import { MyEarningsHero } from "@/components/my-earnings/my-earnings-hero";
+import { MyEarningsKpiRow } from "@/components/my-earnings/my-earnings-kpi-row";
+import { MyEarningsPeriodFilter } from "@/components/my-earnings/my-earnings-period-filter";
+import { MyEarningsShiftCard } from "@/components/my-earnings/my-earnings-shift-card";
+import { MyEarningsStatusFilter } from "@/components/my-earnings/my-earnings-status-filter";
+import { MyEarningsTableSection } from "@/components/my-earnings/my-earnings-table-section";
+import { useAuth } from "@/components/providers/auth-provider";
+import { EmptyState } from "@/components/ui/empty-state";
+import { useMyEarningsData } from "@/hooks/use-my-earnings-data";
+import { claimableOrders } from "@/lib/my-earnings/compute-my-earnings";
+import { mcPageVariants } from "@/lib/motion/mission-control-motion";
+import { normalizeCompanyId } from "@/lib/company-id";
+import { userCopy } from "@/lib/user-copy";
+import { PayrollTransactionStatus } from "@/domain/payroll-transaction";
+import type { MyEarningsPeriod } from "@/lib/my-earnings/compute-my-earnings";
 
 export function MyEarningsWorkspace() {
-  const { profile, isLoading } = useAuth();
+  const { profile, isLoading: authLoading } = useAuth();
   const companyId = normalizeCompanyId(profile?.companyId);
   const employeeId = profile?.id ?? "";
-  const allowed = canAccessMyEarnings(profile);
+  const [statusFilter, setStatusFilter] = useState<PayrollTransactionStatus | "all">("all");
+  const [periodFilter, setPeriodFilter] = useState<MyEarningsPeriod>("all");
+  const reducedMotion = useReducedMotion();
 
-  const { transactions, isLoading: payrollLoading } = useMyPayrollTransactions(
-    payrollRepository,
+  const {
+    summary,
+    filteredTransactions,
+    scopedOrders,
+    shiftOn,
+    isLoading,
+    allowed,
+  } = useMyEarningsData({
+    profile,
+    uid: employeeId,
     companyId,
-    employeeId,
-    !isLoading && allowed,
-  );
-  const { orders } = useWorkOrdersRealtime(workOrderRepository, companyId, !isLoading && allowed);
+    statusFilter,
+    periodFilter,
+    enabled: !authLoading,
+  });
 
-  const summary = useMemo(() => {
-    let pending = 0;
-    let paid = 0;
-    let cancelled = 0;
-    for (const row of transactions) {
-      if (row.status === "paid") paid += row.amount;
-      else if (row.status === "pending") pending += row.amount;
-      else cancelled += row.amount;
-    }
-    return { pending, paid, cancelled };
-  }, [transactions]);
-
-  if (isLoading) return null;
+  if (authLoading) return null;
 
   if (!allowed) {
     return (
       <EmptyState
         icon={Wallet}
         title="Нет доступа"
-        description="Раздел «Мои начисления» доступен механикам и диагностам с правом просмотра своих выплат."
+        description={userCopy.myEarnings.emptyStates.noAccess}
       />
     );
   }
 
-  return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 md:p-6">
+  const freeOrders = claimableOrders(scopedOrders).slice(0, 4);
+
+  const body = (
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 md:p-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Мои начисления</h1>
-        <p className="text-sm text-muted-foreground">
-          Начисления по закрытым заказ-нарядам, где вы указаны исполнителем.
-        </p>
+        <h1 className="text-xl font-semibold tracking-tight">{userCopy.myEarnings.title}</h1>
+        <p className="text-sm text-muted-foreground">{userCopy.myEarnings.subtitle}</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <KpiCard label="К выплате" value={summary.pending} suffix=" ₸" tone="warning" icon={Wallet} />
-        <KpiCard label="Выплачено" value={summary.paid} suffix=" ₸" tone="primary" icon={Wallet} />
-        <KpiCard label="Не выплачивать" value={summary.cancelled} suffix=" ₸" icon={Wallet} />
+      <MyEarningsHero summary={summary} />
+      <MyEarningsShiftCard companyId={companyId} employeeId={employeeId} shiftOn={shiftOn} />
+      <MyEarningsKpiRow summary={summary} />
+      <MyEarningsCharts summary={summary} />
+      <MyEarningsFreeOrders orders={freeOrders} />
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <MyEarningsStatusFilter value={statusFilter} onChange={setStatusFilter} />
+        <MyEarningsPeriodFilter value={periodFilter} onChange={setPeriodFilter} />
       </div>
 
-      <PayrollTable
-        rows={transactions}
-        employees={[]}
-        workOrders={orders}
-        showWorkOrderLink
-        canEdit={false}
+      <MyEarningsTableSection
+        rows={filteredTransactions}
+        workOrders={scopedOrders}
+        isLoading={isLoading}
       />
-
-      {payrollLoading ? <p className="text-sm text-muted-foreground">Загрузка…</p> : null}
     </div>
+  );
+
+  if (reducedMotion) return body;
+
+  return (
+    <motion.div initial="hidden" animate="show" variants={mcPageVariants}>
+      {body}
+    </motion.div>
   );
 }

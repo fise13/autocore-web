@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { MobileAccessError, verifyMobileAccess } from "@/lib/auth/verify-mobile-access.server";
+import { MobileAccessError, verifyMobileAuth } from "@/lib/auth/verify-mobile-access.server";
 import { upsertNotificationDevice } from "@/infrastructure/firestore/notification-repository.server";
 
 export const runtime = "nodejs";
@@ -14,7 +14,7 @@ type RegisterDeviceBody = {
 
 export async function POST(request: NextRequest) {
   try {
-    const access = await verifyMobileAccess(request);
+    const access = await verifyMobileAuth(request);
     const body = (await request.json()) as RegisterDeviceBody;
 
     if (!body.deviceId?.trim() || !body.pushToken?.trim() || !body.platform) {

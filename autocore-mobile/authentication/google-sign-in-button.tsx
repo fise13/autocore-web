@@ -70,7 +70,7 @@ function ExpoGoogleSignInButton({
           : null);
 
       if (!idToken) {
-        onError('Google не вернул токен. Добавьте redirect URI в Google Cloud Console.');
+        onError('Не удалось завершить вход через Google. Попробуйте снова или используйте email.');
         return;
       }
 
@@ -86,7 +86,7 @@ function ExpoGoogleSignInButton({
 
   const onPress = async () => {
     if (!isGoogleOAuthConfigured()) {
-      onError('Добавьте Google OAuth client IDs в `autocore-mobile/.env.local`.');
+      onError('Вход через Google временно недоступен. Попробуйте email или Apple.');
       return;
     }
 
@@ -112,7 +112,7 @@ function ExpoGoogleSignInButton({
 export function GoogleSignInButton(props: GoogleSignInButtonProps) {
   const onPressNative = async () => {
     if (!isGoogleOAuthConfigured()) {
-      props.onError('Добавьте Google OAuth client IDs в `autocore-mobile/.env.local`.');
+      props.onError('Вход через Google временно недоступен. Попробуйте email или Apple.');
       return;
     }
 

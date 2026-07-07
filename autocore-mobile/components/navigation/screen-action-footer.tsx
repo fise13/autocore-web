@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import { View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useTheme } from '@/hooks';
 import { useFloatingTabBarInset } from '@/hooks/use-floating-tab-bar-inset';
+import { useRegisterAutocompleteChromeInset } from '@/providers/autocomplete-provider';
 import { spacing } from '@/theme';
 
 type ScreenActionFooterProps = {
@@ -21,9 +22,15 @@ export function ScreenActionFooter({
 }: ScreenActionFooterProps) {
   const { colors } = useTheme();
   const { footerBottom } = useFloatingTabBarInset();
+  const updateChromeInset = useRegisterAutocompleteChromeInset();
+
+  const handleLayout = (event: LayoutChangeEvent) => {
+    updateChromeInset(event.nativeEvent.layout.height);
+  };
 
   return (
     <View
+      onLayout={handleLayout}
       style={[
         {
           paddingHorizontal: horizontalPadding,

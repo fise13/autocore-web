@@ -1,11 +1,11 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { Keyboard, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ArrowLeftIcon } from '@/assets/icons';
 import { ScreenActionFooter } from '@/components/navigation/screen-action-footer';
-import { Button, AutocompleteInput, Checkbox, Dropdown, IconButton, Input, Text, toast } from '@/components/ui';
+import { Button, AutocompleteInput, Checkbox, Dropdown, IconButton, Input, KeyboardFormShell, Text, toast } from '@/components/ui';
 import { useFloatingTabBarInset, useSession, useTheme } from '@/hooks';
 import { appendAdvanceMarker } from '@/lib/accounting/advances';
 import {
@@ -123,46 +123,49 @@ export function CreateOperationScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <View
-        style={{
-          paddingTop: insets.top + 6,
-          paddingHorizontal: ac.pad,
-          paddingBottom: 12,
-          gap: 4,
-          borderBottomWidth: ac.hairline,
-          borderBottomColor: colors.border,
-        }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <IconButton accessibilityLabel="Назад" variant="ghost" size="sm" onPress={() => router.back()}>
-            <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
-          </IconButton>
-          <View style={{ flex: 1 }}>
-            <Text variant="caption" color="muted" style={{ fontSize: 11 }}>
-              Финансы
-            </Text>
-            <Text variant="heading" style={{ fontSize: 20, fontWeight: '700', letterSpacing: -0.3 }}>
-              Новая операция
-            </Text>
+    <KeyboardFormShell
+      backgroundColor={colors.background}
+      onScrollBeginDrag={Keyboard.dismiss}
+      contentContainerStyle={{
+        paddingHorizontal: ac.pad,
+        paddingTop: 16,
+        paddingBottom: scrollBottom,
+        gap: 14,
+      }}
+      header={
+        <View
+          style={{
+            paddingTop: insets.top + 6,
+            paddingHorizontal: ac.pad,
+            paddingBottom: 12,
+            gap: 4,
+            borderBottomWidth: ac.hairline,
+            borderBottomColor: colors.border,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <IconButton accessibilityLabel="Назад" variant="ghost" size="sm" onPress={() => router.back()}>
+              <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
+            </IconButton>
+            <View style={{ flex: 1 }}>
+              <Text variant="caption" color="muted" style={{ fontSize: 11 }}>
+                Финансы
+              </Text>
+              <Text variant="heading" style={{ fontSize: 20, fontWeight: '700', letterSpacing: -0.3 }}>
+                Новая операция
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
-
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: ac.pad,
-          paddingTop: 16,
-          paddingBottom: scrollBottom,
-          gap: 14,
-        }}
-        onScrollBeginDrag={Keyboard.dismiss}
-      >
+      }
+      footer={
+        <ScreenActionFooter horizontalPadding={ac.pad}>
+          <Button loading={submitting} disabled={submitting} onPress={() => void onSubmit()} style={{ flex: 1 }}>
+            Сохранить
+          </Button>
+        </ScreenActionFooter>
+      }
+    >
         <Text variant="caption" color="muted" style={{ fontSize: 13 }}>
           Добавьте финансовую операцию в журнал компании.
         </Text>
@@ -253,13 +256,6 @@ export function CreateOperationScreen() {
             {error}
           </Text>
         ) : null}
-      </ScrollView>
-
-      <ScreenActionFooter horizontalPadding={ac.pad}>
-        <Button loading={submitting} disabled={submitting} onPress={() => void onSubmit()} style={{ flex: 1 }}>
-          Сохранить
-        </Button>
-      </ScreenActionFooter>
-    </KeyboardAvoidingView>
+    </KeyboardFormShell>
   );
 }

@@ -30,6 +30,22 @@ export class MobileAccessError extends Error {
   }
 }
 
+/** Bearer-only auth — for endpoints that only need the signed-in user (e.g. push device registration). */
+export async function verifyMobileAuth(request: Request): Promise<{ uid: string }> {
+  const token = readBearerToken(request);
+  if (!token) {
+    throw new MobileAccessError("Требуется авторизация", 401);
+  }
+
+  const decoded = await getAdminAuth().verifyIdToken(token);
+  const uid = decoded.uid;
+  if (!uid) {
+    throw new MobileAccessError("Недействительный токен", 401);
+  }
+
+  return { uid };
+}
+
 export async function verifyMobileAccess(
   request: Request,
   requiredPermission?: Permission,

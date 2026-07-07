@@ -8,11 +8,12 @@ import { ensurePushDeviceRegistered } from '@/services/notifications/push-channe
 /** Registers Expo push token as soon as the user is signed in (not gated on Pro/subscription). */
 export function PushRegistrationHead() {
   const uid = useAuthStore((s) => s.firebaseUser?.uid ?? null);
+  const isHydrating = useAuthStore((s) => s.isHydrating);
   const { preferences, loaded } = useNotificationPreferences();
   const pushEnabled = loaded ? preferences.channels.push : true;
 
   useEffect(() => {
-    if (!uid) return;
+    if (!uid || isHydrating) return;
 
     void ensurePushDeviceRegistered(pushEnabled);
 
@@ -23,7 +24,7 @@ export function PushRegistrationHead() {
     });
 
     return () => subscription.remove();
-  }, [uid, pushEnabled]);
+  }, [uid, isHydrating, pushEnabled]);
 
   return null;
 }

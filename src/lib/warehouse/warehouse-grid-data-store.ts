@@ -116,6 +116,20 @@ export function growWarehouseRows(rows: WarehouseGridRow[], growBy: number): War
   return next;
 }
 
+export function buildWarehouseReconcilePreserveIds(args: {
+  dirtyRowIds: Iterable<string>;
+  pendingAckRowIds: Iterable<string>;
+  editingRowId: string | null;
+  contextMenuRowId: string | null;
+}): Set<string> {
+  return new Set([
+    ...args.dirtyRowIds,
+    ...args.pendingAckRowIds,
+    ...(args.editingRowId ? [args.editingRowId] : []),
+    ...(args.contextMenuRowId ? [args.contextMenuRowId] : []),
+  ]);
+}
+
 export function reconcileWarehouseRowsWithRemote(
   currentRows: WarehouseGridRow[],
   incomingItems: InventoryItem[],

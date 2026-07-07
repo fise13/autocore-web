@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PackagePlus, SlidersHorizontal } from "lucide-react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { syncWarehouseGridRowUseCase } from "@/application/use-cases/warehouse/sync-warehouse-grid-row";
+import { DomainDictionaryContext } from "@/components/domain/domain-dictionary-provider";
 import { GridEditorOverlay } from "@/components/grid/grid-editor-overlay";
 import { GridFillHandle } from "@/components/grid/grid-fill-handle";
 import {
@@ -39,6 +41,7 @@ import {
   selectWholeRowActiveStart,
 } from "@/lib/grid/selection-controller";
 import { GridCellAddress, GridRange, isCellInsideRange, normalizeRange } from "@/lib/grid/grid-types";
+import type { DomainCategory } from "@/lib/domain/types";
 import { filterColumnSuggestions, resolveGridColumnAutocomplete } from "@/lib/grid/grid-column-autocomplete";
 import { gridPalette } from "@/lib/grid/grid-palette";
 import {
@@ -48,6 +51,7 @@ import {
   createEmptyWarehouseRow,
   growWarehouseRows,
   hasWarehouseDraftContent,
+  buildWarehouseReconcilePreserveIds,
   reconcileWarehouseRowsWithRemote,
   formatWarehouseUpdatedAt,
   isWarehouseRowLowStock,
@@ -100,6 +104,8 @@ type WarehouseExcelGridProps = {
   onTransfer: (item: InventoryItem) => void;
   onHistory: (item: InventoryItem) => void;
   onCloudPendingChange?: (pending: boolean) => void;
+  onDirtyCountChange?: (count: number) => void;
+  externalInteractionLocked?: boolean;
 };
 
 type EditorState = {
@@ -318,10 +324,13 @@ export function WarehouseExcelGrid({
   onTransfer,
   onHistory,
   onCloudPendingChange,
+  onDirtyCountChange,
+  externalInteractionLocked = false,
 }: WarehouseExcelGridProps) {
   const {
     setSaveStatus,
     setSaveError,
+    setGridInteractionLocked,
     registerSaveHandler,
     registerGridUndoHandler,
     registerGridRedoHandler,
@@ -333,6 +342,8 @@ export function WarehouseExcelGrid({
     warehouseBarcodePrefill,
     setWarehouseBarcodePrefill,
   } = useWorkspace();
+
+  const dictionaryContext = useContext(DomainDictionaryContext);
 
   const layout = useMemo(() => buildWarehouseGridLayoutMetrics(gridZoom), [gridZoom]);
 
@@ -355,6 +366,8 @@ export function WarehouseExcelGrid({
   const fillSourceRef = useRef<GridRange | null>(null);
   const fillTargetRef = useRef<GridRange | null>(null);
   const dirtyStatusScheduledRef = useRef(false);
+  const pendingRemoteItemsRef = useRef<InventoryItem[] | null>(null);
+  const pendingDictionaryEntriesRef = useRef<Array<{ category: DomainCategory; name: string }>>([]);
   const lastDragPointerRef = useRef({ x: 0, y: 0 });
   const onDragAutoScrollTickRef = useRef<() => void>(() => {});
 
@@ -377,33 +390,74 @@ export function WarehouseExcelGrid({
   const [dirtyVersion, setDirtyVersion] = useState(0);
   const [saveFlashRows, setSaveFlashRows] = useState<Set<string>>(new Set());
   const [scanFlashRows, setScanFlashRows] = useState<Set<string>>(new Set());
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+
+  const contextMenuRowId = useMemo(() => {
+    if (!contextMenu) return null;
+    return rows[contextMenu.cell.row]?.rowId ?? null;
+  }, [contextMenu, rows]);
+
+  const isInteractionLocked = Boolean(
+    editor || contextMenu || suggestionsOpen || externalInteractionLocked,
+  );
+
+  const dirtyRowIdsForUi = useMemo(
+    () => new Set(dirtyRowsRef.current),
+    [dirtyVersion],
+  );
+
+  const applyRemoteReconcile = useCallback(
+    (incomingItems: InventoryItem[]) => {
+      setRows((current) => {
+        const preserveRowIds = buildWarehouseReconcilePreserveIds({
+          dirtyRowIds: dirtyRowsRef.current,
+          pendingAckRowIds: pendingRemoteAckRef.current,
+          editingRowId: editingRowIdRef.current,
+          contextMenuRowId,
+        });
+        const next = reconcileWarehouseRowsWithRemote(current, incomingItems, preserveRowIds);
+        for (const rowId of [...pendingRemoteAckRef.current]) {
+          const row = next.find((candidate) => candidate.rowId === rowId);
+          if (row?.rowKind !== "saved") continue;
+          const item = incomingItems.find((candidate) => candidate.id === row.id);
+          if (item && warehouseRowMatchesItem(row, item)) {
+            pendingRemoteAckRef.current.delete(rowId);
+          }
+        }
+        return next;
+      });
+    },
+    [contextMenuRowId],
+  );
 
   useEffect(() => {
     itemsRef.current = items;
-    setRows((current) => {
-      const preserveRowIds = new Set([
-        ...dirtyRowsRef.current,
-        ...pendingRemoteAckRef.current,
-        ...(editingRowIdRef.current ? [editingRowIdRef.current] : []),
-      ]);
-      const next = reconcileWarehouseRowsWithRemote(current, items, preserveRowIds);
-      for (const rowId of [...pendingRemoteAckRef.current]) {
-        const row = next.find((candidate) => candidate.rowId === rowId);
-        if (row?.rowKind !== "saved") continue;
-        const item = items.find((candidate) => candidate.id === row.id);
-        if (item && warehouseRowMatchesItem(row, item)) {
-          pendingRemoteAckRef.current.delete(rowId);
-        }
-      }
-      return next;
-    });
-  }, [items]);
+    if (isInteractionLocked) {
+      pendingRemoteItemsRef.current = items;
+      return;
+    }
+    pendingRemoteItemsRef.current = null;
+    applyRemoteReconcile(items);
+  }, [applyRemoteReconcile, isInteractionLocked, items]);
 
   useEffect(() => {
-    onCloudPendingChange?.(
-      dirtyRowsRef.current.size > 0 || pendingArchiveIdsRef.current.size > 0,
-    );
-  }, [dirtyVersion, onCloudPendingChange]);
+    if (isInteractionLocked) return;
+    const pending = pendingRemoteItemsRef.current;
+    if (!pending) return;
+    pendingRemoteItemsRef.current = null;
+    applyRemoteReconcile(pending);
+  }, [applyRemoteReconcile, isInteractionLocked]);
+
+  useEffect(() => {
+    setGridInteractionLocked(isInteractionLocked);
+    return () => setGridInteractionLocked(false);
+  }, [isInteractionLocked, setGridInteractionLocked]);
+
+  useEffect(() => {
+    const count = dirtyRowsRef.current.size + pendingArchiveIdsRef.current.size;
+    onCloudPendingChange?.(count > 0);
+    onDirtyCountChange?.(count);
+  }, [dirtyVersion, onCloudPendingChange, onDirtyCountChange]);
 
   useEffect(() => {
     const dirtyIds = dirtyRowsRef.current;
@@ -555,10 +609,36 @@ export function WarehouseExcelGrid({
     setEditor(null);
   }, [setCell]);
 
+  const queueDictionaryEntry = useCallback((category: DomainCategory, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const exists = pendingDictionaryEntriesRef.current.some(
+      (entry) => entry.category === category && entry.name.toLowerCase() === trimmed.toLowerCase(),
+    );
+    if (exists) return;
+    pendingDictionaryEntriesRef.current.push({ category, name: trimmed });
+  }, []);
+
+  const flushPendingDictionaryEntries = useCallback(async () => {
+    if (!dictionaryContext || pendingDictionaryEntriesRef.current.length === 0) return;
+    const pending = [...pendingDictionaryEntriesRef.current];
+    pendingDictionaryEntriesRef.current = [];
+    for (const entry of pending) {
+      try {
+        await dictionaryContext.addCompanyEntry(entry.category, entry.name);
+      } catch {
+        pendingDictionaryEntriesRef.current.push(entry);
+      }
+    }
+  }, [dictionaryContext]);
+
   const pushToCloud = useCallback(async () => {
     flushEditor();
     if (!actorUserId || !companyId || !canEdit) return;
     if (dirtyRowsRef.current.size === 0 && pendingArchiveIdsRef.current.size === 0) {
+      if (pendingDictionaryEntriesRef.current.length > 0) {
+        await flushPendingDictionaryEntries();
+      }
       setSaveStatus("idle");
       return;
     }
@@ -567,6 +647,7 @@ export function WarehouseExcelGrid({
     setSaveError(null);
 
     try {
+      await flushPendingDictionaryEntries();
       for (const itemId of [...pendingArchiveIdsRef.current]) {
         await repository.archive(itemId, companyId, actorUserId);
       }
@@ -675,6 +756,7 @@ export function WarehouseExcelGrid({
     movementRepository,
     repository,
     flushEditor,
+    flushPendingDictionaryEntries,
     setSaveError,
     setSaveStatus,
     stockLevelRepository,
@@ -717,6 +799,18 @@ export function WarehouseExcelGrid({
     registerCloudPushHandler(pushToCloud);
     return () => registerCloudPushHandler(null);
   }, [pushToCloud, registerCloudPushHandler]);
+
+  useEffect(() => {
+    if (!canEdit || !companyId) return;
+    if (dirtyRowsRef.current.size === 0 && pendingArchiveIdsRef.current.size === 0) return;
+    if (isInteractionLocked) return;
+
+    const timer = window.setTimeout(() => {
+      void pushToCloud();
+    }, 1200);
+
+    return () => window.clearTimeout(timer);
+  }, [canEdit, companyId, dirtyVersion, isInteractionLocked, pushToCloud]);
 
   useEffect(() => {
     function stopSelectionDrag() {
@@ -1550,6 +1644,7 @@ export function WarehouseExcelGrid({
 
                       const outOfStock = row.rowKind === "saved" && isWarehouseRowOutOfStock(row);
                       const lowStock = row.rowKind === "saved" && !outOfStock && isWarehouseRowLowStock(row);
+                      const isDirtyRow = dirtyRowIdsForUi.has(row.rowId);
 
                       return (
                         <div
@@ -1560,6 +1655,7 @@ export function WarehouseExcelGrid({
                             outOfStock && "bg-destructive/18 text-destructive",
                             selected && !outOfStock && "bg-emerald-500/12",
                             focused && "z-[2] ring-2 ring-inset",
+                            isDirtyRow && !outOfStock && !selected && "bg-amber-500/8",
                             saveFlashRows.has(row.rowId) && !outOfStock && "bg-emerald-400/20",
                             scanFlashRows.has(row.rowId) &&
                               !outOfStock &&
@@ -1573,6 +1669,9 @@ export function WarehouseExcelGrid({
                             top: cell.y,
                             width: cell.width,
                             height: cell.height,
+                            ...(isDirtyRow && colIdx === 1
+                              ? { boxShadow: "inset 3px 0 0 0 color-mix(in oklab, var(--color-amber-500) 70%, transparent)" }
+                              : {}),
                             ...(outOfStock
                               ? { backgroundColor: "color-mix(in oklab, var(--destructive) 16%, transparent)" }
                               : selected
@@ -1749,7 +1848,13 @@ export function WarehouseExcelGrid({
               ) : null}
 
               {editor ? (
-                <GridEditorOverlay
+                <>
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 z-20 bg-background/5"
+                    style={{ top: layout.headerHeight }}
+                  />
+                  <GridEditorOverlay
                   editorKey={`${editor.cell.row}-${editor.cell.column}`}
                   value={editor.value}
                   selectAll={editor.selectAll}
@@ -1760,7 +1865,12 @@ export function WarehouseExcelGrid({
                   autocompleteMatch={editorAutocompleteMatch}
                   columnSuggestions={editorSuggestionList}
                   domainCategory={layout.columns[editor.cell.column]?.domainCategory}
+                  deferDictionaryWrites
+                  onDeferredDictionaryEntry={queueDictionaryEntry}
+                  onSuggestionsOpenChange={setSuggestionsOpen}
+                  showSuggestionFooter
                 />
+                </>
               ) : null}
             </div>
           </div>
@@ -1819,6 +1929,7 @@ export function WarehouseExcelGrid({
             <>
               <GridContextMenuSeparator />
               <GridContextMenuItem
+                icon={PackagePlus}
                 onClick={() => {
                   const target = contextMenu.selected[0];
                   if (target) onReceipt(target);
@@ -1828,6 +1939,7 @@ export function WarehouseExcelGrid({
                 Приход
               </GridContextMenuItem>
               <GridContextMenuItem
+                icon={SlidersHorizontal}
                 onClick={() => {
                   const target = contextMenu.selected[0];
                   if (target) onAdjust(target);
