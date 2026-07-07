@@ -1,8 +1,8 @@
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeOutUp, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { XIcon } from '@/assets/icons';
+import { BellIcon, XIcon } from '@/assets/icons';
 import { Text } from '@/components/ui/text';
 import { useTheme } from '@/hooks';
 import { haptics, radius, spacing, zIndex } from '@/theme';
@@ -23,11 +23,11 @@ export function InAppBannerProvider() {
       pointerEvents="box-none"
       style={{
         position: 'absolute',
-        top: insets.top + spacing[2],
-        left: spacing[3],
-        right: spacing[3],
+        top: insets.top + spacing[1.5],
+        left: spacing[2.5],
+        right: spacing[2.5],
         zIndex: zIndex.toast - 1,
-        gap: spacing[2],
+        gap: spacing[1.5],
       }}
     >
       {banners.map((banner) => {
@@ -36,46 +36,46 @@ export function InAppBannerProvider() {
             ? colors.destructive
             : banner.priority === 'important'
               ? colors.primary
-              : colors.warning;
+              : colors.primary;
 
         return (
           <Animated.View
             key={banner.id}
             layout={layoutTransition}
             entering={FadeInDown.springify().damping(22).stiffness(300)}
-            exiting={FadeOutUp.duration(180)}
+            exiting={FadeOutUp.duration(160)}
           >
-            <View
-              style={{
-                backgroundColor: colors.card,
-                borderRadius: radius.xl,
-                borderWidth: 1,
-                borderColor: accent,
-                padding: spacing[3],
-                flexDirection: 'row',
-                alignItems: 'flex-start',
-                gap: spacing[2],
-                ...shadows.soft,
+            <Pressable
+              onPress={() => {
+                const openAction = banner.actions?.find((action) => action.label === 'Открыть');
+                if (openAction) {
+                  haptics.light();
+                  openAction.onPress();
+                  dismissBanner(banner.id);
+                }
               }}
+              style={[
+                styles.banner,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: `${colors.border}`,
+                  ...shadows.soft,
+                },
+              ]}
             >
-              <View
-                style={{
-                  width: 4,
-                  borderRadius: radius.full,
-                  alignSelf: 'stretch',
-                  backgroundColor: accent,
-                  minHeight: 36,
-                }}
-              />
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text variant="heading" style={{ fontSize: 14 }}>
+              <View style={[styles.iconBox, { backgroundColor: `${accent}14` }]}>
+                <BellIcon size="sm" color={accent} strokeWidth={2} />
+              </View>
+
+              <View style={styles.copy}>
+                <Text numberOfLines={1} style={[styles.title, { color: colors.foreground }]}>
                   {banner.title}
                 </Text>
-                <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
+                <Text numberOfLines={2} style={[styles.message, { color: colors.mutedForeground }]}>
                   {banner.message}
                 </Text>
                 {banner.actions && banner.actions.length > 0 ? (
-                  <View style={{ flexDirection: 'row', gap: spacing[3], marginTop: spacing[2] }}>
+                  <View style={styles.actions}>
                     {banner.actions.map((action) => (
                       <Pressable
                         key={action.label}
@@ -86,25 +86,78 @@ export function InAppBannerProvider() {
                         }}
                         hitSlop={6}
                       >
-                        <Text variant="caption" style={{ color: accent, fontWeight: '600' }}>
-                          {action.label}
-                        </Text>
+                        <Text style={[styles.action, { color: accent }]}>{action.label}</Text>
                       </Pressable>
                     ))}
                   </View>
                 ) : null}
               </View>
+
               <Pressable
                 onPress={() => dismissBanner(banner.id)}
                 hitSlop={10}
                 accessibilityLabel="Закрыть"
+                style={styles.close}
               >
                 <XIcon size="sm" color={colors.mutedForeground} />
               </Pressable>
-            </View>
+            </Pressable>
           </Animated.View>
         );
       })}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  banner: {
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  iconBox: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+    flexShrink: 0,
+  },
+  copy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
+  message: {
+    fontSize: 13,
+    lineHeight: 17,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: spacing[3],
+    marginTop: 4,
+  },
+  action: {
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
+  },
+  close: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+    flexShrink: 0,
+  },
+});

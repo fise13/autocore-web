@@ -407,6 +407,26 @@ service cloud.firestore {
       return line.assigneeIds is list && request.auth.uid in line.assigneeIds;
     }
 
+    function laborLineIsUnassigned(line) {
+      return !(line.assigneeIds is list && line.assigneeIds.size() > 0);
+    }
+
+    function hasUnassignedLaborLine(order) {
+      return order.laborLines is list
+        && (
+          (order.laborLines.size() > 0 && laborLineIsUnassigned(order.laborLines[0]))
+          || (order.laborLines.size() > 1 && laborLineIsUnassigned(order.laborLines[1]))
+          || (order.laborLines.size() > 2 && laborLineIsUnassigned(order.laborLines[2]))
+          || (order.laborLines.size() > 3 && laborLineIsUnassigned(order.laborLines[3]))
+          || (order.laborLines.size() > 4 && laborLineIsUnassigned(order.laborLines[4]))
+        );
+    }
+
+    function isClaimableWorkOrder(order) {
+      return order.status in ['confirmed', 'in_progress', 'waiting_parts']
+        && hasUnassignedLaborLine(order);
+    }
+
     function isAssignedToWorkOrder(order) {
       return order.laborLines is list
         && (
@@ -427,7 +447,11 @@ service cloud.firestore {
       return isOwnerOfCompany(companyId)
         || (
           hasPermission(companyId, 'work_orders_view')
-          && (!requiresAssignedWorkOrderScope(companyId) || isAssignedToWorkOrder(order))
+          && (
+            !requiresAssignedWorkOrderScope(companyId)
+            || isAssignedToWorkOrder(order)
+            || isClaimableWorkOrder(order)
+          )
         );
     }
 
@@ -717,6 +741,12 @@ service cloud.firestore {
           && request.resource.data.companyId == companyId
           && request.resource.data.uid == resource.data.uid
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActiveAt']);
+        allow update: if isSignedIn()
+          && request.auth.uid == employeeId
+          && resource.data.companyId == companyId
+          && request.resource.data.companyId == companyId
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['shiftOn']);
         allow delete: if canManageEmployees(companyId)
           && request.auth.uid != employeeId;
       }

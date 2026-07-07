@@ -52,6 +52,12 @@
       ],
       "@autocore/org/*": [
         "./packages/org/src/*"
+      ],
+      "@autocore/avatars": [
+        "./packages/avatars/src"
+      ],
+      "@autocore/avatars/*": [
+        "./packages/avatars/src/*"
       ]
     }
   },

@@ -8,13 +8,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { UserRoundIcon } from '@/assets/icons';
+import { UserAvatar } from '@/components/account/user-avatar';
 import { NotificationBellButton } from '@/components/notifications';
 import { useNavigateTab } from '@/components/navigation/use-navigate-tab';
-import { Avatar, Text } from '@/components/ui';
-import { useReducedMotion, useSession, useTheme, useUserPhotoUrl } from '@/hooks';
+import { Text } from '@/components/ui';
+import { useReducedMotion, useSession, useUserPhotoUrl } from '@/hooks';
 import { haptics, rhythm } from '@/theme';
-import { toneBackground } from '@/theme/color-utils';
 import { autocoreEase } from '@/theme/motion';
 import { radius } from '@/theme/radius';
 
@@ -28,7 +27,6 @@ export function McHeader() {
   const navigateTab = useNavigateTab();
   const reducedMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
-  const { colors } = useTheme();
   const { profile } = useSession();
   const photoURL = useUserPhotoUrl();
   const displayName = profile?.displayName?.trim() || null;
@@ -99,27 +97,17 @@ export function McHeader() {
                   width: ACCOUNT_BUTTON,
                   height: ACCOUNT_BUTTON,
                   borderRadius: radius.full,
-                  backgroundColor: colors.card,
                   alignItems: 'center',
                   justifyContent: 'center',
                   overflow: 'hidden',
                 }}
               >
-                {photoURL ? (
-                  <Avatar name={headline} uri={photoURL} size="sm" />
-                ) : (
-                  <View
-                    style={{
-                      width: ACCOUNT_BUTTON,
-                      height: ACCOUNT_BUTTON,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: toneBackground(colors.primary, 0.1),
-                    }}
-                  >
-                    <UserRoundIcon size="md" color={colors.foreground} strokeWidth={1.75} />
-                  </View>
-                )}
+                <UserAvatar
+                  photoURL={photoURL}
+                  displayName={displayName}
+                  seed={profile?.id}
+                  size="sm"
+                />
               </View>
             </McPressable>
           </Animated.View>

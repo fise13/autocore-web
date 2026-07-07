@@ -10,6 +10,7 @@ import { Text } from '@/components/ui';
 import { usePressAnimation } from '@/animations';
 import { useTheme } from '@/hooks';
 import { haptics, rhythm } from '@/theme';
+import { toneBackground } from '@/theme/color-utils';
 import { formatPrice } from '@/features/search/lib/format';
 
 import { useOrderTransition } from '../animation/order-transition-context';
@@ -129,6 +130,20 @@ export const OrderCard = memo(function OrderCard({
               ) : null}
             </View>
             <OrderStatusBadge status={order.status} />
+            {order.isUnassigned ? (
+              <View
+                style={{
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 999,
+                  backgroundColor: toneBackground(colors.warning, 0.14),
+                }}
+              >
+                <Text variant="meta" style={{ color: colors.warning, fontWeight: '600', fontSize: 10 }}>
+                  Свободный
+                </Text>
+              </View>
+            ) : null}
           </View>
 
           <View

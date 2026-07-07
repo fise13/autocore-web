@@ -32,6 +32,7 @@ function mapEmployee(companyId: string, id: string, data: Record<string, unknown
     invitedBy: String(data.invitedBy ?? ""),
     createdAt: toDateFromFirestore(data.createdAt),
     lastActiveAt: toDateFromFirestore(data.lastActiveAt),
+    shiftOn: data.shiftOn !== false,
     isActive: Boolean(data.isActive ?? true),
   };
 }

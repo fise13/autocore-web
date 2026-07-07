@@ -1,21 +1,29 @@
-import { Link, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Linking, Pressable, View } from 'react-native';
 import Animated, { FadeInLeft, FadeInRight, FadeOutLeft, FadeOutRight } from 'react-native-reanimated';
 
 import { CheckIcon, Loader2Icon, MailIcon, XIcon } from '@/assets/icons';
 import { Alert, Button, FormStack, Input, Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/hooks';
-import { form, spacing } from '@/theme';
+import { form, rhythm, spacing } from '@/theme';
 import { mapAuthError } from '@/utils/auth-error';
 import { getPasswordStrengthState, validateSignupPassword } from '@/utils/password-validation';
 import { resolveEmailSignInMode, type EmailSignInMode } from '@/utils/resolve-email-sign-in-mode';
 import { isAppleSignInCancellation } from '@/services/auth/apple-sign-in';
-import { readInviteEmail, readInviteToken } from '@/lib/invites/pending-invite';
+import {
+  readInviteCompanyName,
+  readInviteEmail,
+  readInviteToken,
+  storePendingInvite,
+} from '@/lib/invites/pending-invite';
+import { fetchInvitePreview } from '@/services/api/org-api';
 
 import { AuthDivider } from './auth-divider';
+import { AuthEmailChip } from './auth-email-chip';
 import { AppleSignInButton } from './apple-sign-in-button';
 import { GoogleSignInButton } from './google-sign-in-button';
+import { InviteFormNotice } from './invite-form-notice';
 import { useAuth } from './auth-provider';
 import { AuthShell } from './auth-shell';
 
@@ -54,13 +62,17 @@ export function LoginScreen() {
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
   const [stepDirection, setStepDirection] = useState<1 | -1>(1);
+  const [inviteFlowActive, setInviteFlowActive] = useState(false);
+  const [inviteCompanyName, setInviteCompanyName] = useState<string | null>(null);
+  const inviteBootstrapRef = useRef(false);
 
   const reducedMotion = useReducedMotion();
   const isSignUp = emailMode === 'signup';
   const displayError = error ?? authError;
-  const inviteEmail = useMemo(() => readInviteEmail(), []);
-  const inviteToken = useMemo(() => readInviteToken(), []);
-  const inviteSignupMode = params.mode === 'signup' && Boolean(params.invite || inviteToken);
+  const inviteTokenParam = params.invite?.trim() ?? '';
+  const isInviteFlow =
+    inviteFlowActive || Boolean(inviteCompanyName) || Boolean(inviteTokenParam);
+  const inviteBootstrapping = isInviteFlow && isDetecting && !emailStep;
 
   useEffect(() => {
     import('@/services/auth/apple-sign-in')
@@ -70,21 +82,78 @@ export function LoginScreen() {
   }, []);
 
   useEffect(() => {
-    if (!inviteSignupMode || !inviteEmail) return;
+    if (inviteBootstrapRef.current) return;
 
-    setEmail(inviteEmail);
-    setEmailAttempted(true);
-    setStepDirection(1);
-    setEmailMode('signup');
-    setEmailStep(true);
-    setCredentialAttempted(false);
-    setPassword('');
-    setFirstName('');
-    setLastName('');
-    setError(null);
-    clearError();
-    setResetSent(false);
-  }, [clearError, inviteEmail, inviteSignupMode]);
+    const token = inviteTokenParam || readInviteToken() || '';
+    const pendingInviteEmail = readInviteEmail();
+
+    if (!token && !pendingInviteEmail) return;
+    inviteBootstrapRef.current = true;
+    setInviteFlowActive(true);
+
+    let cancelled = false;
+
+    void (async () => {
+      setIsDetecting(true);
+      setError(null);
+      clearError();
+      setResetSent(false);
+
+      try {
+        let inviteEmail = pendingInviteEmail;
+        let companyName = readInviteCompanyName();
+
+        if (token) {
+          storePendingInvite({ token });
+          if (!inviteEmail || !companyName) {
+            const response = await fetchInvitePreview(token);
+            inviteEmail = response.preview.email ?? inviteEmail;
+            companyName = response.preview.companyName?.trim() || companyName;
+            storePendingInvite({
+              token,
+              email: inviteEmail ?? undefined,
+              companyName: companyName ?? undefined,
+            });
+          }
+        }
+
+        if (cancelled) return;
+        if (!inviteEmail?.trim()) {
+          setIsDetecting(false);
+          return;
+        }
+
+        setEmail(inviteEmail);
+        setInviteCompanyName(companyName);
+
+        const lookup = await resolveSignInMethodsForEmail(inviteEmail);
+        if (cancelled) return;
+
+        const resolved = resolveEmailSignInMode(lookup.methods);
+        const forcedSignup = params.mode === 'signup';
+        setStepDirection(1);
+        setEmailMode(forcedSignup ? 'signup' : resolved.mode);
+        setOauthProviders(resolved.oauthProviders);
+        setEmailStep(true);
+        setCredentialAttempted(false);
+        setPassword('');
+        setFirstName('');
+        setLastName('');
+      } catch (cause) {
+        if (!cancelled) {
+          setError(mapAuthError(cause));
+        }
+      } finally {
+        if (!cancelled) {
+          setIsDetecting(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clearError, inviteTokenParam, params.mode, resolveSignInMethodsForEmail]);
 
   const passwordStrength = useMemo(() => getPasswordStrengthState(password), [password]);
   const emailError = emailAttempted && !isValidEmail(email) ? 'Введите корректный email.' : null;
@@ -266,21 +335,19 @@ export function LoginScreen() {
     setCredentialAttempted(false);
   };
 
-  const authTitle = emailStep
-    ? emailMode === 'signup'
-      ? 'Создайте аккаунт AutoCore'
-      : emailMode === 'oauth'
-        ? 'Продолжите вход'
-        : 'Введите пароль'
-    : 'Войдите в свой аккаунт AutoCore.';
+  const authTitle = isInviteFlow && emailStep && isSignUp
+    ? 'Создать аккаунт'
+    : isInviteFlow && emailStep
+      ? 'Вход в команду'
+      : 'Войти или создать аккаунт';
 
-  const authDescription = emailStep
-    ? emailMode === 'signup'
-      ? 'Укажите пароль, имя и фамилию.'
-      : emailMode === 'oauth'
-        ? 'Используйте тот же способ, что привязан к email.'
-        : undefined
-    : undefined;
+  const authDescription = isInviteFlow && emailStep
+    ? isSignUp
+      ? 'Email уже указан в приглашении — осталось придумать пароль и имя.'
+      : 'Email уже указан в приглашении — введите пароль.'
+    : isInviteFlow
+      ? 'Загружаем приглашение…'
+      : 'Вход в AutoCore или регистрация новой команды.';
 
   const stepKey = !emailStep ? 'entry' : emailMode;
   const entering = reducedMotion
@@ -296,14 +363,40 @@ export function LoginScreen() {
 
   return (
     <AuthShell
-      title={authTitle}
-      description={authDescription}
+      stepLabel="Вход и регистрация"
       footer={
-        <Text variant="caption" color="muted" style={{ textAlign: 'center', maxWidth: 300, lineHeight: 16 }}>
-          Продолжая, вы соглашаетесь с Условиями использования и Политикой конфиденциальности.
+        <Text variant="caption" color="muted" style={{ fontSize: 14, lineHeight: 20 }}>
+          Нажимая «Продолжить», вы соглашаетесь с{' '}
+          <Text
+            variant="caption"
+            style={{ textDecorationLine: 'underline' }}
+            onPress={() => void Linking.openURL('https://myautocore.com/legal/terms')}
+          >
+            Условиями использования
+          </Text>{' '}
+          и{' '}
+          <Text
+            variant="caption"
+            style={{ textDecorationLine: 'underline' }}
+            onPress={() => void Linking.openURL('https://myautocore.com/legal/privacy')}
+          >
+            Политикой конфиденциальности
+          </Text>
+          .
         </Text>
       }
     >
+      <View style={{ gap: rhythm.micro }}>
+        <Text
+          variant="pageTitle"
+          style={{ fontSize: 24, fontWeight: '700', letterSpacing: -0.4, lineHeight: 30 }}
+        >
+          {authTitle}
+        </Text>
+        <Text variant="pageSubtitle" style={{ fontSize: 16, lineHeight: 22 }} color="muted">
+          {authDescription}
+        </Text>
+      </View>
       {!isFirebaseReady ? (
         <Alert
           variant="warning"
@@ -320,10 +413,18 @@ export function LoginScreen() {
         />
       ) : null}
 
+      {inviteBootstrapping ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 40 }}>
+          <Loader2Icon size="sm" color={colors.mutedForeground} />
+          <Text variant="caption" color="muted">
+            Загружаем приглашение…
+          </Text>
+        </View>
+      ) : (
       <Animated.View key={stepKey} entering={entering} exiting={exiting} style={{ width: '100%', gap: form.groupGap }}>
       {!emailStep ? (
         <>
-          <View style={{ gap: form.labelGap, width: '100%' }}>
+          <View style={{ gap: spacing[2], width: '100%' }}>
             <GoogleSignInButton
               disabled={submitDisabled}
               loading={oauthLoading === 'google'}
@@ -345,35 +446,38 @@ export function LoginScreen() {
 
           <AuthDivider>ИЛИ</AuthDivider>
 
-          <Input
-            label="Email для входа или создания аккаунта"
-            labelVariant="caption"
-            size="lg"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            textContentType="username"
-            autoCapitalize="none"
-            autoCorrect={false}
-            placeholder="ваш@email.ru"
-            error={emailError ?? undefined}
-            returnKeyType="done"
-            onSubmitEditing={onEmailContinue}
-            leftIcon={<MailIcon size="sm" color={colors.mutedForeground} strokeWidth={1.85} />}
-          />
+          <View style={{ gap: spacing[2], width: '100%' }}>
+            <Text variant="caption" color="muted" style={{ fontSize: form.captionFontSize }}>
+              Email для входа или создания аккаунта
+            </Text>
+            <Input
+              size="lg"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              textContentType="username"
+              autoCapitalize="none"
+              autoCorrect={false}
+              placeholder="ваш@email.ru"
+              error={emailError ?? undefined}
+              returnKeyType="done"
+              onSubmitEditing={onEmailContinue}
+              leftIcon={<MailIcon size="sm" color={colors.mutedForeground} strokeWidth={1.85} />}
+            />
+          </View>
 
           <Button
-            size="lg"
+            size="default"
             disabled={submitDisabled}
             onPress={onEmailContinue}
             leftIcon={isDetecting ? <Loader2Icon size="sm" color={colors.primaryForeground} /> : undefined}
-            style={{ width: '100%' }}
+            style={{ width: '100%', height: form.controlHeightLg }}
           >
             {isDetecting ? 'Проверяем email…' : 'Продолжить с email'}
           </Button>
 
-          <Pressable onPress={() => void onForgotPassword()} disabled={submitDisabled}>
-            <Text variant="caption" color="muted" style={{ textDecorationLine: 'underline' }}>
+          <Pressable onPress={() => void onForgotPassword()} disabled={submitDisabled} style={{ alignItems: 'center' }}>
+            <Text variant="caption" color="muted" style={{ fontSize: 14, textDecorationLine: 'underline' }}>
               Забыли пароль?
             </Text>
           </Pressable>
@@ -386,9 +490,15 @@ export function LoginScreen() {
         </>
       ) : emailMode === 'oauth' ? (
         <>
-          <Input label="Email" value={email} editable={false} selectTextOnFocus={false} size="lg" />
+          <AuthEmailChip
+            email={email}
+            onAction={changeEmail}
+            actionDisabled={submitDisabled}
+          />
 
-          <Text variant="small" color="muted">
+          {isInviteFlow ? <InviteFormNotice companyName={inviteCompanyName} /> : null}
+
+          <Text variant="small" color="muted" style={{ lineHeight: 20 }}>
             Этот email зарегистрирован через{' '}
             {oauthProviders.includes('google.com') ? 'Google' : 'Apple'}
             {oauthProviders.length > 1 ? ' или Apple' : ''}. Войдите тем же способом.
@@ -415,21 +525,19 @@ export function LoginScreen() {
               />
             ) : null}
           </View>
-
-          <Button variant="link" size="sm" style={{ alignSelf: 'flex-start' }} onPress={changeEmail}>
-            Изменить email
-          </Button>
         </>
       ) : (
         <>
-          <FormStack gap={form.fieldGap}>
+          <View style={{ gap: spacing[2] }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text variant="caption" color="muted" style={{ fontSize: form.labelFontSize, fontWeight: form.labelFontWeight }}>
+              <Text variant="caption" color="muted" style={{ fontSize: form.captionFontSize }}>
                 Email
               </Text>
-              <Button variant="link" size="sm" style={{ height: undefined, minHeight: undefined }} onPress={changeEmail}>
-                Назад
-              </Button>
+              <Pressable disabled={submitDisabled || isInviteFlow} onPress={changeEmail}>
+                <Text variant="caption" style={{ color: colors.primary, textDecorationLine: 'underline' }}>
+                  Назад
+                </Text>
+              </Pressable>
             </View>
             <Input
               value={email}
@@ -440,12 +548,16 @@ export function LoginScreen() {
               autoCorrect={false}
               placeholder="ваш@email.ru"
               returnKeyType="next"
-              editable={!isSubmitting && !inviteSignupMode}
-              selectTextOnFocus={!inviteSignupMode}
+              editable={!isSubmitting && !isInviteFlow}
+              selectTextOnFocus={!isInviteFlow}
               size="lg"
               leftIcon={<MailIcon size="sm" color={colors.mutedForeground} strokeWidth={1.85} />}
             />
+          </View>
 
+          {isInviteFlow ? <InviteFormNotice companyName={inviteCompanyName} /> : null}
+
+          <FormStack gap={form.fieldGap}>
             {isSignUp ? (
               <>
                 <Input
@@ -540,22 +652,22 @@ export function LoginScreen() {
           </FormStack>
 
           <Button
-            size="lg"
+            size="default"
             loading={isSubmitting}
             disabled={submitDisabled}
             onPress={onSubmit}
-            style={{ width: '100%' }}
+            style={{ width: '100%', height: form.controlHeightLg }}
           >
             {isSubmitting ? (isSignUp ? 'Создание аккаунта…' : 'Вход…') : isSignUp ? 'Создать аккаунт' : 'Войти по почте'}
           </Button>
 
           {!isSignUp ? (
             <>
-              <Link href={'/forgot-password' as never} asChild>
-                <Button variant="link" size="sm" style={{ alignSelf: 'flex-start' }}>
+              <Pressable onPress={() => void onForgotPassword()} disabled={submitDisabled} style={{ alignItems: 'center' }}>
+                <Text variant="caption" color="muted" style={{ fontSize: 14, textDecorationLine: 'underline' }}>
                   Забыли пароль?
-                </Button>
-              </Link>
+                </Text>
+              </Pressable>
               {resetSent ? (
                 <Text variant="caption" color="muted">
                   Ссылка для сброса пароля отправлена на {email}.
@@ -566,9 +678,10 @@ export function LoginScreen() {
         </>
       )}
       </Animated.View>
+      )}
 
       {displayError ? (
-        <Text variant="small" style={{ color: colors.destructive }}>
+        <Text variant="small" style={{ color: colors.destructive, lineHeight: 20 }}>
           {displayError}
         </Text>
       ) : null}

@@ -24,24 +24,31 @@ export function NotificationProvider({ enabled, children }: NotificationProvider
   const canRun = enabled && loaded && Boolean(uid) && isProductionCompanyId(companyId);
 
   useEffect(() => {
-    if (!canRun) return;
+    if (!canRun || initRef.current) return;
 
-    if (!initRef.current) {
-      initRef.current = true;
-      void NotificationService.init({
-        enabled: true,
-        pushEnabled: preferences.channels.push,
-        serverPrefs: preferences,
-      });
+    initRef.current = true;
+    void NotificationService.init({
+      enabled: true,
+      pushEnabled: preferences.channels.push,
+      serverPrefs: preferences,
+    });
+  }, [canRun, preferences]);
+
+  useEffect(() => {
+    if (!uid && initRef.current) {
+      initRef.current = false;
+      NotificationService.teardown();
     }
+  }, [uid]);
 
+  useEffect(() => {
     return () => {
       if (initRef.current) {
         initRef.current = false;
         NotificationService.teardown();
       }
     };
-  }, [canRun]);
+  }, []);
 
   useEffect(() => {
     if (!loaded || !initRef.current) return;
@@ -70,17 +77,14 @@ export function NotificationProvider({ enabled, children }: NotificationProvider
   useEffect(() => {
     if (!canRun || !initialized) return;
 
-    void NotificationService.ensurePushRegistration(preferences.channels.push);
-
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
         void NotificationService.syncInbox();
-        void NotificationService.ensurePushRegistration(preferences.channels.push);
       }
     });
 
     return () => subscription.remove();
-  }, [canRun, companyId, initialized, preferences.channels.push]);
+  }, [canRun, initialized]);
 
   return children ?? null;
 }

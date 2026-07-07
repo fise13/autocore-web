@@ -10,7 +10,7 @@ export type OrderStatus =
 
 export type OrderPriority = 'normal' | 'high';
 
-export type OrderFilterId = 'all' | 'open' | 'done';
+export type OrderFilterId = 'all' | 'open' | 'done' | 'free';
 
 export type OrderTimelineEvent = {
   id: string;
@@ -29,6 +29,8 @@ export type WorkOrder = {
   licensePlate?: string;
   vin?: string;
   assignee?: string;
+  isUnassigned?: boolean;
+  isAssignedToMe?: boolean;
   price: number;
   status: OrderStatus;
   priority: OrderPriority;
@@ -49,6 +51,7 @@ export type OrderFilterOption = {
 export type OrdersListMeta = {
   total: number;
   openCount: number;
+  freeCount?: number;
 };
 
 export type TodayOverview = {

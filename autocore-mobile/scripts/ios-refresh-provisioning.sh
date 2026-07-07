@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Refresh iOS provisioning profiles without opening Xcode.
-# Creates/updates the explicit profile for com.wise.autocore.mobile (incl. Sign in with Apple).
+# Creates/updates the explicit profile for com.wise.autocore.mobile
+# (Sign in with Apple + Push Notifications).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -16,6 +17,8 @@ fi
 
 echo "→ Refreshing provisioning for $BUNDLE_ID (team $TEAM_ID)"
 echo "→ Destination: $DESTINATION"
+echo "→ Requires Push Notifications enabled on App ID in developer.apple.com"
+echo "  See docs/MOBILE-PUSH-NOTIFICATIONS.md"
 
 cd "$IOS_DIR"
 xcodebuild \

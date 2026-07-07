@@ -1,17 +1,58 @@
-import { useMemo } from 'react';
-import { View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
-import { PageHeader, Screen, ScreenScroll, Text } from '@/components/ui';
+import { ClipboardListIcon } from '@/assets/icons';
+import { PageHeader, Screen, ScreenScroll, SettingsSectionCard, Switch, Text, toast } from '@/components/ui';
+import { McWeekBars } from '@/features/mission-control/animation';
+import type { MissionControlWeekBar } from '@/features/mission-control/types';
 import { usePayrollTransactionsRealtime } from '@/hooks/use-payroll-transactions-realtime';
+import { useEmployeesRealtime } from '@/hooks/use-employees-realtime';
 import { useSession, useWorkOrdersRealtime } from '@/hooks';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import { useTheme } from '@/hooks/use-theme';
-import { rhythm } from '@/theme';
+import { coerceToDate } from '@/lib/firestore-timestamp';
+import { isAssignedToWorkOrder, isClaimableWorkOrder, DEFAULT_MAX_ACTIVE_WORK_ORDERS } from '@autocore/rbac';
+import { setEmployeeShiftOn } from '@/services/firestore/employee-rbac-service';
+import { isOpenStatus } from '@/lib/work-order/work-order-utils';
+import { haptics, rhythm } from '@/theme';
 
 import { ProfileScreenShell } from '../components/profile-screen-shell';
 
+const WEEKDAY_SHORT_RU = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'] as const;
+
 function formatMoney(value: number): string {
   return `${Math.round(value).toLocaleString('ru-RU')} ₸`;
+}
+
+function weekDayShortLabel(date: Date): string {
+  return WEEKDAY_SHORT_RU[date.getDay()] ?? '';
+}
+
+function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function buildWeekBars(
+  completedCountByDay: Map<string, number>,
+  endDay: Date,
+): MissionControlWeekBar[] {
+  const bars: MissionControlWeekBar[] = [];
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const day = new Date(endDay);
+    day.setDate(day.getDate() - offset);
+    const key = day.toISOString().slice(0, 10);
+    const value = completedCountByDay.get(key) ?? 0;
+    bars.push({
+      label: weekDayShortLabel(day),
+      value,
+    });
+  }
+  return bars;
 }
 
 type MyEarningsScreenProps = {
@@ -20,11 +61,20 @@ type MyEarningsScreenProps = {
 
 export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
   const { colors } = useTheme();
+  const router = useRouter();
   const { uid } = useSession();
   const rbac = useRbacPolicy();
   const allowed = rbac.nav.canAccessMyEarnings;
+  const isShiftHub = variant === 'tab';
+  const [shiftBusy, setShiftBusy] = useState(false);
 
   const companyId = allowed ? rbac.companyId : null;
+  const { employees } = useEmployeesRealtime(companyId, Boolean(companyId));
+  const selfEmployee = useMemo(
+    () => employees.find((entry) => entry.uid === uid),
+    [employees, uid],
+  );
+  const shiftOn = selfEmployee?.shiftOn !== false;
   const { payroll } = usePayrollTransactionsRealtime(companyId, {
     scope: rbac.scopes.payroll,
     employeeId: uid,
@@ -34,17 +84,50 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
     uid,
   });
 
-  const summary = useMemo(() => {
+  const shiftStats = useMemo(() => {
     let pending = 0;
     let paid = 0;
-    let cancelled = 0;
+    let myOpen = 0;
+    let freePool = 0;
+    const completedByDay = new Map<string, number>();
+
     for (const row of payroll) {
       if (row.status === 'paid') paid += row.amount;
       else if (row.status === 'pending') pending += row.amount;
-      else cancelled += row.amount;
     }
-    return { pending, paid, cancelled };
-  }, [payroll]);
+
+    const today = new Date();
+    for (const order of domainOrders) {
+      if (isClaimableWorkOrder(order)) freePool += 1;
+      if (uid && isAssignedToWorkOrder(order, uid) && isOpenStatus(order.status)) {
+        myOpen += 1;
+      }
+      if (
+        uid &&
+        isAssignedToWorkOrder(order, uid) &&
+        ['completed', 'delivered'].includes(order.status)
+      ) {
+        const closedAt = coerceToDate(order.completedAt) ?? coerceToDate(order.updatedAt);
+        if (closedAt && closedAt.getTime() > today.getTime() - 7 * 24 * 60 * 60 * 1000) {
+          const key = closedAt.toISOString().slice(0, 10);
+          completedByDay.set(key, (completedByDay.get(key) ?? 0) + 1);
+        }
+      }
+    }
+
+    return {
+      pending,
+      paid,
+      myOpen,
+      freePool,
+      weekBars: buildWeekBars(completedByDay, today),
+    };
+  }, [domainOrders, payroll, uid]);
+
+  const freePreview = useMemo(
+    () => domainOrders.filter((order) => isClaimableWorkOrder(order)).slice(0, 4),
+    [domainOrders],
+  );
 
   const body = useMemo(() => {
     if (!allowed) {
@@ -57,11 +140,58 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
 
     return (
       <>
+        <SettingsSectionCard title="Смена" description="Получайте push о свободных нарядах и берите их в работу" inset={false}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: rhythm.cardPadX,
+              paddingBottom: rhythm.cardPadX,
+              gap: rhythm.stack,
+            }}
+          >
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text variant="body" style={{ fontWeight: '600' }}>
+                {shiftOn ? 'На смене' : 'Смена выключена'}
+              </Text>
+              <Text variant="caption" color="muted">
+                Лимит активных нарядов: {DEFAULT_MAX_ACTIVE_WORK_ORDERS}
+              </Text>
+            </View>
+            <Switch
+              value={shiftOn}
+              disabled={shiftBusy || !companyId || !uid}
+              onValueChange={(next) => {
+                if (!companyId || !uid) return;
+                setShiftBusy(true);
+                void setEmployeeShiftOn(companyId, uid, next)
+                  .then(() => {
+                    haptics.selection();
+                    toast({
+                      title: next ? 'Смена включена' : 'Смена выключена',
+                      variant: 'success',
+                    });
+                  })
+                  .catch((error) => {
+                    haptics.warning();
+                    toast({
+                      title: 'Не удалось обновить смену',
+                      description: error instanceof Error ? error.message : undefined,
+                      variant: 'destructive',
+                    });
+                  })
+                  .finally(() => setShiftBusy(false));
+              }}
+            />
+          </View>
+        </SettingsSectionCard>
+
         <View style={{ flexDirection: 'row', gap: rhythm.stack }}>
           {[
-            { label: 'К выплате', value: summary.pending },
-            { label: 'Выплачено', value: summary.paid },
-            { label: 'Отменено', value: summary.cancelled },
+            { label: 'Мои открытые', value: String(shiftStats.myOpen) },
+            { label: 'Свободные', value: String(shiftStats.freePool) },
+            { label: 'К выплате', value: formatMoney(shiftStats.pending) },
           ].map((tile) => (
             <View
               key={tile.label}
@@ -77,20 +207,56 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
                 {tile.label}
               </Text>
               <Text variant="body" style={{ fontWeight: '600' }}>
-                {formatMoney(tile.value)}
+                {tile.value}
               </Text>
             </View>
           ))}
         </View>
 
+        <SettingsSectionCard title="Продуктивность" description="Закрытые наряды за 7 дней" inset={false}>
+          <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX }}>
+            <McWeekBars bars={shiftStats.weekBars} delay={80} />
+          </View>
+        </SettingsSectionCard>
+
+        {freePreview.length > 0 ? (
+          <SettingsSectionCard title="Свободные наряды" description="Можно взять в работу" inset={false}>
+            <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.tight }}>
+              {freePreview.map((order) => (
+                <Pressable
+                  key={order.id}
+                  onPress={() => router.push(`/(tabs)/orders/${order.id}`)}
+                  style={{
+                    paddingVertical: 10,
+                    borderBottomWidth: rhythm.hairline,
+                    borderBottomColor: colors.border,
+                  }}
+                >
+                  <Text variant="body" style={{ fontWeight: '600' }}>
+                    №{order.number} · {order.vehicleLabel ?? order.clientName ?? 'Наряд'}
+                  </Text>
+                  <Text variant="caption" color="muted">
+                    {order.licensePlate || 'Без номера'}
+                  </Text>
+                </Pressable>
+              ))}
+              <Pressable onPress={() => router.push('/(tabs)/orders')}>
+                <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
+                  Все наряды →
+                </Text>
+              </Pressable>
+            </View>
+          </SettingsSectionCard>
+        ) : null}
+
         <View style={{ gap: rhythm.tight }}>
-          <Text variant="sectionLabel">Транзакции</Text>
+          <Text variant="sectionLabel">Начисления</Text>
           {payroll.length === 0 ? (
             <Text variant="body" color="muted">
               Пока нет начислений
             </Text>
           ) : (
-            payroll.map((row) => {
+            payroll.slice(0, 12).map((row) => {
               const order = domainOrders.find((entry) => entry.id === row.workOrderId);
               return (
                 <View
@@ -115,17 +281,36 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
         </View>
       </>
     );
-  }, [allowed, colors.card, domainOrders, payroll, summary.cancelled, summary.paid, summary.pending]);
+  }, [
+    allowed,
+    colors.border,
+    colors.card,
+    colors.primary,
+    domainOrders,
+    freePreview,
+    payroll,
+    router,
+    shiftStats.freePool,
+    shiftStats.myOpen,
+    shiftStats.pending,
+    shiftStats.weekBars,
+    shiftOn,
+    shiftBusy,
+    companyId,
+    uid,
+  ]);
+
+  const title = isShiftHub ? 'Смена' : 'Мои начисления';
+  const subtitle = isShiftHub
+    ? 'Ваши наряды, свободная очередь и выплаты'
+    : allowed
+      ? 'Начисления по закрытым нарядам'
+      : undefined;
 
   if (variant === 'tab') {
     return (
       <Screen>
-        <PageHeader
-          title="Мои начисления"
-          subtitle={allowed ? 'Начисления по закрытым нарядам' : undefined}
-          logo={null}
-          align="start"
-        />
+        <PageHeader title={title} subtitle={subtitle} logo={null} align="start" />
         <ScreenScroll tabBarInset contentStyle={{ padding: rhythm.pad, gap: rhythm.section }}>
           {body}
         </ScreenScroll>
@@ -134,10 +319,7 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
   }
 
   return (
-    <ProfileScreenShell
-      title="Мои начисления"
-      subtitle={allowed ? 'Начисления по закрытым нарядам' : undefined}
-    >
+    <ProfileScreenShell title={title} subtitle={subtitle}>
       <View style={{ padding: rhythm.pad, gap: rhythm.section }}>{body}</View>
     </ProfileScreenShell>
   );

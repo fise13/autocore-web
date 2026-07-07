@@ -42,8 +42,8 @@ export function useWorkOrdersRealtime(
   }, [data, options?.scope, options?.uid]);
 
   const mobileOrders = useMemo(
-    () => scopedData.map((order) => mapWorkOrderToMobileCard(order)),
-    [scopedData],
+    () => scopedData.map((order) => mapWorkOrderToMobileCard(order, options?.uid)),
+    [scopedData, options?.uid],
   );
 
   const meta = useMemo(() => computeMobileOrdersMeta(mobileOrders), [mobileOrders]);
@@ -61,7 +61,8 @@ export function useWorkOrdersRealtime(
 export function useWorkOrderById(
   companyId: string | null | undefined,
   orderId: string,
+  options?: { scope?: DataScope; uid?: string | null },
 ): MobileWorkOrder | undefined {
-  const { orders } = useWorkOrdersRealtime(companyId);
+  const { orders } = useWorkOrdersRealtime(companyId, options);
   return orders.find((order) => order.id === orderId);
 }

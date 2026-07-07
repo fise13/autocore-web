@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Keyboard, Pressable, ScrollView, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,13 +15,15 @@ import {
 } from '@/assets/icons';
 import { Button, IconButton, Text, toast } from '@/components/ui';
 import { useTheme, useSession, useEmployeesRealtime, useWorkOrdersRealtime, useFloatingTabBarInset } from '@/hooks';
+import { useRbacPolicy } from '@/hooks/use-rbac-policy';
+import { canMechanicClaimWorkOrder, evaluateClaimEligibility, countOpenAssignedWorkOrders, DEFAULT_MAX_ACTIVE_WORK_ORDERS } from '@autocore/rbac';
 import { haptics, rhythm } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
 import { formatPrice } from '@/features/search/lib/format';
 import { laborLineLabel } from '@/lib/work-order/composer-utils';
 import { laborLineTotal } from '@/lib/work-order/labor-pricing';
 import { nextStatuses, STATUS_LABELS } from '@/lib/work-order/work-order-utils';
-import { transitionWorkOrder } from '@/services/api/work-orders';
+import { transitionWorkOrder, claimWorkOrder } from '@/services/api/work-orders';
 import type { WorkOrderStatus } from '@/types/work-order';
 import { openPhone } from '@/utils/open-phone';
 
@@ -29,6 +31,7 @@ import {
   useOrderDetailContentEnter,
   useOrderDetailHeroEnter,
 } from './animation/use-order-detail-enter';
+import { OrderClaimSection } from './components/order-claim-section';
 import { OrderStatusBadge } from './components/order-status-badge';
 import { OrderDocumentsSection } from './components/order-documents-section';
 import { OrderLinesList } from './components/order-lines-list';
@@ -68,12 +71,17 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
   const insets = useSafeAreaInsets();
   const { scrollBottom } = useFloatingTabBarInset();
   const router = useRouter();
-  const { companyId, can } = useSession();
-  const { orders, domainOrders } = useWorkOrdersRealtime(companyId);
+  const { companyId, can, uid, profile } = useSession();
+  const rbac = useRbacPolicy();
+  const { orders, domainOrders } = useWorkOrdersRealtime(companyId, {
+    scope: rbac.scopes.workOrders,
+    uid,
+  });
   const { employees } = useEmployeesRealtime(companyId);
   const order = orders.find((entry) => entry.id === orderId);
   const domainOrder = domainOrders.find((entry) => entry.id === orderId);
   const [transitioning, setTransitioning] = useState(false);
+  const [claiming, setClaiming] = useState(false);
 
   const heroStyle = useOrderDetailHeroEnter(40);
   const contentStyle = useOrderDetailContentEnter(140);
@@ -119,6 +127,50 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
   };
 
   const availableTransitions = domainOrder ? nextStatuses(domainOrder.status) : [];
+  const canClaimBase =
+    Boolean(domainOrder && uid) && canMechanicClaimWorkOrder(domainOrder!, uid!);
+  const claimEligibility = useMemo(() => {
+    if (!domainOrder || !uid || !profile) return null;
+    const openAssignedCount = countOpenAssignedWorkOrders(domainOrders, uid);
+    const selfEmployee = employees.find((entry) => entry.uid === uid);
+    return evaluateClaimEligibility({
+      order: domainOrder,
+      uid,
+      role: profile.role,
+      shiftOn: selfEmployee?.shiftOn !== false,
+      openAssignedCount,
+      maxActive: DEFAULT_MAX_ACTIVE_WORK_ORDERS,
+    });
+  }, [domainOrder, domainOrders, employees, profile, uid]);
+  const canClaim = canClaimBase && claimEligibility?.ok === true;
+  const claimBlockedReason = canClaimBase && claimEligibility && !claimEligibility.ok ? claimEligibility.reason : undefined;
+  const unassignedLaborCount =
+    domainOrder?.laborLines.filter((line) => !line.assigneeIds.length).length ?? 0;
+
+  const handleClaim = async () => {
+    if (!canClaim) return;
+    setClaiming(true);
+    haptics.medium();
+    try {
+      await claimWorkOrder(orderId);
+      haptics.success();
+      toast({
+        title: 'Наряд взят в работу',
+        description: `№${order.number} теперь у вас`,
+        variant: 'success',
+      });
+    } catch (error) {
+      haptics.warning();
+      toast({
+        title: 'Не удалось взять наряд',
+        description: error instanceof Error ? error.message : undefined,
+        variant: 'destructive',
+      });
+    } finally {
+      setClaiming(false);
+    }
+  };
+
   const canEditOrder =
     Boolean(domainOrder) &&
     (domainOrder?.status === 'draft' || domainOrder?.status === 'confirmed') &&
@@ -277,6 +329,18 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
 
           <OrderWorkflowProgress status={order.status} />
         </Animated.View>
+
+        {canClaimBase ? (
+          <Animated.View style={contentStyle}>
+            <OrderClaimSection
+              orderNumber={order.number}
+              unassignedCount={unassignedLaborCount}
+              claiming={claiming}
+              blockedReason={claimBlockedReason}
+              onClaim={() => void handleClaim()}
+            />
+          </Animated.View>
+        ) : null}
 
         <Animated.View style={[{ gap: ordersLayout.section }, contentStyle]}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>

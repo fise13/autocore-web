@@ -1,3 +1,4 @@
+import { isAssignedToWorkOrder, isClaimableWorkOrder } from '@autocore/rbac';
 import { coerceToDate } from '@/lib/firestore-timestamp';
 import type { WorkOrder } from '@/types/work-order';
 import { isOpenStatus } from '@/lib/work-order/work-order-utils';
@@ -52,10 +53,12 @@ function formatTimeLabel(value: Date): string {
   return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 
-export function mapWorkOrderToMobileCard(order: WorkOrder): MobileWorkOrder {
+export function mapWorkOrderToMobileCard(order: WorkOrder, uid?: string | null): MobileWorkOrder {
+  const unassigned = isClaimableWorkOrder(order);
+  const assignedToMe = uid ? isAssignedToWorkOrder(order, uid) : false;
   const assignee =
     order.laborLines[0]?.assigneeDisplayNames?.[0] ??
-    (order.laborLines[0]?.assigneeIds.length ? 'Назначен' : undefined);
+    (order.laborLines[0]?.assigneeIds.length ? 'Назначен' : unassigned ? 'Свободный' : undefined);
 
   return {
     id: order.id,
@@ -67,6 +70,8 @@ export function mapWorkOrderToMobileCard(order: WorkOrder): MobileWorkOrder {
     licensePlate: order.licensePlate || undefined,
     vin: order.vin || undefined,
     assignee,
+    isUnassigned: unassigned,
+    isAssignedToMe: assignedToMe,
     price: order.pricing.grandTotal,
     status: mapDomainStatusToMobile(order.status),
     priority: order.status === 'waiting_parts' ? 'high' : 'normal',
@@ -100,6 +105,7 @@ export function filterMobileOrders(
   return orders.filter((order) => {
     if (filter === 'open' && order.status === 'completed') return false;
     if (filter === 'done' && order.status !== 'completed') return false;
+    if (filter === 'free' && !order.isUnassigned) return false;
     if (!normalizedQuery) return true;
     const haystack = [
       order.number,
@@ -119,5 +125,6 @@ export function filterMobileOrders(
 
 export function computeMobileOrdersMeta(orders: MobileWorkOrder[]) {
   const openCount = orders.filter((order) => order.status !== 'completed').length;
-  return { total: orders.length, openCount };
+  const freeCount = orders.filter((order) => order.isUnassigned).length;
+  return { total: orders.length, openCount, freeCount };
 }

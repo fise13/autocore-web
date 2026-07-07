@@ -14,6 +14,8 @@ export type CompanyEmployee = {
   invitedBy: string;
   createdAt?: Date;
   lastActiveAt?: Date;
+  /** When false, mechanic is off shift — no pool push / claim. */
+  shiftOn?: boolean;
   isActive: boolean;
 };
 

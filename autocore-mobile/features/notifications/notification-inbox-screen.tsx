@@ -1,11 +1,10 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 
-import { AlertTriangleIcon, BellIcon } from '@/assets/icons';
-import { Badge, Button, EmptyState, SearchInput, Text } from '@/components/ui';
+import { BellIcon } from '@/assets/icons';
+import { Badge, Button, EmptyState, SearchInput, SettingsSectionCard, Text } from '@/components/ui';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
-import { useTheme } from '@/hooks';
 import { useSession } from '@/hooks/use-session';
 import { NotificationService } from '@/services/notifications';
 import type { AppNotification } from '@/services/notifications';
@@ -25,7 +24,6 @@ export function NotificationInboxScreen() {
     () => resolveNotificationInboxReturnHref(returnTo),
     [returnTo],
   );
-  const { colors } = useTheme();
   const { can } = useSession();
   const canManageTeam = can('employee_manage');
   const unreadCount = useNotificationStore((s) => s.unreadCount);
@@ -74,10 +72,6 @@ export function NotificationInboxScreen() {
     NotificationService.open(item);
   }, []);
 
-  const handleDelete = useCallback((id: string) => {
-    void NotificationService.delete(id);
-  }, []);
-
   const handleSearch = useCallback((text: string) => {
     setLocalSearch(text);
     NotificationService.setSearchQuery(text);
@@ -103,7 +97,7 @@ export function NotificationInboxScreen() {
         <RefreshControl refreshing={refreshing} onRefresh={() => void handleRefresh()} />
       }
     >
-      <View style={{ gap: spacing[4] }}>
+      <View style={{ gap: rhythm.stack }}>
         <SearchInput
           value={localSearch}
           onChangeText={handleSearch}
@@ -125,44 +119,16 @@ export function NotificationInboxScreen() {
         ) : null}
 
         {error ? (
-          <Pressable
-            onPress={() => void handleRefresh()}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'flex-start',
-              gap: spacing[3],
-              padding: spacing[3],
-              borderRadius: rhythm.cardRadius,
-              borderWidth: rhythm.hairline,
-              borderColor: `${colors.destructive}33`,
-              backgroundColor: `${colors.destructive}12`,
-            }}
-          >
-            <View
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: rhythm.radius,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: `${colors.destructive}1F`,
-              }}
-            >
-              <AlertTriangleIcon size="sm" color={colors.destructive} />
-            </View>
-            <View style={{ flex: 1, gap: spacing[1] }}>
-              <Text variant="bodyStrong">Не удалось загрузить</Text>
-              <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
+          <SettingsSectionCard title="Не удалось загрузить" tone="danger" inset>
+            <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.tight }}>
+              <Text variant="caption" color="muted">
                 {error}
               </Text>
-              <Text
-                variant="caption"
-                style={{ color: colors.destructive, fontWeight: '600', marginTop: spacing[1] }}
-              >
-                Нажмите, чтобы повторить
-              </Text>
+              <Button variant="secondary" size="sm" onPress={() => void handleRefresh()}>
+                Повторить
+              </Button>
             </View>
-          </Pressable>
+          </SettingsSectionCard>
         ) : null}
 
         {showSkeleton ? <NotificationInboxSkeleton /> : null}
@@ -189,13 +155,9 @@ export function NotificationInboxScreen() {
         ) : null}
 
         {groups.map((group) => (
-          <ActivityDateGroup
-            key={group.key}
-            label={group.label}
-            items={group.items}
-            onPress={handlePress}
-            onDelete={handleDelete}
-          />
+          <View key={group.key} style={{ marginBottom: spacing[1] }}>
+            <ActivityDateGroup label={group.label} items={group.items} onPress={handlePress} />
+          </View>
         ))}
 
         {hasMore ? (

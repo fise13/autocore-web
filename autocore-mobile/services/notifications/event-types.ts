@@ -2,6 +2,7 @@
 
 export const ORDER_EVENTS = {
   ASSIGNED: 'work_order.assigned',
+  AVAILABLE: 'work_order.available',
   COMPLETED: 'work_order.completed',
   STATUS_CHANGED: 'work_order.status_changed',
   EDITED: 'work_order.updated',

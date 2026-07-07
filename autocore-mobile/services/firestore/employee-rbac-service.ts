@@ -21,11 +21,13 @@ function mapEmployee(companyId: string, id: string, data: Record<string, unknown
     companyId: String(data.companyId ?? companyId),
     email: String(data.email ?? ''),
     fullName: String(data.fullName ?? ''),
+    photoURL: typeof data.photoURL === 'string' ? data.photoURL : null,
     role: (String(data.role ?? 'employee') as UserRole),
     permissions: Array.isArray(data.permissions) ? (data.permissions as Permission[]) : [],
     invitedBy: String(data.invitedBy ?? ''),
     createdAt: toDateFromFirestore(data.createdAt),
     lastActiveAt: toDateFromFirestore(data.lastActiveAt),
+    shiftOn: data.shiftOn !== false,
     isActive: data.isActive !== false,
   };
 }
@@ -67,6 +69,17 @@ export async function setEmployeeActive(
   isActive: boolean,
 ): Promise<void> {
   await setMemberActiveViaApi(companyId, employeeId, isActive);
+}
+
+export async function setEmployeeShiftOn(
+  companyId: string,
+  employeeId: string,
+  shiftOn: boolean,
+): Promise<void> {
+  await updateDoc(doc(getFirebaseDb(), 'companies', companyId, 'employees', employeeId), {
+    shiftOn,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function setEmployeePermissionOverrides(

@@ -75,6 +75,8 @@ plugins.push(
   withGoogleIosUrlScheme,
   withOptionalAppleSignIn,
   withDisableSwiftUICoreAutolink,
+  require('./plugins/with-ios-push-entitlements'),
+  require('./plugins/with-ios-universal-links'),
 );
 
 export default (): ExpoConfig => ({
@@ -112,6 +114,25 @@ export default (): ExpoConfig => ({
       monochromeImage: './assets/branding/login-logo.png',
     },
     predictiveBackGestureEnabled: false,
+    intentFilters: [
+      {
+        action: 'VIEW',
+        autoVerify: true,
+        data: [
+          {
+            scheme: 'https',
+            host: 'app.myautocore.com',
+            pathPrefix: '/invite',
+          },
+          {
+            scheme: 'https',
+            host: 'app.myautocore.com',
+            pathPrefix: '/join',
+          },
+        ],
+        category: ['BROWSABLE', 'DEFAULT'],
+      },
+    ],
   },
   web: {
     bundler: 'metro',
@@ -121,5 +142,12 @@ export default (): ExpoConfig => ({
   plugins,
   experiments: {
     typedRoutes: true,
+  },
+  extra: {
+    eas: {
+      projectId:
+        process.env.EXPO_PUBLIC_EAS_PROJECT_ID?.trim() ||
+        'f13cbd47-6bc7-4eb4-b4ad-12dc7175018a',
+    },
   },
 });

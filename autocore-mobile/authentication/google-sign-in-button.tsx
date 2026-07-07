@@ -2,9 +2,6 @@ import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect } from 'react';
 
-import { AUTH_BUTTON_HEIGHT, AUTH_BUTTON_RADIUS } from '@/authentication/auth-button-metrics';
-import { Button } from '@/components/ui';
-import { GoogleIcon } from '@/authentication/auth-brand-icons';
 import {
   getGoogleOAuthEnv,
   isGoogleOAuthConfigured,
@@ -16,6 +13,8 @@ import {
   signInWithGoogleNative,
 } from '@/services/auth/google-sign-in';
 import { mapAuthError } from '@/utils/auth-error';
+
+import { AuthOAuthButton } from './auth-oauth-button';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -100,17 +99,13 @@ function ExpoGoogleSignInButton({
   };
 
   return (
-    <Button
-      size="default"
-      variant="secondary"
-      disabled={disabled || loading || !request}
+    <AuthOAuthButton
+      provider="google"
+      label="Войти через Google"
+      disabled={disabled || !request}
       loading={loading}
       onPress={onPress}
-      leftIcon={<GoogleIcon />}
-      style={{ width: '100%', height: AUTH_BUTTON_HEIGHT, borderRadius: AUTH_BUTTON_RADIUS }}
-    >
-      Войти через Google
-    </Button>
+    />
   );
 }
 
@@ -135,17 +130,13 @@ export function GoogleSignInButton(props: GoogleSignInButtonProps) {
 
   if (canUseNativeGoogleSignIn()) {
     return (
-      <Button
-        size="default"
-        variant="secondary"
-        disabled={props.disabled || props.loading}
+      <AuthOAuthButton
+        provider="google"
+        label="Войти через Google"
+        disabled={props.disabled}
         loading={props.loading}
         onPress={onPressNative}
-        leftIcon={<GoogleIcon />}
-        style={{ width: '100%', height: AUTH_BUTTON_HEIGHT, borderRadius: AUTH_BUTTON_RADIUS }}
-      >
-        Войти через Google
-      </Button>
+      />
     );
   }
 

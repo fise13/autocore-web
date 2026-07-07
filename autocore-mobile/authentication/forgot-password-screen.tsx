@@ -42,6 +42,7 @@ export function ForgotPasswordScreen() {
 
   return (
     <AuthShell
+      stepLabel="Вход и регистрация"
       title="Сброс пароля"
       description="Отправим письмо на тот же email, который вы используете для входа в AutoCore."
       footer={
@@ -72,7 +73,7 @@ export function ForgotPasswordScreen() {
         textContentType="username"
         autoCapitalize="none"
         autoCorrect={false}
-        placeholder="you@company.com"
+        placeholder="ваш@email.ru"
         error={emailError ?? undefined}
         returnKeyType="send"
         onSubmitEditing={onSubmit}

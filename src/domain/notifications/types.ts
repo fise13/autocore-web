@@ -44,6 +44,7 @@ export const NOTIFICATION_EVENT_TYPES = [
   "work_order.created",
   "work_order.updated",
   "work_order.assigned",
+  "work_order.available",
   "work_order.completed",
   "work_order.left_open",
   "work_order.waiting_parts",

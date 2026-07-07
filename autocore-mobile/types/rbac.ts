@@ -8,11 +8,13 @@ export type CompanyEmployee = {
   companyId: string;
   email: string;
   fullName: string;
+  photoURL?: string | null;
   role: UserRole;
   permissions: Permission[];
   invitedBy: string;
   createdAt?: Date;
   lastActiveAt?: Date;
+  shiftOn?: boolean;
   isActive: boolean;
 };
 

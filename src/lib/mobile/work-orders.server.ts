@@ -22,7 +22,14 @@ import { mapAdminWorkOrder } from "@/infrastructure/firestore/admin-mappers";
 import { fetchWorkOrder } from "@/infrastructure/firestore/admin/work-order-effects-admin";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { resolveMobileScan } from "@/lib/mobile/scan-resolve.server";
-import { isAssignedToWorkOrder, type DataScope } from "@autocore/rbac";
+import { maybeEmitWorkOrderAvailableNotification } from "@/lib/notifications/emit-work-order-available.server";
+import {
+  canMechanicClaimWorkOrder,
+  isAssignedToWorkOrder,
+  isClaimableWorkOrder,
+  type DataScope,
+} from "@autocore/rbac";
+import { claimWorkOrderUseCase, WorkOrderClaimError } from "@/application/use-cases/work-orders/claim-work-order.server";
 
 export class WorkOrderAccessError extends Error {
   constructor(message = "Нет доступа к этому наряду") {
@@ -35,10 +42,16 @@ export function assertWorkOrderAccess(order: WorkOrder, uid: string, scope: Data
   if (scope === "none") {
     throw new WorkOrderAccessError();
   }
-  if (scope === "assigned_work_orders" && !isAssignedToWorkOrder(order, uid)) {
+  if (
+    scope === "assigned_work_orders" &&
+    !isAssignedToWorkOrder(order, uid) &&
+    !isClaimableWorkOrder(order)
+  ) {
     throw new WorkOrderAccessError();
   }
 }
+
+export { WorkOrderClaimError };
 
 const MOBILE_OPEN_STATUSES = new Set<WorkOrderStatus>([
   "confirmed",
@@ -264,6 +277,13 @@ export async function transitionMobileWorkOrder(params: {
   if (!updated) {
     throw new Error("Не удалось загрузить обновлённый наряд");
   }
+
+  void maybeEmitWorkOrderAvailableNotification({
+    companyId: params.companyId,
+    order: updated,
+    actorUserId: params.actorUserId,
+  }).catch(() => undefined);
+
   return toDetail(updated, params.actorUserId);
 }
 
@@ -370,6 +390,38 @@ export async function addPartToMobileWorkOrder(params: {
   if (!updated) {
     throw new Error("Не удалось загрузить наряд");
   }
+  return toDetail(updated, params.actorUserId);
+}
+
+export async function claimMobileWorkOrder(params: {
+  companyId: string;
+  workOrderId: string;
+  actorUserId: string;
+  actorName?: string;
+  laborLineId?: string;
+  scope?: DataScope;
+}): Promise<MobileWorkOrderDetail> {
+  const order = await fetchWorkOrder(params.companyId, params.workOrderId);
+  if (!order) {
+    throw new WorkOrderClaimError("Заказ-наряд не найден");
+  }
+
+  if (params.scope) {
+    assertWorkOrderAccess(order, params.actorUserId, params.scope);
+  }
+
+  if (!canMechanicClaimWorkOrder(order, params.actorUserId)) {
+    throw new WorkOrderClaimError("Нельзя взять этот наряд в работу");
+  }
+
+  const updated = await claimWorkOrderUseCase({
+    companyId: params.companyId,
+    workOrderId: params.workOrderId,
+    actorUserId: params.actorUserId,
+    actorName: params.actorName,
+    laborLineId: params.laborLineId,
+  });
+
   return toDetail(updated, params.actorUserId);
 }
 

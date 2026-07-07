@@ -1,7 +1,8 @@
 import { memo } from 'react';
 import { View } from 'react-native';
 
-import { Avatar, Button, Dropdown, Text } from '@/components/ui';
+import { UserAvatar } from '@/components/account/user-avatar';
+import { Button, Dropdown, Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import {
   ASSIGNABLE_ROLES,
@@ -22,6 +23,7 @@ type TeamEmployeeCardProps = {
   isSelf: boolean;
   canManage: boolean;
   profile: UserEntity | null;
+  openWorkOrders?: number;
   onOpenPermissions: (employee: CompanyEmployee) => void;
   onToggleActive: (employee: CompanyEmployee) => void;
   onRemove: (employee: CompanyEmployee) => void;
@@ -33,6 +35,7 @@ export const TeamEmployeeCard = memo(function TeamEmployeeCard({
   isSelf,
   canManage,
   profile,
+  openWorkOrders = 0,
   onOpenPermissions,
   onToggleActive,
   onRemove,
@@ -45,7 +48,13 @@ export const TeamEmployeeCard = memo(function TeamEmployeeCard({
   return (
     <View style={{ paddingHorizontal: rhythm.cardPadX, paddingVertical: 12, gap: rhythm.stack }}>
       <View style={{ flexDirection: 'row', gap: rhythm.stack, alignItems: 'center' }}>
-        <Avatar name={name} size="md" />
+        <UserAvatar
+          photoURL={employee.photoURL}
+          displayName={name}
+          email={employee.email}
+          seed={employee.uid || employee.id}
+          size="md"
+        />
         <View style={{ flex: 1, gap: 3, minWidth: 0 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <Text variant="body" style={{ fontSize: 15, fontWeight: '600', letterSpacing: -0.2 }} numberOfLines={1}>
@@ -58,6 +67,7 @@ export const TeamEmployeeCard = memo(function TeamEmployeeCard({
           </Text>
           <Text variant="caption" color="muted" numberOfLines={1}>
             {formatLastActive(employee.lastActiveAt)} · {permissionsSummary(employee)}
+            {openWorkOrders > 0 ? ` · ${openWorkOrders} наряд${openWorkOrders === 1 ? '' : openWorkOrders < 5 ? 'а' : 'ов'}` : ''}
           </Text>
         </View>
         <TeamBadge

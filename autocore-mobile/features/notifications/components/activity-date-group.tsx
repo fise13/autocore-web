@@ -1,39 +1,41 @@
 import { memo } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { NotificationCard } from '@/components/business/notification-card';
+import { Surface } from '@/components/ui';
 import { Text } from '@/components/ui/text';
 import type { AppNotification } from '@/services/notifications';
 import { mapAppPriorityToServer } from '@/services/notifications/types';
-import { spacing } from '@/theme';
+import { rhythm, spacing } from '@/theme';
 
 import { formatNotificationTime } from '../lib/group-by-date';
 
 type ActivityNotificationRowProps = {
   item: AppNotification;
   index: number;
+  isLast: boolean;
   onPress: (item: AppNotification) => void;
-  onDelete?: (id: string) => void;
 };
 
 export const ActivityNotificationRow = memo(function ActivityNotificationRow({
   item,
   index,
+  isLast,
   onPress,
 }: ActivityNotificationRowProps) {
   return (
-    <Animated.View entering={FadeInDown.delay(index * 30).springify().damping(22)}>
-      <Pressable onPress={() => onPress(item)}>
-        <NotificationCard
-          title={item.title}
-          body={item.message}
-          time={formatNotificationTime(item.createdAt)}
-          read={item.read}
-          priority={mapAppPriorityToServer(item.priority)}
-          category={item.category}
-        />
-      </Pressable>
+    <Animated.View entering={FadeInDown.delay(index * 24).springify().damping(24)}>
+      <NotificationCard
+        title={item.title}
+        body={item.message}
+        time={formatNotificationTime(item.createdAt)}
+        read={item.read}
+        priority={mapAppPriorityToServer(item.priority)}
+        category={item.category}
+        showDivider={!isLast}
+        onPress={() => onPress(item)}
+      />
     </Animated.View>
   );
 });
@@ -42,40 +44,35 @@ type ActivityDateGroupProps = {
   label: string;
   items: AppNotification[];
   onPress: (item: AppNotification) => void;
-  onDelete?: (id: string) => void;
 };
 
-export function ActivityDateGroup({ label, items, onPress, onDelete }: ActivityDateGroupProps) {
+export function ActivityDateGroup({ label, items, onPress }: ActivityDateGroupProps) {
   return (
-    <View style={{ gap: spacing[2] }}>
+    <View style={{ gap: spacing[1.5] }}>
       <Text
         variant="meta"
         color="muted"
         style={{
-          paddingHorizontal: 2,
-          fontSize: 11,
+          paddingHorizontal: rhythm.cardPadX,
+          fontSize: 13,
           fontWeight: '600',
-          letterSpacing: 0.6,
-          textTransform: 'uppercase',
+          letterSpacing: -0.1,
         }}
       >
         {label}
       </Text>
-      {items.map((item, index) => (
-        <View key={item.id}>
-          <ActivityNotificationRow item={item} index={index} onPress={onPress} />
-          {onDelete ? (
-            <Pressable
-              onPress={() => onDelete(item.id)}
-              style={{ alignSelf: 'flex-end', paddingVertical: 4 }}
-            >
-              <Text variant="caption" color="muted">
-                Удалить
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
-      ))}
+
+      <Surface padded={false} inset={false} style={{ overflow: 'hidden' }}>
+        {items.map((item, index) => (
+          <ActivityNotificationRow
+            key={item.id}
+            item={item}
+            index={index}
+            isLast={index === items.length - 1}
+            onPress={onPress}
+          />
+        ))}
+      </Surface>
     </View>
   );
 }

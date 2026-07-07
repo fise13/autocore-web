@@ -137,6 +137,7 @@ export function mapAdminEmployee(id: string, companyId: string, data: Record<str
     invitedBy: typeof data.invitedBy === "string" ? data.invitedBy : "",
     createdAt: adminToDate(data.createdAt) ?? undefined,
     lastActiveAt: adminToDate(data.lastActiveAt) ?? undefined,
+    shiftOn: data.shiftOn !== false,
     isActive: typeof data.isActive === "boolean" ? data.isActive : true,
   };
 }

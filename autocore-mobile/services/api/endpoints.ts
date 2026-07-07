@@ -2,6 +2,7 @@ export const mobileApi = {
   workOrders: '/api/mobile/work-orders',
   workOrder: (id: string) => `/api/mobile/work-orders/${id}`,
   workOrderTransition: (id: string) => `/api/mobile/work-orders/${id}/transition`,
+  workOrderClaim: (id: string) => `/api/mobile/work-orders/${id}/claim`,
   workOrderAddPart: (id: string) => `/api/mobile/work-orders/${id}/add-part`,
   motorSoldEffects: (motorId: string) => `/api/motors/${encodeURIComponent(motorId)}/sold-effects`,
   motorDocuments: (motorId: string) => `/api/motors/${encodeURIComponent(motorId)}/documents`,

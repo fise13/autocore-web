@@ -40,6 +40,16 @@ async function main() {
       console.log(` - ${membership.id} role=${membership.data().role}`);
     }
 
+    const devices = await db.collection("users").doc(userDoc.id).collection("devices").get();
+    console.log("push devices:", devices.size);
+    for (const device of devices.docs) {
+      const item = device.data();
+      const token = String(item.pushToken ?? "");
+      console.log(
+        ` - ${device.id} platform=${item.platform} token=${token.slice(0, 32)}${token.length > 32 ? "…" : ""}`,
+      );
+    }
+
     const owned = await db.collection("companies").where("ownerId", "==", userDoc.id).get();
     console.log("owned companies:", owned.size);
     for (const company of owned.docs) {

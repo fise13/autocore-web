@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
-import { Button, ListGroup, ListRow, Text } from '@/components/ui';
+import { Button, ListGroup, ListRow, SectionHeader, Text } from '@/components/ui';
 import { useGuardedRouter } from '@/hooks/use-guarded-router';
 import { useAuth } from '@/authentication/auth-provider';
 import {
@@ -14,8 +14,6 @@ import {
 } from '@/hooks';
 import { subscriptionPlanLabel } from '@/lib/billing/format-renewal';
 import { resolveActiveCompanyName } from '@/lib/resolve-active-company-name';
-import { switchActiveCompany } from '@/services/firestore/company-membership-service';
-import { haptics } from '@/theme';
 import type { CompanyModuleKey } from '@/types/company-config';
 import { toneBackground } from '@/theme/color-utils';
 
@@ -36,7 +34,7 @@ const MODULE_LABELS: Record<CompanyModuleKey, string> = {
 export function CompanySettingsScreen() {
   const { colors } = useTheme();
   const router = useGuardedRouter();
-  const { firebaseUser, memberships, refreshProfile } = useAuth();
+  const { memberships, refreshProfile } = useAuth();
   const { profile, companyId } = useSession();
   const { name, isLoading } = useCompanyProfile(companyId);
   const { config } = useCompanyAppConfig(companyId);
@@ -54,27 +52,19 @@ export function CompanySettingsScreen() {
   return (
     <ProfileScreenShell title="Компания" subtitle="Профиль организации и инфраструктура">
       {memberships.length > 0 ? (
-        <Button variant="secondary" onPress={() => setSwitcherOpen(true)}>
-          Сменить организацию ({memberships.length})
-        </Button>
-      ) : null}
-
-      {memberships.length > 1 ? (
-        <ListGroup>
-          {memberships.map((membership) => (
+        <>
+          <SectionHeader title="Организации" label inset />
+          <ListGroup inset>
             <ListRow
-              key={membership.companyId}
-              title={resolveActiveCompanyName(membership.companyId, membership.name, [])}
-              value={membership.companyId === profile?.companyId ? 'Активно' : membership.role}
-              onPress={async () => {
-                if (!firebaseUser || membership.companyId === profile?.companyId) return;
-                await switchActiveCompany(firebaseUser.uid, membership.companyId);
-                await refreshProfile();
-                haptics.selection();
-              }}
+              title="Активная организация"
+              value={isLoading ? '…' : resolveActiveCompanyName(companyId, name, [])}
+              subtitle={
+                memberships.length > 1 ? `${memberships.length} доступно · нажмите для смены` : undefined
+              }
+              onPress={() => setSwitcherOpen(true)}
             />
-          ))}
-        </ListGroup>
+          </ListGroup>
+        </>
       ) : null}
 
       <ProfileMetaCard title="Основное" delay={60}>

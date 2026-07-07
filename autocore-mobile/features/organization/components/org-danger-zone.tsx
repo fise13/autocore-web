@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { useAuth } from '@/authentication/auth-provider';
-import { Button, Input, Text } from '@/components/ui';
-import { useSession, useTheme } from '@/hooks';
+import { Button, Input, SettingsLinkRow, SettingsSectionCard, Text } from '@/components/ui';
+import { useSession } from '@/hooks';
 import { deleteOrganization, leaveOrganization } from '@/services/api/org-api';
 import { mapAuthError } from '@/utils/auth-error';
 import { rhythm } from '@/theme';
@@ -15,7 +15,6 @@ type OrgDangerZoneProps = {
 };
 
 export function OrgDangerZone({ companyName, isOwner, onChanged }: OrgDangerZoneProps) {
-  const { colors } = useTheme();
   const { companyId } = useSession();
   const { refreshProfile } = useAuth();
   const [confirmName, setConfirmName] = useState('');
@@ -61,39 +60,34 @@ export function OrgDangerZone({ companyName, isOwner, onChanged }: OrgDangerZone
   }, [canDelete, companyId, confirmName, onChanged, refreshProfile]);
 
   return (
-    <View
-      style={{
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: `${colors.destructive}44`,
-        backgroundColor: `${colors.destructive}10`,
-        padding: rhythm.stack,
-        gap: rhythm.inline,
-      }}
+    <SettingsSectionCard
+      title="Опасная зона"
+      description="Необратимые действия с организацией"
+      tone="danger"
     >
-      <Text variant="bodyStrong" style={{ color: colors.destructive }}>
-        Опасная зона
-      </Text>
-      <Text variant="caption" color="muted">
-        Необратимые действия с организацией
-      </Text>
-
       {mode === 'idle' ? (
-        <View style={{ gap: rhythm.tight }}>
-          <Button variant="outline" onPress={() => setMode('leave')}>
-            Покинуть организацию
-          </Button>
+        <>
+          <SettingsLinkRow
+            title="Покинуть организацию"
+            subtitle="Потеряете доступ к данным"
+            tone="danger"
+            onPress={() => setMode('leave')}
+          />
           {isOwner ? (
-            <Button variant="destructive" onPress={() => setMode('delete')}>
-              Удалить организацию
-            </Button>
+            <SettingsLinkRow
+              bordered
+              title="Удалить организацию"
+              subtitle="Все данные будут удалены"
+              tone="danger"
+              onPress={() => setMode('delete')}
+            />
           ) : null}
-        </View>
+        </>
       ) : null}
 
       {mode === 'leave' ? (
-        <View style={{ gap: rhythm.tight }}>
-          <Text variant="body">
+        <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.inline }}>
+          <Text variant="caption" color="muted">
             Вы потеряете доступ к «{companyName}». Продолжить?
           </Text>
           <View style={{ flexDirection: 'row', gap: rhythm.tight }}>
@@ -108,7 +102,7 @@ export function OrgDangerZone({ companyName, isOwner, onChanged }: OrgDangerZone
       ) : null}
 
       {mode === 'delete' ? (
-        <View style={{ gap: rhythm.tight }}>
+        <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.inline }}>
           <Text variant="caption" color="muted">
             Введите «{companyName}» для подтверждения удаления всех данных.
           </Text>
@@ -130,10 +124,12 @@ export function OrgDangerZone({ companyName, isOwner, onChanged }: OrgDangerZone
       ) : null}
 
       {error ? (
-        <Text variant="caption" style={{ color: colors.destructive }}>
-          {error}
-        </Text>
+        <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX }}>
+          <Text variant="caption" color="destructive">
+            {error}
+          </Text>
+        </View>
       ) : null}
-    </View>
+    </SettingsSectionCard>
   );
 }

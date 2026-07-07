@@ -1,6 +1,9 @@
 import * as Linking from 'expo-linking';
 import type { Href } from 'expo-router';
 
+import { resolveInviteHref } from '@/lib/invites/resolve-invite-href';
+import { guardedPush } from '@/lib/navigation/guarded-push';
+
 const SCHEME = 'autocoremobile://';
 
 /** Resolve notification deep link → Expo Router href. */
@@ -8,6 +11,11 @@ export function resolveNotificationDeepLink(deepLink?: string | null): Href | nu
   if (!deepLink?.trim()) return null;
 
   const trimmed = deepLink.trim();
+
+  if (trimmed.startsWith('http')) {
+    const inviteHref = resolveInviteHref(trimmed);
+    if (inviteHref) return inviteHref;
+  }
 
   if (trimmed.startsWith('/(tabs)') || trimmed.startsWith('/')) {
     return trimmed as Href;
@@ -64,7 +72,7 @@ export async function openNotificationDeepLink(deepLink?: string | null): Promis
   const href = resolveNotificationDeepLink(deepLink);
   if (href) {
     const { router } = await import('expo-router');
-    router.push(href);
+    guardedPush(router, href);
     return true;
   }
   if (deepLink?.startsWith('http')) {

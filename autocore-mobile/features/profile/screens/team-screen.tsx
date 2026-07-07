@@ -7,6 +7,7 @@ import {
   Dialog,
   EmptyState,
   ListGroup,
+  SectionHeader,
   SettingsSectionCard,
   Skeleton,
   Switch,
@@ -18,6 +19,7 @@ import {
   useCompanySubscription,
   useEmployeesRealtime,
   useSession,
+  useWorkOrdersRealtime,
 } from '@/hooks';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -27,6 +29,7 @@ import {
   formatRole,
 } from '@/lib/team/format';
 import { buildInviteUrl, normalizeInviteStatus, type InviteStatus } from '@autocore/org';
+import { computeOpenWorkOrderCounts } from '@autocore/rbac';
 import { getPublicApiBaseUrl } from '@/services/api/api-base-url';
 import { resendInvite, revokeInvite } from '@/services/api/org-api';
 import { NotificationService } from '@/services/notifications';
@@ -84,6 +87,11 @@ export function TeamScreen() {
   const { employees, isLoading, error: employeesError } = useEmployeesRealtime(companyId, isPro);
   const canView = canViewEmployees(profile);
   const canManage = canManageEmployees(profile);
+  const { domainOrders } = useWorkOrdersRealtime(canView ? companyId : null);
+  const assignmentCounts = useMemo(
+    () => computeOpenWorkOrderCounts(domainOrders),
+    [domainOrders],
+  );
   const { invites, isLoading: invitesLoading } = useCompanyInvites(companyId, isPro && canManage);
 
   const [tab, setTab] = useState<TeamTab>('employees');
@@ -194,6 +202,7 @@ export function TeamScreen() {
                 isSelf={employee.uid === uid}
                 canManage={canManage}
                 profile={profile}
+                openWorkOrders={assignmentCounts.get(employee.uid) ?? 0}
                 onOpenPermissions={openPermissions}
                 onToggleActive={(entry) => {
                   if (!companyId) return;
@@ -216,7 +225,10 @@ export function TeamScreen() {
           description="Делитесь кодом или ссылкой, чтобы добавить сотрудника в компанию"
         >
           <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
-            <TeamInviteStatusFilters value={inviteStatusFilter} onChange={setInviteStatusFilter} />
+            <View style={{ gap: rhythm.tight }}>
+              <SectionHeader title="Статус" label />
+              <TeamInviteStatusFilters value={inviteStatusFilter} onChange={setInviteStatusFilter} />
+            </View>
             {invitesLoading ? (
               <View style={{ gap: rhythm.tight }}>
                 <Skeleton height={88} rounded="xl" />
@@ -228,10 +240,11 @@ export function TeamScreen() {
               </Text>
             ) : (
               <ListGroup inset={false}>
-                {filteredInvites.map((invite) => (
+                {filteredInvites.map((invite, index) => (
                   <TeamInviteRow
                     key={invite.id}
                     invite={invite}
+                    bordered={index > 0}
                     onShareCode={(code) => void shareCode(code)}
                     onShareLink={(url) => void shareLink(url)}
                     onDelete={() =>

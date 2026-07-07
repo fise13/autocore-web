@@ -1,5 +1,6 @@
 import { UpdateWorkOrderInput, WorkOrder } from "@/domain/work-order";
 import { WorkOrderRepository } from "@/infrastructure/firestore/work-order-repository";
+import { maybeEmitWorkOrderAvailableNotification } from "@/lib/notifications/emit-work-order-available.server";
 
 const EDITABLE_STATUSES = new Set<WorkOrder["status"]>(["draft", "confirmed"]);
 
@@ -20,4 +21,15 @@ export async function updateWorkOrderUseCase(
   }
 
   await workOrderRepository.update(params.companyId, params.workOrderId, params.input);
+
+  const updated = await workOrderRepository.getById(params.companyId, params.workOrderId);
+  if (updated) {
+    void maybeEmitWorkOrderAvailableNotification({
+      companyId: params.companyId,
+      order: updated,
+      actorUserId: params.input.updatedByUserId,
+    }).catch((error) => {
+      console.error("[update-work-order] available notification failed", error);
+    });
+  }
 }

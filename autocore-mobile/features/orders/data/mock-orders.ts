@@ -4,6 +4,7 @@ import type { OrderFilterId, OrderFilterOption, OrdersListMeta, WorkOrder } from
 export const orderFilters: OrderFilterOption[] = [
   { id: 'all', label: 'Все' },
   { id: 'open', label: 'Открытые' },
+  { id: 'free', label: 'Свободные' },
   { id: 'done', label: 'Закрытые' },
 ];
 
@@ -230,6 +231,7 @@ export function filterCounts(orders: WorkOrder[]): Record<OrderFilterId, number>
   return {
     all: orders.length,
     open: orders.filter((order) => isOpenOrderStatus(order.status)).length,
+    free: orders.filter((order) => order.isUnassigned).length,
     done: orders.filter((order) => !isOpenOrderStatus(order.status)).length,
   };
 }

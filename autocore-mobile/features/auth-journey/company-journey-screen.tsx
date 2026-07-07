@@ -1,23 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { UsersIcon } from '@/assets/icons';
 import { AuthShell } from '@/authentication/auth-shell';
 import { useAuth } from '@/authentication/auth-provider';
-import { Button, Input, Text } from '@/components/ui';
-import { useTheme } from '@/hooks';
+import { Button, Input, SettingsInset, SettingsSectionCard, Skeleton, Text } from '@/components/ui';
 import { readInviteToken, clearPendingInvite } from '@/lib/invites/pending-invite';
+import { resolveActiveCompanyName } from '@/lib/resolve-active-company-name';
+import { formatRole } from '@/lib/team/format';
 import { acceptInvite } from '@/services/api/org-api';
 import { NotificationService } from '@/services/notifications';
 import { joinCompanyWithInviteCode } from '@/services/firestore/join-company-service';
 import { switchActiveCompany } from '@/services/firestore/company-membership-service';
 import { mapAuthError } from '@/utils/auth-error';
+import { rhythm } from '@/theme';
+
+import { OrganizationMembershipRow } from '@/features/organization/components/organization-membership-row';
 
 export function CompanyJourneyScreen() {
   const router = useRouter();
   const { memberships, firebaseUser, refreshProfile } = useAuth();
-  const { colors } = useTheme();
   const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -69,6 +72,7 @@ export function CompanyJourneyScreen() {
     try {
       await switchActiveCompany(firebaseUser.uid, companyId);
       await refreshProfile();
+      await NotificationService.syncInbox();
     } catch (cause) {
       setError(mapAuthError(cause));
     } finally {
@@ -81,7 +85,9 @@ export function CompanyJourneyScreen() {
       <AuthShell
         title="Команда и доступ"
         description="Присоединяем к команде по приглашению…"
-      />
+      >
+        <Skeleton width="100%" height={120} rounded="lg" />
+      </AuthShell>
     );
   }
 
@@ -90,75 +96,47 @@ export function CompanyJourneyScreen() {
       title="Присоединиться по приглашению"
       description="Введите код, который вам отправил администратор компании."
     >
-      <View style={{ gap: 16 }}>
-        <View style={{ gap: 8 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-            <View
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: colors.border,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: colors.card,
-              }}
-            >
-              <UsersIcon size="sm" color={colors.mutedForeground} strokeWidth={1.8} />
-            </View>
-            <View style={{ flex: 1, gap: 8 }}>
-              <Text variant="caption" color="muted">
-                Код приглашения
-              </Text>
-              <Input
-                placeholder="Например: 6SD2BL"
-                value={inviteCode}
-                onChangeText={setInviteCode}
-                autoCapitalize="characters"
-                autoCorrect={false}
-              />
-            </View>
-          </View>
-          <Button onPress={handleJoin} loading={loading} disabled={!inviteCode.trim()}>
+      <SettingsSectionCard title="Код приглашения" icon={UsersIcon} inset={false}>
+        <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.inline }}>
+          <SettingsInset embedded>
+            <Input
+              placeholder="Например: 6SD2BL"
+              value={inviteCode}
+              onChangeText={setInviteCode}
+              autoCapitalize="characters"
+              autoCorrect={false}
+            />
+          </SettingsInset>
+          <Button onPress={() => void handleJoin()} loading={loading} disabled={!inviteCode.trim()}>
             Присоединиться
           </Button>
         </View>
+      </SettingsSectionCard>
 
-        {memberships.length > 0 ? (
-          <View style={{ gap: 8 }}>
-            <Text variant="caption" color="muted">
-              Ваши пространства
-            </Text>
-            {memberships.map((membership) => (
-              <Pressable
-                key={membership.companyId}
-                onPress={() => handleSwitch(membership.companyId)}
-                style={{
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  borderRadius: 12,
-                  padding: 14,
-                  backgroundColor: colors.card,
-                }}
-              >
-                <Text variant="body" style={{ fontWeight: '600' }}>
-                  {membership.name}
-                </Text>
-                <Text variant="caption" color="muted">
-                  {membership.role}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
+      {memberships.length > 0 ? (
+        <SettingsSectionCard
+          title="Ваши пространства"
+          description="Переключитесь на существующую компанию"
+          inset={false}
+        >
+          {memberships.map((membership, index) => (
+            <OrganizationMembershipRow
+              key={membership.companyId}
+              companyId={membership.companyId}
+              title={resolveActiveCompanyName(membership.companyId, membership.name, [])}
+              subtitle={formatRole(membership.role)}
+              bordered={index > 0}
+              onPress={() => void handleSwitch(membership.companyId)}
+            />
+          ))}
+        </SettingsSectionCard>
+      ) : null}
 
-        {error ? (
-          <Text variant="caption" color="destructive">
-            {error}
-          </Text>
-        ) : null}
-      </View>
+      {error ? (
+        <Text variant="caption" color="destructive">
+          {error}
+        </Text>
+      ) : null}
     </AuthShell>
   );
 }

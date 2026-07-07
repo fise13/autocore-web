@@ -2,10 +2,10 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { Platform, View } from 'react-native';
 
 import { AUTH_BUTTON_HEIGHT, AUTH_BUTTON_RADIUS } from '@/authentication/auth-button-metrics';
-import { Button } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { AppleIcon } from '@/authentication/auth-brand-icons';
 import { isAppleSignInAvailable } from '@/services/auth/apple-sign-in';
+
+import { AuthOAuthButton } from './auth-oauth-button';
 
 type AppleSignInButtonProps = {
   disabled?: boolean;
@@ -14,7 +14,7 @@ type AppleSignInButtonProps = {
 };
 
 export function AppleSignInButton({ disabled, loading, onPress }: AppleSignInButtonProps) {
-  const { colors, isDark } = useTheme();
+  const { isDark } = useTheme();
 
   if (Platform.OS === 'ios') {
     return (
@@ -23,7 +23,7 @@ export function AppleSignInButton({ disabled, loading, onPress }: AppleSignInBut
         pointerEvents={disabled || loading ? 'none' : 'auto'}
       >
         <AppleAuthentication.AppleAuthenticationButton
-          buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+          buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
           buttonStyle={
             isDark
               ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
@@ -38,17 +38,13 @@ export function AppleSignInButton({ disabled, loading, onPress }: AppleSignInBut
   }
 
   return (
-    <Button
-      size="default"
-      variant="outline"
-      disabled={disabled || loading}
+    <AuthOAuthButton
+      provider="apple"
+      label="Войти через Apple"
+      disabled={disabled}
       loading={loading}
       onPress={onPress}
-      leftIcon={<AppleIcon color={colors.foreground} />}
-      style={{ width: '100%', height: AUTH_BUTTON_HEIGHT, borderRadius: AUTH_BUTTON_RADIUS }}
-    >
-      Продолжить с Apple
-    </Button>
+    />
   );
 }
 

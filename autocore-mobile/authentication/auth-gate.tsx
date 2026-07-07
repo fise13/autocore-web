@@ -18,6 +18,7 @@ import { AutocompleteProvider } from '@/providers/autocomplete-provider';
 import { AutocompleteDataHead } from '@/providers/autocomplete-data-head';
 import { MoneyFormatSync } from '@/providers/money-format-sync';
 import { NotificationProvider } from '@/providers/notification-provider';
+import { PushRegistrationHead } from '@/providers/push-registration-head';
 import { refreshCompanyBilling } from '@/services/api/billing';
 
 const MemoAppTree = memo(function MemoAppTree({ children }: { children: React.ReactNode }) {
@@ -87,9 +88,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     );
   }
 
+  const pushRegistration = firebaseUser ? <PushRegistrationHead /> : null;
+
   if (firebaseUser && journeyStep === 'loading') {
     return (
       <>
+        {pushRegistration}
         <AuthRedirectEffect />
         <AuthLoadingScreen message="Подготовка рабочего пространства…" />
       </>
@@ -99,6 +103,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (needsSubscription) {
     return (
       <>
+        {pushRegistration}
         <AuthRedirectEffect />
         <SubscriptionRequiredScreen onRefresh={() => void refreshSubscription()} refreshing={refreshing} />
       </>
@@ -108,6 +113,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (firebaseUser && journeyStep === 'app' && (isWorkspaceBlocked || !hasAccess)) {
     return (
       <>
+        {pushRegistration}
         <AuthRedirectEffect />
         <WorkspaceAccessScreen />
       </>
@@ -117,6 +123,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (hasAccess && (isPro || subscriptionLoading)) {
     return (
       <>
+        {pushRegistration}
         <AuthRedirectEffect />
         <MemoAppTree>{children}</MemoAppTree>
       </>

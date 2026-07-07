@@ -21,6 +21,7 @@ import {
   useCompanyModuleEnabled,
   useRealtimeReconnect,
 } from '@/hooks';
+import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import { rememberSearchQuery } from '@/lib/search/recent-queries';
 import { isMotorStale, isWarehouseLowStock, motorMatchesSearchQuery } from '@/lib/inventory/is-low-stock';
 import { joinSearchFields, matchesSearchQuery } from '@/lib/search/match-query';
@@ -48,6 +49,7 @@ export function SearchScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ q?: string; filter?: string; lowStock?: string; stale?: string }>();
   const { profile, can, uid } = useSession();
+  const rbac = useRbacPolicy();
   const companyId = profile?.companyId?.trim() || null;
   const motorsEnabled = useCompanyModuleEnabled('motors');
   const [query, setQuery] = useState('');
@@ -74,7 +76,10 @@ export function SearchScreen() {
     isBootstrapping: inventoryLoading,
   } = useInventorySearch(companyId, deferredQuery);
   const { clients, isBootstrapping: clientsLoading } = useClientsRealtime(companyId);
-  const { orders, isBootstrapping: ordersLoading } = useWorkOrdersRealtime(companyId);
+  const { orders, isBootstrapping: ordersLoading } = useWorkOrdersRealtime(companyId, {
+    scope: rbac.scopes.workOrders,
+    uid,
+  });
   const { availableMotors, isBootstrapping: motorsLoading } = useMotorsRealtime(
     companyId,
     uid,

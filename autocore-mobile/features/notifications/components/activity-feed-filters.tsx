@@ -1,14 +1,13 @@
 import { View } from 'react-native';
 
-import { HorizontalFilterBar, SegmentedControl } from '@/components/ui';
-import { Text } from '@/components/ui/text';
+import { HorizontalFilterBar, SectionHeader, SegmentedControl } from '@/components/ui';
 import {
   APP_CATEGORY_LABELS,
   APP_NOTIFICATION_CATEGORIES,
   type AppNotificationCategory,
 } from '@/services/notifications';
 import { useNotificationStore } from '@/stores/notification-store';
-import { spacing } from '@/theme';
+import { rhythm } from '@/theme';
 
 const READ_FILTERS = [
   { id: 'all' as const, label: 'Все' },
@@ -37,11 +36,9 @@ export function ActivityFeedFilters({
   const readFilter = useNotificationStore((s) => s.readFilter);
 
   return (
-    <View style={{ gap: spacing[3] }}>
-      <View style={{ gap: spacing[1.5] }}>
-        <Text variant="meta" color="muted" style={{ paddingHorizontal: 2 }}>
-          Категория
-        </Text>
+    <View style={{ gap: rhythm.stack }}>
+      <View style={{ gap: rhythm.tight }}>
+        <SectionHeader title="Категория" label inset />
         <HorizontalFilterBar
           options={CATEGORY_OPTIONS}
           value={categoryFilter}
@@ -49,10 +46,8 @@ export function ActivityFeedFilters({
         />
       </View>
 
-      <View style={{ gap: spacing[1.5] }}>
-        <Text variant="meta" color="muted" style={{ paddingHorizontal: 2 }}>
-          Статус
-        </Text>
+      <View style={{ gap: rhythm.tight }}>
+        <SectionHeader title="Статус" label inset />
         <SegmentedControl
           segments={READ_FILTERS.map((filter) => ({
             value: filter.id,

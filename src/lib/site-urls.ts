@@ -186,6 +186,8 @@ export const APP_ROUTE_PREFIXES = [
   "/login",
   "/auth",
   "/demo",
+  "/invite",
+  "/join",
   "/warehouse",
   "/work-orders",
   "/documents",

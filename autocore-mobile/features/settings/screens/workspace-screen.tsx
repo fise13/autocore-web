@@ -4,8 +4,8 @@ import { useAuth } from '@/authentication/auth-provider';
 import { useGuardedRouter } from '@/hooks/use-guarded-router';
 import { useSession, useCompanySubscription, useActiveCompanyName } from '@/hooks';
 import { switchActiveCompany } from '@/services/firestore/company-membership-service';
+import { NotificationService } from '@/services/notifications';
 import { haptics } from '@/theme';
-import { Button } from '@/components/ui';
 import { CompanySwitcherSheet } from '@/features/organization/components/company-switcher-sheet';
 
 import { WORKSPACE_DEMO } from '../data/demo-data';
@@ -26,20 +26,18 @@ export function WorkspaceScreen() {
 
   const storagePct = (WORKSPACE_DEMO.storageUsed.usedGb / WORKSPACE_DEMO.storageUsed.totalGb) * 100;
 
+  const canSwitchOrg = memberships.length > 1;
+
   return (
     <ProfileScreenShell title="Рабочее пространство" subtitle="Компания, подписка и синхронизация">
-      {memberships.length > 1 ? (
-        <Button variant="secondary" onPress={() => setSwitcherOpen(true)}>
-          Сменить организацию ({memberships.length})
-        </Button>
-      ) : null}
-
       <WorkspaceHeroCard
         companyName={companyName}
         role={profile?.role ?? 'employee'}
         isOwner={profile?.isCompanyOwner === true}
         isPro={isPro}
         isLoading={isCompanyNameLoading}
+        onPress={canSwitchOrg ? () => setSwitcherOpen(true) : undefined}
+        showSwitcherHint={canSwitchOrg}
       />
 
       <WorkspaceSubscriptionCard
@@ -64,6 +62,7 @@ export function WorkspaceScreen() {
           if (!firebaseUser) return;
           await switchActiveCompany(firebaseUser.uid, nextCompanyId);
           await refreshProfile();
+          await NotificationService.syncInbox();
           haptics.selection();
         }}
       />

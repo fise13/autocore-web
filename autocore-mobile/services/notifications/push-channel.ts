@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import * as Application from 'expo-application';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
@@ -14,6 +15,23 @@ import { openNotificationDeepLink } from './deep-link-resolver';
 const DEVICE_ID_KEY = 'autocore-mobile:push-device-id';
 
 let handlerInstalled = false;
+let registeredToken: string | null = null;
+let pushRegistrationPromise: Promise<void> | null = null;
+
+function resolveExpoProjectId(): string | undefined {
+  const fromConfig =
+    Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+  const fromEnv = process.env.EXPO_PUBLIC_EAS_PROJECT_ID?.trim();
+  return fromConfig || fromEnv || undefined;
+}
+
+function logPushIssue(message: string, error?: unknown): void {
+  if (__DEV__) {
+    console.warn(`[push] ${message}`, error ?? '');
+    return;
+  }
+  console.error(`[push] ${message}`, error instanceof Error ? error.message : error ?? '');
+}
 
 export function ensureNotificationHandler(): void {
   if (handlerInstalled) return;
@@ -62,6 +80,85 @@ export type PushSetupResult = {
   permission: Notifications.PermissionStatus | null;
 };
 
+function resolveExpoExperienceId(): string | null {
+  const owner = Constants.expoConfig?.owner?.trim();
+  const slug = Constants.expoConfig?.slug?.trim() || 'autocore-mobile';
+  if (!owner) return null;
+  return `@${owner}/${slug}`;
+}
+
+function getNativePushType(): 'apns' | 'fcm' {
+  return Platform.OS === 'ios' ? 'apns' : 'fcm';
+}
+
+function serializeDeviceToken(data: string | Record<string, unknown>): string {
+  return typeof data === 'string' ? data : JSON.stringify(data);
+}
+
+async function shouldUseDevelopmentPushService(): Promise<boolean> {
+  if (Platform.OS !== 'ios') return false;
+  try {
+    const env = await Application.getIosPushNotificationServiceEnvironmentAsync();
+    return env === 'development';
+  } catch {
+    return false;
+  }
+}
+
+async function fetchExpoPushTokenViaExperienceId(): Promise<string> {
+  const experienceId = resolveExpoExperienceId();
+  if (!experienceId) {
+    throw new Error('EAS projectId missing and no expo owner configured');
+  }
+
+  const devicePushToken = await Notifications.getDevicePushTokenAsync();
+  const applicationId = Application.applicationId;
+  if (!applicationId) {
+    throw new Error('No applicationId for push registration');
+  }
+
+  const response = await fetch('https://exp.host/--/api/v2/push/getExpoPushToken', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      type: getNativePushType(),
+      deviceId: getStableDeviceId().toLowerCase(),
+      development: await shouldUseDevelopmentPushService(),
+      appId: applicationId,
+      deviceToken: serializeDeviceToken(devicePushToken.data),
+      experienceId,
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`Expo push token request failed (${response.status}): ${body}`);
+  }
+
+  const payload = (await response.json()) as {
+    data?: { expoPushToken?: string };
+    errors?: Array<{ message?: string }>;
+  };
+
+  const token = payload.data?.expoPushToken;
+  if (!token) {
+    const message = payload.errors?.map((item) => item.message).filter(Boolean).join('; ');
+    throw new Error(message || 'Expo push token missing in response');
+  }
+
+  return token;
+}
+
+async function fetchExpoPushToken(): Promise<string> {
+  const projectId = resolveExpoProjectId();
+  if (projectId) {
+    const tokenResult = await Notifications.getExpoPushTokenAsync({ projectId });
+    return tokenResult.data;
+  }
+
+  return fetchExpoPushTokenViaExperienceId();
+}
+
 export async function setupPushToken(): Promise<PushSetupResult> {
   if (!Device.isDevice) {
     return { token: null, permission: null };
@@ -79,14 +176,53 @@ export async function setupPushToken(): Promise<PushSetupResult> {
     return { token: null, permission: status };
   }
 
-  const projectId =
-    Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+  try {
+    const token = await fetchExpoPushToken();
+    return { token, permission: status };
+  } catch (error) {
+    logPushIssue('getExpoPushTokenAsync failed', error);
+    return { token: null, permission: status };
+  }
+}
 
-  const tokenResult = await Notifications.getExpoPushTokenAsync(
-    projectId ? { projectId } : undefined,
-  );
+export async function ensurePushDeviceRegistered(pushEnabled = true): Promise<void> {
+  if (!pushEnabled || !Device.isDevice) return;
 
-  return { token: tokenResult.data, permission: status };
+  if (pushRegistrationPromise) {
+    await pushRegistrationPromise;
+    return;
+  }
+
+  pushRegistrationPromise = (async () => {
+    const { token, permission } = await setupPushToken();
+    if (permission !== 'granted') {
+      if (permission === 'denied') {
+        logPushIssue('notification permission denied');
+      }
+      return;
+    }
+    if (!token) return;
+    if (token === registeredToken) return;
+
+    await registerPushDevice(token);
+    registeredToken = token;
+    if (__DEV__) {
+      console.log('[push] device registered', token.slice(0, 28));
+    }
+  })();
+
+  try {
+    await pushRegistrationPromise;
+  } catch (error) {
+    logPushIssue('device registration failed', error);
+  } finally {
+    pushRegistrationPromise = null;
+  }
+}
+
+export function resetPushRegistrationState(): void {
+  registeredToken = null;
+  pushRegistrationPromise = null;
 }
 
 export async function registerPushDevice(pushToken: string): Promise<void> {
@@ -106,9 +242,7 @@ export async function registerPushDevice(pushToken: string): Promise<void> {
     if (apiError instanceof MobileApiError && (apiError.status === 401 || apiError.status === 403)) {
       throw apiError;
     }
-    if (__DEV__) {
-      console.warn('[push] API register failed, falling back to Firestore', apiError);
-    }
+    logPushIssue('API register failed, falling back to Firestore', apiError);
   }
 
   const uid = getFirebaseAuth().currentUser?.uid;

@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 
+import { UsersIcon } from '@/assets/icons';
 import { useAuth } from '@/authentication/auth-provider';
-import { Button, Input, Text } from '@/components/ui';
+import { Button, Input, SettingsInset, SettingsSectionCard, Text } from '@/components/ui';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
 import { joinCompanyWithInviteCode } from '@/services/firestore/join-company-service';
 import { NotificationService } from '@/services/notifications';
@@ -65,32 +66,31 @@ export function JoinCompanyScreen() {
   return (
     <ProfileScreenShell
       title="Присоединиться"
-      subtitle="Вставьте ссылку или код приглашения. Текущая компания останется в списке."
+      subtitle="Ссылка или код от администратора. Текущая компания останется в списке."
     >
-      <View style={{ gap: rhythm.stack }}>
-        <View style={{ gap: rhythm.inline }}>
-          <Text variant="caption" color="muted">
-            Ссылка или код
-          </Text>
-          <Input
-            placeholder="https://app.myautocore.com/invite/… или DUAVV5"
-            value={inviteInput}
-            onChangeText={setInviteInput}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+      <SettingsSectionCard title="Приглашение" description="Вставьте ссылку или код" icon={UsersIcon}>
+        <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.inline }}>
+          <SettingsInset embedded>
+            <Input
+              placeholder="https://app.myautocore.com/invite/… или DUAVV5"
+              value={inviteInput}
+              onChangeText={setInviteInput}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </SettingsInset>
+
+          {error ? (
+            <Text variant="caption" color="destructive">
+              {error}
+            </Text>
+          ) : null}
+
+          <Button onPress={() => void handleJoin()} loading={loading} disabled={!inviteInput.trim()}>
+            Присоединиться
+          </Button>
         </View>
-
-        {error ? (
-          <Text variant="caption" color="destructive">
-            {error}
-          </Text>
-        ) : null}
-
-        <Button onPress={() => void handleJoin()} loading={loading} disabled={!inviteInput.trim()}>
-          Присоединиться
-        </Button>
-      </View>
+      </SettingsSectionCard>
     </ProfileScreenShell>
   );
 }

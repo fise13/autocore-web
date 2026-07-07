@@ -58,11 +58,13 @@
     "zod": "^3.25.76",
     "zustand": "^5.0.14",
     "@autocore/org": "file:../packages/org",
+    "@autocore/avatars": "file:../packages/avatars",
     "@autocore/rbac": "file:../packages/rbac",
     "@autocore/domain-search": "file:../packages/domain-search"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "eas-cli": "^20.5.1",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -72,7 +74,10 @@
     "ios:provision": "bash scripts/ios-refresh-provisioning.sh",
     "ios:release": "expo run:ios --device --configuration Release",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "eas:login": "eas login",
+    "eas:init": "eas init",
+    "eas:whoami": "eas whoami"
   },
   "private": true
 }

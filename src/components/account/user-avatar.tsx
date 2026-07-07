@@ -2,6 +2,7 @@
 
 import { AppleIcon, GoogleIcon } from "@/components/auth/auth-brand-icons";
 import { AuthProviderKind } from "@/lib/auth/account-info";
+import { avatarMonogram } from "@autocore/avatars";
 import { userAvatarStyle } from "@/lib/user/user-avatar-style";
 import { cn } from "@/lib/utils";
 
@@ -37,20 +38,6 @@ const badgeSizeClasses = {
   md: "size-4",
   lg: "size-5",
 } as const;
-
-function avatarMonogram(displayName?: string | null, email?: string): string {
-  const name = displayName?.trim();
-  if (name) {
-    const parts = name.split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) {
-      return `${parts[0]!.charAt(0)}${parts[1]!.charAt(0)}`.toUpperCase();
-    }
-    return name.slice(0, 2).toUpperCase();
-  }
-  const local = email?.split("@")[0]?.trim();
-  if (local) return local.slice(0, 2).toUpperCase();
-  return "?";
-}
 
 export function UserAvatar({
   photoURL,

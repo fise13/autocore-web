@@ -18,6 +18,7 @@ import { WorkOrderDocument } from "@/domain/work-order";
 import { FinancialOperation } from "@/domain/financial-operation";
 import { PayrollTransaction } from "@/domain/payroll-transaction";
 import { CompanyEmployee } from "@/domain/rbac";
+import { WorkOrderClaimBanner } from "@/components/work-orders/work-order-claim-banner";
 import { WorkOrderFinancePanel } from "@/components/work-orders/work-order-finance-panel";
 import { WorkOrderDocumentsPanel } from "@/components/work-orders/work-order-documents-panel";
 import { AnimatedTabsPanel } from "@/components/ui/animated-tabs-panel";
@@ -115,6 +116,10 @@ export function WorkOrderDetailPanel({
               {order.laborLines.length} работ · {order.partLines.length} запч. · {order.motorLines.length} двиг.
             </p>
           </div>
+        </div>
+
+        <div className="mt-4">
+          <WorkOrderClaimBanner order={order} />
         </div>
 
         {canEdit && (onEdit || nextStatuses.length > 0) ? (

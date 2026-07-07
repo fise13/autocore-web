@@ -76,6 +76,23 @@ export const NOTIFICATION_EVENT_REGISTRY: Record<
     buildDeepLink: (ctx) =>
       ctx.aggregateId ? `autocoremobile://orders/${ctx.aggregateId}` : undefined,
   },
+  "work_order.available": {
+    eventType: "work_order.available",
+    category: "work_orders",
+    priority: "high",
+    defaultChannels: ["inbox", "push", "badge"],
+    roles: ["mechanic", "diagnostician"],
+    permissions: ["work_orders_view"],
+    groupable: true,
+    groupWindowMinutes: 3,
+    buildGroupKey: (ctx) => `wo-available:${ctx.aggregateId ?? "unknown"}`,
+    buildCopy: (ctx) => ({
+      title: "Свободный наряд",
+      body: `№${orderLabel(ctx)} — можно взять в работу`,
+    }),
+    buildDeepLink: (ctx) =>
+      ctx.aggregateId ? `autocoremobile://orders/${ctx.aggregateId}` : undefined,
+  },
   "work_order.completed": {
     eventType: "work_order.completed",
     category: "work_orders",

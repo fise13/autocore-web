@@ -56,8 +56,8 @@ export const NAV_ITEM_DEFINITIONS: Record<NavItemId, NavItemDefinition> = {
   },
   my_earnings: {
     id: 'my_earnings',
-    title: 'Мои начисления',
-    description: 'Выплаты по закрытым нарядам',
+    title: 'Смена',
+    description: 'Наряды, очередь и начисления',
     icon: CoinsIcon,
     route: '/(tabs)/my-earnings',
   },

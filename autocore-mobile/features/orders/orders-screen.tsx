@@ -6,6 +6,7 @@ import type { ListRenderItemInfo } from '@shopify/flash-list';
 import { ClipboardListIcon } from '@/assets/icons';
 import { EmptyState, FlashList, Screen, Text, toast } from '@/components/ui';
 import { useSession, useWorkOrdersRealtime, useModuleEnabled, useFloatingTabBarInset } from '@/hooks';
+import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import { filterMobileOrders, computeMobileOrdersMeta } from '@/lib/work-order/map-to-mobile-card';
 import { transitionWorkOrder } from '@/services/api/work-orders';
 import { haptics, rhythm } from '@/theme';
@@ -24,9 +25,13 @@ import type { OrderFilterId, WorkOrder } from './types';
 export function OrdersScreen() {
   const router = useRouter();
   const { scrollBottom } = useFloatingTabBarInset();
-  const { companyId, profile, can } = useSession();
+  const { companyId, profile, can, uid } = useSession();
+  const rbac = useRbacPolicy();
   const workOrdersEnabled = useModuleEnabled('workOrders');
-  const { orders, isBootstrapping, errorMessage, enabled } = useWorkOrdersRealtime(companyId);
+  const { orders, isBootstrapping, errorMessage, enabled } = useWorkOrdersRealtime(companyId, {
+    scope: rbac.scopes.workOrders,
+    uid,
+  });
 
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<OrderFilterId>('open');
