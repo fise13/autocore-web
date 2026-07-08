@@ -4,7 +4,7 @@ import Animated from 'react-native-reanimated';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ClockIcon, ImagesIcon, SearchIcon } from '@/assets/icons';
+import { ClockIcon, FileTextIcon, ImagesIcon, SearchIcon } from '@/assets/icons';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { haptics } from '@/theme';
@@ -16,6 +16,7 @@ import { scanLayout } from '../layout';
 type ScanGlassPanelProps = {
   onManualSearch: () => void;
   onOpenPhotos: () => void;
+  onImportDocument: () => void;
   onRecentScans: () => void;
 };
 
@@ -53,7 +54,12 @@ function PanelItem({
   );
 }
 
-export function ScanGlassPanel({ onManualSearch, onOpenPhotos, onRecentScans }: ScanGlassPanelProps) {
+export function ScanGlassPanel({
+  onManualSearch,
+  onOpenPhotos,
+  onImportDocument,
+  onRecentScans,
+}: ScanGlassPanelProps) {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const enterStyle = useScanEnter({ delay: scanTimeline.panel, translateY: 24, duration: 360 });
@@ -63,6 +69,8 @@ export function ScanGlassPanel({ onManualSearch, onOpenPhotos, onRecentScans }: 
       <PanelItem icon={SearchIcon} label="Поиск вручную" onPress={onManualSearch} />
       <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 14, opacity: 0.5 }} />
       <PanelItem icon={ImagesIcon} label="Открыть фото" onPress={onOpenPhotos} />
+      <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 14, opacity: 0.5 }} />
+      <PanelItem icon={FileTextIcon} label="Import" onPress={onImportDocument} />
       <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 14, opacity: 0.5 }} />
       <PanelItem icon={ClockIcon} label="Недавние сканы" onPress={onRecentScans} />
     </View>

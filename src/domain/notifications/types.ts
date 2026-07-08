@@ -66,6 +66,7 @@ export const NOTIFICATION_EVENT_TYPES = [
   "system.error",
   "sync.failed",
   "import.finished",
+  "document_import.created",
   "scan.completed",
   "sales.daily_summary",
   "sales.large_sale",

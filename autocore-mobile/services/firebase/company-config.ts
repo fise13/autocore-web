@@ -1,4 +1,4 @@
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 
 import type { CompanyAppConfig } from '@/types/company-config';
 import { normalizeCompanyId } from '@/lib/company-id';
@@ -13,6 +13,26 @@ export async function loadCompanyAppConfig(companyId: string): Promise<CompanyAp
   const snapshot = await getDoc(companyAppConfigRef(companyId));
   if (!snapshot.exists()) return null;
   return snapshot.data() as CompanyAppConfig;
+}
+
+export async function saveCompanyAppConfig(
+  companyId: string,
+  config: CompanyAppConfig,
+  updatedByUserId: string,
+): Promise<void> {
+  await setDoc(
+    companyAppConfigRef(companyId),
+    {
+      onboardingCompleted: config.onboardingCompleted,
+      modules: config.modules,
+      specificCategories: config.specificCategories,
+      defaultWarrantyTemplate: config.defaultWarrantyTemplate,
+      taxonomyVersion: config.taxonomyVersion,
+      updatedByUserId,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
 }
 
 export function subscribeCompanyAppConfig(

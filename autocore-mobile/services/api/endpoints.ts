@@ -11,6 +11,8 @@ export const mobileApi = {
   scanOcr: '/api/mobile/scan/ocr',
   scanDisambiguate: '/api/mobile/scan/disambiguate',
   scanExportEvents: '/api/mobile/scan/export-events',
+  documentImports: '/api/mobile/imports',
+  documentImport: (id: string) => `/api/mobile/imports/${encodeURIComponent(id)}`,
   inventoryQuickReceive: '/api/mobile/inventory/quick-receive',
   inventoryQuickAdjust: '/api/mobile/inventory/quick-adjust',
   inventoryCreateItem: '/api/mobile/inventory/create-item',

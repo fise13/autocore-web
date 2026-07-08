@@ -1,13 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
-import { DownloadIcon, FileTextIcon, Loader2Icon, PrinterIcon, Share2Icon } from '@/assets/icons';
-import { Text } from '@/components/ui';
-import {
-  printWorkOrderDocument,
-  saveWorkOrderDocument,
-  shareWorkOrderDocument,
-} from '@/lib/documents/document-file-actions';
+import { FileTextIcon, PrinterIcon, Share2Icon } from '@/assets/icons';
+import { ActionIconButton, Text } from '@/components/ui';
+import { printWorkOrderDocument, shareWorkOrderDocument } from '@/lib/documents/document-file-actions';
 import { resolveApplicableDocumentSlugs } from '@/lib/documents/document-policy';
 import { haptics } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
@@ -17,7 +13,7 @@ import type { WorkOrder } from '@/types/work-order';
 
 import { ordersLayout } from '../layout';
 
-type DocumentAction = 'share' | 'print' | 'save';
+type DocumentAction = 'share' | 'print';
 
 type OrderDocumentsSectionProps = {
   order: WorkOrder;
@@ -30,17 +26,6 @@ type OrderDocumentsSectionProps = {
     success: string;
   };
 };
-
-function actionLabel(action: DocumentAction): string {
-  switch (action) {
-    case 'share':
-      return 'Переслать';
-    case 'print':
-      return 'Печать';
-    case 'save':
-      return 'Скачать';
-  }
-}
 
 export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionProps) {
   const [busyKey, setBusyKey] = useState<string | null>(null);
@@ -60,11 +45,8 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
     try {
       if (action === 'share') {
         await shareWorkOrderDocument(slug, order.id, order.number);
-      } else if (action === 'print') {
-        await printWorkOrderDocument(slug, order.id, order.number);
       } else {
-        await saveWorkOrderDocument(slug, order.id, order.number);
-        Alert.alert('Готово', 'PDF сохранён в документы приложения. Используйте «Переслать», чтобы отправить в «Файлы».');
+        await printWorkOrderDocument(slug, order.id, order.number);
       }
     } catch (nextError) {
       haptics.warning();
@@ -104,7 +86,7 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
           Документы
         </Text>
         <Text variant="caption" color="muted" style={{ fontSize: 12 }}>
-          Скачайте, перешлите или распечатайте PDF через сервер AutoCore.
+          Поделитесь или распечатайте PDF через сервер AutoCore.
         </Text>
       </View>
 
@@ -138,7 +120,6 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
             style={{
               paddingHorizontal: 14,
               paddingVertical: 12,
-              gap: 10,
               borderTopWidth: index === 0 ? 0 : ordersLayout.hairline,
               borderTopColor: colors.border,
             }}
@@ -157,7 +138,8 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
               >
                 <FileTextIcon size="sm" color={colors.primary} strokeWidth={1.85} />
               </View>
-              <View style={{ flex: 1, gap: 2 }}>
+
+              <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
                 <Text variant="body" style={{ fontSize: 14, fontWeight: '600' }}>
                   {definition.title}
                 </Text>
@@ -165,51 +147,30 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
                   {definition.description}
                 </Text>
               </View>
-            </View>
 
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {(['save', 'share', 'print'] as const).map((action) => {
-                const key = `${definition.slug}:${action}`;
-                const busy = busyKey === key;
-                const Icon =
-                  action === 'save' ? DownloadIcon : action === 'share' ? Share2Icon : PrinterIcon;
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                {(['share', 'print'] as const).map((action) => {
+                  const key = `${definition.slug}:${action}`;
+                  const busy = busyKey === key;
+                  const Icon = action === 'share' ? Share2Icon : PrinterIcon;
+                  const label = action === 'share' ? 'Поделиться' : 'Печать';
 
-                return (
-                  <Pressable
-                    key={action}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${actionLabel(action)}: ${definition.title}`}
-                    disabled={busyKey !== null}
-                    onPress={() => void runAction(definition.slug, action)}
-                    style={{
-                      flex: 1,
-                      minHeight: 40,
-                      borderRadius: ordersLayout.radius,
-                      borderWidth: ordersLayout.hairline,
-                      borderColor: colors.border,
-                      backgroundColor: colors.card,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexDirection: 'row',
-                      gap: 6,
-                      opacity: busyKey !== null && !busy ? 0.55 : 1,
-                    }}
-                  >
-                    {busy ? (
-                      <Loader2Icon size="sm" color={colors.mutedForeground} strokeWidth={1.85} />
-                    ) : (
-                      <Icon size="sm" color={colors.foreground} strokeWidth={1.85} />
-                    )}
-                    <Text variant="caption" style={{ fontSize: 11, fontWeight: '600' }}>
-                      {busy ? '…' : actionLabel(action)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+                  return (
+                    <ActionIconButton
+                      key={action}
+                      icon={Icon}
+                      accessibilityLabel={`${label}: ${definition.title}`}
+                      loading={busy}
+                      disabled={busyKey !== null && !busy}
+                      onPress={() => void runAction(definition.slug, action)}
+                    />
+                  );
+                })}
+              </View>
             </View>
           </View>
         ))}
       </View>
     </View>
   );
-}
+};

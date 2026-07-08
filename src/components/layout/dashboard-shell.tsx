@@ -61,6 +61,14 @@ const MotorImportHost = dynamic(
   { ssr: false, loading: () => null },
 );
 
+const DocumentImportRealtimeToast = dynamic(
+  () =>
+    import("@/components/document-import/document-import-realtime-toast").then((m) => ({
+      default: m.DocumentImportRealtimeToast,
+    })),
+  { ssr: false, loading: () => null },
+);
+
 function DashboardShellInner({ children }: DashboardShellProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -242,6 +250,9 @@ function DashboardShellInner({ children }: DashboardShellProps) {
           </Suspense>
           <Suspense fallback={null}>
             <MotorImportHost />
+          </Suspense>
+          <Suspense fallback={null}>
+            <DocumentImportRealtimeToast />
           </Suspense>
           <div
             data-dashboard-shell

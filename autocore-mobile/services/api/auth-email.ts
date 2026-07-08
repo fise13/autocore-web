@@ -8,6 +8,53 @@ type AuthEmailApiError = {
 
 export type PasswordResetDelivery = 'resend' | 'firebase';
 
+async function postAuthEmailApi(path: string, token: string | null, body?: object): Promise<void> {
+  const baseUrl = getPublicApiBaseUrl();
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${baseUrl}${path}`, {
+    method: 'POST',
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  const payload = (await response.json().catch(() => null)) as AuthEmailApiError | null;
+
+  if (response.status === 429) {
+    throw new Error(payload?.error ?? 'Подождите перед повторной отправкой');
+  }
+
+  if (!response.ok) {
+    throw new Error(payload?.error ?? 'Не удалось выполнить запрос');
+  }
+}
+
+export async function sendVerificationEmailViaApi(): Promise<void> {
+  const { getFirebaseAuth } = await import('@/services/firebase');
+  const user = getFirebaseAuth().currentUser;
+  if (!user) {
+    throw new Error('Требуется авторизация');
+  }
+  const token = await user.getIdToken();
+  await postAuthEmailApi('/api/auth/send-verification-email', token);
+}
+
+export async function verifyEmailCodeViaApi(code: string): Promise<void> {
+  const { getFirebaseAuth } = await import('@/services/firebase');
+  const user = getFirebaseAuth().currentUser;
+  if (!user) {
+    throw new Error('Требуется авторизация');
+  }
+  const token = await user.getIdToken();
+  await postAuthEmailApi('/api/auth/verify-email-code', token, { code });
+}
+
 export async function sendPasswordResetViaApi(email: string): Promise<PasswordResetDelivery> {
   const baseUrl = getPublicApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/auth/send-password-reset`, {

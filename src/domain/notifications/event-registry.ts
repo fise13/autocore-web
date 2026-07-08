@@ -434,6 +434,23 @@ export const NOTIFICATION_EVENT_REGISTRY: Record<
     }),
     buildDeepLink: () => "autocoremobile://search?filter=parts",
   },
+  "document_import.created": {
+    eventType: "document_import.created",
+    category: "inventory",
+    priority: "medium",
+    defaultChannels: ["inbox", "push"],
+    roles: [...INVENTORY_ROLES],
+    permissions: ["inventory_view"],
+    groupable: true,
+    groupWindowMinutes: 3,
+    buildGroupKey: (ctx) => `document-import:${ctx.actorUserId ?? "system"}`,
+    buildCopy: (ctx) => ({
+      title: "Новый документ загружен",
+      body: String(ctx.payload?.fileName ?? "Документ готов к просмотру"),
+    }),
+    buildDeepLink: (ctx) =>
+      ctx.aggregateId ? `/imports/${ctx.aggregateId}` : "/imports",
+  },
   "scan.completed": {
     eventType: "scan.completed",
     category: "scan",

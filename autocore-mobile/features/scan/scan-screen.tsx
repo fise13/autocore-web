@@ -16,6 +16,7 @@ import { haptics, rhythm } from '@/theme';
 
 import { ScanCamera, type ScanCameraHandle } from './components/scan-camera';
 import { ScanCandidatesSheet } from './components/scan-candidates-sheet';
+import { ScanCodePickerSheet } from './components/scan-code-picker-sheet';
 import { ScanConfirmFlash } from './components/scan-confirm-flash';
 import { ScanDetectionOverlay } from './components/scan-detection-overlay';
 import { ScanDocumentSheet } from './components/scan-document-sheet';
@@ -58,9 +59,11 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
     cameraLayout,
     setCameraLayout,
     onDetection,
+    onDetections,
     onSheetClosed,
     dismissSheet,
     handlePickCandidate,
+    handlePickDetectedCode,
     handleTryAi,
     handleCreateItem,
     handleAddAsSpecific,
@@ -72,6 +75,7 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
     candidatesSheetRef,
     notFoundSheetRef,
     documentSheetRef,
+    codePickerSheetRef,
     service,
     setOcrBusy,
   } = experience;
@@ -210,6 +214,7 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
             torch={torchOn && isFocused}
             active={focusedCameraActive && isFocused}
             onDetection={onDetection}
+            onDetections={onDetections}
           />
           <ScanIdleIndicator phase={snapshot.phase} />
           <ScanDetectionOverlay
@@ -265,6 +270,10 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
           <ScanGlassPanel
             onManualSearch={() => navigateToSearch()}
             onOpenPhotos={() => void handleOpenPhotos()}
+            onImportDocument={() => {
+              haptics.selection();
+              router.push('/(tabs)/import' as Href);
+            }}
             onRecentScans={() => {
               void refreshRecentScans();
               recentSheetRef.current?.present();
@@ -304,6 +313,13 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
           payload={snapshot.pendingPayload}
           onPick={(candidate: ScanCandidate) => void handlePickCandidate(candidate.id, candidate.score)}
           onSearch={() => navigateToSearch(snapshot.pendingPayload ?? undefined, candidatesSheetRef)}
+          onDismiss={onSheetClosed}
+        />
+
+        <ScanCodePickerSheet
+          ref={codePickerSheetRef}
+          detections={snapshot.pendingDetections ?? []}
+          onPick={handlePickDetectedCode}
           onDismiss={onSheetClosed}
         />
 

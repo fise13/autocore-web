@@ -1,6 +1,6 @@
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshControl, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { AppState, RefreshControl, View } from 'react-native';
 
 import { BoxIcon } from '@/assets/icons';
 import { EmptyState, FlashList, Screen, SearchInput, Text, toast } from '@/components/ui';
@@ -33,18 +33,39 @@ export function WarehouseScreen() {
   const canEdit = can('inventory_edit') && warehouseEnabled;
   const { items, isBootstrapping, errorMessage } = useInventoryCatalog(companyId, { keepAlive: true });
   const addToOrderFlow = useAddToOrderFlow();
-  const { getDisplayAvailable, adjust } = useOptimisticStockAdjust(companyId);
+  const { getDisplayAvailable, adjust, flush } = useOptimisticStockAdjust(companyId);
   const reconnectRealtime = useRealtimeReconnect();
 
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<WarehouseFilter>(params.lowStock === '1' ? 'low' : 'all');
   const [refreshing, setRefreshing] = useState(false);
 
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        void flush();
+      };
+    }, [flush]),
+  );
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        void flush();
+      }
+    });
+    return () => subscription.remove();
+  }, [flush]);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    reconnectRealtime(companyId ? [['realtime', 'inventory-items', companyId]] : undefined);
-    setRefreshing(false);
-  }, [companyId, reconnectRealtime]);
+    void flush()
+      .catch(() => undefined)
+      .finally(() => {
+        reconnectRealtime(companyId ? [['realtime', 'inventory-items', companyId]] : undefined);
+        setRefreshing(false);
+      });
+  }, [companyId, flush, reconnectRealtime]);
 
   useEffect(() => {
     if (params.lowStock === '1') setFilter('low');

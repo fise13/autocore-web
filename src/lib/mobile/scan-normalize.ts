@@ -5,7 +5,7 @@ const PREFIX_PATTERN = /^(AC|EAN|SKU|QR|BARCODE|GTIN):/i;
 
 /** Ordered unique variants for exact-tier lookups (highest priority first). */
 export function buildScanCodeVariants(raw: string): string[] {
-  const trimmed = raw.trim();
+  const trimmed = raw.replace(/[\x00-\x1F\x7F]/g, "").trim();
   if (!trimmed) return [];
 
   const variants = new Set<string>();
@@ -24,6 +24,13 @@ export function buildScanCodeVariants(raw: string): string[] {
     push(withoutPrefix);
     push(normalizeBarcode(withoutPrefix));
     push(normalizeInventoryCode(withoutPrefix));
+  }
+
+  const strippedCode39 = trimmed.replace(/^\*+|\*+$/g, "").trim();
+  if (strippedCode39 && strippedCode39 !== trimmed) {
+    push(strippedCode39);
+    push(normalizeBarcode(strippedCode39));
+    push(normalizeInventoryCode(strippedCode39));
   }
 
   const compact = normalizeBarcode(trimmed);

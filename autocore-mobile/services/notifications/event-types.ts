@@ -46,6 +46,7 @@ export const DOCUMENT_EVENTS = {
   IMPORT_COMPLETED: 'import.completed',
   IMPORT_FAILED: 'import.failed',
   IMPORT_PARTIAL: 'import.partial',
+  DOCUMENT_IMPORT_CREATED: 'document_import.created',
   UPLOADED: 'document.uploaded',
   DELETED: 'document.deleted',
 } as const;

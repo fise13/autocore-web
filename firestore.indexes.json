@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "documentImports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "companyId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "documentGenerationJobs",
       "queryScope": "COLLECTION",
       "fields": [

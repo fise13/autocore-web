@@ -17,6 +17,11 @@ export function resolveNotificationDeepLink(deepLink?: string | null): Href | nu
     if (inviteHref) return inviteHref;
   }
 
+  // Web document-import deep links → mobile import capture screen
+  if (trimmed.startsWith('/imports/') || trimmed === '/imports') {
+    return '/(tabs)/import' as Href;
+  }
+
   if (trimmed.startsWith('/(tabs)') || trimmed.startsWith('/')) {
     return trimmed as Href;
   }
@@ -50,8 +55,9 @@ export function resolveNotificationDeepLink(deepLink?: string | null): Href | nu
   if (path.startsWith('inventory/')) {
     return `/(tabs)/orders/create-item` as Href;
   }
-  if (path.startsWith('import/')) {
-    return '/(tabs)/profile/inbox' as Href;
+  if (path.startsWith('imports/') || path.startsWith('import/')) {
+    // Document import viewer lives on web; open import capture on mobile.
+    return '/(tabs)/import' as Href;
   }
   if (path === 'sync/conflict') {
     return '/(tabs)/profile/inbox' as Href;

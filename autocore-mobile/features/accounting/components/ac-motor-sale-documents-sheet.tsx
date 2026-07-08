@@ -3,12 +3,12 @@ import {
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
-import { DownloadIcon, FileStackIcon, PrinterIcon, Share2Icon } from '@/assets/icons';
-import { Button, Text } from '@/components/ui';
+import { FileStackIcon, PrinterIcon, Share2Icon } from '@/assets/icons';
+import { ActionIconButton, Button, Text } from '@/components/ui';
 import { useModalBottomSheet, useTheme } from '@/hooks';
 import {
   motorSaleDetail,
@@ -231,40 +231,20 @@ export const AcMotorSaleDocumentsSheet = forwardRef<
 
         <DocGroup
           title="Гарантия"
-          actions={[
-            {
-              id: 'warranty-share',
-              label: 'Переслать PDF',
-              icon: Share2Icon,
-            },
-            {
-              id: 'warranty-print',
-              label: 'Печать',
-              icon: PrinterIcon,
-            },
-          ]}
+          shareAction="warranty-share"
+          printAction="warranty-print"
           busy={busy}
           disabled={!warrantyId || loading}
-          onAction={(id) => void runAction(id as DocAction)}
+          onAction={(id) => void runAction(id)}
         />
 
         <DocGroup
           title="Счёт"
-          actions={[
-            {
-              id: 'invoice-share',
-              label: 'Переслать PDF',
-              icon: DownloadIcon,
-            },
-            {
-              id: 'invoice-print',
-              label: 'Печать',
-              icon: PrinterIcon,
-            },
-          ]}
+          shareAction="invoice-share"
+          printAction="invoice-print"
           busy={busy}
           disabled={!warrantyId || loading}
-          onAction={(id) => void runAction(id as DocAction)}
+          onAction={(id) => void runAction(id)}
         />
       </BottomSheetScrollView>
     </BottomSheetModal>
@@ -273,64 +253,48 @@ export const AcMotorSaleDocumentsSheet = forwardRef<
 
 function DocGroup({
   title,
-  actions,
+  shareAction,
+  printAction,
   busy,
   disabled,
   onAction,
 }: {
   title: string;
-  actions: Array<{ id: DocAction; label: string; icon: typeof Share2Icon }>;
+  shareAction: DocAction;
+  printAction: DocAction;
   busy: DocAction | null;
   disabled: boolean;
   onAction: (id: DocAction) => void;
 }) {
-  const { colors } = useTheme();
-
   return (
-    <View style={{ gap: 8 }}>
-      <Text variant="caption" color="muted" style={{ fontWeight: '600', letterSpacing: 0.4 }}>
-        {title.toUpperCase()}
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 10,
+        paddingHorizontal: 2,
+      }}
+    >
+      <Text variant="body" style={{ flex: 1, fontSize: 14, fontWeight: '600' }}>
+        {title}
       </Text>
-      {actions.map((action) => {
-        const Icon = action.icon;
-        const isBusy = busy === action.id;
-        return (
-          <Pressable
-            key={action.id}
-            accessibilityRole="button"
-            disabled={disabled || busy != null}
-            onPress={() => onAction(action.id)}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 12,
-              paddingVertical: 12,
-              paddingHorizontal: 14,
-              borderRadius: ac.radius,
-              borderWidth: ac.hairline,
-              borderColor: colors.borderMuted,
-              backgroundColor: colors.secondary,
-              opacity: disabled ? 0.5 : 1,
-            }}
-          >
-            <View
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: toneBackground(colors.primary, 0.1),
-              }}
-            >
-              <Icon size="sm" color={colors.primary} strokeWidth={1.85} />
-            </View>
-            <Text variant="body" style={{ flex: 1, fontSize: 14, fontWeight: '600' }}>
-              {isBusy ? 'Готовим…' : action.label}
-            </Text>
-          </Pressable>
-        );
-      })}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+        <ActionIconButton
+          icon={Share2Icon}
+          accessibilityLabel={`Поделиться: ${title}`}
+          loading={busy === shareAction}
+          disabled={disabled || (busy !== null && busy !== shareAction)}
+          onPress={() => onAction(shareAction)}
+        />
+        <ActionIconButton
+          icon={PrinterIcon}
+          accessibilityLabel={`Печать: ${title}`}
+          loading={busy === printAction}
+          disabled={disabled || (busy !== null && busy !== printAction)}
+          onPress={() => onAction(printAction)}
+        />
+      </View>
     </View>
   );
 }

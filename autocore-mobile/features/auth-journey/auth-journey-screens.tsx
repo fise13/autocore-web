@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
-import { AppState, View } from 'react-native';
-import { sendEmailVerification } from 'firebase/auth';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { View } from 'react-native';
 
 import { AuthShell } from '@/authentication/auth-shell';
 import { useAuth } from '@/authentication/auth-provider';
+import { VerificationCodeInput } from '@/components/auth/verification-code-input';
 import { Button, Input, Text } from '@/components/ui';
+import { AUTH_JOURNEY_STEP_LABELS } from '@/hooks/use-auth-journey-step';
 import { updateUserProfileName } from '@/services/firebase/profile';
-import { refreshCurrentUser } from '@/services/firebase/auth';
 import { mapAuthError } from '@/utils/auth-error';
 import { rhythm } from '@/theme';
 
@@ -39,6 +39,7 @@ export function ProfileNameJourneyScreen() {
 
   return (
     <AuthShell
+      stepLabel={AUTH_JOURNEY_STEP_LABELS['profile-name']}
       title="Ваш профиль"
       description="Укажите имя и фамилию — так коллеги увидят вас в заказ-нарядах и уведомлениях."
     >
@@ -50,7 +51,7 @@ export function ProfileNameJourneyScreen() {
             {error}
           </Text>
         ) : null}
-        <Button onPress={handleSave} loading={loading}>
+        <Button onPress={() => void handleSave()} loading={loading}>
           Продолжить
         </Button>
         <Button variant="ghost" onPress={() => void signOut()}>
@@ -62,76 +63,95 @@ export function ProfileNameJourneyScreen() {
 }
 
 export function VerifyEmailJourneyScreen() {
-  const { firebaseUser, refreshProfile, signOut } = useAuth();
-  const [message, setMessage] = useState<string | null>(null);
+  const { firebaseUser, sendEmailVerification, verifyEmailWithCode, refreshProfile, signOut } = useAuth();
+  const [code, setCode] = useState('');
+  const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [checking, setChecking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [resending, setResending] = useState(false);
+  const autoSentRef = useRef(false);
+  const verifyAttemptRef = useRef<string | null>(null);
 
-  const checkVerified = useCallback(
-    async (opts?: { silent?: boolean }) => {
-      if (!opts?.silent) {
-        setChecking(true);
-        setError(null);
-      }
+  useEffect(() => {
+    if (autoSentRef.current) return;
+    autoSentRef.current = true;
+    void sendEmailVerification()
+      .then(() => setStatus('Код отправлен на вашу почту'))
+      .catch((sendError) => {
+        const message = sendError instanceof Error ? sendError.message : '';
+        if (message.includes('Подождите')) {
+          setStatus('Код уже отправлен — проверьте почту');
+          return;
+        }
+        autoSentRef.current = false;
+        setError(message || 'Не удалось отправить код');
+      });
+  }, [sendEmailVerification]);
+
+  const verifyCode = useCallback(
+    async (nextCode: string) => {
+      setBusy(true);
+      setError(null);
+      setStatus('Проверяем код…');
       try {
-        const user = await refreshCurrentUser(true);
-        if (user?.emailVerified) {
-          setMessage('Email подтверждён. Продолжаем…');
+        const verified = await verifyEmailWithCode(nextCode);
+        if (verified) {
+          setStatus('Email подтверждён. Продолжаем…');
           await refreshProfile();
-          return true;
+          return;
         }
-        if (!opts?.silent) {
-          setError('Email ещё не подтверждён. Откройте письмо и нажмите ссылку.');
-        }
-        return false;
-      } catch (cause) {
-        if (!opts?.silent) setError(mapAuthError(cause));
-        return false;
+        setStatus(null);
+        setError('Email ещё не подтверждён. Попробуйте снова.');
+        verifyAttemptRef.current = null;
+        setCode('');
+      } catch (verifyError) {
+        setError(verifyError instanceof Error ? verifyError.message : 'Неверный код');
+        setStatus(null);
+        verifyAttemptRef.current = null;
+        setCode('');
       } finally {
-        if (!opts?.silent) setChecking(false);
+        setBusy(false);
       }
     },
-    [refreshProfile],
+    [refreshProfile, verifyEmailWithCode],
   );
 
   useEffect(() => {
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
-        void checkVerified({ silent: true });
-      }
-    });
-    return () => sub.remove();
-  }, [checkVerified]);
+    if (code.length !== 6) return;
+    if (verifyAttemptRef.current === code) return;
+    verifyAttemptRef.current = code;
+    void verifyCode(code);
+  }, [code, verifyCode]);
 
   const handleResend = async () => {
-    if (!firebaseUser) return;
-    setLoading(true);
+    setResending(true);
     setError(null);
-    setMessage(null);
+    setStatus(null);
     try {
-      await sendEmailVerification(firebaseUser);
-      setMessage('Письмо отправлено. Проверьте почту и подтвердите адрес.');
+      await sendEmailVerification();
+      setStatus('Новый код отправлен');
     } catch (cause) {
       setError(mapAuthError(cause));
     } finally {
-      setLoading(false);
+      setResending(false);
     }
   };
 
   return (
     <AuthShell
+      stepLabel={AUTH_JOURNEY_STEP_LABELS['verify-email']}
       title="Подтвердите email"
       description={
         firebaseUser?.email
-          ? `Мы отправили письмо на ${firebaseUser.email}. Подтвердите адрес, чтобы продолжить.`
-          : 'Подтвердите email, чтобы продолжить.'
+          ? `Введите 6-значный код из письма на ${firebaseUser.email}`
+          : 'Введите код из письма, чтобы продолжить'
       }
     >
       <View style={{ gap: rhythm.stack }}>
-        {message ? (
+        <VerificationCodeInput value={code} onChange={setCode} disabled={busy} invalid={Boolean(error)} />
+        {status ? (
           <Text variant="caption" color="muted">
-            {message}
+            {status}
           </Text>
         ) : null}
         {error ? (
@@ -139,11 +159,8 @@ export function VerifyEmailJourneyScreen() {
             {error}
           </Text>
         ) : null}
-        <Button onPress={() => void checkVerified()} loading={checking}>
-          Я подтвердил email
-        </Button>
-        <Button onPress={handleResend} loading={loading} variant="outline">
-          Отправить письмо снова
+        <Button onPress={() => void handleResend()} loading={resending} variant="outline" disabled={busy}>
+          Отправить код снова
         </Button>
         <Button variant="ghost" onPress={() => void signOut()}>
           Выйти / сменить аккаунт

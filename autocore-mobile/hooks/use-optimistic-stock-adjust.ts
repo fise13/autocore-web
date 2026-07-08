@@ -6,18 +6,13 @@ import { useMobileStockAdjust } from '@/hooks/use-mobile-stock-adjust';
 import { haptics } from '@/theme';
 import type { InventoryItem } from '@/types/inventory';
 
-type AdjustOp = {
-  delta: 1 | -1;
-  idempotencyKey: string;
-};
-
 function inventoryQueryKey(companyId: string) {
   return ['realtime', 'inventory-items', companyId] as const;
 }
 
 /**
- * Instant +/- in the UI via pending deltas; cloud sync runs in a per-item queue.
- * Firestore realtime updates do not fight the overlay until each op is confirmed.
+ * Instant +/- in the UI via pending deltas. Firebase sync is deferred until `flush`
+ * (e.g. when leaving the warehouse screen) so realtime snapshots do not fight edits.
  */
 export function useOptimisticStockAdjust(companyId: string | null) {
   const queryClient = useQueryClient();
@@ -25,106 +20,119 @@ export function useOptimisticStockAdjust(companyId: string | null) {
   const [pendingDeltas, setPendingDeltas] = useState<Record<string, number>>({});
   const pendingDeltasRef = useRef(pendingDeltas);
   pendingDeltasRef.current = pendingDeltas;
-  const queuesRef = useRef(new Map<string, AdjustOp[]>());
-  const processingRef = useRef(new Set<string>());
+  const baselineRef = useRef<Record<string, number>>({});
+  const flushingRef = useRef(false);
   const seqRef = useRef(0);
 
   const bumpPending = useCallback((itemId: string, delta: 1 | -1) => {
     setPendingDeltas((prev) => {
       const next = { ...prev };
       const value = (next[itemId] ?? 0) + delta;
-      if (value === 0) delete next[itemId];
-      else next[itemId] = value;
+      if (value === 0) {
+        delete next[itemId];
+        delete baselineRef.current[itemId];
+      } else {
+        next[itemId] = value;
+      }
       return next;
     });
   }, []);
 
   const getDisplayAvailable = useCallback(
-    (item: InventoryItem) => Math.max(0, item.totalAvailable + (pendingDeltas[item.id] ?? 0)),
+    (item: InventoryItem) => {
+      const base = baselineRef.current[item.id] ?? item.totalAvailable;
+      return Math.max(0, base + (pendingDeltas[item.id] ?? 0));
+    },
     [pendingDeltas],
   );
 
-  const processQueue = useCallback(
-    async (itemId: string) => {
-      if (!companyId || processingRef.current.has(itemId)) return;
+  const clearItemPending = useCallback((itemId: string) => {
+    setPendingDeltas((prev) => {
+      if (!(itemId in prev)) return prev;
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+    delete baselineRef.current[itemId];
+  }, []);
 
-      const queue = queuesRef.current.get(itemId);
-      if (!queue?.length) return;
+  const syncItemNet = useCallback(
+    async (itemId: string, net: number) => {
+      if (!companyId || net === 0) return;
 
-      processingRef.current.add(itemId);
+      const direction = net > 0 ? 'increase' : 'decrease';
+      const quantity = Math.abs(net);
 
-      while (true) {
-        const currentQueue = queuesRef.current.get(itemId);
-        const op = currentQueue?.[0];
-        if (!op) break;
+      try {
+        const result = await stockAdjust.mutateAsync({
+          itemId,
+          direction,
+          quantity,
+          idempotencyKey: `mobile:adjust:${itemId}:flush:${++seqRef.current}:${Date.now()}`,
+        });
 
-        try {
-          const result = await stockAdjust.mutateAsync({
-            itemId,
-            direction: op.delta > 0 ? 'increase' : 'decrease',
-            quantity: 1,
-            idempotencyKey: op.idempotencyKey,
-          });
+        clearItemPending(itemId);
 
-          currentQueue!.shift();
-          bumpPending(itemId, op.delta === 1 ? -1 : 1);
-
-          const queryKey = inventoryQueryKey(companyId);
-          queryClient.setQueryData<InventoryItem[]>(queryKey, (current) =>
-            current?.map((item) =>
-              item.id === itemId
-                ? {
-                    ...item,
-                    totalAvailable: result.itemTotalAvailable,
-                    totalOnHand: result.itemTotalOnHand,
-                  }
-                : item,
-            ),
-          );
-        } catch (error) {
-          currentQueue!.shift();
-          bumpPending(itemId, op.delta === 1 ? -1 : 1);
-          haptics.warning();
-          toast({
-            title: 'Не удалось изменить остаток',
-            description: error instanceof Error ? error.message : undefined,
-            variant: 'destructive',
-          });
-          break;
-        }
-      }
-
-      processingRef.current.delete(itemId);
-
-      const remaining = queuesRef.current.get(itemId);
-      if (remaining?.length) {
-        void processQueue(itemId);
+        const queryKey = inventoryQueryKey(companyId);
+        queryClient.setQueryData<InventoryItem[]>(queryKey, (current) =>
+          current?.map((item) =>
+            item.id === itemId
+              ? {
+                  ...item,
+                  totalAvailable: result.itemTotalAvailable,
+                  totalOnHand: result.itemTotalOnHand,
+                }
+              : item,
+          ),
+        );
+      } catch (error) {
+        haptics.warning();
+        toast({
+          title: 'Не удалось изменить остаток',
+          description: error instanceof Error ? error.message : undefined,
+          variant: 'destructive',
+        });
+        throw error;
       }
     },
-    [bumpPending, companyId, queryClient, stockAdjust],
+    [clearItemPending, companyId, queryClient, stockAdjust],
   );
+
+  const flush = useCallback(async () => {
+    if (!companyId || flushingRef.current) return;
+
+    const entries = Object.entries(pendingDeltasRef.current).filter(([, net]) => net !== 0);
+    if (entries.length === 0) return;
+
+    flushingRef.current = true;
+    try {
+      for (const [itemId, net] of entries) {
+        await syncItemNet(itemId, net);
+      }
+    } finally {
+      flushingRef.current = false;
+    }
+  }, [companyId, syncItemNet]);
 
   const adjust = useCallback(
     (item: InventoryItem, delta: 1 | -1) => {
       if (!companyId) return;
 
-      const display = item.totalAvailable + (pendingDeltasRef.current[item.id] ?? 0);
+      if (!(item.id in baselineRef.current)) {
+        baselineRef.current[item.id] = item.totalAvailable;
+      }
+
+      const base = baselineRef.current[item.id] ?? item.totalAvailable;
+      const display = base + (pendingDeltasRef.current[item.id] ?? 0);
       if (delta < 0 && display <= 0) return;
 
       bumpPending(item.id, delta);
       haptics.light();
-
-      const queue = queuesRef.current.get(item.id) ?? [];
-      queue.push({
-        delta,
-        idempotencyKey: `mobile:adjust:${item.id}:${++seqRef.current}:${Date.now()}`,
-      });
-      queuesRef.current.set(item.id, queue);
-
-      void processQueue(item.id);
     },
-    [bumpPending, companyId, processQueue],
+    [bumpPending, companyId],
   );
 
-  return { getDisplayAvailable, adjust };
-}
+  const hasPending = Object.keys(pendingDeltas).length > 0;
+
+  return { getDisplayAvailable, adjust, flush, hasPending };
+};

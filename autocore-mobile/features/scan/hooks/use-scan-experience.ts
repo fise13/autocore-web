@@ -35,6 +35,10 @@ function useDevMockFallback(): boolean {
 
 function sheetPresentationKey(state: ScanServiceSnapshot): string | null {
   if (state.phase !== 'confirmed' || !state.sheetKind) return null;
+  if (state.sheetKind === 'code-picker') {
+    const payloads = (state.pendingDetections ?? []).map((entry) => entry.payload).join('|');
+    return `code-picker:${payloads}`;
+  }
   return `${state.sheetKind}:${state.pendingPayload ?? ''}`;
 }
 
@@ -52,6 +56,7 @@ export function useScanExperience(initialContext?: ScanContext) {
   const candidatesSheetRef = useRef<BottomSheetModal>(null);
   const notFoundSheetRef = useRef<BottomSheetModal>(null);
   const documentSheetRef = useRef<BottomSheetModal>(null);
+  const codePickerSheetRef = useRef<BottomSheetModal>(null);
 
   const [snapshot, setSnapshot] = useState<ScanServiceSnapshot>(() => ({
     phase: 'idle',
@@ -61,6 +66,7 @@ export function useScanExperience(initialContext?: ScanContext) {
     sheetKind: null,
     activeResult: null,
     pendingPayload: null,
+    pendingDetections: null,
   }));
   const [parsedDocument, setParsedDocument] = useState<ParsedDocument | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -235,20 +241,28 @@ export function useScanExperience(initialContext?: ScanContext) {
       }
 
       presentedKeyRef.current = key;
-      setShowConfirmFlash(true);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setTimeout(() => setShowConfirmFlash(false), 520);
 
       if (state.sheetKind === 'product') productSheetRef.current?.present();
       else if (state.sheetKind === 'candidates') candidatesSheetRef.current?.present();
       else if (state.sheetKind === 'not-found') notFoundSheetRef.current?.present();
       else if (state.sheetKind === 'document') documentSheetRef.current?.present();
+      else if (state.sheetKind === 'code-picker') codePickerSheetRef.current?.present();
+
+      setShowConfirmFlash(true);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setTimeout(() => setShowConfirmFlash(false), 280);
     },
     [handleOrderOutcome],
   );
 
   useEffect(() => {
     const state = snapshot;
+
+    if (state.phase === 'confirmed' && state.sheetKind === 'code-picker') {
+      presentSheetForSnapshot(state);
+      return;
+    }
+
     if (!state.outcome) return;
 
     if (
@@ -280,6 +294,7 @@ export function useScanExperience(initialContext?: ScanContext) {
     snapshot.phase,
     snapshot.sheetKind,
     snapshot.pendingPayload,
+    snapshot.pendingDetections,
     snapshot.context.mode,
   ]);
 
@@ -288,6 +303,22 @@ export function useScanExperience(initialContext?: ScanContext) {
       service.onDetection(detection);
     },
     [service],
+  );
+
+  const onDetections = useCallback(
+    (detections: ScanDetection[]) => {
+      service.onDetections(detections);
+    },
+    [service],
+  );
+
+  const handlePickDetectedCode = useCallback(
+    (detection: ScanDetection) => {
+      dismissSheet(codePickerSheetRef, () => {
+        service.pickDetectedCode(detection.payload);
+      });
+    },
+    [dismissSheet, service],
   );
 
   const handlePickCandidate = useCallback(
@@ -427,9 +458,11 @@ export function useScanExperience(initialContext?: ScanContext) {
     cameraLayout,
     setCameraLayout,
     onDetection,
+    onDetections,
     onSheetClosed: handleSheetClosed,
     dismissSheet,
     handlePickCandidate,
+    handlePickDetectedCode,
     handleTryAi,
     handleCreateItem,
     handleAddAsSpecific,
@@ -441,6 +474,7 @@ export function useScanExperience(initialContext?: ScanContext) {
     candidatesSheetRef,
     notFoundSheetRef,
     documentSheetRef,
+    codePickerSheetRef,
     service,
     setOcrBusy,
     setParsedDocument,

@@ -16,15 +16,15 @@ export class ScanDebounce {
   constructor(private readonly options: ScanDebounceOptions = {}) {}
 
   private get samePayloadCooldownMs() {
-    return this.options.samePayloadCooldownMs ?? 2800;
+    return this.options.samePayloadCooldownMs ?? 1200;
   }
 
   private get commitCooldownMs() {
-    return this.options.commitCooldownMs ?? 400;
+    return this.options.commitCooldownMs ?? 120;
   }
 
   private get stableMs() {
-    return this.options.stableMs ?? 200;
+    return this.options.stableMs ?? 0;
   }
 
   /** Visual tracking — always allowed while camera is active. */

@@ -49,15 +49,24 @@ function isInstantOutcome(outcome: ScanOutcome): boolean {
   );
 }
 
+function dedupeDetections(detections: ScanDetection[]): ScanDetection[] {
+  const seen = new Set<string>();
+  const unique: ScanDetection[] = [];
+  for (const detection of detections) {
+    const payload = detection.payload.trim();
+    if (!payload || seen.has(payload)) continue;
+    seen.add(payload);
+    unique.push({ ...detection, payload });
+  }
+  return unique;
+}
+
 export class ScanService {
   private debounce = new ScanDebounce();
   private listeners = new Set<ScanServiceListener>();
   private commitTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingCommitPayload: string | null = null;
   private stablePayload: string | null = null;
-  private stableHits = 0;
-  private readonly minStableHits = 2;
-  private readonly commitDelayMs = 240;
   private snapshot: ScanServiceSnapshot = {
     phase: 'idle',
     context: { mode: 'standalone' },
@@ -66,6 +75,7 @@ export class ScanService {
     sheetKind: null,
     activeResult: null,
     pendingPayload: null,
+    pendingDetections: null,
   };
 
   constructor(private readonly deps: ScanServiceDeps) {}
@@ -92,47 +102,67 @@ export class ScanService {
     ) {
       return;
     }
-    if (!this.debounce.canTrack(detection.payload)) return;
 
-    if (detection.payload === this.stablePayload) {
-      this.stableHits += 1;
-    } else {
-      this.stablePayload = detection.payload;
-      this.stableHits = 1;
-    }
+    const payload = detection.payload.trim();
+    if (!payload) return;
+    if (!this.debounce.canTrack(payload)) return;
 
+    this.stablePayload = payload;
+    this.debounce.noteSeen(payload);
     this.patch({
       phase: 'tracking',
-      detection,
+      detection: { ...detection, payload },
+      pendingDetections: null,
     });
 
-    if (this.stableHits < this.minStableHits) return;
+    // Commit on first valid read — no second-frame wait / timer lag.
+    void this.commitPayload(payload, 'camera').catch(() => undefined);
+  }
 
-    this.debounce.noteSeen(detection.payload);
-    this.scheduleCommit(detection.payload);
+  onDetections(detections: ScanDetection[]): void {
+    if (
+      this.snapshot.phase === 'paused' ||
+      this.snapshot.phase === 'resolving' ||
+      this.snapshot.phase === 'confirmed'
+    ) {
+      return;
+    }
+    if (!this.debounce.canTrack('multi-code')) return;
+
+    const unique = dedupeDetections(detections);
+    if (unique.length === 0) return;
+
+    if (unique.length === 1) {
+      this.onDetection(unique[0]!);
+      return;
+    }
+
+    this.clearCommitTimer();
+    this.resetStableReads();
+    this.patch({
+      phase: 'confirmed',
+      detection: unique[0] ?? null,
+      outcome: null,
+      sheetKind: 'code-picker',
+      activeResult: null,
+      pendingPayload: null,
+      pendingDetections: unique,
+    });
+  }
+
+  pickDetectedCode(payload: string): void {
+    const detection =
+      this.snapshot.pendingDetections?.find((entry) => entry.payload === payload) ?? null;
+    this.patch({
+      pendingDetections: null,
+      sheetKind: null,
+      detection,
+    });
+    void this.commitPayload(payload, 'camera').catch(() => undefined);
   }
 
   private resetStableReads(): void {
     this.stablePayload = null;
-    this.stableHits = 0;
-  }
-
-  private scheduleCommit(payload: string): void {
-    if (this.pendingCommitPayload === payload && this.commitTimer) return;
-
-    if (this.commitTimer) {
-      clearTimeout(this.commitTimer);
-      this.commitTimer = null;
-    }
-
-    this.pendingCommitPayload = payload;
-    this.commitTimer = setTimeout(() => {
-      this.commitTimer = null;
-      this.pendingCommitPayload = null;
-      if (this.snapshot.phase === 'paused' || this.snapshot.phase === 'resolving') return;
-      if (this.snapshot.detection?.payload !== payload) return;
-      void this.commitPayload(payload, 'camera').catch(() => undefined);
-    }, this.commitDelayMs);
   }
 
   private clearCommitTimer(): void {
@@ -146,32 +176,28 @@ export class ScanService {
   async commitPayload(payload: string, source: ScanSource = 'camera'): Promise<ScanOutcome | null> {
     if (this.snapshot.phase === 'resolving' || this.snapshot.phase === 'paused') return null;
 
+    const normalizedPayload = payload.trim();
+    if (!normalizedPayload) return null;
+
     this.clearCommitTimer();
-    this.debounce.markCommitted(payload);
+    this.debounce.markCommitted(normalizedPayload);
     this.patch({
       phase: 'resolving',
-      pendingPayload: payload,
+      pendingPayload: normalizedPayload,
     });
 
     try {
       const outcome = await resolveScanPayload(this.deps, {
-        payload,
+        payload: normalizedPayload,
         source,
         canInventoryView: this.deps.canInventoryView(),
         allowMock: this.deps.allowMock(),
       });
 
-      return this.applyOutcome(outcome, payload);
-    } catch {
-      this.patch({
-        phase: 'idle',
-        detection: null,
-        outcome: null,
-        sheetKind: null,
-        activeResult: null,
-        pendingPayload: null,
-      });
-      return null;
+      return this.applyOutcome(outcome, normalizedPayload);
+    } catch (error) {
+      console.warn('Scan resolve failed:', error);
+      return this.applyOutcome({ kind: 'not-found', payload: normalizedPayload }, normalizedPayload);
     }
   }
 
@@ -239,6 +265,7 @@ export class ScanService {
       sheetKind: null,
       activeResult: null,
       pendingPayload: null,
+      pendingDetections: null,
     });
   }
 

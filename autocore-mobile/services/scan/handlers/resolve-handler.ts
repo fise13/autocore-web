@@ -3,6 +3,7 @@ import { classifyScanPayload } from '@/features/scan/lib/classify-payload';
 import { parseDocumentText } from '@/features/scan/lib/parse-document';
 import { findVinInCodes, findVinInText } from '@/features/scan/lib/vin';
 import { mapResolveResultToScanResult } from '@/lib/scan/map-resolve-result';
+import { normalizeScanPayload } from '@/lib/scan/normalize-scan-payload';
 import type { MobileScanResolveResult, ScanOcrResolveResponse } from '@/types/inventory';
 
 import type { ScanOutcome, ScanResolveRequest } from '../types';
@@ -30,19 +31,20 @@ export function classifyPayloadOutcome(payload: string): ScanOutcome | 'barcode'
   return 'barcode';
 }
 
+function isWeakCameraAutoAccept(matchType: MobileScanResolveResult['matchType']): boolean {
+  return matchType === 'fuzzy' || matchType === 'ai';
+}
+
 export function mapApiResolve(
   payload: string,
   apiResult: MobileScanResolveResult | null,
   source?: ScanResolveRequest['source'],
 ): ScanOutcome {
   if (apiResult) {
-    const weakMatch =
-      apiResult.matchType === 'fuzzy' ||
-      apiResult.matchType === 'search_token' ||
-      apiResult.matchType === 'ai';
     const strictCamera = source === 'camera';
+    const rejectAutoAccept = strictCamera && isWeakCameraAutoAccept(apiResult.matchType);
 
-    if (apiResult.found && apiResult.item && !(strictCamera && weakMatch)) {
+    if (apiResult.found && apiResult.item && !rejectAutoAccept) {
       const mapped = mapResolveResultToScanResult(apiResult);
       if (mapped) {
         return { kind: 'product', result: mapped, payload };
@@ -85,35 +87,41 @@ export async function resolveBarcodePayload(
   request: ScanResolveRequest,
   apiResolve: (barcode: string, source: ScanResolveRequest['source']) => Promise<MobileScanResolveResult>,
 ): Promise<ScanOutcome> {
-  const classified = classifyPayloadOutcome(request.payload);
+  const payload = normalizeScanPayload(request.payload);
+  if (!payload) {
+    return { kind: 'not-found', payload: request.payload };
+  }
+
+  const classified = classifyPayloadOutcome(payload);
   if (classified !== 'barcode') return classified;
 
   if (request.canInventoryView) {
     try {
-      const result = await apiResolve(request.payload, request.source);
-      return mapApiResolve(request.payload, result, request.source);
+      // Single round-trip. Camera path already hits mapping/sku/barcodes/searchTokens.
+      const result = await apiResolve(payload, request.source);
+      return mapApiResolve(payload, result, request.source);
     } catch {
       if (request.allowMock) {
-        const mock = resolveScanPayload(request.payload);
-        if (mock) return { kind: 'product', result: mock, payload: request.payload };
+        const mock = resolveScanPayload(payload);
+        if (mock) return { kind: 'product', result: mock, payload };
       }
-      return { kind: 'not-found', payload: request.payload };
+      return { kind: 'not-found', payload };
     }
   }
 
   if (request.allowMock) {
-    const mock = resolveScanPayload(request.payload);
-    if (mock) return { kind: 'product', result: mock, payload: request.payload };
+    const mock = resolveScanPayload(payload);
+    if (mock) return { kind: 'product', result: mock, payload };
   }
 
-  return { kind: 'not-found', payload: request.payload };
+  return { kind: 'not-found', payload };
 }
 
 export function mapOcrResponse(
   ocrResult: ScanOcrResolveResponse,
   preferDocument: boolean,
 ): ScanOutcome | 'retry' {
-  const codes = ocrResult.extractedCodes;
+  const codes = ocrResult.extractedCodes.map(normalizeScanPayload).filter(Boolean);
   const rawText = ocrResult.ocr.rawText?.trim() ?? '';
   const vin = findVinInCodes(codes) ?? (rawText ? findVinInText(rawText) : null);
 
@@ -132,7 +140,7 @@ export function mapOcrResponse(
     return { kind: 'navigate-vin', vin, payload: vin };
   }
 
-  const code = codes[0] ?? ocrResult.resolve?.barcode;
+  const code = codes[0] ?? (ocrResult.resolve?.barcode ? normalizeScanPayload(ocrResult.resolve.barcode) : '');
   if (!code) return 'retry';
 
   const classified = classifyPayloadOutcome(code);

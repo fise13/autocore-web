@@ -11,7 +11,8 @@ import {
   useState,
 } from 'react';
 
-import { sendPasswordResetViaApi } from '@/services/api/auth-email';
+import { sendPasswordResetViaApi, sendVerificationEmailViaApi, verifyEmailCodeViaApi } from '@/services/api/auth-email';
+import { createCompanyViaApi } from '@/services/api/create-company';
 import {
   resolveEmailSignInMethodsLookup,
   type ResolveEmailLookupResult,
@@ -66,6 +67,9 @@ export type AuthActions = {
   signInWithApple: () => Promise<void>;
   sendPasswordResetForEmail: (email: string) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
+  sendEmailVerification: () => Promise<void>;
+  verifyEmailWithCode: (code: string) => Promise<boolean>;
+  createCompany: (name: string) => Promise<void>;
   signOut: () => Promise<void>;
   deleteAccount: (password?: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -621,6 +625,11 @@ function useAuthActionsController(): AuthActions {
           await updateUserProfileName(user.uid, fullName);
           await reload(user);
         }
+        try {
+          await sendVerificationEmailViaApi();
+        } catch (verificationError) {
+          console.warn('Verification email send skipped:', verificationError);
+        }
         return user;
       });
     },
@@ -685,6 +694,31 @@ function useAuthActionsController(): AuthActions {
       if (delivery === 'firebase') {
         await requestPasswordReset(email.trim());
       }
+    },
+    [isFirebaseReady],
+  );
+
+  const sendEmailVerification = useCallback(async () => {
+    if (!useAuthStore.getState().isOnline) {
+      throw new Error('Нет подключения к интернету.');
+    }
+    if (!isFirebaseReady) {
+      throw new Error(mapAuthError(new Error('auth/operation-not-allowed')));
+    }
+    await sendVerificationEmailViaApi();
+  }, [isFirebaseReady]);
+
+  const verifyEmailWithCode = useCallback(
+    async (code: string) => {
+      if (!isFirebaseReady) {
+        throw new Error(mapAuthError(new Error('auth/operation-not-allowed')));
+      }
+      await verifyEmailCodeViaApi(code);
+      const user = await refreshCurrentUser(true);
+      if (user) {
+        useAuthStore.getState().setFirebaseUser(user);
+      }
+      return Boolean(user?.emailVerified);
     },
     [isFirebaseReady],
   );
@@ -764,6 +798,30 @@ function useAuthActionsController(): AuthActions {
     }
   }, []);
 
+  const createCompany = useCallback(
+    async (name: string) => {
+      if (!useAuthStore.getState().isOnline) {
+        throw new Error('Нет подключения к интернету.');
+      }
+      if (!isFirebaseReady) {
+        throw new Error(mapAuthError(new Error('auth/operation-not-allowed')));
+      }
+      const user = getFirebaseAuth().currentUser;
+      if (!user) {
+        throw new Error(mapAuthError(new Error('auth/invalid-credential')));
+      }
+
+      await createCompanyViaApi(name);
+      try {
+        await prepareSyncAuth(user.uid, { force: true });
+      } catch (prepError) {
+        console.warn('createCompany auth prep skipped:', prepError);
+      }
+      await refreshProfile();
+    },
+    [isFirebaseReady, refreshProfile],
+  );
+
   const clearError = useCallback(() => {
     useAuthStore.getState().setError(null);
   }, []);
@@ -778,6 +836,9 @@ function useAuthActionsController(): AuthActions {
       signInWithApple,
       sendPasswordResetForEmail: sendPasswordReset,
       sendPasswordReset,
+      sendEmailVerification,
+      verifyEmailWithCode,
+      createCompany,
       signOut,
       deleteAccount,
       refreshProfile,
@@ -785,16 +846,19 @@ function useAuthActionsController(): AuthActions {
     }),
     [
       clearError,
+      createCompany,
       deleteAccount,
       isFirebaseReady,
       refreshProfile,
       resolveEmailMethods,
+      sendEmailVerification,
       sendPasswordReset,
       signInWithApple,
       signInWithGoogle,
       signIn,
       signUp,
       signOut,
+      verifyEmailWithCode,
     ],
   );
 }

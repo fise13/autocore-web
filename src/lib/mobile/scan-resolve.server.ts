@@ -156,11 +156,9 @@ async function loadItem(
 async function resolveExactTier(
   companyId: string,
   variants: string[],
-  options?: { includeSearchTokens?: boolean },
 ): Promise<{ itemId: string; matchType: MobileScanMatchType } | null> {
   const db = getAdminFirestore();
   const normalizedCompanyId = normalizeCompanyId(companyId);
-  const includeSearchTokens = options?.includeSearchTokens ?? true;
 
   for (const variant of variants) {
     const mappingSnap = await db
@@ -197,10 +195,6 @@ async function resolveExactTier(
     if (!barcodeSnap.empty) {
       return { itemId: barcodeSnap.docs[0]!.id, matchType: "barcode_field" };
     }
-  }
-
-  if (!includeSearchTokens) {
-    return null;
   }
 
   const tokens = [...new Set(variants.map(scanToken).filter((token) => token.length >= 3))];
@@ -281,9 +275,7 @@ export async function resolveMobileScan(
   }
 
   const variants = buildScanCodeVariants(rawBarcode);
-  const exact = await resolveExactTier(normalizedCompanyId, variants, {
-    includeSearchTokens: !strictBarcode,
-  });
+  const exact = await resolveExactTier(normalizedCompanyId, variants);
   if (exact) {
     const item = await loadItem(normalizedCompanyId, exact.itemId);
     if (!item) return emptyResult(barcode);

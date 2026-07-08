@@ -19,6 +19,7 @@ export function resolveSidebarMode(pathname: string): SidebarMode {
   if (pathname === "/work-orders" || pathname.startsWith("/work-orders/")) return "work_orders";
   if (pathname === "/accounting" || pathname.startsWith("/accounting/")) return "accounting";
   if (pathname === "/documents" || pathname.startsWith("/documents/")) return "documents";
+  if (pathname === "/imports" || pathname.startsWith("/imports/")) return "documents";
   if (pathname === "/team" || pathname.startsWith("/team/")) return "team";
   if (pathname === "/activity" || pathname.startsWith("/activity/")) return "activity";
   return "other";

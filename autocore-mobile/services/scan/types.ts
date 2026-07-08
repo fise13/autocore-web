@@ -29,7 +29,7 @@ export type ScanDetection = {
   cornerPoints: BarcodePoint[];
 };
 
-export type ScanSheetKind = 'product' | 'candidates' | 'not-found' | 'document' | null;
+export type ScanSheetKind = 'product' | 'candidates' | 'not-found' | 'document' | 'code-picker' | null;
 
 export type ScanOutcome =
   | { kind: 'navigate-entity'; entity: ScanEntityLinkKind; id: string; payload: string }
@@ -59,6 +59,7 @@ export type ScanServiceSnapshot = {
   sheetKind: ScanSheetKind;
   activeResult: ScanResult | null;
   pendingPayload: string | null;
+  pendingDetections: ScanDetection[] | null;
 };
 
 export type ScanServiceListener = (snapshot: ScanServiceSnapshot) => void;

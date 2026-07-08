@@ -3,6 +3,12 @@ export { Button, type ButtonVariant, type ButtonSize } from './button';
 export { IconButton } from './icon-button';
 export { CopyButton, type CopyButtonProps, type CopyButtonVariant, type CopyButtonSize } from './copy-button';
 export {
+  ActionIconButton,
+  type ActionIconButtonProps,
+  type ActionIconButtonVariant,
+  type ActionIconButtonSize,
+} from './action-icon-button';
+export {
   Card,
   CardHeader,
   CardTitle,

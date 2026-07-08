@@ -1089,6 +1089,12 @@ service cloud.firestore {
       }
     }
 
+    // Mobile photo document imports (not Excel). Writes go through Admin SDK / API.
+    match /documentImports/{importId} {
+      allow read: if canInventoryRead(resource.data.companyId);
+      allow create, update, delete: if false;
+    }
+
     match /inventoryCategories/{categoryId} {
       allow read: if canInventoryRead(resource.data.companyId);
       allow create, update: if canInventoryWrite(request.resource.data.companyId);
