@@ -40,6 +40,11 @@ firebase/functions/.env
 # generated Firebase Functions output
 firebase/functions/lib/
 
+# local acquisition and presentation artifacts
+/AutoCore_Investor_Deck_*.pdf
+/src/components/*.pdf
+/docs/investor-deck/generated/
+
 # Firebase service account keys (never commit)
 *-firebase-adminsdk-*.json
 service-account*.json
@@ -57,3 +62,4 @@ scripts/.apple-auth-code.json
 # tauri desktop
 /src-tauri/target/
 /src-tauri/gen/
+/src-tauri/resources/next-server/
