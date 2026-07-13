@@ -126,7 +126,7 @@ export function CompanySwitcherMenu({
           <CompanyAvatar companyId={company.companyId} name={company.name} size="sm" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">{company.name}</p>
-            <CompanyPlanLabel isActiveCompany={active} />
+            <CompanyPlanLabel companyId={company.companyId} isActiveCompany={active} />
           </div>
           {active ? <Check className="shrink-0 text-foreground" /> : null}
         </>

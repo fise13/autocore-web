@@ -1,0 +1,9 @@
+{
+  "actions": {
+    "closeDialog": "Close dialog",
+    "openMenu": "Open menu"
+  },
+  "navigation": {
+    "back": "Go back"
+  }
+}

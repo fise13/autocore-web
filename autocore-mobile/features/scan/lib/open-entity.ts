@@ -17,6 +17,7 @@ const ENTITY_LABELS: Record<ScanEntityLinkKind, string> = {
   item: 'Позиция',
   client: 'Клиент',
   shelf: 'Полка',
+  location: 'Место',
   invoice: 'Счёт',
   motor: 'Мотор',
 };
@@ -54,6 +55,11 @@ export function openEntityLink(
     return;
   }
 
-  // Client / shelf — search is the fastest path.
+  if (entity === 'location' || entity === 'shelf') {
+    router.push(`/(tabs)/warehouse/location/${encodeURIComponent(id)}` as Href);
+    return;
+  }
+
+  // Client — search is the fastest path.
   router.navigate(`/(tabs)/search?q=${encodeURIComponent(id)}` as Href);
 }

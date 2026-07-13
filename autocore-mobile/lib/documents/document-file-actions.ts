@@ -3,13 +3,12 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
 import { mapDocumentError } from '@/lib/documents/map-document-error';
-import { writePdfCacheFile, writePdfDocumentFile } from '@/lib/documents/write-pdf-cache-file';
+import { writePdfCacheFile } from '@/lib/documents/write-pdf-cache-file';
 import { getPublicApiBaseUrl } from '@/services/api/api-base-url';
 import {
   buildDocumentFilename,
   buildDocumentPdfPath,
   fetchDocumentPdf,
-  fetchWorkOrderDocumentPdf,
   type DocumentAggregateType,
 } from '@/services/api/document-pdf';
 import { getFirebaseAuth } from '@/services/firebase';
@@ -27,28 +26,17 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   };
 }
 
-async function downloadPdfToCache(
-  slug: DocumentSlug,
-  aggregateId: string,
-  filename: string,
-  options?: { aggregateType?: DocumentAggregateType },
-): Promise<File> {
-  const headers = await getAuthHeaders();
-  const url = `${getPublicApiBaseUrl()}${buildDocumentPdfPath(slug, aggregateId, options)}`;
+async function downloadRemotePdf(url: string, filename: string, headers?: Record<string, string>): Promise<File> {
   const file = new File(Paths.cache, filename);
 
-  try {
-    if (file.exists) {
-      file.delete();
-    }
-
-    await File.downloadFileAsync(url, file, {
-      idempotent: true,
-      headers,
-    });
-  } catch (error) {
-    throw new Error(mapDocumentError(error, 'Не удалось получить PDF'));
+  if (file.exists) {
+    file.delete();
   }
+
+  await File.downloadFileAsync(url, file, {
+    idempotent: true,
+    headers,
+  });
 
   if (!file.exists) {
     throw new Error(`Не удалось сохранить PDF «${filename}»`);
@@ -63,31 +51,63 @@ async function downloadPdfToCache(
   return file;
 }
 
+async function downloadPdfFromApi(
+  slug: DocumentSlug,
+  aggregateId: string,
+  filename: string,
+  options?: { aggregateType?: DocumentAggregateType },
+): Promise<File> {
+  const headers = await getAuthHeaders();
+  const path = buildDocumentPdfPath(slug, aggregateId, options);
+  const url = `${getPublicApiBaseUrl()}${path}`;
+
+  try {
+    return await downloadRemotePdf(url, filename, headers);
+  } catch (error) {
+    throw new Error(mapDocumentError(error, 'Не удалось получить PDF'));
+  }
+}
+
 async function ensurePdfFile(
   slug: DocumentSlug,
   orderId: string,
   orderNumber?: string,
+  cachedDownloadUrl?: string,
 ): Promise<File> {
   const filename = buildDocumentFilename(slug, orderId, orderNumber);
+  const cachedUrl = cachedDownloadUrl?.trim();
 
-  try {
-    return await downloadPdfToCache(slug, orderId, filename);
-  } catch {
-    const bytes = await fetchWorkOrderDocumentPdf(slug, orderId);
-    return writePdfCacheFile(filename, bytes);
+  if (cachedUrl) {
+    try {
+      return await downloadRemotePdf(cachedUrl, filename);
+    } catch {
+      // Fall back to API redirect/stream path.
+    }
   }
+
+  return downloadPdfFromApi(slug, orderId, filename);
 }
 
 async function ensureWarrantyPdfFile(
   slug: DocumentSlug,
   warrantyId: string,
   serialCode?: string,
+  cachedDownloadUrl?: string,
 ): Promise<File> {
   const filename = buildDocumentFilename(slug, serialCode ?? warrantyId);
   const options = { aggregateType: 'warranty' as const };
+  const cachedUrl = cachedDownloadUrl?.trim();
+
+  if (cachedUrl) {
+    try {
+      return await downloadRemotePdf(cachedUrl, filename);
+    } catch {
+      // Fall back to API.
+    }
+  }
 
   try {
-    return await downloadPdfToCache(slug, warrantyId, filename, options);
+    return await downloadPdfFromApi(slug, warrantyId, filename, options);
   } catch {
     const bytes = await fetchDocumentPdf(slug, warrantyId, options);
     return writePdfCacheFile(filename, bytes);
@@ -98,8 +118,9 @@ export async function shareWorkOrderDocument(
   slug: DocumentSlug,
   orderId: string,
   orderNumber?: string,
+  cachedDownloadUrl?: string,
 ): Promise<void> {
-  const file = await ensurePdfFile(slug, orderId, orderNumber);
+  const file = await ensurePdfFile(slug, orderId, orderNumber, cachedDownloadUrl);
   const available = await Sharing.isAvailableAsync();
   if (!available) {
     throw new Error('На этом устройстве недоступен обмен файлами');
@@ -116,28 +137,19 @@ export async function printWorkOrderDocument(
   slug: DocumentSlug,
   orderId: string,
   orderNumber?: string,
+  cachedDownloadUrl?: string,
 ): Promise<void> {
-  const file = await ensurePdfFile(slug, orderId, orderNumber);
+  const file = await ensurePdfFile(slug, orderId, orderNumber, cachedDownloadUrl);
   await Print.printAsync({ uri: file.uri });
-}
-
-export async function saveWorkOrderDocument(
-  slug: DocumentSlug,
-  orderId: string,
-  orderNumber?: string,
-): Promise<string> {
-  const filename = buildDocumentFilename(slug, orderId, orderNumber);
-  const bytes = await fetchWorkOrderDocumentPdf(slug, orderId);
-  const file = writePdfDocumentFile(filename, bytes);
-  return file.uri;
 }
 
 export async function shareWarrantyDocument(
   slug: DocumentSlug,
   warrantyId: string,
   serialCode?: string,
+  cachedDownloadUrl?: string,
 ): Promise<void> {
-  const file = await ensureWarrantyPdfFile(slug, warrantyId, serialCode);
+  const file = await ensureWarrantyPdfFile(slug, warrantyId, serialCode, cachedDownloadUrl);
   const available = await Sharing.isAvailableAsync();
   if (!available) {
     throw new Error('На этом устройстве недоступен обмен файлами');
@@ -154,7 +166,8 @@ export async function printWarrantyDocument(
   slug: DocumentSlug,
   warrantyId: string,
   serialCode?: string,
+  cachedDownloadUrl?: string,
 ): Promise<void> {
-  const file = await ensureWarrantyPdfFile(slug, warrantyId, serialCode);
+  const file = await ensureWarrantyPdfFile(slug, warrantyId, serialCode, cachedDownloadUrl);
   await Print.printAsync({ uri: file.uri });
 }

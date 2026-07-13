@@ -57,6 +57,12 @@ function mapMotor(docId: string, data: Record<string, unknown>): MotorEntity | n
     updatedAt: toDateFromFirestore(data.updatedAt) ?? undefined,
     brandName: typeof data.brandName === 'string' ? data.brandName : '',
     engineCode: typeof data.engineCode === 'string' ? data.engineCode : '',
+    warehouseLocation:
+      typeof data.warehouseLocation === 'string' ? data.warehouseLocation : undefined,
+    primaryLocationId:
+      typeof data.primaryLocationId === 'string' ? data.primaryLocationId : undefined,
+    primaryLocationCode:
+      typeof data.primaryLocationCode === 'string' ? data.primaryLocationCode : undefined,
     status: status as MotorEntity['status'],
     reservedForWorkOrderId:
       typeof data.reservedForWorkOrderId === 'string' ? data.reservedForWorkOrderId : null,

@@ -78,7 +78,9 @@ export function hasSaveableContent(row: MotorGridRow): boolean {
     (row.brandName?.trim().length ?? 0) > 0 ||
     (row.engineCode?.trim().length ?? 0) > 0 ||
     row.quantity > 1 ||
-    row.transmission.trim().length > 0
+    row.transmission.trim().length > 0 ||
+    Boolean(row.warehouseLocation?.trim()) ||
+    Boolean(row.primaryLocationCode?.trim())
   );
 }
 
@@ -122,6 +124,8 @@ export function rowFieldValueByModelField(row: MotorGridRow, field: string | und
       return String(row.quantity ?? 1);
     case "transmission":
       return row.transmission ?? "";
+    case "warehouseLocation":
+      return row.primaryLocationCode?.trim() || row.warehouseLocation?.trim() || "";
     case "arrivalDate":
       return row.arrivalDate ? row.arrivalDate.toISOString().slice(0, 10) : "";
     case "soldDate":

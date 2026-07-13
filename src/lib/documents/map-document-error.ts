@@ -37,5 +37,21 @@ export function mapDocumentError(error: unknown, fallback = "Не удалось
     return "Не удалось сгенерировать PDF. Перезапустите dev-сервер (`npm run dev`) и попробуйте снова.";
   }
 
+  if (
+    message.includes("Load failed") ||
+    message.includes("Failed to fetch") ||
+    message.includes("NetworkError") ||
+    message.includes("CORS")
+  ) {
+    return "Не удалось скачать PDF (сеть/кэш). Нажмите «Обновить PDF» или попробуйте «Предпросмотр».";
+  }
+
+  if (
+    message.includes("пустым") ||
+    message.includes("не содержит данных для PDF")
+  ) {
+    return "PDF получился пустым. Нажмите «Обновить PDF» и скачайте снова через несколько секунд.";
+  }
+
   return message || fallback;
 }

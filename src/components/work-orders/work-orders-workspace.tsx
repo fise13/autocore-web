@@ -68,6 +68,7 @@ import { createPayrollTransactionRepository } from "@/infrastructure/firestore/p
 import { createVehicleRepository } from "@/infrastructure/firestore/vehicle-repository";
 import { generateWorkOrderDocuments } from "@/lib/documents/fetch-document-pdf";
 import { triggerWorkOrderEventProcessing } from "@/lib/work-orders/process-work-order-events";
+import { ensureWorkOrderDocuments } from "@/lib/work-orders/ensure-work-order-documents";
 import { notifyWorkOrderAvailable } from "@/lib/work-orders/notify-work-order-available";
 import { transitionWorkOrder } from "@/lib/work-orders/transition-work-order";
 import { STATUS_LABELS } from "@/components/work-orders/work-order-copy";
@@ -648,6 +649,7 @@ export function WorkOrdersWorkspace() {
         });
         setSelectedOrderId(editingOrderId);
         void notifyWorkOrderAvailable(editingOrderId).catch(() => undefined);
+        void ensureWorkOrderDocuments(editingOrderId);
       } else {
         const order = await createWorkOrderUseCase(workOrderRepository, domainEventRepository, {
           companyId,
@@ -656,6 +658,7 @@ export function WorkOrdersWorkspace() {
         });
         setSelectedOrderId(order.id);
         void triggerWorkOrderEventProcessing(order.id).catch(() => undefined);
+        void ensureWorkOrderDocuments(order.id);
         void notifyWorkOrderAvailable(order.id).catch(() => undefined);
       }
       resetComposer();
@@ -692,6 +695,7 @@ export function WorkOrdersWorkspace() {
     setError(null);
     try {
       await transitionWorkOrder(selectedOrder.id, nextStatus);
+      void ensureWorkOrderDocuments(selectedOrder.id);
       toast({
         title: STATUS_LABELS[nextStatus],
         description: `Заказ-наряд ${formatWorkOrderLabel(selectedOrder, workOrderDisplayIndex)} обновлён`,

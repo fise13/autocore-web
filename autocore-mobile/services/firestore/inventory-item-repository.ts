@@ -32,6 +32,10 @@ export function normalizeInventoryItem(item: InventoryItem): InventoryItem {
     brandName: item.brandName != null ? coerceInventoryString(item.brandName) : undefined,
     warehouseLocation:
       item.warehouseLocation != null ? coerceInventoryString(item.warehouseLocation) : undefined,
+    primaryLocationId:
+      item.primaryLocationId != null ? coerceInventoryString(item.primaryLocationId) : undefined,
+    primaryLocationCode:
+      item.primaryLocationCode != null ? coerceInventoryString(item.primaryLocationCode) : undefined,
     barcodes: item.barcodes.map((entry) => coerceInventoryString(entry)),
   };
 }
@@ -51,6 +55,10 @@ function mapItem(id: string, data: Record<string, unknown>): InventoryItem {
     brandName: data.brandName == null ? undefined : coerceInventoryString(data.brandName),
     warehouseLocation:
       data.warehouseLocation == null ? undefined : coerceInventoryString(data.warehouseLocation),
+    primaryLocationId:
+      data.primaryLocationId == null ? undefined : coerceInventoryString(data.primaryLocationId),
+    primaryLocationCode:
+      data.primaryLocationCode == null ? undefined : coerceInventoryString(data.primaryLocationCode),
     unit: coerceInventoryString(data.unit, 'шт'),
     sellPrice: data.sellPrice == null ? undefined : Number(data.sellPrice),
     purchasePrice: data.purchasePrice == null ? undefined : Number(data.purchasePrice),

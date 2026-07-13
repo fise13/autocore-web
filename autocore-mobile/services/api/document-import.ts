@@ -1,9 +1,11 @@
+import { createLocalFileFormData } from '@/lib/network/mobile-form-data';
 import { mobileApi } from '@/services/api/endpoints';
 import { mobileUpload } from '@/services/api/mobile-client';
 
 export type DocumentImportUploadResult = {
   id: string;
-  status: 'pending' | 'ready' | 'imported' | 'failed';
+  batchId?: string;
+  status: 'pending' | 'ready' | 'imported' | 'failed' | 'uploading' | 'processing' | 'extracted';
   previewDownloadUrl: string | null;
   originalDownloadUrl: string;
   width?: number;
@@ -13,15 +15,11 @@ export type DocumentImportUploadResult = {
 
 export async function uploadDocumentImport(
   uri: string,
-  filename = 'document.jpg',
-  mimeType = 'image/jpeg',
+  options?: { batchId?: string },
 ): Promise<DocumentImportUploadResult> {
-  const formData = new FormData();
-  formData.append('image', {
-    uri,
-    name: filename,
-    type: mimeType,
-  } as unknown as Blob);
-
-  return mobileUpload<DocumentImportUploadResult>(mobileApi.documentImports, formData);
+  const form = createLocalFileFormData('image', uri);
+  if (options?.batchId) {
+    form.append('batchId', options.batchId);
+  }
+  return mobileUpload<DocumentImportUploadResult>(mobileApi.documentImports, form);
 }

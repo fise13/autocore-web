@@ -16,10 +16,12 @@ import { useToast } from "@/components/ui/toast-provider";
 import { MotorsGridSkeleton } from "@/components/motors/motors-grid-skeleton";
 import { WarehouseAdjustmentDialog } from "@/components/warehouse/warehouse-adjustment-dialog";
 import { WarehouseBarcodePanel } from "@/components/warehouse/warehouse-barcode-panel";
+import { WarehouseBulkAssignLocationDialog } from "@/components/warehouse/warehouse-bulk-assign-location-dialog";
 import { WarehouseExcelGrid } from "@/components/warehouse/warehouse-excel-grid";
 import { WarehouseImportWizard } from "@/components/warehouse/import/warehouse-import-wizard";
 import { WarehouseImportHistoryPanel } from "@/components/warehouse/import/warehouse-import-history-panel";
 import { InventoryImportJob } from "@/domain/inventory-import";
+import { WarehouseLocationFilterBar } from "@/components/warehouse/warehouse-location-filter-bar";
 import { WarehouseMovementDrawer } from "@/components/warehouse/warehouse-movement-drawer";
 import { WarehouseReceiptDialog } from "@/components/warehouse/warehouse-receipt-dialog";
 import { WarehouseSaleDialog } from "@/components/warehouse/warehouse-sale-dialog";
@@ -34,6 +36,12 @@ import { useLifecyclePausable } from "@/hooks/use-lifecycle-pausable";
 import { can } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { filterWarehouseItems } from "@/lib/warehouse/warehouse-grid-data-store";
+import {
+  ALL_LOCATION_FILTER,
+  itemMatchesLocationFilter,
+  type WarehouseLocationFilter,
+} from "@/lib/warehouse/warehouse-location-filter";
+import { resolveItemLocationLabel } from "@/lib/warehouse/resolve-item-location-label";
 import {
   backfillInventoryTaxonomyUseCase,
   hasCompletedInventoryTaxonomyBackfill,
@@ -113,6 +121,9 @@ export function WarehouseWorkspace() {
   const activeWarehouse = warehouses.find((warehouse) => warehouse.id === activeWarehouseId) ?? null;
   const [activeItem, setActiveItem] = useState<InventoryItem | null>(null);
   const [dialog, setDialog] = useState<DialogKind | null>(null);
+  const [locationFilter, setLocationFilter] = useState<WarehouseLocationFilter>(ALL_LOCATION_FILTER);
+  const [assignItems, setAssignItems] = useState<InventoryItem[]>([]);
+  const [assignOpen, setAssignOpen] = useState(false);
   const [importResumeSession, setImportResumeSession] = useState<{
     jobId: string;
     rows: InventoryImportJob["rows"];
@@ -187,10 +198,15 @@ export function WarehouseWorkspace() {
     [activeWarehouseId, items, stockLevels, warehouses],
   );
   const scopedWarehouseItems = warehouseItems;
-  const filteredItems = useMemo(
-    () => filterWarehouseItems(scopedWarehouseItems, search),
-    [scopedWarehouseItems, search],
-  );
+  const filteredItems = useMemo(() => {
+    const bySearch = filterWarehouseItems(scopedWarehouseItems, search);
+    if (locationFilter.kind === "all") return bySearch;
+    return bySearch.filter((item) => itemMatchesLocationFilter(item, locationFilter));
+  }, [locationFilter, scopedWarehouseItems, search]);
+
+  useEffect(() => {
+    setLocationFilter(ALL_LOCATION_FILTER);
+  }, [activeWarehouseId]);
   const isGridReady = !itemsQuery.isBootstrapping;
   const warehouseSearchSuggestions = useMemo(
     () => buildWarehouseSearchSuggestions(scopedWarehouseItems),
@@ -260,7 +276,7 @@ export function WarehouseWorkspace() {
           item.sellPrice ?? "",
           item.supplierName ?? "",
           item.barcodes[0] ?? "",
-          item.warehouseLocation ?? "",
+          resolveItemLocationLabel(item),
           item.lowStockThreshold ?? "",
         ].join(","),
       );
@@ -407,27 +423,38 @@ export function WarehouseWorkspace() {
         )}
       >
         {isGridReady && activeWarehouseId ? (
-          <WarehouseExcelGrid
-            key={activeWarehouseId}
-            items={filteredItems}
-            companyId={companyId}
-            canEdit={canEdit}
-            repository={itemRepository}
-            stockLevelRepository={stockLevelRepository}
-            movementRepository={movementRepository}
-            warehouseRepository={warehouseRepository}
-            financialRepository={financialRepository}
-            activeWarehouseId={activeWarehouseId}
-            actorUserId={actorUserId}
-            onReceipt={(item) => openDialog("receipt", item)}
-            onAdjust={(item) => openDialog("adjust", item)}
-            onSale={(item) => openDialog("sale", item)}
-            onTransfer={(item) => openDialog("transfer", item)}
-            onHistory={(item) => openDialog("history", item)}
-            onCloudPendingChange={setCloudPending}
-            onDirtyCountChange={setDirtyCount}
-            externalInteractionLocked={dialog !== null}
-          />
+          <>
+            <WarehouseLocationFilterBar
+              items={scopedWarehouseItems}
+              filter={locationFilter}
+              onChange={setLocationFilter}
+            />
+            <WarehouseExcelGrid
+              key={activeWarehouseId}
+              items={filteredItems}
+              companyId={companyId}
+              canEdit={canEdit}
+              repository={itemRepository}
+              stockLevelRepository={stockLevelRepository}
+              movementRepository={movementRepository}
+              warehouseRepository={warehouseRepository}
+              financialRepository={financialRepository}
+              activeWarehouseId={activeWarehouseId}
+              actorUserId={actorUserId}
+              onReceipt={(item) => openDialog("receipt", item)}
+              onAdjust={(item) => openDialog("adjust", item)}
+              onSale={(item) => openDialog("sale", item)}
+              onTransfer={(item) => openDialog("transfer", item)}
+              onHistory={(item) => openDialog("history", item)}
+              onAssignLocation={(items) => {
+                setAssignItems(items);
+                setAssignOpen(true);
+              }}
+              onCloudPendingChange={setCloudPending}
+              onDirtyCountChange={setDirtyCount}
+              externalInteractionLocked={dialog !== null || assignOpen}
+            />
+          </>
         ) : isGridReady ? (
           <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
             Выберите или создайте склад в меню слева
@@ -627,6 +654,30 @@ export function WarehouseWorkspace() {
           setDialog("import");
         }}
       />
+
+      {activeWarehouseId ? (
+        <WarehouseBulkAssignLocationDialog
+          open={assignOpen}
+          onOpenChange={(open) => {
+            setAssignOpen(open);
+            if (!open) setAssignItems([]);
+          }}
+          items={assignItems}
+          companyId={companyId}
+          warehouseId={activeWarehouseId}
+          actorUserId={actorUserId}
+          onDone={() => {
+            toast({
+              title: "Место назначено",
+              description:
+                assignItems.length > 1
+                  ? `Обновлено позиций: ${assignItems.length}`
+                  : undefined,
+              durationMs: 2800,
+            });
+          }}
+        />
+      ) : null}
     </div>
   );
 }

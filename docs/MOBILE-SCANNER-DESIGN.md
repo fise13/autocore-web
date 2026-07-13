@@ -43,7 +43,8 @@ Ordered rules (first match wins — order matters, cost is zero):
 autocore://o/{orderId}      → work order
 autocore://p/{itemId}       → inventory item
 autocore://c/{clientId}     → client
-autocore://s/{shelfCode}    → warehouse shelf
+autocore://loc/{locationId} → warehouse location (canonical QR on every label)
+autocore://s/{locationId}   → warehouse location (legacy alias, same as loc)
 autocore://i/{invoiceId}    → invoice
 autocore://m/{motorId}      → motor / engine
 ```

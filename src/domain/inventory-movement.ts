@@ -9,6 +9,8 @@ export const MOVEMENT_TYPES = [
   "adjustment",
   "return_in",
   "reversal",
+  /** Same-warehouse bin move — does not change warehouse onHand totals. */
+  "relocation",
 ] as const;
 
 export type MovementType = (typeof MOVEMENT_TYPES)[number];
@@ -40,6 +42,9 @@ export type InventoryMovement = {
   beforeReserved: number;
   afterReserved: number;
 
+  fromLocationId?: string;
+  toLocationId?: string;
+
   referenceType?: MovementReferenceType;
   referenceId?: string;
   documentId?: string;
@@ -69,4 +74,6 @@ export type RecordMovementInput = {
   reversalOfMovementId?: string;
   actorUserId: string;
   adjustmentDirection?: "increase" | "decrease";
+  fromLocationId?: string;
+  toLocationId?: string;
 };

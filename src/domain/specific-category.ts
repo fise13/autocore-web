@@ -29,4 +29,8 @@ export type SpecificRecordEntity = {
   rowIndex: number;
   data: Record<string, string>;
   companyId: string;
+  /** Dual-read with data.warehouseLocation / data["Место"]. */
+  warehouseLocation?: string;
+  primaryLocationId?: string;
+  primaryLocationCode?: string;
 };

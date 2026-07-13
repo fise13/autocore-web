@@ -29,6 +29,9 @@ export type InventoryItem = {
   brandName?: string;
   supplierName?: string;
   warehouseLocation?: string;
+  /** Preferred pick face — dual-read with warehouseLocation until balances land. */
+  primaryLocationId?: string;
+  primaryLocationCode?: string;
   notes?: string;
 
   categoryId?: string;
@@ -74,6 +77,8 @@ export type UpsertInventoryItemInput = {
   brandName?: string;
   supplierName?: string;
   warehouseLocation?: string;
+  primaryLocationId?: string;
+  primaryLocationCode?: string;
   notes?: string;
   categoryId?: string;
   categoryPath?: string[];

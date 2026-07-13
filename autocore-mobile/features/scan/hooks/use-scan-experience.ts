@@ -2,7 +2,7 @@ import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { Linking } from 'react-native';
-import { useRouter, type Href } from 'expo-router';
+import { useIsFocused, useRouter, type Href } from 'expo-router';
 
 import { toast } from '@/components/ui';
 import { useAddToOrderFlow } from '@/features/orders/hooks/use-add-to-order-flow';
@@ -13,7 +13,9 @@ import {
   useMobileScanResolve,
   useSession,
 } from '@/hooks';
+import { useMobileRelocate, useMobileAssignAssetLocation } from '@/hooks/use-mobile-relocate';
 import { rememberRecentScan } from '@/lib/scan/recent-scans';
+import { readScanResolveCache, writeScanResolveCache } from '@/lib/scan/scan-resolve-cache';
 import { scanNavigationGuard } from '@/lib/navigation/navigation-guard';
 import { haptics } from '@/theme';
 import {
@@ -26,8 +28,10 @@ import {
 } from '@/services/scan';
 
 import { entityLinkLabel, openEntityLink } from '../lib/open-entity';
-import { isHttpUrl } from '../lib/classify-payload';
+import { classifyScanPayload, isHttpUrl } from '../lib/classify-payload';
+import { interpretRelocateScan } from '../lib/interpret-relocate-scan';
 import type { ParsedDocument } from '../lib/parse-document';
+import { relocatePendingStore } from '../lib/relocate-pending-store';
 
 function useDevMockFallback(): boolean {
   return __DEV__;
@@ -44,12 +48,15 @@ function sheetPresentationKey(state: ScanServiceSnapshot): string | null {
 
 export function useScanExperience(initialContext?: ScanContext) {
   const router = useRouter();
+  const isFocused = useIsFocused();
   const { can } = useSession();
   const allowMock = useDevMockFallback();
   const scanResolve = useMobileScanResolve();
   const scanDisambiguate = useMobileScanDisambiguate();
   const scanOcr = useMobileScanOcr();
   const scanFeedback = useMobileScanFeedback();
+  const relocate = useMobileRelocate();
+  const assignAsset = useMobileAssignAssetLocation();
   const addToOrderFlow = useAddToOrderFlow();
 
   const productSheetRef = useRef<BottomSheetModal>(null);
@@ -57,6 +64,14 @@ export function useScanExperience(initialContext?: ScanContext) {
   const notFoundSheetRef = useRef<BottomSheetModal>(null);
   const documentSheetRef = useRef<BottomSheetModal>(null);
   const codePickerSheetRef = useRef<BottomSheetModal>(null);
+  const moveSheetRef = useRef<BottomSheetModal>(null);
+  const isFocusedRef = useRef(isFocused);
+  isFocusedRef.current = isFocused;
+  const relocateBusyRef = useRef(false);
+  const relocateMutateRef = useRef(relocate.mutateAsync);
+  relocateMutateRef.current = relocate.mutateAsync;
+  const assignAssetMutateRef = useRef(assignAsset.mutateAsync);
+  assignAssetMutateRef.current = assignAsset.mutateAsync;
 
   const [snapshot, setSnapshot] = useState<ScanServiceSnapshot>(() => ({
     phase: 'idle',
@@ -97,8 +112,13 @@ export function useScanExperience(initialContext?: ScanContext) {
   const serviceRef = useRef<ScanService | null>(null);
   if (!serviceRef.current) {
     serviceRef.current = new ScanService({
-      resolveInventory: async (barcode, source) =>
-        scanResolveRef.current.mutateAsync({ barcode, source }),
+      resolveInventory: async (barcode, source) => {
+        const cached = readScanResolveCache(barcode);
+        if (cached) return cached;
+        const result = await scanResolveRef.current.mutateAsync({ barcode, source });
+        if (result.found) writeScanResolveCache(barcode, result);
+        return result;
+      },
       disambiguate: async (barcode) => scanDisambiguateRef.current.mutateAsync(barcode),
       resolveOcr: async (uri) => scanOcrRef.current.mutateAsync(uri),
       feedbackPick: async ({ barcode, itemId, score }) => {
@@ -149,6 +169,8 @@ export function useScanExperience(initialContext?: ScanContext) {
     (sheetRef: RefObject<BottomSheetModal | null>, afterClose?: () => void) => {
       if (dismissingRef.current) return;
       dismissingRef.current = true;
+      // Clear immediately so a fast re-scan can present again (avoids stuck key).
+      presentedKeyRef.current = null;
       afterDismissRef.current = afterClose ?? null;
       sheetRef.current?.dismiss();
 
@@ -156,13 +178,164 @@ export function useScanExperience(initialContext?: ScanContext) {
       setTimeout(() => {
         if (!dismissingRef.current) return;
         handleSheetClosed();
-      }, 420);
+      }, 320);
     },
     [handleSheetClosed],
   );
 
+  /** Force-close every scan modal + clear service sheet state (blur / leave tab). */
+  const dismissAllSheets = useCallback(() => {
+    afterDismissRef.current = null;
+    dismissingRef.current = false;
+    presentedKeyRef.current = null;
+    setShowConfirmFlash(false);
+    productSheetRef.current?.dismiss();
+    candidatesSheetRef.current?.dismiss();
+    notFoundSheetRef.current?.dismiss();
+    documentSheetRef.current?.dismiss();
+    codePickerSheetRef.current?.dismiss();
+    moveSheetRef.current?.dismiss();
+    relocatePendingStore.clear();
+    service.dismissSheet();
+  }, [service]);
+
+  const completePendingRelocateFromScan = useCallback(
+    async (payload: string) => {
+      const pending = relocatePendingStore.get();
+      if (!pending || relocateBusyRef.current) return true;
+
+      // Fill location: next scan should be a motor (or specific) entity QR.
+      if (pending.kind === 'fill-location') {
+        const classified = classifyScanPayload(payload);
+        if (classified.type !== 'entity-link' || classified.entity !== 'motor') {
+          toast({
+            title: 'Сканируйте двигатель',
+            description: `Размещаем в ${pending.displayCode}`,
+            variant: 'warning',
+          });
+          service.dismissSheet();
+          return true;
+        }
+
+        relocateBusyRef.current = true;
+        try {
+          const result = await assignAssetMutateRef.current({
+            entityType: 'motor',
+            entityId: classified.id,
+            toLocationId: pending.locationId,
+            warehouseId: pending.warehouseId,
+          });
+          relocatePendingStore.clear();
+          haptics.success();
+          void rememberRecentScan({
+            payload,
+            label: `→ ${result.toLocationCode}`,
+            itemId: classified.id,
+          });
+          toast({
+            title: 'Размещено',
+            description: `${classified.id} → ${result.toLocationCode}`,
+            variant: 'success',
+          });
+          service.dismissSheet();
+        } catch (error) {
+          toast({
+            title: 'Не удалось разместить',
+            description: error instanceof Error ? error.message : undefined,
+            variant: 'destructive',
+          });
+          service.dismissSheet();
+        } finally {
+          relocateBusyRef.current = false;
+        }
+        return true;
+      }
+
+      const target = interpretRelocateScan(payload);
+      if (target.kind === 'reject') {
+        toast({
+          title: 'Нужно место',
+          description: target.reason,
+          variant: 'warning',
+        });
+        service.dismissSheet();
+        return true;
+      }
+
+      relocateBusyRef.current = true;
+      try {
+        if (pending.kind === 'assign-asset') {
+          const result = await assignAssetMutateRef.current({
+            entityType: pending.entityType,
+            entityId: pending.entityId,
+            toLocationId: target.kind === 'locationId' ? target.id : undefined,
+            toLocationCode: target.kind === 'locationCode' ? target.code : undefined,
+          });
+          relocatePendingStore.clear();
+          haptics.success();
+          void rememberRecentScan({
+            payload: target.payload,
+            label: `${pending.title} → ${result.toLocationCode}`,
+            itemId: pending.entityId,
+          });
+          toast({
+            title: 'Размещено',
+            description: `${pending.title} → ${result.toLocationCode}`,
+            variant: 'success',
+          });
+          service.dismissSheet();
+          return true;
+        }
+
+        const result = await relocateMutateRef.current({
+          itemId: pending.itemId,
+          warehouseId: pending.warehouseId,
+          toLocationId: target.kind === 'locationId' ? target.id : undefined,
+          toLocationCode: target.kind === 'locationCode' ? target.code : undefined,
+          quantity: pending.quantity,
+          reason: 'Перемещение со сканера',
+        });
+        relocatePendingStore.clear();
+        haptics.success();
+        void rememberRecentScan({
+          payload: target.payload,
+          label: `${pending.itemTitle} → ${result.toLocationCode}`,
+          itemId: pending.itemId,
+        });
+        toast({
+          title: 'Перемещено',
+          description: `${pending.itemTitle} → ${result.toLocationCode}`,
+          variant: 'success',
+        });
+        service.dismissSheet();
+      } catch (error) {
+        toast({
+          title: 'Не удалось переместить',
+          description: error instanceof Error ? error.message : undefined,
+          variant: 'destructive',
+        });
+        service.dismissSheet();
+      } finally {
+        relocateBusyRef.current = false;
+      }
+      return true;
+    },
+    [service],
+  );
+
   const handleInstantOutcome = useCallback(
     (outcome: ScanOutcome) => {
+      if (relocatePendingStore.get()) {
+        const payload =
+          outcome.kind === 'foreign-url'
+            ? outcome.url
+            : 'payload' in outcome
+              ? outcome.payload
+              : snapshotRef.current.pendingPayload ?? '';
+        void completePendingRelocateFromScan(payload);
+        return;
+      }
+
       if (outcome.kind === 'navigate-entity') {
         if (scanNavigationGuard.isLocked) return;
         scanNavigationGuard.tryNavigate(() => {
@@ -192,13 +365,14 @@ export function useScanExperience(initialContext?: ScanContext) {
       }
 
       if (outcome.kind === 'foreign-url') {
+        if (!isFocusedRef.current) return;
         const key = `not-found:${outcome.url}`;
         if (presentedKeyRef.current === key) return;
         presentedKeyRef.current = key;
         notFoundSheetRef.current?.present();
       }
     },
-    [router, service],
+    [completePendingRelocateFromScan, router, service],
   );
 
   const handleOrderOutcome = useCallback(
@@ -231,26 +405,67 @@ export function useScanExperience(initialContext?: ScanContext) {
 
   const presentSheetForSnapshot = useCallback(
     (state: ScanServiceSnapshot) => {
+      if (!isFocusedRef.current) return;
       if (!state.sheetKind || state.phase !== 'confirmed') return;
 
       const key = sheetPresentationKey(state);
       if (!key || presentedKeyRef.current === key) return;
 
+      // A new confirmed result wins over an in-flight dismiss (common after close + immediate re-scan).
+      if (dismissingRef.current) {
+        dismissingRef.current = false;
+        afterDismissRef.current = null;
+      }
+
       if (state.context.mode === 'order' && state.outcome) {
         if (handleOrderOutcome(state.outcome)) return;
       }
 
+      // Avoid presenting empty shells (minHeight: 1) — remount + stuck Gorhom backdrop.
+      if (state.sheetKind === 'product' && !state.activeResult) return;
+      if (state.sheetKind === 'not-found' && !state.pendingPayload) return;
+      if (state.sheetKind === 'document' && state.outcome?.kind !== 'document') return;
+      if (state.sheetKind === 'code-picker' && !(state.pendingDetections?.length)) return;
+
+      const previousKey = presentedKeyRef.current;
+      const previousKind = previousKey?.split(':')[0] ?? null;
+      const replacingOpenSheet =
+        Boolean(previousKind) && previousKind === state.sheetKind && previousKey !== key;
+
       presentedKeyRef.current = key;
 
-      if (state.sheetKind === 'product') productSheetRef.current?.present();
-      else if (state.sheetKind === 'candidates') candidatesSheetRef.current?.present();
-      else if (state.sheetKind === 'not-found') notFoundSheetRef.current?.present();
-      else if (state.sheetKind === 'document') documentSheetRef.current?.present();
-      else if (state.sheetKind === 'code-picker') codePickerSheetRef.current?.present();
+      const presentWithRetry = (sheetRef: RefObject<BottomSheetModal | null>, attempt = 0) => {
+        const modal = sheetRef.current;
+        if (modal) {
+          // Replacing content in an already-open sheet — snap up, skip full re-present.
+          if (replacingOpenSheet) {
+            try {
+              modal.snapToIndex(0);
+            } catch {
+              modal.present();
+            }
+            return;
+          }
+          modal.present();
+          return;
+        }
+        if (attempt >= 4) {
+          // Ref never ready — clear key so the next effect/snapshot can retry.
+          if (presentedKeyRef.current === key) presentedKeyRef.current = null;
+          return;
+        }
+        requestAnimationFrame(() => presentWithRetry(sheetRef, attempt + 1));
+      };
+
+      if (state.sheetKind === 'product') presentWithRetry(productSheetRef);
+      else if (state.sheetKind === 'candidates') presentWithRetry(candidatesSheetRef);
+      else if (state.sheetKind === 'not-found') presentWithRetry(notFoundSheetRef);
+      else if (state.sheetKind === 'document') presentWithRetry(documentSheetRef);
+      else if (state.sheetKind === 'code-picker') presentWithRetry(codePickerSheetRef);
 
       setShowConfirmFlash(true);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setTimeout(() => setShowConfirmFlash(false), 280);
+      setTimeout(() => setShowConfirmFlash(false), 220);
     },
     [handleOrderOutcome],
   );
@@ -259,11 +474,21 @@ export function useScanExperience(initialContext?: ScanContext) {
     const state = snapshot;
 
     if (state.phase === 'confirmed' && state.sheetKind === 'code-picker') {
+      if (relocatePendingStore.get()) {
+        const first = state.pendingDetections?.[0]?.payload;
+        if (first) void completePendingRelocateFromScan(first);
+        return;
+      }
       presentSheetForSnapshot(state);
       return;
     }
 
     if (!state.outcome) return;
+
+    if (relocatePendingStore.get() && state.pendingPayload) {
+      void completePendingRelocateFromScan(state.pendingPayload);
+      return;
+    }
 
     if (
       state.outcome.kind === 'navigate-entity' ||
@@ -288,6 +513,7 @@ export function useScanExperience(initialContext?: ScanContext) {
       presentSheetForSnapshot(state);
     }
   }, [
+    completePendingRelocateFromScan,
     handleInstantOutcome,
     presentSheetForSnapshot,
     snapshot.outcome,
@@ -343,6 +569,7 @@ export function useScanExperience(initialContext?: ScanContext) {
             return;
           }
 
+          if (!isFocusedRef.current) return;
           presentedKeyRef.current = `product:${payload}`;
           productSheetRef.current?.present();
           toast({ title: 'Запомним выбор для этого кода', variant: 'success' });
@@ -445,15 +672,14 @@ export function useScanExperience(initialContext?: ScanContext) {
     });
   }, [dismissSheet, router]);
 
-  const cameraActive =
-    snapshot.phase === 'idle' || snapshot.phase === 'tracking';
+  const scanEnabled = !ocrBusy;
 
   return {
     snapshot,
     parsedDocument,
     isAiLoading,
     showConfirmFlash,
-    cameraActive: cameraActive && !ocrBusy,
+    scanEnabled,
     ocrBusy,
     cameraLayout,
     setCameraLayout,
@@ -461,6 +687,7 @@ export function useScanExperience(initialContext?: ScanContext) {
     onDetections,
     onSheetClosed: handleSheetClosed,
     dismissSheet,
+    dismissAllSheets,
     handlePickCandidate,
     handlePickDetectedCode,
     handleTryAi,
@@ -475,6 +702,7 @@ export function useScanExperience(initialContext?: ScanContext) {
     notFoundSheetRef,
     documentSheetRef,
     codePickerSheetRef,
+    moveSheetRef,
     service,
     setOcrBusy,
     setParsedDocument,

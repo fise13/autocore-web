@@ -8,6 +8,7 @@ export const MOTOR_GRID_COLUMN_WIDTHS = {
   notes: 228,
   quantity: 72,
   transmission: 124,
+  warehouseLocation: 140,
   arrivalDate: 132,
   soldDate: 132,
   action: 110,

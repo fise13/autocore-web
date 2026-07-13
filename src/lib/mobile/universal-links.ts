@@ -8,7 +8,13 @@ export const MOBILE_UNIVERSAL_LINKS_HOST = "app.myautocore.com";
 export const MOBILE_IOS_APP_ID = `${MOBILE_IOS_TEAM_ID}.${MOBILE_IOS_BUNDLE_ID}`;
 
 /** Paths opened in the native app instead of Safari. */
-export const MOBILE_UNIVERSAL_LINK_PATHS = ["/invite/*", "/join", "/join?*"] as const;
+export const MOBILE_UNIVERSAL_LINK_PATHS = [
+  "/invite/*",
+  "/join",
+  "/join?*",
+  "/import",
+  "/import?*",
+] as const;
 
 export function buildAppleAppSiteAssociation(): Record<string, unknown> {
   return {
@@ -21,6 +27,8 @@ export function buildAppleAppSiteAssociation(): Record<string, unknown> {
             { "/": "/invite/*" },
             { "/": "/join", "?": { token: "?*" } },
             { "/": "/join", "?": { invite: "?*" } },
+            { "/": "/import", "?": { batchId: "?*" } },
+            { "/": "/import" },
           ],
         },
         // Legacy iOS fallback

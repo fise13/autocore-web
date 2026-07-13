@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { processWorkOrderEventsUseCase } from "@/application/use-cases/process-work-order-events.server";
+import { kickDocumentQueueWorker } from "@/lib/documents/engine/kick-document-queue";
 import {
   assertOrderCompanyAccess,
   DocumentAccessError,
@@ -36,14 +37,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
       actorUserId: access.uid,
     });
 
-    void fetch(`${request.nextUrl.origin}/api/documents/process-queue`, {
-      method: "POST",
-      headers: {
-        Authorization: request.headers.get("authorization") ?? "",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ jobId: result.jobId }),
-    }).catch(() => undefined);
+    if (result.jobId) {
+      await kickDocumentQueueWorker({
+        origin: request.nextUrl.origin,
+        companyId: access.companyId,
+        jobId: result.jobId,
+        authorization: request.headers.get("authorization"),
+      });
+    }
 
     return NextResponse.json(result);
   } catch (error) {

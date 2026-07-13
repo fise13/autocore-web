@@ -17,6 +17,7 @@ function mapJob(id: string, data: Record<string, unknown>): DocumentGenerationJo
     aggregateId: String(data.aggregateId ?? ""),
     requestedSlugs: Array.isArray(data.requestedSlugs) ? (data.requestedSlugs as DocumentGenerationJob["requestedSlugs"]) : [],
     completedSlugs: Array.isArray(data.completedSlugs) ? (data.completedSlugs as DocumentGenerationJob["completedSlugs"]) : [],
+    failedSlugs: Array.isArray(data.failedSlugs) ? (data.failedSlugs as DocumentGenerationJob["failedSlugs"]) : [],
     triggerEventId: typeof data.triggerEventId === "string" ? data.triggerEventId : undefined,
     status: (data.status as DocumentGenerationJob["status"]) ?? "pending",
     attempts: Number(data.attempts ?? 0),

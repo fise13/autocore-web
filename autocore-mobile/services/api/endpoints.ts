@@ -16,6 +16,11 @@ export const mobileApi = {
   inventoryQuickReceive: '/api/mobile/inventory/quick-receive',
   inventoryQuickAdjust: '/api/mobile/inventory/quick-adjust',
   inventoryCreateItem: '/api/mobile/inventory/create-item',
+  inventoryRelocate: '/api/mobile/inventory/relocate',
+  inventoryLocations: '/api/mobile/inventory/locations',
+  inventoryLocation: (locationId: string) =>
+    `/api/mobile/inventory/locations/${encodeURIComponent(locationId)}`,
+  assetsAssignLocation: '/api/mobile/assets/assign-location',
   notificationsInbox: '/api/mobile/notifications/inbox',
   notificationsPreferences: '/api/mobile/notifications/preferences',
   notificationsRegisterDevice: '/api/mobile/notifications/register-device',

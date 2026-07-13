@@ -51,7 +51,7 @@ import {
   DocumentSectionModel,
   DocumentLineItem,
 } from "@/lib/documents/render-model/types";
-import { formatMotorDisplayName, formatMotorLineLabel } from "@/lib/motors/format-motor-display-name";
+import { formatMotorDisplayName, formatMotorLineLabel, formatMotorLineSubtitle } from "@/lib/motors/format-motor-display-name";
 
 function slugToVariant(slug: DocumentSlug): DocumentTemplateVariant {
   return slug as DocumentTemplateVariant;
@@ -81,10 +81,12 @@ function buildUnifiedLineItems(context: DocumentContext): DocumentLineItem[] {
     });
   }
   for (const line of order.motorLines) {
+    const marks = (context.motorLineMarks?.[line.id] ?? []).filter(Boolean);
+    const markSuffix = marks.length > 0 ? ` · ${marks.join(" · ")}` : "";
     rows.push({
       id: line.id,
       title: formatMotorLineLabel(line),
-      subtitle: motorSale ? "Контрактный двигатель" : "Двигатель",
+      subtitle: `${motorSale ? "Контрактный двигатель" : "Двигатель"}${markSuffix}`,
       quantity: "1",
       amount: formatDocumentMoney(line.unitPrice),
     });
@@ -128,6 +130,9 @@ function buildSections(
   const profile = classifyServiceOrder(context);
   const motorLine = documentPrimaryMotor(context);
   const motorEntity = documentPrimaryMotorEntity(context);
+  const motorMarks = motorLine ? context.motorLineMarks?.[motorLine.id] ?? [] : [];
+  const motorMarkLabel = motorMarks.length > 0 ? motorMarks.join(" · ") : null;
+  const transmissionValue = motorEntity?.transmission?.trim() || motorMarkLabel || "";
   const executorName = documentAssigneeSummary(context);
   const documentDate = formatDocumentDate(documentOrderDate(context));
   const mileage = order.mileage || vehicle?.currentMileage || 0;
@@ -164,13 +169,18 @@ function buildSections(
         amount: line.amount,
       };
     }),
-    ...order.motorLines.map((line) => ({
-      id: line.id,
-      title: formatMotorLineLabel(line),
-      subtitle: "Двигатель",
-      quantity: "1",
-      amount: formatDocumentMoney(line.unitPrice),
-    })),
+    ...order.motorLines.map((line) => {
+      const marks = context.motorLineMarks?.[line.id];
+      const base = "Двигатель";
+      const markSuffix = (marks ?? []).filter(Boolean).join(" · ");
+      return {
+        id: line.id,
+        title: formatMotorLineLabel(line),
+        subtitle: markSuffix ? `${base} · ${markSuffix}` : base,
+        quantity: "1",
+        amount: formatDocumentMoney(line.unitPrice),
+      };
+    }),
   ];
 
   const sections: DocumentSectionModel[] = [];
@@ -200,7 +210,10 @@ function buildSections(
         break;
       case "motor_spotlight":
         if (motorLine) {
-          const displayName = formatMotorLineLabel(motorLine, { includeSerial: true });
+          const displayName = formatMotorLineLabel(motorLine, {
+            includeSerial: true,
+            marks: motorMarks,
+          });
           sections.push({
             key: "motor_spotlight",
             displayName,
@@ -210,6 +223,7 @@ function buildSections(
               ? [
                   { label: "Марка / код", value: [motorLine.brandName, motorLine.engineCode].filter(Boolean).join(" ") },
                   { label: "Комплектация", value: motorLine.configuration || "—" },
+                  ...(motorMarkLabel ? [{ label: "Пометка", value: motorMarkLabel }] : []),
                   { label: "Стоимость", value: formatDocumentMoney(motorLine.unitPrice) },
                   { label: "Дата продажи", value: documentDate },
                 ]
@@ -218,7 +232,7 @@ function buildSections(
                   { label: "VIN", value: order.vin || vehicle?.vin || "—" },
                   {
                     label: "Операция",
-                    value: motorLine.outcome === "install" ? "Установка" : "Продажа",
+                    value: formatMotorLineSubtitle(motorLine.outcome, motorMarks),
                   },
                   {
                     label: "Пробег ДВС",
@@ -269,24 +283,25 @@ function buildSections(
                   { label: "Серийный номер", value: motorLine.serialCode },
                   { label: "Марка / код", value: [motorLine.brandName, motorLine.engineCode].filter(Boolean).join(" ") },
                   { label: "Комплектация", value: motorLine.configuration || "—" },
-                  { label: "Коробка передач", value: motorEntity?.transmission?.trim() || "—" },
+                  { label: "Коробка передач", value: transmissionValue || "—" },
                   { label: "Стоимость", value: formatDocumentMoney(motorLine.unitPrice) },
                 ]
               : [
                   { label: "Номер", value: motorLine.serialCode },
                   { label: "Модель", value: [motorLine.brandName, motorLine.engineCode].filter(Boolean).join(" ") },
                   { label: "Комплектация", value: motorLine.configuration || "—" },
+                  ...(motorMarkLabel ? [{ label: "Пометка", value: motorMarkLabel }] : []),
                   { label: "Стоимость", value: formatDocumentMoney(motorLine.unitPrice) },
                 ],
           });
         }
         break;
       case "transmission":
-        if (motorEntity?.transmission?.trim()) {
+        if (transmissionValue) {
           sections.push({
             key: "transmission",
             label: "Коробка передач",
-            value: motorEntity.transmission,
+            value: transmissionValue,
           });
         }
         break;

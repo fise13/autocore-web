@@ -1,11 +1,12 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/authentication/auth-provider';
 import { SettingsLinkRow, Text } from '@/components/ui';
-import { useCompanySubscription, useSession, useTheme } from '@/hooks';
+import { useCompanySubscription, useModalBottomSheet, useSession, useTheme } from '@/hooks';
 import { subscriptionPlanLabel } from '@/lib/billing/format-renewal';
 import { resolveActiveCompanyName } from '@/lib/resolve-active-company-name';
 import { formatRole } from '@/lib/team/format';
@@ -23,26 +24,43 @@ type CompanySwitcherSheetProps = {
 export function CompanySwitcherSheet({ open, onClose }: CompanySwitcherSheetProps) {
   const router = useRouter();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const sheetRef = useRef<BottomSheetModal>(null);
+  const sheet = useModalBottomSheet();
   const { firebaseUser, memberships, refreshProfile } = useAuth();
   const { profile } = useSession();
   const { isPro } = useCompanySubscription(profile?.companyId);
   const snapPoints = useMemo(() => ['42%', '68%'], []);
 
-  if (!open) return null;
+  useEffect(() => {
+    if (open) {
+      sheetRef.current?.present();
+      return;
+    }
+    sheetRef.current?.dismiss();
+  }, [open]);
+
+  const contentStyle = useMemo(
+    () => ({
+      ...styles.content,
+      paddingBottom: Math.max(insets.bottom, rhythm.section),
+    }),
+    [insets.bottom],
+  );
 
   return (
-    <BottomSheet
+    <BottomSheetModal
+      ref={sheetRef}
+      {...sheet.sheetLayout}
       index={0}
       snapPoints={snapPoints}
       enablePanDownToClose
-      onClose={onClose}
-      backdropComponent={(props) => (
-        <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} />
-      )}
-      backgroundStyle={{ backgroundColor: colors.card }}
-      handleIndicatorStyle={{ backgroundColor: colors.mutedForeground }}
+      onDismiss={onClose}
+      backdropComponent={sheet.renderBackdrop}
+      backgroundStyle={sheet.backgroundStyle}
+      handleIndicatorStyle={sheet.handleIndicatorStyle}
     >
-      <BottomSheetScrollView contentContainerStyle={styles.content}>
+      <BottomSheetScrollView contentContainerStyle={contentStyle}>
         <View style={styles.header}>
           <Text variant="body" style={styles.headerTitle}>
             Рабочие пространства
@@ -102,14 +120,13 @@ export function CompanySwitcherSheet({ open, onClose }: CompanySwitcherSheetProp
           />
         </View>
       </BottomSheetScrollView>
-    </BottomSheet>
+    </BottomSheetModal>
   );
 }
 
 const styles = StyleSheet.create({
   content: {
     paddingHorizontal: rhythm.pad,
-    paddingBottom: rhythm.section,
     gap: rhythm.stack,
   },
   header: {

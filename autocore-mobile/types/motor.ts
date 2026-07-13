@@ -19,6 +19,9 @@ export type MotorEntity = {
   updatedAt?: Date;
   brandName?: string;
   engineCode?: string;
+  warehouseLocation?: string;
+  primaryLocationId?: string;
+  primaryLocationCode?: string;
   status?: MotorStatus;
   reservedForWorkOrderId?: string | null;
   installedOnVehicleId?: string | null;

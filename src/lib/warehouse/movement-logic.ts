@@ -63,6 +63,9 @@ export function applyMovementToStock(
       }
       break;
     }
+    case "relocation":
+      // Warehouse totals unchanged — location balances are updated separately.
+      break;
     case "reversal":
       throw new Error("reversal должен вычисляться из исходного движения");
     default:
@@ -102,6 +105,8 @@ export function reversalTypeFor(original: MovementType): MovementType {
       return "return_in";
     case "adjustment":
       return "adjustment";
+    case "relocation":
+      return "relocation";
     default:
       return "adjustment";
   }

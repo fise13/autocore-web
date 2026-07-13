@@ -105,6 +105,29 @@ async function recordInventoryMovementAdmin(params: {
   return movementRef.id;
 }
 
+async function resolveWarehouseIdForEvent(
+  companyId: string,
+  payloadWarehouseId: unknown,
+): Promise<string | null> {
+  const candidate =
+    typeof payloadWarehouseId === "string" && payloadWarehouseId.trim()
+      ? payloadWarehouseId.trim()
+      : null;
+
+  if (candidate) {
+    const db = getAdminFirestore();
+    const snap = await db.collection("warehouses").doc(candidate).get();
+    if (snap.exists) {
+      const data = snap.data() as Record<string, unknown> | undefined;
+      if (normalizeCompanyId(String(data?.companyId ?? "")) === normalizeCompanyId(companyId)) {
+        return candidate;
+      }
+    }
+  }
+
+  return resolveDefaultWarehouseId(companyId);
+}
+
 export async function processInventoryEventForWorkOrder(
   order: WorkOrder,
   eventType: "InventoryReserved" | "InventoryDeducted" | "InventoryReleased",
@@ -115,7 +138,7 @@ export async function processInventoryEventForWorkOrder(
   const quantity = Number(payload.quantity ?? 0);
   if (!itemId || quantity <= 0) return;
 
-  const warehouseId = (await resolveDefaultWarehouseId(order.companyId)) ?? "";
+  const warehouseId = await resolveWarehouseIdForEvent(order.companyId, payload.warehouseId);
   if (!warehouseId) return;
 
   const movementType: MovementType =
@@ -133,7 +156,8 @@ export async function processInventoryEventForWorkOrder(
     quantity,
     referenceType: "work_order",
     referenceId: order.id,
-    idempotencyKey: `${eventType}:${order.id}:${itemId}:${quantity}`,
+    // Include warehouse so multi-WH lines with the same qty do not collide.
+    idempotencyKey: `${eventType}:${order.id}:${itemId}:${warehouseId}:${quantity}`,
     actorUserId,
     reason: `Заказ-наряд №${order.number}`,
   });

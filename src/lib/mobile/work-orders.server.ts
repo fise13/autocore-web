@@ -234,7 +234,7 @@ export async function transitionMobileWorkOrder(params: {
   nextStatus: WorkOrderStatus;
   actorUserId: string;
   scope?: DataScope;
-}): Promise<MobileWorkOrderDetail> {
+}): Promise<{ order: MobileWorkOrderDetail; documentJobId?: string }> {
   const order = await fetchWorkOrder(params.companyId, params.workOrderId);
   if (!order) {
     throw new Error("Заказ-наряд не найден");
@@ -265,12 +265,15 @@ export async function transitionMobileWorkOrder(params: {
       ...(timestampField ? { [timestampField]: FieldValue.serverTimestamp() } : {}),
     });
 
+  let documentJobId: string | undefined;
+
   if (params.nextStatus === "completed") {
-    await processWorkOrderEventsUseCase({
+    const eventsResult = await processWorkOrderEventsUseCase({
       companyId: params.companyId,
       workOrderId: params.workOrderId,
       actorUserId: params.actorUserId,
     });
+    documentJobId = eventsResult.jobId;
   }
 
   const updated = await fetchWorkOrder(params.companyId, params.workOrderId);
@@ -284,7 +287,7 @@ export async function transitionMobileWorkOrder(params: {
     actorUserId: params.actorUserId,
   }).catch(() => undefined);
 
-  return toDetail(updated, params.actorUserId);
+  return { order: toDetail(updated, params.actorUserId), documentJobId };
 }
 
 function nextPartLineId(): string {

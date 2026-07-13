@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { WorkOrderStatus, WORK_ORDER_STATUSES } from "@/domain/work-order";
 import { MobileAccessError, verifyMobileAccess } from "@/lib/auth/verify-mobile-access.server";
+import { kickDocumentQueueWorker } from "@/lib/documents/engine/kick-document-queue";
 import { transitionMobileWorkOrder } from "@/lib/mobile/work-orders.server";
 
 export const runtime = "nodejs";
@@ -30,21 +31,20 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Некорректный статус" }, { status: 400 });
     }
 
-    const order = await transitionMobileWorkOrder({
+    const { order, documentJobId } = await transitionMobileWorkOrder({
       companyId: access.companyId,
       workOrderId: trimmed,
       nextStatus,
       actorUserId: access.uid,
     });
 
-    if (nextStatus === "completed") {
-      void fetch(`${request.nextUrl.origin}/api/documents/process-queue`, {
-        method: "POST",
-        headers: {
-          Authorization: request.headers.get("authorization") ?? "",
-          "Content-Type": "application/json",
-        },
-      }).catch(() => undefined);
+    if (documentJobId) {
+      await kickDocumentQueueWorker({
+        origin: request.nextUrl.origin,
+        companyId: access.companyId,
+        jobId: documentJobId,
+        authorization: request.headers.get("authorization"),
+      });
     }
 
     return NextResponse.json({ order });

@@ -67,6 +67,8 @@ export type DocumentContext = {
   warrantyVerificationToken?: string;
   photos?: DocumentPhoto[];
   warrantyOverride?: CustomWarrantyFields;
+  /** Display-only marks from label polish (e.g. «с коробкой»), keyed by motor line id. */
+  motorLineMarks?: Record<string, string[]>;
 };
 
 export type DocumentContextInput = {

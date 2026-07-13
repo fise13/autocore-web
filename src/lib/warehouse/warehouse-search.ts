@@ -18,6 +18,7 @@ export function buildInventorySearchTokens(input: UpsertInventoryItemInput): str
     input.brandName,
     input.supplierName,
     input.warehouseLocation,
+    input.primaryLocationCode,
     input.notes,
     ...(input.categoryPath ?? []),
     ...(input.barcodes ?? []),

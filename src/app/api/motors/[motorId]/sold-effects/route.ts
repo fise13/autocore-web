@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { processStandaloneMotorSold } from "@/infrastructure/firestore/admin/motor-sold-effects-admin";
+import { kickDocumentQueueWorker } from "@/lib/documents/engine/kick-document-queue";
 import {
   DocumentAccessError,
   verifyDocumentAccess,
@@ -65,14 +66,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
     });
 
     if (result.jobId) {
-      void fetch(`${request.nextUrl.origin}/api/documents/process-queue`, {
-        method: "POST",
-        headers: {
-          Authorization: request.headers.get("authorization") ?? "",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ jobId: result.jobId }),
-      }).catch(() => undefined);
+      await kickDocumentQueueWorker({
+        origin: request.nextUrl.origin,
+        companyId: access.companyId,
+        jobId: result.jobId,
+        authorization: request.headers.get("authorization"),
+      });
     }
 
     return NextResponse.json(result);

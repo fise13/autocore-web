@@ -69,6 +69,14 @@ const DocumentImportRealtimeToast = dynamic(
   { ssr: false, loading: () => null },
 );
 
+const ImportBatchRealtimeToast = dynamic(
+  () =>
+    import("@/components/import-batch/import-batch-realtime-toast").then((m) => ({
+      default: m.ImportBatchRealtimeToast,
+    })),
+  { ssr: false, loading: () => null },
+);
+
 function DashboardShellInner({ children }: DashboardShellProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -96,7 +104,8 @@ function DashboardShellInner({ children }: DashboardShellProps) {
 
   const isMotorRoute = pathname === "/motors" || pathname === "/sold";
   const isWarehouseRoute = pathname === "/warehouse";
-  const isWorkspaceRoute = isMotorRoute || isWarehouseRoute;
+  const isImportRoute = pathname === "/imports" || pathname.startsWith("/imports/");
+  const isWorkspaceRoute = isMotorRoute || isWarehouseRoute || isImportRoute;
   const isSoldRoute = pathname === "/sold";
   const needsSidebarCatalog = (isMotorRoute || isSoldRoute) && canSubscribe && canViewMotors;
 
@@ -253,6 +262,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
           </Suspense>
           <Suspense fallback={null}>
             <DocumentImportRealtimeToast />
+            <ImportBatchRealtimeToast />
           </Suspense>
           <div
             data-dashboard-shell

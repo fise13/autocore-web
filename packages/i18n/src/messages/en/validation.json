@@ -1,0 +1,9 @@
+{
+  "fields": {
+    "email": "Email",
+    "required": "{field} is required"
+  },
+  "values": {
+    "invalidEmail": "Enter a valid email address"
+  }
+}

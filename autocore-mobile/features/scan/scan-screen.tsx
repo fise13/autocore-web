@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, LayoutChangeEvent, Linking, Pressable, StyleSheet, View } from 'react-native';
-import { BottomSheetModal, BottomSheetModalProvider, BottomSheetView } from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import * as ImagePicker from 'expo-image-picker';
-import { useIsFocused, useRouter, type Href } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect, useIsFocused, useRouter, type Href } from 'expo-router';
 
 import { Text, toast } from '@/components/ui';
 import { OrderPickerSheet } from '@/features/orders/components/order-picker-sheet';
 import {
+  useFloatingTabBarInset,
   useModalBottomSheet,
+  useSession,
   useTheme,
 } from '@/hooks';
+import { tabNavigationGuard, scanNavigationGuard } from '@/lib/navigation/navigation-guard';
 import { loadRecentScans } from '@/lib/scan/recent-scans';
 import { haptics, rhythm } from '@/theme';
 
@@ -23,11 +25,13 @@ import { ScanDocumentSheet } from './components/scan-document-sheet';
 import { ScanGlassPanel } from './components/scan-glass-panel';
 import { ScanHeader } from './components/scan-header';
 import { ScanIdleIndicator } from './components/scan-idle-indicator';
-import { ScanModeStrip, scanModeHint, type ScanCaptureMode } from './components/scan-mode-strip';
+import { ScanMoveSheet, type ScanMoveTarget } from './components/scan-move-sheet';
 import { ScanNotFoundSheet } from './components/scan-not-found-sheet';
 import { ScanOrderContextBanner } from './components/scan-order-context-banner';
 import { ScanProductSheet } from './components/scan-product-sheet';
+import { ScanRelocateBanner } from './components/scan-relocate-banner';
 import { useScanExperience } from './hooks/use-scan-experience';
+import { relocatePendingStore } from './lib/relocate-pending-store';
 import type { RecentScan, ScanCandidate } from './types';
 import { scanContextStore } from '@/services/scan';
 
@@ -36,17 +40,19 @@ type ScanScreenProps = {
 };
 
 export function ScanScreen({ onClose }: ScanScreenProps = {}) {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const isFocused = useIsFocused();
   const sheet = useModalBottomSheet();
+  const { footerBottom } = useFloatingTabBarInset();
+  const { can } = useSession();
 
   const cameraRef = useRef<ScanCameraHandle>(null);
   const recentSheetRef = useRef<BottomSheetModal>(null);
 
   const [torchOn, setTorchOn] = useState(false);
-  const [captureMode, setCaptureMode] = useState<ScanCaptureMode>('auto');
   const [recentScans, setRecentScans] = useState<RecentScan[]>([]);
+  const [moveTarget, setMoveTarget] = useState<ScanMoveTarget | null>(null);
+  const [relocatePending, setRelocatePending] = useState(() => relocatePendingStore.get());
 
   const experience = useScanExperience();
   const {
@@ -54,7 +60,7 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
     parsedDocument,
     isAiLoading,
     showConfirmFlash,
-    cameraActive,
+    scanEnabled,
     ocrBusy,
     cameraLayout,
     setCameraLayout,
@@ -62,6 +68,7 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
     onDetections,
     onSheetClosed,
     dismissSheet,
+    dismissAllSheets,
     handlePickCandidate,
     handlePickDetectedCode,
     handleTryAi,
@@ -76,14 +83,67 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
     notFoundSheetRef,
     documentSheetRef,
     codePickerSheetRef,
+    moveSheetRef,
     service,
     setOcrBusy,
   } = experience;
 
-  const showShutter = captureMode !== 'auto';
+  useEffect(() => {
+    return relocatePendingStore.subscribe((value) => {
+      setRelocatePending(value);
+    });
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      tabNavigationGuard.release();
+      scanNavigationGuard.release();
+      service.resume();
+
+      return () => {
+        // Portal backdrops sit above the whole app — leave them open and every tab dies.
+        dismissAllSheets();
+        recentSheetRef.current?.dismiss();
+        addToOrderFlow.pickerRef.current?.dismiss();
+        setMoveTarget(null);
+        setTorchOn(false);
+      };
+    }, [addToOrderFlow.pickerRef, dismissAllSheets, service]),
+  );
+
   const activeResult = snapshot.activeResult;
   const isOrderContext = snapshot.context.mode === 'order';
   const orderLabel = snapshot.context.mode === 'order' ? snapshot.context.orderLabel : undefined;
+  const canMove = can('inventory_edit') && !isOrderContext;
+
+  const openMoveFlow = useCallback(() => {
+    if (!activeResult || activeResult.id === 'candidates') return;
+    const warehouseId = activeResult.stockLevels?.[0]?.warehouseId;
+    if (!warehouseId) {
+      toast({
+        title: 'Нет склада',
+        description: 'У позиции нет остатка на складе — сначала оприходуйте.',
+        variant: 'warning',
+      });
+      return;
+    }
+    const target: ScanMoveTarget = {
+      itemId: activeResult.id,
+      itemTitle: activeResult.title,
+      warehouseId,
+      shelf: activeResult.shelf,
+    };
+    setMoveTarget(target);
+    dismissSheet(productSheetRef, () => {
+      moveSheetRef.current?.present();
+    });
+  }, [activeResult, dismissSheet, moveSheetRef, productSheetRef]);
+
+  const cancelRelocate = useCallback(() => {
+    relocatePendingStore.clear();
+    setMoveTarget(null);
+    moveSheetRef.current?.dismiss();
+  }, [moveSheetRef]);
 
   const handleClose = useCallback(() => {
     if (isOrderContext) {
@@ -136,17 +196,6 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
     [onSheetClosed, service, setOcrBusy],
   );
 
-  const handleShutter = useCallback(async () => {
-    if (ocrBusy || !cameraActive) return;
-    haptics.light();
-    const uri = await cameraRef.current?.takePicture();
-    if (!uri) {
-      toast({ title: 'Не удалось сделать снимок', variant: 'warning' });
-      return;
-    }
-    await runOcrOnUri(uri, captureMode === 'document');
-  }, [cameraActive, captureMode, ocrBusy, runOcrOnUri]);
-
   const handleOpenPhotos = useCallback(async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -163,8 +212,8 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
       quality: 0.8,
     });
     if (pick.canceled || !pick.assets[0]?.uri) return;
-    await runOcrOnUri(pick.assets[0].uri, captureMode === 'document');
-  }, [captureMode, runOcrOnUri]);
+    await runOcrOnUri(pick.assets[0].uri, false);
+  }, [runOcrOnUri]);
 
   const replayPayload = useCallback(
     (payload: string) => {
@@ -197,8 +246,6 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
     });
   }, [dismissSheet, parsedDocument, router]);
 
-  const focusedCameraActive = cameraActive;
-
   const overlayLayout = useMemo(() => {
     if (cameraLayout.width > 0 && cameraLayout.height > 0) return cameraLayout;
     const { width, height } = Dimensions.get('window');
@@ -206,13 +253,13 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
   }, [cameraLayout.height, cameraLayout.width]);
 
   return (
-    <BottomSheetModalProvider>
       <View style={styles.root}>
-        <View style={styles.cameraShell} onLayout={onCameraLayout}>
+        <View style={styles.viewport} onLayout={onCameraLayout}>
           <ScanCamera
             ref={cameraRef}
             torch={torchOn && isFocused}
-            active={focusedCameraActive && isFocused}
+            active={isFocused && !ocrBusy}
+            scanEnabled={isFocused && scanEnabled && !ocrBusy}
             onDetection={onDetection}
             onDetections={onDetections}
           />
@@ -231,55 +278,61 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
               </Text>
             </View>
           ) : null}
+
+          <ScanHeader
+            torchOn={torchOn}
+            onToggleTorch={() => setTorchOn((value) => !value)}
+            onSettingsPress={() => router.navigate('/(tabs)/profile' as const)}
+            orderContext={isOrderContext}
+            orderLabel={orderLabel}
+            onBackPress={isOrderContext ? handleClose : undefined}
+          />
+
+          {isOrderContext ? <ScanOrderContextBanner orderLabel={orderLabel} /> : null}
+          {relocatePending && !isOrderContext ? (
+            <ScanRelocateBanner
+              title={
+                relocatePending.kind === 'fill-location'
+                  ? 'Сканируйте двигатель'
+                  : 'Сканируйте место'
+              }
+              subtitle={
+                relocatePending.kind === 'fill-location'
+                  ? `Разместить в ${relocatePending.displayCode}`
+                  : relocatePending.kind === 'assign-asset'
+                    ? `Куда переместить «${relocatePending.title}»`
+                    : `Куда переместить «${relocatePending.itemTitle}»`
+              }
+              onCancel={cancelRelocate}
+            />
+          ) : null}
         </View>
 
-        <ScanHeader
-          torchOn={torchOn}
-          onToggleTorch={() => setTorchOn((value) => !value)}
-          onSettingsPress={() => router.navigate('/(tabs)/profile' as const)}
-          orderContext={isOrderContext}
-          orderLabel={orderLabel}
-          onBackPress={isOrderContext ? handleClose : undefined}
-        />
-
-        {isOrderContext ? <ScanOrderContextBanner orderLabel={orderLabel} /> : null}
-
-        <View style={[styles.modeArea, { bottom: Math.max(insets.bottom, 8) + (isOrderContext ? 108 : 148) }]} pointerEvents="box-none">
+        <View style={[styles.footer, { paddingBottom: footerBottom }]}>
           <Text variant="caption" style={styles.hint}>
-            {isOrderContext
-              ? 'Наведите камеру на штрихкод — позиция добавится в наряд'
-              : scanModeHint(captureMode)}
+            {relocatePending
+              ? relocatePending.kind === 'fill-location'
+                ? 'Наведите на QR двигателя'
+                : 'Наведите камеру на QR места или код ячейки'
+              : isOrderContext
+                ? 'Наведите камеру на штрихкод — позиция добавится в наряд'
+                : 'Наведите камеру на штрихкод'}
           </Text>
           {!isOrderContext ? (
-            <ScanModeStrip mode={captureMode} onChange={setCaptureMode} />
-          ) : null}
-          {showShutter ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Сделать снимок"
-              disabled={ocrBusy || !cameraActive}
-              onPress={() => void handleShutter()}
-              style={[styles.shutter, { opacity: ocrBusy || !cameraActive ? 0.45 : 1 }]}
-            >
-              <View style={styles.shutterInner} />
-            </Pressable>
+            <ScanGlassPanel
+              onManualSearch={() => navigateToSearch()}
+              onOpenPhotos={() => void handleOpenPhotos()}
+              onImportDocument={() => {
+                haptics.selection();
+                router.push('/(tabs)/import' as Href);
+              }}
+              onRecentScans={() => {
+                void refreshRecentScans();
+                recentSheetRef.current?.present();
+              }}
+            />
           ) : null}
         </View>
-
-        {!isOrderContext ? (
-          <ScanGlassPanel
-            onManualSearch={() => navigateToSearch()}
-            onOpenPhotos={() => void handleOpenPhotos()}
-            onImportDocument={() => {
-              haptics.selection();
-              router.push('/(tabs)/import' as Href);
-            }}
-            onRecentScans={() => {
-              void refreshRecentScans();
-              recentSheetRef.current?.present();
-            }}
-          />
-        ) : null}
 
         <ScanProductSheet
           ref={productSheetRef}
@@ -295,6 +348,7 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
           onOpenCard={() => {
             navigateToSearch(activeResult?.subtitle ?? activeResult?.title);
           }}
+          onMove={canMove ? openMoveFlow : undefined}
           onAddToOrder={
             activeResult?.id && activeResult.id !== 'candidates' && !isOrderContext
               ? () => {
@@ -305,6 +359,30 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
           }
           onClose={() => dismissSheet(productSheetRef)}
           onDismiss={onSheetClosed}
+        />
+
+        <ScanMoveSheet
+          ref={moveSheetRef}
+          target={moveTarget}
+          onMoved={() => {
+            relocatePendingStore.clear();
+            setMoveTarget(null);
+            moveSheetRef.current?.dismiss();
+          }}
+          onCancel={() => {
+            cancelRelocate();
+          }}
+          onPreferScan={() => {
+            if (!moveTarget) return;
+            relocatePendingStore.setRelocateItem({
+              ...moveTarget,
+              startedAt: Date.now(),
+            });
+            moveSheetRef.current?.dismiss();
+          }}
+          onDismiss={() => {
+            setMoveTarget(null);
+          }}
         />
 
         <ScanCandidatesSheet
@@ -390,7 +468,6 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
           onDismiss={addToOrderFlow.handlePickerDismiss}
         />
       </View>
-    </BottomSheetModalProvider>
   );
 }
 
@@ -434,15 +511,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
-  cameraShell: {
-    ...StyleSheet.absoluteFill,
+  viewport: {
+    flex: 1,
+    overflow: 'hidden',
   },
-  modeArea: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
+  footer: {
+    paddingHorizontal: rhythm.pad,
+    paddingTop: rhythm.inline,
     gap: rhythm.inline,
+    backgroundColor: '#000',
   },
   hint: {
     color: 'rgba(255,255,255,0.78)',
@@ -450,22 +527,6 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.45)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 6,
-  },
-  shutter: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.92)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.28)',
-  },
-  shutterInner: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#fff',
   },
   ocrOverlay: {
     ...StyleSheet.absoluteFill,

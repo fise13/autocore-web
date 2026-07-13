@@ -6,7 +6,14 @@
 
 import { normalizeVin } from './vin';
 
-export type ScanEntityLinkKind = 'order' | 'item' | 'client' | 'shelf' | 'invoice' | 'motor';
+export type ScanEntityLinkKind =
+  | 'order'
+  | 'item'
+  | 'client'
+  | 'shelf'
+  | 'location'
+  | 'invoice'
+  | 'motor';
 
 export type ScanPayloadClass =
   | { type: 'entity-link'; entity: ScanEntityLinkKind; id: string }
@@ -24,6 +31,8 @@ const ENTITY_PREFIXES: Record<string, ScanEntityLinkKind> = {
   client: 'client',
   s: 'shelf',
   shelf: 'shelf',
+  loc: 'location',
+  location: 'location',
   i: 'invoice',
   invoice: 'invoice',
   m: 'motor',

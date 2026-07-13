@@ -23,6 +23,8 @@ export type InventoryItem = {
   barcodes: string[];
   brandName?: string;
   warehouseLocation?: string;
+  primaryLocationId?: string;
+  primaryLocationCode?: string;
   unit: string;
   sellPrice?: number;
   purchasePrice?: number;
@@ -50,6 +52,7 @@ export type MobileScanItem = {
   barcodes?: string[];
   brandName?: string;
   warehouseLocation?: string;
+  primaryLocationCode?: string;
   sellPrice?: number;
   purchasePrice?: number;
   totalOnHand: number;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Package, Plus, Star } from "lucide-react";
+import { ChevronDown, MapPin, Package, Plus, Star } from "lucide-react";
 
 import { createWarehouseUseCase } from "@/application/use-cases/warehouse/create-warehouse";
 import { ensureDefaultWarehouseUseCase } from "@/application/use-cases/warehouse/ensure-default-warehouse";
@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { WarehouseLocationsDialog } from "@/components/warehouse/warehouse-locations-dialog";
 import { useWarehousesRealtime } from "@/hooks/use-warehouses-realtime";
 import { canManageWarehouses } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
@@ -50,6 +51,7 @@ export function WarehouseTopBarSelector({ className }: { className?: string }) {
   );
 
   const [addOpen, setAddOpen] = useState(false);
+  const [locationsOpen, setLocationsOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -176,6 +178,12 @@ export function WarehouseTopBarSelector({ className }: { className?: string }) {
               ) : null}
             </DropdownMenuItem>
           ))}
+          {activeWarehouse ? (
+            <DropdownMenuItem onClick={() => setLocationsOpen(true)}>
+              <MapPin className="size-4" />
+              Места склада
+            </DropdownMenuItem>
+          ) : null}
           {canManage ? (
             <>
               <DropdownMenuSeparator />
@@ -193,6 +201,18 @@ export function WarehouseTopBarSelector({ className }: { className?: string }) {
           ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {activeWarehouse && companyId ? (
+        <WarehouseLocationsDialog
+          open={locationsOpen}
+          onOpenChange={setLocationsOpen}
+          companyId={companyId}
+          warehouseId={activeWarehouse.id}
+          warehouseName={activeWarehouse.name}
+          actorUserId={actorUserId}
+          canManage={canManage}
+        />
+      ) : null}
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="sm:max-w-md">

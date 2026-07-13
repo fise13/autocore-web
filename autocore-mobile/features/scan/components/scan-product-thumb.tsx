@@ -27,7 +27,7 @@ export function ScanProductThumb({ name, imageUrl, size = 72 }: ScanProductThumb
           backgroundColor: colors.secondary,
         }}
         contentFit="cover"
-        transition={200}
+        transition={80}
       />
     );
   }

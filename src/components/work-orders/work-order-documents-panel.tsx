@@ -67,13 +67,12 @@ export function WorkOrderDocumentsPanel({
     try {
       const definition = DOCUMENT_DEFINITIONS.find((entry) => entry.slug === slug);
       const persisted = definition ? documentsByType.get(definition.type) : undefined;
-      if (persisted?.downloadUrl) {
-        await downloadDocumentPdf(slug, orderId, `${slug}-${orderId}.pdf`, {
-          cachedDownloadUrl: persisted.downloadUrl,
-        });
-        return;
-      }
-      await downloadDocumentPdf(slug, orderId, `${slug}-${orderId}.pdf`);
+      const cachedUrl = persisted?.downloadUrl?.trim();
+      const safeCachedUrl =
+        cachedUrl && /^https?:\/\//i.test(cachedUrl) ? cachedUrl : undefined;
+      await downloadDocumentPdf(slug, orderId, `${slug}-${orderId}.pdf`, {
+        cachedDownloadUrl: safeCachedUrl,
+      });
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Не удалось скачать PDF");
     } finally {
@@ -126,8 +125,14 @@ export function WorkOrderDocumentsPanel({
         <ul className="divide-y rounded-xl border bg-card">
           {definitions.map((definition) => {
             const persisted = documentsByType.get(definition.type);
+            const isReady = Boolean(
+              persisted?.status === "ready" ||
+                (persisted?.downloadUrl && /^https?:\/\//i.test(persisted.downloadUrl)) ||
+                persisted?.storagePath,
+            );
             const pending =
-              isGenerating && latestJob?.requestedSlugs.includes(definition.slug) && !persisted?.downloadUrl;
+              (isGenerating && latestJob?.requestedSlugs.includes(definition.slug) && !isReady) ||
+              (!isReady && !latestJob?.completedSlugs.includes(definition.slug));
 
             return (
               <li key={definition.slug} className="flex items-center gap-3 px-4 py-3">
@@ -161,7 +166,7 @@ export function WorkOrderDocumentsPanel({
                     type="button"
                     variant="outline"
                     size="sm"
-                    disabled={busySlug === definition.slug || pending}
+                    disabled={busySlug === definition.slug || !isReady}
                     onClick={() => handleDownload(definition.slug)}
                   >
                     <Download className="size-4" />

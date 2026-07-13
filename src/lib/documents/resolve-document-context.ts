@@ -1,6 +1,7 @@
 import "server-only";
 
 import { DocumentContext } from "@/lib/documents/document-context";
+import { polishDocumentContextForRender } from "@/lib/documents/ai/apply-document-label-polish";
 
 export type DocumentAggregateType = "work_order" | "warranty" | "quote";
 
@@ -9,18 +10,20 @@ export async function resolveDocumentContext(
   aggregateId: string,
   aggregateType: DocumentAggregateType = "work_order",
 ): Promise<DocumentContext> {
+  let context: DocumentContext;
+
   if (aggregateType === "warranty") {
     const { loadWarrantyDocumentContext } = await import("@/lib/documents/context/load-warranty-context");
-    return loadWarrantyDocumentContext(companyId, aggregateId);
-  }
-
-  if (aggregateType === "quote") {
+    context = await loadWarrantyDocumentContext(companyId, aggregateId);
+  } else if (aggregateType === "quote") {
     const { loadQuoteDocumentContext } = await import("@/lib/documents/context/load-quote-context");
-    return loadQuoteDocumentContext(companyId, aggregateId);
+    context = await loadQuoteDocumentContext(companyId, aggregateId);
+  } else {
+    const { loadDocumentContext } = await import("@/lib/documents/load-document-context");
+    context = await loadDocumentContext(companyId, aggregateId);
   }
 
-  const { loadDocumentContext } = await import("@/lib/documents/load-document-context");
-  return loadDocumentContext(companyId, aggregateId);
+  return polishDocumentContextForRender(context);
 }
 
 export function parseDocumentAggregateType(value: string | null | undefined): DocumentAggregateType {

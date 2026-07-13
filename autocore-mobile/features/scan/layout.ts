@@ -11,6 +11,9 @@ export const scanLayout = {
   subtitle: rhythm.meta,
   panelRadius: rhythm.panelRadius,
   panelItemHeight: rhythm.rowMinHeight,
+  /** Glass panel: 4 rows + dividers + padding */
+  glassPanelHeight: rhythm.rowMinHeight * 4 + 28,
+  hintReserve: 40,
   /** Capture frames by mode — barcode stays live in all modes. */
   frames: {
     auto: { width: 248, height: 248 },

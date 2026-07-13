@@ -1041,6 +1041,36 @@ service cloud.firestore {
       allow delete: if canInventoryDelete(resource.data.companyId);
     }
 
+    match /warehouseLocations/{locationId} {
+      allow read: if canInventoryRead(resource.data.companyId);
+      allow create: if (canWarehouseManage(request.resource.data.companyId)
+          || canInventoryWrite(request.resource.data.companyId))
+        && request.resource.data.companyId != null
+        && request.resource.data.warehouseId != null
+        && request.resource.data.code is string
+        && request.resource.data.displayCode is string;
+      allow update: if (canWarehouseManage(resource.data.companyId)
+          || canInventoryWrite(resource.data.companyId))
+        && request.resource.data.companyId == resource.data.companyId
+        && request.resource.data.warehouseId == resource.data.warehouseId;
+      allow delete: if canInventoryDelete(resource.data.companyId)
+        && resource.data.isSystem != true;
+    }
+
+    match /inventoryLocationBalances/{balanceId} {
+      allow read: if canInventoryRead(resource.data.companyId);
+      allow create: if canInventoryWrite(request.resource.data.companyId)
+        && request.resource.data.warehouseId != null
+        && request.resource.data.itemId != null
+        && request.resource.data.locationId != null;
+      allow update: if canInventoryWrite(resource.data.companyId)
+        && request.resource.data.companyId == resource.data.companyId
+        && request.resource.data.warehouseId == resource.data.warehouseId
+        && request.resource.data.itemId == resource.data.itemId
+        && request.resource.data.locationId == resource.data.locationId;
+      allow delete: if canInventoryDelete(resource.data.companyId);
+    }
+
     match /suppliers/{supplierId} {
       allow read: if canInventoryRead(resource.data.companyId);
       allow create, update: if canInventoryWrite(request.resource.data.companyId);
@@ -1093,6 +1123,26 @@ service cloud.firestore {
     match /documentImports/{importId} {
       allow read: if canInventoryRead(resource.data.companyId);
       allow create, update, delete: if false;
+    }
+
+    // Unified AI import batches. Writes go through Admin SDK / API.
+    match /importBatches/{batchId} {
+      allow read: if canInventoryRead(resource.data.companyId);
+      allow create, update, delete: if false;
+
+      match /files/{fileId} {
+        allow read: if canInventoryRead(
+          get(/databases/$(database)/documents/importBatches/$(batchId)).data.companyId
+        );
+        allow create, update, delete: if false;
+      }
+
+      match /suggestedRows/{rowId} {
+        allow read: if canInventoryRead(
+          get(/databases/$(database)/documents/importBatches/$(batchId)).data.companyId
+        );
+        allow create, update, delete: if false;
+      }
     }
 
     match /inventoryCategories/{categoryId} {

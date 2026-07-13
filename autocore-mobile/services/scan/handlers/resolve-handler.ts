@@ -32,7 +32,7 @@ export function classifyPayloadOutcome(payload: string): ScanOutcome | 'barcode'
 }
 
 function isWeakCameraAutoAccept(matchType: MobileScanResolveResult['matchType']): boolean {
-  return matchType === 'fuzzy' || matchType === 'ai';
+  return matchType === 'ai';
 }
 
 export function mapApiResolve(
@@ -87,7 +87,8 @@ export async function resolveBarcodePayload(
   request: ScanResolveRequest,
   apiResolve: (barcode: string, source: ScanResolveRequest['source']) => Promise<MobileScanResolveResult>,
 ): Promise<ScanOutcome> {
-  const payload = normalizeScanPayload(request.payload);
+  const raw = request.payload.trim();
+  const payload = normalizeScanPayload(raw) || raw;
   if (!payload) {
     return { kind: 'not-found', payload: request.payload };
   }
@@ -95,10 +96,13 @@ export async function resolveBarcodePayload(
   const classified = classifyPayloadOutcome(payload);
   if (classified !== 'barcode') return classified;
 
+  if (request.cachedResult) {
+    return mapApiResolve(payload, request.cachedResult, request.source);
+  }
+
   if (request.canInventoryView) {
     try {
-      // Single round-trip. Camera path already hits mapping/sku/barcodes/searchTokens.
-      const result = await apiResolve(payload, request.source);
+      const result = await apiResolve(raw, request.source);
       return mapApiResolve(payload, result, request.source);
     } catch {
       if (request.allowMock) {

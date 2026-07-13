@@ -29,9 +29,15 @@ export function ImportUploadingView({ progressLabel = 'Отправляем до
 
 type ImportSuccessViewProps = {
   onDone: () => void;
+  onContinue?: () => void;
+  continueLabel?: string;
 };
 
-export function ImportSuccessView({ onDone }: ImportSuccessViewProps) {
+export function ImportSuccessView({
+  onDone,
+  onContinue,
+  continueLabel = 'Ещё фото',
+}: ImportSuccessViewProps) {
   const { colors } = useTheme();
 
   return (
@@ -41,21 +47,41 @@ export function ImportSuccessView({ onDone }: ImportSuccessViewProps) {
       </Animated.View>
       <Animated.View entering={FadeInUp.delay(80).duration(280)} style={{ alignItems: 'center', gap: 8 }}>
         <Text variant="heading" style={styles.title}>
-          Документ загружен
+          Загружено
         </Text>
         <Text variant="caption" style={styles.caption}>
-          Он появится на вебе для просмотра
+          На компьютере уже идёт разбор — можно снимать дальше
         </Text>
       </Animated.View>
+      {onContinue ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => {
+            haptics.light();
+            onContinue();
+          }}
+          style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+        >
+          <Text variant="body" style={{ color: colors.primaryForeground, fontWeight: '700' }}>
+            {continueLabel}
+          </Text>
+        </Pressable>
+      ) : null}
       <Pressable
         accessibilityRole="button"
         onPress={() => {
           haptics.success();
           onDone();
         }}
-        style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+        style={[styles.secondaryButton, onContinue ? null : { backgroundColor: colors.primary }]}
       >
-        <Text variant="body" style={{ color: colors.primaryForeground, fontWeight: '700' }}>
+        <Text
+          variant="body"
+          style={{
+            color: onContinue ? '#fff' : colors.primaryForeground,
+            fontWeight: '700',
+          }}
+        >
           Готово
         </Text>
       </Pressable>
@@ -66,6 +92,7 @@ export function ImportSuccessView({ onDone }: ImportSuccessViewProps) {
 const styles = StyleSheet.create({
   center: {
     ...StyleSheet.absoluteFill,
+    zIndex: 20,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.72)',
@@ -90,5 +117,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
+  },
+  secondaryButton: {
+    width: '100%',
+    maxWidth: 280,
+    minHeight: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
 });

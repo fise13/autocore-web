@@ -7,6 +7,7 @@ export function mapResolveResultToScanResult(result: MobileScanResolveResult): S
   const item = result.item;
   const status =
     item.totalAvailable > 0 ? 'in_stock' : item.totalOnHand > 0 ? 'reserved' : 'deficit';
+  const shelf = item.primaryLocationCode?.trim() || item.warehouseLocation?.trim() || undefined;
 
   return {
     id: item.id,
@@ -14,7 +15,7 @@ export function mapResolveResultToScanResult(result: MobileScanResolveResult): S
     code: result.barcode,
     title: item.name,
     subtitle: item.sku,
-    shelf: item.warehouseLocation,
+    shelf,
     price: item.sellPrice,
     status,
     matchType: result.matchType,
@@ -30,7 +31,8 @@ export function mapResolveResultToScanResult(result: MobileScanResolveResult): S
       sellPrice: candidate.item.sellPrice,
       totalAvailable: candidate.item.totalAvailable,
       brandName: candidate.item.brandName,
-      warehouseLocation: candidate.item.warehouseLocation,
+      warehouseLocation:
+        candidate.item.primaryLocationCode?.trim() || candidate.item.warehouseLocation,
     })),
   };
 }

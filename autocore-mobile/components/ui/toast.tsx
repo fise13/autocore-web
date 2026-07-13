@@ -75,7 +75,12 @@ export function ToastProvider() {
                   {item.title}
                 </Text>
                 {item.description ? (
-                  <Text variant="caption" color="muted" style={{ marginTop: spacing[0.5] }}>
+                  <Text
+                    variant="caption"
+                    color="muted"
+                    style={{ marginTop: spacing[0.5] }}
+                    numberOfLines={4}
+                  >
                     {item.description}
                   </Text>
                 ) : null}

@@ -59,6 +59,10 @@ function mapItem(id: string, data: Record<string, unknown>): InventoryItem {
     supplierName: typeof data.supplierName === "string" ? data.supplierName : undefined,
     warehouseLocation:
       typeof data.warehouseLocation === "string" ? data.warehouseLocation : undefined,
+    primaryLocationId:
+      typeof data.primaryLocationId === "string" ? data.primaryLocationId : undefined,
+    primaryLocationCode:
+      typeof data.primaryLocationCode === "string" ? data.primaryLocationCode : undefined,
     notes: typeof data.notes === "string" ? data.notes : undefined,
     categoryId: typeof data.categoryId === "string" ? data.categoryId : undefined,
     categoryPath,
@@ -120,6 +124,7 @@ function buildItemPayload(input: UpsertInventoryItemInput, options?: { isUpdate?
   const brandName = normalizeBrandName(input.brandName);
   const supplierName = normalizeSupplierName(input.supplierName);
   const warehouseLocation = normalizeWarehouseLocation(input.warehouseLocation);
+  const primaryLocationCode = normalizeWarehouseLocation(input.primaryLocationCode);
   const barcodes = (input.barcodes ?? []).map((code) => normalizeBarcode(code)).filter(Boolean);
   const payload: Record<string, unknown> = {
     companyId: normalizeCompanyId(input.companyId),
@@ -130,7 +135,14 @@ function buildItemPayload(input: UpsertInventoryItemInput, options?: { isUpdate?
     unit: input.unit?.trim() || "шт",
     currency: input.currency ?? "KZT",
     status: input.status ?? "active",
-    searchTokens: buildInventorySearchTokens({ ...input, barcodes, brandName, supplierName, warehouseLocation }),
+    searchTokens: buildInventorySearchTokens({
+      ...input,
+      barcodes,
+      brandName,
+      supplierName,
+      warehouseLocation,
+      primaryLocationCode: primaryLocationCode || input.primaryLocationCode,
+    }),
     updatedAt: serverTimestamp(),
   };
 
@@ -153,6 +165,12 @@ function buildItemPayload(input: UpsertInventoryItemInput, options?: { isUpdate?
   else if (clearOnUpdate) payload.supplierName = deleteField();
   if (warehouseLocation) payload.warehouseLocation = warehouseLocation;
   else if (clearOnUpdate) payload.warehouseLocation = deleteField();
+  if (input.primaryLocationId) payload.primaryLocationId = input.primaryLocationId;
+  if (primaryLocationCode) payload.primaryLocationCode = primaryLocationCode;
+  else if (clearOnUpdate && input.primaryLocationCode === "") {
+    payload.primaryLocationCode = deleteField();
+    payload.primaryLocationId = deleteField();
+  }
   if (notes !== undefined) payload.notes = notes;
   if (categoryId !== undefined) payload.categoryId = categoryId;
   if (categoryPath !== undefined) payload.categoryPath = categoryPath;

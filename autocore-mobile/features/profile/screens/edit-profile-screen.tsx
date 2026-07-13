@@ -69,12 +69,10 @@ export function EditProfileScreen() {
     if (pick.canceled || !pick.assets[0]?.uri) return;
 
     const asset = pick.assets[0];
-    const filename = asset.fileName ?? `avatar-${Date.now()}.jpg`;
-    const mimeType = asset.mimeType ?? 'image/jpeg';
 
     try {
       setUploadingPhoto(true);
-      await uploadUserAvatar(asset.uri, filename, mimeType);
+      await uploadUserAvatar(asset.uri);
       await refreshProfile();
       haptics.success();
       setStatus('Фото профиля обновлено.');

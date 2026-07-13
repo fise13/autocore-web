@@ -14,9 +14,17 @@ import {
   TagIcon,
 } from '@/assets/icons';
 import { Button, IconButton, Text, toast } from '@/components/ui';
-import { useTheme, useSession, useEmployeesRealtime, useWorkOrdersRealtime, useFloatingTabBarInset } from '@/hooks';
+import {
+  useTheme,
+  useSession,
+  useEmployeesRealtime,
+  useWorkOrdersRealtime,
+  useFloatingTabBarInset,
+  useInventoryCatalog,
+} from '@/hooks';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import { canMechanicClaimWorkOrder, evaluateClaimEligibility, countOpenAssignedWorkOrders, DEFAULT_MAX_ACTIVE_WORK_ORDERS } from '@autocore/rbac';
+import { resolveInventoryShelf } from '@/lib/inventory/resolve-shelf';
 import { haptics, rhythm } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
 import { formatPrice } from '@/features/search/lib/format';
@@ -72,6 +80,11 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
   const { scrollBottom } = useFloatingTabBarInset();
   const router = useRouter();
   const { companyId, can, uid, profile } = useSession();
+  const { items: inventoryItems } = useInventoryCatalog(companyId);
+  const inventoryById = useMemo(
+    () => new Map(inventoryItems.map((item) => [item.id, item])),
+    [inventoryItems],
+  );
   const rbac = useRbacPolicy();
   const { orders, domainOrders } = useWorkOrdersRealtime(companyId, {
     scope: rbac.scopes.workOrders,
@@ -183,12 +196,17 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
   })) ?? [];
   const partLines = domainOrder?.partLines
     .filter((line) => line.source !== 'specific_quick')
-    .map((line) => ({
-      id: line.id,
-      label: line.name,
-      detail: line.sku,
-      price: line.quantity * line.unitPrice,
-    })) ?? [];
+    .map((line) => {
+      const item = line.itemId ? inventoryById.get(line.itemId) : undefined;
+      const shelf = item ? resolveInventoryShelf(item) : undefined;
+      const detailParts = [line.sku, shelf ? `Место ${shelf}` : null].filter(Boolean);
+      return {
+        id: line.id,
+        label: line.name,
+        detail: detailParts.length ? detailParts.join(' · ') : undefined,
+        price: line.quantity * line.unitPrice,
+      };
+    }) ?? [];
   const catalogLines = domainOrder?.partLines
     .filter((line) => line.source === 'specific_quick')
     .map((line) => ({

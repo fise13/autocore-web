@@ -196,7 +196,7 @@ function SellMotorDialogForm({
 
   return (
     <>
-      <DialogHeader>
+      <DialogHeader className="shrink-0">
         <DialogTitle>{mode === "sell" ? "Продажа мотора" : "Возврат мотора"}</DialogTitle>
         <DialogDescription>
           Мотор {motor.serialCode}. Будет создана одна финансовая операция
@@ -204,7 +204,8 @@ function SellMotorDialogForm({
         </DialogDescription>
       </DialogHeader>
 
-      <form className="space-y-4" onSubmit={submit}>
+      <form className="flex min-h-0 flex-1 flex-col" onSubmit={submit}>
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain pr-1">
         {mode === "sell" ? (
           <div className="space-y-3 rounded-xl border border-border/80 bg-muted/30 p-3">
             <p className="text-sm font-medium">Покупатель</p>
@@ -339,8 +340,9 @@ function SellMotorDialogForm({
         </div>
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        </div>
 
-        <DialogFooter className="px-0 pb-0">
+        <DialogFooter className="mt-4 shrink-0 border-t border-border/70 px-0 pb-0 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
             Отмена
           </Button>
@@ -381,7 +383,7 @@ export function SellMotorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg duration-300">
+      <DialogContent className="flex max-h-[min(90dvh,900px)] max-w-lg flex-col overflow-hidden duration-300">
         <SellMotorDialogForm
           key={`${motor.id}-${mode}`}
           companyId={companyId}

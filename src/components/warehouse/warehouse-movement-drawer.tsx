@@ -31,6 +31,7 @@ const movementTypeLabels: Record<InventoryMovement["type"], string> = {
   reservation_hold: "Резерв",
   reservation_release: "Снятие резерва",
   reversal: "Откат",
+  relocation: "Место → место",
 };
 
 const referenceLabels: Record<NonNullable<InventoryMovement["referenceType"]>, string> = {

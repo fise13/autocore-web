@@ -20,7 +20,11 @@ import {
   documentReleaseDate,
   documentVehicleTitle,
 } from "@/lib/documents/work-order-insights";
-import { formatMotorLineLabel } from "@/lib/motors/format-motor-display-name";
+import {
+  formatMotorLineLabel,
+  formatMotorLineSubtitle,
+} from "@/lib/motors/format-motor-display-name";
+import { GEARBOX_MARK } from "@/lib/documents/ai/document-label-rules";
 
 export type RacingLogbookPoint = {
   id: string;
@@ -78,18 +82,23 @@ function buildLaborRows(context: DocumentContext): DocumentLineItem[] {
 }
 
 function buildPartRows(context: DocumentContext): DocumentLineItem[] {
-  const rows: DocumentLineItem[] = context.order.partLines.map((line) => ({
-    id: line.id,
-    title: line.name,
-    subtitle: "Запчасть",
-    quantity: String(line.quantity),
-    amount: formatDocumentMoney(line.quantity * line.unitPrice),
-  }));
+  const rows: DocumentLineItem[] = context.order.partLines.map((line) => {
+    const marks = (context.motorLineMarks?.[`part:${line.id}`] ?? []).filter(Boolean);
+    const markSuffix = marks.length > 0 ? ` · ${marks.join(" · ")}` : "";
+    return {
+      id: line.id,
+      title: line.name,
+      subtitle: `Запчасть${markSuffix}`,
+      quantity: String(line.quantity),
+      amount: formatDocumentMoney(line.quantity * line.unitPrice),
+    };
+  });
   for (const line of context.order.motorLines) {
+    const marks = context.motorLineMarks?.[line.id];
     rows.push({
       id: line.id,
       title: formatMotorLineLabel(line),
-      subtitle: line.outcome === "sell" ? "Продажа" : "Установка",
+      subtitle: formatMotorLineSubtitle(line.outcome, marks),
       quantity: "1",
       amount: formatDocumentMoney(line.unitPrice),
     });
@@ -102,6 +111,9 @@ function buildMotorDetailFields(context: DocumentContext): DocumentFieldRow[] {
   const motorEntity = documentPrimaryMotorEntity(context);
   if (!motorLine) return [];
 
+  const marks = context.motorLineMarks?.[motorLine.id] ?? [];
+  const markLabel = marks.length > 0 ? marks.join(" · ") : null;
+
   return [
     { label: "Двигатель", value: formatMotorLineLabel(motorLine, { includeSerial: true }) || "—" },
     { label: "Серийный номер", value: motorLine.serialCode || "—" },
@@ -110,7 +122,10 @@ function buildMotorDetailFields(context: DocumentContext): DocumentFieldRow[] {
       value: [motorLine.brandName, motorLine.engineCode].filter(Boolean).join(" ") || "—",
     },
     { label: "Комплектация", value: motorLine.configuration || "—" },
-    { label: "Коробка передач", value: motorEntity?.transmission?.trim() || "—" },
+    {
+      label: "Коробка передач",
+      value: motorEntity?.transmission?.trim() || markLabel || "—",
+    },
     { label: "Стоимость", value: formatDocumentMoney(motorLine.unitPrice) },
   ].filter((field) => field.value !== "—" || field.label === "Двигатель");
 }
@@ -235,7 +250,11 @@ export function buildRacingViewModel(
   ].filter((line): line is string => Boolean(line?.trim()));
 
   const edgeLeft = motorOrder ? "DVS" : profile.showOilInterval ? "MASLO" : "SVC";
-  const edgeRight = context.order.motorLines.some((l) => l.configuration?.toLowerCase().includes("акпп"))
+  const hasGearboxMark = context.order.motorLines.some((line) =>
+    (context.motorLineMarks?.[line.id] ?? []).includes(GEARBOX_MARK),
+  );
+  const edgeRight = context.order.motorLines.some((l) => l.configuration?.toLowerCase().includes("акпп")) ||
+    hasGearboxMark
     ? "TGM"
     : profile.showEngineWarranty
       ? "GAR"

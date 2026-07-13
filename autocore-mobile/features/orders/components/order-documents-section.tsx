@@ -1,8 +1,13 @@
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 
-import { FileTextIcon, PrinterIcon, Share2Icon } from '@/assets/icons';
+import { FileTextIcon, Loader2Icon, PrinterIcon, Share2Icon } from '@/assets/icons';
 import { ActionIconButton, Text } from '@/components/ui';
+import {
+  useDocumentGenerationJobsRealtime,
+  useSession,
+  useWorkOrderDocumentsRealtime,
+} from '@/hooks';
 import { printWorkOrderDocument, shareWorkOrderDocument } from '@/lib/documents/document-file-actions';
 import { resolveApplicableDocumentSlugs } from '@/lib/documents/document-policy';
 import { haptics } from '@/theme';
@@ -28,8 +33,11 @@ type OrderDocumentsSectionProps = {
 };
 
 export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionProps) {
+  const { companyId } = useSession();
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { documentsBySlug } = useWorkOrderDocumentsRealtime(companyId, order.id);
+  const { latestJob, isGenerating } = useDocumentGenerationJobsRealtime(companyId, order.id);
 
   const definitions = useMemo(() => {
     const slugs = resolveApplicableDocumentSlugs(order);
@@ -42,11 +50,13 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
     setError(null);
     haptics.light();
 
+    const cachedDownloadUrl = documentsBySlug.get(slug)?.downloadUrl;
+
     try {
       if (action === 'share') {
-        await shareWorkOrderDocument(slug, order.id, order.number);
+        await shareWorkOrderDocument(slug, order.id, order.number, cachedDownloadUrl);
       } else {
-        await printWorkOrderDocument(slug, order.id, order.number);
+        await printWorkOrderDocument(slug, order.id, order.number, cachedDownloadUrl);
       }
     } catch (nextError) {
       haptics.warning();
@@ -86,9 +96,29 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
           Документы
         </Text>
         <Text variant="caption" color="muted" style={{ fontSize: 12 }}>
-          Поделитесь или распечатайте PDF через сервер AutoCore.
+          PDF формируются автоматически и открываются из сохранённой копии.
         </Text>
       </View>
+
+      {isGenerating ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
+            borderWidth: ordersLayout.hairline,
+            borderColor: colors.border,
+            backgroundColor: toneBackground(colors.primary, 0.06),
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+          }}
+        >
+          <Loader2Icon size="sm" color={colors.primary} />
+          <Text variant="caption" style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
+            PDF формируются…
+          </Text>
+        </View>
+      ) : null}
 
       {error ? (
         <View
@@ -100,77 +130,88 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
             paddingVertical: 10,
           }}
         >
-          <Text variant="caption" style={{ fontSize: 12, color: colors.primary }}>
+          <Text variant="caption" style={{ color: colors.foreground, fontSize: 12 }}>
             {error}
           </Text>
         </View>
       ) : null}
 
-      <View
-        style={{
-          borderWidth: ordersLayout.hairline,
-          borderColor: colors.border,
-          backgroundColor: colors.card,
-          overflow: 'hidden',
-        }}
-      >
-        {definitions.map((definition, index) => (
-          <View
-            key={definition.slug}
-            style={{
-              paddingHorizontal: 14,
-              paddingVertical: 12,
-              borderTopWidth: index === 0 ? 0 : ordersLayout.hairline,
-              borderTopColor: colors.border,
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-              <View
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 9,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: toneBackground(colors.primary, 0.1),
-                  marginTop: 1,
-                }}
-              >
-                <FileTextIcon size="sm" color={colors.primary} strokeWidth={1.85} />
+      <View style={{ gap: 8 }}>
+        {definitions.map((definition) => {
+          const persisted = documentsBySlug.get(definition.slug);
+          const isReady = Boolean(persisted?.downloadUrl);
+          const isPending =
+            !isReady &&
+            (isGenerating
+              ? latestJob?.requestedSlugs.includes(definition.slug)
+              : !latestJob?.completedSlugs.includes(definition.slug));
+
+          return (
+            <View
+              key={definition.slug}
+              style={{
+                borderWidth: ordersLayout.hairline,
+                borderColor: colors.border,
+                backgroundColor: colors.card,
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                gap: 10,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: 9,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: toneBackground(colors.primary, 0.1),
+                  }}
+                >
+                  <FileTextIcon size="sm" color={colors.primary} strokeWidth={1.85} />
+                </View>
+                <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text variant="body" style={{ fontSize: 14, fontWeight: '600', flexShrink: 1 }}>
+                      {definition.title}
+                    </Text>
+                    {isPending ? (
+                      <Text variant="caption" color="muted" style={{ fontSize: 11, fontWeight: '600' }}>
+                        формируется…
+                      </Text>
+                    ) : isReady ? (
+                      <Text variant="caption" style={{ fontSize: 11, fontWeight: '600', color: colors.success }}>
+                        готов
+                      </Text>
+                    ) : null}
+                  </View>
+                  <Text variant="caption" color="muted" numberOfLines={2} style={{ fontSize: 12 }}>
+                    {definition.description}
+                  </Text>
+                </View>
               </View>
 
-              <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
-                <Text variant="body" style={{ fontSize: 14, fontWeight: '600' }}>
-                  {definition.title}
-                </Text>
-                <Text variant="caption" color="muted" style={{ fontSize: 12 }}>
-                  {definition.description}
-                </Text>
-              </View>
-
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                {(['share', 'print'] as const).map((action) => {
-                  const key = `${definition.slug}:${action}`;
-                  const busy = busyKey === key;
-                  const Icon = action === 'share' ? Share2Icon : PrinterIcon;
-                  const label = action === 'share' ? 'Поделиться' : 'Печать';
-
-                  return (
-                    <ActionIconButton
-                      key={action}
-                      icon={Icon}
-                      accessibilityLabel={`${label}: ${definition.title}`}
-                      loading={busy}
-                      disabled={busyKey !== null && !busy}
-                      onPress={() => void runAction(definition.slug, action)}
-                    />
-                  );
-                })}
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+                <ActionIconButton
+                  accessibilityLabel={`Поделиться ${definition.title}`}
+                  icon={Share2Icon}
+                  disabled={!isReady || busyKey !== null}
+                  loading={busyKey === `${definition.slug}:share`}
+                  onPress={() => void runAction(definition.slug, 'share')}
+                />
+                <ActionIconButton
+                  accessibilityLabel={`Печать ${definition.title}`}
+                  icon={PrinterIcon}
+                  disabled={!isReady || busyKey !== null}
+                  loading={busyKey === `${definition.slug}:print`}
+                  onPress={() => void runAction(definition.slug, 'print')}
+                />
               </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
       </View>
     </View>
   );
-};
+}

@@ -426,18 +426,48 @@ export async function enqueueDocumentJob(params: {
   triggerEventId?: string;
 }) {
   const db = getAdminFirestore();
+  const normalizedCompanyId = normalizeCompanyId(params.companyId);
+  const uniqueSlugs = Array.from(new Set(params.slugs));
+
+  const activeSnap = await db
+    .collection("companies")
+    .doc(normalizedCompanyId)
+    .collection("documentGenerationJobs")
+    .where("aggregateId", "==", params.aggregateId)
+    .orderBy("createdAt", "desc")
+    .limit(5)
+    .get();
+
+  for (const doc of activeSnap.docs) {
+    const data = doc.data();
+    const status = String(data.status ?? "");
+    if (status !== "pending" && status !== "processing") continue;
+
+    const existingSlugs = Array.isArray(data.requestedSlugs) ? (data.requestedSlugs as string[]) : [];
+    const merged = Array.from(new Set([...existingSlugs, ...uniqueSlugs]));
+    await doc.ref.set(
+      {
+        requestedSlugs: merged,
+        status: "pending",
+      },
+      { merge: true },
+    );
+    return doc.id;
+  }
+
   const ref = db
     .collection("companies")
-    .doc(normalizeCompanyId(params.companyId))
+    .doc(normalizedCompanyId)
     .collection("documentGenerationJobs")
     .doc();
 
   await ref.set({
-    companyId: normalizeCompanyId(params.companyId),
+    companyId: normalizedCompanyId,
     aggregateType: params.aggregateType,
     aggregateId: params.aggregateId,
-    requestedSlugs: params.slugs,
+    requestedSlugs: uniqueSlugs,
     completedSlugs: [],
+    failedSlugs: [],
     triggerEventId: params.triggerEventId ?? null,
     status: "pending",
     attempts: 0,

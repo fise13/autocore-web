@@ -6,6 +6,8 @@ import { createMotorUseCase } from "@/application/use-cases/create-motor";
 import { syncMotorCatalogUseCase } from "@/application/use-cases/motors/sync-motor-catalog";
 import { softDeleteMotorUseCase } from "@/application/use-cases/soft-delete-motor";
 import { upsertMotorUseCase } from "@/application/use-cases/upsert-motor";
+import { assignAssetLocation } from "@/application/use-cases/warehouse/assign-asset-location";
+import { resolveItemLocationLabel } from "@/lib/warehouse/resolve-item-location-label";
 import { GridEditorOverlay } from "@/components/grid/grid-editor-overlay";
 import { GridFillHandle } from "@/components/grid/grid-fill-handle";
 import {
@@ -200,6 +202,11 @@ function applyCellValue(
     }
     case "transmission":
       next.transmission = value;
+      break;
+    case "warehouseLocation":
+      next.warehouseLocation = value;
+      next.primaryLocationCode = value.trim() || undefined;
+      if (!value.trim()) next.primaryLocationId = undefined;
       break;
     case "arrivalDate":
       next.arrivalDate = parseMotorDateInput(value);
@@ -627,6 +634,14 @@ export function MotorsExcelGrid({
           const emptyRow = row as MotorGridRow & { rowKind: "empty" };
           catalogRows.push(emptyRow);
           createTasks.push(async () => {
+            const locationText = resolveItemLocationLabel(emptyRow);
+            const assigned = locationText
+              ? await assignAssetLocation({
+                  companyId,
+                  locationText,
+                  actorUserId: uid,
+                })
+              : null;
             const motorId = await createMotorUseCase(
               repository,
               uid,
@@ -640,6 +655,9 @@ export function MotorsExcelGrid({
                 arrivalDate: emptyRow.arrivalDate ?? new Date(),
                 brandName: emptyRow.brandName,
                 engineCode: emptyRow.engineCode,
+                warehouseLocation: assigned?.warehouseLocation ?? "",
+                primaryLocationId: assigned?.primaryLocationId ?? "",
+                primaryLocationCode: assigned?.primaryLocationCode ?? "",
               },
               motorsRef.current,
             );
@@ -675,23 +693,37 @@ export function MotorsExcelGrid({
           baseline.transmission !== row.transmission ||
           (baseline.brandName ?? "") !== (row.brandName ?? "") ||
           (baseline.engineCode ?? "") !== (row.engineCode ?? "") ||
+          resolveItemLocationLabel(baseline) !== resolveItemLocationLabel(row) ||
           (baseline.arrivalDate?.getTime() ?? 0) !== (row.arrivalDate?.getTime() ?? 0);
         if (!changed) continue;
         catalogRows.push(row);
         parallelTasks.push(
-          upsertMotorUseCase(repository, uid, row.id, {
-            companyId,
-            localId: row.localId ?? Number(row.id),
-            serialCode: row.serialCode.trim(),
-            configuration: row.configuration,
-            notes: row.notes,
-            quantity: row.quantity,
-            transmission: row.transmission,
-            arrivalDate: row.arrivalDate,
-            soldDate: row.soldDate ?? null,
-            brandName: row.brandName,
-            engineCode: row.engineCode,
-          }).then(() => undefined),
+          (async () => {
+            const locationText = resolveItemLocationLabel(row);
+            const assigned = locationText
+              ? await assignAssetLocation({
+                  companyId,
+                  locationText,
+                  actorUserId: uid,
+                })
+              : null;
+            await upsertMotorUseCase(repository, uid, row.id, {
+              companyId,
+              localId: row.localId ?? Number(row.id),
+              serialCode: row.serialCode.trim(),
+              configuration: row.configuration,
+              notes: row.notes,
+              quantity: row.quantity,
+              transmission: row.transmission,
+              arrivalDate: row.arrivalDate,
+              soldDate: row.soldDate ?? null,
+              brandName: row.brandName,
+              engineCode: row.engineCode,
+              warehouseLocation: assigned?.warehouseLocation ?? "",
+              primaryLocationId: assigned?.primaryLocationId ?? "",
+              primaryLocationCode: assigned?.primaryLocationCode ?? "",
+            });
+          })(),
         );
       }
 

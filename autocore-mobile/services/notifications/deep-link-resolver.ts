@@ -17,8 +17,15 @@ export function resolveNotificationDeepLink(deepLink?: string | null): Href | nu
     if (inviteHref) return inviteHref;
   }
 
-  // Web document-import deep links → mobile import capture screen
-  if (trimmed.startsWith('/imports/') || trimmed === '/imports') {
+  // Web import / batch deep links → mobile import capture
+  if (trimmed.startsWith('/import') || trimmed.startsWith('/imports')) {
+    try {
+      const url = new URL(trimmed, 'https://app.myautocore.com');
+      const batchId = url.searchParams.get('batchId');
+      if (batchId) return `/(tabs)/import?batchId=${encodeURIComponent(batchId)}` as Href;
+    } catch {
+      // fall through
+    }
     return '/(tabs)/import' as Href;
   }
 
@@ -55,8 +62,15 @@ export function resolveNotificationDeepLink(deepLink?: string | null): Href | nu
   if (path.startsWith('inventory/')) {
     return `/(tabs)/orders/create-item` as Href;
   }
-  if (path.startsWith('imports/') || path.startsWith('import/')) {
-    // Document import viewer lives on web; open import capture on mobile.
+  if (path.startsWith('imports/') || path.startsWith('import/') || path.startsWith('import?')) {
+    const batchMatch = path.match(/[?&]batchId=([^&]+)/);
+    if (batchMatch?.[1]) {
+      return `/(tabs)/import?batchId=${batchMatch[1]}` as Href;
+    }
+    const idMatch = path.match(/^import\/([^/?#]+)/);
+    if (idMatch?.[1] && idMatch[1] !== 'batch') {
+      return `/(tabs)/import?batchId=${idMatch[1]}` as Href;
+    }
     return '/(tabs)/import' as Href;
   }
   if (path === 'sync/conflict') {
@@ -72,6 +86,10 @@ export function buildOrderDeepLink(orderId: string): string {
 
 export function buildImportDeepLink(importId: string): string {
   return `${SCHEME}import/${importId}`;
+}
+
+export function buildImportBatchDeepLink(batchId: string): string {
+  return `${SCHEME}import?batchId=${encodeURIComponent(batchId)}`;
 }
 
 export async function openNotificationDeepLink(deepLink?: string | null): Promise<boolean> {

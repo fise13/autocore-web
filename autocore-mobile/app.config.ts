@@ -46,7 +46,8 @@ const plugins: ExpoConfig['plugins'] = [
   [
     'expo-camera',
     {
-      cameraPermission: 'AutoCore использует камеру для сканирования QR, VIN и штрихкодов.',
+      cameraPermission: 'AutoCore использует камеру для сканирования штрихкодов.',
+      barcodeScannerEnabled: true,
     },
   ],
   [
@@ -139,6 +140,11 @@ export default (): ExpoConfig => ({
             scheme: 'https',
             host: 'app.myautocore.com',
             pathPrefix: '/join',
+          },
+          {
+            scheme: 'https',
+            host: 'app.myautocore.com',
+            pathPrefix: '/import',
           },
         ],
         category: ['BROWSABLE', 'DEFAULT'],

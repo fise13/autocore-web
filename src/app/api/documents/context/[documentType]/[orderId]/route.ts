@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { loadDocumentContext, serializeDocumentContext } from "@/lib/documents/load-document-context";
+import { serializeDocumentContext } from "@/lib/documents/load-document-context";
 import { resolveDocumentSlug } from "@/lib/documents/document-types";
 import { mapDocumentError } from "@/lib/documents/map-document-error";
+import { resolveDocumentContext } from "@/lib/documents/resolve-document-context";
 import {
   assertOrderCompanyAccess,
   DocumentAccessError,
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     const access = await verifyDocumentAccess(request);
-    const documentContext = await loadDocumentContext(access.companyId, orderId);
+    const documentContext = await resolveDocumentContext(access.companyId, orderId, "work_order");
     await assertOrderCompanyAccess(access.companyId, documentContext.order.companyId);
 
     return NextResponse.json({

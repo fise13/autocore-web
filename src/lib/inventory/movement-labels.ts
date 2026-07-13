@@ -11,6 +11,7 @@ const MOVEMENT_TYPE_LABELS: Record<MovementType, string> = {
   adjustment: "Корректировка",
   return_in: "Возврат на склад",
   reversal: "Отмена движения",
+  relocation: "Перемещение по местам",
 };
 
 export function movementTypeLabel(type: MovementType | string): string {

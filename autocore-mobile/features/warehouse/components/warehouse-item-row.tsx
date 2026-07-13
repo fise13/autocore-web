@@ -7,6 +7,7 @@ import { useTheme } from '@/hooks';
 import { haptics, rhythm } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
 import { isWarehouseLowStock } from '@/lib/inventory/is-low-stock';
+import { resolveInventoryShelf } from '@/lib/inventory/resolve-shelf';
 import { useMcEnter } from '@/features/mission-control/animation';
 import type { InventoryItem } from '@/types/inventory';
 
@@ -78,9 +79,8 @@ export function WarehouseItemRow({
     duration: 280,
   });
 
-  const meta = [item.sku, item.warehouseLocation ? `Ячейка ${item.warehouseLocation}` : null]
-    .filter(Boolean)
-    .join(' · ');
+  const shelf = resolveInventoryShelf(item);
+  const meta = [item.sku, shelf ? `Ячейка ${shelf}` : null].filter(Boolean).join(' · ');
 
   const canDecrease = canEdit && available > 0;
 

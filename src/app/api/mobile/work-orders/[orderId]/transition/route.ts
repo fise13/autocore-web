@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { WorkOrderStatus, WORK_ORDER_STATUSES } from "@/domain/work-order";
 import { MobileAccessError, verifyMobileAccess } from "@/lib/auth/verify-mobile-access.server";
+import { kickDocumentQueueWorker } from "@/lib/documents/engine/kick-document-queue";
 import {
   transitionMobileWorkOrder,
   WorkOrderAccessError,
@@ -32,13 +33,22 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Некорректный статус" }, { status: 400 });
     }
 
-    const order = await transitionMobileWorkOrder({
+    const { order, documentJobId } = await transitionMobileWorkOrder({
       companyId: access.companyId,
       workOrderId: trimmed,
       nextStatus,
       actorUserId: access.uid,
       scope: access.scopes.workOrders,
     });
+
+    if (documentJobId) {
+      await kickDocumentQueueWorker({
+        origin: request.nextUrl.origin,
+        companyId: access.companyId,
+        jobId: documentJobId,
+        authorization: request.headers.get("authorization"),
+      });
+    }
 
     return NextResponse.json({ order });
   } catch (error) {

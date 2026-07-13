@@ -7,6 +7,7 @@ import {
   normalizeBarcode,
   parseInventoryStatus,
 } from "@/lib/warehouse/warehouse-search";
+import { resolveItemLocationLabel } from "@/lib/warehouse/resolve-item-location-label";
 import { parseGroupedNumber } from "@/lib/money/format-number";
 
 export type WarehouseGridRow =
@@ -355,6 +356,7 @@ export function filterWarehouseItems(items: InventoryItem[], search: string): In
       item.brandName,
       item.supplierName,
       item.warehouseLocation,
+      item.primaryLocationCode,
       item.categoryPath?.join(" "),
       item.barcodes.join(" "),
       ...item.searchTokens,

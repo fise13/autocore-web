@@ -14,19 +14,27 @@ function buildPdfUrl(
   options?: { inline?: boolean; aggregateType?: DocumentAggregateType },
 ): string {
   const params = new URLSearchParams();
+  // Always ask for bytes — browser fetch following 302 to Firebase Storage fails CORS ("Load failed").
+  params.set("redirect", "0");
   if (options?.inline) params.set("inline", "1");
   if (options?.aggregateType && options.aggregateType !== "work_order") {
     params.set("aggregate", options.aggregateType);
   }
-  const query = params.size > 0 ? `?${params.toString()}` : "";
-  return `/api/pdf/${slug}/${aggregateId}${query}`;
+  return `/api/pdf/${slug}/${aggregateId}?${params.toString()}`;
 }
 
 async function readPdfError(response: Response): Promise<string> {
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
-    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-    return payload?.error ?? "Не удалось получить PDF";
+    const payload = (await response.json().catch(() => null)) as {
+      error?: string;
+      message?: string;
+      status?: string;
+    } | null;
+    if (payload?.status === "generating") {
+      return payload.message ?? "PDF формируется. Повторите через несколько секунд.";
+    }
+    return payload?.error ?? payload?.message ?? "Не удалось получить PDF";
   }
   const text = await response.text().catch(() => "");
   return text.trim() || "Не удалось получить PDF";
@@ -37,23 +45,34 @@ export async function fetchDocumentPdf(
   aggregateId: string,
   options?: { inline?: boolean; aggregateType?: DocumentAggregateType },
 ): Promise<Blob> {
-  const token = await getAuthToken();
-  const response = await fetch(buildPdfUrl(slug, aggregateId, options), {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  try {
+    const token = await getAuthToken();
+    const response = await fetch(buildPdfUrl(slug, aggregateId, options), {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-  if (!response.ok) {
-    throw new Error(mapDocumentError(new Error(await readPdfError(response))));
+    if (!response.ok) {
+      throw new Error(mapDocumentError(new Error(await readPdfError(response))));
+    }
+
+    if (response.status === 202) {
+      throw new Error(mapDocumentError(new Error(await readPdfError(response))));
+    }
+
+    const blob = await response.blob();
+    if (blob.size === 0) {
+      throw new Error("Сервер вернул пустой PDF");
+    }
+
+    return blob;
+  } catch (error) {
+    if (error instanceof Error && error.message !== "Сервер вернул пустой PDF") {
+      throw new Error(mapDocumentError(error));
+    }
+    throw error;
   }
-
-  const blob = await response.blob();
-  if (blob.size === 0) {
-    throw new Error("Сервер вернул пустой PDF");
-  }
-
-  return blob;
 }
 
 function toPdfBlob(blob: Blob): Blob {
@@ -83,7 +102,12 @@ export function deliverPdfToUser(blob: Blob, filename: string): PdfDeliveryResul
 }
 
 export async function downloadDocumentPdfFromUrl(downloadUrl: string, filename: string): Promise<void> {
-  const response = await fetch(downloadUrl, { cache: "no-store" });
+  const trimmed = downloadUrl.trim();
+  if (!trimmed || !/^https?:\/\//i.test(trimmed)) {
+    throw new Error("Некорректная ссылка на PDF");
+  }
+
+  const response = await fetch(trimmed, { cache: "no-store", mode: "cors" });
   if (!response.ok) {
     throw new Error("Не удалось скачать сохранённый PDF");
   }
@@ -101,18 +125,22 @@ export async function downloadDocumentPdf(
   options?: { aggregateType?: DocumentAggregateType; cachedDownloadUrl?: string },
 ): Promise<PdfDeliveryResult> {
   const resolvedFilename = filename ?? `${slug}-${aggregateId}.pdf`;
-  const cachedUrl = options?.cachedDownloadUrl?.trim();
-  if (cachedUrl) {
-    try {
-      await downloadDocumentPdfFromUrl(cachedUrl, resolvedFilename);
-      return "downloaded";
-    } catch {
-      // Fall back to on-demand generation.
+  // Prefer authenticated API (redirect=0) — avoids CORS "Load failed" on Firebase Storage from localhost.
+  try {
+    const blob = await fetchDocumentPdf(slug, aggregateId, options);
+    return deliverPdfToUser(blob, resolvedFilename);
+  } catch (apiError) {
+    const cachedUrl = options?.cachedDownloadUrl?.trim();
+    if (cachedUrl) {
+      try {
+        await downloadDocumentPdfFromUrl(cachedUrl, resolvedFilename);
+        return "downloaded";
+      } catch {
+        // keep api error
+      }
     }
+    throw apiError instanceof Error ? apiError : new Error(mapDocumentError(apiError));
   }
-
-  const blob = await fetchDocumentPdf(slug, aggregateId, options);
-  return deliverPdfToUser(blob, resolvedFilename);
 }
 
 function sleep(ms: number): Promise<void> {

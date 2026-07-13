@@ -34,6 +34,8 @@ function mapMovement(id: string, data: Record<string, unknown>): InventoryMoveme
     afterOnHand: Number(data.afterOnHand ?? 0),
     beforeReserved: Number(data.beforeReserved ?? 0),
     afterReserved: Number(data.afterReserved ?? 0),
+    fromLocationId: typeof data.fromLocationId === "string" ? data.fromLocationId : undefined,
+    toLocationId: typeof data.toLocationId === "string" ? data.toLocationId : undefined,
     referenceType: data.referenceType as InventoryMovement["referenceType"],
     referenceId: typeof data.referenceId === "string" ? data.referenceId : undefined,
     documentId: typeof data.documentId === "string" ? data.documentId : undefined,

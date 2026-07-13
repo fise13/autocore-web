@@ -32,7 +32,7 @@ function normalizeBounds(
   const { bounds, cornerPoints } = detection;
   const pad = 14;
 
-  if (cornerPoints.length >= 4) {
+  if (cornerPoints?.length >= 4) {
     const xs = cornerPoints.map((p) => p.x);
     const ys = cornerPoints.map((p) => p.y);
     const minX = Math.min(...xs) - pad;
@@ -47,8 +47,8 @@ function normalizeBounds(
     };
   }
 
-  const { origin, size } = bounds;
-  if (size.width > 0 && size.height > 0) {
+  if (bounds?.size && bounds.size.width > 0 && bounds.size.height > 0) {
+    const { origin, size } = bounds;
     return {
       x: Math.max(0, origin.x - pad),
       y: Math.max(0, origin.y - pad),

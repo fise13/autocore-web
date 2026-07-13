@@ -19,8 +19,11 @@ function mapWorkOrderDocument(id: string, data: Record<string, unknown>): WorkOr
     workOrderId: String(data.workOrderId ?? ""),
     type: data.type as WorkOrderDocument["type"],
     title: String(data.title ?? ""),
+    slug: typeof data.slug === "string" ? data.slug : undefined,
+    status: data.status as WorkOrderDocument["status"],
     storagePath: typeof data.storagePath === "string" ? data.storagePath : undefined,
     downloadUrl: typeof data.downloadUrl === "string" ? data.downloadUrl : undefined,
+    contextHash: typeof data.contextHash === "string" ? data.contextHash : undefined,
     createdAt: toDateFromFirestore(data.createdAt) ?? new Date(),
   };
 }

@@ -13,10 +13,26 @@ export function formatMotorDisplayName(parts: MotorNameParts): string {
 /** Line label for work orders and documents. Serial is optional secondary detail. */
 export function formatMotorLineLabel(
   parts: MotorNameParts & { outcome?: "install" | "sell" },
-  options?: { includeSerial?: boolean; fallback?: string },
+  options?: { includeSerial?: boolean; fallback?: string; marks?: string[] },
 ): string {
   const name = formatMotorDisplayName(parts);
-  if (name) return name;
-  if (options?.includeSerial && parts.serialCode?.trim()) return parts.serialCode.trim();
-  return options?.fallback ?? "Двигатель";
+  const base =
+    name ||
+    (options?.includeSerial && parts.serialCode?.trim()
+      ? parts.serialCode.trim()
+      : options?.fallback ?? "Двигатель");
+  const marks = (options?.marks ?? []).map((m) => m.trim()).filter(Boolean);
+  if (marks.length === 0) return base;
+  return `${base} · ${marks.join(" · ")}`;
+}
+
+/** Outcome / operation subtitle with optional customer marks. */
+export function formatMotorLineSubtitle(
+  outcome: "install" | "sell" | undefined,
+  marks?: string[],
+): string {
+  const base = outcome === "sell" ? "Продажа" : "Установка";
+  const cleanMarks = (marks ?? []).map((m) => m.trim()).filter(Boolean);
+  if (cleanMarks.length === 0) return base;
+  return `${base} · ${cleanMarks.join(" · ")}`;
 }

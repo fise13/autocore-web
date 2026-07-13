@@ -16,6 +16,7 @@ import {
 
 import { adjustStockUseCase } from "./adjust-stock";
 import { receiveStockUseCase } from "./receive-stock";
+import { syncItemLocationAssignmentUseCase } from "./relocate-stock";
 import { upsertInventoryItemUseCase } from "./upsert-inventory-item";
 
 export async function syncWarehouseGridRowUseCase(
@@ -59,6 +60,15 @@ export async function syncWarehouseGridRowUseCase(
         },
       );
     }
+    if (params.warehouseId && upsertInput.warehouseLocation) {
+      await syncItemLocationAssignmentUseCase({
+        companyId,
+        itemId,
+        warehouseId: params.warehouseId,
+        locationText: upsertInput.warehouseLocation,
+        actorUserId,
+      }).catch(() => undefined);
+    }
     return itemId;
   }
 
@@ -75,6 +85,20 @@ export async function syncWarehouseGridRowUseCase(
 
   if (metadataChanged) {
     await upsertInventoryItemUseCase(itemRepository, upsertInput, row.id);
+  }
+
+  if (
+    params.warehouseId &&
+    (baseline.warehouseLocation ?? "") !== (row.warehouseLocation ?? "")
+  ) {
+    await syncItemLocationAssignmentUseCase({
+      companyId,
+      itemId: row.id,
+      warehouseId: params.warehouseId,
+      locationText: row.warehouseLocation,
+      previousText: baseline.warehouseLocation ?? baseline.primaryLocationCode,
+      actorUserId,
+    }).catch(() => undefined);
   }
 
   if (stockChanged) {

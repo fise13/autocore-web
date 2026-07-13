@@ -15,6 +15,7 @@ export async function generateAndPersistDocument(params: {
   companyId: string;
   workOrderId: string;
   context: DocumentContext;
+  contextHash?: string;
 }): Promise<WorkOrderDocument> {
   const pdf = await generateDocumentPdf(params.slug, params.companyId, params.workOrderId, {
     theme: params.context.theme,
@@ -25,7 +26,9 @@ export async function generateAndPersistDocument(params: {
     companyId: params.companyId,
     workOrderId: params.workOrderId,
     type: definition.type,
+    slug: params.slug,
     pdf,
+    contextHash: params.contextHash,
   });
 }
 

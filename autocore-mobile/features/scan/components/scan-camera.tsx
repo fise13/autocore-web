@@ -1,11 +1,10 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { normalizeScanPayload } from '@/lib/scan/normalize-scan-payload';
-import { preferIphoneMacroLens } from '@/lib/scan/prefer-iphone-macro-lens';
+import { scanPayloadKey } from '@/lib/scan/normalize-scan-payload';
 import type { ScanDetection } from '@/services/scan';
 
 export type ScanCameraHandle = {
@@ -15,12 +14,13 @@ export type ScanCameraHandle = {
 type ScanCameraProps = {
   torch: boolean;
   active: boolean;
+  scanEnabled: boolean;
   onDetection: (detection: ScanDetection) => void;
   onDetections: (detections: ScanDetection[]) => void;
 };
 
+/** All linear 1D symbologies supported by expo-camera. */
 const BARCODE_TYPES = [
-  'qr',
   'ean13',
   'ean8',
   'upc_a',
@@ -30,72 +30,44 @@ const BARCODE_TYPES = [
   'code93',
   'itf14',
   'codabar',
-  'datamatrix',
-  'pdf417',
-  'aztec',
 ] as const;
 
-const MULTI_CODE_WINDOW_MS = 70;
-const MULTI_CODE_FLUSH_MS = 35;
+const CONTROL_CHARS = /[\x00-\x1F\x7F]/g;
+const EMIT_COOLDOWN_MS = 60;
 
 function toDetection(result: BarcodeScanningResult): ScanDetection | null {
-  const payload = normalizeScanPayload(result.data ?? '');
+  const payload = (result.data ?? '').replace(CONTROL_CHARS, '').trim();
   if (!payload) return null;
   return {
     payload,
     symbology: result.type,
-    bounds: result.bounds,
+    bounds: result.bounds ?? {
+      origin: { x: 0, y: 0 },
+      size: { width: 0, height: 0 },
+    },
     cornerPoints: result.cornerPoints ?? [],
   };
 }
 
 export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function ScanCamera(
-  { torch, active, onDetection, onDetections },
+  { torch, active, scanEnabled, onDetection, onDetections: _onDetections },
   ref,
 ) {
   const { colors } = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
-  const activeRef = useRef(active);
+  const scanEnabledRef = useRef(scanEnabled);
   const onDetectionRef = useRef(onDetection);
-  const onDetectionsRef = useRef(onDetections);
   const readyRef = useRef(false);
-  const recentRef = useRef<Map<string, ScanDetection & { seenAt: number }>>(new Map());
-  const multiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [selectedLens, setSelectedLens] = useState<string | undefined>(undefined);
+  const lastEmitRef = useRef<{ key: string; at: number } | null>(null);
 
   useEffect(() => {
-    activeRef.current = active;
-  }, [active]);
+    scanEnabledRef.current = scanEnabled;
+  }, [scanEnabled]);
 
   useEffect(() => {
     onDetectionRef.current = onDetection;
   }, [onDetection]);
-
-  useEffect(() => {
-    onDetectionsRef.current = onDetections;
-  }, [onDetections]);
-
-  useEffect(() => {
-    return () => {
-      if (multiTimerRef.current) {
-        clearTimeout(multiTimerRef.current);
-      }
-    };
-  }, []);
-
-  const applyMacroLens = useCallback(async () => {
-    if (Platform.OS !== 'ios' || !cameraRef.current) return;
-    try {
-      const lenses = await cameraRef.current.getAvailableLensesAsync();
-      const preferred = preferIphoneMacroLens(lenses);
-      if (preferred) {
-        setSelectedLens(preferred);
-      }
-    } catch {
-      // Keep default lens.
-    }
-  }, []);
 
   useImperativeHandle(ref, () => ({
     async takePicture() {
@@ -118,66 +90,25 @@ export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function
     }
   }, [permission, requestPermission]);
 
-  const flushMultiCodes = useCallback(() => {
-    multiTimerRef.current = null;
-    if (!activeRef.current || !readyRef.current) {
-      recentRef.current.clear();
-      return;
-    }
+  const handleBarcode = useCallback((result: BarcodeScanningResult) => {
+    readyRef.current = true;
+    if (!scanEnabledRef.current) return;
 
-    const detections = Array.from(recentRef.current.values()).map(({ seenAt: _seenAt, ...detection }) => detection);
-    recentRef.current.clear();
-    if (detections.length >= 2) {
-      onDetectionsRef.current(detections);
-    }
+    const detection = toDetection(result);
+    if (!detection) return;
+
+    const key = scanPayloadKey(detection.payload);
+    const now = Date.now();
+    const last = lastEmitRef.current;
+    if (last && last.key === key && now - last.at < EMIT_COOLDOWN_MS) return;
+    lastEmitRef.current = { key, at: now };
+
+    onDetectionRef.current(detection);
   }, []);
-
-  const pruneRecent = useCallback((now: number) => {
-    for (const [payload, detection] of recentRef.current) {
-      if (now - detection.seenAt > MULTI_CODE_WINDOW_MS) {
-        recentRef.current.delete(payload);
-      }
-    }
-  }, []);
-
-  const handleBarcode = useCallback(
-    (result: BarcodeScanningResult) => {
-      if (!activeRef.current || !readyRef.current) return;
-      const detection = toDetection(result);
-      if (!detection) return;
-
-      const now = Date.now();
-      recentRef.current.set(detection.payload, { ...detection, seenAt: now });
-      pruneRecent(now);
-
-      const uniqueCount = recentRef.current.size;
-      if (uniqueCount >= 2) {
-        if (multiTimerRef.current) {
-          clearTimeout(multiTimerRef.current);
-        }
-        multiTimerRef.current = setTimeout(flushMultiCodes, MULTI_CODE_FLUSH_MS);
-        return;
-      }
-
-      onDetectionRef.current(detection);
-    },
-    [flushMultiCodes, pruneRecent],
-  );
 
   const handleCameraReady = useCallback(() => {
     readyRef.current = true;
-    void applyMacroLens();
-  }, [applyMacroLens]);
-
-  const handleAvailableLensesChanged = useCallback(
-    (event: { lenses: string[] }) => {
-      const preferred = preferIphoneMacroLens(event.lenses);
-      if (preferred && preferred !== selectedLens) {
-        setSelectedLens(preferred);
-      }
-    },
-    [selectedLens],
-  );
+  }, []);
 
   if (!permission) {
     return <View style={[styles.fill, { backgroundColor: '#000' }]} />;
@@ -223,12 +154,10 @@ export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function
       ref={cameraRef}
       style={styles.fill}
       facing="back"
+      mode="picture"
       enableTorch={torch}
-      autofocus="off"
-      active
-      selectedLens={selectedLens}
+      active={active}
       onCameraReady={handleCameraReady}
-      onAvailableLensesChanged={handleAvailableLensesChanged}
       barcodeScannerSettings={{
         barcodeTypes: [...BARCODE_TYPES],
       }}

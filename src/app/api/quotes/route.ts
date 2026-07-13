@@ -6,6 +6,7 @@ import { createQuoteUseCase } from "@/application/use-cases/quotes/convert-quote
 import { createDomainEventRepository } from "@/infrastructure/firestore/domain-event-repository";
 import { createQuoteRepository } from "@/infrastructure/firestore/quote-repository";
 import { enqueueDocumentJob } from "@/infrastructure/firestore/admin/work-order-effects-admin";
+import { kickDocumentQueueWorker } from "@/lib/documents/engine/kick-document-queue";
 import {
   DocumentAccessError,
   verifyDocumentAccess,
@@ -57,14 +58,12 @@ export async function POST(request: NextRequest) {
       slugs: ["commercial-proposal"],
     });
 
-    void fetch(`${request.nextUrl.origin}/api/documents/process-queue`, {
-      method: "POST",
-      headers: {
-        Authorization: request.headers.get("authorization") ?? "",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ jobId }),
-    }).catch(() => undefined);
+    await kickDocumentQueueWorker({
+      origin: request.nextUrl.origin,
+      companyId: access.companyId,
+      jobId,
+      authorization: request.headers.get("authorization"),
+    });
 
     return NextResponse.json({ quote, jobId });
   } catch (error) {

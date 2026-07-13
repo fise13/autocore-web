@@ -61,121 +61,119 @@ export const ScanDocumentSheet = forwardRef<BottomSheetModal, ScanDocumentSheetP
       handleIndicatorStyle: sheet.handleIndicatorStyle,
     };
 
-    if (!document) {
-      return (
-        <BottomSheetModal ref={ref} {...modalProps}>
-          <BottomSheetScrollView contentContainerStyle={{ minHeight: 1 }}>
-            <View />
-          </BottomSheetScrollView>
-        </BottomSheetModal>
-      );
-    }
-
-    const confidenceLabel =
-      document.confidence === 'high'
+    const confidenceLabel = document
+      ? document.confidence === 'high'
         ? 'Проверено'
         : document.confidence === 'medium'
           ? 'Проверьте поля'
-          : 'Низкая уверенность';
+          : 'Низкая уверенность'
+      : '';
 
+    // Single modal instance — early-return trees remount the portal and can leave a stuck backdrop.
     return (
       <BottomSheetModal ref={ref} {...modalProps}>
-        <BottomSheetScrollView contentContainerStyle={{ ...sheet.formContentStyle, gap: 14 }}>
-          <View style={{ gap: 4 }}>
-            <Text variant="heading" style={{ fontSize: 20, fontWeight: '700' }}>
-              {documentClassLabel(document.kind)}
-            </Text>
-            <Text variant="caption" color="muted">
-              {confidenceLabel}
-              {document.totalsMatch === true ? ' · суммы сходятся' : null}
-              {document.totalsMatch === false ? ' · проверьте суммы' : null}
-            </Text>
-          </View>
-
-          <View style={{ gap: rhythm.stack }}>
-            <Field label="Номер" value={document.number} />
-            <Field label="Дата" value={document.date} />
-            <Field label="Контрагент" value={document.merchant ?? document.clientName} />
-            <Field label="ИНН / БИН" value={document.inn} />
-            <Field label="Телефон" value={document.phone} />
-            <Field label="Госномер" value={document.plate} />
-            <Field label="VIN" value={document.vin} />
-            <Field label="Итого" value={document.total != null ? formatPrice(document.total) : null} />
-          </View>
-
-          {document.lines.length > 0 ? (
-            <View style={{ gap: 8 }}>
-              <Text variant="caption" color="muted" style={{ fontWeight: '600' }}>
-                Позиции ({document.lines.length})
+        {!document ? (
+          <BottomSheetScrollView contentContainerStyle={{ minHeight: 1 }}>
+            <View />
+          </BottomSheetScrollView>
+        ) : (
+          <BottomSheetScrollView contentContainerStyle={{ ...sheet.formContentStyle, gap: 14 }}>
+            <View style={{ gap: 4 }}>
+              <Text variant="heading" style={{ fontSize: 20, fontWeight: '700' }}>
+                {documentClassLabel(document.kind)}
               </Text>
-              {document.lines.slice(0, 8).map((line, index) => (
-                <View
-                  key={`${line.name}-${index}`}
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    gap: 12,
-                    paddingVertical: 6,
-                    borderBottomWidth: index < Math.min(document.lines.length, 8) - 1 ? 1 : 0,
-                    borderBottomColor: colors.border,
-                  }}
-                >
-                  <Text variant="body" style={{ flex: 1, fontSize: 13, fontWeight: '500' }}>
-                    {line.name}
-                  </Text>
-                  <Text variant="caption" color="muted" style={{ fontVariant: ['tabular-nums'] }}>
-                    {line.qty != null ? `${line.qty} × ` : ''}
-                    {line.sum != null ? formatPrice(line.sum) : line.unitPrice != null ? formatPrice(line.unitPrice) : ''}
-                  </Text>
-                </View>
-              ))}
+              <Text variant="caption" color="muted">
+                {confidenceLabel}
+                {document.totalsMatch === true ? ' · суммы сходятся' : null}
+                {document.totalsMatch === false ? ' · проверьте суммы' : null}
+              </Text>
             </View>
-          ) : null}
 
-          <View style={{ gap: 8, marginTop: 4 }}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                haptics.light();
-                onPrimary();
-              }}
-              style={{
-                minHeight: 48,
-                borderRadius: 12,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: colors.primary,
-              }}
-            >
-              <Text variant="body" style={{ fontSize: 15, fontWeight: '700', color: colors.primaryForeground }}>
-                {primaryLabel(document)}
-              </Text>
-            </Pressable>
+            <View style={{ gap: rhythm.stack }}>
+              <Field label="Номер" value={document.number} />
+              <Field label="Дата" value={document.date} />
+              <Field label="Контрагент" value={document.merchant ?? document.clientName} />
+              <Field label="ИНН / БИН" value={document.inn} />
+              <Field label="Телефон" value={document.phone} />
+              <Field label="Госномер" value={document.plate} />
+              <Field label="VIN" value={document.vin} />
+              <Field label="Итого" value={document.total != null ? formatPrice(document.total) : null} />
+            </View>
 
-            {document.vin && onSearchVin ? (
+            {document.lines.length > 0 ? (
+              <View style={{ gap: 8 }}>
+                <Text variant="caption" color="muted" style={{ fontWeight: '600' }}>
+                  Позиции ({document.lines.length})
+                </Text>
+                {document.lines.slice(0, 8).map((line, index) => (
+                  <View
+                    key={`${line.name}-${index}`}
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      paddingVertical: 6,
+                      borderBottomWidth: index < Math.min(document.lines.length, 8) - 1 ? 1 : 0,
+                      borderBottomColor: colors.border,
+                    }}
+                  >
+                    <Text variant="body" style={{ flex: 1, fontSize: 13, fontWeight: '500' }}>
+                      {line.name}
+                    </Text>
+                    <Text variant="caption" color="muted" style={{ fontVariant: ['tabular-nums'] }}>
+                      {line.qty != null ? `${line.qty} × ` : ''}
+                      {line.sum != null ? formatPrice(line.sum) : line.unitPrice != null ? formatPrice(line.unitPrice) : ''}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            <View style={{ gap: 8, marginTop: 4 }}>
               <Pressable
                 accessibilityRole="button"
                 onPress={() => {
                   haptics.light();
-                  onSearchVin();
+                  onPrimary();
                 }}
                 style={{
-                  minHeight: 44,
+                  minHeight: 48,
                   borderRadius: 12,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: colors.secondary,
-                  borderWidth: 1,
-                  borderColor: colors.border,
+                  backgroundColor: colors.primary,
                 }}
               >
-                <Text variant="body" style={{ fontSize: 14, fontWeight: '600' }}>
-                  Найти авто по VIN
+                <Text variant="body" style={{ fontSize: 15, fontWeight: '700', color: colors.primaryForeground }}>
+                  {primaryLabel(document)}
                 </Text>
               </Pressable>
-            ) : null}
-          </View>
-        </BottomSheetScrollView>
+
+              {document.vin && onSearchVin ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => {
+                    haptics.light();
+                    onSearchVin();
+                  }}
+                  style={{
+                    minHeight: 44,
+                    borderRadius: 12,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: colors.secondary,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                  }}
+                >
+                  <Text variant="body" style={{ fontSize: 14, fontWeight: '600' }}>
+                    Найти авто по VIN
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          </BottomSheetScrollView>
+        )}
       </BottomSheetModal>
     );
   },

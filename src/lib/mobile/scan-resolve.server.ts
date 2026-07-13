@@ -78,6 +78,8 @@ function mapItem(id: string, data: Record<string, unknown>): MobileScanItem {
     brandName: typeof data.brandName === "string" ? data.brandName : undefined,
     warehouseLocation:
       typeof data.warehouseLocation === "string" ? data.warehouseLocation : undefined,
+    primaryLocationCode:
+      typeof data.primaryLocationCode === "string" ? data.primaryLocationCode : undefined,
     sellPrice: data.sellPrice == null ? undefined : Number(data.sellPrice),
     purchasePrice: data.purchasePrice == null ? undefined : Number(data.purchasePrice),
     totalOnHand,
@@ -160,54 +162,75 @@ async function resolveExactTier(
   const db = getAdminFirestore();
   const normalizedCompanyId = normalizeCompanyId(companyId);
 
-  for (const variant of variants) {
-    const mappingSnap = await db
-      .collection("barcodeMappings")
-      .where("companyId", "==", normalizedCompanyId)
-      .where("barcode", "==", variant)
-      .limit(1)
-      .get();
-    if (!mappingSnap.empty) {
+  const mappingHits = await Promise.all(
+    variants.map(async (variant) => {
+      const mappingSnap = await db
+        .collection("barcodeMappings")
+        .where("companyId", "==", normalizedCompanyId)
+        .where("barcode", "==", variant)
+        .limit(1)
+        .get();
+      if (mappingSnap.empty) return null;
       const itemId = String(mappingSnap.docs[0]!.data().itemId ?? "");
-      if (itemId) return { itemId, matchType: "barcode_mapping" };
-    }
+      if (!itemId) return null;
+      return { itemId, matchType: "barcode_mapping" as const, variant };
+    }),
+  );
+  for (const variant of variants) {
+    const hit = mappingHits.find((entry) => entry?.variant === variant);
+    if (hit?.itemId) return { itemId: hit.itemId, matchType: hit.matchType };
   }
 
+  const skuHits = await Promise.all(
+    variants.map(async (variant) => {
+      const skuSnap = await db
+        .collection("inventoryItems")
+        .where("companyId", "==", normalizedCompanyId)
+        .where("sku", "==", variant)
+        .limit(1)
+        .get();
+      if (skuSnap.empty) return null;
+      return { itemId: skuSnap.docs[0]!.id, matchType: "sku" as const, variant };
+    }),
+  );
   for (const variant of variants) {
-    const skuSnap = await db
-      .collection("inventoryItems")
-      .where("companyId", "==", normalizedCompanyId)
-      .where("sku", "==", variant)
-      .limit(1)
-      .get();
-    if (!skuSnap.empty) {
-      return { itemId: skuSnap.docs[0]!.id, matchType: "sku" };
-    }
+    const hit = skuHits.find((entry) => entry?.variant === variant);
+    if (hit?.itemId) return { itemId: hit.itemId, matchType: hit.matchType };
   }
 
+  const barcodeHits = await Promise.all(
+    variants.map(async (variant) => {
+      const barcodeSnap = await db
+        .collection("inventoryItems")
+        .where("companyId", "==", normalizedCompanyId)
+        .where("barcodes", "array-contains", variant)
+        .limit(1)
+        .get();
+      if (barcodeSnap.empty) return null;
+      return { itemId: barcodeSnap.docs[0]!.id, matchType: "barcode_field" as const, variant };
+    }),
+  );
   for (const variant of variants) {
-    const barcodeSnap = await db
-      .collection("inventoryItems")
-      .where("companyId", "==", normalizedCompanyId)
-      .where("barcodes", "array-contains", variant)
-      .limit(1)
-      .get();
-    if (!barcodeSnap.empty) {
-      return { itemId: barcodeSnap.docs[0]!.id, matchType: "barcode_field" };
-    }
+    const hit = barcodeHits.find((entry) => entry?.variant === variant);
+    if (hit?.itemId) return { itemId: hit.itemId, matchType: hit.matchType };
   }
 
   const tokens = [...new Set(variants.map(scanToken).filter((token) => token.length >= 3))];
+  const tokenHits = await Promise.all(
+    tokens.map(async (token) => {
+      const tokenSnap = await db
+        .collection("inventoryItems")
+        .where("companyId", "==", normalizedCompanyId)
+        .where("searchTokens", "array-contains", token)
+        .limit(1)
+        .get();
+      if (tokenSnap.empty) return null;
+      return { itemId: tokenSnap.docs[0]!.id, matchType: "search_token" as const, token };
+    }),
+  );
   for (const token of tokens) {
-    const tokenSnap = await db
-      .collection("inventoryItems")
-      .where("companyId", "==", normalizedCompanyId)
-      .where("searchTokens", "array-contains", token)
-      .limit(1)
-      .get();
-    if (!tokenSnap.empty) {
-      return { itemId: tokenSnap.docs[0]!.id, matchType: "search_token" };
-    }
+    const hit = tokenHits.find((entry) => entry?.token === token);
+    if (hit?.itemId) return { itemId: hit.itemId, matchType: hit.matchType };
   }
 
   return null;
@@ -277,9 +300,11 @@ export async function resolveMobileScan(
   const variants = buildScanCodeVariants(rawBarcode);
   const exact = await resolveExactTier(normalizedCompanyId, variants);
   if (exact) {
-    const item = await loadItem(normalizedCompanyId, exact.itemId);
+    const [item, stockLevels] = await Promise.all([
+      loadItem(normalizedCompanyId, exact.itemId),
+      loadStockLevels(normalizedCompanyId, exact.itemId),
+    ]);
     if (!item) return emptyResult(barcode);
-    const stockLevels = await loadStockLevels(normalizedCompanyId, exact.itemId);
     const result = successResult(barcode, exact.matchType, item, stockLevels, 1);
     writeCache(normalizedCompanyId, barcode, result, strictBarcode);
     return result;

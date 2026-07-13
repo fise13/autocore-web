@@ -1,5 +1,7 @@
 import { MotorEntity } from "@/domain/motor";
 import { WorkOrder } from "@/domain/work-order";
+import { CompanyEmployee } from "@/domain/rbac";
+import { companyBrandingFromRecord } from "@/domain/company-branding";
 import "server-only";
 
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
@@ -20,21 +22,65 @@ import { formatWorkOrderLabel } from "@/lib/work-order/work-order-display";
 
 async function fetchMotorById(companyId: string, motorId: string): Promise<MotorEntity | null> {
   const db = getAdminFirestore();
-  const groupSnapshot = await db.collectionGroup("motors").where("companyId", "==", companyId).get();
-
-  for (const doc of groupSnapshot.docs) {
-    const motor = mapAdminMotor(doc.id, doc.data() as Record<string, unknown>);
-    if (!motor) continue;
-    if (motor.id === motorId || doc.id === motorId || String(motor.localId) === motorId) {
-      return motor;
-    }
+  const normalizedCompanyId = normalizeCompanyId(companyId);
+  const directRef = db.collection("companies").doc(normalizedCompanyId).collection("motors").doc(motorId);
+  const directSnap = await directRef.get();
+  if (directSnap.exists) {
+    return mapAdminMotor(directSnap.id, directSnap.data() as Record<string, unknown>);
   }
 
+  // Avoid full-company collectionGroup scan on every miss — rare legacy ids only.
   return null;
 }
 
 function orderServiceDate(order: WorkOrder): Date {
   return order.deliveredAt ?? order.completedAt ?? order.confirmedAt ?? order.updatedAt ?? order.createdAt;
+}
+
+function collectAssigneeIds(order: WorkOrder): string[] {
+  const ids = new Set<string>();
+  for (const line of order.laborLines) {
+    for (const id of line.assigneeIds ?? []) {
+      if (id?.trim()) ids.add(id.trim());
+    }
+  }
+  return [...ids];
+}
+
+async function fetchEmployeesByIds(
+  companyId: string,
+  employeeIds: string[],
+): Promise<CompanyEmployee[]> {
+  if (employeeIds.length === 0) return [];
+  const db = getAdminFirestore();
+  const employeesRef = db.collection("companies").doc(companyId).collection("employees");
+
+  const snaps = await Promise.all(employeeIds.map((id) => employeesRef.doc(id).get()));
+  const byId = new Map<string, CompanyEmployee>();
+
+  for (const snap of snaps) {
+    if (!snap.exists) continue;
+    const employee = mapAdminEmployee(snap.id, companyId, snap.data() as Record<string, unknown>);
+    byId.set(snap.id, employee);
+    if (employee.uid) byId.set(employee.uid, employee);
+  }
+
+  // Some assigneeIds store uid rather than employee doc id — resolve by uid field.
+  const missingUids = employeeIds.filter((id) => !byId.has(id));
+  if (missingUids.length > 0) {
+    const uidSnaps = await Promise.all(
+      missingUids.map((uid) => employeesRef.where("uid", "==", uid).limit(1).get()),
+    );
+    for (const snap of uidSnaps) {
+      if (snap.empty) continue;
+      const doc = snap.docs[0]!;
+      const employee = mapAdminEmployee(doc.id, companyId, doc.data() as Record<string, unknown>);
+      byId.set(doc.id, employee);
+      if (employee.uid) byId.set(employee.uid, employee);
+    }
+  }
+
+  return [...new Map([...byId.values()].map((e) => [e.id, e])).values()];
 }
 
 async function fetchVehicleLogbook(
@@ -65,18 +111,21 @@ async function fetchVehicleLogbook(
     .doc(companyId)
     .collection("workOrders")
     .where("vehicleId", "==", vehicleId)
-    .limit(100)
+    .limit(40)
     .get();
 
   const sources = ordersSnapshot.docs
     .map((doc) => {
       const order = mapAdminWorkOrder(doc.id, doc.data() as Record<string, unknown>);
-      return { order, entry: {
-        workOrderId: order.id,
-        date: orderServiceDate(order),
-        mileage: order.mileage || 0,
-        title: summarizeWorkOrderForLogbook(order),
-      }};
+      return {
+        order,
+        entry: {
+          workOrderId: order.id,
+          date: orderServiceDate(order),
+          mileage: order.mileage || 0,
+          title: summarizeWorkOrderForLogbook(order),
+        },
+      };
     })
     .filter(({ order }) => ["completed", "delivered"].includes(order.status))
     .map(({ entry }) => entry);
@@ -109,8 +158,9 @@ export async function loadDocumentContext(companyId: string, workOrderId: string
   }
 
   const order = mapAdminWorkOrder(orderSnapshot.id, orderSnapshot.data() as Record<string, unknown>);
+  const assigneeIds = collectAssigneeIds(order);
 
-  const [companySnapshot, clientSnapshot, vehicleSnapshot, employeesSnapshot] = await Promise.all([
+  const [companySnapshot, clientSnapshot, vehicleSnapshot, employees] = await Promise.all([
     db.collection("companies").doc(normalizedCompanyId).get(),
     order.clientId
       ? db.collection("companies").doc(normalizedCompanyId).collection("clients").doc(order.clientId).get()
@@ -118,10 +168,11 @@ export async function loadDocumentContext(companyId: string, workOrderId: string
     order.vehicleId
       ? db.collection("companies").doc(normalizedCompanyId).collection("vehicles").doc(order.vehicleId).get()
       : Promise.resolve(null),
-    db.collection("companies").doc(normalizedCompanyId).collection("employees").get(),
+    fetchEmployeesByIds(normalizedCompanyId, assigneeIds),
   ]);
 
   const companyData = companySnapshot.exists ? (companySnapshot.data() as Record<string, unknown>) : null;
+  const branding = companyBrandingFromRecord(companyData);
   const logoSource =
     typeof companyData?.logoUrl === "string"
       ? companyData.logoUrl
@@ -144,18 +195,19 @@ export async function loadDocumentContext(companyId: string, workOrderId: string
       ? mapAdminVehicle(vehicleSnapshot.id, vehicleSnapshot.data() as Record<string, unknown>)
       : null;
 
-  const employees = employeesSnapshot.docs.map((doc) =>
-    mapAdminEmployee(doc.id, normalizedCompanyId, doc.data() as Record<string, unknown>),
-  );
-
   const motorIds = [...new Set(order.motorLines.map((line) => line.motorId).filter(Boolean))];
   const motors = (
     await Promise.all(motorIds.map((motorId) => fetchMotorById(normalizedCompanyId, motorId)))
   ).filter((motor): motor is MotorEntity => motor != null);
 
-  const vehicleLogbook = order.vehicleId
-    ? await fetchVehicleLogbook(normalizedCompanyId, order.vehicleId, order).catch(() => [])
-    : [];
+  const needsLogbook =
+    branding.showServiceLogbook !== false &&
+    (branding.documentTheme === "racing" || order.status === "completed" || order.status === "delivered");
+
+  const vehicleLogbook =
+    needsLogbook && order.vehicleId
+      ? await fetchVehicleLogbook(normalizedCompanyId, order.vehicleId, order).catch(() => [])
+      : [];
 
   let warrantyVerificationToken: string | undefined;
   const primaryMotorId = order.motorLines[0]?.motorId;

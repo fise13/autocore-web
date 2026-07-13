@@ -12,6 +12,7 @@ import {
   PDF_SERVICE_TAG_HEIGHT_PX,
   PDF_SERVICE_TAG_WIDTH_PX,
 } from "@/lib/documents/fit-pdf-page";
+import { isLikelyBlankPdf } from "@/lib/documents/pdf-buffer-quality";
 import { getPuppeteerBrowser } from "@/lib/documents/puppeteer-browser";
 import { documentRenderUrl } from "@/lib/documents/render-token";
 
@@ -27,6 +28,8 @@ type PdfPage = Awaited<ReturnType<Awaited<ReturnType<typeof getPuppeteerBrowser>
 
 const PDF_PAGE_SELECTOR = ".doc-pdf-page, .doc-racing-page, .doc-sr-page, .doc-page";
 
+export { isLikelyBlankPdf, MIN_MEANINGFUL_PDF_BYTES } from "@/lib/documents/pdf-buffer-quality";
+
 async function waitForPdfAssets(page: PdfPage) {
   await page.evaluate(() => document.fonts.ready).catch(() => undefined);
   await page
@@ -40,14 +43,33 @@ async function waitForPdfAssets(page: PdfPage) {
     .catch(() => undefined);
 }
 
+async function waitForPdfTextContent(page: PdfPage): Promise<void> {
+  await page.waitForFunction(
+    (selector) => {
+      const root = document.querySelector(selector);
+      const text = root?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+      return text.length > 40;
+    },
+    { timeout: 25_000 },
+    PDF_PAGE_SELECTOR,
+  );
+}
+
 async function assertPdfRenderContent(page: PdfPage): Promise<void> {
-  const hasContent = await page.evaluate((selector) => {
+  const snapshot = await page.evaluate((selector) => {
     const root = document.querySelector(selector);
-    return Boolean(root && (root.textContent?.trim().length ?? 0) > 20);
+    const text = root?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+    return {
+      hasRoot: Boolean(root),
+      textLength: text.length,
+      preview: text.slice(0, 120),
+    };
   }, PDF_PAGE_SELECTOR);
 
-  if (!hasContent) {
-    throw new Error("Документ не содержит данных для PDF. Проверьте контекст гарантии или счёта.");
+  if (!snapshot.hasRoot || snapshot.textLength < 40) {
+    throw new Error(
+      `Документ не содержит данных для PDF (${snapshot.textLength} символов). Проверьте контекст гарантии или счёта.`,
+    );
   }
 }
 
@@ -64,15 +86,15 @@ export async function generatePdfFromRenderUrl(params: PdfFromUrlOptions): Promi
   try {
     await page.setViewport({ width: targetWidthPx, height: targetHeightPx, deviceScaleFactor: 1 });
 
-    const response = await page.goto(url, { waitUntil: "networkidle0", timeout: 45_000 });
+    // networkidle2 — wait for RSC/streaming to finish; domcontentloaded alone often yields blank PDFs.
+    const response = await page.goto(url, { waitUntil: "networkidle2", timeout: 60_000 });
     if (!response || !response.ok()) {
       const status = response?.status() ?? "no response";
       throw new Error(`Страница рендера PDF недоступна (${status}): ${url}`);
     }
 
-    await page.waitForSelector(PDF_PAGE_SELECTOR, {
-      timeout: 20_000,
-    });
+    await page.waitForSelector(PDF_PAGE_SELECTOR, { timeout: 20_000 });
+    await waitForPdfTextContent(page);
     await waitForPdfAssets(page);
     await assertPdfRenderContent(page);
     await page.emulateMediaType("print");
@@ -80,7 +102,6 @@ export async function generatePdfFromRenderUrl(params: PdfFromUrlOptions): Promi
     const pageSelectors = [...PDF_PAGE_ROOT_SELECTORS];
     const measureArgs = { targetWidthPx, pageSelectors };
 
-    // Tall viewport — measure full natural height before scaling to A4.
     await page.setViewport({
       width: targetWidthPx,
       height: Math.min(10_000, targetHeightPx * 4),
@@ -89,15 +110,16 @@ export async function generatePdfFromRenderUrl(params: PdfFromUrlOptions): Promi
 
     let content = await page.evaluate(measurePdfPageScript, measureArgs);
     let fitScale = computePdfFitScale(content.contentHeight, targetHeightPx);
+    // Never shrink so hard that text becomes invisible on the sheet.
+    fitScale = Math.max(fitScale, isServiceTag ? 0.55 : 0.5);
 
     await page.evaluate(applyPdfExportLayoutScript, {
       targetWidthPx,
       pageSelectors,
     });
 
-    // Re-measure after shell reset for accurate scale.
     content = await page.evaluate(measurePdfPageScript, measureArgs);
-    fitScale = computePdfFitScale(content.contentHeight, targetHeightPx);
+    fitScale = Math.max(computePdfFitScale(content.contentHeight, targetHeightPx), isServiceTag ? 0.55 : 0.5);
 
     const captureHeightPx = Math.max(
       targetHeightPx,
@@ -128,7 +150,14 @@ export async function generatePdfFromRenderUrl(params: PdfFromUrlOptions): Promi
           }),
     });
 
-    return Buffer.from(pdf);
+    const buffer = Buffer.from(pdf);
+    if (isLikelyBlankPdf(buffer)) {
+      throw new Error(
+        `PDF получился пустым (${buffer.length} байт). Повторите генерацию или проверьте страницу рендера.`,
+      );
+    }
+
+    return buffer;
   } finally {
     await page.close().catch(() => undefined);
   }

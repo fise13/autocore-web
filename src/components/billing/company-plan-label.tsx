@@ -1,19 +1,29 @@
 "use client";
 
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
+import { isProSubscription } from "@/domain/billing";
+import { useCompanySubscription } from "@/hooks/use-company-subscription";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 type CompanyPlanLabelProps = {
-  /** Only the active company has subscription context in BillingGateProvider. */
-  isActiveCompany: boolean;
+  companyId: string;
+  isActiveCompany?: boolean;
   className?: string;
 };
 
-export function CompanyPlanLabel({ isActiveCompany, className }: CompanyPlanLabelProps) {
-  const { isPro, isLoading } = useBillingGate();
+export function CompanyPlanLabel({
+  companyId,
+  isActiveCompany = false,
+  className,
+}: CompanyPlanLabelProps) {
+  const { isPro: activeIsPro, isLoading: activeLoading } = useBillingGate();
+  const inactiveSubscription = useCompanySubscription(isActiveCompany ? null : companyId);
 
-  if (!isActiveCompany) return null;
+  const isLoading = isActiveCompany ? activeLoading : inactiveSubscription.isLoading;
+  const isPro = isActiveCompany
+    ? activeIsPro
+    : isProSubscription(inactiveSubscription.subscription);
 
   return (
     <p className={cn("text-xs text-muted-foreground", className)}>

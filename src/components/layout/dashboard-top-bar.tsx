@@ -15,6 +15,7 @@ import {
 
 import { AccountMenu } from "@/components/account/account-menu";
 import { AppLogo } from "@/components/brand/app-logo";
+import { DocumentImportTopBarIsland } from "@/components/document-import/document-import-top-bar-island";
 import { useDashboardLayout } from "@/components/layout/dashboard-layout-context";
 import {
   dashboardTopBarSlotVariants,
@@ -304,6 +305,7 @@ export function DashboardTopBar() {
           className="flex w-full items-center justify-center gap-3 px-1"
         >
           <DashboardImportProgress variant="compact" />
+          <DocumentImportTopBarIsland />
 
           {isWarehouseRoute ? <WarehouseTopBarSelector /> : null}
 

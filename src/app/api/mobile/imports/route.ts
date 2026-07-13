@@ -1,64 +1,130 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import {
+  addFileToImportBatchAdmin,
+  ensureOpenImportBatchAdmin,
+} from "@/infrastructure/firestore/admin/import-batch-admin";
 import { createDocumentImportJob } from "@/infrastructure/firestore/admin/document-import-admin";
 import { MobileAccessError, verifyMobileAccess } from "@/lib/auth/verify-mobile-access.server";
+import { kickImportBatchProcessing } from "@/lib/import-batch/kick-import-batch.server";
+import { extractDocumentImportJob } from "@/lib/document-import/extract-document-import.server";
 import { emitNotificationEvent } from "@/lib/notifications/engine.server";
 
 export const runtime = "nodejs";
 
-const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
+const MAX_BYTES = 25 * 1024 * 1024;
+
+const ALLOWED_PREFIXES = ["image/", "application/pdf", "text/csv", "text/plain"];
+const ALLOWED_EXACT = new Set([
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  "application/pdf",
+]);
+
+function isAllowedMime(mime: string, fileName?: string): boolean {
+  const normalized = mime.toLowerCase();
+  if (ALLOWED_EXACT.has(normalized)) return true;
+  if (ALLOWED_PREFIXES.some((p) => normalized.startsWith(p))) return true;
+  const name = (fileName ?? "").toLowerCase();
+  return /\.(jpe?g|png|webp|heic|heif|pdf|xlsx|xls|csv)$/.test(name);
+}
 
 export async function POST(request: NextRequest) {
   try {
     const access = await verifyMobileAccess(request, "inventory_view");
     const form = await request.formData();
-    const file = form.get("image");
+    const file =
+      form.get("file") instanceof File
+        ? (form.get("file") as File)
+        : form.get("image") instanceof File
+          ? (form.get("image") as File)
+          : null;
 
-    if (!(file instanceof File)) {
-      return NextResponse.json({ error: "Загрузите изображение документа" }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ error: "Загрузите файл" }, { status: 400 });
     }
 
     if (file.size <= 0) {
       return NextResponse.json({ error: "Файл пустой" }, { status: 400 });
     }
 
-    if (file.size > MAX_IMAGE_BYTES) {
-      return NextResponse.json({ error: "Изображение слишком большое (макс. 12 МБ)" }, { status: 400 });
+    if (file.size > MAX_BYTES) {
+      return NextResponse.json({ error: "Файл слишком большой (макс. 25 МБ)" }, { status: 400 });
     }
 
     const mimeType = file.type || "image/jpeg";
-    if (!mimeType.startsWith("image/")) {
-      return NextResponse.json({ error: "Поддерживаются только изображения" }, { status: 400 });
+    if (!isAllowedMime(mimeType, file.name)) {
+      return NextResponse.json(
+        { error: "Поддерживаются фото, PDF, Excel и CSV" },
+        { status: 400 },
+      );
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const job = await createDocumentImportJob({
+    const requestedBatchId = String(form.get("batchId") ?? "").trim() || null;
+    const batch = await ensureOpenImportBatchAdmin({
       companyId: access.companyId,
       createdBy: access.uid,
+      batchId: requestedBatchId,
+      target: "motors",
+    });
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const result = await addFileToImportBatchAdmin({
+      companyId: access.companyId,
+      batchId: batch.id,
       buffer,
       contentType: mimeType,
       fileName: file.name || undefined,
     });
+
+    void kickImportBatchProcessing({
+      companyId: access.companyId,
+      batchId: batch.id,
+      fileId: result.file.id,
+    }).catch((error) => console.warn("[mobile/imports] kick failed", error));
+
+    // Dual-write image to legacy inbox so /imports/[id] viewer + toast keep working.
+    let legacyId = result.file.id;
+    if (mimeType.startsWith("image/")) {
+      try {
+        const legacy = await createDocumentImportJob({
+          companyId: access.companyId,
+          createdBy: access.uid,
+          buffer,
+          contentType: mimeType,
+          fileName: file.name || undefined,
+        });
+        legacyId = legacy.id;
+        void extractDocumentImportJob({
+          companyId: access.companyId,
+          jobId: legacy.id,
+        }).catch((error) => console.warn("[mobile/imports] extract failed", error));
+      } catch (error) {
+        console.warn("[mobile/imports] legacy documentImport failed", error);
+      }
+    }
 
     void emitNotificationEvent({
       companyId: access.companyId,
       eventType: "document_import.created",
       actorUserId: access.uid,
       aggregateType: "document_import",
-      aggregateId: job.id,
+      aggregateId: legacyId,
       payload: {
-        fileName: job.fileName ?? "document",
+        fileName: result.file.fileName ?? "import",
+        batchId: batch.id,
       },
     }).catch((error) => console.warn("[mobile/imports] notification failed", error));
 
     return NextResponse.json({
-      id: job.id,
-      status: job.status,
-      previewDownloadUrl: job.previewDownloadUrl,
-      originalDownloadUrl: job.originalDownloadUrl,
-      width: job.width,
-      height: job.height,
-      createdAt: job.createdAt.toISOString?.() ?? new Date().toISOString(),
+      id: legacyId,
+      batchId: batch.id,
+      status: result.file.status,
+      previewDownloadUrl: result.file.previewDownloadUrl,
+      originalDownloadUrl: result.file.downloadUrl,
+      width: result.file.width,
+      height: result.file.height,
+      createdAt: result.file.createdAt.toISOString?.() ?? new Date().toISOString(),
     });
   } catch (error) {
     if (error instanceof MobileAccessError) {

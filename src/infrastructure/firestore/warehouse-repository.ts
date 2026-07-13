@@ -112,6 +112,19 @@ export function createWarehouseRepository() {
         updatedAt: serverTimestamp(),
       }));
 
+      try {
+        const { createWarehouseLocationRepository } = await import(
+          "@/infrastructure/firestore/warehouse-location-repository"
+        );
+        await createWarehouseLocationRepository().ensureUnlocated(
+          normalizedCompanyId,
+          created.id,
+          input.actorUserId,
+        );
+      } catch {
+        // Location seed is best-effort; warehouse already exists.
+      }
+
       if (input.actorUserId) {
         try {
           await activity.append(normalizedCompanyId, {
@@ -166,6 +179,19 @@ export function createWarehouseRepository() {
           updatedAt: serverTimestamp(),
         }),
       );
+
+      try {
+        const { createWarehouseLocationRepository } = await import(
+          "@/infrastructure/firestore/warehouse-location-repository"
+        );
+        await createWarehouseLocationRepository().ensureUnlocated(
+          normalizedCompanyId,
+          input.docId,
+          input.actorUserId,
+        );
+      } catch {
+        // Location seed is best-effort.
+      }
 
       if (input.actorUserId) {
         try {

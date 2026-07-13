@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 
+import { createLocalFileFormData } from '@/lib/network/mobile-form-data';
 import { mobileApi } from '@/services/api/endpoints';
 import { mobilePost, mobileUpload } from '@/services/api/mobile-client';
 import type { MobileScanResolveResult, ScanOcrResolveResponse } from '@/types/inventory';
@@ -30,17 +31,10 @@ export function useMobileScanDisambiguate() {
 export function useMobileScanOcr() {
   return useMutation({
     mutationFn: async (uri: string) => {
-      const formData = new FormData();
-      const filename = uri.split('/').pop() ?? 'scan.jpg';
-      const extension = filename.split('.').pop()?.toLowerCase();
-      const mimeType =
-        extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg';
-      formData.append('image', {
-        uri,
-        name: filename,
-        type: mimeType,
-      } as unknown as Blob);
-      return mobileUpload<ScanOcrResolveResponse>(mobileApi.scanOcr, formData);
+      return mobileUpload<ScanOcrResolveResponse>(
+        mobileApi.scanOcr,
+        createLocalFileFormData('image', uri),
+      );
     },
   });
 }

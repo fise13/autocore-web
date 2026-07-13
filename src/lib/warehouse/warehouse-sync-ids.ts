@@ -10,6 +10,10 @@ export function stockLevelDocumentId(itemId: string, warehouseId: string): strin
   return `${itemId}__${warehouseId}`;
 }
 
+export function locationBalanceDocumentId(itemId: string, locationId: string): string {
+  return `${itemId}__${locationId}`;
+}
+
 export function normalizeBarcode(value: string): string {
   return value.trim().toUpperCase().replace(/\s+/g, "");
 }

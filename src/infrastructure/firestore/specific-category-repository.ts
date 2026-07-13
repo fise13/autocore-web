@@ -91,6 +91,29 @@ function mapRecord(
   }
 
   const categoryLocalId = readNumber(payload.categoryLocalId ?? fallbackLocalId);
+  const warehouseLocation =
+    typeof payload.warehouseLocation === "string"
+      ? payload.warehouseLocation
+      : typeof parsedData.warehouseLocation === "string"
+        ? parsedData.warehouseLocation
+        : typeof parsedData["Место"] === "string"
+          ? parsedData["Место"]
+          : undefined;
+  const primaryLocationId =
+    typeof payload.primaryLocationId === "string" ? payload.primaryLocationId : undefined;
+  const primaryLocationCode =
+    typeof payload.primaryLocationCode === "string"
+      ? payload.primaryLocationCode
+      : undefined;
+
+  // Mirror structured location into data so the flexible grid can edit it.
+  if (warehouseLocation && !parsedData.warehouseLocation) {
+    parsedData.warehouseLocation = warehouseLocation;
+  }
+  if (primaryLocationCode && !parsedData.warehouseLocation) {
+    parsedData.warehouseLocation = primaryLocationCode;
+  }
+
   return {
     id,
     categoryId: String(
@@ -100,6 +123,9 @@ function mapRecord(
     rowIndex: readNumber(payload.rowIndex),
     data: parsedData,
     companyId: String(payload.companyId ?? companyId),
+    warehouseLocation,
+    primaryLocationId,
+    primaryLocationCode,
   };
 }
 
@@ -544,6 +570,11 @@ export function createSpecificCategoryRepository() {
       rowIndex: number,
       data: Record<string, string>,
       actorUid?: string,
+      location?: {
+        warehouseLocation?: string | null;
+        primaryLocationId?: string | null;
+        primaryLocationCode?: string | null;
+      },
     ) {
       const canonicalCategoryId = scopedCategoryDocumentId(companyId, category.localId);
       const recordRef = doc(
@@ -551,19 +582,21 @@ export function createSpecificCategoryRepository() {
         "specificRecords",
         scopedRecordDocumentId(companyId, category.localId, rowIndex),
       );
-      await setDoc(
-        recordRef,
-        {
-          companyId,
-          categoryId: canonicalCategoryId,
-          categoryLocalId: category.localId,
-          rowIndex,
-          data,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
+      const payload: Record<string, unknown> = {
+        companyId,
+        categoryId: canonicalCategoryId,
+        categoryLocalId: category.localId,
+        rowIndex,
+        data,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+      if (location) {
+        payload.warehouseLocation = location.warehouseLocation?.trim() || null;
+        payload.primaryLocationId = location.primaryLocationId?.trim() || null;
+        payload.primaryLocationCode = location.primaryLocationCode?.trim() || null;
+      }
+      await setDoc(recordRef, payload, { merge: true });
       if (actorUid) {
         await activity.append(companyId, {
           actor: actorUid,

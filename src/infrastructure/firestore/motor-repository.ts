@@ -96,6 +96,12 @@ function mapMotor(docId: string, data: Record<string, unknown>): MotorEntity | n
     updatedAt: toDate(data.updatedAt) ?? undefined,
     brandName: typeof data.brandName === "string" ? data.brandName : "",
     engineCode: typeof data.engineCode === "string" ? data.engineCode : "",
+    warehouseLocation:
+      typeof data.warehouseLocation === "string" ? data.warehouseLocation : undefined,
+    primaryLocationId:
+      typeof data.primaryLocationId === "string" ? data.primaryLocationId : undefined,
+    primaryLocationCode:
+      typeof data.primaryLocationCode === "string" ? data.primaryLocationCode : undefined,
     status: status as MotorEntity["status"],
     reservedForWorkOrderId:
       typeof data.reservedForWorkOrderId === "string" ? data.reservedForWorkOrderId : null,
@@ -229,6 +235,16 @@ export function createMotorRepository() {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
+
+    if (input.warehouseLocation !== undefined) {
+      payload.warehouseLocation = input.warehouseLocation?.trim() || null;
+    }
+    if (input.primaryLocationId !== undefined) {
+      payload.primaryLocationId = input.primaryLocationId?.trim() || null;
+    }
+    if (input.primaryLocationCode !== undefined) {
+      payload.primaryLocationCode = input.primaryLocationCode?.trim() || null;
+    }
 
     if (input.arrivalDate) {
       payload.arrivalDate = input.arrivalDate;

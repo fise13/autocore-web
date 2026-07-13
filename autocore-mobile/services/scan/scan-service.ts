@@ -1,3 +1,5 @@
+import { readScanResolveCache } from '@/lib/scan/scan-resolve-cache';
+import { scanPayloadKey } from '@/lib/scan/normalize-scan-payload';
 import { ScanDebounce } from './scan-debounce';
 import {
   disambiguateScanPayload,
@@ -10,8 +12,6 @@ import type {
   ScanContext,
   ScanDetection,
   ScanOutcome,
-  ScanPhase,
-  ScanResolveRequest,
   ScanServiceListener,
   ScanServiceSnapshot,
   ScanSheetKind,
@@ -49,24 +49,16 @@ function isInstantOutcome(outcome: ScanOutcome): boolean {
   );
 }
 
-function dedupeDetections(detections: ScanDetection[]): ScanDetection[] {
-  const seen = new Set<string>();
-  const unique: ScanDetection[] = [];
-  for (const detection of detections) {
-    const payload = detection.payload.trim();
-    if (!payload || seen.has(payload)) continue;
-    seen.add(payload);
-    unique.push({ ...detection, payload });
-  }
-  return unique;
+function acceptsCameraInput(snapshot: ScanServiceSnapshot): boolean {
+  // Allow re-scan while a result sheet is open so the next barcode replaces content
+  // instead of feeling "dead" until the user dismisses the modal.
+  if (snapshot.phase === 'paused' || snapshot.phase === 'resolving') return false;
+  return true;
 }
 
 export class ScanService {
-  private debounce = new ScanDebounce();
+  private debounce = new ScanDebounce({ commitCooldownMs: 0, samePayloadCooldownMs: 450 });
   private listeners = new Set<ScanServiceListener>();
-  private commitTimer: ReturnType<typeof setTimeout> | null = null;
-  private pendingCommitPayload: string | null = null;
-  private stablePayload: string | null = null;
   private snapshot: ScanServiceSnapshot = {
     phase: 'idle',
     context: { mode: 'standalone' },
@@ -95,59 +87,28 @@ export class ScanService {
   }
 
   onDetection(detection: ScanDetection): void {
-    if (
-      this.snapshot.phase === 'paused' ||
-      this.snapshot.phase === 'resolving' ||
-      this.snapshot.phase === 'confirmed'
-    ) {
-      return;
-    }
+    if (!acceptsCameraInput(this.snapshot)) return;
 
     const payload = detection.payload.trim();
     if (!payload) return;
-    if (!this.debounce.canTrack(payload)) return;
 
-    this.stablePayload = payload;
-    this.debounce.noteSeen(payload);
+    const payloadKey = scanPayloadKey(payload);
+    if (!this.debounce.canTrack(payloadKey)) return;
+
+    this.debounce.noteSeen(payloadKey);
     this.patch({
       phase: 'tracking',
       detection: { ...detection, payload },
       pendingDetections: null,
     });
 
-    // Commit on first valid read — no second-frame wait / timer lag.
     void this.commitPayload(payload, 'camera').catch(() => undefined);
   }
 
   onDetections(detections: ScanDetection[]): void {
-    if (
-      this.snapshot.phase === 'paused' ||
-      this.snapshot.phase === 'resolving' ||
-      this.snapshot.phase === 'confirmed'
-    ) {
-      return;
+    if (detections.length === 1) {
+      this.onDetection(detections[0]!);
     }
-    if (!this.debounce.canTrack('multi-code')) return;
-
-    const unique = dedupeDetections(detections);
-    if (unique.length === 0) return;
-
-    if (unique.length === 1) {
-      this.onDetection(unique[0]!);
-      return;
-    }
-
-    this.clearCommitTimer();
-    this.resetStableReads();
-    this.patch({
-      phase: 'confirmed',
-      detection: unique[0] ?? null,
-      outcome: null,
-      sheetKind: 'code-picker',
-      activeResult: null,
-      pendingPayload: null,
-      pendingDetections: unique,
-    });
   }
 
   pickDetectedCode(payload: string): void {
@@ -161,43 +122,47 @@ export class ScanService {
     void this.commitPayload(payload, 'camera').catch(() => undefined);
   }
 
-  private resetStableReads(): void {
-    this.stablePayload = null;
-  }
-
-  private clearCommitTimer(): void {
-    if (this.commitTimer) {
-      clearTimeout(this.commitTimer);
-      this.commitTimer = null;
-    }
-    this.pendingCommitPayload = null;
-  }
-
   async commitPayload(payload: string, source: ScanSource = 'camera'): Promise<ScanOutcome | null> {
-    if (this.snapshot.phase === 'resolving' || this.snapshot.phase === 'paused') return null;
+    if (!acceptsCameraInput(this.snapshot)) return null;
 
-    const normalizedPayload = payload.trim();
-    if (!normalizedPayload) return null;
+    const rawPayload = payload.trim();
+    if (!rawPayload) return null;
 
-    this.clearCommitTimer();
-    this.debounce.markCommitted(normalizedPayload);
+    const payloadKey = scanPayloadKey(rawPayload);
+    if (!this.debounce.canTrack(payloadKey)) return null;
+
+    this.debounce.markCommitted(payloadKey);
     this.patch({
       phase: 'resolving',
-      pendingPayload: normalizedPayload,
+      pendingPayload: rawPayload,
+      // Keep prior product visible during resolve so the sheet does not collapse.
     });
 
     try {
+      const cached = readScanResolveCache(rawPayload);
+      // Cache-first: apply immediately (sync) — no network await on hot path.
+      if (cached?.found && cached.item) {
+        const outcome = await resolveScanPayload(this.deps, {
+          payload: rawPayload,
+          source,
+          canInventoryView: this.deps.canInventoryView(),
+          allowMock: this.deps.allowMock(),
+          cachedResult: cached,
+        });
+        return this.applyOutcome(outcome, rawPayload);
+      }
+
       const outcome = await resolveScanPayload(this.deps, {
-        payload: normalizedPayload,
+        payload: rawPayload,
         source,
         canInventoryView: this.deps.canInventoryView(),
         allowMock: this.deps.allowMock(),
       });
 
-      return this.applyOutcome(outcome, normalizedPayload);
+      return this.applyOutcome(outcome, rawPayload);
     } catch (error) {
       console.warn('Scan resolve failed:', error);
-      return this.applyOutcome({ kind: 'not-found', payload: normalizedPayload }, normalizedPayload);
+      return this.applyOutcome({ kind: 'not-found', payload: rawPayload }, rawPayload);
     }
   }
 
@@ -230,6 +195,12 @@ export class ScanService {
   }
 
   private applyOutcome(outcome: ScanOutcome, payload: string): ScanOutcome {
+    if (outcome.kind === 'product') {
+      this.debounce.markCommitResult('success');
+    } else if (outcome.kind === 'not-found' || outcome.kind === 'candidates') {
+      this.debounce.markCommitResult('miss');
+    }
+
     if (isInstantOutcome(outcome)) {
       this.patch({
         phase: 'paused',
@@ -255,8 +226,6 @@ export class ScanService {
   }
 
   resume(): void {
-    this.clearCommitTimer();
-    this.resetStableReads();
     this.debounce.reset();
     this.patch({
       phase: 'idle',
@@ -270,8 +239,6 @@ export class ScanService {
   }
 
   dismissSheet(): void {
-    this.clearCommitTimer();
-    this.resetStableReads();
     this.debounce.fullReset();
     this.resume();
   }

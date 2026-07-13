@@ -29,6 +29,7 @@ export function useModalBottomSheet(options?: { backdropOpacity?: number }) {
         disappearsOnIndex: -1,
         appearsOnIndex: 0,
         opacity: backdropOpacity,
+        pressBehavior: 'close',
       }),
     [backdropOpacity],
   );

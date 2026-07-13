@@ -58,6 +58,12 @@
       ],
       "@autocore/avatars/*": [
         "./packages/avatars/src/*"
+      ],
+      "@autocore/i18n": [
+        "./packages/i18n/src"
+      ],
+      "@autocore/i18n/*": [
+        "./packages/i18n/src/*"
       ]
     }
   },

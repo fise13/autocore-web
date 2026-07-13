@@ -5,7 +5,14 @@ import { useTheme } from '@/hooks';
 import { haptics } from '@/theme';
 
 import { AppleIcon, GoogleIcon } from './auth-brand-icons';
-import { AUTH_BUTTON_HEIGHT, AUTH_BUTTON_RADIUS } from './auth-button-metrics';
+import {
+  AUTH_BUTTON_FONT_SIZE,
+  AUTH_BUTTON_HEIGHT,
+  AUTH_BUTTON_ICON_SIZE,
+  AUTH_BUTTON_LINE_HEIGHT,
+  AUTH_BUTTON_RADIUS,
+} from './auth-button-metrics';
+import { getOAuthButtonTheme } from './auth-oauth-theme';
 
 type AuthOAuthButtonProps = {
   provider: 'google' | 'apple';
@@ -22,84 +29,94 @@ export function AuthOAuthButton({
   loading = false,
   onPress,
 }: AuthOAuthButtonProps) {
-  const { colors, isDark } = useTheme();
+  const { scheme } = useTheme();
+  const theme = getOAuthButtonTheme(provider, scheme);
   const isGoogle = provider === 'google';
-
-  const backgroundColor = isGoogle
-    ? isDark
-      ? colors.card
-      : '#ffffff'
-    : isDark
-      ? '#ffffff'
-      : '#000000';
-
-  const foregroundColor = isGoogle
-    ? isDark
-      ? colors.foreground
-      : '#1f1f1f'
-    : isDark
-      ? '#000000'
-      : '#ffffff';
-
-  const borderColor = isGoogle ? colors.border : 'transparent';
 
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled: disabled || loading, busy: loading }}
       disabled={disabled || loading}
       onPress={() => {
         haptics.selection();
         onPress();
       }}
-      style={({ pressed }) => [
-        styles.button,
-        {
-          backgroundColor,
-          borderColor,
-          opacity: disabled ? 0.65 : pressed ? 0.92 : 1,
-          transform: [{ translateY: pressed && !disabled ? 1 : 0 }],
-        },
-      ]}
+      style={styles.pressable}
     >
-      {loading ? (
-        <ActivityIndicator size="small" color={foregroundColor} />
-      ) : (
-        <View style={styles.icon}>
-          {isGoogle ? (
-            <GoogleIcon size={16} />
-          ) : (
-            <AppleIcon size={16} color={foregroundColor} />
-          )}
+      {({ pressed }) => (
+        <View
+          style={[
+            styles.container,
+            theme.shadow,
+            {
+              backgroundColor:
+                pressed && !disabled ? theme.pressedBackgroundColor : theme.backgroundColor,
+              borderColor: theme.borderColor,
+              opacity: disabled ? 0.65 : 1,
+              transform: [{ translateY: pressed && !disabled ? 1 : 0 }],
+            },
+          ]}
+        >
+          <View style={styles.content}>
+            <View style={styles.iconSlot}>
+              {loading ? (
+                <ActivityIndicator size="small" color={theme.foregroundColor} />
+              ) : isGoogle ? (
+                <GoogleIcon size={AUTH_BUTTON_ICON_SIZE} />
+              ) : (
+                <AppleIcon size={AUTH_BUTTON_ICON_SIZE} color={theme.foregroundColor} />
+              )}
+            </View>
+            <Text
+              variant="body"
+              numberOfLines={1}
+              style={[
+                styles.label,
+                {
+                  color: theme.foregroundColor,
+                },
+              ]}
+            >
+              {label}
+            </Text>
+          </View>
         </View>
       )}
-      <Text variant="body" style={[styles.label, { color: foregroundColor }]}>
-        {label}
-      </Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  button: {
+  pressable: {
+    width: '100%',
+  },
+  container: {
     width: '100%',
     height: AUTH_BUTTON_HEIGHT,
     borderRadius: AUTH_BUTTON_RADIUS,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    overflow: 'hidden',
+  },
+  content: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    paddingHorizontal: 16,
   },
-  icon: {
-    width: 16,
-    height: 16,
+  iconSlot: {
+    width: AUTH_BUTTON_ICON_SIZE,
+    height: AUTH_BUTTON_ICON_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
   },
   label: {
-    fontSize: 14,
+    fontSize: AUTH_BUTTON_FONT_SIZE,
     fontWeight: '600',
-    lineHeight: 18,
+    lineHeight: AUTH_BUTTON_LINE_HEIGHT,
+    letterSpacing: -0.1,
   },
 });

@@ -6,6 +6,7 @@ import { runImportPreviewPipeline } from "@/lib/warehouse/import/pipeline";
 import { ImportApplyOptions, ImportApplyProgress } from "@/lib/warehouse/import/types";
 import { ensureDefaultWarehouseUseCase } from "./ensure-default-warehouse";
 import { receiveStockUseCase } from "./receive-stock";
+import { syncItemLocationAssignmentUseCase } from "./relocate-stock";
 import { upsertInventoryItemUseCase } from "./upsert-inventory-item";
 import { InventoryMovementRepository } from "@/infrastructure/firestore/inventory-movement-repository";
 import { InventoryStockLevelRepository } from "@/infrastructure/firestore/inventory-stock-level-repository";
@@ -178,6 +179,17 @@ export async function applyImportJobUseCase(
           );
           rollbackMovementIds.push(movementId);
         }
+
+        if (itemId && normalized.warehouseLocation) {
+          await syncItemLocationAssignmentUseCase({
+            companyId: params.companyId,
+            itemId,
+            warehouseId: applyOptions.warehouseId ?? warehouse.id,
+            locationText: String(normalized.warehouseLocation),
+            actorUserId: params.actorUserId,
+          });
+        }
+
         applied += 1;
       } catch {
         failed += 1;

@@ -1,6 +1,7 @@
 import { updateProfile } from 'firebase/auth';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 
+import { createLocalFileFormData } from '@/lib/network/mobile-form-data';
 import { mobileApi } from '@/services/api/endpoints';
 import { mobileUpload } from '@/services/api/mobile-client';
 import { getFirebaseAuth, getFirebaseDb } from '@/services/firebase';
@@ -10,15 +11,11 @@ type AvatarUploadResult = {
   storage: 'cloud' | 'inline';
 };
 
-export async function uploadUserAvatar(uri: string, filename: string, mimeType: string): Promise<string> {
-  const formData = new FormData();
-  formData.append('file', {
-    uri,
-    name: filename,
-    type: mimeType,
-  } as unknown as Blob);
-
-  const result = await mobileUpload<AvatarUploadResult>(mobileApi.accountAvatar, formData);
+export async function uploadUserAvatar(uri: string): Promise<string> {
+  const result = await mobileUpload<AvatarUploadResult>(
+    mobileApi.accountAvatar,
+    createLocalFileFormData('file', uri),
+  );
   const photoURL = result.photoURL?.trim();
   if (!photoURL) {
     throw new Error('Не удалось получить ссылку на фото');

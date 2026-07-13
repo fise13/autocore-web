@@ -95,18 +95,8 @@ export const ScanNotFoundSheet = forwardRef<BottomSheetModal, ScanNotFoundSheetP
       handleIndicatorStyle: sheet.handleIndicatorStyle,
     };
 
-    if (!payload) {
-      return (
-        <BottomSheetModal ref={ref} {...modalProps}>
-          <BottomSheetView style={{ minHeight: 1 }}>
-            <View />
-          </BottomSheetView>
-        </BottomSheetModal>
-      );
-    }
-
-    let host = payload;
-    if (isUrl) {
+    let host = payload ?? '';
+    if (payload && isUrl) {
       try {
         host = new URL(payload).host;
       } catch {
@@ -114,43 +104,50 @@ export const ScanNotFoundSheet = forwardRef<BottomSheetModal, ScanNotFoundSheetP
       }
     }
 
+    // Single modal instance — early-return trees remount the portal and can leave a stuck backdrop.
     return (
       <BottomSheetModal ref={ref} {...modalProps}>
-        <BottomSheetView style={{ ...sheet.compactContentStyle, gap: 16 }}>
-          <View style={{ gap: 6 }}>
-            <Text variant="heading" style={{ fontSize: 22, fontWeight: '700', letterSpacing: -0.3 }}>
-              {isUrl ? 'Внешняя ссылка' : 'Товар не найден'}
-            </Text>
-            <Text variant="caption" color="muted" numberOfLines={2} style={{ fontVariant: ['tabular-nums'] }}>
-              {isUrl ? host : payload}
-            </Text>
-          </View>
+        {!payload ? (
+          <BottomSheetView style={{ minHeight: 1 }}>
+            <View />
+          </BottomSheetView>
+        ) : (
+          <BottomSheetView style={{ ...sheet.compactContentStyle, gap: 16 }}>
+            <View style={{ gap: 6 }}>
+              <Text variant="heading" style={{ fontSize: 22, fontWeight: '700', letterSpacing: -0.3 }}>
+                {isUrl ? 'Внешняя ссылка' : 'Товар не найден'}
+              </Text>
+              <Text variant="caption" color="muted" numberOfLines={2} style={{ fontVariant: ['tabular-nums'] }}>
+                {isUrl ? host : payload}
+              </Text>
+            </View>
 
-          {isUrl && onOpenUrl ? <OptionButton label="Открыть ссылку" onPress={onOpenUrl} primary /> : null}
+            {isUrl && onOpenUrl ? <OptionButton label="Открыть ссылку" onPress={onOpenUrl} primary /> : null}
 
-          {!isUrl ? (
-            <>
-              <OptionButton
-                label={orderContext ? 'Создать товар на складе' : 'Создать новый товар'}
-                onPress={onCreateItem}
-                primary
-              />
-              <OptionButton
-                label={orderContext ? 'Добавить как произвольную запчасть' : 'Рассмотреть как запчасть'}
-                onPress={onAddAsSpecific}
-              />
-              {!orderContext && onTryAi ? (
+            {!isUrl ? (
+              <>
                 <OptionButton
-                  label={isAiLoading ? 'Ищем…' : 'Уточнить с AI'}
-                  onPress={onTryAi}
-                  disabled={isAiLoading}
+                  label={orderContext ? 'Создать товар на складе' : 'Создать новый товар'}
+                  onPress={onCreateItem}
+                  primary
                 />
-              ) : null}
-            </>
-          ) : null}
+                <OptionButton
+                  label={orderContext ? 'Добавить как произвольную запчасть' : 'Рассмотреть как запчасть'}
+                  onPress={onAddAsSpecific}
+                />
+                {!orderContext && onTryAi ? (
+                  <OptionButton
+                    label={isAiLoading ? 'Ищем…' : 'Уточнить с AI'}
+                    onPress={onTryAi}
+                    disabled={isAiLoading}
+                  />
+                ) : null}
+              </>
+            ) : null}
 
-          <OptionButton label="Отмена" onPress={onCancel} />
-        </BottomSheetView>
+            <OptionButton label="Отмена" onPress={onCancel} />
+          </BottomSheetView>
+        )}
       </BottomSheetModal>
     );
   },

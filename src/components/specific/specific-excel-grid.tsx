@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { deleteSpecificRecordUseCase } from "@/application/use-cases/specific/delete-specific-record";
+import { assignAssetLocation } from "@/application/use-cases/warehouse/assign-asset-location";
 import { SpecificColumnDef } from "@/domain/specific-category";
+import { withSpecificLocationColumn, SPECIFIC_LOCATION_COLUMN_KEY } from "@/lib/specific/specific-location-column";
+import { resolveSpecificRecordLocationLabel } from "@/lib/warehouse/resolve-item-location-label";
 import { GridEditorOverlay } from "@/components/grid/grid-editor-overlay";
 import { GridFillHandle } from "@/components/grid/grid-fill-handle";
 import {
@@ -185,7 +188,7 @@ export function SpecificExcelGrid({
   }, [effectiveAvailability, records, search]);
 
   const columnSchema = useMemo(
-    () => columnSchemaProp ?? resolveCategoryColumnSchema(category, scopedRecords),
+    () => withSpecificLocationColumn(columnSchemaProp ?? resolveCategoryColumnSchema(category, scopedRecords)),
     [category, columnSchemaProp, scopedRecords],
   );
 
@@ -536,13 +539,39 @@ export function SpecificExcelGrid({
           if (!changed) continue;
         }
 
-        await repository.upsertRecord(
-          companyId,
-          category,
-          row.rowIndex,
-          buildRowPayloadFromSchema(row.data, columnSchema),
-          actorUid,
-        );
+        await (async () => {
+          const payload = buildRowPayloadFromSchema(row.data, columnSchema);
+          const locationText =
+            payload[SPECIFIC_LOCATION_COLUMN_KEY]?.trim() ||
+            resolveSpecificRecordLocationLabel({
+              ...row,
+              data: payload,
+            });
+          const assigned = locationText
+            ? await assignAssetLocation({
+                companyId,
+                locationText,
+                actorUserId: actorUid,
+              })
+            : null;
+          if (assigned) {
+            payload[SPECIFIC_LOCATION_COLUMN_KEY] = assigned.primaryLocationCode;
+          } else {
+            delete payload[SPECIFIC_LOCATION_COLUMN_KEY];
+          }
+          await repository.upsertRecord(
+            companyId,
+            category,
+            row.rowIndex,
+            payload,
+            actorUid,
+            {
+              warehouseLocation: assigned?.warehouseLocation ?? null,
+              primaryLocationId: assigned?.primaryLocationId ?? null,
+              primaryLocationCode: assigned?.primaryLocationCode ?? null,
+            },
+          );
+        })();
 
         if (row.rowKind === "empty") {
           const recordId = scopedRecordDocumentId(companyId, category.localId, row.rowIndex);

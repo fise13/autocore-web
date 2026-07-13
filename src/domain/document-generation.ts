@@ -14,9 +14,11 @@ export type DocumentGenerationJob = {
   aggregateId: string;
   requestedSlugs: DocumentSlug[];
   completedSlugs: DocumentSlug[];
+  failedSlugs?: DocumentSlug[];
   status: DocumentJobStatus;
   attempts: number;
   error?: string;
+  contextHash?: string;
   createdAt: Date;
   completedAt?: Date;
 };

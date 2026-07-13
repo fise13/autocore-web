@@ -1,0 +1,9 @@
+{
+  "actions": {
+    "closeDialog": "Закрыть диалог",
+    "openMenu": "Открыть меню"
+  },
+  "navigation": {
+    "back": "Вернуться назад"
+  }
+}

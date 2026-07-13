@@ -21,7 +21,7 @@ export function buildDeepActionUrl(path: string, action: DeepAction, extra?: Rec
 
 export const deepActionRoutes = {
   expense: () => buildDeepActionUrl("/accounting", "expense"),
-  import: () => buildDeepActionUrl("/motors", "import"),
+  import: () => "/imports",
   export: () => buildDeepActionUrl("/motors", "export"),
   sync: () => buildDeepActionUrl("/motors", "sync"),
   sell: () => buildDeepActionUrl("/motors", "sell"),

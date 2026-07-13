@@ -7,6 +7,7 @@ export type GridColumnId =
   | "notes"
   | "quantity"
   | "transmission"
+  | "warehouseLocation"
   | "arrivalDate"
   | "soldDate"
   | "action"

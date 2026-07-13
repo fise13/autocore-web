@@ -3,6 +3,7 @@ import type { BarcodeBounds, BarcodePoint } from 'expo-camera';
 import type { ScanCandidate, ScanResult } from '@/features/scan/types';
 import type { ParsedDocument } from '@/features/scan/lib/parse-document';
 import type { ScanEntityLinkKind } from '@/features/scan/lib/classify-payload';
+import type { MobileScanResolveResult } from '@/types/inventory';
 
 export type ScanSource = 'camera' | 'manual' | 'photo' | 'ocr';
 
@@ -49,6 +50,7 @@ export type ScanResolveRequest = {
   source: ScanSource;
   canInventoryView: boolean;
   allowMock: boolean;
+  cachedResult?: MobileScanResolveResult | null;
 };
 
 export type ScanServiceSnapshot = {

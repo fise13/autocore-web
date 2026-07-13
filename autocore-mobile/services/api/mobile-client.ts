@@ -23,6 +23,42 @@ export class MobileApiError extends Error {
   }
 }
 
+/** Never surface Next.js HTML / RSC flight payloads in toasts or UI. */
+function humanizeApiErrorBody(text: string, status: number): string {
+  const trimmed = text.trim();
+  if (!trimmed) return `HTTP ${status}`;
+
+  const looksLikeHtml =
+    /^<!DOCTYPE/i.test(trimmed) ||
+    /^<html[\s>]/i.test(trimmed) ||
+    trimmed.includes('self.__next_f.push') ||
+    trimmed.includes('/_next/static/');
+
+  if (looksLikeHtml) {
+    if (status === 404) {
+      return 'API не найдено на сервере. Нужен деплой веб-приложения.';
+    }
+    if (status >= 500) {
+      return 'Ошибка сервера. Попробуйте позже.';
+    }
+    return `Сервер вернул HTML вместо JSON (HTTP ${status}).`;
+  }
+
+  if (trimmed.length > 280) {
+    return `${trimmed.slice(0, 277)}…`;
+  }
+  return trimmed;
+}
+
+function parseJsonPayload(text: string): { error?: string; message?: string } | null {
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as { error?: string; message?: string };
+  } catch {
+    return null;
+  }
+}
+
 async function getBearerToken(forceRefresh = false): Promise<string> {
   const user = getFirebaseAuth().currentUser;
   if (!user) {
@@ -60,17 +96,11 @@ export async function mobileFetch<T>(
     }
 
     const text = await response.text();
-    let payload: { error?: string; message?: string } | null = null;
-    if (text) {
-      try {
-        payload = JSON.parse(text) as { error?: string; message?: string };
-      } catch {
-        payload = null;
-      }
-    }
+    const payload = parseJsonPayload(text);
 
     if (!response.ok) {
-      const message = payload?.error ?? payload?.message ?? (text || `HTTP ${response.status}`);
+      const message =
+        payload?.error ?? payload?.message ?? humanizeApiErrorBody(text, response.status);
       throw new MobileApiError(message, response.status);
     }
 
@@ -78,7 +108,11 @@ export async function mobileFetch<T>(
       return undefined as T;
     }
 
-    return JSON.parse(text) as T;
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new MobileApiError(humanizeApiErrorBody(text, response.status), response.status);
+    }
   };
 
   return execute(false);
@@ -114,6 +148,7 @@ export async function mobilePostFlexible<T>(
         Accept: 'application/json',
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
+        ...resolveApiCompanyIdHeader(),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
@@ -128,7 +163,7 @@ export async function mobilePostFlexible<T>(
       try {
         data = JSON.parse(text) as T;
       } catch {
-        data = { error: text } as T;
+        data = { error: humanizeApiErrorBody(text, response.status) } as T;
       }
     }
 
@@ -152,6 +187,7 @@ export async function mobileFetchBlob(
       headers: {
         Accept: 'application/pdf',
         Authorization: `Bearer ${token}`,
+        ...resolveApiCompanyIdHeader(),
         ...(requestInit.headers ?? {}),
       },
     });
@@ -162,15 +198,9 @@ export async function mobileFetchBlob(
 
     if (!response.ok) {
       const text = await response.text();
-      let message = text.trim();
-      if (text) {
-        try {
-          const payload = JSON.parse(text) as { error?: string; message?: string };
-          message = payload.error ?? payload.message ?? message;
-        } catch {
-          // keep raw text
-        }
-      }
+      const payload = parseJsonPayload(text);
+      const message =
+        payload?.error ?? payload?.message ?? humanizeApiErrorBody(text, response.status);
       throw new MobileApiError(message || `HTTP ${response.status}`, response.status);
     }
 
@@ -188,6 +218,7 @@ export async function mobileUpload<T>(path: string, formData: FormData): Promise
       headers: {
         Accept: 'application/json',
         Authorization: `Bearer ${token}`,
+        ...resolveApiCompanyIdHeader(),
       },
       body: formData,
     });
@@ -197,21 +228,21 @@ export async function mobileUpload<T>(path: string, formData: FormData): Promise
     }
 
     const text = await response.text();
-    let payload: { error?: string; message?: string } | null = null;
-    if (text) {
-      try {
-        payload = JSON.parse(text) as { error?: string; message?: string };
-      } catch {
-        payload = null;
-      }
-    }
+    const errorPayload = parseJsonPayload(text);
 
     if (!response.ok) {
-      const message = payload?.error ?? payload?.message ?? (text || `HTTP ${response.status}`);
+      const message =
+        errorPayload?.error ??
+        errorPayload?.message ??
+        humanizeApiErrorBody(text, response.status);
       throw new MobileApiError(message, response.status);
     }
 
-    return JSON.parse(text) as T;
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new MobileApiError(humanizeApiErrorBody(text, response.status), response.status);
+    }
   };
 
   return execute(false);

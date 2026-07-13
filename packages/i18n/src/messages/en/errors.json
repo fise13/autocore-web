@@ -1,0 +1,10 @@
+{
+  "generic": {
+    "description": "Please try again. If the problem continues, contact support.",
+    "title": "Something went wrong"
+  },
+  "network": {
+    "offline": "You are offline",
+    "requestFailed": "The request could not be completed"
+  }
+}

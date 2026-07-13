@@ -1,15 +1,18 @@
 type ScanDebounceOptions = {
-  /** Minimum gap between accepted reads of the same payload after a commit. */
+  /** Minimum gap between accepted reads of the same payload after a successful commit. */
   samePayloadCooldownMs?: number;
-  /** Global cooldown after any successful commit. */
+  /** Global cooldown after any commit starts. */
   commitCooldownMs?: number;
   /** How long the same payload must be seen before committing. */
   stableMs?: number;
 };
 
+export type ScanCommitResult = 'success' | 'miss';
+
 export class ScanDebounce {
   private lastPayload: string | null = null;
   private lastCommitAt = 0;
+  private lastCommitSucceeded = false;
   private lastSeenPayload: string | null = null;
   private lastSeenAt = 0;
 
@@ -20,18 +23,19 @@ export class ScanDebounce {
   }
 
   private get commitCooldownMs() {
-    return this.options.commitCooldownMs ?? 120;
+    return this.options.commitCooldownMs ?? 0;
   }
 
   private get stableMs() {
     return this.options.stableMs ?? 0;
   }
 
-  /** Visual tracking — always allowed while camera is active. */
+  /** Visual tracking — allowed while camera is active. */
   canTrack(payload: string): boolean {
     const now = Date.now();
     if (now - this.lastCommitAt < this.commitCooldownMs) return false;
     if (
+      this.lastCommitSucceeded &&
       this.lastPayload === payload &&
       this.lastCommitAt > 0 &&
       now - this.lastCommitAt < this.samePayloadCooldownMs
@@ -68,6 +72,17 @@ export class ScanDebounce {
     this.lastSeenAt = 0;
   }
 
+  markCommitResult(result: ScanCommitResult): void {
+    if (result === 'success') {
+      this.lastCommitSucceeded = true;
+      return;
+    }
+    this.lastPayload = null;
+    this.lastCommitAt = 0;
+    this.lastCommitSucceeded = false;
+    this.reset();
+  }
+
   reset(): void {
     this.lastSeenPayload = null;
     this.lastSeenAt = 0;
@@ -76,6 +91,7 @@ export class ScanDebounce {
   fullReset(): void {
     this.lastPayload = null;
     this.lastCommitAt = 0;
+    this.lastCommitSucceeded = false;
     this.reset();
   }
 }

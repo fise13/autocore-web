@@ -6,13 +6,13 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { useIsFocused, useRouter } from 'expo-router';
+import { useFocusEffect, useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { ArrowLeftIcon, FlashlightIcon, ImagesIcon } from '@/assets/icons';
 import { Text, toast } from '@/components/ui';
-import { useTheme } from '@/hooks';
+import { useFloatingTabBarInset, useTheme } from '@/hooks';
 import { haptics, rhythm } from '@/theme';
 import { uploadDocumentImport } from '@/services/api/document-import';
 
@@ -23,7 +23,10 @@ type Phase = 'capture' | 'review' | 'uploading' | 'success';
 
 export function DocumentImportScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ batchId?: string }>();
+  const batchId = typeof params.batchId === 'string' ? params.batchId : undefined;
   const insets = useSafeAreaInsets();
+  const { footerBottom } = useFloatingTabBarInset();
   const isFocused = useIsFocused();
   const { colors } = useTheme();
   const cameraRef = useRef<ImportCameraHandle>(null);
@@ -31,6 +34,7 @@ export function DocumentImportScreen() {
   const [phase, setPhase] = useState<Phase>('capture');
   const [torchOn, setTorchOn] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [uploadedCount, setUploadedCount] = useState(0);
 
   const goBack = useCallback(() => {
     if (router.canGoBack()) {
@@ -39,6 +43,23 @@ export function DocumentImportScreen() {
     }
     router.replace('/(tabs)/scan');
   }, [router]);
+
+  const finishImport = useCallback(() => {
+    setPhase('capture');
+    setPhotoUri(null);
+    setTorchOn(false);
+    router.replace('/(tabs)/scan');
+  }, [router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setPhase('capture');
+        setPhotoUri(null);
+        setTorchOn(false);
+      };
+    }, []),
+  );
 
   const handleCapture = useCallback(async () => {
     haptics.light();
@@ -81,16 +102,9 @@ export function DocumentImportScreen() {
     setPhase('uploading');
     haptics.light();
     try {
-      const filename = photoUri.split('/').pop() ?? 'document.jpg';
-      const extension = filename.split('.').pop()?.toLowerCase();
-      const mimeType =
-        extension === 'png'
-          ? 'image/png'
-          : extension === 'webp'
-            ? 'image/webp'
-            : 'image/jpeg';
-      await uploadDocumentImport(photoUri, filename, mimeType);
+      await uploadDocumentImport(photoUri, { batchId });
       haptics.success();
+      setUploadedCount((n) => n + 1);
       setPhase('success');
     } catch (error) {
       toast({
@@ -100,25 +114,25 @@ export function DocumentImportScreen() {
       });
       setPhase('review');
     }
-  }, [photoUri]);
+  }, [batchId, photoUri]);
 
   const cameraActive = isFocused && phase === 'capture';
 
   return (
     <View style={styles.root}>
       {phase === 'capture' || phase === 'review' ? (
-        <View style={StyleSheet.absoluteFill}>
+        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
           {phase === 'capture' ? (
             <ImportCamera ref={cameraRef} torch={torchOn} active={cameraActive} />
           ) : photoUri ? (
-            <Animated.View entering={FadeIn.duration(180)} style={StyleSheet.absoluteFill}>
+            <Animated.View entering={FadeIn.duration(180)} style={StyleSheet.absoluteFill} pointerEvents="none">
               <Image source={{ uri: photoUri }} style={styles.preview} resizeMode="contain" />
             </Animated.View>
           ) : null}
           <View style={[styles.dim, { opacity: phase === 'review' ? 0.35 : 0 }]} pointerEvents="none" />
         </View>
       ) : (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }]} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }]} pointerEvents="none" />
       )}
 
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
@@ -131,7 +145,7 @@ export function DocumentImportScreen() {
           <ArrowLeftIcon size={20} color="#fff" strokeWidth={2} />
         </Pressable>
         <Text variant="body" style={styles.topTitle}>
-          Import
+          {batchId ? 'Импорт' : 'Import'}
         </Text>
         {phase === 'capture' ? (
           <Pressable
@@ -151,9 +165,13 @@ export function DocumentImportScreen() {
       </View>
 
       {phase === 'capture' ? (
-        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <View style={[styles.bottomBar, { paddingBottom: footerBottom }]}>
           <Text variant="caption" style={styles.hint}>
-            Сфотографируйте документ целиком
+            {batchId
+              ? uploadedCount > 0
+                ? `${uploadedCount} загружено · на компьютере идёт разбор`
+                : 'Сфотографируйте двигатели — появятся на компьютере'
+              : 'Сфотографируйте документ целиком'}
           </Text>
           <View style={styles.captureRow}>
             <Pressable
@@ -181,7 +199,7 @@ export function DocumentImportScreen() {
         <Animated.View
           entering={FadeIn.duration(200)}
           exiting={FadeOut.duration(120)}
-          style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16), gap: 10 }]}
+          style={[styles.bottomBar, { paddingBottom: footerBottom, gap: 10 }]}
         >
           <Pressable
             accessibilityRole="button"
@@ -205,7 +223,19 @@ export function DocumentImportScreen() {
       ) : null}
 
       {phase === 'uploading' ? <ImportUploadingView /> : null}
-      {phase === 'success' ? <ImportSuccessView onDone={goBack} /> : null}
+      {phase === 'success' ? (
+        <ImportSuccessView
+          onDone={finishImport}
+          onContinue={
+            batchId
+              ? () => {
+                  setPhotoUri(null);
+                  setPhase('capture');
+                }
+              : undefined
+          }
+        />
+      ) : null}
     </View>
   );
 }

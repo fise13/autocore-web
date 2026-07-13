@@ -40,6 +40,13 @@ const BASE_COLUMNS: GridColumnDefinition[] = [
     modelField: "transmission",
     domainCategory: "transmissions",
   },
+  {
+    id: "warehouseLocation",
+    title: "Место",
+    width: MOTOR_GRID_COLUMN_WIDTHS.warehouseLocation,
+    editable: true,
+    modelField: "warehouseLocation",
+  },
   { id: "arrivalDate", title: "Дата прихода", width: MOTOR_GRID_COLUMN_WIDTHS.arrivalDate, editable: true, align: "center", modelField: "arrivalDate" },
   { id: "soldDate", title: "Дата продажи", width: MOTOR_GRID_COLUMN_WIDTHS.soldDate, editable: false, align: "center", modelField: "soldDate" },
   { id: "action", title: "", width: MOTOR_GRID_COLUMN_WIDTHS.action, editable: false, align: "center" },

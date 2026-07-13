@@ -96,8 +96,14 @@ export type WorkOrderDocument = {
   workOrderId: string;
   type: WorkOrderDocumentType;
   title: string;
+  slug?: string;
+  status?: "pending" | "ready" | "failed";
   storagePath?: string;
   downloadUrl?: string;
+  contextHash?: string;
+  generatedAt?: Date;
+  lastAccessedAt?: Date;
+  error?: string;
   createdAt: Date;
 };
 

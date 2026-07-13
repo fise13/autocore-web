@@ -189,3 +189,34 @@ export async function getDocumentImportJobAdmin(
   }
   return mapDocumentImportJob(snap.id, data);
 }
+
+export async function updateDocumentImportJobAdmin(
+  jobId: string,
+  patch: Record<string, unknown>,
+): Promise<DocumentImportJob | null> {
+  const db = getAdminFirestore();
+  const docRef = db.collection(DOCUMENT_IMPORTS_COLLECTION).doc(jobId);
+  const snap = await docRef.get();
+  if (!snap.exists) return null;
+  await docRef.set({ ...patch, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  const next = await docRef.get();
+  return mapDocumentImportJob(jobId, (next.data() ?? {}) as Record<string, unknown>);
+}
+
+export async function listDocumentImportJobsAdmin(
+  companyId: string,
+  max = 50,
+): Promise<DocumentImportJob[]> {
+  const db = getAdminFirestore();
+  // Filter only — sort in memory to avoid waiting on composite indexes.
+  const snap = await db
+    .collection(DOCUMENT_IMPORTS_COLLECTION)
+    .where("companyId", "==", normalizeCompanyId(companyId))
+    .limit(Math.max(max * 3, 80))
+    .get();
+
+  return snap.docs
+    .map((entry) => mapDocumentImportJob(entry.id, entry.data() as Record<string, unknown>))
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, max);
+}

@@ -8,7 +8,7 @@ import {
   resolveAdminStorageBucket,
 } from "@/infrastructure/firebase/resolve-storage-bucket";
 import { WorkOrderDocument, WorkOrderDocumentType } from "@/domain/work-order";
-import { DOCUMENT_BY_TYPE } from "@/lib/documents/document-types";
+import { DOCUMENT_BY_TYPE, type DocumentSlug } from "@/lib/documents/document-types";
 import { normalizeCompanyId } from "@/lib/company-id";
 
 const COLLECTION = "workOrderDocuments";
@@ -51,6 +51,10 @@ export async function upsertWorkOrderDocumentMetadata(params: {
   type: WorkOrderDocumentType;
   storagePath: string;
   downloadUrl: string;
+  slug?: DocumentSlug;
+  status?: "pending" | "ready" | "failed";
+  contextHash?: string;
+  error?: string;
 }): Promise<WorkOrderDocument> {
   const db = getAdminFirestore();
   const normalizedCompanyId = normalizeCompanyId(params.companyId);
@@ -63,14 +67,22 @@ export async function upsertWorkOrderDocumentMetadata(params: {
     .get();
 
   const definition = DOCUMENT_BY_TYPE[params.type];
+  const now = new Date();
+  const isReady = Boolean(params.downloadUrl?.trim());
   const payload = {
     companyId: normalizedCompanyId,
     workOrderId: params.workOrderId,
     type: params.type,
     title: definition.title,
+    slug: params.slug ?? definition.slug,
+    status: params.status ?? (isReady ? "ready" : "pending"),
     storagePath: params.storagePath,
     downloadUrl: params.downloadUrl,
-    createdAt: Timestamp.fromDate(new Date()),
+    contextHash: params.contextHash ?? null,
+    generatedAt: Timestamp.fromDate(now),
+    lastAccessedAt: Timestamp.fromDate(now),
+    error: params.error ?? null,
+    createdAt: Timestamp.fromDate(now),
   };
 
   if (!existing.empty) {
@@ -82,9 +94,14 @@ export async function upsertWorkOrderDocumentMetadata(params: {
       workOrderId: params.workOrderId,
       type: params.type,
       title: definition.title,
+      slug: params.slug ?? definition.slug,
+      status: payload.status as WorkOrderDocument["status"],
       storagePath: params.storagePath,
       downloadUrl: params.downloadUrl,
-      createdAt: new Date(),
+      contextHash: params.contextHash,
+      generatedAt: now,
+      lastAccessedAt: now,
+      createdAt: now,
     };
   }
 
@@ -95,9 +112,14 @@ export async function upsertWorkOrderDocumentMetadata(params: {
     workOrderId: params.workOrderId,
     type: params.type,
     title: definition.title,
+    slug: params.slug ?? definition.slug,
+    status: payload.status as WorkOrderDocument["status"],
     storagePath: params.storagePath,
     downloadUrl: params.downloadUrl,
-    createdAt: new Date(),
+    contextHash: params.contextHash,
+    generatedAt: now,
+    lastAccessedAt: now,
+    createdAt: now,
   };
 }
 
@@ -106,6 +128,8 @@ export async function persistDocumentPdf(params: {
   workOrderId: string;
   type: WorkOrderDocumentType;
   pdf: Buffer;
+  slug?: DocumentSlug;
+  contextHash?: string;
 }): Promise<WorkOrderDocument> {
   try {
     const uploaded = await uploadDocumentPdf(params);
@@ -113,8 +137,11 @@ export async function persistDocumentPdf(params: {
       companyId: params.companyId,
       workOrderId: params.workOrderId,
       type: params.type,
+      slug: params.slug,
       storagePath: uploaded.storagePath,
       downloadUrl: uploaded.downloadUrl,
+      contextHash: params.contextHash,
+      status: "ready",
     });
   } catch (error) {
     if (!isStorageBucketMissingError(error)) {
@@ -126,8 +153,11 @@ export async function persistDocumentPdf(params: {
       companyId: params.companyId,
       workOrderId: params.workOrderId,
       type: params.type,
+      slug: params.slug,
       storagePath: "",
       downloadUrl: "",
+      contextHash: params.contextHash,
+      status: "pending",
     });
   }
 }
@@ -152,7 +182,10 @@ export async function touchWorkOrderDocumentAccess(params: {
   if (existing.empty) return;
 
   await existing.docs[0].ref.set(
-    { createdAt: Timestamp.fromDate(new Date()) },
+    {
+      lastAccessedAt: Timestamp.fromDate(new Date()),
+      createdAt: Timestamp.fromDate(new Date()),
+    },
     { merge: true },
   );
 }

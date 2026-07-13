@@ -98,6 +98,8 @@ export async function recordMovementUseCase(
       afterOnHand: next.onHand,
       beforeReserved,
       afterReserved: next.reserved,
+      fromLocationId: input.fromLocationId,
+      toLocationId: input.toLocationId,
       referenceType: input.referenceType,
       referenceId: input.referenceId,
       documentId: input.documentId,

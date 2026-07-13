@@ -428,7 +428,7 @@ export function LoginScreen() {
       <Animated.View key={stepKey} entering={entering} exiting={exiting} style={{ width: '100%', gap: form.groupGap }}>
       {!emailStep ? (
         <>
-          <View style={{ gap: spacing[2], width: '100%' }}>
+          <View style={{ gap: spacing[3], width: '100%' }}>
             {showGoogleSignIn ? (
               <GoogleSignInButton
                 disabled={submitDisabled}
@@ -452,7 +452,7 @@ export function LoginScreen() {
 
           <AuthDivider>ИЛИ</AuthDivider>
 
-          <View style={{ gap: spacing[2], width: '100%' }}>
+          <View style={{ gap: spacing[3], width: '100%' }}>
             <Text variant="caption" color="muted" style={{ fontSize: form.captionFontSize }}>
               Email для входа или создания аккаунта
             </Text>
@@ -510,7 +510,7 @@ export function LoginScreen() {
             {oauthProviders.length > 1 ? ' или Apple' : ''}. Войдите тем же способом.
           </Text>
 
-          <View style={{ gap: spacing[2], width: '100%' }}>
+          <View style={{ gap: spacing[3], width: '100%' }}>
             {oauthProviders.includes('google.com') ? (
               <GoogleSignInButton
                 disabled={submitDisabled}

@@ -1,5 +1,5 @@
-import { DocumentImportsListWorkspace } from "@/components/document-import/document-imports-list-workspace";
+import { ImportHubWorkspace } from "@/components/import-batch/import-hub-workspace";
 
-export default function DocumentImportsPage() {
-  return <DocumentImportsListWorkspace />;
+export default function ImportsPage() {
+  return <ImportHubWorkspace />;
 }

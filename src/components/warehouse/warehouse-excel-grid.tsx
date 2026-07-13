@@ -1,6 +1,6 @@
 "use client";
 
-import { PackagePlus, SlidersHorizontal } from "lucide-react";
+import { MapPin, PackagePlus, SlidersHorizontal } from "lucide-react";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { syncWarehouseGridRowUseCase } from "@/application/use-cases/warehouse/sync-warehouse-grid-row";
@@ -64,6 +64,7 @@ import {
   WAREHOUSE_ROW_ARCHIVED,
   WarehouseGridRow,
 } from "@/lib/warehouse/warehouse-grid-data-store";
+import { resolveItemLocationLabel } from "@/lib/warehouse/resolve-item-location-label";
 import {
   buildWarehouseGridLayoutMetrics,
   isWarehouseEditableColumn,
@@ -103,6 +104,7 @@ type WarehouseExcelGridProps = {
   onSale: (item: InventoryItem) => void;
   onTransfer: (item: InventoryItem) => void;
   onHistory: (item: InventoryItem) => void;
+  onAssignLocation?: (items: InventoryItem[]) => void;
   onCloudPendingChange?: (pending: boolean) => void;
   onDirtyCountChange?: (count: number) => void;
   externalInteractionLocked?: boolean;
@@ -170,7 +172,7 @@ function valueAtCell(row: WarehouseGridRow, column: number): string {
       case 10:
         return row.barcodes[0] ?? "";
       case 11:
-        return row.warehouseLocation ?? "";
+        return resolveItemLocationLabel(row);
       case 12:
         return formatOptionalGridNumber(row.lowStockThreshold);
       case 13:
@@ -323,6 +325,7 @@ export function WarehouseExcelGrid({
   onSale,
   onTransfer,
   onHistory,
+  onAssignLocation,
   onCloudPendingChange,
   onDirtyCountChange,
   externalInteractionLocked = false,
@@ -1478,6 +1481,14 @@ export function WarehouseExcelGrid({
       if (key === "ArrowRight") moveSelectionBy(0, 1, shift);
       return;
     }
+    if (!cmd && !event.altKey && !event.ctrlKey && (key === "l" || key === "L") && canEdit && onAssignLocation) {
+      const selected = getContextSelectedItems(rows, selection);
+      if (selected.length > 0) {
+        event.preventDefault();
+        onAssignLocation(selected);
+        return;
+      }
+    }
     if (!cmd && !event.altKey && !event.ctrlKey && key.length === 1 && canEdit) {
       event.preventDefault();
       beginEdit(selection.head, key, false);
@@ -1493,6 +1504,7 @@ export function WarehouseExcelGrid({
     fillWithActive,
     layout.columns.length,
     moveSelectionBy,
+    onAssignLocation,
     pasteAtSelection,
     performRedo,
     performUndo,
@@ -1957,6 +1969,21 @@ export function WarehouseExcelGrid({
               >
                 Перемещение
               </GridContextMenuItem>
+              {canEdit && onAssignLocation ? (
+                <GridContextMenuItem
+                  icon={MapPin}
+                  shortcut="L"
+                  onClick={() => {
+                    onAssignLocation(contextMenu.selected);
+                    closeContextMenu();
+                  }}
+                >
+                  Назначить место
+                  {contextMenu.selected.length > 1
+                    ? ` (${contextMenu.selected.length})`
+                    : ""}
+                </GridContextMenuItem>
+              ) : null}
               <GridContextMenuItem
                 onClick={() => {
                   const target = contextMenu.selected[0];

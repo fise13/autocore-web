@@ -55,6 +55,7 @@ Column roles (column_roles — index → role):
 - serial_code: engine number / серийник / номер двигателя — may be in ANY column if values look like EJ22-032900, FB25-184521 (not only columns named «серийник»)
 - configuration: комплектация, комплект, компл. (sometimes serials are here — map as serial_code if values are engine numbers)
 - transmission: кпп, коробка, трансмиссия, АКПП/МКПП
+  Also use transmission (or notes) for presence phrases like «с коробкой» / «s korobkoy» — never leave those in configuration or engineCode.
 - notes: особые отметки, примечания, комментарий
 - quantity: кол-во, количество, qty (default 1 if empty)
 - arrival_date: дата прихода, приход, поступление
@@ -149,6 +150,8 @@ Rules:
 - rawBrand that looks like engine code → move to engineCode, infer real brand.
 - Empty serial on a motor-catalog sheet → warning "нет серийника" (do NOT omit the row; app will assign AUTO-serial).
 - Sold sheet context → populate soldDate when possible.
+- Gearbox presence phrases ("с коробкой", "s korobkoy", "S KOROBKOY", "with gearbox") MUST NOT stay in configuration, brand, or engineCode.
+  Put a short Russian note into transmission (e.g. "с коробкой") or notes — never leave transliterated garbage in the display name fields.
 - Never return null/empty for all fields — keep raw values when normalization fails.
 - Do NOT change import_type — only normalize row fields.
 Return strict JSON matching the schema.

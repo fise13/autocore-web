@@ -1,6 +1,7 @@
 import type { SearchEngine, SearchResultItem } from '@/features/search/types';
 import { inventoryCardSubtitle, normalizeInventoryCode } from '@/features/search/lib/format';
 import { joinSearchFields, matchesSearchQuery } from '@/lib/search/match-query';
+import { resolveInventoryShelf } from '@/lib/inventory/resolve-shelf';
 import type { InventoryItem } from '@/types/inventory';
 
 function inventoryStatus(item: InventoryItem): SearchEngine['status'] {
@@ -24,7 +25,7 @@ export function mapInventoryItemToSearchEngine(item: InventoryItem): SearchEngin
     code,
     vehicle,
     status: inventoryStatus(item),
-    shelf: item.warehouseLocation?.trim() || undefined,
+    shelf: resolveInventoryShelf(item),
     price: item.sellPrice ?? 0,
   };
 }
@@ -36,7 +37,7 @@ export function mapInventoryItemToSearchResult(item: InventoryItem): SearchResul
     title: item.name,
     subtitle: item.sku,
     meta: `${item.totalAvailable} ${item.unit}`,
-    shelf: item.warehouseLocation,
+    shelf: resolveInventoryShelf(item),
     price: item.sellPrice,
     status: inventoryStatus(item),
   };
@@ -49,6 +50,7 @@ export function inventoryMatchesQuery(item: InventoryItem, query: string): boole
     item.brandName,
     item.description,
     item.warehouseLocation,
+    item.primaryLocationCode,
     ...(item.barcodes ?? []),
   );
   return matchesSearchQuery(haystack, query);

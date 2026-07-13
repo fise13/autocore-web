@@ -28,6 +28,10 @@ export type MotorEntity = {
   updatedAt?: Date;
   brandName?: string;
   engineCode?: string;
+  /** Legacy free-text shelf; prefer primaryLocationCode when set. */
+  warehouseLocation?: string;
+  primaryLocationId?: string;
+  primaryLocationCode?: string;
   status?: MotorStatus;
   reservedForWorkOrderId?: string | null;
   installedOnVehicleId?: string | null;
@@ -50,6 +54,9 @@ export type UpsertMotorInput = {
   deletedAt?: Date | null;
   brandName?: string;
   engineCode?: string;
+  warehouseLocation?: string;
+  primaryLocationId?: string;
+  primaryLocationCode?: string;
   status?: MotorStatus;
   reservedForWorkOrderId?: string | null;
   installedOnVehicleId?: string | null;
