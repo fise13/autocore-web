@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { signInWithCustomToken, signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithCustomToken } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -12,13 +12,11 @@ import { Button } from "@/components/ui/button";
 import { DEMO_ACCOUNT_EMAIL } from "@/lib/demo/demo-config";
 import { getFirebaseAuth, isFirebaseConfigured } from "@/infrastructure/firebase/client";
 import { prepareSyncAuth } from "@/lib/auth/prepare-sync-auth";
-import { clearDemoSessionMarker, dispatchDemoReset, markDemoSessionActive } from "@/lib/demo/demo-session.client";
+import { clearDemoSessionMarker, markDemoSessionActive } from "@/lib/demo/demo-session.client";
 import { appLoginUrl, marketingHomeUrl } from "@/lib/site-urls";
 import { userCopy } from "@/lib/user-copy";
 
-type DemoAuthPayload =
-  | { type: "customToken"; token: string }
-  | { type: "password"; email: string; password: string };
+type DemoAuthPayload = { type: "customToken"; token: string };
 
 export default function DemoPage() {
   const router = useRouter();
@@ -54,11 +52,7 @@ export default function DemoPage() {
         const payload = body;
         const auth = getFirebaseAuth();
 
-        if (payload.type === "customToken") {
-          await signInWithCustomToken(auth, payload.token);
-        } else {
-          await signInWithEmailAndPassword(auth, payload.email, payload.password);
-        }
+        await signInWithCustomToken(auth, payload.token);
 
         await auth.authStateReady();
         const user = auth.currentUser;
@@ -68,10 +62,6 @@ export default function DemoPage() {
 
         await prepareSyncAuth(user.uid, { force: true });
         await refreshProfile();
-
-        if (payload.type === "password") {
-          await dispatchDemoReset();
-        }
 
         markDemoSessionActive();
         router.replace("/");

@@ -6,6 +6,13 @@ import { AccountAccessError, verifyAccountAccess } from "@/lib/auth/verify-accou
 
 export const runtime = "nodejs";
 
+function internalActivationEnabled(): boolean {
+  return (
+    process.env.NODE_ENV !== "production" ||
+    process.env.ALLOW_INTERNAL_PRO_ACTIVATION?.trim().toLowerCase() === "true"
+  );
+}
+
 function normalizeInterval(value: unknown): BillingInterval {
   return value === "yearly" ? "yearly" : "monthly";
 }
@@ -13,6 +20,10 @@ function normalizeInterval(value: unknown): BillingInterval {
 export async function POST(request: NextRequest) {
   try {
     const access = await verifyAccountAccess(request);
+    if (!internalActivationEnabled()) {
+      return NextResponse.json({ error: "Internal Pro activation is disabled" }, { status: 403 });
+    }
+
     const body = (await request.json()) as { companyId?: string; interval?: string };
     const companyId = body.companyId?.trim();
     if (!companyId) {
