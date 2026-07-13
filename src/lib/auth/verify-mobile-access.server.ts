@@ -72,6 +72,10 @@ export async function verifyMobileAccess(
 
   const resolved = await resolveAccessProfile(uid, companyId);
 
+  if (!resolved.hasEmployeeMembership && !resolved.profile.isCompanyOwner) {
+    throw new MobileAccessError("Нет доступа к этой компании", 403);
+  }
+
   if (resolved.profile.isActive === false) {
     throw new MobileAccessError("Аккаунт деактивирован", 403);
   }

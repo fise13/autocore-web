@@ -3,6 +3,7 @@ import "server-only";
 import { createHash, createPublicKey, verify as verifySignature } from "node:crypto";
 
 import { getAdminAuth } from "@/infrastructure/firebase/admin";
+import { verifiedAppleEmail } from "@/lib/auth/apple-identity";
 
 const MOBILE_BUNDLE_ID = "com.wise.autocore.mobile";
 const APPLE_WEB_CLIENT_ID =
@@ -240,11 +241,12 @@ async function signInViaVerifiedAppleToken(
     rawNonce,
   );
   const appleSub = String(payload.sub ?? "");
-  const uid = await resolveFirebaseUidFromApple(appleSub, input.email, input.fullName);
+  const appleEmail = verifiedAppleEmail(payload);
+  const uid = await resolveFirebaseUidFromApple(appleSub, appleEmail, input.fullName);
 
   const profileUpdate: { displayName?: string; email?: string } = {};
   if (input.fullName?.trim()) profileUpdate.displayName = input.fullName.trim();
-  if (input.email?.trim()) profileUpdate.email = input.email.trim();
+  if (appleEmail) profileUpdate.email = appleEmail;
   if (Object.keys(profileUpdate).length > 0) {
     try {
       await getAdminAuth().updateUser(uid, profileUpdate);
@@ -291,9 +293,8 @@ export async function completeMobileAppleSignIn(
         throw new Error("Firebase did not return a user id");
       }
 
-      const profileUpdate: { displayName?: string; email?: string } = {};
+      const profileUpdate: { displayName?: string } = {};
       if (input.fullName?.trim()) profileUpdate.displayName = input.fullName.trim();
-      if (input.email?.trim()) profileUpdate.email = input.email.trim();
       if (Object.keys(profileUpdate).length > 0) {
         try {
           await getAdminAuth().updateUser(uid, profileUpdate);

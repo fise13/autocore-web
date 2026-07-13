@@ -16,6 +16,7 @@ export type ResolvedAccessProfile = {
   profile: UserEntity;
   companyId: string;
   scopes: AccessScopes;
+  hasEmployeeMembership: boolean;
 };
 
 export async function resolveAccessProfile(
@@ -56,15 +57,19 @@ export async function resolveAccessProfile(
       : null,
   );
 
+  const isCompanyOwner = companySnap.exists && companySnap.data()?.ownerId === uid;
+  const hasEmployeeMembership = employeeSnap.exists;
   const profile: UserEntity = {
     ...merged,
     companyId: normalizedCompanyId,
-    isCompanyOwner: companySnap.exists && companySnap.data()?.ownerId === uid,
+    isActive: hasEmployeeMembership || isCompanyOwner ? merged.isActive : false,
+    isCompanyOwner,
   };
 
   return {
     profile,
     companyId: normalizedCompanyId,
     scopes: resolveAccessScopes(profile),
+    hasEmployeeMembership,
   };
 }

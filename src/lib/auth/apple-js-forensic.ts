@@ -41,7 +41,21 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function jsonReplacer(_key: string, value: unknown): unknown {
+function jsonReplacer(key: string, value: unknown): unknown {
+  const normalizedKey = key.toLowerCase().replace(/[^a-z]/g, "");
+  const isSensitiveKey =
+    normalizedKey.includes("idtoken") ||
+    normalizedKey.includes("accesstoken") ||
+    normalizedKey.includes("refreshtoken") ||
+    normalizedKey.includes("clientsecret") ||
+    normalizedKey.includes("authorizationcode") ||
+    normalizedKey === "nonce";
+  const isLongAuthorizationCode =
+    normalizedKey === "code" && typeof value === "string" && value.length > 12;
+  if (isSensitiveKey || isLongAuthorizationCode) {
+    return "[REDACTED]";
+  }
+
   if (value instanceof Error) {
     const extra = value as Error & Record<string, unknown>;
     const serialized: Record<string, unknown> = {
@@ -291,10 +305,6 @@ export function logAppleAuthSignInResult(
 
   console.log("[APPLE SDK FORENSIC]", mode === "popup" ? "MODE=popup" : "MODE=redirect");
   console.log("[APPLE SDK FORENSIC]", "# AppleID.auth.signIn result", safeAppleSdkJson(fields));
-  console.log("[APPLE SDK FORENSIC]", "# authorization.id_token", fields["authorization.id_token"]);
-  console.log("[APPLE SDK FORENSIC]", "# authorization.code", fields["authorization.code"]);
-  console.log("[APPLE SDK FORENSIC]", "# authorization.state", fields["authorization.state"]);
-  console.log("[APPLE SDK FORENSIC]", "# user", safeAppleSdkJson(fields.user));
   console.log("[APPLE SDK FORENSIC]", "# Token issuance phase", tokenIssuancePhase);
   console.log("[APPLE SDK FORENSIC]", "# Exact Failure Point", failurePoint);
   logAppleSdkForensicFull("AppleID.auth.signIn result", fields);
@@ -410,10 +420,6 @@ export function logAppleSdkEventForensic(
   if (isSuccess) {
     const fields = extractAppleSignInResultFields(detail);
     console.log("[APPLE SDK FORENSIC]", "# AppleID.auth.signIn result (document event)", safeAppleSdkJson(fields));
-    console.log("[APPLE SDK FORENSIC]", "# authorization.id_token", fields["authorization.id_token"]);
-    console.log("[APPLE SDK FORENSIC]", "# authorization.code", fields["authorization.code"]);
-    console.log("[APPLE SDK FORENSIC]", "# authorization.state", fields["authorization.state"]);
-    console.log("[APPLE SDK FORENSIC]", "# user", safeAppleSdkJson(fields.user));
     console.log("[APPLE SDK FORENSIC]", "# Token issuance phase", tokenIssuancePhase);
     console.log("[APPLE SDK FORENSIC]", "# Exact Failure Point", failurePoint);
     logAppleSdkForensicFull("AppleIDSignInOnSuccess", { eventType: event.type, fields, extra: extra ?? null });

@@ -56,6 +56,10 @@ export async function verifyDesktopAccess(
 
   const resolved = await resolveAccessProfile(uid, normalizeCompanyId(trimmedCompanyId));
 
+  if (!resolved.hasEmployeeMembership && !resolved.profile.isCompanyOwner) {
+    throw new DesktopAccessError("Нет доступа к этой компании", 403);
+  }
+
   if (resolved.profile.isActive === false) {
     throw new DesktopAccessError("Аккаунт деактивирован", 403);
   }
