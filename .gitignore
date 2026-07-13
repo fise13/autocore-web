@@ -30,6 +30,19 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# local AI agents and editor instructions
+**/.agents/
+**/.cursor/
+**/.claude/
+**/.codex/
+**/.continue/
+**/.windsurf/
+**/AGENTS.md
+**/CLAUDE.md
+**/GEMINI.md
+**/skills-lock.json
+**/.aider*
+
 # env files
 .env*
 !.env.local.example
