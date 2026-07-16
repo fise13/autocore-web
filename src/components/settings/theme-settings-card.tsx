@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutGroup, motion } from "framer-motion";
+import { LayoutGroup, motion } from "motion/react";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";

@@ -515,6 +515,15 @@ service cloud.firestore {
     }
 
     // Cheap path for setup wizard / company settings (avoids deep RBAC get() chains).
+    // Prefer ownerId, then active company + role from users/{uid} or employees/{uid}.
+    function hasSettingsManagerRole(companyId) {
+      return inRole(['owner', 'admin', 'manager'])
+        || (
+          isActiveEmployee(companyId, request.auth.uid)
+          && employeeDoc(companyId, request.auth.uid).role in ['owner', 'admin', 'manager']
+        );
+    }
+
     function canManageCompanySettings(companyId) {
       return companyId != null
         && companyId != ""
@@ -523,15 +532,14 @@ service cloud.firestore {
           || (
             hasCompany()
             && sameCompany(companyId)
-            && inRole(['owner', 'admin', 'manager'])
+            && hasSettingsManagerRole(companyId)
           )
         );
     }
 
+    // Same cheap path as settings — needed when setup wizard upserts tracked specificCategories.
     function canOwnerInventoryAccess(companyId) {
-      return companyId != null
-        && companyId != ""
-        && isOwnerOfCompany(companyId);
+      return canManageCompanySettings(companyId);
     }
 
     function motorLocalIdValid(data) {

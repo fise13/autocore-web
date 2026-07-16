@@ -20,16 +20,31 @@ export type ProductSectionId =
 
 export const productContent = {
   hero: {
+    brand: "AutoCore",
     title: "Один рабочий день. Одна система.",
     description:
-      "AutoCore не каталог модулей. Это то, как склад, цех и офис проходят смену вместе, без Excel и ночных сверок.",
+      "Склад, цех и офис проходят смену вместе. Без Excel, без ночных сверок, без потери контекста между отделами.",
     ctaPrimary: "Попробовать демо",
     ctaSecondary: "Скачать",
     ctaSecondaryHref: marketingRoutes.download,
   },
+  toc: [
+    { id: "mission-control" as const, label: "Пульт" },
+    { id: "workday" as const, label: "Смена" },
+    { id: "vehicle-card" as const, label: "Авто" },
+    { id: "work-orders" as const, label: "Наряды" },
+    { id: "inventory" as const, label: "Склад" },
+    { id: "documents" as const, label: "Документы" },
+    { id: "repair-timeline" as const, label: "История" },
+    { id: "platform" as const, label: "Устройства" },
+    { id: "ai-import" as const, label: "Импорт" },
+    { id: "analytics" as const, label: "Аналитика" },
+    { id: "security" as const, label: "Доступ" },
+  ],
   sections: [
     {
       id: "mission-control" as const,
+      chapter: "01",
       title: "Mission Control",
       narrative:
         "Утро начинается не с отчётов из пяти мест. Директор открывает пульт: выручка, наряды, остатки и алерты за одну минуту.",
@@ -42,19 +57,21 @@ export const productContent = {
     },
     {
       id: "workday" as const,
-      title: "Начало смены",
+      chapter: "02",
+      title: "Одна смена. Четыре роли.",
       narrative:
         "Каждый отдел видит своё, но работает из одного факта. Кладовщик, мастер и офис не переспрашивают друг друга.",
       workflow: [
-        { label: "Директор видит картину", detail: "Mission Control" },
-        { label: "Кладовщик на полу", detail: "Скан и приёмка" },
-        { label: "Мастер в цеху", detail: "Наряд и резерв" },
-        { label: "Офис в курсе", detail: "Документы и проводки" },
+        { label: "Директор", detail: "Mission Control" },
+        { label: "Кладовщик", detail: "Скан и приёмка" },
+        { label: "Мастер", detail: "Наряд и резерв" },
+        { label: "Офис", detail: "Документы и проводки" },
       ],
       intervalMs: 2600,
     },
     {
       id: "vehicle-card" as const,
+      chapter: "03",
       title: "Карточка автомобиля",
       narrative:
         "VIN открывает всю историю: двигатель, наряды, документы и фото ремонта. Один идентификатор вместо папок и звонков.",
@@ -68,6 +85,7 @@ export const productContent = {
     },
     {
       id: "work-orders" as const,
+      chapter: "04",
       title: "Заказ-наряды",
       narrative:
         "Наряд создаётся один раз. Резерв со склада, списание при закрытии и проводки уходят в бухгалтерию без второго ввода.",
@@ -80,11 +98,12 @@ export const productContent = {
     },
     {
       id: "inventory" as const,
+      chapter: "05",
       title: "Склад",
       narrative:
         "Двигатель проходит путь от сканирования до продажи. Остаток виден на полу, в цеху и в офисе в тот же момент.",
       workflow: [
-        { label: "Сканировать двигатель", detail: "G4KC · 2.4L" },
+        { label: "Сканировать", detail: "G4KC · 2.4L" },
         { label: "Назначить полку", detail: "A-12" },
         { label: "Зарезервировать", detail: "Под наряд" },
         { label: "Продать", detail: "Документы готовы" },
@@ -93,6 +112,7 @@ export const productContent = {
     },
     {
       id: "documents" as const,
+      chapter: "06",
       title: "Документы",
       narrative:
         "Гарантия и акт рождаются из наряда, а не из Word-шаблона. Печать, PDF и QR для клиента из тех же данных.",
@@ -106,6 +126,7 @@ export const productContent = {
     },
     {
       id: "repair-timeline" as const,
+      chapter: "07",
       title: "История ремонта",
       narrative:
         "Каждый этап фиксируется с временем и автором. Фото с цеха, статусы и гарантия видны всем, кто работает с машиной.",
@@ -118,7 +139,8 @@ export const productContent = {
     },
     {
       id: "platform" as const,
-      title: "Desktop и mobile",
+      chapter: "08",
+      title: "Desktop и телефон",
       narrative:
         "Кладовщик сканирует на телефоне. Мастер видит резерв на компьютере. Одна база, без задержки и без копирования.",
       workflow: [
@@ -130,6 +152,7 @@ export const productContent = {
     },
     {
       id: "ai-import" as const,
+      chapter: "09",
       title: "Импорт прайсов",
       narrative:
         "Поставщик прислал Excel. Колонки сопоставляются автоматически, позиции попадают на склад без ручного переноса.",
@@ -142,6 +165,7 @@ export const productContent = {
     },
     {
       id: "analytics" as const,
+      chapter: "10",
       title: "Аналитика",
       narrative:
         "Выручка, маржа и остатки из операций, а не из сводных таблиц. Руководитель видит тренд недели без выгрузок.",
@@ -154,6 +178,7 @@ export const productContent = {
     },
     {
       id: "security" as const,
+      chapter: "11",
       title: "Безопасность",
       narrative:
         "Права по ролям, изоляция компаний и журнал каждого изменения. Руководитель видит, кто изменил остаток или закрыл наряд.",
@@ -170,8 +195,8 @@ export const productContent = {
     titleLine2: "За несколько минут.",
     description:
       "Откройте демо-компанию с живыми данными: склад, наряды, документы и синхронизация устройств без настройки.",
-    primary: "Начать бесплатно",
-    secondary: "Скачать приложение",
+    primary: "Попробовать демо",
+    secondary: "Скачать",
     secondaryHref: marketingRoutes.download,
     trust: ["14 дней бесплатно", "Без карты", "Демо-компания", "Windows и desktop"],
   },

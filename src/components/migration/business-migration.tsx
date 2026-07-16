@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, ArrowRight, Loader2, MessageCircleQuestion, Sparkles, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";

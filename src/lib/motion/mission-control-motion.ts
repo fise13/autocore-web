@@ -1,4 +1,4 @@
-import type { Variants } from "framer-motion";
+import type { Variants } from "motion/react";
 
 export const mcEase = [0.22, 1, 0.36, 1] as const;
 

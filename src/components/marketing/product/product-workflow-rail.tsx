@@ -9,13 +9,27 @@ type ProductWorkflowRailProps = {
   steps: readonly ProductWorkflowStep[];
   activeIndex: number;
   className?: string;
+  orientation?: "horizontal" | "vertical";
 };
 
-export function ProductWorkflowRail({ steps, activeIndex, className }: ProductWorkflowRailProps) {
+export function ProductWorkflowRail({
+  steps,
+  activeIndex,
+  className,
+  orientation = "horizontal",
+}: ProductWorkflowRailProps) {
   const reduced = useReducedMotion();
+  const vertical = orientation === "vertical";
 
   return (
-    <ol className={cn("product-workflow-rail", className)} aria-label="Шаги процесса">
+    <ol
+      className={cn(
+        "product-workflow-rail",
+        vertical && "product-workflow-rail-vertical",
+        className,
+      )}
+      aria-label="Шаги процесса"
+    >
       {steps.map((step, index) => {
         const isPast = index < activeIndex;
         const isCurrent = index === activeIndex;
@@ -25,6 +39,7 @@ export function ProductWorkflowRail({ steps, activeIndex, className }: ProductWo
             key={step.label}
             className={cn(
               "product-workflow-rail-item",
+              vertical && "product-workflow-rail-item-vertical",
               isPast && "is-past",
               isCurrent && "is-current",
             )}
@@ -50,7 +65,11 @@ export function ProductWorkflowRail({ steps, activeIndex, className }: ProductWo
             </div>
             {index < steps.length - 1 ? (
               <span
-                className={cn("product-workflow-rail-connector", isPast && "is-past")}
+                className={cn(
+                  "product-workflow-rail-connector",
+                  vertical && "product-workflow-rail-connector-vertical",
+                  isPast && "is-past",
+                )}
                 aria-hidden
               />
             ) : null}

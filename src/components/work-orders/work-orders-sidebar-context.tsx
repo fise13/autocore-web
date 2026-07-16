@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import type { ComponentType } from "react";
-import { LayoutGroup, motion } from "framer-motion";
+import { LayoutGroup, motion } from "motion/react";
 import { Car, Users } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";

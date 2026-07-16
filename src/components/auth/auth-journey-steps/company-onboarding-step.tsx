@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { Building2, Loader2, Users } from "lucide-react";
 
 import { AuthJourneyReveal } from "@/components/auth/auth-journey-reveal";

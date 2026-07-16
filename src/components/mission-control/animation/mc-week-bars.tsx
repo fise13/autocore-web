@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { motion, useReducedMotion, useSpring } from "framer-motion";
+import { motion, useReducedMotion, useSpring } from "motion/react";
 
 import type { WeekBar } from "@/lib/my-earnings/compute-my-earnings";
 import { cn } from "@/lib/utils";

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 
 import { SETUP_WIZARD_CATEGORY_PRESETS } from "@/domain/company-config";
 import { createWorkOrderUseCase } from "@/application/use-cases/work-orders/create-work-order";

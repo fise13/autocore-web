@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
+import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";

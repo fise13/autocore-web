@@ -14,9 +14,9 @@ type PhoneInventoryScreenProps = {
 function stepToUi(step: PlatformSyncStep) {
   switch (step) {
     case "idle":
-      return { vin: "—", scanActive: false, status: "Сканирование VIN", saving: false };
+      return { vin: "-", scanActive: false, status: "Сканирование VIN", saving: false };
     case "scan":
-      return { vin: "—", scanActive: true, status: "Сканируем код…", saving: false };
+      return { vin: "-", scanActive: true, status: "Сканируем код…", saving: false };
     case "detect":
       return { vin: "KMHGC…", scanActive: true, status: "VIN распознан", saving: false };
     case "save":
@@ -55,7 +55,7 @@ export function PhoneInventoryScreen({ step, className }: PhoneInventoryScreenPr
 
         <div className="grid grid-cols-2 gap-1.5">
           <InfoCell icon={MapPin} label="Полка" value="A-12" />
-          <InfoCell icon={Barcode} label="VIN" value={ui.vin} highlight={ui.scanActive && ui.vin !== "—"} />
+          <InfoCell icon={Barcode} label="VIN" value={ui.vin} highlight={ui.scanActive && ui.vin !== "-"} />
         </div>
 
         <div

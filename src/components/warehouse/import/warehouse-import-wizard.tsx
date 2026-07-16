@@ -1,7 +1,7 @@
 "use client";
 
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { Sparkles, Upload } from "lucide-react";
 
 import { useWorkspace } from "@/components/layout/workspace-context";

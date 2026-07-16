@@ -2,7 +2,7 @@
 
 import { useCallback, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, FileSpreadsheet, PenLine, Sparkles, Upload, X } from "lucide-react";
 
 import {

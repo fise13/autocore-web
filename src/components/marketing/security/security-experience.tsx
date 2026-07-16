@@ -94,7 +94,6 @@ export function SecurityExperience() {
           </nav>
 
           <HeroReveal delay={0} duration={0.68} y={20}>
-            <p className="trust-eyebrow">Enterprise-ready</p>
             <h1 className="exp-display trust-hero-title">{copy.hero.title}</h1>
           </HeroReveal>
 
@@ -126,7 +125,7 @@ export function SecurityExperience() {
               Фундамент, не дополнение
             </h2>
             <p className="trust-section-description">
-              Права, аудит и изоляция данных встроены в архитектуру — с первого дня эксплуатации.
+              Права, аудит и изоляция данных встроены в архитектуру с первого дня эксплуатации.
             </p>
           </ScrollReveal>
 
@@ -154,12 +153,11 @@ export function SecurityExperience() {
       <section className="trust-panel" aria-labelledby="security-stack-heading">
         <div className="exp-section-inner trust-section-inner">
           <ScrollReveal margin="-70px">
-            <p className="trust-eyebrow">Архитектура</p>
             <h2 id="security-stack-heading" className="trust-section-title">
               Защита на каждом слое
             </h2>
             <p className="trust-section-description">
-              От входа пользователя до генерации PDF — контроль доступа на каждом этапе.
+              От входа пользователя до генерации PDF: контроль доступа на каждом этапе.
             </p>
           </ScrollReveal>
 
@@ -168,7 +166,9 @@ export function SecurityExperience() {
               <li key={item.layer}>
                 <ScrollReveal delay={0.03 + index * 0.04} y={10} margin="-35px">
                   <article className="trust-stack-item">
-                    <span className="trust-stack-index">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="trust-stack-index" aria-hidden>
+                      {index + 1}
+                    </span>
                     <div className="min-w-0 flex-1">
                       <h3 className="trust-stack-title">{item.layer}</h3>
                       <p className="trust-stack-body">{item.detail}</p>
@@ -189,7 +189,7 @@ export function SecurityExperience() {
               Журнал активности
             </h2>
             <p className="trust-section-description">
-              Пример записей, которые видит руководитель в Mission Control — кто, что, когда и в каком модуле.
+              Пример записей, которые видит руководитель в Mission Control: кто, что, когда и в каком модуле.
             </p>
           </ScrollReveal>
 

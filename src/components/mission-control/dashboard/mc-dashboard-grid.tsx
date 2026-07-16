@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
 
 import { McDashboardActivity } from "@/components/mission-control/dashboard/mc-dashboard-activity";
 import { McDashboardStats } from "@/components/mission-control/dashboard/mc-dashboard-stats";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 
 import { CompanyAppConfigForm } from "@/components/company-config/company-app-config-form";
@@ -21,6 +21,7 @@ import { saveCompanyAppConfig } from "@/lib/onboarding/save-company-app-config";
 import { SETUP_WIZARD_COPY } from "@/lib/onboarding/setup-wizard-copy";
 import { getWarrantyTemplate } from "@/lib/documents/warranty/warranty-templates";
 import { prefersReducedMotion } from "@/lib/motion/cross-route-transition";
+import { mapAuthError } from "@/lib/user-copy";
 
 const STEPS = SETUP_WIZARD_COPY.steps;
 const MODULE_KEYS = Object.keys(SETUP_WIZARD_COPY.modules) as CompanyModuleKey[];
@@ -73,7 +74,7 @@ export function SetupWizard({ companyId, onCompleted, embedded = false }: SetupW
       });
       setPhase("success");
     } catch (e) {
-      setError(e instanceof Error ? e.message : SETUP_WIZARD_COPY.validation.saveFailed);
+      setError(mapAuthError(e, { surface: "onboarding" }) || SETUP_WIZARD_COPY.validation.saveFailed);
     } finally {
       setBusy(false);
     }

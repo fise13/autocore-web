@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
       "lucide-react",
       "recharts",
       "date-fns",
-      "framer-motion",
+      "motion",
       "@tanstack/react-query",
     ],
   },
@@ -44,6 +44,14 @@ const nextConfig: NextConfig = {
         has: [{ type: "host", value: "www.app.myautocore.com" }],
         destination: "https://app.myautocore.com/:path*",
         permanent: true,
+      },
+    ];
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/yandex_:code.html",
+        destination: "/api/seo/yandex-verify",
       },
     ];
   },

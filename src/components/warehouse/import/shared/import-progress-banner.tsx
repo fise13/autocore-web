@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { Loader2, X } from "lucide-react";
 
 import { useWorkspace } from "@/components/layout/workspace-context";

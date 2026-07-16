@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { Car } from "lucide-react";
 
 import { ClientEntity } from "@/domain/client";

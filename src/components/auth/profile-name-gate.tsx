@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, ReactNode, useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2, Loader2, Sparkles } from "lucide-react";
 
 import { FloatingPaths } from "@/components/auth/floating-paths";

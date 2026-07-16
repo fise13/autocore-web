@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { Eye, FileText, Maximize2, Palette } from "lucide-react";
 
 import { WorkOrderDocument } from "@/components/documents/work-order/work-order-document";

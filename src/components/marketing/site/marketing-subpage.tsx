@@ -5,7 +5,6 @@ import { MarketingCtaStrip } from "@/components/marketing/site/marketing-cta-str
 import { PageHeader } from "@/components/marketing/site/page-header";
 import { siteNavigation } from "@/components/marketing/site/site-navigation";
 import { marketingRoutes } from "@/lib/marketing-routes";
-import { buildWebPageJsonLd } from "@/lib/seo/build-webpage-jsonld";
 import type { MarketingPathKey } from "@/lib/seo/marketing-paths";
 
 type MarketingSubpageProps = {
@@ -13,6 +12,7 @@ type MarketingSubpageProps = {
   description: string;
   breadcrumbLabel: string;
   eyebrow?: string;
+  /** Kept for callers; WebPage JSON-LD is emitted by each page.tsx to avoid duplicates. */
   pathKey?: MarketingPathKey;
   children: ReactNode;
   showCta?: boolean;
@@ -23,18 +23,11 @@ export function MarketingSubpage({
   description,
   breadcrumbLabel,
   eyebrow,
-  pathKey,
   children,
   showCta = true,
 }: MarketingSubpageProps) {
   return (
     <div className="marketing-subpage">
-      {pathKey ? (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(buildWebPageJsonLd(pathKey)) }}
-        />
-      ) : null}
       <PageHeader
         title={title}
         description={description}

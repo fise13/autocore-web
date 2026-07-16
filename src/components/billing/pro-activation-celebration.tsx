@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { Check, Cloud, Download, Loader2, Sparkles, Upload, Users } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";

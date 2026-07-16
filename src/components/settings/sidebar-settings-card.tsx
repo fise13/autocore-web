@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { PanelLeft } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

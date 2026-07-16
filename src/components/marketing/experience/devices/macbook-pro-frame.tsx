@@ -13,7 +13,7 @@ type MacBookProFrameProps = {
 export function MacBookProFrame({
   children,
   className,
-  windowTitle = "AutoCore — Mission Control",
+  windowTitle = "AutoCore: Mission Control",
 }: MacBookProFrameProps) {
   return (
     <div className={cn("device-macbook", className)}>

@@ -27,9 +27,9 @@ type InventoryMockProps = {
 function phaseToUi(phase: PlatformSyncStep) {
   switch (phase) {
     case "idle":
-      return { vin: "—", scanActive: false, status: "Сканирование VIN", saving: false };
+      return { vin: "-", scanActive: false, status: "Сканирование VIN", saving: false };
     case "scan":
-      return { vin: "—", scanActive: true, status: "Сканируем код…", saving: false };
+      return { vin: "-", scanActive: true, status: "Сканируем код…", saving: false };
     case "detect":
       return { vin: "KMHGC…", scanActive: true, status: "VIN распознан", saving: false };
     case "save":
@@ -68,7 +68,7 @@ export function InventoryMock({
 
       <div className="grid grid-cols-2 gap-2">
         <InfoCell icon={MapPin} label="Полка" value="A-12" />
-        <InfoCell icon={Barcode} label="VIN" value={ui.vin} highlight={ui.scanActive && ui.vin !== "—"} />
+        <InfoCell icon={Barcode} label="VIN" value={ui.vin} highlight={ui.scanActive && ui.vin !== "-"} />
       </div>
 
       <div
@@ -125,7 +125,7 @@ function internalPhaseToUi(step: (typeof INTERNAL_STEPS)[number]) {
   if (step === "reserve") {
     return { vin: "KMHGC…", scanActive: false, status: "Зарезервировано под НЗ-0142", saving: false };
   }
-  return { vin: "—", scanActive: false, status: "Сканирование VIN", saving: false };
+  return { vin: "-", scanActive: false, status: "Сканирование VIN", saving: false };
 }
 
 function InfoCell({

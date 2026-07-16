@@ -138,20 +138,19 @@ export function createCompanyConfigRepository() {
     },
 
     async saveAppConfig(companyId: string, config: CompanyAppConfig, updatedByUserId: string) {
-      await setDoc(
-        companyConfigRef(companyId),
-        {
-          onboardingCompleted: config.onboardingCompleted,
-          businessImportCompleted: Boolean(config.businessImportCompleted),
-          modules: config.modules,
-          specificCategories: sanitizeSpecificCategories(config.specificCategories),
-          defaultWarrantyTemplate: config.defaultWarrantyTemplate,
-          taxonomyVersion: config.taxonomyVersion,
-          updatedByUserId,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
+      const payload: Record<string, unknown> = {
+        onboardingCompleted: config.onboardingCompleted,
+        businessImportCompleted: Boolean(config.businessImportCompleted),
+        modules: config.modules,
+        specificCategories: sanitizeSpecificCategories(config.specificCategories),
+        defaultWarrantyTemplate: config.defaultWarrantyTemplate,
+        updatedByUserId,
+        updatedAt: serverTimestamp(),
+      };
+      if (typeof config.taxonomyVersion === "number") {
+        payload.taxonomyVersion = config.taxonomyVersion;
+      }
+      await setDoc(companyConfigRef(companyId), payload, { merge: true });
     },
   };
 }

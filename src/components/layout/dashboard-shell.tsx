@@ -2,7 +2,7 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
 import { ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 import { useBarbaNavigation } from "@/hooks/use-barba-navigation";

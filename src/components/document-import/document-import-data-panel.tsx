@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getAuth } from "firebase/auth";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { Loader2, Sparkles } from "lucide-react";
 
 import type { DocumentImportJob } from "@/domain/document-import";

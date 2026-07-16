@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import type { LucideIcon } from "lucide-react";
 import { CheckCircle2 } from "lucide-react";
 

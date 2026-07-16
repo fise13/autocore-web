@@ -83,7 +83,7 @@ export function marketingAbsoluteUrl(key: MarketingPathKey): string {
   return `${getMarketingUrl().replace(/\/$/, "")}${marketingCleanPaths[key]}`;
 }
 
-/** @deprecated Use isMarketingContentPath — kept for middleware split-host checks. */
+/** @deprecated Use isMarketingContentPath; kept for middleware split-host checks. */
 export function isSplitMarketingDeployment(): boolean {
   const appHost = getUrlHost(getAppUrl());
   const marketingHost = getUrlHost(getMarketingUrl());

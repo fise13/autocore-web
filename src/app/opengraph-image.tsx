@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "AutoCore — программа для авторазборок и автосервисов";
+export const alt = "AutoCore: программа для авторазборок и автосервисов";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -27,8 +27,8 @@ export default function MarketingOpenGraphImage() {
               width: 56,
               height: 56,
               borderRadius: 16,
-              background: "#fafafa",
-              color: "#0a0a0a",
+              background: "#0a73f2",
+              color: "#ffffff",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -56,16 +56,16 @@ export default function MarketingOpenGraphImage() {
           <h1
             style={{
               margin: 0,
-              fontSize: 64,
-              lineHeight: 1.05,
+              fontSize: 58,
+              lineHeight: 1.08,
               fontWeight: 700,
               letterSpacing: "-0.04em",
             }}
           >
-            Склад, цех и бухгалтерия — в одной системе
+            Склад, цех и бухгалтерия в одной системе
           </h1>
-          <p style={{ margin: 0, fontSize: 28, lineHeight: 1.45, color: "rgba(250,250,250,0.78)" }}>
-            Учёт запчастей, двигателей, заказ-нарядов и гарантий без Excel и ночных сверок
+          <p style={{ margin: 0, fontSize: 26, lineHeight: 1.45, color: "rgba(250,250,250,0.78)" }}>
+            Учёт запчастей, двигателей, заказ-нарядов и гарантий без Excel
           </p>
         </div>
 

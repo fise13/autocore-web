@@ -43,7 +43,7 @@ const ICONS: Record<string, LucideIcon> = {
   employees: Users,
 };
 
-const TONES = ["blue", "green", "amber", "blue", "green", "violet"] as const;
+const TONES = ["blue", "green", "amber", "blue", "green", "amber"] as const;
 
 const RELATED: Record<string, { label: string; href: string }[]> = {
   "mission-control": [
@@ -191,7 +191,6 @@ export function ModulesPageContent() {
       </p>
 
       <div className="marketing-module-overview mt-12" data-modules-reveal>
-        <p className="landing-eyebrow mb-4">Быстрый обзор</p>
         <div className="marketing-module-overview-grid" data-modules-overview>
           {copy.items.map((mod, index) => {
             const Icon = ICONS[mod.id] ?? Radar;
@@ -228,8 +227,8 @@ export function ModulesPageContent() {
                   <div className="marketing-module-card-head">
                     <FeatureIcon icon={Icon} tone={TONES[index] ?? "blue"} size="lg" />
                     <div className="min-w-0">
-                      <p className="landing-eyebrow">{mod.tagline}</p>
-                      <h2 className="marketing-subsection-title mt-2">{mod.title}</h2>
+                      <h2 className="marketing-subsection-title">{mod.title}</h2>
+                      <p className="mt-2 text-sm text-muted-foreground">{mod.tagline}</p>
                     </div>
                   </div>
 

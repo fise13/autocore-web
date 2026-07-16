@@ -10,18 +10,21 @@ export const MARKETING_BRAND = {
   legalName: "AutoCore",
   tagline: "Операционная система для авторазборок и автосервисов",
   shortDescription:
-    "AutoCore — операционная система для авторазборок и автосервисов: склад, цех, заказ-наряды, документы и бухгалтерия в одном живом контуре.",
+    "AutoCore: операционная система для авторазборок и автосервисов. Склад, цех, заказ-наряды, документы и бухгалтерия в одном контуре.",
   supportEmail: platformContacts.email,
   supportPhone: platformContacts.phone,
   locale: "ru_RU",
   language: "ru",
   themeColor: "#0a0a0a",
+  /** Primary market for Yandex region + schema areaServed */
+  regionCountries: ["KZ", "RU"] as const,
 } as const;
 
-const marketingUrl = getMarketingUrl();
-const appUrl = getAppUrl();
-const supportUrl = `${marketingUrl.replace(/\/$/, "")}/contact`;
-const defaultOgImage = `${marketingUrl.replace(/\/$/, "")}/opengraph-image`;
+const marketingUrl = getMarketingUrl().replace(/\/$/, "");
+const appUrl = getAppUrl().replace(/\/$/, "");
+const supportUrl = `${marketingUrl}/contact`;
+const defaultOgImage = `${marketingUrl}/opengraph-image`;
+const logoUrl = `${marketingUrl}/icon`;
 
 /** Human-readable titles for breadcrumb JSON-LD. */
 const MARKETING_BREADCRUMB_TITLES: Record<MarketingPathKey, string> = {
@@ -30,27 +33,33 @@ const MARKETING_BREADCRUMB_TITLES: Record<MarketingPathKey, string> = {
   modules: "Модули",
   pricing: "Тарифы",
   security: "Безопасность",
-  contact: "Связаться",
+  contact: "Контакты",
   download: "Скачать",
-  downloadMobile: "Mobile",
+  downloadMobile: "Мобильное приложение",
   privacy: "Конфиденциальность",
   terms: "Условия использования",
 };
 
-/** Core SEO keywords — авторазборки, автосервисы, смежные запросы. */
+/**
+ * Core commercial keywords for Yandex + Google (RU).
+ * Long-tails first: intent queries owners actually type.
+ */
 export const MARKETING_KEYWORDS = [
   "программа для авторазборки",
   "программа для автосервиса",
+  "программа учёта авторазборка",
+  "система управления автосервисом",
   "учёт запчастей авторазборка",
   "складской учёт автосервис",
-  "ПО для разборки авто",
-  "система для автосервиса",
   "заказ-наряды СТО",
   "учёт двигателей разборка",
   "программа для магазина автозапчастей",
   "бухгалтерия автосервиса",
   "CRM для авторазборки",
+  "ПО для разборки авто",
+  "система для автосервиса",
   "учёт моторов разборка",
+  "облачная программа автосервис",
   "AutoCore",
 ] as const;
 
@@ -62,78 +71,94 @@ export type MarketingSeoPageConfig = {
   ogTitle?: string;
 };
 
+/**
+ * Titles ~55-70 Cyrillic chars, keyword near the start.
+ * Descriptions ~140-160 chars, no em-dashes, concrete benefit + CTA cue.
+ */
 export const MARKETING_SEO_PAGES: Record<MarketingPathKey, MarketingSeoPageConfig> = {
   home: {
     key: "home",
-    title: "AutoCore — операционная система для авторазборок и автосервисов",
+    title: "Программа для авторазборки и автосервиса | AutoCore",
     description:
-      "Операционная система для авторазборок и автосервисов: наряды, склад, документы и синхронизация desktop↔mobile. Один источник правды для склада, цеха и офиса.",
-    keywords: ["операционная система автосервис", "Mission Control", "демо авторазборка"],
-    ogTitle: "AutoCore — операционная система для авторазборок и автосервисов",
+      "Склад запчастей, заказ-наряды, учёт двигателей и документы в одной системе. Desktop и телефон синхронизируются. 14 дней бесплатно, без карты.",
+    keywords: [
+      "операционная система автосервис",
+      "демо программа авторазборка",
+      "замена Excel автосервис",
+    ],
+    ogTitle: "AutoCore: программа для авторазборок и автосервисов",
   },
   product: {
     key: "product",
-    title: "AutoCore — как проходит рабочий день в авторазборке и автосервисе",
+    title: "Как работает AutoCore в авторазборке и автосервисе",
     description:
-      "От Mission Control до документов и синхронизации устройств: пошаговый обзор операционной системы AutoCore для склада, цеха и офиса.",
-    keywords: ["операционная система автосервис", "рабочий процесс авторазборка", "Mission Control"],
-    ogTitle: "AutoCore — операционная система для авторазборок и автосервисов",
+      "Рабочий день в AutoCore: Mission Control утром, склад и наряды днём, документы и синхронизация устройств без Excel и ночных сверок.",
+    keywords: [
+      "рабочий процесс авторазборка",
+      "Mission Control автосервис",
+      "обзор программы авторазборка",
+    ],
+    ogTitle: "AutoCore: рабочий день в одной системе",
   },
   modules: {
     key: "modules",
-    title: "Модули для авторазборки и автосервиса — склад, наряды, моторы",
+    title: "Модули: склад, наряды, моторы, бухгалтерия | AutoCore",
     description:
-      "Каталог модулей AutoCore: склад запчастей, заказ-наряды, учёт двигателей, бухгалтерия, команда и Mission Control для авторазборок и СТО.",
-    keywords: ["модуль склад автосервис", "учёт моторов программа"],
+      "Каталог модулей для авторазборки и СТО: склад запчастей, заказ-наряды, учёт двигателей, бухгалтерия, команда и Mission Control.",
+    keywords: ["модуль склад автосервис", "учёт моторов программа", "модули СТО"],
   },
   pricing: {
     key: "pricing",
-    title: "Тарифы AutoCore для авторазборок и автосервисов",
+    title: "Цена AutoCore: $15 в месяц за компанию",
     description:
-      "Одна подписка $15 в месяц за компанию. Полный AutoCore без скрытых ограничений. 14 дней бесплатно, без карты.",
-    keywords: ["цена программа автосервис", "тариф авторазборка"],
+      "Одна подписка $15/мес за компанию. Полный доступ без скрытых лимитов. 14 дней бесплатно, карта не нужна. Для авторазборок и автосервисов.",
+    keywords: ["цена программа автосервис", "тариф авторазборка", "стоимость ПО СТО"],
   },
   contact: {
     key: "contact",
-    title: "Связаться с AutoCore — демо и поддержка для авторазборок",
+    title: "Контакты AutoCore: демо и поддержка",
     description:
-      "Напишите команде AutoCore: демо, техническая поддержка, партнёрство или общий вопрос. Ответим в течение рабочего дня.",
-    keywords: ["демо программа автосервис", "поддержка авторазборка"],
+      "Запросите демо или напишите в поддержку AutoCore. Ответим в рабочий день. Помогаем авторазборкам и автосервисам с внедрением.",
+    keywords: ["демо программа автосервис", "поддержка авторазборка", "связаться AutoCore"],
   },
   download: {
     key: "download",
-    title: "Скачать AutoCore — desktop, web и mobile в одной экосистеме",
+    title: "Скачать AutoCore: Windows, web и телефон",
     description:
-      "Установите AutoCore на Windows или откройте в браузере и на телефоне. Один аккаунт, синхронизация склада и нарядов в реальном времени.",
-    keywords: ["скачать AutoCore", "desktop авторазборка", "веб программа для автосервиса", "синхронизация склад"],
+      "Установите AutoCore на Windows или откройте в браузере и на телефоне. Один аккаунт, склад и наряды синхронизируются в реальном времени.",
+    keywords: [
+      "скачать AutoCore",
+      "desktop авторазборка",
+      "веб программа для автосервиса",
+    ],
   },
   downloadMobile: {
     key: "downloadMobile",
     title: "Скачать AutoCore на iPhone и Android",
     description:
-      "Выберите iOS или Android и установите мобильное приложение AutoCore. Один аккаунт с desktop и web.",
+      "Мобильное приложение AutoCore для склада и цеха. Сканирование, наряды и остатки с тем же аккаунтом, что на desktop и в web.",
     keywords: ["скачать AutoCore iOS", "AutoCore Android", "приложение автосервис"],
   },
   privacy: {
     key: "privacy",
     title: "Политика конфиденциальности AutoCore",
     description:
-      "Как AutoCore обрабатывает персональные и операционные данные авторазборок и автосервисов: хранение, права пользователей, безопасность и контакты.",
-    keywords: ["политика конфиденциальности", "обработка данных автосервис", "GDPR авторазборка"],
+      "Как AutoCore обрабатывает персональные и операционные данные авторазборок и автосервисов: хранение, права, безопасность и контакты.",
+    keywords: ["политика конфиденциальности", "обработка данных автосервис"],
   },
   terms: {
     key: "terms",
     title: "Условия использования AutoCore",
     description:
-      "Условия использования облачной программы AutoCore: учётная запись, подписка, данные клиента, ответственность и прекращение доступа.",
-    keywords: ["условия использования", "SaaS автосервис", "лицензия AutoCore"],
+      "Условия использования облачной программы AutoCore: аккаунт, подписка, данные клиента, ответственность и прекращение доступа.",
+    keywords: ["условия использования", "лицензия AutoCore"],
   },
   security: {
     key: "security",
-    title: "Безопасность AutoCore — RBAC, аудит и изоляция данных",
+    title: "Безопасность AutoCore: роли, аудит, изоляция",
     description:
-      "Безопасность AutoCore для операционного бизнеса: роли по модулям, журнал активности, multi-tenant изоляция и server-side проверки.",
-    keywords: ["безопасность SaaS", "RBAC автосервис", "аудит складской системы"],
+      "Роли по модулям, журнал действий, изоляция данных компаний и проверки на сервере. Безопасность для операционного автобизнеса.",
+    keywords: ["безопасность SaaS автосервис", "RBAC склад", "аудит программа СТО"],
   },
 };
 
@@ -151,6 +176,7 @@ export function buildBreadcrumbJsonLd(key: MarketingPathKey) {
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
+    "@id": `${marketingAbsoluteUrl(key)}#breadcrumb`,
     itemListElement: items.map((item, index) => ({
       "@type": "ListItem",
       position: index + 1,
@@ -182,27 +208,50 @@ export function buildMarketingJsonLd() {
       "@type": "Organization",
       "@id": `${marketingUrl}#organization`,
       name: MARKETING_BRAND.name,
+      legalName: MARKETING_BRAND.legalName,
       url: marketingUrl,
-      logo: `${marketingUrl}/icon`,
+      logo: {
+        "@type": "ImageObject",
+        url: logoUrl,
+      },
+      image: defaultOgImage,
       description: MARKETING_BRAND.shortDescription,
       email: MARKETING_BRAND.supportEmail,
       telephone: MARKETING_BRAND.supportPhone,
-      contactPoint: {
-        "@type": "ContactPoint",
-        contactType: "customer support",
-        email: MARKETING_BRAND.supportEmail,
-        telephone: MARKETING_BRAND.supportPhone,
-        url: supportUrl,
-        availableLanguage: ["ru"],
-      },
-      areaServed: { "@type": "Country", name: "RU" },
+      contactPoint: [
+        {
+          "@type": "ContactPoint",
+          contactType: "customer support",
+          email: MARKETING_BRAND.supportEmail,
+          telephone: MARKETING_BRAND.supportPhone,
+          url: supportUrl,
+          availableLanguage: ["ru", "en", "kk"],
+          areaServed: MARKETING_BRAND.regionCountries.map((code) => ({
+            "@type": "Country",
+            name: code,
+          })),
+        },
+        {
+          "@type": "ContactPoint",
+          contactType: "sales",
+          email: MARKETING_BRAND.supportEmail,
+          url: supportUrl,
+          availableLanguage: ["ru", "en"],
+        },
+      ],
+      areaServed: MARKETING_BRAND.regionCountries.map((code) => ({
+        "@type": "Country",
+        name: code,
+      })),
       knowsAbout: [
         "авторазборка",
         "автосервис",
         "складской учёт автозапчастей",
         "заказ-наряды",
         "учёт двигателей",
+        "программа для СТО",
       ],
+      sameAs: [],
     },
     {
       "@context": "https://schema.org",
@@ -213,6 +262,7 @@ export function buildMarketingJsonLd() {
       description: MARKETING_BRAND.shortDescription,
       inLanguage: MARKETING_BRAND.language,
       publisher: { "@id": `${marketingUrl}#organization` },
+      copyrightHolder: { "@id": `${marketingUrl}#organization` },
     },
     {
       "@context": "https://schema.org",
@@ -220,19 +270,56 @@ export function buildMarketingJsonLd() {
       "@id": `${marketingUrl}#software`,
       name: MARKETING_BRAND.name,
       applicationCategory: "BusinessApplication",
-      applicationSubCategory: "Automotive repair shop management software",
-      operatingSystem: "Web, iOS, Windows",
+      applicationSubCategory: "Automotive dismantling and repair shop software",
+      operatingSystem: "Web, Windows, iOS, Android",
       description: MARKETING_BRAND.shortDescription,
       inLanguage: MARKETING_BRAND.language,
       image: defaultOgImage,
-      offers: {
-        "@type": "Offer",
-        price: "0",
-        priceCurrency: "USD",
-        description: "14-дневный пробный период",
-      },
-      url: appUrl,
+      screenshot: defaultOgImage,
+      url: marketingUrl,
       downloadUrl: marketingAbsoluteUrl("download"),
+      installUrl: appUrl,
+      softwareVersion: "1",
+      author: { "@id": `${marketingUrl}#organization` },
+      publisher: { "@id": `${marketingUrl}#organization` },
+      offers: {
+        "@type": "AggregateOffer",
+        lowPrice: "0",
+        highPrice: "15",
+        priceCurrency: "USD",
+        offerCount: 2,
+        offers: [
+          {
+            "@type": "Offer",
+            name: "Пробный период 14 дней",
+            price: "0",
+            priceCurrency: "USD",
+            url: `${appUrl}/demo`,
+            availability: "https://schema.org/InStock",
+            description: "Полный доступ на 14 дней без карты",
+          },
+          {
+            "@type": "Offer",
+            name: "Подписка Pro",
+            price: "15",
+            priceCurrency: "USD",
+            url: marketingAbsoluteUrl("pricing"),
+            availability: "https://schema.org/InStock",
+            priceSpecification: {
+              "@type": "UnitPriceSpecification",
+              price: "15",
+              priceCurrency: "USD",
+              billingDuration: "P1M",
+              referenceQuantity: {
+                "@type": "QuantitativeValue",
+                value: 1,
+                unitText: "company",
+              },
+            },
+            description: "Полный AutoCore для одной компании",
+          },
+        ],
+      },
       audience: {
         "@type": "BusinessAudience",
         audienceType: "Авторазборки, автосервисы, магазины автозапчастей",
@@ -244,7 +331,9 @@ export function buildMarketingJsonLd() {
         "Бухгалтерия и проводки",
         "Mission Control для владельца",
         "RBAC и журнал активности",
+        "Desktop Windows и мобильные приложения",
       ],
+      countriesSupported: MARKETING_BRAND.regionCountries.join(", "),
     },
   ];
 }
@@ -264,7 +353,9 @@ export function buildCollectionPageJsonLd(
     url,
     name,
     description,
+    inLanguage: MARKETING_BRAND.language,
     isPartOf: { "@id": `${marketingUrl}#website` },
+    about: { "@id": `${marketingUrl}#software` },
     ...(items?.length
       ? {
           mainEntity: {
@@ -288,8 +379,9 @@ export function buildContactPageJsonLd() {
     "@type": "ContactPage",
     "@id": `${url}#contact-page`,
     url,
-    name: "Связаться с AutoCore",
-    description: "Контакты AutoCore для демо, продаж, поддержки и партнёрств.",
+    name: "Контакты AutoCore",
+    description: "Демо, продажи, поддержка и партнёрства AutoCore.",
+    inLanguage: MARKETING_BRAND.language,
     isPartOf: { "@id": `${marketingUrl}#website` },
     about: { "@id": `${marketingUrl}#organization` },
     mainEntity: {
@@ -311,6 +403,7 @@ export function buildPricingOfferJsonLd() {
     "@type": "Offer",
     "@id": `${url}#offer`,
     url,
+    name: "AutoCore Pro",
     category: "SaaS subscription",
     price: "15",
     priceCurrency: "USD",

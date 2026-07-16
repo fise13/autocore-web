@@ -98,7 +98,7 @@ export function KeynoteDesktopUi({ snapshot }: KeynoteDesktopUiProps) {
             <div className="keynote-desktop-section-head">
               <span>Инвентарь</span>
               <span className="keynote-desktop-section-meta">
-                {snapshot.showNewRow ? "live" : "—"}
+                {snapshot.showNewRow ? "live" : "-"}
               </span>
             </div>
             <ul className="keynote-desktop-rows">

@@ -1,7 +1,7 @@
 "use client";
 
 import { ClipboardEvent, KeyboardEvent, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 
 import { authJourneyEase, authJourneyShake } from "@/lib/motion/auth-journey-motion";
 import { prefersReducedMotion } from "@/lib/motion/cross-route-transition";

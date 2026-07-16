@@ -8,7 +8,7 @@ import {
   resolveDefaultGearboxCategory,
 } from "@/lib/navigation/specific-categories-for-collection";
 import { isPinnedFilterId, motorMatchesPinnedFilter } from "@/lib/navigation/pinned-filters";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { LayoutGrid, X } from "lucide-react";
 
 import { sellMotorWithFinancialOperationUseCase } from "@/application/use-cases/sell-motor-with-financial-operation";

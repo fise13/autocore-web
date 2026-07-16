@@ -97,7 +97,7 @@ export function useGsapSplitHeading(
   );
 }
 
-/** Animate on mount — page headers, above-the-fold subpage blocks. */
+/** Animate on mount: page headers, above-the-fold subpage blocks. */
 export function useGsapMountReveal(
   ref: RefObject<HTMLElement | null>,
   selector: string,

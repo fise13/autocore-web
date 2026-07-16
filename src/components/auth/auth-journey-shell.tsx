@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 
 import { FloatingPaths } from "@/components/auth/floating-paths";
 import { AppLogo } from "@/components/brand/app-logo";

@@ -39,7 +39,7 @@ export function EcosystemDeviceShowcase({ className }: EcosystemDeviceShowcasePr
           <div className="keynote-scene-desk-shadow" aria-hidden />
 
           <div className="keynote-scene-mac">
-            <MacBookProFrame windowTitle="AutoCore — Mission Control" className="keynote-macbook">
+            <MacBookProFrame windowTitle="AutoCore: Mission Control" className="keynote-macbook">
               <KeynoteDesktopUi snapshot={snapshot} />
             </MacBookProFrame>
           </div>

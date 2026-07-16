@@ -3,8 +3,6 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 import type { BarbaCore, ITransitionData } from "@barba/core";
 
-import { resizeLandingLenis } from "@/components/marketing/experience/motion/landing-lenis-bridge";
-
 gsap.registerPlugin(ScrollTrigger);
 
 import { pathToBarbaNamespace } from "@/lib/barba/barba-navigation";
@@ -114,7 +112,6 @@ export async function initBarbaRuntime(): Promise<BarbaCore> {
   barba.hooks.after(() => {
     window.scrollTo(0, 0);
     ScrollTrigger.refresh();
-    resizeLandingLenis();
     window.dispatchEvent(new CustomEvent("barba:after-enter"));
   });
 

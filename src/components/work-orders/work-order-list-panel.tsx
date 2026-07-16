@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
+import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { Plus, Search, UserRound } from "lucide-react";
 
 import { WorkOrder } from "@/domain/work-order";

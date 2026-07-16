@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LayoutGroup, motion } from "framer-motion";
+import { LayoutGroup, motion } from "motion/react";
 import { Package, Plus, Star } from "lucide-react";
 
 import { createWarehouseUseCase } from "@/application/use-cases/warehouse/create-warehouse";

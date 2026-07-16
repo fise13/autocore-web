@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
 
 export function FloatingPaths({ position }: { position: number }) {
   const reducedMotion = useReducedMotion();

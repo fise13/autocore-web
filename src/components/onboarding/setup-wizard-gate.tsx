@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect, useState, useSyncExternalStore } from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { Loader2, Settings2 } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";

@@ -173,7 +173,7 @@ export function ModulesTocNav({
 
   return (
     <nav className="marketing-modules-toc" aria-label="Модули">
-      <p className="landing-eyebrow mb-4 marketing-modules-toc-heading">Содержание</p>
+      <p className="mb-4 text-sm font-medium text-foreground marketing-modules-toc-heading">Содержание</p>
       <div ref={trackRef} className="marketing-modules-toc-track">
         <span
           ref={activeIndicatorRef}

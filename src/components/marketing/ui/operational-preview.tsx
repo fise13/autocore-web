@@ -58,7 +58,7 @@ const MODULE_TILES = [
 type OperationalPreviewProps = {
   className?: string;
   large?: boolean;
-  /** Fixed layout for product page frames — no overlap at narrow widths */
+  /** Fixed layout for product page frames: no overlap at narrow widths */
   layout?: "default" | "showcase";
 };
 

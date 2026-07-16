@@ -176,7 +176,7 @@ export function LegalExperience({ documentKey }: LegalExperienceProps) {
               Доверие и прозрачность
             </h2>
             <p className="trust-related-description">
-              Юридические документы, безопасность и контакты — в одном разделе.
+              Юридические документы, безопасность и контакты в одном разделе.
             </p>
           </ScrollReveal>
 

@@ -154,7 +154,7 @@ export function DesktopSyncWorkspace({ step, className, variant = "panel" }: Des
             <div className="flex items-center justify-between border-b border-border bg-muted/20 px-3 py-2">
               <span className="text-xs font-medium">Инвентарь</span>
               <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
-                {isLive ? "обновлено сейчас" : "—"}
+                {isLive ? "обновлено сейчас" : "-"}
               </span>
             </div>
             <ul className="divide-y divide-border">

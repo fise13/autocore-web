@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
+import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { useLayoutEffect, useRef, useState } from "react";
 
 import { EmployeesWorkspace } from "@/components/employees/employees-workspace";

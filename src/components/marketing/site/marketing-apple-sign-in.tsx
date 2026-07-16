@@ -48,7 +48,7 @@ export function MarketingAppleSignIn({
       await auth.authStateReady();
       const user = auth.currentUser;
       if (!user) {
-        // Firebase redirect flow — keep loading until navigation completes.
+        // Firebase redirect flow: keep loading until navigation completes.
         return;
       }
 

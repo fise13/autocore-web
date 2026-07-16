@@ -40,9 +40,13 @@ function HeroReveal({ children, className, delay, duration, y = 18 }: HeroReveal
 export function HeroExperience() {
   return (
     <section className="exp-hero relative min-h-[100dvh]">
-      <div className="exp-hero-inner exp-section-inner relative z-10 grid min-h-[calc(100dvh-4rem)] items-center gap-10 py-12 lg:grid-cols-2 lg:gap-14 lg:py-16">
+      <div className="exp-hero-inner exp-section-inner relative z-10 grid min-h-[calc(100dvh-4rem)] items-center gap-10 pt-16 pb-12 lg:grid-cols-2 lg:gap-14 lg:pt-20 lg:pb-16">
         <div className="exp-hero-copy max-w-lg">
-          <HeroReveal delay={0} duration={0.72} y={22}>
+          <HeroReveal delay={0} duration={0.55} y={14}>
+            <p className="text-sm font-medium tracking-tight text-foreground">{copy.brand}</p>
+          </HeroReveal>
+
+          <HeroReveal className="mt-3" delay={0.12} duration={0.72} y={22}>
             <h1 className="exp-display exp-hero-title text-4xl tracking-tight sm:text-5xl lg:text-[3.25rem] lg:leading-[1.08]">
               {copy.title}
             </h1>
@@ -72,11 +76,11 @@ export function HeroExperience() {
           </HeroReveal>
         </div>
 
-        <HeroReveal className="exp-hero-visual w-full lg:justify-self-end" delay={1.02} duration={0.82} y={28}>
+        <div className="exp-hero-visual w-full lg:justify-self-end">
           <div className={cn("exp-mock-shelf exp-hero-shelf p-3 sm:p-4")}>
             <MissionControlMock className="w-full" layout="hero" />
           </div>
-        </HeroReveal>
+        </div>
       </div>
     </section>
   );

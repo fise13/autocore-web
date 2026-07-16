@@ -25,6 +25,19 @@ function marketingVerification(): Metadata["verification"] | undefined {
   return Object.keys(verification).length > 0 ? verification : undefined;
 }
 
+/** Extra meta tags Yandex and regional SERPs still read. */
+function marketingOtherMeta(): Metadata["other"] {
+  const other: Record<string, string> = {
+    "geo.region": "KZ",
+    "geo.placename": "Kazakhstan",
+    "content-language": "ru",
+    language: "Russian",
+  };
+  const yandex = process.env.NEXT_PUBLIC_YANDEX_VERIFICATION?.trim();
+  if (yandex) other["yandex-verification"] = yandex;
+  return other;
+}
+
 export function buildMarketingMetadata(
   key: MarketingPathKey,
   overrides?: BuildMarketingMetadataOverrides,
@@ -53,6 +66,7 @@ export function buildMarketingMetadata(
     openGraph: {
       type: "website",
       locale: MARKETING_BRAND.locale,
+      alternateLocale: ["ru_KZ", "kk_KZ"],
       siteName: MARKETING_BRAND.name,
       title: ogTitle,
       description: page.description,
@@ -63,6 +77,7 @@ export function buildMarketingMetadata(
           width: 1200,
           height: 630,
           alt: ogTitle,
+          type: "image/png",
         },
       ],
     },
@@ -84,6 +99,7 @@ export function buildMarketingMetadata(
       },
     },
     category: "business",
+    other: marketingOtherMeta(),
   };
 }
 
@@ -96,7 +112,7 @@ export function buildMarketingRootMetadata(): Metadata {
     ...buildMarketingMetadata("home"),
     title: {
       default: home.title,
-      template: `%s · ${MARKETING_BRAND.name}`,
+      template: `%s | ${MARKETING_BRAND.name}`,
     },
     applicationName: MARKETING_BRAND.name,
     authors: [{ name: MARKETING_BRAND.name, url: marketingUrl }],
@@ -117,7 +133,8 @@ export function buildMarketingRootMetadata(): Metadata {
           url: defaultOgImagePath,
           width: 1200,
           height: 630,
-          alt: home.title,
+          alt: home.ogTitle ?? home.title,
+          type: "image/png",
         },
       ],
     },

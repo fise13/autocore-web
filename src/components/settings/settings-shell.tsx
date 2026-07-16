@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useMemo, useState } from "react";
-import { LayoutGroup, motion } from "framer-motion";
+import { LayoutGroup, motion } from "motion/react";
 import { Building2, CircleDollarSign, Palette, Settings2, Sparkles, Trash2, UserCircle } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";

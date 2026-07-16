@@ -41,6 +41,7 @@ export function ProductShowcase() {
               onClick={() => setScene(item.id)}
               className={cn(
                 "exp-showcase-tab cursor-pointer rounded-full border px-4 py-2 text-sm transition-colors duration-200",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 scene === item.id
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground",

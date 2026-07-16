@@ -31,7 +31,6 @@ export default function ModulesPage() {
         title="Каталог модулей для авторазборок и автосервисов"
         description={copy.meta.description}
         breadcrumbLabel="Модули"
-        eyebrow="Экосистема"
         pathKey="modules"
       >
         <ModulesPageContent />

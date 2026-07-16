@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { FileImage, Sparkles, X } from "lucide-react";
 
 import { useActiveImportProgress } from "@/components/warehouse/import/shared/import-progress-host";

@@ -6,7 +6,7 @@ type CtaVisualBackdropProps = {
   className?: string;
 };
 
-/** Two static skeleton fragments — decoration only, never competes with copy. */
+/** Two static skeleton fragments: decoration only, never competes with copy. */
 const FRAGMENTS = [
   {
     id: "left",

@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { Check, LucideIcon, Package, Zap } from "lucide-react";
 
 import { AppLogo } from "@/components/brand/app-logo";

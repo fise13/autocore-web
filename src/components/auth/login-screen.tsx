@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { AtSign, ChevronLeft, Loader2 } from "lucide-react";
 
 import { AppleIcon, GoogleIcon } from "@/components/auth/auth-brand-icons";

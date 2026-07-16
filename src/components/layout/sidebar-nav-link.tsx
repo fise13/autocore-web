@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 

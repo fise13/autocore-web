@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
 
 import { McAttentionBanner } from "@/components/mission-control/employee/mc-attention-banner";
 import { McEmployeeHeader } from "@/components/mission-control/employee/mc-employee-header";

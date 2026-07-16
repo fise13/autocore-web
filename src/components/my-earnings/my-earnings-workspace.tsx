@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
 import { Wallet } from "lucide-react";
 
 import { MyEarningsCharts } from "@/components/my-earnings/my-earnings-charts";

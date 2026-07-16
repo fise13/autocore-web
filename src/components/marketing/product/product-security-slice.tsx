@@ -3,7 +3,7 @@
 import { marketingSiteContent } from "@/components/marketing/content/marketing-site-content";
 import { cn } from "@/lib/utils";
 
-const audit = marketingSiteContent.security.auditLog.slice(0, 4);
+const audit = marketingSiteContent.security.auditLog.slice(0, 5);
 
 type ProductSecuritySliceProps = {
   className?: string;
@@ -13,8 +13,11 @@ export function ProductSecuritySlice({ className }: ProductSecuritySliceProps) {
   return (
     <div className={cn("product-security-slice", className)}>
       <div className="product-security-slice-header">
-        <p className="text-sm font-medium">Журнал активности</p>
-        <p className="text-xs text-muted-foreground">Realtime · RBAC</p>
+        <div>
+          <p className="text-sm font-medium">Журнал активности</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Кто · что · когда · в рамках компании</p>
+        </div>
+        <p className="text-[10px] font-medium tracking-wide text-primary uppercase">Realtime · RBAC</p>
       </div>
       <ul className="product-security-audit">
         {audit.map((entry) => (

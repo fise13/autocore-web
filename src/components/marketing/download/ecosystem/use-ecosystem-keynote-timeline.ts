@@ -3,7 +3,7 @@
 import { gsap } from "gsap";
 import { useEffect, useRef, useState } from "react";
 
-export type KeynotePhoneStatus = "scanned" | "sending" | "sent";
+export type KeynotePhoneStatus = "scanning" | "scanned" | "sending" | "sent";
 export type KeynoteDesktopStatus = "idle" | "receiving" | "synced";
 
 export type KeynoteSceneSnapshot = {
@@ -20,10 +20,11 @@ export type KeynoteSceneSnapshot = {
 };
 
 const VIN = "KMHGC41DPEU123456";
+const VIN_PARTIAL = "KMHGC…";
 
 const BASE: KeynoteSceneSnapshot = {
-  vin: VIN,
-  phoneStatus: "scanned",
+  vin: "—",
+  phoneStatus: "scanning",
   desktopStatus: "idle",
   reservePressed: false,
   pulseProgress: 0,
@@ -44,6 +45,7 @@ type TimelineProxy = {
   showNotification: number;
   showNewRow: number;
   showNewActivity: number;
+  vinReveal: number;
 };
 
 type UseEcosystemKeynoteTimelineOptions = {
@@ -54,7 +56,7 @@ type UseEcosystemKeynoteTimelineOptions = {
 export function useEcosystemKeynoteTimeline({ enabled, reduced }: UseEcosystemKeynoteTimelineOptions) {
   const [snapshot, setSnapshot] = useState<KeynoteSceneSnapshot>(BASE);
   const proxyRef = useRef<TimelineProxy>({
-    phoneStatus: "scanned",
+    phoneStatus: "scanning",
     desktopStatus: "idle",
     reservePressed: 0,
     pulseProgress: 0,
@@ -63,6 +65,7 @@ export function useEcosystemKeynoteTimeline({ enabled, reduced }: UseEcosystemKe
     showNotification: 0,
     showNewRow: 0,
     showNewActivity: 0,
+    vinReveal: 0,
   });
 
   useEffect(() => {
@@ -88,7 +91,7 @@ export function useEcosystemKeynoteTimeline({ enabled, reduced }: UseEcosystemKe
 
     const publish = () => {
       setSnapshot({
-        vin: VIN,
+        vin: proxy.vinReveal >= 1 ? VIN : proxy.vinReveal >= 0.45 ? VIN_PARTIAL : "—",
         phoneStatus: proxy.phoneStatus,
         desktopStatus: proxy.desktopStatus,
         reservePressed: proxy.reservePressed > 0.5,
@@ -102,7 +105,7 @@ export function useEcosystemKeynoteTimeline({ enabled, reduced }: UseEcosystemKe
     };
 
     const reset = () => {
-      proxy.phoneStatus = "scanned";
+      proxy.phoneStatus = "scanning";
       proxy.desktopStatus = "idle";
       proxy.reservePressed = 0;
       proxy.pulseProgress = 0;
@@ -111,15 +114,28 @@ export function useEcosystemKeynoteTimeline({ enabled, reduced }: UseEcosystemKe
       proxy.showNotification = 0;
       proxy.showNewRow = 0;
       proxy.showNewActivity = 0;
+      proxy.vinReveal = 0;
       publish();
     };
 
     const ctx = gsap.context(() => {
       gsap
-        .timeline({ repeat: -1, repeatDelay: 2.4, paused: !enabled })
+        .timeline({ repeat: -1, repeatDelay: 2.2, paused: !enabled })
         .add(() => reset())
-        // VIN already scanned — hold, then tap Reserve
-        .to({}, { duration: 0.55 })
+        // Scan laser sweeps, VIN appears
+        .to({}, { duration: 0.85 })
+        .to(proxy, {
+          vinReveal: 1,
+          duration: 0.55,
+          ease: "power2.out",
+          onUpdate: publish,
+        })
+        .add(() => {
+          proxy.phoneStatus = "scanned";
+          publish();
+        })
+        .to({}, { duration: 0.45 })
+        // Tap Reserve
         .add(() => {
           proxy.reservePressed = 1;
           publish();
@@ -129,15 +145,11 @@ export function useEcosystemKeynoteTimeline({ enabled, reduced }: UseEcosystemKe
           proxy.phoneStatus = "sending";
           publish();
         })
-        .to({}, { duration: 0.35 })
+        .to({}, { duration: 0.28 })
         // Blue pulse travels phone → MacBook
-        .add(() => {
-          proxy.phoneStatus = "sending";
-          publish();
-        })
         .to(proxy, {
           pulseProgress: 1,
-          duration: 0.95,
+          duration: 1.05,
           ease: "power2.inOut",
           onUpdate: publish,
         })
@@ -147,7 +159,7 @@ export function useEcosystemKeynoteTimeline({ enabled, reduced }: UseEcosystemKe
           proxy.showNotification = 1;
           publish();
         })
-        .to({}, { duration: 0.18 })
+        .to({}, { duration: 0.16 })
         .add(() => {
           proxy.showNewRow = 1;
           publish();
@@ -181,7 +193,7 @@ export function useEcosystemKeynoteTimeline({ enabled, reduced }: UseEcosystemKe
           proxy.desktopStatus = "synced";
           publish();
         }, "<0.28")
-        .to({}, { duration: 1.35 })
+        .to({}, { duration: 1.45 })
         .add(() => reset());
     });
 

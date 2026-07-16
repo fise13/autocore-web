@@ -6,7 +6,7 @@ import { getAppUrl } from "@/lib/site-urls";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  subsets: ["latin", "cyrillic"],
 });
 
 const geistMono = Geist_Mono({

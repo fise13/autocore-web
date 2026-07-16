@@ -15,6 +15,8 @@ import { PlatformSyncExperience } from "@/components/marketing/experience/mocks/
 import { RepairTimelineMock } from "@/components/marketing/experience/mocks/repair-timeline-mock";
 import { VehicleCardMock } from "@/components/marketing/experience/mocks/vehicle-card-mock";
 import { WorkOrderMock } from "@/components/marketing/experience/mocks/work-order-mock";
+import { MacBookProFrame } from "@/components/marketing/experience/devices/macbook-pro-frame";
+import { ProductModulesNav } from "@/components/marketing/product/product-modules-nav";
 import { ProductSecuritySlice } from "@/components/marketing/product/product-security-slice";
 import { ProductStorySection } from "@/components/marketing/product/product-story-section";
 import { ProductWorkdayScroll } from "@/components/marketing/product/product-workday-scroll";
@@ -67,22 +69,23 @@ export function ProductExperience() {
   return (
     <div className="product-page">
       <section className="product-hero" aria-label="Продукт">
+        <div className="product-hero-atmosphere" aria-hidden />
         <div className="exp-section-inner product-hero-inner">
           <div className="product-hero-copy">
-            <HeroReveal delay={0} duration={0.72} y={22}>
-              <p className="product-hero-kicker">AutoCore</p>
+            <HeroReveal delay={0} duration={0.7} y={18}>
+              <p className="product-hero-brand">{copy.hero.brand}</p>
             </HeroReveal>
 
-            <HeroReveal delay={0.12} duration={0.72} y={22}>
+            <HeroReveal delay={0.1} duration={0.72} y={22}>
               <h1 className="exp-display product-hero-title">{copy.hero.title}</h1>
             </HeroReveal>
 
-            <HeroReveal className="product-hero-description" delay={0.38} duration={0.58} y={16}>
+            <HeroReveal className="product-hero-description" delay={0.32} duration={0.55} y={14}>
               <p>{copy.hero.description}</p>
             </HeroReveal>
 
-            <HeroReveal delay={0.72} duration={0.48} y={14}>
-              <div className="flex flex-wrap gap-3">
+            <HeroReveal delay={0.58} duration={0.48} y={12}>
+              <div className="product-hero-actions flex flex-wrap gap-3">
                 <Button size="lg" render={<Link href={appDemoUrl()} />} nativeButton={false}>
                   {copy.hero.ctaPrimary}
                 </Button>
@@ -98,16 +101,23 @@ export function ProductExperience() {
             </HeroReveal>
           </div>
 
-          <HeroReveal className="product-hero-visual" delay={1.02} duration={0.82} y={28}>
-            <div className="exp-mock-shelf p-3 sm:p-4">
-              <MissionControlMock className="w-full" layout="hero" />
+          <div className="product-hero-visual">
+            <div className="product-hero-device">
+              <MacBookProFrame windowTitle="AutoCore · Mission Control" className="product-hero-macbook">
+                <div className="product-hero-mac-content">
+                  <MissionControlMock className="w-full" layout="hero" />
+                </div>
+              </MacBookProFrame>
             </div>
-          </HeroReveal>
+          </div>
         </div>
       </section>
 
+      <ProductModulesNav />
+
       <ProductStorySection
         id="mission-control"
+        chapter={missionControl.chapter}
         title={missionControl.title}
         narrative={missionControl.narrative}
         workflow={missionControl.workflow}
@@ -120,6 +130,7 @@ export function ProductExperience() {
 
       <ProductStorySection
         id="vehicle-card"
+        chapter={vehicleCard.chapter}
         title={vehicleCard.title}
         narrative={vehicleCard.narrative}
         workflow={vehicleCard.workflow}
@@ -131,6 +142,7 @@ export function ProductExperience() {
 
       <ProductStorySection
         id="work-orders"
+        chapter={workOrders.chapter}
         title={workOrders.title}
         narrative={workOrders.narrative}
         workflow={workOrders.workflow}
@@ -141,6 +153,7 @@ export function ProductExperience() {
 
       <ProductStorySection
         id="inventory"
+        chapter={inventory.chapter}
         title={inventory.title}
         narrative={inventory.narrative}
         workflow={inventory.workflow}
@@ -152,6 +165,7 @@ export function ProductExperience() {
 
       <ProductStorySection
         id="documents"
+        chapter={documents.chapter}
         title={documents.title}
         narrative={documents.narrative}
         workflow={documents.workflow}
@@ -162,6 +176,7 @@ export function ProductExperience() {
 
       <ProductStorySection
         id="repair-timeline"
+        chapter={repairTimeline.chapter}
         title={repairTimeline.title}
         narrative={repairTimeline.narrative}
         workflow={repairTimeline.workflow}
@@ -173,17 +188,20 @@ export function ProductExperience() {
 
       <ProductStorySection
         id="platform"
+        chapter={platform.chapter}
         title={platform.title}
         narrative={platform.narrative}
         workflow={platform.workflow}
         intervalMs={platform.intervalMs}
         wideMock
+        bareVisual
       >
         <PlatformSyncExperience hideHeader />
       </ProductStorySection>
 
       <ProductStorySection
         id="ai-import"
+        chapter={aiImport.chapter}
         title={aiImport.title}
         narrative={aiImport.narrative}
         workflow={aiImport.workflow}
@@ -195,6 +213,7 @@ export function ProductExperience() {
 
       <ProductStorySection
         id="analytics"
+        chapter={analytics.chapter}
         title={analytics.title}
         narrative={analytics.narrative}
         workflow={analytics.workflow}
@@ -205,6 +224,7 @@ export function ProductExperience() {
 
       <ProductStorySection
         id="security"
+        chapter={security.chapter}
         title={security.title}
         narrative={security.narrative}
         workflow={security.workflow}

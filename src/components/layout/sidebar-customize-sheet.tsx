@@ -1,7 +1,7 @@
 "use client";
 
 import { PanelLeft, PanelRight, RotateCcw } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 
 import { useSidebarCustomization } from "@/components/providers/sidebar-customization-provider";
 import { useSidebarPreferences } from "@/components/providers/sidebar-preferences-provider";

@@ -40,7 +40,19 @@ export function KeynoteSyncBeam({ progress, active, className }: KeynoteSyncBeam
 
   const t = Math.min(1, Math.max(0, progress));
   const dot = pointOnQuadraticBezier(t, geometry.p0, geometry.p1, geometry.p2);
-  const trailStart = pointOnQuadraticBezier(Math.max(0, t - 0.08), geometry.p0, geometry.p1, geometry.p2);
+  const trailStart = pointOnQuadraticBezier(Math.max(0, t - 0.1), geometry.p0, geometry.p1, geometry.p2);
+  const particles = [0.12, 0.28, 0.44, 0.6, 0.76]
+    .map((offset) => {
+      const pt = Math.max(0, t - offset);
+      if (pt <= 0 || pt >= t) return null;
+      return {
+        key: offset,
+        ...pointOnQuadraticBezier(pt, geometry.p0, geometry.p1, geometry.p2),
+        opacity: 0.25 + (1 - offset / 0.8) * 0.55,
+        r: 0.55 + (1 - offset) * 0.45,
+      };
+    })
+    .filter(Boolean) as Array<{ key: number; x: number; y: number; opacity: number; r: number }>;
 
   if (!active || t <= 0) return null;
 
@@ -53,12 +65,12 @@ export function KeynoteSyncBeam({ progress, active, className }: KeynoteSyncBeam
     >
       <defs>
         <linearGradient id={gradientId} x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.15" />
-          <stop offset="55%" stopColor="#3b82f6" stopOpacity="0.75" />
-          <stop offset="100%" stopColor="#60a5fa" stopOpacity="0.35" />
+          <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.12" />
+          <stop offset="45%" stopColor="#3b82f6" stopOpacity="0.85" />
+          <stop offset="100%" stopColor="#93c5fd" stopOpacity="0.4" />
         </linearGradient>
         <radialGradient id={glowId}>
-          <stop offset="0%" stopColor="#60a5fa" stopOpacity="0.9" />
+          <stop offset="0%" stopColor="#93c5fd" stopOpacity="0.95" />
           <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
         </radialGradient>
       </defs>
@@ -77,8 +89,18 @@ export function KeynoteSyncBeam({ progress, active, className }: KeynoteSyncBeam
         y2={dot.y}
         className="keynote-sync-beam-trail"
       />
-      <circle cx={dot.x} cy={dot.y} r="1.4" className="keynote-sync-beam-dot" />
-      <circle cx={dot.x} cy={dot.y} r="3.2" fill={`url(#${glowId})`} opacity="0.55" />
+      {particles.map((particle) => (
+        <circle
+          key={particle.key}
+          cx={particle.x}
+          cy={particle.y}
+          r={particle.r}
+          fill="#93c5fd"
+          opacity={particle.opacity}
+        />
+      ))}
+      <circle cx={dot.x} cy={dot.y} r="1.55" className="keynote-sync-beam-dot" />
+      <circle cx={dot.x} cy={dot.y} r="4.2" fill={`url(#${glowId})`} opacity="0.6" />
     </svg>
   );
 }

@@ -4,6 +4,7 @@ import { ReactNode } from "react";
 import "@/styles/marketing-experience.css";
 
 import { MarketingJsonLd } from "@/components/marketing/seo/marketing-json-ld";
+import { YandexMetrika } from "@/components/marketing/seo/yandex-metrika";
 import { MarketingBarbaLayout } from "@/components/marketing/motion/marketing-barba-layout";
 import { buildMarketingRootMetadata } from "@/lib/seo/build-marketing-metadata";
 
@@ -20,6 +21,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
   return (
     <>
       <MarketingJsonLd />
+      <YandexMetrika />
       <MarketingBarbaLayout>{children}</MarketingBarbaLayout>
     </>
   );
