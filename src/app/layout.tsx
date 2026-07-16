@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import { AppProviders } from "@/components/providers/app-providers";
 import { getAppUrl } from "@/lib/site-urls";
@@ -41,6 +42,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <AppProviders>{children}</AppProviders>
+        <Analytics />
       </body>
     </html>
   );
