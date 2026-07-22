@@ -191,7 +191,7 @@ export function DashboardTopBar() {
     if (sectionByMode[sidebarMode]) return sectionByMode[sidebarMode]!;
     if (pathname.startsWith("/my-earnings")) return businessNavCopy.business.myEarnings;
     if (pathname.startsWith("/settings")) return "Настройки";
-    if (pathname.startsWith("/help")) return "Помощь";
+    if (pathname.startsWith("/help")) return "Справка";
 
     return userCopy.appName;
   }, [

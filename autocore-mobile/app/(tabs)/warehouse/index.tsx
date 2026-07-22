@@ -1,10 +1,10 @@
-import { AnimatedTabScreen } from '@/components/navigation/animated-tab-screen';
+import { StaticTabScreen } from '@/components/navigation/animated-tab-screen';
 import { WarehouseScreen } from '@/features/warehouse';
 
 export default function WarehouseRoute() {
   return (
-    <AnimatedTabScreen tab="warehouse">
+    <StaticTabScreen>
       <WarehouseScreen />
-    </AnimatedTabScreen>
+    </StaticTabScreen>
   );
 }

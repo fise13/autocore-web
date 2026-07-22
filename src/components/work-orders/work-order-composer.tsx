@@ -25,7 +25,6 @@ import { InventoryItem } from "@/domain/inventory";
 import { MotorEntity } from "@/domain/motor";
 import { CompanyEmployee } from "@/domain/rbac";
 import { Button } from "@/components/ui/button";
-import { DatalistInput } from "@/components/ui/datalist-input";
 import { SearchCombobox } from "@/components/ui/search-combobox";
 import { FadeIn } from "@/components/ui/fade-in";
 import { GroupedNumberInput } from "@/components/ui/grouped-number-input";
@@ -54,9 +53,15 @@ import {
   buildPartSkuOptions,
   buildPlateOptions,
   buildVinOptions,
+  toSearchOptions,
 } from "@/lib/work-order/build-composer-suggestions";
 import { rememberComposerFieldValue } from "@/lib/work-order/composer-field-memory";
 import { formatGroupedNumber } from "@/lib/money/format-number";
+import type { SearchOption } from "@/lib/search/filter-options";
+import { KnowledgeKitBanner } from "@/components/knowledge/knowledge-kit-banner";
+import { KnowledgeSuggestionChips } from "@/components/knowledge/knowledge-suggestion-chips";
+import { useKnowledgeSuggestions } from "@/hooks/use-knowledge-suggestions";
+import type { KnowledgeSuggestion } from "@/domain/knowledge/types";
 
 export type LaborDraft = {
   title: string;
@@ -219,46 +224,57 @@ export function WorkOrderComposer({
     [form.clientId, vehicles],
   );
 
-  const clientNameOptions = useMemo(
-    () => clients.map((client) => ({ value: client.fullName })),
+  const clientNameOptions = useMemo<SearchOption[]>(
+    () =>
+      clients.map((client) => ({
+        value: client.fullName,
+        label: client.fullName,
+        description: client.phone || undefined,
+        keywords: client.phone,
+      })),
     [clients],
   );
-  const clientPhoneOptions = useMemo(
-    () => clients.map((client) => ({ value: client.phone, label: client.fullName })),
+  const clientPhoneOptions = useMemo<SearchOption[]>(
+    () =>
+      clients.map((client) => ({
+        value: client.phone,
+        label: client.phone,
+        description: client.fullName || undefined,
+        keywords: client.fullName,
+      })),
     [clients],
   );
-  const vehicleMakeOptionsList = useMemo(
-    () =>
-      buildVehicleMakeOptions(
-        vehiclesInContext(clientVehicles, form, "vehicleMake").map((vehicle) => vehicle.make),
-      ),
-    [clientVehicles, form],
-  );
-  const vehicleModelOptionsList = useMemo(
-    () =>
-      buildVehicleModelOptions(
-        form.vehicleMake,
-        vehiclesInContext(clientVehicles, form, "vehicleModel").map((vehicle) => vehicle.model),
-      ),
-    [clientVehicles, form],
-  );
+  const vehicleMakeOptionsList = useMemo(() => {
+    const clientMakes = vehicles.map((vehicle) => vehicle.make).filter(Boolean);
+    const motorMakes = availableMotors.map((motor) => motor.brandName).filter(Boolean) as string[];
+    return buildVehicleMakeOptions([...clientMakes, ...motorMakes]);
+  }, [availableMotors, vehicles]);
+  const vehicleModelOptionsList = useMemo(() => {
+    const make = form.vehicleMake.trim().toLowerCase();
+    const clientModels = vehicles
+      .filter((vehicle) => !make || vehicle.make.trim().toLowerCase() === make)
+      .map((vehicle) => vehicle.model)
+      .filter(Boolean);
+    return buildVehicleModelOptions(form.vehicleMake, clientModels);
+  }, [form.vehicleMake, vehicles]);
   const licensePlateOptions = useMemo(
-    () =>
-      buildPlateOptions(
-        companyId,
-        vehiclesInContext(clientVehicles, form, "licensePlate")
-          .map((vehicle) => vehicle.licensePlate)
-          .filter(Boolean),
-      ),
+    () => toSearchOptions(buildPlateOptions(
+      companyId,
+      vehiclesInContext(clientVehicles, form, "licensePlate")
+        .map((vehicle) => vehicle.licensePlate)
+        .filter(Boolean),
+    )),
     [clientVehicles, companyId, form],
   );
   const vinOptions = useMemo(
     () =>
-      buildVinOptions(
-        companyId,
-        vehiclesInContext(clientVehicles, form, "vin")
-          .map((vehicle) => vehicle.vin)
-          .filter(Boolean) as string[],
+      toSearchOptions(
+        buildVinOptions(
+          companyId,
+          vehiclesInContext(clientVehicles, form, "vin")
+            .map((vehicle) => vehicle.vin)
+            .filter(Boolean) as string[],
+        ),
       ),
     [clientVehicles, companyId, form],
   );
@@ -281,15 +297,17 @@ export function WorkOrderComposer({
     if (vehicle) onVehicleSelect(vehicle.id);
   }
   const assigneeOptions = useMemo(
-    () => buildAssigneeOptions(companyId, employees),
+    () => toSearchOptions(buildAssigneeOptions(companyId, employees)),
     [companyId, employees],
   );
   const laborTitleOptions = useMemo(
     () =>
-      buildLaborTitleOptions(
-        companyId,
-        orders,
-        form.laborLines.map((line) => line.title),
+      toSearchOptions(
+        buildLaborTitleOptions(
+          companyId,
+          orders,
+          form.laborLines.map((line) => line.title),
+        ),
       ),
     [companyId, form.laborLines, orders],
   );
@@ -356,20 +374,115 @@ export function WorkOrderComposer({
     });
   }
   const partSkuOptions = useMemo(
-    () => buildPartSkuOptions(companyId, inventoryItems),
+    () => toSearchOptions(buildPartSkuOptions(companyId, inventoryItems)),
     [companyId, inventoryItems],
   );
   const partNameOptions = useMemo(
-    () => buildPartNameOptions(companyId, inventoryItems),
+    () => toSearchOptions(buildPartNameOptions(companyId, inventoryItems)),
     [companyId, inventoryItems],
   );
   const motorSerialOptions = useMemo(
     () =>
-      buildMotorSerialOptions(companyId, availableMotors, (motor) =>
-        formatMotorLineLabel(motor, { includeSerial: true }),
+      toSearchOptions(
+        buildMotorSerialOptions(companyId, availableMotors, (motor) =>
+          formatMotorLineLabel(motor, { includeSerial: true }),
+        ),
       ),
     [availableMotors, companyId],
   );
+
+  const primaryEngineCode = useMemo(() => {
+    const fromMotors = form.motorLines.map((line) => line.engineCode?.trim()).find(Boolean);
+    if (fromMotors) return fromMotors;
+    const serial = form.motorSerial.trim().toLowerCase();
+    const motor = availableMotors.find((item) => item.serialCode.trim().toLowerCase() === serial);
+    return motor?.engineCode?.trim() || "";
+  }, [availableMotors, form.motorLines, form.motorSerial]);
+
+  const primaryBrandName = useMemo(() => {
+    const fromMotors = form.motorLines.map((line) => line.brandName?.trim()).find(Boolean);
+    if (fromMotors) return fromMotors;
+    return form.vehicleMake.trim();
+  }, [form.motorLines, form.vehicleMake]);
+
+  const knowledgeEnabled = Boolean(companyId) && canEdit;
+  const { suggestions: knowledgeSuggestions, accept: acceptKnowledge, dismiss: dismissKnowledge } =
+    useKnowledgeSuggestions({
+      enabled: knowledgeEnabled && (step === 1 || step === 2),
+      companyId,
+      engineCode: step === 2 ? primaryEngineCode || undefined : undefined,
+      brandName: primaryBrandName || undefined,
+      clientId: form.clientId || undefined,
+      mechanicId: form.laborDraft.assigneeId || undefined,
+      limit: 12,
+    });
+
+  const kitSuggestions = useMemo(
+    () => knowledgeSuggestions.filter((item) => item.kind === "kit" || item.kind === "mechanic"),
+    [knowledgeSuggestions],
+  );
+  const companionSuggestions = useMemo(
+    () =>
+      knowledgeSuggestions.filter(
+        (item) => item.kind === "cooccur" || item.kind === "fbt" || item.kind === "field",
+      ),
+    [knowledgeSuggestions],
+  );
+  const clientPrefSuggestions = useMemo(
+    () => knowledgeSuggestions.filter((item) => item.kind === "client_prefs"),
+    [knowledgeSuggestions],
+  );
+
+  const [kitDismissed, setKitDismissed] = useState(false);
+
+  function applyKnowledgeSuggestion(suggestion: KnowledgeSuggestion) {
+    const sku = typeof suggestion.payload.sku === "string" ? suggestion.payload.sku : "";
+    const laborTitle =
+      typeof suggestion.payload.laborTitle === "string"
+        ? suggestion.payload.laborTitle
+        : suggestion.title.startsWith("labor:")
+          ? suggestion.title.slice("labor:".length)
+          : "";
+    const keys = Array.isArray(suggestion.payload.keys)
+      ? suggestion.payload.keys.filter((key): key is string => typeof key === "string")
+      : [];
+
+    if (sku || keys.some((key) => !key.startsWith("labor:"))) {
+      const resolvedSku = sku || keys.find((key) => !key.startsWith("labor:")) || suggestion.title;
+      const inventory = inventoryItems.find(
+        (item) => item.sku.trim().toLowerCase() === resolvedSku.trim().toLowerCase(),
+      );
+      onFormChange("partSku", inventory?.sku ?? resolvedSku);
+      onFormChange("partName", inventory?.name ?? suggestion.title);
+      if (inventory && typeof inventory.sellPrice === "number") {
+        onFormChange("partUnitPrice", inventory.sellPrice);
+      }
+      onAddPart();
+    } else if (laborTitle || keys.some((key) => key.startsWith("labor:"))) {
+      const title =
+        laborTitle ||
+        keys.find((key) => key.startsWith("labor:"))?.slice("labor:".length) ||
+        suggestion.title;
+      onLaborDraftChange({ title });
+    } else if (suggestion.kind === "client_prefs") {
+      const fieldKey = typeof suggestion.payload.fieldKey === "string" ? suggestion.payload.fieldKey : "";
+      const value = typeof suggestion.payload.label === "string" ? suggestion.payload.label : suggestion.title;
+      if (fieldKey === "vehicleMake") onFormChange("vehicleMake", value);
+      if (fieldKey === "vehicleModel") onFormChange("vehicleModel", value);
+      if (fieldKey === "paymentMethod") {
+        // no composer field — ignore
+      }
+    }
+
+    void acceptKnowledge(suggestion);
+  }
+
+  function applyKit(items: KnowledgeSuggestion[]) {
+    for (const item of items) {
+      applyKnowledgeSuggestion(item);
+    }
+    setKitDismissed(true);
+  }
 
   const isHourlyLabor = form.laborDraft.pricingMode === "hourly";
   const laborDraftTotal = isHourlyLabor
@@ -438,41 +551,70 @@ export function WorkOrderComposer({
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
         {step === 1 ? (
           <FadeIn key="composer-step-1" className="mx-auto max-w-2xl space-y-6">
-            <Section icon={User} title="Клиент" description="Подсказка прямо в поле — Tab ↹ принять">
+            {clientPrefSuggestions.length > 0 ? (
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Как обычно у этого клиента
+                </p>
+                <KnowledgeSuggestionChips
+                  suggestions={clientPrefSuggestions.slice(0, 6)}
+                  onAccept={applyKnowledgeSuggestion}
+                  onDismiss={(suggestion) => void dismissKnowledge(suggestion)}
+                />
+              </div>
+            ) : null}
+            <Section icon={User} title="Клиент" description="Из базы клиентов или вручную — как марка и модель">
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="ФИО клиента" required hint="Tab ↹">
-                  <DatalistInput
-                    id="work-order-client-name"
+                <Field label="ФИО клиента" required>
+                  <SearchCombobox
                     value={form.clientName}
-                    onValueChange={(value) => onFormChange("clientName", value)}
-                    options={clientNameOptions}
-                    cycleOnTab={clientNameOptions.length > 0}
-                    matchMode="flexible"
-                    onOptionCommit={(value) => {
+                    onValueChange={(value) => {
+                      onFormChange("clientName", value);
+                      if (!form.clientId) return;
+                      const selected = clients.find((entry) => entry.id === form.clientId);
+                      if (!selected || selected.fullName !== value) {
+                        onFormChange("clientId", "");
+                        if (form.vehicleId) onFormChange("vehicleId", "");
+                      }
+                    }}
+                    onOptionSelect={(value) => {
                       const client = clients.find((entry) => entry.fullName === value);
                       if (client) onClientSelect(client.id);
                     }}
+                    options={clientNameOptions}
                     placeholder="Иванов Алексей"
+                    emptyMessage="Клиент не найден — можно ввести вручную"
                   />
                 </Field>
-                <Field label="Телефон" required hint="Tab ↹">
-                  <DatalistInput
+                <Field label="Телефон" required>
+                  <SearchCombobox
                     value={form.clientPhone}
-                    onValueChange={(value) => onFormChange("clientPhone", value)}
-                    options={clientPhoneOptions}
-                    cycleOnTab={clientPhoneOptions.length > 0}
-                    matchMode="flexible"
-                    onOptionCommit={(value) => {
+                    onValueChange={(value) => {
+                      onFormChange("clientPhone", value);
+                      if (!form.clientId) return;
+                      const selected = clients.find((entry) => entry.id === form.clientId);
+                      if (!selected || selected.phone !== value) {
+                        onFormChange("clientId", "");
+                        if (form.vehicleId) onFormChange("vehicleId", "");
+                      }
+                    }}
+                    onOptionSelect={(value) => {
                       const client = clients.find((entry) => entry.phone === value);
                       if (client) onClientSelect(client.id);
                     }}
+                    options={clientPhoneOptions}
                     placeholder="+7 777 000 00 00"
+                    emptyMessage="Телефон не найден — можно ввести вручную"
                   />
                 </Field>
               </div>
             </Section>
 
-            <Section icon={Car} title="Автомобиль" description="Марка и модель — из каталога, госномер и VIN — из авто клиента">
+            <Section
+              icon={Car}
+              title="Автомобиль"
+              description="Марка и модель — из авто клиентов, каталога или свой вариант; госномер и VIN — из авто клиента"
+            >
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Марка">
                   <SearchCombobox
@@ -484,7 +626,8 @@ export function WorkOrderComposer({
                       onFormChange("vehicleMake", value);
 
                       // While typing a free-form brand, keep the model.
-                      // Clear only when brand is wiped or replaced with another known catalog make.
+                      // Clear only when brand is wiped or replaced with another known catalog make
+                      // whose catalog does not include the current model.
                       if (!nextMake) {
                         if (form.vehicleModel) onFormChange("vehicleModel", "");
                         return;
@@ -497,14 +640,20 @@ export function WorkOrderComposer({
 
                       const model = form.vehicleModel.trim();
                       if (!model) return;
-                      const modelAllowed = listVehicleModels(value).some(
-                        (entry) => entry.toLowerCase() === model.toLowerCase(),
-                      );
+                      const modelAllowed =
+                        listVehicleModels(value).some(
+                          (entry) => entry.toLowerCase() === model.toLowerCase(),
+                        ) ||
+                        vehicles.some(
+                          (vehicle) =>
+                            vehicle.make.trim().toLowerCase() === nextMake.toLowerCase() &&
+                            vehicle.model.trim().toLowerCase() === model.toLowerCase(),
+                        );
                       if (!modelAllowed) onFormChange("vehicleModel", "");
                     }}
                     options={vehicleMakeOptionsList}
-                    placeholder="Toyota"
-                    emptyMessage="Марка не найдена — можно ввести вручную"
+                    placeholder="Toyota / из клиентов / свой вариант"
+                    emptyMessage="Марка не найдена — введите свой вариант"
                   />
                 </Field>
                 <Field label="Модель">
@@ -515,41 +664,39 @@ export function WorkOrderComposer({
                       onFormChange("vehicleModel", value);
                     }}
                     options={vehicleModelOptionsList}
-                    placeholder={form.vehicleMake.trim() ? "Camry" : "Сначала выберите марку"}
+                    placeholder={form.vehicleMake.trim() ? "Camry / свой вариант" : "Сначала укажите марку"}
                     emptyMessage={
                       form.vehicleMake.trim()
-                        ? "Модель не найдена — можно ввести вручную"
+                        ? "Модель не найдена — введите свой вариант"
                         : "Укажите марку"
                     }
                     disabled={!form.vehicleMake.trim()}
                   />
                 </Field>
-                <Field label="Госномер" hint={licensePlateOptions.length > 0 ? "Tab ↹" : undefined}>
-                  <DatalistInput
+                <Field label="Госномер">
+                  <SearchCombobox
                     value={form.licensePlate}
                     onValueChange={(value) => {
                       detachVehicleLink();
                       onFormChange("licensePlate", value.toUpperCase());
                     }}
+                    onOptionSelect={commitVehicleByPlate}
                     options={licensePlateOptions}
-                    cycleOnTab={licensePlateOptions.length > 0}
-                    matchMode="flexible"
-                    onOptionCommit={commitVehicleByPlate}
                     placeholder="123 ABC 01"
+                    emptyMessage="Госномер не найден — можно ввести вручную"
                   />
                 </Field>
-                <Field label="VIN" hint={vinOptions.length > 0 ? "Tab ↹" : undefined}>
-                  <DatalistInput
+                <Field label="VIN">
+                  <SearchCombobox
                     value={form.vin}
                     onValueChange={(value) => {
                       detachVehicleLink();
                       onFormChange("vin", value.toUpperCase());
                     }}
+                    onOptionSelect={commitVehicleByVin}
                     options={vinOptions}
-                    cycleOnTab={vinOptions.length > 0}
-                    matchMode="flexible"
-                    onOptionCommit={commitVehicleByVin}
                     placeholder="JTDBT923…"
+                    emptyMessage="VIN не найден — можно ввести вручную"
                   />
                 </Field>
                 <Field label="Пробег, км">
@@ -573,7 +720,28 @@ export function WorkOrderComposer({
         ) : null}
 
         {step === 2 ? (
-          <FadeIn key="composer-step-2" className="mx-auto max-w-3xl">
+          <FadeIn key="composer-step-2" className="mx-auto max-w-3xl space-y-4">
+            {!kitDismissed && kitSuggestions.length > 0 && primaryEngineCode ? (
+              <KnowledgeKitBanner
+                engineCode={primaryEngineCode}
+                items={kitSuggestions.slice(0, 8)}
+                confidence={kitSuggestions[0]?.confidence ?? 0}
+                onApply={applyKit}
+                onDismiss={() => setKitDismissed(true)}
+              />
+            ) : null}
+            {companionSuggestions.length > 0 ? (
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Подсказки
+                </p>
+                <KnowledgeSuggestionChips
+                  suggestions={companionSuggestions.slice(0, 8)}
+                  onAccept={applyKnowledgeSuggestion}
+                  onDismiss={(suggestion) => void dismissKnowledge(suggestion)}
+                />
+              </div>
+            ) : null}
             <Tabs defaultValue="labor">
               <TabsList className="mb-4 w-full justify-start">
                 <TabsTrigger value="labor" className="gap-1.5">
@@ -619,14 +787,13 @@ export function WorkOrderComposer({
               <TabsContent value="labor" className="space-y-4">
                 <AddRowCard title="Добавить работу">
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Наименование" required hint={laborTitleOptions.length > 0 ? "Tab ↹" : undefined}>
-                      <DatalistInput
+                    <Field label="Наименование" required>
+                      <SearchCombobox
                         value={form.laborDraft.title}
                         onValueChange={(value) => onLaborDraftChange({ title: value })}
                         options={laborTitleOptions}
-                        cycleOnTab={laborTitleOptions.length > 0}
-                        matchMode="flexible"
                         placeholder="Замена двигателя"
+                        emptyMessage="Можно ввести название вручную"
                       />
                     </Field>
                     <Field label="Тип оплаты">
@@ -665,26 +832,29 @@ export function WorkOrderComposer({
                         placeholder={isHourlyLabor ? "5 000" : "90 000"}
                       />
                     </Field>
-                    <Field label="Исполнитель" required hint="Tab ↹ или своё имя">
+                    <Field label="Исполнитель" required>
                       <div className="flex gap-2">
-                        <DatalistInput
-                          value={form.laborDraft.assigneeName}
-                          onValueChange={(value) =>
-                            onLaborDraftChange({ assigneeName: value, assigneeId: "" })
-                          }
-                          options={assigneeOptions}
-                          onOptionCommit={commitAssignee}
-                          cycleOnTab={assigneeOptions.length > 0}
-                          matchMode="flexible"
-                          onBlur={(event) =>
-                            tryResolveAssigneeByName((event.target as HTMLInputElement).value)
-                          }
-                          placeholder="Сотрудник или ФИО"
-                          className={cn(
-                            "min-w-0 flex-1",
-                            form.laborDraft.assigneeId && "border-emerald-500/50 ring-emerald-500/10",
-                          )}
-                        />
+                        <div
+                          className="min-w-0 flex-1"
+                          onBlur={(event) => {
+                            if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+                            tryResolveAssigneeByName(form.laborDraft.assigneeName);
+                          }}
+                        >
+                          <SearchCombobox
+                            value={form.laborDraft.assigneeName}
+                            onValueChange={(value) =>
+                              onLaborDraftChange({ assigneeName: value, assigneeId: "" })
+                            }
+                            onOptionSelect={commitAssignee}
+                            options={assigneeOptions}
+                            placeholder="Сотрудник или ФИО"
+                            emptyMessage="Сотрудник не найден — можно ввести имя вручную"
+                            className={cn(
+                              form.laborDraft.assigneeId && "border-emerald-500/50 ring-emerald-500/10",
+                            )}
+                          />
+                        </div>
                         {currentUserId ? (
                           <Button type="button" variant="outline" size="sm" onClick={assignSelf}>
                             Я
@@ -743,13 +913,10 @@ export function WorkOrderComposer({
               <TabsContent value="parts" className="space-y-4">
                 <AddRowCard title="Добавить запчасть" description="Со склада или разово — цена попадёт в накладную и бухгалтерию">
                   <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_72px_96px_auto]">
-                    <DatalistInput
+                    <SearchCombobox
                       value={form.partSku}
                       onValueChange={(value) => onFormChange("partSku", value)}
-                      options={partSkuOptions}
-                      cycleOnTab={partSkuOptions.length > 0}
-                      matchMode="flexible"
-                      onOptionCommit={(value) => {
+                      onOptionSelect={(value) => {
                         rememberComposerFieldValue(companyId, "partSku", value);
                         const item = inventoryItems.find((entry) => entry.sku === value);
                         if (item) {
@@ -761,15 +928,14 @@ export function WorkOrderComposer({
                           );
                         }
                       }}
+                      options={partSkuOptions}
                       placeholder="Артикул (необяз.)"
+                      emptyMessage="Артикул не найден"
                     />
-                    <DatalistInput
+                    <SearchCombobox
                       value={form.partName}
                       onValueChange={(value) => onFormChange("partName", value)}
-                      options={partNameOptions}
-                      cycleOnTab={partNameOptions.length > 0}
-                      matchMode="flexible"
-                      onOptionCommit={(value) => {
+                      onOptionSelect={(value) => {
                         rememberComposerFieldValue(companyId, "partName", value);
                         const item = inventoryItems.find((entry) => entry.name === value);
                         if (item) {
@@ -781,7 +947,9 @@ export function WorkOrderComposer({
                           );
                         }
                       }}
+                      options={partNameOptions}
                       placeholder="Название"
+                      emptyMessage="Можно ввести название вручную"
                     />
                     <GroupedNumberInput
                       value={form.partQuantity}
@@ -822,14 +990,13 @@ export function WorkOrderComposer({
               <TabsContent value="motors" className="space-y-4">
                 <AddRowCard title="Добавить двигатель">
                   <div className="grid gap-3 sm:grid-cols-[1fr_140px_140px_auto]">
-                    <DatalistInput
+                    <SearchCombobox
                       value={form.motorSerial}
                       onValueChange={(value) => onFormChange("motorSerial", value)}
+                      onOptionSelect={(value) => rememberComposerFieldValue(companyId, "motorSerial", value)}
                       options={motorSerialOptions}
-                      cycleOnTab={motorSerialOptions.length > 0}
-                      matchMode="flexible"
-                      onOptionCommit={(value) => rememberComposerFieldValue(companyId, "motorSerial", value)}
-                      placeholder="Номер двигателя · Tab ↹"
+                      placeholder="Номер двигателя"
+                      emptyMessage="Двигатель не найден — можно ввести номер вручную"
                     />
                     <select
                       className={selectClass}

@@ -1,6 +1,6 @@
 import NetInfo from '@react-native-community/netinfo';
 import { reload, updateProfile, type User } from 'firebase/auth';
-import { AppState } from 'react-native';
+import { AppState, InteractionManager } from 'react-native';
 import {
   createContext,
   useCallback,
@@ -544,31 +544,55 @@ function useAuthActionsController(): AuthActions {
   }, [hydrateUser, isFirebaseReady]);
 
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', async (state) => {
+    let cancelled = false;
+    let resumeTask: { cancel: () => void } | null = null;
+
+    const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
       const currentUser = useAuthStore.getState().firebaseUser;
       if (!currentUser) return;
-      try {
-        await refreshCurrentUser(false);
-        const refreshed = getFirebaseAuth().currentUser ?? currentUser;
-        useAuthStore.getState().setFirebaseUser(refreshed);
 
-        const current = readHydrationFromStore();
-        const apiHydrated = await fetchSessionBootstrapFromApi(refreshed);
-        const merged = mergeSessionHydration(
-          current,
-          apiHydrated?.profile
-            ? apiHydrated
-            : await hydrateEffectiveProfile(refreshed),
-        );
-        useAuthStore.getState().setHydration(merged);
-        await persistSessionSnapshot(refreshed.uid, merged);
-      } catch {
-        // Keep current session; profile screens can retry on demand.
-      }
+      // Defer network refresh until after first interactions so resume stays tappable.
+      resumeTask?.cancel();
+      resumeTask = InteractionManager.runAfterInteractions(() => {
+        void (async () => {
+          try {
+            await refreshCurrentUser(false);
+            if (cancelled) return;
+            const refreshed = getFirebaseAuth().currentUser ?? currentUser;
+            useAuthStore.getState().setFirebaseUser(refreshed);
+
+            const current = readHydrationFromStore();
+            const apiHydrated = await fetchSessionBootstrapFromApi(refreshed);
+            if (cancelled) return;
+            const merged = mergeSessionHydration(
+              current,
+              apiHydrated?.profile
+                ? apiHydrated
+                : await hydrateEffectiveProfile(refreshed),
+            );
+            if (cancelled) return;
+
+            const sameCompany =
+              resolveSessionCompanyId(current.profile, current.memberships) ===
+              resolveSessionCompanyId(merged.profile, merged.memberships);
+            const sameUid = current.profile?.id === merged.profile?.id;
+            if (!sameCompany || !sameUid || current.memberships.length !== merged.memberships.length) {
+              useAuthStore.getState().setHydration(merged);
+            }
+            await persistSessionSnapshot(refreshed.uid, merged);
+          } catch {
+            // Keep current session; profile screens can retry on demand.
+          }
+        })();
+      });
     });
 
-    return () => subscription.remove();
+    return () => {
+      cancelled = true;
+      resumeTask?.cancel();
+      subscription.remove();
+    };
   }, []);
 
   const withFullSessionHydration = useCallback(

@@ -1,5 +1,5 @@
+import { memo } from 'react';
 import { Pressable, View } from 'react-native';
-import Animated from 'react-native-reanimated';
 
 import { PackageIcon } from '@/assets/icons';
 import { Badge, Text } from '@/components/ui';
@@ -8,22 +8,19 @@ import { haptics, rhythm } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
 import { isWarehouseLowStock } from '@/lib/inventory/is-low-stock';
 import { resolveInventoryShelf } from '@/lib/inventory/resolve-shelf';
-import { useMcEnter } from '@/features/mission-control/animation';
 import type { InventoryItem } from '@/types/inventory';
 
-import { whTimeline } from '../animation/timeline';
 import { wh } from '../layout';
 
 type WarehouseItemRowProps = {
   item: InventoryItem;
-  index: number;
   available: number;
   canEdit?: boolean;
   onPress: () => void;
   onAdjust: (delta: 1 | -1) => void;
 };
 
-function StepperButton({
+const StepperButton = memo(function StepperButton({
   label,
   disabled,
   onPress,
@@ -60,11 +57,10 @@ function StepperButton({
       </Text>
     </Pressable>
   );
-}
+});
 
-export function WarehouseItemRow({
+export const WarehouseItemRow = memo(function WarehouseItemRow({
   item,
-  index,
   available,
   canEdit = false,
   onPress,
@@ -72,20 +68,12 @@ export function WarehouseItemRow({
 }: WarehouseItemRowProps) {
   const { colors } = useTheme();
   const low = isWarehouseLowStock({ ...item, totalAvailable: available });
-  const rowStyle = useMcEnter({
-    delay: whTimeline.list + Math.min(index, 8) * whTimeline.rowStagger,
-    translateY: 6,
-    fade: true,
-    duration: 280,
-  });
-
   const shelf = resolveInventoryShelf(item);
   const meta = [item.sku, shelf ? `Ячейка ${shelf}` : null].filter(Boolean).join(' · ');
-
   const canDecrease = canEdit && available > 0;
 
   return (
-    <Animated.View style={rowStyle}>
+    <View>
       <View
         style={{
           flexDirection: 'row',
@@ -165,6 +153,6 @@ export function WarehouseItemRow({
           marginRight: wh.pad,
         }}
       />
-    </Animated.View>
+    </View>
   );
-}
+});

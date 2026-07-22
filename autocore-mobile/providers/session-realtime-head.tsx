@@ -11,6 +11,7 @@ import { useOperationsRealtime } from '@/hooks/use-operations-realtime';
 import { usePayrollTransactionsRealtime } from '@/hooks/use-payroll-transactions-realtime';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import { useVehiclesRealtime } from '@/hooks/use-vehicles-realtime';
+import { useWarehousesRealtime } from '@/hooks/use-warehouses-realtime';
 import { useWorkOrdersRealtime } from '@/hooks/use-work-orders-realtime';
 import { isProductionCompanyId, normalizeCompanyId } from '@/lib/company-id';
 import { preloadSessionSnapshots } from '@/lib/realtime/preload-session-snapshots';
@@ -19,10 +20,14 @@ import { hydrateSearchIdleCache } from '@/lib/search/search-idle-cache';
 import { usePresenceHeartbeat } from '@/hooks/use-presence-heartbeat';
 
 const KEEP = { keepAlive: true } as const;
+const RECONNECT_MIN_BACKGROUND_MS = 90_000;
 
 /**
  * Headless session listener host. Renders nothing so Firestore snapshots
  * never re-render the navigation tree.
+ *
+ * All keepAlive listeners start immediately while SessionBootstrapGate
+ * covers the UI — no artificial delay that leaves a dead-touch gap after reveal.
  */
 export function SessionRealtimeHead() {
   const profile = useAuthStore((s) => s.profile);
@@ -68,13 +73,33 @@ export function SessionRealtimeHead() {
   useEffect(() => {
     if (!active) return;
 
+    let backgroundedAt: number | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
-        reconnectRealtimeSubscriptions();
+      if (state === 'background' || state === 'inactive') {
+        backgroundedAt = Date.now();
+        return;
       }
+
+      if (state !== 'active') return;
+
+      const awayMs = backgroundedAt ? Date.now() - backgroundedAt : 0;
+      backgroundedAt = null;
+
+      if (awayMs < RECONNECT_MIN_BACKGROUND_MS) return;
+
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        reconnectRealtimeSubscriptions();
+      }, 400);
     });
 
-    return () => subscription.remove();
+    return () => {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      subscription.remove();
+    };
   }, [active]);
 
   useCompanyAppConfig(active ? companyId : null, KEEP);
@@ -83,6 +108,8 @@ export function SessionRealtimeHead() {
     scope: rbac.scopes.workOrders,
     uid,
   });
+  useClientsRealtime(clientsCompanyId, KEEP);
+  useEmployeesRealtime(employeesCompanyId, Boolean(employeesCompanyId), KEEP);
   useInventoryCatalog(inventoryCompanyId, KEEP);
   useOperationsRealtime(accountingCompanyId, KEEP);
   usePayrollTransactionsRealtime(payrollCompanyId, {
@@ -90,10 +117,9 @@ export function SessionRealtimeHead() {
     scope: rbac.scopes.payroll,
     employeeId: uid,
   });
-  useClientsRealtime(clientsCompanyId, KEEP);
   useVehiclesRealtime(vehiclesCompanyId, KEEP);
   useMotorsRealtime(motorsCompanyId, uid, Boolean(motorsCompanyId), KEEP);
-  useEmployeesRealtime(employeesCompanyId, Boolean(employeesCompanyId), KEEP);
+  useWarehousesRealtime(inventoryCompanyId, KEEP);
 
   return null;
 }

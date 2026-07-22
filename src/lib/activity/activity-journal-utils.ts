@@ -107,8 +107,26 @@ export const MODULE_FILTER_OPTIONS: { value: ActivityJournalModuleFilter; label:
 ];
 
 export const SEVERITY_FILTER_OPTIONS: { value: ActivityJournalSeverityFilter; label: string }[] = [
-  { value: "all", label: "Любая важность" },
+  { value: "all", label: "Все уровни" },
   { value: "info", label: "Обычные" },
   { value: "warning", label: "Предупреждения" },
   { value: "critical", label: "Критичные" },
 ];
+
+/** Russian plural for «событие». */
+export function formatEventCountLabel(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod100 >= 11 && mod100 <= 14) return `${count} событий`;
+  if (mod10 === 1) return `${count} событие`;
+  if (mod10 >= 2 && mod10 <= 4) return `${count} события`;
+  return `${count} событий`;
+}
+
+export function moduleFilterLabel(value: ActivityJournalModuleFilter): string {
+  return MODULE_FILTER_OPTIONS.find((option) => option.value === value)?.label ?? "Все модули";
+}
+
+export function severityFilterLabel(value: ActivityJournalSeverityFilter): string {
+  return SEVERITY_FILTER_OPTIONS.find((option) => option.value === value)?.label ?? "Все уровни";
+}

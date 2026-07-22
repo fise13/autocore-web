@@ -1,18 +1,17 @@
-import { forwardRef, useMemo } from 'react';
+import { forwardRef } from 'react';
 import { Pressable, View } from 'react-native';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import { Easing } from 'react-native-reanimated';
 
 import { Text } from '@/components/ui';
 import { useModalBottomSheet, useTheme } from '@/hooks';
-import { duration, haptics } from '@/theme';
+import { haptics } from '@/theme';
 import { formatPrice } from '@/features/search/lib/format';
 import { matchTypeLabel } from '@/lib/scan/map-resolve-result';
 
+import { scanSheetAnimationConfigs } from '../animation/scan-sheet-motion';
 import { scanStatusLabel, scanStatusTone } from '../lib/status';
 import { ScanProductThumb } from './scan-product-thumb';
 import type { ScanResult } from '../types';
-
 type ScanProductSheetProps = {
   result: ScanResult | null;
   onSell: () => void;
@@ -76,13 +75,6 @@ export const ScanProductSheet = forwardRef<BottomSheetModal, ScanProductSheetPro
   ) {
     const { colors } = useTheme();
     const sheet = useModalBottomSheet({ backdropOpacity: 0.42 });
-    const animationConfigs = useMemo(
-      () => ({
-        duration: duration.fast,
-        easing: Easing.out(Easing.cubic),
-      }),
-      [],
-    );
     const modalProps = {
       ...sheet.sheetLayout,
       index: 0 as const,
@@ -91,9 +83,8 @@ export const ScanProductSheet = forwardRef<BottomSheetModal, ScanProductSheetPro
       backdropComponent: sheet.renderBackdrop,
       backgroundStyle: sheet.backgroundStyle,
       handleIndicatorStyle: sheet.handleIndicatorStyle,
-      animationConfigs,
+      animationConfigs: scanSheetAnimationConfigs,
     };
-
     const statusVariant = result?.status ? scanStatusTone[result.status] : 'secondary';
     const statusColor =
       statusVariant === 'success'

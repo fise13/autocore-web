@@ -968,7 +968,23 @@
 
 .app-sidebar--collapsed [data-sidebar="menu-button"] {
   justify-content: center;
-  padding-inline: 0.5rem;
+  padding-inline: 0.25rem;
+}
+
+/* Keep org switcher avatar visible in the icon rail (no truncate/clip) */
+.app-sidebar--collapsed [data-sidebar="menu-button"][data-org-switcher] {
+  overflow: visible !important;
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  min-width: 2.25rem !important;
+  min-height: 2.25rem !important;
+  padding: 0 !important;
+  flex-shrink: 0;
+}
+
+.app-sidebar--collapsed [data-sidebar="menu-button"][data-org-switcher] > span {
+  max-width: none !important;
+  overflow: visible !important;
 }
 
 .app-sidebar--collapsed [data-slot="sidebar-group-label"],

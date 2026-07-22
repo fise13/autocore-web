@@ -29,7 +29,7 @@ export function DocumentImportsList({
   jobs,
   loading = false,
   errorMessage = null,
-  emptyHint = "Откройте Import на мобилке (Scan → Import), сфотографируйте документ и отправьте.",
+  emptyHint = "На телефоне: Скан → Импорт документа — сфотографируйте и отправьте.",
   onItemClick,
   compact = false,
 }: DocumentImportsListProps) {
@@ -59,10 +59,10 @@ export function DocumentImportsList({
           compact ? "px-4 py-10" : "px-6 py-16",
         )}
       >
-        <div className="rounded-full bg-muted p-3">
-          <FileText className="size-5 text-muted-foreground" />
+        <div className="rounded-full bg-sky-500/10 p-3 text-sky-600 dark:text-sky-400">
+          <FileText className="size-5" />
         </div>
-        <p className="text-sm font-medium">Пока нет импортов</p>
+        <p className="text-sm font-medium">Пока нет снимков с телефона</p>
         <p className="max-w-sm text-sm text-muted-foreground">{emptyHint}</p>
       </div>
     );
@@ -76,11 +76,11 @@ export function DocumentImportsList({
           href={`/imports/${job.id}`}
           onClick={onItemClick}
           className={cn(
-            "flex items-center gap-4 rounded-xl border bg-card/70 px-4 transition-colors hover:bg-accent/40",
+            "group flex items-center gap-3 rounded-xl border bg-card/70 px-3 transition-colors hover:border-sky-500/30 hover:bg-sky-500/[0.04]",
             compact ? "py-2.5" : "py-3",
           )}
         >
-          <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
+          <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted ring-1 ring-border/60">
             {job.previewDownloadUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={job.previewDownloadUrl} alt="" className="size-full object-cover" />
@@ -90,13 +90,16 @@ export function DocumentImportsList({
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">
-              {job.fileName?.trim() || "Документ"}
+              {job.fileName?.trim() || "Снимок с телефона"}
             </p>
             <p className="truncate text-xs text-muted-foreground">
               {STATUS_LABELS[job.status]} ·{" "}
               {formatDistanceToNow(job.createdAt, { addSuffix: true, locale: ru })}
             </p>
           </div>
+          <span className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-sky-700 opacity-0 transition group-hover:opacity-100 dark:text-sky-300">
+            Открыть
+          </span>
         </Link>
       ))}
     </div>

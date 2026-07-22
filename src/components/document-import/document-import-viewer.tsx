@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import {
   Maximize2,
   Minimize2,
@@ -23,7 +23,7 @@ type DocumentImportViewerProps = {
 
 const ZOOM_STEP = 0.2;
 const MIN_ZOOM = 0.5;
-const MAX_ZOOM = 3;
+const MAX_ZOOM = 4;
 
 export function DocumentImportViewer({
   imageUrl,
@@ -33,16 +33,68 @@ export function DocumentImportViewer({
 }: DocumentImportViewerProps) {
   const [rotation, setRotation] = useState(0);
   const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [fullscreen, setFullscreen] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [dragging, setDragging] = useState(false);
+
+  const dragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+  } | null>(null);
+
+  const resetView = useCallback(() => {
+    setZoom(1);
+    setRotation(0);
+    setPan({ x: 0, y: 0 });
+  }, []);
 
   useEffect(() => {
     setImageLoaded(false);
     setImageError(false);
-    setRotation(0);
-    setZoom(1);
-  }, [imageUrl]);
+    resetView();
+  }, [imageUrl, resetView]);
+
+  const onPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) return;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      dragRef.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        originX: pan.x,
+        originY: pan.y,
+      };
+      setDragging(true);
+    },
+    [pan.x, pan.y],
+  );
+
+  const onPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    setPan({
+      x: drag.originX + (event.clientX - drag.startX),
+      y: drag.originY + (event.clientY - drag.startY),
+    });
+  }, []);
+
+  const endDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    dragRef.current = null;
+    setDragging(false);
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -117,10 +169,7 @@ export function DocumentImportViewer({
           size="sm"
           variant="ghost"
           className="text-xs text-white/80 hover:bg-white/10 hover:text-white"
-          onClick={() => {
-            setZoom(1);
-            setRotation(0);
-          }}
+          onClick={resetView}
         >
           Вписать
         </Button>
@@ -136,7 +185,16 @@ export function DocumentImportViewer({
         </Button>
       </div>
 
-      <div className="relative min-h-0 flex-1 overflow-hidden">
+      <div
+        className={cn(
+          "relative min-h-0 flex-1 overflow-hidden touch-none",
+          dragging ? "cursor-grabbing" : "cursor-grab",
+        )}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+      >
         {!imageLoaded ? (
           <div className="absolute inset-0 z-10 flex items-center justify-center">
             <Skeleton className="h-[60%] w-[50%] rounded-xl bg-white/10" />
@@ -153,11 +211,11 @@ export function DocumentImportViewer({
               setImageLoaded(false);
             }}
             className={cn(
-              "block h-full w-full select-none object-contain transition-opacity duration-200",
+              "pointer-events-none block h-full w-full select-none object-contain transition-opacity duration-200",
               !imageLoaded && "opacity-0",
             )}
             style={{
-              transform: `rotate(${rotation}deg) scale(${zoom})`,
+              transform: `translate(${pan.x}px, ${pan.y}px) rotate(${rotation}deg) scale(${zoom})`,
               transformOrigin: "center center",
             }}
             draggable={false}

@@ -52,7 +52,7 @@ function DocumentImportToastCard({
             onOpen();
             sonnerToast.dismiss(toastId);
           }}
-          className="mt-2.5 inline-flex h-8 shrink-0 items-center rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground transition hover:bg-primary/90"
+          className="mt-2.5 inline-flex h-9 min-w-[5.5rem] shrink-0 items-center justify-center rounded-xl bg-sky-600 px-3.5 text-xs font-semibold text-white transition hover:bg-sky-600/90 dark:bg-sky-500"
         >
           Открыть
         </button>
@@ -62,7 +62,7 @@ function DocumentImportToastCard({
         type="button"
         aria-label="Закрыть"
         onClick={() => sonnerToast.dismiss(toastId)}
-        className="absolute right-2 top-2 inline-flex size-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+        className="absolute right-1.5 top-1.5 inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
       >
         <X className="size-3.5" aria-hidden />
       </button>

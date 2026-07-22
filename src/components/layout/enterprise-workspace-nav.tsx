@@ -36,7 +36,7 @@ export function EnterpriseWorkspaceNav({
     <LayoutGroup id={layoutId}>
       <nav
         className={cn(
-          "flex flex-wrap gap-1 rounded-xl border bg-card/80 p-1.5 shadow-sm backdrop-blur-sm",
+          "inline-flex flex-wrap gap-1 rounded-lg bg-muted/40 p-1",
           className,
         )}
       >

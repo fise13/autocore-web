@@ -109,8 +109,14 @@ export function syncSpecificCategoryForCollection(params: {
 
   if (params.collection === "transmissions") {
     const gearbox = resolveDefaultGearboxCategory(params.categories);
-    if (gearbox && params.selectedCategoryId !== gearbox.id) {
-      params.setSelectedCategoryId(gearbox.id);
+    if (gearbox) {
+      if (params.selectedCategoryId !== gearbox.id) {
+        params.setSelectedCategoryId(gearbox.id);
+      }
+      return;
+    }
+    if (params.selectedCategoryId) {
+      params.setSelectedCategoryId(null);
     }
     return;
   }

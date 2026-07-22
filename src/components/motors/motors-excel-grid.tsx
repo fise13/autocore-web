@@ -15,7 +15,9 @@ import {
   GridContextMenuItem,
   GridContextMenuSeparator,
 } from "@/components/grid/grid-context-menu";
+import { usePanelActive } from "@/components/layout/panel-active-context";
 import { useWorkspace } from "@/components/layout/workspace-context";
+import { useGridPersistenceAdapter } from "@/components/persistence/use-grid-persistence-adapter";
 import { GridZoomControl } from "@/components/motors/grid-zoom-control";
 import { MotorDocumentsDialog, MotorHistoryDialog } from "@/components/motors/motor-documents-dialog";
 import { MotorEntity } from "@/domain/motor";
@@ -29,16 +31,11 @@ import {
   MotorRowDefaults,
   rowFieldValueByModelField,
 } from "@/lib/grid/grid-data-store";
-import {
-  boundingDataRange,
-  findLastUsedCell,
-  jumpColumnInRow,
-  jumpRowInColumn,
-} from "@/lib/grid/grid-data-region-navigation";
-import { buildFillOperations } from "@/lib/grid/grid-fill-engine";
+import { useExcelGridInteraction } from "@/hooks/use-excel-grid-interaction";
+import { buildFillOperations, resolveFillDragTarget } from "@/lib/grid/grid-fill-engine";
 import { buildGridLayoutMetrics, cellFrame } from "@/lib/grid/grid-layout-engine";
 import { GridMutation, GridCommandBus } from "@/lib/grid/grid-command-bus";
-import { isRedoShortcut, isUndoShortcut } from "@/lib/grid/grid-keyboard-shortcuts";
+import { deleteShortcutLabel, modShortcutLabel } from "@/lib/grid/grid-keyboard-shortcuts";
 import { resolvePointerCellClamped } from "@/lib/grid/pointer-to-cell";
 import { useGridScrollWhileDrag } from "@/lib/grid/grid-scroll-while-drag";
 import { useGridScrollIntoView } from "@/lib/grid/scroll-into-view";
@@ -50,12 +47,11 @@ import {
   GridSelectionState,
   initialSelection,
   primaryRange,
-  selectWholeColumn,
   selectWholeColumnActiveTop,
   selectWholeRow,
   selectWholeRowActiveStart,
 } from "@/lib/grid/selection-controller";
-import { GridCellAddress, GridColumnDefinition, GridRange, isCellInsideRange, normalizeRange } from "@/lib/grid/grid-types";
+import { GridCellAddress, GridColumnDefinition, GridRange, isCellInsideRange } from "@/lib/grid/grid-types";
 import { formatMotorDate, parseMotorDateInput } from "@/lib/motor-dates";
 import {
   MOTOR_GRID_EMPTY_ROWS_EXPAND,
@@ -85,6 +81,8 @@ type MotorsExcelGridProps = {
   onBatchUnsell?: (motors: MotorEntity[]) => void;
   repository: MotorRepository;
   onCloudPendingChange?: (pending: boolean) => void;
+  /** When false, keep local dirty rows but do not own the global save bar / Cmd+S handlers. */
+  isActive?: boolean;
 };
 
 type EditorState = {
@@ -301,7 +299,10 @@ export function MotorsExcelGrid({
   onBatchUnsell,
   repository,
   onCloudPendingChange,
+  isActive: isActiveProp,
 }: MotorsExcelGridProps) {
+  const panelActive = usePanelActive();
+  const isActive = isActiveProp ?? panelActive;
   const {
     setSaveStatus,
     setSaveError,
@@ -412,10 +413,12 @@ export function MotorsExcelGrid({
   }, [companyId, motors, rowDefaults]);
 
   useEffect(() => {
+    if (!isActive) return;
     onCloudPendingChange?.(dirtyRowsRef.current.size > 0);
-  }, [dirtyVersion, onCloudPendingChange]);
+  }, [dirtyVersion, isActive, onCloudPendingChange]);
 
   useEffect(() => {
+    if (!isActive) return;
     const dirtyIds = dirtyRowsRef.current;
     if (dirtyIds.size === 0) {
       setSaveStatus("idle");
@@ -423,7 +426,7 @@ export function MotorsExcelGrid({
     }
     const hasUnsavedLocal = [...dirtyIds].some((rowId) => !localSaveAckRef.current.has(rowId));
     setSaveStatus(hasUnsavedLocal ? "pending" : "saved");
-  }, [dirtyVersion, setSaveStatus]);
+  }, [dirtyVersion, isActive, setSaveStatus]);
 
   const columnWidths = useMemo(() => layout.columns.map((column) => column.width), [layout.columns]);
 
@@ -778,11 +781,13 @@ export function MotorsExcelGrid({
   }, [brands, canEdit, catalogRepository, companyId, engines, flushEditor, repository, rows, setSaveError, setSaveStatus, uid]);
 
   useEffect(() => {
+    if (!isActive) return;
     registerSaveHandler(runSave);
     return () => registerSaveHandler(null);
-  }, [registerSaveHandler, runSave]);
+  }, [isActive, registerSaveHandler, runSave]);
 
   useEffect(() => {
+    if (!isActive) return;
     if (!canEdit) {
       registerGridUndoHandler(null);
       registerGridRedoHandler(null);
@@ -794,12 +799,45 @@ export function MotorsExcelGrid({
       registerGridUndoHandler(null);
       registerGridRedoHandler(null);
     };
-  }, [canEdit, performRedo, performUndo, registerGridRedoHandler, registerGridUndoHandler]);
+  }, [
+    canEdit,
+    isActive,
+    performRedo,
+    performUndo,
+    registerGridRedoHandler,
+    registerGridUndoHandler,
+  ]);
 
   useEffect(() => {
+    if (!isActive) return;
     registerCloudPushHandler(pushToCloud);
     return () => registerCloudPushHandler(null);
-  }, [pushToCloud, registerCloudPushHandler]);
+  }, [isActive, pushToCloud, registerCloudPushHandler]);
+
+  useEffect(() => {
+    if (!isActive) return;
+    if (!canEdit || !companyId) return;
+    if (dirtyRowsRef.current.size === 0) return;
+
+    const timer = window.setTimeout(() => {
+      void pushToCloud();
+    }, 1200);
+
+    return () => window.clearTimeout(timer);
+  }, [canEdit, companyId, dirtyVersion, isActive, pushToCloud]);
+
+  useGridPersistenceAdapter({
+    key: companyId ? { companyId, kind: "motor_grid", id: soldOnly ? "sold" : "stock" } : null,
+    dirtyVersion,
+    getSnapshot: () => ({
+      dirtyRowIds: [...dirtyRowsRef.current],
+      rows: rows.filter((row) => dirtyRowsRef.current.has(row.rowId)),
+    }),
+    pushToCloud,
+    enabled: isActive && canEdit,
+    label: soldOnly ? "Моторы (продано)" : "Моторы",
+    scheduleInEngine: false,
+  });
 
   useEffect(() => {
     function stopSelectionDrag() {
@@ -846,10 +884,7 @@ export function MotorsExcelGrid({
         const cell = cellFromPointerClamped(clientX, clientY);
         if (!cell) return;
         const source = fillSourceRef.current;
-        const target = normalizeRange(
-          { row: source.minRow, column: source.minColumn },
-          { row: Math.max(cell.row, source.maxRow), column: Math.max(cell.column, source.maxColumn) },
-        );
+        const target = resolveFillDragTarget(source, cell);
         fillTargetRef.current = target;
         setFillPreview(target);
         ensureExpanded(target.maxRow);
@@ -879,31 +914,33 @@ export function MotorsExcelGrid({
     function onPointerUp() {
       stopSelectionDrag();
       if (isDraggingFillRef.current && fillSourceRef.current && fillTargetRef.current) {
-        const ops = buildFillOperations({
-          source: fillSourceRef.current,
-          target: fillTargetRef.current,
-          valueAt: (cell) => valueAtCell(rows[cell.row], cell.column, layoutColumns),
-          isEditableColumn: (column) => isEditableColumn(column, layoutColumns),
-          isDateColumn: (column) => isDateColumn(column, layoutColumns),
-        });
-        const mutations: GridMutation[] = [];
-        setRows((current) => {
-          const next = [...current];
-          for (const operation of ops) {
-            if (!next[operation.cell.row]) continue;
-            const oldValue = valueAtCell(next[operation.cell.row], operation.cell.column, layoutColumns);
-            if (oldValue === operation.value) continue;
-            next[operation.cell.row] = applyCellValue(next[operation.cell.row], operation.cell.column, operation.value, layoutColumns);
-            markDirty(next[operation.cell.row].rowId);
-            mutations.push({
-              address: operation.cell,
-              oldValue,
-              newValue: operation.value,
-            });
-          }
-          return next;
-        });
-        commandBusRef.current.commit("Fill Series", mutations);
+        if (canEdit) {
+          const ops = buildFillOperations({
+            source: fillSourceRef.current,
+            target: fillTargetRef.current,
+            valueAt: (cell) => valueAtCell(rows[cell.row], cell.column, layoutColumns),
+            isEditableColumn: (column) => isEditableColumn(column, layoutColumns),
+            isDateColumn: (column) => isDateColumn(column, layoutColumns),
+          });
+          const mutations: GridMutation[] = [];
+          setRows((current) => {
+            const next = [...current];
+            for (const operation of ops) {
+              if (!next[operation.cell.row]) continue;
+              const oldValue = valueAtCell(next[operation.cell.row], operation.cell.column, layoutColumns);
+              if (oldValue === operation.value) continue;
+              next[operation.cell.row] = applyCellValue(next[operation.cell.row], operation.cell.column, operation.value, layoutColumns);
+              markDirty(next[operation.cell.row].rowId);
+              mutations.push({
+                address: operation.cell,
+                oldValue,
+                newValue: operation.value,
+              });
+            }
+            return next;
+          });
+          commandBusRef.current.commit("Fill Series", mutations);
+        }
       }
       isDraggingFillRef.current = false;
       fillSourceRef.current = null;
@@ -917,7 +954,7 @@ export function MotorsExcelGrid({
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
     };
-  }, [ensureExpanded, layout.columns, layout.headerHeight, layout.rowHeight, layout.xOffsets, layoutColumns, markDirty, rows]);
+  }, [canEdit, ensureExpanded, layout.columns, layout.headerHeight, layout.rowHeight, layout.xOffsets, layoutColumns, markDirty, rows]);
 
   useGridScrollWhileDrag({
     bodyRef,
@@ -986,369 +1023,91 @@ export function MotorsExcelGrid({
     focusGrid();
   }, [companyId, editor, focusGrid, layout.columns.length, rows.length, scrollToCell, setCell]);
 
-  const clearRange = useCallback((range: GridRange) => {
-    setRows((current) => {
-      const next = [...current];
+  const applyCellWrites = useCallback(
+    (label: string, writes: Array<{ row: number; column: number; value: string }>) => {
+      if (!canEdit || writes.length === 0) return;
       const mutations: GridMutation[] = [];
-
-      for (let row = range.minRow; row <= range.maxRow; row += 1) {
-        for (let column = range.minColumn; column <= range.maxColumn; column += 1) {
-          if (!isEditableColumn(column, layoutColumns)) continue;
-          const rowRef = next[row];
+      setRows((current) => {
+        const next = [...current];
+        for (const write of writes) {
+          if (!isEditableColumn(write.column, layoutColumns)) continue;
+          const rowRef = next[write.row];
           if (!rowRef) continue;
-          const currentValue = valueAtCell(rowRef, column, layoutColumns);
-          if (!currentValue) continue;
-          next[row] = applyCellValue(rowRef, column, "", layoutColumns);
-          localSaveAckRef.current.delete(next[row].rowId);
-          dirtyRowsRef.current.add(next[row].rowId);
+          const oldValue = valueAtCell(rowRef, write.column, layoutColumns);
+          if (oldValue === write.value) continue;
+          next[write.row] = applyCellValue(rowRef, write.column, write.value, layoutColumns);
+          localSaveAckRef.current.delete(next[write.row].rowId);
+          dirtyRowsRef.current.add(next[write.row].rowId);
           mutations.push({
-            address: { row, column },
-            oldValue: currentValue,
-            newValue: "",
-          });
-        }
-      }
-
-      if (mutations.length > 0) {
-        scheduleDirtyStatus();
-        commandBusRef.current.commit("Clear", mutations);
-      }
-
-      return next;
-    });
-  }, [layoutColumns, scheduleDirtyStatus]);
-
-  const clearPrimaryRange = useCallback(() => {
-    clearRange(primaryRange(selectionRef.current));
-  }, [clearRange]);
-
-  const copyPrimaryRange = useCallback(async () => {
-    const range = primaryRange(selection);
-    const lines: string[] = [];
-    for (let row = range.minRow; row <= range.maxRow; row += 1) {
-      const cells: string[] = [];
-      for (let column = range.minColumn; column <= range.maxColumn; column += 1) {
-        cells.push(valueAtCell(rows[row], column, layoutColumns));
-      }
-      lines.push(cells.join("\t"));
-    }
-    await navigator.clipboard.writeText(lines.join("\n"));
-  }, [layoutColumns, rows, selection]);
-
-  const pasteAtSelection = useCallback(async () => {
-    const clipboard = await navigator.clipboard.readText();
-    if (!clipboard) return;
-    const matrix = clipboard.split(/\r?\n/).map((line) => line.split("\t"));
-    const start = selection.head;
-    const targetMaxRow = start.row + matrix.length - 1;
-    if (targetMaxRow >= rows.length - 1) {
-      setRows((current) => growRows(current, companyId, targetMaxRow - current.length + MOTOR_GRID_EMPTY_ROWS_EXPAND + 1, rowDefaults));
-    }
-
-    const mutations: GridMutation[] = [];
-    setRows((current) => {
-      const next = [...current];
-      for (let r = 0; r < matrix.length; r += 1) {
-        const rowIndex = start.row + r;
-        if (rowIndex >= next.length) break;
-        for (let c = 0; c < matrix[r].length; c += 1) {
-          const colIndex = start.column + c;
-          if (!isEditableColumn(colIndex, layoutColumns)) continue;
-          const oldValue = valueAtCell(next[rowIndex], colIndex, layoutColumns);
-          const newValue = matrix[r][c];
-          if (oldValue === newValue) continue;
-          next[rowIndex] = applyCellValue(next[rowIndex], colIndex, newValue, layoutColumns);
-          markDirty(next[rowIndex].rowId);
-          mutations.push({
-            address: { row: rowIndex, column: colIndex },
+            address: { row: write.row, column: write.column },
             oldValue,
-            newValue,
+            newValue: write.value,
           });
         }
-      }
-      return next;
-    });
-    commandBusRef.current.commit("Paste", mutations);
-  }, [companyId, layoutColumns, markDirty, rowDefaults, rows.length, selection.head]);
-
-  const fillWithActive = useCallback(() => {
-    const range = primaryRange(selection);
-    const seed = valueAtCell(rows[selection.head.row], selection.head.column, layoutColumns);
-    const mutations: GridMutation[] = [];
-    setRows((current) => {
-      const next = [...current];
-      for (let row = range.minRow; row <= range.maxRow; row += 1) {
-        for (let col = range.minColumn; col <= range.maxColumn; col += 1) {
-          if (!isEditableColumn(col, layoutColumns)) continue;
-          if (row === selection.head.row && col === selection.head.column) continue;
-          const oldValue = valueAtCell(next[row], col, layoutColumns);
-          if (oldValue === seed) continue;
-          next[row] = applyCellValue(next[row], col, seed, layoutColumns);
-          markDirty(next[row].rowId);
-          mutations.push({ address: { row, column: col }, oldValue, newValue: seed });
+        if (mutations.length > 0) {
+          scheduleDirtyStatus();
         }
-      }
-      return next;
-    });
-    commandBusRef.current.commit("Ctrl+Enter", mutations);
-  }, [layoutColumns, markDirty, rows, selection]);
+        return next;
+      });
+      commandBusRef.current.commit(label, mutations);
+    },
+    [canEdit, layoutColumns, scheduleDirtyStatus],
+  );
 
-  const fillDown = useCallback(() => {
-    const range = primaryRange(selection);
-    if (range.maxRow <= range.minRow) return;
-    const mutations: GridMutation[] = [];
-    setRows((current) => {
-      const next = [...current];
-      for (let col = range.minColumn; col <= range.maxColumn; col += 1) {
-        if (!isEditableColumn(col, layoutColumns)) continue;
-        const source = valueAtCell(next[range.minRow], col, layoutColumns);
-        for (let row = range.minRow + 1; row <= range.maxRow; row += 1) {
-          const oldValue = valueAtCell(next[row], col, layoutColumns);
-          if (oldValue === source) continue;
-          next[row] = applyCellValue(next[row], col, source, layoutColumns);
-          markDirty(next[row].rowId);
-          mutations.push({ address: { row, column: col }, oldValue, newValue: source });
-        }
-      }
-      return next;
-    });
-    commandBusRef.current.commit("Fill Down", mutations);
-  }, [layoutColumns, markDirty, selection]);
+  const ensureRowCapacity = useCallback(
+    (maxRowInclusive: number) => {
+      if (maxRowInclusive < rows.length - 1) return;
+      setRows((current) =>
+        growRows(
+          current,
+          companyId,
+          maxRowInclusive - current.length + MOTOR_GRID_EMPTY_ROWS_EXPAND + 1,
+          rowDefaults,
+        ),
+      );
+    },
+    [companyId, rowDefaults, rows.length],
+  );
 
-  const fillRight = useCallback(() => {
-    const range = primaryRange(selection);
-    if (range.maxColumn <= range.minColumn) return;
-    const mutations: GridMutation[] = [];
-    setRows((current) => {
-      const next = [...current];
-      for (let row = range.minRow; row <= range.maxRow; row += 1) {
-        const source = valueAtCell(next[row], range.minColumn, layoutColumns);
-        for (let col = range.minColumn + 1; col <= range.maxColumn; col += 1) {
-          if (!isEditableColumn(col, layoutColumns)) continue;
-          const oldValue = valueAtCell(next[row], col, layoutColumns);
-          if (oldValue === source) continue;
-          next[row] = applyCellValue(next[row], col, source, layoutColumns);
-          markDirty(next[row].rowId);
-          mutations.push({ address: { row, column: col }, oldValue, newValue: source });
-        }
-      }
-      return next;
-    });
-    commandBusRef.current.commit("Fill Right", mutations);
-  }, [layoutColumns, markDirty, selection]);
+  const scrollByPage = useCallback((direction: 1 | -1) => {
+    if (!bodyRef.current) return;
+    const delta = Math.max(40, bodyRef.current.clientHeight * 0.85);
+    bodyRef.current.scrollTop += direction * delta;
+  }, []);
 
-  const moveSelectionBy = useCallback((dRow: number, dCol: number, extend: boolean) => {
-    setSelection((current) => {
-      const head = current.head;
-      const next: GridCellAddress = {
-        row: Math.max(0, Math.min(rows.length - 1, head.row + dRow)),
-        column: Math.max(0, Math.min(layout.columns.length - 1, head.column + dCol)),
-      };
-      if (extend) {
-        return { ...current, head: next };
-      }
-      return {
-        anchor: next,
-        head: next,
-        cmdRanges: [],
-      };
-    });
-  }, [layout.columns.length, rows.length]);
+  const valueAt = useCallback(
+    (row: number, column: number) => valueAtCell(rows[row], column, layoutColumns),
+    [layoutColumns, rows],
+  );
 
-  const handleKeyDown = useCallback(async (event: React.KeyboardEvent<HTMLDivElement>) => {
-    const key = event.key;
-    const lower = key.toLowerCase();
-    const cmd = event.metaKey || event.ctrlKey;
-    const shift = event.shiftKey;
-
-    if (isUndoShortcut(event)) {
-      event.preventDefault();
-      performUndo();
-      return;
-    }
-    if (isRedoShortcut(event)) {
-      event.preventDefault();
-      performRedo();
-      return;
-    }
-
-    if (editor) return;
-
-    if (cmd && lower === "c") {
-      event.preventDefault();
-      await copyPrimaryRange();
-      return;
-    }
-    if (cmd && lower === "x") {
-      event.preventDefault();
-      await copyPrimaryRange();
-      clearPrimaryRange();
-      return;
-    }
-    if (cmd && lower === "v") {
-      event.preventDefault();
-      await pasteAtSelection();
-      return;
-    }
-    if (event.ctrlKey && key === "Enter") {
-      event.preventDefault();
-      fillWithActive();
-      return;
-    }
-    if (event.ctrlKey && lower === "d") {
-      event.preventDefault();
-      fillDown();
-      return;
-    }
-    if (event.ctrlKey && lower === "r") {
-      event.preventDefault();
-      fillRight();
-      return;
-    }
-    if (cmd && lower === "a") {
-      event.preventDefault();
-      const now = Date.now();
-      const secondTap = now - cmdADoubleTapRef.current <= 600;
-      cmdADoubleTapRef.current = now;
-      if (secondTap) {
-        setSelection({
-          anchor: { row: 0, column: 0 },
-          head: { row: rows.length - 1, column: layout.columns.length - 1 },
-          cmdRanges: [],
-        });
-      } else {
-        const range = boundingDataRange({
-          rowCount: rows.length,
-          navigableColumns,
-          isEmpty: (row, column) => !valueAtCell(rows[row], column, layoutColumns).trim(),
-        });
-        if (range) {
-          setSelection({
-            anchor: { row: range.minRow, column: range.minColumn },
-            head: { row: range.maxRow, column: range.maxColumn },
-            cmdRanges: [],
-          });
-        }
-      }
-      return;
-    }
-    if (event.ctrlKey && key === " ") {
-      event.preventDefault();
-      setSelection(selectWholeColumn(selection.head.column, rows.length - 1));
-      return;
-    }
-    if (event.shiftKey && key === " ") {
-      event.preventDefault();
-      setSelection(selectWholeRow(selection.head.row, gridBounds.editableStart, gridBounds.editableEnd));
-      return;
-    }
-    if (key === "F2") {
-      event.preventDefault();
-      beginEdit(selection.head, undefined, true);
-      return;
-    }
-    if (key === "Delete" || key === "Backspace") {
-      event.preventDefault();
-      clearPrimaryRange();
-      return;
-    }
-    if (key === "PageDown" || key === "PageUp") {
-      event.preventDefault();
-      if (!bodyRef.current) return;
-      const delta = Math.max(40, bodyRef.current.clientHeight * 0.85);
-      bodyRef.current.scrollTop += key === "PageDown" ? delta : -delta;
-      return;
-    }
-    if (key === "Home") {
-      event.preventDefault();
-      if (cmd) {
-        setSelection({ anchor: { row: 0, column: gridBounds.editableStart }, head: { row: 0, column: gridBounds.editableStart }, cmdRanges: [] });
-      } else {
-        setSelection((current) => ({ ...current, anchor: { row: current.head.row, column: 0 }, head: { row: current.head.row, column: 0 }, cmdRanges: [] }));
-      }
-      return;
-    }
-    if (key === "End") {
-      event.preventDefault();
-      if (cmd) {
-        const last = findLastUsedCell({
-          rowCount: rows.length,
-          navigableColumns,
-          isEmpty: (row, column) => !valueAtCell(rows[row], column, layoutColumns).trim(),
-        });
-        const target = last ?? { row: rows.length - 1, column: layout.columns.length - 1 };
-        setSelection({ anchor: target, head: target, cmdRanges: [] });
-      } else {
-        setSelection((current) => ({
-          anchor: { row: current.head.row, column: layout.columns.length - 1 },
-          head: { row: current.head.row, column: layout.columns.length - 1 },
-          cmdRanges: [],
-        }));
-      }
-      return;
-    }
-    if (key === "Tab") {
-      event.preventDefault();
-      moveSelectionBy(0, shift ? -1 : 1, false);
-      return;
-    }
-    if (key === "Enter") {
-      event.preventDefault();
-      moveSelectionBy(shift ? -1 : 1, 0, false);
-      return;
-    }
-    if (key === "ArrowUp" || key === "ArrowDown" || key === "ArrowLeft" || key === "ArrowRight") {
-      event.preventDefault();
-      if (cmd) {
-        const head = selection.head;
-        if (key === "ArrowLeft" || key === "ArrowRight") {
-          const target = jumpColumnInRow({
-            row: head.row,
-            fromColumn: head.column,
-            direction: key === "ArrowRight" ? 1 : -1,
-            navigableColumns,
-            isEmpty: (row, column) => !valueAtCell(rows[row], column, layoutColumns).trim(),
-          });
-          setSelection({ anchor: { row: head.row, column: target }, head: { row: head.row, column: target }, cmdRanges: [] });
-        } else {
-          const target = jumpRowInColumn({
-            column: head.column,
-            fromRow: head.row,
-            direction: key === "ArrowDown" ? 1 : -1,
-            rowCount: rows.length,
-            isEmpty: (row, column) => !valueAtCell(rows[row], column, layoutColumns).trim(),
-          });
-          setSelection({ anchor: { row: target, column: head.column }, head: { row: target, column: head.column }, cmdRanges: [] });
-        }
-        return;
-      }
-      if (key === "ArrowUp") moveSelectionBy(-1, 0, shift);
-      if (key === "ArrowDown") moveSelectionBy(1, 0, shift);
-      if (key === "ArrowLeft") moveSelectionBy(0, -1, shift);
-      if (key === "ArrowRight") moveSelectionBy(0, 1, shift);
-      return;
-    }
-    if (!cmd && !event.altKey && !event.ctrlKey && key.length === 1 && canEdit) {
-      event.preventDefault();
-      beginEdit(selection.head, key, false);
-    }
-  }, [
-    beginEdit,
-    canEdit,
-    clearPrimaryRange,
-    copyPrimaryRange,
-    editor,
+  const {
+    copySelection,
+    cutSelection,
+    pasteSelection,
+    clearSelection,
     fillDown,
-    fillRight,
-    fillWithActive,
-    layout.columns.length,
-    moveSelectionBy,
-    pasteAtSelection,
-    performRedo,
-    performUndo,
-    rows,
+    handleKeyDown,
+  } = useExcelGridInteraction({
+    canEdit,
+    isEditing: Boolean(editor),
     selection,
-  ]);
+    selectionRef,
+    setSelection,
+    rowCount: rows.length,
+    columnCount: layout.columns.length,
+    editableColumnStart: gridBounds.editableStart,
+    editableColumnEnd: gridBounds.editableEnd,
+    navigableColumns,
+    valueAt,
+    isEditableColumn: (column) => isEditableColumn(column, layoutColumns),
+    applyCellWrites,
+    ensureRowCapacity,
+    beginEdit,
+    performUndo,
+    performRedo,
+    scrollByPage,
+    cmdADoubleTapRef,
+  });
 
   useEffect(() => {
     const viewport = bodyRef.current;
@@ -1393,6 +1152,7 @@ export function MotorsExcelGrid({
         ref={gridRef}
         tabIndex={0}
         data-grid-root
+        data-context-menu-scope="local"
         className="relative min-h-0 flex-1 overflow-hidden outline-none"
         onKeyDown={handleKeyDown}
       >
@@ -1671,6 +1431,7 @@ export function MotorsExcelGrid({
                     setFillPreview(primaryRange(selection));
                   }}
                   onDoubleClick={() => {
+                    if (!canEdit) return;
                     const source = primaryRange(selection);
                     const lastDataRow = rows.reduce((acc, row, index) => {
                       return hasSaveableContent(row) ? index : acc;
@@ -1689,23 +1450,14 @@ export function MotorsExcelGrid({
                       isEditableColumn: (column) => isEditableColumn(column, layoutColumns),
                       isDateColumn: (column) => isDateColumn(column, layoutColumns),
                     });
-                    const mutations: GridMutation[] = [];
-                    setRows((current) => {
-                      const next = [...current];
-                      for (const operation of ops) {
-                        const oldValue = valueAtCell(next[operation.cell.row], operation.cell.column, layoutColumns);
-                        if (oldValue === operation.value) continue;
-                        next[operation.cell.row] = applyCellValue(next[operation.cell.row], operation.cell.column, operation.value, layoutColumns);
-                        markDirty(next[operation.cell.row].rowId);
-                        mutations.push({
-                          address: operation.cell,
-                          oldValue,
-                          newValue: operation.value,
-                        });
-                      }
-                      return next;
-                    });
-                    commandBusRef.current.commit("Fill Series", mutations);
+                    applyCellWrites(
+                      "Fill Series",
+                      ops.map((operation) => ({
+                        row: operation.cell.row,
+                        column: operation.cell.column,
+                        value: operation.value,
+                      })),
+                    );
                   }}
                 />
               ) : null}
@@ -1736,9 +1488,9 @@ export function MotorsExcelGrid({
       {contextMenu ? (
         <GridContextMenu x={contextMenu.x} y={contextMenu.y} onClose={closeContextMenu}>
           <GridContextMenuItem
-            shortcut="⌘C"
+            shortcut={modShortcutLabel("C")}
             onClick={() => {
-              void copyPrimaryRange();
+              void copySelection();
               closeContextMenu();
             }}
           >
@@ -1747,6 +1499,42 @@ export function MotorsExcelGrid({
 
           {canEdit ? (
             <>
+              <GridContextMenuItem
+                shortcut={modShortcutLabel("X")}
+                onClick={() => {
+                  void cutSelection();
+                  closeContextMenu();
+                }}
+              >
+                Вырезать
+              </GridContextMenuItem>
+              <GridContextMenuItem
+                shortcut={modShortcutLabel("V")}
+                onClick={() => {
+                  void pasteSelection();
+                  closeContextMenu();
+                }}
+              >
+                Вставить
+              </GridContextMenuItem>
+              <GridContextMenuItem
+                shortcut={deleteShortcutLabel()}
+                onClick={() => {
+                  clearSelection();
+                  closeContextMenu();
+                }}
+              >
+                Очистить
+              </GridContextMenuItem>
+              <GridContextMenuItem
+                shortcut={modShortcutLabel("D")}
+                onClick={() => {
+                  fillDown();
+                  closeContextMenu();
+                }}
+              >
+                Заполнить вниз
+              </GridContextMenuItem>
               <GridContextMenuItem
                 onClick={() => {
                   if (isEditableColumn(contextMenu.cell.column, layoutColumns)) {
@@ -1757,15 +1545,6 @@ export function MotorsExcelGrid({
                 disabled={!isEditableColumn(contextMenu.cell.column, layoutColumns)}
               >
                 Редактировать
-              </GridContextMenuItem>
-              <GridContextMenuItem
-                shortcut="⌘V"
-                onClick={() => {
-                  void pasteAtSelection();
-                  closeContextMenu();
-                }}
-              >
-                Вставить
               </GridContextMenuItem>
             </>
           ) : null}

@@ -3,6 +3,7 @@ import type { InventoryItem } from "@/domain/inventory";
 import type { MotorEntity } from "@/domain/motor";
 import type { CompanyEmployee } from "@/domain/rbac";
 import type { WorkOrder } from "@/domain/work-order";
+import type { SearchOption } from "@/lib/search/filter-options";
 import { EMPLOYEE_ROLE_LABELS } from "@/lib/work-order/work-order-display";
 import { readComposerFieldValues } from "@/lib/work-order/composer-field-memory";
 
@@ -29,6 +30,16 @@ function withRememberedValues(
 ): DatalistOption[] {
   const remembered = readComposerFieldValues(companyId, field).map((value) => ({ value }));
   return uniqueOptions([...remembered, ...contextual]);
+}
+
+/** Map datalist suggestions to SearchCombobox options (label → description). */
+export function toSearchOptions(options: DatalistOption[]): SearchOption[] {
+  return options.map((option) => ({
+    value: option.value,
+    label: option.value,
+    description: option.label && option.label !== option.value ? option.label : undefined,
+    keywords: option.label,
+  }));
 }
 
 export function buildLaborTitleOptions(

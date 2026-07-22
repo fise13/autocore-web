@@ -33,6 +33,31 @@ test("filterProductHelpSections matches buyer question", () => {
   );
 });
 
+test("filterProductHelpSections matches keywords and new domains", () => {
+  const byKeyword = filterProductHelpSections(productHelpSections, "сканер");
+  assert.equal(
+    byKeyword.some((section) => section.id === "mobile"),
+    true,
+  );
+
+  const byFinance = filterProductHelpSections(productHelpSections, "проводк");
+  assert.equal(
+    byFinance.some((section) => section.id === "finance"),
+    true,
+  );
+
+  assert.equal(
+    productHelpSections.some((section) => section.id === "documents"),
+    true,
+  );
+  assert.ok(productHelpSections.every((section) => section.items.length > 0));
+  assert.ok(
+    productHelpSections.every((section) =>
+      section.items.every((item) => item.id && item.q && item.a),
+    ),
+  );
+});
+
 test("getStatusPageHref defaults to in-app page", () => {
   assert.equal(getStatusPageHref(), "/status");
 });

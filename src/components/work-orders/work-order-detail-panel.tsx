@@ -37,6 +37,7 @@ import {
   transitionLabel,
 } from "@/components/work-orders/work-order-copy";
 import { laborLineLabel, money } from "@/components/work-orders/work-order-utils";
+import type { DocumentSlug } from "@/lib/documents/document-types";
 
 type WorkOrderDetailPanelProps = {
   order: WorkOrder;
@@ -52,6 +53,10 @@ type WorkOrderDetailPanelProps = {
   onTransition: (status: WorkOrderStatus) => void;
   onEdit?: () => void;
   preferredTab?: DetailTab;
+  /** Marketing demo: local document preview / print without API. */
+  documentsDemoMode?: boolean;
+  onDemoDocumentPreview?: (slug: DocumentSlug) => void;
+  onDemoDocumentDownload?: (slug: DocumentSlug) => void | Promise<void>;
 };
 
 type DetailTab = "lines" | "finance" | "documents";
@@ -70,6 +75,9 @@ export function WorkOrderDetailPanel({
   onTransition,
   onEdit,
   preferredTab,
+  documentsDemoMode = false,
+  onDemoDocumentPreview,
+  onDemoDocumentDownload,
 }: WorkOrderDetailPanelProps) {
   const [showSystemLog, setShowSystemLog] = useState(false);
   const [activeTab, setActiveTab] = useState<DetailTab>(preferredTab ?? "lines");
@@ -239,6 +247,9 @@ export function WorkOrderDetailPanel({
                 order={order}
                 documents={documents}
                 canEdit={canEdit}
+                demoMode={documentsDemoMode}
+                onDemoPreview={onDemoDocumentPreview}
+                onDemoDownload={onDemoDocumentDownload}
               />
             </AnimatedTabsPanel>
           </TabsContent>

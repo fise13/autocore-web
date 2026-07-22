@@ -20,6 +20,8 @@ import { nextStatuses } from "@/components/work-orders/work-order-utils";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { mapAdminWorkOrder } from "@/infrastructure/firestore/admin-mappers";
 import { fetchWorkOrder } from "@/infrastructure/firestore/admin/work-order-effects-admin";
+import { emit as emitKnowledgeEventAdmin, processEvent as processKnowledgeEventAdmin } from "@/infrastructure/firestore/admin/knowledge-admin";
+import { fromWorkOrderCompleted } from "@/lib/knowledge/collector";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { resolveMobileScan } from "@/lib/mobile/scan-resolve.server";
 import { maybeEmitWorkOrderAvailableNotification } from "@/lib/notifications/emit-work-order-available.server";
@@ -287,7 +289,48 @@ export async function transitionMobileWorkOrder(params: {
     actorUserId: params.actorUserId,
   }).catch(() => undefined);
 
+  if (params.nextStatus === "completed") {
+    void emitWorkOrderCompletedKnowledgeFact(params.companyId, updated, params.actorUserId).catch(
+      () => undefined,
+    );
+  }
+
   return { order: toDetail(updated, params.actorUserId), documentJobId };
+}
+
+/** Folds a just-completed work order into the Business Knowledge Engine (parts/labor/mechanic co-occurrence). */
+async function emitWorkOrderCompletedKnowledgeFact(
+  companyId: string,
+  order: WorkOrder,
+  actorUserId: string,
+): Promise<void> {
+  const partSkus: string[] = [];
+  const partNames: Record<string, string> = {};
+  for (const line of order.partLines) {
+    const key = line.sku?.trim() || line.id;
+    partSkus.push(key);
+    partNames[key] = line.name;
+  }
+  const mechanicIds = [...new Set(order.laborLines.flatMap((line) => line.assigneeIds ?? []))];
+  const engineCode = order.motorLines[0]?.engineCode;
+  const brandName = order.motorLines[0]?.brandName;
+
+  const draft = fromWorkOrderCompleted({
+    companyId,
+    workOrderId: order.id,
+    actorUserId,
+    clientId: order.clientId,
+    vehicleId: order.vehicleId,
+    mechanicIds,
+    engineCode,
+    brandName,
+    partSkus,
+    partNames,
+    laborTitles: order.laborLines.map((line) => line.title),
+  });
+
+  const event = await emitKnowledgeEventAdmin(companyId, draft);
+  await processKnowledgeEventAdmin(companyId, event.id);
 }
 
 function nextPartLineId(): string {

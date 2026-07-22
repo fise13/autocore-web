@@ -188,14 +188,26 @@ function BusinessSidebarInner({
     >
       <SidebarProvider
         open={!effectiveCollapsed}
-        className="flex h-full min-h-0 w-full flex-col overflow-hidden"
+        className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden"
       >
         <TooltipProvider delay={0}>
-          <Sidebar collapsible="none" variant="inset" className="border-none bg-transparent shadow-none">
-            <SidebarContent className={cn("min-h-0 gap-0 pt-2", effectiveCollapsed && "px-1 pt-1")}>
+          {/* w-full! — override default w-(--sidebar-width) so the rail matches ResizableSidebar (56px collapsed) */}
+          <Sidebar
+            collapsible="none"
+            variant="inset"
+            className="w-full! max-w-full min-w-0 border-none bg-transparent shadow-none"
+          >
+            <SidebarContent className={cn("min-h-0 gap-0 pt-2", effectiveCollapsed && "px-1.5 pt-2")}>
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                 {!isEditing ? (
-                  <div className={cn("shrink-0", effectiveCollapsed ? "px-0" : "px-2 pb-2")}>
+                  <div
+                    className={cn(
+                      "shrink-0",
+                      effectiveCollapsed
+                        ? "flex min-h-11 items-center justify-center border-b border-sidebar-border/50 px-0 py-2"
+                        : "px-2 pb-2",
+                    )}
+                  >
                     <SidebarOrganizationSwitcher collapsed={effectiveCollapsed} />
                   </div>
                 ) : null}

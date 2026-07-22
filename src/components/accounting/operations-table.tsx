@@ -32,6 +32,8 @@ type OperationsTableProps = {
   onMotorSaleSelect?: (operation: FinancialOperation) => void;
   showWorkOrderColumn?: boolean;
   workOrders?: WorkOrder[];
+  /** Show Доход/Расход flow badges for WO-linked categories. */
+  emphasizeWorkOrderFlow?: boolean;
 };
 
 const TYPE_BADGE: Record<string, string> = {
@@ -48,6 +50,31 @@ function isMotorSaleOperation(operation: FinancialOperation): boolean {
   );
 }
 
+function workOrderFlowBadge(operation: FinancialOperation): { label: string; className: string } | null {
+  const category = operation.category ?? "";
+  if (
+    category === "work_order_income" ||
+    category === "work_order" ||
+    (Boolean(operation.relatedWorkOrderId) && (operation.type === "sale" || operation.type === "income"))
+  ) {
+    return {
+      label: "Доход",
+      className: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    };
+  }
+  if (
+    category === "work_order_parts_cost" ||
+    category === "payroll" ||
+    (Boolean(operation.relatedWorkOrderId) && operation.type === "expense")
+  ) {
+    return {
+      label: "Расход",
+      className: "bg-red-500/10 text-red-700 dark:text-red-300",
+    };
+  }
+  return null;
+}
+
 export function OperationsTable({
   rows,
   canEdit,
@@ -55,6 +82,7 @@ export function OperationsTable({
   onMotorSaleSelect,
   showWorkOrderColumn = false,
   workOrders = [],
+  emphasizeWorkOrderFlow = false,
 }: OperationsTableProps) {
   const { formatMoney } = useAppDisplayCurrency();
   const workOrderIndex = useMemo(() => buildWorkOrderDisplayIndex(workOrders), [workOrders]);
@@ -128,6 +156,22 @@ export function OperationsTable({
                   <span className={cn(motorSale && "font-medium text-primary")}>
                     {operationCategoryLabel(operation.category)}
                   </span>
+                  {emphasizeWorkOrderFlow
+                    ? (() => {
+                        const flow = workOrderFlowBadge(operation);
+                        if (!flow) return null;
+                        return (
+                          <span
+                            className={cn(
+                              "ml-1.5 inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-medium",
+                              flow.className,
+                            )}
+                          >
+                            {flow.label}
+                          </span>
+                        );
+                      })()
+                    : null}
                 </TableCell>
                 <TableCell className="text-right font-medium tabular-nums">
                   {formatMoney(operation.amount)}

@@ -1,10 +1,23 @@
-import type { MetadataRoute } from "next";
+import type { AppLocale } from "@autocore/i18n/config";
+import { DEFAULT_LOCALE } from "@autocore/i18n/config";
 
-import { marketingCleanPaths, resolveMarketingPath } from "@/lib/seo/marketing-paths";
-import type { MarketingPathKey } from "@/lib/seo/marketing-paths";
-import { getMarketingUrl } from "@/lib/site-urls";
+import {
+  type MarketingPathKey,
+  resolveMarketingPath,
+} from "@/lib/seo/marketing-paths";
 
-/** Marketing URLs — clean paths in production, /marketing/* on localhost dev. */
+/**
+ * Locale-aware marketing route helpers.
+ * Prefer `Link` from `@/i18n/navigation` in client components.
+ */
+export function marketingRoute(
+  key: MarketingPathKey,
+  locale: AppLocale = DEFAULT_LOCALE,
+): string {
+  return resolveMarketingPath(key, locale);
+}
+
+/** Back-compat object — resolves to default (English) locale paths. */
 export const marketingRoutes = {
   get home() {
     return resolveMarketingPath("home");
@@ -37,27 +50,3 @@ export const marketingRoutes = {
     return resolveMarketingPath("terms");
   },
 } as const satisfies Record<MarketingPathKey, string>;
-
-/** Canonical clean paths for sitemap and production SEO only. */
-export const marketingCanonicalRoutes = marketingCleanPaths;
-
-export const marketingSitemapEntries: Array<{
-  key: MarketingPathKey;
-  changeFrequency: "weekly" | "monthly" | "yearly";
-  priority: number;
-}> = [
-  { key: "home", changeFrequency: "weekly", priority: 1 },
-  { key: "product", changeFrequency: "weekly", priority: 0.9 },
-  { key: "modules", changeFrequency: "weekly", priority: 0.9 },
-  { key: "pricing", changeFrequency: "weekly", priority: 0.85 },
-  { key: "security", changeFrequency: "monthly", priority: 0.8 },
-  { key: "contact", changeFrequency: "monthly", priority: 0.7 },
-  { key: "download", changeFrequency: "monthly", priority: 0.75 },
-  { key: "downloadMobile", changeFrequency: "monthly", priority: 0.7 },
-  { key: "privacy", changeFrequency: "yearly", priority: 0.4 },
-  { key: "terms", changeFrequency: "yearly", priority: 0.4 },
-];
-
-export function marketingSitemapPaths(): string[] {
-  return marketingSitemapEntries.map((entry) => marketingCanonicalRoutes[entry.key]);
-}

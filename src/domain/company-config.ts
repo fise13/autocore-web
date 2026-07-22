@@ -1,5 +1,7 @@
 import { WarrantyTemplateId } from "@/domain/document-config";
 import type { InventoryGroupId, InventorySubcategoryId } from "@/domain/inventory-taxonomy";
+import { defaultKnowledgeFlags } from "@/domain/knowledge/flags";
+import type { KnowledgeFlags } from "@/domain/knowledge/types";
 
 export type CompanyModuleKey = "motors" | "workOrders" | "accounting" | "warehouse" | "specifics";
 
@@ -21,6 +23,8 @@ export type CompanyAppConfig = {
   specificCategories: CompanySpecificCategoryConfig[];
   defaultWarrantyTemplate: WarrantyTemplateId | "no_warranty";
   taxonomyVersion?: number;
+  /** Business Knowledge Engine feature flags — undefined key = enabled (gradual rollout). */
+  knowledge?: KnowledgeFlags;
   updatedAt?: Date;
 };
 
@@ -57,5 +61,6 @@ export function defaultCompanyAppConfig(): CompanyAppConfig {
     ),
     defaultWarrantyTemplate: "contract_engine",
     taxonomyVersion: 2,
+    knowledge: defaultKnowledgeFlags(),
   };
 }

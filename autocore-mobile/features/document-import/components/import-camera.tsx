@@ -1,8 +1,9 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
 import { Text } from '@/components/ui';
+import { usePreferredMacroLens } from '@/hooks/use-preferred-macro-lens';
 import { useTheme } from '@/hooks';
 
 export type ImportCameraHandle = {
@@ -22,6 +23,10 @@ export const ImportCamera = forwardRef<ImportCameraHandle, ImportCameraProps>(fu
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const readyRef = useRef(false);
+  const { selectedLens, onAvailableLensesChanged, refreshLenses } = usePreferredMacroLens(
+    cameraRef,
+    active,
+  );
 
   useEffect(() => {
     if (!permission?.granted && permission?.canAskAgain) {
@@ -29,12 +34,18 @@ export const ImportCamera = forwardRef<ImportCameraHandle, ImportCameraProps>(fu
     }
   }, [permission, requestPermission]);
 
+  useEffect(() => {
+    if (!active) {
+      readyRef.current = false;
+    }
+  }, [active]);
+
   useImperativeHandle(ref, () => ({
     async takePicture() {
       if (!cameraRef.current || !readyRef.current) return null;
       try {
         const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.85,
+          quality: 0.9,
           skipProcessing: false,
         });
         return photo?.uri ?? null;
@@ -89,10 +100,14 @@ export const ImportCamera = forwardRef<ImportCameraHandle, ImportCameraProps>(fu
       style={styles.fill}
       facing="back"
       enableTorch={torch && active}
+      // Continuous AF ("off") + virtual multi-camera lens → system auto-macro.
       autofocus="off"
+      selectedLens={selectedLens}
+      onAvailableLensesChanged={onAvailableLensesChanged}
       active={active}
       onCameraReady={() => {
         readyRef.current = true;
+        refreshLenses();
       }}
     />
   );

@@ -6,6 +6,7 @@ import { Text } from '@/components/ui';
 import { useModalBottomSheet, useTheme } from '@/hooks';
 import { haptics } from '@/theme';
 
+import { scanSheetAnimationConfigs } from '../animation/scan-sheet-motion';
 import { isHttpUrl } from '../lib/classify-payload';
 
 type ScanNotFoundSheetProps = {
@@ -93,8 +94,8 @@ export const ScanNotFoundSheet = forwardRef<BottomSheetModal, ScanNotFoundSheetP
       backdropComponent: sheet.renderBackdrop,
       backgroundStyle: sheet.backgroundStyle,
       handleIndicatorStyle: sheet.handleIndicatorStyle,
+      animationConfigs: scanSheetAnimationConfigs,
     };
-
     let host = payload ?? '';
     if (payload && isUrl) {
       try {

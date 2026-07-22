@@ -1,35 +1,34 @@
 "use client";
 
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
-import { landingContent } from "@/components/marketing/experience/content/landing-content";
-import { MissionControlMock } from "@/components/marketing/experience/mocks/mission-control-mock";
-import { Button } from "@/components/ui/button";
-import { appDemoUrl } from "@/lib/site-urls";
-import { cn } from "@/lib/utils";
+import { useLandingContent } from "@/components/marketing/experience/content/use-landing-content";
+import { ProductAppSurface } from "@/components/marketing/experience/surfaces/product-app-surface";
+import { TrialButton } from "@/components/marketing/experience/ui/trial-button";
 
-const copy = landingContent.hero;
-
+/** Linear entrance curve */
 const EASE = [0.16, 1, 0.3, 1] as const;
 
-type HeroRevealProps = {
+function FadeUp({
+  children,
+  className,
+  delay,
+  duration = 0.7,
+  y = 14,
+}: {
   children: ReactNode;
   className?: string;
   delay: number;
-  duration: number;
+  duration?: number;
   y?: number;
-};
-
-function HeroReveal({ children, className, delay, duration, y = 18 }: HeroRevealProps) {
+}) {
   const reduced = useReducedMotion();
-
   return (
     <motion.div
       className={className}
-      initial={reduced ? false : { opacity: 0, y }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={reduced ? false : { opacity: 0, y, filter: "blur(8px)" }}
+      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
       transition={{ duration, delay, ease: EASE }}
     >
       {children}
@@ -37,50 +36,74 @@ function HeroReveal({ children, className, delay, duration, y = 18 }: HeroReveal
   );
 }
 
-export function HeroExperience() {
+function TitleReveal({ title }: { title: string }) {
+  const reduced = useReducedMotion();
+  const titleWords = title.split(/\s+/).filter(Boolean);
+
+  if (reduced) {
+    return <h1 className="exp-hero-linear-title">{title}</h1>;
+  }
+
   return (
-    <section className="exp-hero relative min-h-[100dvh]">
-      <div className="exp-hero-inner exp-section-inner relative z-10 grid min-h-[calc(100dvh-4rem)] items-center gap-10 pt-16 pb-12 lg:grid-cols-2 lg:gap-14 lg:pt-20 lg:pb-16">
-        <div className="exp-hero-copy max-w-lg">
-          <HeroReveal delay={0} duration={0.55} y={14}>
-            <p className="text-sm font-medium tracking-tight text-foreground">{copy.brand}</p>
-          </HeroReveal>
+    <h1 className="exp-hero-linear-title" aria-label={title}>
+      {titleWords.map((word, index) => (
+        <span key={`${word}-${index}`}>
+          <motion.span
+            className="exp-hero-linear-word"
+            initial={{ opacity: 0, y: 22, filter: "blur(12px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            transition={{
+              duration: 0.9,
+              delay: 0.08 + index * 0.055,
+              ease: EASE,
+            }}
+          >
+            {word}
+          </motion.span>
+          {index < titleWords.length - 1 ? " " : null}
+        </span>
+      ))}
+    </h1>
+  );
+}
 
-          <HeroReveal className="mt-3" delay={0.12} duration={0.72} y={22}>
-            <h1 className="exp-display exp-hero-title text-4xl tracking-tight sm:text-5xl lg:text-[3.25rem] lg:leading-[1.08]">
-              {copy.title}
-            </h1>
-          </HeroReveal>
+export function HeroExperience() {
+  const reduced = useReducedMotion();
+  const { hero: copy } = useLandingContent();
 
-          <HeroReveal className="mt-4" delay={0.38} duration={0.58} y={16}>
-            <p className="exp-hero-description max-w-md text-base leading-relaxed text-muted-foreground">
-              {copy.subtitle}
-            </p>
-          </HeroReveal>
-
-          <HeroReveal className="mt-8" delay={0.72} duration={0.48} y={14}>
-            <div className="exp-hero-actions flex flex-wrap gap-3">
-              <Button size="lg" className="exp-hero-action" render={<Link href={appDemoUrl()} />} nativeButton={false}>
-                {copy.ctaPrimary}
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="exp-hero-action"
-                render={<Link href={copy.ctaSecondaryHref} />}
-                nativeButton={false}
-              >
-                {copy.ctaSecondary}
-              </Button>
-            </div>
-          </HeroReveal>
-        </div>
-
-        <div className="exp-hero-visual w-full lg:justify-self-end">
-          <div className={cn("exp-mock-shelf exp-hero-shelf p-3 sm:p-4")}>
-            <MissionControlMock className="w-full" layout="hero" />
+  return (
+    <section className="exp-hero-linear" aria-label={copy.ariaLabel}>
+      <div className="exp-hero-linear-shell">
+        <div className="exp-hero-linear-copy">
+          <div className="exp-hero-linear-title-wrap">
+            <TitleReveal title={copy.title} />
           </div>
+
+          <FadeUp className="exp-hero-linear-sub-wrap" delay={0.28} duration={0.75} y={12}>
+            <p className="exp-hero-linear-sub">{copy.subtitle}</p>
+          </FadeUp>
+
+          <FadeUp className="exp-hero-linear-actions" delay={0.42} duration={0.65} y={10}>
+            <TrialButton className="exp-hero-linear-cta-primary">{copy.ctaPrimary}</TrialButton>
+          </FadeUp>
+
+          <FadeUp delay={0.54} duration={0.55} y={8}>
+            <p className="exp-hero-linear-trust">{copy.trust}</p>
+          </FadeUp>
         </div>
+
+        <motion.div
+          className="exp-hero-linear-stage"
+          initial={
+            reduced ? false : { opacity: 0, y: 48, scale: 0.988, filter: "blur(6px)" }
+          }
+          animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+          transition={{ duration: 1.2, delay: 0.62, ease: EASE }}
+        >
+          <div className="exp-hero-linear-stage-inner">
+            <ProductAppSurface compact />
+          </div>
+        </motion.div>
       </div>
     </section>
   );

@@ -94,13 +94,23 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
     });
   }, []);
 
+  const refreshRecentScans = useCallback(async () => {
+    const items = await loadRecentScans();
+    setRecentScans(items);
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       tabNavigationGuard.release();
       scanNavigationGuard.release();
       service.resume();
 
+      const recentTimer = setTimeout(() => {
+        void refreshRecentScans();
+      }, 280);
+
       return () => {
+        clearTimeout(recentTimer);
         // Portal backdrops sit above the whole app — leave them open and every tab dies.
         dismissAllSheets();
         recentSheetRef.current?.dismiss();
@@ -108,7 +118,7 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
         setMoveTarget(null);
         setTorchOn(false);
       };
-    }, [addToOrderFlow.pickerRef, dismissAllSheets, service]),
+    }, [addToOrderFlow.pickerRef, dismissAllSheets, refreshRecentScans, service]),
   );
 
   const activeResult = snapshot.activeResult;
@@ -159,15 +169,6 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
     },
     [setCameraLayout],
   );
-
-  const refreshRecentScans = useCallback(async () => {
-    const items = await loadRecentScans();
-    setRecentScans(items);
-  }, []);
-
-  useEffect(() => {
-    void refreshRecentScans();
-  }, [refreshRecentScans]);
 
   const runOcrOnUri = useCallback(
     async (uri: string, preferDocument: boolean) => {

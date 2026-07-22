@@ -3,13 +3,11 @@
 import { type ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
-import { marketingSiteContent } from "@/components/marketing/content/marketing-site-content";
+import { useMarketingPages } from "@/components/marketing/content/use-marketing-pages";
 import { Button } from "@/components/ui/button";
-import { storePendingBillingIntent } from "@/lib/marketing/pending-billing-intent";
-import { marketingTrialSignupUrl } from "@/lib/marketing/trial-signup-url";
 import { getPlatformContacts } from "@/lib/platform/platform-contacts";
+import { appDemoUrl } from "@/lib/site-urls";
 
-const copy = marketingSiteContent.contact;
 const supportEmail = getPlatformContacts().email;
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -72,12 +70,13 @@ function ScrollReveal({
   );
 }
 
-function startTrialSignup() {
-  storePendingBillingIntent({ type: "trial" });
-  window.location.href = marketingTrialSignupUrl();
+function openProductDemo() {
+  window.location.href = appDemoUrl();
 }
 
 export function ContactExperience() {
+  const copy = useMarketingPages().contact;
+
   return (
     <div className="contact-page">
       <section className="contact-panel contact-panel-hero" aria-label="Связаться">
@@ -135,8 +134,8 @@ export function ContactExperience() {
               <div className="contact-methods-row">
                 <dt>{copy.methods.emailLabel}</dt>
                 <dd>
-                  <a href={`mailto:${copy.methods.email}`} className="contact-methods-link">
-                    {copy.methods.email}
+                  <a href={`mailto:${supportEmail}`} className="contact-methods-link">
+                    {supportEmail}
                   </a>
                 </dd>
               </div>
@@ -172,7 +171,7 @@ export function ContactExperience() {
           </ScrollReveal>
 
           <ScrollReveal className="contact-close-cta" delay={0.14} y={10} margin="-50px">
-            <Button size="lg" className="h-10 min-w-[11rem] px-5 text-sm" onClick={startTrialSignup}>
+            <Button size="lg" className="h-10 min-w-[11rem] px-5 text-sm" onClick={openProductDemo}>
               {copy.closing.button}
             </Button>
           </ScrollReveal>

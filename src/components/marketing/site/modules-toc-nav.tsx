@@ -2,6 +2,7 @@
 
 import { useGSAP } from "@gsap/react";
 import { gsap } from "gsap";
+import { useTranslations } from "next-intl";
 import {
   useCallback,
   useEffect,
@@ -55,6 +56,7 @@ export function ModulesTocNav({
   const hoverIndicatorRef = useRef<HTMLSpanElement>(null);
   const linkRefs = useRef(new Map<string, HTMLAnchorElement>());
   const scrollAnimRef = useRef<Promise<void> | null>(null);
+  const t = useTranslations("marketing.a11y.legal");
   const reduced = usePrefersReducedMotion();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
@@ -172,8 +174,10 @@ export function ModulesTocNav({
   }
 
   return (
-    <nav className="marketing-modules-toc" aria-label="Модули">
-      <p className="mb-4 text-sm font-medium text-foreground marketing-modules-toc-heading">Содержание</p>
+    <nav className="marketing-modules-toc" aria-label={t("tableOfContentsAria")}>
+      <p className="mb-4 text-sm font-medium text-foreground marketing-modules-toc-heading">
+        {t("tableOfContentsLabel")}
+      </p>
       <div ref={trackRef} className="marketing-modules-toc-track">
         <span
           ref={activeIndicatorRef}

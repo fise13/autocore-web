@@ -4,9 +4,12 @@ import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 
 import { Text } from '@/components/ui';
 import { useModalBottomSheet, useTheme } from '@/hooks';
+
 import { formatScanPayloadPreview, symbologyLabel } from '@/lib/scan/symbology-label';
 import { haptics } from '@/theme';
 import type { ScanDetection } from '@/services/scan';
+
+import { scanSheetAnimationConfigs } from '../animation/scan-sheet-motion';
 
 type ScanCodePickerSheetProps = {
   detections: ScanDetection[];
@@ -30,6 +33,7 @@ export const ScanCodePickerSheet = forwardRef<BottomSheetModal, ScanCodePickerSh
         backdropComponent={sheet.renderBackdrop}
         backgroundStyle={sheet.backgroundStyle}
         handleIndicatorStyle={sheet.handleIndicatorStyle}
+        animationConfigs={scanSheetAnimationConfigs}
       >
         <BottomSheetScrollView contentContainerStyle={{ ...sheet.compactContentStyle, gap: 12 }}>
           <View style={{ gap: 4 }}>

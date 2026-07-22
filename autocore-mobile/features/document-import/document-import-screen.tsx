@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Image,
   Pressable,
@@ -14,17 +14,25 @@ import { ArrowLeftIcon, FlashlightIcon, ImagesIcon } from '@/assets/icons';
 import { Text, toast } from '@/components/ui';
 import { useFloatingTabBarInset, useTheme } from '@/hooks';
 import { haptics, rhythm } from '@/theme';
-import { uploadDocumentImport } from '@/services/api/document-import';
+import {
+  pollDocumentImportUntilSettled,
+  uploadDocumentImportWithRetry,
+} from '@/services/api/document-import';
 
+import { DocumentFrameOverlay } from './components/document-frame-overlay';
 import { ImportCamera, type ImportCameraHandle } from './components/import-camera';
-import { ImportSuccessView, ImportUploadingView } from './components/import-status-views';
+import {
+  ImportSuccessView,
+  ImportUploadingView,
+  type ImportParseStatus,
+} from './components/import-status-views';
 
 type Phase = 'capture' | 'review' | 'uploading' | 'success';
 
 export function DocumentImportScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ batchId?: string }>();
-  const batchId = typeof params.batchId === 'string' ? params.batchId : undefined;
+  const paramBatchId = typeof params.batchId === 'string' ? params.batchId.trim() : '';
   const insets = useSafeAreaInsets();
   const { footerBottom } = useFloatingTabBarInset();
   const isFocused = useIsFocused();
@@ -34,7 +42,29 @@ export function DocumentImportScreen() {
   const [phase, setPhase] = useState<Phase>('capture');
   const [torchOn, setTorchOn] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [queue, setQueue] = useState<string[]>([]);
   const [uploadedCount, setUploadedCount] = useState(0);
+  const [sessionBatchId, setSessionBatchId] = useState<string | null>(paramBatchId || null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadLabel, setUploadLabel] = useState('Отправляем документ…');
+  const [lastJobId, setLastJobId] = useState<string | null>(null);
+  const [parseStatus, setParseStatus] = useState<ImportParseStatus>('processing');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (paramBatchId) {
+      setSessionBatchId(paramBatchId);
+    }
+  }, [paramBatchId]);
+
+  const resetCaptureState = useCallback(() => {
+    setPhase('capture');
+    setPhotoUri(null);
+    setQueue([]);
+    setTorchOn(false);
+    setUploadProgress(null);
+    setBusy(false);
+  }, []);
 
   const goBack = useCallback(() => {
     if (router.canGoBack()) {
@@ -45,23 +75,26 @@ export function DocumentImportScreen() {
   }, [router]);
 
   const finishImport = useCallback(() => {
-    setPhase('capture');
-    setPhotoUri(null);
-    setTorchOn(false);
+    resetCaptureState();
+    setUploadedCount(0);
+    setLastJobId(null);
+    setParseStatus('processing');
+    if (!paramBatchId) {
+      setSessionBatchId(null);
+    }
     router.replace('/(tabs)/scan');
-  }, [router]);
+  }, [paramBatchId, resetCaptureState, router]);
 
   useFocusEffect(
     useCallback(() => {
       return () => {
-        setPhase('capture');
-        setPhotoUri(null);
-        setTorchOn(false);
+        resetCaptureState();
       };
-    }, []),
+    }, [resetCaptureState]),
   );
 
   const handleCapture = useCallback(async () => {
+    if (busy) return;
     haptics.light();
     const uri = await cameraRef.current?.takePicture();
     if (!uri) {
@@ -69,10 +102,12 @@ export function DocumentImportScreen() {
       return;
     }
     setPhotoUri(uri);
+    setQueue([uri]);
     setPhase('review');
-  }, []);
+  }, [busy]);
 
   const handlePickGallery = useCallback(async () => {
+    if (busy) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       toast({
@@ -84,39 +119,118 @@ export function DocumentImportScreen() {
     }
     const pick = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      quality: 0.85,
+      quality: 0.9,
+      allowsMultipleSelection: true,
+      selectionLimit: 12,
     });
-    if (pick.canceled || !pick.assets[0]?.uri) return;
-    setPhotoUri(pick.assets[0].uri);
+    if (pick.canceled || !pick.assets?.length) return;
+    const uris = pick.assets.map((asset) => asset.uri).filter(Boolean);
+    if (uris.length === 0) return;
+    setQueue(uris);
+    setPhotoUri(uris[0] ?? null);
     setPhase('review');
-  }, []);
+  }, [busy]);
 
   const handleRetake = useCallback(() => {
     haptics.selection();
     setPhotoUri(null);
+    setQueue([]);
     setPhase('capture');
   }, []);
 
-  const handleSubmit = useCallback(async () => {
-    if (!photoUri) return;
-    setPhase('uploading');
-    haptics.light();
-    try {
-      await uploadDocumentImport(photoUri, { batchId });
-      haptics.success();
-      setUploadedCount((n) => n + 1);
-      setPhase('success');
-    } catch (error) {
-      toast({
-        title: 'Не удалось отправить',
-        description: error instanceof Error ? error.message : undefined,
-        variant: 'destructive',
-      });
-      setPhase('review');
+  const refreshParseStatus = useCallback(async (jobId: string) => {
+    setParseStatus('processing');
+    const settled = await pollDocumentImportUntilSettled(jobId, {
+      attempts: 8,
+      intervalMs: 1200,
+    });
+    if (!settled) {
+      setParseStatus('unknown');
+      return;
     }
-  }, [batchId, photoUri]);
+    if (settled.status === 'failed') {
+      setParseStatus('failed');
+      return;
+    }
+    setParseStatus('ready');
+  }, []);
+
+  const uploadUris = useCallback(
+    async (uris: string[]) => {
+      if (uris.length === 0) return;
+      setBusy(true);
+      setPhase('uploading');
+      setUploadProgress(0);
+      setParseStatus('processing');
+
+      let batchId = sessionBatchId;
+      let lastId: string | null = null;
+      let okCount = 0;
+
+      try {
+        for (let i = 0; i < uris.length; i++) {
+          const uri = uris[i];
+          if (!uri) continue;
+          setUploadLabel(
+            uris.length > 1 ? `Отправляем ${i + 1} из ${uris.length}…` : 'Отправляем документ…',
+          );
+          setUploadProgress(0);
+
+          const result = await uploadDocumentImportWithRetry(uri, {
+            batchId: batchId ?? undefined,
+            onProgress: (ratio) => setUploadProgress(ratio),
+            retries: 2,
+          });
+
+          if (result.batchId) {
+            batchId = result.batchId;
+            setSessionBatchId(result.batchId);
+          }
+          lastId = result.id;
+          okCount += 1;
+          setUploadedCount((n) => n + 1);
+        }
+
+        haptics.success();
+        setLastJobId(lastId);
+        setPhase('success');
+        if (lastId) {
+          void refreshParseStatus(lastId);
+        }
+      } catch (error) {
+        toast({
+          title: okCount > 0 ? 'Часть фото не отправилась' : 'Не удалось отправить',
+          description: error instanceof Error ? error.message : undefined,
+          variant: 'destructive',
+        });
+        if (okCount > 0) {
+          setPhase('success');
+          if (lastId) void refreshParseStatus(lastId);
+        } else {
+          setPhase('review');
+        }
+      } finally {
+        setBusy(false);
+        setUploadProgress(null);
+      }
+    },
+    [refreshParseStatus, sessionBatchId],
+  );
+
+  const handleSubmit = useCallback(async () => {
+    const uris = queue.length > 0 ? queue : photoUri ? [photoUri] : [];
+    if (uris.length === 0) return;
+    haptics.light();
+    await uploadUris(uris);
+  }, [photoUri, queue, uploadUris]);
 
   const cameraActive = isFocused && phase === 'capture';
+  const hint =
+    uploadedCount > 0
+      ? `${uploadedCount} загружено · можно добавить ещё страницу`
+      : queue.length > 1
+        ? `${queue.length} фото из галереи · проверьте и отправьте`
+        : 'Расположите документ в рамке · можно несколько страниц подряд';
 
   return (
     <View style={styles.root}>
@@ -129,6 +243,7 @@ export function DocumentImportScreen() {
               <Image source={{ uri: photoUri }} style={styles.preview} resizeMode="contain" />
             </Animated.View>
           ) : null}
+          {phase === 'capture' ? <DocumentFrameOverlay /> : null}
           <View style={[styles.dim, { opacity: phase === 'review' ? 0.35 : 0 }]} pointerEvents="none" />
         </View>
       ) : (
@@ -145,7 +260,7 @@ export function DocumentImportScreen() {
           <ArrowLeftIcon size={20} color="#fff" strokeWidth={2} />
         </Pressable>
         <Text variant="body" style={styles.topTitle}>
-          {batchId ? 'Импорт' : 'Import'}
+          Импорт документов
         </Text>
         {phase === 'capture' ? (
           <Pressable
@@ -167,11 +282,7 @@ export function DocumentImportScreen() {
       {phase === 'capture' ? (
         <View style={[styles.bottomBar, { paddingBottom: footerBottom }]}>
           <Text variant="caption" style={styles.hint}>
-            {batchId
-              ? uploadedCount > 0
-                ? `${uploadedCount} загружено · на компьютере идёт разбор`
-                : 'Сфотографируйте двигатели — появятся на компьютере'
-              : 'Сфотографируйте документ целиком'}
+            {hint}
           </Text>
           <View style={styles.captureRow}>
             <Pressable
@@ -201,36 +312,54 @@ export function DocumentImportScreen() {
           exiting={FadeOut.duration(120)}
           style={[styles.bottomBar, { paddingBottom: footerBottom, gap: 10 }]}
         >
+          {queue.length > 1 ? (
+            <Text variant="caption" style={styles.hint}>
+              К отправке: {queue.length} фото
+            </Text>
+          ) : null}
           <Pressable
             accessibilityRole="button"
             onPress={handleRetake}
             style={[styles.secondaryButton, { borderColor: 'rgba(255,255,255,0.35)' }]}
           >
             <Text variant="body" style={{ color: '#fff', fontWeight: '600' }}>
-              Переснять
+              {queue.length > 1 ? 'Отменить' : 'Переснять'}
             </Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
+            disabled={busy}
             onPress={() => void handleSubmit()}
-            style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+            style={[styles.primaryButton, { backgroundColor: colors.primary, opacity: busy ? 0.7 : 1 }]}
           >
             <Text variant="body" style={{ color: colors.primaryForeground, fontWeight: '700' }}>
-              Отправить
+              {queue.length > 1 ? `Отправить (${queue.length})` : 'Отправить'}
             </Text>
           </Pressable>
         </Animated.View>
       ) : null}
 
-      {phase === 'uploading' ? <ImportUploadingView /> : null}
+      {phase === 'uploading' ? (
+        <ImportUploadingView
+          progressLabel={uploadLabel}
+          progress={uploadProgress}
+        />
+      ) : null}
+
       {phase === 'success' ? (
         <ImportSuccessView
+          uploadedCount={uploadedCount}
+          parseStatus={parseStatus}
           onDone={finishImport}
-          onContinue={
-            batchId
+          onContinue={() => {
+            setPhotoUri(null);
+            setQueue([]);
+            setPhase('capture');
+          }}
+          onRetryStatus={
+            lastJobId
               ? () => {
-                  setPhotoUri(null);
-                  setPhase('capture');
+                  void refreshParseStatus(lastJobId);
                 }
               : undefined
           }
@@ -259,6 +388,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
+    zIndex: 5,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -270,22 +400,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   iconBtnPlaceholder: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
   },
   bottomBar: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
+    zIndex: 5,
     alignItems: 'center',
     paddingHorizontal: 20,
     gap: rhythm.inline,
@@ -303,43 +434,43 @@ const styles = StyleSheet.create({
     maxWidth: 320,
   },
   sideBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.14)',
   },
   shutter: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.92)',
+    borderColor: 'rgba(255,255,255,0.94)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.28)',
+    backgroundColor: 'rgba(0,0,0,0.32)',
   },
   shutterInner: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: '#fff',
   },
   primaryButton: {
     width: '100%',
-    minHeight: 52,
-    borderRadius: 14,
+    minHeight: 54,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   secondaryButton: {
     width: '100%',
-    minHeight: 48,
-    borderRadius: 14,
+    minHeight: 50,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
 });

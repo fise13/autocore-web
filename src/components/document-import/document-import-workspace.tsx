@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { DocumentImportDataPanel } from "@/components/document-import/document-import-data-panel";
 import { DocumentImportViewer } from "@/components/document-import/document-import-viewer";
+import { HorizontalResizableSplit } from "@/components/document-import/horizontal-resizable-split";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useDocumentImportImageUrl } from "@/hooks/use-document-import-image-url";
 import { useDocumentImportJobRealtime } from "@/hooks/use-document-import-jobs-realtime";
@@ -70,18 +71,23 @@ export function DocumentImportWorkspace({ jobId }: DocumentImportWorkspaceProps)
           <p className="text-xs text-muted-foreground">Проверьте ссылку или права доступа</p>
         </div>
       ) : (
-        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(260px,0.7fr)]">
-          <DocumentImportViewer
-            imageUrl={imageUrl}
-            loading={(loading && !job) || imageLoading}
-            className="min-h-0"
-          />
-          <DocumentImportDataPanel
-            job={job}
-            extractedData={job?.extractedData ?? null}
-            className="min-h-0"
-          />
-        </div>
+        <HorizontalResizableSplit
+          className="min-h-0"
+          left={
+            <DocumentImportViewer
+              imageUrl={imageUrl}
+              loading={(loading && !job) || imageLoading}
+              className="h-full min-h-0"
+            />
+          }
+          right={
+            <DocumentImportDataPanel
+              job={job}
+              extractedData={job?.extractedData ?? null}
+              className="h-full min-h-0"
+            />
+          }
+        />
       )}
     </div>
   );

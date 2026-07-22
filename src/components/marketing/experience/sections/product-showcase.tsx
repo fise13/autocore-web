@@ -3,16 +3,14 @@
 import { useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
-import { landingContent } from "@/components/marketing/experience/content/landing-content";
+import { useLandingContent } from "@/components/marketing/experience/content/use-landing-content";
 import { DocumentsMock } from "@/components/marketing/experience/mocks/documents-mock";
 import { InventoryMock } from "@/components/marketing/experience/mocks/inventory-mock";
 import { WorkOrderMock } from "@/components/marketing/experience/mocks/work-order-mock";
 import { SectionIntro } from "@/components/marketing/experience/ui/section-intro";
 import { cn } from "@/lib/utils";
 
-const copy = landingContent.showcase;
-
-type SceneId = (typeof copy.scenes)[number]["id"];
+type SceneId = ReturnType<typeof useLandingContent>["showcase"]["scenes"][number]["id"];
 
 function SceneMock({ scene }: { scene: SceneId }) {
   switch (scene) {
@@ -26,6 +24,7 @@ function SceneMock({ scene }: { scene: SceneId }) {
 }
 
 export function ProductShowcase() {
+  const copy = useLandingContent().showcase;
   const reduced = useReducedMotion();
   const [scene, setScene] = useState<SceneId>("orders");
 

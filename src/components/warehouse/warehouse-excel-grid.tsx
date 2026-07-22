@@ -12,18 +12,15 @@ import {
   GridContextMenuItem,
   GridContextMenuSeparator,
 } from "@/components/grid/grid-context-menu";
+import { usePanelActive } from "@/components/layout/panel-active-context";
 import { useWorkspace } from "@/components/layout/workspace-context";
+import { useGridPersistenceAdapter } from "@/components/persistence/use-grid-persistence-adapter";
 import { GridZoomControl } from "@/components/motors/grid-zoom-control";
 import { InventoryItem } from "@/domain/inventory";
-import {
-  boundingDataRange,
-  findLastUsedCell,
-  jumpColumnInRow,
-  jumpRowInColumn,
-} from "@/lib/grid/grid-data-region-navigation";
-import { buildFillOperations } from "@/lib/grid/grid-fill-engine";
+import { useExcelGridInteraction } from "@/hooks/use-excel-grid-interaction";
+import { buildFillOperations, resolveFillDragTarget } from "@/lib/grid/grid-fill-engine";
 import { GridMutation, GridCommandBus } from "@/lib/grid/grid-command-bus";
-import { isRedoShortcut, isUndoShortcut } from "@/lib/grid/grid-keyboard-shortcuts";
+import { deleteShortcutLabel, modShortcutLabel } from "@/lib/grid/grid-keyboard-shortcuts";
 import { resolvePointerCellClamped } from "@/lib/grid/pointer-to-cell";
 import { useGridScrollWhileDrag } from "@/lib/grid/grid-scroll-while-drag";
 import { useGridScrollIntoView } from "@/lib/grid/scroll-into-view";
@@ -35,12 +32,11 @@ import {
   GridSelectionState,
   initialSelection,
   primaryRange,
-  selectWholeColumn,
   selectWholeColumnActiveTop,
   selectWholeRow,
   selectWholeRowActiveStart,
 } from "@/lib/grid/selection-controller";
-import { GridCellAddress, GridRange, isCellInsideRange, normalizeRange } from "@/lib/grid/grid-types";
+import { GridCellAddress, GridRange, isCellInsideRange } from "@/lib/grid/grid-types";
 import type { DomainCategory } from "@/lib/domain/types";
 import { filterColumnSuggestions, resolveGridColumnAutocomplete } from "@/lib/grid/grid-column-autocomplete";
 import { gridPalette } from "@/lib/grid/grid-palette";
@@ -79,6 +75,7 @@ import {
   warehouseCellFrame,
 } from "@/lib/warehouse/warehouse-grid-layout-engine";
 import { normalizeBarcode } from "@/lib/warehouse/warehouse-search";
+import { emitKnowledgeEvent } from "@/lib/knowledge/knowledge-api.client";
 import { InventoryItemRepository } from "@/infrastructure/firestore/inventory-item-repository";
 import { InventoryMovementRepository } from "@/infrastructure/firestore/inventory-movement-repository";
 import { InventoryStockLevelRepository } from "@/infrastructure/firestore/inventory-stock-level-repository";
@@ -330,6 +327,7 @@ export function WarehouseExcelGrid({
   onDirtyCountChange,
   externalInteractionLocked = false,
 }: WarehouseExcelGridProps) {
+  const isActive = usePanelActive();
   const {
     setSaveStatus,
     setSaveError,
@@ -452,17 +450,20 @@ export function WarehouseExcelGrid({
   }, [applyRemoteReconcile, isInteractionLocked]);
 
   useEffect(() => {
+    if (!isActive) return;
     setGridInteractionLocked(isInteractionLocked);
     return () => setGridInteractionLocked(false);
-  }, [isInteractionLocked, setGridInteractionLocked]);
+  }, [isActive, isInteractionLocked, setGridInteractionLocked]);
 
   useEffect(() => {
+    if (!isActive) return;
     const count = dirtyRowsRef.current.size + pendingArchiveIdsRef.current.size;
     onCloudPendingChange?.(count > 0);
     onDirtyCountChange?.(count);
-  }, [dirtyVersion, onCloudPendingChange, onDirtyCountChange]);
+  }, [dirtyVersion, isActive, onCloudPendingChange, onDirtyCountChange]);
 
   useEffect(() => {
+    if (!isActive) return;
     const dirtyIds = dirtyRowsRef.current;
     if (
       dirtyIds.size === 0 &&
@@ -476,7 +477,7 @@ export function WarehouseExcelGrid({
       pendingArchiveIdsRef.current.size > 0 ||
       [...dirtyIds].some((rowId) => !localSaveAckRef.current.has(rowId));
     setSaveStatus(hasUnsavedLocal ? "pending" : "saved");
-  }, [dirtyVersion, setSaveStatus]);
+  }, [dirtyVersion, isActive, setSaveStatus]);
 
   const columnWidths = useMemo(() => layout.columns.map((column) => column.width), [layout.columns]);
 
@@ -584,17 +585,35 @@ export function WarehouseExcelGrid({
     });
   }, [setCell]);
 
+  const reconcilePendingArchives = useCallback(() => {
+    let changed = false;
+    for (const itemId of [...pendingArchiveIdsRef.current]) {
+      const row = rowsRef.current.find(
+        (candidate) => candidate.rowKind === "saved" && candidate.id === itemId,
+      );
+      if (row?.rowKind === "saved" && !savedRowShouldArchive(row)) {
+        pendingArchiveIdsRef.current.delete(itemId);
+        changed = true;
+      }
+    }
+    if (changed) {
+      scheduleDirtyStatus();
+    }
+  }, [scheduleDirtyStatus]);
+
   const performUndo = useCallback(() => {
     if (!canEdit) return;
     handleGridUndo(commandBusRef.current, applyMutation, editor, setEditor);
+    reconcilePendingArchives();
     gridRef.current?.focus();
-  }, [applyMutation, canEdit, editor]);
+  }, [applyMutation, canEdit, editor, reconcilePendingArchives]);
 
   const performRedo = useCallback(() => {
     if (!canEdit) return;
     handleGridRedo(commandBusRef.current, applyMutation);
+    reconcilePendingArchives();
     gridRef.current?.focus();
-  }, [applyMutation, canEdit]);
+  }, [applyMutation, canEdit, reconcilePendingArchives]);
 
   const ensureExpanded = useCallback((lastVisibleRow: number) => {
     setRows((current) => {
@@ -706,6 +725,15 @@ export function WarehouseExcelGrid({
             pushedRowIds.push(rowId);
           }
           dirtyRowsRef.current.delete(rowId);
+
+          const committedBrandName =
+            row.rowKind === "empty" ? row.draft.brandName.trim() : row.brandName?.trim();
+          if (committedBrandName && committedBrandName !== (baseline?.brandName ?? "").trim()) {
+            void emitKnowledgeEvent({
+              type: "field.committed",
+              payload: { fieldKey: "brandName", fieldValue: committedBrandName, scope: "company" },
+            });
+          }
         } catch (rowError) {
           const label =
             row.rowKind === "saved"
@@ -775,16 +803,19 @@ export function WarehouseExcelGrid({
   }, [flushEditor]);
 
   useEffect(() => {
+    if (!isActive) return;
     registerSaveHandler(runSave);
     return () => registerSaveHandler(null);
-  }, [registerSaveHandler, runSave]);
+  }, [isActive, registerSaveHandler, runSave]);
 
   useEffect(() => {
+    if (!isActive) return;
     registerSyncHandler(syncNow);
     return () => registerSyncHandler(null);
-  }, [registerSyncHandler, syncNow]);
+  }, [isActive, registerSyncHandler, syncNow]);
 
   useEffect(() => {
+    if (!isActive) return;
     if (!canEdit) {
       registerGridUndoHandler(null);
       registerGridRedoHandler(null);
@@ -796,14 +827,23 @@ export function WarehouseExcelGrid({
       registerGridUndoHandler(null);
       registerGridRedoHandler(null);
     };
-  }, [canEdit, performRedo, performUndo, registerGridRedoHandler, registerGridUndoHandler]);
+  }, [
+    canEdit,
+    isActive,
+    performRedo,
+    performUndo,
+    registerGridRedoHandler,
+    registerGridUndoHandler,
+  ]);
 
   useEffect(() => {
+    if (!isActive) return;
     registerCloudPushHandler(pushToCloud);
     return () => registerCloudPushHandler(null);
-  }, [pushToCloud, registerCloudPushHandler]);
+  }, [isActive, pushToCloud, registerCloudPushHandler]);
 
   useEffect(() => {
+    if (!isActive) return;
     if (!canEdit || !companyId) return;
     if (dirtyRowsRef.current.size === 0 && pendingArchiveIdsRef.current.size === 0) return;
     if (isInteractionLocked) return;
@@ -813,7 +853,22 @@ export function WarehouseExcelGrid({
     }, 1200);
 
     return () => window.clearTimeout(timer);
-  }, [canEdit, companyId, dirtyVersion, isInteractionLocked, pushToCloud]);
+  }, [canEdit, companyId, dirtyVersion, isActive, isInteractionLocked, pushToCloud]);
+
+  useGridPersistenceAdapter({
+    key: companyId
+      ? { companyId, kind: "warehouse_grid", id: activeWarehouseId ?? "default" }
+      : null,
+    dirtyVersion,
+    getSnapshot: () => ({
+      dirtyRowIds: [...dirtyRowsRef.current],
+      pendingArchiveIds: [...pendingArchiveIdsRef.current],
+    }),
+    pushToCloud,
+    enabled: isActive && canEdit,
+    label: "Склад",
+    scheduleInEngine: false,
+  });
 
   useEffect(() => {
     function stopSelectionDrag() {
@@ -856,10 +911,7 @@ export function WarehouseExcelGrid({
         const cell = cellFromPointerClamped(clientX, clientY);
         if (!cell) return;
         const source = fillSourceRef.current;
-        const target = normalizeRange(
-          { row: source.minRow, column: source.minColumn },
-          { row: Math.max(cell.row, source.maxRow), column: Math.max(cell.column, source.maxColumn) },
-        );
+        const target = resolveFillDragTarget(source, cell);
         fillTargetRef.current = target;
         setFillPreview(target);
         ensureExpanded(target.maxRow);
@@ -885,31 +937,33 @@ export function WarehouseExcelGrid({
     function onPointerUp() {
       stopSelectionDrag();
       if (isDraggingFillRef.current && fillSourceRef.current && fillTargetRef.current) {
-        const ops = buildFillOperations({
-          source: fillSourceRef.current,
-          target: fillTargetRef.current,
-          valueAt: (cell) => valueAtCell(rows[cell.row], cell.column),
-          isEditableColumn,
-          isDateColumn,
-        });
-        const mutations: GridMutation[] = [];
-        setRows((current) => {
-          const next = [...current];
-          for (const operation of ops) {
-            if (!next[operation.cell.row]) continue;
-            const oldValue = valueAtCell(next[operation.cell.row], operation.cell.column);
-            if (oldValue === operation.value) continue;
-            next[operation.cell.row] = applyCellValue(next[operation.cell.row], operation.cell.column, operation.value);
-            markDirty(next[operation.cell.row].rowId);
-            mutations.push({
-              address: operation.cell,
-              oldValue,
-              newValue: operation.value,
-            });
-          }
-          return next;
-        });
-        commandBusRef.current.commit("Fill Series", mutations);
+        if (canEdit) {
+          const ops = buildFillOperations({
+            source: fillSourceRef.current,
+            target: fillTargetRef.current,
+            valueAt: (cell) => valueAtCell(rows[cell.row], cell.column),
+            isEditableColumn,
+            isDateColumn,
+          });
+          const mutations: GridMutation[] = [];
+          setRows((current) => {
+            const next = [...current];
+            for (const operation of ops) {
+              if (!next[operation.cell.row]) continue;
+              const oldValue = valueAtCell(next[operation.cell.row], operation.cell.column);
+              if (oldValue === operation.value) continue;
+              next[operation.cell.row] = applyCellValue(next[operation.cell.row], operation.cell.column, operation.value);
+              markDirty(next[operation.cell.row].rowId);
+              mutations.push({
+                address: operation.cell,
+                oldValue,
+                newValue: operation.value,
+              });
+            }
+            return next;
+          });
+          commandBusRef.current.commit("Fill Series", mutations);
+        }
       }
       isDraggingFillRef.current = false;
       fillSourceRef.current = null;
@@ -923,7 +977,7 @@ export function WarehouseExcelGrid({
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
     };
-  }, [ensureExpanded, layout.columns, layout.headerHeight, layout.rowHeight, layout.xOffsets, markDirty, rows]);
+  }, [canEdit, ensureExpanded, layout.columns, layout.headerHeight, layout.rowHeight, layout.xOffsets, markDirty, rows]);
 
   useGridScrollWhileDrag({
     bodyRef,
@@ -1083,43 +1137,108 @@ export function WarehouseExcelGrid({
     focusGrid();
   }, [editor, focusGrid, layout.columns.length, rows.length, scrollToCell, setCell]);
 
-  const clearRange = useCallback((range: GridRange) => {
-    if (!canEdit) return;
-
-    setRows((current) => {
-      const next = [...current];
+  const applyCellWrites = useCallback(
+    (label: string, writes: Array<{ row: number; column: number; value: string }>) => {
+      if (!canEdit || writes.length === 0) return;
       const mutations: GridMutation[] = [];
-
-      for (let row = range.minRow; row <= range.maxRow; row += 1) {
-        for (let column = range.minColumn; column <= range.maxColumn; column += 1) {
-          const rowRef = next[row];
+      setRows((current) => {
+        const next = [...current];
+        for (const write of writes) {
+          if (!isEditableColumn(write.column)) continue;
+          const rowRef = next[write.row];
           if (!rowRef) continue;
-          const clearColumn = resolveWarehouseClearColumn(column);
-          if (clearColumn == null) continue;
-
-          const currentValue = valueAtCell(rowRef, clearColumn);
-          const updatedRow = applyCellValue(rowRef, clearColumn, "");
-          if (updatedRow === rowRef && currentValue.trim() === "") continue;
-
-          next[row] = updatedRow;
-          localSaveAckRef.current.delete(updatedRow.rowId);
-          dirtyRowsRef.current.add(updatedRow.rowId);
+          const oldValue = valueAtCell(rowRef, write.column);
+          if (oldValue === write.value) continue;
+          next[write.row] = applyCellValue(rowRef, write.column, write.value);
+          localSaveAckRef.current.delete(next[write.row].rowId);
+          dirtyRowsRef.current.add(next[write.row].rowId);
           mutations.push({
-            address: { row, column: clearColumn },
-            oldValue: currentValue,
-            newValue: "",
+            address: { row: write.row, column: write.column },
+            oldValue,
+            newValue: write.value,
           });
         }
-      }
+        if (mutations.length > 0) {
+          scheduleDirtyStatus();
+        }
+        return next;
+      });
+      commandBusRef.current.commit(label, mutations);
+    },
+    [canEdit, scheduleDirtyStatus],
+  );
 
-      if (mutations.length > 0) {
-        scheduleDirtyStatus();
-        commandBusRef.current.commit("Clear", mutations);
-      }
+  const ensureRowCapacity = useCallback(
+    (maxRowInclusive: number) => {
+      if (maxRowInclusive < rows.length - 1) return;
+      setRows((current) =>
+        growWarehouseRows(
+          current,
+          maxRowInclusive - current.length + WAREHOUSE_GRID_EMPTY_ROWS_EXPAND + 1,
+        ),
+      );
+    },
+    [rows.length],
+  );
 
-      return next;
-    });
-  }, [canEdit, scheduleDirtyStatus]);
+  const scrollByPage = useCallback((direction: 1 | -1) => {
+    if (!bodyRef.current) return;
+    const delta = Math.max(40, bodyRef.current.clientHeight * 0.85);
+    bodyRef.current.scrollTop += direction * delta;
+  }, []);
+
+  const valueAt = useCallback(
+    (row: number, column: number) => valueAtCell(rows[row], column),
+    [rows],
+  );
+
+  const {
+    copySelection,
+    cutSelection,
+    pasteSelection,
+    clearSelection,
+    fillDown,
+    handleKeyDown,
+  } = useExcelGridInteraction({
+    canEdit,
+    isEditing: Boolean(editor),
+    selection,
+    selectionRef,
+    setSelection,
+    rowCount: rows.length,
+    columnCount: layout.columns.length,
+    editableColumnStart: WAREHOUSE_EDITABLE_COL_START,
+    editableColumnEnd: WAREHOUSE_EDITABLE_COL_END,
+    navigableColumns: NAVIGABLE_COLUMNS,
+    valueAt,
+    isEditableColumn,
+    mapClearColumn: resolveWarehouseClearColumn,
+    applyCellWrites,
+    ensureRowCapacity,
+    beginEdit,
+    performUndo,
+    performRedo,
+    scrollByPage,
+    cmdADoubleTapRef,
+    onDomainKeyDown: (event) => {
+      if (
+        !event.metaKey &&
+        !event.altKey &&
+        !event.ctrlKey &&
+        (event.key === "l" || event.key === "L") &&
+        canEdit &&
+        onAssignLocation
+      ) {
+        const selected = getContextSelectedItems(rowsRef.current, selectionRef.current);
+        if (selected.length > 0) {
+          event.preventDefault();
+          onAssignLocation(selected);
+          return true;
+        }
+      }
+      return false;
+    },
+  });
 
   const deleteSelectedRows = useCallback(() => {
     if (!canEdit) return;
@@ -1137,7 +1256,18 @@ export function WarehouseExcelGrid({
         if (rowRef.rowKind === "saved") {
           pendingArchiveIdsRef.current.add(rowRef.id);
           dirtyRowsRef.current.delete(rowRef.rowId);
-          next[row] = createEmptyWarehouseRow();
+
+          for (let column = WAREHOUSE_EDITABLE_COL_START; column <= WAREHOUSE_EDITABLE_COL_END; column += 1) {
+            if (!isEditableColumn(column)) continue;
+            const oldValue = valueAtCell(next[row], column);
+            if (!oldValue.trim()) continue;
+            next[row] = applyCellValue(next[row], column, "");
+            mutations.push({
+              address: { row, column },
+              oldValue,
+              newValue: "",
+            });
+          }
           changed = true;
           continue;
         }
@@ -1169,348 +1299,6 @@ export function WarehouseExcelGrid({
       return next;
     });
   }, [canEdit, scheduleDirtyStatus]);
-
-  const clearPrimaryRange = useCallback(() => {
-    clearRange(primaryRange(selectionRef.current));
-  }, [clearRange]);
-
-  const copyPrimaryRange = useCallback(async () => {
-    const range = primaryRange(selection);
-    const lines: string[] = [];
-    for (let row = range.minRow; row <= range.maxRow; row += 1) {
-      const cells: string[] = [];
-      for (let column = range.minColumn; column <= range.maxColumn; column += 1) {
-        cells.push(valueAtCell(rows[row], column));
-      }
-      lines.push(cells.join("\t"));
-    }
-    await navigator.clipboard.writeText(lines.join("\n"));
-  }, [rows, selection]);
-
-  const pasteAtSelection = useCallback(async () => {
-    const clipboard = await navigator.clipboard.readText();
-    if (!clipboard) return;
-    const matrix = clipboard.split(/\r?\n/).map((line) => line.split("\t"));
-    const start = selection.head;
-    const targetMaxRow = start.row + matrix.length - 1;
-    if (targetMaxRow >= rows.length - 1) {
-      setRows((current) => growWarehouseRows(current, targetMaxRow - current.length + WAREHOUSE_GRID_EMPTY_ROWS_EXPAND + 1));
-    }
-
-    const mutations: GridMutation[] = [];
-    setRows((current) => {
-      const next = [...current];
-      for (let r = 0; r < matrix.length; r += 1) {
-        const rowIndex = start.row + r;
-        if (rowIndex >= next.length) break;
-        for (let c = 0; c < matrix[r].length; c += 1) {
-          const colIndex = start.column + c;
-          if (!isEditableColumn(colIndex)) continue;
-          const oldValue = valueAtCell(next[rowIndex], colIndex);
-          const newValue = matrix[r][c];
-          if (oldValue === newValue) continue;
-          next[rowIndex] = applyCellValue(next[rowIndex], colIndex, newValue);
-          markDirty(next[rowIndex].rowId);
-          mutations.push({
-            address: { row: rowIndex, column: colIndex },
-            oldValue,
-            newValue,
-          });
-        }
-      }
-      return next;
-    });
-    commandBusRef.current.commit("Paste", mutations);
-  }, [markDirty, rows.length, selection.head]);
-
-  const fillWithActive = useCallback(() => {
-    const range = primaryRange(selection);
-    const seed = valueAtCell(rows[selection.head.row], selection.head.column);
-    const mutations: GridMutation[] = [];
-    setRows((current) => {
-      const next = [...current];
-      for (let row = range.minRow; row <= range.maxRow; row += 1) {
-        for (let col = range.minColumn; col <= range.maxColumn; col += 1) {
-          if (!isEditableColumn(col)) continue;
-          if (row === selection.head.row && col === selection.head.column) continue;
-          const oldValue = valueAtCell(next[row], col);
-          if (oldValue === seed) continue;
-          next[row] = applyCellValue(next[row], col, seed);
-          markDirty(next[row].rowId);
-          mutations.push({ address: { row, column: col }, oldValue, newValue: seed });
-        }
-      }
-      return next;
-    });
-    commandBusRef.current.commit("Ctrl+Enter", mutations);
-  }, [markDirty, rows, selection]);
-
-  const fillDown = useCallback(() => {
-    const range = primaryRange(selection);
-    if (range.maxRow <= range.minRow) return;
-    const mutations: GridMutation[] = [];
-    setRows((current) => {
-      const next = [...current];
-      for (let col = range.minColumn; col <= range.maxColumn; col += 1) {
-        if (!isEditableColumn(col)) continue;
-        const source = valueAtCell(next[range.minRow], col);
-        for (let row = range.minRow + 1; row <= range.maxRow; row += 1) {
-          const oldValue = valueAtCell(next[row], col);
-          if (oldValue === source) continue;
-          next[row] = applyCellValue(next[row], col, source);
-          markDirty(next[row].rowId);
-          mutations.push({ address: { row, column: col }, oldValue, newValue: source });
-        }
-      }
-      return next;
-    });
-    commandBusRef.current.commit("Fill Down", mutations);
-  }, [markDirty, selection]);
-
-  const fillRight = useCallback(() => {
-    const range = primaryRange(selection);
-    if (range.maxColumn <= range.minColumn) return;
-    const mutations: GridMutation[] = [];
-    setRows((current) => {
-      const next = [...current];
-      for (let row = range.minRow; row <= range.maxRow; row += 1) {
-        const source = valueAtCell(next[row], range.minColumn);
-        for (let col = range.minColumn + 1; col <= range.maxColumn; col += 1) {
-          if (!isEditableColumn(col)) continue;
-          const oldValue = valueAtCell(next[row], col);
-          if (oldValue === source) continue;
-          next[row] = applyCellValue(next[row], col, source);
-          markDirty(next[row].rowId);
-          mutations.push({ address: { row, column: col }, oldValue, newValue: source });
-        }
-      }
-      return next;
-    });
-    commandBusRef.current.commit("Fill Right", mutations);
-  }, [markDirty, selection]);
-
-  const moveSelectionBy = useCallback((dRow: number, dCol: number, extend: boolean) => {
-    setSelection((current) => {
-      const head = current.head;
-      const next: GridCellAddress = {
-        row: Math.max(0, Math.min(rows.length - 1, head.row + dRow)),
-        column: Math.max(0, Math.min(layout.columns.length - 1, head.column + dCol)),
-      };
-      if (extend) {
-        return { ...current, head: next };
-      }
-      return {
-        anchor: next,
-        head: next,
-        cmdRanges: [],
-      };
-    });
-  }, [layout.columns.length, rows.length]);
-
-  const handleKeyDown = useCallback(async (event: React.KeyboardEvent<HTMLDivElement>) => {
-    const key = event.key;
-    const lower = key.toLowerCase();
-    const cmd = event.metaKey || event.ctrlKey;
-    const shift = event.shiftKey;
-
-    if (isUndoShortcut(event)) {
-      event.preventDefault();
-      performUndo();
-      return;
-    }
-    if (isRedoShortcut(event)) {
-      event.preventDefault();
-      performRedo();
-      return;
-    }
-
-    if (editor) return;
-
-    if (cmd && lower === "c") {
-      event.preventDefault();
-      await copyPrimaryRange();
-      return;
-    }
-    if (cmd && lower === "x") {
-      event.preventDefault();
-      await copyPrimaryRange();
-      clearPrimaryRange();
-      return;
-    }
-    if (cmd && lower === "v") {
-      event.preventDefault();
-      await pasteAtSelection();
-      return;
-    }
-    if (event.ctrlKey && key === "Enter") {
-      event.preventDefault();
-      fillWithActive();
-      return;
-    }
-    if (event.ctrlKey && lower === "d") {
-      event.preventDefault();
-      fillDown();
-      return;
-    }
-    if (event.ctrlKey && lower === "r") {
-      event.preventDefault();
-      fillRight();
-      return;
-    }
-    if (cmd && lower === "a") {
-      event.preventDefault();
-      const now = Date.now();
-      const secondTap = now - cmdADoubleTapRef.current <= 600;
-      cmdADoubleTapRef.current = now;
-      if (secondTap) {
-        setSelection({
-          anchor: { row: 0, column: 0 },
-          head: { row: rows.length - 1, column: layout.columns.length - 1 },
-          cmdRanges: [],
-        });
-      } else {
-        const range = boundingDataRange({
-          rowCount: rows.length,
-          navigableColumns: NAVIGABLE_COLUMNS,
-          isEmpty: (row, column) => !valueAtCell(rows[row], column).trim(),
-        });
-        if (range) {
-          setSelection({
-            anchor: { row: range.minRow, column: range.minColumn },
-            head: { row: range.maxRow, column: range.maxColumn },
-            cmdRanges: [],
-          });
-        }
-      }
-      return;
-    }
-    if (event.ctrlKey && key === " ") {
-      event.preventDefault();
-      setSelection(selectWholeColumn(selection.head.column, rows.length - 1));
-      return;
-    }
-    if (event.shiftKey && key === " ") {
-      event.preventDefault();
-      setSelection(selectWholeRow(selection.head.row, WAREHOUSE_EDITABLE_COL_START, WAREHOUSE_EDITABLE_COL_END));
-      return;
-    }
-    if (key === "F2") {
-      event.preventDefault();
-      beginEdit(selection.head, undefined, true);
-      return;
-    }
-    if (key === "Delete" || key === "Backspace") {
-      if (!canEdit) return;
-      event.preventDefault();
-      clearPrimaryRange();
-      return;
-    }
-    if (key === "PageDown" || key === "PageUp") {
-      event.preventDefault();
-      if (!bodyRef.current) return;
-      const delta = Math.max(40, bodyRef.current.clientHeight * 0.85);
-      bodyRef.current.scrollTop += key === "PageDown" ? delta : -delta;
-      return;
-    }
-    if (key === "Home") {
-      event.preventDefault();
-      if (cmd) {
-        setSelection({ anchor: { row: 0, column: WAREHOUSE_EDITABLE_COL_START }, head: { row: 0, column: WAREHOUSE_EDITABLE_COL_START }, cmdRanges: [] });
-      } else {
-        setSelection((current) => ({ ...current, anchor: { row: current.head.row, column: 0 }, head: { row: current.head.row, column: 0 }, cmdRanges: [] }));
-      }
-      return;
-    }
-    if (key === "End") {
-      event.preventDefault();
-      if (cmd) {
-        const last = findLastUsedCell({
-          rowCount: rows.length,
-          navigableColumns: NAVIGABLE_COLUMNS,
-          isEmpty: (row, column) => !valueAtCell(rows[row], column).trim(),
-        });
-        const target = last ?? { row: rows.length - 1, column: layout.columns.length - 1 };
-        setSelection({ anchor: target, head: target, cmdRanges: [] });
-      } else {
-        setSelection((current) => ({
-          anchor: { row: current.head.row, column: layout.columns.length - 1 },
-          head: { row: current.head.row, column: layout.columns.length - 1 },
-          cmdRanges: [],
-        }));
-      }
-      return;
-    }
-    if (key === "Tab") {
-      event.preventDefault();
-      moveSelectionBy(0, shift ? -1 : 1, false);
-      return;
-    }
-    if (key === "Enter") {
-      event.preventDefault();
-      moveSelectionBy(shift ? -1 : 1, 0, false);
-      return;
-    }
-    if (key === "ArrowUp" || key === "ArrowDown" || key === "ArrowLeft" || key === "ArrowRight") {
-      event.preventDefault();
-      if (cmd) {
-        const head = selection.head;
-        if (key === "ArrowLeft" || key === "ArrowRight") {
-          const target = jumpColumnInRow({
-            row: head.row,
-            fromColumn: head.column,
-            direction: key === "ArrowRight" ? 1 : -1,
-            navigableColumns: NAVIGABLE_COLUMNS,
-            isEmpty: (row, column) => !valueAtCell(rows[row], column).trim(),
-          });
-          setSelection({ anchor: { row: head.row, column: target }, head: { row: head.row, column: target }, cmdRanges: [] });
-        } else {
-          const target = jumpRowInColumn({
-            column: head.column,
-            fromRow: head.row,
-            direction: key === "ArrowDown" ? 1 : -1,
-            rowCount: rows.length,
-            isEmpty: (row, column) => !valueAtCell(rows[row], column).trim(),
-          });
-          setSelection({ anchor: { row: target, column: head.column }, head: { row: target, column: head.column }, cmdRanges: [] });
-        }
-        return;
-      }
-      if (key === "ArrowUp") moveSelectionBy(-1, 0, shift);
-      if (key === "ArrowDown") moveSelectionBy(1, 0, shift);
-      if (key === "ArrowLeft") moveSelectionBy(0, -1, shift);
-      if (key === "ArrowRight") moveSelectionBy(0, 1, shift);
-      return;
-    }
-    if (!cmd && !event.altKey && !event.ctrlKey && (key === "l" || key === "L") && canEdit && onAssignLocation) {
-      const selected = getContextSelectedItems(rows, selection);
-      if (selected.length > 0) {
-        event.preventDefault();
-        onAssignLocation(selected);
-        return;
-      }
-    }
-    if (!cmd && !event.altKey && !event.ctrlKey && key.length === 1 && canEdit) {
-      event.preventDefault();
-      beginEdit(selection.head, key, false);
-    }
-  }, [
-    beginEdit,
-    canEdit,
-    clearPrimaryRange,
-    copyPrimaryRange,
-    editor,
-    fillDown,
-    fillRight,
-    fillWithActive,
-    layout.columns.length,
-    moveSelectionBy,
-    onAssignLocation,
-    pasteAtSelection,
-    performRedo,
-    performUndo,
-    rows,
-    selection,
-  ]);
 
   useEffect(() => {
     const viewport = bodyRef.current;
@@ -1555,6 +1343,7 @@ export function WarehouseExcelGrid({
         ref={gridRef}
         tabIndex={0}
         data-grid-root
+        data-context-menu-scope="local"
         className="relative min-h-0 flex-1 overflow-hidden outline-none"
         onKeyDown={handleKeyDown}
       >
@@ -1893,9 +1682,9 @@ export function WarehouseExcelGrid({
       {contextMenu ? (
         <GridContextMenu x={contextMenu.x} y={contextMenu.y} onClose={closeContextMenu}>
           <GridContextMenuItem
-            shortcut="⌘C"
+            shortcut={modShortcutLabel("C")}
             onClick={() => {
-              void copyPrimaryRange();
+              void copySelection();
               closeContextMenu();
             }}
           >
@@ -1904,6 +1693,42 @@ export function WarehouseExcelGrid({
 
           {canEdit ? (
             <>
+              <GridContextMenuItem
+                shortcut={modShortcutLabel("X")}
+                onClick={() => {
+                  void cutSelection();
+                  closeContextMenu();
+                }}
+              >
+                Вырезать
+              </GridContextMenuItem>
+              <GridContextMenuItem
+                shortcut={modShortcutLabel("V")}
+                onClick={() => {
+                  void pasteSelection();
+                  closeContextMenu();
+                }}
+              >
+                Вставить
+              </GridContextMenuItem>
+              <GridContextMenuItem
+                shortcut={deleteShortcutLabel()}
+                onClick={() => {
+                  clearSelection();
+                  closeContextMenu();
+                }}
+              >
+                Очистить
+              </GridContextMenuItem>
+              <GridContextMenuItem
+                shortcut={modShortcutLabel("D")}
+                onClick={() => {
+                  fillDown();
+                  closeContextMenu();
+                }}
+              >
+                Заполнить вниз
+              </GridContextMenuItem>
               <GridContextMenuItem
                 onClick={() => {
                   if (isEditableColumn(contextMenu.cell.column)) {
@@ -1914,15 +1739,6 @@ export function WarehouseExcelGrid({
                 disabled={!isEditableColumn(contextMenu.cell.column)}
               >
                 Редактировать
-              </GridContextMenuItem>
-              <GridContextMenuItem
-                shortcut="⌘V"
-                onClick={() => {
-                  void pasteAtSelection();
-                  closeContextMenu();
-                }}
-              >
-                Вставить
               </GridContextMenuItem>
               <GridContextMenuSeparator />
               <GridContextMenuItem

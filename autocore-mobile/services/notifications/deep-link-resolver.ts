@@ -22,10 +22,17 @@ export function resolveNotificationDeepLink(deepLink?: string | null): Href | nu
     try {
       const url = new URL(trimmed, 'https://app.myautocore.com');
       const batchId = url.searchParams.get('batchId');
-      if (batchId) return `/(tabs)/import?batchId=${encodeURIComponent(batchId)}` as Href;
+      if (batchId) {
+        return `/(tabs)/import?batchId=${encodeURIComponent(batchId)}` as Href;
+      }
+      const batchPath = url.pathname.match(/\/imports\/batch\/([^/]+)/);
+      if (batchPath?.[1]) {
+        return `/(tabs)/import?batchId=${encodeURIComponent(batchPath[1])}` as Href;
+      }
     } catch {
       // fall through
     }
+    // Legacy `/imports/{jobId}` opens capture — do not treat job id as batchId.
     return '/(tabs)/import' as Href;
   }
 
@@ -65,12 +72,13 @@ export function resolveNotificationDeepLink(deepLink?: string | null): Href | nu
   if (path.startsWith('imports/') || path.startsWith('import/') || path.startsWith('import?')) {
     const batchMatch = path.match(/[?&]batchId=([^&]+)/);
     if (batchMatch?.[1]) {
-      return `/(tabs)/import?batchId=${batchMatch[1]}` as Href;
+      return `/(tabs)/import?batchId=${decodeURIComponent(batchMatch[1])}` as Href;
     }
-    const idMatch = path.match(/^import\/([^/?#]+)/);
-    if (idMatch?.[1] && idMatch[1] !== 'batch') {
-      return `/(tabs)/import?batchId=${idMatch[1]}` as Href;
+    const batchPath = path.match(/^imports\/batch\/([^/?#]+)/);
+    if (batchPath?.[1]) {
+      return `/(tabs)/import?batchId=${decodeURIComponent(batchPath[1])}` as Href;
     }
+    // `import/{id}` used to be misread as batchId (job id ≠ batch).
     return '/(tabs)/import' as Href;
   }
   if (path === 'sync/conflict') {
@@ -84,8 +92,8 @@ export function buildOrderDeepLink(orderId: string): string {
   return `${SCHEME}orders/${orderId}`;
 }
 
-export function buildImportDeepLink(importId: string): string {
-  return `${SCHEME}import/${importId}`;
+export function buildImportDeepLink(_importId?: string): string {
+  return `${SCHEME}import`;
 }
 
 export function buildImportBatchDeepLink(batchId: string): string {

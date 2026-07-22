@@ -5,6 +5,7 @@ import {
   acquireRealtimeSubscription,
   isRealtimeReady,
 } from '@/lib/realtime/subscription-registry';
+import { scheduleQueryDataApply } from '@/lib/realtime/query-data-scheduler';
 import { readRealtimeSnapshotSync } from '@/lib/realtime/snapshot-cache';
 
 type RealtimeError = { code?: string; message: string };
@@ -45,7 +46,18 @@ export function useRealtimeQuery<T>({
   const subscribeRef = useRef(subscribe);
   subscribeRef.current = subscribe;
 
-  const diskSeed = enabled ? readRealtimeSnapshotSync<T>(queryKey) : undefined;
+  // Read MMKV + reviveDatesDeep once per key — never on every parent re-render.
+  const diskSeedRef = useRef<{ key: string; value: T | undefined }>({
+    key: '',
+    value: undefined,
+  });
+  if (enabled && diskSeedRef.current.key !== activeKey) {
+    diskSeedRef.current = {
+      key: activeKey,
+      value: readRealtimeSnapshotSync<T>(queryKey) ?? undefined,
+    };
+  }
+  const diskSeed = enabled ? diskSeedRef.current.value : undefined;
   const seededData = diskSeed ?? initialData;
 
   const query = useQuery<T>({
@@ -85,7 +97,7 @@ export function useRealtimeQuery<T>({
         onData: (data) => {
           setErrorMessage(null);
           setReady(true);
-          queryClient.setQueryData(queryKey, data);
+          scheduleQueryDataApply(queryClient, queryKey, data);
         },
         onError: (error) => {
           if (error.code === 'permission-denied' || error.code === 'unauthenticated') {

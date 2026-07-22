@@ -1,7 +1,22 @@
+import type { AppLocale } from "@autocore/i18n/config";
+import { DEFAULT_LOCALE } from "@autocore/i18n/config";
+import enMarketingMessages from "@autocore/i18n/messages/en/marketing.json";
+import ruMarketingMessages from "@autocore/i18n/messages/ru/marketing.json";
+
 import type { MarketingPathKey } from "@/lib/seo/marketing-paths";
 import { marketingAbsoluteUrl } from "@/lib/seo/marketing-paths";
 import { getAppUrl, getMarketingUrl } from "@/lib/site-urls";
 import { getPlatformContacts } from "@/lib/platform/platform-contacts";
+
+/** Synchronous per-locale marketing messages (JSON-LD builders run outside async request config). */
+const MARKETING_MESSAGES_BY_LOCALE: Record<AppLocale, typeof enMarketingMessages> = {
+  en: enMarketingMessages,
+  ru: ruMarketingMessages,
+};
+
+export function getMarketingMessages(locale: AppLocale) {
+  return MARKETING_MESSAGES_BY_LOCALE[locale] ?? MARKETING_MESSAGES_BY_LOCALE[DEFAULT_LOCALE];
+}
 
 const platformContacts = getPlatformContacts();
 
@@ -26,19 +41,11 @@ const supportUrl = `${marketingUrl}/contact`;
 const defaultOgImage = `${marketingUrl}/opengraph-image`;
 const logoUrl = `${marketingUrl}/icon`;
 
-/** Human-readable titles for breadcrumb JSON-LD. */
-const MARKETING_BREADCRUMB_TITLES: Record<MarketingPathKey, string> = {
-  home: "Главная",
-  product: "Продукт",
-  modules: "Модули",
-  pricing: "Тарифы",
-  security: "Безопасность",
-  contact: "Контакты",
-  download: "Скачать",
-  downloadMobile: "Мобильное приложение",
-  privacy: "Конфиденциальность",
-  terms: "Условия использования",
-};
+/** Human-readable titles for breadcrumb JSON-LD, per locale. */
+function breadcrumbTitle(key: MarketingPathKey, locale: AppLocale): string {
+  const messages = getMarketingMessages(locale);
+  return messages.seo.breadcrumbs[key];
+}
 
 /**
  * Core commercial keywords for Yandex + Google (RU).
@@ -109,9 +116,9 @@ export const MARKETING_SEO_PAGES: Record<MarketingPathKey, MarketingSeoPageConfi
   },
   pricing: {
     key: "pricing",
-    title: "Цена AutoCore: $15 в месяц за компанию",
+    title: "Цена AutoCore: $39 в месяц за компанию",
     description:
-      "Одна подписка $15/мес за компанию. Полный доступ без скрытых лимитов. 14 дней бесплатно, карта не нужна. Для авторазборок и автосервисов.",
+      "Одна подписка $39/мес за компанию. Полный доступ без скрытых лимитов. 14 дней бесплатно, карта не нужна. Для авторазборок и автосервисов.",
     keywords: ["цена программа автосервис", "тариф авторазборка", "стоимость ПО СТО"],
   },
   contact: {
@@ -166,8 +173,8 @@ export function getMarketingSeoPage(key: MarketingPathKey): MarketingSeoPageConf
   return MARKETING_SEO_PAGES[key];
 }
 
-/** BreadcrumbList JSON-LD: Главная → текущая страница. */
-export function buildBreadcrumbJsonLd(key: MarketingPathKey) {
+/** BreadcrumbList JSON-LD: Home → current page, localized. */
+export function buildBreadcrumbJsonLd(key: MarketingPathKey, locale: AppLocale = DEFAULT_LOCALE) {
   const items =
     key === "home"
       ? ([{ key: "home" as MarketingPathKey }] as const)
@@ -176,12 +183,12 @@ export function buildBreadcrumbJsonLd(key: MarketingPathKey) {
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    "@id": `${marketingAbsoluteUrl(key)}#breadcrumb`,
+    "@id": `${marketingAbsoluteUrl(key, locale)}#breadcrumb`,
     itemListElement: items.map((item, index) => ({
       "@type": "ListItem",
       position: index + 1,
-      name: MARKETING_BREADCRUMB_TITLES[item.key],
-      item: marketingAbsoluteUrl(item.key),
+      name: breadcrumbTitle(item.key, locale),
+      item: marketingAbsoluteUrl(item.key, locale),
     })),
   };
 }
@@ -200,6 +207,9 @@ export function buildFaqJsonLd(items: ReadonlyArray<{ readonly q: string; readon
     })),
   };
 }
+
+/** Alias: FAQ JSON-LD built directly from next-intl message items (`t.raw(...)`). */
+export const buildFaqJsonLdFromMessages = buildFaqJsonLd;
 
 export function buildMarketingJsonLd() {
   return [
@@ -285,7 +295,7 @@ export function buildMarketingJsonLd() {
       offers: {
         "@type": "AggregateOffer",
         lowPrice: "0",
-        highPrice: "15",
+        highPrice: "20",
         priceCurrency: "USD",
         offerCount: 2,
         offers: [
@@ -301,13 +311,13 @@ export function buildMarketingJsonLd() {
           {
             "@type": "Offer",
             name: "Подписка Pro",
-            price: "15",
+            price: "20",
             priceCurrency: "USD",
             url: marketingAbsoluteUrl("pricing"),
             availability: "https://schema.org/InStock",
             priceSpecification: {
               "@type": "UnitPriceSpecification",
-              price: "15",
+              price: "20",
               priceCurrency: "USD",
               billingDuration: "P1M",
               referenceQuantity: {
@@ -405,11 +415,11 @@ export function buildPricingOfferJsonLd() {
     url,
     name: "AutoCore Pro",
     category: "SaaS subscription",
-    price: "15",
+    price: "20",
     priceCurrency: "USD",
     priceSpecification: {
       "@type": "UnitPriceSpecification",
-      price: "15",
+      price: "20",
       priceCurrency: "USD",
       billingDuration: "P1M",
       referenceQuantity: {

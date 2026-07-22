@@ -27,6 +27,7 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 /** Canonical Firestore keys → labels shown in UI. */
 export const OPERATION_CATEGORY_LABELS: Record<string, string> = {
   [MOTOR_SALE_CATEGORY]: "Продажа мотора",
+  work_order: "Доход заказ-наряда",
   work_order_income: "Доход заказ-наряда",
   work_order_parts_cost: "Себестоимость запчастей",
   payroll: "Зарплата",

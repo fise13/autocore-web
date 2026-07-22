@@ -1,6 +1,15 @@
-import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
+import {
+  legacyPathToLocalized,
+  localeFromPathname,
+  localizedPath,
+  stripLocalePrefix,
+  toMarketingInternalPath,
+} from "@/i18n/marketing-paths";
+import { marketingPathnames } from "@/i18n/routing";
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isAppLocale } from "@autocore/i18n/config";
 import {
   cleanPathFromInternal,
   isMarketingContentPath,
@@ -27,10 +36,6 @@ function redirectAppRouteFromMarketing(request: NextRequest): NextResponse {
   return NextResponse.redirect(target, 301);
 }
 
-/**
- * Redirect http/www variants to the canonical marketing origin (https, no www).
- * GSC lists http:// and www. URLs as "page with redirect" — they must 301 here.
- */
 function redirectToCanonicalMarketingOrigin(request: NextRequest): NextResponse | null {
   const hostHeader = normalizeHost(request.headers.get("host") ?? "");
   const canonicalHost = getUrlHost(getMarketingUrl());
@@ -61,33 +66,82 @@ function redirectToCanonicalMarketingOrigin(request: NextRequest): NextResponse 
   return NextResponse.redirect(target, 301);
 }
 
-/** Marketing host + unified localhost: clean URLs + legacy /marketing/* → 301. */
-function handleMarketingRoutes(request: NextRequest, pathname: string, isMarketingHost: boolean): NextResponse {
+const KNOWN_CLEAN = new Set<string>(Object.values(marketingPathnames));
+
+function isLocalePrefixedPath(pathname: string): boolean {
+  return localeFromPathname(pathname) !== null;
+}
+
+function rewriteLocalizedMarketing(request: NextRequest, pathname: string): NextResponse | null {
+  const locale = localeFromPathname(pathname);
+  if (!locale) return null;
+
+  const rest = stripLocalePrefix(pathname);
+  if (rest !== "/" && !KNOWN_CLEAN.has(rest) && !rest.startsWith("/legal/")) {
+    // Allow known marketing tree only
+    if (![...KNOWN_CLEAN].some((p) => rest === p || rest.startsWith(`${p}/`))) {
+      return null;
+    }
+  }
+
+  const internal = toMarketingInternalPath(locale, rest);
+  return NextResponse.rewrite(new URL(internal + request.nextUrl.search, request.url));
+}
+
+/** Marketing host + unified localhost: locale URLs + legacy clean /marketing/* → locale. */
+function handleMarketingRoutes(
+  request: NextRequest,
+  pathname: string,
+  isMarketingHost: boolean,
+): NextResponse {
   if (isMarketingHost) {
     const canonicalRedirect = redirectToCanonicalMarketingOrigin(request);
     if (canonicalRedirect) return canonicalRedirect;
   }
 
-  if (pathname === "/" && isMarketingHost) {
-    return NextResponse.rewrite(new URL("/marketing", request.url));
+  // Prefer locale-prefixed public URLs → rewrite into /marketing/[locale]/…
+  if (isLocalePrefixedPath(pathname)) {
+    const rewritten = rewriteLocalizedMarketing(request, pathname);
+    if (rewritten) return rewritten;
   }
 
+  // Marketing host root → default locale
+  if (pathname === "/" && isMarketingHost) {
+    return NextResponse.redirect(
+      new URL(localizedPath(DEFAULT_LOCALE, "/") + request.nextUrl.search, request.url),
+      302,
+    );
+  }
+
+  // Legacy clean paths without locale (/product, /pricing, …) → /en/…
   const internalFromClean = resolveMarketingPathFromClean(pathname);
-  if (internalFromClean) {
-    return NextResponse.rewrite(new URL(internalFromClean + request.nextUrl.search, request.url));
+  if (internalFromClean || KNOWN_CLEAN.has(pathname)) {
+    const localized = legacyPathToLocalized(pathname, DEFAULT_LOCALE);
+    if (localized) {
+      return NextResponse.redirect(new URL(localized + request.nextUrl.search, request.url), 301);
+    }
   }
 
   const isLocalDev = isLocalDevHost(request.headers.get("host") ?? "");
 
-  // Localhost dev: serve /marketing/* directly (no clean-URL redirect).
-  if (!isLocalDev && pathname.startsWith("/marketing")) {
-    const clean = cleanPathFromInternal(pathname);
-    if (clean) {
-      return NextResponse.redirect(new URL(clean + request.nextUrl.search, request.url), 301);
+  // Legacy /marketing and /marketing/* → /en/…
+  if (pathname === "/marketing" || pathname.startsWith("/marketing/")) {
+    // Already localized internal tree: /marketing/en/... — serve directly
+    const segments = pathname.split("/").filter(Boolean);
+    // ["marketing", "en", ...]
+    if (segments.length >= 2 && isAppLocale(segments[1])) {
+      return NextResponse.next();
+    }
+
+    if (!isLocalDev || pathname === "/marketing" || !pathname.match(/^\/marketing\/(en|ru)(\/|$)/)) {
+      const localized = legacyPathToLocalized(pathname, DEFAULT_LOCALE);
+      if (localized) {
+        return NextResponse.redirect(new URL(localized + request.nextUrl.search, request.url), 301);
+      }
     }
   }
 
-  if (isMarketingHost && isAppRoute(pathname) && pathname !== "/marketing") {
+  if (isMarketingHost && isAppRoute(pathname) && !pathname.startsWith("/marketing")) {
     return redirectAppRouteFromMarketing(request);
   }
 
@@ -100,19 +154,32 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isLocalDev = isLocalDevHost(host);
 
-  // Unified localhost: `/` is the app (Mission Control). Marketing lives at
-  // `/marketing` and clean paths (`/pricing`, `/product`, …).
   if (kind === "marketing") {
     return handleMarketingRoutes(request, pathname, true);
   }
 
-  if (kind === "local" && isMarketingContentPath(pathname) && !isAppRoute(pathname)) {
-    return handleMarketingRoutes(request, pathname, false);
-  }
+  // Localhost: locale marketing URLs + clean legacy marketing paths
+  if (kind === "local") {
+    if (isLocalePrefixedPath(pathname)) {
+      const rewritten = rewriteLocalizedMarketing(request, pathname);
+      if (rewritten) return rewritten;
+    }
 
-  // Unified localhost: /marketing/* served directly (no redirect to /).
-  if (kind === "local" && isLocalDev && pathname.startsWith("/marketing")) {
-    return NextResponse.next();
+    if (isMarketingContentPath(pathname) && !isAppRoute(pathname)) {
+      return handleMarketingRoutes(request, pathname, false);
+    }
+
+    if (isLocalDev && pathname.startsWith("/marketing")) {
+      const segments = pathname.split("/").filter(Boolean);
+      if (segments.length >= 2 && isAppLocale(segments[1])) {
+        return NextResponse.next();
+      }
+      const localized = legacyPathToLocalized(pathname, DEFAULT_LOCALE);
+      if (localized) {
+        return NextResponse.redirect(new URL(localized + request.nextUrl.search, request.url), 301);
+      }
+      return NextResponse.next();
+    }
   }
 
   if (kind === "app") {
@@ -126,13 +193,19 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(`${getMarketingUrl().replace(/\/$/, "")}/sitemap.xml`, 301);
     }
 
-    if (pathname.startsWith("/marketing")) {
+    if (pathname.startsWith("/marketing") || isLocalePrefixedPath(pathname)) {
+      const locale = localeFromPathname(pathname);
+      if (locale) {
+        return redirectToMarketing(request, pathname);
+      }
       const clean = cleanPathFromInternal(pathname);
-      return redirectToMarketing(request, clean ?? pathname);
+      const localized = legacyPathToLocalized(clean ?? pathname, DEFAULT_LOCALE);
+      return redirectToMarketing(request, localized ?? localizedPath(DEFAULT_LOCALE, "/"));
     }
 
     if (isMarketingPublicPath(pathname) && pathname !== "/") {
-      return redirectToMarketing(request, pathname);
+      const localized = legacyPathToLocalized(pathname, DEFAULT_LOCALE);
+      return redirectToMarketing(request, localized ?? pathname);
     }
   }
 
@@ -144,3 +217,6 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|\\.well-known|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico)$).*)",
   ],
 };
+
+// Silence unused in edge build when tree-shaken oddly
+void SUPPORTED_LOCALES;

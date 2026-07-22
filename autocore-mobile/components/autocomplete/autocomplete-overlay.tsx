@@ -55,22 +55,22 @@ export const AutocompleteOverlay = memo(function AutocompleteOverlay({
     [onSelect, session?.highlightedIndex, suggestions],
   );
 
-  if (!show) return null;
-
   return (
-    <OverKeyboardView visible>
-      <KeyboardStickyView
-        enabled={show}
-        offset={stickyOffset}
-        style={styles.sticky}
-        pointerEvents="box-none"
-      >
-        <Animated.View style={fadeStyle} pointerEvents="box-none">
-          <View onTouchStart={onInteractionStart}>
-            <AutocompletePanel>{rows}</AutocompletePanel>
-          </View>
-        </Animated.View>
-      </KeyboardStickyView>
+    <OverKeyboardView visible={show}>
+      {show ? (
+        <KeyboardStickyView
+          enabled
+          offset={stickyOffset}
+          style={styles.sticky}
+          pointerEvents="box-none"
+        >
+          <Animated.View style={fadeStyle} pointerEvents="box-none">
+            <View onTouchStart={onInteractionStart}>
+              <AutocompletePanel>{rows}</AutocompletePanel>
+            </View>
+          </Animated.View>
+        </KeyboardStickyView>
+      ) : null}
     </OverKeyboardView>
   );
 });

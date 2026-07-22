@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import type React from 'react';
 
@@ -11,12 +11,6 @@ import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import { haptics, rhythm, spacing } from '@/theme';
 import { SETTINGS_HUB_SECTIONS } from '@/features/settings/data/settings-sections';
 import type { SettingsHubRouteId } from '@/features/settings/types';
-
-type ProfileHubRow = {
-  id: SettingsHubRouteId | 'my-earnings';
-  title: string;
-  icon: React.ComponentType<{ size?: 'sm' | 'md' | 'lg'; color?: string; strokeWidth?: number }>;
-};
 import { CoinsIcon } from '@/assets/icons';
 
 import { CompanySwitcherSheet } from '@/features/organization/components/company-switcher-sheet';
@@ -26,6 +20,12 @@ import { DeleteAccountDialog } from './components/delete-account-dialog';
 import { ProfileHeader } from './components/profile-header';
 import { ProfileHeroCard } from './components/profile-hero-card';
 import { profileHubRouteHref } from './navigation';
+
+type ProfileHubRow = {
+  id: SettingsHubRouteId | 'my-earnings';
+  title: string;
+  icon: React.ComponentType<{ size?: 'sm' | 'md' | 'lg'; color?: string; strokeWidth?: number }>;
+};
 
 const SECTION_GAP = spacing[4];
 
@@ -39,48 +39,56 @@ export function ProfileScreen() {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const canSwitchOrg = memberships.length > 1;
 
-  const open = (id: SettingsHubRouteId) => {
-    router.push(profileHubRouteHref(id));
-  };
+  const sections = useMemo(() => {
+    const next: Array<{ id: string; label: string; rows: ProfileHubRow[] }> = SETTINGS_HUB_SECTIONS.map(
+      (section) => ({
+        ...section,
+        rows: section.rows.filter((row) => {
+          if (row.id === 'team') return rbac.nav.canViewEmployees;
+          if (row.id === 'company') return rbac.nav.canManageSettings || rbac.isOwner;
+          if (row.id === 'advanced') return rbac.nav.canManageSettings;
+          if (row.id === 'finance') return rbac.scopes.accounting !== 'none';
+          return true;
+        }),
+      }),
+    ).filter((section) => section.rows.length > 0);
 
-  const sections: Array<{ id: string; label: string; rows: ProfileHubRow[] }> = SETTINGS_HUB_SECTIONS.map((section) => ({
-    ...section,
-    rows: section.rows.filter((row) => {
-      if (row.id === 'team') return rbac.nav.canViewEmployees;
-      if (row.id === 'company') return rbac.nav.canManageSettings || rbac.isOwner;
-      if (row.id === 'advanced') return rbac.nav.canManageSettings;
-      if (row.id === 'finance') return rbac.scopes.accounting !== 'none';
-      return true;
-    }),
-  })).filter((section) => section.rows.length > 0);
-
-  const financeSectionIndex = sections.findIndex((section) => section.id === 'finance');
-  if (rbac.nav.canAccessMyEarnings) {
-    const earningsRow: ProfileHubRow = {
-      id: 'my-earnings',
-      title: 'Мои начисления',
-      icon: CoinsIcon,
-    };
-    if (financeSectionIndex >= 0) {
-      sections[financeSectionIndex] = {
-        ...sections[financeSectionIndex],
-        rows: [earningsRow, ...sections[financeSectionIndex].rows],
+    if (rbac.nav.canAccessMyEarnings) {
+      const earningsRow: ProfileHubRow = {
+        id: 'my-earnings',
+        title: 'Мои начисления',
+        icon: CoinsIcon,
       };
-    } else {
-      sections.push({
-        id: 'earnings',
-        label: 'Начисления',
-        rows: [earningsRow],
-      });
+      const financeSectionIndex = next.findIndex((section) => section.id === 'finance');
+      if (financeSectionIndex >= 0) {
+        next[financeSectionIndex] = {
+          ...next[financeSectionIndex],
+          rows: [earningsRow, ...next[financeSectionIndex].rows],
+        };
+      } else {
+        next.push({
+          id: 'earnings',
+          label: 'Начисления',
+          rows: [earningsRow],
+        });
+      }
     }
-  }
+
+    return next;
+  }, [
+    rbac.isOwner,
+    rbac.nav.canAccessMyEarnings,
+    rbac.nav.canManageSettings,
+    rbac.nav.canViewEmployees,
+    rbac.scopes.accounting,
+  ]);
 
   const openRow = (row: ProfileHubRow) => {
     if (row.id === 'my-earnings') {
       router.push('/(tabs)/my-earnings');
       return;
     }
-    open(row.id as SettingsHubRouteId);
+    router.push(profileHubRouteHref(row.id as SettingsHubRouteId));
   };
 
   return (
@@ -148,17 +156,21 @@ export function ProfileScreen() {
           </ListGroup>
         </View>
 
-        <DeleteAccountDialog
-          open={deleteAccount.passwordOpen}
-          password={deleteAccount.password}
-          loading={deleteAccount.loading}
-          error={deleteAccount.error}
-          onPasswordChange={deleteAccount.setPassword}
-          onConfirm={deleteAccount.confirmPasswordDelete}
-          onCancel={deleteAccount.cancelPasswordDelete}
-        />
+        {deleteAccount.passwordOpen ? (
+          <DeleteAccountDialog
+            open={deleteAccount.passwordOpen}
+            password={deleteAccount.password}
+            loading={deleteAccount.loading}
+            error={deleteAccount.error}
+            onPasswordChange={deleteAccount.setPassword}
+            onConfirm={deleteAccount.confirmPasswordDelete}
+            onCancel={deleteAccount.cancelPasswordDelete}
+          />
+        ) : null}
       </ScreenScroll>
-      <CompanySwitcherSheet open={switcherOpen} onClose={() => setSwitcherOpen(false)} />
+      {switcherOpen ? (
+        <CompanySwitcherSheet open={switcherOpen} onClose={() => setSwitcherOpen(false)} />
+      ) : null}
     </Screen>
   );
 }

@@ -110,13 +110,13 @@ export function ImportProgressCore({
               onCancel();
             }}
             className={cn(
-              "relative z-10 flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition",
+              "relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition",
               "hover:bg-destructive/10 hover:text-destructive",
             )}
             aria-label="Отменить импорт"
             title="Отменить"
           >
-            <X className="size-3" />
+            <X className="size-3.5" />
           </button>
         </div>
 
@@ -250,13 +250,13 @@ function ImportReviewIsland({
           onDismiss();
         }}
         className={cn(
-          "flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition",
+          "flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition",
           "hover:bg-destructive/10 hover:text-destructive",
         )}
         aria-label="Скрыть"
         title="Скрыть до следующего импорта"
       >
-        <X className="size-3" />
+        <X className="size-3.5" />
       </button>
     </motion.div>
   );

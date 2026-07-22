@@ -38,7 +38,7 @@ function PanelItem({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
-        minHeight: scanLayout.panelItemHeight,
+        minHeight: Math.max(scanLayout.panelItemHeight, 44),
         paddingHorizontal: 14,
       }}
     >
@@ -64,7 +64,7 @@ export function ScanGlassPanel({
       <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 14, opacity: 0.5 }} />
       <PanelItem icon={ImagesIcon} label="Открыть фото" onPress={onOpenPhotos} />
       <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 14, opacity: 0.5 }} />
-      <PanelItem icon={FileTextIcon} label="Import" onPress={onImportDocument} />
+      <PanelItem icon={FileTextIcon} label="Импорт документа" onPress={onImportDocument} />
       <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 14, opacity: 0.5 }} />
       <PanelItem icon={ClockIcon} label="Недавние сканы" onPress={onRecentScans} />
     </View>

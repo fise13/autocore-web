@@ -18,7 +18,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { KnowledgeSuggestionChips } from "@/components/knowledge/knowledge-suggestion-chips";
 import { MotorSaleDocumentsPayload, MotorSaleDocumentsStatus } from "@/hooks/use-motor-sale-documents";
+import { useKnowledgeSuggestions } from "@/hooks/use-knowledge-suggestions";
+import { emitKnowledgeEvent } from "@/lib/knowledge/knowledge-api.client";
 import { downloadDocumentPdf, printDocumentPdf } from "@/lib/documents/fetch-document-pdf";
 import { mapServerError } from "@/lib/errors/map-server-error";
 import { cn } from "@/lib/utils";
@@ -34,6 +37,12 @@ type MotorSaleDocumentsPanelProps = {
   amount?: number;
   saleDate?: Date;
   motorMissing?: boolean;
+  companyId?: string | null;
+};
+
+const DOC_TYPE_BY_SLUG: Record<"engine-warranty" | "invoice", string> = {
+  "engine-warranty": "warranty",
+  invoice: "invoice",
 };
 
 type BusyKind = "warranty-print" | "warranty-download" | "invoice-print" | "invoice-download" | null;
@@ -160,6 +169,7 @@ export function MotorSaleDocumentsPanel({
   amount,
   saleDate,
   motorMissing = false,
+  companyId,
 }: MotorSaleDocumentsPanelProps) {
   const [busy, setBusy] = useState<BusyKind>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -167,6 +177,15 @@ export function MotorSaleDocumentsPanel({
   const warrantyId = documents?.warrantyId ?? null;
   const actionsDisabled = busy != null || isLoading || !warrantyId;
   const isReady = status === "ready" && Boolean(warrantyId);
+
+  const { suggestions: docPackSuggestions } = useKnowledgeSuggestions({
+    enabled: Boolean(documents?.engineCode),
+    companyId,
+    engineCode: documents?.engineCode,
+    brandName: documents?.brandName,
+    limit: 4,
+  });
+  const docPackHints = docPackSuggestions.filter((suggestion) => suggestion.kind === "docpack");
 
   async function runAction(
     kind: Exclude<BusyKind, null>,
@@ -188,6 +207,12 @@ export function MotorSaleDocumentsPanel({
           { aggregateType: "warranty" },
         );
       }
+      void emitKnowledgeEvent({
+        type: "document.printed",
+        engineCode: documents?.engineCode,
+        brandName: documents?.brandName,
+        payload: { docTypes: [DOC_TYPE_BY_SLUG[slug]] },
+      });
     } catch (e) {
       setActionError(mapServerError(e, mode === "print" ? "Не удалось напечатать документ" : "Не удалось скачать документ"));
     } finally {
@@ -238,6 +263,13 @@ export function MotorSaleDocumentsPanel({
         >
           <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
           <p>{actionError}</p>
+        </div>
+      ) : null}
+
+      {docPackHints.length > 0 ? (
+        <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/15 px-3.5 py-3">
+          <p className="text-xs font-medium text-muted-foreground">Обычно печатают вместе</p>
+          <KnowledgeSuggestionChips suggestions={docPackHints} onAccept={() => undefined} />
         </div>
       ) : null}
 

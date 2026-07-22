@@ -1,46 +1,35 @@
 "use client";
 
-import Link from "next/link";
 import { type ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
-import { productContent } from "@/components/marketing/product/content/product-content";
-import { AiImportMock } from "@/components/marketing/experience/mocks/ai-import-mock";
-import { AnalyticsMock } from "@/components/marketing/experience/mocks/analytics-mock";
-import { CtaVisualBackdrop } from "@/components/marketing/experience/mocks/cta-visual-backdrop";
-import { DocumentsMock } from "@/components/marketing/experience/mocks/documents-mock";
-import { InventoryMock } from "@/components/marketing/experience/mocks/inventory-mock";
-import { MissionControlMock } from "@/components/marketing/experience/mocks/mission-control-mock";
-import { PlatformSyncExperience } from "@/components/marketing/experience/mocks/platform-sync-experience";
-import { RepairTimelineMock } from "@/components/marketing/experience/mocks/repair-timeline-mock";
-import { VehicleCardMock } from "@/components/marketing/experience/mocks/vehicle-card-mock";
-import { WorkOrderMock } from "@/components/marketing/experience/mocks/work-order-mock";
-import { MacBookProFrame } from "@/components/marketing/experience/devices/macbook-pro-frame";
+import { HeroMotorsTheater } from "@/components/marketing/experience/surfaces/hero-motors-theater";
+import { ProductAppSurface } from "@/components/marketing/experience/surfaces/product-app-surface";
+import { TrialButton } from "@/components/marketing/experience/ui/trial-button";
+import { useProductContent } from "@/components/marketing/product/content/use-product-content";
 import { ProductModulesNav } from "@/components/marketing/product/product-modules-nav";
-import { ProductSecuritySlice } from "@/components/marketing/product/product-security-slice";
-import { ProductStorySection } from "@/components/marketing/product/product-story-section";
-import { ProductWorkdayScroll } from "@/components/marketing/product/product-workday-scroll";
+import { ProductWalkSection } from "@/components/marketing/product/product-walk-section";
+import { ProductAiImportSurface } from "@/components/marketing/product/surfaces/product-ai-import-surface";
+import { ProductDocumentPreview } from "@/components/marketing/product/surfaces/product-document-preview";
+import { ProductFinanceSurface } from "@/components/marketing/product/surfaces/product-finance-surface";
+import { ProductMobilePhone } from "@/components/marketing/product/surfaces/product-mobile-phone";
+import { ProductSaleDemo } from "@/components/marketing/product/surfaces/product-sale-demo";
+import { ProductWorkOrderPanel } from "@/components/marketing/product/surfaces/product-work-order-panel";
 import { Button } from "@/components/ui/button";
-import { appDemoUrl } from "@/lib/site-urls";
+import { Link } from "@/i18n/navigation";
 
-const copy = productContent;
 const EASE = [0.16, 1, 0.3, 1] as const;
 
-function section(id: (typeof copy.sections)[number]["id"]) {
-  return copy.sections.find((item) => item.id === id)!;
-}
-
-type HeroRevealProps = {
+type FadeProps = {
   children: ReactNode;
   className?: string;
-  delay: number;
-  duration: number;
+  delay?: number;
+  duration?: number;
   y?: number;
 };
 
-function HeroReveal({ children, className, delay, duration, y = 18 }: HeroRevealProps) {
+function FadeUp({ children, className, delay = 0, duration = 0.7, y = 16 }: FadeProps) {
   const reduced = useReducedMotion();
-
   return (
     <motion.div
       className={className}
@@ -55,241 +44,136 @@ function HeroReveal({ children, className, delay, duration, y = 18 }: HeroReveal
 
 export function ProductExperience() {
   const reduced = useReducedMotion();
-  const missionControl = section("mission-control");
-  const vehicleCard = section("vehicle-card");
-  const workOrders = section("work-orders");
-  const inventory = section("inventory");
-  const documents = section("documents");
-  const repairTimeline = section("repair-timeline");
-  const platform = section("platform");
-  const aiImport = section("ai-import");
-  const analytics = section("analytics");
-  const security = section("security");
+  const copy = useProductContent();
+  const sections = copy.sections;
+  const engine = sections["engine-search"];
 
   return (
-    <div className="product-page">
-      <section className="product-hero" aria-label="Продукт">
-        <div className="product-hero-atmosphere" aria-hidden />
-        <div className="exp-section-inner product-hero-inner">
-          <div className="product-hero-copy">
-            <HeroReveal delay={0} duration={0.7} y={18}>
-              <p className="product-hero-brand">{copy.hero.brand}</p>
-            </HeroReveal>
+    <div className="product-page product-walk">
+      <section className="product-walk-hero" aria-label={copy.hero.title}>
+        <div className="product-walk-hero-copy">
+          <FadeUp delay={0} duration={0.7} y={14}>
+            <h1 className="product-walk-hero-title">{copy.hero.title}</h1>
+          </FadeUp>
 
-            <HeroReveal delay={0.1} duration={0.72} y={22}>
-              <h1 className="exp-display product-hero-title">{copy.hero.title}</h1>
-            </HeroReveal>
-
-            <HeroReveal className="product-hero-description" delay={0.32} duration={0.55} y={14}>
-              <p>{copy.hero.description}</p>
-            </HeroReveal>
-
-            <HeroReveal delay={0.58} duration={0.48} y={12}>
-              <div className="product-hero-actions flex flex-wrap gap-3">
-                <Button size="lg" render={<Link href={appDemoUrl()} />} nativeButton={false}>
-                  {copy.hero.ctaPrimary}
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  render={<Link href={copy.hero.ctaSecondaryHref} />}
-                  nativeButton={false}
-                >
-                  {copy.hero.ctaSecondary}
-                </Button>
-              </div>
-            </HeroReveal>
-          </div>
-
-          <div className="product-hero-visual">
-            <div className="product-hero-device">
-              <MacBookProFrame windowTitle="AutoCore · Mission Control" className="product-hero-macbook">
-                <div className="product-hero-mac-content">
-                  <MissionControlMock className="w-full" layout="hero" />
-                </div>
-              </MacBookProFrame>
-            </div>
-          </div>
+          <FadeUp delay={0.12} duration={0.65} y={12}>
+            <p className="product-walk-hero-sub">{copy.hero.subtitle}</p>
+          </FadeUp>
         </div>
+
+        <motion.div
+          className="product-walk-hero-app"
+          initial={reduced ? false : { opacity: 0, y: 32 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1.05, delay: 0.32, ease: EASE }}
+        >
+          <ProductAppSurface compact className="product-walk-app-surface" />
+        </motion.div>
       </section>
 
-      <ProductModulesNav />
+      <div className="product-walk-layout">
+        <aside className="product-walk-aside">
+          <ProductModulesNav />
+        </aside>
 
-      <ProductStorySection
-        id="mission-control"
-        chapter={missionControl.chapter}
-        title={missionControl.title}
-        narrative={missionControl.narrative}
-        workflow={missionControl.workflow}
-        intervalMs={missionControl.intervalMs}
-      >
-        <MissionControlMock className="w-full" layout="full" />
-      </ProductStorySection>
-
-      <ProductWorkdayScroll />
-
-      <ProductStorySection
-        id="vehicle-card"
-        chapter={vehicleCard.chapter}
-        title={vehicleCard.title}
-        narrative={vehicleCard.narrative}
-        workflow={vehicleCard.workflow}
-        intervalMs={vehicleCard.intervalMs}
-        reverse
-      >
-        <VehicleCardMock className="w-full" />
-      </ProductStorySection>
-
-      <ProductStorySection
-        id="work-orders"
-        chapter={workOrders.chapter}
-        title={workOrders.title}
-        narrative={workOrders.narrative}
-        workflow={workOrders.workflow}
-        intervalMs={workOrders.intervalMs}
-      >
-        <WorkOrderMock className="w-full" />
-      </ProductStorySection>
-
-      <ProductStorySection
-        id="inventory"
-        chapter={inventory.chapter}
-        title={inventory.title}
-        narrative={inventory.narrative}
-        workflow={inventory.workflow}
-        intervalMs={inventory.intervalMs}
-        reverse
-      >
-        <InventoryMock className="w-full" />
-      </ProductStorySection>
-
-      <ProductStorySection
-        id="documents"
-        chapter={documents.chapter}
-        title={documents.title}
-        narrative={documents.narrative}
-        workflow={documents.workflow}
-        intervalMs={documents.intervalMs}
-      >
-        <DocumentsMock className="w-full" />
-      </ProductStorySection>
-
-      <ProductStorySection
-        id="repair-timeline"
-        chapter={repairTimeline.chapter}
-        title={repairTimeline.title}
-        narrative={repairTimeline.narrative}
-        workflow={repairTimeline.workflow}
-        intervalMs={repairTimeline.intervalMs}
-        reverse
-      >
-        <RepairTimelineMock className="w-full" />
-      </ProductStorySection>
-
-      <ProductStorySection
-        id="platform"
-        chapter={platform.chapter}
-        title={platform.title}
-        narrative={platform.narrative}
-        workflow={platform.workflow}
-        intervalMs={platform.intervalMs}
-        wideMock
-        bareVisual
-      >
-        <PlatformSyncExperience hideHeader />
-      </ProductStorySection>
-
-      <ProductStorySection
-        id="ai-import"
-        chapter={aiImport.chapter}
-        title={aiImport.title}
-        narrative={aiImport.narrative}
-        workflow={aiImport.workflow}
-        intervalMs={aiImport.intervalMs}
-        reverse
-      >
-        <AiImportMock className="w-full" />
-      </ProductStorySection>
-
-      <ProductStorySection
-        id="analytics"
-        chapter={analytics.chapter}
-        title={analytics.title}
-        narrative={analytics.narrative}
-        workflow={analytics.workflow}
-        intervalMs={analytics.intervalMs}
-      >
-        <AnalyticsMock className="w-full" />
-      </ProductStorySection>
-
-      <ProductStorySection
-        id="security"
-        chapter={security.chapter}
-        title={security.title}
-        narrative={security.narrative}
-        workflow={security.workflow}
-        intervalMs={security.intervalMs}
-        reverse
-      >
-        <ProductSecuritySlice />
-      </ProductStorySection>
-
-      <section className="product-cta" aria-labelledby="product-cta-heading">
-        <CtaVisualBackdrop className="absolute inset-0" />
-
-        <div className="exp-section-inner product-cta-inner">
-          <motion.h2
-            id="product-cta-heading"
-            className="exp-display product-cta-title"
-            initial={reduced ? false : { opacity: 0, y: 14 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.55, ease: EASE }}
+        <div className="product-walk-main">
+          <ProductWalkSection
+            id={engine.id}
+            title={engine.title}
+            line={engine.line}
+            question={engine.question}
+            surfaceClassName="product-walk-surface-tall"
           >
+            <div className="product-engine-search">
+              <div className="product-engine-prompt" aria-hidden>
+                <span>{engine.searchPrompt}</span>
+              </div>
+              <HeroMotorsTheater
+                className="product-walk-theater"
+                initialQuery=""
+                dense
+              />
+            </div>
+          </ProductWalkSection>
+
+          <ProductWalkSection
+            id={sections.sale.id}
+            title={sections.sale.title}
+            line={sections.sale.line}
+            question={sections.sale.question}
+            surfaceClassName="product-walk-surface-tall"
+          >
+            <ProductSaleDemo />
+          </ProductWalkSection>
+
+          <ProductWalkSection
+            id={sections["work-order"].id}
+            title={sections["work-order"].title}
+            line={sections["work-order"].line}
+            question={sections["work-order"].question}
+            surfaceClassName="product-walk-surface-tall"
+          >
+            <ProductWorkOrderPanel />
+          </ProductWalkSection>
+
+          <ProductWalkSection
+            id={sections.documents.id}
+            title={sections.documents.title}
+            line={sections.documents.line}
+            question={sections.documents.question}
+            surfaceClassName="product-walk-surface-tall"
+          >
+            <ProductDocumentPreview />
+          </ProductWalkSection>
+
+          <ProductWalkSection
+            id={sections.finance.id}
+            title={sections.finance.title}
+            line={sections.finance.line}
+            question={sections.finance.question}
+            surfaceClassName="product-walk-surface-tall"
+          >
+            <ProductFinanceSurface />
+          </ProductWalkSection>
+
+          <ProductWalkSection
+            id={sections.mobile.id}
+            title={sections.mobile.title}
+            line={sections.mobile.line}
+            question={sections.mobile.question}
+            surfaceClassName="product-walk-surface-phone"
+          >
+            <ProductMobilePhone />
+          </ProductWalkSection>
+
+          <ProductWalkSection
+            id={sections.ai.id}
+            title={sections.ai.title}
+            line={sections.ai.line}
+            question={sections.ai.question}
+          >
+            <ProductAiImportSurface />
+          </ProductWalkSection>
+        </div>
+      </div>
+
+      <section className="product-walk-cta" aria-labelledby="product-cta-heading">
+        <div className="product-walk-cta-inner">
+          <h2 id="product-cta-heading" className="product-walk-cta-title">
             <span className="block">{copy.cta.titleLine1}</span>
-            <span className="mt-2 block text-muted-foreground">{copy.cta.titleLine2}</span>
-          </motion.h2>
-
-          <motion.p
-            className="product-cta-description"
-            initial={reduced ? false : { opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-60px" }}
-            transition={{ duration: 0.45, delay: 0.06, ease: EASE }}
-          >
-            {copy.cta.description}
-          </motion.p>
-
-          <motion.div
-            className="product-cta-actions"
-            initial={reduced ? false : { opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-50px" }}
-            transition={{ duration: 0.45, delay: 0.12, ease: EASE }}
-          >
-            <Button size="lg" render={<Link href={appDemoUrl()} />} nativeButton={false}>
-              {copy.cta.primary}
-            </Button>
+            <span className="block">{copy.cta.titleLine2}</span>
+          </h2>
+          <div className="product-walk-cta-actions">
+            <TrialButton className="product-walk-cta-primary">{copy.cta.primary}</TrialButton>
             <Button
-              size="lg"
-              variant="ghost"
-              className="font-normal text-muted-foreground hover:text-foreground"
-              render={<Link href={copy.cta.secondaryHref} />}
+              variant="outline"
+              className="product-walk-cta-secondary"
+              render={<Link href="/download" />}
               nativeButton={false}
             >
               {copy.cta.secondary}
             </Button>
-          </motion.div>
-
-          <motion.p
-            className="product-cta-trust"
-            initial={reduced ? false : { opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.4, delay: 0.18, ease: EASE }}
-          >
-            {copy.cta.trust.join(" · ")}
-          </motion.p>
+          </div>
         </div>
       </section>
     </div>

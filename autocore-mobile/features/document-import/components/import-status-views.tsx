@@ -9,9 +9,18 @@ import { haptics } from '@/theme';
 
 type ImportUploadingViewProps = {
   progressLabel?: string;
+  /** 0–1 upload progress; omit for indeterminate. */
+  progress?: number | null;
+  detail?: string;
 };
 
-export function ImportUploadingView({ progressLabel = 'Отправляем документ…' }: ImportUploadingViewProps) {
+export function ImportUploadingView({
+  progressLabel = 'Отправляем документ…',
+  progress = null,
+  detail = 'Оригинал сохранится, на компьютере начнётся разбор',
+}: ImportUploadingViewProps) {
+  const pct = progress != null ? Math.round(Math.min(1, Math.max(0, progress)) * 100) : null;
+
   return (
     <Animated.View entering={FadeIn.duration(220)} style={styles.center}>
       <Animated.View entering={ZoomIn.springify().damping(16)}>
@@ -20,23 +29,52 @@ export function ImportUploadingView({ progressLabel = 'Отправляем до
       <Text variant="body" style={styles.title}>
         {progressLabel}
       </Text>
+      {pct != null ? (
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${pct}%` }]} />
+        </View>
+      ) : null}
       <Text variant="caption" style={styles.caption}>
-        Оригинал сохранён, готовим превью
+        {pct != null ? `${pct}% · ${detail}` : detail}
       </Text>
     </Animated.View>
   );
 }
 
+export type ImportParseStatus = 'uploading' | 'processing' | 'ready' | 'failed' | 'unknown';
+
 type ImportSuccessViewProps = {
   onDone: () => void;
   onContinue?: () => void;
   continueLabel?: string;
+  uploadedCount?: number;
+  parseStatus?: ImportParseStatus;
+  onRetryStatus?: () => void;
 };
+
+function parseCopy(status: ImportParseStatus | undefined, uploadedCount: number): string {
+  const countHint =
+    uploadedCount > 1 ? `${uploadedCount} фото в этой сессии. ` : uploadedCount === 1 ? '1 фото. ' : '';
+
+  switch (status) {
+    case 'ready':
+      return `${countHint}На компьютере документ уже в разборе / готов к просмотру.`;
+    case 'failed':
+      return `${countHint}Разбор не удался — откройте импорт на компьютере или попробуйте ещё раз.`;
+    case 'processing':
+      return `${countHint}На компьютере идёт разбор — можно снимать дальше.`;
+    default:
+      return `${countHint}На компьютере уже идёт разбор — можно снимать дальше.`;
+  }
+}
 
 export function ImportSuccessView({
   onDone,
   onContinue,
   continueLabel = 'Ещё фото',
+  uploadedCount = 0,
+  parseStatus = 'processing',
+  onRetryStatus,
 }: ImportSuccessViewProps) {
   const { colors } = useTheme();
 
@@ -50,9 +88,23 @@ export function ImportSuccessView({
           Загружено
         </Text>
         <Text variant="caption" style={styles.caption}>
-          На компьютере уже идёт разбор — можно снимать дальше
+          {parseCopy(parseStatus, uploadedCount)}
         </Text>
       </Animated.View>
+      {parseStatus === 'failed' && onRetryStatus ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => {
+            haptics.light();
+            onRetryStatus();
+          }}
+          style={styles.linkButton}
+        >
+          <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
+            Проверить статус ещё раз
+          </Text>
+        </Pressable>
+      ) : null}
       {onContinue ? (
         <Pressable
           accessibilityRole="button"
@@ -102,25 +154,37 @@ const styles = StyleSheet.create({
   title: {
     color: '#fff',
     fontWeight: '700',
-    fontSize: 20,
     textAlign: 'center',
   },
   caption: {
-    color: 'rgba(255,255,255,0.65)',
+    color: 'rgba(255,255,255,0.72)',
     textAlign: 'center',
+    lineHeight: 18,
+  },
+  progressTrack: {
+    width: '70%',
+    maxWidth: 240,
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: '#fff',
   },
   primaryButton: {
-    marginTop: 12,
-    minHeight: 48,
-    minWidth: 160,
+    width: '100%',
+    maxWidth: 320,
+    minHeight: 52,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
   },
   secondaryButton: {
     width: '100%',
-    maxWidth: 280,
+    maxWidth: 320,
     minHeight: 48,
     borderRadius: 14,
     alignItems: 'center',
@@ -128,5 +192,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.35)',
     backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  linkButton: {
+    paddingVertical: 6,
   },
 });

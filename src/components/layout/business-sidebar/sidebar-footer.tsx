@@ -16,11 +16,18 @@ import {
   dismissProductUpdate,
   isProductUpdateDismissed,
 } from "@/lib/product/product-update-dismiss";
+import type { SystemStatusLevel } from "@/lib/product/product-status";
 import { cn } from "@/lib/utils";
 
 type SidebarFooterProps = {
   collapsed?: boolean;
   onNavigate?: () => void;
+};
+
+const statusDotClass: Record<SystemStatusLevel, string> = {
+  operational: "bg-emerald-500",
+  degraded: "bg-amber-500",
+  outage: "bg-destructive",
 };
 
 function FooterLink({
@@ -30,6 +37,7 @@ function FooterLink({
   external,
   collapsed,
   onNavigate,
+  trailing,
 }: {
   href: string;
   label: string;
@@ -37,22 +45,30 @@ function FooterLink({
   external?: boolean;
   collapsed?: boolean;
   onNavigate?: () => void;
+  trailing?: ReactNode;
 }) {
   const linkProps = external
     ? { target: "_blank" as const, rel: "noopener noreferrer" }
     : {};
 
   return (
-    <SidebarMenuItem>
+    <SidebarMenuItem className={cn(collapsed && "flex w-auto justify-center")}>
       <SidebarMenuButton
-        tooltip={label}
+        tooltip={collapsed ? label : undefined}
+        title={collapsed ? label : undefined}
         render={
           <Link href={href} onClick={() => onNavigate?.()} {...linkProps} />
         }
-        className={cn(collapsed && "justify-center")}
+        className={cn(
+          collapsed &&
+            "size-9! w-9! max-w-9 justify-center rounded-lg p-0! text-muted-foreground hover:bg-sidebar-accent/80 hover:text-sidebar-foreground",
+        )}
       >
-        {icon}
-        <span data-sidebar-hide-collapsed>{label}</span>
+        <span className="relative inline-flex shrink-0 items-center justify-center">
+          {icon}
+          {trailing}
+        </span>
+        {!collapsed ? <span data-sidebar-hide-collapsed>{label}</span> : null}
       </SidebarMenuButton>
     </SidebarMenuItem>
   );
@@ -61,6 +77,7 @@ function FooterLink({
 export function SidebarFooter({ collapsed = false, onNavigate }: SidebarFooterProps) {
   const { announcement, help, status } = sidebarFooterContent;
   const [announcementVisible, setAnnouncementVisible] = useState(false);
+  const [statusLevel, setStatusLevel] = useState<SystemStatusLevel>("operational");
 
   useEffect(() => {
     if (!announcement) {
@@ -69,6 +86,22 @@ export function SidebarFooter({ collapsed = false, onNavigate }: SidebarFooterPr
     }
     setAnnouncementVisible(!isProductUpdateDismissed(announcement.id));
   }, [announcement]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/status", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("status failed");
+        const data = (await response.json()) as { overall?: SystemStatusLevel };
+        if (!cancelled && data.overall) setStatusLevel(data.overall);
+      })
+      .catch(() => {
+        if (!cancelled) setStatusLevel("degraded");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleDismissAnnouncement = () => {
     if (!announcement) return;
@@ -80,7 +113,7 @@ export function SidebarFooter({ collapsed = false, onNavigate }: SidebarFooterPr
     <div
       className={cn(
         "mt-auto shrink-0 border-t border-sidebar-border/60",
-        collapsed ? "px-1 py-2" : "px-2 py-3",
+        collapsed ? "px-1.5 py-2.5" : "px-2 py-3",
       )}
     >
       {!collapsed && announcement && announcementVisible ? (
@@ -114,11 +147,11 @@ export function SidebarFooter({ collapsed = false, onNavigate }: SidebarFooterPr
         </div>
       ) : null}
 
-      <SidebarMenu className={cn(collapsed && "gap-1")}>
+      <SidebarMenu className={cn(collapsed ? "w-auto items-center gap-1" : "gap-0.5")}>
         <FooterLink
           href={help.href}
           label={help.label}
-          icon={<HelpCircle className="size-4 shrink-0 opacity-80" />}
+          icon={<HelpCircle className="size-4 shrink-0 opacity-90" />}
           external={help.external}
           collapsed={collapsed}
           onNavigate={onNavigate}
@@ -126,10 +159,21 @@ export function SidebarFooter({ collapsed = false, onNavigate }: SidebarFooterPr
         <FooterLink
           href={status.href}
           label={status.label}
-          icon={<Activity className="size-4 shrink-0 opacity-80" />}
+          icon={<Activity className="size-4 shrink-0 opacity-90" />}
           external={status.external}
           collapsed={collapsed}
           onNavigate={onNavigate}
+          trailing={
+            <span
+              aria-hidden
+              title={status.label}
+              className={cn(
+                "absolute size-1.5 rounded-full ring-2 ring-sidebar",
+                collapsed ? "-top-0.5 -right-0.5" : "top-0 right-0",
+                statusDotClass[statusLevel],
+              )}
+            />
+          }
         />
       </SidebarMenu>
     </div>

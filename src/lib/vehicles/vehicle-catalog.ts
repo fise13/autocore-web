@@ -49,7 +49,8 @@ export function vehicleMakeOptions(extraMakes: string[] = []): SearchOption[] {
     .filter(Boolean)
     .map((name) => ({ value: name, label: name, keywords: name }));
 
-  return mergeSearchOptions(catalogOptions, extraOptions);
+  // Client / company extras first so real business brands surface above the static catalog.
+  return mergeSearchOptions(extraOptions, catalogOptions);
 }
 
 export function vehicleModelOptions(make: string, extraModels: string[] = []): SearchOption[] {
@@ -63,5 +64,5 @@ export function vehicleModelOptions(make: string, extraModels: string[] = []): S
     .filter(Boolean)
     .map((name) => ({ value: name, label: name, keywords: `${make} ${name}` }));
 
-  return mergeSearchOptions(catalogOptions, extraOptions);
+  return mergeSearchOptions(extraOptions, catalogOptions);
 }

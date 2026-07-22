@@ -1,7 +1,8 @@
+import { clearScheduledQueryDataApplies } from '@/lib/realtime/query-data-scheduler';
 import {
   clearRealtimeSnapshots,
   readRealtimeSnapshotSync,
-  writeRealtimeSnapshotSync,
+  scheduleRealtimeSnapshotWrite,
 } from '@/lib/realtime/snapshot-cache';
 
 type RealtimeError = { code?: string; message: string };
@@ -61,7 +62,8 @@ function attachListener(entry: RegistryEntry): void {
       entry.ready = true;
       entry.lastData = data;
       entry.lastError = null;
-      writeRealtimeSnapshotSync(entry.queryKey, data);
+      // Defer MMKV stringify/write — sync cache writes starve touches on cold start/resume.
+      scheduleRealtimeSnapshotWrite(entry.queryKey, data);
       for (const sub of entry.subscribers) {
         (sub.onData as (value: unknown) => void)(data);
       }
@@ -178,6 +180,7 @@ export function reconnectRealtimeSubscriptions(
   queryKeys?: readonly (readonly unknown[])[],
 ): void {
   const keys = queryKeys?.map(keyOf) ?? [...registry.keys()];
+  let delayMs = 0;
 
   for (const key of keys) {
     const entry = registry.get(key);
@@ -186,7 +189,20 @@ export function reconnectRealtimeSubscriptions(
 
     entry.unsubscribe();
     entry.listening = false;
-    attachListener(entry);
+
+    // Stagger re-attach so first snapshots don't hit the JS thread in one burst.
+    const target = entry;
+    const wait = delayMs;
+    delayMs += 80;
+    if (wait === 0) {
+      attachListener(target);
+    } else {
+      setTimeout(() => {
+        const current = registry.get(key);
+        if (!current || current !== target || current.listening) return;
+        attachListener(current);
+      }, wait);
+    }
   }
 }
 
@@ -196,6 +212,7 @@ export function clearRealtimeSubscriptions(): void {
     entry.unsubscribe();
   }
   registry.clear();
+  clearScheduledQueryDataApplies();
   void clearRealtimeSnapshots();
 }
 
@@ -205,6 +222,65 @@ export function isRealtimeReady(queryKey: readonly unknown[]): boolean {
 
 export function areRealtimeKeysReady(queryKeys: readonly (readonly unknown[])[]): boolean {
   return queryKeys.every(isRealtimeReady);
+}
+
+/**
+ * Interactive shell ready: company config is live/cached, and every acquired
+ * interactive listener has delivered its first snapshot. Missing (unsubscribed)
+ * keys are ignored so RBAC-gated modules do not block reveal.
+ */
+export function areInteractiveSessionReady(
+  companyId: string,
+  interactiveKeys: readonly (readonly unknown[])[],
+): boolean {
+  const configKey = keyOf(['realtime', 'company-app-config', companyId]);
+  const configEntry = registry.get(configKey);
+  if (!configEntry?.ready) return false;
+
+  for (const queryKey of interactiveKeys) {
+    const entry = registry.get(keyOf(queryKey));
+    if (entry && !entry.ready) return false;
+  }
+  return true;
+}
+
+/** True when every keepAlive / subscribed registry entry has its first snapshot. */
+export function areAcquiredSessionListenersReady(): boolean {
+  let seen = 0;
+  for (const entry of registry.values()) {
+    if (!entry.keepAlive && entry.subscribers.size === 0) continue;
+    seen += 1;
+    if (!entry.ready) return false;
+  }
+  return seen > 0;
+}
+
+/**
+ * Bootstrap gate: company config must be live, and every acquired keepAlive
+ * listener must have delivered a first snapshot. Returns ready listener count.
+ */
+export function getSessionBootstrapStatus(companyId: string): {
+  ready: boolean;
+  readyCount: number;
+  pendingCount: number;
+  configReady: boolean;
+} {
+  const configReady = isRealtimeReady(['realtime', 'company-app-config', companyId]);
+  let readyCount = 0;
+  let pendingCount = 0;
+
+  for (const entry of registry.values()) {
+    if (!entry.keepAlive && entry.subscribers.size === 0) continue;
+    if (entry.ready) readyCount += 1;
+    else pendingCount += 1;
+  }
+
+  return {
+    configReady,
+    readyCount,
+    pendingCount,
+    ready: configReady && pendingCount === 0 && readyCount > 0,
+  };
 }
 
 export function subscribeRealtimeRegistry(cb: () => void): () => void {

@@ -17,10 +17,11 @@ import { PERMISSIONS, Permission, ROLE_PERMISSIONS, USER_ROLES, UserRole } from 
 import { getFirebaseAuth } from "@/infrastructure/firebase/client";
 import { createEmployeeRbacRepository } from "@/infrastructure/firestore/employee-rbac-repository";
 import { createInviteRepository } from "@/infrastructure/firestore/invite-repository";
+import { WorkspaceSection } from "@/components/layout/workspace-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -460,20 +461,17 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
   }
 
   return (
-    <section className={cn("flex w-full flex-col gap-4", !embedded && "mx-auto max-w-6xl")}>
-      <Card className={embedded ? "border-0 bg-transparent shadow-none" : undefined}>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Сотрудники</CardTitle>
-            <CardDescription>
-              Активно: {activeCount} из {subscriptionsEnabled ? employees.length : 0}
-            </CardDescription>
-          </div>
-          {canManage ? (
+    <section className={cn("flex w-full flex-col gap-8", !embedded && "mx-auto max-w-6xl gap-4")}>
+      <WorkspaceSection
+        embedded={embedded}
+        title="Сотрудники"
+        description={`Активно: ${activeCount} из ${subscriptionsEnabled ? employees.length : 0}`}
+        action={
+          canManage ? (
             <Button onClick={openInviteDialog}>Пригласить сотрудника</Button>
-          ) : null}
-        </CardHeader>
-        <CardContent>
+          ) : null
+        }
+      >
           {!loaded && subscriptionsEnabled ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, index) => (
@@ -586,18 +584,14 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
             </Table>
           )}
           {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
-        </CardContent>
-      </Card>
+      </WorkspaceSection>
 
       {canManage ? (
-        <Card>
-          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
-            <div>
-              <CardTitle>Коды приглашений</CardTitle>
-              <CardDescription>
-                Активных кодов: {activeInvites.length}. Новый сотрудник вводит код при входе в AutoCore.
-              </CardDescription>
-            </div>
+        <WorkspaceSection
+          embedded={embedded}
+          title="Коды приглашений"
+          description={`Активных кодов: ${activeInvites.length}. Новый сотрудник вводит код при входе в AutoCore.`}
+          action={
             <Select
               value={inviteStatusFilter}
               onValueChange={(value) => setInviteStatusFilter(value as InviteStatus | "all")}
@@ -618,8 +612,9 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                 ))}
               </SelectContent>
             </Select>
-          </CardHeader>
-          <CardContent>
+          }
+          className={embedded ? "border-t border-border/60 pt-6" : undefined}
+        >
             {filteredInvites.length === 0 ? (
               <p className="text-sm text-muted-foreground">Нет приглашений с выбранным статусом.</p>
             ) : (
@@ -694,8 +689,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                 </TableBody>
               </Table>
             )}
-          </CardContent>
-        </Card>
+        </WorkspaceSection>
       ) : null}
 
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>

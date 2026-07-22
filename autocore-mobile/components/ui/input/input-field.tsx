@@ -157,9 +157,11 @@ export const InputField = forwardRef<TextInput, InputFieldProps>(function InputF
         </View>
       ) : null}
 
-      <View style={{ flex: 1, justifyContent: 'center', height: '100%' }}>
+      <View style={{ flex: 1, justifyContent: 'center', height: '100%', width: '100%' }}>
         <TextInput
           ref={ref}
+          {...androidProps}
+          {...props}
           editable={isEditable}
           placeholderTextColor={colors.mutedForeground}
           onFocus={(event) => {
@@ -170,9 +172,7 @@ export const InputField = forwardRef<TextInput, InputFieldProps>(function InputF
             setFocused(false);
             onBlur?.(event);
           }}
-          style={[createInputTextStyle(colors.foreground), textStyleOverride]}
-          {...androidProps}
-          {...props}
+          style={[createInputTextStyle(colors.foreground), textStyleOverride, { width: '100%' }]}
         />
       </View>
 

@@ -57,13 +57,24 @@ const demoOrder: WorkOrder = {
       unitCost: 6200,
     },
   ],
-  motorLines: [],
+  motorLines: [
+    {
+      id: "m1",
+      motorId: "motor-001",
+      serialCode: "G4KC-88421",
+      brandName: "Hyundai",
+      engineCode: "G4KC",
+      configuration: "2.4 MPI",
+      unitPrice: 380000,
+      outcome: "install",
+    },
+  ],
   pricing: {
     laborTotal: 112000,
     partsTotal: 14000,
-    motorsTotal: 0,
+    motorsTotal: 380000,
     discount: 0,
-    grandTotal: 126000,
+    grandTotal: 506000,
   },
   createdByUserId: "demo-user",
   createdAt: new Date("2026-06-10T09:00:00"),
@@ -163,4 +174,16 @@ export const demoDocumentContext: DocumentContext = {
   generatedAt: new Date("2026-03-14T17:30:00"),
   locale: "ru-KZ",
   theme: "modern",
+};
+
+/** Landing sale demo — same data, racing work-order language. */
+export const landingSaleDocumentContext: DocumentContext = {
+  ...demoDocumentContext,
+  theme: "racing",
+  company: {
+    ...demoDocumentContext.company,
+    primaryColor: "#e11d2e",
+    secondaryColor: "#0a0a0a",
+    headerConfig: parseDocumentHeaderConfig(undefined, "racing"),
+  },
 };

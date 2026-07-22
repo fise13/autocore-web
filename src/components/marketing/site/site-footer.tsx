@@ -1,57 +1,111 @@
-import Link from "next/link";
+"use client";
+
+import NextLink from "next/link";
+import { useTranslations } from "next-intl";
 
 import { AppLogo } from "@/components/brand/app-logo";
-import { landingContent } from "@/components/marketing/experience/content/landing-content";
 import { DesktopDownloadIcons } from "@/components/marketing/desktop-download-buttons";
-import { marketingRoutes } from "@/lib/marketing-routes";
+import { LanguageSwitcher } from "@/components/marketing/site/language-switcher";
+import { TrialButton } from "@/components/marketing/experience/ui/trial-button";
+import { Link } from "@/i18n/navigation";
+import type { MarketingPathname } from "@/i18n/routing";
+import { appLoginUrl } from "@/lib/site-urls";
 import { getPlatformContacts } from "@/lib/platform/platform-contacts";
-import { appDemoUrl, appLoginUrl } from "@/lib/site-urls";
 
 const contacts = getPlatformContacts();
-const copy = landingContent.footer;
 
-const FOOTER_LINKS = [
-  { label: "Продукт", href: marketingRoutes.product },
-  { label: "Модули", href: marketingRoutes.modules },
-  { label: "Тарифы", href: marketingRoutes.pricing },
-  { label: "Безопасность", href: marketingRoutes.security },
-  { label: "Связаться", href: marketingRoutes.contact },
-  { label: "Скачать", href: marketingRoutes.download },
-  { label: "Конфиденциальность", href: marketingRoutes.privacy },
-  { label: "Условия", href: marketingRoutes.terms },
-] as const;
+type FooterLink = {
+  href: MarketingPathname | { pathname: MarketingPathname; hash: string };
+  label: string;
+};
 
 export function SiteFooter() {
+  const t = useTranslations("marketing");
   const year = new Date().getFullYear();
 
+  const columns: Array<{ title: string; items: FooterLink[] }> = [
+    {
+      title: t("footer.columns.product.title"),
+      items: [
+        { href: "/product", label: t("footer.columns.product.items.overview") },
+        { href: "/modules", label: t("footer.columns.product.items.modules") },
+        { href: "/pricing", label: t("footer.columns.product.items.pricing") },
+        { href: "/download", label: t("footer.columns.product.items.download") },
+      ],
+    },
+    {
+      title: t("footer.columns.company.title"),
+      items: [
+        { href: "/security", label: t("footer.columns.company.items.security") },
+        { href: "/contact", label: t("footer.columns.company.items.contact") },
+        { href: { pathname: "/", hash: "operating-loop" }, label: t("footer.columns.company.items.howItWorks") },
+      ],
+    },
+    {
+      title: t("footer.columns.legal.title"),
+      items: [
+        { href: "/legal/privacy", label: t("footer.columns.legal.items.privacy") },
+        { href: "/legal/terms", label: t("footer.columns.legal.items.terms") },
+      ],
+    },
+  ];
+
   return (
-    <footer className="exp-site-footer mt-auto border-t border-border/60">
-      <div className="exp-site-footer-inner mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-12 sm:px-6 md:py-14">
-        <div className="exp-site-footer-top flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
-          <div className="exp-site-footer-brand flex max-w-sm flex-col gap-4">
-            <Link href={marketingRoutes.home} className="inline-flex w-fit items-center gap-2.5">
+    <footer className="exp-site-footer mt-auto">
+      <div className="exp-site-footer-inner mx-auto flex w-full flex-col gap-12 px-4 py-14 sm:px-6 md:py-16">
+        <div className="exp-site-footer-top grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1.6fr)] lg:items-start lg:gap-16">
+          <div className="exp-site-footer-brand flex max-w-md flex-col gap-5">
+            <Link href="/" className="inline-flex w-fit items-center gap-2.5 text-foreground">
               <AppLogo size={28} />
-              <span className="text-sm font-semibold tracking-tight">AutoCore</span>
+              <span className="text-sm font-semibold tracking-tight">{t("brand.name")}</span>
             </Link>
-            <p className="text-sm leading-relaxed text-muted-foreground">{copy.tagline}</p>
+
+            <div className="space-y-2">
+              <p className="text-[0.975rem] font-medium leading-snug tracking-tight text-foreground">
+                {t("footer.headline")}
+              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground">{t("footer.tagline")}</p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <TrialButton className="exp-site-footer-cta h-9 px-4 text-sm">
+                {t("footer.cta")}
+              </TrialButton>
+              <Link
+                href="/contact"
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {t("footer.contact")}
+              </Link>
+            </div>
+
             <DesktopDownloadIcons size="mini" />
           </div>
 
-          <nav aria-label="Подвал" className="exp-site-footer-nav grid grid-cols-2 gap-x-8 gap-y-2 sm:grid-cols-4">
-            {FOOTER_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {link.label}
-              </Link>
+          <nav aria-label={t("footer.ariaLabel")} className="exp-site-footer-nav grid grid-cols-2 gap-8 sm:grid-cols-3">
+            {columns.map((column) => (
+              <div key={column.title} className="exp-site-footer-col">
+                <p className="exp-site-footer-col-title">{column.title}</p>
+                <ul className="exp-site-footer-col-list">
+                  {column.items.map((link) => (
+                    <li key={`${column.title}-${link.label}`}>
+                      <Link href={link.href} className="exp-site-footer-link">
+                        {link.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
           </nav>
         </div>
 
-        <div className="exp-site-footer-bottom flex flex-col gap-3 border-t border-border/50 pt-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <p>© {year} AutoCore</p>
+        <div className="exp-site-footer-bottom flex flex-col gap-4 border-t border-border/50 pt-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            © {year} {t("brand.name")}
+            <span className="mx-2 text-border">·</span>
+            <span className="text-muted-foreground/80">{t("footer.locale")}</span>
+          </p>
           <div className="exp-site-footer-meta flex flex-wrap items-center gap-x-4 gap-y-1">
             <a href={contacts.mailtoHref} className="hover:text-foreground">
               {contacts.email}
@@ -59,12 +113,10 @@ export function SiteFooter() {
             <a href={contacts.telHref} className="hover:text-foreground">
               {contacts.formattedPhone}
             </a>
-            <Link href={appDemoUrl()} className="font-medium text-foreground hover:underline">
-              Демо
-            </Link>
-            <Link href={appLoginUrl()} className="hover:text-foreground">
-              Войти
-            </Link>
+            <NextLink href={appLoginUrl()} className="hover:text-foreground">
+              {t("footer.signIn")}
+            </NextLink>
+            <LanguageSwitcher />
           </div>
         </div>
       </div>

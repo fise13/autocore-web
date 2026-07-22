@@ -3,13 +3,13 @@
 import { ArrowRight } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 
-import { landingContent } from "@/components/marketing/experience/content/landing-content";
+import { useLandingContent } from "@/components/marketing/experience/content/use-landing-content";
 import { cn } from "@/lib/utils";
 
-const copy = landingContent.philosophy;
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 export function PhilosophyTransformationStrip({ className }: { className?: string }) {
+  const copy = useLandingContent().philosophy;
   const reduced = useReducedMotion();
 
   return (

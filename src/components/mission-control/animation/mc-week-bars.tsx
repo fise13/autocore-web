@@ -65,13 +65,13 @@ function McWeekBarItem({
     heightSpring.set(targetHeight);
   }, [delay, heightSpring, index, reducedMotion, targetHeight]);
 
+  // Always brand blue — negative net days keep the same hue (height uses abs).
   const barClass = cn(
     "w-[78%] max-w-7 rounded-full transition-colors",
     !hasAnyData && "bg-primary/30",
-    hasAnyData && isLatest && (bar.value < 0 ? "bg-amber-500" : "bg-primary"),
+    hasAnyData && isLatest && "bg-primary",
     hasAnyData && !isLatest && isEmptyStub && "bg-primary/20",
-    hasAnyData && !isLatest && !isEmptyStub && bar.value < 0 && "bg-amber-500/40",
-    hasAnyData && !isLatest && !isEmptyStub && bar.value >= 0 && "bg-primary/50",
+    hasAnyData && !isLatest && !isEmptyStub && "bg-primary/50",
   );
 
   return (

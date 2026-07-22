@@ -1,7 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { getOperationsUseCase } from "@/application/use-cases/get-operations";
 import { FinancialOperation } from "@/domain/financial-operation";
@@ -10,53 +9,33 @@ import {
   FinancialOperationsFilters,
   FinancialOperationRepository,
 } from "@/infrastructure/firestore/financial-operation-repository";
+import { useRealtimeQuery } from "@/hooks/use-realtime-query";
 
 export function useOperationsRealtime(
   repository: FinancialOperationRepository,
   filters: FinancialOperationsFilters & { enabled?: boolean },
 ) {
-  const queryClient = useQueryClient();
   const companyId = normalizeCompanyId(filters.companyId);
   const { type, enabled = true } = filters;
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
+  const active = Boolean(companyId && enabled);
   const queryKey = useMemo(
     () => ["financial-operations", companyId, type ?? "all"] as const,
     [companyId, type],
   );
 
-  const query = useQuery<FinancialOperation[]>({
+  const { data, isBootstrapping, errorMessage } = useRealtimeQuery<FinancialOperation[]>({
     queryKey,
-    queryFn: async () => [],
-    enabled: Boolean(companyId && enabled),
+    enabled: active,
     initialData: [],
+    subscribe: (onData, onError) =>
+      getOperationsUseCase(repository, { companyId, type }, onData, onError),
   });
 
-  useEffect(() => {
-    if (!companyId || !enabled) return;
-
-    const unsubscribe = getOperationsUseCase(
-      repository,
-      { companyId, type },
-      (operations) => {
-        setErrorMessage(null);
-        queryClient.setQueryData(queryKey, operations);
-      },
-      (error) => {
-        if (error.code === "permission-denied" || error.code === "unauthenticated") {
-          setErrorMessage(null);
-          return;
-        }
-        setErrorMessage(error.message);
-      },
-    );
-
-    return () => unsubscribe();
-  }, [repository, companyId, enabled, type, queryClient, queryKey]);
-
   return {
-    ...query,
-    errorMessage,
-    isError: Boolean(errorMessage),
+    data: active ? data : [],
+    isBootstrapping: active ? isBootstrapping : false,
+    isLoading: active ? isBootstrapping : false,
+    errorMessage: active ? errorMessage : null,
+    isError: Boolean(active && errorMessage),
   };
 }

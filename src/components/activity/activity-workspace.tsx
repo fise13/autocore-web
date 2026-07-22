@@ -21,6 +21,7 @@ import {
   ShieldIcon,
   UsersIcon,
 } from "lucide-react";
+import { formatEventCountLabel } from "@/lib/activity/activity-journal-utils";
 import { enrichActivityLogs } from "@/lib/mission-control/enrich-activity-logs";
 import { canViewEmployees } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
@@ -67,8 +68,10 @@ export function ActivityWorkspace() {
   return (
     <EnterpriseWorkspaceShell
       title="Активность"
-      description="Операционные сигналы: склад, бухгалтерия, заказ-наряды, сотрудники и настройки."
-      meta={<Badge variant="secondary">{enrichedEntries.length} событий в журнале</Badge>}
+      description="Склад, финансы, заказ-наряды, команда и настройки — в одном журнале."
+      meta={
+        <Badge variant="secondary">{formatEventCountLabel(enrichedEntries.length)} в журнале</Badge>
+      }
       action={
         <Button type="button" variant="outline" render={<Link href="/team" />}>
           К команде

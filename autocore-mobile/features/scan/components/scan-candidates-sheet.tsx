@@ -4,12 +4,12 @@ import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 
 import { Text } from '@/components/ui';
 import { useModalBottomSheet, useTheme } from '@/hooks';
-import { haptics } from '@/theme';
 import { formatPrice } from '@/features/search/lib/format';
+import { haptics } from '@/theme';
 
+import { scanSheetAnimationConfigs } from '../animation/scan-sheet-motion';
 import { ScanProductThumb } from './scan-product-thumb';
 import type { ScanCandidate, ScanResult } from '../types';
-
 type ScanCandidatesSheetProps = {
   result: ScanResult | null;
   payload: string | null;
@@ -35,6 +35,7 @@ export const ScanCandidatesSheet = forwardRef<BottomSheetModal, ScanCandidatesSh
         backdropComponent={sheet.renderBackdrop}
         backgroundStyle={sheet.backgroundStyle}
         handleIndicatorStyle={sheet.handleIndicatorStyle}
+        animationConfigs={scanSheetAnimationConfigs}
       >
         <BottomSheetScrollView contentContainerStyle={{ ...sheet.compactContentStyle, gap: 12 }}>
           <View style={{ gap: 4 }}>

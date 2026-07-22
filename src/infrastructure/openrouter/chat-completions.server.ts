@@ -1,8 +1,15 @@
 import "server-only";
 
+import {
+  AI_PROFILES,
+  isRecoverableAiParseError,
+  resolveProfileModel,
+  type AiProfileId,
+} from "@/infrastructure/openrouter/ai-profiles";
+import { parseAiJsonContent } from "@/infrastructure/openrouter/parse-ai-json";
+
 const DEFAULT_MODEL = "google/gemini-2.0-flash-001";
-/** Keep low — OpenRouter free/low-credit accounts reject large default max_tokens. */
-const DEFAULT_MAX_TOKENS = 512;
+const ABSOLUTE_MAX_TOKENS = 8192;
 
 export type OpenRouterMessage =
   | { role: "system" | "user" | "assistant"; content: string }
@@ -12,13 +19,21 @@ export type OpenRouterMessage =
     };
 
 export type OpenRouterChatOptions = {
+  /** Named budget/model/timeout profile. */
+  profile?: AiProfileId;
   /** Product label for OpenRouter rankings (X-Title). */
   title?: string;
-  /** Explicit model; otherwise DOCUMENT_AI_MODEL → SCAN_AI_MODEL → default. */
+  /** Explicit model; otherwise profile env → OPENROUTER_MODEL → default. */
   model?: string;
   temperature?: number;
   /** Cap completion tokens (OpenRouter bills against this ceiling). */
   maxTokens?: number;
+  /** Override retry budget after JSON/schema failure. */
+  retryMaxTokens?: number;
+  /** Fetch timeout (ms). */
+  timeoutMs?: number;
+  /** Extra attempts after recoverable JSON/schema errors (default 1). */
+  retries?: number;
 };
 
 export function readOpenRouterApiKey(): string | null {
@@ -29,28 +44,31 @@ export function readOpenRouterApiKey(): string | null {
   return key || null;
 }
 
-export function resolveOpenRouterModel(explicit?: string): string {
+export function resolveOpenRouterModel(explicit?: string, profileId: AiProfileId = "default"): string {
+  const profile = AI_PROFILES[profileId];
   return (
-    explicit?.trim() ||
-    process.env.DOCUMENT_AI_MODEL?.trim() ||
-    process.env.SCAN_AI_MODEL?.trim() ||
+    resolveProfileModel(profile, explicit) ||
     process.env.OPENROUTER_MODEL?.trim() ||
     DEFAULT_MODEL
   );
 }
 
-function resolveMaxTokens(explicit?: number): number {
+function clampMaxTokens(value: number): number {
+  return Math.min(Math.max(Math.floor(value), 64), ABSOLUTE_MAX_TOKENS);
+}
+
+function resolveMaxTokens(explicit: number | undefined, profileDefault: number): number {
   if (typeof explicit === "number" && Number.isFinite(explicit) && explicit > 0) {
-    return Math.min(Math.floor(explicit), 8192);
+    return clampMaxTokens(explicit);
   }
   const fromEnv = Number(process.env.OPENROUTER_MAX_TOKENS?.trim());
   if (Number.isFinite(fromEnv) && fromEnv > 0) {
-    return Math.min(Math.floor(fromEnv), 8192);
+    return clampMaxTokens(fromEnv);
   }
-  return DEFAULT_MAX_TOKENS;
+  return clampMaxTokens(profileDefault);
 }
 
-function mapOpenRouterError(status: number, text: string): Error {
+function mapOpenRouterError(status: number, text: string, maxTokens: number): Error {
   try {
     const parsed = JSON.parse(text) as {
       error?: { message?: string; code?: number };
@@ -59,8 +77,11 @@ function mapOpenRouterError(status: number, text: string): Error {
     if (message) {
       if (status === 402 || /credits|max_tokens|afford/i.test(message)) {
         return new Error(
-          `Не хватает кредитов OpenRouter (лимит ответа ${resolveMaxTokens()} tok). Пополни баланс ≈$5: https://openrouter.ai/settings/credits`,
+          `Не хватает кредитов OpenRouter (лимит ответа ${maxTokens} tok). Пополни баланс ≈$5: https://openrouter.ai/settings/credits`,
         );
+      }
+      if (status === 429 || /rate.?limit/i.test(message)) {
+        return new Error("OpenRouter: слишком много запросов. Подождите и повторите.");
       }
       return new Error(message);
     }
@@ -70,6 +91,85 @@ function mapOpenRouterError(status: number, text: string): Error {
   return new Error(text || `OpenRouter error ${status}`);
 }
 
+async function callOpenRouterOnce<T>(
+  messages: OpenRouterMessage[],
+  schema: { parse: (value: unknown) => T },
+  params: {
+    apiKey: string;
+    model: string;
+    title: string;
+    temperature: number;
+    maxTokens: number;
+    timeoutMs: number;
+  },
+): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), params.timeoutMs);
+
+  let response: Response;
+  try {
+    response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${params.apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "https://app.myautocore.com",
+        "X-Title": params.title,
+      },
+      body: JSON.stringify({
+        model: params.model,
+        temperature: params.temperature,
+        max_tokens: params.maxTokens,
+        response_format: { type: "json_object" },
+        messages,
+      }),
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`OpenRouter: таймаут ${Math.round(params.timeoutMs / 1000)}с`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw mapOpenRouterError(response.status, text, params.maxTokens);
+  }
+
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
+  };
+  const choice = payload.choices?.[0];
+  const content = choice?.message?.content;
+  if (!content) throw new Error("Пустой ответ AI");
+
+  let parsed: unknown;
+  try {
+    parsed = parseAiJsonContent(content);
+  } catch {
+    if (choice?.finish_reason === "length") {
+      throw new Error("AI вернул некорректный JSON (ответ обрезан по max_tokens)");
+    }
+    throw new Error("AI вернул некорректный JSON");
+  }
+
+  try {
+    return schema.parse(parsed);
+  } catch (error) {
+    const detail =
+      error instanceof Error && error.message.trim()
+        ? error.message.trim().slice(0, 180)
+        : "схема ответа не совпала";
+    throw new Error(`AI вернул JSON, но он не подходит: ${detail}`);
+  }
+}
+
+/**
+ * JSON chat completion with profile budgets, timeout, and auto-retry on parse failures.
+ */
 export async function callOpenRouterJson<T>(
   messages: OpenRouterMessage[],
   schema: { parse: (value: unknown) => T },
@@ -80,42 +180,38 @@ export async function callOpenRouterJson<T>(
     throw new Error("OpenRouter не настроен. Задайте OPENROUTER_API_KEY.");
   }
 
-  const maxTokens = resolveMaxTokens(options?.maxTokens);
+  const profileId = options?.profile ?? "default";
+  const profile = AI_PROFILES[profileId];
+  const model = resolveOpenRouterModel(options?.model, profileId);
+  const title = options?.title?.trim() || profile.title;
+  const temperature = options?.temperature ?? profile.temperature;
+  const timeoutMs = options?.timeoutMs ?? profile.timeoutMs;
+  const retries = Math.max(0, options?.retries ?? 1);
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "https://app.myautocore.com",
-      "X-Title": options?.title?.trim() || "AutoCore",
-    },
-    body: JSON.stringify({
-      model: resolveOpenRouterModel(options?.model),
-      temperature: options?.temperature ?? 0.1,
-      max_tokens: maxTokens,
-      response_format: { type: "json_object" },
-      messages,
-    }),
-  });
+  let maxTokens = resolveMaxTokens(options?.maxTokens, profile.maxTokens);
+  const retryMaxTokens = resolveMaxTokens(
+    options?.retryMaxTokens,
+    profile.retryMaxTokens,
+  );
 
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw mapOpenRouterError(response.status, text);
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await callOpenRouterOnce(messages, schema, {
+        apiKey,
+        model,
+        title,
+        temperature,
+        maxTokens,
+        timeoutMs,
+      });
+    } catch (error) {
+      lastError = error;
+      const canRetry = attempt < retries && isRecoverableAiParseError(error);
+      if (!canRetry) throw error;
+      maxTokens = Math.max(maxTokens, retryMaxTokens);
+    }
   }
 
-  const payload = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  const content = payload.choices?.[0]?.message?.content;
-  if (!content) throw new Error("Пустой ответ AI");
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(content);
-  } catch {
-    throw new Error("AI вернул некорректный JSON");
-  }
-
-  return schema.parse(parsed);
+  throw lastError instanceof Error ? lastError : new Error("OpenRouter request failed");
 }

@@ -1,11 +1,14 @@
+import type { AppLocale } from "@autocore/i18n/config";
+import { DEFAULT_LOCALE } from "@autocore/i18n/config";
+
 import type { MarketingPathKey } from "@/lib/seo/marketing-paths";
 import { marketingAbsoluteUrl } from "@/lib/seo/marketing-paths";
-import { getMarketingSeoPage, MARKETING_BRAND } from "@/lib/seo/marketing-seo";
+import { getMarketingMessages } from "@/lib/seo/marketing-seo";
 import { getMarketingUrl } from "@/lib/site-urls";
 
-export function buildWebPageJsonLd(key: MarketingPathKey) {
-  const page = getMarketingSeoPage(key);
-  const url = marketingAbsoluteUrl(key);
+export function buildWebPageJsonLd(key: MarketingPathKey, locale: AppLocale = DEFAULT_LOCALE) {
+  const page = getMarketingMessages(locale).seo.pages[key];
+  const url = marketingAbsoluteUrl(key, locale);
   const marketingUrl = getMarketingUrl().replace(/\/$/, "");
 
   return {
@@ -15,7 +18,7 @@ export function buildWebPageJsonLd(key: MarketingPathKey) {
     url,
     name: page.title,
     description: page.description,
-    inLanguage: MARKETING_BRAND.language,
+    inLanguage: locale,
     isPartOf: { "@id": `${marketingUrl}#website` },
     about: { "@id": `${marketingUrl}#software` },
     primaryImageOfPage: {

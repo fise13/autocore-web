@@ -169,7 +169,8 @@ function Sidebar({
       <div
         data-slot="sidebar"
         className={cn(
-          "flex h-full w-(--sidebar-width) flex-col bg-sidebar text-sidebar-foreground",
+          // Prefer filling the parent shell (e.g. ResizableSidebar) over a fixed token width.
+          "flex h-full w-full min-w-0 flex-col bg-sidebar text-sidebar-foreground",
           className
         )}
         {...props}

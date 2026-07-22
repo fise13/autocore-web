@@ -19,8 +19,11 @@ import { BrandingColorField } from "@/components/settings/branding/branding-colo
 import { BrandingLivePreview } from "@/components/settings/branding/branding-live-preview";
 import { BrandingSection } from "@/components/settings/branding/branding-section";
 import { BrandingThemePicker } from "@/components/settings/branding/branding-theme-picker";
+import { LastSavedHint } from "@/components/persistence/last-saved-hint";
+import { usePersistedDocument } from "@/components/persistence/use-persisted-document";
 import { DocumentHeaderSettings } from "@/components/settings/document-header-settings";
 import { DocumentWatermarkSettings } from "@/components/settings/document-watermark-settings";
+import type { PersistenceSyncHandler } from "@/lib/persistence";
 import {
   DEFAULT_COMPANY_PRIMARY_COLOR,
   DEFAULT_COMPANY_SECONDARY_COLOR,
@@ -44,6 +47,14 @@ import {
   type DocumentConfigDraft,
 } from "@/components/settings/document-config-settings";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -94,6 +105,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
   const [activeTab, setActiveTab] = useState<BrandingTab>("identity");
   const [tabEpoch, setTabEpoch] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const previewRef = useRef<string | null>(null);
@@ -118,6 +130,42 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
       if (previewRef.current) URL.revokeObjectURL(previewRef.current);
     };
   }, []);
+
+  const brandingKey = normalizedCompanyId
+    ? { companyId: normalizedCompanyId, kind: "branding" as const, id: "company" }
+    : null;
+
+  const brandingSnapshot = useMemo(
+    () => ({ draft, docConfig }),
+    [draft, docConfig],
+  );
+
+  const brandingSync = useMemo<PersistenceSyncHandler>(
+    () => async ({ snapshot }) => {
+      const payload = snapshot as { draft: typeof draft; docConfig: typeof docConfig };
+      try {
+        await saveCompanyBranding(normalizedCompanyId, {
+          ...payload.draft,
+          ...payload.docConfig,
+        });
+        return { ok: true };
+      } catch (error) {
+        return {
+          ok: false,
+          error: error instanceof Error ? error.message : "Не удалось сохранить брендинг",
+        };
+      }
+    },
+    [normalizedCompanyId],
+  );
+
+  usePersistedDocument({
+    key: brandingKey,
+    value: brandingSnapshot,
+    label: "Брендинг",
+    sync: brandingSync,
+    enabled: Boolean(brandingKey) && !isLoading,
+  });
 
   function setLocalPreview(file: File) {
     if (previewRef.current) URL.revokeObjectURL(previewRef.current);
@@ -152,12 +200,18 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
     onStatus?.(null);
     try {
       await saveCompanyBranding(normalizedCompanyId, { ...draft, ...docConfig });
+      setSaveConfirmOpen(false);
       onStatus?.("Брендинг сохранён. Новые PDF будут использовать эти настройки.");
     } catch (error) {
       onStatus?.(error instanceof Error ? error.message : "Не удалось сохранить брендинг");
     } finally {
       setSaving(false);
     }
+  }
+
+  function openSaveConfirm() {
+    if (saving || uploadingLogo) return;
+    setSaveConfirmOpen(true);
   }
 
   function handleTabChange(value: string) {
@@ -226,7 +280,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[320px] items-center justify-center rounded-2xl border bg-card/50">
+      <div className="flex min-h-[320px] items-center justify-center">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" />
           Загружаем брендинг…
@@ -237,7 +291,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl border bg-gradient-to-br from-primary/5 via-card to-card p-4 sm:p-5">
+      <div>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-xl space-y-1">
             <div className="flex items-center gap-2">
@@ -250,7 +304,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
             </p>
           </div>
           <Button
-            onClick={() => void handleSave()}
+            onClick={openSaveConfirm}
             disabled={saving || uploadingLogo}
             className="shrink-0"
           >
@@ -267,6 +321,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
             )}
           </Button>
         </div>
+        {brandingKey ? <LastSavedHint persistenceKey={brandingKey} className="mt-2" /> : null}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_min(400px,36%)] xl:items-start">
@@ -689,7 +744,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
         )}
       >
         <Button
-          onClick={() => void handleSave()}
+          onClick={openSaveConfirm}
           disabled={saving || uploadingLogo}
           className="w-full sm:w-auto"
         >
@@ -706,6 +761,59 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
           )}
         </Button>
       </div>
+
+      <Dialog open={saveConfirmOpen} onOpenChange={setSaveConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Сохранить брендинг?</DialogTitle>
+            <DialogDescription>
+              Изменения применятся ко всем новым PDF: заказ-наряды, акты, гарантии и счета. Уже
+              сформированные документы не перезапишутся.
+            </DialogDescription>
+          </DialogHeader>
+          <ul className="space-y-1.5 rounded-lg border bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground">
+            <li>
+              Компания:{" "}
+              <span className="font-medium text-foreground">
+                {draft.legalName?.trim() || draft.shortName?.trim() || "без названия"}
+              </span>
+            </li>
+            <li>
+              Тема PDF:{" "}
+              <span className="font-medium text-foreground">{activeTheme}</span>
+            </li>
+            <li>
+              Логотип:{" "}
+              <span className="font-medium text-foreground">
+                {previewSrc ? "загружен" : "не задан"}
+              </span>
+            </li>
+          </ul>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setSaveConfirmOpen(false)}
+              disabled={saving}
+            >
+              Отмена
+            </Button>
+            <Button type="button" onClick={() => void handleSave()} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Сохраняем…
+                </>
+              ) : (
+                <>
+                  <Save className="size-4" />
+                  Сохранить
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

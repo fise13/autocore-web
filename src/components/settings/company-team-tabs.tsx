@@ -68,7 +68,7 @@ export function CompanyTeamTabs({ initialTab = "employees" }: CompanyTeamTabsPro
   return (
     <div className="space-y-4">
       <LayoutGroup id="company-team-tabs">
-        <div className="inline-flex rounded-lg border bg-background p-0.5">
+        <div className="inline-flex rounded-lg bg-muted/40 p-0.5">
           {tabs.map((tab) => {
             const active = teamTab === tab.id;
             return (

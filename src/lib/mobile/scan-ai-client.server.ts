@@ -1,6 +1,7 @@
 import "server-only";
 
 import { callOpenRouterJson } from "@/infrastructure/openrouter/chat-completions.server";
+import { prepareVisionImageDataUrl } from "@/infrastructure/openrouter/prepare-vision-image.server";
 import {
   scanDisambiguateResponseSchema,
   scanOcrResponseSchema,
@@ -9,7 +10,9 @@ import {
 } from "./scan-ai-schemas";
 
 export async function runScanOcr(imageBase64: string, mimeType: string): Promise<ScanOcrResponse> {
-  const dataUrl = `data:${mimeType};base64,${imageBase64}`;
+  const raw = Buffer.from(imageBase64, "base64");
+  const prepared = await prepareVisionImageDataUrl(raw, mimeType);
+
   return callOpenRouterJson(
     [
       {
@@ -17,17 +20,16 @@ export async function runScanOcr(imageBase64: string, mimeType: string): Promise
         content: [
           {
             type: "text",
-            text: "You are an OCR engine. Transcribe all visible text exactly (rawText). Also extract barcodes, VINs, and automotive part numbers. Return JSON: { rawText, barcodes, partNumbers, brand?, confidence, warnings }. Do not classify or invent fields — only extract what is visible.",
+            text: `You are an OCR engine for automotive parts.
+Return ONLY JSON: { "rawText": string, "barcodes": string[], "partNumbers": string[], "brand"?: string, "confidence": number, "warnings": string[] }.
+Transcribe visible text exactly into rawText. Extract barcodes, VINs, and part numbers only if visible. Do not invent fields.`,
           },
-          { type: "image_url", image_url: { url: dataUrl } },
+          { type: "image_url", image_url: { url: prepared.dataUrl } },
         ],
       },
     ],
     scanOcrResponseSchema,
-    {
-      title: "AutoCore Scan",
-      model: process.env.SCAN_AI_MODEL?.trim(),
-    },
+    { profile: "scanOcr" },
   );
 }
 
@@ -41,9 +43,6 @@ export async function runScanDisambiguate(
       { role: "user", content: userPrompt },
     ],
     scanDisambiguateResponseSchema,
-    {
-      title: "AutoCore Scan",
-      model: process.env.SCAN_AI_MODEL?.trim(),
-    },
+    { profile: "scanDisambiguate" },
   );
 }

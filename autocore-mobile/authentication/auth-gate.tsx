@@ -11,7 +11,7 @@ import { useCompanySubscription } from '@/hooks/use-company-subscription';
 import { useAuthJourneyStep } from '@/hooks/use-auth-journey-step';
 import { resolveSessionCompanyId } from '@/lib/session/merge-hydration';
 import { markStartup } from '@/lib/performance/startup-tracer';
-import { hideNativeSplashOnce } from '@/lib/splash';
+import { hideNativeSplashAndLogStartup } from '@/lib/splash';
 import { SessionBootstrapGate } from '@/providers/session-bootstrap-gate';
 import { SessionRealtimeHead } from '@/providers/session-realtime-head';
 import { AutocompleteProvider } from '@/providers/autocomplete-provider';
@@ -73,9 +73,15 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isReady) {
       markStartup('auth_ready');
-      hideNativeSplashOnce();
     }
   }, [isReady]);
+
+  useEffect(() => {
+    if (!isReady) return;
+    // App tree owns splash dismissal via SessionBootstrapGate.
+    if (hasAccess && (isPro || subscriptionLoading)) return;
+    hideNativeSplashAndLogStartup();
+  }, [isReady, hasAccess, isPro, subscriptionLoading]);
 
   if (!isReady) {
     return (
@@ -130,6 +136,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Login / onboarding routes — no session bootstrap.
   return (
     <>
       <AuthRedirectEffect />

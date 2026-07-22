@@ -109,6 +109,7 @@ export function MotorSaleDocumentsSheet({
             amount={operation?.amount}
             saleDate={operation?.createdAt}
             motorMissing={Boolean(operation && !operation.relatedMotorId && !motor)}
+            companyId={companyId}
           />
         </div>
       </DialogContent>

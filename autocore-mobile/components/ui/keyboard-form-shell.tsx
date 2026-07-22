@@ -1,6 +1,9 @@
-import type { ReactNode } from 'react';
-import { View, type ScrollViewProps, type StyleProp, type ViewStyle } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import { useState, type ReactNode } from 'react';
+import { View, type LayoutChangeEvent, type ScrollViewProps, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  KeyboardAwareScrollView,
+  KeyboardStickyView,
+} from 'react-native-keyboard-controller';
 
 type KeyboardFormShellProps = Omit<ScrollViewProps, 'children' | 'contentContainerStyle'> & {
   header?: ReactNode;
@@ -8,7 +11,7 @@ type KeyboardFormShellProps = Omit<ScrollViewProps, 'children' | 'contentContain
   children: ReactNode;
   backgroundColor?: string;
   contentContainerStyle?: StyleProp<ViewStyle>;
-  /** Extra space between focused field and keyboard. */
+  /** Extra space between focused field and keyboard (above sticky footer). */
   bottomOffset?: number;
 };
 
@@ -19,24 +22,38 @@ export function KeyboardFormShell({
   children,
   backgroundColor,
   contentContainerStyle,
-  bottomOffset = 20,
+  bottomOffset = 16,
   keyboardShouldPersistTaps = 'handled',
+  keyboardDismissMode = 'on-drag',
   showsVerticalScrollIndicator = false,
   ...scrollProps
 }: KeyboardFormShellProps) {
+  const [footerHeight, setFooterHeight] = useState(0);
+
+  const handleFooterLayout = (event: LayoutChangeEvent) => {
+    const next = Math.round(event.nativeEvent.layout.height);
+    setFooterHeight((current) => (current === next ? current : next));
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor }}>
       {header}
       <KeyboardAwareScrollView
-        bottomOffset={bottomOffset}
+        bottomOffset={bottomOffset + footerHeight}
         keyboardShouldPersistTaps={keyboardShouldPersistTaps}
+        keyboardDismissMode={keyboardDismissMode}
         showsVerticalScrollIndicator={showsVerticalScrollIndicator}
+        automaticallyAdjustContentInsets={false}
         contentContainerStyle={contentContainerStyle}
         {...scrollProps}
       >
         {children}
       </KeyboardAwareScrollView>
-      {footer}
+      {footer ? (
+        <KeyboardStickyView offset={{ closed: 0, opened: 0 }}>
+          <View onLayout={handleFooterLayout}>{footer}</View>
+        </KeyboardStickyView>
+      ) : null}
     </View>
   );
 }

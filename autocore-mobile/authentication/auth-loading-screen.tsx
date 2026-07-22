@@ -5,5 +5,6 @@ export function AuthLoadingScreen({
 }: {
   message?: string;
 }) {
+  // Hides the native splash so the branded React loader is what the user sees.
   return <AppLoadingScreen message={message} />;
 }

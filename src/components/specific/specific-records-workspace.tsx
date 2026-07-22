@@ -7,6 +7,7 @@ import { ensureSpecificCategorySchemaUseCase } from "@/application/use-cases/spe
 import { sellSpecificWithFinancialOperationUseCase } from "@/application/use-cases/sell-specific-with-financial-operation";
 import { unsellSpecificWithFinancialOperationUseCase } from "@/application/use-cases/unsell-specific-with-financial-operation";
 import { SellFinancialDialog } from "@/components/accounting/sell-financial-dialog";
+import { usePanelActive } from "@/components/layout/panel-active-context";
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { SpecificColumnManagerDialog } from "@/components/specific/specific-column-manager-dialog";
 import { SpecificExcelGrid } from "@/components/specific/specific-excel-grid";
@@ -46,6 +47,7 @@ export function SpecificRecordsWorkspace({
 }: SpecificRecordsWorkspaceProps) {
   const { profile } = useAuth();
   const workspace = useWorkspace();
+  const isActive = usePanelActive();
   const companyId = normalizeCompanyId(profile?.companyId);
   const canEdit = can(profile, "inventory_edit");
   const [category, setCategory] = useState(initialCategory);
@@ -93,8 +95,9 @@ export function SpecificRecordsWorkspace({
   }, [headerMapping, records, workspace.availability, workspace.search]);
 
   useEffect(() => {
+    if (!isActive) return;
     workspace.setCounts(filteredRecords.length, records.length);
-  }, [filteredRecords.length, records.length, workspace]);
+  }, [filteredRecords.length, isActive, records.length, workspace]);
 
   function openSellDialog(row: SpecificGridRow, mode: "sell" | "unsell") {
     if (row.rowKind !== "saved") return;
@@ -183,6 +186,7 @@ export function SpecificRecordsWorkspace({
             canEdit={canEdit}
             repository={specificCategoryRepository}
             availability={workspace.availability}
+            isActive={isActive}
             onSell={(row) => openSellDialog(row, "sell")}
             onUnsell={(row) => openSellDialog(row, "unsell")}
           />

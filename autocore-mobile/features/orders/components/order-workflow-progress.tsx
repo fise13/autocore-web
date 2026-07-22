@@ -22,11 +22,8 @@ export function OrderWorkflowProgress({ status, compact = false }: OrderWorkflow
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         {stages.map((stage, index) => {
           const isLast = index === stages.length - 1;
-          const dotColor = stage.done
-            ? colors.primary
-            : stage.current
-              ? colors.warning
-              : inactiveTrack;
+          // Full / current progress stays brand blue — no amber accent.
+          const dotColor = stage.done || stage.current ? colors.primary : inactiveTrack;
           const lineColor = stage.done ? colors.primary : inactiveTrack;
           const lineOpacity = stage.done ? 1 : 0.35;
 
@@ -40,7 +37,7 @@ export function OrderWorkflowProgress({ status, compact = false }: OrderWorkflow
                   backgroundColor: dotColor,
                   opacity: stage.done || stage.current ? 1 : 0.45,
                   borderWidth: stage.current && !stage.done ? 1.5 : 0,
-                  borderColor: colors.warning,
+                  borderColor: colors.primary,
                 }}
               />
               {!isLast ? (

@@ -1,14 +1,9 @@
-import type { Metadata } from "next";
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import "@/styles/marketing-experience.css";
 
 import { MarketingJsonLd } from "@/components/marketing/seo/marketing-json-ld";
 import { YandexMetrika } from "@/components/marketing/seo/yandex-metrika";
-import { MarketingBarbaLayout } from "@/components/marketing/motion/marketing-barba-layout";
-import { buildMarketingRootMetadata } from "@/lib/seo/build-marketing-metadata";
-
-export const metadata: Metadata = buildMarketingRootMetadata();
 
 export const dynamic = "force-static";
 export const revalidate = 3600;
@@ -17,12 +12,13 @@ type MarketingLayoutProps = {
   children: ReactNode;
 };
 
+/** Outer marketing chrome (CSS + SEO). Nav/footer live under `[locale]` with next-intl. */
 export default function MarketingLayout({ children }: MarketingLayoutProps) {
   return (
     <>
       <MarketingJsonLd />
       <YandexMetrika />
-      <MarketingBarbaLayout>{children}</MarketingBarbaLayout>
+      {children}
     </>
   );
 }

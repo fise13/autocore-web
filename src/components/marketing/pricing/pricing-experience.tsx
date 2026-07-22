@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
-import { marketingSiteContent } from "@/components/marketing/content/marketing-site-content";
+import { useMarketingPages } from "@/components/marketing/content/use-marketing-pages";
 import {
   Accordion,
   AccordionContent,
@@ -11,10 +11,17 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { storePendingBillingIntent } from "@/lib/marketing/pending-billing-intent";
-import { marketingTrialSignupUrl } from "@/lib/marketing/trial-signup-url";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { appDemoUrl } from "@/lib/site-urls";
 
-const copy = marketingSiteContent.pricing;
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 type HeroRevealProps = {
@@ -72,14 +79,15 @@ function ScrollReveal({
   );
 }
 
-function startTrialSignup() {
-  storePendingBillingIntent({ type: "trial" });
-  window.location.href = marketingTrialSignupUrl();
+function openProductDemo() {
+  window.location.href = appDemoUrl();
 }
 
 export function PricingExperience() {
   const reduced = useReducedMotion();
+  const copy = useMarketingPages().pricing;
   const [openFaq, setOpenFaq] = useState<string[]>(["faq-0"]);
+  const [buyOpen, setBuyOpen] = useState(false);
 
   function handleFaqChange(next: string[]) {
     if (next.length === 0) {
@@ -92,6 +100,23 @@ export function PricingExperience() {
 
   return (
     <div className="pricing-page">
+      <Dialog open={buyOpen} onOpenChange={setBuyOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{copy.buyModal.title}</DialogTitle>
+            <DialogDescription>
+              {copy.buyModal.body}{" "}
+              <a href={`mailto:${copy.buyModal.email}`} className="font-medium text-foreground">
+                {copy.buyModal.email}
+              </a>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>{copy.buyModal.close}</DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <section className="pricing-panel pricing-panel-hero" aria-label="Тариф">
         <motion.div
           className="pricing-fragment"
@@ -128,9 +153,19 @@ export function PricingExperience() {
           </HeroReveal>
 
           <HeroReveal className="pricing-hero-cta" delay={0.72} duration={0.48} y={14}>
-            <Button size="lg" className="h-10 min-w-[11rem] px-5 text-sm" onClick={startTrialSignup}>
-              {copy.cta.primary}
-            </Button>
+            <div className="pricing-hero-actions">
+              <Button size="lg" className="h-10 min-w-[11rem] px-5 text-sm" onClick={openProductDemo}>
+                {copy.cta.primary}
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="h-10 min-w-[11rem] px-5 text-sm"
+                onClick={() => setBuyOpen(true)}
+              >
+                {copy.cta.buy}
+              </Button>
+            </div>
             <p className="pricing-hero-trust">
               {copy.cta.trialDays}. {copy.cta.noCard}.
             </p>
@@ -210,7 +245,7 @@ export function PricingExperience() {
           </ScrollReveal>
 
           <ScrollReveal className="pricing-close-cta" delay={0.12} y={10} margin="-50px">
-            <Button size="lg" className="h-10 min-w-[11rem] px-5 text-sm" onClick={startTrialSignup}>
+            <Button size="lg" className="h-10 min-w-[11rem] px-5 text-sm" onClick={openProductDemo}>
               {copy.closing.button}
             </Button>
           </ScrollReveal>

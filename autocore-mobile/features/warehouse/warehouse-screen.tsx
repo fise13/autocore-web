@@ -16,6 +16,7 @@ import {
   useRealtimeReconnect,
   useSession,
 } from '@/hooks';
+import type { InventoryItem } from '@/types/inventory';
 
 import { WarehouseFilterBar, type WarehouseFilter } from './components/warehouse-filter-bar';
 import { WarehouseHeader } from './components/warehouse-header';
@@ -77,17 +78,29 @@ export function WarehouseScreen() {
   );
 
   const stats = useMemo(() => {
-    const lowStockCount = activeItems.filter(isWarehouseLowStock).length;
-    const availableUnits = activeItems.reduce((sum, item) => sum + item.totalAvailable, 0);
+    let lowStockCount = 0;
+    let availableUnits = 0;
+    for (const item of activeItems) {
+      availableUnits += item.totalAvailable;
+      if (isWarehouseLowStock(item)) lowStockCount += 1;
+    }
     return { lowStockCount, availableUnits, total: activeItems.length };
   }, [activeItems]);
 
   const filteredItems = useMemo(() => {
     const trimmed = query.trim();
-    return activeItems
-      .filter((item) => (filter === 'low' ? isWarehouseLowStock(item) : true))
-      .filter((item) => (trimmed ? inventoryMatchesQuery(item, trimmed) : true))
-      .sort((left, right) => left.name.localeCompare(right.name, 'ru'));
+    const needsFilter = filter === 'low' || trimmed.length > 0;
+    const source = needsFilter
+      ? activeItems.filter((item) => {
+          if (filter === 'low' && !isWarehouseLowStock(item)) return false;
+          if (trimmed && !inventoryMatchesQuery(item, trimmed)) return false;
+          return true;
+        })
+      : activeItems;
+
+    // Avoid full locale sort on every catalog snapshot when list is already usable.
+    if (!needsFilter && source.length > 120) return source;
+    return [...source].sort((left, right) => left.name.localeCompare(right.name, 'ru'));
   }, [activeItems, filter, query]);
 
   const handleItemPress = useCallback(
@@ -121,6 +134,19 @@ export function WarehouseScreen() {
     [activeItems, adjust, canEdit],
   );
 
+  const renderItem = useCallback(
+    ({ item }: { item: InventoryItem }) => (
+      <WarehouseItemRow
+        item={item}
+        available={getDisplayAvailable(item)}
+        canEdit={canEdit}
+        onPress={() => handleItemPress(item.id)}
+        onAdjust={(delta) => handleAdjustStock(item.id, delta)}
+      />
+    ),
+    [canEdit, getDisplayAvailable, handleAdjustStock, handleItemPress],
+  );
+
   if (!companyId) {
     return (
       <Screen>
@@ -151,6 +177,7 @@ export function WarehouseScreen() {
         data={filteredItems}
         keyExtractor={(item) => item.id}
         keyboardShouldPersistTaps="handled"
+        drawDistance={280}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListHeaderComponent={
           <View style={{ gap: wh.section, paddingBottom: wh.section }}>
@@ -195,16 +222,7 @@ export function WarehouseScreen() {
             </View>
           ) : null
         }
-        renderItem={({ item, index }) => (
-          <WarehouseItemRow
-            item={item}
-            index={index}
-            available={getDisplayAvailable(item)}
-            canEdit={canEdit}
-            onPress={() => handleItemPress(item.id)}
-            onAdjust={(delta) => handleAdjustStock(item.id, delta)}
-          />
-        )}
+        renderItem={renderItem}
       />
 
       <OrderPickerSheet

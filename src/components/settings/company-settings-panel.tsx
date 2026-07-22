@@ -9,6 +9,7 @@ import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { PlanComparisonTable } from "@/components/billing/plan-comparison-table";
 import { AnimatedUpgradeCta } from "@/components/billing/animated-upgrade-cta";
 import { CompanyTeamTabs, type CompanyTeamTab } from "@/components/settings/company-team-tabs";
+import { KnowledgeEngineSettingsCard } from "@/components/settings/knowledge-engine-settings-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,7 +92,7 @@ export function CompanySettingsPanel({
             <CardDescription>{userCopy.settings.companyDescription}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="rounded-xl border bg-muted/10 px-4 py-3">
+            <div>
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 {userCopy.company.companyNameLabel}
               </p>
@@ -223,20 +224,26 @@ export function CompanySettingsPanel({
         </FadeIn>
       ) : null}
 
+      <FadeIn delay={120}>
+        <KnowledgeEngineSettingsCard onStatus={onStatus} />
+      </FadeIn>
+
       {canViewTeam ? (
         <FadeIn delay={150}>
-          <Card>
-            <CardHeader>
+          <section className="space-y-4">
+            <div>
               <div className="flex items-center gap-2">
                 <Users className="size-4 text-primary" />
-                <CardTitle>{userCopy.settings.companyTeamTitle}</CardTitle>
+                <h3 className="text-base font-semibold tracking-tight">
+                  {userCopy.settings.companyTeamTitle}
+                </h3>
               </div>
-              <CardDescription>{userCopy.settings.companyTeamDescription}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <CompanyTeamTabs initialTab={initialTeamTab} />
-            </CardContent>
-          </Card>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {userCopy.settings.companyTeamDescription}
+              </p>
+            </div>
+            <CompanyTeamTabs initialTab={initialTeamTab} />
+          </section>
         </FadeIn>
       ) : null}
 
@@ -253,7 +260,7 @@ export function CompanySettingsPanel({
 
 function StatTile({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border bg-muted/10 px-4 py-3">
+    <div className="rounded-lg bg-muted/25 px-4 py-3">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-semibold tracking-tight">{value}</p>
     </div>

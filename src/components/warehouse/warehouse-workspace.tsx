@@ -98,6 +98,7 @@ export function WarehouseWorkspace() {
     lastBarcodeScan,
     setCounts,
     setSearchSuggestions,
+    setAllowDocumentImportIslandOnDenseChrome,
     selectedWarehouseId,
     triggerSync,
   } = workspace;
@@ -216,6 +217,12 @@ export function WarehouseWorkspace() {
   useEffect(() => {
     setCounts(filteredItems.length, scopedWarehouseItems.length);
   }, [filteredItems.length, scopedWarehouseItems.length, setCounts]);
+
+  useEffect(() => {
+    const empty = isGridReady && scopedWarehouseItems.length === 0;
+    setAllowDocumentImportIslandOnDenseChrome(empty);
+    return () => setAllowDocumentImportIslandOnDenseChrome(false);
+  }, [isGridReady, scopedWarehouseItems.length, setAllowDocumentImportIslandOnDenseChrome]);
 
   useEffect(() => {
     if (!canView) {

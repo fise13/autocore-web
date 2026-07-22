@@ -11,6 +11,12 @@ type ScreenActionFooterProps = {
   horizontalPadding?: number;
   /** Pin above the floating tab bar instead of the screen bottom edge. */
   absolute?: boolean;
+  /**
+   * Reserve space for the floating tab bar.
+   * Set false on modal screens (create order, new operation, etc.) — otherwise
+   * the oversized footer pad sits on top of the software keyboard.
+   */
+  aboveTabBar?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -18,11 +24,13 @@ export function ScreenActionFooter({
   children,
   horizontalPadding = spacing[5],
   absolute = false,
+  aboveTabBar = true,
   style,
 }: ScreenActionFooterProps) {
   const { colors } = useTheme();
-  const { footerBottom } = useFloatingTabBarInset();
+  const { footerBottom, safeBottom } = useFloatingTabBarInset();
   const updateChromeInset = useRegisterAutocompleteChromeInset();
+  const bottomInset = aboveTabBar ? footerBottom : safeBottom;
 
   const handleLayout = (event: LayoutChangeEvent) => {
     updateChromeInset(event.nativeEvent.layout.height);
@@ -35,7 +43,7 @@ export function ScreenActionFooter({
         {
           paddingHorizontal: horizontalPadding,
           paddingTop: 12,
-          paddingBottom: absolute ? 0 : footerBottom,
+          paddingBottom: absolute ? 0 : bottomInset,
           borderTopWidth: 1,
           borderTopColor: colors.border,
           backgroundColor: colors.background,
@@ -47,7 +55,7 @@ export function ScreenActionFooter({
               position: 'absolute',
               left: 0,
               right: 0,
-              bottom: footerBottom,
+              bottom: bottomInset,
             }
           : null,
         style,

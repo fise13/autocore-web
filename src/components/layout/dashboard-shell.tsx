@@ -22,13 +22,15 @@ import { DashboardTopBar } from "@/components/layout/dashboard-top-bar";
 import { DemoSessionBanner } from "@/components/demo/demo-session-banner";
 import { useDemoExitReset } from "@/hooks/use-demo-exit-reset";
 import { BarcodeScanProvider } from "@/components/barcode/barcode-scan-provider";
-import { DomainDictionaryProvider } from "@/components/domain/domain-dictionary-provider";
+import { DomainDictionaryPersistence } from "@/components/domain/domain-dictionary-persistence";
 import { CommandPaletteProvider } from "@/components/mission-control/command-palette/command-palette-provider";
 import { DashboardRouteCache } from "@/components/layout/dashboard-route-cache";
 import { ResizableSidebar } from "@/components/layout/resizable-sidebar";
 import { SidebarEditBlur } from "@/components/layout/sidebar-edit-blur";
 import { WorkspaceProvider, useWorkspace } from "@/components/layout/workspace-context";
 import { WorkspaceStatusBar } from "@/components/layout/workspace-status-bar";
+import { PersistenceProvider } from "@/components/persistence/persistence-provider";
+import { PersistenceStatusBadge } from "@/components/persistence/persistence-status-badge";
 import { FirestoreListenerGuard } from "@/components/providers/firestore-listener-guard";
 import { PresenceHeartbeatHead } from "@/components/layout/presence-heartbeat-head";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -105,7 +107,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
   const isMotorRoute = pathname === "/motors" || pathname === "/sold";
   const isWarehouseRoute = pathname === "/warehouse";
   const isImportRoute = pathname === "/imports" || pathname.startsWith("/imports/");
-  const isWorkspaceRoute = isMotorRoute || isWarehouseRoute || isImportRoute;
+  const isGridCountRoute = isMotorRoute || isWarehouseRoute || isImportRoute;
   const isSoldRoute = pathname === "/sold";
   const needsSidebarCatalog = (isMotorRoute || isSoldRoute) && canSubscribe && canViewMotors;
 
@@ -346,7 +348,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
                 data-barba="container"
                 data-barba-namespace={barbaNamespace}
                 className={
-                  isWorkspaceRoute
+                  isGridCountRoute
                     ? "relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden"
                     : "relative z-0 min-h-0 flex-1 overflow-y-auto p-4 md:p-6"
                 }
@@ -356,7 +358,12 @@ function DashboardShellInner({ children }: DashboardShellProps) {
                 </div>
               </main>
 
-              {isWorkspaceRoute ? <WorkspaceStatusBar /> : null}
+              <div className="flex items-center gap-2 border-t border-sidebar-border bg-sidebar px-2">
+                <div className="min-w-0 flex-1">
+                  <WorkspaceStatusBar compact={!isGridCountRoute} />
+                </div>
+                <PersistenceStatusBadge className="shrink-0" />
+              </div>
             </motion.div>
           </div>
         </CommandPaletteProvider>
@@ -371,13 +378,15 @@ export function DashboardShell({ children }: DashboardShellProps) {
       <SidebarPreferencesProvider>
         <CompanyConfigSidebarSync />
         <WorkspaceProvider>
-          <BarcodeScanProvider>
-            <DomainDictionaryProvider>
-              <FirestoreListenerGuard />
-              <PresenceHeartbeatHead />
-              <DashboardShellInner>{children}</DashboardShellInner>
-            </DomainDictionaryProvider>
-          </BarcodeScanProvider>
+          <PersistenceProvider>
+            <BarcodeScanProvider>
+              <DomainDictionaryPersistence>
+                <FirestoreListenerGuard />
+                <PresenceHeartbeatHead />
+                <DashboardShellInner>{children}</DashboardShellInner>
+              </DomainDictionaryPersistence>
+            </BarcodeScanProvider>
+          </PersistenceProvider>
         </WorkspaceProvider>
       </SidebarPreferencesProvider>
     </SidebarCustomizationProvider>

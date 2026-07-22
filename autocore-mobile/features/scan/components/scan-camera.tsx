@@ -3,6 +3,7 @@ import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 
 import { Text } from '@/components/ui';
+import { usePreferredMacroLens } from '@/hooks/use-preferred-macro-lens';
 import { useTheme } from '@/hooks';
 import { scanPayloadKey } from '@/lib/scan/normalize-scan-payload';
 import type { ScanDetection } from '@/services/scan';
@@ -19,7 +20,6 @@ type ScanCameraProps = {
   onDetections: (detections: ScanDetection[]) => void;
 };
 
-/** All linear 1D symbologies supported by expo-camera. */
 const BARCODE_TYPES = [
   'ean13',
   'ean8',
@@ -58,8 +58,11 @@ export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function
   const cameraRef = useRef<CameraView>(null);
   const scanEnabledRef = useRef(scanEnabled);
   const onDetectionRef = useRef(onDetection);
-  const readyRef = useRef(false);
   const lastEmitRef = useRef<{ key: string; at: number } | null>(null);
+  const { selectedLens, onAvailableLensesChanged, refreshLenses } = usePreferredMacroLens(
+    cameraRef,
+    active,
+  );
 
   useEffect(() => {
     scanEnabledRef.current = scanEnabled;
@@ -85,13 +88,13 @@ export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function
   }));
 
   useEffect(() => {
+    if (!active) return;
     if (!permission?.granted && permission?.canAskAgain) {
       void requestPermission();
     }
-  }, [permission, requestPermission]);
+  }, [active, permission, requestPermission]);
 
   const handleBarcode = useCallback((result: BarcodeScanningResult) => {
-    readyRef.current = true;
     if (!scanEnabledRef.current) return;
 
     const detection = toDetection(result);
@@ -104,10 +107,6 @@ export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function
     lastEmitRef.current = { key, at: now };
 
     onDetectionRef.current(detection);
-  }, []);
-
-  const handleCameraReady = useCallback(() => {
-    readyRef.current = true;
   }, []);
 
   if (!permission) {
@@ -149,19 +148,28 @@ export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function
     );
   }
 
+  // CRITICAL: unmount CameraView when leaving the tab.
+  // A living native camera layer steals touches from the tab bar and other screens.
+  if (!active) {
+    return <View style={[styles.fill, { backgroundColor: '#000' }]} />;
+  }
+
   return (
     <CameraView
       ref={cameraRef}
       style={styles.fill}
       facing="back"
-      mode="picture"
       enableTorch={torch}
-      active={active}
-      onCameraReady={handleCameraReady}
+      // "off" = continuous autofocus (required for auto-macro switching).
+      autofocus="off"
+      selectedLens={selectedLens}
+      onAvailableLensesChanged={onAvailableLensesChanged}
+      active
       barcodeScannerSettings={{
         barcodeTypes: [...BARCODE_TYPES],
       }}
-      onBarcodeScanned={handleBarcode}
+      onBarcodeScanned={scanEnabled ? handleBarcode : undefined}
+      onCameraReady={refreshLenses}
     />
   );
 });

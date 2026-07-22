@@ -53,6 +53,7 @@ export function MotorDocumentsDialog({ motor, open, onOpenChange }: MotorDocumen
             motorLabel={motorLabel}
             serialCode={motor?.serialCode}
             saleDate={motor?.soldDate ?? undefined}
+            companyId={motor?.companyId}
           />
         </div>
       </DialogContent>

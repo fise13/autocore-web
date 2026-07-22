@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { FileImage, Sparkles, X } from "lucide-react";
+import { FileImage, Smartphone, Sparkles, X } from "lucide-react";
 
 import { useActiveImportProgress } from "@/components/warehouse/import/shared/import-progress-host";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useWorkspace } from "@/components/layout/workspace-context";
 import { useDocumentImportJobsRealtime } from "@/hooks/use-document-import-jobs-realtime";
 import { useImportBatchesRealtime } from "@/hooks/use-import-batches-realtime";
 import { can } from "@/lib/auth/permissions";
@@ -15,6 +16,7 @@ import {
   getDismissedDocumentImportIds,
   markDocumentImportInboxSeen,
 } from "@/lib/document-import/inbox-seen";
+import { shouldShowDocumentImportTopBarIsland } from "@/lib/document-import/top-bar-island-visibility";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { cn } from "@/lib/utils";
 import type { DocumentImportJob } from "@/domain/document-import";
@@ -38,13 +40,86 @@ function pickTopBarBatch(batches: ImportBatch[]): ImportBatch | null {
   return candidates[0] ?? null;
 }
 
+type IslandShellProps = {
+  className?: string;
+  islandKey: string;
+  icon: ReactNode;
+  title: string;
+  subtitle: string;
+  onOpen: () => void;
+  onDismiss: () => void;
+  dismissLabel?: string;
+};
+
+function MobileImportIslandShell({
+  className,
+  islandKey,
+  icon,
+  title,
+  subtitle,
+  onOpen,
+  onDismiss,
+  dismissLabel = "Скрыть",
+}: IslandShellProps) {
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={islandKey}
+        layout
+        initial={{ opacity: 0, scale: 0.96, y: 4 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.98, y: -2 }}
+        transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+        className={cn(
+          "flex max-w-[min(100%,20rem)] items-center gap-1 rounded-full border border-sky-500/25 bg-sky-500/[0.08] py-0.5 pl-2 pr-0.5",
+          "shadow-sm backdrop-blur-md",
+          className,
+        )}
+      >
+        <button
+          type="button"
+          onClick={onOpen}
+          className="flex min-h-8 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-full px-1 py-0.5 text-left transition hover:opacity-90"
+        >
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-400">
+            {icon}
+          </span>
+          <span className="flex min-w-0 flex-col leading-tight">
+            <span className="truncate text-[11px] font-semibold tracking-[-0.01em] text-foreground">
+              {title}
+            </span>
+            <span className="truncate text-[10px] text-muted-foreground">{subtitle}</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onDismiss();
+          }}
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition",
+            "hover:bg-destructive/10 hover:text-destructive",
+          )}
+          aria-label={dismissLabel}
+          title={dismissLabel}
+        >
+          <X className="size-3.5" />
+        </button>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 type DocumentImportTopBarIslandProps = {
   className?: string;
 };
 
 export function DocumentImportTopBarIsland({ className }: DocumentImportTopBarIslandProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { profile } = useAuth();
+  const { allowDocumentImportIslandOnDenseChrome, motorImportReviewPending } = useWorkspace();
   const companyId = normalizeCompanyId(profile?.companyId);
   const canView = can(profile, "inventory_view");
   const magicImportActive = useActiveImportProgress();
@@ -70,62 +145,36 @@ export function DocumentImportTopBarIsland({ className }: DocumentImportTopBarIs
     [dismissed, jobs],
   );
 
-  if (!canView || magicImportActive) return null;
+  const visible = shouldShowDocumentImportTopBarIsland({
+    pathname,
+    canView,
+    magicImportActive: Boolean(magicImportActive),
+    motorImportReviewActive: motorImportReviewPending,
+    allowOnDenseChrome: allowDocumentImportIslandOnDenseChrome,
+  });
+
+  if (!visible) return null;
 
   if (batch) {
     const title =
       batch.status === "processing"
         ? "Импорт · AI разбирает"
         : batch.status === "review"
-          ? `Импорт · ${batch.counts.rows} строк к проверке`
+          ? `Импорт · ${batch.counts.rows} строк`
           : `Импорт · ${batch.counts.files} файл.`;
 
     return (
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={batch.id}
-          layout
-          initial={{ opacity: 0, scale: 0.96, y: 4 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.98, y: -2 }}
-          transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-          className={cn(
-            "flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 py-1 pl-2.5 pr-1",
-            "shadow-sm backdrop-blur-md",
-            className,
-          )}
-        >
-          <button
-            type="button"
-            onClick={() => router.push(`/imports/batch/${batch.id}`)}
-            className="flex min-w-0 cursor-pointer items-center gap-2 text-left transition hover:opacity-90"
-          >
-            <Sparkles className="size-3 shrink-0 text-sky-600 dark:text-sky-400" aria-hidden />
-            <span className="flex min-w-0 flex-col">
-              <span className="truncate text-[11px] font-medium tracking-[-0.01em] text-foreground">
-                {title}
-              </span>
-              <span className="truncate text-[10px] text-muted-foreground">
-                Откройте и подтвердите импорт
-              </span>
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              setDismissedBatchIds((prev) => new Set(prev).add(batch.id));
-            }}
-            className={cn(
-              "flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition",
-              "hover:bg-destructive/10 hover:text-destructive",
-            )}
-            aria-label="Скрыть уведомление"
-          >
-            <X className="size-3" />
-          </button>
-        </motion.div>
-      </AnimatePresence>
+      <MobileImportIslandShell
+        className={className}
+        islandKey={batch.id}
+        icon={<Sparkles className="size-3" aria-hidden />}
+        title={title}
+        subtitle="Откройте и подтвердите"
+        onOpen={() => router.push(`/imports/batch/${batch.id}`)}
+        onDismiss={() => {
+          setDismissedBatchIds((prev) => new Set(prev).add(batch.id));
+        }}
+      />
     );
   }
 
@@ -133,62 +182,39 @@ export function DocumentImportTopBarIsland({ className }: DocumentImportTopBarIs
 
   const title =
     job.status === "pending"
-      ? "Mobile Import · обрабатывается"
+      ? "С телефона · обработка"
       : pendingCount > 1
-        ? `Mobile Import · ${pendingCount} готовы к проверке`
-        : "Mobile Import · готов к проверке";
+        ? `С телефона · ${pendingCount} к проверке`
+        : "С телефона · готов";
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={job.id}
-        layout
-        initial={{ opacity: 0, scale: 0.96, y: 4 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.98, y: -2 }}
-        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-        className={cn(
-          "flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 py-1 pl-2.5 pr-1",
-          "shadow-sm backdrop-blur-md",
-          className,
-        )}
-      >
-        <button
-          type="button"
-          onClick={() => {
-            markDocumentImportInboxSeen();
-            router.push(`/imports/${job.id}`);
-          }}
-          className="flex min-w-0 cursor-pointer items-center gap-2 text-left transition hover:opacity-90"
-        >
-          <FileImage className="size-3 shrink-0 text-sky-600 dark:text-sky-400" aria-hidden />
-          <span className="flex min-w-0 flex-col">
-            <span className="truncate text-[11px] font-medium tracking-[-0.01em] text-foreground">
-              {title}
-              {job.fileName ? ` · ${job.fileName}` : ""}
-            </span>
-            <span className="truncate text-[10px] text-muted-foreground">
-              {job.status === "pending" ? "Готовим превью документа" : "Откройте и проверьте снимок"}
-            </span>
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            dismissDocumentImport(job.id);
-            setDismissTick((value) => value + 1);
-          }}
-          className={cn(
-            "flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition",
-            "hover:bg-destructive/10 hover:text-destructive",
-          )}
-          aria-label="Скрыть уведомление"
-          title="Скрыть до следующего импорта"
-        >
-          <X className="size-3" />
-        </button>
-      </motion.div>
-    </AnimatePresence>
+    <MobileImportIslandShell
+      className={className}
+      islandKey={job.id}
+      icon={
+        job.status === "pending" ? (
+          <Smartphone className="size-3" aria-hidden />
+        ) : (
+          <FileImage className="size-3" aria-hidden />
+        )
+      }
+      title={title}
+      subtitle={
+        job.status === "pending"
+          ? "Готовим превью"
+          : job.fileName?.trim()
+            ? job.fileName
+            : "Откройте снимок"
+      }
+      onOpen={() => {
+        markDocumentImportInboxSeen();
+        router.push(`/imports/${job.id}`);
+      }}
+      onDismiss={() => {
+        dismissDocumentImport(job.id);
+        setDismissTick((value) => value + 1);
+      }}
+      dismissLabel="Скрыть до следующего импорта"
+    />
   );
 }

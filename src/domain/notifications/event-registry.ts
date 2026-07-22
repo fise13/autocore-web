@@ -448,8 +448,14 @@ export const NOTIFICATION_EVENT_REGISTRY: Record<
       title: "Новый документ загружен",
       body: String(ctx.payload?.fileName ?? "Документ готов к просмотру"),
     }),
-    buildDeepLink: (ctx) =>
-      ctx.aggregateId ? `/imports/${ctx.aggregateId}` : "/imports",
+    buildDeepLink: (ctx) => {
+      const batchId =
+        typeof ctx.payload?.batchId === "string" && ctx.payload.batchId.trim()
+          ? ctx.payload.batchId.trim()
+          : null;
+      if (batchId) return `/imports/batch/${batchId}`;
+      return ctx.aggregateId ? `/imports/${ctx.aggregateId}` : "/imports";
+    },
   },
   "scan.completed": {
     eventType: "scan.completed",

@@ -1,15 +1,15 @@
 "use client";
 
-import { marketingSiteContent } from "@/components/marketing/content/marketing-site-content";
+import { useMarketingPages } from "@/components/marketing/content/use-marketing-pages";
 import { cn } from "@/lib/utils";
-
-const audit = marketingSiteContent.security.auditLog.slice(0, 5);
 
 type ProductSecuritySliceProps = {
   className?: string;
 };
 
 export function ProductSecuritySlice({ className }: ProductSecuritySliceProps) {
+  const audit = useMarketingPages().security.auditLog.slice(0, 5);
+
   return (
     <div className={cn("product-security-slice", className)}>
       <div className="product-security-slice-header">

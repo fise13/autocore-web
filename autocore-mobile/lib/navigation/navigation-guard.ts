@@ -2,7 +2,7 @@
  * Synchronous navigation/action mutex — not debounce.
  * Prevents duplicate router calls before React re-renders with loading/disabled state.
  */
-const TAB_GUARD_RELEASE_MS = 450;
+const TAB_GUARD_RELEASE_MS = 80;
 
 export function createNavigationGuard() {
   let locked = false;

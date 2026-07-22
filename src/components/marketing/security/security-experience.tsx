@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { type ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import {
@@ -14,11 +13,10 @@ import {
   Users,
 } from "lucide-react";
 
-import { marketingSiteContent } from "@/components/marketing/content/marketing-site-content";
-import { marketingRoutes } from "@/lib/marketing-routes";
+import { useMarketingPages } from "@/components/marketing/content/use-marketing-pages";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
-const copy = marketingSiteContent.security;
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 const PILLAR_ICONS = [Users, ScrollText, Shield, KeyRound] as const;
@@ -83,12 +81,14 @@ function ScrollReveal({
 }
 
 export function SecurityExperience() {
+  const copy = useMarketingPages().security;
+
   return (
     <div className="trust-page">
       <section className="trust-panel trust-panel-hero" aria-label="Безопасность">
         <div className="exp-section-inner trust-panel-inner">
           <nav className="trust-breadcrumbs" aria-label="Хлебные крошки">
-            <Link href={marketingRoutes.home}>AutoCore</Link>
+            <Link href="/">AutoCore</Link>
             <span aria-hidden>/</span>
             <span>Безопасность</span>
           </nav>
@@ -280,7 +280,7 @@ export function SecurityExperience() {
 
           <ul className="trust-related-grid">
             <li>
-              <Link href={marketingRoutes.privacy} className="trust-related-card">
+              <Link href="/legal/privacy" className="trust-related-card">
                 <FileText className="size-4 text-muted-foreground" aria-hidden />
                 <div className="min-w-0 flex-1">
                   <p className="trust-related-card-title">Конфиденциальность</p>
@@ -289,7 +289,7 @@ export function SecurityExperience() {
               </Link>
             </li>
             <li>
-              <Link href={marketingRoutes.terms} className="trust-related-card">
+              <Link href="/legal/terms" className="trust-related-card">
                 <FileText className="size-4 text-muted-foreground" aria-hidden />
                 <div className="min-w-0 flex-1">
                   <p className="trust-related-card-title">Условия</p>
@@ -298,7 +298,7 @@ export function SecurityExperience() {
               </Link>
             </li>
             <li>
-              <Link href={marketingRoutes.contact} className="trust-related-card">
+              <Link href="/contact" className="trust-related-card">
                 <Shield className="size-4 text-muted-foreground" aria-hidden />
                 <div className="min-w-0 flex-1">
                   <p className="trust-related-card-title">Связаться</p>

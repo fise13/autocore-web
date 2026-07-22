@@ -2,12 +2,11 @@
 
 import { motion, useReducedMotion } from "motion/react";
 
-import { landingContent } from "@/components/marketing/experience/content/landing-content";
+import { useLandingContent } from "@/components/marketing/experience/content/use-landing-content";
 import { PlatformSyncExperience } from "@/components/marketing/experience/mocks/platform-sync-experience";
 
-const copy = landingContent.platform;
-
 export function PlatformStrip() {
+  const copy = useLandingContent().platform;
   const reduced = useReducedMotion();
 
   return (

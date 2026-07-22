@@ -23,3 +23,8 @@ export function getFloatingTabBarOffset(bottomSafeInset: number) {
 export function getScreenActionScrollInset(bottomSafeInset: number) {
   return getFloatingTabBarOffset(bottomSafeInset) + SCREEN_ACTION_FOOTER_HEIGHT + spacing[3];
 }
+
+/** Scroll inset for modal forms (no floating tab bar under the sheet). */
+export function getModalActionScrollInset(bottomSafeInset: number) {
+  return Math.max(bottomSafeInset, spacing[2]) + SCREEN_ACTION_FOOTER_HEIGHT + spacing[3];
+}

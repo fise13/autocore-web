@@ -210,8 +210,18 @@ export async function mobileFetchBlob(
   return execute(false);
 }
 
-export async function mobileUpload<T>(path: string, formData: FormData): Promise<T> {
-  const execute = async (forceRefresh: boolean) => {
+export type MobileUploadOptions = {
+  onProgress?: (ratio: number) => void;
+};
+
+export async function mobileUpload<T>(
+  path: string,
+  formData: FormData,
+  options?: MobileUploadOptions,
+): Promise<T> {
+  const onProgress = options?.onProgress;
+
+  const execute = async (forceRefresh: boolean): Promise<T> => {
     const token = await getBearerToken(forceRefresh);
     const response = await fetch(`${getApiBaseUrl()}${path}`, {
       method: 'POST',
@@ -245,5 +255,22 @@ export async function mobileUpload<T>(path: string, formData: FormData): Promise
     }
   };
 
-  return execute(false);
+  if (!onProgress) {
+    return execute(false);
+  }
+
+  let ratio = 0.06;
+  onProgress(ratio);
+  const timer = setInterval(() => {
+    ratio = Math.min(0.9, ratio + 0.05);
+    onProgress(ratio);
+  }, 320);
+
+  try {
+    const result = await execute(false);
+    onProgress(1);
+    return result;
+  } finally {
+    clearInterval(timer);
+  }
 }

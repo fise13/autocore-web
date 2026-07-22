@@ -1,19 +1,23 @@
 "use client";
 
-import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { type ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { ArrowUpRight, FileText, Shield } from "lucide-react";
 
-import {
-  legalDocuments,
-  type LegalDocumentKey,
-} from "@/components/marketing/content/legal-content";
-import { marketingRoutes } from "@/lib/marketing-routes";
+import { type LegalDocumentKey } from "@/components/marketing/content/legal-content";
+import { Link } from "@/i18n/navigation";
 import { getPlatformContacts } from "@/lib/platform/platform-contacts";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const supportEmail = getPlatformContacts().email;
+
+type LegalSection = {
+  id: string;
+  title: string;
+  paragraphs: string[];
+  bullets?: string[];
+};
 
 type HeroRevealProps = {
   children: ReactNode;
@@ -75,21 +79,21 @@ type LegalExperienceProps = {
 const RELATED_LINKS = [
   {
     key: "security",
-    href: marketingRoutes.security,
+    href: "/security",
     label: "Безопасность",
     description: "RBAC, аудит и изоляция данных компаний",
     icon: Shield,
   },
   {
     key: "privacy",
-    href: marketingRoutes.privacy,
+    href: "/legal/privacy",
     label: "Конфиденциальность",
     description: "Обработка персональных и операционных данных",
     icon: FileText,
   },
   {
     key: "terms",
-    href: marketingRoutes.terms,
+    href: "/legal/terms",
     label: "Условия",
     description: "Правила использования сервиса AutoCore",
     icon: FileText,
@@ -97,25 +101,31 @@ const RELATED_LINKS = [
 ] as const;
 
 export function LegalExperience({ documentKey }: LegalExperienceProps) {
-  const doc = legalDocuments[documentKey];
+  const t = useTranslations(`marketing.pages.${documentKey}`);
+  const title = t("title");
+  const description = t("description");
+  const breadcrumb = t("breadcrumb");
+  const updated = t("updated");
+  const contactLabel = t("contactLabel");
+  const sections = t.raw("sections") as LegalSection[];
 
   return (
     <div className="trust-page">
-      <section className="trust-panel trust-panel-hero" aria-label={doc.title}>
+      <section className="trust-panel trust-panel-hero" aria-label={title}>
         <div className="exp-section-inner trust-panel-inner">
           <nav className="trust-breadcrumbs" aria-label="Хлебные крошки">
-            <Link href={marketingRoutes.home}>AutoCore</Link>
+            <Link href="/">AutoCore</Link>
             <span aria-hidden>/</span>
-            <span>{doc.breadcrumb}</span>
+            <span>{breadcrumb}</span>
           </nav>
 
           <HeroReveal delay={0} duration={0.68} y={20}>
-            <h1 className="exp-display trust-hero-title">{doc.title}</h1>
+            <h1 className="exp-display trust-hero-title">{title}</h1>
           </HeroReveal>
 
           <HeroReveal className="trust-hero-sub" delay={0.28} duration={0.55} y={14}>
-            <p className="trust-hero-description">{doc.description}</p>
-            <p className="trust-hero-updated">Обновлено: {doc.updated}</p>
+            <p className="trust-hero-description">{description}</p>
+            <p className="trust-hero-updated">Обновлено: {updated}</p>
           </HeroReveal>
         </div>
       </section>
@@ -125,7 +135,7 @@ export function LegalExperience({ documentKey }: LegalExperienceProps) {
           <aside className="trust-legal-toc" aria-label="Оглавление">
             <p className="trust-legal-toc-label">Содержание</p>
             <ol className="trust-legal-toc-list">
-              {doc.sections.map((section) => (
+              {sections.map((section) => (
                 <li key={section.id}>
                   <a href={`#${section.id}`} className="trust-legal-toc-link">
                     {section.title.replace(/^\d+\.\s*/, "")}
@@ -136,7 +146,7 @@ export function LegalExperience({ documentKey }: LegalExperienceProps) {
           </aside>
 
           <article className="trust-legal-article">
-            {doc.sections.map((section, index) => (
+            {sections.map((section, index) => (
               <ScrollReveal key={section.id} delay={index * 0.03} margin="-40px">
                 <section id={section.id} className="trust-legal-section">
                   <h2 className="trust-legal-section-title">{section.title}</h2>
@@ -157,9 +167,9 @@ export function LegalExperience({ documentKey }: LegalExperienceProps) {
             ))}
 
             <div className="trust-legal-contact">
-              <p className="trust-legal-contact-label">Вопросы по документу</p>
+              <p className="trust-legal-contact-label">{contactLabel}</p>
               <a
-                href={`mailto:${supportEmail}?subject=${encodeURIComponent(doc.title)}`}
+                href={`mailto:${supportEmail}?subject=${encodeURIComponent(title)}`}
                 className="trust-legal-contact-link"
               >
                 {supportEmail}
@@ -201,7 +211,7 @@ export function LegalExperience({ documentKey }: LegalExperienceProps) {
             })}
             <li>
               <ScrollReveal delay={0.18} y={12} margin="-40px">
-                <Link href={marketingRoutes.contact} className="trust-related-card">
+                <Link href="/contact" className="trust-related-card">
                   <FileText className="size-4 text-muted-foreground" aria-hidden />
                   <div className="min-w-0 flex-1">
                     <p className="trust-related-card-title">Связаться</p>

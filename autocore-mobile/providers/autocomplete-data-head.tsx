@@ -1,66 +1,116 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { useClientsRealtime } from '@/hooks/use-clients-realtime';
-import { useCompanyAppConfig } from '@/hooks/use-company-app-config';
-import { useEmployeesRealtime } from '@/hooks/use-employees-realtime';
-import { useInventoryCatalog } from '@/hooks/use-inventory-catalog';
-import { useMotorsRealtime } from '@/hooks/use-motors-realtime';
-import { useOperationsRealtime } from '@/hooks/use-operations-realtime';
 import { useSession } from '@/hooks/use-session';
-import { useRbacPolicy } from '@/hooks/use-rbac-policy';
-import { useVehiclesRealtime } from '@/hooks/use-vehicles-realtime';
-import { useWarehousesRealtime } from '@/hooks/use-warehouses-realtime';
 import { useAutocompleteDataStore } from '@/lib/autocomplete/autocomplete-data-store';
 import { isProductionCompanyId } from '@/lib/company-id';
+import type { ClientEntity } from '@/types/client';
+import type { CompanyAppConfig } from '@/types/company-config';
+import type { CompanyEmployee } from '@/types/rbac';
+import type { FinancialOperation } from '@/types/financial-operation';
+import type { InventoryItem } from '@/types/inventory';
+import type { MotorEntity } from '@/types/motor';
+import type { VehicleEntity } from '@/types/vehicle';
+import type { WarehouseEntity } from '@/types/warehouse';
 
+const SNAPSHOT_DEBOUNCE_MS = 500;
+const MAX_OPERATION_CATEGORY_SCAN = 400;
+
+function extractOperationCategories(operations: FinancialOperation[]): string[] {
+  const values = new Set<string>();
+  const limit = Math.min(operations.length, MAX_OPERATION_CATEGORY_SCAN);
+  for (let i = 0; i < limit; i += 1) {
+    const operation = operations[i];
+    if (operation.category?.trim()) values.add(operation.category.trim());
+    if (operation.description?.trim()) values.add(operation.description.trim());
+    if (operation.comment?.trim()) values.add(operation.comment.trim());
+  }
+  return [...values];
+}
+
+function useCachedRealtime<T>(queryKey: readonly unknown[], enabled: boolean, fallback: T): T {
+  const queryClient = useQueryClient();
+  const { data } = useQuery<T>({
+    queryKey,
+    enabled,
+    staleTime: Infinity,
+    gcTime: 1000 * 60 * 60,
+    queryFn: async () => (queryClient.getQueryData<T>(queryKey) as T | undefined) ?? fallback,
+    initialData: () => queryClient.getQueryData<T>(queryKey) ?? fallback,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+  return (data ?? fallback) as T;
+}
+
+/**
+ * Mirrors session catalogs into the autocomplete store.
+ * Reads React Query cache only — does not open extra Firestore listeners.
+ */
 export function AutocompleteDataHead() {
+  const queryClient = useQueryClient();
   const { companyId, uid } = useSession();
-  const rbac = useRbacPolicy();
   const setSnapshot = useAutocompleteDataStore((state) => state.setSnapshot);
   const reset = useAutocompleteDataStore((state) => state.reset);
 
   const active = isProductionCompanyId(companyId);
+  const enabled = Boolean(active && companyId);
 
-  const { clients } = useClientsRealtime(active && rbac.shouldSubscribe('clients') ? companyId : null, {
-    keepAlive: true,
-  });
-  const { items: inventory } = useInventoryCatalog(
-    active && rbac.shouldSubscribe('inventory') ? companyId : null,
-    { keepAlive: true },
+  const clients = useCachedRealtime<ClientEntity[]>(
+    ['realtime', 'clients', companyId],
+    enabled,
+    [],
   );
-  const { motors } = useMotorsRealtime(
-    active && rbac.shouldSubscribe('motors') ? companyId : null,
-    uid,
-    rbac.shouldSubscribe('motors'),
-    { keepAlive: true },
+  const inventory = useCachedRealtime<InventoryItem[]>(
+    ['realtime', 'inventory-items', companyId],
+    enabled,
+    [],
   );
-  const { vehicles } = useVehiclesRealtime(active && rbac.shouldSubscribe('vehicles') ? companyId : null, {
-    keepAlive: true,
-  });
-  const { employees } = useEmployeesRealtime(
-    active && rbac.shouldSubscribe('employees') ? companyId : null,
-    rbac.shouldSubscribe('employees'),
-    { keepAlive: true },
+  const motors = useCachedRealtime<MotorEntity[]>(
+    ['realtime', 'motors', companyId, uid],
+    enabled && Boolean(uid),
+    [],
   );
-  const { warehouses } = useWarehousesRealtime(
-    active && rbac.shouldSubscribe('inventory') ? companyId : null,
-    { keepAlive: true },
+  const vehicles = useCachedRealtime<VehicleEntity[]>(
+    ['realtime', 'vehicles', companyId],
+    enabled,
+    [],
   );
-  const { config } = useCompanyAppConfig(active ? companyId : null, { keepAlive: true });
-  const { operations } = useOperationsRealtime(
-    active && rbac.shouldSubscribe('accounting') ? companyId : null,
-    { keepAlive: true },
+  const employees = useCachedRealtime<CompanyEmployee[]>(
+    ['realtime', 'employees', companyId],
+    enabled,
+    [],
+  );
+  const warehouses = useCachedRealtime<WarehouseEntity[]>(
+    ['realtime', 'warehouses', companyId],
+    enabled,
+    [],
+  );
+  const config = useCachedRealtime<CompanyAppConfig | null>(
+    ['realtime', 'company-app-config', companyId],
+    enabled,
+    null,
   );
 
-  const operationCategories = useMemo(() => {
-    const values = new Set<string>();
-    for (const operation of operations) {
-      if (operation.category?.trim()) values.add(operation.category.trim());
-      if (operation.description?.trim()) values.add(operation.description.trim());
-      if (operation.comment?.trim()) values.add(operation.comment.trim());
-    }
-    return [...values];
-  }, [operations]);
+  const latestRef = useRef({
+    clients,
+    inventory,
+    motors,
+    vehicles,
+    employees,
+    warehouses,
+    specificCategories: config?.specificCategories ?? [],
+  });
+  latestRef.current = {
+    clients,
+    inventory,
+    motors,
+    vehicles,
+    employees,
+    warehouses,
+    specificCategories: config?.specificCategories ?? [],
+  };
 
   useEffect(() => {
     if (!active || !companyId) {
@@ -68,17 +118,29 @@ export function AutocompleteDataHead() {
       return;
     }
 
-    setSnapshot({
-      companyId,
-      clients,
-      employees,
-      inventory,
-      motors,
-      vehicles,
-      warehouses,
-      specificCategories: config?.specificCategories ?? [],
-      operationCategories,
-    });
+    const timer = setTimeout(() => {
+      const latest = latestRef.current;
+      const operations =
+        queryClient.getQueryData<FinancialOperation[]>([
+          'realtime',
+          'financial-operations',
+          companyId,
+        ]) ?? [];
+
+      setSnapshot({
+        companyId,
+        clients: latest.clients,
+        employees: latest.employees,
+        inventory: latest.inventory,
+        motors: latest.motors,
+        vehicles: latest.vehicles,
+        warehouses: latest.warehouses,
+        specificCategories: latest.specificCategories,
+        operationCategories: extractOperationCategories(operations),
+      });
+    }, SNAPSHOT_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
   }, [
     active,
     clients,
@@ -87,7 +149,7 @@ export function AutocompleteDataHead() {
     employees,
     inventory,
     motors,
-    operationCategories,
+    queryClient,
     reset,
     setSnapshot,
     vehicles,

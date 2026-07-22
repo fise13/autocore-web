@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   ArrowRight,
   Banknote,
@@ -14,25 +13,25 @@ import {
 import { useGSAP } from "@gsap/react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import { marketingSiteContent } from "@/components/marketing/content/marketing-site-content";
+import { useMarketingPages } from "@/components/marketing/content/use-marketing-pages";
 import { FeatureIcon } from "@/components/marketing/site/feature-icon";
 import { MarketingRelatedLinks } from "@/components/marketing/site/marketing-related-links";
 import { ModulesTocNav } from "@/components/marketing/site/modules-toc-nav";
+import { type SiteNavLinkHref } from "@/components/marketing/site/site-navigation";
 import {
   useGsapReveal,
   useGsapStaggerChildren,
 } from "@/components/marketing/motion/use-gsap-reveal";
 import { usePrefersReducedMotion } from "@/components/marketing/motion/use-landing-gsap";
+import { Link } from "@/i18n/navigation";
 import { marketingRoutes } from "@/lib/marketing-routes";
 import { smoothScrollToElement } from "@/lib/motion/smooth-scroll-to";
 
 const MODULE_SCROLL_OFFSET = 112;
 
 gsap.registerPlugin(ScrollTrigger);
-
-const copy = marketingSiteContent.modules;
 
 const ICONS: Record<string, LucideIcon> = {
   "mission-control": Radar,
@@ -45,44 +44,51 @@ const ICONS: Record<string, LucideIcon> = {
 
 const TONES = ["blue", "green", "amber", "blue", "green", "amber"] as const;
 
-const RELATED: Record<string, { label: string; href: string }[]> = {
-  "mission-control": [
-    { label: "Склад", href: `${marketingRoutes.modules}#warehouse` },
-    { label: "Бухгалтерия", href: `${marketingRoutes.modules}#accounting` },
-  ],
-  warehouse: [
-    { label: "Заказ-наряды", href: `${marketingRoutes.modules}#work-orders` },
-    { label: "Как работает", href: `${marketingRoutes.home}#story` },
-  ],
-  "work-orders": [
-    { label: "Склад", href: `${marketingRoutes.modules}#warehouse` },
-    { label: "Документы", href: `${marketingRoutes.home}#documents` },
-  ],
-  accounting: [
-    { label: "Mission Control", href: `${marketingRoutes.modules}#mission-control` },
-    { label: "Безопасность", href: marketingRoutes.security },
-  ],
-  inventory: [
-    { label: "Склад", href: `${marketingRoutes.modules}#warehouse` },
-    { label: "Документы", href: `${marketingRoutes.home}#documents` },
-  ],
-  employees: [
-    { label: "Безопасность", href: marketingRoutes.security },
-    { label: "Демо", href: `${marketingRoutes.home}#demo` },
-  ],
-};
-
-const RELATED_SECTIONS = [
-  { href: marketingRoutes.product, label: "Обзор продукта", hint: "Mission Control и процессы" },
-  { href: marketingRoutes.pricing, label: "Тарифы", hint: "Одна подписка, всё включено" },
-  { href: marketingRoutes.security, label: "Безопасность", hint: "RBAC и аудит" },
-  { href: marketingRoutes.contact, label: "Связаться", hint: "Демо и поддержка" },
-];
-
 export function ModulesPageContent() {
+  const copy = useMarketingPages().modules;
   const ref = useRef<HTMLDivElement>(null);
   const [activeId, setActiveId] = useState<string>(copy.items[0]?.id ?? "");
   const reduced = usePrefersReducedMotion();
+
+  const relatedByModule = useMemo<Record<string, { label: string; href: SiteNavLinkHref }[]>>(() => {
+    const links = copy.relatedLinks;
+    return {
+      "mission-control": [
+        { label: links.warehouse, href: { pathname: "/modules", hash: "warehouse" } },
+        { label: links.accounting, href: { pathname: "/modules", hash: "accounting" } },
+      ],
+      warehouse: [
+        { label: links.workOrders, href: { pathname: "/modules", hash: "work-orders" } },
+        { label: links.howItWorks, href: { pathname: "/", hash: "story" } },
+      ],
+      "work-orders": [
+        { label: links.warehouse, href: { pathname: "/modules", hash: "warehouse" } },
+        { label: links.documents, href: { pathname: "/", hash: "documents" } },
+      ],
+      accounting: [
+        { label: links.missionControl, href: { pathname: "/modules", hash: "mission-control" } },
+        { label: links.security, href: "/security" },
+      ],
+      inventory: [
+        { label: links.warehouse, href: { pathname: "/modules", hash: "warehouse" } },
+        { label: links.documents, href: { pathname: "/", hash: "documents" } },
+      ],
+      employees: [
+        { label: links.security, href: "/security" },
+        { label: links.demo, href: { pathname: "/", hash: "demo" } },
+      ],
+    };
+  }, [copy.relatedLinks]);
+
+  const relatedSections = useMemo(
+    () => [
+      { href: marketingRoutes.product, ...copy.relatedSections.product },
+      { href: marketingRoutes.pricing, ...copy.relatedSections.pricing },
+      { href: marketingRoutes.security, ...copy.relatedSections.security },
+      { href: marketingRoutes.contact, ...copy.relatedSections.contact },
+    ],
+    [copy.relatedSections],
+  );
 
   useGsapReveal(ref, "[data-modules-reveal]", { stagger: 0.08, y: 24 });
   useGsapStaggerChildren(ref, ".marketing-stats-row", ".marketing-stat", { stagger: 0.1, y: 20 });
@@ -219,7 +225,7 @@ export function ModulesPageContent() {
         <div className="marketing-modules-list">
           {copy.items.map((mod, index) => {
             const Icon = ICONS[mod.id] ?? Radar;
-            const related = RELATED[mod.id] ?? [];
+            const related = relatedByModule[mod.id] ?? [];
             return (
               <article key={mod.id} id={mod.id} className="marketing-module-card scroll-mt-28">
                 <div className="marketing-module-card-inner">
@@ -254,7 +260,7 @@ export function ModulesPageContent() {
                     {related.length > 0 ? (
                       <div className="mt-4 flex flex-wrap gap-2">
                         {related.map((r) => (
-                          <Link key={r.href} href={r.href} className="marketing-chip-link">
+                          <Link key={r.label} href={r.href} className="marketing-chip-link">
                             {r.label}
                           </Link>
                         ))}
@@ -268,7 +274,7 @@ export function ModulesPageContent() {
         </div>
       </div>
 
-      <MarketingRelatedLinks links={RELATED_SECTIONS} />
+      <MarketingRelatedLinks links={relatedSections} />
     </div>
   );
 }

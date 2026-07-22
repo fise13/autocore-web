@@ -1,13 +1,25 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Minus } from "lucide-react";
+import { ChevronRightIcon, Minus } from "lucide-react";
+
+import type {
+  AutocoreNavGroup,
+  AutocoreNavItem,
+} from "@/components/layout/business-sidebar/autocore-nav-types";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -18,10 +30,8 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
-import type { AutocoreNavGroup, AutocoreNavItem } from "@/components/layout/business-sidebar/autocore-nav-types";
 import type { SidebarBlockId, SidebarNavItemId } from "@/lib/navigation/sidebar-customization";
 import { cn } from "@/lib/utils";
-import { ChevronRightIcon } from "lucide-react";
 
 type AutocoreNavGroupProps = AutocoreNavGroup & {
   collapsed?: boolean;
@@ -76,6 +86,7 @@ function NavCollapsibleItem({
   onHideNav,
   jiggleDelay = 0,
 }: NavCollapsibleItemProps) {
+  const router = useRouter();
   const routeOpen = Boolean(item.isActive || item.subItems?.some((sub) => sub.isActive));
   const [open, setOpen] = useState(routeOpen);
 
@@ -97,6 +108,64 @@ function NavCollapsibleItem({
   const handleHide = () => {
     if (item.navId) onHideNav?.(item.navId);
   };
+
+  // Collapsed rail: open collection picker instead of jumping to one child.
+  if (collapsed && item.subItems?.length) {
+    return (
+      <SidebarMenuItem className={editShellClass} style={editStyle}>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            title={item.title}
+            aria-label={item.title}
+            render={
+              <SidebarMenuButton
+                isActive={item.isActive}
+                className="size-8! justify-center p-2! data-popup-open:bg-sidebar-accent data-open:bg-sidebar-accent"
+              />
+            }
+          >
+            {item.icon}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            side="right"
+            align="start"
+            sideOffset={10}
+            className="w-52 p-1.5"
+          >
+            {item.subItems.map((subItem) => (
+              <DropdownMenuItem
+                key={subItem.title}
+                className={cn(
+                  "cursor-pointer gap-2.5 rounded-lg px-2 py-2",
+                  subItem.isActive && "bg-accent text-accent-foreground",
+                )}
+                onClick={() => {
+                  if (!subItem.path) return;
+                  onNavigate?.();
+                  router.push(subItem.path);
+                }}
+              >
+                {subItem.icon ? (
+                  <span
+                    className={cn(
+                      "flex size-4 shrink-0 items-center justify-center [&_svg]:size-4",
+                      subItem.isActive ? "text-accent-foreground" : "text-muted-foreground",
+                    )}
+                  >
+                    {subItem.icon}
+                  </span>
+                ) : null}
+                <span className="min-w-0 flex-1 truncate font-medium">{subItem.title}</span>
+                {subItem.badge != null && subItem.badge > 0 ? (
+                  <NavItemCountBadge count={subItem.badge} />
+                ) : null}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+    );
+  }
 
   if (!item.subItems?.length || collapsed) {
     return (
@@ -173,9 +242,19 @@ function NavCollapsibleItem({
               <SidebarMenuSubButton
                 isActive={subItem.isActive}
                 render={
-                  isEditing ? undefined : subItem.path ? (
-                    <Link href={subItem.path} onClick={() => onNavigate?.()} />
-                  ) : undefined
+                  isEditing || !subItem.path
+                    ? undefined
+                    : (
+                        <Link
+                          href={subItem.path}
+                          onClick={(event) => {
+                            onNavigate?.();
+                            // Same-route query changes are more reliable via push.
+                            event.preventDefault();
+                            router.push(subItem.path!);
+                          }}
+                        />
+                      )
                 }
               >
                 {subItem.icon}

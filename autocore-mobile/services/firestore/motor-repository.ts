@@ -2,6 +2,7 @@ import {
   collection,
   collectionGroup,
   doc,
+  limit,
   onSnapshot,
   query,
   serverTimestamp,
@@ -201,7 +202,11 @@ export function createMotorRepository() {
         }
       };
 
-      const groupQuery = query(collectionGroup(db, 'motors'), where('companyId', '==', companyId));
+      const groupQuery = query(
+        collectionGroup(db, 'motors'),
+        where('companyId', '==', companyId),
+        limit(500),
+      );
       const unsubGroup = onSnapshot(
         groupQuery,
         (snapshot) => {

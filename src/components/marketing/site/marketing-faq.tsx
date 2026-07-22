@@ -1,15 +1,15 @@
 "use client";
 
-import Link from "next/link";
+import { useTranslations } from "next-intl";
 
-import { marketingSiteContent } from "@/components/marketing/content/marketing-site-content";
+import { useMarketingPages } from "@/components/marketing/content/use-marketing-pages";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { marketingRoutes } from "@/lib/marketing-routes";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
 type FaqItem = { q: string; a: string };
@@ -51,28 +51,34 @@ function MarketingFaqAccordion({
 }
 
 export function MarketingFaq({
-  items = marketingSiteContent.faq.items,
+  items,
   className,
   variant = "accordion",
-  title = marketingSiteContent.faq.title,
-  description = marketingSiteContent.faq.description,
+  title,
+  description,
   showFooter = true,
 }: MarketingFaqProps) {
+  const t = useTranslations("marketing.pages.faq");
+  const faq = useMarketingPages().faq;
+  const resolvedItems = items ?? faq.items;
+  const resolvedTitle = title ?? faq.title;
+  const resolvedDescription = description ?? faq.description;
+
   if (variant === "section") {
     return (
       <div className={cn("marketing-faq-section mx-auto w-full max-w-2xl space-y-7", className)}>
         <div className="space-y-2">
-          <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">{title}</h2>
-          <p className="max-w-2xl text-muted-foreground">{description}</p>
+          <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">{resolvedTitle}</h2>
+          <p className="max-w-2xl text-muted-foreground">{resolvedDescription}</p>
         </div>
 
-        <MarketingFaqAccordion items={items} />
+        <MarketingFaqAccordion items={resolvedItems} />
 
         {showFooter ? (
           <p className="text-sm text-muted-foreground">
-            Не нашли ответ?{" "}
-            <Link className="font-medium text-primary hover:underline" href={marketingRoutes.contact}>
-              Напишите в поддержку
+            {t("notFoundAnswer")}{" "}
+            <Link className="font-medium text-primary hover:underline" href="/contact">
+              {t("contactSupport")}
             </Link>
           </p>
         ) : null}
@@ -82,7 +88,7 @@ export function MarketingFaq({
 
   return (
     <div className={cn("marketing-faq mx-auto w-full max-w-2xl", className)}>
-      <MarketingFaqAccordion items={items} />
+      <MarketingFaqAccordion items={resolvedItems} />
     </div>
   );
 }

@@ -88,6 +88,9 @@ type WorkspaceContextValue = {
   shownCount: number;
   totalCount: number;
   setCounts: (shown: number, total: number) => void;
+  /** Empty inventory chrome — keep Mobile Import island as the open-space CTA. */
+  allowDocumentImportIslandOnDenseChrome: boolean;
+  setAllowDocumentImportIslandOnDenseChrome: (allow: boolean) => void;
   saveStatus: GridSaveStatus;
   setSaveStatus: (status: GridSaveStatus) => void;
   saveError: string | null;
@@ -186,6 +189,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null);
   const [shownCount, setShownCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
+  const [allowDocumentImportIslandOnDenseChrome, setAllowDocumentImportIslandOnDenseChrome] =
+    useState(false);
   const [saveStatus, setSaveStatus] = useState<GridSaveStatus>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [gridInteractionLocked, setGridInteractionLocked] = useState(false);
@@ -600,6 +605,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       shownCount,
       totalCount,
       setCounts,
+      allowDocumentImportIslandOnDenseChrome,
+      setAllowDocumentImportIslandOnDenseChrome,
       saveStatus,
       setSaveStatus,
       saveError,
@@ -672,6 +679,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       shownCount,
       totalCount,
       setCounts,
+      allowDocumentImportIslandOnDenseChrome,
+      setAllowDocumentImportIslandOnDenseChrome,
       saveStatus,
       saveError,
       gridInteractionLocked,

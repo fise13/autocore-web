@@ -27,10 +27,10 @@ export function BrandingSection({ icon: Icon, title, description, children, clas
   return (
     <motion.section
       variants={sectionMotion}
-      className={cn("rounded-2xl border bg-card/60 p-4 sm:p-5", className)}
+      className={cn("border-t border-border/50 pt-5 first:border-t-0 first:pt-0", className)}
     >
       <div className="mb-4 flex items-start gap-3">
-        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted/50 text-primary">
           <Icon className="size-4" />
         </span>
         <div className="min-w-0">

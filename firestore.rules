@@ -918,6 +918,47 @@ service cloud.firestore {
           && resource.data.companyId == companyId;
         allow delete: if false;
       }
+
+      // -------------------------
+      // Business Knowledge Engine (E0–E1)
+      // -------------------------
+      match /knowledgeEvents/{eventId} {
+        allow read: if isCompanyMember(companyId);
+        allow create: if isCompanyMember(companyId)
+          && request.resource.data.companyId == companyId;
+        allow update, delete: if false;
+      }
+
+      match /knowledgePatterns/{patternId} {
+        allow read: if isCompanyMember(companyId);
+        allow create, update, delete: if false;
+      }
+
+      match /knowledgeProfiles/{profileId} {
+        allow read: if isCompanyMember(companyId);
+        allow create, update, delete: if false;
+      }
+
+      match /knowledgeFeedback/{feedbackId} {
+        allow read: if isCompanyMember(companyId);
+        allow create: if isCompanyMember(companyId)
+          && request.resource.data.companyId == companyId;
+        allow update, delete: if false;
+      }
+
+      match /companyDictionary/{entryId} {
+        allow read: if isCompanyMember(companyId);
+        allow create, update: if isCompanyMember(companyId)
+          && request.resource.data.companyId == companyId;
+        allow delete: if false;
+      }
+
+      match /domainDictionary/{entryId} {
+        allow read: if isCompanyMember(companyId);
+        allow create, update: if isCompanyMember(companyId)
+          && request.resource.data.companyId == companyId;
+        allow delete: if false;
+      }
     }
 
     // -------------------------

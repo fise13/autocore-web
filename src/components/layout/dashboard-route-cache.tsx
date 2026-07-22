@@ -5,6 +5,7 @@ import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
 
+import { PanelActiveProvider } from "@/components/layout/panel-active-context";
 import { usePerformanceTier } from "@/components/providers/performance-tier-provider";
 import { usePanelLifecycle } from "@/hooks/use-panel-lifecycle";
 import {
@@ -171,18 +172,20 @@ function CachedRoutePanel({ cacheKey, isActive, instantEnter = false }: CachedRo
       data-route-cache={cacheKey}
       data-panel-active={isActive ? "true" : "false"}
     >
-      <motion.div
-        className="flex min-h-0 flex-1 flex-col"
-        initial={false}
-        animate={{ opacity: 1, y: 0 }}
-        transition={
-          instantEnter && entering
-            ? { duration: 0.08, ease: "easeOut" }
-            : { duration: 0.12, ease: [0.22, 1, 0.36, 1] }
-        }
-      >
-        {renderCachedRoute(cacheKey)}
-      </motion.div>
+      <PanelActiveProvider active={isActive}>
+        <motion.div
+          className="flex min-h-0 flex-1 flex-col"
+          initial={false}
+          animate={{ opacity: 1, y: 0 }}
+          transition={
+            instantEnter && entering
+              ? { duration: 0.08, ease: "easeOut" }
+              : { duration: 0.12, ease: [0.22, 1, 0.36, 1] }
+          }
+        >
+          {renderCachedRoute(cacheKey)}
+        </motion.div>
+      </PanelActiveProvider>
     </div>
   );
 }

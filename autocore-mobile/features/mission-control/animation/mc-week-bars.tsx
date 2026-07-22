@@ -34,7 +34,6 @@ function McWeekBar({
   hasAnyData,
   isLatest,
   color,
-  warningColor,
   delay,
 }: {
   bar: MissionControlWeekBar;
@@ -44,7 +43,6 @@ function McWeekBar({
   hasAnyData: boolean;
   isLatest: boolean;
   color: string;
-  warningColor: string;
   delay: number;
 }) {
   const reduced = useReducedMotion();
@@ -89,17 +87,14 @@ function McWeekBar({
     height: height.value,
   }));
 
+  // Always brand blue — negative net days stay the same hue (height uses abs).
   const barColor = !hasAnyData
     ? toneBackground(color, EMPTY_BAR_ALPHA)
     : isLatest
-      ? bar.value < 0
-        ? warningColor
-        : color
+      ? color
       : isEmptyStub
         ? toneBackground(color, 0.22)
-        : bar.value < 0
-          ? toneBackground(warningColor, mutedness)
-          : toneBackground(color, mutedness);
+        : toneBackground(color, mutedness);
 
   return (
     <View style={{ flex: 1, alignItems: 'center', gap: rhythm.tight }}>
@@ -122,6 +117,7 @@ function McWeekBar({
     </View>
   );
 }
+
 export function McWeekBars({ bars, delay = 0 }: McWeekBarsProps) {
   const { colors } = useTheme();
   const maxValue = Math.max(...bars.map((bar) => Math.abs(bar.value)), 0);
@@ -139,7 +135,6 @@ export function McWeekBars({ bars, delay = 0 }: McWeekBarsProps) {
           hasAnyData={hasAnyData}
           isLatest={index === bars.length - 1}
           color={colors.primary}
-          warningColor={colors.warning}
           delay={delay}
         />
       ))}

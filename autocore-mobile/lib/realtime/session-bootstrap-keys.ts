@@ -15,3 +15,18 @@ export function sessionBootstrapQueryKeys(
     ['realtime', 'employees', companyId],
   ] as const;
 }
+
+/**
+ * Minimal keys that must be ready before the shell is interactive.
+ * Heavy catalogs (motors/ops/inventory) may still stream in after reveal.
+ */
+export function sessionInteractiveQueryKeys(
+  companyId: string,
+): readonly (readonly unknown[])[] {
+  return [
+    ['realtime', 'company-app-config', companyId],
+    ['realtime', 'work-orders', companyId],
+    ['realtime', 'clients', companyId],
+    ['realtime', 'employees', companyId],
+  ] as const;
+}

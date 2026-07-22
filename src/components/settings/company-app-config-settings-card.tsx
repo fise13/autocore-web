@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Boxes, Loader2, Save, ShieldCheck, Sparkles } from "lucide-react";
 
 import { CompanyAppConfigForm } from "@/components/company-config/company-app-config-form";
+import { LastSavedHint } from "@/components/persistence/last-saved-hint";
+import { usePersistedDocument } from "@/components/persistence/use-persisted-document";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCompanyAppConfig } from "@/hooks/use-company-app-config";
 import { useCompanyAppConfigDraft } from "@/hooks/use-company-app-config-draft";
+import type { PersistenceSyncHandler } from "@/lib/persistence";
 import { saveCompanyAppConfig } from "@/lib/onboarding/save-company-app-config";
 import { SETUP_WIZARD_COPY } from "@/lib/onboarding/setup-wizard-copy";
 
@@ -43,6 +46,38 @@ export function CompanyAppConfigSettingsCard({ companyId, onStatus }: CompanyApp
   } = useCompanyAppConfigDraft(config);
 
   const canSave = enabledModulesCount > 0 && Boolean(profile?.id);
+
+  const appConfigKey = companyId
+    ? { companyId, kind: "app_config" as const, id: "company" }
+    : null;
+
+  const appConfigSync = useCallback<PersistenceSyncHandler>(
+    async ({ snapshot }) => {
+      if (!profile?.id) return { ok: false, error: "Нет пользователя" };
+      try {
+        await saveCompanyAppConfig({
+          companyId,
+          config: snapshot as typeof draft,
+          userId: profile.id,
+        });
+        return { ok: true };
+      } catch (e) {
+        return {
+          ok: false,
+          error: e instanceof Error ? e.message : SETUP_WIZARD_COPY.validation.saveFailed,
+        };
+      }
+    },
+    [companyId, draft, profile?.id],
+  );
+
+  usePersistedDocument({
+    key: appConfigKey,
+    value: draft,
+    label: "Конфиг приложения",
+    sync: appConfigSync,
+    enabled: Boolean(appConfigKey) && loaded && canSave,
+  });
 
   async function handleSave() {
     if (!profile?.id || !canSave) return;
@@ -164,7 +199,10 @@ export function CompanyAppConfigSettingsCard({ companyId, onStatus }: CompanyApp
         ) : null}
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-          <p className="text-xs text-muted-foreground">{SETUP_WIZARD_COPY.settings.hint}</p>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">{SETUP_WIZARD_COPY.settings.hint}</p>
+            {appConfigKey ? <LastSavedHint persistenceKey={appConfigKey} /> : null}
+          </div>
           <Button type="button" disabled={busy || !loaded || !canSave} onClick={() => void handleSave()}>
             {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Save aria-hidden />}
             {busy ? SETUP_WIZARD_COPY.settings.saving : SETUP_WIZARD_COPY.settings.save}

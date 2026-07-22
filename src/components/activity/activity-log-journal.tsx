@@ -39,9 +39,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   filterActivityEntries,
   formatActivityTargetName,
+  formatEventCountLabel,
   groupActivityEntriesByDay,
   MODULE_FILTER_OPTIONS,
+  moduleFilterLabel,
   SEVERITY_FILTER_OPTIONS,
+  severityFilterLabel,
   type ActivityJournalFilters,
 } from "@/lib/activity/activity-journal-utils";
 import { moduleLabel, resolveActivityLabel } from "@/lib/mission-control/activity-labels";
@@ -71,6 +74,9 @@ function ActivityJournalFiltersBar({
   totalCount: number;
   filteredCount: number;
 }) {
+  const filtersActive =
+    Boolean(filters.search.trim()) || filters.module !== "all" || filters.severity !== "all";
+
   return (
     <div className="flex flex-col gap-3 pt-1">
       <div className="flex flex-wrap items-center gap-2">
@@ -81,7 +87,7 @@ function ActivityJournalFiltersBar({
           <InputGroupInput
             value={filters.search}
             onChange={(event) => onChange({ ...filters, search: event.target.value })}
-            placeholder="Поиск по автору, действию, объекту…"
+            placeholder="Автор, действие или объект…"
             aria-label="Поиск в журнале"
           />
         </InputGroup>
@@ -92,8 +98,8 @@ function ActivityJournalFiltersBar({
             onChange({ ...filters, module: value as ActivityJournalFilters["module"] })
           }
         >
-          <SelectTrigger size="sm" className="w-[9.5rem]">
-            <SelectValue />
+          <SelectTrigger size="sm" className="w-[11rem]" aria-label="Фильтр по модулю">
+            <SelectValue>{moduleFilterLabel(filters.module)}</SelectValue>
           </SelectTrigger>
           <SelectContent align="end">
             <SelectGroup>
@@ -112,8 +118,8 @@ function ActivityJournalFiltersBar({
             onChange({ ...filters, severity: value as ActivityJournalFilters["severity"] })
           }
         >
-          <SelectTrigger size="sm" className="w-[10.5rem]">
-            <SelectValue />
+          <SelectTrigger size="sm" className="w-[11.5rem]" aria-label="Фильтр по уровню">
+            <SelectValue>{severityFilterLabel(filters.severity)}</SelectValue>
           </SelectTrigger>
           <SelectContent align="end">
             <SelectGroup>
@@ -129,19 +135,17 @@ function ActivityJournalFiltersBar({
 
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>
-          {filteredCount === totalCount
-            ? `${totalCount} событий`
-            : `${filteredCount} из ${totalCount} событий`}
+          {filtersActive
+            ? `Показано ${filteredCount} из ${totalCount}`
+            : formatEventCountLabel(totalCount)}
         </span>
-        {filters.search || filters.module !== "all" || filters.severity !== "all" ? (
+        {filtersActive ? (
           <button
             type="button"
             className="font-medium text-primary transition-opacity hover:opacity-80"
-            onClick={() =>
-              onChange({ search: "", module: "all", severity: "all" })
-            }
+            onClick={() => onChange({ search: "", module: "all", severity: "all" })}
           >
-            Сбросить фильтры
+            Сбросить
           </button>
         ) : null}
       </div>
@@ -252,18 +256,11 @@ export function ActivityLogJournal({
       )}
     >
       <CardHeader className="shrink-0 border-b bg-muted/20">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <CardTitle className="text-base">Полный журнал</CardTitle>
-            <CardDescription className="mt-1">
-              Детализация по модулям, авторам и объектам
-            </CardDescription>
-          </div>
-          {!isLoading && !error ? (
-            <Badge variant="secondary" className="shrink-0">
-              {filteredEntries.length} записей
-            </Badge>
-          ) : null}
+        <div className="min-w-0">
+          <CardTitle className="text-base">Журнал событий</CardTitle>
+          <CardDescription className="mt-1">
+            Кто что сделал — по модулям, авторам и объектам
+          </CardDescription>
         </div>
         {!isLoading && !error ? (
           <ActivityJournalFiltersBar
@@ -292,12 +289,12 @@ export function ActivityLogJournal({
                 <SearchIcon />
               </EmptyMedia>
               <EmptyTitle>
-                {entries.length === 0 ? "Пока нет записей" : "Ничего не найдено"}
+                {entries.length === 0 ? "Пока пусто" : "Ничего не найдено"}
               </EmptyTitle>
               <EmptyDescription>
                 {entries.length === 0
-                  ? "События появятся после действий в складе, бухгалтерии и заказ-нарядах."
-                  : "Попробуйте изменить фильтры или поисковый запрос."}
+                  ? "События появятся после работы со складом, финансами и заказ-нарядами."
+                  : "Измените фильтры или поисковый запрос."}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>

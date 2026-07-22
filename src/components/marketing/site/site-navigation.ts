@@ -1,90 +1,54 @@
-import { marketingRoutes } from "@/lib/marketing-routes";
+import { stripLocalePrefix } from "@/i18n/marketing-paths";
+import type { MarketingPathname } from "@/i18n/routing";
 
-export type SiteNavLink = {
-  href: string;
-  label: string;
-  description?: string;
+export type SiteNavLinkHref = MarketingPathname | { pathname: MarketingPathname; hash: string };
+
+export type SiteNavKeyLink = {
+  href: SiteNavLinkHref;
+  /** Key into `marketing.nav.productMenu.items.<key>` or `marketing.nav.primaryLinks.<key>`. */
+  key: string;
 };
 
-export type SiteNavGroup = {
-  id: string;
-  label: string;
-  items: SiteNavLink[];
-};
-
-/** Единая карта навигации marketing-сайта (header + footer). */
+/**
+ * Locale-agnostic nav map (header + footer): hrefs and translation keys only.
+ * Labels come from `marketing` messages via `useTranslations` in the consuming component —
+ * no hardcoded copy lives here (see `site-nav.tsx` / `site-footer.tsx`).
+ */
 export const siteNavigation = {
   productGroup: {
     id: "product",
-    label: "Продукт",
     items: [
-      {
-        href: marketingRoutes.product,
-        label: "Обзор продукта",
-        description: "Как устроена система и для кого",
-      },
-      {
-        href: marketingRoutes.modules,
-        label: "Все модули",
-        description: "Склад, наряды, бухгалтерия, команда",
-      },
-      {
-        href: `${marketingRoutes.modules}#mission-control`,
-        label: "Mission Control",
-        description: "Дашборд владельца каждое утро",
-      },
-      {
-        href: `${marketingRoutes.modules}#warehouse`,
-        label: "Склад",
-        description: "Остатки, штрихкод, импорт прайсов",
-      },
-      {
-        href: `${marketingRoutes.modules}#work-orders`,
-        label: "Заказ-наряды",
-        description: "Цех, расходники, документы",
-      },
-      {
-        href: `${marketingRoutes.modules}#accounting`,
-        label: "Бухгалтерия",
-        description: "Проводки из операций",
-      },
-    ],
-  } satisfies SiteNavGroup,
-  primaryLinks: [
-    { href: marketingRoutes.pricing, label: "Тарифы" },
-    { href: marketingRoutes.download, label: "Скачать" },
-    { href: marketingRoutes.contact, label: "Связаться" },
-  ] satisfies SiteNavLink[],
-  footer: {
-    product: [
-      { href: marketingRoutes.product, label: "Обзор продукта" },
-      { href: marketingRoutes.modules, label: "Каталог модулей" },
-      { href: `${marketingRoutes.modules}#warehouse`, label: "Склад" },
-      { href: `${marketingRoutes.modules}#work-orders`, label: "Заказ-наряды" },
-      { href: `${marketingRoutes.home}#story`, label: "Как работает" },
-    ],
-    company: [
-      { href: marketingRoutes.pricing, label: "Тарифы" },
-      { href: marketingRoutes.security, label: "Безопасность" },
-      { href: marketingRoutes.contact, label: "Связаться" },
-    ],
+      { href: "/product", key: "overview" },
+      { href: "/modules", key: "modules" },
+      { href: { pathname: "/modules", hash: "mission-control" }, key: "missionControl" },
+      { href: { pathname: "/modules", hash: "warehouse" }, key: "warehouse" },
+      { href: { pathname: "/modules", hash: "work-orders" }, key: "workOrders" },
+      { href: { pathname: "/modules", hash: "accounting" }, key: "accounting" },
+    ] satisfies SiteNavKeyLink[],
   },
+  primaryLinks: [
+    { href: "/pricing", key: "pricing" },
+    { href: "/download", key: "download" },
+    { href: "/contact", key: "contact" },
+  ] satisfies SiteNavKeyLink[],
 } as const;
 
-/** Активна ли ссылка на текущем pathname (без учёта hash). */
+/**
+ * Is `href` active for `pathname`? Both may be locale-prefixed (e.g. `/en/product`)
+ * or bare (e.g. `/product`, as returned by next-intl's `usePathname`) — prefixes are
+ * stripped before comparing, and any `#hash` on `href` is ignored.
+ */
 export function isMarketingNavActive(pathname: string, href: string): boolean {
-  const path = href.split("#")[0] || href;
-  if (path === marketingRoutes.home) {
-    return pathname === marketingRoutes.home || pathname === "/marketing";
+  const path = stripLocalePrefix(href.split("#")[0] || href);
+  const current = stripLocalePrefix(pathname);
+  if (path === "/") {
+    return current === "/";
   }
-  return pathname === path || pathname.startsWith(`${path}/`);
+  return current === path || current.startsWith(`${path}/`);
 }
 
-/** Активна ли группа «Продукт» (любая product/modules страница). */
+/** Is the "Product" nav group active (any product/modules page)? `pathname` may be locale-prefixed. */
 export function isProductNavActive(pathname: string): boolean {
-  return (
-    pathname === marketingRoutes.product ||
-    pathname === marketingRoutes.modules ||
-    pathname.startsWith(`${marketingRoutes.modules}/`)
-  );
+  const current = stripLocalePrefix(pathname);
+  return current === "/product" || current === "/modules" || current.startsWith("/modules/");
 }

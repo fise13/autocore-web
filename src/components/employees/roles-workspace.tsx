@@ -12,8 +12,9 @@ import { normalizeCompanyId } from "@/lib/company-id";
 import { PERMISSIONS, Permission, ROLE_PERMISSIONS, USER_ROLES, UserRole } from "@/domain/user";
 import { RoleDefinition } from "@/domain/rbac";
 import { createEmployeeRbacRepository } from "@/infrastructure/firestore/employee-rbac-repository";
+import { WorkspaceSection } from "@/components/layout/workspace-section";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatPermission, formatRole } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
@@ -92,18 +93,15 @@ export function RolesWorkspace({ embedded = false }: { embedded?: boolean } = {}
 
   return (
     <section className={cn("flex w-full flex-col gap-4", !embedded && "mx-auto max-w-6xl")}>
-      <Card className={embedded ? "border-0 bg-transparent shadow-none" : undefined}>
-        <CardHeader>
-          <CardTitle>Управление ролями</CardTitle>
-          <CardDescription>
-            Базовая матрица прав по ролям. Дополнительные права настраиваются в карточке сотрудника.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <WorkspaceSection
+        embedded={embedded}
+        title="Управление ролями"
+        description="Базовая матрица прав по ролям. Дополнительные права настраиваются в карточке сотрудника."
+      >
           {!loaded && subscriptionsEnabled ? (
             <p className="text-sm text-muted-foreground">Загрузка ролей…</p>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {USER_ROLES.map((role, roleIndex) => {
                 const persisted = subscriptionsEnabled ? roleById.get(role) : undefined;
                 const permissions = persisted?.permissions ?? ROLE_PERMISSIONS[role];
@@ -117,7 +115,7 @@ export function RolesWorkspace({ embedded = false }: { embedded?: boolean } = {}
                       duration: 0.24,
                       ease: [0.22, 1, 0.36, 1],
                     }}
-                    className="rounded-lg border p-3"
+                    className="rounded-lg bg-muted/25 px-3 py-3"
                   >
                     <div className="mb-2 flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -161,8 +159,7 @@ export function RolesWorkspace({ embedded = false }: { embedded?: boolean } = {}
             </div>
           )}
           {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
-        </CardContent>
-      </Card>
+      </WorkspaceSection>
     </section>
   );
 }

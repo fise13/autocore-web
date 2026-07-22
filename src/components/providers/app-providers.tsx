@@ -4,6 +4,7 @@ import { ReactNode } from "react";
 
 import { PageTransitionProvider } from "@/components/motion/page-transition-provider";
 import { WebVitalsReporter } from "@/components/performance/web-vitals-reporter";
+import { AppContextMenuProvider } from "@/components/providers/app-context-menu-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { PerformanceTierProvider } from "@/components/providers/performance-tier-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
@@ -22,7 +23,9 @@ export function AppProviders({ children }: AppProvidersProps) {
         <AuthProvider>
           <PageTransitionProvider>
             <WebVitalsReporter />
-            <ToastProvider>{children}</ToastProvider>
+            <ToastProvider>
+              <AppContextMenuProvider>{children}</AppContextMenuProvider>
+            </ToastProvider>
           </PageTransitionProvider>
         </AuthProvider>
       </QueryProvider>

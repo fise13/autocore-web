@@ -32,7 +32,7 @@ export function EnterprisePanelCard({
   borderedHeader = true,
 }: EnterprisePanelCardProps) {
   return (
-    <Card className={cn("gap-0 overflow-hidden shadow-none dark:ring-0", className)}>
+    <Card className={cn("gap-0 overflow-hidden shadow-none ring-1 ring-border/60", className)}>
       <CardHeader
         className={cn(
           borderedHeader && "border-b bg-muted/20",

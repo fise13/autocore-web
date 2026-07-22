@@ -12,8 +12,24 @@ function flattenMessages(value, path = [], output = new Map()) {
     return output;
   }
 
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error(`Message at "${path.join(".")}" must be a string or object`);
+  if (Array.isArray(value)) {
+    // Arrays are consumed via t.raw() — validate structure + nested strings.
+    value.forEach((item, index) => {
+      if (typeof item === "string") {
+        output.set([...path, String(index)].join("."), item);
+        return;
+      }
+      if (item && typeof item === "object" && !Array.isArray(item)) {
+        flattenMessages(item, [...path, String(index)], output);
+        return;
+      }
+      throw new Error(`Message at "${path.join(".")}.${index}" must be a string or object`);
+    });
+    return output;
+  }
+
+  if (!value || typeof value !== "object") {
+    throw new Error(`Message at "${path.join(".")}" must be a string, object, or array`);
   }
 
   for (const [key, child] of Object.entries(value)) {

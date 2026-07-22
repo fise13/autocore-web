@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
+import NextLink from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { Globe, Smartphone } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 
-import { marketingSiteContent } from "@/components/marketing/content/marketing-site-content";
+import { useMarketingPages } from "@/components/marketing/content/use-marketing-pages";
 import { EcosystemDeviceShowcase } from "@/components/marketing/download/ecosystem-device-showcase";
 import {
   Accordion,
@@ -15,12 +15,13 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast-provider";
+import { Link } from "@/i18n/navigation";
 import { getDesktopDownloadLinks } from "@/lib/desktop/desktop-downloads";
-import { marketingRoutes } from "@/lib/marketing-routes";
 import { appLoginUrl } from "@/lib/site-urls";
 import { userCopy } from "@/lib/user-copy";
 
-const copy = marketingSiteContent.download;
+type DownloadPagesCopy = ReturnType<typeof useMarketingPages>["download"];
+
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 type PlatformKind = "windows" | "mac" | "web" | "mobile";
@@ -134,7 +135,7 @@ function useDesktopAvailability() {
   return availability;
 }
 
-function DownloadPlatformGrid() {
+function DownloadPlatformGrid({ platforms }: { platforms: DownloadPagesCopy["platforms"] }) {
   const links = getDesktopDownloadLinks();
   const availability = useDesktopAvailability();
   const { toast } = useToast();
@@ -162,7 +163,7 @@ function DownloadPlatformGrid() {
 
   return (
     <ul className="download-platform-grid">
-      {copy.platforms.map((platform, index) => {
+      {platforms.map((platform, index) => {
         const kind = platform.kind as PlatformKind;
         const isDesktop = kind === "mac" || kind === "windows";
         const isMobile = kind === "mobile";
@@ -179,7 +180,7 @@ function DownloadPlatformGrid() {
                   <PlatformCardContent platform={platform} kind={kind} />
                 </button>
               ) : isMobile ? (
-                <Link href={marketingRoutes.downloadMobile} className="download-platform-card">
+                <Link href="/download/mobile" className="download-platform-card">
                   <PlatformCardContent platform={platform} kind="mobile" />
                 </Link>
               ) : (
@@ -199,7 +200,7 @@ function PlatformCardContent({
   platform,
   kind,
 }: {
-  platform: (typeof copy.platforms)[number];
+  platform: DownloadPagesCopy["platforms"][number];
   kind: PlatformKind | "mobile";
 }) {
   return (
@@ -215,6 +216,7 @@ function PlatformCardContent({
 }
 
 export function DownloadExperience() {
+  const copy = useMarketingPages().download;
   const [openFaq, setOpenFaq] = useState<string[]>(["faq-0"]);
 
   function handleFaqChange(next: string[]) {
@@ -253,7 +255,7 @@ export function DownloadExperience() {
               Выберите платформу
             </h2>
           </ScrollReveal>
-          <DownloadPlatformGrid />
+          <DownloadPlatformGrid platforms={copy.platforms} />
         </div>
       </section>
 
@@ -353,7 +355,7 @@ export function DownloadExperience() {
             <Button
               size="lg"
               className="h-10 min-w-[11rem] px-5 text-sm"
-              render={<Link href={appLoginUrl()} />}
+              render={<NextLink href={appLoginUrl()} />}
               nativeButton={false}
             >
               {copy.closing.button}

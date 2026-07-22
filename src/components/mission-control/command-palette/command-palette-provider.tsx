@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -43,6 +44,10 @@ import { buildCollectionHref } from "@/lib/navigation/inventory-collections";
 import { deepActionRoutes } from "@/lib/navigation/deep-actions";
 import { buildWorkOrderDisplayIndex, formatWorkOrderLabel } from "@/lib/work-order/work-order-display";
 import { createClientRepository } from "@/infrastructure/firestore/client-repository";
+import { useKnowledgeSuggestions } from "@/hooks/use-knowledge-suggestions";
+import { emitKnowledgeEvent } from "@/lib/knowledge/knowledge-api.client";
+
+type SearchResultType = "motor" | "work_order" | "client" | "warehouse_item" | "operation" | "employee";
 
 const clientRepository = createClientRepository();
 
@@ -96,11 +101,50 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
   }, [open, router]);
 
   useEffect(() => {
+    function focusWorkspaceSearch(): boolean {
+      const input = document
+        .querySelector("[data-workspace-search]")
+        ?.querySelector("input");
+      if (!(input instanceof HTMLInputElement)) return false;
+      input.focus();
+      input.select();
+      return true;
+    }
+
+    function isInsideGridOrWorkspaceSearch(target: EventTarget | null): boolean {
+      if (!(target instanceof Element)) return false;
+      return Boolean(
+        target.closest("[data-grid-root]") || target.closest("[data-workspace-search]"),
+      );
+    }
+
     function onKeyDown(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      if (event.shiftKey || event.altKey) return;
+      if (!(event.metaKey || event.ctrlKey)) return;
+      const key = event.key.toLowerCase();
+
+      if (key === "k") {
         event.preventDefault();
         setOpen((current) => !current);
+        return;
       }
+
+      if (key !== "f") return;
+
+      // Excel grids: ordinary filter hotkey (top-bar search), not Spotlight.
+      const active = document.activeElement;
+      if (isInsideGridOrWorkspaceSearch(active) || isInsideGridOrWorkspaceSearch(event.target)) {
+        if (focusWorkspaceSearch()) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      setQuery("");
+      setOpen(true);
     }
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
@@ -116,6 +160,45 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
   );
 
   const normalizedQuery = query.trim().toLowerCase();
+
+  const selectSearchResult = useCallback(
+    (href: string, resultType: SearchResultType, resultId: string) => {
+      if (normalizedQuery) {
+        void emitKnowledgeEvent({
+          type: "search.query",
+          payload: { query: normalizedQuery, selectedResultId: resultId, resultType },
+        });
+      }
+      navigate(href);
+    },
+    [navigate, normalizedQuery],
+  );
+
+  const searchEmitTimerRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (searchEmitTimerRef.current) window.clearTimeout(searchEmitTimerRef.current);
+    if (!open || normalizedQuery.length < 2) return;
+    searchEmitTimerRef.current = window.setTimeout(() => {
+      void emitKnowledgeEvent({ type: "search.query", payload: { query: normalizedQuery } });
+    }, 600);
+    return () => {
+      if (searchEmitTimerRef.current) window.clearTimeout(searchEmitTimerRef.current);
+    };
+  }, [normalizedQuery, open]);
+
+  const { suggestions: searchBoostSuggestions } = useKnowledgeSuggestions({
+    enabled: open && normalizedQuery.length >= 2,
+    companyId,
+    query: normalizedQuery,
+    limit: 3,
+  });
+  const boostedResultType = useMemo(() => {
+    const best = searchBoostSuggestions.find(
+      (suggestion) => suggestion.kind === "search_boost" && suggestion.confidence >= 0.6,
+    );
+    const type = best?.title;
+    return type as SearchResultType | undefined;
+  }, [searchBoostSuggestions]);
   const workOrderIndex = useMemo(
     () => buildWorkOrderDisplayIndex(data.workOrders),
     [data.workOrders],
@@ -201,6 +284,162 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
   }, [data.employees, isPro, normalizedQuery, profile]);
 
   const showNavigation = !normalizedQuery;
+
+  const resultGroups = useMemo(() => {
+    const groups: { type: SearchResultType; node: ReactNode }[] = [
+      {
+        type: "motor",
+        node:
+          motorHits.length > 0 ? (
+            <Command.Group key="motors" heading="Моторы">
+              {motorHits.map((motor) => (
+                <CommandItem
+                  key={motor.id}
+                  icon={LayoutGrid}
+                  onSelect={() =>
+                    selectSearchResult(
+                      `/motors?search=${encodeURIComponent(motor.serialCode || motor.id)}`,
+                      "motor",
+                      motor.id,
+                    )
+                  }
+                >
+                  {`${motor.serialCode || "—"} · ${motor.brandName ?? ""} ${motor.engineCode ?? ""}`.trim()}
+                </CommandItem>
+              ))}
+            </Command.Group>
+          ) : null,
+      },
+      {
+        type: "work_order",
+        node:
+          workOrderHits.length > 0 ? (
+            <Command.Group key="work-orders" heading="Заказ-наряды">
+              {workOrderHits.map((order) => (
+                <CommandItem
+                  key={order.id}
+                  icon={Wrench}
+                  onSelect={() =>
+                    selectSearchResult(
+                      `/work-orders?order=${encodeURIComponent(order.id)}`,
+                      "work_order",
+                      order.id,
+                    )
+                  }
+                >
+                  {formatWorkOrderLabel(order, workOrderIndex)}
+                  {order.clientName ? ` · ${order.clientName}` : ""}
+                </CommandItem>
+              ))}
+            </Command.Group>
+          ) : null,
+      },
+      {
+        type: "client",
+        node:
+          clientHits.length > 0 ? (
+            <Command.Group key="clients" heading="Клиенты">
+              {clientHits.map((client) => (
+                <CommandItem
+                  key={client.id}
+                  icon={Users}
+                  onSelect={() =>
+                    selectSearchResult(
+                      `/work-orders?section=clients&search=${encodeURIComponent(client.fullName)}`,
+                      "client",
+                      client.id,
+                    )
+                  }
+                >
+                  {client.fullName}
+                  {client.phone ? ` · ${client.phone}` : ""}
+                </CommandItem>
+              ))}
+            </Command.Group>
+          ) : null,
+      },
+      {
+        type: "warehouse_item",
+        node:
+          warehouseHits.length > 0 ? (
+            <Command.Group key="warehouse" heading="Склад">
+              {warehouseHits.map((item) => (
+                <CommandItem
+                  key={item.id}
+                  icon={Package}
+                  onSelect={() =>
+                    selectSearchResult(
+                      `/warehouse?search=${encodeURIComponent(item.sku || item.name)}`,
+                      "warehouse_item",
+                      item.id,
+                    )
+                  }
+                >
+                  {item.sku ? `${item.sku} · ` : ""}
+                  {item.name}
+                </CommandItem>
+              ))}
+            </Command.Group>
+          ) : null,
+      },
+      {
+        type: "operation",
+        node:
+          operationHits.length > 0 ? (
+            <Command.Group key="operations" heading="Операции">
+              {operationHits.map((operation) => (
+                <CommandItem
+                  key={operation.id}
+                  icon={Folder}
+                  onSelect={() => selectSearchResult("/accounting", "operation", operation.id)}
+                >
+                  {`${operation.category ? operationCategoryLabel(operation.category) : operationTypeLabel(operation.type)} · ${operation.amount.toLocaleString("ru-RU")} ₸`}
+                </CommandItem>
+              ))}
+            </Command.Group>
+          ) : null,
+      },
+      {
+        type: "employee",
+        node:
+          employeeHits.length > 0 ? (
+            <Command.Group key="employees" heading="Сотрудники">
+              {employeeHits.map((employee) => (
+                <CommandItem
+                  key={employee.uid}
+                  icon={UserPlus}
+                  onSelect={() =>
+                    selectSearchResult("/settings?section=company", "employee", employee.uid)
+                  }
+                >
+                  {`${employee.fullName || employee.email.split("@")[0]} · ${formatRole(employee.role)}`}
+                </CommandItem>
+              ))}
+            </Command.Group>
+          ) : null,
+      },
+    ];
+
+    if (boostedResultType) {
+      groups.sort((a, b) => {
+        if (a.type === boostedResultType) return -1;
+        if (b.type === boostedResultType) return 1;
+        return 0;
+      });
+    }
+
+    return groups;
+  }, [
+    boostedResultType,
+    clientHits,
+    employeeHits,
+    motorHits,
+    operationHits,
+    selectSearchResult,
+    warehouseHits,
+    workOrderHits,
+    workOrderIndex,
+  ]);
 
   const toggle = useCallback(() => setOpen((current) => !current), []);
 
@@ -309,94 +548,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
                 </Command.Group>
               ) : null}
 
-              {motorHits.length > 0 ? (
-                <Command.Group heading="Моторы">
-                  {motorHits.map((motor) => (
-                    <CommandItem
-                      key={motor.id}
-                      icon={LayoutGrid}
-                      onSelect={() =>
-                        navigate(`/motors?search=${encodeURIComponent(motor.serialCode || motor.id)}`)
-                      }
-                    >
-                      {`${motor.serialCode || "—"} · ${motor.brandName ?? ""} ${motor.engineCode ?? ""}`.trim()}
-                    </CommandItem>
-                  ))}
-                </Command.Group>
-              ) : null}
-
-              {workOrderHits.length > 0 ? (
-                <Command.Group heading="Заказ-наряды">
-                  {workOrderHits.map((order) => (
-                    <CommandItem
-                      key={order.id}
-                      icon={Wrench}
-                      onSelect={() => navigate(`/work-orders?order=${encodeURIComponent(order.id)}`)}
-                    >
-                      {formatWorkOrderLabel(order, workOrderIndex)}
-                      {order.clientName ? ` · ${order.clientName}` : ""}
-                    </CommandItem>
-                  ))}
-                </Command.Group>
-              ) : null}
-
-              {clientHits.length > 0 ? (
-                <Command.Group heading="Клиенты">
-                  {clientHits.map((client) => (
-                    <CommandItem
-                      key={client.id}
-                      icon={Users}
-                      onSelect={() =>
-                        navigate(`/work-orders?section=clients&search=${encodeURIComponent(client.fullName)}`)
-                      }
-                    >
-                      {client.fullName}
-                      {client.phone ? ` · ${client.phone}` : ""}
-                    </CommandItem>
-                  ))}
-                </Command.Group>
-              ) : null}
-
-              {warehouseHits.length > 0 ? (
-                <Command.Group heading="Склад">
-                  {warehouseHits.map((item) => (
-                    <CommandItem
-                      key={item.id}
-                      icon={Package}
-                      onSelect={() =>
-                        navigate(`/warehouse?search=${encodeURIComponent(item.sku || item.name)}`)
-                      }
-                    >
-                      {item.sku ? `${item.sku} · ` : ""}
-                      {item.name}
-                    </CommandItem>
-                  ))}
-                </Command.Group>
-              ) : null}
-
-              {operationHits.length > 0 ? (
-                <Command.Group heading="Операции">
-                  {operationHits.map((operation) => (
-                    <CommandItem key={operation.id} icon={Folder} onSelect={() => navigate("/accounting")}>
-                      {`${operation.category ? operationCategoryLabel(operation.category) : operationTypeLabel(operation.type)} · ${operation.amount.toLocaleString("ru-RU")} ₸`}
-                    </CommandItem>
-                  ))}
-                </Command.Group>
-              ) : null}
-
-              {employeeHits.length > 0 ? (
-                <Command.Group heading="Сотрудники">
-                  {employeeHits.map((employee) => (
-                    <CommandItem
-                      key={employee.uid}
-                      icon={UserPlus}
-                      onSelect={() => navigate("/settings?section=company")}
-                    >
-                      {`${employee.fullName || employee.email.split("@")[0]} · ${formatRole(employee.role)}`}
-                    </CommandItem>
-                  ))}
-                </Command.Group>
-              ) : null}
+              {resultGroups.map((group) => group.node)}
             </Command.List>
           </Command>
         </DialogContent>

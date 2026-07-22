@@ -12,6 +12,8 @@ export type { SearchOption };
 type SearchComboboxProps = {
   value: string;
   onValueChange: (value: string) => void;
+  /** Fires only when an option is chosen from the list — not on free typing. */
+  onOptionSelect?: (value: string) => void;
   options: SearchOption[];
   placeholder?: string;
   emptyOption?: SearchOption;
@@ -24,6 +26,7 @@ type SearchComboboxProps = {
 export function SearchCombobox({
   value,
   onValueChange,
+  onOptionSelect,
   options,
   placeholder = "Начните вводить…",
   emptyOption,
@@ -35,12 +38,28 @@ export function SearchCombobox({
   const items = React.useMemo(() => {
     const mapped = options.map((option) => ({
       value: option.value,
-      label: option.label,
+      label: option.label || option.value,
       description: option.description,
       keywords: option.keywords,
     }));
-    return emptyOption ? [emptyOption, ...mapped] : mapped;
-  }, [emptyOption, options]);
+    const base = emptyOption ? [emptyOption, ...mapped] : mapped;
+    const trimmed = value.trim();
+    if (!trimmed) return base;
+
+    // Keep free-typed values in the item list so Base UI treats them as a real
+    // selection and does not clear the input when the popup closes.
+    const hasExact = base.some((item) => item.value.toLowerCase() === trimmed.toLowerCase());
+    if (hasExact) return base;
+    return [
+      {
+        value: trimmed,
+        label: trimmed,
+        description: "Свой вариант",
+        keywords: trimmed,
+      },
+      ...base,
+    ];
+  }, [emptyOption, options, value]);
 
   const selectedItem = React.useMemo(
     () => items.find((item) => item.value.toLowerCase() === value.trim().toLowerCase()) ?? null,
@@ -57,11 +76,22 @@ export function SearchCombobox({
       itemToStringLabel={(item) => item.label}
       isItemEqualToValue={(a, b) => a.value === b.value}
       filter={(item, query) => matchComboboxItem(item, query)}
-      onInputValueChange={(next) => onValueChange(next)}
+      onInputValueChange={(next, details) => {
+        // Base UI syncs input → selected label on popup close. When nothing is selected
+        // yet (race before creatable item commits), that wipe uses `input-clear`.
+        // The Clear button uses `clear-press` and must still empty the field.
+        if (next === "" && value.trim() !== "" && details.reason === "input-clear") {
+          details.cancel();
+          return;
+        }
+        onValueChange(next);
+      }}
       onValueChange={(next) => {
-        // Free-typed values are not in `items`, so selection becomes null while typing.
-        // Only commit when an option is chosen — never wipe the input on null.
-        if (next) onValueChange(next.value);
+        // Free-typed values briefly deselect while the controlled value catches up.
+        // Never wipe the input on null — parent state already holds the typed text.
+        if (!next) return;
+        onValueChange(next.value);
+        onOptionSelect?.(next.value);
       }}
     >
       <Combobox.InputGroup
@@ -101,7 +131,7 @@ export function SearchCombobox({
                 <Combobox.Item
                   key={item.value || "__empty__"}
                   value={item}
-                  className="relative flex cursor-default select-none items-start gap-2 rounded-sm px-2 py-2 text-sm outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
+                  className="group relative flex cursor-default select-none items-start gap-2 rounded-sm px-2 py-2 text-sm outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
                 >
                   <Combobox.ItemIndicator className="mt-0.5 flex size-4 shrink-0 items-center justify-center">
                     <CheckIcon className="size-3.5" />
@@ -109,7 +139,9 @@ export function SearchCombobox({
                   <span className="min-w-0 flex-1">
                     <span className="block truncate">{item.label}</span>
                     {item.description ? (
-                      <span className="block truncate text-xs text-muted-foreground">{item.description}</span>
+                      <span className="block truncate text-xs text-muted-foreground group-data-highlighted:text-accent-foreground/80">
+                        {item.description}
+                      </span>
                     ) : null}
                   </span>
                 </Combobox.Item>

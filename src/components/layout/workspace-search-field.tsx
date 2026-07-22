@@ -81,7 +81,11 @@ export function WorkspaceSearchField({ placeholder, className }: WorkspaceSearch
   }
 
   return (
-    <div ref={containerRef} className={cn("relative w-full max-w-[360px]", className)}>
+    <div
+      ref={containerRef}
+      data-workspace-search
+      className={cn("relative w-full max-w-[360px]", className)}
+    >
       <Search className="pointer-events-none absolute top-1/2 left-2.5 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         value={search}
@@ -116,7 +120,16 @@ export function WorkspaceSearchField({ placeholder, className }: WorkspaceSearch
                 >
                   <span className="truncate font-medium">{option.label}</span>
                   {option.description ? (
-                    <span className="truncate text-xs text-muted-foreground">{option.description}</span>
+                    <span
+                      className={cn(
+                        "truncate text-xs",
+                        index === activeIndex
+                          ? "text-accent-foreground/80"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {option.description}
+                    </span>
                   ) : null}
                 </button>
               </li>

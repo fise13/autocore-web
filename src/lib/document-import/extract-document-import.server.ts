@@ -1,37 +1,21 @@
 import "server-only";
 
-import { z } from "zod";
-
 import {
   getDocumentImportJobAdmin,
   updateDocumentImportJobAdmin,
 } from "@/infrastructure/firestore/admin/document-import-admin";
 import { resolveAdminStorageBucket } from "@/infrastructure/firebase/resolve-storage-bucket";
-import { callOpenRouterJson, readOpenRouterApiKey } from "@/infrastructure/openrouter/chat-completions.server";
+import { readOpenRouterApiKey } from "@/infrastructure/openrouter/chat-completions.server";
+import {
+  enginesExtractSchema,
+  extractEnginesFromImage,
+  type EnginesExtractResult,
+} from "@/lib/document-import/engines-extract-ai";
 
-export const documentImportExtractSchema = z.object({
-  engines: z
-    .array(
-      z.object({
-        serialCode: z.string().optional().default(""),
-        brandName: z.string().optional().default(""),
-        engineCode: z.string().optional().default(""),
-        configuration: z.string().optional().default(""),
-        notes: z.string().optional().default(""),
-        quantity: z.number().optional().default(1),
-        transmission: z.string().optional().default(""),
-        vin: z.string().optional().default(""),
-        price: z.number().nullable().optional(),
-        compatibility: z.string().optional().default(""),
-        confidence: z.number().min(0).max(1).optional().default(0.6),
-      }),
-    )
-    .default([]),
-});
+/** @deprecated Prefer enginesExtractSchema — kept for existing imports. */
+export const documentImportExtractSchema = enginesExtractSchema;
 
-export type DocumentImportExtractedEngine = z.infer<
-  typeof documentImportExtractSchema
->["engines"][number];
+export type DocumentImportExtractedEngine = EnginesExtractResult["engines"][number];
 
 export type DocumentImportExtractedData = {
   engines: DocumentImportExtractedEngine[];
@@ -82,36 +66,16 @@ export async function extractDocumentImportJob(params: {
       throw new Error("Файл ещё не загружен в Storage");
     }
 
-    const buffer = await downloadStorageFile(job.originalStoragePath);
-    const mime = job.contentType.startsWith("image/") ? job.contentType : "image/jpeg";
-    const dataUrl = `data:${mime};base64,${buffer.toString("base64")}`;
+    if (!job.contentType.startsWith("image/")) {
+      throw new Error("Распознавание поддерживает только изображения");
+    }
 
-    const ai = await callOpenRouterJson(
-      [
-        {
-          role: "system",
-          content: `Ты извлекаешь двигатели со склада из фото авторазборки.
-Верни JSON: { "engines": [ { serialCode, brandName, engineCode, configuration, notes, quantity, transmission, vin, price, compatibility, confidence } ] }.
-confidence 0..1. Если данных нет — engines: []. Не выдумывай VIN.`,
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `Файл: ${job.fileName ?? "photo"}. Извлеки все двигатели на фото.`,
-            },
-            { type: "image_url", image_url: { url: dataUrl } },
-          ],
-        },
-      ],
-      documentImportExtractSchema,
-      {
-        title: "AutoCore Document Import",
-        model: process.env.IMPORT_AI_MODEL?.trim() || process.env.OPENROUTER_MODEL?.trim(),
-        maxTokens: 512,
-      },
-    );
+    const buffer = await downloadStorageFile(job.originalStoragePath);
+    const ai = await extractEnginesFromImage({
+      buffer,
+      fileName: job.fileName,
+      mimeHint: job.contentType,
+    });
 
     const extractedData: DocumentImportExtractedData = {
       engines: ai.engines,

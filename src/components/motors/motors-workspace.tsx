@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { parseCollectionFromSearchParams } from "@/lib/navigation/inventory-collections";
 import {
@@ -14,9 +14,14 @@ import { LayoutGrid, X } from "lucide-react";
 import { sellMotorWithFinancialOperationUseCase } from "@/application/use-cases/sell-motor-with-financial-operation";
 import { quickCreateClientUseCase } from "@/application/use-cases/work-orders/quick-create-client";
 import { enqueueMotorSoldEffects } from "@/lib/motors/enqueue-motor-sold-effects";
+import { emitKnowledgeEvent } from "@/lib/knowledge/knowledge-api.client";
 import { writeMotorWarrantySeed, writeOperationWarrantySeed } from "@/lib/motors/motor-warranty-session";
 import { unsellMotorWithFinancialOperationUseCase } from "@/application/use-cases/unsell-motor-with-financial-operation";
 import { MotorSaleSuccessOverlay } from "@/components/motors/motor-sale-success-overlay";
+import {
+  PanelActiveProvider,
+  usePanelActive,
+} from "@/components/layout/panel-active-context";
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { buildMotorSearchSuggestions } from "@/components/layout/workspace-search-field";
 import { useMotorSyncBridge } from "@/components/motors/motor-sync-bridge";
@@ -45,8 +50,37 @@ import { createCatalogRepository } from "@/infrastructure/firestore/catalog-repo
 import { createClientRepository } from "@/infrastructure/firestore/client-repository";
 import { createFinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
 import { createMotorRepository } from "@/infrastructure/firestore/motor-repository";
-import { createSpecificCategoryRepository } from "@/infrastructure/firestore/specific-category-repository";
+import {
+  createSpecificCategoryRepository,
+  type SpecificCategoryEntity,
+} from "@/infrastructure/firestore/specific-category-repository";
 import { useSpecificCategoriesRealtime } from "@/hooks/use-specific-categories-realtime";
+
+type MotorsCollectionPanel =
+  | { key: "motors"; kind: "motors" }
+  | { key: string; kind: "specific"; category: SpecificCategoryEntity }
+  | { key: string; kind: "empty"; title: string; description: string };
+
+function CollectionCachePanel({
+  cacheKey,
+  isActive,
+  children,
+}: {
+  cacheKey: string;
+  isActive: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={cn("min-h-0", isActive ? "flex flex-1 flex-col" : "hidden")}
+      aria-hidden={!isActive}
+      data-collection-cache={cacheKey}
+      data-panel-active={isActive ? "true" : "false"}
+    >
+      <PanelActiveProvider active={isActive}>{children}</PanelActiveProvider>
+    </div>
+  );
+}
 
 const motorRepository = createMotorRepository();
 const clientRepository = createClientRepository();
@@ -58,6 +92,7 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
   const { profile } = useAuth();
   const { requirePro } = useBillingGate();
   const workspace = useWorkspace();
+  const routePanelActive = usePanelActive();
   const [sellDialog, setSellDialog] = useState<{ motor: MotorEntity; mode: "sell" | "unsell" } | null>(
     null,
   );
@@ -114,8 +149,76 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
 
   const activeSpecificCategory =
     collectionContext.collection === "transmissions"
-      ? (selectedSpecificCategory ?? transmissionsCategory)
+      ? (transmissionsCategory ?? selectedSpecificCategory)
       : selectedSpecificCategory;
+
+  const activeCollectionPanel = useMemo((): MotorsCollectionPanel => {
+    if (collectionContext.collection === "transmissions") {
+      if (activeSpecificCategory) {
+        return {
+          key: `specific:${activeSpecificCategory.id}`,
+          kind: "specific",
+          category: activeSpecificCategory,
+        };
+      }
+      return {
+        key: "empty:transmissions",
+        kind: "empty",
+        title: "КПП",
+        description: "Лист КПП появится после первого импорта или настройки компании.",
+      };
+    }
+
+    if (collectionUsesSpecificSheets(collectionContext.collection)) {
+      if (activeSpecificCategory) {
+        return {
+          key: `specific:${activeSpecificCategory.id}`,
+          kind: "specific",
+          category: activeSpecificCategory,
+        };
+      }
+      return {
+        key: `empty:${collectionContext.collection}`,
+        kind: "empty",
+        title: userCopy.specificSheets.selectSheet,
+        description: userCopy.specificSheets.selectSheetHint,
+      };
+    }
+
+    if (activeSpecificCategory) {
+      return {
+        key: `specific:${activeSpecificCategory.id}`,
+        kind: "specific",
+        category: activeSpecificCategory,
+      };
+    }
+
+    return { key: "motors", kind: "motors" };
+  }, [activeSpecificCategory, collectionContext.collection]);
+
+  const [visitedCollectionPanels, setVisitedCollectionPanels] = useState<MotorsCollectionPanel[]>(() => [
+    activeCollectionPanel,
+  ]);
+
+  useEffect(() => {
+    setVisitedCollectionPanels((current) => {
+      const existingIndex = current.findIndex((panel) => panel.key === activeCollectionPanel.key);
+      if (existingIndex === -1) return [...current, activeCollectionPanel];
+      const existing = current[existingIndex];
+      if (
+        existing.kind === "specific" &&
+        activeCollectionPanel.kind === "specific" &&
+        existing.category !== activeCollectionPanel.category
+      ) {
+        const next = [...current];
+        next[existingIndex] = activeCollectionPanel;
+        return next;
+      }
+      return current;
+    });
+  }, [activeCollectionPanel]);
+
+  const motorsSheetActive = routePanelActive && activeCollectionPanel.kind === "motors";
 
   const selectedBrandName = useMemo(
     () => brands.find((brand) => brand.localId === workspace.selectedBrandLocalId)?.name,
@@ -152,7 +255,7 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
     return base.filter((motor) => motorMatchesPinnedFilter(motor, pinnedFilter));
   }, [motorsQuery.data, pinnedFilter]);
   const isGridReady = !motorsQuery.isBootstrapping;
-  const { setCounts, setSearchSuggestions } = workspace;
+  const { setCounts, setSearchSuggestions, setAllowDocumentImportIslandOnDenseChrome } = workspace;
   const motorCount = motorsQuery.data?.length ?? 0;
   const showMotorsEmpty =
     isGridReady && motorCount === 0 && !soldOnly && !editorRevealed;
@@ -176,7 +279,7 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
     repository: motorRepository,
     motors: rowData,
     localDirty: cloudPending,
-    enabled: isGridReady,
+    enabled: isGridReady && motorsSheetActive,
   });
 
   useEffect(() => {
@@ -192,18 +295,33 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
   );
 
   useEffect(() => {
+    if (!motorsSheetActive) return;
     setCounts(motorCount, allMotorsQuery.data?.length ?? motorCount);
-  }, [allMotorsQuery.data, motorCount, setCounts]);
+  }, [allMotorsQuery.data, motorCount, motorsSheetActive, setCounts]);
 
   useEffect(() => {
+    if (!motorsSheetActive) return;
+    const openSpace = showMotorsEmpty || (soldOnly && isGridReady && motorCount === 0);
+    setAllowDocumentImportIslandOnDenseChrome(openSpace);
+    return () => setAllowDocumentImportIslandOnDenseChrome(false);
+  }, [
+    isGridReady,
+    motorCount,
+    motorsSheetActive,
+    setAllowDocumentImportIslandOnDenseChrome,
+    showMotorsEmpty,
+    soldOnly,
+  ]);
+
+  useEffect(() => {
+    if (!motorsSheetActive) return;
     if (!can(profile, "inventory_view")) {
       setSearchSuggestions([]);
       return;
     }
     setSearchSuggestions(motorSearchSuggestions);
-  }, [motorSearchSuggestions, profile, setSearchSuggestions]);
-
-  useEffect(() => () => setSearchSuggestions([]), [setSearchSuggestions]);
+    return () => setSearchSuggestions([]);
+  }, [motorSearchSuggestions, motorsSheetActive, profile, setSearchSuggestions]);
 
   const handleDeepAction = useCallback(
     async (action: DeepAction) => {
@@ -313,6 +431,21 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
         console.warn("[motor-sell] sold-effects:", effects.error);
       }
 
+      if (motor.engineCode || motor.brandName) {
+        void emitKnowledgeEvent({
+          type: "motor.sold",
+          engineCode: motor.engineCode,
+          brandName: motor.brandName,
+          clientId: client.id,
+          payload: {
+            engineCode: motor.engineCode,
+            brandName: motor.brandName,
+            sku: motor.serialCode,
+            price: payload.amount,
+          },
+        });
+      }
+
       setSellSuccess({ serialCode: motor.serialCode, amount: payload.amount });
       return;
     }
@@ -391,159 +524,156 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
     );
   }
 
-  if (collectionContext.collection === "transmissions") {
-    if (activeSpecificCategory) {
-      return <SpecificRecordsWorkspace category={activeSpecificCategory} embedded />;
-    }
-
-    return (
-      <div className="flex h-full flex-col items-center justify-center px-6">
-        <EmptyState
-          icon={LayoutGrid}
-          title="КПП"
-          description="Лист КПП появится после первого импорта или настройки компании."
-          className="max-w-lg border-none bg-transparent"
-        />
-      </div>
-    );
-  }
-
-  if (collectionUsesSpecificSheets(collectionContext.collection)) {
-    if (activeSpecificCategory) {
-      return <SpecificRecordsWorkspace category={activeSpecificCategory} embedded />;
-    }
-
-    return (
-      <div className="flex h-full flex-col items-center justify-center px-6">
-        <EmptyState
-          icon={LayoutGrid}
-          title={userCopy.specificSheets.selectSheet}
-          description={userCopy.specificSheets.selectSheetHint}
-          className="max-w-lg border-none bg-transparent"
-        />
-      </div>
-    );
-  }
-
-  if (activeSpecificCategory) {
-    return <SpecificRecordsWorkspace category={activeSpecificCategory} embedded />;
-  }
-
-  if (soldOnly && isGridReady && rowData.length === 0) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center px-6">
-        <EmptyState
-          icon={LayoutGrid}
-          title={userCopy.motors.soldEmptyTitle}
-          description={userCopy.motors.soldEmptyDescription}
-          className="max-w-lg border-none bg-transparent"
-        />
-      </div>
-    );
-  }
+  const showSoldEmpty =
+    soldOnly &&
+    activeCollectionPanel.kind === "motors" &&
+    isGridReady &&
+    rowData.length === 0;
 
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col">
-      {deepActionError ? (
+      {deepActionError && motorsSheetActive ? (
         <div className="mx-3 mt-3 shrink-0 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
           {deepActionError}
         </div>
       ) : null}
-      <AnimatePresence mode="wait" initial={false}>
-        {showMotorsEmpty ? (
-          <motion.div
-            key="motors-empty"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-            className="flex min-h-0 flex-1"
-          >
-            <MotorsImportEmptyLanding
-              canEdit={canEdit}
-              progress={motorImportProgress}
-              review={motorImportReview}
-              onImportFile={async (file) => {
-                requirePro("import", async () => {
-                  if (!motorExcelIo.canImport) {
-                    setDeepActionError("Импорт недоступен на этой странице");
-                    return;
-                  }
-                  try {
-                    await triggerMotorImport(file);
-                  } catch (error) {
-                    setDeepActionError(
-                      error instanceof Error ? error.message : "Не удалось начать импорт",
-                    );
-                  }
-                });
-              }}
-              onPickFile={() =>
-                requirePro("import", () => {
-                  if (!triggerMotorImportPicker()) {
-                    setDeepActionError("Импорт недоступен на этой странице");
-                  }
-                })
-              }
-              onManualAdd={revealMotorEditor}
-              onOpenReview={openImportIsland}
-              onCancelImport={cancelMotorImport}
-            />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="motors-grid"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-            className="flex min-h-0 flex-1 flex-col"
-          >
-            {sellHintVisible ? (
-              <div className="mx-3 mt-3 flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
-                <p className="flex-1 text-muted-foreground">
-                  Выберите мотор в таблице и отметьте продажу через контекстное меню.
-                </p>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setSellHintVisible(false)}
-                  aria-label="Закрыть подсказку"
-                >
-                  <X className="size-4" />
-                </Button>
+
+      {visitedCollectionPanels.map((panel) => {
+        const isActive = routePanelActive && panel.key === activeCollectionPanel.key;
+        if (panel.kind === "specific") {
+          return (
+            <CollectionCachePanel key={panel.key} cacheKey={panel.key} isActive={isActive}>
+              <SpecificRecordsWorkspace category={panel.category} embedded />
+            </CollectionCachePanel>
+          );
+        }
+        if (panel.kind === "empty") {
+          return (
+            <CollectionCachePanel key={panel.key} cacheKey={panel.key} isActive={isActive}>
+              <div className="flex h-full flex-col items-center justify-center px-6">
+                <EmptyState
+                  icon={LayoutGrid}
+                  title={panel.title}
+                  description={panel.description}
+                  className="max-w-lg border-none bg-transparent"
+                />
               </div>
-            ) : null}
-            {motorsQuery.isBootstrapping ? <MotorsGridSkeleton /> : null}
-            <div
-              className={cn(
-                "flex min-h-0 flex-1 flex-col transition-opacity duration-200 ease-out motion-reduce:transition-none",
-                isGridReady ? "opacity-100" : "pointer-events-none opacity-0",
-              )}
-            >
-              <MotorsExcelGrid
-                motors={rowData}
-                companyId={companyId}
-                uid={uid}
-                canEdit={canEdit}
-                soldOnly={soldOnly}
-                brands={brands}
-                engines={engines}
-                catalogRepository={catalogRepository}
-                defaultBrandName={selectedBrandName}
-                defaultEngineCode={selectedEngineCode}
-                repository={motorRepository}
-                onCloudPendingChange={setCloudPending}
-                onSell={(motor) => setSellDialog({ motor, mode: "sell" })}
-                onUnsell={(motor) => setSellDialog({ motor, mode: "unsell" })}
-                onBatchSell={(motors) => void batchSellMotors(motors)}
-                onBatchUnsell={(motors) => void batchUnsellMotors(motors)}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </CollectionCachePanel>
+          );
+        }
+
+        return (
+          <CollectionCachePanel key={panel.key} cacheKey={panel.key} isActive={isActive}>
+            {showSoldEmpty ? (
+              <div className="flex h-full flex-col items-center justify-center px-6">
+                <EmptyState
+                  icon={LayoutGrid}
+                  title={userCopy.motors.soldEmptyTitle}
+                  description={userCopy.motors.soldEmptyDescription}
+                  className="max-w-lg border-none bg-transparent"
+                />
+              </div>
+            ) : (
+              <AnimatePresence mode="wait" initial={false}>
+                {showMotorsEmpty ? (
+                  <motion.div
+                    key="motors-empty"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                    className="flex min-h-0 flex-1"
+                  >
+                    <MotorsImportEmptyLanding
+                      canEdit={canEdit}
+                      progress={motorImportProgress}
+                      review={motorImportReview}
+                      onImportFile={async (file) => {
+                        requirePro("import", async () => {
+                          if (!motorExcelIo.canImport) {
+                            setDeepActionError("Импорт недоступен на этой странице");
+                            return;
+                          }
+                          try {
+                            await triggerMotorImport(file);
+                          } catch (error) {
+                            setDeepActionError(
+                              error instanceof Error ? error.message : "Не удалось начать импорт",
+                            );
+                          }
+                        });
+                      }}
+                      onPickFile={() =>
+                        requirePro("import", () => {
+                          if (!triggerMotorImportPicker()) {
+                            setDeepActionError("Импорт недоступен на этой странице");
+                          }
+                        })
+                      }
+                      onManualAdd={revealMotorEditor}
+                      onOpenReview={openImportIsland}
+                      onCancelImport={cancelMotorImport}
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="motors-grid"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                    className="flex min-h-0 flex-1 flex-col"
+                  >
+                    {sellHintVisible ? (
+                      <div className="mx-3 mt-3 flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
+                        <p className="flex-1 text-muted-foreground">
+                          Выберите мотор в таблице и отметьте продажу через контекстное меню.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => setSellHintVisible(false)}
+                          aria-label="Закрыть подсказку"
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      </div>
+                    ) : null}
+                    {motorsQuery.isBootstrapping ? <MotorsGridSkeleton /> : null}
+                    <div
+                      className={cn(
+                        "flex min-h-0 flex-1 flex-col transition-opacity duration-200 ease-out motion-reduce:transition-none",
+                        isGridReady ? "opacity-100" : "pointer-events-none opacity-0",
+                      )}
+                    >
+                      <MotorsExcelGrid
+                        motors={rowData}
+                        companyId={companyId}
+                        uid={uid}
+                        canEdit={canEdit}
+                        soldOnly={soldOnly}
+                        brands={brands}
+                        engines={engines}
+                        catalogRepository={catalogRepository}
+                        defaultBrandName={selectedBrandName}
+                        defaultEngineCode={selectedEngineCode}
+                        repository={motorRepository}
+                        isActive={isActive}
+                        onCloudPendingChange={setCloudPending}
+                        onSell={(motor) => setSellDialog({ motor, mode: "sell" })}
+                        onUnsell={(motor) => setSellDialog({ motor, mode: "unsell" })}
+                        onBatchSell={(motors) => void batchSellMotors(motors)}
+                        onBatchUnsell={(motors) => void batchUnsellMotors(motors)}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            )}
+          </CollectionCachePanel>
+        );
+      })}
 
       <SellMotorDialog
         companyId={companyId}
@@ -562,7 +692,6 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
         amount={sellSuccess?.amount ?? 0}
         onClose={() => setSellSuccess(null)}
       />
-
     </div>
   );
 }

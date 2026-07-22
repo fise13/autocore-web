@@ -24,6 +24,7 @@ import { OperationsTable } from "@/components/accounting/operations-table";
 import { MotorSaleDocumentsSheet } from "@/components/accounting/motor-sale-documents-sheet";
 import { PayrollTable } from "@/components/accounting/payroll-table";
 import { useAuth } from "@/components/providers/auth-provider";
+import { AccountingWorkspaceSkeleton } from "@/components/accounting/accounting-workspace-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AnimatedTabsPanel } from "@/components/ui/animated-tabs-panel";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreateFinancialOperationInput, FinancialOperation, OperationType } from "@/domain/financial-operation";
 import { PayrollTransactionStatus } from "@/domain/payroll-transaction";
 import { useAccountingPreferences } from "@/hooks/use-accounting-preferences";
+import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
 import { useDeepAction } from "@/hooks/use-deep-action";
 import { userCopy } from "@/lib/user-copy";
 import { useOperationsRealtime } from "@/hooks/use-operations-realtime";
@@ -52,7 +54,12 @@ const payrollRepository = createPayrollTransactionRepository();
 const workOrderRepository = createWorkOrderRepository();
 const motorRepository = createMotorRepository();
 
-const WORK_ORDER_CATEGORIES = new Set(["work_order_income", "work_order_parts_cost", "payroll"]);
+const WORK_ORDER_CATEGORIES = new Set([
+  "work_order",
+  "work_order_income",
+  "work_order_parts_cost",
+  "payroll",
+]);
 
 const TAB_ITEMS = [
   { value: "overview", label: "Обзор" },
@@ -76,6 +83,7 @@ export function AccountingWorkspace() {
   const [motorSaleOperation, setMotorSaleOperation] = useState<FinancialOperation | null>(null);
   const companyId = normalizeCompanyId(profile?.companyId);
   const { preferences } = useAccountingPreferences(profile?.id ?? "");
+  const { formatMoney } = useAppDisplayCurrency();
   const categorySuggestions = useMemo(
     () => buildAccountingCategorySuggestions(preferences),
     [preferences],
@@ -121,6 +129,15 @@ export function AccountingWorkspace() {
       ),
     [operations],
   );
+  const workOrderFinanceSummary = useMemo(() => {
+    let income = 0;
+    let expense = 0;
+    for (const item of workOrderRows) {
+      if (item.type === "sale" || item.type === "income") income += item.amount;
+      else if (item.type === "expense") expense += item.amount;
+    }
+    return { income, expense, net: income - expense };
+  }, [workOrderRows]);
   const payrollExpenseRows = useMemo(
     () => operations.filter((item) => item.category === "payroll"),
     [operations],
@@ -145,11 +162,18 @@ export function AccountingWorkspace() {
     onAction: openExpenseDialog,
   });
 
+  const isBootstrapping =
+    Boolean(companyId) &&
+    !isLoading &&
+    !operationsQuery.isError &&
+    operationsQuery.isBootstrapping &&
+    operations.length === 0;
+
   const showEmptyState =
     Boolean(companyId) &&
     !isLoading &&
     !operationsQuery.isError &&
-    !operationsQuery.isLoading &&
+    !operationsQuery.isBootstrapping &&
     operations.length === 0;
 
   async function onCreateOperation(
@@ -242,6 +266,8 @@ export function AccountingWorkspace() {
         </div>
       </header>
 
+      {isBootstrapping ? <AccountingWorkspaceSkeleton /> : null}
+
       {showEmptyState ? (
         <EmptyState
           icon={Receipt}
@@ -272,7 +298,7 @@ export function AccountingWorkspace() {
             Компания не выбрана — операции недоступны.
           </CardContent>
         </Card>
-      ) : (
+      ) : isBootstrapping ? null : (
         <Tabs value={activeTab} onValueChange={onTabChange} className="gap-4">
           <TabsList className="autocore-segmented-tabs h-9 w-full max-w-2xl justify-start gap-0.5 p-1 md:w-auto">
             {TAB_ITEMS.map((tab) => (
@@ -353,7 +379,33 @@ export function AccountingWorkspace() {
                     Доход, себестоимость запчастей и зарплата по заказ-нарядам.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="pt-4">
+                <CardContent className="space-y-4 pt-4">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-lg border bg-emerald-500/5 px-3 py-2">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Доход
+                      </p>
+                      <p className="mt-0.5 text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
+                        {formatMoney(workOrderFinanceSummary.income)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border bg-red-500/5 px-3 py-2">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Расход
+                      </p>
+                      <p className="mt-0.5 text-sm font-semibold tabular-nums text-red-700 dark:text-red-300">
+                        {formatMoney(workOrderFinanceSummary.expense)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border bg-muted/30 px-3 py-2">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Итого
+                      </p>
+                      <p className="mt-0.5 text-sm font-semibold tabular-nums">
+                        {formatMoney(workOrderFinanceSummary.net)}
+                      </p>
+                    </div>
+                  </div>
                   <OperationsTable
                     rows={workOrderRows}
                     canEdit={canEdit}
@@ -361,6 +413,7 @@ export function AccountingWorkspace() {
                     onMotorSaleSelect={setMotorSaleOperation}
                     showWorkOrderColumn
                     workOrders={workOrders}
+                    emphasizeWorkOrderFlow
                   />
                 </CardContent>
               </Card>

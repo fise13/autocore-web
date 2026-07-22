@@ -24,6 +24,7 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
@@ -151,16 +152,19 @@ export function SpecificCategoriesSidebarGroup({
     <>
       <SidebarGroup className={cn(collapsed && "p-1", isEditing && "relative")}>
         {collapsed ? null : (
-          <div className="relative flex items-center justify-between pr-1">
+          <div className="relative flex min-h-8 items-center gap-1 pr-1">
             {isEditing ? <EditRemoveButton onClick={() => onHide?.()} /> : null}
-            <SidebarGroupLabel className={cn(isEditing && "pl-4")}>{groupLabel}</SidebarGroupLabel>
+            <SidebarGroupLabel className={cn("min-w-0 flex-1", isEditing && "pl-4")}>
+              {groupLabel}
+            </SidebarGroupLabel>
             {canManage && !isEditing ? (
-              <div className="flex items-center gap-0.5">
+              <div className="ml-auto flex shrink-0 items-center gap-0.5">
                 {selectedCategoryId && onOpenColumnsSettings ? (
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon-xs"
+                    className="size-6 text-muted-foreground hover:text-foreground"
                     aria-label="Колонки листа"
                     title="Колонки"
                     onClick={onOpenColumnsSettings}
@@ -173,6 +177,7 @@ export function SpecificCategoriesSidebarGroup({
                     type="button"
                     variant="ghost"
                     size="icon-xs"
+                    className="size-6 text-muted-foreground hover:text-foreground"
                     aria-label="Создать лист"
                     title="Создать лист"
                     onClick={openCreate}
@@ -202,48 +207,45 @@ export function SpecificCategoriesSidebarGroup({
           ) : (
             visibleCategories.map((category) => {
               const active = selectedCategoryId === category.id;
+              const showActions = canManage && onRenameCategory && onDeleteCategory && !collapsed && !isEditing;
               return (
-                <SidebarMenuItem key={category.id}>
-                  <div className="group/item flex w-full items-center gap-0.5">
-                    <SidebarMenuButton
-                      isActive={active}
-                      tooltip={category.name}
-                      onClick={() => onSelectCategory(active ? null : category.id)}
-                      className={cn(collapsed && "justify-center")}
-                    >
-                      <FileText className="size-4 shrink-0 opacity-80" />
-                      <span data-sidebar-hide-collapsed className="truncate">
-                        {category.name}
-                      </span>
-                    </SidebarMenuButton>
-                    {canManage && onRenameCategory && onDeleteCategory && !collapsed && !isEditing ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-xs"
-                              className="opacity-0 group-hover/item:opacity-100 data-[popup-open]:opacity-100"
-                              aria-label={`Действия для ${category.name}`}
-                            />
-                          }
-                        >
-                          <MoreHorizontal className="size-3.5" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="min-w-40">
-                          <DropdownMenuItem onClick={() => openRename(category)}>
-                            <Pencil className="size-3.5" />
-                            Переименовать
-                          </DropdownMenuItem>
-                          <DropdownMenuItem variant="destructive" onClick={() => openDelete(category)}>
-                            <Trash2 className="size-3.5" />
-                            Удалить
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : null}
-                  </div>
+                <SidebarMenuItem key={category.id} className="group/menu-item">
+                  <SidebarMenuButton
+                    isActive={active}
+                    tooltip={category.name}
+                    onClick={() => onSelectCategory(active ? null : category.id)}
+                    className={cn(
+                      showActions && "pr-8",
+                      collapsed && "justify-center",
+                    )}
+                  >
+                    <FileText className="size-4 shrink-0 opacity-80" />
+                    <span data-sidebar-hide-collapsed className="min-w-0 flex-1 truncate">
+                      {category.name}
+                    </span>
+                  </SidebarMenuButton>
+                  {showActions ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <SidebarMenuAction showOnHover title={`Действия: ${category.name}`} />
+                        }
+                      >
+                        <MoreHorizontal className="size-3.5" />
+                        <span className="sr-only">Действия</span>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent side="right" align="start" className="min-w-40">
+                        <DropdownMenuItem onClick={() => openRename(category)}>
+                          <Pencil className="size-3.5" />
+                          Переименовать
+                        </DropdownMenuItem>
+                        <DropdownMenuItem variant="destructive" onClick={() => openDelete(category)}>
+                          <Trash2 className="size-3.5" />
+                          Удалить
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : null}
                 </SidebarMenuItem>
               );
             })

@@ -7,6 +7,8 @@ import {
   defaultCompanyAppConfig,
 } from "@/domain/company-config";
 import { WarrantyTemplateId } from "@/domain/document-config";
+import { mergeKnowledgeFlags } from "@/domain/knowledge/flags";
+import type { KnowledgeFlags } from "@/domain/knowledge/types";
 import {
   isInventoryGroupId,
   isInventorySubcategoryId,
@@ -97,6 +99,7 @@ function mapCompanyAppConfig(data: Record<string, unknown> | undefined): Company
     specificCategories,
     defaultWarrantyTemplate,
     taxonomyVersion: typeof data.taxonomyVersion === "number" ? data.taxonomyVersion : undefined,
+    knowledge: mergeKnowledgeFlags(data.knowledge as KnowledgeFlags | undefined),
     updatedAt: toDateFromFirestore(data.updatedAt) ?? undefined,
   };
 }
@@ -144,6 +147,7 @@ export function createCompanyConfigRepository() {
         modules: config.modules,
         specificCategories: sanitizeSpecificCategories(config.specificCategories),
         defaultWarrantyTemplate: config.defaultWarrantyTemplate,
+        knowledge: mergeKnowledgeFlags(config.knowledge),
         updatedByUserId,
         updatedAt: serverTimestamp(),
       };

@@ -1,6 +1,6 @@
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { Linking } from 'react-native';
 import { useIsFocused, useRouter, type Href } from 'expo-router';
 
@@ -14,6 +14,7 @@ import {
   useSession,
 } from '@/hooks';
 import { useMobileRelocate, useMobileAssignAssetLocation } from '@/hooks/use-mobile-relocate';
+import { resolveBarcodeFromLocalCatalog } from '@/lib/scan/local-inventory-resolve';
 import { rememberRecentScan } from '@/lib/scan/recent-scans';
 import { readScanResolveCache, writeScanResolveCache } from '@/lib/scan/scan-resolve-cache';
 import { scanNavigationGuard } from '@/lib/navigation/navigation-guard';
@@ -26,7 +27,6 @@ import {
   type ScanOutcome,
   type ScanServiceSnapshot,
 } from '@/services/scan';
-
 import { entityLinkLabel, openEntityLink } from '../lib/open-entity';
 import { classifyScanPayload, isHttpUrl } from '../lib/classify-payload';
 import { interpretRelocateScan } from '../lib/interpret-relocate-scan';
@@ -49,7 +49,7 @@ function sheetPresentationKey(state: ScanServiceSnapshot): string | null {
 export function useScanExperience(initialContext?: ScanContext) {
   const router = useRouter();
   const isFocused = useIsFocused();
-  const { can } = useSession();
+  const { can, companyId } = useSession();
   const allowMock = useDevMockFallback();
   const scanResolve = useMobileScanResolve();
   const scanDisambiguate = useMobileScanDisambiguate();
@@ -58,7 +58,8 @@ export function useScanExperience(initialContext?: ScanContext) {
   const relocate = useMobileRelocate();
   const assignAsset = useMobileAssignAssetLocation();
   const addToOrderFlow = useAddToOrderFlow();
-
+  const companyIdRef = useRef(companyId);
+  companyIdRef.current = companyId;
   const productSheetRef = useRef<BottomSheetModal>(null);
   const candidatesSheetRef = useRef<BottomSheetModal>(null);
   const notFoundSheetRef = useRef<BottomSheetModal>(null);
@@ -115,11 +116,18 @@ export function useScanExperience(initialContext?: ScanContext) {
       resolveInventory: async (barcode, source) => {
         const cached = readScanResolveCache(barcode);
         if (cached) return cached;
+
+        // Hot path: resolve against the warmed local catalog — no network wait.
+        const local = resolveBarcodeFromLocalCatalog(companyIdRef.current, barcode);
+        if (local?.found || (local && local.candidates.length > 0)) {
+          writeScanResolveCache(barcode, local);
+          return local;
+        }
+
         const result = await scanResolveRef.current.mutateAsync({ barcode, source });
-        if (result.found) writeScanResolveCache(barcode, result);
+        if (result.found || result.candidates.length > 0) writeScanResolveCache(barcode, result);
         return result;
-      },
-      disambiguate: async (barcode) => scanDisambiguateRef.current.mutateAsync(barcode),
+      },      disambiguate: async (barcode) => scanDisambiguateRef.current.mutateAsync(barcode),
       resolveOcr: async (uri) => scanOcrRef.current.mutateAsync(uri),
       feedbackPick: async ({ barcode, itemId, score }) => {
         const response = await scanFeedbackRef.current.mutateAsync({
@@ -449,14 +457,14 @@ export function useScanExperience(initialContext?: ScanContext) {
           modal.present();
           return;
         }
-        if (attempt >= 4) {
+        if (attempt >= 2) {
           // Ref never ready — clear key so the next effect/snapshot can retry.
           if (presentedKeyRef.current === key) presentedKeyRef.current = null;
           return;
         }
-        requestAnimationFrame(() => presentWithRetry(sheetRef, attempt + 1));
+        // One layout tick is enough; avoid multi-frame rAF chains that delay the sheet.
+        queueMicrotask(() => presentWithRetry(sheetRef, attempt + 1));
       };
-
       if (state.sheetKind === 'product') presentWithRetry(productSheetRef);
       else if (state.sheetKind === 'candidates') presentWithRetry(candidatesSheetRef);
       else if (state.sheetKind === 'not-found') presentWithRetry(notFoundSheetRef);
@@ -470,7 +478,9 @@ export function useScanExperience(initialContext?: ScanContext) {
     [handleOrderOutcome],
   );
 
-  useEffect(() => {
+  // useLayoutEffect so the sheet presents in the same frame the result lands —
+  // useEffect waited an extra paint and felt laggy after barcode lock.
+  useLayoutEffect(() => {
     const state = snapshot;
 
     if (state.phase === 'confirmed' && state.sheetKind === 'code-picker') {
@@ -523,7 +533,6 @@ export function useScanExperience(initialContext?: ScanContext) {
     snapshot.pendingDetections,
     snapshot.context.mode,
   ]);
-
   const onDetection = useCallback(
     (detection: ScanDetection) => {
       service.onDetection(detection);

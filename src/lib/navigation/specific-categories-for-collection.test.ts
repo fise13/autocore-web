@@ -34,6 +34,22 @@ test("specificCategoriesForCollection separates parts and transmissions", () => 
   assert.deepEqual(specificCategoriesForCollection("engines", categories), []);
 });
 
+test("specificCategoriesForCollection finds gearbox by name when taxonomy is missing", () => {
+  const categories = [
+    category({ id: "legacy-kpp", name: "КПП", groupId: "parts" }),
+    category({ id: "optics", name: "Оптика", groupId: "parts", subcategoryId: "optics" }),
+  ];
+
+  assert.deepEqual(
+    specificCategoriesForCollection("transmissions", categories).map((item) => item.id),
+    ["legacy-kpp"],
+  );
+  assert.deepEqual(
+    specificCategoriesForCollection("parts", categories).map((item) => item.id),
+    ["optics"],
+  );
+});
+
 test("syncSpecificCategoryForCollection clears motors selection on engines", () => {
   let selected: string | null = "optics";
   syncSpecificCategoryForCollection({
@@ -63,6 +79,21 @@ test("syncSpecificCategoryForCollection drops invalid sheet when collection chan
     },
   });
   assert.equal(selected, "gearbox");
+});
+
+test("syncSpecificCategoryForCollection clears selection when gearbox sheet is missing", () => {
+  let selected: string | null = "optics";
+  syncSpecificCategoryForCollection({
+    collection: "transmissions",
+    categories: [
+      category({ id: "optics", name: "Оптика", groupId: "parts", subcategoryId: "optics" }),
+    ],
+    selectedCategoryId: selected,
+    setSelectedCategoryId: (value) => {
+      selected = value;
+    },
+  });
+  assert.equal(selected, null);
 });
 
 test("collectionUsesSpecificSheets is parts-only", () => {

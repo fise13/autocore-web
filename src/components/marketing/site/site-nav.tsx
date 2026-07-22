@@ -1,33 +1,37 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
+import NextLink from "next/link";
+import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 
 import { AppLogo } from "@/components/brand/app-logo";
-import { landingContent } from "@/components/marketing/experience/content/landing-content";
-import { isMarketingNavActive, siteNavigation } from "@/components/marketing/site/site-navigation";
+import { LanguageSwitcher } from "@/components/marketing/site/language-switcher";
+import { isMarketingNavActive } from "@/components/marketing/site/site-navigation";
 import { Button } from "@/components/ui/button";
 import { useScroll } from "@/hooks/use-scroll";
-import { marketingRoutes } from "@/lib/marketing-routes";
+import { Link, usePathname } from "@/i18n/navigation";
+import type { MarketingPathname } from "@/i18n/routing";
 import { appDemoUrl, appLoginUrl } from "@/lib/site-urls";
 import { cn } from "@/lib/utils";
 
-const copy = landingContent.nav;
-const { primaryLinks, productGroup } = siteNavigation;
-
-const NAV_LINKS = [
-  { href: marketingRoutes.product, label: "Продукт" },
-  ...primaryLinks,
+const NAV_LINK_KEYS: Array<{ href: MarketingPathname; key: "product" | "pricing" }> = [
+  { href: "/product", key: "product" },
+  { href: "/pricing", key: "pricing" },
 ];
 
 export function SiteNav() {
+  const t = useTranslations("marketing");
   const pathname = usePathname();
   const scrolled = useScroll(8);
   const [open, setOpen] = useState(false);
   const reducedMotion = useReducedMotion();
+
+  const navLinks = NAV_LINK_KEYS.map((link) => ({
+    href: link.href,
+    label: t(`nav.main.${link.key}`),
+  }));
 
   const closeAll = useCallback(() => {
     setOpen(false);
@@ -63,15 +67,15 @@ export function SiteNav() {
         )}
       >
         <Link
-          href={marketingRoutes.home}
+          href="/"
           className="flex shrink-0 items-center gap-2.5 rounded-md py-1 pr-2 transition-opacity hover:opacity-80"
         >
           <AppLogo size={28} priority />
-          <span className="text-sm font-semibold tracking-tight">AutoCore</span>
+          <span className="text-sm font-semibold tracking-tight">{t("brand.name")}</span>
         </Link>
 
-        <nav className="hidden items-center gap-1 lg:flex" aria-label="Основная навигация">
-          {NAV_LINKS.map((link) => (
+        <nav className="hidden items-center gap-1 lg:flex" aria-label={t("nav.mobile.mainNavAria")}>
+          {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -87,12 +91,13 @@ export function SiteNav() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-2 md:flex">
-          <Button variant="ghost" size="sm" render={<Link href={appLoginUrl()} />} nativeButton={false}>
-            {copy.signIn}
+        <div className="hidden items-center gap-3 md:flex">
+          <LanguageSwitcher />
+          <Button variant="ghost" size="sm" render={<NextLink href={appLoginUrl()} />} nativeButton={false}>
+            {t("nav.signIn")}
           </Button>
-          <Button size="sm" render={<Link href={appDemoUrl()} />} nativeButton={false}>
-            {copy.startFree}
+          <Button size="sm" render={<NextLink href={appDemoUrl()} />} nativeButton={false}>
+            {t("nav.startFree")}
           </Button>
         </div>
 
@@ -102,12 +107,12 @@ export function SiteNav() {
             "exp-site-header-toggle inline-flex size-10 items-center justify-center rounded-xl border border-border/70 lg:hidden",
             open && "exp-site-header-toggle--open",
           )}
-          aria-label={open ? "Закрыть меню" : "Открыть меню"}
+          aria-label={open ? t("nav.mobile.closeMenu") : t("nav.mobile.openMenu")}
           aria-expanded={open}
           aria-controls="marketing-mobile-nav"
           onClick={() => setOpen((v) => !v)}
         >
-          <span className="sr-only">{open ? "Закрыть меню" : "Открыть меню"}</span>
+          <span className="sr-only">{open ? t("nav.mobile.closeMenu") : t("nav.mobile.openMenu")}</span>
           <AnimatePresence mode="wait" initial={false}>
             <motion.span
               key={open ? "close" : "open"}
@@ -127,7 +132,7 @@ export function SiteNav() {
           <>
             <motion.button
               type="button"
-              aria-label="Закрыть мобильное меню"
+              aria-label={t("nav.mobile.closeMobileMenu")}
               className="exp-site-mobile-backdrop fixed inset-0 z-40 lg:hidden"
               onClick={closeAll}
               initial={reducedMotion ? false : { opacity: 0 }}
@@ -139,7 +144,7 @@ export function SiteNav() {
             <motion.nav
               id="marketing-mobile-nav"
               className="exp-site-mobile-nav lg:hidden"
-              aria-label="Мобильная навигация"
+              aria-label={t("nav.mobile.mobileNavAria")}
               initial={reducedMotion ? false : { opacity: 0, y: -14, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -10, scale: 0.985 }}
@@ -147,9 +152,9 @@ export function SiteNav() {
             >
               <div className="exp-site-mobile-nav-inner">
                 <div className="exp-site-mobile-nav-section">
-                  <p className="exp-site-mobile-nav-label">Навигация</p>
+                  <p className="exp-site-mobile-nav-label">{t("nav.mobile.navigationLabel")}</p>
                   <ul className="exp-site-mobile-nav-list">
-                    {NAV_LINKS.map((link) => (
+                    {navLinks.map((link) => (
                       <li key={link.href}>
                         <Link
                           href={link.href}
@@ -168,37 +173,25 @@ export function SiteNav() {
                   </ul>
                 </div>
 
-                <div className="exp-site-mobile-nav-section">
-                  <p className="exp-site-mobile-nav-label">{productGroup.label}</p>
-                  <ul className="exp-site-mobile-subnav-list">
-                    {productGroup.items.slice(1).map((item) => (
-                      <li key={item.href}>
-                        <Link href={item.href} className="exp-site-mobile-subnav-link" onClick={closeAll}>
-                          <span>{item.label}</span>
-                          {item.description ? (
-                            <span className="exp-site-mobile-subnav-description">{item.description}</span>
-                          ) : null}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
+                <div className="exp-site-mobile-nav-section flex items-center justify-between">
+                  <LanguageSwitcher />
                 </div>
 
                 <div className="exp-site-mobile-cta-row">
                   <Button
                     variant="outline"
                     className="min-h-11 flex-1"
-                    render={<Link href={appLoginUrl()} onClick={closeAll} />}
+                    render={<NextLink href={appLoginUrl()} onClick={closeAll} />}
                     nativeButton={false}
                   >
-                    {copy.signIn}
+                    {t("nav.signIn")}
                   </Button>
                   <Button
                     className="min-h-11 flex-1"
-                    render={<Link href={appDemoUrl()} onClick={closeAll} />}
+                    render={<NextLink href={appDemoUrl()} onClick={closeAll} />}
                     nativeButton={false}
                   >
-                    {copy.startFree}
+                    {t("nav.startFree")}
                   </Button>
                 </div>
               </div>

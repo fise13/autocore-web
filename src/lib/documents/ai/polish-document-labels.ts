@@ -215,10 +215,7 @@ export async function polishDocumentLabels(input: {
         { role: "user", content: JSON.stringify(userPayload) },
       ],
       polishResponseSchema,
-      {
-        title: "AutoCore Documents",
-        model: process.env.DOCUMENT_AI_MODEL?.trim(),
-      },
+      { profile: "documentPolish" },
     );
 
     const aiMotorsById = new Map(ai.motors.map((row) => [row.id, row]));

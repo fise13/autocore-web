@@ -5,7 +5,7 @@ import { createHash, randomBytes } from "node:crypto";
 
 import { DomainEvent, DomainEventType } from "@/domain/domain-event";
 import { CreateWarrantyInput, EngineWarranty } from "@/domain/warranty";
-import { WorkOrder } from "@/domain/work-order";
+import { isWarehousePartLine, WorkOrder } from "@/domain/work-order";
 import { VehicleServiceHistoryEntry } from "@/domain/vehicle";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { mapAdminWorkOrder } from "@/infrastructure/firestore/admin-mappers";
@@ -300,18 +300,42 @@ export async function processWorkOrderEvent(
       break;
     }
     case "FinancialTransactionCreated": {
-      if (order.pricing.grandTotal <= 0) break;
-      await createFinancialOperation(companyId, {
-        type: "sale",
-        amount: order.pricing.grandTotal,
-        paymentMethod: order.paymentMethod ?? "cash",
-        account: order.paymentAccount ?? "cashbox",
-        relatedWorkOrderId: order.id,
-        comment: `Заказ-наряд №${order.number}`,
-        description: order.vehicleLabel ?? order.clientName ?? "",
-        createdByUserId: actorUserId,
-        category: "work_order",
-      });
+      if (order.pricing.grandTotal > 0) {
+        await createFinancialOperation(companyId, {
+          type: "sale",
+          amount: order.pricing.grandTotal,
+          paymentMethod: order.paymentMethod ?? "cash",
+          account: order.paymentAccount ?? "cashbox",
+          relatedWorkOrderId: order.id,
+          comment: `Заказ-наряд №${order.number}`,
+          description: order.vehicleLabel ?? order.clientName ?? "",
+          createdByUserId: actorUserId,
+          category: "work_order_income",
+        });
+      }
+
+      const partsCost = order.partLines.reduce((sum, line) => {
+        if (!isWarehousePartLine(line)) return sum;
+        const unitCost = Number(line.unitCost) || 0;
+        const quantity = Number(line.quantity) || 0;
+        if (unitCost <= 0 || quantity <= 0) return sum;
+        return sum + unitCost * quantity;
+      }, 0);
+
+      if (partsCost > 0) {
+        await createFinancialOperation(companyId, {
+          id: `wo-parts:${order.id}`,
+          type: "expense",
+          amount: partsCost,
+          paymentMethod: order.paymentMethod ?? "cash",
+          account: order.paymentAccount ?? "cashbox",
+          relatedWorkOrderId: order.id,
+          comment: `Себестоимость запчастей · ЗН №${order.number}`,
+          description: order.vehicleLabel ?? order.clientName ?? "",
+          createdByUserId: actorUserId,
+          category: "work_order_parts_cost",
+        });
+      }
       break;
     }
     case "VehicleHistoryRecorded": {

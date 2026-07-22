@@ -1,16 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
-import { marketingSiteContent } from "@/components/marketing/content/marketing-site-content";
+import { useMarketingPages } from "@/components/marketing/content/use-marketing-pages";
+import { Link } from "@/i18n/navigation";
 import { buildDocumentQrDataUri } from "@/lib/documents/qr-code";
-import { marketingRoutes } from "@/lib/marketing-routes";
 import { getMobileDownloadLinks } from "@/lib/mobile/mobile-download-links";
 import { cn } from "@/lib/utils";
 
-const copy = marketingSiteContent.downloadMobile;
+type DownloadMobilePagesCopy = ReturnType<typeof useMarketingPages>["downloadMobile"];
+
 const links = getMobileDownloadLinks();
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -60,9 +60,11 @@ function PlatformIcon({ platform }: { platform: MobilePlatform }) {
 }
 
 function MobileDownloadReveal({
+  copy,
   platform,
   onClose,
 }: {
+  copy: DownloadMobilePagesCopy;
   platform: MobilePlatform;
   onClose: () => void;
 }) {
@@ -142,6 +144,7 @@ function MobileDownloadReveal({
 }
 
 export function MobileDownloadExperience() {
+  const copy = useMarketingPages().downloadMobile;
   const [selected, setSelected] = useState<MobilePlatform | null>(null);
 
   return (
@@ -149,7 +152,7 @@ export function MobileDownloadExperience() {
       <section className="download-panel download-panel-hero download-mobile-hero" aria-label="Mobile">
         <div className="exp-section-inner download-panel-inner">
           <HeroReveal delay={0} duration={0.55} y={12}>
-            <Link href={marketingRoutes.download} className="download-mobile-back">
+            <Link href="/download" className="download-mobile-back">
               {copy.backLabel}
             </Link>
           </HeroReveal>
@@ -196,7 +199,7 @@ export function MobileDownloadExperience() {
           </ul>
 
           {selected ? (
-            <MobileDownloadReveal platform={selected} onClose={() => setSelected(null)} />
+            <MobileDownloadReveal copy={copy} platform={selected} onClose={() => setSelected(null)} />
           ) : null}
         </div>
       </section>

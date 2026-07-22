@@ -1,12 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRef } from "react";
 
 import { useGsapMountReveal } from "@/components/marketing/motion/use-gsap-reveal";
+import { Link } from "@/i18n/navigation";
+import type { MarketingPathname } from "@/i18n/routing";
 
-type Breadcrumb = { label: string; href?: string };
+type Breadcrumb = { label: string; href?: MarketingPathname };
 
 type PageHeaderProps = {
   title: string;
@@ -16,6 +18,7 @@ type PageHeaderProps = {
 };
 
 export function PageHeader({ title, description, breadcrumbs, eyebrow }: PageHeaderProps) {
+  const t = useTranslations("marketing");
   const ref = useRef<HTMLElement>(null);
   useGsapMountReveal(ref, "[data-header-reveal]", { stagger: 0.09, y: 16 });
 
@@ -23,7 +26,11 @@ export function PageHeader({ title, description, breadcrumbs, eyebrow }: PageHea
     <header ref={ref} className="marketing-page-header">
       <div className="landing-container">
         {breadcrumbs && breadcrumbs.length > 0 ? (
-          <nav className="marketing-breadcrumbs" aria-label="Хлебные крошки" data-header-reveal>
+          <nav
+            className="marketing-breadcrumbs"
+            aria-label={t("a11y.legal.breadcrumbsAria")}
+            data-header-reveal
+          >
             {breadcrumbs.map((crumb, index) => (
               <span key={crumb.label} className="inline-flex items-center gap-1.5">
                 {index > 0 ? <ChevronRight className="size-3.5 opacity-40" aria-hidden /> : null}

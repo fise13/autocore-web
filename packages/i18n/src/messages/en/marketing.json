@@ -1,0 +1,1554 @@
+{
+  "brand": {
+    "name": "AutoCore"
+  },
+  "nav": {
+    "signIn": "Sign in",
+    "startFree": "Open the demo",
+    "main": {
+      "product": "Product",
+      "pricing": "Pricing"
+    },
+    "productMenu": {
+      "label": "Product",
+      "items": {
+        "overview": {
+          "label": "Product overview",
+          "description": "Live walkthrough: warehouse, sale, work order, PDF"
+        },
+        "modules": {
+          "label": "All modules",
+          "description": "Warehouse, work orders, accounting, team"
+        },
+        "missionControl": {
+          "label": "Mission Control",
+          "description": "The owner's dashboard every morning"
+        },
+        "warehouse": {
+          "label": "Warehouse",
+          "description": "Stock, barcodes, price-list imports"
+        },
+        "workOrders": {
+          "label": "Work Orders",
+          "description": "Shop floor, parts, documents"
+        },
+        "accounting": {
+          "label": "Accounting",
+          "description": "Ledger entries from operations"
+        }
+      }
+    },
+    "primaryLinks": {
+      "pricing": "Pricing",
+      "download": "Download",
+      "contact": "Contact"
+    },
+    "mobile": {
+      "navigationLabel": "Navigation",
+      "openMenu": "Open menu",
+      "closeMenu": "Close menu",
+      "closeMobileMenu": "Close mobile menu",
+      "mobileNavAria": "Mobile navigation",
+      "mainNavAria": "Main navigation"
+    }
+  },
+  "footer": {
+    "headline": "Warehouse, shop floor, and cash — one source of truth.",
+    "tagline": "The operating system for auto dismantlers and repair shops. No Excel chaos, no late-night reconciliations.",
+    "cta": "Open the demo",
+    "contact": "Get in touch",
+    "locale": "Kazakhstan",
+    "signIn": "Sign in",
+    "ariaLabel": "Footer",
+    "columns": {
+      "product": {
+        "title": "Product",
+        "items": {
+          "overview": "Overview",
+          "modules": "Modules",
+          "pricing": "Pricing",
+          "download": "Download"
+        }
+      },
+      "company": {
+        "title": "Company",
+        "items": {
+          "security": "Security",
+          "contact": "Contact",
+          "howItWorks": "How it works"
+        }
+      },
+      "legal": {
+        "title": "Legal",
+        "items": {
+          "privacy": "Privacy",
+          "terms": "Terms"
+        }
+      }
+    }
+  },
+  "common": {
+    "demo": "Open the demo",
+    "signIn": "Sign in",
+    "download": "Download",
+    "language": "Language",
+    "buy": "Buy now",
+    "close": "Close",
+    "contactUs": "Get in touch",
+    "ctaStrip": {
+      "title": "See it on your own demo.",
+      "description": "A live company: from warehouse to warranty, no Excel and no late-night reconciliations.",
+      "primary": "Open the demo",
+      "secondary": "Browse modules"
+    }
+  },
+  "modals": {
+    "documentPreview": {
+      "description": "Document preview",
+      "printPdf": "Print / PDF",
+      "close": "Close",
+      "fallbackTitle": "Document"
+    },
+    "sellMotor": {
+      "titleSell": "Sell engine",
+      "titleReturn": "Return engine",
+      "description": "Engine {serial}. One financial operation will be created{warrantySuffix}.",
+      "warrantySuffix": ", plus a warranty certificate with your terms",
+      "selectMotor": "Select an engine to continue.",
+      "buyer": "Buyer",
+      "fullName": "Full name",
+      "phone": "Phone",
+      "namePlaceholder": "Alex Ivanov",
+      "buyerHint": "A new buyer will be saved to your clients list.",
+      "frequentlyBought": "Often bought with this engine",
+      "amount": "Amount",
+      "account": "Account",
+      "payment": "Payment",
+      "cashbox": "Cashbox",
+      "kaspi": "Kaspi",
+      "cash": "Cash",
+      "transfer": "Transfer",
+      "mixed": "Mixed",
+      "warrantyTitle": "Warranty for this sale",
+      "warrantyDays": "Term, days",
+      "warrantyKm": "Mileage, km",
+      "warrantyLabel": "Title (optional)",
+      "warrantyText": "Warranty terms",
+      "warrantyTextPlaceholder": "One paragraph per line",
+      "comment": "Comment",
+      "cancel": "Cancel",
+      "sell": "Sell",
+      "return": "Return",
+      "saving": "Saving…",
+      "errors": {
+        "amount": "Enter a valid amount",
+        "buyerName": "Enter the buyer’s name",
+        "buyerPhone": "Enter the buyer’s phone",
+        "warrantyDays": "Enter warranty term in days",
+        "warrantyKm": "Enter warranty mileage in km",
+        "warrantyText": "Enter warranty text for this sale",
+        "generic": "Couldn’t complete the operation"
+      }
+    }
+  },
+  "landing": {
+    "hero": {
+      "ariaLabel": "Home",
+      "title": "Warehouse, shop floor, and cash — one source of truth.",
+      "subtitle": "Stock, work orders, engine sales, and documents — from the same data. No WhatsApp bookkeeping, no late-night reconciliations.",
+      "ctaPrimary": "Open the demo",
+      "ctaSecondary": "See how it works",
+      "trust": "Live demo company · real workflows",
+      "visualCaption": "Demo company · engines · G4KC"
+    },
+    "chaos": {
+      "eyebrow": "A typical day",
+      "title": "Warehouse chaos is already baked into your costs.",
+      "subtitle": "A typical day at a dismantler or repair shop: calls asking \"how many are left?\", double bookkeeping, write-offs \"by word of mouth\", paperwork done at night.",
+      "items": [
+        {
+          "time": "8:40 AM",
+          "text": "A customer asks about a G4KC — Excel says \"in stock\", the shelf says nothing."
+        },
+        {
+          "time": "11:20 AM",
+          "text": "The mechanic grabs a filter \"by word of mouth\" — the accountant finds out that evening."
+        },
+        {
+          "time": "3:05 PM",
+          "text": "WhatsApp: \"where's the engine?\" — three answers, zero real stock counts."
+        },
+        {
+          "time": "7:50 PM",
+          "text": "Reconciling the spreadsheet against the shelf. The shift is already over."
+        }
+      ],
+      "cta": "See how this gets fixed"
+    },
+    "outcome": {
+      "title": "Mornings without calling the warehouse.",
+      "subtitle": "Mission Control shows everything that needs attention before the first customer call.",
+      "cta": "See the product"
+    },
+    "loop": {
+      "eyebrow": "One operation",
+      "title": "One confirmation. The entire operation is done.",
+      "subtitle": "A single action kicks off the whole process — no re-entering data.",
+      "sell": "Sell",
+      "replay": "Replay",
+      "closeDocument": "Close",
+      "cascade": [
+        "Sale recorded",
+        "Stock updated",
+        "Work order created",
+        "Warranty generated"
+      ]
+    },
+    "scenes": {
+      "title": "Three shift breakdowns — three resolved scenarios.",
+      "subtitle": "Not a catalog of modules. Three real pressure points in an auto business, resolved in one system.",
+      "cta": "Open the demo",
+      "beforeLabel": "Before",
+      "afterLabel": "After",
+      "items": [
+        {
+          "id": "warehouse",
+          "tab": "Warehouse",
+          "title": "Answer the customer in seconds, not after walking the shelves",
+          "before": "Excel lies. The shelf says nothing.",
+          "after": "Availability, reservation, and location — in one line."
+        },
+        {
+          "id": "order",
+          "tab": "Work order",
+          "title": "Write-offs happen the moment work is done, not that evening with the accountant",
+          "before": "The mechanic took it \"by word of mouth\".",
+          "after": "The work order line hits both stock and the total."
+        },
+        {
+          "id": "motor",
+          "tab": "Engine",
+          "title": "Sell an engine with documents from the same data",
+          "before": "The listing lives in one file, the certificate in another.",
+          "after": "The G4KC, the work order, and the document are linked."
+        }
+      ],
+      "devices": {
+        "title": "The warehouse clerk scans. The office already sees it.",
+        "subtitle": "Phone on the floor. Computer in the office. The same G4KC."
+      }
+    },
+    "goLive": {
+      "title": "Go live without stopping the shift.",
+      "subtitle": "Start with warehouse or work orders. Excel stays as an archive. No developer needed.",
+      "steps": [
+        {
+          "label": "Demo",
+          "detail": "Open a fully populated demo company"
+        },
+        {
+          "label": "Your own setup",
+          "detail": "Import your price list, invite your team by role"
+        },
+        {
+          "label": "Day one",
+          "detail": "One process at a time — no big-bang migration"
+        }
+      ],
+      "primary": "Open the demo",
+      "secondary": "Contact support"
+    },
+    "pricing": {
+      "title": "One price. The entire product.",
+      "price": "$39",
+      "period": "/ month",
+      "note": "per company",
+      "included": [
+        "Warehouse",
+        "Work Orders",
+        "Engines",
+        "Documents",
+        "Mobile",
+        "Mission Control"
+      ],
+      "risk": "14 days free · no card required · no extra fees for modules",
+      "trial": "Open the demo",
+      "buy": "Buy now",
+      "buyModal": {
+        "title": "Subscribe",
+        "body": "Email us to get set up",
+        "email": "support@myautocore.com",
+        "close": "Close"
+      }
+    },
+    "roi": {
+      "title": "$39 versus an hour of evening reconciliations.",
+      "subtitle": "Conservative math: minutes a day on reconciliations and the occasional lost sale. No \"+300%\" fairy tale.",
+      "minutesLabel": "Minutes spent reconciling per day",
+      "rateLabel": "Hourly rate, ₸",
+      "lostLabel": "Lost sales / month, ₸",
+      "resultLabel": "Estimated cost of chaos / month",
+      "vsLabel": "Subscription",
+      "disclaimer": "This is an estimate. The exact numbers are yours — check them on the demo.",
+      "cta": "Open the demo",
+      "minutesUnit": "min",
+      "perMonth": "mo"
+    },
+    "trust": {
+      "title": "Role-based access. A trail for every action.",
+      "subtitle": "Company isolation, an activity log, and per-module permissions — no security theater.",
+      "pillars": [
+        {
+          "title": "Roles",
+          "body": "Warehouse staff, mechanics, and owners each see their own view."
+        },
+        {
+          "title": "Activity log",
+          "body": "Who changed a reservation, and when."
+        },
+        {
+          "title": "Isolation",
+          "body": "Company data never mixes."
+        }
+      ],
+      "link": "Security"
+    },
+    "faq": {
+      "title": "Questions before you get started.",
+      "description": "What owners of auto dismantlers and repair shops usually ask.",
+      "items": [
+        {
+          "q": "Does it work for an auto dismantler?",
+          "a": "Yes. Engine and parts tracking, engine sales with documents, price-list imports, and a unified warehouse — that's the core scenario."
+        },
+        {
+          "q": "Does it work for a repair shop?",
+          "a": "Yes. Work orders, parts reserved from the warehouse, automatic write-offs when a work order closes, and accounting entries with no double entry."
+        },
+        {
+          "q": "We live in Excel. Will we be forced to throw everything out?",
+          "a": "No. Start with warehouse or work orders, import your price lists, and migrate processes gradually. Excel stays as an archive."
+        },
+        {
+          "q": "Do I need a developer to set it up?",
+          "a": "No. Open app.myautocore.com in a browser, sign up, invite your team. There's also a desktop app, Windows, and iPhone with the same interface."
+        },
+        {
+          "q": "What happens after 14 days? Are there extra fees for modules?",
+          "a": "It's $39 per month per company, or you can pause. Your data is kept. There are no extra fees for modules — one price unlocks the entire product."
+        },
+        {
+          "q": "How do I buy a subscription?",
+          "a": "Email support@myautocore.com — we'll help you get set up and started."
+        }
+      ],
+      "ctaPrimary": "Open the demo",
+      "ctaBuy": "Buy now"
+    },
+    "cta": {
+      "titleLine1": "Try it on your own shift.",
+      "titleLine2": "The demo is already populated.",
+      "primary": "Open the demo",
+      "buy": "Buy now"
+    },
+    "philosophy": {
+      "title": "Not an ERP, and not a CRM",
+      "description": "Replaces Excel, WhatsApp, and five different apps with one operating system. Warehouse, shop floor, and office — from a single space.",
+      "before": [
+        "Excel",
+        "Paper",
+        "WhatsApp",
+        "Phone calls",
+        "Folders",
+        "Manual PDFs",
+        "Hunting for data"
+      ],
+      "after": [
+        "One workspace",
+        "Live sync",
+        "Shared warehouse",
+        "Shared history",
+        "Auto-generated documents"
+      ],
+      "conclusion": "One action kicks off the whole chain. No copy-pasting, no phone calls, no late-night reconciliations.",
+      "workflows": [
+        {
+          "id": "order",
+          "title": "Work order in progress",
+          "steps": [
+            {
+              "label": "Work order created",
+              "detail": "WO-0142 · G4KC replacement"
+            },
+            {
+              "label": "Reserved from warehouse",
+              "detail": "G4KC · shelf A-12"
+            },
+            {
+              "label": "Warranty issued",
+              "detail": "Linked to the work order"
+            },
+            {
+              "label": "PDF generated",
+              "detail": "Handover certificate"
+            },
+            {
+              "label": "History updated",
+              "detail": "Visible to every department"
+            }
+          ]
+        },
+        {
+          "id": "vin",
+          "title": "Scan on the phone",
+          "steps": [
+            {
+              "label": "VIN scanned",
+              "detail": "Warehouse clerk · phone"
+            },
+            {
+              "label": "Engine identified",
+              "detail": "G4KC · 2.4L"
+            },
+            {
+              "label": "Desktop updated",
+              "detail": "Stock synced"
+            },
+            {
+              "label": "Mechanic notified",
+              "detail": "Reservation confirmed"
+            }
+          ]
+        },
+        {
+          "id": "photo",
+          "title": "Photo during repair",
+          "steps": [
+            {
+              "label": "Photo taken",
+              "detail": "Shop floor · diagnostics stage"
+            },
+            {
+              "label": "Attached to work order",
+              "detail": "WO-0142"
+            },
+            {
+              "label": "Customer timeline",
+              "detail": "Repair history"
+            },
+            {
+              "label": "Available everywhere",
+              "detail": "Office · shop floor · phone"
+            }
+          ]
+        }
+      ]
+    },
+    "showcase": {
+      "title": "What it looks like in real use",
+      "description": "The real interface: work order, warehouse, and printing from the same data.",
+      "scenes": [
+        {
+          "id": "orders",
+          "label": "Work Orders"
+        },
+        {
+          "id": "inventory",
+          "label": "Warehouse"
+        },
+        {
+          "id": "documents",
+          "label": "Documents"
+        }
+      ]
+    },
+    "platform": {
+      "title": "Desktop and phone",
+      "description": "The warehouse clerk scans on their phone, the mechanic sees the reservation on their computer."
+    }
+  },
+  "product": {
+    "hero": {
+      "title": "One warehouse. One shop floor. One source of truth.",
+      "subtitle": "A live interface — open a screen and walk through the operation yourself."
+    },
+    "toc": {
+      "title": "Product",
+      "items": [
+        {
+          "id": "engine-search",
+          "label": "Engine search"
+        },
+        {
+          "id": "sale",
+          "label": "Sale"
+        },
+        {
+          "id": "work-order",
+          "label": "Work order"
+        },
+        {
+          "id": "documents",
+          "label": "Documents"
+        },
+        {
+          "id": "finance",
+          "label": "Finance"
+        },
+        {
+          "id": "mobile",
+          "label": "Mobile"
+        },
+        {
+          "id": "ai",
+          "label": "AI"
+        }
+      ]
+    },
+    "sections": {
+      "engineSearch": {
+        "title": "Engine search",
+        "question": "Do I have it in stock?",
+        "line": "Type in the code, filter by availability, see the shelf and the reservation. The same Excel-like grid you'd use during a shift.",
+        "searchPrompt": "Find an engine in seconds — search, filter, shelf, reservation."
+      },
+      "sale": {
+        "title": "Sale",
+        "question": "How fast can I close a sale?",
+        "line": "Click \"Sell\". A real sale dialog opens, then a chain runs: stock → work order → warranty PDF.",
+        "sellLabel": "Sell",
+        "cascade": [
+          "Sale recorded",
+          "Stock updated",
+          "Work order linked",
+          "Warranty ready"
+        ],
+        "replay": "Replay",
+        "closeDocument": "Close"
+      },
+      "workOrder": {
+        "title": "Work order",
+        "question": "How do I run the job?",
+        "line": "An open work order card: customer, vehicle, jobs, finances, and documents — the exact same screen used in the shop."
+      },
+      "documents": {
+        "title": "Documents",
+        "question": "What does the customer get?",
+        "line": "Real PDFs: work order, warranty, and handover certificate — from the same data used in the workspace."
+      },
+      "finance": {
+        "title": "Finance",
+        "question": "Where does the transaction show up?",
+        "line": "Cash, Kaspi, and work order transactions — the same accounting screen."
+      },
+      "mobile": {
+        "title": "Mobile",
+        "question": "What can I do out of the office?",
+        "line": "On the phone: warehouse, VIN scanning, and reservations — interactive, right inside the simulator."
+      },
+      "ai": {
+        "title": "AI import",
+        "question": "What can be automated?",
+        "line": "An Excel price list: columns get mapped automatically, confidence is shown, and items land in the warehouse with no manual copy-pasting."
+      }
+    },
+    "cta": {
+      "titleLine1": "Try it on your own process.",
+      "titleLine2": "The demo is already populated.",
+      "primary": "Open the demo",
+      "secondary": "Download"
+    }
+  },
+  "pages": {
+    "product": {
+      "meta": {
+        "title": "Product overview",
+        "description": "The operating system for dismantlers, parts sellers, and repair shops. Mission Control, warehouse, work orders, and accounting in one loop."
+      },
+      "hero": {
+        "title": "Software for auto dismantlers and repair shops",
+        "description": "Parts warehouse, shop floor, engine sales, documents, and accounting — all connected. One source of truth for the whole team."
+      },
+      "pillars": [
+        {
+          "title": "Mission Control",
+          "body": "A morning overview: revenue, stock, open work orders, who's online, and the activity log."
+        },
+        {
+          "title": "Connected processes",
+          "body": "Close a work order: the write-off, the ledger entry, and the documents are already done. No re-entering data."
+        },
+        {
+          "title": "Realtime",
+          "body": "An edit on iPhone in the shop is visible in the office and to the owner a second later."
+        },
+        {
+          "title": "Documents",
+          "body": "Work order, warranty, and certificate from the same data, with QR codes and signatures."
+        }
+      ],
+      "workflow": {
+        "title": "The operating chain",
+        "description": "A part's journey from intake to customer handover, with no gaps between departments.",
+        "steps": [
+          {
+            "label": "Intake",
+            "detail": "Barcode or price-list import"
+          },
+          {
+            "label": "Warehouse",
+            "detail": "Stock and reservation for a work order"
+          },
+          {
+            "label": "Work order",
+            "detail": "Jobs, mechanic, consumables"
+          },
+          {
+            "label": "Sale",
+            "detail": "Engine, installation, write-off"
+          },
+          {
+            "label": "Documents",
+            "detail": "Certificate, warranty, invoice"
+          },
+          {
+            "label": "Accounting",
+            "detail": "Ledger entries from operations"
+          }
+        ]
+      },
+      "audience": {
+        "title": "Who it's for",
+        "description": "Not \"CRM for everyone\". Built specifically for auto businesses with a warehouse, a shop floor, and sales.",
+        "personas": [
+          {
+            "title": "Dismantlers and parts shops",
+            "pain": "Excel stock doesn't match the shelf. The customer waits while you search for the part.",
+            "promise": "A live warehouse, engine sales with documents, price-list imports."
+          },
+          {
+            "title": "Repair shops and installation bays",
+            "pain": "The mechanic wrote off a part, and the accountant finds out that evening.",
+            "promise": "The work order hits both stock and the ledger. The mechanic works from a phone."
+          },
+          {
+            "title": "Owners and directors",
+            "pain": "Five reports from five different places. No visibility into where the margin is leaking.",
+            "promise": "Mission Control: the truth every morning, in one minute."
+          },
+          {
+            "title": "Warehouse staff and accountants",
+            "pain": "Double data entry, calls asking \"how many are left?\".",
+            "promise": "Everyone sees their own view. One change becomes fact for everyone."
+          }
+        ]
+      },
+      "platforms": {
+        "title": "Web, desktop, and iPhone",
+        "description": "One interface and one data model, across every device.",
+        "items": [
+          {
+            "name": "Web",
+            "detail": "Full Mission Control and every module in the browser, for the office and admins."
+          },
+          {
+            "name": "Desktop",
+            "detail": "A keyboard-shortcut-first app for warehouse work, with realtime sync."
+          },
+          {
+            "name": "iPhone",
+            "detail": "Scanning, stock, work orders, and approvals right from the shop floor."
+          }
+        ]
+      }
+    },
+    "modules": {
+      "meta": {
+        "title": "Module catalog",
+        "description": "Warehouse, work orders, engines, accounting, Mission Control, and team: a connected ecosystem for auto businesses."
+      },
+      "intro": "Every module is part of one loop. The warehouse feeds work orders, work orders feed accounting, and Mission Control shows the whole picture.",
+      "stats": [
+        {
+          "value": "6",
+          "label": "core modules"
+        },
+        {
+          "value": "1",
+          "label": "single source of truth"
+        },
+        {
+          "value": "0",
+          "label": "sec. sync delay"
+        }
+      ],
+      "items": [
+        {
+          "id": "mission-control",
+          "title": "Mission Control",
+          "tagline": "Command dashboard",
+          "description": "Your entry point every morning. KPIs, alerts, the activity log, and who's online: not a report for the sake of a report, but a control panel.",
+          "capabilities": [
+            "Revenue, stock, open work orders, advance payments",
+            "Module widgets you can drill into",
+            "A live log: who changed what, and when",
+            "⌘K command palette for fast navigation"
+          ],
+          "forWhom": "Owner, director, senior admin"
+        },
+        {
+          "id": "warehouse",
+          "title": "Warehouse",
+          "tagline": "Inventory and bins",
+          "description": "An Excel-grade grid, but with realtime updates. Intake, barcodes, price-list imports. Stock is instantly visible to the shop floor and the office.",
+          "capabilities": [
+            "Inline editing, keyboard-first",
+            "Barcode: intake and write-offs from the floor",
+            "Price-list imports with column normalization",
+            "Low-stock alerts"
+          ],
+          "forWhom": "Warehouse clerk, purchasing, admin"
+        },
+        {
+          "id": "work-orders",
+          "title": "Work Orders",
+          "tagline": "Shop floor and installation",
+          "description": "A work order links the customer, the jobs, the parts, and the documents. Close it, and the warehouse and accounting already know.",
+          "capabilities": [
+            "Statuses, mechanic assignment, labor and parts tracking",
+            "Automatic write-offs on close",
+            "A full document package for handover",
+            "Engine reservations tied to a work order"
+          ],
+          "forWhom": "Mechanic, service advisor, shop manager"
+        },
+        {
+          "id": "accounting",
+          "title": "Accounting",
+          "tagline": "Numbers from real operations",
+          "description": "Ledger entries come from sales and write-offs, not from an accountant's memory at month end.",
+          "capabilities": [
+            "Transactions, advance payments, daily revenue",
+            "Linked to work orders and the warehouse",
+            "Metrics in Mission Control",
+            "Separated permissions: accounting ≠ warehouse"
+          ],
+          "forWhom": "Accountant, financial controller"
+        },
+        {
+          "id": "inventory",
+          "title": "Engines and catalog",
+          "tagline": "Built for dismantlers",
+          "description": "Brands, models, serial numbers, sold listings: a structure built for the real inventory of a dismantler.",
+          "capabilities": [
+            "Engine listing with full history",
+            "Sales with warranty and invoice",
+            "Linked to the warehouse grid",
+            "Categories and dedicated sections"
+          ],
+          "forWhom": "Parts manager, engine sales rep"
+        },
+        {
+          "id": "employees",
+          "title": "Team and roles",
+          "tagline": "RBAC and audit",
+          "description": "Everyone sees their own module. The log records every meaningful action. Your team grows without access chaos.",
+          "capabilities": [
+            "Per-module permissions: warehouse, accounting, settings",
+            "Invitations and roles",
+            "Online status in Mission Control",
+            "Audit trail for permission changes"
+          ],
+          "forWhom": "HR admin, owner, IT"
+        }
+      ],
+      "relatedLinks": {
+        "missionControl": "Mission Control",
+        "warehouse": "Warehouse",
+        "accounting": "Accounting",
+        "workOrders": "Work Orders",
+        "howItWorks": "How it works",
+        "documents": "Documents",
+        "security": "Security",
+        "demo": "Demo"
+      },
+      "relatedSections": {
+        "product": {
+          "label": "Product overview",
+          "hint": "Mission Control and processes"
+        },
+        "pricing": {
+          "label": "Pricing",
+          "hint": "One subscription, everything included"
+        },
+        "security": {
+          "label": "Security",
+          "hint": "RBAC and auditing"
+        },
+        "contact": {
+          "label": "Contact",
+          "hint": "Demo and support"
+        }
+      }
+    },
+    "pricing": {
+      "meta": {
+        "title": "Pricing",
+        "description": "One subscription, $39 a month. The entire product, no hidden limits. 14 days free, no card required."
+      },
+      "hero": {
+        "titleLine1": "One subscription.",
+        "titleLine2": "Everything included."
+      },
+      "plan": {
+        "price": "$39",
+        "period": "/ month",
+        "note": "per company"
+      },
+      "cta": {
+        "primary": "Open the demo",
+        "buy": "Buy now",
+        "trialDays": "14 days free",
+        "noCard": "No card required"
+      },
+      "buyModal": {
+        "title": "Subscribe",
+        "body": "Email us to get set up",
+        "email": "support@myautocore.com",
+        "close": "Close"
+      },
+      "closing": {
+        "line": "The full product from day one.",
+        "button": "Open the demo"
+      },
+      "included": {
+        "title": "Everything included.",
+        "items": [
+          "Warehouse",
+          "Work Orders",
+          "Documents",
+          "Mobile",
+          "Desktop",
+          "Cloud Sync",
+          "AI Import",
+          "Mission Control",
+          "Analytics"
+        ]
+      },
+      "philosophy": {
+        "title": "Why just one plan?",
+        "statement": "We don't lock tools behind expensive tiers.",
+        "body": "Every customer gets the full product. All you need to decide is whether it fits your business."
+      },
+      "faq": [
+        {
+          "q": "Do I need a card for the trial?",
+          "a": "No. 14 days, no card required."
+        },
+        {
+          "q": "What happens after the trial?",
+          "a": "It's $39 per month per company, or you can pause. Your data is kept."
+        },
+        {
+          "q": "Are there extra fees for modules?",
+          "a": "No. One price unlocks the entire product."
+        },
+        {
+          "q": "Can I cancel my subscription?",
+          "a": "Yes, at any time. Access continues until the end of the paid period."
+        }
+      ]
+    },
+    "security": {
+      "meta": {
+        "title": "Security",
+        "description": "Per-module roles, an activity log, company data isolation, operation audits, and server-side checks."
+      },
+      "hero": {
+        "title": "Security for an operational business",
+        "description": "Built for multi-user operation: access rights, auditing, and transparency aren't an add-on — they're the foundation of the architecture."
+      },
+      "stats": [
+        {
+          "value": "RBAC",
+          "label": "Roles and per-module permissions"
+        },
+        {
+          "value": "100%",
+          "label": "Company data isolation"
+        },
+        {
+          "value": "Realtime",
+          "label": "Activity log"
+        },
+        {
+          "value": "Server",
+          "label": "Checks in every API route"
+        }
+      ],
+      "pillars": [
+        {
+          "title": "Roles and access",
+          "body": "Granular permissions per module: warehouse, work orders, accounting, settings. Warehouse staff can't see finances, accountants can't edit stock."
+        },
+        {
+          "title": "Activity log",
+          "body": "Every meaningful change is recorded with the employee, role, and timestamp. Managers see the full picture in Mission Control, no exports needed."
+        },
+        {
+          "title": "Company isolation",
+          "body": "Multi-tenant architecture: each organization's data is isolated at the level of Firestore Security Rules and server-side checks."
+        },
+        {
+          "title": "Operation audits",
+          "body": "A trail for stock, ledger entries, permissions, and documents: a transparent \"who · what · when\" chain, no \"go ask Pete\"."
+        }
+      ],
+      "principles": [
+        {
+          "title": "Least privilege by default",
+          "body": "A role only grants access to the modules it needs. Expanding permissions goes through the owner or an admin, and is logged."
+        },
+        {
+          "title": "Transparency for managers",
+          "body": "The owner sees who changed a stock count, closed a work order, or granted permissions, in the realtime activity log."
+        },
+        {
+          "title": "A production-ready stack",
+          "body": "Firebase Authentication, Firestore Security Rules, and a server-only API that checks companyId and role on every request."
+        }
+      ],
+      "stack": [
+        {
+          "layer": "Authentication",
+          "detail": "Firebase Auth: email, Apple ID. Sessions are managed by the platform."
+        },
+        {
+          "layer": "Data rules",
+          "detail": "Firestore rules restrict reads and writes by companyId and user role."
+        },
+        {
+          "layer": "API routes",
+          "detail": "Server-side access checks before any operation on orders, stock, or finances."
+        },
+        {
+          "layer": "Documents",
+          "detail": "PDFs and printing use one-time render tokens, with no public links to data."
+        }
+      ],
+      "auditLog": [
+        {
+          "time": "10:42 AM",
+          "actor": "Daniyar A.",
+          "role": "Mechanic",
+          "module": "Work Orders",
+          "action": "Closed work order WO-2026-0142",
+          "severity": "info"
+        },
+        {
+          "time": "10:38 AM",
+          "actor": "Aliya K.",
+          "role": "Warehouse clerk",
+          "module": "Warehouse",
+          "action": "Wrote off G4KC-88421 from shelf A-12",
+          "severity": "warn"
+        },
+        {
+          "time": "9:15 AM",
+          "actor": "Sergey M.",
+          "role": "Diagnostic technician",
+          "module": "Fleet",
+          "action": "Updated mileage on a vehicle record",
+          "severity": "info"
+        },
+        {
+          "time": "8:55 AM",
+          "actor": "Owner",
+          "role": "Admin",
+          "module": "Team",
+          "action": "Granted the accounting role access to the \"Operations\" module",
+          "severity": "critical"
+        }
+      ],
+      "checklist": [
+        "Data access only after authentication",
+        "Every request is tied to a companyId",
+        "RBAC is enforced on the server, not just in the UI",
+        "A log of significant actions for managers",
+        "Tenant data isolation in Firestore rules"
+      ]
+    },
+    "contact": {
+      "meta": {
+        "title": "Contact",
+        "description": "Reach out about a demo, support, a partnership, or a general question. We reply within a business day."
+      },
+      "hero": {
+        "title": "Get in touch",
+        "description": "Questions about the product? Need help choosing your workflows? Want to schedule a demo? We're here."
+      },
+      "intents": [
+        {
+          "title": "Sales",
+          "topics": [
+            "Learn more about the product",
+            "Schedule a demo",
+            "Pricing questions"
+          ],
+          "mailSubject": "Sales Inquiry"
+        },
+        {
+          "title": "Support",
+          "topics": [
+            "Technical help",
+            "Report a bug",
+            "For existing customers"
+          ],
+          "mailSubject": "Technical Support"
+        },
+        {
+          "title": "Partnerships",
+          "topics": [
+            "Integrations",
+            "Business opportunities"
+          ],
+          "mailSubject": "Partnership"
+        },
+        {
+          "title": "General questions",
+          "topics": [
+            "Everything else"
+          ],
+          "mailSubject": "General Question"
+        }
+      ],
+      "methods": {
+        "emailLabel": "Email",
+        "responseLabel": "Response time",
+        "response": "Usually within one business day",
+        "languagesLabel": "Languages",
+        "languages": [
+          "English",
+          "Русский",
+          "Қазақша"
+        ]
+      },
+      "closing": {
+        "line": "Still have questions?",
+        "subline": "Open the demo or reach out to us any time.",
+        "button": "Open the demo"
+      }
+    },
+    "download": {
+      "meta": {
+        "title": "Download",
+        "description": "Windows, browser, and phone. One account, one workspace, synced in real time."
+      },
+      "hero": {
+        "titleLine1": "One workspace.",
+        "titleLine2": "On every device.",
+        "description": "Desktop, phone, and browser. One account. One workspace for the whole team."
+      },
+      "platforms": [
+        {
+          "id": "windows",
+          "title": "Windows",
+          "description": "A native app for the office and warehouse. Syncs with the cloud in the background.",
+          "action": "Download for Windows"
+        },
+        {
+          "id": "mac",
+          "title": "Desktop",
+          "description": "A desktop app. The same interface as the browser and phone.",
+          "action": "Download the desktop app"
+        },
+        {
+          "id": "web",
+          "title": "Web",
+          "description": "The full product in your browser. No install, same account.",
+          "action": "Open in browser"
+        },
+        {
+          "id": "mobile",
+          "title": "Mobile",
+          "description": "Scanning, intake, and work orders from your phone. Data syncs across every device instantly.",
+          "action": "Choose a platform"
+        }
+      ],
+      "ecosystem": {
+        "title": "One ecosystem",
+        "description": "A change on your phone shows up instantly on your computer. The cloud keeps one source of truth for the whole team."
+      },
+      "travels": {
+        "title": "Everything travels with you",
+        "items": [
+          "One account",
+          "One warehouse",
+          "One work order",
+          "One customer database",
+          "One document history",
+          "Cloud Sync"
+        ]
+      },
+      "requirements": {
+        "title": "System requirements",
+        "items": [
+          {
+            "platform": "Desktop",
+            "detail": "A modern desktop app for your workspace"
+          },
+          {
+            "platform": "Windows",
+            "detail": "Windows 10 or 11, 64-bit"
+          },
+          {
+            "platform": "Web",
+            "detail": "A current version of Chrome, Safari, Firefox, or Edge"
+          },
+          {
+            "platform": "Mobile",
+            "detail": "iOS 15+ or Android 10+ in the browser"
+          }
+        ]
+      },
+      "faq": [
+        {
+          "q": "How do I install the desktop app?",
+          "a": "Download the installer, open the file, and complete the setup. Then sign in with the same account you use in the browser."
+        },
+        {
+          "q": "How do I install on Windows?",
+          "a": "Download the .exe and follow the setup wizard. Once it's done, open the app and sign in."
+        },
+        {
+          "q": "Do I need internet after installing?",
+          "a": "You need a connection to sign in and sync. Local actions are saved and sent to the cloud once the connection is back."
+        },
+        {
+          "q": "How do I sign in after installing?",
+          "a": "Use the same email or Apple ID you use in the web version. One account across every device."
+        }
+      ],
+      "closing": {
+        "line": "Already installed?",
+        "button": "Sign in"
+      }
+    },
+    "downloadMobile": {
+      "backLabel": "All platforms",
+      "hero": {
+        "title": "Mobile",
+        "description": "Choose iOS or Android. Scan the QR code or open the link on your device."
+      },
+      "platforms": [
+        {
+          "id": "ios",
+          "title": "iOS",
+          "description": "iPhone and iPad. The same warehouse and work orders as on desktop.",
+          "action": "Download for iPhone"
+        },
+        {
+          "id": "android",
+          "title": "Android",
+          "description": "Android phones and tablets. Syncs with the cloud in real time.",
+          "action": "Download for Android"
+        }
+      ],
+      "reveal": {
+        "qrLabel": "Scan with your camera",
+        "linkLabel": "Or open the link",
+        "placeholderQr": "The QR code will appear once the link is ready",
+        "placeholderLink": "The install link will be available soon"
+      }
+    },
+    "faq": {
+      "title": "Frequently asked questions",
+      "description": "Answers for owners of auto dismantlers and repair shops before onboarding.",
+      "items": [
+        {
+          "q": "Does it work for an auto dismantler?",
+          "a": "Yes. Engine and parts tracking, engine sales with documents, price-list imports, and a unified warehouse — that's the core scenario."
+        },
+        {
+          "q": "Does it work for a repair shop?",
+          "a": "Yes. Work orders, parts reserved from the warehouse, automatic write-offs when a work order closes, and accounting entries with no double entry."
+        },
+        {
+          "q": "We live in Excel. Will we be forced to throw everything out?",
+          "a": "No. Start with warehouse or work orders, import your price lists, and migrate processes gradually. Excel stays as an archive."
+        },
+        {
+          "q": "Do I need a developer to set it up?",
+          "a": "No. Open app.myautocore.com in a browser, sign up, invite your team. There's also a desktop app, Windows, and iPhone with the same interface."
+        },
+        {
+          "q": "How is security handled?",
+          "a": "Per-module RBAC, an activity log, company data isolation, and server-side API checks. See the full breakdown on the \"Security\" page."
+        }
+      ],
+      "notFoundAnswer": "Didn't find your answer?",
+      "contactSupport": "Contact support"
+    },
+    "privacy": {
+      "title": "Privacy Policy",
+      "description": "How AutoCore collects, uses, and protects data for users and companies at auto dismantlers and repair shops.",
+      "breadcrumb": "Privacy",
+      "updated": "July 2026",
+      "contactLabel": "Questions about this document",
+      "sections": [
+        {
+          "id": "general",
+          "title": "1. General provisions",
+          "paragraphs": [
+            "This policy describes how personal and operational data is processed in AutoCore, a cloud application for auto dismantlers and repair shops.",
+            "By using the AutoCore web app, desktop client, or mobile app, you confirm that you have reviewed this policy. Company admins are responsible for the accuracy of data for the employees they invite into their organization."
+          ]
+        },
+        {
+          "id": "scope",
+          "title": "2. Who this policy applies to",
+          "paragraphs": [
+            "This policy applies to owners and employees of customer companies, users of demo access, and visitors to the myautocore.com marketing site."
+          ],
+          "bullets": [
+            "Company owners and admins",
+            "Employees with role-based access (warehouse, shop floor, accounting, etc.)",
+            "Trial and paid subscription users"
+          ]
+        },
+        {
+          "id": "data",
+          "title": "3. What data we process",
+          "paragraphs": [
+            "We only process the data necessary to operate the product, support our users, and comply with legal requirements."
+          ],
+          "bullets": [
+            "Account data: email, name, sign-in provider ID (Google, Apple, etc.)",
+            "Company data: name, business details, branding settings, plan",
+            "Operational data: warehouse, work orders, accounting, documents, VINs, and vehicle records",
+            "Activity log: who changed what, and when, within the system",
+            "Technical data: IP address, device type, client version, error diagnostics"
+          ]
+        },
+        {
+          "id": "purposes",
+          "title": "4. Purposes of processing",
+          "paragraphs": [
+            "Data is used exclusively to provide and improve the AutoCore service."
+          ],
+          "bullets": [
+            "Sign-up, authentication, and managing employee access",
+            "Syncing data across web, desktop, and mobile",
+            "Generating documents, reports, and notifications",
+            "Processing payments and managing subscriptions",
+            "Technical support and security incident investigation"
+          ]
+        },
+        {
+          "id": "storage",
+          "title": "5. Storage and protection",
+          "paragraphs": [
+            "Data is stored on secure Google Cloud / Firebase infrastructure. Access is restricted by security rules at the company (tenant) level and by employee roles (RBAC).",
+            "Data is transferred between client and server over encrypted channels (TLS). Critical operations are additionally checked on the server, not just in the interface."
+          ]
+        },
+        {
+          "id": "processors",
+          "title": "6. Sharing with third parties",
+          "paragraphs": [
+            "We do not sell personal data. To operate the service we work with vetted processors that act under contract and only to the extent required to deliver the service."
+          ],
+          "bullets": [
+            "Google Firebase: authentication, database, hosting",
+            "Stripe: subscription payment processing",
+            "Email notification providers: transactional emails"
+          ]
+        },
+        {
+          "id": "rights",
+          "title": "7. Your rights",
+          "paragraphs": [
+            "You can request access to your data, its correction, or its deletion by contacting support. A company admin manages employee access and can deactivate accounts within the organization.",
+            "When a company is deleted, operational data is removed in accordance with our internal retention and backup procedures."
+          ]
+        },
+        {
+          "id": "cookies",
+          "title": "8. Cookies and analytics",
+          "paragraphs": [
+            "The marketing site may use technical cookies for sessions and basic traffic analytics. Within the AutoCore app, cookies are used to maintain your sign-in session."
+          ]
+        },
+        {
+          "id": "changes",
+          "title": "9. Changes to this policy",
+          "paragraphs": [
+            "We may update this policy as product features or legal requirements change. The current version is always available on this page, with the update date noted."
+          ]
+        },
+        {
+          "id": "contact",
+          "title": "10. Contact",
+          "paragraphs": [
+            "For questions about data processing, email the support address listed on the \"Contact\" page. Please put \"Privacy\" in the subject line."
+          ]
+        }
+      ]
+    },
+    "terms": {
+      "title": "Terms of Use",
+      "description": "The rules for using the AutoCore cloud application for auto dismantlers, repair shops, and related auto businesses.",
+      "breadcrumb": "Terms",
+      "updated": "July 2026",
+      "contactLabel": "Questions about this document",
+      "sections": [
+        {
+          "id": "subject",
+          "title": "1. Subject of the agreement",
+          "paragraphs": [
+            "AutoCore provides software as a service (SaaS) for managing a warehouse, work orders, documents, accounting, and a team.",
+            "These terms govern the use of the AutoCore web app, desktop clients, and mobile apps."
+          ]
+        },
+        {
+          "id": "account",
+          "title": "2. Account",
+          "paragraphs": [
+            "Users must keep their account credentials confidential and must not share access with third parties without the company admin's consent.",
+            "The company owner or admin manages employee invitations, roles, and responsibility for actions taken within the organization."
+          ]
+        },
+        {
+          "id": "usage",
+          "title": "3. Acceptable use",
+          "paragraphs": [
+            "The service is intended for the lawful operation of an auto business."
+          ],
+          "bullets": [
+            "You may not disrupt the system, bypass access restrictions, or perform unauthorized testing",
+            "You may not upload malicious code or use the service for unlawful purposes",
+            "You may not copy, decompile, or reproduce the software without the rights holder's consent"
+          ]
+        },
+        {
+          "id": "customer-data",
+          "title": "4. Customer data",
+          "paragraphs": [
+            "Operational data entered into AutoCore (warehouse, work orders, finances, documents) remains the customer's property. AutoCore acts as a processor while providing the service.",
+            "The customer is responsible for the accuracy of the data they enter and for complying with legal requirements when handling their own customers' personal data."
+          ]
+        },
+        {
+          "id": "billing",
+          "title": "5. Subscription and billing",
+          "paragraphs": [
+            "Paid features are activated according to the selected plan. Trial, payment, and cancellation terms are described on the \"Pricing\" page and during subscription checkout in the app.",
+            "If payment is missed, access may be restricted, while company data is retained in accordance with the retention policy."
+          ]
+        },
+        {
+          "id": "ip",
+          "title": "6. Intellectual property",
+          "paragraphs": [
+            "Rights to the AutoCore software, interface, brand, and documentation belong to the rights holder. Customers are granted a non-exclusive license to use the service for the duration of their subscription."
+          ]
+        },
+        {
+          "id": "privacy",
+          "title": "7. Privacy",
+          "paragraphs": [
+            "The processing of personal data is governed by the Privacy Policy. Using the service means you agree to its terms to the extent required."
+          ]
+        },
+        {
+          "id": "liability",
+          "title": "8. Limitation of liability",
+          "paragraphs": [
+            "The service is provided within reasonable technical limits. AutoCore is not liable for indirect damages, lost profits, or decisions made by the customer based solely on system data without internal verification.",
+            "The customer must verify critical financial and warehouse operations according to their own internal procedures."
+          ]
+        },
+        {
+          "id": "termination",
+          "title": "9. Termination of access",
+          "paragraphs": [
+            "The customer may stop using the service at any time. AutoCore may restrict access for a material breach of these terms or as required by law."
+          ]
+        },
+        {
+          "id": "contact",
+          "title": "10. Contact",
+          "paragraphs": [
+            "For legal questions and terms of use, reach out through the \"Contact\" page. Please put \"Terms of Use\" in the subject line."
+          ]
+        }
+      ]
+    }
+  },
+  "seo": {
+    "brand": {
+      "tagline": "The operating system for auto dismantlers and repair shops",
+      "shortDescription": "AutoCore: the operating system for auto dismantlers and repair shops. Warehouse, shop floor, work orders, documents, and accounting in one loop.",
+      "legalName": "AutoCore"
+    },
+    "keywords": {
+      "general": [
+        "auto dismantler software",
+        "repair shop software",
+        "auto dismantler inventory system",
+        "repair shop management system",
+        "auto parts inventory tracking",
+        "repair shop warehouse management",
+        "work order software for repair shops",
+        "engine inventory software",
+        "software for auto parts stores",
+        "repair shop accounting",
+        "CRM for auto dismantlers",
+        "software for car dismantling",
+        "system for repair shops",
+        "engine inventory tracking",
+        "cloud software for repair shops",
+        "AutoCore"
+      ],
+      "home": [
+        "operating system for repair shops",
+        "auto dismantler demo software",
+        "Excel replacement for repair shops"
+      ],
+      "product": [
+        "auto dismantler workflow",
+        "Mission Control for repair shops",
+        "auto dismantler software overview"
+      ],
+      "modules": [
+        "warehouse module for repair shops",
+        "engine inventory software",
+        "repair shop modules"
+      ],
+      "pricing": [
+        "repair shop software pricing",
+        "auto dismantler plan pricing",
+        "repair shop software cost"
+      ],
+      "contact": [
+        "repair shop demo software",
+        "auto dismantler support",
+        "contact AutoCore"
+      ],
+      "download": [
+        "download AutoCore",
+        "auto dismantler desktop app",
+        "web software for repair shops"
+      ],
+      "downloadMobile": [
+        "download AutoCore iOS",
+        "AutoCore Android",
+        "repair shop app"
+      ],
+      "privacy": [
+        "privacy policy",
+        "repair shop data processing"
+      ],
+      "terms": [
+        "terms of use",
+        "AutoCore license"
+      ],
+      "security": [
+        "SaaS security for repair shops",
+        "RBAC warehouse",
+        "repair shop software audit"
+      ]
+    },
+    "pages": {
+      "home": {
+        "title": "Software for Auto Dismantlers and Repair Shops | AutoCore",
+        "description": "Parts warehouse, work orders, engine tracking, and documents in one system. Desktop and phone stay in sync. 14 days free, no card required.",
+        "ogTitle": "AutoCore: software for auto dismantlers and repair shops"
+      },
+      "product": {
+        "title": "How AutoCore Works for Dismantlers and Repair Shops",
+        "description": "A day with AutoCore: Mission Control in the morning, warehouse and work orders during the day, documents and device sync — no Excel, no late-night reconciliations.",
+        "ogTitle": "AutoCore: a whole workday in one system"
+      },
+      "modules": {
+        "title": "Modules: Warehouse, Work Orders, Engines, Accounting | AutoCore",
+        "description": "The module catalog for dismantlers and repair shops: parts warehouse, work orders, engine tracking, accounting, team, and Mission Control.",
+        "ogTitle": "AutoCore: modules for dismantlers and repair shops"
+      },
+      "pricing": {
+        "title": "AutoCore Pricing: $39 a Month per Company",
+        "description": "One subscription, $39/month per company. Full access with no hidden limits. 14 days free, no card required. Built for dismantlers and repair shops.",
+        "ogTitle": "AutoCore: $39 a month per company"
+      },
+      "contact": {
+        "title": "Contact AutoCore: Demo and Support",
+        "description": "Request a demo or reach out to AutoCore support. We reply within a business day. We help dismantlers and repair shops with onboarding.",
+        "ogTitle": "AutoCore: demo and support"
+      },
+      "download": {
+        "title": "Download AutoCore: Windows, Web, and Phone",
+        "description": "Install AutoCore on Windows or open it in your browser and on your phone. One account, with warehouse and work orders synced in real time.",
+        "ogTitle": "AutoCore: Windows, web, and phone"
+      },
+      "downloadMobile": {
+        "title": "Download AutoCore for iPhone and Android",
+        "description": "The AutoCore mobile app for the warehouse and shop floor. Scanning, work orders, and stock with the same account as desktop and web.",
+        "ogTitle": "AutoCore for iPhone and Android"
+      },
+      "privacy": {
+        "title": "AutoCore Privacy Policy",
+        "description": "How AutoCore handles personal and operational data for dismantlers and repair shops: storage, rights, security, and contacts.",
+        "ogTitle": "AutoCore: privacy policy"
+      },
+      "terms": {
+        "title": "AutoCore Terms of Use",
+        "description": "Terms of use for the AutoCore cloud application: account, subscription, customer data, liability, and termination of access.",
+        "ogTitle": "AutoCore: terms of use"
+      },
+      "security": {
+        "title": "AutoCore Security: Roles, Auditing, Isolation",
+        "description": "Per-module roles, an activity log, company data isolation, and server-side checks. Security built for an operational auto business.",
+        "ogTitle": "AutoCore: roles, auditing, isolation"
+      }
+    },
+    "breadcrumbs": {
+      "home": "Home",
+      "product": "Product",
+      "modules": "Modules",
+      "pricing": "Pricing",
+      "security": "Security",
+      "contact": "Contact",
+      "download": "Download",
+      "downloadMobile": "Mobile App",
+      "privacy": "Privacy",
+      "terms": "Terms of Use"
+    }
+  },
+  "a11y": {
+    "nav": {
+      "mainNavAria": "Main navigation",
+      "mobileNavAria": "Mobile navigation",
+      "openMenu": "Open menu",
+      "closeMenu": "Close menu",
+      "closeMobileMenu": "Close mobile menu"
+    },
+    "footerAria": "Footer",
+    "heroAria": "Home",
+    "legal": {
+      "breadcrumbsAria": "Breadcrumbs",
+      "tableOfContentsLabel": "Contents",
+      "tableOfContentsAria": "Table of contents",
+      "documentBodyAria": "Document contents",
+      "relatedHeading": "Trust and transparency",
+      "relatedDescription": "Legal documents, security, and contact details in one place.",
+      "relatedContactTitle": "Contact",
+      "relatedContactDescription": "Support and legal questions"
+    }
+  },
+  "notFound": {
+    "title": "404",
+    "description": "The page you're looking for may have moved or no longer exists.",
+    "cta": "Go home",
+    "secondaryCta": "Modules"
+  }
+}

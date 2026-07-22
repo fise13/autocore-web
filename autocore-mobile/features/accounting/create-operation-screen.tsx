@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Keyboard, View } from 'react-native';
+import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ArrowLeftIcon } from '@/assets/icons';
@@ -48,7 +48,7 @@ function readPreset(params: Record<string, string | string[] | undefined>): NewO
 export function CreateOperationScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { scrollBottom } = useFloatingTabBarInset();
+  const { modalScrollBottom } = useFloatingTabBarInset();
   const router = useRouter();
   const { profile, can } = useSession();
   const rawParams = useLocalSearchParams<Record<string, string>>();
@@ -125,11 +125,10 @@ export function CreateOperationScreen() {
   return (
     <KeyboardFormShell
       backgroundColor={colors.background}
-      onScrollBeginDrag={Keyboard.dismiss}
       contentContainerStyle={{
         paddingHorizontal: ac.pad,
         paddingTop: 16,
-        paddingBottom: scrollBottom,
+        paddingBottom: modalScrollBottom,
         gap: 14,
       }}
       header={
@@ -159,7 +158,7 @@ export function CreateOperationScreen() {
         </View>
       }
       footer={
-        <ScreenActionFooter horizontalPadding={ac.pad}>
+        <ScreenActionFooter horizontalPadding={ac.pad} aboveTabBar={false}>
           <Button loading={submitting} disabled={submitting} onPress={() => void onSubmit()} style={{ flex: 1 }}>
             Сохранить
           </Button>

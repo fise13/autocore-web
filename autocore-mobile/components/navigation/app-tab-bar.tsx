@@ -183,6 +183,7 @@ export const AppTabBar = memo(function AppTabBar({ state, navigation }: AppTabBa
   }, []);
 
   useEffect(() => {
+    // Always unlock after a tab index change — never leave the bar dead after a failed navigate.
     tabNavigationGuard.release();
   }, [state.index, activeRouteKey]);
 
@@ -224,11 +225,12 @@ export const AppTabBar = memo(function AppTabBar({ state, navigation }: AppTabBa
 
       if (event?.defaultPrevented) return;
 
+      // Navigate first — don't wait on transition bookkeeping for perceived latency.
       tabNavigationGuard.tryNavigate(() => {
+        navigation.navigate(route.name);
         const fromTab = resolveTabRouteName(activeRouteName ?? '');
         const toTab = resolveTabRouteName(route.name);
         if (fromTab && toTab) beginTransition(fromTab, toTab);
-        navigation.navigate(route.name);
       });
     },
     [activeRouteName, beginTransition, navigation, router, state.index, state.routes],
@@ -391,6 +393,8 @@ export const AppTabBar = memo(function AppTabBar({ state, navigation }: AppTabBa
         left: 0,
         right: 0,
         bottom: 0,
+        zIndex: 100000,
+        elevation: 100000,
         paddingHorizontal: spacing[3],
         paddingBottom: Math.max(insets.bottom, spacing[2]),
       }}

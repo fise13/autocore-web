@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { useMemo, useState, type ComponentType } from 'react';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 
-import { FileTextIcon, Loader2Icon, PrinterIcon, Share2Icon } from '@/assets/icons';
-import { ActionIconButton, Text } from '@/components/ui';
+import { FileTextIcon, PrinterIcon, Share2Icon } from '@/assets/icons';
+import type { IconProps } from '@/assets/icons/create-icon';
+import { Text } from '@/components/ui';
 import {
   useDocumentGenerationJobsRealtime,
   useSession,
@@ -28,9 +29,81 @@ type OrderDocumentsSectionProps = {
     foreground: string;
     mutedForeground: string;
     primary: string;
+    primaryForeground: string;
+    secondary: string;
     success: string;
   };
 };
+
+function DocumentActionButton({
+  label,
+  icon: Icon,
+  primary,
+  loading,
+  disabled,
+  onPress,
+  colors,
+}: {
+  label: string;
+  icon: ComponentType<IconProps>;
+  primary?: boolean;
+  loading: boolean;
+  disabled: boolean;
+  onPress: () => void;
+  colors: OrderDocumentsSectionProps['colors'];
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled, busy: loading }}
+      disabled={disabled}
+      onPress={() => {
+        if (disabled) return;
+        haptics.light();
+        onPress();
+      }}
+      style={{
+        flex: 1,
+        minHeight: 44,
+        borderRadius: 12,
+        borderWidth: primary ? 0 : ordersLayout.hairline,
+        borderColor: colors.border,
+        backgroundColor: primary ? colors.primary : colors.secondary,
+        paddingHorizontal: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        opacity: disabled && !loading ? 0.45 : 1,
+      }}
+    >
+      {loading ? (
+        <ActivityIndicator
+          size="small"
+          color={primary ? colors.primaryForeground : colors.foreground}
+        />
+      ) : (
+        <Icon
+          size="sm"
+          color={primary ? colors.primaryForeground : colors.foreground}
+          strokeWidth={2}
+        />
+      )}
+      <Text
+        variant="caption"
+        style={{
+          fontSize: 13,
+          fontWeight: '600',
+          letterSpacing: -0.1,
+          color: primary ? colors.primaryForeground : colors.foreground,
+        }}
+      >
+        {loading ? 'Секунду…' : label}
+      </Text>
+    </Pressable>
+  );
+}
 
 export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionProps) {
   const { companyId } = useSession();
@@ -48,7 +121,6 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
     const key = `${slug}:${action}`;
     setBusyKey(key);
     setError(null);
-    haptics.light();
 
     const cachedDownloadUrl = documentsBySlug.get(slug)?.downloadUrl;
 
@@ -58,6 +130,7 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
       } else {
         await printWorkOrderDocument(slug, order.id, order.number, cachedDownloadUrl);
       }
+      haptics.success();
     } catch (nextError) {
       haptics.warning();
       setError(nextError instanceof Error ? nextError.message : 'Не удалось выполнить операцию');
@@ -74,6 +147,7 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
         </Text>
         <View
           style={{
+            borderRadius: ordersLayout.radius,
             borderWidth: ordersLayout.hairline,
             borderColor: colors.border,
             borderStyle: 'dashed',
@@ -95,8 +169,8 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
         <Text variant="body" style={{ fontSize: 15, fontWeight: '600', letterSpacing: -0.2 }}>
           Документы
         </Text>
-        <Text variant="caption" color="muted" style={{ fontSize: 12 }}>
-          PDF формируются автоматически и открываются из сохранённой копии.
+        <Text variant="caption" color="muted" style={{ fontSize: 12, lineHeight: 16 }}>
+          Поделиться или распечатать PDF клиенту. Если файла ещё нет — сформируем при открытии.
         </Text>
       </View>
 
@@ -106,6 +180,7 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
             flexDirection: 'row',
             alignItems: 'center',
             gap: 8,
+            borderRadius: 12,
             borderWidth: ordersLayout.hairline,
             borderColor: colors.border,
             backgroundColor: toneBackground(colors.primary, 0.06),
@@ -113,9 +188,9 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
             paddingVertical: 10,
           }}
         >
-          <Loader2Icon size="sm" color={colors.primary} />
+          <ActivityIndicator size="small" color={colors.primary} />
           <Text variant="caption" style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
-            PDF формируются…
+            PDF формируются в фоне…
           </Text>
         </View>
       ) : null}
@@ -123,6 +198,7 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
       {error ? (
         <View
           style={{
+            borderRadius: 12,
             borderWidth: ordersLayout.hairline,
             borderColor: colors.border,
             backgroundColor: toneBackground(colors.primary, 0.06),
@@ -136,7 +212,7 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
         </View>
       ) : null}
 
-      <View style={{ gap: 8 }}>
+      <View style={{ gap: 10 }}>
         {definitions.map((definition) => {
           const persisted = documentsBySlug.get(definition.slug);
           const isReady = Boolean(persisted?.downloadUrl);
@@ -145,25 +221,28 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
             (isGenerating
               ? latestJob?.requestedSlugs.includes(definition.slug)
               : !latestJob?.completedSlugs.includes(definition.slug));
+          const shareKey = `${definition.slug}:share`;
+          const printKey = `${definition.slug}:print`;
 
           return (
             <View
               key={definition.slug}
               style={{
+                borderRadius: ordersLayout.radius,
                 borderWidth: ordersLayout.hairline,
                 borderColor: colors.border,
                 backgroundColor: colors.card,
                 paddingHorizontal: 14,
-                paddingVertical: 12,
-                gap: 10,
+                paddingVertical: 14,
+                gap: 12,
               }}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
                 <View
                   style={{
-                    width: 30,
-                    height: 30,
-                    borderRadius: 9,
+                    width: 36,
+                    height: 36,
+                    borderRadius: 11,
                     alignItems: 'center',
                     justifyContent: 'center',
                     backgroundColor: toneBackground(colors.primary, 0.1),
@@ -171,46 +250,75 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
                 >
                   <FileTextIcon size="sm" color={colors.primary} strokeWidth={1.85} />
                 </View>
-                <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text variant="body" style={{ fontSize: 14, fontWeight: '600', flexShrink: 1 }}>
+                <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <Text
+                      variant="body"
+                      style={{ fontSize: 15, fontWeight: '600', letterSpacing: -0.2, flexShrink: 1 }}
+                    >
                       {definition.title}
                     </Text>
-                    {isPending ? (
-                      <Text variant="caption" color="muted" style={{ fontSize: 11, fontWeight: '600' }}>
-                        формируется…
+                    <View
+                      style={{
+                        borderRadius: 999,
+                        paddingHorizontal: 8,
+                        paddingVertical: 3,
+                        backgroundColor: isReady
+                          ? toneBackground(colors.success, 0.14)
+                          : isPending
+                            ? toneBackground(colors.primary, 0.1)
+                            : toneBackground(colors.mutedForeground, 0.12),
+                      }}
+                    >
+                      <Text
+                        variant="caption"
+                        style={{
+                          fontSize: 11,
+                          fontWeight: '700',
+                          letterSpacing: -0.1,
+                          color: isReady
+                            ? colors.success
+                            : isPending
+                              ? colors.primary
+                              : colors.mutedForeground,
+                        }}
+                      >
+                        {isReady ? 'Готов' : isPending ? 'Формируется' : 'По запросу'}
                       </Text>
-                    ) : isReady ? (
-                      <Text variant="caption" style={{ fontSize: 11, fontWeight: '600', color: colors.success }}>
-                        готов
-                      </Text>
-                    ) : null}
+                    </View>
                   </View>
-                  <Text variant="caption" color="muted" numberOfLines={2} style={{ fontSize: 12 }}>
+                  <Text
+                    variant="caption"
+                    color="muted"
+                    numberOfLines={2}
+                    style={{ fontSize: 12, lineHeight: 16 }}
+                  >
                     {definition.description}
                   </Text>
                 </View>
               </View>
 
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
-                <ActionIconButton
-                  accessibilityLabel={`Поделиться ${definition.title}`}
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <DocumentActionButton
+                  label="Поделиться"
                   icon={Share2Icon}
-                  disabled={!isReady || busyKey !== null}
-                  loading={busyKey === `${definition.slug}:share`}
+                  primary
+                  loading={busyKey === shareKey}
+                  disabled={busyKey !== null && busyKey !== shareKey}
+                  colors={colors}
                   onPress={() => void runAction(definition.slug, 'share')}
                 />
-                <ActionIconButton
-                  accessibilityLabel={`Печать ${definition.title}`}
+                <DocumentActionButton
+                  label="Печать"
                   icon={PrinterIcon}
-                  disabled={!isReady || busyKey !== null}
-                  loading={busyKey === `${definition.slug}:print`}
+                  loading={busyKey === printKey}
+                  disabled={busyKey !== null && busyKey !== printKey}
+                  colors={colors}
                   onPress={() => void runAction(definition.slug, 'print')}
                 />
               </View>
             </View>
-          );
-        })}
+          );        })}
       </View>
     </View>
   );

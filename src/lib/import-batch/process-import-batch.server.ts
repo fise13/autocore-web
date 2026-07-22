@@ -1,7 +1,5 @@
 import "server-only";
 
-import { z } from "zod";
-
 import type { ImportSuggestedRow } from "@/domain/import-batch";
 import {
   getImportBatchAdmin,
@@ -12,29 +10,10 @@ import {
   upsertSuggestedRowsAdmin,
 } from "@/infrastructure/firestore/admin/import-batch-admin";
 import { resolveAdminStorageBucket } from "@/infrastructure/firebase/resolve-storage-bucket";
-import { callOpenRouterJson, readOpenRouterApiKey } from "@/infrastructure/openrouter/chat-completions.server";
+import { readOpenRouterApiKey } from "@/infrastructure/openrouter/chat-completions.server";
+import { extractEnginesFromImage } from "@/lib/document-import/engines-extract-ai";
 import { analyzeTable, ingestFiles } from "@/lib/import";
 import { parseNumericValue } from "@/lib/import/value-detectors";
-
-const extractSchema = z.object({
-  engines: z
-    .array(
-      z.object({
-        serialCode: z.string().optional().default(""),
-        brandName: z.string().optional().default(""),
-        engineCode: z.string().optional().default(""),
-        configuration: z.string().optional().default(""),
-        notes: z.string().optional().default(""),
-        quantity: z.number().optional().default(1),
-        transmission: z.string().optional().default(""),
-        vin: z.string().optional().default(""),
-        price: z.number().nullable().optional(),
-        compatibility: z.string().optional().default(""),
-        confidence: z.number().min(0).max(1).optional().default(0.6),
-      }),
-    )
-    .default([]),
-});
 
 async function downloadStorageFile(storagePath: string): Promise<Buffer> {
   const bucket = await resolveAdminStorageBucket();
@@ -153,56 +132,19 @@ async function processVisionFile(params: {
     return 0;
   }
 
-  const mime = params.contentType.startsWith("image/")
-    ? params.contentType
-    : params.contentType === "application/pdf"
-      ? "application/pdf"
-      : "image/jpeg";
-
-  // PDFs: send as image_url only works for images; for PDF ask text extraction via base64 note
-  const isImage = mime.startsWith("image/");
-  const dataUrl = isImage
-    ? `data:${mime};base64,${params.buffer.toString("base64")}`
-    : null;
-
-  const system = `Ты извлекаешь двигатели со склада из фото/документов авторазборки.
-Верни JSON: { "engines": [ { serialCode, brandName, engineCode, configuration, notes, quantity, transmission, vin, price, compatibility, confidence } ] }.
-confidence 0..1. Если данных нет — engines: []. Не выдумывай VIN. quantity по умолчанию 1.`;
-
-  let ai;
-  if (dataUrl) {
-    ai = await callOpenRouterJson(
-      [
-        { role: "system", content: system },
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `Файл: ${params.fileName ?? "photo"}. Извлеки все двигатели/моторы видимые на изображении или в таблице.`,
-            },
-            { type: "image_url", image_url: { url: dataUrl } },
-          ],
-        },
-      ],
-      extractSchema,
-      { title: "AutoCore Import Batch", model: process.env.IMPORT_AI_MODEL?.trim(), maxTokens: 512 },
-    );
-  } else {
-    ai = await callOpenRouterJson(
-      [
-        { role: "system", content: system },
-        {
-          role: "user",
-          content: `Файл PDF «${params.fileName ?? "document.pdf"}». Base64 (начало): ${params.buffer
-            .toString("base64")
-            .slice(0, 80_000)}. Если это не текст — верни engines: [].`,
-        },
-      ],
-      extractSchema,
-      { title: "AutoCore Import Batch", model: process.env.IMPORT_AI_MODEL?.trim(), maxTokens: 512 },
-    );
+  if (!params.contentType.startsWith("image/")) {
+    await updateImportBatchFileAdmin(params.batchId, params.fileId, {
+      status: "failed",
+      error: "AI-распознавание для PDF пока не поддерживается — загрузите фото или Excel/CSV",
+    });
+    return 0;
   }
+
+  const ai = await extractEnginesFromImage({
+    buffer: params.buffer,
+    fileName: params.fileName,
+    mimeHint: params.contentType,
+  });
 
   const suggested = ai.engines.map((engine) => {
     const serialCode = engine.serialCode.trim();

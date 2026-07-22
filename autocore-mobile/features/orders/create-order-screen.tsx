@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Keyboard, View } from 'react-native';
+import { View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -178,7 +178,7 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
   const isEdit = Boolean(orderId?.trim());
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { scrollBottom } = useFloatingTabBarInset();
+  const { modalScrollBottom } = useFloatingTabBarInset();
   const router = useRouter();
   const { companyId, uid, can } = useSession();
   const params = useLocalSearchParams<{ vin?: string; itemId?: string; motorId?: string; outcome?: string }>();
@@ -801,11 +801,10 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
   return (
     <KeyboardFormShell
       backgroundColor={colors.background}
-      onScrollBeginDrag={Keyboard.dismiss}
       contentContainerStyle={{
         paddingHorizontal: ordersLayout.pad,
         paddingTop: 16,
-        paddingBottom: scrollBottom,
+        paddingBottom: modalScrollBottom,
         gap: 14,
       }}
       header={
@@ -836,7 +835,7 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
         </View>
       }
       footer={
-        <ScreenActionFooter horizontalPadding={ordersLayout.pad}>
+        <ScreenActionFooter horizontalPadding={ordersLayout.pad} aboveTabBar={false}>
           {step > 1 ? (
             <Button variant="outline" onPress={() => setStep((value) => value - 1)} style={{ flex: 1 }}>
               Назад

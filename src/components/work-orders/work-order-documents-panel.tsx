@@ -12,6 +12,7 @@ import {
 } from "@/lib/documents/document-types";
 import { resolveDocumentsForOrderCompleted, resolveDocumentsForOrderCreated } from "@/lib/documents/policy/document-policy";
 import { downloadDocumentPdf } from "@/lib/documents/fetch-document-pdf";
+import { emitKnowledgeEvent } from "@/lib/knowledge/knowledge-api.client";
 import { triggerWorkOrderEventProcessing } from "@/lib/work-orders/process-work-order-events";
 import { useDocumentGenerationJobsRealtime } from "@/hooks/use-document-generation-jobs-realtime";
 import { buildDocumentContextFromOrder } from "@/lib/documents/build-context-from-order";
@@ -22,6 +23,10 @@ type WorkOrderDocumentsPanelProps = {
   order: WorkOrder;
   documents: WorkOrderDocument[];
   canEdit: boolean;
+  /** Marketing / offline demo: skip Firestore jobs and use local handlers. */
+  demoMode?: boolean;
+  onDemoPreview?: (slug: DocumentSlug) => void;
+  onDemoDownload?: (slug: DocumentSlug) => void | Promise<void>;
 };
 
 function applicableSlugs(order: WorkOrder): DocumentSlug[] {
@@ -41,11 +46,18 @@ export function WorkOrderDocumentsPanel({
   order,
   documents,
   canEdit,
+  demoMode = false,
+  onDemoPreview,
+  onDemoDownload,
 }: WorkOrderDocumentsPanelProps) {
   const [busySlug, setBusySlug] = useState<DocumentSlug | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { latestJob, isGenerating } = useDocumentGenerationJobsRealtime(companyId, orderId);
+  const { latestJob, isGenerating } = useDocumentGenerationJobsRealtime(
+    companyId,
+    orderId,
+    !demoMode,
+  );
 
   const documentsByType = useMemo(() => {
     const map = new Map<string, WorkOrderDocument>();
@@ -62,6 +74,19 @@ export function WorkOrderDocumentsPanel({
   );
 
   async function handleDownload(slug: DocumentSlug) {
+    if (demoMode && onDemoDownload) {
+      setBusySlug(slug);
+      setError(null);
+      try {
+        await onDemoDownload(slug);
+      } catch (nextError) {
+        setError(nextError instanceof Error ? nextError.message : "Не удалось открыть PDF");
+      } finally {
+        setBusySlug(null);
+      }
+      return;
+    }
+
     setBusySlug(slug);
     setError(null);
     try {
@@ -72,6 +97,13 @@ export function WorkOrderDocumentsPanel({
         cachedUrl && /^https?:\/\//i.test(cachedUrl) ? cachedUrl : undefined;
       await downloadDocumentPdf(slug, orderId, `${slug}-${orderId}.pdf`, {
         cachedDownloadUrl: safeCachedUrl,
+      });
+      void emitKnowledgeEvent({
+        type: "document.printed",
+        workOrderId: orderId,
+        engineCode: order.motorLines[0]?.engineCode,
+        brandName: order.motorLines[0]?.brandName,
+        payload: { docTypes: [definition?.type ?? slug] },
       });
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Не удалось скачать PDF");
@@ -125,14 +157,17 @@ export function WorkOrderDocumentsPanel({
         <ul className="divide-y rounded-xl border bg-card">
           {definitions.map((definition) => {
             const persisted = documentsByType.get(definition.type);
-            const isReady = Boolean(
-              persisted?.status === "ready" ||
-                (persisted?.downloadUrl && /^https?:\/\//i.test(persisted.downloadUrl)) ||
-                persisted?.storagePath,
-            );
-            const pending =
-              (isGenerating && latestJob?.requestedSlugs.includes(definition.slug) && !isReady) ||
-              (!isReady && !latestJob?.completedSlugs.includes(definition.slug));
+            const isReady = demoMode
+              ? true
+              : Boolean(
+                  persisted?.status === "ready" ||
+                    (persisted?.downloadUrl && /^https?:\/\//i.test(persisted.downloadUrl)) ||
+                    persisted?.storagePath,
+                );
+            const pending = demoMode
+              ? false
+              : (isGenerating && latestJob?.requestedSlugs.includes(definition.slug) && !isReady) ||
+                (!isReady && !latestJob?.completedSlugs.includes(definition.slug));
 
             return (
               <li key={definition.slug} className="flex items-center gap-3 px-4 py-3">
@@ -144,7 +179,7 @@ export function WorkOrderDocumentsPanel({
                       <span className="rounded-full bg-muted px-2 py-0.5 text-[0.65rem] font-medium text-muted-foreground">
                         формируется…
                       </span>
-                    ) : persisted || latestJob?.completedSlugs.includes(definition.slug) ? (
+                    ) : isReady || persisted || latestJob?.completedSlugs.includes(definition.slug) ? (
                       <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[0.65rem] font-medium text-emerald-700">
                         готов
                       </span>
@@ -153,15 +188,28 @@ export function WorkOrderDocumentsPanel({
                   <p className="truncate text-xs text-muted-foreground">{definition.description}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
-                  <Link
-                    href={`/documents/${orderId}/${definition.slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-7 shrink-0 items-center gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] font-medium hover:bg-muted"
-                  >
-                    <Eye className="size-4" />
-                    Предпросмотр
-                  </Link>
+                  {demoMode && onDemoPreview ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2.5 text-[0.8rem]"
+                      onClick={() => onDemoPreview(definition.slug)}
+                    >
+                      <Eye className="size-4" />
+                      Предпросмотр
+                    </Button>
+                  ) : (
+                    <Link
+                      href={`/documents/${orderId}/${definition.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-7 shrink-0 items-center gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] font-medium hover:bg-muted"
+                    >
+                      <Eye className="size-4" />
+                      Предпросмотр
+                    </Link>
+                  )}
                   <Button
                     type="button"
                     variant="outline"

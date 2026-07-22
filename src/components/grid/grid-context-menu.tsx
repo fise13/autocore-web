@@ -1,7 +1,14 @@
 "use client";
 
 import { PackagePlus, SlidersHorizontal, type LucideIcon } from "lucide-react";
-import { ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  type HTMLAttributes,
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -27,9 +34,16 @@ type GridContextMenuProps = {
   onClose: () => void;
   children: ReactNode;
   className?: string;
-};
+} & Omit<HTMLAttributes<HTMLDivElement>, "children" | "className" | "role" | "style">;
 
-export function GridContextMenu({ x, y, onClose, children, className }: GridContextMenuProps) {
+export function GridContextMenu({
+  x,
+  y,
+  onClose,
+  children,
+  className,
+  ...props
+}: GridContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x, y });
 
@@ -72,12 +86,14 @@ export function GridContextMenu({ x, y, onClose, children, className }: GridCont
     <div
       ref={menuRef}
       role="menu"
+      data-app-context-menu=""
       className={cn(
         "animate-tab-enter fixed z-40 min-w-[11.5rem] rounded-md border bg-popover p-0.5 shadow-md",
         className,
       )}
       style={{ left: position.x, top: position.y }}
       onContextMenu={(event) => event.preventDefault()}
+      {...props}
     >
       {children}
     </div>

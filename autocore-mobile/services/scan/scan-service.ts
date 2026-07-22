@@ -1,6 +1,7 @@
 import { readScanResolveCache } from '@/lib/scan/scan-resolve-cache';
 import { scanPayloadKey } from '@/lib/scan/normalize-scan-payload';
 import { ScanDebounce } from './scan-debounce';
+import { mapApiResolve } from './handlers/resolve-handler';
 import {
   disambiguateScanPayload,
   pickScanCandidate,
@@ -140,16 +141,9 @@ export class ScanService {
 
     try {
       const cached = readScanResolveCache(rawPayload);
-      // Cache-first: apply immediately (sync) — no network await on hot path.
-      if (cached?.found && cached.item) {
-        const outcome = await resolveScanPayload(this.deps, {
-          payload: rawPayload,
-          source,
-          canInventoryView: this.deps.canInventoryView(),
-          allowMock: this.deps.allowMock(),
-          cachedResult: cached,
-        });
-        return this.applyOutcome(outcome, rawPayload);
+      // Cache-first: apply synchronously — no microtask/network on hot path.
+      if (cached && (cached.found || cached.candidates.length > 0)) {
+        return this.applyOutcome(mapApiResolve(rawPayload, cached, source), rawPayload);
       }
 
       const outcome = await resolveScanPayload(this.deps, {

@@ -9,7 +9,7 @@ const TAB_SCREEN_OPTIONS = {
   headerShown: false,
   tabBarStyle: { display: 'none' },
   lazy: true,
-  freezeOnBlur: false,
+  freezeOnBlur: true,
 } as const;
 
 const MemoTabBar = memo(AppTabBar);
@@ -33,7 +33,8 @@ export default function TabLayout() {
         <Tabs.Screen name="orders" options={{ title: 'Orders' }} />
         <Tabs.Screen name="my-earnings" options={{ title: 'My earnings' }} />
         <Tabs.Screen name="accounting" options={{ title: 'Accounting' }} />
-        <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+        {/* Prefetch settings hub only — never keep CameraView mounted off-tab. */}
+        <Tabs.Screen name="profile" options={{ title: 'Profile', lazy: false }} />
       </Tabs>
     </TabTransitionProvider>
   );

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
-import { landingContent } from "@/components/marketing/experience/content/landing-content";
+import { useLandingContent } from "@/components/marketing/experience/content/use-landing-content";
 import {
   Accordion,
   AccordionContent,
@@ -11,11 +11,11 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
-const copy = landingContent.faq;
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 /** Visible FAQ on home so FAQPage JSON-LD matches on-page content (Google + Yandex). */
 export function FaqExperience() {
+  const copy = useLandingContent().faq;
   const reduced = useReducedMotion();
   const [open, setOpen] = useState<string[]>(["faq-0"]);
 

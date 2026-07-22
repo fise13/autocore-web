@@ -196,7 +196,7 @@ export function CreateInventoryItemScreen() {
           </View>
         }
         footer={
-          <ScreenActionFooter>
+          <ScreenActionFooter aboveTabBar={false}>
             <Button
               onPress={() => void handleSubmit()}
               loading={createItem.isPending}

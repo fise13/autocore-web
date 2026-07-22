@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 
@@ -10,9 +10,14 @@ import { updateWorkOrderUseCase } from "@/application/use-cases/work-orders/upda
 import { quickCreateClientUseCase } from "@/application/use-cases/work-orders/quick-create-client";
 import { quickCreateVehicleUseCase } from "@/application/use-cases/work-orders/quick-create-vehicle";
 import { WorkOrderStatus } from "@/domain/work-order";
+import { emitKnowledgeEvent } from "@/lib/knowledge/knowledge-api.client";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useWorkspace } from "@/components/layout/workspace-context";
+import { DraftRecoveryDialog } from "@/components/persistence/draft-recovery-dialog";
+import { LastSavedHint } from "@/components/persistence/last-saved-hint";
+import { usePersistedDocument } from "@/components/persistence/use-persisted-document";
 import { useToast } from "@/components/ui/toast-provider";
+import type { PersistenceDraftRecord, PersistenceSyncHandler } from "@/lib/persistence";
 import { InventoryItem } from "@/domain/inventory";
 import {
   ComposerFormState,
@@ -35,7 +40,7 @@ import {
   OrderListFilter,
   WorkOrderListPanel,
 } from "@/components/work-orders/work-order-list-panel";
-import { isOpenStatus, nextId, nextStatuses as getNextStatuses } from "@/components/work-orders/work-order-utils";
+import { nextId, nextStatuses as getNextStatuses } from "@/components/work-orders/work-order-utils";
 import { calculateWorkOrderPricing, WorkOrder } from "@/domain/work-order";
 import { rememberComposerFieldValue } from "@/lib/work-order/composer-field-memory";
 import { useClientsRealtime } from "@/hooks/use-clients-realtime";
@@ -188,6 +193,11 @@ export function WorkOrdersWorkspace() {
   const [form, setForm] = useState<ComposerFormState>(initialFormState);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [composerSessionId, setComposerSessionId] = useState(() => `new:${crypto.randomUUID()}`);
+  const editingOrderIdRef = useRef<string | null>(null);
+  editingOrderIdRef.current = editingOrderId;
+  const formRef = useRef(form);
+  formRef.current = form;
 
   const selectedOrder = useMemo(
     () => orders.find((order) => order.id === selectedOrderId) ?? null,
@@ -215,7 +225,6 @@ export function WorkOrdersWorkspace() {
     () => calculateWorkOrderPricing(form.laborLines, form.partLines, form.motorLines, form.discount),
     [form.discount, form.laborLines, form.motorLines, form.partLines],
   );
-  const openCount = orders.filter((order) => isOpenStatus(order.status)).length;
   const workOrderDisplayIndex = useMemo(() => buildWorkOrderDisplayIndex(orders), [orders]);
   const payrollByOrderId = useMemo(() => {
     const map = new Map<string, typeof payrollTransactions>();
@@ -261,9 +270,11 @@ export function WorkOrdersWorkspace() {
     setComposerStep(1);
     setIsCreating(false);
     setEditingOrderId(null);
+    setComposerSessionId(`new:${crypto.randomUUID()}`);
   }, []);
 
   const startCreate = useCallback(() => {
+    setComposerSessionId(`new:${crypto.randomUUID()}`);
     setForm(initialFormState());
     setComposerStep(1);
     setIsCreating(true);
@@ -276,6 +287,7 @@ export function WorkOrdersWorkspace() {
     (orderId: string) => {
       const order = orders.find((entry) => entry.id === orderId);
       if (!order || !["draft", "confirmed"].includes(order.status)) return;
+      setComposerSessionId(order.id);
       setForm(workOrderToComposerForm(order));
       setComposerStep(1);
       setEditingOrderId(order.id);
@@ -585,89 +597,196 @@ export function WorkOrdersWorkspace() {
     }));
   }, [form.specificCategoryId, form.specificPartName, form.specificPartPrice, quickSpecificCategories]);
 
-  const saveDraft = useCallback(async () => {
-    if (!profile?.id || !companyId) return;
-    if (!form.clientName.trim() || !form.clientPhone.trim()) {
-      setError("Укажите клиента и телефон");
-      setComposerStep(1);
-      return;
-    }
-    if (!form.vin.trim() && !form.licensePlate.trim()) {
-      setError("Укажите VIN или госномер");
-      setComposerStep(1);
-      return;
-    }
+  const persistComposer = useCallback(
+    async (options: {
+      formState: ComposerFormState;
+      closeAfter: boolean;
+      silent?: boolean;
+    }) => {
+      if (!profile?.id || !companyId) {
+        return { ok: false as const, error: "Нет компании" };
+      }
+      const nextForm = options.formState;
+      if (!nextForm.clientName.trim() || !nextForm.clientPhone.trim()) {
+        if (!options.silent) {
+          setError("Укажите клиента и телефон");
+          setComposerStep(1);
+        }
+        return { ok: false as const, error: "incomplete" };
+      }
+      if (!nextForm.vin.trim() && !nextForm.licensePlate.trim()) {
+        if (!options.silent) {
+          setError("Укажите VIN или госномер");
+          setComposerStep(1);
+        }
+        return { ok: false as const, error: "incomplete" };
+      }
 
-    setSaving(true);
-    setError(null);
-    try {
-      const client =
-        clients.find((entry) => entry.id === form.clientId) ??
-        (await quickCreateClientUseCase(clientRepository, {
-          companyId,
-          fullName: form.clientName,
-          phone: form.clientPhone,
-          createdByUserId: profile.id,
-        }));
-      const vehicle =
-        vehicles.find((entry) => entry.id === form.vehicleId) ??
-        (await quickCreateVehicleUseCase(vehicleRepository, {
-          companyId,
+      if (!options.silent) {
+        setSaving(true);
+        setError(null);
+      }
+      try {
+        const client =
+          clients.find((entry) => entry.id === nextForm.clientId) ??
+          (await quickCreateClientUseCase(clientRepository, {
+            companyId,
+            fullName: nextForm.clientName,
+            phone: nextForm.clientPhone,
+            createdByUserId: profile.id,
+          }));
+        const vehicle =
+          vehicles.find((entry) => entry.id === nextForm.vehicleId) ??
+          (await quickCreateVehicleUseCase(vehicleRepository, {
+            companyId,
+            clientId: client.id,
+            make: nextForm.vehicleMake,
+            model: nextForm.vehicleModel,
+            vin: nextForm.vin,
+            licensePlate: nextForm.licensePlate,
+            currentMileage: nextForm.mileage,
+            createdByUserId: profile.id,
+          }));
+
+        const nextPricing = calculateWorkOrderPricing(
+          nextForm.laborLines,
+          nextForm.partLines,
+          nextForm.motorLines,
+          nextForm.discount,
+        );
+
+        const payload = {
           clientId: client.id,
-          make: form.vehicleMake,
-          model: form.vehicleModel,
-          vin: form.vin,
-          licensePlate: form.licensePlate,
-          currentMileage: form.mileage,
-          createdByUserId: profile.id,
-        }));
+          clientName: client.fullName,
+          clientPhone: client.phone,
+          vehicleId: vehicle.id,
+          vehicleLabel: [vehicle.make, vehicle.model, vehicle.licensePlate].filter(Boolean).join(" "),
+          vin: vehicle.vin || nextForm.vin,
+          licensePlate: vehicle.licensePlate || nextForm.licensePlate,
+          mileage: nextForm.mileage,
+          comment: nextForm.comment,
+          laborLines: nextForm.laborLines,
+          partLines: nextForm.partLines,
+          motorLines: nextForm.motorLines,
+          pricing: nextPricing,
+          paymentAccount: "cashbox" as const,
+          paymentMethod: "cash" as const,
+          updatedByUserId: profile.id,
+        };
 
-      const payload = {
-        clientId: client.id,
-        clientName: client.fullName,
-        clientPhone: client.phone,
-        vehicleId: vehicle.id,
-        vehicleLabel: [vehicle.make, vehicle.model, vehicle.licensePlate].filter(Boolean).join(" "),
-        vin: vehicle.vin || form.vin,
-        licensePlate: vehicle.licensePlate || form.licensePlate,
-        mileage: form.mileage,
-        comment: form.comment,
-        laborLines: form.laborLines,
-        partLines: form.partLines,
-        motorLines: form.motorLines,
-        pricing,
-        paymentAccount: "cashbox" as const,
-        paymentMethod: "cash" as const,
-        updatedByUserId: profile.id,
-      };
+        const currentEditingId = editingOrderIdRef.current;
+        if (currentEditingId) {
+          await updateWorkOrderUseCase(workOrderRepository, {
+            companyId,
+            workOrderId: currentEditingId,
+            input: payload,
+          });
+          setSelectedOrderId(currentEditingId);
+          void notifyWorkOrderAvailable(currentEditingId).catch(() => undefined);
+          void ensureWorkOrderDocuments(currentEditingId);
+          if (options.closeAfter) resetComposer();
+          return { ok: true as const, orderId: currentEditingId };
+        }
 
-      if (editingOrderId) {
-        await updateWorkOrderUseCase(workOrderRepository, {
-          companyId,
-          workOrderId: editingOrderId,
-          input: payload,
-        });
-        setSelectedOrderId(editingOrderId);
-        void notifyWorkOrderAvailable(editingOrderId).catch(() => undefined);
-        void ensureWorkOrderDocuments(editingOrderId);
-      } else {
         const order = await createWorkOrderUseCase(workOrderRepository, domainEventRepository, {
           companyId,
           ...payload,
           createdByUserId: profile.id,
         });
         setSelectedOrderId(order.id);
+        setEditingOrderId(order.id);
+        setComposerSessionId(order.id);
+        editingOrderIdRef.current = order.id;
         void triggerWorkOrderEventProcessing(order.id).catch(() => undefined);
         void ensureWorkOrderDocuments(order.id);
         void notifyWorkOrderAvailable(order.id).catch(() => undefined);
+        void emitKnowledgeEvent({
+          type: "wo.created",
+          workOrderId: order.id,
+          clientId: order.clientId,
+          vehicleId: order.vehicleId,
+          engineCode: order.motorLines[0]?.engineCode,
+          brandName: order.motorLines[0]?.brandName ?? nextForm.vehicleMake,
+          payload: {
+            laborTitles: order.laborLines.map((line) => line.title),
+            partSkus: order.partLines.map((line) => line.sku || line.name),
+            fieldValues: {
+              vehicleMake: nextForm.vehicleMake,
+              vehicleModel: nextForm.vehicleModel,
+              clientName: nextForm.clientName,
+            },
+          },
+        });
+        if (options.closeAfter) resetComposer();
+        return { ok: true as const, orderId: order.id };
+      } catch (nextError) {
+        const message =
+          nextError instanceof Error ? nextError.message : "Не удалось создать заказ-наряд";
+        if (!options.silent) setError(message);
+        return { ok: false as const, error: message };
+      } finally {
+        if (!options.silent) setSaving(false);
       }
-      resetComposer();
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Не удалось создать заказ-наряд");
-    } finally {
-      setSaving(false);
+    },
+    [clients, companyId, profile?.id, resetComposer, vehicles],
+  );
+
+  const saveDraft = useCallback(async () => {
+    await persistComposer({ formState: formRef.current, closeAfter: true, silent: false });
+  }, [persistComposer]);
+
+  const composerPersistenceKey =
+    canEdit && isCreating && companyId
+      ? {
+          companyId,
+          kind: "work_order_composer" as const,
+          id: editingOrderId ?? composerSessionId,
+        }
+      : null;
+
+  const composerSync = useCallback<PersistenceSyncHandler>(
+    async ({ snapshot }) => {
+      const formState = snapshot as ComposerFormState;
+      const result = await persistComposer({
+        formState,
+        closeAfter: false,
+        silent: true,
+      });
+      if (!result.ok) {
+        if (result.error === "incomplete") {
+          // Keep local draft; not an error for autosave.
+          return { ok: true };
+        }
+        return { ok: false, error: result.error };
+      }
+      return { ok: true, baseRevision: result.orderId };
+    },
+    [persistComposer],
+  );
+
+  usePersistedDocument({
+    key: composerPersistenceKey,
+    value: form,
+    label: form.clientName.trim() || "Заказ-наряд",
+    sync: composerSync,
+    enabled: Boolean(composerPersistenceKey),
+  });
+
+  const restoreComposerDraft = useCallback(async (draft: PersistenceDraftRecord) => {
+    const snapshot = draft.snapshot as ComposerFormState;
+    if (!snapshot || typeof snapshot !== "object") return;
+    setComposerSessionId(draft.id);
+    if (!draft.id.startsWith("new:")) {
+      setEditingOrderId(draft.id);
+      setSelectedOrderId(draft.id);
+    } else {
+      setEditingOrderId(null);
     }
-  }, [clients, companyId, editingOrderId, form, pricing, profile?.id, resetComposer, vehicles]);
+    setForm(snapshot);
+    setComposerStep(1);
+    setIsCreating(true);
+    setError(null);
+  }, []);
 
   useEffect(() => {
     if (!canEdit || !isCreating) {
@@ -725,6 +844,13 @@ export function WorkOrdersWorkspace() {
 
   return (
     <div className={shellClassName}>
+      {companyId ? (
+        <DraftRecoveryDialog
+          companyId={companyId}
+          kind="work_order_composer"
+          onRestore={restoreComposerDraft}
+        />
+      ) : null}
       <AnimatePresence mode="wait" initial={false}>
         {section === "clients" ? (
           <motion.div
@@ -765,23 +891,6 @@ export function WorkOrdersWorkspace() {
             transition={workOrdersSectionTransition}
             className="flex h-full min-h-0 flex-col"
           >
-            <header className="flex shrink-0 items-center justify-between gap-4 border-b bg-card/80 px-4 py-3 backdrop-blur-sm md:px-5">
-              <div>
-                <h1 className="text-base font-semibold tracking-tight">Заказ-наряды</h1>
-                <p className="text-xs text-muted-foreground">
-                  {orders.length} всего · {openCount} открытых
-                </p>
-              </div>
-              {selectedOrder && !isCreating ? (
-                <p className="hidden text-sm text-muted-foreground sm:block">
-                  Выбран:{" "}
-                  <span className="font-medium text-foreground">
-                    {formatWorkOrderLabel(selectedOrder, workOrderDisplayIndex)}
-                  </span>
-                </p>
-              ) : null}
-            </header>
-
             {error ? (
               <div className="shrink-0 border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-sm text-destructive md:px-5">
                 {error}
@@ -878,6 +987,11 @@ export function WorkOrdersWorkspace() {
                         onSave={saveDraft}
                         onCancel={resetComposer}
                       />
+                      {composerPersistenceKey ? (
+                        <div className="border-t px-6 py-2">
+                          <LastSavedHint persistenceKey={composerPersistenceKey} />
+                        </div>
+                      ) : null}
                     </motion.div>
                   ) : selectedOrder ? (
                     <motion.div

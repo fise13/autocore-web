@@ -77,13 +77,21 @@ export function NotificationProvider({ enabled, children }: NotificationProvider
   useEffect(() => {
     if (!canRun || !initialized) return;
 
+    let resumeTimer: ReturnType<typeof setTimeout> | null = null;
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
+      if (state !== 'active') return;
+      if (resumeTimer) clearTimeout(resumeTimer);
+      // Don't compete with first taps / tab presses right after resume.
+      resumeTimer = setTimeout(() => {
+        resumeTimer = null;
         void NotificationService.syncInbox();
-      }
+      }, 750);
     });
 
-    return () => subscription.remove();
+    return () => {
+      if (resumeTimer) clearTimeout(resumeTimer);
+      subscription.remove();
+    };
   }, [canRun, initialized]);
 
   return children ?? null;

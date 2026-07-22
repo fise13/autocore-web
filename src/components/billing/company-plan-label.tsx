@@ -26,7 +26,12 @@ export function CompanyPlanLabel({
     : isProSubscription(inactiveSubscription.subscription);
 
   return (
-    <p className={cn("text-xs text-muted-foreground", className)}>
+    <p
+      className={cn(
+        "text-xs text-muted-foreground group-focus/dropdown-menu-item:text-accent-foreground/80",
+        className,
+      )}
+    >
       {isLoading ? "…" : isPro ? userCopy.billing.planPro : userCopy.billing.planFree}
     </p>
   );
