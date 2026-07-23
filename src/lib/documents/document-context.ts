@@ -12,8 +12,12 @@ import { CompanyDocumentConfig, parseCompanyDocumentConfig } from "@/domain/docu
 import { CompanyEmployee } from "@/domain/rbac";
 import { MotorEntity } from "@/domain/motor";
 import { VehicleEntity } from "@/domain/vehicle";
-import { WorkOrder } from "@/domain/work-order";
+import { WorkOrder, WorkOrderStatus } from "@/domain/work-order";
 import { DocumentPhoto } from "@/lib/documents/render-model/types";
+import type {
+  DocumentTemplateMeta,
+  DocumentTemplateVariant,
+} from "@/lib/documents/templates/document-template-meta";
 import { CustomWarrantyFields } from "@/lib/documents/warranty/custom-warranty";
 
 export type DocumentCompanyInfo = {
@@ -51,6 +55,201 @@ export type VehicleLogbookSource = {
   title: string;
 };
 
+/** Optional PDF chrome labels. When omitted, Russian defaults are used (dashboard unchanged). */
+export type DocumentUiLabels = {
+  number: string;
+  date: string;
+  name: string;
+  qty: string;
+  amount: string;
+  eventOne: string;
+  eventFew: string;
+  eventMany: string;
+  labor: string;
+  parts: string;
+  engine: string;
+  engineCost: string;
+  transmission: string;
+  discount: string;
+  tax: string;
+  totalsTitle: string;
+  warranty: string;
+  recommendations: string;
+  grandTotal: string;
+  executor: string;
+  participants: string;
+  client: string;
+  vehicle: string;
+  term: string;
+  mileage: string;
+  untilDate: string;
+  daysShort: string;
+  vehicleHistory: string;
+  aggregateHistory: string;
+  photos: string;
+  photoCount: string;
+  diagnostics: string;
+  recommendationsTitle: string;
+  signature: string;
+  emptyWarrantyTitle: string;
+  emptyWarrantyMessage: string;
+  emptyWaybillTitle: string;
+  emptyWaybillMessage: string;
+  racingEmptyPit: string;
+  racingPartsHeading: string;
+  racingEmptyLogbook: string;
+  racingWaiting: string;
+  racingEmptyMotor: string;
+  racingPlate: string;
+  racingNextMilestone: string;
+  racingRemaining: string;
+  racingMileage: string;
+  racingSum: string;
+  racingPitStop: string;
+  racingLogbook: string;
+  racingEngine: string;
+  racingPilot: string;
+  racingPreparedBy: string;
+  laborKind: string;
+  partKind: string;
+  contractEngine: string;
+  hoursSuffix: string;
+  daysKm: string;
+  serviceOperation: string;
+  untilDateValue: string;
+  untilScopeAgreed: string;
+  brandCode: string;
+  configuration: string;
+  mark: string;
+  cost: string;
+  saleDate: string;
+  operation: string;
+  engineMileage: string;
+  kmSuffix: string;
+  buyer: string;
+  deal: string;
+  fullName: string;
+  phone: string;
+  note: string;
+  product: string;
+  serialNumber: string;
+  sum: string;
+  makeModel: string;
+  engineSpecs: string;
+  transmissionFull: string;
+  model: string;
+  laborList: string;
+  laborHint: string;
+  partsMaterials: string;
+  seller: string;
+  handedOver: string;
+  executorRole: string;
+  receivedClient: string;
+  engineToPay: string;
+  itemsToPay: string;
+  oneItem: string;
+  itemsCount: string;
+};
+
+export const DEFAULT_DOCUMENT_UI_LABELS: DocumentUiLabels = {
+  number: "Номер",
+  date: "Дата",
+  name: "Наименование",
+  qty: "Кол-во",
+  amount: "Сумма",
+  eventOne: "событие",
+  eventFew: "события",
+  eventMany: "событий",
+  labor: "Работы",
+  parts: "Запчасти",
+  engine: "Двигатель",
+  engineCost: "Стоимость двигателя",
+  transmission: "КПП",
+  discount: "Скидка",
+  tax: "Налог",
+  totalsTitle: "Итоговая сумма",
+  warranty: "Гарантия.",
+  recommendations: "Рекомендации.",
+  grandTotal: "Итого",
+  executor: "Исполнитель:",
+  participants: "Участники",
+  client: "Клиент",
+  vehicle: "Автомобиль",
+  term: "Срок",
+  mileage: "Пробег",
+  untilDate: "До даты",
+  daysShort: "дн.",
+  vehicleHistory: "История автомобиля",
+  aggregateHistory: "История агрегата",
+  photos: "Фотофиксация",
+  photoCount: "фото",
+  diagnostics: "Диагностика",
+  recommendationsTitle: "Рекомендации",
+  signature: "подпись",
+  emptyWarrantyTitle: "Гарантийный талон двигателя",
+  emptyWarrantyMessage: "Для этого заказ-наряда двигатель не указан.",
+  emptyWaybillTitle: "Накладная на двигатель",
+  emptyWaybillMessage: "Для этой операции двигатель не указан.",
+  racingEmptyPit: "Пит-стоп без работ",
+  racingPartsHeading: "КУПИЛИ / ПОСТАВИЛИ",
+  racingEmptyLogbook: "Бортжурнал пуст",
+  racingWaiting: "ждём {date}",
+  racingEmptyMotor: "Данные двигателя не указаны",
+  racingPlate: "ГОС. НОМЕР",
+  racingNextMilestone: "СЛЕДУЮЩИЙ РУБЕЖ",
+  racingRemaining: "осталось {km} км — поможем достигнуть",
+  racingMileage: "ПРОБЕГ",
+  racingSum: "СУММА",
+  racingPitStop: "ЧТО СДЕЛАЛИ — ПИТ-СТОП",
+  racingLogbook: "БОРТЖУРНАЛ",
+  racingEngine: "ДВИГАТЕЛЬ",
+  racingPilot: "ЗАКАЗЧИК — ПИЛОТ",
+  racingPreparedBy: "ОФОРМИЛ:",
+  laborKind: "Работа",
+  partKind: "Запчасть",
+  contractEngine: "Контрактный двигатель",
+  hoursSuffix: " ч",
+  daysKm: "{days} дн · {km} км",
+  serviceOperation: "Сервисная операция",
+  untilDateValue: "до {date}",
+  untilScopeAgreed: "до согласования состава работ",
+  brandCode: "Марка / код",
+  configuration: "Комплектация",
+  mark: "Пометка",
+  cost: "Стоимость",
+  saleDate: "Дата продажи",
+  operation: "Операция",
+  engineMileage: "Пробег ДВС",
+  kmSuffix: " км",
+  buyer: "Покупатель",
+  deal: "Сделка",
+  fullName: "ФИО",
+  phone: "Телефон",
+  note: "Примечание",
+  product: "Товар",
+  serialNumber: "Серийный номер",
+  sum: "Сумма",
+  makeModel: "Марка / модель",
+  engineSpecs: "Характеристики двигателя",
+  transmissionFull: "Коробка передач",
+  model: "Модель",
+  laborList: "Перечень работ",
+  laborHint: "Сервисные операции",
+  partsMaterials: "Запчасти и материалы",
+  seller: "Продавец",
+  handedOver: "Передал (исполнитель)",
+  executorRole: "Исполнитель",
+  receivedClient: "Получил (клиент)",
+  engineToPay: "Двигатель к оплате",
+  itemsToPay: "Позиции к оплате",
+  oneItem: "1 позиция",
+  itemsCount: "{n} поз.",
+};
+
+export function resolveDocumentUi(ui?: Partial<DocumentUiLabels> | null): DocumentUiLabels {
+  return { ...DEFAULT_DOCUMENT_UI_LABELS, ...ui };
+}
+
 export type DocumentContext = {
   company: DocumentCompanyInfo;
   order: WorkOrder;
@@ -62,13 +261,19 @@ export type DocumentContext = {
   assigneeNames: Map<string, string>;
   vehicleLogbook: VehicleLogbookSource[];
   generatedAt: Date;
-  locale: "ru-KZ";
+  locale: "ru-KZ" | "en-US";
   theme?: DocumentTheme;
   warrantyVerificationToken?: string;
   photos?: DocumentPhoto[];
   warrantyOverride?: CustomWarrantyFields;
   /** Display-only marks from label polish (e.g. «с коробкой»), keyed by motor line id. */
   motorLineMarks?: Record<string, string[]>;
+  /** Optional localized PDF chrome. Omitting keeps Russian dashboard defaults. */
+  ui?: Partial<DocumentUiLabels>;
+  /** Optional per-variant template copy overrides (marketing i18n). */
+  templateMeta?: Partial<Record<DocumentTemplateVariant, DocumentTemplateMeta>>;
+  /** Optional work-order status label overrides (marketing i18n). */
+  statusLabels?: Partial<Record<WorkOrderStatus, string>>;
 };
 
 export type DocumentContextInput = {

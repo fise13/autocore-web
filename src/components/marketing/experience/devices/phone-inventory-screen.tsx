@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo } from "react";
 import { Barcode, MapPin } from "lucide-react";
 
+import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import type { PlatformSyncStep } from "@/components/marketing/experience/motion/platform-sync-steps";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -11,34 +13,37 @@ type PhoneInventoryScreenProps = {
   className?: string;
 };
 
-function stepToUi(step: PlatformSyncStep) {
+type ScanChrome = ReturnType<typeof useDemoChrome>["scan"];
+
+function stepToUi(step: PlatformSyncStep, scan: ScanChrome) {
   switch (step) {
     case "idle":
-      return { vin: "-", scanActive: false, status: "Сканирование VIN", saving: false };
+      return { vin: "-", scanActive: false, status: scan.scanningVin, saving: false };
     case "scan":
-      return { vin: "-", scanActive: true, status: "Сканируем код…", saving: false };
+      return { vin: "-", scanActive: true, status: scan.scanningCode, saving: false };
     case "detect":
-      return { vin: "KMHGC…", scanActive: true, status: "VIN распознан", saving: false };
+      return { vin: "KMHGC…", scanActive: true, status: scan.vinRecognized, saving: false };
     case "save":
-      return { vin: "KMHGC…", scanActive: false, status: "Сохранено", saving: true };
+      return { vin: "KMHGC…", scanActive: false, status: scan.saved, saving: true };
     case "sync":
     case "live":
-      return { vin: "KMHGC…", scanActive: false, status: "Отправлено на desktop", saving: false };
+      return { vin: "KMHGC…", scanActive: false, status: scan.sentToDesktop, saving: false };
   }
 }
 
 export function PhoneInventoryScreen({ step, className }: PhoneInventoryScreenProps) {
-  const ui = stepToUi(step);
+  const chrome = useDemoChrome();
+  const ui = useMemo(() => stepToUi(step, chrome.scan), [chrome.scan, step]);
 
   return (
     <div className={cn("device-phone-app", className)}>
       <div className="device-phone-app-header">
         <div>
-          <p className="device-phone-app-title">Склад</p>
-          <p className="device-phone-app-sub">Кладовщик</p>
+          <p className="device-phone-app-title">{chrome.nav.warehouse}</p>
+          <p className="device-phone-app-sub">{chrome.common.storekeeper}</p>
         </div>
         <Badge variant="outline" className="h-5 border-border/80 px-1.5 text-[9px] font-normal">
-          {step === "live" ? "Отправлено" : "В работе"}
+          {step === "live" ? chrome.common.sent : chrome.common.inProgress}
         </Badge>
       </div>
 
@@ -49,12 +54,12 @@ export function PhoneInventoryScreen({ step, className }: PhoneInventoryScreenPr
             <p className="mt-0.5 font-mono text-[9px] text-muted-foreground tabular-nums">KMHGC41D…</p>
           </div>
           <Badge variant="outline" className="h-4 px-1 text-[8px] font-normal">
-            {ui.saving ? "Резерв" : "В наличии"}
+            {ui.saving ? chrome.common.reserve : chrome.common.inStock}
           </Badge>
         </div>
 
         <div className="grid grid-cols-2 gap-1.5">
-          <InfoCell icon={MapPin} label="Полка" value="A-12" />
+          <InfoCell icon={MapPin} label={chrome.common.shelf} value="A-12" />
           <InfoCell icon={Barcode} label="VIN" value={ui.vin} highlight={ui.scanActive && ui.vin !== "-"} />
         </div>
 

@@ -3,12 +3,12 @@ import { marketingRoutes } from "@/lib/marketing-routes";
 export const landingContent = {
   nav: {
     signIn: "Войти",
-    startFree: "Открыть демо",
+    startFree: "Демо",
   },
   footer: {
     headline: "Склад, цех и деньги — одна правда.",
     tagline: "Операционная система для авторазборок и автосервисов. Без Excel-хаоса и ночных сверок.",
-    cta: "Открыть демо",
+    cta: "Демо",
     contact: "Написать нам",
     locale: "Казахстан",
   },
@@ -16,7 +16,7 @@ export const landingContent = {
     title: "Склад, цех и деньги — одна правда.",
     subtitle:
       "Остатки, наряды, продажа моторов и документы — из одних данных. Без WhatsApp-учёта и ночных сверок.",
-    ctaPrimary: "Открыть демо",
+    ctaPrimary: "Демо",
     ctaSecondary: "Смотреть, как это работает",
     ctaSecondaryHref: "#operating-loop",
     trust: "Живая демо-компания · реальные процессы",
@@ -60,7 +60,7 @@ export const landingContent = {
   scenes: {
     title: "Три срыва смены — три закрытых сценария.",
     subtitle: "Не каталог модулей. Три напряжения автобизнеса и исход в одной системе.",
-    cta: "Открыть демо",
+    cta: "Демо",
     items: [
       {
         id: "warehouse",
@@ -97,7 +97,7 @@ export const landingContent = {
       { label: "Свой контур", detail: "Импорт прайса и команда по ролям" },
       { label: "Первый день", detail: "Один процесс — без big-bang миграции" },
     ],
-    primary: "Открыть демо",
+    primary: "Демо",
     secondary: "Написать в поддержку",
   },
   pricing: {
@@ -107,7 +107,7 @@ export const landingContent = {
     note: "за компанию",
     included: ["Склад", "Наряды", "Моторы", "Документы", "Mobile", "Mission Control"],
     risk: "14 дней бесплатно · без карты · без доплат за модули",
-    trial: "Открыть демо",
+    trial: "Демо",
     buy: "Купить",
     buyModal: {
       title: "Оформление подписки",
@@ -125,7 +125,7 @@ export const landingContent = {
     resultLabel: "Оценка налога хаоса / мес",
     vsLabel: "Подписка",
     disclaimer: "Оценочно. Точные цифры — ваши. Проверьте на демо.",
-    cta: "Открыть демо",
+    cta: "Демо",
     defaults: { minutes: 45, rate: 5000, lost: 80000 },
   },
   trust: {
@@ -172,7 +172,7 @@ export const landingContent = {
   cta: {
     titleLine1: "Проверьте на своей смене.",
     titleLine2: "Демо уже заполнено.",
-    primary: "Открыть демо",
+    primary: "Демо",
     buy: "Купить",
   },
   philosophy: {

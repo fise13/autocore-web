@@ -5,6 +5,7 @@ import { type ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { ArrowUpRight, FileText, Shield } from "lucide-react";
 
+import { useMarketingPages } from "@/components/marketing/content/use-marketing-pages";
 import { type LegalDocumentKey } from "@/components/marketing/content/legal-content";
 import { Link } from "@/i18n/navigation";
 import { getPlatformContacts } from "@/lib/platform/platform-contacts";
@@ -76,32 +77,16 @@ type LegalExperienceProps = {
   documentKey: LegalDocumentKey;
 };
 
-const RELATED_LINKS = [
-  {
-    key: "security",
-    href: "/security",
-    label: "Безопасность",
-    description: "RBAC, аудит и изоляция данных компаний",
-    icon: Shield,
-  },
-  {
-    key: "privacy",
-    href: "/legal/privacy",
-    label: "Конфиденциальность",
-    description: "Обработка персональных и операционных данных",
-    icon: FileText,
-  },
-  {
-    key: "terms",
-    href: "/legal/terms",
-    label: "Условия",
-    description: "Правила использования сервиса AutoCore",
-    icon: FileText,
-  },
+const HUB_LINKS = [
+  { key: "security" as const, href: "/security", icon: Shield },
+  { key: "privacy" as const, href: "/legal/privacy", icon: FileText },
+  { key: "terms" as const, href: "/legal/terms", icon: FileText },
 ] as const;
 
 export function LegalExperience({ documentKey }: LegalExperienceProps) {
   const t = useTranslations(`marketing.pages.${documentKey}`);
+  const a11y = useTranslations("marketing.a11y.legal");
+  const pagesLegal = useMarketingPages().legal;
   const title = t("title");
   const description = t("description");
   const breadcrumb = t("breadcrumb");
@@ -113,7 +98,7 @@ export function LegalExperience({ documentKey }: LegalExperienceProps) {
     <div className="trust-page">
       <section className="trust-panel trust-panel-hero" aria-label={title}>
         <div className="exp-section-inner trust-panel-inner">
-          <nav className="trust-breadcrumbs" aria-label="Хлебные крошки">
+          <nav className="trust-breadcrumbs" aria-label={a11y("breadcrumbsAria")}>
             <Link href="/">AutoCore</Link>
             <span aria-hidden>/</span>
             <span>{breadcrumb}</span>
@@ -125,15 +110,17 @@ export function LegalExperience({ documentKey }: LegalExperienceProps) {
 
           <HeroReveal className="trust-hero-sub" delay={0.28} duration={0.55} y={14}>
             <p className="trust-hero-description">{description}</p>
-            <p className="trust-hero-updated">Обновлено: {updated}</p>
+            <p className="trust-hero-updated">
+              {pagesLegal.updatedPrefix} {updated}
+            </p>
           </HeroReveal>
         </div>
       </section>
 
-      <section className="trust-panel trust-panel-body" aria-label="Содержание документа">
+      <section className="trust-panel trust-panel-body" aria-label={a11y("documentBodyAria")}>
         <div className="exp-section-inner trust-legal-layout">
-          <aside className="trust-legal-toc" aria-label="Оглавление">
-            <p className="trust-legal-toc-label">Содержание</p>
+          <aside className="trust-legal-toc" aria-label={a11y("tableOfContentsAria")}>
+            <p className="trust-legal-toc-label">{a11y("tableOfContentsLabel")}</p>
             <ol className="trust-legal-toc-list">
               {sections.map((section) => (
                 <li key={section.id}>
@@ -183,15 +170,16 @@ export function LegalExperience({ documentKey }: LegalExperienceProps) {
         <div className="exp-section-inner trust-related-inner">
           <ScrollReveal margin="-70px">
             <h2 id="trust-related-heading" className="trust-related-title">
-              Доверие и прозрачность
+              {pagesLegal.relatedHeading}
             </h2>
-            <p className="trust-related-description">
-              Юридические документы, безопасность и контакты в одном разделе.
-            </p>
+            <p className="trust-related-description">{pagesLegal.relatedDescription}</p>
           </ScrollReveal>
 
           <ul className="trust-related-grid">
-            {RELATED_LINKS.filter((link) => link.key !== documentKey).map((link, index) => {
+            {HUB_LINKS.map((link, index) => {
+              if (link.key === documentKey) return null;
+              const hubItem = pagesLegal.hub[index];
+              if (!hubItem) return null;
               const Icon = link.icon;
 
               return (
@@ -200,8 +188,8 @@ export function LegalExperience({ documentKey }: LegalExperienceProps) {
                     <Link href={link.href} className="trust-related-card">
                       <Icon className="size-4 text-muted-foreground" aria-hidden />
                       <div className="min-w-0 flex-1">
-                        <p className="trust-related-card-title">{link.label}</p>
-                        <p className="trust-related-card-meta">{link.description}</p>
+                        <p className="trust-related-card-title">{hubItem.label}</p>
+                        <p className="trust-related-card-meta">{hubItem.description}</p>
                       </div>
                       <ArrowUpRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                     </Link>
@@ -214,8 +202,8 @@ export function LegalExperience({ documentKey }: LegalExperienceProps) {
                 <Link href="/contact" className="trust-related-card">
                   <FileText className="size-4 text-muted-foreground" aria-hidden />
                   <div className="min-w-0 flex-1">
-                    <p className="trust-related-card-title">Связаться</p>
-                    <p className="trust-related-card-meta">Поддержка и юридические вопросы</p>
+                    <p className="trust-related-card-title">{pagesLegal.relatedContactTitle}</p>
+                    <p className="trust-related-card-meta">{pagesLegal.relatedContactMeta}</p>
                   </div>
                   <ArrowUpRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                 </Link>

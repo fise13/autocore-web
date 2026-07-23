@@ -55,6 +55,9 @@ export type SellMotorDialogLabels = {
   namePlaceholder: string;
   buyerHint: string;
   frequentlyBought: string;
+  skuLabel: string;
+  commentSellPrefix: string;
+  commentReturnPrefix: string;
   amount: string;
   account: string;
   payment: string;
@@ -99,6 +102,9 @@ const DEFAULT_SELL_MOTOR_LABELS: SellMotorDialogLabels = {
   namePlaceholder: "Иванов Алексей",
   buyerHint: "Новый покупатель будет сохранён в базе клиентов.",
   frequentlyBought: "Часто берут с этим мотором",
+  skuLabel: "Артикул:",
+  commentSellPrefix: "Продажа ·",
+  commentReturnPrefix: "Возврат ·",
   amount: "Сумма",
   account: "Счёт",
   payment: "Оплата",
@@ -192,8 +198,8 @@ function SellMotorDialogForm({
         )
       : undefined;
     toast({
-      title: `Часто берут с этим мотором: ${suggestion.title}`,
-      description: sku ? `Артикул: ${sku}` : suggestion.explanation,
+      title: `${labels.frequentlyBought}: ${suggestion.title}`,
+      description: sku ? `${labels.skuLabel} ${sku}` : suggestion.explanation,
     });
   }
 
@@ -209,7 +215,9 @@ function SellMotorDialogForm({
   );
   const [comment, setComment] = useState(
     initialValues?.comment ??
-      (mode === "sell" ? `Продажа · ${motor.serialCode}` : `Возврат · ${motor.serialCode}`),
+      (mode === "sell"
+        ? `${labels.commentSellPrefix} ${motor.serialCode}`
+        : `${labels.commentReturnPrefix} ${motor.serialCode}`),
   );
   const [warrantyDays, setWarrantyDays] = useState(defaultDays);
   const [warrantyKm, setWarrantyKm] = useState(defaultKm);
@@ -253,7 +261,9 @@ function SellMotorDialogForm({
     setPaymentMethod(initialValues?.paymentMethod ?? "cash");
     setComment(
       initialValues?.comment ??
-        (mode === "sell" ? `Продажа · ${motor.serialCode}` : `Возврат · ${motor.serialCode}`),
+        (mode === "sell"
+          ? `${labels.commentSellPrefix} ${motor.serialCode}`
+          : `${labels.commentReturnPrefix} ${motor.serialCode}`),
     );
   }, [
     defaultDays,
@@ -263,6 +273,8 @@ function SellMotorDialogForm({
     motor.id,
     motor.serialCode,
     mode,
+    labels.commentSellPrefix,
+    labels.commentReturnPrefix,
     initialValues?.amount,
     initialValues?.clientName,
     initialValues?.clientPhone,

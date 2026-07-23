@@ -142,7 +142,7 @@ export function CompanySettingsPanel({
                   <Badge variant="destructive">{userCopy.billing.pastDue}</Badge>
                 ) : null}
                 {subscription?.status === "trialing" ? (
-                  <Badge variant="secondary">Пробный период</Badge>
+                  <Badge variant="secondary">{userCopy.billing.trialBadge}</Badge>
                 ) : null}
                 {isPro ? (
                   <>
@@ -152,13 +152,13 @@ export function CompanySettingsPanel({
                           {userCopy.billing.planComparison.billingInterval}:{" "}
                           {billingIntervalLabel(subscription?.billingInterval)}
                         </span>
-                        <span>·</span>
+                        <span aria-hidden>·</span>
                       </>
                     ) : null}
                     <span>
                       {subscription?.status === "trialing"
                         ? userCopy.billing.trialingHint(
-                            renewalDate === "—" ? "скоро" : renewalDate,
+                            renewalDate === "—" ? userCopy.billing.trialSoon : renewalDate,
                           )
                         : `${userCopy.billing.nextChargeLabel}: ${
                             renewalDate === "—" ? userCopy.billing.nextChargeUnknown : renewalDate
@@ -177,7 +177,11 @@ export function CompanySettingsPanel({
                   {userCopy.billing.viewPlans}
                 </AnimatedUpgradeCta>
               ) : (
-                <Button variant={showPlans ? "default" : "outline"} size="sm" onClick={() => setShowPlans((v) => !v)}>
+                <Button
+                  variant={showPlans ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => setShowPlans((v) => !v)}
+                >
                   {showPlans ? userCopy.billing.planComparison.hidePlans : userCopy.billing.viewPlans}
                 </Button>
               )}

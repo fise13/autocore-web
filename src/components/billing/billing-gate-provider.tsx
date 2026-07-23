@@ -189,6 +189,14 @@ export function BillingGateProvider({ companyId, children }: BillingGateProvider
     return () => window.clearTimeout(timer);
   }, [celebrationOpen, celebrationPhase, subscriptionIsPro]);
 
+  useEffect(() => {
+    if (!celebrationOpen || celebrationPhase !== "celebrating" || !subscriptionIsPro) return;
+
+    void import("@/lib/knowledge/knowledge-api.client")
+      .then(({ backfillKnowledge }) => backfillKnowledge(200, { force: false }))
+      .catch(() => undefined);
+  }, [celebrationOpen, celebrationPhase, subscriptionIsPro]);
+
   const requirePro = useCallback(
     (feature: ProBillingFeature, onAllowed?: () => void) => {
       if (subscriptionIsPro) {

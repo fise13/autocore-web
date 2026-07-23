@@ -85,7 +85,8 @@ function openProductDemo() {
 
 export function PricingExperience() {
   const reduced = useReducedMotion();
-  const copy = useMarketingPages().pricing;
+  const pages = useMarketingPages();
+  const copy = pages.pricing;
   const [openFaq, setOpenFaq] = useState<string[]>(["faq-0"]);
   const [buyOpen, setBuyOpen] = useState(false);
 
@@ -117,7 +118,7 @@ export function PricingExperience() {
         </DialogContent>
       </Dialog>
 
-      <section className="pricing-panel pricing-panel-hero" aria-label="Тариф">
+      <section className="pricing-panel pricing-panel-hero" aria-label={pages.breadcrumbs.pricing}>
         <motion.div
           className="pricing-fragment"
           aria-hidden
@@ -215,7 +216,7 @@ export function PricingExperience() {
         <div className="exp-section-inner pricing-panel-inner pricing-faq-inner">
           <ScrollReveal margin="-80px">
             <h2 id="pricing-faq-heading" className="exp-display pricing-faq-title">
-              Вопросы об оплате
+              {copy.faqTitle}
             </h2>
           </ScrollReveal>
 

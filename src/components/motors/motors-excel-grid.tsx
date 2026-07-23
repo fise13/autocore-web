@@ -17,7 +17,6 @@ import {
 } from "@/components/grid/grid-context-menu";
 import { usePanelActive } from "@/components/layout/panel-active-context";
 import { useWorkspace } from "@/components/layout/workspace-context";
-import { useGridPersistenceAdapter } from "@/components/persistence/use-grid-persistence-adapter";
 import { GridZoomControl } from "@/components/motors/grid-zoom-control";
 import { MotorDocumentsDialog, MotorHistoryDialog } from "@/components/motors/motor-documents-dialog";
 import { MotorEntity } from "@/domain/motor";
@@ -825,19 +824,6 @@ export function MotorsExcelGrid({
 
     return () => window.clearTimeout(timer);
   }, [canEdit, companyId, dirtyVersion, isActive, pushToCloud]);
-
-  useGridPersistenceAdapter({
-    key: companyId ? { companyId, kind: "motor_grid", id: soldOnly ? "sold" : "stock" } : null,
-    dirtyVersion,
-    getSnapshot: () => ({
-      dirtyRowIds: [...dirtyRowsRef.current],
-      rows: rows.filter((row) => dirtyRowsRef.current.has(row.rowId)),
-    }),
-    pushToCloud,
-    enabled: isActive && canEdit,
-    label: soldOnly ? "Моторы (продано)" : "Моторы",
-    scheduleInEngine: false,
-  });
 
   useEffect(() => {
     function stopSelectionDrag() {

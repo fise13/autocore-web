@@ -1,5 +1,6 @@
 "use client";
 
+import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import { ProductWindow } from "@/components/marketing/experience/ui/product-window";
 import {
   formatKzt,
@@ -16,9 +17,13 @@ type DocumentSurfaceProps = {
 };
 
 export function DocumentSurface({ className }: DocumentSurfaceProps) {
+  const chrome = useDemoChrome();
+  const demo = chrome.workOrderUi.demo;
+  const documentDemo = chrome.documentDemo;
+
   return (
     <ProductWindow
-      title="AutoCore · Документ"
+      title={chrome.documents.windowTitle}
       className={cn("exp-surface", className)}
       contentClassName="bg-muted/10"
     >
@@ -26,38 +31,49 @@ export function DocumentSurface({ className }: DocumentSurfaceProps) {
         <div className="flex items-start justify-between gap-3 border-b border-border/60 pb-3">
           <div>
             <p className="text-sm font-semibold tracking-tight">{landingDemoCompany.name}</p>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">{landingDemoCompany.legalName}</p>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">{documentDemo.legalName}</p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Акт</p>
-            <p className="exp-mock-mono text-xs font-medium">{order.number}</p>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{chrome.documents.act}</p>
+            <p className="exp-mock-mono text-xs font-medium">{demo.orderNumber}</p>
           </div>
         </div>
 
         <div className="mt-3 grid gap-1 text-xs">
-          <Row label="Клиент" value={order.clientName} />
-          <Row label="Авто" value={order.vehicleLabel} />
+          <Row label={chrome.common.client} value={demo.clientName} />
+          <Row label={chrome.common.auto} value={order.vehicleLabel} />
           <Row label="VIN" value={order.vin} mono />
-          <Row label="Двигатель" value={`${landingDemoMotor.engineCode} · ${landingDemoMotor.serialCode}`} />
+          <Row
+            label={chrome.common.engine}
+            value={`${landingDemoMotor.engineCode} · ${landingDemoMotor.serialCode}`}
+          />
         </div>
 
         <div className="mt-4 space-y-1.5 border-t border-border/60 pt-3">
-          {order.laborLines.map((line) => (
-            <div key={line.title} className="flex justify-between gap-2 text-xs">
-              <span>{line.title}</span>
-              <span className="exp-mock-mono text-muted-foreground">{formatKzt(line.hours * line.unitPrice)}</span>
+          <div className="flex justify-between gap-2 text-xs">
+            <span>{demo.labor1}</span>
+            <span className="exp-mock-mono text-muted-foreground">
+              {formatKzt(order.laborLines[0].hours * order.laborLines[0].unitPrice)}
+            </span>
+          </div>
+          {order.laborLines[1] ? (
+            <div className="flex justify-between gap-2 text-xs">
+              <span>{demo.labor2}</span>
+              <span className="exp-mock-mono text-muted-foreground">
+                {formatKzt(order.laborLines[1].hours * order.laborLines[1].unitPrice)}
+              </span>
             </div>
-          ))}
-          {order.partLines.map((line) => (
+          ) : null}
+          {order.partLines.map((line, index) => (
             <div key={line.sku} className="flex justify-between gap-2 text-xs">
-              <span>{line.name}</span>
+              <span>{index === 0 ? demo.part1 : index === 1 ? demo.part2 : line.name}</span>
               <span className="exp-mock-mono text-muted-foreground">{formatKzt(line.unitPrice)}</span>
             </div>
           ))}
         </div>
 
         <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-3 text-sm">
-          <span className="font-medium">Итого</span>
+          <span className="font-medium">{chrome.common.total}</span>
           <span className="exp-mock-mono font-semibold">{formatKzt(order.grandTotal)} ₸</span>
         </div>
       </div>

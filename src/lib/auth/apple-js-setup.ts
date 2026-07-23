@@ -1,5 +1,6 @@
 import { APPLE_WEB_CLIENT_ID, getAppleWebClientIdMisconfigurationIssue } from "@/lib/auth/apple-auth-mode";
 import { getFirebaseAppleRedirectUrl } from "@/lib/auth/apple-web-setup";
+import { getActiveUserCopyLocale } from "@/lib/user-copy";
 import { appLoginUrl } from "@/lib/site-urls";
 
 /** Apple Developer rejects "localhost" in Domains — use this in /etc/hosts for local dev. */
@@ -62,6 +63,17 @@ export function getAppleJsRedirectCallbackUri(): string {
 }
 
 function localhostAppleDeveloperHint(): string {
+  if (getActiveUserCopyLocale() === "en") {
+    return [
+      "Apple Developer rejects \"localhost\" in the Domains field (One or more domains are invalid).",
+      "For local development, pick one:",
+      `  1) /etc/hosts: 127.0.0.1 ${APPLE_JS_LOCAL_DEV_HOST}`,
+      `     NEXT_PUBLIC_APP_URL=http://${APPLE_JS_LOCAL_DEV_HOST}:3000`,
+      `     Apple: Domain = ${APPLE_JS_LOCAL_DEV_HOST}, Return URL = ${getAppleJsLocalDevLoginUrl()}`,
+      `     Open http://${APPLE_JS_LOCAL_DEV_HOST}:3000/login`,
+      "  2) Vercel preview / prod: Domain = your-domain, Return URL = https://your-domain/login",
+    ].join(" ");
+  }
   return [
     "Apple Developer не принимает «localhost» в поле Domains (ошибка One or more domains are invalid).",
     "Локальная разработка — один из вариантов:",
@@ -82,11 +94,14 @@ export function getAppleJsSetupIssue(): string | null {
 
   const redirectUri = getAppleJsLoginRedirectUri();
   let parsed: URL;
+  const en = getActiveUserCopyLocale() === "en";
 
   try {
     parsed = new URL(redirectUri);
   } catch {
-    return `Некорректный Apple redirect URI: ${redirectUri}`;
+    return en
+      ? `Invalid Apple redirect URI: ${redirectUri}`
+      : `Некорректный Apple redirect URI: ${redirectUri}`;
   }
 
   const hostname = parsed.hostname.toLowerCase();
@@ -96,19 +111,17 @@ export function getAppleJsSetupIssue(): string | null {
   }
 
   if (isMobileUserAgent() && (parsed.protocol === "http:" || isLocalhostHost(hostname))) {
-    return (
-      "Apple Sign-In на телефоне требует публичный HTTPS URL. " +
-      "Откройте Vercel preview / prod и зарегистрируйте https://…/login в Apple Developer."
-    );
+    return en
+      ? "Apple Sign-In on a phone requires a public HTTPS URL. Open a Vercel preview / prod build and register https://…/login in Apple Developer."
+      : "Apple Sign-In на телефоне требует публичный HTTPS URL. Откройте Vercel preview / prod и зарегистрируйте https://…/login в Apple Developer.";
   }
 
   if (parsed.protocol === "http:" && !isLocalhostHost(hostname)) {
     const isLocalDevHost = hostname === APPLE_JS_LOCAL_DEV_HOST || hostname.endsWith(".local");
     if (!isLocalDevHost) {
-      return (
-        `Apple Sign-In требует HTTPS для ${hostname}. ` +
-        "Используйте https://…/login в Return URLs или local dev host через /etc/hosts."
-      );
+      return en
+        ? `Apple Sign-In requires HTTPS for ${hostname}. Use https://…/login in Return URLs or a local dev host via /etc/hosts.`
+        : `Apple Sign-In требует HTTPS для ${hostname}. Используйте https://…/login в Return URLs или local dev host через /etc/hosts.`;
     }
   }
 

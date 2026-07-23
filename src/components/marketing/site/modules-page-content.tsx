@@ -241,7 +241,7 @@ export function ModulesPageContent() {
                   <p className="landing-lead mt-5 max-w-3xl">{mod.description}</p>
 
                   <div className="marketing-module-capabilities mt-8">
-                    <h3 className="text-sm font-semibold">Возможности</h3>
+                    <h3 className="text-sm font-semibold">{copy.capabilitiesTitle}</h3>
                     <ul className="mt-3 grid gap-2.5 sm:grid-cols-2">
                       {mod.capabilities.map((cap) => (
                         <li key={cap} className="marketing-check-item">
@@ -253,7 +253,7 @@ export function ModulesPageContent() {
 
                   <div className="marketing-module-meta mt-6">
                     <p className="text-sm">
-                      <span className="font-medium text-foreground">Для кого: </span>
+                      <span className="font-medium text-foreground">{copy.forWhomLabel}: </span>
                       <span className="text-muted-foreground">{mod.forWhom}</span>
                     </p>
 

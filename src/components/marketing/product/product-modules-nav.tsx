@@ -41,7 +41,7 @@ export function ProductModulesNav({ className }: { className?: string }) {
   };
 
   return (
-    <nav className={cn("product-toc", className)} aria-label="Разделы продукта">
+    <nav className={cn("product-toc", className)} aria-label={TOC.ariaLabel}>
       <div className="product-toc-rule" aria-hidden />
       <p className="product-toc-title">{TOC.title}</p>
       <LayoutGroup id="product-toc">

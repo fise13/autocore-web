@@ -4,6 +4,7 @@ import { UserRound } from "lucide-react";
 
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
+import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 type ProfileNameFieldsProps = {
@@ -27,17 +28,18 @@ export function ProfileNameFields({
   lastNameId = "profile-last-name",
   className,
 }: ProfileNameFieldsProps) {
+  const copy = userCopy.auth.login;
   return (
     <div className={cn("grid gap-3 sm:grid-cols-2", className)}>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={firstNameId}>Имя</Label>
+        <Label htmlFor={firstNameId}>{copy.firstNameLabel}</Label>
         <InputGroup>
           <InputGroupInput
             id={firstNameId}
             value={firstName}
             onChange={(event) => onFirstNameChange(event.target.value)}
             autoComplete="given-name"
-            placeholder="Иван"
+            placeholder={copy.firstNamePlaceholder}
             disabled={disabled}
             required
           />
@@ -47,14 +49,14 @@ export function ProfileNameFields({
         </InputGroup>
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={lastNameId}>Фамилия</Label>
+        <Label htmlFor={lastNameId}>{copy.lastNameLabel}</Label>
         <InputGroup>
           <InputGroupInput
             id={lastNameId}
             value={lastName}
             onChange={(event) => onLastNameChange(event.target.value)}
             autoComplete="family-name"
-            placeholder="Иванов"
+            placeholder={copy.lastNamePlaceholder}
             disabled={disabled}
             required
           />

@@ -11,15 +11,36 @@ import { operationCategoryLabel } from "@/lib/accounting/labels";
 import { cn } from "@/lib/utils";
 import { motionStagger } from "@/lib/motion";
 
-type OverviewInsightsProps = {
-  operations: FinancialOperation[];
+export type OverviewInsightsLabels = {
+  dateLocale: "en" | "ru";
+  weeklyTitle: string;
+  weeklyDescription: string;
+  topCategoriesTitle: string;
+  topCategoriesDescription: string;
+  noCategories: string;
+  typeDistributionTitle: string;
+  typeDistributionDescription: string;
+  uncategorized: string;
+  typeLabels: Record<string, string>;
+  categoryLabels?: Record<string, string>;
 };
 
-const TYPE_LABELS: Record<string, string> = {
-  sale: "Продажи",
-  income: "Доходы",
-  expense: "Расходы",
-  refund: "Возвраты",
+const DEFAULT_LABELS: OverviewInsightsLabels = {
+  dateLocale: "ru",
+  weeklyTitle: "Динамика за 7 дней",
+  weeklyDescription: "Чистый поток: доходы/продажи минус расходы.",
+  topCategoriesTitle: "Топ категорий",
+  topCategoriesDescription: "Самые объёмные направления.",
+  noCategories: "Пока нет категорий.",
+  typeDistributionTitle: "Распределение по типам операций",
+  typeDistributionDescription: "Быстрый срез продаж, доходов, расходов и возвратов.",
+  uncategorized: "Без категории",
+  typeLabels: {
+    sale: "Продажи",
+    income: "Доходы",
+    expense: "Расходы",
+    refund: "Возвраты",
+  },
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -29,13 +50,26 @@ const TYPE_COLORS: Record<string, string> = {
   refund: "bg-chart-3",
 };
 
-function categoryChartLabel(name: string): string {
-  if (name === "Без категории") return name;
+type OverviewInsightsProps = {
+  operations: FinancialOperation[];
+  labels?: OverviewInsightsLabels;
+};
+
+function resolveCategoryLabel(
+  name: string,
+  labels: OverviewInsightsLabels,
+): string {
+  if (name === labels.uncategorized || name === "Без категории") return labels.uncategorized;
+  if (labels.categoryLabels?.[name]) return labels.categoryLabels[name];
   return operationCategoryLabel(name);
 }
 
-function buildLast7DaysSeries(operations: FinancialOperation[]) {
+function buildLast7DaysSeries(
+  operations: FinancialOperation[],
+  dateLocale: "en" | "ru",
+) {
   const days = Array.from({ length: 7 }, (_, index) => subDays(new Date(), 6 - index));
+  const localeTag = dateLocale === "en" ? "en-US" : "ru-RU";
   return days.map((day) => {
     const key = day.toDateString();
     const sales = operations
@@ -45,7 +79,7 @@ function buildLast7DaysSeries(operations: FinancialOperation[]) {
       .filter((item) => item.createdAt.toDateString() === key && item.type === "expense")
       .reduce((sum, item) => sum + item.amount, 0);
     return {
-      label: day.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }),
+      label: day.toLocaleDateString(localeTag, { day: "2-digit", month: "2-digit" }),
       net: sales - expenses,
       sales,
       expenses,
@@ -53,7 +87,10 @@ function buildLast7DaysSeries(operations: FinancialOperation[]) {
   });
 }
 
-export function OverviewInsights({ operations }: OverviewInsightsProps) {
+export function OverviewInsights({
+  operations,
+  labels = DEFAULT_LABELS,
+}: OverviewInsightsProps) {
   const { formatMoney } = useAppDisplayCurrency();
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -61,11 +98,14 @@ export function OverviewInsights({ operations }: OverviewInsightsProps) {
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  const weekly = useMemo(() => buildLast7DaysSeries(operations), [operations]);
+  const weekly = useMemo(
+    () => buildLast7DaysSeries(operations, labels.dateLocale),
+    [operations, labels.dateLocale],
+  );
   const maxAbsNet = Math.max(1, ...weekly.map((item) => Math.abs(item.net)));
 
   const byCategory = operations.reduce<Record<string, number>>((acc, item) => {
-    const key = (item.category?.trim() || "Без категории").slice(0, 32);
+    const key = (item.category?.trim() || labels.uncategorized).slice(0, 32);
     acc[key] = (acc[key] ?? 0) + item.amount;
     return acc;
   }, {});
@@ -87,8 +127,8 @@ export function OverviewInsights({ operations }: OverviewInsightsProps) {
           <div className="flex items-center gap-2">
             <BarChart3 className="size-4 text-primary" />
             <div>
-              <CardTitle>Динамика за 7 дней</CardTitle>
-              <CardDescription>Чистый поток: доходы/продажи минус расходы.</CardDescription>
+              <CardTitle>{labels.weeklyTitle}</CardTitle>
+              <CardDescription>{labels.weeklyDescription}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -128,14 +168,14 @@ export function OverviewInsights({ operations }: OverviewInsightsProps) {
           <div className="flex items-center gap-2">
             <Tags className="size-4 text-primary" />
             <div>
-              <CardTitle>Топ категорий</CardTitle>
-              <CardDescription>Самые объёмные направления.</CardDescription>
+              <CardTitle>{labels.topCategoriesTitle}</CardTitle>
+              <CardDescription>{labels.topCategoriesDescription}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-3 pt-4">
           {topCategories.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Пока нет категорий.</p>
+            <p className="text-sm text-muted-foreground">{labels.noCategories}</p>
           ) : (
             topCategories.map(([name, amount], index) => (
               <div
@@ -144,7 +184,7 @@ export function OverviewInsights({ operations }: OverviewInsightsProps) {
                 style={{ animationDelay: motionStagger(index, 65) }}
               >
                 <div className="flex items-center justify-between gap-2 text-sm">
-                  <span className="truncate font-medium">{categoryChartLabel(name)}</span>
+                  <span className="truncate font-medium">{resolveCategoryLabel(name, labels)}</span>
                   <span className="shrink-0 tabular-nums text-muted-foreground">
                     {formatMoney(amount)}
                   </span>
@@ -172,8 +212,8 @@ export function OverviewInsights({ operations }: OverviewInsightsProps) {
           <div className="flex items-center gap-2">
             <PieChart className="size-4 text-primary" />
             <div>
-              <CardTitle>Распределение по типам операций</CardTitle>
-              <CardDescription>Быстрый срез продаж, доходов, расходов и возвратов.</CardDescription>
+              <CardTitle>{labels.typeDistributionTitle}</CardTitle>
+              <CardDescription>{labels.typeDistributionDescription}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -185,7 +225,7 @@ export function OverviewInsights({ operations }: OverviewInsightsProps) {
               style={{ animationDelay: motionStagger(index, 60) }}
             >
               <div className="flex items-center justify-between text-sm">
-                <span className="font-medium">{TYPE_LABELS[type] ?? type}</span>
+                <span className="font-medium">{labels.typeLabels[type] ?? type}</span>
                 <span className="tabular-nums text-muted-foreground">
                   {formatMoney(amount)}
                 </span>

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import {
   ReactNode,
   createContext,
@@ -161,6 +162,8 @@ type WorkspaceContextValue = {
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const isWarehouseRoute = pathname === "/warehouse";
   const [search, setSearch] = useState("");
   const [searchSuggestions, setSearchSuggestionsState] = useState<WorkspaceSearchSuggestion[]>([]);
 
@@ -391,6 +394,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
       const isSaveKey = event.code === "KeyS" || event.key.toLowerCase() === "s";
       if (isSaveKey) {
+        // Manual save (⌘S) is warehouse-only; other grids rely on autosave.
+        if (!isWarehouseRoute) return;
         event.preventDefault();
         event.stopPropagation();
         void triggerSync().catch((error) => {
@@ -417,7 +422,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [triggerSync]);
+  }, [isWarehouseRoute, triggerSync]);
 
   const registerCloudPushHandler = useCallback((handler: (() => Promise<void>) | null) => {
     cloudPushHandlerRef.current = handler;

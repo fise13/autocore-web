@@ -1,5 +1,6 @@
 "use client";
 
+import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import { useMarketingPages } from "@/components/marketing/content/use-marketing-pages";
 import { cn } from "@/lib/utils";
 
@@ -8,14 +9,15 @@ type ProductSecuritySliceProps = {
 };
 
 export function ProductSecuritySlice({ className }: ProductSecuritySliceProps) {
+  const chrome = useDemoChrome();
   const audit = useMarketingPages().security.auditLog.slice(0, 5);
 
   return (
     <div className={cn("product-security-slice", className)}>
       <div className="product-security-slice-header">
         <div>
-          <p className="text-sm font-medium">Журнал активности</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">Кто · что · когда · в рамках компании</p>
+          <p className="text-sm font-medium">{chrome.security.activityLog}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{chrome.security.whoWhatWhen}</p>
         </div>
         <p className="text-[10px] font-medium tracking-wide text-primary uppercase">Realtime · RBAC</p>
       </div>

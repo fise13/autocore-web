@@ -12,15 +12,21 @@ import {
   UserRound,
 } from "lucide-react";
 
-import { WorkOrder, WorkOrderStatus } from "@/domain/work-order";
+import { WorkOrder, WorkOrderAssigneeRole, WorkOrderStatus } from "@/domain/work-order";
 import { DomainEvent } from "@/domain/domain-event";
 import { WorkOrderDocument } from "@/domain/work-order";
 import { FinancialOperation } from "@/domain/financial-operation";
 import { PayrollTransaction } from "@/domain/payroll-transaction";
 import { CompanyEmployee } from "@/domain/rbac";
 import { WorkOrderClaimBanner } from "@/components/work-orders/work-order-claim-banner";
-import { WorkOrderFinancePanel } from "@/components/work-orders/work-order-finance-panel";
-import { WorkOrderDocumentsPanel } from "@/components/work-orders/work-order-documents-panel";
+import {
+  WorkOrderFinancePanel,
+  type WorkOrderFinancePanelLabels,
+} from "@/components/work-orders/work-order-finance-panel";
+import {
+  WorkOrderDocumentsPanel,
+  type WorkOrderDocumentsPanelLabels,
+} from "@/components/work-orders/work-order-documents-panel";
 import { AnimatedTabsPanel } from "@/components/ui/animated-tabs-panel";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -28,7 +34,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 import { formatMotorLineLabel } from "@/lib/motors/format-motor-display-name";
-import { formatWorkOrderLabel, workOrderAssigneeSummary } from "@/lib/work-order/work-order-display";
+import {
+  formatWorkOrderLabel,
+  laborLineAssigneeLabels,
+  workOrderAssigneeSummary,
+  workOrderDisplayNumber,
+} from "@/lib/work-order/work-order-display";
 import {
   eventTypeLabel,
   STATUS_HINTS,
@@ -36,8 +47,114 @@ import {
   statusTone,
   transitionLabel,
 } from "@/components/work-orders/work-order-copy";
-import { laborLineLabel, money } from "@/components/work-orders/work-order-utils";
+import { money } from "@/components/work-orders/work-order-utils";
 import type { DocumentSlug } from "@/lib/documents/document-types";
+import { laborLineTotal, normalizeLaborPricingMode } from "@/lib/work-order/labor-pricing";
+
+export type WorkOrderDetailPanelLabels = {
+  dateLocale: "en" | "ru";
+  orderTitle: (number: number) => string;
+  assignees: string;
+  lineSummary: (labor: number, parts: number, motors: number) => string;
+  edit: string;
+  client: string;
+  vehicle: string;
+  km: (n: string) => string;
+  comment: string;
+  tabLines: string;
+  tabFinance: string;
+  tabDocuments: string;
+  laborTitle: string;
+  partsTitle: string;
+  motorsTitle: string;
+  laborEmpty: string;
+  partsEmpty: string;
+  motorsEmpty: string;
+  adhocTag: string;
+  install: string;
+  sale: string;
+  discount: (amount: string) => string;
+  systemHistory: (count: number) => string;
+  noEvents: string;
+  eventPending: string;
+  eventReady: string;
+  noAssignee: string;
+  hoursAt: (hours: number, price: string, total: string) => string;
+  fixedPrice: (total: string) => string;
+  roleLabels: Record<WorkOrderAssigneeRole, string>;
+  status: Record<WorkOrderStatus, string>;
+  statusHint: Record<WorkOrderStatus, string>;
+  documents: WorkOrderDocumentsPanelLabels;
+  finance: WorkOrderFinancePanelLabels;
+};
+
+const DEFAULT_LABELS: WorkOrderDetailPanelLabels = {
+  dateLocale: "ru",
+  orderTitle: (number) => `Заказ-наряд №${number}`,
+  assignees: "Исполнители:",
+  lineSummary: (labor, parts, motors) => `${labor} работ · ${parts} запч. · ${motors} двиг.`,
+  edit: "Редактировать",
+  client: "Клиент",
+  vehicle: "Автомобиль",
+  km: (n) => `${n} км`,
+  comment: "Комментарий:",
+  tabLines: "Состав заказа",
+  tabFinance: "Финансы",
+  tabDocuments: "Документы",
+  laborTitle: "Работы",
+  partsTitle: "Запчасти",
+  motorsTitle: "Двигатели",
+  laborEmpty: "Работы не указаны",
+  partsEmpty: "Запчасти не указаны",
+  motorsEmpty: "Двигатели не указаны",
+  adhocTag: " · разово",
+  install: "установка",
+  sale: "продажа",
+  discount: (amount) => `Скидка: ${amount}`,
+  systemHistory: (count) => `Системная история (${count})`,
+  noEvents: "Событий пока нет",
+  eventPending: "ожидание",
+  eventReady: "готово",
+  noAssignee: "без исполнителя",
+  hoursAt: (hours, price, total) => `${hours} ч × ${price} = ${total}`,
+  fixedPrice: (total) => total,
+  roleLabels: {
+    mechanic: "Механик",
+    diagnostician: "Диагност",
+    manager: "Менеджер",
+  },
+  status: { ...STATUS_LABELS },
+  statusHint: { ...STATUS_HINTS },
+  documents: {
+    dateLocale: "ru",
+    autoHint: "Документы формируются автоматически при создании и закрытии заказа.",
+    refresh: "Обновить PDF",
+    generating: "Формирование…",
+    pdfGenerating: "PDF формируются…",
+    noneForStatus: "Для текущего статуса заказа нет клиентских PDF.",
+    pending: "формируется…",
+    ready: "готов",
+    preview: "Предпросмотр",
+    openPdfFailed: "Не удалось открыть PDF",
+    downloadPdfFailed: "Не удалось скачать PDF",
+    refreshFailed: "Не удалось обновить документы",
+    savedCount: (count) => `Сохранено документов: ${count}`,
+    updated: (date) => ` · обновлено ${date}`,
+  },
+  finance: {
+    notReady: "Финансы и зарплаты появятся после завершения заказ-наряда (статус «Готов»).",
+    income: "Доход",
+    expenses: "Расходы",
+    payroll: "Зарплата механикам",
+    operationsTitle: "Операции в бухгалтерии",
+    openAccounting: "Открыть бухгалтерию",
+    opsProcessing: "Операции ещё обрабатываются сервером",
+    opsAfterComplete: "Операции появятся после завершения заказа",
+    payrollTitle: "Начисления зарплаты",
+    payrollEmpty:
+      "Начислений зарплаты пока нет. Они появятся после завершения заказ-наряда с работами и исполнителями.",
+  },
+};
 
 type WorkOrderDetailPanelProps = {
   order: WorkOrder;
@@ -57,6 +174,7 @@ type WorkOrderDetailPanelProps = {
   documentsDemoMode?: boolean;
   onDemoDocumentPreview?: (slug: DocumentSlug) => void;
   onDemoDocumentDownload?: (slug: DocumentSlug) => void | Promise<void>;
+  labels?: WorkOrderDetailPanelLabels;
 };
 
 type DetailTab = "lines" | "finance" | "documents";
@@ -78,11 +196,13 @@ export function WorkOrderDetailPanel({
   documentsDemoMode = false,
   onDemoDocumentPreview,
   onDemoDocumentDownload,
+  labels = DEFAULT_LABELS,
 }: WorkOrderDetailPanelProps) {
   const [showSystemLog, setShowSystemLog] = useState(false);
   const [activeTab, setActiveTab] = useState<DetailTab>(preferredTab ?? "lines");
   const [tabEpoch, setTabEpoch] = useState(0);
   const assignees = workOrderAssigneeSummary(order, employees, payroll);
+  const mileageLocale = labels.dateLocale === "en" ? "en-US" : "ru-RU";
 
   useEffect(() => {
     setActiveTab(preferredTab ?? "lines");
@@ -94,34 +214,42 @@ export function WorkOrderDetailPanel({
     setTabEpoch((current) => current + 1);
   }
 
+  const orderNumber = workOrderDisplayNumber(order, displayIndex);
+  const orderTitle =
+    orderNumber > 0 ? labels.orderTitle(orderNumber) : formatWorkOrderLabel(order, displayIndex);
+
   return (
     <div className="flex h-full min-h-0 flex-col animate-autocore-page-enter motion-reduce:animate-none">
       <header className="border-b bg-card/60 px-6 py-5 backdrop-blur-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-semibold tracking-tight">{formatWorkOrderLabel(order, displayIndex)}</h2>
+              <h2 className="text-xl font-semibold tracking-tight">{orderTitle}</h2>
               <span
                 className={cn(
                   "rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset",
                   statusTone(order.status),
                 )}
               >
-                {STATUS_LABELS[order.status]}
+                {labels.status[order.status]}
               </span>
             </div>
-            <p className="text-sm text-muted-foreground">{STATUS_HINTS[order.status]}</p>
+            <p className="text-sm text-muted-foreground">{labels.statusHint[order.status]}</p>
             {assignees ? (
               <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <UserRound className="size-3.5 shrink-0" />
-                <span className="font-medium text-foreground">Исполнители:</span> {assignees}
+                <span className="font-medium text-foreground">{labels.assignees}</span> {assignees}
               </p>
             ) : null}
           </div>
           <div className="text-right">
             <p className="text-2xl font-semibold tabular-nums">{money(order.pricing.grandTotal)}</p>
             <p className="text-xs text-muted-foreground">
-              {order.laborLines.length} работ · {order.partLines.length} запч. · {order.motorLines.length} двиг.
+              {labels.lineSummary(
+                order.laborLines.length,
+                order.partLines.length,
+                order.motorLines.length,
+              )}
             </p>
           </div>
         </div>
@@ -134,7 +262,7 @@ export function WorkOrderDetailPanel({
           <div className="mt-4 flex flex-wrap gap-2">
             {onEdit ? (
               <Button type="button" variant="outline" size="sm" disabled={saving} onClick={onEdit}>
-                Редактировать
+                {labels.edit}
               </Button>
             ) : null}
             {nextStatuses.map((status, index) => (
@@ -154,18 +282,28 @@ export function WorkOrderDetailPanel({
       </header>
 
       <div className="grid shrink-0 gap-3 border-b bg-muted/10 px-6 py-4 sm:grid-cols-2">
-        <InfoTile icon={User} label="Клиент" value={order.clientName ?? "—"} hint={order.clientPhone} />
+        <InfoTile
+          icon={User}
+          label={labels.client}
+          value={order.clientName ?? "—"}
+          hint={order.clientPhone}
+          showPhoneIcon
+        />
         <InfoTile
           icon={Car}
-          label="Автомобиль"
+          label={labels.vehicle}
           value={order.vehicleLabel ?? ([order.licensePlate, order.vin].filter(Boolean).join(" · ") || "—")}
-          hint={order.mileage ? `${order.mileage.toLocaleString("ru-RU")} км` : undefined}
+          hint={
+            order.mileage
+              ? labels.km(order.mileage.toLocaleString(mileageLocale))
+              : undefined
+          }
         />
       </div>
 
       {order.comment ? (
         <div className="border-b px-6 py-3 text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">Комментарий: </span>
+          <span className="font-medium text-foreground">{labels.comment} </span>
           {order.comment}
         </div>
       ) : null}
@@ -174,11 +312,11 @@ export function WorkOrderDetailPanel({
         <Tabs value={activeTab} onValueChange={onTabChange}>
           <TabsList className="mb-4 flex-wrap">
             <TabsTrigger value="lines" className="transition-all duration-200">
-              Состав заказа
+              {labels.tabLines}
             </TabsTrigger>
             <TabsTrigger value="finance" className="gap-1.5 transition-all duration-200">
               <Banknote className="size-3.5" />
-              Финансы
+              {labels.tabFinance}
               {operations.length > 0 ? (
                 <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
                   {operations.length}
@@ -187,7 +325,7 @@ export function WorkOrderDetailPanel({
             </TabsTrigger>
             <TabsTrigger value="documents" className="gap-1.5 transition-all duration-200">
               <FileText className="size-3.5" />
-              Документы
+              {labels.tabDocuments}
               {documents.length > 0 ? (
                 <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
                   {documents.length}
@@ -199,31 +337,35 @@ export function WorkOrderDetailPanel({
           <TabsContent value="lines" className="mt-0">
             <AnimatedTabsPanel active={activeTab === "lines"} epoch={tabEpoch} className="space-y-4">
               <LineGroup
-                title="Работы"
+                title={labels.laborTitle}
                 total={order.pricing.laborTotal}
-                empty="Работы не указаны"
-                lines={order.laborLines.map((line) => laborLineLabel(line, employees))}
+                empty={labels.laborEmpty}
+                lines={order.laborLines.map((line) => formatLaborLine(line, employees, labels))}
               />
               <LineGroup
-                title="Запчасти"
+                title={labels.partsTitle}
                 total={order.pricing.partsTotal}
-                empty="Запчасти не указаны"
+                empty={labels.partsEmpty}
                 lines={order.partLines.map((line) => {
-                  const tag = line.source === "adhoc" || !line.itemId ? " · разово" : "";
+                  const tag = line.source === "adhoc" || !line.itemId ? labels.adhocTag : "";
                   return `${line.name}${tag} × ${line.quantity} = ${money(line.quantity * line.unitPrice)}`;
                 })}
               />
               <LineGroup
-                title="Двигатели"
+                title={labels.motorsTitle}
                 total={order.pricing.motorsTotal}
-                empty="Двигатели не указаны"
+                empty={labels.motorsEmpty}
                 lines={order.motorLines.map(
                   (line) =>
-                    `${formatMotorLineLabel(line, { includeSerial: true })} · ${line.outcome === "install" ? "установка" : "продажа"} · ${money(line.unitPrice)}`,
+                    `${formatMotorLineLabel(line, { includeSerial: true })} · ${
+                      line.outcome === "install" ? labels.install : labels.sale
+                    } · ${money(line.unitPrice)}`,
                 )}
               />
               {order.pricing.discount > 0 ? (
-                <p className="text-sm text-muted-foreground">Скидка: {money(order.pricing.discount)}</p>
+                <p className="text-sm text-muted-foreground">
+                  {labels.discount(money(order.pricing.discount))}
+                </p>
               ) : null}
             </AnimatedTabsPanel>
           </TabsContent>
@@ -235,6 +377,7 @@ export function WorkOrderDetailPanel({
                 operations={operations}
                 payroll={payroll}
                 employees={employees}
+                labels={labels.finance}
               />
             </AnimatedTabsPanel>
           </TabsContent>
@@ -250,6 +393,7 @@ export function WorkOrderDetailPanel({
                 demoMode={documentsDemoMode}
                 onDemoPreview={onDemoDocumentPreview}
                 onDemoDownload={onDemoDocumentDownload}
+                labels={labels.documents}
               />
             </AnimatedTabsPanel>
           </TabsContent>
@@ -263,14 +407,14 @@ export function WorkOrderDetailPanel({
           >
             <span className="flex items-center gap-2">
               <History className="size-3.5" />
-              Системная история ({events.length})
+              {labels.systemHistory(events.length)}
             </span>
             <ChevronDown className={cn("size-4 transition-transform duration-200", showSystemLog && "rotate-180")} />
           </button>
           {showSystemLog ? (
             <ul className="mt-2 space-y-1 rounded-lg border bg-card p-2 animate-autocore-fade-in-up motion-reduce:animate-none">
               {events.length === 0 ? (
-                <li className="px-2 py-3 text-xs text-muted-foreground">Событий пока нет</li>
+                <li className="px-2 py-3 text-xs text-muted-foreground">{labels.noEvents}</li>
               ) : (
                 events.slice(0, 12).map((event) => (
                   <li
@@ -284,9 +428,9 @@ export function WorkOrderDetailPanel({
                       )}
                     >
                       {event.status === "pending"
-                        ? "ожидание"
+                        ? labels.eventPending
                         : event.status === "processed"
-                          ? "готово"
+                          ? labels.eventReady
                           : event.status}
                     </span>
                   </li>
@@ -321,16 +465,34 @@ export function WorkOrderEmptyPanel({ canEdit, onCreateNew }: { canEdit: boolean
   );
 }
 
+function formatLaborLine(
+  line: WorkOrder["laborLines"][number],
+  employees: CompanyEmployee[],
+  labels: WorkOrderDetailPanelLabels,
+) {
+  const assigneeNames = laborLineAssigneeLabels(line, employees);
+  const assignee = assigneeNames.length > 0 ? assigneeNames.join(", ") : labels.noAssignee;
+  const total = laborLineTotal(line);
+  const mode = normalizeLaborPricingMode(line.pricingMode);
+  const pricePart =
+    mode === "fixed"
+      ? labels.fixedPrice(money(total))
+      : labels.hoursAt(line.hours, money(line.unitPrice), money(total));
+  return `${line.title} · ${pricePart} · ${assignee} (${labels.roleLabels[line.assigneeRole]})`;
+}
+
 function InfoTile({
   icon: Icon,
   label,
   value,
   hint,
+  showPhoneIcon = false,
 }: {
   icon: typeof User;
   label: string;
   value: string;
   hint?: string;
+  showPhoneIcon?: boolean;
 }) {
   return (
     <div className="flex gap-3 rounded-xl border bg-card p-3.5">
@@ -342,7 +504,7 @@ function InfoTile({
         <p className="line-clamp-2 font-medium">{value}</p>
         {hint ? (
           <p className="mt-0.5 flex items-center gap-1 line-clamp-1 text-xs text-muted-foreground">
-            {label === "Клиент" ? <Phone className="size-3 shrink-0" /> : null}
+            {showPhoneIcon ? <Phone className="size-3 shrink-0" /> : null}
             {hint}
           </p>
         ) : null}

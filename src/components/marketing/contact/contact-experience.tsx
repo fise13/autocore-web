@@ -75,11 +75,12 @@ function openProductDemo() {
 }
 
 export function ContactExperience() {
-  const copy = useMarketingPages().contact;
+  const pages = useMarketingPages();
+  const copy = pages.contact;
 
   return (
     <div className="contact-page">
-      <section className="contact-panel contact-panel-hero" aria-label="Связаться">
+      <section className="contact-panel contact-panel-hero" aria-label={pages.breadcrumbs.contact}>
         <div className="exp-section-inner contact-panel-inner">
           <HeroReveal delay={0} duration={0.72} y={22}>
             <h1 className="exp-display contact-hero-title">{copy.hero.title}</h1>
@@ -95,7 +96,7 @@ export function ContactExperience() {
         <div className="exp-section-inner contact-panel-inner contact-intents-inner">
           <ScrollReveal margin="-80px">
             <h2 id="contact-intents-heading" className="sr-only">
-              Выберите тему обращения
+              {copy.intentsHeading}
             </h2>
           </ScrollReveal>
 
@@ -125,7 +126,7 @@ export function ContactExperience() {
         <div className="exp-section-inner contact-panel-inner contact-methods-inner">
           <ScrollReveal margin="-80px">
             <h2 id="contact-methods-heading" className="sr-only">
-              Способы связи
+              {copy.methodsHeading}
             </h2>
           </ScrollReveal>
 

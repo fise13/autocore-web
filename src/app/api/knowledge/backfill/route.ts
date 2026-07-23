@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { backfillFromWorkOrders } from "@/infrastructure/firestore/admin/knowledge-admin";
+import { ensureKnowledgeHistorySeeded } from "@/infrastructure/firestore/admin/knowledge-admin";
 import {
   DocumentAccessError,
   verifyDocumentAccess,
@@ -12,9 +12,15 @@ export const maxDuration = 120;
 export async function POST(request: NextRequest) {
   try {
     const access = await verifyDocumentAccess(request);
-    const body = (await request.json().catch(() => ({}))) as { limit?: number };
-    const processed = await backfillFromWorkOrders(access.companyId, body.limit ?? 200);
-    return NextResponse.json({ processed });
+    const body = (await request.json().catch(() => ({}))) as {
+      limit?: number;
+      force?: boolean;
+    };
+    const result = await ensureKnowledgeHistorySeeded(access.companyId, {
+      limit: body.limit ?? 200,
+      force: Boolean(body.force),
+    });
+    return NextResponse.json(result);
   } catch (error) {
     if (error instanceof DocumentAccessError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

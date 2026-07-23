@@ -2,6 +2,7 @@
 
 import { Car, FileText, Wrench } from "lucide-react";
 
+import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import { useLiveSequence } from "@/components/marketing/experience/motion/use-live-sequence";
 import { ProductWindow } from "@/components/marketing/experience/ui/product-window";
 import { Badge } from "@/components/ui/badge";
@@ -16,11 +17,12 @@ type VehicleCardMockProps = {
 };
 
 export function VehicleCardMock({ className, paused, externalStep }: VehicleCardMockProps) {
+  const chrome = useDemoChrome();
   const { step: autoStep } = useLiveSequence(STEPS, { intervalMs: 2600, paused: paused || !!externalStep });
   const step = externalStep ?? autoStep;
 
   return (
-    <ProductWindow title="Автомобиль · KMHGC41DPEU123456" live className={className}>
+    <ProductWindow title={chrome.vehicle.title} live className={className}>
       <div className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-start gap-2.5">
@@ -34,37 +36,39 @@ export function VehicleCardMock({ className, paused, externalStep }: VehicleCard
             </div>
             <div>
               <p className="text-sm font-semibold">Hyundai Sonata NF</p>
-              <p className="exp-mock-mono text-[10px] text-muted-foreground">2011 · 2.4L · серый</p>
+              <p className="exp-mock-mono text-[10px] text-muted-foreground">
+                {chrome.vehicle.specLine(chrome.common.gray)}
+              </p>
             </div>
           </div>
           <Badge variant="outline" className="font-normal">
-            {step === "scan" ? "Скан…" : "В базе"}
+            {step === "scan" ? chrome.vehicle.scanning : chrome.vehicle.inDatabase}
           </Badge>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
           <MetaCell label="VIN" value="KMHGC41…" highlight={step === "scan"} />
-          <MetaCell label="Пробег" value="142 800 км" />
+          <MetaCell label={chrome.vehicle.mileage} value={chrome.vehicle.mileageValue} />
         </div>
 
         <div className="flex flex-col gap-1.5">
           <LinkedRow
             icon={Wrench}
-            label="Наряд НЗ-2026-0142"
-            sub="Замена G4KC"
+            label={chrome.vehicle.orderLink}
+            sub={chrome.vehicle.engineSwap}
             active={step === "link" || step === "history"}
           />
           <LinkedRow
             icon={FileText}
-            label="Гарантия G4KC"
-            sub="180 дней"
+            label={chrome.vehicle.warrantyG4kc}
+            sub={chrome.common.days180}
             active={step === "history"}
           />
         </div>
 
         {step === "history" ? (
           <p className="text-center text-[10px] font-medium text-emerald-600">
-            История ремонта доступна цеху и офису
+            {chrome.vehicle.historyReady}
           </p>
         ) : null}
       </div>

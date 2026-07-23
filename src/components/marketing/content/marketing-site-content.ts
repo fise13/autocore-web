@@ -7,7 +7,7 @@ export const marketingSiteContent = {
   cta: {
     title: "Проверьте на демо.",
     description: "Живая компания: от склада до гарантии без Excel и ночных сверок.",
-    primary: "Открыть демо",
+    primary: "Демо",
     secondary: "Смотреть модули",
   },
   product: {
@@ -207,7 +207,7 @@ export const marketingSiteContent = {
       note: "за компанию",
     },
     cta: {
-      primary: "Открыть демо",
+      primary: "Демо",
       buy: "Купить",
       trialDays: "14 дней бесплатно",
       noCard: "Без карты",
@@ -220,7 +220,7 @@ export const marketingSiteContent = {
     },
     closing: {
       line: "Полный продукт с первого дня.",
-      button: "Открыть демо",
+      button: "Демо",
     },
     included: {
       title: "Всё включено.",
@@ -401,7 +401,7 @@ export const marketingSiteContent = {
     closing: {
       line: "Остались вопросы?",
       subline: "Откройте демо или напишите нам в любое время.",
-      button: "Открыть демо",
+      button: "Демо",
     },
   },
   download: {

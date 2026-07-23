@@ -1,4 +1,4 @@
-import { DocumentContext } from "@/lib/documents/document-context";
+import { DocumentContext, resolveDocumentUi } from "@/lib/documents/document-context";
 import { documentPrimaryMotor } from "@/lib/documents/document-helpers";
 
 import { DocumentPdfEmptyState } from "../shared/document-pdf-empty-state";
@@ -10,13 +10,14 @@ type EngineWaybillDocumentProps = {
 
 export function EngineWaybillDocument({ context }: EngineWaybillDocumentProps) {
   const motorLine = documentPrimaryMotor(context);
+  const ui = resolveDocumentUi(context.ui);
 
   if (!motorLine) {
     return (
       <DocumentPdfEmptyState
         context={context}
-        title="Накладная на двигатель"
-        message="Для этой операции двигатель не указан."
+        title={ui.emptyWaybillTitle}
+        message={ui.emptyWaybillMessage}
       />
     );
   }

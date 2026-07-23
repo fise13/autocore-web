@@ -1,11 +1,12 @@
 "use client";
 
 import type * as React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { motion, useInView, useReducedMotion } from "motion/react";
 import { Bar, BarChart, Rectangle, XAxis } from "recharts";
 
+import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import { FeedList } from "@/components/marketing/ui/feed-list";
 import { useSimulatedFeed } from "@/components/marketing/hooks/use-simulated-feed";
 import {
@@ -23,33 +24,15 @@ import {
 } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
 
-const STATS = [
-  { label: "Выручка", value: "$2.4M" },
-  { label: "Наряды", value: "12" },
-  { label: "Склад", value: "4 892" },
-  { label: "Онлайн", value: "6" },
+const CHART_VALUES = [
+  { income: 4200, expense: 1800 },
+  { income: 5100, expense: 2200 },
+  { income: 3800, expense: 1600 },
+  { income: 6200, expense: 2400 },
+  { income: 4900, expense: 2100 },
+  { income: 2800, expense: 900 },
+  { income: 1900, expense: 600 },
 ] as const;
-
-const CHART_ROWS = [
-  { day: "Пн", income: 4200, expense: 1800 },
-  { day: "Вт", income: 5100, expense: 2200 },
-  { day: "Ср", income: 3800, expense: 1600 },
-  { day: "Чт", income: 6200, expense: 2400 },
-  { day: "Пт", income: 4900, expense: 2100 },
-  { day: "Сб", income: 2800, expense: 900 },
-  { day: "Вс", income: 1900, expense: 600 },
-] as const;
-
-const EMPTY_CHART_ROWS = CHART_ROWS.map((row) => ({
-  day: row.day,
-  income: 0,
-  expense: 0,
-}));
-
-const chartConfig = {
-  income: { label: "Доход", color: "var(--chart-1)" },
-  expense: { label: "Расход", color: "var(--chart-3)" },
-} satisfies ChartConfig;
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -66,28 +49,65 @@ type MissionControlMockProps = {
 };
 
 export function MissionControlMock({ className, layout = "full" }: MissionControlMockProps) {
+  const chrome = useDemoChrome();
   const reduced = useReducedMotion();
   const rootRef = useRef<HTMLDivElement>(null);
   const inView = useInView(rootRef, { once: true, amount: 0.35 });
   const play = reduced || inView;
   const events = useSimulatedFeed(3400).slice(0, 3);
   const showActivity = layout === "full";
+
+  const stats = useMemo(
+    () =>
+      [
+        { label: chrome.missionControl.revenue, value: "$2.4M" },
+        { label: chrome.missionControl.orders, value: "12" },
+        { label: chrome.missionControl.warehouse, value: "4 892" },
+        { label: chrome.missionControl.online, value: "6" },
+      ] as const,
+    [chrome.missionControl],
+  );
+
+  const chartRows = useMemo(
+    () =>
+      CHART_VALUES.map((row, index) => ({
+        day: chrome.weekdays[index],
+        income: row.income,
+        expense: row.expense,
+      })),
+    [chrome.weekdays],
+  );
+
+  const emptyChartRows = useMemo(
+    () => chartRows.map((row) => ({ day: row.day, income: 0, expense: 0 })),
+    [chartRows],
+  );
+
+  const chartConfig = useMemo(
+    () =>
+      ({
+        income: { label: chrome.missionControl.income, color: "var(--chart-1)" },
+        expense: { label: chrome.missionControl.expense, color: "var(--chart-3)" },
+      }) satisfies ChartConfig,
+    [chrome.missionControl.expense, chrome.missionControl.income],
+  );
+
   const [chartData, setChartData] = useState(() =>
-    reduced ? [...CHART_ROWS] : [...EMPTY_CHART_ROWS],
+    reduced ? [...chartRows] : [...emptyChartRows],
   );
 
   useEffect(() => {
     if (!play) return;
     if (reduced) {
-      setChartData([...CHART_ROWS]);
+      setChartData([...chartRows]);
       return;
     }
-    setChartData([...EMPTY_CHART_ROWS]);
+    setChartData([...emptyChartRows]);
     const frame = window.requestAnimationFrame(() => {
-      setChartData([...CHART_ROWS]);
+      setChartData([...chartRows]);
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [play, reduced]);
+  }, [play, reduced, chartRows, emptyChartRows]);
 
   return (
     <div ref={rootRef} className={cn("flex flex-col gap-3", className)}>
@@ -95,12 +115,12 @@ export function MissionControlMock({ className, layout = "full" }: MissionContro
         <p className="text-sm font-medium">Mission Control</p>
         <Badge variant="outline" className="gap-1 font-normal text-xs">
           <AlertTriangle className="size-3 text-amber-600 dark:text-amber-400" aria-hidden />
-          3 алерта
+          {chrome.missionControl.alerts}
         </Badge>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {STATS.map((stat, index) => (
+        {stats.map((stat, index) => (
           <Card key={stat.label} className="shadow-none dark:ring-0">
             <CardHeader className="pb-0">
               <CardTitle className="font-normal text-muted-foreground text-xs">{stat.label}</CardTitle>
@@ -121,7 +141,10 @@ export function MissionControlMock({ className, layout = "full" }: MissionContro
 
       <div className="grid gap-3 lg:grid-cols-2">
         <McPanel className={cn("shadow-none dark:ring-0", showActivity ? "" : "lg:col-span-2")}>
-          <McPanelHeader title="Доход и расход" description="Операции за 7 дней" />
+          <McPanelHeader
+            title={chrome.missionControl.incomeExpense}
+            description={chrome.missionControl.ops7days}
+          />
           <McPanelBody>
             <ChartContainer
               className={cn("w-full", showActivity ? "aspect-[5/3] max-h-44" : "aspect-[2/1] max-h-36")}
@@ -163,7 +186,11 @@ export function MissionControlMock({ className, layout = "full" }: MissionContro
 
         {showActivity ? (
           <McPanel className="shadow-none dark:ring-0">
-            <McPanelHeader title="Активность" description="Операционные события" bordered />
+            <McPanelHeader
+              title={chrome.missionControl.activity}
+              description={chrome.missionControl.opsEvents}
+              bordered
+            />
             <McPanelBody className="pt-2">
               <FeedList events={events} compact minimal />
             </McPanelBody>

@@ -180,54 +180,123 @@ export async function processEvent(companyId: string, eventId: string): Promise<
 }
 
 /**
- * Seed patterns from historical completed work orders — lets a company that
- * enables the knowledge engine get useful suggestions immediately instead of
- * waiting for new activity.
+ * Seed patterns from historical completed/delivered work orders — lets a company
+ * that enables Pro get useful suggestions immediately instead of waiting for
+ * new activity.
  */
 export async function backfillFromWorkOrders(companyId: string, limit = 200): Promise<number> {
   const normalizedCompanyId = normalizeCompanyId(companyId);
-  const snap = await companyRef(normalizedCompanyId)
-    .collection("workOrders")
-    .where("status", "==", "completed")
-    .limit(Math.max(limit, 1))
-    .get();
-
+  const perStatus = Math.max(Math.ceil(limit / 2), 1);
+  const seen = new Set<string>();
   let processedCount = 0;
-  for (const doc of snap.docs) {
-    const order = mapAdminWorkOrder(doc.id, doc.data() as Record<string, unknown>);
-    const partSkus: string[] = [];
-    const partNames: Record<string, string> = {};
-    for (const line of order.partLines) {
-      const key = line.sku?.trim() || line.id;
-      partSkus.push(key);
-      partNames[key] = line.name;
-    }
-    const mechanicIds = [...new Set(order.laborLines.flatMap((line) => line.assigneeIds ?? []))];
-    const engineCode = order.motorLines[0]?.engineCode;
-    const brandName = order.motorLines[0]?.brandName;
 
-    const draft = fromWorkOrderCompleted({
-      companyId: normalizedCompanyId,
-      workOrderId: order.id,
-      actorUserId: order.updatedByUserId ?? order.createdByUserId,
-      clientId: order.clientId,
-      vehicleId: order.vehicleId,
-      mechanicIds,
-      engineCode,
-      brandName,
-      partSkus,
-      partNames,
-      laborTitles: order.laborLines.map((line) => line.title),
-    });
+  for (const status of ["completed", "delivered"] as const) {
+    const snap = await companyRef(normalizedCompanyId)
+      .collection("workOrders")
+      .where("status", "==", status)
+      .limit(perStatus)
+      .get();
 
-    const ops = applyFactToPatterns({ ...draft, id: `backfill:${order.id}`, createdAt: order.completedAt ?? order.updatedAt });
-    if (ops.length > 0) {
-      await applyOpsToPatterns(normalizedCompanyId, ops);
-      processedCount += 1;
+    for (const doc of snap.docs) {
+      if (seen.has(doc.id)) continue;
+      seen.add(doc.id);
+      if (processedCount >= limit) break;
+
+      const order = mapAdminWorkOrder(doc.id, doc.data() as Record<string, unknown>);
+      const partSkus: string[] = [];
+      const partNames: Record<string, string> = {};
+      for (const line of order.partLines) {
+        const key = line.sku?.trim() || line.id;
+        partSkus.push(key);
+        partNames[key] = line.name;
+      }
+      const mechanicIds = [...new Set(order.laborLines.flatMap((line) => line.assigneeIds ?? []))];
+      const engineCode = order.motorLines[0]?.engineCode;
+      const brandName = order.motorLines[0]?.brandName;
+
+      const draft = fromWorkOrderCompleted({
+        companyId: normalizedCompanyId,
+        workOrderId: order.id,
+        actorUserId: order.updatedByUserId ?? order.createdByUserId,
+        clientId: order.clientId,
+        vehicleId: order.vehicleId,
+        mechanicIds,
+        engineCode,
+        brandName,
+        partSkus,
+        partNames,
+        laborTitles: order.laborLines.map((line) => line.title),
+      });
+
+      const ops = applyFactToPatterns({
+        ...draft,
+        id: `backfill:${order.id}`,
+        createdAt: order.completedAt ?? order.updatedAt,
+      });
+      if (ops.length > 0) {
+        await applyOpsToPatterns(normalizedCompanyId, ops);
+        processedCount += 1;
+      }
     }
   }
 
   return processedCount;
+}
+
+function knowledgeSeedRef(companyId: string) {
+  return companyRef(companyId).collection("knowledgeMeta").doc("seed");
+}
+
+export type KnowledgeSeedResult = {
+  processed: number;
+  skipped: boolean;
+  seededAt: string | null;
+};
+
+/**
+ * Idempotent history seed. Runs once per company unless `force` is set.
+ * Safe to call from Pro activation and settings auto-learn.
+ */
+export async function ensureKnowledgeHistorySeeded(
+  companyId: string,
+  options?: { force?: boolean; limit?: number },
+): Promise<KnowledgeSeedResult> {
+  const normalizedCompanyId = normalizeCompanyId(companyId);
+  const seedRef = knowledgeSeedRef(normalizedCompanyId);
+  const existing = await seedRef.get();
+  const existingData = existing.exists ? (existing.data() as Record<string, unknown>) : null;
+  const seededAtRaw = existingData?.historySeededAt;
+
+  if (!options?.force && seededAtRaw) {
+    const seededAt =
+      seededAtRaw instanceof Timestamp
+        ? seededAtRaw.toDate().toISOString()
+        : typeof seededAtRaw === "string"
+          ? seededAtRaw
+          : null;
+    return {
+      processed: typeof existingData?.historyProcessedCount === "number" ? existingData.historyProcessedCount : 0,
+      skipped: true,
+      seededAt,
+    };
+  }
+
+  const processed = await backfillFromWorkOrders(normalizedCompanyId, options?.limit ?? 200);
+  const now = FieldValue.serverTimestamp();
+  await seedRef.set(
+    {
+      historySeededAt: now,
+      historyProcessedCount: processed,
+      updatedAt: now,
+    },
+    { merge: true },
+  );
+
+  return {
+    processed,
+    skipped: false,
+    seededAt: new Date().toISOString(),
+  };
 }
 
 async function listPatternsByKindAdmin(

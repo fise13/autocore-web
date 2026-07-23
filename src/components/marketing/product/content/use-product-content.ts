@@ -27,6 +27,7 @@ export function useProductContent() {
     },
     toc: {
       title: t("toc.title"),
+      ariaLabel: t("toc.ariaLabel"),
       items: t.raw("toc.items") as TocItem[],
     },
     sections: {

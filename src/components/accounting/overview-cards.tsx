@@ -7,12 +7,29 @@ import { BalanceSnapshot } from "@/application/use-cases/calculate-cash-balance"
 import { FinancialOperation } from "@/domain/financial-operation";
 import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
 
+export type OverviewCardsLabels = {
+  totalBalance: string;
+  cashbox: string;
+  kaspi: string;
+  today: string;
+  todayHint: (income: string, expenses: string) => string;
+};
+
+const DEFAULT_LABELS: OverviewCardsLabels = {
+  totalBalance: "Общий баланс",
+  cashbox: "Касса",
+  kaspi: "Каспи",
+  today: "Сегодня",
+  todayHint: (income, expenses) => `Доход: ${income} · Расходы: ${expenses}`,
+};
+
 type OverviewCardsProps = {
   balance: BalanceSnapshot;
   operations: FinancialOperation[];
+  labels?: OverviewCardsLabels;
 };
 
-export function OverviewCards({ balance, operations }: OverviewCardsProps) {
+export function OverviewCards({ balance, operations, labels = DEFAULT_LABELS }: OverviewCardsProps) {
   const { formatMoney } = useAppDisplayCurrency();
   const today = new Date().toDateString();
 
@@ -34,33 +51,33 @@ export function OverviewCards({ balance, operations }: OverviewCardsProps) {
     <div className="autocore-surface-group p-3">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          label="Общий баланс"
+          label={labels.totalBalance}
           value={balance.total}
           icon={Wallet}
           tone="default"
           index={0}
         />
         <MetricCard
-          label="Касса"
+          label={labels.cashbox}
           value={balance.cashbox}
           icon={Banknote}
           tone="green"
           index={1}
         />
         <MetricCard
-          label="Каспи"
+          label={labels.kaspi}
           value={balance.kaspi}
           icon={CreditCard}
           tone="blue"
           index={2}
         />
         <MetricCard
-          label="Сегодня"
+          label={labels.today}
           value={todayNet}
           icon={TrendingUp}
           tone={todayNet >= 0 ? "green" : "red"}
           index={3}
-          hint={`Доход: ${formatMoney(todayIncome)} · Расходы: ${formatMoney(todayExpenses)}`}
+          hint={labels.todayHint(formatMoney(todayIncome), formatMoney(todayExpenses))}
         />
       </div>
     </div>

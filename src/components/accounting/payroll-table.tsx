@@ -27,6 +27,7 @@ type PayrollTableProps = {
   canEdit?: boolean;
   onStatusChange?: (id: string, status: PayrollTransactionStatus) => void;
   updatingId?: string | null;
+  emptyLabel?: string;
 };
 
 const STATUS_LABELS = {
@@ -49,6 +50,7 @@ export function PayrollTable({
   canEdit = false,
   onStatusChange,
   updatingId = null,
+  emptyLabel = "Начислений зарплаты пока нет. Они появятся после завершения заказ-наряда с работами и исполнителями.",
 }: PayrollTableProps) {
   const workOrderById = useMemo(
     () => new Map(workOrders.map((order) => [order.id, order])),
@@ -59,7 +61,7 @@ export function PayrollTable({
   if (rows.length === 0) {
     return (
       <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center text-sm text-muted-foreground">
-        Начислений зарплаты пока нет. Они появятся после завершения заказ-наряда с работами и исполнителями.
+        {emptyLabel}
       </div>
     );
   }

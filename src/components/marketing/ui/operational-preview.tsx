@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -12,48 +13,10 @@ import {
   Wallet,
 } from "lucide-react";
 
+import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import { FeedList } from "@/components/marketing/ui/feed-list";
 import { useSimulatedFeed } from "@/components/marketing/hooks/use-simulated-feed";
 import { cn } from "@/lib/utils";
-
-const KPI = [
-  { label: "Выручка сегодня", value: "$2.4M", icon: TrendingUp, tone: "text-emerald-500" },
-  { label: "Открытые наряды", value: "12", icon: Activity, tone: "text-primary" },
-  { label: "Позиций на складе", value: "4 892", icon: Package, tone: "text-primary" },
-  { label: "Команда онлайн", value: "6", icon: Users, tone: "text-emerald-500" },
-  { label: "Низкий остаток", value: "3", icon: AlertTriangle, tone: "text-amber-500" },
-  { label: "Баланс", value: "$18.6M", icon: Wallet, tone: "text-primary" },
-  { label: "Авансы", value: "$240K", icon: Banknote, tone: "text-amber-500" },
-] as const;
-
-const SHOWCASE_KPI = KPI.slice(0, 5);
-
-const MODULE_TILES = [
-  {
-    name: "Склад",
-    value: "4 892 поз.",
-    detail: "3 алерта остатка",
-    bars: [88, 62, 45],
-  },
-  {
-    name: "Бухгалтерия",
-    value: "$2.4M",
-    detail: "7 операций сегодня",
-    bars: [72, 54, 38],
-  },
-  {
-    name: "Инвентарь",
-    value: "128 моторов",
-    detail: "14 в резерве",
-    bars: [64, 48, 56],
-  },
-  {
-    name: "Сотрудники",
-    value: "6 онлайн",
-    detail: "12 в команде",
-    bars: [92, 68, 44],
-  },
-] as const;
 
 type OperationalPreviewProps = {
   className?: string;
@@ -67,9 +30,91 @@ export function OperationalPreview({
   large,
   layout = "default",
 }: OperationalPreviewProps) {
+  const chrome = useDemoChrome();
   const events = useSimulatedFeed(3200);
   const isShowcase = layout === "showcase";
-  const kpiItems = isShowcase ? SHOWCASE_KPI : KPI;
+
+  const kpi = useMemo(
+    () =>
+      [
+        {
+          label: chrome.operational.revenueToday,
+          value: "$2.4M",
+          icon: TrendingUp,
+          tone: "text-emerald-500",
+        },
+        {
+          label: chrome.operational.openOrders,
+          value: "12",
+          icon: Activity,
+          tone: "text-primary",
+        },
+        {
+          label: chrome.operational.stockPositions,
+          value: "4 892",
+          icon: Package,
+          tone: "text-primary",
+        },
+        {
+          label: chrome.operational.teamOnline,
+          value: "6",
+          icon: Users,
+          tone: "text-emerald-500",
+        },
+        {
+          label: chrome.operational.lowStock,
+          value: "3",
+          icon: AlertTriangle,
+          tone: "text-amber-500",
+        },
+        {
+          label: chrome.operational.balance,
+          value: "$18.6M",
+          icon: Wallet,
+          tone: "text-primary",
+        },
+        {
+          label: chrome.operational.advances,
+          value: "$240K",
+          icon: Banknote,
+          tone: "text-amber-500",
+        },
+      ] as const,
+    [chrome.operational],
+  );
+
+  const moduleTiles = useMemo(
+    () =>
+      [
+        {
+          name: chrome.nav.warehouse,
+          value: chrome.operational.warehouseValue,
+          detail: chrome.operational.warehouseDetail,
+          bars: [88, 62, 45],
+        },
+        {
+          name: chrome.nav.accounting,
+          value: "$2.4M",
+          detail: chrome.operational.accountingDetail,
+          bars: [72, 54, 38],
+        },
+        {
+          name: chrome.nav.inventory,
+          value: chrome.operational.inventoryValue,
+          detail: chrome.operational.inventoryDetail,
+          bars: [64, 48, 56],
+        },
+        {
+          name: chrome.nav.employees,
+          value: chrome.operational.employeesValue,
+          detail: chrome.operational.employeesDetail,
+          bars: [92, 68, 44],
+        },
+      ] as const,
+    [chrome.nav, chrome.operational],
+  );
+
+  const kpiItems = isShowcase ? kpi.slice(0, 5) : kpi;
 
   return (
     <div
@@ -107,18 +152,18 @@ export function OperationalPreview({
             </div>
           </div>
           {!isShowcase ? (
-            <p className="text-sm text-muted-foreground">Операционный центр</p>
+            <p className="text-sm text-muted-foreground">{chrome.operational.opsCenter}</p>
           ) : (
             <span className="marketing-preview-chip">
               <ClipboardList className="size-3" aria-hidden />
-              Демо-компания
+              {chrome.common.demoCompany}
             </span>
           )}
         </div>
 
         <div className={cn("autocore-surface-group", isShowcase ? "p-3 sm:p-4" : "p-4")}>
           <p className="mb-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">
-            Обзор
+            {chrome.nav.overview}
           </p>
           <div
             className={cn(
@@ -140,7 +185,7 @@ export function OperationalPreview({
         {isShowcase ? (
           <div className="marketing-preview-showcase-body">
             <div className="marketing-preview-modules">
-              {MODULE_TILES.map((module) => (
+              {moduleTiles.map((module) => (
                 <article key={module.name} className="marketing-preview-module-card">
                   <div className="flex items-start justify-between gap-2">
                     <div>
@@ -163,7 +208,7 @@ export function OperationalPreview({
             </div>
 
             <aside className="marketing-preview-feed">
-              <p className="text-xs font-semibold sm:text-sm">Журнал активности</p>
+              <p className="text-xs font-semibold sm:text-sm">{chrome.common.activityLog}</p>
               <div className="mt-2 min-h-0 flex-1 overflow-hidden">
                 <FeedList events={events} compact />
               </div>
@@ -172,7 +217,7 @@ export function OperationalPreview({
         ) : (
           <div className={cn("grid gap-4", large ? "lg:grid-cols-[1fr_260px]" : "lg:grid-cols-[1fr_220px]")}>
             <div className="grid gap-3 sm:grid-cols-2">
-              {MODULE_TILES.map((module) => (
+              {moduleTiles.map((module) => (
                 <div key={module.name} className="rounded-xl border border-border bg-card p-4 shadow-sm">
                   <p className="text-sm font-semibold">{module.name}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{module.detail}</p>
@@ -189,7 +234,7 @@ export function OperationalPreview({
               ))}
             </div>
             <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-              <p className="text-sm font-semibold">Журнал активности</p>
+              <p className="text-sm font-semibold">{chrome.common.activityLog}</p>
               <div className="mt-3">
                 <FeedList events={events} compact />
               </div>

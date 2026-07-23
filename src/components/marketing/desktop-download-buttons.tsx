@@ -4,6 +4,7 @@ import "@/styles/desktop-download-badges.css";
 
 import { useEffect, useState } from "react";
 import { Download } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { useToast } from "@/components/ui/toast-provider";
 import { getDesktopDownloadLinks } from "@/lib/desktop/desktop-downloads";
@@ -237,10 +238,12 @@ export function DesktopDownloadIcons({
 }
 
 export function DesktopDownloadHint({ className }: { className?: string }) {
+  const t = useTranslations("marketing.pages.download");
+
   return (
     <p className={cn("text-sm text-muted-foreground", className)}>
       <Download className="me-1.5 inline size-3.5 opacity-70" aria-hidden />
-      Установщики для desktop-приложения и Windows. После установки войдите через браузер или Apple ID.
+      {t("hint")}
     </p>
   );
 }

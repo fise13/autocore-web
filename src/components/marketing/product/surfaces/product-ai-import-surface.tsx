@@ -3,23 +3,18 @@
 import { useEffect, useState } from "react";
 import { FileSpreadsheet, Upload } from "lucide-react";
 
+import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import { ProductWindow } from "@/components/marketing/experience/ui/product-window";
 import { ConfidenceBadge } from "@/components/warehouse/import/shared/confidence-badge";
 import { ImportProgressBar } from "@/components/warehouse/import/shared/import-progress-bar";
 import { cn } from "@/lib/utils";
-
-const MAPPING = [
-  { col: "Артикул", field: "SKU", confidence: 0.98 },
-  { col: "Наименование", field: "Название", confidence: 0.94 },
-  { col: "Цена", field: "Стоимость", confidence: 0.91 },
-  { col: "Кол-во", field: "Остаток", confidence: 0.88 },
-] as const;
 
 const STEPS = ["idle", "drop", "map", "import", "done"] as const;
 type Step = (typeof STEPS)[number];
 
 /** AI import walkthrough using real warehouse import UI pieces. Starts only on click. */
 export function ProductAiImportSurface({ className }: { className?: string }) {
+  const chrome = useDemoChrome();
   const [step, setStep] = useState<Step>("idle");
   const running = step !== "idle" && step !== "done";
 
@@ -52,7 +47,7 @@ export function ProductAiImportSurface({ className }: { className?: string }) {
   const reset = () => setStep("idle");
 
   return (
-    <ProductWindow title="Импорт прайса" className={cn("product-ai-real", className)}>
+    <ProductWindow title={chrome.aiImport.windowTitle} className={cn("product-ai-real", className)}>
       <div className="space-y-4">
         <div
           className={cn(
@@ -69,14 +64,14 @@ export function ProductAiImportSurface({ className }: { className?: string }) {
           )}
           <p className="mt-2 text-xs font-medium">
             {step === "done"
-              ? "Принято 128 позиций на склад"
+              ? chrome.aiImport.accepted
               : step === "map"
-                ? "Сопоставление колонок"
+                ? chrome.aiImport.mapping
                 : step === "import"
-                  ? "Импорт в остатки…"
+                  ? chrome.aiImport.importing
                   : step === "drop"
-                    ? "price_subaru.xlsx"
-                    : "Готов принять прайс-лист"}
+                    ? chrome.aiImport.dropFile
+                    : chrome.aiImport.ready}
           </p>
 
           {step === "idle" ? (
@@ -85,7 +80,7 @@ export function ProductAiImportSurface({ className }: { className?: string }) {
               className="product-ai-start-btn mt-3"
               onClick={start}
             >
-              Загрузить файл
+              {chrome.aiImport.upload}
             </button>
           ) : null}
 
@@ -95,7 +90,7 @@ export function ProductAiImportSurface({ className }: { className?: string }) {
               className="product-ai-start-btn is-ghost mt-3"
               onClick={reset}
             >
-              Запустить снова
+              {chrome.aiImport.runAgain}
             </button>
           ) : null}
         </div>
@@ -104,7 +99,7 @@ export function ProductAiImportSurface({ className }: { className?: string }) {
 
         {step !== "idle" && step !== "drop" ? (
           <div className="space-y-1.5">
-            {MAPPING.map((row, index) => (
+            {chrome.aiImport.mappingRows.map((row, index) => (
               <div
                 key={row.col}
                 className={cn(
@@ -123,7 +118,7 @@ export function ProductAiImportSurface({ className }: { className?: string }) {
 
         {step === "done" ? (
           <p className="text-center text-[11px] text-emerald-600 dark:text-emerald-400">
-            Импорт завершён · колонки сопоставлены с уверенностью AI
+            {chrome.aiImport.done}
           </p>
         ) : null}
       </div>

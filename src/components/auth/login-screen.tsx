@@ -29,7 +29,7 @@ import {
   resolveEmailSignInMode,
 } from "@/lib/auth/resolve-email-sign-in-mode";
 import { getFirebaseAuth } from "@/infrastructure/firebase/client";
-import { marketingRoutes } from "@/lib/marketing-routes";
+import { marketingRoute } from "@/lib/marketing-routes";
 import { marketingHomeUrl, marketingPageUrl } from "@/lib/site-urls";
 import {
   readPendingMarketingCheckout,
@@ -47,7 +47,7 @@ import {
 } from "@/lib/invites/pending-invite";
 import { prefersReducedMotion } from "@/lib/motion/cross-route-transition";
 import { cn } from "@/lib/utils";
-import { mapAuthError, userCopy } from "@/lib/user-copy";
+import { getActiveUserCopyLocale, mapAuthError, userCopy } from "@/lib/user-copy";
 
 const authStepEase = [0.22, 1, 0.36, 1] as const;
 
@@ -91,6 +91,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
   const isInviteFlow = inviteFlowActive || Boolean(inviteCompanyName) || Boolean(searchParams.get("invite")?.trim());
   const inviteBootstrapping = isInviteFlow && authPhase === "detecting" && !emailStep;
   const appleSetupIssue = isAppleJsAuthMode() ? getAppleJsSetupIssue() : null;
+  const copy = userCopy.auth.login;
   const isSignUp = emailMode === "signup";
   const reducedMotion = prefersReducedMotion();
   const authStepInitial =
@@ -243,7 +244,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
   async function onEmailContinue(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!email.trim()) {
-      setError("Введите email.");
+      setError(copy.enterEmail);
       return;
     }
     setError(null);
@@ -268,7 +269,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
   async function onPasswordSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!email.trim()) {
-      setError("Введите email.");
+      setError(copy.enterEmail);
       return;
     }
     if (isSignUp) {
@@ -278,11 +279,11 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
         return;
       }
       if (!firstName.trim() || !lastName.trim()) {
-        setError("Укажите имя и фамилию.");
+        setError(copy.enterName);
         return;
       }
     } else if (password.length < 6) {
-      setError("Пароль слишком короткий (минимум 6 символов).");
+      setError(copy.passwordTooShort);
       return;
     }
     await runAuth(async () => {
@@ -297,15 +298,23 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
         }
       } catch (authError) {
         const message = mapAuthError(authError);
-        if (isSignUp && message.includes("уже зарегистрирован")) {
+        if (
+          isSignUp &&
+          (message.includes("уже зарегистрирован") || message.includes("already registered"))
+        ) {
           setEmailMode("login");
-          throw new Error("Этот email уже зарегистрирован. Введите пароль для входа.");
+          throw new Error(copy.emailAlreadyRegistered);
         }
-        if (!isSignUp && message.includes("Неверный email или пароль")) {
+        if (
+          !isSignUp &&
+          (message.includes("Неверный email или пароль") ||
+            message.includes("Incorrect email or password") ||
+            /wrong.?password|user-not-found|invalid-credential/i.test(message))
+        ) {
           const methods = await resolveSignInMethodsForEmail(email);
           if (methods.length === 0) {
             setEmailMode("signup");
-            throw new Error("Аккаунта с этим email нет. Придумайте пароль для регистрации.");
+            throw new Error(copy.emailNotRegistered);
           }
         }
         throw authError;
@@ -326,7 +335,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
 
   async function onForgotPassword() {
     if (!email.trim()) {
-      setError("Введите email.");
+      setError(copy.enterEmail);
       return;
     }
     setError(null);
@@ -351,7 +360,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
 
   if (authPhase === "completing") {
     return (
-      <AuthJourneyShell stepKey="completing" stepLabel="Вход и регистрация" contentWidth="md">
+      <AuthJourneyShell stepKey="completing" stepLabel={copy.stepLabel} contentWidth="md">
         <div className="flex flex-col items-center gap-4 py-10 text-center">
           <Loader2 className="size-6 animate-spin text-primary motion-reduce:animate-none" aria-hidden />
           <p className="text-sm font-medium text-foreground">{userCopy.auth.completing}</p>
@@ -365,7 +374,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
   return (
     <AuthJourneyShell
       stepKey={loginStepKey}
-      stepLabel="Вход и регистрация"
+      stepLabel={copy.stepLabel}
       contentWidth="sm"
       topLeft={
         <Link
@@ -373,7 +382,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
           className={buttonVariants({ variant: "ghost", size: "sm" })}
         >
           <ChevronLeft className="size-4" data-icon="inline-start" aria-hidden />
-          На главную
+          {copy.backHome}
         </Link>
       }
     >
@@ -381,30 +390,27 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
         <div className="flex flex-col space-y-1">
           <AuthJourneyReveal index={0} as="h1" className="text-2xl font-bold tracking-tight">
             {isInviteFlow && emailStep && isSignUp
-              ? "Создать аккаунт"
+              ? copy.titleInviteSignup
               : isInviteFlow && emailStep
-                ? "Вход в команду"
-                : "Войти или создать аккаунт"}
+                ? copy.titleInviteLogin
+                : copy.title}
           </AuthJourneyReveal>
           <AuthJourneyReveal index={1} as="p" className="text-base text-muted-foreground">
             {isInviteFlow && emailStep
               ? isSignUp
-                ? "Email уже указан в приглашении — осталось придумать пароль и имя."
-                : "Email уже указан в приглашении — введите пароль."
+                ? copy.inviteSignupHint
+                : copy.inviteLoginHint
               : isInviteFlow
-                ? "Загружаем приглашение…"
-                : `Вход в ${userCopy.appName} или регистрация новой команды.`}
+                ? copy.inviteLoading
+                : copy.subtitle}
           </AuthJourneyReveal>
         </div>
 
         {paidCheckoutPending ? (
           <AuthJourneyReveal index={2}>
             <Alert>
-              <AlertTitle>Оплата Pro прошла успешно</AlertTitle>
-              <AlertDescription>
-                Создайте аккаунт с тем же email, что указали в Stripe, затем создайте компанию —
-                подписка активируется автоматически.
-              </AlertDescription>
+              <AlertTitle>{copy.paidCheckoutTitle}</AlertTitle>
+              <AlertDescription>{copy.paidCheckoutDescription}</AlertDescription>
             </Alert>
           </AuthJourneyReveal>
         ) : null}
@@ -412,7 +418,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
         {inviteBootstrapping ? (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />
-            Загружаем приглашение…
+            {copy.inviteLoading}
           </div>
         ) : (
         <AnimatePresence mode="wait" custom={authStepDirection}>
@@ -470,19 +476,19 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
               </div>
 
               <AuthJourneyReveal index={paidCheckoutPending ? 5 : 4}>
-                <AuthDivider>ИЛИ</AuthDivider>
+                <AuthDivider>{copy.or}</AuthDivider>
               </AuthJourneyReveal>
 
               <AuthJourneyReveal index={paidCheckoutPending ? 6 : 5}>
               <form className="space-y-2" onSubmit={onEmailContinue} autoComplete="on">
                 <p className="text-start text-xs text-muted-foreground">
-                  Email для входа или создания аккаунта
+                  {copy.emailLabel}
                 </p>
                 <InputGroup>
                   <InputGroupInput
                     id="auth-email-entry"
                     name="email"
-                    placeholder="ваш@email.ru"
+                    placeholder={copy.emailPlaceholder}
                     type="email"
                     autoComplete="username email"
                     value={email}
@@ -509,10 +515,10 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                         <span className="absolute inset-0 animate-ping rounded-full bg-primary/25 motion-reduce:animate-none" />
                         <Loader2 className="relative size-4 animate-spin" aria-hidden />
                       </span>
-                      Проверяем email…
+                      {copy.checkingEmail}
                     </span>
                   ) : (
-                    "Продолжить с email"
+                    copy.continueEmail
                   )}
                 </Button>
 
@@ -522,12 +528,12 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                   disabled={isBusy}
                   onClick={() => void onForgotPassword()}
                 >
-                  Забыли пароль?
+                  {userCopy.auth.forgotPassword}
                 </button>
 
                 {resetSent ? (
                   <p className="text-center text-sm text-muted-foreground">
-                    Ссылка для сброса пароля отправлена на {email || "ваш email"}.
+                    {copy.resetSentTo(email)}
                   </p>
                 ) : null}
               </form>
@@ -552,16 +558,22 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                   disabled={isBusy}
                   onClick={changeEmail}
                 >
-                  Изменить
+                  {copy.changeEmail}
                 </button>
               </div>
               {isInviteFlow ? (
                 <InviteFormNotice companyName={inviteCompanyName} />
               ) : null}
               <p className="text-sm text-muted-foreground">
-                Этот email зарегистрирован через{" "}
-                {oauthProviders.includes("google.com") ? "Google" : "Apple"}
-                {oauthProviders.length > 1 ? " или Apple" : ""}. Войдите тем же способом.
+                {copy.oauthOnly.replace(
+                  "{providers}",
+                  [
+                    oauthProviders.includes("google.com") ? copy.oauthGoogle : null,
+                    oauthProviders.includes("apple.com") ? copy.oauthApple : null,
+                  ]
+                    .filter(Boolean)
+                    .join(copy.oauthOr),
+                )}
               </p>
               <div className="space-y-2">
                 {oauthProviders.includes("google.com") ? (
@@ -608,14 +620,14 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                     disabled={isBusy || isInviteFlow}
                     onClick={changeEmail}
                   >
-                    Назад
+                    {copy.back}
                   </button>
                 </div>
                 <InputGroup>
                   <InputGroupInput
                     id="auth-email"
                     name="email"
-                    placeholder="ваш@email.ru"
+                    placeholder={copy.emailPlaceholder}
                     type="email"
                     autoComplete="username email"
                     value={email}
@@ -662,7 +674,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
               ) : (
                 <PasswordField
                   id="password"
-                  label="Пароль"
+                  label={copy.passwordLabel}
                   value={password}
                   onChange={setPassword}
                   autoComplete="current-password"
@@ -690,13 +702,13 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                   disabled={isBusy}
                   onClick={() => void onForgotPassword()}
                 >
-                  Забыли пароль?
+                  {userCopy.auth.forgotPassword}
                 </button>
               ) : null}
 
               {resetSent ? (
                 <p className="text-center text-sm text-muted-foreground">
-                  Ссылка для сброса пароля отправлена на {email}.
+                  {copy.resetSentTo(email)}
                 </p>
               ) : null}
             </form>
@@ -716,21 +728,21 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
           ) : null}
 
           <p className="mt-8 text-sm text-muted-foreground">
-            Нажимая «Продолжить», вы соглашаетесь с{" "}
+            {copy.legalPrefix}{" "}
             <Link
-              href={marketingPageUrl(marketingRoutes.terms)}
+              href={marketingPageUrl(marketingRoute("terms", getActiveUserCopyLocale()))}
               className="underline underline-offset-4 hover:text-primary"
             >
-              Условиями использования
+              {copy.terms}
             </Link>{" "}
-            и{" "}
+            {copy.legalAnd}{" "}
             <Link
-              href={marketingPageUrl(marketingRoutes.privacy)}
+              href={marketingPageUrl(marketingRoute("privacy", getActiveUserCopyLocale()))}
               className="underline underline-offset-4 hover:text-primary"
             >
-              Политикой конфиденциальности
+              {copy.privacy}
             </Link>
-            .
+            {copy.legalSuffix}
           </p>
       </div>
     </AuthJourneyShell>
@@ -738,16 +750,10 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
 }
 
 function InviteFormNotice({ companyName }: { companyName: string | null }) {
+  const copy = userCopy.auth.login;
   return (
     <p className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-2.5 text-sm leading-relaxed text-muted-foreground">
-      {companyName ? (
-        <>
-          Вы войдёте в компанию{" "}
-          <span className="font-medium text-foreground">«{companyName}»</span>
-        </>
-      ) : (
-        "После входа вы присоединитесь к команде по приглашению."
-      )}
+      {companyName ? copy.inviteBannerNamed(companyName) : copy.inviteBannerGeneric}
     </p>
   );
 }

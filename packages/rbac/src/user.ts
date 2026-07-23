@@ -99,6 +99,8 @@ export type UserEntity = {
   permissions?: Permission[];
   isActive?: boolean;
   isCompanyOwner?: boolean;
+  /** App UI language preference (`en` | `ru`). */
+  preferredLocale?: "en" | "ru" | null;
 };
 
 export function permissionSetForRole(role: UserRole): Set<Permission> {

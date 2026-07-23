@@ -216,7 +216,8 @@ function PlatformCardContent({
 }
 
 export function DownloadExperience() {
-  const copy = useMarketingPages().download;
+  const pages = useMarketingPages();
+  const copy = pages.download;
   const [openFaq, setOpenFaq] = useState<string[]>(["faq-0"]);
 
   function handleFaqChange(next: string[]) {
@@ -230,7 +231,7 @@ export function DownloadExperience() {
 
   return (
     <div className="download-page">
-      <section className="download-panel download-panel-hero" aria-label="Скачать">
+      <section className="download-panel download-panel-hero" aria-label={pages.breadcrumbs.download}>
         <div className="exp-section-inner download-panel-inner">
           <HeroReveal delay={0} duration={0.72} y={22}>
             <h1 className="exp-display download-hero-title">
@@ -252,7 +253,7 @@ export function DownloadExperience() {
         <div className="exp-section-inner download-panel-inner download-platforms-inner">
           <ScrollReveal margin="-80px">
             <h2 id="download-platforms-heading" className="sr-only">
-              Выберите платформу
+              {copy.platformPickerTitle}
             </h2>
           </ScrollReveal>
           <DownloadPlatformGrid platforms={copy.platforms} />
@@ -322,7 +323,7 @@ export function DownloadExperience() {
         <div className="exp-section-inner download-panel-inner download-faq-inner">
           <ScrollReveal margin="-80px">
             <h2 id="download-faq-heading" className="exp-display download-faq-title">
-              Вопросы об установке
+              {copy.faqTitle}
             </h2>
           </ScrollReveal>
 

@@ -3,6 +3,7 @@
 import { ArrowRight } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 
+import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import { useLandingContent } from "@/components/marketing/experience/content/use-landing-content";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +11,7 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 
 export function PhilosophyTransformationStrip({ className }: { className?: string }) {
   const copy = useLandingContent().philosophy;
+  const chrome = useDemoChrome();
   const reduced = useReducedMotion();
 
   return (
@@ -22,7 +24,7 @@ export function PhilosophyTransformationStrip({ className }: { className?: strin
     >
       <div className="grid items-center gap-6 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-8">
         <div>
-          <p className="text-[11px] text-muted-foreground">Было</p>
+          <p className="text-[11px] text-muted-foreground">{chrome.philosophy.before}</p>
           <ul className="mt-3 flex flex-wrap gap-2">
             {copy.before.map((item) => (
               <li
@@ -40,7 +42,7 @@ export function PhilosophyTransformationStrip({ className }: { className?: strin
         </div>
 
         <div>
-          <p className="text-[11px] text-muted-foreground">Стало</p>
+          <p className="text-[11px] text-muted-foreground">{chrome.philosophy.after}</p>
           <ul className="mt-3 flex flex-wrap gap-2">
             {copy.after.map((item) => (
               <li

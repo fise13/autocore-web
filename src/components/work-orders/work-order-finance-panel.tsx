@@ -16,11 +16,41 @@ import {
 } from "@/lib/accounting/labels";
 import { cn } from "@/lib/utils";
 
+export type WorkOrderFinancePanelLabels = {
+  notReady: string;
+  income: string;
+  expenses: string;
+  payroll: string;
+  operationsTitle: string;
+  openAccounting: string;
+  opsProcessing: string;
+  opsAfterComplete: string;
+  payrollTitle: string;
+  payrollEmpty?: string;
+  categoryLabels?: Record<string, string>;
+  typeBadge?: Record<string, string>;
+};
+
+const DEFAULT_LABELS: WorkOrderFinancePanelLabels = {
+  notReady: "Финансы и зарплаты появятся после завершения заказ-наряда (статус «Готов»).",
+  income: "Доход",
+  expenses: "Расходы",
+  payroll: "Зарплата механикам",
+  operationsTitle: "Операции в бухгалтерии",
+  openAccounting: "Открыть бухгалтерию",
+  opsProcessing: "Операции ещё обрабатываются сервером",
+  opsAfterComplete: "Операции появятся после завершения заказа",
+  payrollTitle: "Начисления зарплаты",
+  payrollEmpty:
+    "Начислений зарплаты пока нет. Они появятся после завершения заказ-наряда с работами и исполнителями.",
+};
+
 type WorkOrderFinancePanelProps = {
   order: WorkOrder;
   operations: FinancialOperation[];
   payroll: PayrollTransaction[];
   employees: CompanyEmployee[];
+  labels?: WorkOrderFinancePanelLabels;
 };
 
 export function WorkOrderFinancePanel({
@@ -28,6 +58,7 @@ export function WorkOrderFinancePanel({
   operations,
   payroll,
   employees,
+  labels = DEFAULT_LABELS,
 }: WorkOrderFinancePanelProps) {
   const summary = useMemo(() => {
     const income = operations
@@ -46,26 +77,26 @@ export function WorkOrderFinancePanel({
     <div className="space-y-4">
       {!isCompleted ? (
         <p className="rounded-lg border border-dashed bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-          Финансы и зарплаты появятся после завершения заказ-наряда (статус «Готов»).
+          {labels.notReady}
         </p>
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-3">
         <MetricCard
           icon={Wallet}
-          label="Доход"
+          label={labels.income}
           value={money(summary.income || order.pricing.grandTotal)}
           tone="positive"
         />
         <MetricCard
           icon={Banknote}
-          label="Расходы"
+          label={labels.expenses}
           value={money(summary.expense)}
           tone="negative"
         />
         <MetricCard
           icon={Banknote}
-          label="Зарплата механикам"
+          label={labels.payroll}
           value={money(summary.payrollTotal)}
           tone="neutral"
         />
@@ -73,54 +104,60 @@ export function WorkOrderFinancePanel({
 
       <section className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-medium">Операции в бухгалтерии</h3>
+          <h3 className="text-sm font-medium">{labels.operationsTitle}</h3>
           <Link
             href={`/accounting?tab=work_orders`}
             className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
           >
-            Открыть бухгалтерию
+            {labels.openAccounting}
             <ArrowUpRight className="size-3" />
           </Link>
         </div>
         {operations.length === 0 ? (
           <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
-            {isCompleted
-              ? "Операции ещё обрабатываются сервером"
-              : "Операции появятся после завершения заказа"}
+            {isCompleted ? labels.opsProcessing : labels.opsAfterComplete}
           </p>
         ) : (
           <ul className="divide-y rounded-xl border bg-card">
-            {operations.map((operation) => (
-              <li key={operation.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-                <div>
-                  <p className="font-medium">{operationCategoryLabel(operation.category)}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {operationTypeLabel(operation.type)}
-                    {operation.comment ? ` · ${operation.comment}` : ""}
-                  </p>
-                </div>
-                <span
-                  className={cn(
-                    "font-semibold tabular-nums",
-                    operation.type === "expense" ? "text-red-600" : "text-emerald-700",
-                  )}
-                >
-                  {operation.type === "expense" ? "−" : "+"}
-                  {money(operation.amount)}
-                </span>
-              </li>
-            ))}
+            {operations.map((operation) => {
+              const category =
+                (operation.category && labels.categoryLabels?.[operation.category]) ||
+                operationCategoryLabel(operation.category);
+              const type =
+                labels.typeBadge?.[operation.type] ?? operationTypeLabel(operation.type);
+              return (
+                <li key={operation.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+                  <div>
+                    <p className="font-medium">{category}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {type}
+                      {operation.comment ? ` · ${operation.comment}` : ""}
+                    </p>
+                  </div>
+                  <span
+                    className={cn(
+                      "font-semibold tabular-nums",
+                      operation.type === "expense" ? "text-red-600" : "text-emerald-700",
+                    )}
+                  >
+                    {operation.type === "expense" ? "−" : "+"}
+                    {money(operation.amount)}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
 
       <section className="space-y-2">
-        <h3 className="text-sm font-medium">Начисления зарплаты</h3>
+        <h3 className="text-sm font-medium">{labels.payrollTitle}</h3>
         <PayrollTable
           rows={payroll}
           employees={employees}
           workOrders={[order]}
           showWorkOrderLink={false}
+          emptyLabel={labels.payrollEmpty}
         />
       </section>
     </div>

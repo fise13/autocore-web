@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { motion, useReducedMotion, AnimatePresence } from "motion/react";
 import { Package, Radio } from "lucide-react";
 
+import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import type { PlatformSyncStep } from "@/components/marketing/experience/motion/platform-sync-steps";
 import { isPlatformStepAtLeast } from "@/components/marketing/experience/motion/platform-sync-steps";
 import {
@@ -20,11 +21,6 @@ import { cn } from "@/lib/utils";
 const BASE_STOCK = 4891;
 const NEW_STOCK = 4892;
 
-const ACTIVITY = [
-  { id: "a1", text: "Резерв создан", meta: "НЗ-0142 · Мастерская", time: "12:41" },
-  { id: "a2", text: "Позиция на складе", meta: "G4KC · A-12", time: "сейчас" },
-] as const;
-
 type DesktopSyncWorkspaceProps = {
   step: PlatformSyncStep;
   className?: string;
@@ -32,6 +28,7 @@ type DesktopSyncWorkspaceProps = {
 };
 
 export function DesktopSyncWorkspace({ step, className, variant = "panel" }: DesktopSyncWorkspaceProps) {
+  const chrome = useDemoChrome();
   const reduced = useReducedMotion();
   const panelRef = useRef<HTMLDivElement>(null);
   const [stock, setStock] = useState(BASE_STOCK);
@@ -40,6 +37,25 @@ export function DesktopSyncWorkspace({ step, className, variant = "panel" }: Des
   const showRow = isPlatformStepAtLeast(step, "sync");
   const isLive = step === "live";
   const isReceiving = step === "detect" || step === "sync";
+
+  const activity = useMemo(
+    () =>
+      [
+        {
+          id: "a1",
+          text: chrome.sync.reserveCreated,
+          meta: chrome.sync.reserveMeta,
+          time: "12:41",
+        },
+        {
+          id: "a2",
+          text: chrome.sync.positionInStock,
+          meta: "G4KC · A-12",
+          time: chrome.common.now,
+        },
+      ] as const,
+    [chrome.common.now, chrome.sync],
+  );
 
   useEffect(() => {
     if (reduced) {
@@ -77,12 +93,12 @@ export function DesktopSyncWorkspace({ step, className, variant = "panel" }: Des
   }, [reduced, step]);
 
   const syncLabel = isLive
-    ? "Синхронизировано"
+    ? chrome.common.synced
     : isReceiving
-      ? "Получение данных"
+      ? chrome.common.receivingData
       : showNotification
-        ? "Обработка"
-        : "Ожидание";
+        ? chrome.common.processing
+        : chrome.common.waiting;
 
   const showToast = step === "live";
   const isDevice = variant === "device";
@@ -107,8 +123,8 @@ export function DesktopSyncWorkspace({ step, className, variant = "panel" }: Des
       <McPanel className={cn("shadow-none dark:ring-0", isDevice && "border-0 bg-transparent shadow-none ring-0")}>
         {!isDevice ? (
           <McPanelHeader
-            title="Mission Control · Склад"
-            description="Рабочее место мастера"
+            title={chrome.sync.titleWarehouse}
+            description={chrome.sync.masterDesk}
             bordered
             badge={
               <div className="flex flex-wrap items-center gap-2">
@@ -132,9 +148,17 @@ export function DesktopSyncWorkspace({ step, className, variant = "panel" }: Des
 
         <McPanelBody className={cn("flex flex-col gap-3", isDevice ? "p-0 pt-0" : "pt-3")}>
           <div className={cn("grid gap-2", isDevice ? "grid-cols-3" : "grid-cols-3")}>
-            <MetricTile label="На складе" value={stock} highlight={showRow} compact={isDevice} />
-            <MetricTile label="Резервы" value={isPlatformStepAtLeast(step, "save") ? 13 : 12} compact={isDevice} />
-            <MetricTile label="Сегодня" value={isPlatformStepAtLeast(step, "sync") ? 4 : 3} compact={isDevice} />
+            <MetricTile label={chrome.sync.onHand} value={stock} highlight={showRow} compact={isDevice} />
+            <MetricTile
+              label={chrome.sync.reserves}
+              value={isPlatformStepAtLeast(step, "save") ? 13 : 12}
+              compact={isDevice}
+            />
+            <MetricTile
+              label={chrome.sync.today}
+              value={isPlatformStepAtLeast(step, "sync") ? 4 : 3}
+              compact={isDevice}
+            />
           </div>
 
           {!isDevice ? (
@@ -145,16 +169,16 @@ export function DesktopSyncWorkspace({ step, className, variant = "panel" }: Des
               )}
               aria-hidden={!showNotification}
             >
-              <p className="text-xs font-medium text-foreground">Новая позиция с телефона</p>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">G4KC · 2.4L · полка A-12</p>
+              <p className="text-xs font-medium text-foreground">{chrome.sync.newFromPhone}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">{chrome.sync.engineShelf}</p>
             </div>
           ) : null}
 
           <div className="rounded-lg border border-border">
             <div className="flex items-center justify-between border-b border-border bg-muted/20 px-3 py-2">
-              <span className="text-xs font-medium">Инвентарь</span>
+              <span className="text-xs font-medium">{chrome.nav.inventory}</span>
               <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
-                {isLive ? "обновлено сейчас" : "-"}
+                {isLive ? chrome.common.updatedNow : "-"}
               </span>
             </div>
             <ul className="divide-y divide-border">
@@ -178,7 +202,7 @@ export function DesktopSyncWorkspace({ step, className, variant = "panel" }: Des
                   G4KC · A-12
                 </span>
                 <Badge variant="outline" className="h-5 font-normal text-[10px]">
-                  В наличии
+                  {chrome.common.inStock}
                 </Badge>
               </motion.li>
             </ul>
@@ -186,10 +210,10 @@ export function DesktopSyncWorkspace({ step, className, variant = "panel" }: Des
 
           <div className="rounded-lg border border-border">
             <div className="border-b border-border bg-muted/20 px-3 py-2">
-              <span className="text-xs font-medium">Активность</span>
+              <span className="text-xs font-medium">{chrome.nav.activity}</span>
             </div>
             <ul className="divide-y divide-border">
-              {ACTIVITY.map((item, index) => {
+              {activity.map((item, index) => {
                 const visible = index === 0 || isPlatformStepAtLeast(step, "live");
 
                 return (

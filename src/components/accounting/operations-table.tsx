@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS, ru } from "date-fns/locale";
 import Link from "next/link";
 import { useMemo } from "react";
 import { FileStack } from "lucide-react";
@@ -22,8 +22,47 @@ import { motionStagger } from "@/lib/motion";
 import { WorkOrder } from "@/domain/work-order";
 import {
   buildWorkOrderDisplayIndex,
-  formatWorkOrderLabel,
+  workOrderDisplayNumber,
 } from "@/lib/work-order/work-order-display";
+
+export type OperationsTableLabels = {
+  dateLocale: "en" | "ru";
+  empty: string;
+  colDate: string;
+  colType: string;
+  colAccount: string;
+  colCategory: string;
+  colAmount: string;
+  colDetails: string;
+  colWorkOrder: string;
+  colActions: string;
+  advance: string;
+  incomeFlow: string;
+  expenseFlow: string;
+  delete: string;
+  workOrderTitle: (number: number) => string;
+  typeBadge?: Record<string, string>;
+  accountLabels?: Record<string, string>;
+  categoryLabels?: Record<string, string>;
+};
+
+const DEFAULT_LABELS: OperationsTableLabels = {
+  dateLocale: "ru",
+  empty: "Пока нет операций в выбранном фильтре.",
+  colDate: "Дата",
+  colType: "Тип",
+  colAccount: "Счёт",
+  colCategory: "Категория",
+  colAmount: "Сумма",
+  colDetails: "Детали",
+  colWorkOrder: "Заказ-наряд",
+  colActions: "Действия",
+  advance: "аванс",
+  incomeFlow: "Доход",
+  expenseFlow: "Расход",
+  delete: "Удалить",
+  workOrderTitle: (number) => `Заказ-наряд №${number}`,
+};
 
 type OperationsTableProps = {
   rows: FinancialOperation[];
@@ -34,6 +73,7 @@ type OperationsTableProps = {
   workOrders?: WorkOrder[];
   /** Show Доход/Расход flow badges for WO-linked categories. */
   emphasizeWorkOrderFlow?: boolean;
+  labels?: OperationsTableLabels;
 };
 
 const TYPE_BADGE: Record<string, string> = {
@@ -50,7 +90,10 @@ function isMotorSaleOperation(operation: FinancialOperation): boolean {
   );
 }
 
-function workOrderFlowBadge(operation: FinancialOperation): { label: string; className: string } | null {
+function workOrderFlowBadge(
+  operation: FinancialOperation,
+  labels: OperationsTableLabels,
+): { label: string; className: string } | null {
   const category = operation.category ?? "";
   if (
     category === "work_order_income" ||
@@ -58,7 +101,7 @@ function workOrderFlowBadge(operation: FinancialOperation): { label: string; cla
     (Boolean(operation.relatedWorkOrderId) && (operation.type === "sale" || operation.type === "income"))
   ) {
     return {
-      label: "Доход",
+      label: labels.incomeFlow,
       className: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
     };
   }
@@ -68,11 +111,26 @@ function workOrderFlowBadge(operation: FinancialOperation): { label: string; cla
     (Boolean(operation.relatedWorkOrderId) && operation.type === "expense")
   ) {
     return {
-      label: "Расход",
+      label: labels.expenseFlow,
       className: "bg-red-500/10 text-red-700 dark:text-red-300",
     };
   }
   return null;
+}
+
+function resolveTypeLabel(type: string, labels: OperationsTableLabels): string {
+  return labels.typeBadge?.[type] ?? operationTypeLabel(type);
+}
+
+function resolveAccountLabel(account: string, labels: OperationsTableLabels): string {
+  return labels.accountLabels?.[account] ?? operationAccountLabel(account);
+}
+
+function resolveCategoryLabel(category: string | null | undefined, labels: OperationsTableLabels): string {
+  if (!category) return "—";
+  const trimmed = category.trim();
+  if (!trimmed) return "—";
+  return labels.categoryLabels?.[trimmed] ?? operationCategoryLabel(trimmed);
 }
 
 export function OperationsTable({
@@ -83,6 +141,7 @@ export function OperationsTable({
   showWorkOrderColumn = false,
   workOrders = [],
   emphasizeWorkOrderFlow = false,
+  labels = DEFAULT_LABELS,
 }: OperationsTableProps) {
   const { formatMoney } = useAppDisplayCurrency();
   const workOrderIndex = useMemo(() => buildWorkOrderDisplayIndex(workOrders), [workOrders]);
@@ -90,11 +149,12 @@ export function OperationsTable({
     () => new Map(workOrders.map((order) => [order.id, order])),
     [workOrders],
   );
+  const dateFnsLocale = labels.dateLocale === "en" ? enUS : ru;
 
   if (rows.length === 0) {
     return (
       <div className="animate-autocore-fade-in-up rounded-lg border border-dashed bg-muted/20 p-8 text-center text-sm text-muted-foreground">
-        Пока нет операций в выбранном фильтре.
+        {labels.empty}
       </div>
     );
   }
@@ -104,14 +164,14 @@ export function OperationsTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/30 hover:bg-muted/30">
-            <TableHead>Дата</TableHead>
-            <TableHead>Тип</TableHead>
-            <TableHead>Счёт</TableHead>
-            <TableHead>Категория</TableHead>
-            <TableHead className="text-right">Сумма</TableHead>
-            <TableHead>Детали</TableHead>
-            {showWorkOrderColumn ? <TableHead>Заказ-наряд</TableHead> : null}
-            <TableHead className="text-right">Действия</TableHead>
+            <TableHead>{labels.colDate}</TableHead>
+            <TableHead>{labels.colType}</TableHead>
+            <TableHead>{labels.colAccount}</TableHead>
+            <TableHead>{labels.colCategory}</TableHead>
+            <TableHead className="text-right">{labels.colAmount}</TableHead>
+            <TableHead>{labels.colDetails}</TableHead>
+            {showWorkOrderColumn ? <TableHead>{labels.colWorkOrder}</TableHead> : null}
+            <TableHead className="text-right">{labels.colActions}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -133,7 +193,7 @@ export function OperationsTable({
               >
                 <TableCell className="whitespace-nowrap text-muted-foreground">
                   {format(operation.createdAt, "dd.MM.yyyy HH:mm", {
-                    locale: ru,
+                    locale: dateFnsLocale,
                   })}
                 </TableCell>
                 <TableCell>
@@ -143,22 +203,22 @@ export function OperationsTable({
                       TYPE_BADGE[operation.type] ?? "bg-muted text-muted-foreground",
                     )}
                   >
-                    {operationTypeLabel(operation.type)}
+                    {resolveTypeLabel(operation.type, labels)}
                   </span>
                   {isAdvanceOperation(operation) ? (
                     <span className="ml-1.5 inline-flex rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300">
-                      аванс
+                      {labels.advance}
                     </span>
                   ) : null}
                 </TableCell>
-                <TableCell>{operationAccountLabel(operation.account)}</TableCell>
+                <TableCell>{resolveAccountLabel(operation.account, labels)}</TableCell>
                 <TableCell>
                   <span className={cn(motorSale && "font-medium text-primary")}>
-                    {operationCategoryLabel(operation.category)}
+                    {resolveCategoryLabel(operation.category, labels)}
                   </span>
                   {emphasizeWorkOrderFlow
                     ? (() => {
-                        const flow = workOrderFlowBadge(operation);
+                        const flow = workOrderFlowBadge(operation, labels);
                         if (!flow) return null;
                         return (
                           <span
@@ -185,13 +245,18 @@ export function OperationsTable({
                         className="text-primary hover:underline"
                         onClick={(event) => event.stopPropagation()}
                       >
-                        {formatWorkOrderLabel(
-                          workOrderById.get(operation.relatedWorkOrderId) ?? {
-                            id: operation.relatedWorkOrderId,
-                            number: "",
-                          },
-                          workOrderIndex,
-                        )}
+                        {(() => {
+                          const related =
+                            workOrderById.get(operation.relatedWorkOrderId) ?? {
+                              id: operation.relatedWorkOrderId,
+                              number: "",
+                            };
+                          const n = workOrderDisplayNumber(related, workOrderIndex);
+                          if (n > 0) return labels.workOrderTitle(n);
+                          const trimmed = related.number.trim();
+                          if (trimmed) return trimmed;
+                          return labels.colWorkOrder;
+                        })()}
                       </Link>
                     ) : (
                       "—"
@@ -224,7 +289,7 @@ export function OperationsTable({
                         void onDelete(operation.id);
                       }}
                     >
-                      Удалить
+                      {labels.delete}
                     </Button>
                   </div>
                 </TableCell>

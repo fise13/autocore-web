@@ -60,7 +60,7 @@ export function AuthJourneyCoordinator({ children }: AuthJourneyCoordinatorProps
   const resolvedStep = step === "loading" ? "boot" : step;
   const stepLabel =
     step === "loading"
-      ? "Подготовка пространства"
+      ? userCopy.auth.preparingSpace
       : AUTH_JOURNEY_STEP_LABELS[step];
   const contentWidth =
     step === "setup-wizard" ? "xl" : step === "company" ? "md" : "md";
@@ -102,7 +102,7 @@ function AuthJourneyBootStep() {
       <AuthJourneyReveal index={1}>
         <div className="space-y-1">
           <p className="text-sm font-medium text-foreground">{userCopy.auth.completing}</p>
-          <p className="text-xs text-muted-foreground">Секунду…</p>
+          <p className="text-xs text-muted-foreground">{userCopy.auth.justAMoment}</p>
         </div>
       </AuthJourneyReveal>
     </div>

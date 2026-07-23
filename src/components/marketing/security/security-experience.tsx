@@ -81,16 +81,17 @@ function ScrollReveal({
 }
 
 export function SecurityExperience() {
-  const copy = useMarketingPages().security;
+  const pages = useMarketingPages();
+  const copy = pages.security;
 
   return (
     <div className="trust-page">
-      <section className="trust-panel trust-panel-hero" aria-label="Безопасность">
+      <section className="trust-panel trust-panel-hero" aria-label={pages.breadcrumbs.security}>
         <div className="exp-section-inner trust-panel-inner">
-          <nav className="trust-breadcrumbs" aria-label="Хлебные крошки">
+          <nav className="trust-breadcrumbs" aria-label={copy.sections.breadcrumbsAria}>
             <Link href="/">AutoCore</Link>
             <span aria-hidden>/</span>
-            <span>Безопасность</span>
+            <span>{pages.breadcrumbs.security}</span>
           </nav>
 
           <HeroReveal delay={0} duration={0.68} y={20}>
@@ -103,7 +104,7 @@ export function SecurityExperience() {
         </div>
       </section>
 
-      <section className="trust-panel trust-panel-compact" aria-label="Ключевые показатели">
+      <section className="trust-panel trust-panel-compact" aria-label={copy.sections.statsAria}>
         <div className="exp-section-inner">
           <ScrollReveal margin="-50px">
             <div className="trust-stats">
@@ -122,11 +123,9 @@ export function SecurityExperience() {
         <div className="exp-section-inner trust-section-inner">
           <ScrollReveal margin="-70px">
             <h2 id="security-pillars-heading" className="trust-section-title">
-              Фундамент, не дополнение
+              {copy.sections.foundationTitle}
             </h2>
-            <p className="trust-section-description">
-              Права, аудит и изоляция данных встроены в архитектуру с первого дня эксплуатации.
-            </p>
+            <p className="trust-section-description">{copy.sections.foundationBody}</p>
           </ScrollReveal>
 
           <ul className="trust-pillar-grid">
@@ -154,11 +153,9 @@ export function SecurityExperience() {
         <div className="exp-section-inner trust-section-inner">
           <ScrollReveal margin="-70px">
             <h2 id="security-stack-heading" className="trust-section-title">
-              Защита на каждом слое
+              {copy.sections.layersTitle}
             </h2>
-            <p className="trust-section-description">
-              От входа пользователя до генерации PDF: контроль доступа на каждом этапе.
-            </p>
+            <p className="trust-section-description">{copy.sections.layersBody}</p>
           </ScrollReveal>
 
           <ol className="trust-stack">
@@ -186,11 +183,9 @@ export function SecurityExperience() {
         <div className="exp-section-inner trust-section-inner">
           <ScrollReveal margin="-70px">
             <h2 id="security-audit-heading" className="trust-section-title">
-              Журнал активности
+              {copy.sections.auditTitle}
             </h2>
-            <p className="trust-section-description">
-              Пример записей, которые видит руководитель в Mission Control: кто, что, когда и в каком модуле.
-            </p>
+            <p className="trust-section-description">{copy.sections.auditBody}</p>
           </ScrollReveal>
 
           <ScrollReveal delay={0.06} margin="-50px">
@@ -222,7 +217,7 @@ export function SecurityExperience() {
         <div className="exp-section-inner trust-section-inner">
           <ScrollReveal margin="-70px">
             <h2 id="security-principles-heading" className="trust-section-title">
-              Принципы
+              {copy.sections.principlesTitle}
             </h2>
           </ScrollReveal>
 
@@ -250,10 +245,10 @@ export function SecurityExperience() {
         <div className="exp-section-inner trust-section-inner trust-checklist-wrap">
           <ScrollReveal margin="-60px">
             <h2 id="security-checklist-heading" className="trust-section-title trust-section-title-center">
-              Контрольный список
+              {copy.sections.checklistTitle}
             </h2>
             <p className="trust-section-description trust-section-description-center">
-              Что проверяем при проектировании каждого модуля AutoCore.
+              {copy.sections.checklistBody}
             </p>
           </ScrollReveal>
 
@@ -274,7 +269,7 @@ export function SecurityExperience() {
         <div className="exp-section-inner trust-related-inner">
           <ScrollReveal margin="-70px">
             <h2 id="trust-related-heading" className="trust-related-title">
-              Документы и контакты
+              {copy.sections.relatedTitle}
             </h2>
           </ScrollReveal>
 
@@ -283,8 +278,8 @@ export function SecurityExperience() {
               <Link href="/legal/privacy" className="trust-related-card">
                 <FileText className="size-4 text-muted-foreground" aria-hidden />
                 <div className="min-w-0 flex-1">
-                  <p className="trust-related-card-title">Конфиденциальность</p>
-                  <p className="trust-related-card-meta">Политика обработки данных</p>
+                  <p className="trust-related-card-title">{copy.sections.relatedPrivacyTitle}</p>
+                  <p className="trust-related-card-meta">{copy.sections.relatedPrivacyMeta}</p>
                 </div>
               </Link>
             </li>
@@ -292,8 +287,8 @@ export function SecurityExperience() {
               <Link href="/legal/terms" className="trust-related-card">
                 <FileText className="size-4 text-muted-foreground" aria-hidden />
                 <div className="min-w-0 flex-1">
-                  <p className="trust-related-card-title">Условия</p>
-                  <p className="trust-related-card-meta">Правила использования сервиса</p>
+                  <p className="trust-related-card-title">{copy.sections.relatedTermsTitle}</p>
+                  <p className="trust-related-card-meta">{copy.sections.relatedTermsMeta}</p>
                 </div>
               </Link>
             </li>
@@ -301,8 +296,8 @@ export function SecurityExperience() {
               <Link href="/contact" className="trust-related-card">
                 <Shield className="size-4 text-muted-foreground" aria-hidden />
                 <div className="min-w-0 flex-1">
-                  <p className="trust-related-card-title">Связаться</p>
-                  <p className="trust-related-card-meta">Вопросы по безопасности и доступу</p>
+                  <p className="trust-related-card-title">{copy.sections.relatedContactTitle}</p>
+                  <p className="trust-related-card-meta">{copy.sections.relatedContactMeta}</p>
                 </div>
               </Link>
             </li>

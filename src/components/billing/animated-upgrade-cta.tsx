@@ -59,7 +59,7 @@ export function AnimatedUpgradeCta({
       <motion.span
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        className="inline-flex shrink-0"
+        className={cn("inline-flex shrink-0", className?.includes("w-full") && "w-full")}
       >
         <Link href={href} className={sharedClass}>
           {content}
@@ -69,7 +69,11 @@ export function AnimatedUpgradeCta({
   }
 
   return (
-    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="inline-flex">
+    <motion.div
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      className={cn("inline-flex", className?.includes("w-full") && "w-full")}
+    >
       <Button type="button" variant={variant} size={size} disabled={disabled || pending} onClick={onClick} className={sharedClass}>
         {content}
       </Button>

@@ -21,11 +21,17 @@ import { bootstrapAppleRedirect } from "@/lib/auth/apple-redirect";
 import { prepareAppleSignInSession, isAppleJsReturnLanding } from "@/lib/auth/apple-js-sign-in";
 import { completeAppleJsReturnIfNeeded } from "@/lib/auth/sign-in-with-apple-credential";
 import { navigateToAppAfterAuth } from "@/lib/motion/auth-session-transition";
+import { useAppLocale } from "@/components/providers/app-locale-provider";
+import {
+  coerceAppLocale,
+  storePreferredLocale,
+} from "@/lib/locale/preferred-locale";
 import { userCopy } from "@/lib/user-copy";
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { setLocale } = useAppLocale();
   const deckSource = searchParams.get("source") === "deck";
   const { firebaseUser, profile, isLoading, isFirebaseReady, refreshProfile } = useAuth();
   const [authReady, setAuthReady] = useState(false);
@@ -33,6 +39,14 @@ export default function LoginPage() {
   const [appleReturnPending, setAppleReturnPending] = useState(
     () => typeof window !== "undefined" && isAppleJsReturnLanding(),
   );
+
+  useEffect(() => {
+    const lang = searchParams.get("lang");
+    if (!lang) return;
+    const locale = coerceAppLocale(lang);
+    storePreferredLocale(locale);
+    void setLocale(locale);
+  }, [searchParams, setLocale]);
 
   const goToApp = useCallback(() => {
     if (deckSource) {
@@ -174,7 +188,7 @@ export default function LoginPage() {
   if (appleReturnPending) {
     return (
       <>
-        <AppLoadingScreen message="Завершаем вход через Apple…" />
+        <AppLoadingScreen message={userCopy.auth.appleCompleting} />
         {showAuthDebug ? <AuthDebugPanel snapshot={debugSnapshot} /> : null}
       </>
     );

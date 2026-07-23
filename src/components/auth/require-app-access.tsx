@@ -8,6 +8,7 @@ import { DashboardShellSkeleton } from "@/components/layout/dashboard-shell-skel
 import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
 import { canAccessPath, defaultAppPath } from "@/lib/auth/app-access";
 import { hasSeenAuthSession } from "@/lib/performance/session-flags";
+import { userCopy } from "@/lib/user-copy";
 
 type RequireAppAccessProps = {
   children: ReactNode;
@@ -38,11 +39,19 @@ export function RequireAppAccess({ children }: RequireAppAccessProps) {
   }, [fallbackPath, isLoading, pathname, profile, router]);
 
   if (isLoading && !profile) {
-    return returningSession ? <DashboardShellSkeleton /> : <AppLoadingScreen message="Загрузка…" />;
+    return returningSession ? (
+      <DashboardShellSkeleton />
+    ) : (
+      <AppLoadingScreen message={userCopy.auth.loading} />
+    );
   }
 
   if (!profile) {
-    return returningSession ? <DashboardShellSkeleton /> : <AppLoadingScreen message="Загрузка…" />;
+    return returningSession ? (
+      <DashboardShellSkeleton />
+    ) : (
+      <AppLoadingScreen message={userCopy.auth.loading} />
+    );
   }
 
   if (!allowed) {

@@ -83,7 +83,7 @@ export const productContent = {
   cta: {
     titleLine1: "Проверьте на своём процессе.",
     titleLine2: "Демо уже заполнено.",
-    primary: "Открыть демо",
+    primary: "Демо",
     secondary: "Скачать",
     secondaryHref: marketingRoutes.download,
   },

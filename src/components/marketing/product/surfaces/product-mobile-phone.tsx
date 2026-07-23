@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
+import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import { IPhoneSimulatorFrame } from "@/components/marketing/experience/devices/iphone-simulator-frame";
 import {
   formatKzt,
@@ -32,8 +33,9 @@ function buildInitialStock(): StockMap {
   return map;
 }
 
-/** Pixel-faithful interactive AutoCore mobile: Склад + Скан from autocore-mobile. */
+/** Pixel-faithful interactive AutoCore mobile: warehouse + scan from autocore-mobile. */
 export function ProductMobilePhone({ className }: { className?: string }) {
+  const chrome = useDemoChrome();
   const reduced = useReducedMotion();
   const [tab, setTab] = useState<TabId>("warehouse");
   const [query, setQuery] = useState("");
@@ -108,11 +110,11 @@ export function ProductMobilePhone({ className }: { className?: string }) {
       ...current,
       [selected.id]: Math.max(0, (current[selected.id] ?? 0) - 1),
     }));
-    showToast(`Резерв · ${selected.engineCode} · ${selected.location}`);
+    showToast(chrome.mobile.reserveToast(selected.engineCode, selected.location));
     setScanPhase("idle");
     setSelected(null);
     setTab("warehouse");
-  }, [selected, showToast]);
+  }, [selected, showToast, chrome.mobile]);
 
   return (
     <div className={cn("product-mobile-phone", className)}>
@@ -130,15 +132,15 @@ export function ProductMobilePhone({ className }: { className?: string }) {
               >
                 <header className="ac-mobile-header">
                   <div>
-                    <h3 className="ac-mobile-title">Склад</h3>
+                    <h3 className="ac-mobile-title">{chrome.mobile.warehouse}</h3>
                     <p className="ac-mobile-sub">
-                      {stats.total} позиций · {stats.units} ед. в наличии
+                      {chrome.mobile.positionsSummary(stats.total, stats.units)}
                     </p>
                   </div>
                   <button
                     type="button"
                     className="ac-mobile-scan-fab"
-                    aria-label="Сканирование"
+                    aria-label={chrome.mobile.scanAria}
                     onClick={() => {
                       setTab("scan");
                       startScan();
@@ -150,11 +152,11 @@ export function ProductMobilePhone({ className }: { className?: string }) {
 
                 <div className="ac-mobile-stats">
                   <div className="ac-mobile-stat">
-                    <p className="ac-mobile-stat-label">На складе</p>
+                    <p className="ac-mobile-stat-label">{chrome.mobile.onHand}</p>
                     <p className="ac-mobile-stat-value">{stats.units}</p>
                   </div>
                   <div className="ac-mobile-stat">
-                    <p className="ac-mobile-stat-label">Позиции</p>
+                    <p className="ac-mobile-stat-label">{chrome.mobile.positions}</p>
                     <p className="ac-mobile-stat-value">{stats.total}</p>
                   </div>
                 </div>
@@ -164,8 +166,8 @@ export function ProductMobilePhone({ className }: { className?: string }) {
                   <input
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Поиск двигателя, VIN, полки…"
-                    aria-label="Поиск на складе"
+                    placeholder={chrome.mobile.searchPlaceholder}
+                    aria-label={chrome.mobile.searchAria}
                   />
                 </label>
 
@@ -187,7 +189,7 @@ export function ProductMobilePhone({ className }: { className?: string }) {
                               {motor.brandName} {motor.engineCode}
                             </span>
                             <span className="ac-mobile-row-meta">
-                              {motor.serialCode} · Ячейка {motor.location}
+                              {motor.serialCode} · {chrome.mobile.bin} {motor.location}
                             </span>
                           </span>
                         </button>
@@ -195,14 +197,14 @@ export function ProductMobilePhone({ className }: { className?: string }) {
                           <div className="ac-mobile-stepper">
                             <button
                               type="button"
-                              aria-label="Минус"
+                              aria-label={chrome.mobile.minus}
                               disabled={available <= 0}
                               onClick={() => adjust(motor.id, -1)}
                             >
                               −
                             </button>
                             <span>{available}</span>
-                            <button type="button" aria-label="Плюс" onClick={() => adjust(motor.id, 1)}>
+                            <button type="button" aria-label={chrome.mobile.plus} onClick={() => adjust(motor.id, 1)}>
                               +
                             </button>
                           </div>
@@ -224,8 +226,8 @@ export function ProductMobilePhone({ className }: { className?: string }) {
               >
                 <header className="ac-mobile-header">
                   <div>
-                    <h3 className="ac-mobile-title">Скан</h3>
-                    <p className="ac-mobile-sub">Наведите на VIN или штрихкод</p>
+                    <h3 className="ac-mobile-title">{chrome.mobile.scan}</h3>
+                    <p className="ac-mobile-sub">{chrome.mobile.scanHint}</p>
                   </div>
                 </header>
 
@@ -250,10 +252,10 @@ export function ProductMobilePhone({ className }: { className?: string }) {
                   <Barcode className="size-7 opacity-70" aria-hidden />
                   <p>
                     {scanPhase === "scanning"
-                      ? "Сканируем…"
+                      ? chrome.mobile.scanning
                       : scanPhase === "found"
-                        ? "Нажмите, чтобы сканировать снова"
-                        : "Нажмите, чтобы сканировать"}
+                        ? chrome.mobile.tapScanAgain
+                        : chrome.mobile.tapScan}
                   </p>
                 </button>
 
@@ -278,36 +280,36 @@ export function ProductMobilePhone({ className }: { className?: string }) {
                           <p className="ac-mobile-sheet-sub">
                             {selected.serialCode} · {selected.configuration}
                           </p>
-                          <p className="ac-mobile-sheet-match">Точное совпадение</p>
+                          <p className="ac-mobile-sheet-match">{chrome.mobile.exactMatch}</p>
                         </div>
                       </div>
 
                       <div className="ac-mobile-sheet-stats">
                         <div>
-                          <span>Остаток</span>
+                          <span>{chrome.mobile.balance}</span>
                           <strong>{stock[selected.id] ?? 0}</strong>
                         </div>
                         <div>
-                          <span>Склад</span>
-                          <strong>Основной</strong>
+                          <span>{chrome.mobile.warehouse}</span>
+                          <strong>{chrome.mobile.warehouseName}</strong>
                         </div>
                         <div>
-                          <span>Место</span>
+                          <span>{chrome.mobile.location}</span>
                           <strong>{selected.location}</strong>
                         </div>
                       </div>
 
                       <div className="ac-mobile-sheet-price-row">
                         <div className="ac-mobile-sheet-price">
-                          <span>Цена</span>
+                          <span>{chrome.mobile.price}</span>
                           <strong>{formatKzt(selected.price)} ₸</strong>
                         </div>
-                        <span className="ac-mobile-sheet-status">В наличии</span>
+                        <span className="ac-mobile-sheet-status">{chrome.status.inStock}</span>
                       </div>
 
                       <div className="ac-mobile-sheet-actions">
                         <button type="button" className="is-primary" onClick={reserve}>
-                          Резерв
+                          {chrome.status.reserved}
                         </button>
                         <button
                           type="button"
@@ -317,7 +319,7 @@ export function ProductMobilePhone({ className }: { className?: string }) {
                             setSelected(null);
                           }}
                         >
-                          Открыть карточку
+                          {chrome.mobile.openCard}
                         </button>
                       </div>
                     </motion.div>
@@ -327,14 +329,14 @@ export function ProductMobilePhone({ className }: { className?: string }) {
             )}
           </AnimatePresence>
 
-          <nav className="ac-mobile-tabbar" aria-label="Вкладки">
+          <nav className="ac-mobile-tabbar" aria-label={chrome.mobile.tabsAria}>
             <button
               type="button"
               className={cn(tab === "warehouse" && "is-active")}
               onClick={() => setTab("warehouse")}
             >
               <Warehouse className="size-4" />
-              <span>Склад</span>
+              <span>{chrome.mobile.warehouse}</span>
             </button>
             <button
               type="button"
@@ -345,7 +347,7 @@ export function ProductMobilePhone({ className }: { className?: string }) {
               }}
             >
               <ScanSearch className="size-4" />
-              <span>Скан</span>
+              <span>{chrome.mobile.scan}</span>
             </button>
           </nav>
 

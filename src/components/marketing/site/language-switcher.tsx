@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 
 import { Link, usePathname } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
+import { storePreferredLocale } from "@/lib/locale/preferred-locale";
 import { cn } from "@/lib/utils";
 import type { AppLocale } from "@autocore/i18n/config";
 import { getLocaleMetadata } from "@autocore/i18n/config";
@@ -37,6 +38,7 @@ export function LanguageSwitcher({ className }: LanguageSwitcherProps) {
               href={pathname}
               locale={item}
               hrefLang={meta.bcp47}
+              onClick={() => storePreferredLocale(item)}
               className={cn(
                 "rounded px-1.5 py-0.5 font-medium tracking-wide uppercase transition-colors",
                 active

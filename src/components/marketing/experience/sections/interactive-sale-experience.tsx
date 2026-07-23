@@ -12,12 +12,11 @@ import {
 } from "@/components/documents/document-scaled-preview";
 import { RenderDocument } from "@/components/documents/registry/render-document";
 import { useSellMotorDialogLabels } from "@/components/marketing/modals/use-sell-motor-dialog-labels";
+import { useLandingDemoSnapshot } from "@/components/marketing/modals/use-landing-demo-snapshot";
+import { useMarketingDocumentContext } from "@/components/marketing/modals/use-marketing-document-context";
 import { SellMotorDialog, type MotorSellPayload } from "@/components/motors/sell-motor-dialog";
 import { Button } from "@/components/ui/button";
-import { landingSaleDocumentContext } from "@/lib/marketing/demo-document-context";
 import {
-  landingDemoMotorsSale,
-  landingDemoSaleClient,
   toLandingSaleMotorEntity,
   type LandingSaleMotor,
 } from "@/lib/marketing/landing-demo-snapshot";
@@ -34,6 +33,8 @@ export function InteractiveSaleExperience() {
   const reduced = useReducedMotion();
   const { loop: copy } = useLandingContent();
   const sellLabels = useSellMotorDialogLabels();
+  const { landingSaleDocumentContext } = useMarketingDocumentContext();
+  const { landingDemoMotorsSale, landingDemoSaleClient } = useLandingDemoSnapshot();
   const [phase, setPhase] = useState<Phase>("idle");
   const [cascadeStep, setCascadeStep] = useState(-1);
   const [dialogOpen, setDialogOpen] = useState(false);

@@ -4,6 +4,7 @@ import { DocumentTheme } from "@/domain/company-branding";
 import { DocumentSlug } from "@/lib/documents/document-types";
 import { ResolvedWarranty } from "@/lib/documents/warranty/resolve-warranty";
 import type { RacingViewModel } from "@/lib/documents/render-model/build-racing-view-model";
+import type { DocumentUiLabels } from "@/lib/documents/document-context";
 import type { DocumentHeaderModel } from "@/lib/documents/header/build-document-header-model";
 import type { DocumentWatermarkRenderModel } from "@/lib/documents/watermark/build-watermark-render-model";
 
@@ -116,4 +117,6 @@ export type DocumentRenderModel = {
   documentWatermark: DocumentWatermarkRenderModel | null;
   sections: DocumentSectionModel[];
   racing?: RacingViewModel;
+  /** Resolved PDF chrome labels (Russian defaults when context.ui omitted). */
+  ui: DocumentUiLabels;
 };

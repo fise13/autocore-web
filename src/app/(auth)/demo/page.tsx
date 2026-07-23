@@ -13,6 +13,10 @@ import { DEMO_ACCOUNT_EMAIL } from "@/lib/demo/demo-config";
 import { getFirebaseAuth, isFirebaseConfigured } from "@/infrastructure/firebase/client";
 import { prepareSyncAuth } from "@/lib/auth/prepare-sync-auth";
 import { clearDemoSessionMarker, markDemoSessionActive } from "@/lib/demo/demo-session.client";
+import {
+  coerceAppLocale,
+  storePreferredLocale,
+} from "@/lib/locale/preferred-locale";
 import { appLoginUrl, marketingHomeUrl } from "@/lib/site-urls";
 import { userCopy } from "@/lib/user-copy";
 
@@ -23,6 +27,12 @@ export default function DemoPage() {
   const { firebaseUser, isLoading, isFirebaseReady, refreshProfile } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [started, setStarted] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const lang = new URLSearchParams(window.location.search).get("lang");
+    if (lang) storePreferredLocale(coerceAppLocale(lang));
+  }, []);
 
   useEffect(() => {
     if (!isFirebaseReady || isLoading || started) return;

@@ -3,6 +3,7 @@
 import { Barcode, MapPin } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 
+import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import { IPhone16ProFrame } from "@/components/marketing/experience/devices/iphone-16-pro-frame";
 import { ProductWindow } from "@/components/marketing/experience/ui/product-window";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,7 @@ type DevicesSyncSurfaceProps = {
 };
 
 export function DevicesSyncSurface({ className }: DevicesSyncSurfaceProps) {
+  const chrome = useDemoChrome();
   const reduced = useReducedMotion();
 
   return (
@@ -24,10 +26,10 @@ export function DevicesSyncSurface({ className }: DevicesSyncSurfaceProps) {
       <div className="mx-auto w-[min(100%,14rem)]">
         <IPhone16ProFrame>
           <div className="flex h-full flex-col gap-3 bg-background p-3 text-foreground">
-            <p className="text-[10px] font-medium text-muted-foreground">Скан · склад</p>
+            <p className="text-[10px] font-medium text-muted-foreground">{chrome.devices.scanWarehouse}</p>
             <div className="rounded-lg border border-dashed border-primary/35 bg-primary/5 px-3 py-4 text-center">
               <Barcode className="mx-auto size-5 text-primary" aria-hidden />
-              <p className="mt-2 text-[11px] font-medium">{m.engineCode} распознан</p>
+              <p className="mt-2 text-[11px] font-medium">{chrome.devices.recognized(m.engineCode)}</p>
             </div>
             <div className="rounded-lg border border-border/70 p-2.5">
               <p className="text-[11px] font-semibold">{m.engineCode} · {m.configuration}</p>
@@ -41,9 +43,9 @@ export function DevicesSyncSurface({ className }: DevicesSyncSurfaceProps) {
         </IPhone16ProFrame>
       </div>
 
-      <ProductWindow title="AutoCore · Офис" contentClassName="space-y-3">
+      <ProductWindow title={chrome.devices.officeTitle} contentClassName="space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-medium">Тот же объект</p>
+          <p className="text-sm font-medium">{chrome.devices.sameObject}</p>
           <motion.div
             initial={reduced ? false : { opacity: 0.4 }}
             whileInView={{ opacity: 1 }}
@@ -51,7 +53,7 @@ export function DevicesSyncSurface({ className }: DevicesSyncSurfaceProps) {
             transition={{ duration: 0.5, ease: EASE }}
           >
             <Badge variant="outline" className="font-normal">
-              Только что
+              {chrome.common.justNow}
             </Badge>
           </motion.div>
         </div>
@@ -64,10 +66,10 @@ export function DevicesSyncSurface({ className }: DevicesSyncSurfaceProps) {
               <p className="mt-0.5 exp-mock-mono text-xs text-muted-foreground">{m.serialCode}</p>
             </div>
             <Badge variant="outline" className="font-normal">
-              Резерв · {m.reservedFor}
+              {chrome.status.reservedFor(m.reservedFor)}
             </Badge>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">Полка {m.location} · видно офису и складу</p>
+          <p className="mt-2 text-xs text-muted-foreground">{chrome.devices.shelfVisible(m.location)}</p>
         </div>
       </ProductWindow>
     </div>

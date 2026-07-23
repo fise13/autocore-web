@@ -5,7 +5,16 @@ import { useWorkspace } from "@/components/layout/workspace-context";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
-export function WorkspaceStatusBar({ compact = false }: { compact?: boolean }) {
+type WorkspaceStatusBarProps = {
+  compact?: boolean;
+  /** Manual save + save status — warehouse grid only. */
+  showSave?: boolean;
+};
+
+export function WorkspaceStatusBar({
+  compact = false,
+  showSave = false,
+}: WorkspaceStatusBarProps) {
   const { shownCount, totalCount, saveStatus, saveError, gridInteractionLocked, triggerSync } =
     useWorkspace();
   const persistence = usePersistenceOptional();
@@ -46,6 +55,10 @@ export function WorkspaceStatusBar({ compact = false }: { compact?: boolean }) {
         error: saveError ?? persistence?.snapshot.lastError ?? userCopy.sync.error,
       }[saveStatus];
 
+  if (compact && !showSave) {
+    return null;
+  }
+
   return (
     <footer
       className={cn(
@@ -58,29 +71,33 @@ export function WorkspaceStatusBar({ compact = false }: { compact?: boolean }) {
           <span>
             {shownCount} / {totalCount}
           </span>
-          <span aria-hidden>•</span>
+          {showSave ? <span aria-hidden>•</span> : null}
         </>
       ) : null}
-      <span
-        className={cn(
-          "transition-colors duration-300",
-          hasUnsaved && "text-amber-600",
-          isSaving && "text-sky-600",
-          isOffline && "text-sky-600",
-          isError && "text-destructive",
-          !hasUnsaved && !isSaving && !isError && !isOffline && "text-muted-foreground",
-        )}
-      >
-        {saveStatusText}
-      </span>
-      <button
-        type="button"
-        onClick={handleSaveClick}
-        disabled={(!hasUnsaved && !isError) || isSaving || gridInteractionLocked}
-        className="text-primary transition hover:text-primary/80 disabled:pointer-events-none disabled:opacity-40"
-      >
-        {userCopy.sync.saveLocal}
-      </button>
+      {showSave ? (
+        <>
+          <span
+            className={cn(
+              "transition-colors duration-300",
+              hasUnsaved && "text-amber-600",
+              isSaving && "text-sky-600",
+              isOffline && "text-sky-600",
+              isError && "text-destructive",
+              !hasUnsaved && !isSaving && !isError && !isOffline && "text-muted-foreground",
+            )}
+          >
+            {saveStatusText}
+          </span>
+          <button
+            type="button"
+            onClick={handleSaveClick}
+            disabled={(!hasUnsaved && !isError) || isSaving || gridInteractionLocked}
+            className="text-primary transition hover:text-primary/80 disabled:pointer-events-none disabled:opacity-40"
+          >
+            {userCopy.sync.saveLocal}
+          </button>
+        </>
+      ) : null}
     </footer>
   );
 }

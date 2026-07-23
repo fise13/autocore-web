@@ -1,6 +1,5 @@
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
-import { marketingSiteContent } from "@/components/marketing/content/marketing-site-content";
 import { PricingExperience } from "@/components/marketing/pricing/pricing-experience";
 import { MarketingExtraJsonLd } from "@/components/marketing/seo/marketing-json-ld";
 import { routing } from "@/i18n/routing";
@@ -8,8 +7,6 @@ import { buildMarketingMetadata } from "@/lib/seo/build-marketing-metadata";
 import { buildWebPageJsonLd } from "@/lib/seo/build-webpage-jsonld";
 import { buildBreadcrumbJsonLd, buildFaqJsonLd, buildPricingOfferJsonLd } from "@/lib/seo/marketing-seo";
 import { isAppLocale } from "@autocore/i18n/config";
-
-const copy = marketingSiteContent.pricing;
 
 type PageProps = {
   params: Promise<{ locale: string }>;
@@ -32,6 +29,9 @@ export default async function PricingPage({ params }: PageProps) {
   if (!isAppLocale(locale)) return null;
   setRequestLocale(locale);
 
+  const t = await getTranslations({ locale, namespace: "marketing" });
+  const faqItems = t.raw("pages.pricing.faq") as Array<{ q: string; a: string }>;
+
   return (
     <>
       <MarketingExtraJsonLd
@@ -39,7 +39,7 @@ export default async function PricingPage({ params }: PageProps) {
           buildWebPageJsonLd("pricing", locale),
           buildBreadcrumbJsonLd("pricing", locale),
           buildPricingOfferJsonLd(),
-          buildFaqJsonLd([...copy.faq]),
+          buildFaqJsonLd(faqItems),
         ]}
       />
       <PricingExperience />

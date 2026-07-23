@@ -358,12 +358,19 @@ function DashboardShellInner({ children }: DashboardShellProps) {
                 </div>
               </main>
 
-              <div className="flex items-center gap-2 border-t border-sidebar-border bg-sidebar px-2">
-                <div className="min-w-0 flex-1">
-                  <WorkspaceStatusBar compact={!isGridCountRoute} />
+              {isWarehouseRoute || isGridCountRoute ? (
+                <div className="flex items-center gap-2 border-t border-sidebar-border bg-sidebar px-2">
+                  <div className="min-w-0 flex-1">
+                    <WorkspaceStatusBar
+                      compact={!isGridCountRoute}
+                      showSave={isWarehouseRoute}
+                    />
+                  </div>
+                  {isWarehouseRoute ? (
+                    <PersistenceStatusBadge className="shrink-0" />
+                  ) : null}
                 </div>
-                <PersistenceStatusBadge className="shrink-0" />
-              </div>
+              ) : null}
             </motion.div>
           </div>
         </CommandPaletteProvider>

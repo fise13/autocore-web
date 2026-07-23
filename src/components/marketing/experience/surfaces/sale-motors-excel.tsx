@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Search } from "lucide-react";
 
+import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import { cellFrame, type GridLayoutMetrics } from "@/lib/grid/grid-layout-engine";
 import { gridPalette } from "@/lib/grid/grid-palette";
 import type { GridColumnDefinition } from "@/lib/grid/grid-types";
@@ -13,40 +14,55 @@ import {
   primaryRange,
 } from "@/lib/grid/selection-controller";
 import { formatMotorDate } from "@/lib/motor-dates";
-import {
-  formatKzt,
-  landingDemoMotorsSale,
-  type LandingSaleMotor,
-} from "@/lib/marketing/landing-demo-snapshot";
+import { formatKzt, type LandingSaleMotor } from "@/lib/marketing/landing-demo-snapshot";
 import { scaleMotorGridDimension } from "@/lib/motor-grid-layout";
 import { cn } from "@/lib/utils";
+import { useLandingDemoSnapshot } from "@/components/marketing/modals/use-landing-demo-snapshot";
 
 const EMPTY_PAD = 22;
 const EMPTY_PAD_COMPACT = 1;
 const ARRIVAL = new Date("2026-02-01");
 const ZOOM = 1;
 
-const SALE_COLUMN_BASE: Array<
-  Omit<GridColumnDefinition, "width"> & { width: number; flex?: number }
-> = [
-  { id: "rowNumber", title: "#", width: 44, editable: false, align: "center", flex: 0 },
-  { id: "brandName", title: "Бренд", width: 120, editable: false, align: "left", flex: 1.1 },
-  { id: "engineCode", title: "Двигатель", width: 110, editable: false, align: "left", flex: 1 },
-  { id: "serialCode", title: "Номер двигателя", width: 160, editable: false, align: "left", flex: 1.45 },
-  { id: "quantity", title: "Кол-во", width: 72, editable: false, align: "center", flex: 0 },
-  { id: "warehouseLocation", title: "Место", width: 96, editable: false, align: "left", flex: 0.85 },
-  { id: "notes", title: "Цена", width: 120, editable: false, align: "left", flex: 1.05 },
-  { id: "transmission", title: "Коробка", width: 96, editable: false, align: "center", flex: 0.8 },
-  { id: "configuration", title: "Статус", width: 112, editable: false, align: "left", flex: 1 },
-  { id: "arrivalDate", title: "Дата прихода", width: 118, editable: false, align: "center", flex: 1 },
-  { id: "action", title: "", width: 110, editable: false, align: "center", flex: 0 },
+type SaleColumnSpec = Omit<GridColumnDefinition, "width" | "title"> & {
+  width: number;
+  flex?: number;
+  titleKey: keyof ReturnType<typeof useDemoChrome>["columns"] | "rowNumber" | "action";
+};
+
+const SALE_COLUMN_SPECS: SaleColumnSpec[] = [
+  { id: "rowNumber", titleKey: "rowNumber", width: 44, editable: false, align: "center", flex: 0 },
+  { id: "brandName", titleKey: "brand", width: 120, editable: false, align: "left", flex: 1.1 },
+  { id: "engineCode", titleKey: "engine", width: 110, editable: false, align: "left", flex: 1 },
+  { id: "serialCode", titleKey: "serial", width: 160, editable: false, align: "left", flex: 1.45 },
+  { id: "quantity", titleKey: "qty", width: 72, editable: false, align: "center", flex: 0 },
+  { id: "warehouseLocation", titleKey: "place", width: 96, editable: false, align: "left", flex: 0.85 },
+  { id: "notes", titleKey: "price", width: 120, editable: false, align: "left", flex: 1.05 },
+  { id: "transmission", titleKey: "box", width: 96, editable: false, align: "center", flex: 0.8 },
+  { id: "configuration", titleKey: "status", width: 112, editable: false, align: "left", flex: 1 },
+  { id: "arrivalDate", titleKey: "arrival", width: 118, editable: false, align: "center", flex: 1 },
+  { id: "action", titleKey: "action", width: 110, editable: false, align: "center", flex: 0 },
 ];
 
+function titleForColumnKey(
+  key: SaleColumnSpec["titleKey"],
+  columns: ReturnType<typeof useDemoChrome>["columns"],
+): string {
+  if (key === "rowNumber") return "#";
+  if (key === "action") return "";
+  return columns[key];
+}
+
 /** Stretch columns to fill the viewport — no empty dead zone on the right. */
-function buildSaleLayout(containerWidth: number, compact = false): GridLayoutMetrics {
+function buildSaleLayout(
+  containerWidth: number,
+  columnTitles: ReturnType<typeof useDemoChrome>["columns"],
+  compact = false,
+): GridLayoutMetrics {
   const zoom = compact ? 0.92 : ZOOM;
-  const base = SALE_COLUMN_BASE.map((column) => ({
+  const base = SALE_COLUMN_SPECS.map((column) => ({
     ...column,
+    title: titleForColumnKey(column.titleKey, columnTitles),
     width: scaleMotorGridDimension(column.width, zoom),
   }));
 
@@ -67,7 +83,7 @@ function buildSaleLayout(containerWidth: number, compact = false): GridLayoutMet
         usedExtra += add;
       }
     }
-    const { flex: _flex, ...rest } = column;
+    const { flex: _flex, titleKey: _titleKey, ...rest } = column;
     return { ...rest, width: column.width + add };
   });
 
@@ -93,7 +109,7 @@ function buildSaleLayout(containerWidth: number, compact = false): GridLayoutMet
 
 type SaleMotorsExcelProps = {
   selectedId: string;
-  sellLabel: string;
+  sellLabel?: string;
   onSelect: (motor: LandingSaleMotor) => void;
   onSell: (motor: LandingSaleMotor) => void;
   /** Fit height to rows — no empty spreadsheet pad. */
@@ -102,16 +118,19 @@ type SaleMotorsExcelProps = {
 
 export function SaleMotorsExcel({
   selectedId,
-  sellLabel,
+  sellLabel: sellLabelProp,
   onSelect,
   onSell,
   compact = false,
 }: SaleMotorsExcelProps) {
+  const chrome = useDemoChrome();
+  const sellLabel = sellLabelProp || chrome.sell;
+  const { landingDemoMotorsSale } = useLandingDemoSnapshot();
   const rootRef = useRef<HTMLDivElement>(null);
   const [viewportWidth, setViewportWidth] = useState(1200);
   const layout = useMemo(
-    () => buildSaleLayout(viewportWidth, compact),
-    [viewportWidth, compact],
+    () => buildSaleLayout(viewportWidth, chrome.columns, compact),
+    [viewportWidth, compact, chrome.columns],
   );
   const [query, setQuery] = useState("");
   const [selection, setSelection] = useState<GridSelectionState>(() => ({
@@ -151,7 +170,7 @@ export function SaleMotorsExcel({
         .toLowerCase()
         .includes(q),
     );
-  }, [query]);
+  }, [landingDemoMotorsSale, query]);
 
   const displayRows = rows.length;
   const sheetRows = displayRows + (compact ? EMPTY_PAD_COMPACT : EMPTY_PAD);
@@ -177,7 +196,7 @@ export function SaleMotorsExcel({
       case "transmission":
         return motor.transmission;
       case "configuration":
-        return "В наличии";
+        return chrome.status.inStock;
       case "arrivalDate":
         return formatMotorDate(ARRIVAL);
       default:
@@ -217,28 +236,28 @@ export function SaleMotorsExcel({
             onChange={(event) => setQuery(event.target.value)}
             spellCheck={false}
             autoComplete="off"
-            placeholder="Поиск…"
-            aria-label="Поиск по двигателям"
+            placeholder={chrome.filters.search}
+            aria-label={chrome.filters.searchMotors}
             className="exp-sale-excel-search-input"
           />
           <span className="exp-sale-excel-count">
-            {displayRows} из {landingDemoMotorsSale.length}
+            {chrome.filters.countOf(displayRows, landingDemoMotorsSale.length)}
           </span>
         </label>
 
         <div className="exp-sale-excel-toolbar-actions">
-          <div className="exp-hero-excel-filter-group" role="group" aria-label="Фильтр статуса">
+          <div className="exp-hero-excel-filter-group" role="group" aria-label={chrome.filters.statusFilterAria}>
             <button
               type="button"
               className="exp-sale-excel-tool-btn exp-hero-excel-filter-chip is-active"
               aria-pressed
             >
-              В наличии
+              {chrome.filters.inStock}
             </button>
           </div>
           <button type="button" className="exp-sale-excel-tool-btn is-export" onClick={exportCsv}>
             <Download className="size-3.5" aria-hidden />
-            Экспорт
+            {chrome.filters.export}
           </button>
         </div>
       </div>
@@ -248,7 +267,7 @@ export function SaleMotorsExcel({
         tabIndex={0}
         className="exp-sale-excel-viewport excel-grid-scroll outline-none"
         role="grid"
-        aria-label="Склад двигателей · Excel"
+        aria-label={chrome.grid.ariaLabel}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
             const motor = rows[selection.head.row];

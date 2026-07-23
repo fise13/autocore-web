@@ -1,5 +1,14 @@
-import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
+import { cookies } from "next/headers";
 
-export default function Loading() {
-  return <AppLoadingScreen />;
+import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
+import {
+  coerceAppLocale,
+  PREFERRED_LOCALE_STORAGE_KEY,
+} from "@/lib/locale/preferred-locale";
+
+export default async function Loading() {
+  const jar = await cookies();
+  const locale = coerceAppLocale(jar.get(PREFERRED_LOCALE_STORAGE_KEY)?.value);
+
+  return <AppLoadingScreen locale={locale} />;
 }

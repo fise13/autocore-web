@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState, type ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
@@ -69,6 +70,7 @@ function MobileDownloadReveal({
   onClose: () => void;
 }) {
   const reduced = useReducedMotion();
+  const tQr = useTranslations("marketing.pages.downloadMobile");
   const platformCopy = copy.platforms.find((item) => item.id === platform)!;
   const installUrl = platform === "ios" ? links.ios : links.android;
   const hasUrl = installUrl.length > 0;
@@ -106,7 +108,7 @@ function MobileDownloadReveal({
           {platformCopy.title}
         </h2>
         <button type="button" className="download-mobile-reveal-back" onClick={onClose}>
-          Изменить выбор
+          {copy.changeSelection}
         </button>
       </div>
 
@@ -116,7 +118,7 @@ function MobileDownloadReveal({
           {hasUrl && qrDataUri ? (
             <img
               src={qrDataUri}
-              alt={`QR-код для установки AutoCore на ${platformCopy.title}`}
+              alt={tQr("qrAlt", { platform: platformCopy.title })}
               className="download-mobile-qr-image"
               width={200}
               height={200}
@@ -170,7 +172,7 @@ export function MobileDownloadExperience() {
       <section className="download-panel download-mobile-panel" aria-labelledby="download-mobile-platforms-heading">
         <div className="exp-section-inner download-panel-inner download-mobile-inner">
           <h2 id="download-mobile-platforms-heading" className="sr-only">
-            Выберите платформу
+            {copy.platformPickerTitle}
           </h2>
 
           <ul className="download-mobile-platform-grid">

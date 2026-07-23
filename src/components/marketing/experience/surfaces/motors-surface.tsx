@@ -2,13 +2,11 @@
 
 import { Search } from "lucide-react";
 
+import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
+import { useLandingDemoSnapshot } from "@/components/marketing/modals/use-landing-demo-snapshot";
 import { ProductWindow } from "@/components/marketing/experience/ui/product-window";
 import { Badge } from "@/components/ui/badge";
-import {
-  formatKzt,
-  landingDemoInventory,
-  landingDemoMotor,
-} from "@/lib/marketing/landing-demo-snapshot";
+import { formatKzt, landingDemoInventory } from "@/lib/marketing/landing-demo-snapshot";
 import { cn } from "@/lib/utils";
 
 type MotorsSurfaceProps = {
@@ -22,11 +20,13 @@ export function MotorsSurface({
   variant = "hero",
   highlight = "motor",
 }: MotorsSurfaceProps) {
+  const chrome = useDemoChrome();
+  const { landingDemoMotor } = useLandingDemoSnapshot();
   const showInventory = variant !== "hero" && highlight === "inventory";
 
   return (
     <ProductWindow
-      title="AutoCore · Двигатели"
+      title={chrome.grid.motorsTitle}
       className={cn("exp-surface", className)}
       contentClassName="p-0!"
     >
@@ -36,33 +36,48 @@ export function MotorsSurface({
           <span className="text-xs text-foreground">
             {showInventory ? "FLT-OIL" : "G4KC"}
           </span>
-          <span className="ml-auto text-[10px] text-muted-foreground">Демо-данные</span>
+          <span className="ml-auto text-[10px] text-muted-foreground">{chrome.grid.demoData}</span>
         </div>
       </div>
 
       {showInventory ? (
-        <InventoryTable />
+        <InventoryTable columns={chrome.columns} />
       ) : (
-        <MotorsTable highlightReserve={highlight === "reserve" || landingDemoMotor.status === "reserved"} />
+        <MotorsTable
+          motor={landingDemoMotor}
+          columns={chrome.columns}
+          status={chrome.status}
+          highlightReserve={highlight === "reserve" || landingDemoMotor.status === "reserved"}
+        />
       )}
     </ProductWindow>
   );
 }
 
-function MotorsTable({ highlightReserve }: { highlightReserve: boolean }) {
-  const m = landingDemoMotor;
+function MotorsTable({
+  motor,
+  columns,
+  status,
+  highlightReserve,
+}: {
+  motor: ReturnType<typeof useLandingDemoSnapshot>["landingDemoMotor"];
+  columns: ReturnType<typeof useDemoChrome>["columns"];
+  status: ReturnType<typeof useDemoChrome>["status"];
+  highlightReserve: boolean;
+}) {
+  const m = motor;
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[36rem] border-collapse text-left text-xs">
         <thead>
           <tr className="border-b border-border/70 bg-muted/30 text-[10px] uppercase tracking-wide text-muted-foreground">
-            <th className="px-3 py-2 font-medium">Бренд</th>
-            <th className="px-3 py-2 font-medium">Двигатель</th>
+            <th className="px-3 py-2 font-medium">{columns.brand}</th>
+            <th className="px-3 py-2 font-medium">{columns.engine}</th>
             <th className="px-3 py-2 font-medium">№</th>
-            <th className="px-3 py-2 font-medium">Место</th>
-            <th className="px-3 py-2 font-medium">Кол-во</th>
-            <th className="px-3 py-2 font-medium">Статус</th>
+            <th className="px-3 py-2 font-medium">{columns.place}</th>
+            <th className="px-3 py-2 font-medium">{columns.qty}</th>
+            <th className="px-3 py-2 font-medium">{columns.status}</th>
           </tr>
         </thead>
         <tbody>
@@ -82,7 +97,9 @@ function MotorsTable({ highlightReserve }: { highlightReserve: boolean }) {
             <td className="exp-mock-mono px-3 py-2.5">{m.quantity}</td>
             <td className="px-3 py-2.5">
               <Badge variant="outline" className="font-normal">
-                {highlightReserve ? `Резерв · ${m.reservedFor}` : "В наличии"}
+                {highlightReserve && m.reservedFor
+                  ? status.reservedFor(m.reservedFor)
+                  : status.inStock}
               </Badge>
             </td>
           </tr>
@@ -97,19 +114,23 @@ function MotorsTable({ highlightReserve }: { highlightReserve: boolean }) {
   );
 }
 
-function InventoryTable() {
+function InventoryTable({
+  columns,
+}: {
+  columns: ReturnType<typeof useDemoChrome>["columns"];
+}) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[40rem] border-collapse text-left text-xs">
         <thead>
           <tr className="border-b border-border/70 bg-muted/30 text-[10px] uppercase tracking-wide text-muted-foreground">
-            <th className="px-3 py-2 font-medium">Артикул</th>
-            <th className="px-3 py-2 font-medium">Название</th>
-            <th className="px-3 py-2 font-medium">На складе</th>
-            <th className="px-3 py-2 font-medium">Резерв</th>
-            <th className="px-3 py-2 font-medium">Доступно</th>
-            <th className="px-3 py-2 font-medium">Место</th>
-            <th className="px-3 py-2 font-medium">Цена</th>
+            <th className="px-3 py-2 font-medium">{columns.sku}</th>
+            <th className="px-3 py-2 font-medium">{columns.name}</th>
+            <th className="px-3 py-2 font-medium">{columns.onHand}</th>
+            <th className="px-3 py-2 font-medium">{columns.reserve}</th>
+            <th className="px-3 py-2 font-medium">{columns.available}</th>
+            <th className="px-3 py-2 font-medium">{columns.place}</th>
+            <th className="px-3 py-2 font-medium">{columns.price}</th>
           </tr>
         </thead>
         <tbody>

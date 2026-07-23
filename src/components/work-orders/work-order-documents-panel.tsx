@@ -17,6 +17,42 @@ import { triggerWorkOrderEventProcessing } from "@/lib/work-orders/process-work-
 import { useDocumentGenerationJobsRealtime } from "@/hooks/use-document-generation-jobs-realtime";
 import { buildDocumentContextFromOrder } from "@/lib/documents/build-context-from-order";
 
+export type WorkOrderDocumentsPanelLabels = {
+  dateLocale: "en" | "ru";
+  autoHint: string;
+  refresh: string;
+  generating: string;
+  pdfGenerating: string;
+  noneForStatus: string;
+  pending: string;
+  ready: string;
+  preview: string;
+  openPdfFailed: string;
+  downloadPdfFailed: string;
+  refreshFailed: string;
+  savedCount: (count: number) => string;
+  updated: (date: string) => string;
+  titles?: Partial<Record<DocumentSlug, string>>;
+  descriptions?: Partial<Record<DocumentSlug, string>>;
+};
+
+const DEFAULT_LABELS: WorkOrderDocumentsPanelLabels = {
+  dateLocale: "ru",
+  autoHint: "Документы формируются автоматически при создании и закрытии заказа.",
+  refresh: "Обновить PDF",
+  generating: "Формирование…",
+  pdfGenerating: "PDF формируются…",
+  noneForStatus: "Для текущего статуса заказа нет клиентских PDF.",
+  pending: "формируется…",
+  ready: "готов",
+  preview: "Предпросмотр",
+  openPdfFailed: "Не удалось открыть PDF",
+  downloadPdfFailed: "Не удалось скачать PDF",
+  refreshFailed: "Не удалось обновить документы",
+  savedCount: (count) => `Сохранено документов: ${count}`,
+  updated: (date) => ` · обновлено ${date}`,
+};
+
 type WorkOrderDocumentsPanelProps = {
   companyId: string;
   orderId: string;
@@ -27,6 +63,7 @@ type WorkOrderDocumentsPanelProps = {
   demoMode?: boolean;
   onDemoPreview?: (slug: DocumentSlug) => void;
   onDemoDownload?: (slug: DocumentSlug) => void | Promise<void>;
+  labels?: WorkOrderDocumentsPanelLabels;
 };
 
 function applicableSlugs(order: WorkOrder): DocumentSlug[] {
@@ -49,6 +86,7 @@ export function WorkOrderDocumentsPanel({
   demoMode = false,
   onDemoPreview,
   onDemoDownload,
+  labels = DEFAULT_LABELS,
 }: WorkOrderDocumentsPanelProps) {
   const [busySlug, setBusySlug] = useState<DocumentSlug | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -73,6 +111,8 @@ export function WorkOrderDocumentsPanel({
     [slugs],
   );
 
+  const dateLocaleTag = labels.dateLocale === "en" ? "en-US" : "ru-KZ";
+
   async function handleDownload(slug: DocumentSlug) {
     if (demoMode && onDemoDownload) {
       setBusySlug(slug);
@@ -80,7 +120,7 @@ export function WorkOrderDocumentsPanel({
       try {
         await onDemoDownload(slug);
       } catch (nextError) {
-        setError(nextError instanceof Error ? nextError.message : "Не удалось открыть PDF");
+        setError(nextError instanceof Error ? nextError.message : labels.openPdfFailed);
       } finally {
         setBusySlug(null);
       }
@@ -106,7 +146,7 @@ export function WorkOrderDocumentsPanel({
         payload: { docTypes: [definition?.type ?? slug] },
       });
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Не удалось скачать PDF");
+      setError(nextError instanceof Error ? nextError.message : labels.downloadPdfFailed);
     } finally {
       setBusySlug(null);
     }
@@ -118,7 +158,7 @@ export function WorkOrderDocumentsPanel({
     try {
       await triggerWorkOrderEventProcessing(orderId);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Не удалось обновить документы");
+      setError(nextError instanceof Error ? nextError.message : labels.refreshFailed);
     } finally {
       setRefreshing(false);
     }
@@ -127,13 +167,11 @@ export function WorkOrderDocumentsPanel({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          Документы формируются автоматически при создании и закрытии заказа.
-        </p>
+        <p className="text-sm text-muted-foreground">{labels.autoHint}</p>
         {canEdit ? (
           <Button type="button" variant="outline" size="sm" disabled={refreshing || isGenerating} onClick={handleRefresh}>
             <RefreshCw className={refreshing || isGenerating ? "size-4 animate-spin" : "size-4"} />
-            {refreshing || isGenerating ? "Формирование…" : "Обновить PDF"}
+            {refreshing || isGenerating ? labels.generating : labels.refresh}
           </Button>
         ) : null}
       </div>
@@ -141,7 +179,7 @@ export function WorkOrderDocumentsPanel({
       {isGenerating ? (
         <p className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-primary">
           <Loader2 className="size-4 animate-spin" />
-          PDF формируются…
+          {labels.pdfGenerating}
         </p>
       ) : null}
 
@@ -151,7 +189,7 @@ export function WorkOrderDocumentsPanel({
 
       {definitions.length === 0 ? (
         <p className="rounded-xl border border-dashed bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground">
-          Для текущего статуса заказа нет клиентских PDF.
+          {labels.noneForStatus}
         </p>
       ) : (
         <ul className="divide-y rounded-xl border bg-card">
@@ -168,24 +206,28 @@ export function WorkOrderDocumentsPanel({
               ? false
               : (isGenerating && latestJob?.requestedSlugs.includes(definition.slug) && !isReady) ||
                 (!isReady && !latestJob?.completedSlugs.includes(definition.slug));
+            const title =
+              labels.titles?.[definition.slug] ?? persisted?.title ?? definition.title;
+            const description =
+              labels.descriptions?.[definition.slug] ?? definition.description;
 
             return (
               <li key={definition.slug} className="flex items-center gap-3 px-4 py-3">
                 <FileText className="size-4 shrink-0 text-primary" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium">{definition.title}</p>
+                    <p className="text-sm font-medium">{title}</p>
                     {pending ? (
                       <span className="rounded-full bg-muted px-2 py-0.5 text-[0.65rem] font-medium text-muted-foreground">
-                        формируется…
+                        {labels.pending}
                       </span>
                     ) : isReady || persisted || latestJob?.completedSlugs.includes(definition.slug) ? (
                       <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[0.65rem] font-medium text-emerald-700">
-                        готов
+                        {labels.ready}
                       </span>
                     ) : null}
                   </div>
-                  <p className="truncate text-xs text-muted-foreground">{definition.description}</p>
+                  <p className="truncate text-xs text-muted-foreground">{description}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                   {demoMode && onDemoPreview ? (
@@ -197,7 +239,7 @@ export function WorkOrderDocumentsPanel({
                       onClick={() => onDemoPreview(definition.slug)}
                     >
                       <Eye className="size-4" />
-                      Предпросмотр
+                      {labels.preview}
                     </Button>
                   ) : (
                     <Link
@@ -207,7 +249,7 @@ export function WorkOrderDocumentsPanel({
                       className="inline-flex h-7 shrink-0 items-center gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] font-medium hover:bg-muted"
                     >
                       <Eye className="size-4" />
-                      Предпросмотр
+                      {labels.preview}
                     </Link>
                   )}
                   <Button
@@ -229,9 +271,9 @@ export function WorkOrderDocumentsPanel({
 
       {documents.length > 0 ? (
         <p className="text-xs text-muted-foreground">
-          Сохранено документов: {documents.length}
+          {labels.savedCount(documents.length)}
           {documents[0]?.createdAt
-            ? ` · обновлено ${new Intl.DateTimeFormat("ru-KZ").format(documents[0].createdAt)}`
+            ? labels.updated(new Intl.DateTimeFormat(dateLocaleTag).format(documents[0].createdAt))
             : ""}
         </p>
       ) : null}

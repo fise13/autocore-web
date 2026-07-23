@@ -2,7 +2,7 @@
 
 import { Menu, X } from "lucide-react";
 import NextLink from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -13,6 +13,11 @@ import { Button } from "@/components/ui/button";
 import { useScroll } from "@/hooks/use-scroll";
 import { Link, usePathname } from "@/i18n/navigation";
 import type { MarketingPathname } from "@/i18n/routing";
+import {
+  storePreferredLocale,
+  withLangQuery,
+  type AppLocale,
+} from "@/lib/locale/preferred-locale";
 import { appDemoUrl, appLoginUrl } from "@/lib/site-urls";
 import { cn } from "@/lib/utils";
 
@@ -23,10 +28,13 @@ const NAV_LINK_KEYS: Array<{ href: MarketingPathname; key: "product" | "pricing"
 
 export function SiteNav() {
   const t = useTranslations("marketing");
+  const locale = useLocale() as AppLocale;
   const pathname = usePathname();
   const scrolled = useScroll(8);
   const [open, setOpen] = useState(false);
   const reducedMotion = useReducedMotion();
+  const demoHref = withLangQuery(appDemoUrl(), locale);
+  const loginHref = withLangQuery(appLoginUrl(), locale);
 
   const navLinks = NAV_LINK_KEYS.map((link) => ({
     href: link.href,
@@ -93,10 +101,19 @@ export function SiteNav() {
 
         <div className="hidden items-center gap-3 md:flex">
           <LanguageSwitcher />
-          <Button variant="ghost" size="sm" render={<NextLink href={appLoginUrl()} />} nativeButton={false}>
+          <Button
+            variant="ghost"
+            size="sm"
+            render={<NextLink href={loginHref} onClick={() => storePreferredLocale(locale)} />}
+            nativeButton={false}
+          >
             {t("nav.signIn")}
           </Button>
-          <Button size="sm" render={<NextLink href={appDemoUrl()} />} nativeButton={false}>
+          <Button
+            size="sm"
+            render={<NextLink href={demoHref} onClick={() => storePreferredLocale(locale)} />}
+            nativeButton={false}
+          >
             {t("nav.startFree")}
           </Button>
         </div>
@@ -181,14 +198,30 @@ export function SiteNav() {
                   <Button
                     variant="outline"
                     className="min-h-11 flex-1"
-                    render={<NextLink href={appLoginUrl()} onClick={closeAll} />}
+                    render={
+                      <NextLink
+                        href={loginHref}
+                        onClick={() => {
+                          storePreferredLocale(locale);
+                          closeAll();
+                        }}
+                      />
+                    }
                     nativeButton={false}
                   >
                     {t("nav.signIn")}
                   </Button>
                   <Button
                     className="min-h-11 flex-1"
-                    render={<NextLink href={appDemoUrl()} onClick={closeAll} />}
+                    render={
+                      <NextLink
+                        href={demoHref}
+                        onClick={() => {
+                          storePreferredLocale(locale);
+                          closeAll();
+                        }}
+                      />
+                    }
                     nativeButton={false}
                   >
                     {t("nav.startFree")}

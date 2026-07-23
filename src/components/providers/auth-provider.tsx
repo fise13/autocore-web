@@ -66,6 +66,12 @@ import {
 } from "@/lib/demo/demo-session.client";
 import { mapAuthError } from "@/lib/user-copy";
 import { marketingHomeUrl } from "@/lib/site-urls";
+import {
+  coerceAppLocale,
+  readStoredPreferredLocale,
+  resolveAccountLocale,
+  storePreferredLocale,
+} from "@/lib/locale/preferred-locale";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
 import {
   sendPasswordResetViaApi,
@@ -143,6 +149,7 @@ type UserDoc = {
   permissions?: Permission[];
   isActive?: boolean;
   onboardingCompleted?: boolean;
+  preferredLocale?: "en" | "ru" | null;
 };
 
 const defaultRole: UserRole = "employee";
@@ -150,6 +157,9 @@ const defaultRole: UserRole = "employee";
 function mapUserDoc(uid: string, user: User, userDoc: UserDoc | null): UserEntity {
   const docPhotoURL = typeof userDoc?.photoURL === "string" ? userDoc.photoURL.trim() : "";
   const authPhotoURL = user.photoURL?.trim() ?? "";
+  const preferredLocale = userDoc?.preferredLocale
+    ? coerceAppLocale(userDoc.preferredLocale)
+    : null;
   return {
     id: uid,
     email: userDoc?.email ?? user.email ?? "",
@@ -160,7 +170,19 @@ function mapUserDoc(uid: string, user: User, userDoc: UserDoc | null): UserEntit
     companyId: userDoc?.companyId ?? null,
     permissions: Array.isArray(userDoc?.permissions) ? userDoc?.permissions : [],
     isActive: userDoc?.isActive ?? true,
+    preferredLocale,
   };
+}
+
+function resolveSignupLocale(): ReturnType<typeof coerceAppLocale> {
+  if (typeof window !== "undefined") {
+    const fromQuery = new URLSearchParams(window.location.search).get("lang");
+    return resolveAccountLocale({
+      queryLocale: fromQuery,
+      storedLocale: readStoredPreferredLocale(),
+    });
+  }
+  return resolveAccountLocale({ storedLocale: readStoredPreferredLocale() });
 }
 
 function assertEmailProvider(user: User) {
@@ -214,6 +236,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const existing = await getDoc(userRef);
 
     if (!existing.exists()) {
+      const preferredLocale = resolveSignupLocale();
+      storePreferredLocale(preferredLocale);
       await setDoc(userRef, {
         name: user.displayName ?? "",
         email: user.email ?? "",
@@ -223,6 +247,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         permissions: [],
         isActive: true,
         onboardingCompleted: true,
+        preferredLocale,
         createdAt: serverTimestamp(),
       });
       return;
@@ -236,6 +261,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const missingCompanyId = existingData.companyId === undefined || existingData.companyId === null;
     const missingPermissions = !Array.isArray(existingData.permissions);
     const missingIsActive = existingData.isActive === undefined;
+    const missingLocale = !existingData.preferredLocale;
 
     if (
       missingEmail ||
@@ -244,7 +270,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       missingRole ||
       missingCompanyId ||
       missingPermissions ||
-      missingIsActive
+      missingIsActive ||
+      missingLocale
     ) {
       await updateDoc(userRef, {
         ...(missingEmail ? { email: user.email } : {}),
@@ -254,6 +281,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         ...(missingCompanyId ? { companyId: "" } : {}),
         ...(missingPermissions ? { permissions: [] } : {}),
         ...(missingIsActive ? { isActive: true } : {}),
+        // Existing accounts without a preference stay Russian; new signups use marketing cookie.
+        ...(missingLocale ? { preferredLocale: "ru" } : {}),
       });
     }
   }, []);
@@ -512,6 +541,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           if (fullName) {
             await updateProfile(result.user, { displayName: fullName });
           }
+          const preferredLocale = resolveSignupLocale();
+          storePreferredLocale(preferredLocale);
           await setDoc(doc(db, "users", result.user.uid), {
             ...(fullName ? { name: fullName } : {}),
             email: result.user.email ?? email.trim(),
@@ -520,6 +551,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             permissions: [],
             isActive: true,
             onboardingCompleted: true,
+            preferredLocale,
             createdAt: serverTimestamp(),
           });
           await finalizeSignedInUser(auth, result.user, refreshProfile, setFirebaseUser, setIsLoading);

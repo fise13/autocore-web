@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { motion, useInView, useReducedMotion } from "motion/react";
 import {
   Area,
@@ -32,6 +33,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Delta, DeltaIcon, DeltaValue } from "@/components/ui/delta";
+import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import {
   formatKzt,
   landingDemoInventory,
@@ -43,60 +45,18 @@ import { cn } from "@/lib/utils";
 const EASE = [0.16, 1, 0.3, 1] as const;
 const mc = landingDemoMissionControl;
 
-const revenueConfig = {
-  revenue: { label: "Выручка", color: "var(--chart-1)" },
-} satisfies ChartConfig;
-
-const opsConfig = {
-  income: { label: "Доход", color: "var(--chart-1)" },
-  expense: { label: "Расход", color: "var(--chart-3)" },
-} satisfies ChartConfig;
-
-const workOrdersConfig = {
-  count: { label: "Наряды", color: "var(--chart-2)" },
-} satisfies ChartConfig;
-
-const warehouseConfig = {
-  share: { label: "Доля" },
-  motors: { label: "Моторы", color: "var(--chart-1)" },
-  warehouse: { label: "Склад", color: "var(--chart-2)" },
-  deficits: { label: "Дефициты", color: "var(--chart-3)" },
-} satisfies ChartConfig;
-
-/** Demo week aligned with landing narrative (₸). */
-const REVENUE_7D = [
-  { label: "Пн", revenue: 84000 },
-  { label: "Вт", revenue: 62000 },
-  { label: "Ср", revenue: 98000 },
-  { label: "Чт", revenue: 74000 },
-  { label: "Пт", revenue: 126000 },
-  { label: "Сб", revenue: 41000 },
-  { label: "Вс", revenue: 28000 },
+const REVENUE_VALUES = [84000, 62000, 98000, 74000, 126000, 41000, 28000] as const;
+const OPS_VALUES = [
+  { income: 84000, expense: 22000 },
+  { income: 62000, expense: 18500 },
+  { income: 98000, expense: 31000 },
+  { income: 74000, expense: 16400 },
+  { income: 126000, expense: 28000 },
+  { income: 41000, expense: 9000 },
+  { income: 28000, expense: 6500 },
 ] as const;
-
-const OPS_7D = [
-  { day: "Пн", income: 84000, expense: 22000 },
-  { day: "Вт", income: 62000, expense: 18500 },
-  { day: "Ср", income: 98000, expense: 31000 },
-  { day: "Чт", income: 74000, expense: 16400 },
-  { day: "Пт", income: 126000, expense: 28000 },
-  { day: "Сб", income: 41000, expense: 9000 },
-  { day: "Вс", income: 28000, expense: 6500 },
-] as const;
-
-const WORK_ORDERS_7D = [
-  { day: "Пн", count: 3 },
-  { day: "Вт", count: 2 },
-  { day: "Ср", count: 4 },
-  { day: "Чт", count: 3 },
-  { day: "Пт", count: 5 },
-  { day: "Сб", count: 1 },
-  { day: "Вс", count: 1 },
-] as const;
-
-const EMPTY_REVENUE = REVENUE_7D.map((row) => ({ ...row, revenue: 0 }));
-const EMPTY_OPS = OPS_7D.map((row) => ({ ...row, income: 0, expense: 0 }));
-const EMPTY_WORK_ORDERS = WORK_ORDERS_7D.map((row) => ({ ...row, count: 0 }));
+const WORK_ORDER_VALUES = [3, 2, 4, 3, 5, 1, 1] as const;
+const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 
 type MissionControlSurfaceProps = {
   className?: string;
@@ -104,20 +64,104 @@ type MissionControlSurfaceProps = {
 
 /** Real AutoCore Mission Control grid — charts rise on enter, no device chrome. */
 export function MissionControlSurface({ className }: MissionControlSurfaceProps) {
+  const t = useTranslations("marketing.landing.productChrome");
+  const { motorsSnapshot } = useDemoChrome();
   const chartUid = useId().replace(/:/g, "");
+
+  const localizeOrderNumber = (number: string) => {
+    if (number.startsWith(motorsSnapshot.orderPrefixRu)) {
+      return `${motorsSnapshot.orderPrefixEn}${number.slice(motorsSnapshot.orderPrefixRu.length)}`;
+    }
+    return number;
+  };
   const gradientId = `exp-mc-revenue-${chartUid}`;
   const rootRef = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotion();
   const inView = useInView(rootRef, { once: true, amount: 0.28 });
   const play = Boolean(reduced || inView);
 
-  const [revenueData, setRevenueData] = useState(() =>
-    reduced ? [...REVENUE_7D] : [...EMPTY_REVENUE],
+  const weekdays = useMemo(
+    () => WEEKDAY_KEYS.map((key) => t(`weekdays.${key}`)),
+    [t],
   );
-  const [opsData, setOpsData] = useState(() => (reduced ? [...OPS_7D] : [...EMPTY_OPS]));
-  const [workOrdersData, setWorkOrdersData] = useState(() =>
-    reduced ? [...WORK_ORDERS_7D] : [...EMPTY_WORK_ORDERS],
+
+  const revenueFull = useMemo(
+    () => weekdays.map((label, index) => ({ label, revenue: REVENUE_VALUES[index] })),
+    [weekdays],
   );
+  const opsFull = useMemo(
+    () =>
+      weekdays.map((day, index) => ({
+        day,
+        income: OPS_VALUES[index].income,
+        expense: OPS_VALUES[index].expense,
+      })),
+    [weekdays],
+  );
+  const workOrdersFull = useMemo(
+    () => weekdays.map((day, index) => ({ day, count: WORK_ORDER_VALUES[index] })),
+    [weekdays],
+  );
+
+  const emptyRevenue = useMemo(
+    () => revenueFull.map((row) => ({ ...row, revenue: 0 })),
+    [revenueFull],
+  );
+  const emptyOps = useMemo(
+    () => opsFull.map((row) => ({ ...row, income: 0, expense: 0 })),
+    [opsFull],
+  );
+  const emptyWorkOrders = useMemo(
+    () => workOrdersFull.map((row) => ({ ...row, count: 0 })),
+    [workOrdersFull],
+  );
+
+  const revenueConfig = useMemo(
+    () =>
+      ({
+        revenue: { label: t("charts.revenue"), color: "var(--chart-1)" },
+      }) satisfies ChartConfig,
+    [t],
+  );
+  const opsConfig = useMemo(
+    () =>
+      ({
+        income: { label: t("charts.income"), color: "var(--chart-1)" },
+        expense: { label: t("charts.expense"), color: "var(--chart-3)" },
+      }) satisfies ChartConfig,
+    [t],
+  );
+  const workOrdersConfig = useMemo(
+    () =>
+      ({
+        count: { label: t("charts.orders"), color: "var(--chart-2)" },
+      }) satisfies ChartConfig,
+    [t],
+  );
+  const warehouseConfig = useMemo(
+    () =>
+      ({
+        share: { label: t("charts.share") },
+        motors: { label: t("charts.motors"), color: "var(--chart-1)" },
+        warehouse: { label: t("charts.warehouse"), color: "var(--chart-2)" },
+        deficits: { label: t("charts.deficits"), color: "var(--chart-3)" },
+      }) satisfies ChartConfig,
+    [t],
+  );
+
+  const orderStatus = useMemo(
+    () => t.raw("orderStatus") as Record<string, string>,
+    [t],
+  );
+  const activityFeed = useMemo(
+    () =>
+      t.raw("activityFeed") as Array<{ user: string; text: string; time: string }>,
+    [t],
+  );
+
+  const [revenueData, setRevenueData] = useState(emptyRevenue);
+  const [opsData, setOpsData] = useState(emptyOps);
+  const [workOrdersData, setWorkOrdersData] = useState(emptyWorkOrders);
   const [pieReady, setPieReady] = useState(() => Boolean(reduced));
 
   const openOrders = landingDemoWorkOrders.filter((order) => order.status !== "delivered");
@@ -139,34 +183,42 @@ export function MissionControlSurface({ className }: MissionControlSurfaceProps)
   useEffect(() => {
     if (!play) return;
     if (reduced) {
-      setRevenueData([...REVENUE_7D]);
-      setOpsData([...OPS_7D]);
-      setWorkOrdersData([...WORK_ORDERS_7D]);
+      setRevenueData(revenueFull);
+      setOpsData(opsFull);
+      setWorkOrdersData(workOrdersFull);
       setPieReady(true);
       return;
     }
 
-    setRevenueData([...EMPTY_REVENUE]);
-    setOpsData([...EMPTY_OPS]);
-    setWorkOrdersData([...EMPTY_WORK_ORDERS]);
+    setRevenueData(emptyRevenue);
+    setOpsData(emptyOps);
+    setWorkOrdersData(emptyWorkOrders);
     setPieReady(false);
 
     const frame = window.requestAnimationFrame(() => {
-      setRevenueData([...REVENUE_7D]);
-      setOpsData([...OPS_7D]);
-      setWorkOrdersData([...WORK_ORDERS_7D]);
+      setRevenueData(revenueFull);
+      setOpsData(opsFull);
+      setWorkOrdersData(workOrdersFull);
       setPieReady(true);
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [play, reduced]);
+  }, [
+    play,
+    reduced,
+    revenueFull,
+    opsFull,
+    workOrdersFull,
+    emptyRevenue,
+    emptyOps,
+    emptyWorkOrders,
+  ]);
 
   const revenueGrowth =
-    ((REVENUE_7D[REVENUE_7D.length - 1].revenue - REVENUE_7D[0].revenue) / REVENUE_7D[0].revenue) *
-    100;
+    ((REVENUE_VALUES[REVENUE_VALUES.length - 1] - REVENUE_VALUES[0]) / REVENUE_VALUES[0]) * 100;
   const woGrowth =
-    ((WORK_ORDERS_7D[WORK_ORDERS_7D.length - 1].count - WORK_ORDERS_7D[0].count) /
-      Math.max(1, WORK_ORDERS_7D[0].count)) *
+    ((WORK_ORDER_VALUES[WORK_ORDER_VALUES.length - 1] - WORK_ORDER_VALUES[0]) /
+      Math.max(1, WORK_ORDER_VALUES[0])) *
     100;
 
   const animateCharts = play && !reduced;
@@ -174,34 +226,34 @@ export function MissionControlSurface({ className }: MissionControlSurfaceProps)
   const stats = [
     {
       key: "revenue",
-      label: "Выручка сегодня",
+      label: t("stats.revenueToday"),
       value: `${formatKzt(mc.revenueToday)} ₸`,
       delta: mc.revenueDelta,
-      hint: "к вчера",
+      hint: t("stats.vsYesterday"),
       percent: true,
     },
     {
       key: "balance",
-      label: "Баланс",
+      label: t("stats.balance"),
       value: `${formatKzt(mc.balance)} ₸`,
       delta: mc.balanceDelta,
-      hint: "касса + банк",
+      hint: t("stats.cashAndBank"),
       percent: true,
     },
     {
       key: "motors",
-      label: "Моторы",
+      label: t("stats.motors"),
       value: formatKzt(mc.motorsOnHand),
       delta: mc.motorsDelta,
-      hint: "на складе",
+      hint: t("stats.inStock"),
       percent: false,
     },
     {
       key: "warehouse",
-      label: "Склад",
+      label: t("stats.warehouse"),
       value: formatKzt(mc.warehouseSku),
       delta: mc.warehouseDelta,
-      hint: "позиции",
+      hint: t("stats.positions"),
       percent: true,
     },
   ];
@@ -211,7 +263,7 @@ export function MissionControlSurface({ className }: MissionControlSurfaceProps)
       <div className="exp-outcome-mc-top">
         <p className="exp-outcome-mc-title">Mission Control</p>
         <Badge variant="outline" className="font-normal text-xs">
-          {mc.alerts.length} сигнала
+          {t("signals", { count: mc.alerts.length })}
         </Badge>
       </div>
 
@@ -251,8 +303,8 @@ export function MissionControlSurface({ className }: MissionControlSurfaceProps)
 
         <McPanel className="exp-outcome-mc-span-3 shadow-none dark:ring-0">
           <McPanelHeader
-            title="Выручка"
-            description="Дневная выручка за 7 дней"
+            title={t("charts.revenue")}
+            description={t("charts.revenueDesc")}
             badge={
               <Delta value={revenueGrowth} variant="badge">
                 <DeltaIcon variant="trend" />
@@ -311,8 +363,8 @@ export function MissionControlSurface({ className }: MissionControlSurfaceProps)
 
         <McPanel className="shadow-none dark:ring-0">
           <McPanelHeader
-            title="Остатки"
-            description="Структура моторов и склада"
+            title={t("charts.stock")}
+            description={t("charts.stockDesc")}
             badge={
               <Delta value={-warehouseLow} variant="badge">
                 <DeltaIcon variant="trend" />
@@ -350,7 +402,7 @@ export function MissionControlSurface({ className }: MissionControlSurfaceProps)
         </McPanel>
 
         <McPanel className="exp-outcome-mc-span-2 shadow-none dark:ring-0">
-          <McPanelHeader title="Доход и расход" description="Операции по дням за неделю" />
+          <McPanelHeader title={t("charts.ops")} description={t("charts.opsDesc")} />
           <McPanelBody>
             <ChartContainer className="aspect-video w-full max-h-48" config={opsConfig}>
               <BarChart accessibilityLayer data={opsData}>
@@ -395,8 +447,8 @@ export function MissionControlSurface({ className }: MissionControlSurfaceProps)
 
         <McPanel className="exp-outcome-mc-span-2 shadow-none dark:ring-0">
           <McPanelHeader
-            title="Заказ-наряды"
-            description="Новые наряды по дням"
+            title={t("charts.workOrders")}
+            description={t("charts.workOrdersDesc")}
             badge={
               <Delta value={woGrowth} variant="badge">
                 <DeltaIcon variant="trend" />
@@ -410,7 +462,11 @@ export function MissionControlSurface({ className }: MissionControlSurfaceProps)
                 <CartesianGrid vertical={false} strokeDasharray="4 4" />
                 <XAxis axisLine={false} dataKey="day" tickLine={false} tickMargin={10} />
                 <ChartTooltip
-                  content={<ChartTooltipContent formatter={(value) => `${value} шт.`} />}
+                  content={
+                    <ChartTooltipContent
+                      formatter={(value) => t("charts.units", { value: String(value) })}
+                    />
+                  }
                   cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
                 />
                 <Line
@@ -439,7 +495,7 @@ export function MissionControlSurface({ className }: MissionControlSurfaceProps)
         </McPanel>
 
         <McPanel className="exp-outcome-mc-span-2 shadow-none dark:ring-0">
-          <McPanelHeader title="Открытые наряды" bordered />
+          <McPanelHeader title={t("openOrders")} bordered />
           <McPanelBody className="pt-2">
             <ul className="exp-outcome-mc-list">
               {openOrders.map((order, index) => (
@@ -451,11 +507,11 @@ export function MissionControlSurface({ className }: MissionControlSurfaceProps)
                   transition={{ duration: 0.4, delay: play ? 0.35 + index * 0.06 : 0, ease: EASE }}
                 >
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-sm">{order.number}</p>
+                    <p className="truncate font-medium text-sm">{localizeOrderNumber(order.number)}</p>
                     <p className="truncate text-muted-foreground text-xs">{order.vehicleLabel}</p>
                   </div>
                   <Badge variant="outline" className="shrink-0 font-normal">
-                    {order.statusLabel}
+                    {orderStatus[order.status] ?? order.statusLabel}
                   </Badge>
                 </motion.li>
               ))}
@@ -464,10 +520,10 @@ export function MissionControlSurface({ className }: MissionControlSurfaceProps)
         </McPanel>
 
         <McPanel className="exp-outcome-mc-span-2 shadow-none dark:ring-0">
-          <McPanelHeader title="Активность" bordered />
+          <McPanelHeader title={t("activity")} bordered />
           <McPanelBody className="pt-2">
             <ul className="exp-outcome-mc-list">
-              {mc.activity.map((row, index) => (
+              {activityFeed.map((row, index) => (
                 <motion.li
                   key={`${row.time}-${row.text}`}
                   className="exp-outcome-mc-row"

@@ -69,7 +69,7 @@ export const DOCUMENT_TEMPLATE_META: Record<DocumentTemplateVariant, DocumentTem
     primaryLabel: "К оплате",
     warrantyBlock: "",
     footer: "Счёт сформирован в AutoCore. Оплата подтверждает согласие с перечнем позиций.",
-    disclaimer: "Счёт действителен 5 рабочих дней. Оплата означает согласие с составом и стоимостью.",
+    disclaimer: "Счёт действителен {days} рабочих дней. Оплата означает согласие с составом и стоимостью.",
   },
   "engine-waybill": {
     title: "Накладная на двигатель",

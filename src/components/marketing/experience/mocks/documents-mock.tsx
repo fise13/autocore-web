@@ -2,6 +2,7 @@
 
 import { FileText, Printer, QrCode } from "lucide-react";
 
+import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import { useLiveSequence } from "@/components/marketing/experience/motion/use-live-sequence";
 import { ProductWindow } from "@/components/marketing/experience/ui/product-window";
 import { cn } from "@/lib/utils";
@@ -14,16 +15,17 @@ type DocumentsMockProps = {
 };
 
 export function DocumentsMock({ className, paused }: DocumentsMockProps) {
+  const chrome = useDemoChrome();
   const { step } = useLiveSequence(STEPS, { intervalMs: 2800, paused });
 
   return (
-    <ProductWindow title="Документы · Гарантия G4KC" className={className}>
+    <ProductWindow title={chrome.documents.title} className={className}>
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <FileText className="size-4 text-primary" aria-hidden />
           <div>
-            <p className="text-sm font-semibold">Гарантийный талон</p>
-            <p className="exp-mock-mono text-[10px] text-muted-foreground">НЗ-2026-0142 · 180 дней</p>
+            <p className="text-sm font-semibold">{chrome.documents.warrantyTicket}</p>
+            <p className="exp-mock-mono text-[10px] text-muted-foreground">{chrome.documents.orderDays}</p>
           </div>
         </div>
 
@@ -34,9 +36,9 @@ export function DocumentsMock({ className, paused }: DocumentsMockProps) {
           )}
         >
           <div className="space-y-1 text-[10px] text-muted-foreground">
-            <p>Двигатель: G4KC · SN KMHGC41…</p>
-            <p>Автомобиль: Hyundai Sonata NF</p>
-            <p>Пробег при установке: 142 800 км</p>
+            <p>{chrome.documents.engineLine}</p>
+            <p>{chrome.documents.vehicleLine}</p>
+            <p>{chrome.documents.mileageLine}</p>
           </div>
           {step === "qr" ? (
             <div className="mt-3 flex items-center justify-center rounded-md border border-dashed border-border bg-muted/30 p-4">
@@ -51,7 +53,11 @@ export function DocumentsMock({ className, paused }: DocumentsMockProps) {
             aria-hidden
           />
           <span className={cn(step === "print" ? "text-primary font-medium" : "text-muted-foreground")}>
-            {step === "qr" ? "QR добавлен" : step === "print" ? "Печать…" : "Предпросмотр"}
+            {step === "qr"
+              ? chrome.documents.qrAdded
+              : step === "print"
+                ? chrome.documents.printing
+                : chrome.documents.preview}
           </span>
         </div>
       </div>

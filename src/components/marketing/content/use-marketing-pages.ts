@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
  */
 export function useMarketingPages() {
   const t = useTranslations("marketing.pages");
+  const tSeo = useTranslations("marketing.seo");
 
   return {
     pricing: {
@@ -45,10 +46,13 @@ export function useMarketingPages() {
         statement: t("pricing.philosophy.statement"),
         body: t("pricing.philosophy.body"),
       },
+      faqTitle: t("pricing.faqTitle"),
       faq: t.raw("pricing.faq") as Array<{ q: string; a: string }>,
     },
     modules: {
       intro: t("modules.intro"),
+      capabilitiesTitle: t("modules.capabilitiesTitle"),
+      forWhomLabel: t("modules.forWhomLabel"),
       stats: t.raw("modules.stats") as Array<{ value: string; label: string }>,
       items: t.raw("modules.items") as Array<{
         id: string;
@@ -92,6 +96,27 @@ export function useMarketingPages() {
         title: t("security.hero.title"),
         description: t("security.hero.description"),
       },
+      sections: {
+        foundationTitle: t("security.sections.foundationTitle"),
+        foundationBody: t("security.sections.foundationBody"),
+        layersTitle: t("security.sections.layersTitle"),
+        layersBody: t("security.sections.layersBody"),
+        auditTitle: t("security.sections.auditTitle"),
+        auditMeta: t("security.sections.auditMeta"),
+        auditBody: t("security.sections.auditBody"),
+        principlesTitle: t("security.sections.principlesTitle"),
+        checklistTitle: t("security.sections.checklistTitle"),
+        checklistBody: t("security.sections.checklistBody"),
+        relatedTitle: t("security.sections.relatedTitle"),
+        relatedPrivacyTitle: t("security.sections.relatedPrivacyTitle"),
+        relatedPrivacyMeta: t("security.sections.relatedPrivacyMeta"),
+        relatedTermsTitle: t("security.sections.relatedTermsTitle"),
+        relatedTermsMeta: t("security.sections.relatedTermsMeta"),
+        relatedContactTitle: t("security.sections.relatedContactTitle"),
+        relatedContactMeta: t("security.sections.relatedContactMeta"),
+        statsAria: t("security.sections.statsAria"),
+        breadcrumbsAria: t("security.sections.breadcrumbsAria"),
+      },
       stats: t.raw("security.stats") as Array<{ value: string; label: string }>,
       pillars: t.raw("security.pillars") as Array<{ title: string; body: string }>,
       principles: t.raw("security.principles") as Array<{ title: string; body: string }>,
@@ -111,6 +136,8 @@ export function useMarketingPages() {
         title: t("contact.hero.title"),
         description: t("contact.hero.description"),
       },
+      intentsHeading: t("contact.intentsHeading"),
+      methodsHeading: t("contact.methodsHeading"),
       intents: t.raw("contact.intents") as Array<{
         title: string;
         topics: string[];
@@ -135,6 +162,9 @@ export function useMarketingPages() {
         titleLine2: t("download.hero.titleLine2"),
         description: t("download.hero.description"),
       },
+      platformPickerTitle: t("download.platformPickerTitle"),
+      faqTitle: t("download.faqTitle"),
+      hint: t("download.hint"),
       platforms: t.raw("download.platforms") as Array<{
         id: string;
         title: string;
@@ -165,6 +195,9 @@ export function useMarketingPages() {
     },
     downloadMobile: {
       backLabel: t("downloadMobile.backLabel"),
+      changeSelection: t("downloadMobile.changeSelection"),
+      platformPickerTitle: t("downloadMobile.platformPickerTitle"),
+      qrAlt: t("downloadMobile.qrAlt"),
       hero: {
         title: t("downloadMobile.hero.title"),
         description: t("downloadMobile.hero.description"),
@@ -181,6 +214,24 @@ export function useMarketingPages() {
         placeholderQr: t("downloadMobile.reveal.placeholderQr"),
         placeholderLink: t("downloadMobile.reveal.placeholderLink"),
       },
+    },
+    legal: {
+      updatedPrefix: t("legal.updatedPrefix"),
+      relatedHeading: t("legal.relatedHeading"),
+      relatedDescription: t("legal.relatedDescription"),
+      hub: t.raw("legal.hub") as Array<{ label: string; description: string }>,
+      relatedContactTitle: t("legal.relatedContactTitle"),
+      relatedContactMeta: t("legal.relatedContactMeta"),
+    },
+    breadcrumbs: {
+      pricing: tSeo("breadcrumbs.pricing"),
+      security: tSeo("breadcrumbs.security"),
+      contact: tSeo("breadcrumbs.contact"),
+      download: tSeo("breadcrumbs.download"),
+      product: tSeo("breadcrumbs.product"),
+      modules: tSeo("breadcrumbs.modules"),
+      privacy: tSeo("breadcrumbs.privacy"),
+      terms: tSeo("breadcrumbs.terms"),
     },
     faq: {
       title: t("faq.title"),

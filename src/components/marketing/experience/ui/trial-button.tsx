@@ -1,8 +1,14 @@
 "use client";
 
 import { useCallback } from "react";
+import { useLocale } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import {
+  storePreferredLocale,
+  withLangQuery,
+  type AppLocale,
+} from "@/lib/locale/preferred-locale";
 import { appDemoUrl } from "@/lib/site-urls";
 import { cn } from "@/lib/utils";
 
@@ -20,12 +26,19 @@ export function TrialButton({
   size = "lg",
   variant = "default",
 }: DemoButtonProps) {
+  const locale = useLocale() as AppLocale;
   const onClick = useCallback(() => {
-    window.location.href = appDemoUrl();
-  }, []);
+    storePreferredLocale(locale);
+    window.location.href = withLangQuery(appDemoUrl(), locale);
+  }, [locale]);
 
   return (
-    <Button size={size} variant={variant} className={cn("h-10 min-w-[11rem] px-5 text-sm", className)} onClick={onClick}>
+    <Button
+      size={size}
+      variant={variant}
+      className={cn("h-10 min-w-[7.5rem] px-5 text-sm", className)}
+      onClick={onClick}
+    >
       {children}
     </Button>
   );

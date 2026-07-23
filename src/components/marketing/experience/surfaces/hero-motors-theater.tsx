@@ -39,6 +39,8 @@ import {
   landingDemoMotorsSale,
 } from "@/lib/marketing/landing-demo-snapshot";
 import { cn } from "@/lib/utils";
+import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
+import { useLandingDemoSnapshot } from "@/components/marketing/modals/use-landing-demo-snapshot";
 
 type HeroMotor = {
   id: string;
@@ -56,31 +58,33 @@ type HeroMotor = {
   price?: number;
 };
 
-const HERO_COLUMNS = [
-  { id: "row", label: "#", editable: false, align: "center" as const },
-  { id: "brand", label: "Бренд", editable: true, align: "start" as const },
-  { id: "engine", label: "Двигатель", editable: true, align: "start" as const },
-  { id: "qty", label: "Кол-во", editable: true, align: "center" as const },
-  { id: "place", label: "Место", editable: true, align: "start" as const },
-  { id: "reserve", label: "Резерв", editable: true, align: "start" as const },
-  { id: "box", label: "Коробка", editable: true, align: "center" as const },
-  { id: "status", label: "Статус", editable: false, align: "start" as const },
-  { id: "action", label: "Последнее действие", editable: false, align: "start" as const },
+const HERO_COLUMN_DEFS = [
+  { id: "row", editable: false, align: "center" as const },
+  { id: "brand", editable: true, align: "start" as const },
+  { id: "engine", editable: true, align: "start" as const },
+  { id: "qty", editable: true, align: "center" as const },
+  { id: "place", editable: true, align: "start" as const },
+  { id: "reserve", editable: true, align: "start" as const },
+  { id: "box", editable: true, align: "center" as const },
+  { id: "status", editable: false, align: "start" as const },
+  { id: "action", editable: false, align: "start" as const },
 ] as const;
 
-const SALE_COLUMNS = [
-  { id: "row", label: "#", editable: false, align: "center" as const },
-  { id: "brand", label: "Бренд", editable: true, align: "start" as const },
-  { id: "engine", label: "Двигатель", editable: true, align: "start" as const },
-  { id: "qty", label: "Кол-во", editable: true, align: "center" as const },
-  { id: "place", label: "Место", editable: true, align: "start" as const },
-  { id: "price", label: "Цена", editable: false, align: "start" as const },
-  { id: "box", label: "Коробка", editable: true, align: "center" as const },
-  { id: "status", label: "Статус", editable: false, align: "start" as const },
-  { id: "sell", label: "", editable: false, align: "center" as const },
+const SALE_COLUMN_DEFS = [
+  { id: "row", editable: false, align: "center" as const },
+  { id: "brand", editable: true, align: "start" as const },
+  { id: "engine", editable: true, align: "start" as const },
+  { id: "qty", editable: true, align: "center" as const },
+  { id: "place", editable: true, align: "start" as const },
+  { id: "price", editable: false, align: "start" as const },
+  { id: "box", editable: true, align: "center" as const },
+  { id: "status", editable: false, align: "start" as const },
+  { id: "sell", editable: false, align: "center" as const },
 ] as const;
 
-type ColId = (typeof HERO_COLUMNS)[number]["id"] | (typeof SALE_COLUMNS)[number]["id"];
+type HeroColId = (typeof HERO_COLUMN_DEFS)[number]["id"];
+type SaleColId = (typeof SALE_COLUMN_DEFS)[number]["id"];
+type ColId = HeroColId | SaleColId;
 type StatusFilter = "all" | "available" | "reserved";
 type TheaterColumn = {
   id: ColId;
@@ -101,8 +105,12 @@ export type HeroMotorsTheaterProps = {
   onSell?: (motorId: string) => void;
 };
 
-function cloneHeroMotors(dense = false): HeroMotor[] {
-  const base: HeroMotor[] = landingDemoMotorsHero.map((motor) => ({
+function cloneHeroMotors(
+  heroMotors: readonly (typeof landingDemoMotorsHero)[number][],
+  atmosphereMotors: readonly (typeof landingDemoMotorsAtmosphere)[number][],
+  dense = false,
+): HeroMotor[] {
+  const base: HeroMotor[] = heroMotors.map((motor) => ({
     id: motor.id,
     brandName: motor.brandName,
     engineCode: motor.engineCode,
@@ -119,7 +127,7 @@ function cloneHeroMotors(dense = false): HeroMotor[] {
   if (!dense) return base;
 
   const seen = new Set(base.map((motor) => motor.serialCode));
-  for (const [index, motor] of landingDemoMotorsAtmosphere.entries()) {
+  for (const [index, motor] of atmosphereMotors.entries()) {
     if (seen.has(motor.serialCode)) continue;
     seen.add(motor.serialCode);
     base.push({
@@ -140,8 +148,10 @@ function cloneHeroMotors(dense = false): HeroMotor[] {
   return base;
 }
 
-function cloneSaleMotors(): HeroMotor[] {
-  return landingDemoMotorsSale.map((motor) => ({
+function cloneSaleMotors(
+  saleMotors: readonly (typeof landingDemoMotorsSale)[number][],
+): HeroMotor[] {
+  return saleMotors.map((motor) => ({
     id: motor.id,
     brandName: motor.brandName,
     engineCode: motor.engineCode,
@@ -158,11 +168,12 @@ function cloneSaleMotors(): HeroMotor[] {
   }));
 }
 
-function statusLabel(status: HeroMotor["status"]) {
-  return status === "reserved" ? "Резерв" : "В наличии";
-}
-
-function readCell(motor: HeroMotor, colId: ColId, rowIndex: number): string {
+function readCell(
+  motor: HeroMotor,
+  colId: ColId,
+  rowIndex: number,
+  statusText: (status: HeroMotor["status"]) => string,
+): string {
   switch (colId) {
     case "row":
       return String(rowIndex + 1);
@@ -181,7 +192,7 @@ function readCell(motor: HeroMotor, colId: ColId, rowIndex: number): string {
     case "box":
       return motor.transmission;
     case "status":
-      return statusLabel(motor.status);
+      return statusText(motor.status);
     case "action":
       return motor.lastAction;
     case "sell":
@@ -223,14 +234,52 @@ function writeCell(motor: HeroMotor, colId: ColId, value: string): HeroMotor {
 export function HeroMotorsTheater({
   className,
   variant = "hero",
-  sellLabel = "Продать",
+  sellLabel: sellLabelProp,
   selectedId,
   initialQuery,
   dense = false,
   onSelectMotor,
   onSell,
 }: HeroMotorsTheaterProps) {
-  const columns = (variant === "sale" ? SALE_COLUMNS : HERO_COLUMNS) as readonly TheaterColumn[];
+  const chrome = useDemoChrome();
+  const {
+    landingDemoMotorsHero: heroMotors,
+    landingDemoMotorsAtmosphere: atmosphereMotors,
+    landingDemoMotorsSale: saleMotors,
+  } = useLandingDemoSnapshot();
+  const sellLabel = sellLabelProp ?? chrome.sell;
+
+  const columnLabel = useCallback(
+    (id: ColId) => {
+      if (id === "row" || id === "sell") return id === "row" ? "#" : "";
+      const map: Partial<Record<ColId, string>> = {
+        brand: chrome.columns.brand,
+        engine: chrome.columns.engine,
+        qty: chrome.columns.qty,
+        place: chrome.columns.place,
+        reserve: chrome.columns.reserve,
+        price: chrome.columns.price,
+        box: chrome.columns.box,
+        status: chrome.columns.status,
+        action: chrome.columns.action,
+      };
+      return map[id] ?? "";
+    },
+    [chrome.columns],
+  );
+
+  const columns = useMemo((): readonly TheaterColumn[] => {
+    const defs = variant === "sale" ? SALE_COLUMN_DEFS : HERO_COLUMN_DEFS;
+    return defs.map((def) => ({
+      ...def,
+      label: columnLabel(def.id),
+    }));
+  }, [variant, columnLabel]);
+
+  const formatStatus = useCallback(
+    (motorStatus: HeroMotor["status"]) => chrome.status.label(motorStatus),
+    [chrome.status],
+  );
   const placeCol = columns.findIndex((column) => column.id === "place");
   const editableCols = columns
     .map((column, index) => (column.editable ? index : -1))
@@ -240,9 +289,17 @@ export function HeroMotorsTheater({
     initialQuery ?? (variant === "sale" ? "" : "G4KC"),
   );
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [motors, setMotors] = useState<HeroMotor[]>(() =>
-    variant === "sale" ? cloneSaleMotors() : cloneHeroMotors(dense),
+  const localizedSeed = useMemo(
+    () =>
+      variant === "sale"
+        ? cloneSaleMotors(saleMotors)
+        : cloneHeroMotors(heroMotors, atmosphereMotors, dense),
+    [atmosphereMotors, dense, heroMotors, saleMotors, variant],
   );
+  const [motors, setMotors] = useState<HeroMotor[]>(localizedSeed);
+  useEffect(() => {
+    setMotors(localizedSeed);
+  }, [localizedSeed]);
   const [selection, setSelection] = useState<GridSelectionState>(() => ({
     anchor: { row: 0, column: Math.max(placeCol, 1) },
     head: { row: 0, column: Math.max(placeCol, 1) },
@@ -276,7 +333,7 @@ export function HeroMotorsTheater({
         motor.notes,
         motor.transmission,
         motor.reservedFor ?? "",
-        statusLabel(motor.status),
+        formatStatus(motor.status),
         motor.lastAction,
         motor.price != null ? String(motor.price) : "",
       ]
@@ -284,7 +341,7 @@ export function HeroMotorsTheater({
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [motors, query, statusFilter]);
+  }, [motors, query, statusFilter, formatStatus]);
 
   const active = selection.head;
   const range = primaryRange(selection);
@@ -311,9 +368,9 @@ export function HeroMotorsTheater({
     (row: number, column: number) => {
       const motor = rows[row];
       if (!motor) return "";
-      return readCell(motor, columns[column].id, row);
+      return readCell(motor, columns[column].id, row, formatStatus);
     },
-    [columns, rows],
+    [columns, rows, formatStatus],
   );
 
   const isEditableColumn = useCallback(
@@ -459,7 +516,7 @@ export function HeroMotorsTheater({
     const header = columns.map((column) => column.label).join(",");
     const lines = rows.map((motor, rowIndex) =>
       columns.map((column) => {
-        const raw = readCell(motor, column.id, rowIndex);
+        const raw = readCell(motor, column.id, rowIndex, formatStatus);
         return `"${raw.replaceAll('"', '""')}"`;
       }).join(","),
     );
@@ -470,7 +527,7 @@ export function HeroMotorsTheater({
     anchor.download = "autocore-motors-g4kc.csv";
     anchor.click();
     URL.revokeObjectURL(url);
-  }, [rows]);
+  }, [columns, rows, formatStatus]);
 
   const onGridKeyDown = useCallback(
     async (event: KeyboardEvent<HTMLDivElement>) => {
@@ -694,22 +751,26 @@ export function HeroMotorsTheater({
                 onChange={(event) => setQuery(event.target.value)}
                 spellCheck={false}
                 autoComplete="off"
-                placeholder={variant === "sale" ? "Поиск…" : undefined}
-                aria-label="Поиск по двигателям"
+                placeholder={variant === "sale" ? chrome.filters.search : undefined}
+                aria-label={chrome.filters.searchMotors}
                 className="exp-hero-excel-search-input"
               />
               <span className="exp-hero-excel-count">
-                {rows.length} из {totalCount}
+                {chrome.filters.countOf(rows.length, totalCount)}
               </span>
             </label>
 
             <div className="exp-hero-excel-toolbar-actions">
-              <div className="exp-hero-excel-filter-group" role="group" aria-label="Фильтр статуса">
+              <div
+                className="exp-hero-excel-filter-group"
+                role="group"
+                aria-label={chrome.filters.statusFilterAria}
+              >
                 {(
                   [
-                    ["all", "Все"],
-                    ["available", "В наличии"],
-                    ["reserved", "Резерв"],
+                    ["all", chrome.filters.all],
+                    ["available", chrome.filters.inStock],
+                    ["reserved", chrome.filters.reserved],
                   ] as const
                 ).map(([value, label]) => (
                   <button
@@ -729,7 +790,7 @@ export function HeroMotorsTheater({
 
               <button type="button" className="exp-hero-excel-tool-btn is-export" onClick={exportCsv}>
                 <Download className="size-3.5" aria-hidden />
-                Экспорт
+                {chrome.filters.export}
               </button>
             </div>
           </div>
@@ -739,7 +800,7 @@ export function HeroMotorsTheater({
             className="exp-hero-excel-grid"
             tabIndex={0}
             role="grid"
-            aria-label="Склад двигателей · Excel"
+            aria-label={chrome.grid.ariaLabel}
             aria-multiselectable="true"
             onKeyDown={onGridKeyDown}
           >
@@ -761,7 +822,7 @@ export function HeroMotorsTheater({
 
             <div className="exp-hero-excel-body">
               {rows.length === 0 ? (
-                <div className="exp-hero-excel-empty">Нет строк по запросу</div>
+                <div className="exp-hero-excel-empty">{chrome.filters.empty}</div>
               ) : (
                 rows.map((motor, rowIndex) => (
                   <div
@@ -782,7 +843,7 @@ export function HeroMotorsTheater({
                       const inRange = isCellInsideRange(cell, highlightRange);
                       const isEditingCell =
                         editing?.row === rowIndex && editing.column === colIndex;
-                      const value = readCell(motor, column.id, rowIndex);
+                      const value = readCell(motor, column.id, rowIndex, formatStatus);
 
                       return (
                         <div

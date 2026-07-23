@@ -16,7 +16,6 @@ import {
 } from "@/components/grid/grid-context-menu";
 import { usePanelActive } from "@/components/layout/panel-active-context";
 import { useWorkspace } from "@/components/layout/workspace-context";
-import { useGridPersistenceAdapter } from "@/components/persistence/use-grid-persistence-adapter";
 import { GridZoomControl } from "@/components/motors/grid-zoom-control";
 import { useExcelGridInteraction } from "@/hooks/use-excel-grid-interaction";
 import { buildFillOperations, resolveFillDragTarget } from "@/lib/grid/grid-fill-engine";
@@ -717,19 +716,6 @@ export function SpecificExcelGrid({
 
     return () => window.clearTimeout(timer);
   }, [canEdit, companyId, dirtyVersion, editor, isActive, pushToCloud]);
-
-  useGridPersistenceAdapter({
-    key: companyId ? { companyId, kind: "specific_grid", id: category.id } : null,
-    dirtyVersion,
-    getSnapshot: () => ({
-      dirtyRowIds: [...dirtyRowsRef.current],
-      pendingDeleteIds: [...pendingDeleteIdsRef.current],
-    }),
-    pushToCloud,
-    enabled: isActive && canEdit,
-    label: category.name || "Специфика",
-    scheduleInEngine: false,
-  });
 
   useEffect(() => {
     function stopSelectionDrag() {

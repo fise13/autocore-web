@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   Activity,
@@ -10,6 +11,7 @@ import {
   Warehouse,
 } from "lucide-react";
 
+import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import type { KeynoteSceneSnapshot } from "@/components/marketing/download/ecosystem/use-ecosystem-keynote-timeline";
 import { cn } from "@/lib/utils";
 
@@ -17,23 +19,28 @@ type KeynoteDesktopUiProps = {
   snapshot: KeynoteSceneSnapshot;
 };
 
-const NAV = [
-  { icon: LayoutGrid, label: "Обзор", active: false },
-  { icon: Warehouse, label: "Склад", active: true },
-  { icon: Package, label: "Инвентарь", active: false },
-  { icon: Activity, label: "Активность", active: false },
-] as const;
-
 export function KeynoteDesktopUi({ snapshot }: KeynoteDesktopUiProps) {
+  const chrome = useDemoChrome();
   const synced = snapshot.desktopStatus === "synced";
   const receiving = snapshot.desktopStatus === "receiving";
+
+  const nav = useMemo(
+    () =>
+      [
+        { icon: LayoutGrid, label: chrome.nav.overview, active: false },
+        { icon: Warehouse, label: chrome.nav.warehouse, active: true },
+        { icon: Package, label: chrome.nav.inventory, active: false },
+        { icon: Activity, label: chrome.nav.activity, active: false },
+      ] as const,
+    [chrome.nav],
+  );
 
   return (
     <div className="keynote-desktop-shell">
       <aside className="keynote-desktop-sidebar" aria-hidden>
         <div className="keynote-desktop-sidebar-brand">AutoCore</div>
         <ul className="keynote-desktop-sidebar-nav">
-          {NAV.map(({ icon: Icon, label, active }) => (
+          {nav.map(({ icon: Icon, label, active }) => (
             <li key={label}>
               <span className={cn("keynote-desktop-sidebar-link", active && "is-active")}>
                 <Icon className="size-3" aria-hidden />
@@ -48,7 +55,7 @@ export function KeynoteDesktopUi({ snapshot }: KeynoteDesktopUiProps) {
         <header className="keynote-desktop-toolbar">
           <div>
             <p className="keynote-desktop-toolbar-title">Mission Control</p>
-            <p className="keynote-desktop-toolbar-meta">Склад · live sync</p>
+            <p className="keynote-desktop-toolbar-meta">{chrome.sync.warehouseLiveSync}</p>
           </div>
           <span
             className={cn(
@@ -60,15 +67,15 @@ export function KeynoteDesktopUi({ snapshot }: KeynoteDesktopUiProps) {
             {synced ? (
               <>
                 <Check className="size-2.5" aria-hidden />
-                Синхронизировано
+                {chrome.common.synced}
               </>
             ) : receiving ? (
               <>
                 <Radio className="size-2.5" aria-hidden />
-                Получение…
+                {chrome.common.receiving}
               </>
             ) : (
-              "Ожидание"
+              chrome.common.waiting
             )}
           </span>
         </header>
@@ -83,20 +90,20 @@ export function KeynoteDesktopUi({ snapshot }: KeynoteDesktopUiProps) {
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             >
               <Radio className="size-3 text-primary" aria-hidden />
-              <span>Новый резерв с iPhone</span>
+              <span>{chrome.sync.newReserveIphone}</span>
             </motion.div>
           ) : null}
         </AnimatePresence>
 
         <div className="keynote-desktop-content">
           <div className="keynote-desktop-kpis">
-            <Kpi label="На складе" value={snapshot.stock} highlight={snapshot.showNewRow} />
-            <Kpi label="Резервы" value={snapshot.reserves} highlight={snapshot.reserves > 12} />
+            <Kpi label={chrome.sync.onHand} value={snapshot.stock} highlight={snapshot.showNewRow} />
+            <Kpi label={chrome.sync.reserves} value={snapshot.reserves} highlight={snapshot.reserves > 12} />
           </div>
 
           <div className="keynote-desktop-inventory">
             <div className="keynote-desktop-section-head">
-              <span>Инвентарь</span>
+              <span>{chrome.nav.inventory}</span>
               <span className="keynote-desktop-section-meta">
                 {snapshot.showNewRow ? "live" : "-"}
               </span>
@@ -120,7 +127,7 @@ export function KeynoteDesktopUi({ snapshot }: KeynoteDesktopUiProps) {
                       <Package className="size-3 text-primary" aria-hidden />
                       G4KC · A-12
                     </span>
-                    <span className="keynote-desktop-row-badge">В наличии</span>
+                    <span className="keynote-desktop-row-badge">{chrome.common.inStock}</span>
                   </motion.li>
                 ) : null}
               </AnimatePresence>
@@ -129,11 +136,11 @@ export function KeynoteDesktopUi({ snapshot }: KeynoteDesktopUiProps) {
 
           <div className="keynote-desktop-activity">
             <div className="keynote-desktop-section-head">
-              <span>Активность</span>
+              <span>{chrome.nav.activity}</span>
             </div>
             <ul className="keynote-desktop-rows">
               <li className="keynote-desktop-row is-muted">
-                <span>Резерв создан</span>
+                <span>{chrome.sync.reserveCreated}</span>
                 <span className="keynote-desktop-row-meta">12:41</span>
               </li>
               <AnimatePresence>
@@ -146,8 +153,8 @@ export function KeynoteDesktopUi({ snapshot }: KeynoteDesktopUiProps) {
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                   >
-                    <span>Резерв создан</span>
-                    <span className="keynote-desktop-row-meta">сейчас</span>
+                    <span>{chrome.sync.reserveCreated}</span>
+                    <span className="keynote-desktop-row-meta">{chrome.common.now}</span>
                   </motion.li>
                 ) : null}
               </AnimatePresence>

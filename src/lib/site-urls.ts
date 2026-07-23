@@ -1,3 +1,9 @@
+import type { AppLocale } from "@autocore/i18n/config";
+import { DEFAULT_LOCALE } from "@autocore/i18n/config";
+
+import { localizedPath } from "@/i18n/marketing-paths";
+import { getActiveUserCopyLocale } from "@/lib/user-copy";
+
 export type SiteHostKind = "marketing" | "app" | "local";
 
 export const DEFAULT_MARKETING_ORIGIN = "https://myautocore.com";
@@ -161,25 +167,33 @@ export function appDashboardUrl(): string {
 }
 
 /** Absolute marketing URL for a path; relative on unified localhost dev. */
-export function marketingPageUrl(path: string): string {
+export function marketingPageUrl(path: string, locale?: AppLocale): string {
+  const loc = locale ?? (typeof window !== "undefined" ? getActiveUserCopyLocale() : DEFAULT_LOCALE);
   const normalized = path.startsWith("/") ? path : `/${path}`;
+  const localized =
+    normalized === "/" || normalized === ""
+      ? localizedPath(loc, "/")
+      : normalized.startsWith("/en/") ||
+          normalized.startsWith("/ru/") ||
+          normalized === "/en" ||
+          normalized === "/ru"
+        ? normalized
+        : localizedPath(loc, normalized as "/");
+
   if (isLocalDevSite()) {
-    // App owns `/` on localhost; marketing home is the internal route.
-    if (normalized === "/") return "/marketing";
-    return normalized;
+    return localized;
   }
   const marketing = getMarketingUrl().replace(/\/$/, "");
   const app = getAppUrl().replace(/\/$/, "");
   if (marketing === app) {
-    if (normalized === "/") return "/marketing";
-    return normalized;
+    return localized;
   }
-  return `${marketing}${normalized}`;
+  return `${marketing}${localized}`;
 }
 
 /** Marketing landing home — absolute URL when app and marketing are on different hosts. */
-export function marketingHomeUrl(): string {
-  return marketingPageUrl("/");
+export function marketingHomeUrl(locale?: AppLocale): string {
+  return marketingPageUrl("/", locale);
 }
 
 export const APP_ROUTE_PREFIXES = [

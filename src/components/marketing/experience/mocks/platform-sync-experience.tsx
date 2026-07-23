@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { Radio } from "lucide-react";
 import { useInView, useReducedMotion } from "motion/react";
 
+import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import { KeynoteDesktopUi } from "@/components/marketing/download/ecosystem/keynote-desktop-ui";
 import { KeynotePhoneUi } from "@/components/marketing/download/ecosystem/keynote-phone-ui";
 import { KeynoteSyncBeam } from "@/components/marketing/download/ecosystem/keynote-sync-beam";
@@ -24,6 +25,7 @@ type PlatformSyncExperienceProps = {
  * Replaces the old abstract side-by-side cards.
  */
 export function PlatformSyncExperience({ className, hideHeader = false }: PlatformSyncExperienceProps) {
+  const chrome = useDemoChrome();
   const reduced = useReducedMotion();
   const rootRef = useRef<HTMLDivElement>(null);
   const inView = useInView(rootRef, { margin: "-12% 0px", amount: 0.22 });
@@ -40,20 +42,23 @@ export function PlatformSyncExperience({ className, hideHeader = false }: Platfo
     snapshot.phoneStatus === "sent" ||
     snapshot.desktopStatus === "receiving";
 
+  const statusLabel =
+    snapshot.desktopStatus === "synced"
+      ? chrome.platform.linkActive
+      : snapshot.phoneStatus === "sending" || snapshot.desktopStatus === "receiving"
+        ? chrome.common.syncing
+        : snapshot.phoneStatus === "scanning"
+          ? chrome.common.scanning
+          : chrome.platform.readyToSend;
+
   return (
     <div ref={rootRef} className={cn("platform-sync-root", className)}>
       {!hideHeader ? (
         <div className="platform-sync-status">
-          <p className="platform-sync-status-label">Одна система на двух устройствах</p>
+          <p className="platform-sync-status-label">{chrome.platform.oneSystem}</p>
           <Badge variant="outline" className="gap-1 font-normal text-[10px]">
             <Radio className={cn("size-3", live && !reduced && "text-primary")} aria-hidden />
-            {snapshot.desktopStatus === "synced"
-              ? "Связь активна"
-              : snapshot.phoneStatus === "sending" || snapshot.desktopStatus === "receiving"
-                ? "Синхронизация"
-                : snapshot.phoneStatus === "scanning"
-                  ? "Сканирование"
-                  : "Готово к отправке"}
+            {statusLabel}
           </Badge>
         </div>
       ) : null}

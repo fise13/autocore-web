@@ -36,7 +36,7 @@ export function ProPaywallDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-hidden border-primary/15 p-0 sm:max-w-3xl">
+      <DialogContent className="overflow-hidden border-primary/15 p-0 sm:max-w-4xl">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-primary/12 to-transparent" />
         <div className="relative space-y-4 p-6">
           <DialogHeader className="space-y-3 text-center sm:text-left">

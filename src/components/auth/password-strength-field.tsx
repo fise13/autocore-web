@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label";
 import {
   getPasswordStrengthState,
   PASSWORD_BAR_SEGMENT_CLASS,
-  SIGNUP_PASSWORD_REQUIREMENTS,
 } from "@/lib/auth/password-validation";
+import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 type PasswordStrengthFieldProps = {
@@ -27,13 +27,14 @@ export function PasswordStrengthField({
   disabled = false,
 }: PasswordStrengthFieldProps) {
   const [visible, setVisible] = useState(false);
+  const copy = userCopy.auth.login;
   const strength = useMemo(() => getPasswordStrengthState(value), [value]);
   const segmentClass = PASSWORD_BAR_SEGMENT_CLASS[strength.barTone];
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <Label htmlFor={id}>Придумайте пароль</Label>
+        <Label htmlFor={id}>{copy.choosePasswordLabel}</Label>
         <div className="relative">
           <Input
             id={id}
@@ -55,7 +56,7 @@ export function PasswordStrengthField({
             className="absolute top-1/2 right-1.5 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             onClick={() => setVisible((current) => !current)}
             disabled={disabled}
-            aria-label={visible ? "Скрыть пароль" : "Показать пароль"}
+            aria-label={visible ? copy.hidePassword : copy.showPassword}
           >
             {visible ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
           </Button>
@@ -67,11 +68,11 @@ export function PasswordStrengthField({
           className="flex h-1.5 gap-1"
           role="progressbar"
           aria-valuemin={0}
-          aria-valuemax={SIGNUP_PASSWORD_REQUIREMENTS.length}
+          aria-valuemax={strength.requirements.length}
           aria-valuenow={strength.score}
-          aria-label="Надёжность пароля"
+          aria-label={copy.passwordStrengthAria}
         >
-          {SIGNUP_PASSWORD_REQUIREMENTS.map((requirement, index) => (
+          {strength.requirements.map((requirement, index) => (
             <div
               key={requirement.id}
               className={cn(
@@ -95,7 +96,7 @@ export function PasswordStrengthField({
           >
             {strength.strengthText}
           </span>
-          <span>. Должен содержать:</span>
+          <span>. {copy.passwordMustContain}</span>
         </p>
 
         <ul id={`${id}-requirements`} className="space-y-1.5">
@@ -114,7 +115,7 @@ export function PasswordStrengthField({
                 {requirement.text}
               </span>
               <span className="sr-only">
-                {requirement.met ? "Требование выполнено" : "Требование не выполнено"}
+                {requirement.met ? copy.requirementMet : copy.requirementUnmet}
               </span>
             </li>
           ))}

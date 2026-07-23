@@ -1,4 +1,4 @@
-import { DocumentContext } from "@/lib/documents/document-context";
+import { DocumentContext, resolveDocumentUi } from "@/lib/documents/document-context";
 import { documentPrimaryMotor } from "@/lib/documents/document-helpers";
 
 import { DocumentPdfEmptyState } from "../shared/document-pdf-empty-state";
@@ -11,13 +11,14 @@ type EngineWarrantyDocumentProps = {
 
 export function EngineWarrantyDocument({ context, qrDataUri }: EngineWarrantyDocumentProps) {
   const motorLine = documentPrimaryMotor(context);
+  const ui = resolveDocumentUi(context.ui);
 
   if (!motorLine) {
     return (
       <DocumentPdfEmptyState
         context={context}
-        title="Гарантийный талон двигателя"
-        message="Для этого заказ-наряда двигатель не указан."
+        title={ui.emptyWarrantyTitle}
+        message={ui.emptyWarrantyMessage}
       />
     );
   }

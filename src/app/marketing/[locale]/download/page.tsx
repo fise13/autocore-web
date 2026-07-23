@@ -1,6 +1,5 @@
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
-import { marketingSiteContent } from "@/components/marketing/content/marketing-site-content";
 import { DownloadExperience } from "@/components/marketing/download/download-experience";
 import { MarketingExtraJsonLd } from "@/components/marketing/seo/marketing-json-ld";
 import { routing } from "@/i18n/routing";
@@ -12,8 +11,6 @@ import {
   buildFaqJsonLd,
 } from "@/lib/seo/marketing-seo";
 import { isAppLocale } from "@autocore/i18n/config";
-
-const copy = marketingSiteContent.download;
 
 type PageProps = {
   params: Promise<{ locale: string }>;
@@ -36,6 +33,10 @@ export default async function DownloadPage({ params }: PageProps) {
   if (!isAppLocale(locale)) return null;
   setRequestLocale(locale);
 
+  const t = await getTranslations({ locale, namespace: "marketing" });
+  const faqItems = t.raw("pages.download.faq") as Array<{ q: string; a: string }>;
+  const platforms = t.raw("pages.download.platforms") as Array<{ title: string }>;
+
   return (
     <>
       <MarketingExtraJsonLd
@@ -44,11 +45,11 @@ export default async function DownloadPage({ params }: PageProps) {
           buildBreadcrumbJsonLd("download", locale),
           buildCollectionPageJsonLd(
             "download",
-            "Скачать AutoCore",
-            copy.meta.description,
-            copy.platforms.map((platform) => platform.title),
+            t("seo.pages.download.title"),
+            t("pages.download.meta.description"),
+            platforms.map((platform) => platform.title),
           ),
-          buildFaqJsonLd([...copy.faq]),
+          buildFaqJsonLd(faqItems),
         ]}
       />
       <DownloadExperience />

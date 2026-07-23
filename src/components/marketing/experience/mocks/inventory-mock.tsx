@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo } from "react";
 import { Barcode, MapPin } from "lucide-react";
 
+import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import { useLiveSequence } from "@/components/marketing/experience/motion/use-live-sequence";
 import type { PlatformSyncStep } from "@/components/marketing/experience/motion/platform-sync-steps";
 import { ProductWindow } from "@/components/marketing/experience/ui/product-window";
@@ -24,20 +26,32 @@ type InventoryMockProps = {
   controlled?: boolean;
 };
 
-function phaseToUi(phase: PlatformSyncStep) {
+type ScanChrome = ReturnType<typeof useDemoChrome>["scan"];
+
+function phaseToUi(phase: PlatformSyncStep, scan: ScanChrome) {
   switch (phase) {
     case "idle":
-      return { vin: "-", scanActive: false, status: "Сканирование VIN", saving: false };
+      return { vin: "-", scanActive: false, status: scan.scanningVin, saving: false };
     case "scan":
-      return { vin: "-", scanActive: true, status: "Сканируем код…", saving: false };
+      return { vin: "-", scanActive: true, status: scan.scanningCode, saving: false };
     case "detect":
-      return { vin: "KMHGC…", scanActive: true, status: "VIN распознан", saving: false };
+      return { vin: "KMHGC…", scanActive: true, status: scan.vinRecognized, saving: false };
     case "save":
-      return { vin: "KMHGC…", scanActive: false, status: "Сохранено на телефоне", saving: true };
+      return { vin: "KMHGC…", scanActive: false, status: scan.savedOnPhone, saving: true };
     case "sync":
     case "live":
-      return { vin: "KMHGC…", scanActive: false, status: "Зарезервировано под НЗ-0142", saving: false };
+      return { vin: "KMHGC…", scanActive: false, status: scan.reservedForWo, saving: false };
   }
+}
+
+function internalPhaseToUi(step: (typeof INTERNAL_STEPS)[number], scan: ScanChrome) {
+  if (step === "scan") {
+    return { vin: "KMHGC…", scanActive: true, status: scan.vinScanned, saving: false };
+  }
+  if (step === "reserve") {
+    return { vin: "KMHGC…", scanActive: false, status: scan.reservedForWo, saving: false };
+  }
+  return { vin: "-", scanActive: false, status: scan.scanningVin, saving: false };
 }
 
 export function InventoryMock({
@@ -47,12 +61,19 @@ export function InventoryMock({
   phase,
   controlled,
 }: InventoryMockProps) {
+  const chrome = useDemoChrome();
   const { step: internalStep } = useLiveSequence(INTERNAL_STEPS, {
     intervalMs: 2600,
     paused: paused || controlled,
   });
 
-  const ui = controlled && phase ? phaseToUi(phase) : internalPhaseToUi(internalStep);
+  const ui = useMemo(
+    () =>
+      controlled && phase
+        ? phaseToUi(phase, chrome.scan)
+        : internalPhaseToUi(internalStep, chrome.scan),
+    [chrome.scan, controlled, internalStep, phase],
+  );
 
   const body = (
     <div className="flex flex-col gap-3">
@@ -62,12 +83,12 @@ export function InventoryMock({
           <p className="mt-0.5 font-mono text-xs text-muted-foreground tabular-nums">SN: KMHGC41DPEU123456</p>
         </div>
         <Badge variant="outline" className="font-normal">
-          {ui.saving ? "Резерв" : "В наличии"}
+          {ui.saving ? chrome.common.reserve : chrome.common.inStock}
         </Badge>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <InfoCell icon={MapPin} label="Полка" value="A-12" />
+        <InfoCell icon={MapPin} label={chrome.common.shelf} value="A-12" />
         <InfoCell icon={Barcode} label="VIN" value={ui.vin} highlight={ui.scanActive && ui.vin !== "-"} />
       </div>
 
@@ -85,7 +106,7 @@ export function InventoryMock({
       </div>
 
       <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">Стоимость</span>
+        <span className="text-muted-foreground">{chrome.common.cost}</span>
         <span className="font-mono font-medium tabular-nums">$4,200</span>
       </div>
     </div>
@@ -95,13 +116,13 @@ export function InventoryMock({
     return (
       <McPanel className={cn("shadow-none dark:ring-0", className)}>
         <McPanelHeader
-          title="Склад · Телефон"
-          description="Кладовщик"
+          title={chrome.scan.warehousePhone}
+          description={chrome.common.storekeeper}
           bordered
           badge={
             controlled && phase ? (
               <Badge variant="outline" className="font-normal text-[10px]">
-                {phase === "live" ? "Отправлено" : "В работе"}
+                {phase === "live" ? chrome.common.sent : chrome.common.inProgress}
               </Badge>
             ) : undefined
           }
@@ -112,20 +133,10 @@ export function InventoryMock({
   }
 
   return (
-    <ProductWindow title="Склад · Двигатели" live className={className}>
+    <ProductWindow title={chrome.scan.warehouseEngines} live className={className}>
       {body}
     </ProductWindow>
   );
-}
-
-function internalPhaseToUi(step: (typeof INTERNAL_STEPS)[number]) {
-  if (step === "scan") {
-    return { vin: "KMHGC…", scanActive: true, status: "VIN отсканирован", saving: false };
-  }
-  if (step === "reserve") {
-    return { vin: "KMHGC…", scanActive: false, status: "Зарезервировано под НЗ-0142", saving: false };
-  }
-  return { vin: "-", scanActive: false, status: "Сканирование VIN", saving: false };
 }
 
 function InfoCell({

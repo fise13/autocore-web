@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useRef } from "react";
 
 import { useGsapReveal } from "@/components/marketing/motion/use-gsap-reveal";
@@ -17,11 +18,12 @@ type MarketingRelatedLinksProps = {
 };
 
 export function MarketingRelatedLinks({ links, className = "mt-20" }: MarketingRelatedLinksProps) {
+  const t = useTranslations("marketing.a11y");
   const ref = useRef<HTMLElement>(null);
   useGsapReveal(ref, "[data-related-link]", { stagger: 0.1, y: 20 });
 
   return (
-    <nav ref={ref} className={`marketing-related-links ${className}`.trim()} aria-label="Другие разделы">
+    <nav ref={ref} className={`marketing-related-links ${className}`.trim()} aria-label={t("relatedNavAria")}>
       {links.map((link) => (
         <Link key={link.href} href={link.href} data-related-link className="marketing-related-link">
           <span className="block font-medium">{link.label}</span>

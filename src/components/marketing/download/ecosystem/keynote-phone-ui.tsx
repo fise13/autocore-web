@@ -3,6 +3,7 @@
 import { Barcode, Check, ChevronLeft, Loader2 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
+import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import type { KeynoteSceneSnapshot } from "@/components/marketing/download/ecosystem/use-ecosystem-keynote-timeline";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +12,7 @@ type KeynotePhoneUiProps = {
 };
 
 export function KeynotePhoneUi({ snapshot }: KeynotePhoneUiProps) {
+  const chrome = useDemoChrome();
   const reduced = useReducedMotion();
   const scanning = snapshot.phoneStatus === "scanning";
   const sending = snapshot.phoneStatus === "sending";
@@ -22,7 +24,7 @@ export function KeynotePhoneUi({ snapshot }: KeynotePhoneUiProps) {
     <div className="keynote-phone-ui">
       <nav className="keynote-phone-nav" aria-hidden>
         <ChevronLeft className="size-3.5 opacity-55" aria-hidden />
-        <span className="keynote-phone-nav-title">Склад</span>
+        <span className="keynote-phone-nav-title">{chrome.nav.warehouse}</span>
         <span
           className={cn(
             "keynote-phone-nav-badge",
@@ -34,17 +36,17 @@ export function KeynotePhoneUi({ snapshot }: KeynotePhoneUiProps) {
           {sent ? (
             <>
               <Check className="size-2.5" aria-hidden />
-              Отправлено
+              {chrome.common.sent}
             </>
           ) : sending ? (
             <>
               <Loader2 className="size-2.5 animate-spin" aria-hidden />
-              Отправка…
+              {chrome.scan.sending}
             </>
           ) : scanning ? (
-            "Сканирование"
+            chrome.common.scanning
           ) : (
-            "VIN готов"
+            chrome.scan.vinReady
           )}
         </span>
       </nav>
@@ -52,7 +54,7 @@ export function KeynotePhoneUi({ snapshot }: KeynotePhoneUiProps) {
       <div className="keynote-phone-ui-header">
         <div>
           <p className="keynote-phone-ui-title">G4KC · 2.4L</p>
-          <p className="keynote-phone-ui-meta">Двигатель · полка A-12</p>
+          <p className="keynote-phone-ui-meta">{chrome.scan.engineShelfMeta}</p>
         </div>
       </div>
 
@@ -73,7 +75,11 @@ export function KeynotePhoneUi({ snapshot }: KeynotePhoneUiProps) {
         ) : null}
         <Barcode className="keynote-phone-scan-icon" aria-hidden />
         <p className="keynote-phone-scan-label">
-          {scanning ? "Сканируем код…" : scanned ? "VIN распознан" : "Наведите на код"}
+          {scanning
+            ? chrome.scan.scanningCode
+            : scanned
+              ? chrome.scan.vinRecognized
+              : chrome.scan.aimAtCode}
         </p>
       </div>
 
@@ -100,7 +106,7 @@ export function KeynotePhoneUi({ snapshot }: KeynotePhoneUiProps) {
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
           >
             <Check className="size-3.5" aria-hidden />
-            <span>На desktop</span>
+            <span>{chrome.common.onDesktop}</span>
           </motion.div>
         ) : scanning ? (
           <motion.div
@@ -110,7 +116,7 @@ export function KeynotePhoneUi({ snapshot }: KeynotePhoneUiProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <span>Ожидание VIN…</span>
+            <span>{chrome.scan.waitingVin}</span>
           </motion.div>
         ) : (
           <motion.button
@@ -125,7 +131,7 @@ export function KeynotePhoneUi({ snapshot }: KeynotePhoneUiProps) {
             tabIndex={-1}
             aria-hidden
           >
-            {sending ? "Отправка…" : "Резерв"}
+            {sending ? chrome.scan.sending : chrome.common.reserve}
           </motion.button>
         )}
       </AnimatePresence>

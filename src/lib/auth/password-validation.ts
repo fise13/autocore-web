@@ -1,25 +1,44 @@
 import { z } from "zod";
 
+import { getActiveUserCopyLocale } from "@/lib/user-copy";
+import { userCopyEn } from "@/lib/user-copy.en";
+import { userCopyRu } from "@/lib/user-copy.ru";
+
 export type PasswordRequirement = {
   id: string;
   text: string;
   test: (password: string) => boolean;
 };
 
-export const SIGNUP_PASSWORD_REQUIREMENTS: PasswordRequirement[] = [
-  { id: "length", text: "Минимум 8 символов", test: (password) => password.length >= 8 },
-  { id: "digit", text: "Хотя бы 1 цифра", test: (password) => /\d/.test(password) },
-  {
-    id: "lower",
-    text: "Хотя бы 1 строчная буква",
-    test: (password) => /[a-zа-яё]/.test(password),
-  },
-  {
-    id: "upper",
-    text: "Хотя бы 1 заглавная буква",
-    test: (password) => /[A-ZА-ЯЁ]/.test(password),
-  },
-];
+function loginCopy() {
+  return getActiveUserCopyLocale() === "en" ? userCopyEn.auth.login : userCopyRu.auth.login;
+}
+
+function buildRequirements(): PasswordRequirement[] {
+  const copy = loginCopy();
+  return [
+    { id: "length", text: copy.reqLength, test: (password) => password.length >= 8 },
+    { id: "digit", text: copy.reqDigit, test: (password) => /\d/.test(password) },
+    {
+      id: "lower",
+      text: copy.reqLower,
+      test: (password) => /[a-zа-яё]/.test(password),
+    },
+    {
+      id: "upper",
+      text: copy.reqUpper,
+      test: (password) => /[A-ZА-ЯЁ]/.test(password),
+    },
+  ];
+}
+
+/** Locale-aware signup requirements (call each time — EN/RU text follows active locale). */
+export function getSignupPasswordRequirements(): PasswordRequirement[] {
+  return buildRequirements();
+}
+
+/** @deprecated Prefer getSignupPasswordRequirements() — snapshot at module load is locale-stale. */
+export const SIGNUP_PASSWORD_REQUIREMENTS: PasswordRequirement[] = buildRequirements();
 
 export type PasswordStrengthState = {
   requirements: Array<PasswordRequirement & { met: boolean }>;
@@ -30,24 +49,25 @@ export type PasswordStrengthState = {
 };
 
 export function getPasswordStrengthState(password: string): PasswordStrengthState {
-  const requirements = SIGNUP_PASSWORD_REQUIREMENTS.map((requirement) => ({
+  const copy = loginCopy();
+  const requirements = buildRequirements().map((requirement) => ({
     ...requirement,
     met: requirement.test(password),
   }));
   const score = requirements.filter((requirement) => requirement.met).length;
 
-  let strengthText = "Введите пароль";
+  let strengthText: string = copy.passwordEnter;
   let barTone: PasswordStrengthState["barTone"] = "empty";
 
   if (score > 0) {
     if (score <= 2) {
-      strengthText = "Слабый пароль";
+      strengthText = copy.passwordWeak;
       barTone = score <= 1 ? "weak" : "fair";
     } else if (score === 3) {
-      strengthText = "Средний пароль";
+      strengthText = copy.passwordFair;
       barTone = "good";
     } else {
-      strengthText = "Надёжный пароль";
+      strengthText = copy.passwordStrong;
       barTone = "strong";
     }
   }
@@ -57,16 +77,16 @@ export function getPasswordStrengthState(password: string): PasswordStrengthStat
     score,
     strengthText,
     barTone,
-    isValid: score === SIGNUP_PASSWORD_REQUIREMENTS.length,
+    isValid: score === requirements.length,
   };
 }
 
 export const signupPasswordSchema = z
   .string()
-  .min(8, "Минимум 8 символов")
-  .regex(/\d/, "Нужна хотя бы одна цифра")
-  .regex(/[a-zа-яё]/, "Нужна хотя бы одна строчная буква")
-  .regex(/[A-ZА-ЯЁ]/, "Нужна хотя бы одна заглавная буква");
+  .min(8, userCopyRu.auth.login.reqLength)
+  .regex(/\d/, userCopyRu.auth.login.reqDigit)
+  .regex(/[a-zа-яё]/, userCopyRu.auth.login.reqLower)
+  .regex(/[A-ZА-ЯЁ]/, userCopyRu.auth.login.reqUpper);
 
 export type PasswordStrength = "weak" | "fair" | "strong";
 
@@ -74,7 +94,7 @@ export function validateSignupPassword(password: string): string | null {
   const state = getPasswordStrengthState(password);
   if (state.isValid) return null;
   const firstUnmet = state.requirements.find((requirement) => !requirement.met);
-  return firstUnmet?.text ?? "Слабый пароль";
+  return firstUnmet?.text ?? loginCopy().passwordWeak;
 }
 
 /** @deprecated Use getPasswordStrengthState instead */

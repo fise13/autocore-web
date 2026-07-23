@@ -1,9 +1,14 @@
+import {
+  DEFAULT_DOCUMENT_UI_LABELS,
+  type DocumentUiLabels,
+} from "@/lib/documents/document-context";
 import { DocumentHeaderModel } from "@/lib/documents/header/build-document-header-model";
 import { cn } from "@/lib/utils";
 
 type DocumentPdfHeaderProps = {
   header: DocumentHeaderModel;
   preview?: boolean;
+  ui?: Partial<DocumentUiLabels>;
 };
 
 function HeaderContactLines({ header }: { header: DocumentHeaderModel }) {
@@ -32,11 +37,16 @@ function HeaderContactLines({ header }: { header: DocumentHeaderModel }) {
   );
 }
 
-export function DocumentPdfHeader({ header, preview = false }: DocumentPdfHeaderProps) {
+export function DocumentPdfHeader({
+  header,
+  preview = false,
+  ui,
+}: DocumentPdfHeaderProps) {
   if (!header.visibility.showHeader) {
     return null;
   }
 
+  const labels = { ...DEFAULT_DOCUMENT_UI_LABELS, ...ui };
   const showMeta =
     header.visibility.showDocumentNumber ||
     header.visibility.showDate ||
@@ -81,13 +91,13 @@ export function DocumentPdfHeader({ header, preview = false }: DocumentPdfHeader
           <dl className="doc-pdf-header__meta-list">
             {header.visibility.showDocumentNumber ? (
               <div>
-                <dt>Номер</dt>
+                <dt>{labels.number}</dt>
                 <dd>{header.orderLabel}</dd>
               </div>
             ) : null}
             {header.visibility.showDate ? (
               <div>
-                <dt>Дата</dt>
+                <dt>{labels.date}</dt>
                 <dd>{header.documentDate}</dd>
               </div>
             ) : null}

@@ -16,6 +16,7 @@ import {
 } from "@/lib/motion/auth-session-transition";
 import { resetDissolveVeil } from "@/lib/motion/dissolve-transition";
 import { prefersReducedMotion } from "@/lib/motion/cross-route-transition";
+import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 export type AuthJourneyContentWidth = "sm" | "md" | "lg" | "xl";
@@ -75,6 +76,7 @@ function AuthJourneyBackdrop({ centered = false }: { centered?: boolean }) {
 
 export function AuthJourneyBrandPanel({ stepLabel }: { stepLabel?: string }) {
   const reducedMotion = prefersReducedMotion();
+  const brand = userCopy.auth.login;
 
   return (
     <div
@@ -103,14 +105,13 @@ export function AuthJourneyBrandPanel({ stepLabel }: { stepLabel?: string }) {
             {...authJourneyBrandReveal(2, reducedMotion)}
             className="text-xl leading-relaxed"
           >
-            &ldquo;AutoCore помогает закрывать наряды быстрее — склад, цех и бухгалтерия наконец говорят на
-            одном языке.&rdquo;
+            &ldquo;{brand.brandQuote}&rdquo;
           </motion.p>
           <motion.footer
             {...authJourneyBrandReveal(3, reducedMotion)}
             className="font-mono text-sm font-semibold"
           >
-            ~ Команда AutoCore
+            {brand.brandAttribution}
           </motion.footer>
         </blockquote>
       </div>

@@ -67,16 +67,23 @@ export async function emitKnowledgeEvent(body: Record<string, unknown>): Promise
   }
 }
 
-export async function backfillKnowledge(limit = 200): Promise<{ processed: number }> {
+export async function backfillKnowledge(
+  limit = 200,
+  options?: { force?: boolean },
+): Promise<{ processed: number; skipped: boolean; seededAt: string | null }> {
   const headers = await authHeaders();
   const response = await fetch("/api/knowledge/backfill", {
     method: "POST",
     headers,
-    body: JSON.stringify({ limit }),
+    body: JSON.stringify({ limit, force: options?.force ?? false }),
   });
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { error?: string } | null;
     throw new Error(body?.error ?? "Backfill failed");
   }
-  return (await response.json()) as { processed: number };
+  return (await response.json()) as {
+    processed: number;
+    skipped: boolean;
+    seededAt: string | null;
+  };
 }
