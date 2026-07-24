@@ -1,19 +1,15 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 
 import "server-only";
 
-const SERVICE_ACCOUNT_FILE_PATTERN = /firebase-adminsdk.*\.json$/i;
-
-function discoverServiceAccountInDir(dir: string): string | null {
-  try {
-    const match = readdirSync(dir).find((name) => SERVICE_ACCOUNT_FILE_PATTERN.test(name));
-    return match ? join(dir, match) : null;
-  } catch {
-    return null;
-  }
-}
-
+/**
+ * Resolve the Autocore web package root without scanning directory listings.
+ *
+ * IMPORTANT: never `readdirSync(process.cwd())` here. `@vercel/nft` treats that as a
+ * dependency on the entire monorepo (autocore-mobile Pods, graphify-out, src-tauri, …)
+ * and every API route that imports Firebase Admin exceeds Vercel's 250 MB limit.
+ */
 function resolveProjectRoot(): string {
   const roots = new Set<string>();
   let cursor = process.cwd();
@@ -40,19 +36,6 @@ function resolveProjectRoot(): string {
   return process.cwd();
 }
 
-function discoverServiceAccountUpwards(startDir?: string): string | null {
-  let cursor = startDir ?? process.cwd();
-  for (let depth = 0; depth < 12; depth += 1) {
-    const discovered = discoverServiceAccountInDir(cursor);
-    if (discovered) return discovered;
-
-    const parent = dirname(cursor);
-    if (parent === cursor) break;
-    cursor = parent;
-  }
-  return null;
-}
-
 function candidatePaths(configuredPath?: string): string[] {
   const projectRoot = resolveProjectRoot();
   const cwd = process.cwd();
@@ -67,18 +50,6 @@ function candidatePaths(configuredPath?: string): string[] {
         candidates.push(resolve(dir, trimmed));
       }
     }
-  }
-
-  for (const dir of searchDirs) {
-    const discovered = discoverServiceAccountInDir(dir);
-    if (discovered) {
-      candidates.push(discovered);
-    }
-  }
-
-  const upwards = discoverServiceAccountUpwards(projectRoot);
-  if (upwards) {
-    candidates.push(upwards);
   }
 
   return [...new Set(candidates)];
@@ -112,6 +83,10 @@ export function resolveServiceAccountFilePath(): string {
   const configured =
     process.env.FIREBASE_SERVICE_ACCOUNT_PATH?.trim() ||
     process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
+
+  if (!configured) {
+    throw new Error(serviceAccountSetupHint());
+  }
 
   const found = candidatePaths(configured).find((path) => existsSync(path));
   if (found) return found;
@@ -153,15 +128,8 @@ function canReadServiceAccountFromDisk(): boolean {
     process.env.FIREBASE_SERVICE_ACCOUNT_PATH?.trim() ||
     process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
 
-  if (configured) {
-    return candidatePaths(configured).some((path) => existsSync(path));
-  }
-
-  return Boolean(
-    discoverServiceAccountInDir(resolveProjectRoot()) ||
-      discoverServiceAccountInDir(process.cwd()) ||
-      discoverServiceAccountUpwards(),
-  );
+  if (!configured) return false;
+  return candidatePaths(configured).some((path) => existsSync(path));
 }
 
 function parseServiceAccountOnServerless(): Record<string, unknown> {

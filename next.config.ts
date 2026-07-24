@@ -11,10 +11,30 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
+/** Keep monorepo / desktop / knowledge-graph artifacts out of every serverless function. */
+const MONOREPO_TRACE_EXCLUDES = [
+  "./autocore-mobile/**/*",
+  "./graphify-out/**/*",
+  "./src-tauri/**/*",
+  "./insta-demo/**/*",
+  "./docs/**/*",
+  "./firebase/functions/**/*",
+  "./public/downloads/**/*",
+  "./public/marketing/**/*",
+  "./public/spline/**/*",
+  "./scripts/**/*",
+  "./assets/**/*",
+  "./AutoCore_Investor_Deck_*.pdf",
+  "./tsconfig.tsbuildinfo",
+];
+
 const nextConfig: NextConfig = {
   serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
+  outputFileTracingExcludes: {
+    "*": MONOREPO_TRACE_EXCLUDES,
+  },
   outputFileTracingIncludes: {
-    "/api/pdf/*": CHROMIUM_TRACE_INCLUDES,
+    "/api/pdf/[documentType]/[orderId]": CHROMIUM_TRACE_INCLUDES,
     "/api/documents/generate": CHROMIUM_TRACE_INCLUDES,
     "/api/documents/process-queue": CHROMIUM_TRACE_INCLUDES,
   },
