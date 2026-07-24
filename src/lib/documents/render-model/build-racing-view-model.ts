@@ -1,4 +1,4 @@
-import { DocumentContext } from "@/lib/documents/document-context";
+import { DocumentContext, resolveDocumentUi } from "@/lib/documents/document-context";
 import { parseCompanyDocumentConfig } from "@/domain/document-config";
 import {
   documentClientName,
@@ -11,6 +11,7 @@ import {
 import { addDays } from "@/lib/documents/format";
 import { resolveWarrantyForDocument } from "@/lib/documents/warranty/resolve-warranty";
 import { formatDocumentDate, formatDocumentDateShort, formatDocumentMoney } from "@/lib/documents/format";
+import { numberLocaleForDocument } from "@/lib/documents/document-locale";
 import { DocumentFieldRow, DocumentLineItem } from "@/lib/documents/render-model/types";
 import {
   buildLogbookTimeline,
@@ -25,6 +26,7 @@ import {
   formatMotorLineSubtitle,
 } from "@/lib/motors/format-motor-display-name";
 import { GEARBOX_MARK } from "@/lib/documents/ai/document-label-rules";
+import { userCopy } from "@/lib/user-copy";
 
 export type RacingLogbookPoint = {
   id: string;
@@ -72,23 +74,25 @@ function racingMilestone(mileage: number): { target: number; remaining: number }
 }
 
 function buildLaborRows(context: DocumentContext): DocumentLineItem[] {
+  const ui = resolveDocumentUi(context.ui);
   return context.order.laborLines.map((line) => ({
     id: line.id,
     title: line.title,
-    subtitle: line.description?.trim() || "Работа",
-    quantity: line.hours > 0 ? `${line.hours} ч` : "1",
+    subtitle: line.description?.trim() || ui.laborKind,
+    quantity: line.hours > 0 ? `${line.hours}${ui.hoursSuffix}` : "1",
     amount: formatDocumentMoney(documentLaborLineTotal(line)),
   }));
 }
 
 function buildPartRows(context: DocumentContext): DocumentLineItem[] {
+  const ui = resolveDocumentUi(context.ui);
   const rows: DocumentLineItem[] = context.order.partLines.map((line) => {
     const marks = (context.motorLineMarks?.[`part:${line.id}`] ?? []).filter(Boolean);
     const markSuffix = marks.length > 0 ? ` · ${marks.join(" · ")}` : "";
     return {
       id: line.id,
       title: line.name,
-      subtitle: `Запчасть${markSuffix}`,
+      subtitle: `${ui.partKind}${markSuffix}`,
       quantity: String(line.quantity),
       amount: formatDocumentMoney(line.quantity * line.unitPrice),
     };
@@ -107,6 +111,7 @@ function buildPartRows(context: DocumentContext): DocumentLineItem[] {
 }
 
 function buildMotorDetailFields(context: DocumentContext): DocumentFieldRow[] {
+  const ui = resolveDocumentUi(context.ui);
   const motorLine = documentPrimaryMotor(context);
   const motorEntity = documentPrimaryMotorEntity(context);
   if (!motorLine) return [];
@@ -115,34 +120,38 @@ function buildMotorDetailFields(context: DocumentContext): DocumentFieldRow[] {
   const markLabel = marks.length > 0 ? marks.join(" · ") : null;
 
   return [
-    { label: "Двигатель", value: formatMotorLineLabel(motorLine, { includeSerial: true }) || "—" },
-    { label: "Серийный номер", value: motorLine.serialCode || "—" },
     {
-      label: "Марка / код",
+      label: ui.engine,
+      value: formatMotorLineLabel(motorLine, { includeSerial: true }) || "—",
+    },
+    { label: ui.serialNumber, value: motorLine.serialCode || "—" },
+    {
+      label: ui.brandCode,
       value: [motorLine.brandName, motorLine.engineCode].filter(Boolean).join(" ") || "—",
     },
-    { label: "Комплектация", value: motorLine.configuration || "—" },
+    { label: ui.configuration, value: motorLine.configuration || "—" },
     {
-      label: "Коробка передач",
+      label: ui.transmissionFull,
       value: motorEntity?.transmission?.trim() || markLabel || "—",
     },
-    { label: "Стоимость", value: formatDocumentMoney(motorLine.unitPrice) },
-  ].filter((field) => field.value !== "—" || field.label === "Двигатель");
+    { label: ui.cost, value: formatDocumentMoney(motorLine.unitPrice) },
+  ].filter((field) => field.value !== "—" || field.label === ui.engine);
 }
 
 function visitCountLabel(count: number): string {
+  const racing = userCopy.documents.racing;
   const mod10 = count % 10;
   const mod100 = count % 100;
-  if (mod10 === 1 && mod100 !== 11) return "заезд";
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "заезда";
-  return "заездов";
+  if (mod10 === 1 && mod100 !== 11) return racing.visitOne;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return racing.visitFew;
+  return racing.visitMany;
 }
 
 function visitNote(logbook: RacingLogbookPoint[]): string | null {
   const past = logbook.filter((e) => e.state === "past");
   if (past.length === 0) return null;
   const first = past[0];
-  return `— ${past.length + 1}-й заезд с ${first.date}`;
+  return userCopy.documents.racing.visitNote(past.length + 1, first.date);
 }
 
 function logbookSubtitle(logbook: RacingLogbookPoint[]): string | null {
@@ -150,10 +159,8 @@ function logbookSubtitle(logbook: RacingLogbookPoint[]): string | null {
   if (past.length === 0) return null;
   const first = past[0];
   const count = past.length + 1;
-  return `${count} ${visitCountLabel(count)} на этом авто с ${first.date}`;
+  return userCopy.documents.racing.logbookSubtitle(count, visitCountLabel(count), first.date);
 }
-
-const RACING_LOGBOOK_SKIP = new Set(["Контрольный осмотр", "Замена масла"]);
 
 function isContractMotorOrder(context: DocumentContext): boolean {
   return context.order.motorLines.length > 0;
@@ -165,9 +172,11 @@ function buildRacingLogbook(
   options?: { warrantyUntil?: Date | null; warrantyKm?: number },
 ): RacingLogbookPoint[] {
   const motorOrder = isContractMotorOrder(context);
+  const insights = userCopy.documents.insights;
+  const skip = new Set([insights.inspection, insights.oilChange, "Контрольный осмотр", "Замена масла"]);
   const entries = buildLogbookTimeline(context, profile).filter((entry) => {
-    if (entry.title === "Контрольный осмотр") return false;
-    if (motorOrder && RACING_LOGBOOK_SKIP.has(entry.title) && entry.state === "future") {
+    if (entry.title === insights.inspection || entry.title === "Контрольный осмотр") return false;
+    if (motorOrder && skip.has(entry.title) && entry.state === "future") {
       return false;
     }
     return true;
@@ -175,15 +184,16 @@ function buildRacingLogbook(
 
   if (motorOrder && options?.warrantyUntil) {
     const mileage = context.order.mileage || 0;
+    const numLocale = numberLocaleForDocument(context.locale);
     const warrantyMileage =
       options.warrantyKm && options.warrantyKm > 0
-        ? `${(mileage + options.warrantyKm).toLocaleString("ru-KZ")} км`
+        ? insights.km((mileage + options.warrantyKm).toLocaleString(numLocale))
         : undefined;
     entries.push({
       id: "warranty-end",
       date: formatDocumentDateShort(options.warrantyUntil),
       mileage: warrantyMileage,
-      title: "Гарантия активна",
+      title: userCopy.documents.racing.warrantyActive,
       state: "future",
     });
   }
@@ -195,6 +205,9 @@ export function buildRacingViewModel(
   context: DocumentContext,
   options?: { disclaimer?: string; showServiceLogbook?: boolean },
 ): RacingViewModel {
+  const racing = userCopy.documents.racing;
+  const insights = userCopy.documents.insights;
+  const numLocale = numberLocaleForDocument(context.locale);
   const showServiceLogbook = options?.showServiceLogbook !== false;
   const profile = classifyServiceOrder(context);
   const mileage = context.order.mileage || context.vehicle?.currentMileage || 0;
@@ -213,9 +226,12 @@ export function buildRacingViewModel(
   let paidPrefix: string | null = null;
   let warrantyHighlight: string | null = null;
   if (context.order.pricing.grandTotal > 0) {
-    paidPrefix = "оплачено —";
+    paidPrefix = racing.paidPrefix;
     if (warrantyUntil && warrantyPreset.days > 0) {
-      warrantyHighlight = `гарантия до ${formatDocumentDate(warrantyUntil)} (${warrantyPreset.days} дней)`;
+      warrantyHighlight = racing.warrantyUntil(
+        formatDocumentDate(warrantyUntil),
+        warrantyPreset.days,
+      );
     }
   }
 
@@ -225,13 +241,20 @@ export function buildRacingViewModel(
   let nextServiceSub: string | null = null;
 
   if (nextService) {
-    nextServiceKm = `${nextService.dueMileage.toLocaleString("ru-KZ")} км`;
-    nextServiceSub = `или до ${formatDocumentDateShort(nextService.dueDate)} + ${nextService.intervalKm.toLocaleString("ru-KZ")} км / ${nextService.intervalMonths} мес`;
+    nextServiceKm = insights.km(nextService.dueMileage.toLocaleString(numLocale));
+    nextServiceSub = racing.orUntil(
+      formatDocumentDateShort(nextService.dueDate),
+      nextService.intervalKm.toLocaleString(numLocale),
+      String(nextService.intervalMonths),
+    );
   } else if (motorOrder && warrantyPreset.km > 0) {
-    const mileage = context.order.mileage || 0;
-    nextServiceKm = `${(mileage + warrantyPreset.km).toLocaleString("ru-KZ")} км`;
+    const orderMileage = context.order.mileage || 0;
+    nextServiceKm = insights.km((orderMileage + warrantyPreset.km).toLocaleString(numLocale));
     if (warrantyUntil) {
-      nextServiceSub = `или до ${formatDocumentDateShort(warrantyUntil)} + ${warrantyPreset.km.toLocaleString("ru-KZ")} км`;
+      nextServiceSub = racing.orUntilKm(
+        formatDocumentDateShort(warrantyUntil),
+        warrantyPreset.km.toLocaleString(numLocale),
+      );
     }
   }
 
@@ -268,11 +291,11 @@ export function buildRacingViewModel(
     documentDate: formatDocumentDate(documentReleaseDate(context)),
     companyLines,
     mileage,
-    mileageLabel: `${mileage.toLocaleString("ru-KZ")} км на одометре`,
+    mileageLabel: racing.mileageOnOdo(mileage.toLocaleString(numLocale)),
     grandTotal: formatDocumentMoney(context.order.pricing.grandTotal),
     paidPrefix,
     warrantyHighlight,
-    nextServiceLabel: motorOrder ? "ГАРАНТИЙНЫЙ ПРОБЕГ" : "СЛЕДУЮЩАЯ ЗАМЕНА",
+    nextServiceLabel: motorOrder ? racing.warrantyMileage : racing.nextService,
     nextServiceKm,
     nextServiceSub,
     logbookSubtitle: showServiceLogbook ? logbookSubtitle(logbook) : null,
@@ -289,7 +312,7 @@ export function buildRacingViewModel(
     disclaimer:
       options?.disclaimer?.trim() ||
       context.company.warrantyText?.trim() ||
-      "Гарантия на работы действует при соблюдении регламента эксплуатации. Расходные материалы — по условиям сервиса.",
+      racing.defaultDisclaimer,
     edgeLeft,
     edgeRight,
   };

@@ -2,6 +2,7 @@ import { waitForFirebaseUser } from "@/lib/auth/wait-for-firebase-user";
 import { mapDocumentError } from "@/lib/documents/map-document-error";
 import { DocumentSlug } from "@/lib/documents/document-types";
 import { DocumentAggregateType } from "@/lib/documents/resolve-document-context";
+import { userCopy } from "@/lib/user-copy";
 
 async function getAuthToken(): Promise<string> {
   const user = await waitForFirebaseUser();
@@ -24,6 +25,7 @@ function buildPdfUrl(
 }
 
 async function readPdfError(response: Response): Promise<string> {
+  const errors = userCopy.documents.errors;
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
     const payload = (await response.json().catch(() => null)) as {
@@ -32,12 +34,12 @@ async function readPdfError(response: Response): Promise<string> {
       status?: string;
     } | null;
     if (payload?.status === "generating") {
-      return payload.message ?? "PDF формируется. Повторите через несколько секунд.";
+      return payload.message ?? errors.generating;
     }
-    return payload?.error ?? payload?.message ?? "Не удалось получить PDF";
+    return payload?.error ?? payload?.message ?? errors.fetchFailed;
   }
   const text = await response.text().catch(() => "");
-  return text.trim() || "Не удалось получить PDF";
+  return text.trim() || errors.fetchFailed;
 }
 
 export async function fetchDocumentPdf(
@@ -45,6 +47,7 @@ export async function fetchDocumentPdf(
   aggregateId: string,
   options?: { inline?: boolean; aggregateType?: DocumentAggregateType },
 ): Promise<Blob> {
+  const emptyServerPdf = userCopy.documents.errors.emptyServerPdf;
   try {
     const token = await getAuthToken();
     const response = await fetch(buildPdfUrl(slug, aggregateId, options), {
@@ -63,12 +66,12 @@ export async function fetchDocumentPdf(
 
     const blob = await response.blob();
     if (blob.size === 0) {
-      throw new Error("Сервер вернул пустой PDF");
+      throw new Error(emptyServerPdf);
     }
 
     return blob;
   } catch (error) {
-    if (error instanceof Error && error.message !== "Сервер вернул пустой PDF") {
+    if (error instanceof Error && error.message !== emptyServerPdf) {
       throw new Error(mapDocumentError(error));
     }
     throw error;
@@ -102,18 +105,19 @@ export function deliverPdfToUser(blob: Blob, filename: string): PdfDeliveryResul
 }
 
 export async function downloadDocumentPdfFromUrl(downloadUrl: string, filename: string): Promise<void> {
+  const errors = userCopy.documents.errors;
   const trimmed = downloadUrl.trim();
   if (!trimmed || !/^https?:\/\//i.test(trimmed)) {
-    throw new Error("Некорректная ссылка на PDF");
+    throw new Error(errors.invalidUrl);
   }
 
   const response = await fetch(trimmed, { cache: "no-store", mode: "cors" });
   if (!response.ok) {
-    throw new Error("Не удалось скачать сохранённый PDF");
+    throw new Error(errors.downloadCachedFailed);
   }
   const blob = await response.blob();
   if (blob.size === 0) {
-    throw new Error("Сервер вернул пустой PDF");
+    throw new Error(errors.emptyServerPdf);
   }
   downloadPdfBlob(blob, filename);
 }
@@ -158,7 +162,7 @@ async function waitForPdfFrame(frame: HTMLIFrameElement, timeoutMs = 15_000): Pr
   await new Promise<void>((resolve, reject) => {
     const timer = window.setTimeout(() => {
       cleanup();
-      reject(new Error("PDF не успел загрузиться для печати"));
+      reject(new Error(userCopy.documents.errors.printLoadTimeout));
     }, timeoutMs);
 
     const onLoad = () => {
@@ -180,10 +184,11 @@ async function waitForPdfFrame(frame: HTMLIFrameElement, timeoutMs = 15_000): Pr
 export async function printPdfBlob(blob: Blob): Promise<void> {
   const pdfBlob = toPdfBlob(blob);
   const url = URL.createObjectURL(pdfBlob);
+  const errors = userCopy.documents.errors;
 
   try {
     const frame = document.createElement("iframe");
-    frame.setAttribute("title", "Печать PDF");
+    frame.setAttribute("title", errors.printTitle);
     frame.style.cssText =
       "position:fixed;left:0;top:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none;";
     frame.src = url;
@@ -193,7 +198,7 @@ export async function printPdfBlob(blob: Blob): Promise<void> {
       await waitForPdfFrame(frame);
       const printWindow = frame.contentWindow;
       if (!printWindow) {
-        throw new Error("Браузер не открыл PDF для печати");
+        throw new Error(errors.printWindowFailed);
       }
 
       printWindow.focus();
@@ -228,6 +233,8 @@ export async function generateWorkOrderDocuments(orderId: string, types?: Docume
 
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(mapDocumentError(new Error(payload?.error ?? "Не удалось сгенерировать документы")));
+    throw new Error(
+      mapDocumentError(new Error(payload?.error ?? userCopy.documents.errors.generateDocsFailed)),
+    );
   }
 }

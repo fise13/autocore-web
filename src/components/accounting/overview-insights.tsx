@@ -58,7 +58,7 @@ function resolveCategoryLabel(
   name: string,
   labels: OverviewInsightsLabels,
 ): string {
-  if (name === labels.uncategorized || name === "Без категории") return labels.uncategorized;
+  if (name === labels.uncategorized || name === "\u0411\u0435\u0437 \u043a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u0438") return labels.uncategorized;
   if (labels.categoryLabels?.[name]) return labels.categoryLabels[name];
   return operationCategoryLabel(name);
 }

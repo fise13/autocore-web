@@ -45,6 +45,7 @@ export default async function ModulesPage({ params }: PageProps) {
             t("seo.pages.modules.title"),
             description,
             items.map((item) => item.title),
+            locale,
           ),
         ]}
       />

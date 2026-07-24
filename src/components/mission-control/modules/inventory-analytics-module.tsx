@@ -6,10 +6,14 @@ import { AlertTriangle, BarChart3, Clock, Package, TrendingUp } from "lucide-rea
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { McModuleHeader } from "@/components/mission-control/mc-module-header";
 import { InventoryAnalytics } from "@/lib/mission-control/compute-inventory-analytics";
-import { userCopy } from "@/lib/user-copy";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 const copy = userCopy.missionControl.analytics;
+
+function numberLocaleTag() {
+  return getActiveUserCopyLocale() === "ru" ? "ru-RU" : "en-US";
+}
 
 type InventoryAnalyticsModuleProps = {
   analytics: InventoryAnalytics;
@@ -38,7 +42,11 @@ export const InventoryAnalyticsModule = memo(function InventoryAnalyticsModule({
               <MetricTile
                 icon={Clock}
                 label={copy.avgDaysLabel}
-                value={analytics.avgDaysToSale != null ? `${analytics.avgDaysToSale} дн.` : "—"}
+                value={
+                  analytics.avgDaysToSale != null
+                    ? copy.avgDaysValue(analytics.avgDaysToSale)
+                    : "—"
+                }
                 hint={
                   analytics.soldCount > 0
                     ? copy.avgDaysHintSold(analytics.soldCount)
@@ -134,7 +142,7 @@ function RevenueHero({ analytics }: { analytics: InventoryAnalytics }) {
             {hasRevenue ? (
               <AnimatedNumber
                 value={analytics.motorSaleRevenue}
-                format={(value) => `${value.toLocaleString("ru-RU")} ₸`}
+                format={(value) => `${value.toLocaleString(numberLocaleTag())} ₸`}
               />
             ) : (
               "—"
@@ -149,7 +157,7 @@ function RevenueHero({ analytics }: { analytics: InventoryAnalytics }) {
           <p className="mt-0.5 text-lg font-semibold tabular-nums">{analytics.motorSaleCount}</p>
           {analytics.motorSaleAvgAmount > 0 ? (
             <p className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">
-              {copy.avgCheckPrefix} {analytics.motorSaleAvgAmount.toLocaleString("ru-RU")} ₸
+              {copy.avgCheckPrefix} {analytics.motorSaleAvgAmount.toLocaleString(numberLocaleTag())} ₸
             </p>
           ) : null}
         </div>

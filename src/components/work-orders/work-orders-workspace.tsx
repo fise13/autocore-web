@@ -77,6 +77,7 @@ import { ensureWorkOrderDocuments } from "@/lib/work-orders/ensure-work-order-do
 import { notifyWorkOrderAvailable } from "@/lib/work-orders/notify-work-order-available";
 import { transitionWorkOrder } from "@/lib/work-orders/transition-work-order";
 import { STATUS_LABELS } from "@/components/work-orders/work-order-copy";
+import { userCopy } from "@/lib/user-copy";
 import { createWorkOrderDocumentRepository } from "@/infrastructure/firestore/work-order-document-repository";
 import { createWorkOrderRepository } from "@/infrastructure/firestore/work-order-repository";
 
@@ -367,16 +368,16 @@ export function WorkOrdersWorkspace() {
 
       const displayName = !assigneeId && draft.assigneeName.trim() ? draft.assigneeName.trim() : "";
       if (!assigneeId && !displayName) {
-        setError("Укажите исполнителя — выберите сотрудника, нажмите «Я» или введите имя");
+        setError(userCopy.workOrders.errors.assigneeRequired);
         return current;
       }
       const pricingMode = draft.pricingMode === "hourly" ? "hourly" : "fixed";
       if (pricingMode === "fixed" && !(Number(draft.unitPrice) > 0)) {
-        setError("Укажите сумму за работу");
+        setError(userCopy.workOrders.errors.laborAmountRequired);
         return current;
       }
       if (pricingMode === "hourly" && !(Number(draft.hours) > 0 && Number(draft.unitPrice) > 0)) {
-        setError("Укажите часы и ставку за час");
+        setError(userCopy.workOrders.errors.hoursRateRequired);
         return current;
       }
       setError(null);
@@ -417,7 +418,7 @@ export function WorkOrdersWorkspace() {
     const manualPrice = Number(form.partUnitPrice) || 0;
 
     if (!name) {
-      setError("Укажите название запчасти");
+      setError(userCopy.workOrders.errors.partNameRequired);
       return;
     }
 
@@ -453,7 +454,7 @@ export function WorkOrdersWorkspace() {
     }
 
     if (manualPrice <= 0) {
-      setError("Укажите цену для запчасти вне склада");
+      setError(userCopy.workOrders.errors.adhocPartPriceRequired);
       return;
     }
 
@@ -502,7 +503,7 @@ export function WorkOrdersWorkspace() {
         ],
       }));
       toast({
-        title: "Запчасть добавлена",
+        title: userCopy.workOrders.errors.partAdded,
         description: `${item.name} × 1`,
         variant: "success",
       });
@@ -520,7 +521,7 @@ export function WorkOrdersWorkspace() {
     const serial = form.motorSerial.trim();
     const motor = availableMotors.find((entry) => entry.serialCode === serial);
     if (!motor) {
-      setError("Двигатель не найден");
+      setError(userCopy.workOrders.errors.motorNotFound);
       return;
     }
     setError(null);
@@ -556,15 +557,15 @@ export function WorkOrdersWorkspace() {
     const name = form.specificPartName.trim();
     const price = Number(form.specificPartPrice) || 0;
     if (!category) {
-      setError("Выберите категорию");
+      setError(userCopy.workOrders.errors.categoryRequired);
       return;
     }
     if (!name) {
-      setError("Укажите название позиции");
+      setError(userCopy.workOrders.errors.itemNameRequired);
       return;
     }
     if (!(price > 0)) {
-      setError("Укажите цену");
+      setError(userCopy.workOrders.errors.priceRequired);
       return;
     }
     setError(null);
@@ -604,19 +605,19 @@ export function WorkOrdersWorkspace() {
       silent?: boolean;
     }) => {
       if (!profile?.id || !companyId) {
-        return { ok: false as const, error: "Нет компании" };
+        return { ok: false as const, error: userCopy.workOrders.errors.noCompany };
       }
       const nextForm = options.formState;
       if (!nextForm.clientName.trim() || !nextForm.clientPhone.trim()) {
         if (!options.silent) {
-          setError("Укажите клиента и телефон");
+          setError(userCopy.workOrders.errors.clientPhoneRequired);
           setComposerStep(1);
         }
         return { ok: false as const, error: "incomplete" };
       }
       if (!nextForm.vin.trim() && !nextForm.licensePlate.trim()) {
         if (!options.silent) {
-          setError("Укажите VIN или госномер");
+          setError(userCopy.workOrders.errors.vinOrPlateRequired);
           setComposerStep(1);
         }
         return { ok: false as const, error: "incomplete" };
@@ -721,7 +722,7 @@ export function WorkOrdersWorkspace() {
         return { ok: true as const, orderId: order.id };
       } catch (nextError) {
         const message =
-          nextError instanceof Error ? nextError.message : "Не удалось создать заказ-наряд";
+          nextError instanceof Error ? nextError.message : userCopy.workOrders.errors.createFailed;
         if (!options.silent) setError(message);
         return { ok: false as const, error: message };
       } finally {
@@ -767,7 +768,7 @@ export function WorkOrdersWorkspace() {
   usePersistedDocument({
     key: composerPersistenceKey,
     value: form,
-    label: form.clientName.trim() || "Заказ-наряд",
+    label: form.clientName.trim() || userCopy.workOrders.errors.orderFallback,
     sync: composerSync,
     enabled: Boolean(composerPersistenceKey),
   });
@@ -817,11 +818,13 @@ export function WorkOrdersWorkspace() {
       void ensureWorkOrderDocuments(selectedOrder.id);
       toast({
         title: STATUS_LABELS[nextStatus],
-        description: `Заказ-наряд ${formatWorkOrderLabel(selectedOrder, workOrderDisplayIndex)} обновлён`,
+        description: userCopy.workOrders.errors.orderUpdated(
+          formatWorkOrderLabel(selectedOrder, workOrderDisplayIndex),
+        ),
         variant: "success",
       });
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Не удалось изменить статус");
+      setError(nextError instanceof Error ? nextError.message : userCopy.workOrders.errors.statusChangeFailed);
     } finally {
       setSaving(false);
     }
@@ -831,9 +834,9 @@ export function WorkOrdersWorkspace() {
     return (
       <div className="flex h-full items-center justify-center p-8">
         <div className="max-w-md rounded-xl border bg-card p-6 text-center">
-          <h2 className="font-semibold">Нет доступа</h2>
+          <h2 className="font-semibold">{userCopy.workOrders.access.title}</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Для работы с заказ-нарядами нужно право просмотра заказов.
+            {userCopy.workOrders.access.description}
           </p>
         </div>
       </div>
@@ -940,10 +943,15 @@ export function WorkOrdersWorkspace() {
                         quickSpecificCategories={quickSpecificCategories}
                         editingLabel={
                           editingOrderId
-                            ? `Редактирование ${formatWorkOrderLabel(
-                                orders.find((entry) => entry.id === editingOrderId) ?? { id: editingOrderId, number: "" },
-                                workOrderDisplayIndex,
-                              )}`
+                            ? userCopy.workOrders.editing(
+                                formatWorkOrderLabel(
+                                  orders.find((entry) => entry.id === editingOrderId) ?? {
+                                    id: editingOrderId,
+                                    number: "",
+                                  },
+                                  workOrderDisplayIndex,
+                                ),
+                              )
                             : undefined
                         }
                         pricing={pricing}

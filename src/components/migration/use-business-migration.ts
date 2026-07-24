@@ -22,6 +22,7 @@ import type { DomainCategory } from "@/lib/domain/types";
 import type { DomainDictionary } from "@/lib/domain/domain-dictionary";
 
 import { FIELD_SIGNATURE_BY_FIELD } from "@/lib/import";
+import { userCopy } from "@/lib/user-copy";
 import type {
   DuplicateGroup,
   MigrationCommitPort,
@@ -190,7 +191,7 @@ export function useBusinessMigration(options: UseBusinessMigrationOptions) {
         if (ingestion.tables.length === 0) {
           setError(
             ingestion.warnings[0] ??
-              "В файле не найдено таблиц. Поддерживаются Excel, CSV и ZIP с этими файлами.",
+              userCopy.migration.errors.noTables,
           );
           setPhase("error");
           return;
@@ -221,8 +222,8 @@ export function useBusinessMigration(options: UseBusinessMigrationOptions) {
       } catch (error) {
       const raw = error instanceof Error ? error.message : "";
       const message = raw.includes("Missing or insufficient permissions")
-        ? "Недостаточно прав для сохранения. Обновите страницу и попробуйте снова."
-        : raw.trim() || "Не удалось разобрать файл. Попробуйте другой файл или обратитесь в поддержку.";
+        ? userCopy.migration.errors.permissionDenied
+        : raw.trim() || userCopy.migration.errors.parseFailed;
       setError(message);
       setPhase("error");
     }
@@ -242,11 +243,11 @@ export function useBusinessMigration(options: UseBusinessMigrationOptions) {
         ...row,
         recordType: type,
         target: RECORD_TYPE_TARGET[type],
-        confidence: makeConfidence(1, "Выбрано вручную", "manual"),
+        confidence: makeConfidence(1, userCopy.migration.errors.chosenManually, "manual"),
         explanation: {
           percent: 100,
           tier: "high",
-          reasons: [{ tone: "positive", label: `Тип выбран вручную: ${RECORD_TYPE_LABELS[type]}` }],
+          reasons: [{ tone: "positive", label: userCopy.migration.errors.typeChosenManually(RECORD_TYPE_LABELS[type]) }],
         },
         suggestions: [],
         issues: row.issues.filter((issue) => issue.kind !== "unknown-type"),
@@ -266,13 +267,13 @@ export function useBusinessMigration(options: UseBusinessMigrationOptions) {
         target: suggestion.target,
         confidence: makeConfidence(
           Math.max(suggestion.confidence, 0.9),
-          `Применено предложение: ${suggestion.label}`,
+          userCopy.migration.errors.suggestionApplied(suggestion.label),
           "manual",
         ),
         explanation: {
           percent: Math.round(Math.max(suggestion.confidence, 0.9) * 100),
           tier: "high",
-          reasons: [{ tone: "positive", label: `Применено предложение: ${suggestion.label}` }],
+          reasons: [{ tone: "positive", label: userCopy.migration.errors.suggestionApplied(suggestion.label) }],
         },
         suggestions: [],
         issues: row.issues.filter((issue) => issue.kind !== "unknown-type"),
@@ -335,11 +336,11 @@ export function useBusinessMigration(options: UseBusinessMigrationOptions) {
           ...row,
           recordType: top.recordType,
           target: top.target,
-          confidence: makeConfidence(Math.max(top.confidence, 0.9), `Применено предложение: ${top.label}`, "manual"),
+          confidence: makeConfidence(Math.max(top.confidence, 0.9), userCopy.migration.errors.suggestionApplied(top.label), "manual"),
           explanation: {
             percent: Math.round(Math.max(top.confidence, 0.9) * 100),
             tier: "high" as const,
-            reasons: [{ tone: "positive" as const, label: `Применено предложение: ${top.label}` }],
+            reasons: [{ tone: "positive" as const, label: userCopy.migration.errors.suggestionApplied(top.label) }],
           },
           suggestions: [],
           issues: row.issues.filter((issue) => issue.kind !== "unknown-type"),
@@ -384,8 +385,8 @@ export function useBusinessMigration(options: UseBusinessMigrationOptions) {
     } catch (error) {
       const raw = error instanceof Error ? error.message : "";
       const message = raw.includes("Missing or insufficient permissions")
-        ? "Недостаточно прав для сохранения. Обновите страницу и попробуйте снова."
-        : raw.trim() || "Миграция прервана. Данные не были изменены. Попробуйте ещё раз.";
+        ? userCopy.migration.errors.permissionDenied
+        : raw.trim() || userCopy.migration.errors.migrationAborted;
       setError(message);
       setPhase("error");
     }

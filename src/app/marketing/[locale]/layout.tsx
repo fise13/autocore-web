@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 
 import { MarketingBarbaLayout } from "@/components/marketing/motion/marketing-barba-layout";
+import { MarketingJsonLd } from "@/components/marketing/seo/marketing-json-ld";
 import { LocaleHtmlLang } from "@/components/marketing/site/locale-html-lang";
 import { routing } from "@/i18n/routing";
 import { isAppLocale } from "@autocore/i18n/config";
@@ -29,6 +30,7 @@ export default async function MarketingLocaleLayout({ children, params }: Locale
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <LocaleHtmlLang />
+      <MarketingJsonLd locale={locale} />
       <MarketingBarbaLayout>{children}</MarketingBarbaLayout>
     </NextIntlClientProvider>
   );

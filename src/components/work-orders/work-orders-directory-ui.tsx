@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { Plus, Search } from "lucide-react";
 
+import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 type WorkOrdersPrimaryActionProps = {
@@ -49,7 +50,7 @@ export function WorkOrdersDirectoryCard({
   subtitle,
   meta = [],
   actionHref,
-  actionLabel = "Новый заказ",
+  actionLabel = userCopy.workOrders.newOrderShort,
 }: WorkOrdersDirectoryCardProps) {
   return (
     <article className="group flex items-center gap-3 rounded-xl border bg-card p-3.5 transition hover:border-primary/15 hover:shadow-sm sm:gap-4 sm:p-4">
@@ -133,10 +134,7 @@ export function WorkOrdersPanelHeader({
 }
 
 function vehicleCountLabel(count: number): string {
-  if (count === 0) return "Авто не привязаны";
-  if (count === 1) return "1 автомобиль";
-  if (count < 5) return `${count} автомобиля`;
-  return `${count} автомобилей`;
+  return userCopy.workOrders.vehicleCount(count);
 }
 
 export { vehicleCountLabel };

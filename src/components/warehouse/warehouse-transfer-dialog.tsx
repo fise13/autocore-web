@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { InventoryItem } from "@/domain/inventory";
 import { formatGroupedNumber } from "@/lib/money/format-number";
 import { Warehouse } from "@/domain/warehouse";
+import { userCopy } from "@/lib/user-copy";
 
 type WarehouseTransferDialogProps = {
   item: InventoryItem | null;
@@ -45,12 +46,13 @@ export function WarehouseTransferDialog({
   onOpenChange,
   onConfirm,
 }: WarehouseTransferDialogProps) {
+  const copy = userCopy.warehouse.dialogs;
   const defaultFrom = warehouses.find((warehouse) => warehouse.isDefault)?.id ?? warehouses[0]?.id ?? "";
   const defaultTo = warehouses.find((warehouse) => warehouse.id !== defaultFrom)?.id ?? "";
   const [fromWarehouseId, setFromWarehouseId] = useState(defaultFrom);
   const [toWarehouseId, setToWarehouseId] = useState(defaultTo);
   const [quantity, setQuantity] = useState(formatGroupedNumber(1));
-  const [reason, setReason] = useState("Перемещение между складами");
+  const [reason, setReason] = useState<string>(copy.transfer.defaultReason);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,11 +60,11 @@ export function WarehouseTransferDialog({
     event.preventDefault();
     const parsedQty = parseGroupedNumber(quantity);
     if (!Number.isFinite(parsedQty) || parsedQty <= 0) {
-      setError("Укажите корректное количество");
+      setError(copy.invalidQty);
       return;
     }
     if (fromWarehouseId === toWarehouseId) {
-      setError("Выберите разные склады");
+      setError(copy.transfer.differentWarehouses);
       return;
     }
     setSubmitting(true);
@@ -76,7 +78,7 @@ export function WarehouseTransferDialog({
       });
       onOpenChange(false);
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Ошибка перемещения");
+      setError(submitError instanceof Error ? submitError.message : copy.transfer.error);
     } finally {
       setSubmitting(false);
     }
@@ -86,12 +88,12 @@ export function WarehouseTransferDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Перемещение</DialogTitle>
+          <DialogTitle>{copy.transfer.title}</DialogTitle>
           <DialogDescription>{item ? `${item.sku} · ${item.name}` : ""}</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4">
           <div className="grid gap-2">
-            <Label>Откуда</Label>
+            <Label>{copy.transfer.from}</Label>
             <Select value={fromWarehouseId} onValueChange={(value) => value && setFromWarehouseId(value)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -102,7 +104,7 @@ export function WarehouseTransferDialog({
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label>Куда</Label>
+            <Label>{copy.transfer.to}</Label>
             <Select value={toWarehouseId} onValueChange={(value) => value && setToWarehouseId(value)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -113,17 +115,17 @@ export function WarehouseTransferDialog({
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="transfer-qty">Количество</Label>
+            <Label htmlFor="transfer-qty">{copy.quantity}</Label>
             <AmountInput id="transfer-qty" value={quantity} onChange={setQuantity} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="transfer-reason">Комментарий</Label>
+            <Label htmlFor="transfer-reason">{copy.comment}</Label>
             <Textarea id="transfer-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
           </div>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
-            <Button type="submit" disabled={submitting || !item || warehouses.length < 2}>Переместить</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{copy.cancel}</Button>
+            <Button type="submit" disabled={submitting || !item || warehouses.length < 2}>{copy.transfer.submit}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

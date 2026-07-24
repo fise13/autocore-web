@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { MotorExcelImportResult } from "@/lib/motors/excel-types";
+import { userCopy } from "@/lib/user-copy";
 
 type MotorExcelImportResultDialogProps = {
   result: MotorExcelImportResult | null;
@@ -28,16 +29,20 @@ export function MotorExcelImportResultDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Импорт завершён</DialogTitle>
+          <DialogTitle>{userCopy.motors.excelResult.title}</DialogTitle>
           <DialogDescription>
-            Обработано листов: {result.sheetsProcessed}. Добавлено: {result.imported}. Обновлено:{" "}
-            {result.updated}. Пропущено: {result.skipped}.
+            {userCopy.motors.excelResult.summary(
+              result.sheetsProcessed,
+              result.imported,
+              result.updated,
+              result.skipped,
+            )}
             {result.specificRecordsImported > 0 ? (
               <>
                 {" "}
-                Записи каталога: {result.specificRecordsImported}
+                {userCopy.motors.excelResult.catalogRecords(result.specificRecordsImported)}
                 {result.specificCategoriesUpdated > 0
-                  ? ` (категорий: ${result.specificCategoriesUpdated})`
+                  ? userCopy.motors.excelResult.categories(result.specificCategoriesUpdated)
                   : ""}
                 .
               </>
@@ -51,14 +56,14 @@ export function MotorExcelImportResultDialog({
               <p key={error}>{error}</p>
             ))}
             {result.errors.length > 8 ? (
-              <p className="pt-1">…и ещё {result.errors.length - 8} ошибок</p>
+              <p className="pt-1">{userCopy.motors.excelResult.moreErrors(result.errors.length - 8)}</p>
             ) : null}
           </div>
         ) : null}
 
         <DialogFooter>
           <Button type="button" onClick={() => onOpenChange(false)}>
-            Готово
+            {userCopy.layout.done}
           </Button>
         </DialogFooter>
       </DialogContent>

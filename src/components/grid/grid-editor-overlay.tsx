@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { userCopy } from "@/lib/user-copy";
 
 import { DomainSuggestionList } from "@/components/domain/domain-suggestion-list";
 import { useDomainAutocomplete } from "@/hooks/use-domain-autocomplete";
@@ -369,7 +370,7 @@ export function GridEditorOverlay({
             )}
             {showSuggestionFooter ? (
               <div className="border-t border-border/70 px-3 py-1.5 text-[11px] text-muted-foreground">
-                Enter — выбрать · Esc — закрыть без синхронизации
+                {userCopy.grid.editorHint}
               </div>
             ) : null}
           </div>,

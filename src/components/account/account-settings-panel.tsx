@@ -126,7 +126,7 @@ export function AccountSettingsPanel({ onStatus }: AccountSettingsPanelProps) {
       await refreshProfile();
       setStatus(userCopy.account.avatarSaved);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Не удалось загрузить фото");
+      setStatus(error instanceof Error ? error.message : userCopy.account.photoUploadFailed);
     } finally {
       setUploadingAvatar(false);
     }
@@ -213,7 +213,7 @@ export function AccountSettingsPanel({ onStatus }: AccountSettingsPanelProps) {
               <button
                 type="button"
                 disabled={busy || uploadingAvatar}
-                title="Нажмите, чтобы сменить фото"
+                title={userCopy.account.changePhotoTitle}
                 aria-label={userCopy.account.avatar}
                 onClick={() => avatarInputRef.current?.click()}
                 className="group relative rounded-full outline-none ring-offset-background transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60"
@@ -259,7 +259,7 @@ export function AccountSettingsPanel({ onStatus }: AccountSettingsPanelProps) {
               <Label htmlFor="profile-name">{userCopy.account.displayName}</Label>
               <Input
                 id="profile-name"
-                placeholder="Например, Виктор"
+                placeholder={userCopy.account.namePlaceholder}
                 value={displayName}
                 onChange={(event) => setDisplayName(event.target.value)}
                 disabled={busy}
@@ -382,7 +382,7 @@ export function AccountSettingsPanel({ onStatus }: AccountSettingsPanelProps) {
             {dialogError ? <p className="text-sm text-destructive">{dialogError}</p> : null}
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setPasswordDialogOpen(false)} disabled={busy}>
-                Отмена
+                {userCopy.account.cancel}
               </Button>
               <Button type="submit" disabled={busy}>
                 {busy ? <Loader2 className="size-4 animate-spin" /> : null}
@@ -425,7 +425,7 @@ export function AccountSettingsPanel({ onStatus }: AccountSettingsPanelProps) {
             {dialogError ? <p className="text-sm text-destructive">{dialogError}</p> : null}
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setEmailDialogOpen(false)} disabled={busy}>
-                Отмена
+                {userCopy.account.cancel}
               </Button>
               <Button type="submit" disabled={busy}>
                 {busy ? <Loader2 className="size-4 animate-spin" /> : null}

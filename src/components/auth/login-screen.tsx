@@ -300,14 +300,14 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
         const message = mapAuthError(authError);
         if (
           isSignUp &&
-          (message.includes("уже зарегистрирован") || message.includes("already registered"))
+          (message.includes("\u0443\u0436\u0435 \u0437\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u043e\u0432\u0430\u043d") || message.includes("already registered"))
         ) {
           setEmailMode("login");
           throw new Error(copy.emailAlreadyRegistered);
         }
         if (
           !isSignUp &&
-          (message.includes("Неверный email или пароль") ||
+          (message.includes("\u041d\u0435\u0432\u0435\u0440\u043d\u044b\u0439 email \u0438\u043b\u0438 \u043f\u0430\u0440\u043e\u043b\u044c") ||
             message.includes("Incorrect email or password") ||
             /wrong.?password|user-not-found|invalid-credential/i.test(message))
         ) {

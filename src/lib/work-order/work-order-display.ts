@@ -2,15 +2,31 @@ import { WorkOrder } from "@/domain/work-order";
 import { CompanyEmployee } from "@/domain/rbac";
 import { PayrollTransaction } from "@/domain/payroll-transaction";
 import { UserRole } from "@/domain/user";
+import { formatRole, userCopy } from "@/lib/user-copy";
 
+/** Locale-aware role labels (getters re-read active `userCopy` locale). */
 export const EMPLOYEE_ROLE_LABELS: Record<UserRole, string> = {
-  owner: "Владелец",
-  admin: "Администратор",
-  manager: "Менеджер",
-  accountant: "Бухгалтер",
-  mechanic: "Механик",
-  diagnostician: "Диагност",
-  employee: "Сотрудник",
+  get owner() {
+    return formatRole("owner");
+  },
+  get admin() {
+    return formatRole("admin");
+  },
+  get manager() {
+    return formatRole("manager");
+  },
+  get accountant() {
+    return formatRole("accountant");
+  },
+  get mechanic() {
+    return formatRole("mechanic");
+  },
+  get diagnostician() {
+    return formatRole("diagnostician");
+  },
+  get employee() {
+    return formatRole("employee");
+  },
 };
 
 export function buildWorkOrderDisplayIndex(orders: WorkOrder[]): Map<string, number> {
@@ -59,15 +75,15 @@ export function formatWorkOrderLabel(
 ): string {
   const number = workOrderDisplayNumber(order, displayIndex);
   if (number > 0) {
-    return `Заказ-наряд №${number}`;
+    return userCopy.workOrders.detail.orderTitle(number);
   }
 
   const trimmed = order.number.trim();
-  if (/^заказ-наряд/i.test(trimmed)) {
+  if (/^(заказ-наряд|work\s*order)/i.test(trimmed)) {
     return trimmed;
   }
 
-  return "Заказ-наряд";
+  return userCopy.workOrders.errors.orderFallback;
 }
 
 export function laborLineAssigneeLabels(

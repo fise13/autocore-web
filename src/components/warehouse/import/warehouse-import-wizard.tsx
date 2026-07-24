@@ -65,17 +65,13 @@ type WarehouseImportWizardProps = {
 
 const stepOrder: WizardStep[] = ["upload", "review", "confirm"];
 
-const stepLabels: Record<WizardStep, string> = {
-  upload: "Файл",
-  review: "Проверка",
-  confirm: "Импорт",
-};
+function stepLabels(): Record<WizardStep, string> {
+  return { ...userCopy.warehouse.import.steps };
+}
 
-const stepHints: Record<WizardStep, string> = {
-  upload: "ИИ сам найдёт колонки, количество, цены и штрихкоды — даже в «грязных» таблицах",
-  review: "Снимите галочки с лишних строк или оставьте как есть",
-  confirm: "Можно закрыть окно — загрузка продолжится, прогресс будет сверху",
-};
+function stepHints(): Record<WizardStep, string> {
+  return { ...userCopy.warehouse.import.stepHints };
+}
 
 export function WarehouseImportWizard({
   open,
@@ -105,7 +101,7 @@ export function WarehouseImportWizard({
   const [applyProgress, setApplyProgress] = useState<number | null>(null);
 
   const uncertainRows = useMemo(
-    () => rows.filter((row) => row.aiMeta?.warnings.some((warning) => warning.includes("не уверен"))),
+    () => rows.filter((row) => row.aiMeta?.warnings.some((warning) => warning.includes(userCopy.warehouse.import.uncertainToken))),
     [rows],
   );
   const selectedCount = useMemo(
@@ -211,7 +207,7 @@ export function WarehouseImportWizard({
     setError(null);
     cancelRef.current = false;
     runningInBackgroundRef.current = true;
-    pushGlobalProgress("analyze", { percent: 2, message: "Читаем файл…" }, nextFile.name);
+    pushGlobalProgress("analyze", { percent: 2, message: userCopy.warehouse.import.readingFile }, nextFile.name);
     onOpenChange(false);
 
     try {
@@ -241,7 +237,7 @@ export function WarehouseImportWizard({
       if (cancelRef.current) return;
       runningInBackgroundRef.current = false;
       setWarehouseImportProgress(null);
-      setError(analyzeError instanceof Error ? analyzeError.message : "Не удалось разобрать файл");
+      setError(analyzeError instanceof Error ? analyzeError.message : userCopy.warehouse.import.analyzeFailed);
       onOpenChange(true);
     } finally {
       setLoading(false);
@@ -275,7 +271,7 @@ export function WarehouseImportWizard({
     setError(null);
     cancelRef.current = false;
     runningInBackgroundRef.current = true;
-    pushGlobalProgress("apply", { percent: 0, message: "Загружаем позиции в базу…" });
+    pushGlobalProgress("apply", { percent: 0, message: userCopy.warehouse.import.uploadingItems });
     onOpenChange(false);
 
     try {
@@ -291,7 +287,7 @@ export function WarehouseImportWizard({
           setApplyProgress(value.percent);
           pushGlobalProgress("apply", {
             percent: value.percent,
-            message: `Загрузка в базу · ${value.applied}/${value.total}`,
+            message: userCopy.warehouse.import.uploadingProgress(value.applied, value.total),
           });
         },
         shouldCancel: () => cancelRef.current,
@@ -300,7 +296,7 @@ export function WarehouseImportWizard({
       if (!result.cancelled) {
         toast({
           title: userCopy.motors.magicImportDone,
-          description: `${result.applied} позиций загружено${result.failed ? ` · ошибок: ${result.failed}` : ""}`,
+          description: userCopy.warehouse.import.uploadedDescription(result.applied, result.failed),
           variant: result.failed ? "default" : "success",
         });
       }
@@ -308,7 +304,7 @@ export function WarehouseImportWizard({
       if (cancelRef.current) return;
       runningInBackgroundRef.current = false;
       setWarehouseImportProgress(null);
-      setError(applyError instanceof Error ? applyError.message : "Ошибка загрузки в базу");
+      setError(applyError instanceof Error ? applyError.message : userCopy.warehouse.import.applyFailed);
       onOpenChange(true);
     } finally {
       setLoading(false);
@@ -360,13 +356,13 @@ export function WarehouseImportWizard({
                 Magic Import
               </DialogTitle>
               <DialogDescription>
-                {stepLabels[step]} · {stepHints[step]}
+                {stepLabels()[step]} · {stepHints()[step]}
                 {useAi ? "" : ""}
               </DialogDescription>
             </div>
             {onOpenHistory ? (
               <Button variant="ghost" size="sm" onClick={onOpenHistory}>
-                История
+                {userCopy.warehouse.import.history}
               </Button>
             ) : null}
           </div>
@@ -376,7 +372,7 @@ export function WarehouseImportWizard({
           {error ? <p className="mb-3 text-sm text-destructive">{error}</p> : null}
           {progress ? <ImportProgressBar percent={progress.percent} message={progress.message} className="mb-4" /> : null}
           {applyProgress != null ? (
-            <ImportProgressBar percent={applyProgress} message="Загрузка в базу…" className="mb-4" />
+            <ImportProgressBar percent={applyProgress} message={userCopy.warehouse.import.uploadingBanner} className="mb-4" />
           ) : null}
 
           <AnimatePresence mode="wait">
@@ -394,10 +390,9 @@ export function WarehouseImportWizard({
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <Upload className="mb-3 size-8 text-primary/70 transition group-hover:scale-105" />
-                  <p className="text-sm font-medium">Выберите Excel или CSV с номенклатурой</p>
+                  <p className="text-sm font-medium">{userCopy.warehouse.import.pickFileTitle}</p>
                   <p className="mt-2 max-w-md text-xs text-muted-foreground">
-                    ИИ сам разберёт колонки, подставит количество, закупку и продажу — даже если таблица
-                    «кривая» или без заголовков
+                    {userCopy.warehouse.import.pickFileHint}
                   </p>
                   <input
                     ref={fileInputRef}
@@ -407,15 +402,22 @@ export function WarehouseImportWizard({
                     onChange={handleFileChange}
                   />
                 </div>
-                {file ? <p className="text-sm text-muted-foreground">Файл: {file.name}</p> : null}
+                {file ? (
+                  <p className="text-sm text-muted-foreground">
+                    {userCopy.warehouse.import.fileLabel(file.name)}
+                  </p>
+                ) : null}
                 {preview ? (
                   <p className="text-sm">
-                    Строк: {preview.stats.total} · готово: {preview.stats.valid} · дубликаты:{" "}
-                    {preview.stats.duplicates}
+                    {userCopy.warehouse.import.statsLine(
+                      preview.stats.total,
+                      preview.stats.valid,
+                      preview.stats.duplicates,
+                    )}
                     {preview.columnMapping.preset ? (
                       <>
                         {" "}
-                        · шаблон:{" "}
+                        {userCopy.warehouse.import.templatePrefix}{" "}
                         <span className="font-medium text-foreground">
                           {preview.columnMapping.preset.label}
                         </span>
@@ -436,14 +438,10 @@ export function WarehouseImportWizard({
                 className="space-y-4"
               >
                 <div className="rounded-lg border bg-muted/20 p-3 text-sm">
-                  <p>
-                    К импорту: <span className="font-medium text-foreground">{selectedCount}</span> из{" "}
-                    {rows.length}
-                  </p>
+                  <p>{userCopy.warehouse.import.selectedOf(selectedCount, rows.length)}</p>
                   {uncertainRows.length > 0 ? (
                     <p className="mt-1 text-amber-700 dark:text-amber-300">
-                      {uncertainRows.length} строк с низкой уверенностью ИИ — всё равно будут загружены, проверьте
-                      позже на складе
+                      {userCopy.warehouse.import.uncertainHint(uncertainRows.length)}
                     </p>
                   ) : null}
                 </div>
@@ -461,13 +459,15 @@ export function WarehouseImportWizard({
                 className="space-y-4"
               >
                 <div className="rounded-lg border p-4 text-sm">
-                  <p className="font-medium">Загрузим {selectedCount} позиций</p>
+                  <p className="font-medium">{userCopy.warehouse.import.confirmTitle(selectedCount)}</p>
                   <p className="mt-1 text-muted-foreground">
-                    Новых: {rows.filter((row) => row.action === "create" && row.selected).length} · обновим:{" "}
-                    {rows.filter((row) => row.action === "update" && row.selected).length}
+                    {userCopy.warehouse.import.createUpdate(
+                      rows.filter((row) => row.action === "create" && row.selected).length,
+                      rows.filter((row) => row.action === "update" && row.selected).length,
+                    )}
                   </p>
                   <p className="mt-1 text-muted-foreground">
-                    С остатком:{" "}
+                    {userCopy.warehouse.import.withStock}{" "}
                     {rows.filter((row) => row.selected && Number(row.normalized.quantity ?? 0) > 0).length}
                   </p>
                 </div>
@@ -477,10 +477,10 @@ export function WarehouseImportWizard({
                     checked={createExpense}
                     onChange={(event) => setCreateExpense(event.target.checked)}
                   />
-                  Создать расход в бухгалтерии по закупочной цене
+                  {userCopy.warehouse.import.createExpense}
                 </label>
                 <p className="text-xs text-muted-foreground">
-                  После нажатия «Загрузить» окно закроется — можно работать дальше, прогресс будет в шапке.
+                  {userCopy.warehouse.import.afterUploadHint}
                 </p>
               </motion.div>
             ) : null}
@@ -489,11 +489,11 @@ export function WarehouseImportWizard({
 
         <DialogFooter className="border-t px-6 py-4">
           <Button variant="outline" onClick={() => (loading ? minimizeImport() : handleDialogOpenChange(false))}>
-            {loading ? "Свернуть" : "Отмена"}
+            {loading ? userCopy.warehouse.import.collapse : userCopy.warehouse.import.cancel}
           </Button>
           {step !== "upload" ? (
             <Button variant="outline" onClick={goBack} disabled={loading}>
-              Назад
+              {userCopy.warehouse.import.back}
             </Button>
           ) : null}
           {loading && step === "confirm" ? (
@@ -503,11 +503,11 @@ export function WarehouseImportWizard({
                 cancelRef.current = true;
               }}
             >
-              Остановить
+              {userCopy.warehouse.import.stop}
             </Button>
           ) : null}
           <Button onClick={() => void goNext()} disabled={!canProceed()}>
-            {step === "confirm" ? "Загрузить в базу" : "Далее"}
+            {step === "confirm" ? userCopy.warehouse.import.uploadToDb : userCopy.warehouse.import.next}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -529,23 +529,23 @@ function PreviewTable({
           <tr>
             <th className="px-3 py-2 text-left">✓</th>
             <th className="px-3 py-2 text-left">#</th>
-            <th className="px-3 py-2 text-left">Артикул</th>
-            <th className="px-3 py-2 text-left">Название</th>
-            <th className="px-3 py-2 text-left">Кол-во</th>
-            <th className="px-3 py-2 text-left">Закупка</th>
-            <th className="px-3 py-2 text-left">Продажа</th>
-            <th className="px-3 py-2 text-left">Статус</th>
+            <th className="px-3 py-2 text-left">{userCopy.warehouse.import.colSku}</th>
+            <th className="px-3 py-2 text-left">{userCopy.warehouse.import.colName}</th>
+            <th className="px-3 py-2 text-left">{userCopy.warehouse.import.colQty}</th>
+            <th className="px-3 py-2 text-left">{userCopy.warehouse.import.colPurchase}</th>
+            <th className="px-3 py-2 text-left">{userCopy.warehouse.import.colSale}</th>
+            <th className="px-3 py-2 text-left">{userCopy.warehouse.import.colStatus}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => {
-            const uncertain = row.aiMeta?.warnings.some((warning) => warning.includes("не уверен"));
+            const uncertain = row.aiMeta?.warnings.some((warning) => warning.includes(userCopy.warehouse.import.uncertainToken));
             const status =
               row.errors.length > 0
                 ? row.errors[0]
                 : row.duplicateOfItemId
-                  ? "Обновление"
-                  : row.summary ?? "Создание";
+                  ? userCopy.warehouse.import.statusUpdate
+                  : row.summary ?? userCopy.warehouse.import.statusCreate;
 
             return (
               <tr

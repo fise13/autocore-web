@@ -137,12 +137,6 @@ type WorkOrderComposerProps = {
   onCancel: () => void;
 };
 
-const STEPS = [
-  { id: 1, label: "Клиент и авто", icon: User },
-  { id: 2, label: "Состав заказа", icon: Wrench },
-  { id: 3, label: "Проверка", icon: Save },
-] as const;
-
 type VehicleFieldKey = "vehicleMake" | "vehicleModel" | "licensePlate" | "vin";
 
 function vehiclesInContext(
@@ -211,6 +205,15 @@ export function WorkOrderComposer({
   onSave,
   onCancel,
 }: WorkOrderComposerProps) {
+  const wo = userCopy.workOrders;
+  const c = wo.composer;
+  const d = wo.detail;
+  const STEPS = [
+    { id: 1, label: c.steps.clientVehicle, icon: User },
+    { id: 2, label: c.steps.lines, icon: Wrench },
+    { id: 3, label: c.steps.review, icon: Save },
+  ] as const;
+
   const specificPartLines = useMemo(
     () => form.partLines.filter((line) => line.source === "specific_quick"),
     [form.partLines],
@@ -370,7 +373,7 @@ export function WorkOrderComposer({
     }
     onLaborDraftChange({
       assigneeId: currentUserId,
-      assigneeName: "Я",
+      assigneeName: c.me,
       assigneeRole: "mechanic",
     });
   }
@@ -504,12 +507,12 @@ export function WorkOrderComposer({
         <div className="flex items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold tracking-tight">
-              {editingLabel ?? "Новый заказ-наряд"}
+              {editingLabel ?? wo.newOrder}
             </h2>
-            <p className="text-sm text-muted-foreground">Три шага — клиент, работы, сохранение</p>
+            <p className="text-sm text-muted-foreground">{c.subtitle}</p>
           </div>
           <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-            Отмена
+            {c.cancel}
           </Button>
         </div>
 
@@ -555,7 +558,7 @@ export function WorkOrderComposer({
             {clientPrefSuggestions.length > 0 ? (
               <div className="space-y-1.5">
                 <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Как обычно у этого клиента
+                  {c.clientPrefsHint}
                 </p>
                 <KnowledgeSuggestionChips
                   suggestions={clientPrefSuggestions.slice(0, 6)}
@@ -564,9 +567,9 @@ export function WorkOrderComposer({
                 />
               </div>
             ) : null}
-            <Section icon={User} title="Клиент" description="Из базы клиентов или вручную — как марка и модель">
+            <Section icon={User} title={c.clientSection} description={c.clientSectionDesc}>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="ФИО клиента" required>
+                <Field label={c.clientName} required>
                   <SearchCombobox
                     value={form.clientName}
                     onValueChange={(value) => {
@@ -583,11 +586,11 @@ export function WorkOrderComposer({
                       if (client) onClientSelect(client.id);
                     }}
                     options={clientNameOptions}
-                    placeholder="Иванов Алексей"
-                    emptyMessage="Клиент не найден — можно ввести вручную"
+                    placeholder={c.clientNamePlaceholder}
+                    emptyMessage={c.clientNameEmpty}
                   />
                 </Field>
-                <Field label="Телефон" required>
+                <Field label={c.phone} required>
                   <SearchCombobox
                     value={form.clientPhone}
                     onValueChange={(value) => {
@@ -605,7 +608,7 @@ export function WorkOrderComposer({
                     }}
                     options={clientPhoneOptions}
                     placeholder="+7 777 000 00 00"
-                    emptyMessage="Телефон не найден — можно ввести вручную"
+                    emptyMessage={c.phoneEmpty}
                   />
                 </Field>
               </div>
@@ -613,11 +616,11 @@ export function WorkOrderComposer({
 
             <Section
               icon={Car}
-              title="Автомобиль"
-              description="Марка и модель — из авто клиентов, каталога или свой вариант; госномер и VIN — из авто клиента"
+              title={c.vehicleSection}
+              description={c.vehicleSectionDesc}
             >
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Марка">
+                <Field label={c.make}>
                   <SearchCombobox
                     value={form.vehicleMake}
                     onValueChange={(value) => {
@@ -653,11 +656,11 @@ export function WorkOrderComposer({
                       if (!modelAllowed) onFormChange("vehicleModel", "");
                     }}
                     options={vehicleMakeOptionsList}
-                    placeholder="Toyota / из клиентов / свой вариант"
-                    emptyMessage="Марка не найдена — введите свой вариант"
+                    placeholder={c.makePlaceholder}
+                    emptyMessage={c.makeEmpty}
                   />
                 </Field>
-                <Field label="Модель">
+                <Field label={c.model}>
                   <SearchCombobox
                     value={form.vehicleModel}
                     onValueChange={(value) => {
@@ -665,16 +668,16 @@ export function WorkOrderComposer({
                       onFormChange("vehicleModel", value);
                     }}
                     options={vehicleModelOptionsList}
-                    placeholder={form.vehicleMake.trim() ? "Camry / свой вариант" : "Сначала укажите марку"}
+                    placeholder={form.vehicleMake.trim() ? c.modelPlaceholder : c.modelPlaceholderNeedMake}
                     emptyMessage={
                       form.vehicleMake.trim()
-                        ? "Модель не найдена — введите свой вариант"
-                        : "Укажите марку"
+                        ? c.modelEmpty
+                        : c.modelNeedMake
                     }
                     disabled={!form.vehicleMake.trim()}
                   />
                 </Field>
-                <Field label="Госномер">
+                <Field label={c.licensePlate}>
                   <SearchCombobox
                     value={form.licensePlate}
                     onValueChange={(value) => {
@@ -684,7 +687,7 @@ export function WorkOrderComposer({
                     onOptionSelect={commitVehicleByPlate}
                     options={licensePlateOptions}
                     placeholder="123 ABC 01"
-                    emptyMessage="Госномер не найден — можно ввести вручную"
+                    emptyMessage={c.licensePlateEmpty}
                   />
                 </Field>
                 <Field label="VIN">
@@ -697,10 +700,10 @@ export function WorkOrderComposer({
                     onOptionSelect={commitVehicleByVin}
                     options={vinOptions}
                     placeholder="JTDBT923…"
-                    emptyMessage="VIN не найден — можно ввести вручную"
+                    emptyMessage={c.vinEmpty}
                   />
                 </Field>
-                <Field label="Пробег, км">
+                <Field label={c.mileageKm}>
                   <GroupedNumberInput
                     value={form.mileage}
                     onValueChange={(value) => onFormChange("mileage", value)}
@@ -708,11 +711,11 @@ export function WorkOrderComposer({
                   />
                 </Field>
               </div>
-              <Field label="Комментарий / жалобы клиента">
+              <Field label={c.comment}>
                 <Textarea
                   value={form.comment}
                   onChange={(event) => onFormChange("comment", event.target.value)}
-                  placeholder="Стук при холодном пуске, просит проверить компрессию…"
+                  placeholder={c.commentPlaceholder}
                   className="min-h-[88px] resize-none"
                 />
               </Field>
@@ -734,7 +737,7 @@ export function WorkOrderComposer({
             {companionSuggestions.length > 0 ? (
               <div className="space-y-1.5">
                 <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Подсказки
+                  {c.hints}
                 </p>
                 <KnowledgeSuggestionChips
                   suggestions={companionSuggestions.slice(0, 8)}
@@ -747,7 +750,7 @@ export function WorkOrderComposer({
               <TabsList className="mb-4 w-full justify-start">
                 <TabsTrigger value="labor" className="gap-1.5">
                   <Wrench className="size-3.5" />
-                  Работы
+                  {c.tabLabor}
                   {form.laborLines.length > 0 ? (
                     <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
                       {form.laborLines.length}
@@ -756,7 +759,7 @@ export function WorkOrderComposer({
                 </TabsTrigger>
                 <TabsTrigger value="parts" className="gap-1.5">
                   <Package className="size-3.5" />
-                  Запчасти
+                  {c.tabParts}
                   {regularPartLines.length > 0 ? (
                     <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
                       {regularPartLines.length}
@@ -765,7 +768,7 @@ export function WorkOrderComposer({
                 </TabsTrigger>
                 <TabsTrigger value="motors" className="gap-1.5">
                   <Cog className="size-3.5" />
-                  Двигатели
+                  {c.tabMotors}
                   {form.motorLines.length > 0 ? (
                     <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
                       {form.motorLines.length}
@@ -775,7 +778,7 @@ export function WorkOrderComposer({
                 {quickSpecificCategories.length > 0 ? (
                   <TabsTrigger value="specific" className="gap-1.5">
                     <Package className="size-3.5" />
-                    Каталог
+                    {c.tabCatalog}
                     {specificPartLines.length > 0 ? (
                       <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
                         {specificPartLines.length}
@@ -786,18 +789,18 @@ export function WorkOrderComposer({
               </TabsList>
 
               <TabsContent value="labor" className="space-y-4">
-                <AddRowCard title="Добавить работу">
+                <AddRowCard title={c.addLabor}>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Наименование" required>
+                    <Field label={c.laborTitle} required>
                       <SearchCombobox
                         value={form.laborDraft.title}
                         onValueChange={(value) => onLaborDraftChange({ title: value })}
                         options={laborTitleOptions}
-                        placeholder="Замена двигателя"
-                        emptyMessage="Можно ввести название вручную"
+                        placeholder={c.laborTitlePlaceholder}
+                        emptyMessage={c.laborTitleEmpty}
                       />
                     </Field>
-                    <Field label="Тип оплаты">
+                    <Field label={c.pricingMode}>
                       <select
                         className={selectClass}
                         value={form.laborDraft.pricingMode}
@@ -807,15 +810,15 @@ export function WorkOrderComposer({
                           })
                         }
                       >
-                        <option value="fixed">Фикс. сумма → зарплата</option>
-                        <option value="hourly">Почасовая → зарплата</option>
+                        <option value="fixed">{c.pricingFixed}</option>
+                        <option value="hourly">{c.pricingHourly}</option>
                       </select>
                     </Field>
                   </div>
 
                   <div className={cn("mt-4 grid gap-4", isHourlyLabor ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
                     {isHourlyLabor ? (
-                      <Field label="Нормо-часы">
+                      <Field label={c.normHours}>
                         <GroupedNumberInput
                           value={form.laborDraft.hours}
                           onValueChange={(value) => onLaborDraftChange({ hours: value })}
@@ -825,7 +828,7 @@ export function WorkOrderComposer({
                         />
                       </Field>
                     ) : null}
-                    <Field label={isHourlyLabor ? "Ставка, ₸/час" : "Сумма работы, ₸"}>
+                    <Field label={isHourlyLabor ? c.ratePerHour : c.laborAmount}>
                       <GroupedNumberInput
                         value={form.laborDraft.unitPrice}
                         onValueChange={(value) => onLaborDraftChange({ unitPrice: value })}
@@ -833,7 +836,7 @@ export function WorkOrderComposer({
                         placeholder={isHourlyLabor ? "5 000" : "90 000"}
                       />
                     </Field>
-                    <Field label="Исполнитель" required>
+                    <Field label={c.assignee} required>
                       <div className="flex gap-2">
                         <div
                           className="min-w-0 flex-1"
@@ -849,8 +852,8 @@ export function WorkOrderComposer({
                             }
                             onOptionSelect={commitAssignee}
                             options={assigneeOptions}
-                            placeholder="Сотрудник или ФИО"
-                            emptyMessage="Сотрудник не найден — можно ввести имя вручную"
+                            placeholder={c.assigneePlaceholder}
+                            emptyMessage={c.assigneeEmpty}
                             className={cn(
                               form.laborDraft.assigneeId && "border-emerald-500/50 ring-emerald-500/10",
                             )}
@@ -858,7 +861,7 @@ export function WorkOrderComposer({
                         </div>
                         {currentUserId ? (
                           <Button type="button" variant="outline" size="sm" onClick={assignSelf}>
-                            Я
+                            {c.me}
                           </Button>
                         ) : null}
                       </div>
@@ -878,30 +881,30 @@ export function WorkOrderComposer({
                                 : ROLE_LABELS[form.laborDraft.assigneeRole];
                             })()}{" "}
                             · {form.laborDraft.assigneeName}
-                            {laborDraftTotal > 0 ? ` · ${money(laborDraftTotal)} → Зарплаты` : ""}
+                            {laborDraftTotal > 0 ? ` · ${money(laborDraftTotal)}${c.toPayroll}` : ""}
                           </span>
                         </p>
                       ) : employees.length === 0 ? (
                         <p className="text-xs text-amber-600">
-                          Добавьте сотрудников в «Настройки → Сотрудники»
+                          {c.addEmployeesHint}
                         </p>
                       ) : form.laborDraft.assigneeName.trim() ? (
                         <p className="text-xs text-muted-foreground">
-                          Внешний исполнитель · {form.laborDraft.assigneeName} — без начисления в зарплату
+                          {c.externalAssignee(form.laborDraft.assigneeName)}
                         </p>
                       ) : (
                         <p className="text-xs text-muted-foreground">
-                          Сотрудник из списка, кнопка «Я» или произвольное имя
+                          {c.assigneeHint}
                         </p>
                       )}
                     </div>
                     <Button type="button" variant="secondary" disabled={!canAddLabor} onClick={onAddLabor}>
-                      Добавить
+                      {c.add}
                     </Button>
                   </div>
                 </AddRowCard>
                 <LineItems
-                  empty="Работы не добавлены — можно сохранить черновик и дополнить позже"
+                  empty={c.laborEmpty}
                   items={form.laborLines.map((line) => ({
                     id: line.id,
                     label: laborLineLabel(line, employees),
@@ -912,7 +915,7 @@ export function WorkOrderComposer({
               </TabsContent>
 
               <TabsContent value="parts" className="space-y-4">
-                <AddRowCard title="Добавить запчасть" description="Со склада или разово — цена попадёт в накладную и бухгалтерию">
+                <AddRowCard title={c.addPart} description={c.addPartDesc}>
                   <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_72px_96px_auto]">
                     <SearchCombobox
                       value={form.partSku}
@@ -930,8 +933,8 @@ export function WorkOrderComposer({
                         }
                       }}
                       options={partSkuOptions}
-                      placeholder="Артикул (необяз.)"
-                      emptyMessage="Артикул не найден"
+                      placeholder={c.skuOptional}
+                      emptyMessage={c.skuEmpty}
                     />
                     <SearchCombobox
                       value={form.partName}
@@ -949,33 +952,33 @@ export function WorkOrderComposer({
                         }
                       }}
                       options={partNameOptions}
-                      placeholder="Название"
-                      emptyMessage="Можно ввести название вручную"
+                      placeholder={c.namePlaceholder}
+                      emptyMessage={c.nameEmpty}
                     />
                     <GroupedNumberInput
                       value={form.partQuantity}
                       onValueChange={(value) => onFormChange("partQuantity", value || 1)}
-                      aria-label="Количество"
+                      aria-label={c.quantityAria}
                     />
                     <GroupedNumberInput
                       value={form.partUnitPrice}
                       onValueChange={(value) => onFormChange("partUnitPrice", value)}
                       emptyAsZero={false}
-                      placeholder="Цена, ₸"
-                      aria-label="Цена"
+                      placeholder={c.pricePlaceholder}
+                      aria-label={c.priceAria}
                     />
                     <Button type="button" variant="secondary" onClick={onAddPart}>
-                      Добавить
+                      {c.add}
                     </Button>
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Нет на складе — введите название и цену вручную. Со склада подставятся артикул и цена продажи.
+                    {c.partHint}
                   </p>
                 </AddRowCard>
                 <LineItems
-                  empty="Запчасти не выбраны"
+                  empty={c.partsEmpty}
                   items={regularPartLines.map((line) => {
-                    const tag = line.source === "adhoc" || !line.itemId ? " · разово" : "";
+                    const tag = line.source === "adhoc" || !line.itemId ? d.adhocTag : "";
                     return {
                       id: line.id,
                       label: `${line.name}${tag} × ${line.quantity} = ${money(line.quantity * line.unitPrice)}`,
@@ -989,15 +992,15 @@ export function WorkOrderComposer({
               </TabsContent>
 
               <TabsContent value="motors" className="space-y-4">
-                <AddRowCard title="Добавить двигатель">
+                <AddRowCard title={c.addMotor}>
                   <div className="grid gap-3 sm:grid-cols-[1fr_140px_140px_auto]">
                     <SearchCombobox
                       value={form.motorSerial}
                       onValueChange={(value) => onFormChange("motorSerial", value)}
                       onOptionSelect={(value) => rememberComposerFieldValue(companyId, "motorSerial", value)}
                       options={motorSerialOptions}
-                      placeholder="Номер двигателя"
-                      emptyMessage="Двигатель не найден — можно ввести номер вручную"
+                      placeholder={c.motorSerialPlaceholder}
+                      emptyMessage={c.motorSerialEmpty}
                     />
                     <select
                       className={selectClass}
@@ -1006,27 +1009,27 @@ export function WorkOrderComposer({
                         onFormChange("motorOutcome", event.target.value as WorkOrderMotorOutcome)
                       }
                     >
-                      <option value="install">Установка</option>
-                      <option value="sell">Продажа</option>
+                      <option value="install">{c.outcomeInstall}</option>
+                      <option value="sell">{c.outcomeSell}</option>
                     </select>
                     <GroupedNumberInput
                       value={form.motorPrice}
                       onValueChange={(value) => onFormChange("motorPrice", value)}
                       emptyAsZero={false}
-                      placeholder="Цена"
+                      placeholder={c.priceShort}
                     />
                     <Button type="button" variant="secondary" onClick={onAddMotor}>
-                      Добавить
+                      {c.add}
                     </Button>
                   </div>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    <Field label="Гарантия на двигатель">
+                    <Field label={c.motorWarranty}>
                       <select
                         className={selectClass}
                         value={form.motorWarrantyTemplateId}
                         onChange={(event) => onFormChange("motorWarrantyTemplateId", event.target.value)}
                       >
-                        <option value="">По умолчанию компании</option>
+                        <option value="">{c.companyDefault}</option>
                         {WARRANTY_TEMPLATE_IDS.map((id) => (
                           <option key={id} value={id}>
                             {getWarrantyTemplate(id).name}
@@ -1037,10 +1040,10 @@ export function WorkOrderComposer({
                   </div>
                 </AddRowCard>
                 <LineItems
-                  empty="Двигатели не добавлены"
+                  empty={c.motorsEmpty}
                   items={form.motorLines.map((line) => ({
                     id: line.id,
-                    label: `${formatMotorLineLabel(line, { includeSerial: true })} · ${line.outcome === "install" ? "установка" : "продажа"} · ${money(line.unitPrice)}`,
+                    label: `${formatMotorLineLabel(line, { includeSerial: true })} · ${line.outcome === "install" ? d.install : d.sale} · ${money(line.unitPrice)}`,
                   }))}
                   onRemove={onRemoveMotor}
                 />
@@ -1049,17 +1052,17 @@ export function WorkOrderComposer({
               {quickSpecificCategories.length > 0 ? (
                 <TabsContent value="specific" className="space-y-4">
                   <AddRowCard
-                    title="Быстрая позиция"
-                    description="Генератор, стартер, кузовные — без учёта на складе"
+                    title={c.quickItem}
+                    description={c.quickItemDesc}
                   >
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <Field label="Категория">
+                      <Field label={c.category}>
                         <select
                           className={selectClass}
                           value={form.specificCategoryId}
                           onChange={(event) => onFormChange("specificCategoryId", event.target.value)}
                         >
-                          <option value="">Выберите…</option>
+                          <option value="">{c.selectEllipsis}</option>
                           {quickSpecificCategories.map((category) => (
                             <option key={category.id} value={category.id}>
                               {category.name}
@@ -1067,21 +1070,21 @@ export function WorkOrderComposer({
                           ))}
                         </select>
                       </Field>
-                      <Field label="Название">
+                      <Field label={c.itemName}>
                         <Input
                           value={form.specificPartName}
                           onChange={(event) => onFormChange("specificPartName", event.target.value)}
-                          placeholder="Генератор Toyota 1NZ"
+                          placeholder={c.itemNamePlaceholder}
                         />
                       </Field>
-                      <Field label="Цена, ₸">
+                      <Field label={c.priceTenge}>
                         <GroupedNumberInput
                           value={form.specificPartPrice}
                           onValueChange={(value) => onFormChange("specificPartPrice", value)}
                           emptyAsZero={false}
                         />
                       </Field>
-                      <Field label="Гарантия">
+                      <Field label={c.warranty}>
                         <select
                           className={selectClass}
                           value={form.specificWarrantyTemplateId}
@@ -1089,7 +1092,7 @@ export function WorkOrderComposer({
                             onFormChange("specificWarrantyTemplateId", event.target.value)
                           }
                         >
-                          <option value="none">Без гарантии</option>
+                          <option value="none">{c.noWarranty}</option>
                           {WARRANTY_TEMPLATE_IDS.filter((id) => id !== "no_warranty").map((id) => (
                             <option key={id} value={id}>
                               {getWarrantyTemplate(id).name}
@@ -1099,11 +1102,11 @@ export function WorkOrderComposer({
                       </Field>
                     </div>
                     <Button type="button" variant="secondary" className="mt-3" onClick={onAddSpecificPart}>
-                      Добавить
+                      {c.add}
                     </Button>
                   </AddRowCard>
                   <LineItems
-                    empty="Позиции каталога не добавлены"
+                    empty={c.catalogEmpty}
                     items={specificPartLines.map((line) => {
                       const category = line.specificCategoryName ? `${line.specificCategoryName} · ` : "";
                       return {
@@ -1124,34 +1127,35 @@ export function WorkOrderComposer({
 
         {step === 3 ? (
           <FadeIn key="composer-step-3" className="mx-auto grid max-w-3xl gap-4 lg:grid-cols-2">
-            <SummaryCard title="Клиент">
+            <SummaryCard title={c.summaryClient}>
               <p className="font-medium">{form.clientName || "—"}</p>
               <p className="text-sm text-muted-foreground">{form.clientPhone || "—"}</p>
             </SummaryCard>
-            <SummaryCard title="Автомобиль">
+            <SummaryCard title={c.summaryVehicle}>
               <p className="font-medium">
                 {[form.vehicleMake, form.vehicleModel].filter(Boolean).join(" ") || "—"}
               </p>
               <p className="text-sm text-muted-foreground">
                 {[form.licensePlate, form.vin].filter(Boolean).join(" · ") || "—"}
-                {form.mileage ? ` · ${formatGroupedNumber(form.mileage)} км` : ""}
+                {form.mileage ? ` · ${d.km(formatGroupedNumber(form.mileage))}` : ""}
               </p>
             </SummaryCard>
-            <SummaryCard title="Состав" className="lg:col-span-2">
+            <SummaryCard title={c.summaryLines} className="lg:col-span-2">
               <ul className="space-y-1 text-sm text-muted-foreground">
-                <li>Работ: {form.laborLines.length}</li>
+                <li>{c.laborCount(form.laborLines.length)}</li>
                 <li>
-                  Запчастей:{" "}
-                  {form.partLines.filter((line) => line.source !== "specific_quick").length}
+                  {c.partsCount(
+                    form.partLines.filter((line) => line.source !== "specific_quick").length,
+                  )}
                 </li>
                 {specificPartLines.length > 0 ? (
-                  <li>Позиций каталога: {specificPartLines.length}</li>
+                  <li>{c.catalogCount(specificPartLines.length)}</li>
                 ) : null}
-                <li>Двигателей: {form.motorLines.length}</li>
+                <li>{c.motorsCount(form.motorLines.length)}</li>
                 {form.comment ? <li className="pt-2 text-foreground">«{form.comment}»</li> : null}
               </ul>
             </SummaryCard>
-            <SummaryCard title="Скидка" className="lg:col-span-2">
+            <SummaryCard title={c.discount} className="lg:col-span-2">
               <GroupedNumberInput
                 value={form.discount}
                 onValueChange={(value) => onFormChange("discount", value)}
@@ -1167,15 +1171,18 @@ export function WorkOrderComposer({
         <div className="min-w-0">
           <p className="text-lg font-semibold tabular-nums">{money(pricing.grandTotal)}</p>
           <p className="truncate text-xs text-muted-foreground">
-            Работы {money(pricing.laborTotal)} · Запчасти {money(pricing.partsTotal)} · Двигатели{" "}
-            {money(pricing.motorsTotal)}
+            {c.totalsLine(
+              money(pricing.laborTotal),
+              money(pricing.partsTotal),
+              money(pricing.motorsTotal),
+            )}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {step > 1 ? (
             <Button type="button" variant="outline" onClick={() => onStepChange(step - 1)}>
               <ArrowLeft className="size-4" />
-              Назад
+              {c.back}
             </Button>
           ) : null}
           {step < 3 ? (
@@ -1184,13 +1191,13 @@ export function WorkOrderComposer({
               disabled={step === 1 && !step1Valid}
               onClick={() => onStepChange(step + 1)}
             >
-              Далее
+              {c.next}
               <ArrowRight className="size-4" />
             </Button>
           ) : (
             <Button type="button" disabled={!canEdit || saving || !step1Valid} onClick={onSave}>
               <Save className="size-4" />
-              {saving ? "Сохранение…" : "Сохранить черновик"}
+              {saving ? c.saving : c.saveDraft}
             </Button>
           )}
         </div>
@@ -1318,7 +1325,7 @@ function LineItems({
               className="shrink-0 text-xs text-muted-foreground transition-colors hover:text-destructive"
               onClick={() => onRemove(index)}
             >
-              Удалить
+              {userCopy.workOrders.composer.remove}
             </button>
           </motion.li>
         ))}

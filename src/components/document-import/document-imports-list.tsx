@@ -8,12 +8,13 @@ import { FileText } from "lucide-react";
 import type { DocumentImportJob, DocumentImportStatus } from "@/domain/document-import";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 const STATUS_LABELS: Record<DocumentImportStatus, string> = {
-  pending: "Обработка",
-  ready: "Готов",
-  imported: "Импортирован",
-  failed: "Ошибка",
+  pending: userCopy.documentImport.status.pending,
+  ready: userCopy.documentImport.status.ready,
+  imported: userCopy.documentImport.status.imported,
+  failed: userCopy.documentImport.status.failed,
 };
 
 type DocumentImportsListProps = {
@@ -29,7 +30,7 @@ export function DocumentImportsList({
   jobs,
   loading = false,
   errorMessage = null,
-  emptyHint = "На телефоне: Скан → Импорт документа — сфотографируйте и отправьте.",
+  emptyHint = userCopy.documentImport.emptyHint,
   onItemClick,
   compact = false,
 }: DocumentImportsListProps) {
@@ -62,7 +63,7 @@ export function DocumentImportsList({
         <div className="rounded-full bg-sky-500/10 p-3 text-sky-600 dark:text-sky-400">
           <FileText className="size-5" />
         </div>
-        <p className="text-sm font-medium">Пока нет снимков с телефона</p>
+        <p className="text-sm font-medium">{userCopy.documentImport.emptyTitle}</p>
         <p className="max-w-sm text-sm text-muted-foreground">{emptyHint}</p>
       </div>
     );
@@ -90,7 +91,7 @@ export function DocumentImportsList({
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">
-              {job.fileName?.trim() || "Снимок с телефона"}
+              {job.fileName?.trim() || userCopy.documentImport.phoneSnapshot}
             </p>
             <p className="truncate text-xs text-muted-foreground">
               {STATUS_LABELS[job.status]} ·{" "}
@@ -98,7 +99,7 @@ export function DocumentImportsList({
             </p>
           </div>
           <span className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-sky-700 opacity-0 transition group-hover:opacity-100 dark:text-sky-300">
-            Открыть
+            {userCopy.documentImport.open}
           </span>
         </Link>
       ))}

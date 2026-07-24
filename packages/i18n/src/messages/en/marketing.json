@@ -128,7 +128,7 @@
       "account": "Account",
       "payment": "Payment",
       "cashbox": "Cashbox",
-      "kaspi": "Kaspi",
+      "kaspi": "Card",
       "cash": "Cash",
       "transfer": "Transfer",
       "mixed": "Mixed",
@@ -475,7 +475,7 @@
       "dateLocale": "en",
       "totalBalance": "Total balance",
       "cashbox": "Cashbox",
-      "kaspi": "Kaspi",
+      "kaspi": "Card",
       "today": "Today",
       "todayHint": "Income: {income} · Expenses: {expenses}",
       "weeklyTitle": "Last 7 days",
@@ -516,7 +516,7 @@
       },
       "accountLabels": {
         "cashbox": "Cashbox",
-        "kaspi": "Kaspi"
+        "kaspi": "Card"
       },
       "categoryLabels": {
         "motor_sale": "Engine sale",
@@ -909,8 +909,8 @@
   "landing": {
     "hero": {
       "ariaLabel": "Home",
-      "title": "Warehouse, shop floor, and cash — one source of truth.",
-      "subtitle": "Stock, work orders, engine sales, and documents — from the same data. No WhatsApp bookkeeping, no late-night reconciliations.",
+      "title": "Auto parts inventory software for salvage yards.",
+      "subtitle": "Warehouse stock, used engines, VIN and barcode tracking, work orders, and documents — one system for auto recyclers and repair shops. No WhatsApp bookkeeping.",
       "ctaPrimary": "Open the demo",
       "ctaSecondary": "See how it works",
       "trust": "Live demo company · real workflows",
@@ -1306,11 +1306,12 @@
   },
   "product": {
     "hero": {
-      "title": "One warehouse. One shop floor. One source of truth.",
-      "subtitle": "A live interface — open a screen and walk through the operation yourself."
+      "title": "Used auto parts inventory — one warehouse, one truth.",
+      "subtitle": "Walk a live salvage-yard workflow: engine search, stock, sales, work orders, and documents."
     },
     "toc": {
       "title": "Product",
+      "ariaLabel": "Product sections",
       "items": [
         {
           "id": "engine-search",
@@ -1376,7 +1377,7 @@
       "finance": {
         "title": "Finance",
         "question": "Where does the transaction show up?",
-        "line": "Cash, Kaspi, and work order transactions — the same accounting screen."
+        "line": "Cash, card, and work order transactions — the same accounting screen."
       },
       "mobile": {
         "title": "Mobile",
@@ -1400,11 +1401,11 @@
     "product": {
       "meta": {
         "title": "Product overview",
-        "description": "The operating system for dismantlers, parts sellers, and repair shops. Mission Control, warehouse, work orders, and accounting in one loop."
+        "description": "Automotive parts inventory management for dismantlers, salvage yards, and repair shops. Mission Control, warehouse, work orders, and accounting in one loop."
       },
       "hero": {
-        "title": "Software for auto dismantlers and repair shops",
-        "description": "Parts warehouse, shop floor, engine sales, documents, and accounting — all connected. One source of truth for the whole team."
+        "title": "Automotive parts inventory management for recyclers",
+        "description": "Warehouse stock, used auto parts sales, engine catalog, work orders, documents, and accounting — connected. Inventory tracking for salvage yards and repair shops."
       },
       "pillars": [
         {
@@ -1501,10 +1502,12 @@
     },
     "modules": {
       "meta": {
-        "title": "Module catalog",
-        "description": "Warehouse, work orders, engines, accounting, Mission Control, and team: a connected ecosystem for auto businesses."
+        "title": "Used engine & warehouse modules",
+        "description": "Used engine inventory software, parts warehouse, work orders, accounting, Mission Control, and team roles — one loop for salvage yards."
       },
-      "intro": "Every module is part of one loop. The warehouse feeds work orders, work orders feed accounting, and Mission Control shows the whole picture.",
+      "intro": "Every module is part of one inventory loop. The warehouse feeds work orders, work orders feed accounting, and Mission Control shows stock, orders, and analytics.",
+      "capabilitiesTitle": "Capabilities",
+      "forWhomLabel": "Who it's for",
       "stats": [
         {
           "value": "6",
@@ -1631,10 +1634,10 @@
     "pricing": {
       "meta": {
         "title": "Pricing",
-        "description": "One subscription, $39 a month. The entire product, no hidden limits. 14 days free, no card required."
+        "description": "Salvage yard and auto recycler software: one subscription, $39 a month. Full inventory, engines, work orders. 14 days free, no card."
       },
       "hero": {
-        "titleLine1": "One subscription.",
+        "titleLine1": "Salvage yard software.",
         "titleLine2": "Everything included."
       },
       "plan": {
@@ -1677,6 +1680,7 @@
         "statement": "We don't lock tools behind expensive tiers.",
         "body": "Every customer gets the full product. All you need to decide is whether it fits your business."
       },
+      "faqTitle": "Frequently asked questions",
       "faq": [
         {
           "q": "Do I need a card for the trial?",
@@ -1699,11 +1703,11 @@
     "security": {
       "meta": {
         "title": "Security",
-        "description": "Per-module roles, an activity log, company data isolation, operation audits, and server-side checks."
+        "description": "Secure warehouse inventory software: per-module RBAC, activity audit log, company isolation, and server-side checks for salvage yards."
       },
       "hero": {
-        "title": "Security for an operational business",
-        "description": "Built for multi-user operation: access rights, auditing, and transparency aren't an add-on — they're the foundation of the architecture."
+        "title": "Secure inventory software for multi-user warehouses",
+        "description": "Built for salvage yards and shops: roles, audit trail, and tenant isolation — foundation of the architecture, not an add-on."
       },
       "stats": [
         {
@@ -1813,17 +1817,40 @@
         "RBAC is enforced on the server, not just in the UI",
         "A log of significant actions for managers",
         "Tenant data isolation in Firestore rules"
-      ]
+      ],
+      "sections": {
+        "foundationTitle": "Security foundation",
+        "foundationBody": "Access control, audit trails, and tenant isolation are built into the product — not bolted on later.",
+        "layersTitle": "Defense in layers",
+        "layersBody": "Authentication, data rules, API checks, and document tokens each close a different attack surface.",
+        "auditTitle": "Live audit trail",
+        "auditMeta": "Sample activity from a typical morning",
+        "auditBody": "Managers see who changed stock, closed a work order, or changed permissions — without exporting spreadsheets.",
+        "principlesTitle": "Design principles",
+        "checklistTitle": "What you get out of the box",
+        "checklistBody": "Security defaults that match how a multi-user auto business actually operates.",
+        "relatedTitle": "Related",
+        "relatedPrivacyTitle": "Privacy Policy",
+        "relatedPrivacyMeta": "How we handle personal and operational data",
+        "relatedTermsTitle": "Terms of Use",
+        "relatedTermsMeta": "Account, subscription, and acceptable use",
+        "relatedContactTitle": "Contact",
+        "relatedContactMeta": "Security questions and support",
+        "statsAria": "Security highlights",
+        "breadcrumbsAria": "Breadcrumbs"
+      }
     },
     "contact": {
       "meta": {
         "title": "Contact",
-        "description": "Reach out about a demo, support, a partnership, or a general question. We reply within a business day."
+        "description": "Demo auto parts inventory software for salvage yards and recyclers. Sales, support, partnerships — reply within one business day."
       },
       "hero": {
-        "title": "Get in touch",
-        "description": "Questions about the product? Need help choosing your workflows? Want to schedule a demo? We're here."
+        "title": "Demo AutoCore inventory software",
+        "description": "Questions about salvage yard workflows? Need help mapping warehouse and engines? Want a demo of auto recycler software? We're here."
       },
+      "intentsHeading": "How can we help?",
+      "methodsHeading": "Contact details",
       "intents": [
         {
           "title": "Sales",
@@ -1879,39 +1906,46 @@
     "download": {
       "meta": {
         "title": "Download",
-        "description": "Windows, browser, and phone. One account, one workspace, synced in real time."
+        "description": "Download warehouse inventory software for Windows, web, and phone. One account — barcode, stock, and work orders synced in real time."
       },
       "hero": {
-        "titleLine1": "One workspace.",
+        "titleLine1": "Warehouse inventory software.",
         "titleLine2": "On every device.",
-        "description": "Desktop, phone, and browser. One account. One workspace for the whole team."
+        "description": "Desktop, phone, and browser. One account for parts inventory, barcode scanning, and work orders."
       },
       "platforms": [
         {
           "id": "windows",
           "title": "Windows",
           "description": "A native app for the office and warehouse. Syncs with the cloud in the background.",
-          "action": "Download for Windows"
+          "action": "Download for Windows",
+          "kind": "windows"
         },
         {
           "id": "mac",
           "title": "Desktop",
           "description": "A desktop app. The same interface as the browser and phone.",
-          "action": "Download the desktop app"
+          "action": "Download the desktop app",
+          "kind": "mac"
         },
         {
           "id": "web",
           "title": "Web",
           "description": "The full product in your browser. No install, same account.",
-          "action": "Open in browser"
+          "action": "Open in browser",
+          "kind": "web"
         },
         {
           "id": "mobile",
           "title": "Mobile",
           "description": "Scanning, intake, and work orders from your phone. Data syncs across every device instantly.",
-          "action": "Choose a platform"
+          "action": "Choose a platform",
+          "kind": "mobile"
         }
       ],
+      "platformPickerTitle": "Choose a platform",
+      "faqTitle": "Frequently asked questions",
+      "hint": "One account on every device",
       "ecosystem": {
         "title": "One ecosystem",
         "description": "A change on your phone shows up instantly on your computer. The cloud keeps one source of truth for the whole team."
@@ -1973,9 +2007,12 @@
     },
     "downloadMobile": {
       "backLabel": "All platforms",
+      "changeSelection": "Change platform",
+      "platformPickerTitle": "Choose mobile platform",
+      "qrAlt": "QR code to install the mobile app",
       "hero": {
-        "title": "Mobile",
-        "description": "Choose iOS or Android. Scan the QR code or open the link on your device."
+        "title": "Mobile inventory for salvage yards",
+        "description": "Choose iOS or Android. Scan VIN or barcode on the floor — stock and work orders sync with desktop inventory software."
       },
       "platforms": [
         {
@@ -2025,6 +2062,27 @@
       ],
       "notFoundAnswer": "Didn't find your answer?",
       "contactSupport": "Contact support"
+    },
+    "legal": {
+      "updatedPrefix": "Updated",
+      "relatedHeading": "Trust and transparency",
+      "relatedDescription": "Legal documents, security, and contact details in one place.",
+      "hub": [
+        {
+          "label": "Security",
+          "description": "Roles, audit, and tenant isolation"
+        },
+        {
+          "label": "Privacy Policy",
+          "description": "How we handle personal and operational data"
+        },
+        {
+          "label": "Terms of Use",
+          "description": "Account, subscription, and acceptable use"
+        }
+      ],
+      "relatedContactTitle": "Contact",
+      "relatedContactMeta": "Support and legal questions"
     },
     "privacy": {
       "title": "Privacy Policy",
@@ -2224,128 +2282,179 @@
   },
   "seo": {
     "brand": {
-      "tagline": "The operating system for auto dismantlers and repair shops",
-      "shortDescription": "AutoCore: the operating system for auto dismantlers and repair shops. Warehouse, shop floor, work orders, documents, and accounting in one loop.",
+      "tagline": "Auto parts inventory software for salvage yards and repair shops",
+      "shortDescription": "AutoCore is automotive inventory software for auto recyclers, salvage yards, and repair shops: warehouse stock, used engines, VIN/barcode tracking, work orders, and accounting in one system.",
       "legalName": "AutoCore"
     },
     "keywords": {
       "general": [
-        "auto dismantler software",
-        "repair shop software",
-        "auto dismantler inventory system",
-        "repair shop management system",
-        "auto parts inventory tracking",
-        "repair shop warehouse management",
-        "work order software for repair shops",
-        "engine inventory software",
-        "software for auto parts stores",
-        "repair shop accounting",
-        "CRM for auto dismantlers",
-        "software for car dismantling",
-        "system for repair shops",
-        "engine inventory tracking",
-        "cloud software for repair shops",
+        "auto parts inventory software",
+        "car parts inventory software",
+        "automotive inventory software",
+        "automotive parts inventory management",
+        "inventory software for auto parts",
+        "inventory management software",
+        "auto recycler software",
+        "salvage yard software",
+        "junkyard management software",
+        "used auto parts software",
+        "inventory tracking software",
+        "parts inventory software",
+        "warehouse inventory software",
+        "software for auto dismantlers",
+        "inventory software for salvage yards",
+        "used auto parts inventory software",
+        "inventory management for auto recyclers",
+        "auto dismantler inventory software",
+        "used engine inventory software",
+        "automotive stock management software",
+        "inventory",
+        "warehouse",
+        "stock",
+        "engines",
+        "transmissions",
+        "used auto parts",
+        "VIN",
+        "barcode",
+        "SKU",
+        "CRM",
+        "orders",
+        "customers",
+        "suppliers",
+        "purchase orders",
+        "engine catalog",
+        "vehicle inventory",
+        "auto dismantling",
+        "auto recycling",
+        "salvage yard",
+        "junkyard",
+        "warehouse management",
+        "inventory tracking",
+        "reports",
+        "analytics",
         "AutoCore"
       ],
       "home": [
-        "operating system for repair shops",
-        "auto dismantler demo software",
-        "Excel replacement for repair shops"
+        "auto parts inventory software",
+        "car parts inventory software",
+        "automotive inventory software",
+        "auto recycler software",
+        "salvage yard software",
+        "junkyard management software",
+        "software for auto dismantlers",
+        "inventory management for auto recyclers"
       ],
       "product": [
-        "auto dismantler workflow",
-        "Mission Control for repair shops",
-        "auto dismantler software overview"
+        "automotive parts inventory management",
+        "inventory software for auto parts",
+        "inventory management software",
+        "used auto parts software",
+        "inventory software for salvage yards",
+        "auto dismantler inventory software",
+        "automotive stock management software"
       ],
       "modules": [
-        "warehouse module for repair shops",
-        "engine inventory software",
-        "repair shop modules"
+        "used engine inventory software",
+        "used auto parts inventory software",
+        "parts inventory software",
+        "warehouse inventory software",
+        "inventory tracking software",
+        "engine catalog",
+        "warehouse management",
+        "VIN barcode SKU inventory"
       ],
       "pricing": [
-        "repair shop software pricing",
-        "auto dismantler plan pricing",
-        "repair shop software cost"
+        "auto parts inventory software pricing",
+        "salvage yard software cost",
+        "auto recycler software subscription",
+        "junkyard management software price",
+        "inventory software for auto parts price"
       ],
       "contact": [
-        "repair shop demo software",
-        "auto dismantler support",
-        "contact AutoCore"
+        "auto parts inventory software demo",
+        "salvage yard software demo",
+        "auto recycler software support",
+        "contact AutoCore inventory software"
       ],
       "download": [
-        "download AutoCore",
-        "auto dismantler desktop app",
-        "web software for repair shops"
+        "download auto parts inventory software",
+        "salvage yard software Windows",
+        "warehouse inventory software desktop",
+        "barcode inventory software download"
       ],
       "downloadMobile": [
-        "download AutoCore iOS",
-        "AutoCore Android",
-        "repair shop app"
+        "auto parts inventory app",
+        "salvage yard mobile inventory",
+        "VIN barcode scanner inventory app",
+        "warehouse inventory software phone"
       ],
       "privacy": [
-        "privacy policy",
-        "repair shop data processing"
+        "auto parts inventory software privacy",
+        "salvage yard software data policy",
+        "inventory management privacy policy"
       ],
       "terms": [
-        "terms of use",
-        "AutoCore license"
+        "auto parts inventory software terms",
+        "salvage yard software license",
+        "AutoCore terms of use"
       ],
       "security": [
-        "SaaS security for repair shops",
-        "RBAC warehouse",
-        "repair shop software audit"
+        "secure auto parts inventory software",
+        "salvage yard software RBAC",
+        "warehouse inventory software audit log",
+        "multi-tenant inventory software security"
       ]
     },
     "pages": {
       "home": {
-        "title": "Software for Auto Dismantlers and Repair Shops | AutoCore",
-        "description": "Parts warehouse, work orders, engine tracking, and documents in one system. Desktop and phone stay in sync. 14 days free, no card required.",
-        "ogTitle": "AutoCore: software for auto dismantlers and repair shops"
+        "title": "Auto Parts Inventory Software for Salvage Yards | AutoCore",
+        "description": "Auto parts inventory software for auto recyclers, salvage yards, and repair shops. Track used engines, stock, VIN/barcode, work orders, and warehouse inventory in one system. 14-day free trial.",
+        "ogTitle": "AutoCore — auto parts inventory software for salvage yards & recyclers"
       },
       "product": {
-        "title": "How AutoCore Works for Dismantlers and Repair Shops",
-        "description": "A day with AutoCore: Mission Control in the morning, warehouse and work orders during the day, documents and device sync — no Excel, no late-night reconciliations.",
-        "ogTitle": "AutoCore: a whole workday in one system"
+        "title": "Automotive Parts Inventory Management Software | AutoCore",
+        "description": "See how automotive parts inventory management works in AutoCore: Mission Control, warehouse stock, used auto parts sales, work orders, documents, and live sync across desktop and phone.",
+        "ogTitle": "How AutoCore inventory management works for auto recyclers"
       },
       "modules": {
-        "title": "Modules: Warehouse, Work Orders, Engines, Accounting | AutoCore",
-        "description": "The module catalog for dismantlers and repair shops: parts warehouse, work orders, engine tracking, accounting, team, and Mission Control.",
-        "ogTitle": "AutoCore: modules for dismantlers and repair shops"
+        "title": "Used Engine & Warehouse Inventory Software Modules | AutoCore",
+        "description": "Modules for used engine inventory software, parts warehouse, work orders, accounting, and team roles. VIN, barcode, SKU tracking, engine catalog, suppliers, and inventory analytics.",
+        "ogTitle": "AutoCore modules: engines, warehouse, work orders, accounting"
       },
       "pricing": {
-        "title": "AutoCore Pricing: $39 a Month per Company",
-        "description": "One subscription, $39/month per company. Full access with no hidden limits. 14 days free, no card required. Built for dismantlers and repair shops.",
-        "ogTitle": "AutoCore: $39 a month per company"
+        "title": "Salvage Yard & Auto Recycler Software Pricing | $39/mo — AutoCore",
+        "description": "One plan for auto parts inventory software: $39/month per company. Full warehouse, engines, work orders, and accounting. 14 days free, no card. Built for salvage yards and recyclers.",
+        "ogTitle": "AutoCore pricing — $39/mo inventory software for salvage yards"
       },
       "contact": {
-        "title": "Contact AutoCore: Demo and Support",
-        "description": "Request a demo or reach out to AutoCore support. We reply within a business day. We help dismantlers and repair shops with onboarding.",
-        "ogTitle": "AutoCore: demo and support"
+        "title": "Demo Auto Parts Inventory Software | Contact AutoCore",
+        "description": "Request a demo of AutoCore salvage yard and auto recycler software. Talk to support about warehouse inventory, used engines, and onboarding. We reply within one business day.",
+        "ogTitle": "Contact AutoCore — demo for salvage yards & recyclers"
       },
       "download": {
-        "title": "Download AutoCore: Windows, Web, and Phone",
-        "description": "Install AutoCore on Windows or open it in your browser and on your phone. One account, with warehouse and work orders synced in real time.",
-        "ogTitle": "AutoCore: Windows, web, and phone"
+        "title": "Download Warehouse Inventory Software | Windows, Web — AutoCore",
+        "description": "Download AutoCore inventory tracking software for Windows, or open the web app. Same account for warehouse stock, barcode scanning, work orders, and used auto parts — synced in real time.",
+        "ogTitle": "Download AutoCore — warehouse inventory on Windows & web"
       },
       "downloadMobile": {
-        "title": "Download AutoCore for iPhone and Android",
-        "description": "The AutoCore mobile app for the warehouse and shop floor. Scanning, work orders, and stock with the same account as desktop and web.",
-        "ogTitle": "AutoCore for iPhone and Android"
+        "title": "Mobile Inventory App for Salvage Yards | iPhone & Android",
+        "description": "AutoCore mobile inventory app for the shop floor: VIN and barcode scan, warehouse stock, work orders, and used parts — same account as desktop auto parts inventory software.",
+        "ogTitle": "AutoCore mobile — VIN, barcode & warehouse inventory"
       },
       "privacy": {
-        "title": "AutoCore Privacy Policy",
-        "description": "How AutoCore handles personal and operational data for dismantlers and repair shops: storage, rights, security, and contacts.",
-        "ogTitle": "AutoCore: privacy policy"
+        "title": "Privacy Policy | AutoCore Inventory Software",
+        "description": "How AutoCore auto parts inventory software handles personal and operational data for salvage yards, recyclers, and repair shops: storage, rights, security, and contacts.",
+        "ogTitle": "AutoCore privacy policy"
       },
       "terms": {
-        "title": "AutoCore Terms of Use",
-        "description": "Terms of use for the AutoCore cloud application: account, subscription, customer data, liability, and termination of access.",
-        "ogTitle": "AutoCore: terms of use"
+        "title": "Terms of Use | AutoCore Inventory Software",
+        "description": "Terms of use for AutoCore automotive inventory software: account, subscription, customer data, liability, and access for salvage yards and repair shops.",
+        "ogTitle": "AutoCore terms of use"
       },
       "security": {
-        "title": "AutoCore Security: Roles, Auditing, Isolation",
-        "description": "Per-module roles, an activity log, company data isolation, and server-side checks. Security built for an operational auto business.",
-        "ogTitle": "AutoCore: roles, auditing, isolation"
+        "title": "Secure Warehouse Inventory Software | Roles & Audit — AutoCore",
+        "description": "Security for auto parts inventory software: per-module RBAC, activity audit log, company data isolation, and server-side checks for salvage yards and multi-user warehouses.",
+        "ogTitle": "AutoCore security — RBAC, audit, tenant isolation"
       }
     },
     "breadcrumbs": {
@@ -2371,6 +2480,7 @@
     },
     "footerAria": "Footer",
     "heroAria": "Home",
+    "relatedNavAria": "Related links",
     "legal": {
       "breadcrumbsAria": "Breadcrumbs",
       "tableOfContentsLabel": "Contents",

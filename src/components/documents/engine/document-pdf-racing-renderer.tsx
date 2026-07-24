@@ -156,7 +156,7 @@ export function DocumentPdfRacingRenderer({ model }: { model: DocumentRenderMode
 
         <div className="doc-racing-milestone">
           <span>
-            {ui.racingNextMilestone} <b>{milestoneKm} км</b>
+            {ui.racingNextMilestone} <b>{milestoneKm} {"\u043a\u043c"}</b>
           </span>
           <span>{ui.racingRemaining.replace("{km}", remainingKm)}</span>
         </div>

@@ -105,6 +105,7 @@ const GRID_FIELD_LABELS_RU: Record<string, string> = {
   notes: "Особые отметки",
   quantity: "Кол-во",
   transmission: "Коробка",
+  warehouseLocation: "Место",
 };
 
 const GRID_FIELD_LABELS_EN: Record<string, string> = {
@@ -114,9 +115,10 @@ const GRID_FIELD_LABELS_EN: Record<string, string> = {
   brandName: "Brand",
   engineCode: "Engine",
   configuration: "Configuration",
-  notes: "Notes",
+  notes: "Special notes",
   quantity: "Qty",
   transmission: "Transmission",
+  warehouseLocation: "Location",
 };
 
 function mapValidationError(error: unknown): string | null {

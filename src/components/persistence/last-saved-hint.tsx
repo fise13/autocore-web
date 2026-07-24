@@ -5,15 +5,17 @@ import { useEffect, useState } from "react";
 import { usePersistenceOptional } from "@/components/persistence/persistence-provider";
 import { persistenceKeyString, type PersistenceKey } from "@/lib/persistence";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 function formatAgo(savedAt: number | null, now: number): string {
-  if (savedAt == null) return "Ещё не сохранялось";
+  const copy = userCopy.persistence;
+  if (savedAt == null) return copy.neverSaved;
   const seconds = Math.max(0, Math.round((now - savedAt) / 1000));
-  if (seconds < 5) return "Сохранено только что";
-  if (seconds < 60) return `Сохранено ${seconds} сек назад`;
+  if (seconds < 5) return copy.justNow;
+  if (seconds < 60) return copy.secondsAgo(seconds);
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `Сохранено ${minutes} мин назад`;
-  return `Сохранено ${Math.round(minutes / 60)} ч назад`;
+  if (minutes < 60) return copy.minutesAgo(minutes);
+  return copy.hoursAgo(Math.round(minutes / 60));
 }
 
 export function LastSavedHint({
@@ -44,11 +46,11 @@ export function LastSavedHint({
   const lastSavedAt = doc?.lastSavedAt ?? persistence.snapshot.lastSavedAt;
 
   let text: string;
-  if (saving) text = "Сохранение…";
-  else if (dirty) text = "Есть несохранённые изменения";
-  else if (persistence.snapshot.uiStatus === "offline") text = "Офлайн — изменения в очереди";
+  if (saving) text = userCopy.persistence.saving;
+  else if (dirty) text = userCopy.persistence.dirty;
+  else if (persistence.snapshot.uiStatus === "offline") text = userCopy.persistence.offlineQueued;
   else if (persistence.snapshot.uiStatus === "error") {
-    text = persistence.snapshot.lastError ?? "Ошибка синхронизации";
+    text = persistence.snapshot.lastError ?? userCopy.persistence.syncError;
   } else text = formatAgo(lastSavedAt, now);
 
   return (

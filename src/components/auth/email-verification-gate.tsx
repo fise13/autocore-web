@@ -45,12 +45,15 @@ export function EmailVerificationGate({ children }: EmailVerificationGateProps) 
       .then(() => setStatus(userCopy.auth.verifyEmailAutoSent))
       .catch((sendError) => {
         const message = sendError instanceof Error ? sendError.message : "";
-        if (message.includes("Подождите")) {
+        if (
+          message.includes(userCopy.auth.waitThrottleToken) ||
+          message.toLowerCase().includes("wait")
+        ) {
           setStatus(userCopy.auth.verifyEmailAutoSent);
           return;
         }
         autoSentRef.current = false;
-        setError(message || "Не удалось отправить код.");
+        setError(message || userCopy.auth.sendCodeFailed);
       });
   }, [needsVerification, sendEmailVerification]);
 
@@ -111,7 +114,7 @@ export function EmailVerificationGate({ children }: EmailVerificationGateProps) 
       await sendEmailVerification();
       setStatus(userCopy.auth.verifyEmailResent);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось отправить код.");
+      setError(e instanceof Error ? e.message : userCopy.auth.sendCodeFailed);
     } finally {
       setBusy(false);
     }
@@ -143,7 +146,7 @@ export function EmailVerificationGate({ children }: EmailVerificationGateProps) 
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="email-verification-code" className="sr-only">
-                Код подтверждения
+                {userCopy.auth.verifyCodeLabel}
               </label>
               <Input
                 id="email-verification-code"
@@ -172,7 +175,7 @@ export function EmailVerificationGate({ children }: EmailVerificationGateProps) 
               disabled={busy}
               onClick={() => void onResend()}
             >
-              Отправить код повторно
+              {userCopy.auth.resendCode}
             </Button>
             <Button
               type="button"
@@ -181,7 +184,7 @@ export function EmailVerificationGate({ children }: EmailVerificationGateProps) 
               disabled={busy}
               onClick={() => void logout()}
             >
-              Выйти
+              {userCopy.account.signOut}
             </Button>
             {status ? <p className="text-center text-sm text-muted-foreground">{status}</p> : null}
             {error ? (

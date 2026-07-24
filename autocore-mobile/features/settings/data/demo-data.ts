@@ -90,7 +90,7 @@ export const ACCOUNTING_DEMO = {
   ],
   exportFormats: ['1C', 'Excel', 'PDF', 'CSV'],
   invoices: { draft: 3, sent: 18, paid: 142, overdue: 2 },
-  paymentMethods: ['Наличные', 'Kaspi', 'Банковский перевод', 'Halyk Terminal'],
+  paymentMethods: ['Наличные', 'Карта', 'Банковский перевод', 'Halyk Terminal'],
 };
 
 export const WORKSPACE_DEMO = {

@@ -1,4 +1,5 @@
 import { DocumentTheme } from "@/domain/company-branding";
+import { userCopy } from "@/lib/user-copy";
 
 export type DocumentTemplateVariant =
   | "work-order"
@@ -34,79 +35,44 @@ export type DocumentTemplateLayout = {
   useOrderStatusTag: boolean;
 };
 
+function templateMeta(variant: DocumentTemplateVariant): DocumentTemplateMeta {
+  const entry = userCopy.documents.templates[variant];
+  return {
+    title: entry.title,
+    tag: entry.tag,
+    lead: entry.lead,
+    primaryLabel: entry.primaryLabel,
+    warrantyBlock: entry.warrantyBlock,
+    footer: entry.footer,
+    ...("disclaimer" in entry && entry.disclaimer ? { disclaimer: entry.disclaimer } : {}),
+  };
+}
+
+/** Locale-aware via `userCopy` / active AppLocale (remount on locale change). */
 export const DOCUMENT_TEMPLATE_META: Record<DocumentTemplateVariant, DocumentTemplateMeta> = {
-  "work-order": {
-    title: "Заказ-наряд",
-    tag: "В работе",
-    lead: "Приём автомобиля, согласованный перечень работ, материалы и итоговая стоимость обслуживания.",
-    primaryLabel: "Итог к оплате",
-    warrantyBlock:
-      "На выполненные работы — 12 месяцев или 20 000 км пробега (что наступит раньше). На расходные материалы и естественный износ гарантия не распространяется.",
-    footer: "Заказ-наряд сформирован в AutoCore. Документ действителен при наличии подписей сторон.",
+  get "work-order"() {
+    return templateMeta("work-order");
   },
-  "service-act": {
-    title: "Акт выполненных работ",
-    tag: "Работы завершены",
-    lead: "Подтверждение выполнения работ, передачи автомобиля клиенту и отсутствия претензий на момент выдачи.",
-    primaryLabel: "Сумма по акту",
-    warrantyBlock: "Клиент ознакомлен с перечнем работ, рекомендациями мастера и условиями гарантийного обслуживания.",
-    footer: "Акт сформирован в AutoCore после финального контроля качества.",
-    disclaimer: "Работы выполнены в полном объёме. Клиент претензий по качеству и срокам не имеет.",
+  get "service-act"() {
+    return templateMeta("service-act");
   },
-  "engine-warranty": {
-    title: "Гарантийный талон",
-    tag: "Гарантия активна",
-    lead: "Официальное подтверждение гарантийных обязательств на установленный двигатель и выполненные работы.",
-    primaryLabel: "Срок гарантии",
-    warrantyBlock:
-      "Гарантия не распространяется на естественный износ, нарушение эксплуатации и внешние повреждения.",
-    footer: "Талон действителен только для позиций, указанных в документе. Храните вместе с заказ-нарядом.",
+  get "engine-warranty"() {
+    return templateMeta("engine-warranty");
   },
-  invoice: {
-    title: "Счёт клиенту",
-    tag: "К оплате",
-    lead: "Счёт на оплату выполненных работ, запчастей и материалов по заказ-наряду.",
-    primaryLabel: "К оплате",
-    warrantyBlock: "",
-    footer: "Счёт сформирован в AutoCore. Оплата подтверждает согласие с перечнем позиций.",
-    disclaimer: "Счёт действителен {days} рабочих дней. Оплата означает согласие с составом и стоимостью.",
+  get invoice() {
+    return templateMeta("invoice");
   },
-  "engine-waybill": {
-    title: "Накладная на двигатель",
-    tag: "Передача",
-    lead: "Документ фиксирует передачу двигателя клиенту: комплектацию, состояние и стоимость.",
-    primaryLabel: "Стоимость",
-    warrantyBlock: "",
-    footer: "Накладная сформирована в AutoCore. Подписи подтверждают факт передачи.",
-    disclaimer: "Двигатель передан в исправном состоянии. Комплектация и внешний вид проверены сторонами.",
+  get "engine-waybill"() {
+    return templateMeta("engine-waybill");
   },
-  "commercial-proposal": {
-    title: "Коммерческое предложение",
-    tag: "Предварительно",
-    lead: "Ориентировочный расчёт работ и материалов до оформления заказ-наряда.",
-    primaryLabel: "Ориентировочно",
-    warrantyBlock: "",
-    footer: "Предложение сформировано в AutoCore. Окончательная стоимость фиксируется в заказ-наряде.",
-    disclaimer:
-      "Документ носит ознакомительный характер. Итоговая сумма может измениться после диагностики и согласования.",
+  get "commercial-proposal"() {
+    return templateMeta("commercial-proposal");
   },
-  "vehicle-intake-act": {
-    title: "Акт приёма автомобиля",
-    tag: "Приёмка",
-    lead: "Фиксация состояния автомобиля, комплектации и согласованного объёма работ при поступлении в сервис.",
-    primaryLabel: "Пробег при приёмке",
-    warrantyBlock: "",
-    footer: "Акт приёма подтверждает передачу автомобиля на обслуживание.",
-    disclaimer: "Клиент подтверждает достоверность указанных данных и согласие с условиями приёмки.",
+  get "vehicle-intake-act"() {
+    return templateMeta("vehicle-intake-act");
   },
-  "sales-receipt": {
-    title: "Товарный чек",
-    tag: "Продажа",
-    lead: "Подтверждение продажи запчастей, агрегатов и сопутствующих позиций.",
-    primaryLabel: "Сумма чека",
-    warrantyBlock: "",
-    footer: "Чек подтверждает факт продажи и получения оплаты.",
-    disclaimer: "Возврат и гарантия регулируются условиями продавца.",
+  get "sales-receipt"() {
+    return templateMeta("sales-receipt");
   },
 };
 
@@ -218,20 +184,55 @@ export const DOCUMENT_TEMPLATE_LAYOUT: Record<DocumentTemplateVariant, DocumentT
 };
 
 export const DOCUMENT_TEMPLATE_THEME_NOTES: Record<DocumentTheme, string> = {
-  classic: "Строгий официальный стиль для дилерского сервиса и СТО.",
-  premium: "Премиальная карточная подача с теплым бренд-акцентом.",
-  modern: "Минималистичная SaaS-структура с высокой плотностью информации.",
-  racing: "Спортивная подача: контраст, плотная типографика, акцент на агрегатах.",
+  get classic() {
+    return userCopy.documents.themeNotes.classic;
+  },
+  get premium() {
+    return userCopy.documents.themeNotes.premium;
+  },
+  get modern() {
+    return userCopy.documents.themeNotes.modern;
+  },
+  get racing() {
+    return userCopy.documents.themeNotes.racing;
+  },
 };
 
-export const DOCUMENT_TEMPLATE_TIMELINE_LABELS = [
-  "Поступление",
-  "Диагностика",
-  "Ремонт",
-  "Запчасти",
-  "Контроль",
-  "Выдача",
-] as const;
+export function getDocumentTemplateTimelineLabels(): readonly [
+  string,
+  string,
+  string,
+  string,
+  string,
+  string,
+] {
+  return userCopy.documents.timelineLabels;
+}
+
+/** Locale-aware timeline labels (reads active `userCopy`). */
+export const DOCUMENT_TEMPLATE_TIMELINE_LABELS = new Proxy([] as unknown as readonly [
+  string,
+  string,
+  string,
+  string,
+  string,
+  string,
+], {
+  get(_target, prop, receiver) {
+    const labels = getDocumentTemplateTimelineLabels();
+    const value = Reflect.get(labels, prop, receiver);
+    return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(labels) : value;
+  },
+  ownKeys() {
+    return Reflect.ownKeys(getDocumentTemplateTimelineLabels());
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    return Reflect.getOwnPropertyDescriptor(getDocumentTemplateTimelineLabels(), prop);
+  },
+  has(_target, prop) {
+    return Reflect.has(getDocumentTemplateTimelineLabels(), prop);
+  },
+});
 
 export const DOCUMENT_TEMPLATE_HTML_NAME: Record<
   Extract<DocumentTemplateVariant, "work-order" | "service-act" | "engine-warranty">,

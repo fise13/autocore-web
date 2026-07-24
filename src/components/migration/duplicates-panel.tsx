@@ -6,12 +6,7 @@ import { FIELD_SIGNATURE_BY_FIELD } from "@/lib/import";
 import { cn } from "@/lib/utils";
 
 import type { DuplicateGroup, DuplicateResolution } from "./migration-types";
-
-const OPTIONS: Array<{ value: DuplicateResolution; label: string }> = [
-  { value: "update", label: "Обновить" },
-  { value: "skip", label: "Пропустить" },
-  { value: "create", label: "Создать новую" },
-];
+import { userCopy } from "@/lib/user-copy";
 
 export function DuplicatesPanel({
   duplicates,
@@ -22,12 +17,18 @@ export function DuplicatesPanel({
 }) {
   if (duplicates.length === 0) return null;
 
+  const options: Array<{ value: DuplicateResolution; label: string }> = [
+    { value: "update", label: userCopy.migration.duplicates.update },
+    { value: "skip", label: userCopy.migration.duplicates.skip },
+    { value: "create", label: userCopy.migration.duplicates.create },
+  ];
+
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-amber-500/30 bg-amber-500/[0.04] p-4">
       <div className="flex items-center gap-2">
         <CopyCheck className="size-4 text-amber-600" />
-        <h3 className="text-sm font-medium">Найдены повторы ({duplicates.length})</h3>
-        <span className="text-xs text-muted-foreground">Выберите, что делать с каждым</span>
+        <h3 className="text-sm font-medium">{userCopy.migration.duplicates.title(duplicates.length)}</h3>
+        <span className="text-xs text-muted-foreground">{userCopy.migration.duplicates.hint}</span>
       </div>
       <div className="flex flex-col gap-2">
         {duplicates.slice(0, 12).map((group, index) => (
@@ -38,11 +39,11 @@ export function DuplicatesPanel({
             <div className="flex min-w-0 flex-col">
               <span className="truncate text-sm font-medium">{group.value}</span>
               <span className="text-xs text-muted-foreground">
-                {FIELD_SIGNATURE_BY_FIELD[group.field]?.label ?? group.field} · {group.rowIds.length} записи
+                {userCopy.migration.duplicates.groupMeta(FIELD_SIGNATURE_BY_FIELD[group.field]?.label ?? group.field, group.rowIds.length)}
               </span>
             </div>
             <div className="flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
-              {OPTIONS.map((option) => (
+              {options.map((option) => (
                 <button
                   key={option.value}
                   type="button"

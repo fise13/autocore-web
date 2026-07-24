@@ -2,10 +2,11 @@
 
 import { memo } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS, ru } from "date-fns/locale";
 
 import { ActivityLogEntry } from "@/domain/rbac";
 import { resolveActivityLabel, moduleLabel } from "@/lib/mission-control/activity-labels";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 import { formatWorkOrderActivityName } from "@/lib/work-order/work-order-display";
 import { cn } from "@/lib/utils";
 
@@ -47,12 +48,13 @@ function formatActivityTargetName(entry: ActivityLogEntry, module: ActivityLogEn
 
 export const ActivityItem = memo(function ActivityItem({ entry, isNew }: ActivityItemProps) {
   const resolved = resolveActivityLabel(entry.action);
-  const actorName = entry.actorName?.trim() || "Сотрудник";
+  const actorName = entry.actorName?.trim() || userCopy.activity.actorFallback;
   const module = entry.module ?? resolved.module;
   const severity = entry.severity ?? resolved.severity;
+  const dateLocale = getActiveUserCopyLocale() === "ru" ? ru : enUS;
   const when = entry.timestamp
-    ? formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: ru })
-    : "сейчас";
+    ? formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: dateLocale })
+    : userCopy.activity.now;
   const targetName = formatActivityTargetName(entry, module);
 
   return (

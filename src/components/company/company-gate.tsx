@@ -38,7 +38,7 @@ export function CompanyGate({ children }: CompanyGateProps) {
 
     void (async () => {
       setIsSubmitting(true);
-      setSubmitMessage("Присоединяем к команде…");
+      setSubmitMessage(userCopy.company.joiningTeam);
       setError(null);
       try {
         await joinCompanyWithInviteToken(token);
@@ -81,7 +81,7 @@ export function CompanyGate({ children }: CompanyGateProps) {
     await runAction(async () => {
       await createCompany(companyName.trim());
       setCompanyName("");
-    }, "Создание компании…");
+    }, userCopy.company.creatingCompany);
   }
 
   async function onJoinCompany(event: FormEvent<HTMLFormElement>) {
@@ -90,7 +90,7 @@ export function CompanyGate({ children }: CompanyGateProps) {
     await runAction(async () => {
       await joinCompanyWithInvite(inviteCode.trim());
       setInviteCode("");
-    }, "Присоединение к компании…");
+    }, userCopy.company.joiningCompany);
   }
 
   return (
@@ -161,12 +161,12 @@ export function CompanyGate({ children }: CompanyGateProps) {
                     id="inviteCode"
                     value={inviteCode}
                     onChange={(event) => setInviteCode(event.target.value)}
-                    placeholder="Например: DUAVV5"
+                    placeholder={userCopy.company.inviteCodePlaceholder}
                     required
                   />
                 </div>
                 <Button type="submit" variant="outline" disabled={isSubmitting} className="w-full">
-                  Присоединиться
+                  {userCopy.company.joinButton}
                 </Button>
               </form>
             </CardContent>

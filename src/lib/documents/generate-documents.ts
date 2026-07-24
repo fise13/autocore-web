@@ -16,9 +16,11 @@ export async function generateAndPersistDocument(params: {
   workOrderId: string;
   context: DocumentContext;
   contextHash?: string;
+  locale?: "en" | "ru";
 }): Promise<WorkOrderDocument> {
   const pdf = await generateDocumentPdf(params.slug, params.companyId, params.workOrderId, {
     theme: params.context.theme,
+    locale: params.locale ?? (params.context.locale?.toLowerCase().startsWith("en") ? "en" : "ru"),
   });
   const definition = DOCUMENT_BY_SLUG[params.slug];
 
@@ -37,10 +39,13 @@ export async function generateAndPersistAllDocuments(params: {
   workOrderId: string;
   context: DocumentContext;
   slugs?: DocumentSlug[];
+  locale?: "en" | "ru";
 }): Promise<WorkOrderDocument[]> {
   const slugs = params.slugs ?? ALL_DOCUMENT_SLUGS;
   const results: WorkOrderDocument[] = [];
   const concurrency = 2;
+  const locale =
+    params.locale ?? (params.context.locale?.toLowerCase().startsWith("en") ? "en" : "ru");
 
   for (let index = 0; index < slugs.length; index += concurrency) {
     const batch = slugs.slice(index, index + concurrency);
@@ -51,6 +56,7 @@ export async function generateAndPersistAllDocuments(params: {
           companyId: params.companyId,
           workOrderId: params.workOrderId,
           context: params.context,
+          locale,
         }),
       ),
     );

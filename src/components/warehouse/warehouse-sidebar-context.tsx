@@ -29,6 +29,7 @@ import {
 import { createInventoryCategoryRepository } from "@/infrastructure/firestore/inventory-category-repository";
 import { createWarehouseRepository } from "@/infrastructure/firestore/warehouse-repository";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 const warehouseRepository = createWarehouseRepository();
 const categoryRepository = createInventoryCategoryRepository();
@@ -129,7 +130,7 @@ export function WarehouseSidebarContext() {
       setNewName("");
       setAddOpen(false);
     } catch (createError) {
-      setError(createError instanceof Error ? createError.message : "Не удалось создать склад");
+      setError(createError instanceof Error ? createError.message : userCopy.warehouse.createFailed);
     } finally {
       setBusy(false);
     }
@@ -139,12 +140,12 @@ export function WarehouseSidebarContext() {
     <div className="space-y-3 px-1 py-1">
       <div>
         <div className="mb-1 flex items-center justify-between gap-2 px-3">
-          <p className={sidebarSectionLabelClass}>Склады</p>
+          <p className={sidebarSectionLabelClass}>{userCopy.warehouse.warehouses}</p>
           {canManage ? (
             <button
               type="button"
               className="rounded-md p-1 text-muted-foreground transition hover:bg-sidebar-accent hover:text-foreground"
-              title="Добавить склад"
+              title={userCopy.warehouse.addWarehouse}
               onClick={() => {
                 setError(null);
                 setNewName("");
@@ -158,13 +159,13 @@ export function WarehouseSidebarContext() {
 
         {loading || ensuringDefault ? (
           <p className="px-3 py-2 text-xs text-muted-foreground">
-            {ensuringDefault ? "Создаём основной склад…" : "Загрузка…"}
+            {ensuringDefault ? userCopy.warehouse.creatingMainWarehouse : userCopy.warehouse.loading}
           </p>
         ) : null}
 
         {!loading && !ensuringDefault && warehouses.length === 0 ? (
           <p className="px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-            Основной склад появится автоматически через несколько секунд.
+            {userCopy.warehouse.mainWarehouseHint}
           </p>
         ) : null}
 
@@ -207,15 +208,15 @@ export function WarehouseSidebarContext() {
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Новый склад</DialogTitle>
+            <DialogTitle>{userCopy.warehouse.newWarehouseTitle}</DialogTitle>
             <DialogDescription>
-              Остатки и движения будут отдельными — данные других складов не смешиваются.
+              {userCopy.warehouse.newWarehouseDescription}
             </DialogDescription>
           </DialogHeader>
           <Input
             value={newName}
             onChange={(event) => setNewName(event.target.value)}
-            placeholder="Например: Склад №2"
+            placeholder={userCopy.warehouse.newWarehousePlaceholder}
             autoFocus
             onKeyDown={(event) => {
               if (event.key === "Enter") void confirmCreateWarehouse();
@@ -224,10 +225,10 @@ export function WarehouseSidebarContext() {
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <DialogFooter>
             <Button type="button" variant="ghost" disabled={busy} onClick={() => setAddOpen(false)}>
-              Отмена
+              {userCopy.warehouse.cancel}
             </Button>
             <Button type="button" disabled={busy || !newName.trim()} onClick={() => void confirmCreateWarehouse()}>
-              {busy ? "Создаём…" : "Создать"}
+              {busy ? userCopy.warehouse.creating : userCopy.warehouse.create}
             </Button>
           </DialogFooter>
         </DialogContent>

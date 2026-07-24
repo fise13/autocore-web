@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { CornerDownLeft, Plus } from "lucide-react";
+import { userCopy } from "@/lib/user-copy";
 
 import { domainIconFor } from "@/components/domain/domain-icon";
 import type { DomainCategory, DomainEntry, DomainSearchResult } from "@/lib/domain/types";
@@ -42,7 +43,7 @@ export function DomainSuggestionList({
   showCreate = false,
   createLabel,
   onCreate,
-  emptyLabel = "Ничего не найдено",
+  emptyLabel = userCopy.domain.empty,
   className,
   highlightQuery = "",
   compact = false,
@@ -141,7 +142,7 @@ export function DomainSuggestionList({
             <Plus className="size-3.5" />
           </span>
           <span className="min-w-0 flex-1 truncate">
-            {createLabel ?? "Создать новое значение"}
+            {createLabel ?? userCopy.domain.createNew}
           </span>
           <CornerDownLeft className="size-3.5 opacity-50" />
         </button>
@@ -227,7 +228,7 @@ function SuggestionRow({
                   : "bg-primary/12 text-primary",
               )}
             >
-              моё
+              {userCopy.domain.mine}
             </span>
           ) : null}
         </span>

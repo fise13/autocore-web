@@ -21,6 +21,7 @@ import { InventoryStockLevelRepository } from "@/infrastructure/firestore/invent
 import { FinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
 import { useImportJobsRealtime } from "@/hooks/use-import-jobs-realtime";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 type WarehouseImportHistoryPanelProps = {
   open: boolean;
@@ -35,15 +36,9 @@ type WarehouseImportHistoryPanelProps = {
   onResume?: (job: InventoryImportJob, rows: InventoryImportJob["rows"]) => void;
 };
 
-const statusLabels: Record<InventoryImportJob["status"], string> = {
-  parsing: "Разбор",
-  preview: "Предпросмотр",
-  applying: "Применение",
-  completed: "Завершён",
-  failed: "Ошибка",
-  cancelled: "Отменён",
-  rolled_back: "Откачен",
-};
+function statusLabels(): Record<InventoryImportJob["status"], string> {
+  return { ...userCopy.warehouse.import.jobStatus };
+}
 
 function statusTone(status: InventoryImportJob["status"]) {
   switch (status) {
@@ -76,7 +71,7 @@ export function WarehouseImportHistoryPanel({
   const [actionError, setActionError] = useState<string | null>(null);
 
   async function handleRollback(job: InventoryImportJob) {
-    if (!confirm(`Откатить импорт «${job.sourceFileName ?? job.id}»? Остатки будут скорректированы.`)) {
+    if (!confirm(userCopy.warehouse.import.rollbackConfirm(job.sourceFileName ?? job.id))) {
       return;
     }
     setBusyJobId(job.id);
@@ -91,7 +86,7 @@ export function WarehouseImportHistoryPanel({
         { companyId, jobId: job.id, actorUserId },
       );
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Не удалось откатить импорт");
+      setActionError(error instanceof Error ? error.message : userCopy.warehouse.import.rollbackFailed);
     } finally {
       setBusyJobId(null);
     }
@@ -106,7 +101,7 @@ export function WarehouseImportHistoryPanel({
       onResume(job, rows);
       onOpenChange(false);
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Не удалось загрузить импорт");
+      setActionError(error instanceof Error ? error.message : userCopy.warehouse.import.loadFailed);
     } finally {
       setBusyJobId(null);
     }
@@ -116,33 +111,33 @@ export function WarehouseImportHistoryPanel({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>История импортов</DialogTitle>
-          <DialogDescription>Последние загрузки склада с возможностью отката и продолжения.</DialogDescription>
+          <DialogTitle>{userCopy.warehouse.import.historyTitle}</DialogTitle>
+          <DialogDescription>{userCopy.warehouse.import.historyDescription}</DialogDescription>
         </DialogHeader>
 
         {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
         {actionError ? <p className="text-sm text-destructive">{actionError}</p> : null}
 
         <div className="max-h-[420px] space-y-2 overflow-auto">
-          {loading ? <p className="text-sm text-muted-foreground">Загрузка…</p> : null}
+          {loading ? <p className="text-sm text-muted-foreground">{userCopy.warehouse.loading}</p> : null}
           {!loading && jobs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Импортов пока нет.</p>
+            <p className="text-sm text-muted-foreground">{userCopy.warehouse.import.historyEmpty}</p>
           ) : null}
 
           {jobs.map((job) => (
             <div key={job.id} className="rounded-lg border p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{job.sourceFileName ?? "Импорт"}</p>
+                  <p className="truncate text-sm font-medium">{job.sourceFileName ?? userCopy.warehouse.import.historyFallback}</p>
                   <p className="text-xs text-muted-foreground">
                     {format(job.createdAt, "d MMM yyyy, HH:mm", { locale: ru })}
                     {" · "}
-                    <span className={cn(statusTone(job.status))}>{statusLabels[job.status]}</span>
+                    <span className={cn(statusTone(job.status))}>{statusLabels()[job.status]}</span>
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Строк: {job.stats.total} · валидных: {job.stats.valid}
+                    {userCopy.warehouse.import.historyStats(job.stats.total, job.stats.valid)}
                     {job.appliedSummary
-                      ? ` · применено: ${job.appliedSummary.applied}`
+                      ? userCopy.warehouse.import.historyApplied(job.appliedSummary.applied)
                       : null}
                   </p>
                 </div>
@@ -154,7 +149,7 @@ export function WarehouseImportHistoryPanel({
                       disabled={busyJobId === job.id}
                       onClick={() => void handleResume(job)}
                     >
-                      Продолжить
+                      {userCopy.warehouse.import.continue}
                     </Button>
                   ) : null}
                   {job.status === "completed" && (job.rollbackMovementIds?.length ?? 0) > 0 ? (
@@ -164,7 +159,7 @@ export function WarehouseImportHistoryPanel({
                       disabled={busyJobId === job.id}
                       onClick={() => void handleRollback(job)}
                     >
-                      Откатить
+                      {userCopy.warehouse.import.rollback}
                     </Button>
                   ) : null}
                 </div>

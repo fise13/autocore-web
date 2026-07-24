@@ -1,3 +1,8 @@
+/**
+ * Generates static HTML theme demos under src/lib/documents/templates/html/.
+ * These are design references only — live PDFs use React renderers + userCopy locale.
+ * Labels below include `en` for future bilingual regeneration; output currently uses `ru`.
+ */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,6 +24,7 @@ const themes = {
     radius: "6px",
     font: "Inter, Arial, sans-serif",
     note: "Строгий официальный стиль для дилерского сервиса и СТО.",
+    noteEn: "Formal style for dealer service and shops.",
   },
   premium: {
     label: "PREMIUM",
@@ -33,6 +39,7 @@ const themes = {
     radius: "10px",
     font: "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
     note: "Премиальная карточная подача с теплым бренд-акцентом.",
+    noteEn: "Premium card layout with a warm brand accent.",
   },
   modern: {
     label: "MODERN",
@@ -47,37 +54,58 @@ const themes = {
     radius: "8px",
     font: "Inter, ui-sans-serif, system-ui, sans-serif",
     note: "Минималистичная SaaS-структура с высокой плотностью информации.",
+    noteEn: "Minimal SaaS structure with high information density.",
   },
 };
 
 const docs = {
   "work-order": {
     ru: "Заказ-наряд",
+    en: "Work order",
     num: "ZN-2026-004821",
     tag: "Открыт",
+    tagEn: "Open",
     lead: "Документ фиксирует прием автомобиля, согласованные работы, материалы и расчет стоимости.",
+    leadEn: "Vehicle intake, agreed labor, materials, and cost calculation.",
     primary: "Итог к оплате",
+    primaryEn: "Amount due",
     warrantyBlock: "Гарантия на работы: 12 месяцев или 20 000 км, в зависимости от того, что наступит раньше.",
+    warrantyBlockEn:
+      "Labor warranty: 12 months or 20,000 km, whichever comes first.",
     footer: "Заказ-наряд сформирован системой AutoCore и действителен при наличии подписей сторон.",
+    footerEn: "Work order generated in AutoCore. Valid with both parties’ signatures.",
   },
   warranty: {
     ru: "Гарантийный талон",
+    en: "Engine warranty certificate",
     num: "GT-2026-001392",
     tag: "Гарантия активна",
+    tagEn: "Warranty active",
     lead: "Подтверждает гарантийные обязательства по выполненным работам и установленным запчастям.",
+    leadEn: "Confirms warranty obligations for completed work and installed parts.",
     primary: "Срок гарантии",
+    primaryEn: "Warranty term",
     warrantyBlock:
       "Период гарантии: 12 месяцев. Исключения: естественный износ, нарушение эксплуатации, внешние повреждения.",
+    warrantyBlockEn:
+      "Warranty period: 12 months. Exclusions: normal wear, misuse, external damage.",
     footer: "Гарантийный талон применяется только к позициям, указанным в документе.",
+    footerEn: "Valid only for items listed in this document.",
   },
   "completion-act": {
     ru: "Акт выполненных работ",
+    en: "Certificate of completion",
     num: "AVR-2026-003074",
     tag: "Работы завершены",
+    tagEn: "Work completed",
     lead: "Подтверждает выполнение работ, передачу автомобиля клиенту и отсутствие претензий на момент выдачи.",
+    leadEn: "Confirms completed work, vehicle handover, and no claims at delivery.",
     primary: "Принято клиентом",
+    primaryEn: "Accepted by customer",
     warrantyBlock: "Клиент ознакомлен с перечнем работ, рекомендациями и гарантийными условиями.",
+    warrantyBlockEn: "Customer reviewed labor list, recommendations, and warranty terms.",
     footer: "Акт сформирован системой AutoCore после финального контроля качества.",
+    footerEn: "Act generated in AutoCore after final quality control.",
   },
 };
 

@@ -27,6 +27,7 @@ import {
   createSpecificCategoryRepository,
 } from "@/infrastructure/firestore/specific-category-repository";
 import { createFinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
+import { userCopy } from "@/lib/user-copy";
 
 const specificCategoryRepository = createSpecificCategoryRepository();
 const financialRepository = createFinancialOperationRepository();
@@ -163,8 +164,8 @@ export function SpecificRecordsWorkspace({
             variant="outline"
             size="icon-sm"
             onClick={() => setColumnsOpen(true)}
-            aria-label="Колонки"
-            title="Колонки"
+            aria-label={userCopy.specificSheets.columnsAria}
+            title={userCopy.specificSheets.columnsAria}
           >
             <Settings2 className="size-3.5" />
           </Button>
@@ -174,7 +175,7 @@ export function SpecificRecordsWorkspace({
       <div className="min-h-0 flex-1">
         {loading ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            Загрузка…
+            {userCopy.specificSheets.loading}
           </div>
         ) : (
           <SpecificExcelGrid
@@ -210,18 +211,18 @@ export function SpecificRecordsWorkspace({
         mode={sellDialog?.mode ?? "sell"}
         title={
           sellDialog?.mode === "unsell"
-            ? "Возврат записи каталога"
-            : "Продажа записи каталога"
+            ? userCopy.specificSheets.unsellTitle
+            : userCopy.specificSheets.sellTitle
         }
         description={
           dialogRecord
-            ? `${category.name}: ${dialogLabel}. Будет создана финансовая операция.`
-            : "Выберите запись для операции."
+            ? userCopy.specificSheets.sellDescription(category.name, dialogLabel)
+            : userCopy.specificSheets.pickRecord
         }
         defaultComment={
           sellDialog?.mode === "unsell"
-            ? `Возврат: ${category.name} — ${dialogLabel}`
-            : `Продажа: ${category.name} — ${dialogLabel}`
+            ? userCopy.specificSheets.unsellComment(category.name, dialogLabel)
+            : userCopy.specificSheets.sellComment(category.name, dialogLabel)
         }
         onOpenChange={(open) => {
           if (!open) setSellDialog(null);

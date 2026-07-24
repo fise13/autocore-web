@@ -159,7 +159,7 @@ export function BrandsSidebarGroup({
       }
       closeDialog();
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Не удалось сохранить бренд");
+      setError(submitError instanceof Error ? submitError.message : userCopy.brands.saveFailed);
     } finally {
       setBusy(false);
     }
@@ -176,7 +176,7 @@ export function BrandsSidebarGroup({
       });
       closeDialog();
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Не удалось удалить бренд");
+      setError(submitError instanceof Error ? submitError.message : userCopy.brands.deleteFailed);
     } finally {
       setBusy(false);
     }
@@ -208,9 +208,9 @@ export function BrandsSidebarGroup({
           </SidebarGroupLabel>
         </div>
         {canManage && !isEditing ? (
-          <SidebarGroupAction title="Добавить бренд" onClick={openCreate}>
+          <SidebarGroupAction title={userCopy.brands.addAction} onClick={openCreate}>
             <Plus />
-            <span className="sr-only">Добавить бренд</span>
+            <span className="sr-only">{userCopy.brands.addAction}</span>
           </SidebarGroupAction>
         ) : null}
 
@@ -225,7 +225,7 @@ export function BrandsSidebarGroup({
                     onClick={openCreate}
                     className="mt-2 text-xs font-medium text-primary hover:underline"
                   >
-                    Добавить бренд
+                    {userCopy.brands.addAction}
                   </button>
                 ) : null}
               </div>
@@ -268,23 +268,23 @@ export function BrandsSidebarGroup({
                     <DropdownMenu>
                       <DropdownMenuTrigger
                         render={
-                          <SidebarMenuAction showOnHover title={`Действия: ${brand.name}`} />
+                          <SidebarMenuAction showOnHover title={userCopy.brands.actionsFor(brand.name)} />
                         }
                       >
                         <MoreHorizontal />
-                        <span className="sr-only">Действия</span>
+                        <span className="sr-only">{userCopy.brands.actions}</span>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent side="right" align="start" className="w-44">
                         <DropdownMenuItem className="gap-2" onClick={() => openRename(brand)}>
                           <Pencil className="size-4" />
-                          Переименовать
+                          {userCopy.brands.rename}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="gap-2 text-destructive focus:text-destructive"
                           onClick={() => openDelete(brand)}
                         >
                           <Trash2 className="size-4" />
-                          Удалить
+                          {userCopy.brands.deleteAction}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -308,7 +308,7 @@ export function BrandsSidebarGroup({
           </DialogHeader>
           <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="brand-name">Название</Label>
+              <Label htmlFor="brand-name">{userCopy.brands.nameLabel}</Label>
               <Input
                 id="brand-name"
                 value={name}
@@ -324,10 +324,10 @@ export function BrandsSidebarGroup({
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={closeDialog} disabled={busy}>
-                Отмена
+                {userCopy.brands.cancel}
               </Button>
               <Button type="submit" disabled={busy || !name.trim()}>
-                {dialog?.kind === "rename" ? "Сохранить" : "Добавить"}
+                {dialog?.kind === "rename" ? userCopy.brands.save : userCopy.brands.add}
               </Button>
             </DialogFooter>
           </form>
@@ -352,7 +352,7 @@ export function BrandsSidebarGroup({
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={closeDialog} disabled={busy}>
-              Отмена
+              {userCopy.brands.cancel}
             </Button>
             <Button
               type="button"

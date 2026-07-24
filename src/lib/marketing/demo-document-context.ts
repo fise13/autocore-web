@@ -2,6 +2,8 @@ import { DocumentContext } from "@/lib/documents/document-context";
 import { parseDocumentHeaderConfig } from "@/domain/document-header-config";
 import { MotorEntity } from "@/domain/motor";
 import { WorkOrder } from "@/domain/work-order";
+import { withDocumentLocale } from "@/lib/documents/document-locale";
+import { getActiveUserCopyLocale } from "@/lib/user-copy";
 
 const demoOrder: WorkOrder = {
   id: "demo-wo-001",
@@ -101,7 +103,7 @@ const demoMotor: MotorEntity = {
   updatedAt: new Date("2026-03-14"),
 };
 
-export const demoDocumentContext: DocumentContext = {
+export const demoDocumentContextBase: DocumentContext = {
   company: {
     name: "AutoCore Service",
     legalName: 'ТОО "AutoCore Demo"',
@@ -176,12 +178,36 @@ export const demoDocumentContext: DocumentContext = {
   theme: "modern",
 };
 
+/** Locale-aware demo context for Documents catalog preview. */
+export function getDemoDocumentContext(): DocumentContext {
+  return withDocumentLocale(demoDocumentContextBase, getActiveUserCopyLocale());
+}
+
+/** @deprecated Prefer `getDemoDocumentContext()` — kept for call sites that remount on locale change. */
+export const demoDocumentContext: DocumentContext = demoDocumentContextBase;
+
 /** Landing sale demo — same data, racing work-order language. */
+export function getLandingSaleDocumentContext(): DocumentContext {
+  return withDocumentLocale(
+    {
+      ...demoDocumentContextBase,
+      theme: "racing",
+      company: {
+        ...demoDocumentContextBase.company,
+        primaryColor: "#e11d2e",
+        secondaryColor: "#0a0a0a",
+        headerConfig: parseDocumentHeaderConfig(undefined, "racing"),
+      },
+    },
+    getActiveUserCopyLocale(),
+  );
+}
+
 export const landingSaleDocumentContext: DocumentContext = {
-  ...demoDocumentContext,
+  ...demoDocumentContextBase,
   theme: "racing",
   company: {
-    ...demoDocumentContext.company,
+    ...demoDocumentContextBase.company,
     primaryColor: "#e11d2e",
     secondaryColor: "#0a0a0a",
     headerConfig: parseDocumentHeaderConfig(undefined, "racing"),

@@ -16,7 +16,7 @@ export const OPERATION_TYPE_LABELS: Record<OperationType, string> = {
 
 export const OPERATION_ACCOUNT_LABELS: Record<OperationAccount, string> = {
   cashbox: 'Касса',
-  kaspi: 'Каспи',
+  kaspi: 'Карта',
 };
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {

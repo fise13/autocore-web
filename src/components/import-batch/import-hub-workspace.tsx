@@ -21,16 +21,17 @@ import {
 } from "@/lib/import-batch/fetch-import-batches.client";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 const STATUS_LABELS: Record<ImportBatchStatus, string> = {
-  collecting: "Сбор файлов",
-  processing: "AI разбирает",
-  review: "Проверка",
-  applying: "Импорт…",
-  completed: "Готово",
-  failed: "Ошибка",
-  expired: "Истёк",
-  cancelled: "Отменён",
+  collecting: userCopy.importBatch.status.collecting,
+  processing: userCopy.importBatch.status.processing,
+  review: userCopy.importBatch.status.review,
+  applying: userCopy.importBatch.status.applying,
+  completed: userCopy.importBatch.status.completed,
+  failed: userCopy.importBatch.status.failed,
+  expired: userCopy.importBatch.status.expired,
+  cancelled: userCopy.importBatch.status.cancelled,
 };
 
 export function ImportHubWorkspace() {
@@ -59,7 +60,7 @@ export function ImportHubWorkspace() {
         router.push(`/imports/batch/${batch.id}`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось создать импорт");
+      setError(err instanceof Error ? err.message : userCopy.importBatch.createFailed);
     } finally {
       setCreating(false);
     }
@@ -76,7 +77,7 @@ export function ImportHubWorkspace() {
       }
       router.push(`/imports/batch/${batch.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось загрузить файлы");
+      setError(err instanceof Error ? err.message : userCopy.importBatch.uploadFilesFailed);
     } finally {
       setCreating(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -87,9 +88,9 @@ export function ImportHubWorkspace() {
     <div className="mx-auto flex h-full min-h-0 w-full max-w-4xl flex-col gap-8 overflow-y-auto p-4 md:p-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Импорт</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{userCopy.importBatch.hubTitle}</h1>
           <p className="max-w-xl text-sm text-muted-foreground">
-            Фото с телефона, PDF или Excel — AI предложит строки, вы подтвердите один раз.
+            {userCopy.importBatch.hubDescription}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -100,7 +101,7 @@ export function ImportHubWorkspace() {
             onClick={() => void startBatch(true)}
           >
             <Smartphone className="size-4" />
-            С телефона
+            {userCopy.importBatch.fromPhone}
           </Button>
           <Button
             type="button"
@@ -114,14 +115,14 @@ export function ImportHubWorkspace() {
                   const batch = await createImportBatchClient({ target: "warehouse" });
                   router.push(`/imports/batch/${batch.id}`);
                 } catch (err) {
-                  setError(err instanceof Error ? err.message : "Не удалось создать импорт");
+                  setError(err instanceof Error ? err.message : userCopy.importBatch.createFailed);
                 } finally {
                   setCreating(false);
                 }
               })();
             }}
           >
-            Склад
+            {userCopy.importBatch.warehouse}
           </Button>
           <Button
             type="button"
@@ -130,11 +131,11 @@ export function ImportHubWorkspace() {
             onClick={() => fileInputRef.current?.click()}
           >
             <FileUp className="size-4" />
-            Файлы
+            {userCopy.importBatch.files}
           </Button>
           <Button type="button" disabled={creating} onClick={() => void startBatch(false)}>
             <Plus className="size-4" />
-            Новый
+            {userCopy.importBatch.newSession}
           </Button>
           <input
             ref={fileInputRef}
@@ -156,7 +157,7 @@ export function ImportHubWorkspace() {
       <section className="space-y-3">
         <div className="flex items-center gap-2 text-sm font-medium">
           <Sparkles className="size-4 text-muted-foreground" />
-          Сессии импорта
+          {userCopy.importBatch.sessionsTitle}
         </div>
 
         {loading && batches.length === 0 ? (
@@ -167,12 +168,12 @@ export function ImportHubWorkspace() {
           </div>
         ) : batches.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed bg-muted/20 px-6 py-14 text-center">
-            <p className="text-sm font-medium">Пока нет сессий</p>
+            <p className="text-sm font-medium">{userCopy.importBatch.sessionsEmptyTitle}</p>
             <p className="max-w-sm text-sm text-muted-foreground">
-              Создайте импорт, отсканируйте QR на телефоне или перетащите Excel.
+              {userCopy.importBatch.sessionsEmptyHint}
             </p>
             <Button type="button" disabled={creating} onClick={() => void startBatch(true)}>
-              Начать с телефона
+              {userCopy.importBatch.startFromPhone}
             </Button>
           </div>
         ) : (
@@ -186,7 +187,7 @@ export function ImportHubWorkspace() {
 
       {legacyJobs.length > 0 || legacyLoading ? (
         <section className="space-y-3">
-          <h2 className="text-sm font-medium text-muted-foreground">Ранее с телефона</h2>
+          <h2 className="text-sm font-medium text-muted-foreground">{userCopy.importBatch.earlierFromPhone}</h2>
           <DocumentImportsList
             jobs={legacyJobs}
             loading={legacyLoading}
@@ -221,10 +222,10 @@ function BatchListRow({ batch }: { batch: ImportBatch }) {
     >
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">
-          {batch.title || `Импорт · ${STATUS_LABELS[batch.status]}`}
+          {batch.title || userCopy.importBatch.sessionTitle(STATUS_LABELS[batch.status])}
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {batch.counts.files} файл. · {batch.counts.rows} строк ·{" "}
+          {userCopy.importBatch.toastFilesRows(batch.counts.files, batch.counts.rows)} ·{" "}
           {formatDistanceToNow(batch.createdAt, { addSuffix: true, locale: ru })}
         </p>
       </div>

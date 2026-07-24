@@ -30,7 +30,7 @@ export function MyEarningsHero({ summary, className }: MyEarningsHeroProps) {
               <DeltaIcon />
               <DeltaValue suffix="%" />
             </Delta>
-            <span className="text-muted-foreground">к прошлой неделе</span>
+            <span className="text-muted-foreground">{userCopy.myEarnings.vsLastWeek}</span>
           </div>
         ) : null}
       </div>

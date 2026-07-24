@@ -1,4 +1,5 @@
 import { ActivityModule, ActivitySeverity } from "@/domain/activity-log";
+import { userCopy } from "@/lib/user-copy";
 
 export type ActivityLabel = {
   label: string;
@@ -6,104 +7,95 @@ export type ActivityLabel = {
   severity: ActivitySeverity;
 };
 
-const CATALOG: Record<string, ActivityLabel> = {
-  "inventory.motor_created": { label: "добавил мотор", module: "inventory", severity: "info" },
-  "inventory.motor_updated": { label: "обновил мотор", module: "inventory", severity: "info" },
-  "inventory.motor_deleted": { label: "удалил мотор", module: "inventory", severity: "warning" },
-  "inventory.motor_sold": { label: "продал мотор", module: "inventory", severity: "info" },
-  "inventory.motor_unsold": { label: "вернул мотор", module: "inventory", severity: "info" },
-  "inventory.motor_imported": { label: "импортировал моторы", module: "inventory", severity: "info" },
-  "inventory.motor_import_started": { label: "начал импорт моторов", module: "inventory", severity: "info" },
-  "inventory.motor_import_ai_mapped": { label: "использовал AI для импорта моторов", module: "inventory", severity: "info" },
-  "inventory.motor_import_failed": { label: "импорт моторов завершился ошибкой", module: "inventory", severity: "warning" },
-  "inventory.motor_import_rolled_back": { label: "откатил импорт моторов", module: "inventory", severity: "warning" },
-  "inventory.motor_exported": { label: "экспортировал моторы", module: "inventory", severity: "info" },
-  "inventory.specific_category_created": { label: "создал лист каталога", module: "inventory", severity: "info" },
-  "inventory.specific_category_deleted": { label: "удалил лист каталога", module: "inventory", severity: "warning" },
-  "inventory.specific_columns_updated": { label: "обновил колонки листа каталога", module: "inventory", severity: "info" },
-  "inventory.specific_record_deleted": { label: "удалил строку каталога", module: "inventory", severity: "info" },
-  "inventory.specific_records_replaced": { label: "заменил записи каталога", module: "inventory", severity: "warning" },
-  "inventory.specific_record_upserted": { label: "обновил запись каталога", module: "inventory", severity: "info" },
-  "inventory.item_created": { label: "добавил позицию на склад", module: "inventory", severity: "info" },
-  "inventory.item_upserted": { label: "обновил позицию на складе", module: "inventory", severity: "info" },
-  "inventory.item_archived": { label: "архивировал позицию", module: "inventory", severity: "warning" },
-  "inventory.movement_created": { label: "зафиксировал движение склада", module: "inventory", severity: "info" },
-  "inventory.transfer_completed": { label: "выполнил перемещение", module: "inventory", severity: "info" },
-  "inventory.warehouse_created": { label: "создал склад", module: "inventory", severity: "info" },
-  "inventory.supplier_created": { label: "добавил поставщика", module: "inventory", severity: "info" },
-  "inventory.document_created": { label: "создал складской документ", module: "inventory", severity: "info" },
-  "inventory.import_completed": { label: "завершил импорт склада", module: "inventory", severity: "info" },
-  "inventory.import_started": { label: "начал импорт склада", module: "inventory", severity: "info" },
-  "inventory.import_ai_mapped": { label: "использовал AI для импорта", module: "inventory", severity: "info" },
-  "inventory.import_failed": { label: "импорт склада завершился ошибкой", module: "inventory", severity: "warning" },
-  "inventory.import_rolled_back": { label: "откатил импорт склада", module: "inventory", severity: "warning" },
-  "inventory.warehouse_cleared": { label: "очистил склад", module: "inventory", severity: "critical" },
-  "inventory.motors_cleared": { label: "очистил моторы", module: "inventory", severity: "critical" },
-  "inventory.specifics_cleared": { label: "очистил каталог учёта", module: "inventory", severity: "critical" },
-  "accounting.operation_created": { label: "добавил операцию", module: "accounting", severity: "info" },
-  "accounting.operation_updated": { label: "изменил операцию", module: "accounting", severity: "info" },
-  "accounting.operation_deleted": { label: "удалил операцию", module: "accounting", severity: "warning" },
-  "accounting.operations_cleared": { label: "очистил бухгалтерию", module: "accounting", severity: "critical" },
-  "work_order.created": { label: "создал заказ-наряд", module: "work_orders", severity: "info" },
-  "work_order.status.confirmed": { label: "подтвердил заказ-наряд", module: "work_orders", severity: "info" },
-  "work_order.status.in_progress": { label: "запустил заказ-наряд", module: "work_orders", severity: "info" },
-  "work_order.status.waiting_parts": { label: "перевёл заказ в ожидание запчастей", module: "work_orders", severity: "info" },
-  "work_order.status.completed": { label: "завершил заказ-наряд", module: "work_orders", severity: "info" },
-  "work_order.status.delivered": { label: "выдал автомобиль клиенту", module: "work_orders", severity: "info" },
-  "work_order.status.cancelled": { label: "отменил заказ-наряд", module: "work_orders", severity: "warning" },
-  "employee.invited": { label: "пригласил сотрудника", module: "employees", severity: "info" },
-  "employee.joined_by_invite": { label: "присоединился по приглашению", module: "employees", severity: "info" },
-  "employee.joined_welcome": { label: "присоединился к команде", module: "employees", severity: "info" },
-  "employee.role_changed": { label: "изменил роль сотрудника", module: "employees", severity: "warning" },
-  "employee.permissions_changed": { label: "изменил права сотрудника", module: "employees", severity: "warning" },
-  "employee.activated": { label: "активировал сотрудника", module: "employees", severity: "info" },
-  "employee.deactivated": { label: "деактивировал сотрудника", module: "employees", severity: "warning" },
-  "employee.removed": { label: "удалил сотрудника", module: "employees", severity: "critical" },
-  "roles.seeded": { label: "инициализировал роли", module: "employees", severity: "info" },
-  "settings.data_cleanup": { label: "выполнил очистку данных", module: "settings", severity: "warning" },
-  "system.sync_completed": { label: "обновил данные", module: "system", severity: "info" },
+type ActivityMeta = {
+  module: ActivityModule;
+  severity: ActivitySeverity;
 };
+
+const CATALOG: Record<string, ActivityMeta> = {
+  "inventory.motor_created": { module: "inventory", severity: "info" },
+  "inventory.motor_updated": { module: "inventory", severity: "info" },
+  "inventory.motor_deleted": { module: "inventory", severity: "warning" },
+  "inventory.motor_sold": { module: "inventory", severity: "info" },
+  "inventory.motor_unsold": { module: "inventory", severity: "info" },
+  "inventory.motor_imported": { module: "inventory", severity: "info" },
+  "inventory.motor_import_started": { module: "inventory", severity: "info" },
+  "inventory.motor_import_ai_mapped": { module: "inventory", severity: "info" },
+  "inventory.motor_import_failed": { module: "inventory", severity: "warning" },
+  "inventory.motor_import_rolled_back": { module: "inventory", severity: "warning" },
+  "inventory.motor_exported": { module: "inventory", severity: "info" },
+  "inventory.specific_category_created": { module: "inventory", severity: "info" },
+  "inventory.specific_category_deleted": { module: "inventory", severity: "warning" },
+  "inventory.specific_columns_updated": { module: "inventory", severity: "info" },
+  "inventory.specific_record_deleted": { module: "inventory", severity: "info" },
+  "inventory.specific_records_replaced": { module: "inventory", severity: "warning" },
+  "inventory.specific_record_upserted": { module: "inventory", severity: "info" },
+  "inventory.item_created": { module: "inventory", severity: "info" },
+  "inventory.item_upserted": { module: "inventory", severity: "info" },
+  "inventory.item_archived": { module: "inventory", severity: "warning" },
+  "inventory.movement_created": { module: "inventory", severity: "info" },
+  "inventory.transfer_completed": { module: "inventory", severity: "info" },
+  "inventory.warehouse_created": { module: "inventory", severity: "info" },
+  "inventory.supplier_created": { module: "inventory", severity: "info" },
+  "inventory.document_created": { module: "inventory", severity: "info" },
+  "inventory.import_completed": { module: "inventory", severity: "info" },
+  "inventory.import_started": { module: "inventory", severity: "info" },
+  "inventory.import_ai_mapped": { module: "inventory", severity: "info" },
+  "inventory.import_failed": { module: "inventory", severity: "warning" },
+  "inventory.import_rolled_back": { module: "inventory", severity: "warning" },
+  "inventory.warehouse_cleared": { module: "inventory", severity: "critical" },
+  "inventory.motors_cleared": { module: "inventory", severity: "critical" },
+  "inventory.specifics_cleared": { module: "inventory", severity: "critical" },
+  "accounting.operation_created": { module: "accounting", severity: "info" },
+  "accounting.operation_updated": { module: "accounting", severity: "info" },
+  "accounting.operation_deleted": { module: "accounting", severity: "warning" },
+  "accounting.operations_cleared": { module: "accounting", severity: "critical" },
+  "work_order.created": { module: "work_orders", severity: "info" },
+  "work_order.status.confirmed": { module: "work_orders", severity: "info" },
+  "work_order.status.in_progress": { module: "work_orders", severity: "info" },
+  "work_order.status.waiting_parts": { module: "work_orders", severity: "info" },
+  "work_order.status.completed": { module: "work_orders", severity: "info" },
+  "work_order.status.delivered": { module: "work_orders", severity: "info" },
+  "work_order.status.cancelled": { module: "work_orders", severity: "warning" },
+  "employee.invited": { module: "employees", severity: "info" },
+  "employee.joined_by_invite": { module: "employees", severity: "info" },
+  "employee.joined_welcome": { module: "employees", severity: "info" },
+  "employee.role_changed": { module: "employees", severity: "warning" },
+  "employee.permissions_changed": { module: "employees", severity: "warning" },
+  "employee.activated": { module: "employees", severity: "info" },
+  "employee.deactivated": { module: "employees", severity: "warning" },
+  "employee.removed": { module: "employees", severity: "critical" },
+  "roles.seeded": { module: "employees", severity: "info" },
+  "settings.data_cleanup": { module: "settings", severity: "warning" },
+  "system.sync_completed": { module: "system", severity: "info" },
+};
+
+function inferModule(action: string): ActivityModule {
+  const prefix = action.split(".")[0];
+  if (prefix === "accounting") return "accounting";
+  if (prefix === "work_order") return "work_orders";
+  if (prefix === "employee" || prefix === "roles") return "employees";
+  if (prefix === "settings") return "settings";
+  if (prefix === "system") return "system";
+  return "inventory";
+}
 
 export function resolveActivityLabel(action: string): ActivityLabel {
   const known = CATALOG[action];
-  if (known) return known;
+  const actions = userCopy.missionControl.activityActions as Record<string, string>;
+  const label = (known && actions[action]) || action.replace(/\./g, " · ");
 
-  const prefix = action.split(".")[0];
-  const activityModule: ActivityModule =
-    prefix === "accounting"
-      ? "accounting"
-      : prefix === "work_order"
-        ? "work_orders"
-      : prefix === "employee" || prefix === "roles"
-        ? "employees"
-        : prefix === "settings"
-          ? "settings"
-          : prefix === "system"
-            ? "system"
-            : "inventory";
+  if (known) {
+    return { label, module: known.module, severity: known.severity };
+  }
 
   return {
-    label: action.replace(/\./g, " · "),
-    module: activityModule,
+    label,
+    module: inferModule(action),
     severity: "info",
   };
 }
 
 export function moduleLabel(module: ActivityModule): string {
-  switch (module) {
-    case "inventory":
-      return "Учёт";
-    case "accounting":
-      return "Финансы";
-    case "employees":
-      return "Команда";
-    case "work_orders":
-      return "Заказ-наряды";
-    case "settings":
-      return "Настройки";
-    case "system":
-      return "Система";
-    default:
-      return module;
-  }
+  return userCopy.missionControl.activityModules[module] ?? module;
 }

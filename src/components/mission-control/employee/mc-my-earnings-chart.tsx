@@ -38,7 +38,7 @@ export function McMyEarningsChart({ bars, isLoading, className }: McMyEarningsCh
         description={userCopy.missionControl.employee.charts.earningsHint}
         action={
           <Link href="/my-earnings" className="text-xs font-medium text-primary hover:underline">
-            Подробнее
+            {userCopy.missionControl.employee.earningsDetails}
           </Link>
         }
       />

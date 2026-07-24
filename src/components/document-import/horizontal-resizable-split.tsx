@@ -9,6 +9,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { userCopy } from "@/lib/user-copy";
 
 import { cn } from "@/lib/utils";
 
@@ -116,7 +117,7 @@ export function HorizontalResizableSplit({ left, right, className }: HorizontalR
       <div
         role="separator"
         aria-orientation="vertical"
-        aria-label="Изменить ширину панелей"
+        aria-label={userCopy.documentImport.resizeAria}
         aria-valuenow={Math.round(rightPct)}
         tabIndex={0}
         onPointerDown={onPointerDown}

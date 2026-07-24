@@ -48,6 +48,7 @@ export default async function DownloadPage({ params }: PageProps) {
             t("seo.pages.download.title"),
             t("pages.download.meta.description"),
             platforms.map((platform) => platform.title),
+            locale,
           ),
           buildFaqJsonLd(faqItems),
         ]}

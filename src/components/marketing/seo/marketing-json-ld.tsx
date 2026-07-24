@@ -1,15 +1,18 @@
 import type { ReactNode } from "react";
 
+import type { AppLocale } from "@autocore/i18n/config";
+import { DEFAULT_LOCALE } from "@autocore/i18n/config";
 import { buildMarketingJsonLd } from "@/lib/seo/marketing-seo";
 
 type JsonLdGraph = Record<string, unknown>;
 
 type MarketingJsonLdProps = {
+  locale?: AppLocale;
   extra?: JsonLdGraph | JsonLdGraph[];
 };
 
-export function MarketingJsonLd({ extra }: MarketingJsonLdProps) {
-  const graphs: JsonLdGraph[] = [...buildMarketingJsonLd()];
+export function MarketingJsonLd({ locale = DEFAULT_LOCALE, extra }: MarketingJsonLdProps) {
+  const graphs: JsonLdGraph[] = [...buildMarketingJsonLd(locale)];
   if (extra) {
     graphs.push(...(Array.isArray(extra) ? extra : [extra]));
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { userCopy } from "@/lib/user-copy";
 
 import { RenderDocument } from "@/components/documents/registry/render-document";
 import { waitForFirebaseUser } from "@/lib/auth/wait-for-firebase-user";
@@ -38,7 +39,7 @@ export function DocumentPreviewClient({ orderId, slug }: DocumentPreviewClientPr
         });
         if (!response.ok) {
           const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-          throw new Error(payload?.error ?? "Не удалось загрузить документ");
+          throw new Error(payload?.error ?? userCopy.documents.preview.loadFailed);
         }
         const payload = (await response.json()) as { context: DocumentContext };
         if (!cancelled) {
@@ -46,7 +47,7 @@ export function DocumentPreviewClient({ orderId, slug }: DocumentPreviewClientPr
         }
       } catch (nextError) {
         if (!cancelled) {
-          setError(mapDocumentError(nextError, "Ошибка загрузки"));
+          setError(mapDocumentError(nextError, userCopy.documents.preview.loadError));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -87,7 +88,7 @@ export function DocumentPreviewClient({ orderId, slug }: DocumentPreviewClientPr
 
       {loading ? (
         <div className="rounded-xl border border-white/10 bg-[#141414] px-8 py-16 text-sm text-neutral-400">
-          Загрузка документа…
+          {userCopy.documents.preview.loadingDocument}
         </div>
       ) : error ? null : context ? (
         <div

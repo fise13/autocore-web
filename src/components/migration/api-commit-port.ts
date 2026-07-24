@@ -10,15 +10,16 @@ import type {
   MigrationResult,
   MigrationStage,
 } from "./migration-types";
+import { userCopy } from "@/lib/user-copy";
 
 const CHUNK_SIZE = 50;
 
 const STAGE_META: Array<{ key: string; label: string }> = [
-  { key: "prepare", label: "Подготовка" },
-  { key: "records", label: "Импорт записей" },
-  { key: "photos", label: "Привязка фото" },
-  { key: "index", label: "Обновление поискового индекса" },
-  { key: "finish", label: "Завершение" },
+  { key: "prepare", get label() { return userCopy.migration.stages.prepare; } },
+  { key: "records", get label() { return userCopy.migration.stages.records; } },
+  { key: "photos", get label() { return userCopy.migration.stages.photos; } },
+  { key: "index", get label() { return userCopy.migration.stages.index; } },
+  { key: "finish", get label() { return userCopy.migration.stages.finish; } },
 ];
 
 function buildStages(rowCount: number, photoCount: number): MigrationStage[] {

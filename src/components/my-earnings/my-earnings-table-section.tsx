@@ -31,7 +31,7 @@ type MyEarningsTableSectionProps = {
 
 function rateLabel(row: PayrollTransaction): string {
   if (row.rateType === "percent") return `${row.rate}%`;
-  if (row.rateType === "hourly") return `${row.rate} ₸/ч`;
+  if (row.rateType === "hourly") return userCopy.myEarnings.hourlyRate(row.rate);
   return `${row.rate} ₸`;
 }
 
@@ -83,13 +83,13 @@ export function MyEarningsTableSection({ rows, workOrders, isLoading }: MyEarnin
                   <div className="mt-3 space-y-1 text-sm">
                     {order ? (
                       <Link href={`/work-orders?order=${order.id}`} className="font-medium text-primary hover:underline">
-                        Наряд №{order.number}
+                        {userCopy.myEarnings.orderNumber(order.number)}
                       </Link>
                     ) : (
                       <p className="text-muted-foreground">{row.workOrderId}</p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      {ROLE_LABELS[row.role]} · ставка {rateLabel(row)}
+                      {ROLE_LABELS[row.role]}{userCopy.myEarnings.rateSuffix(rateLabel(row))}
                     </p>
                   </div>
                 </div>

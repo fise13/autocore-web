@@ -29,7 +29,14 @@ export function normalizeHeader(value: string): string {
 export function detectEngineField(header: string): EngineFieldMapping | undefined {
   const normalized = normalizeHeader(header);
 
-  if (normalized.includes("НОМЕР") && (normalized.includes("ДВИГАТЕЛ") || normalized.includes("МОТОР"))) {
+  if (
+    (normalized.includes("НОМЕР") && (normalized.includes("ДВИГАТЕЛ") || normalized.includes("МОТОР"))) ||
+    normalized === "ENGINE NUMBER" ||
+    normalized === "ENGINE NO" ||
+    normalized === "ENGINE #" ||
+    normalized === "SERIAL NUMBER" ||
+    normalized === "SERIAL NO"
+  ) {
     return "serialCode";
   }
   if (normalized === "НОМЕР" || normalized === "SERIAL" || normalized === "№") {
@@ -42,12 +49,19 @@ export function detectEngineField(header: string): EngineFieldMapping | undefine
 
   if (
     (normalized.includes("ДВИГАТЕЛ") || normalized.includes("ENGINE")) &&
-    !normalized.includes("НОМЕР")
+    !normalized.includes("НОМЕР") &&
+    !normalized.includes("NUMBER")
   ) {
     return "engineCode";
   }
 
-  if (normalized.includes("КОМПЛЕКТ") || normalized.includes("КОМПЛЕКС") || normalized === "КОМПЛЕКТАЦИЯ") {
+  if (
+    normalized.includes("КОМПЛЕКТ") ||
+    normalized.includes("КОМПЛЕКС") ||
+    normalized === "КОМПЛЕКТАЦИЯ" ||
+    normalized === "CONFIGURATION" ||
+    normalized === "CONFIG"
+  ) {
     return "configuration";
   }
 
@@ -57,12 +71,19 @@ export function detectEngineField(header: string): EngineFieldMapping | undefine
     normalized.includes("ПРИМЕЧ") ||
     normalized === "ЗАМЕТКИ" ||
     normalized === "NOTES" ||
+    normalized === "SPECIAL NOTES" ||
     normalized.includes("КОММЕНТ")
   ) {
     return "notes";
   }
 
-  if (normalized.includes("КОЛ") || normalized.includes("КОЛИЧ") || normalized === "QTY" || normalized === "QUANTITY") {
+  if (
+    normalized.includes("КОЛ") ||
+    normalized.includes("КОЛИЧ") ||
+    normalized === "QTY" ||
+    normalized === "QUANTITY" ||
+    normalized === "AMOUNT"
+  ) {
     return "quantity";
   }
 
@@ -76,14 +97,25 @@ export function detectEngineField(header: string): EngineFieldMapping | undefine
     return "transmission";
   }
 
-  if (normalized.includes("ПРИХОД") || normalized.includes("ПОСТУП") || normalized.includes("ARRIVAL")) {
+  if (
+    normalized.includes("ПРИХОД") ||
+    normalized.includes("ПОСТУП") ||
+    normalized.includes("ARRIVAL") ||
+    normalized === "ARRIVAL DATE" ||
+    normalized === "RECEIPT DATE"
+  ) {
     return "arrivalDate";
   }
   if (normalized.includes("ДАТА") && (normalized.includes("ПРИХОД") || normalized.includes("ПОСТУП"))) {
     return "arrivalDate";
   }
 
-  if (normalized.includes("ПРОДАЖ") || normalized.includes("SOLD")) {
+  if (
+    normalized.includes("ПРОДАЖ") ||
+    normalized.includes("SOLD") ||
+    normalized === "SALE DATE" ||
+    normalized === "SOLD DATE"
+  ) {
     return "soldDate";
   }
   if (normalized.includes("ДАТА") && normalized.includes("ПРОДАЖ")) {
@@ -133,7 +165,14 @@ export function isLikelySoldSheetName(name: string): boolean {
 
 export function parseSheetBrandEngine(sheetName: string): { brandName: string; engineCode: string } | null {
   const trimmed = sheetName.trim();
-  if (!trimmed || isLikelySoldSheetName(trimmed) || normalizeHeader(trimmed) === "В НАЛИЧИИ") {
+  const normalizedName = normalizeHeader(trimmed);
+  if (
+    !trimmed ||
+    isLikelySoldSheetName(trimmed) ||
+    normalizedName === "В НАЛИЧИИ" ||
+    normalizedName === "IN STOCK" ||
+    normalizedName === "AVAILABLE"
+  ) {
     return null;
   }
 

@@ -3,6 +3,7 @@ import { WorkOrderLaborLine, WorkOrderStatus } from "@/domain/work-order";
 import { ROLE_LABELS } from "@/components/work-orders/work-order-copy";
 import { laborLineAssigneeLabels } from "@/lib/work-order/work-order-display";
 import { laborLineTotal, normalizeLaborPricingMode } from "@/lib/work-order/labor-pricing";
+import { userCopy } from "@/lib/user-copy";
 
 export function nextId(prefix: string) {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -33,13 +34,14 @@ export function isOpenStatus(status: WorkOrderStatus) {
 }
 
 export function laborLineLabel(line: WorkOrderLaborLine, employees: CompanyEmployee[]) {
+  const d = userCopy.workOrders.detail;
   const labels = laborLineAssigneeLabels(line, employees);
-  const assignee = labels.length > 0 ? labels.join(", ") : "без исполнителя";
+  const assignee = labels.length > 0 ? labels.join(", ") : d.noAssignee;
   const total = laborLineTotal(line);
   const mode = normalizeLaborPricingMode(line.pricingMode);
   const pricePart =
     mode === "fixed"
       ? money(total)
-      : `${line.hours} ч × ${money(line.unitPrice)} = ${money(total)}`;
+      : d.hoursAt(line.hours, money(line.unitPrice), money(total));
   return `${line.title} · ${pricePart} · ${assignee} (${ROLE_LABELS[line.assigneeRole]})`;
 }

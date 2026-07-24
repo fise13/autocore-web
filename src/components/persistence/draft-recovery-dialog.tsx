@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import type { FieldDiff, PersistenceDraftRecord, PersistenceKey } from "@/lib/persistence";
 import { persistenceKeyString } from "@/lib/persistence";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 
 export type DraftRecoveryDialogProps = {
   companyId: string | null | undefined;
@@ -97,17 +98,21 @@ export function DraftRecoveryDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Мы нашли несохранённый черновик</DialogTitle>
+          <DialogTitle>{userCopy.persistence.draftTitle}</DialogTitle>
           <DialogDescription>
-            {draft.label
-              ? `«${draft.label}» — ${new Date(draft.updatedAt).toLocaleString("ru-RU")}`
-              : `Изменения от ${new Date(draft.updatedAt).toLocaleString("ru-RU")}`}
+            {(() => {
+              const locale = getActiveUserCopyLocale() === "ru" ? "ru-RU" : "en-US";
+              const when = new Date(draft.updatedAt).toLocaleString(locale);
+              return draft.label
+                ? userCopy.persistence.draftLabeled(draft.label, when)
+                : userCopy.persistence.draftUntitled(when);
+            })()}
           </DialogDescription>
         </DialogHeader>
 
         {showCompare && diffs.length > 0 ? (
           <div className="max-h-48 overflow-auto rounded-md border bg-muted/30 p-2 text-xs">
-            <p className="mb-2 font-medium">Отличия от серверной версии</p>
+            <p className="mb-2 font-medium">{userCopy.persistence.diffsTitle}</p>
             <ul className="space-y-1">
               {diffs.slice(0, 40).map((diff) => (
                 <li key={diff.path} className="font-mono">
@@ -129,7 +134,7 @@ export function DraftRecoveryDialog({
         <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
           {diffs.length > 0 ? (
             <Button type="button" variant="ghost" onClick={() => setShowCompare((v) => !v)}>
-              {showCompare ? "Скрыть сравнение" : "Сравнить с сервером"}
+              {showCompare ? userCopy.persistence.hideCompare : userCopy.persistence.compare}
             </Button>
           ) : null}
           <Button
@@ -144,7 +149,7 @@ export function DraftRecoveryDialog({
               setOpen(false);
             }}
           >
-            Удалить
+            {userCopy.persistence.discard}
           </Button>
           <Button
             type="button"
@@ -152,7 +157,7 @@ export function DraftRecoveryDialog({
               void Promise.resolve(onRestore(draft)).then(() => setOpen(false));
             }}
           >
-            Восстановить
+            {userCopy.persistence.restore}
           </Button>
         </DialogFooter>
       </DialogContent>

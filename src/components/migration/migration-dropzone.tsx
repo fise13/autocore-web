@@ -5,19 +5,21 @@ import { motion } from "motion/react";
 import { FileSpreadsheet, FileText, FolderArchive, UploadCloud } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 const ACCEPT = ".xlsx,.xls,.csv,.tsv,.zip";
 
-const FORMATS = [
-  { icon: FileSpreadsheet, label: "Excel" },
-  { icon: FileText, label: "CSV" },
-  { icon: FolderArchive, label: "ZIP с фото" },
-];
-
 export function MigrationDropzone({ onFiles }: { onFiles: (files: File[]) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+  const copy = userCopy.migration.dropzone;
+
+  const formats = [
+    { icon: FileSpreadsheet, label: "Excel" },
+    { icon: FileText, label: "CSV" },
+    { icon: FolderArchive, label: copy.zipWithPhotos },
+  ];
 
   const handleFiles = useCallback(
     (list: FileList | null) => {
@@ -31,12 +33,9 @@ export function MigrationDropzone({ onFiles }: { onFiles: (files: File[]) => voi
     <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-8 px-6 py-16 text-center">
       <div className="flex flex-col items-center gap-3">
         <h1 className="font-heading text-3xl font-semibold tracking-tight md:text-4xl">
-          Перенесём ваш бизнес в AutoCore
+          {copy.title}
         </h1>
-        <p className="max-w-md text-balance text-muted-foreground">
-          Загрузите выгрузку из Excel, 1С или таблицу поставщика. AutoCore сам разберёт структуру,
-          определит двигатели, запчасти и расходники и покажет, что понял.
-        </p>
+        <p className="max-w-md text-balance text-muted-foreground">{copy.description}</p>
       </div>
 
       <motion.button
@@ -71,15 +70,13 @@ export function MigrationDropzone({ onFiles }: { onFiles: (files: File[]) => voi
         </span>
         <div className="flex flex-col gap-1">
           <span className="text-base font-medium">
-            {dragging ? "Отпустите файл — начнём анализ" : "Перетащите файл сюда"}
+            {dragging ? copy.dropToAnalyze : copy.dropHere}
           </span>
-          <span className="text-sm text-muted-foreground">
-            или нажмите, чтобы выбрать. Анализ начнётся сразу.
-          </span>
+          <span className="text-sm text-muted-foreground">{copy.orClick}</span>
         </div>
 
         <div className="mt-2 flex items-center gap-4">
-          {FORMATS.map(({ icon: Icon, label }) => (
+          {formats.map(({ icon: Icon, label }) => (
             <span key={label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Icon className="size-3.5" />
               {label}
@@ -97,10 +94,7 @@ export function MigrationDropzone({ onFiles }: { onFiles: (files: File[]) => voi
         />
       </motion.button>
 
-      <p className="text-xs text-muted-foreground">
-        Данные не публикуются. Перед сохранением вы увидите всё, что AutoCore распознал, и сможете
-        исправить.
-      </p>
+      <p className="text-xs text-muted-foreground">{copy.privacy}</p>
     </div>
   );
 }

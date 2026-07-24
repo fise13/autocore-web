@@ -3,6 +3,7 @@
 import type { KnowledgeSuggestion } from "@/domain/knowledge/types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 type KnowledgeKitBannerProps = {
   engineCode: string;
@@ -32,23 +33,23 @@ export function KnowledgeKitBanner({
     >
       <div className="min-w-0">
         <p className="text-[13px] font-medium">
-          Комплект для {engineCode}
+          {userCopy.knowledge.kitFor(engineCode)}
           <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
-            {items.length} поз. · {Math.round(confidence * 100)}%
+            {userCopy.knowledge.positionsConfidence(items.length, Math.round(confidence * 100))}
           </span>
         </p>
         <p className="truncate text-[11px] text-muted-foreground">
-          {items[0]?.explanation ?? "На основе завершённых заказ-нарядов компании"}
+          {items[0]?.explanation ?? userCopy.knowledge.kitFallback}
         </p>
       </div>
       <div className="flex items-center gap-1.5">
         {onDismiss ? (
           <Button type="button" variant="ghost" size="sm" onClick={onDismiss}>
-            Скрыть
+            {userCopy.knowledge.hide}
           </Button>
         ) : null}
         <Button type="button" size="sm" onClick={() => onApply(items)}>
-          Добавить
+          {userCopy.knowledge.add}
         </Button>
       </div>
     </div>

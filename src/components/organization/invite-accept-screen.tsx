@@ -14,19 +14,20 @@ import { clearInviteToken, storePendingInvite } from "@/lib/invites/pending-invi
 import { normalizeCompanyId } from "@/lib/company-id";
 import { inviteRequiresEmailMatch, type InvitePreview } from "@autocore/org";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 type InviteAcceptScreenProps = {
   token: string;
 };
 
 const ROLE_LABELS: Record<string, string> = {
-  owner: "Владелец",
-  admin: "Администратор",
-  manager: "Менеджер",
-  employee: "Сотрудник",
-  mechanic: "Механик",
-  accountant: "Бухгалтер",
-  diagnostician: "Диагност",
+  owner: userCopy.organization.invite.roles.owner,
+  admin: userCopy.organization.invite.roles.admin,
+  manager: userCopy.organization.invite.roles.manager,
+  employee: userCopy.organization.invite.roles.employee,
+  mechanic: userCopy.organization.invite.roles.mechanic,
+  accountant: userCopy.organization.invite.roles.accountant,
+  diagnostician: userCopy.organization.invite.roles.diagnostician,
 };
 
 export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
@@ -49,8 +50,8 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
       const payload = await response.json();
       if (!response.ok) {
         setError({
-          title: payload.title ?? "Не удалось загрузить приглашение",
-          message: payload.error ?? "Попробуйте позже",
+          title: payload.title ?? userCopy.organization.invite.loadFailedTitle,
+          message: payload.error ?? userCopy.organization.invite.loadFailedMessage,
           code: payload.code,
         });
         setPreview(null);
@@ -59,8 +60,8 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
       setPreview(payload.preview as InvitePreview);
     } catch {
       setError({
-        title: "Нет соединения",
-        message: "Проверьте интернет и попробуйте снова.",
+        title: userCopy.organization.invite.offlineTitle,
+        message: userCopy.organization.invite.offlineMessage,
         code: "network_error",
       });
     } finally {
@@ -96,8 +97,8 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
       const payload = await response.json();
       if (!response.ok) {
         setError({
-          title: payload.title ?? "Не удалось принять приглашение",
-          message: payload.error ?? "Попробуйте снова",
+          title: payload.title ?? userCopy.organization.invite.acceptFailedTitle,
+          message: payload.error ?? userCopy.organization.invite.acceptFailedMessage,
           code: payload.code,
         });
         return;
@@ -107,8 +108,8 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
       router.replace("/");
     } catch {
       setError({
-        title: "Ошибка",
-        message: "Не удалось принять приглашение. Попробуйте снова.",
+        title: userCopy.organization.invite.errorTitle,
+        message: userCopy.organization.invite.errorMessage,
       });
     } finally {
       setBusy(false);
@@ -169,17 +170,17 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
           <>
             <ScreenHeading title={error.title} subtitle={error.message} />
             <div className="flex flex-col gap-3">
-              <Button onClick={() => void loadPreview()}>Повторить</Button>
+              <Button onClick={() => void loadPreview()}>{userCopy.organization.invite.retry}</Button>
               <Button variant="ghost" onClick={() => router.replace("/login")}>
-                На главную
+                {userCopy.organization.invite.home}
               </Button>
             </div>
           </>
         ) : preview && !firebaseUser ? (
           <>
             <ScreenHeading
-              title="Приглашение в команду"
-              subtitle={`${preview.companyName} приглашает вас присоединиться`}
+              title={userCopy.organization.invite.title}
+              subtitle={userCopy.organization.invite.subtitle(preview.companyName)}
             />
             <InviteCompanyCard preview={preview} />
             <div className="flex flex-col gap-2">
@@ -193,7 +194,7 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
                   router.push(`/login?invite=${encodeURIComponent(token)}`);
                 }}
               >
-                Войти
+                {userCopy.organization.invite.signIn}
               </Button>
               <Button
                 variant="outline"
@@ -206,35 +207,35 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
                   router.push(`/login?mode=signup&invite=${encodeURIComponent(token)}`);
                 }}
               >
-                Создать аккаунт
+                {userCopy.organization.invite.createAccount}
               </Button>
             </div>
           </>
         ) : preview && emailMismatch ? (
           <>
-            <ScreenHeading title="Другой аккаунт" subtitle="Приглашение отправлено на другой email" />
+            <ScreenHeading title={userCopy.organization.invite.otherAccountTitle} subtitle={userCopy.organization.invite.otherAccountSubtitle} />
             <Alert>
-              <AlertTitle>Приглашение для</AlertTitle>
+              <AlertTitle>{userCopy.organization.invite.inviteFor}</AlertTitle>
               <AlertDescription>{preview.email}</AlertDescription>
             </Alert>
             <Alert>
-              <AlertTitle>Вы вошли как</AlertTitle>
+              <AlertTitle>{userCopy.organization.invite.signedInAs}</AlertTitle>
               <AlertDescription>{userEmail}</AlertDescription>
             </Alert>
             <div className="flex flex-col gap-2">
               <Button variant="outline" onClick={() => void handleAccept(false)} disabled={busy}>
-                {busy ? <Loader2 className="size-4 animate-spin" /> : "Продолжить с текущим аккаунтом"}
+                {busy ? <Loader2 className="size-4 animate-spin" /> : userCopy.organization.invite.continueCurrent}
               </Button>
               <Button variant="ghost" onClick={() => void logout()}>
-                Сменить аккаунт
+                {userCopy.organization.invite.switchAccount}
               </Button>
             </div>
           </>
         ) : preview && busy && preview.canAccept && !emailMismatch ? (
           <>
             <ScreenHeading
-              title="Приглашение в команду"
-              subtitle="Присоединяем к команде…"
+              title={userCopy.organization.invite.title}
+              subtitle={userCopy.organization.invite.joiningSubtitle}
             />
             <InviteCompanyCard preview={preview} />
             <div className="flex justify-center py-2">
@@ -244,9 +245,9 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
         ) : preview ? (
           <>
             <ScreenHeading
-              title="Приглашение в команду"
+              title={userCopy.organization.invite.title}
               subtitle={
-                preview.canAccept ? "Примите приглашение, чтобы присоединиться" : "Приглашение недоступно"
+                preview.canAccept ? userCopy.organization.invite.acceptToJoin : userCopy.organization.invite.inviteUnavailable
               }
             />
             <InviteCompanyCard preview={preview} />
@@ -260,17 +261,17 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
               {preview.canAccept ? (
                 <>
                   <Button onClick={() => void handleAccept(true)} disabled={busy}>
-                    {busy ? <Loader2 className="size-4 animate-spin" /> : "Принять и перейти"}
+                    {busy ? <Loader2 className="size-4 animate-spin" /> : userCopy.organization.invite.acceptAndContinue}
                   </Button>
                   <Button variant="outline" onClick={() => void handleAccept(false)} disabled={busy}>
-                    Принять без переключения
+                    {userCopy.organization.invite.acceptWithoutSwitch}
                   </Button>
                   <Button variant="ghost" onClick={() => void handleDecline()} disabled={busy}>
-                    Отклонить
+                    {userCopy.organization.invite.decline}
                   </Button>
                 </>
               ) : (
-                <Button onClick={() => router.replace("/")}>На главную</Button>
+                <Button onClick={() => router.replace("/")}>{userCopy.organization.invite.home}</Button>
               )}
             </div>
           </>
@@ -302,12 +303,12 @@ function InviteCompanyCard({ preview }: { preview: InvitePreview }) {
         <div>
           <p className="text-base font-semibold text-foreground">{preview.companyName}</p>
           <p className="text-sm text-muted-foreground">
-            Роль: {ROLE_LABELS[preview.role] ?? preview.role}
+            {userCopy.organization.invite.rolePrefix(ROLE_LABELS[preview.role] ?? preview.role)}
           </p>
         </div>
       </div>
       {preview.inviterName ? (
-        <p className="text-sm text-muted-foreground">Пригласил: {preview.inviterName}</p>
+        <p className="text-sm text-muted-foreground">{userCopy.organization.invite.invitedBy(preview.inviterName)}</p>
       ) : null}
       {preview.email ? (
         <p className="text-sm text-muted-foreground">Email: {preview.email}</p>

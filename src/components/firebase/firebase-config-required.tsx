@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle } from "lucide-react";
+import { userCopy } from "@/lib/user-copy";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getMissingFirebaseEnvKeys } from "@/infrastructure/firebase/client";
@@ -17,15 +18,12 @@ export function FirebaseConfigRequired({ compact = false }: FirebaseConfigRequir
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <AlertTriangle className="size-4 text-destructive" />
-          Firebase не настроен
+          {userCopy.firebase.notConfigured}
         </CardTitle>
-        <CardDescription>
-          Создайте файл <code>.env.local</code> из <code>.env.local.example</code> и добавьте web-ключи
-          вашего Firebase проекта.
-        </CardDescription>
+        <CardDescription>{userCopy.firebase.setupHint}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2 text-sm">
-        <p className="font-medium">Отсутствуют переменные:</p>
+        <p className="font-medium">{userCopy.firebase.missingVars}</p>
         <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
           {missingKeys.map((key) => (
             <li key={key}>{key}</li>

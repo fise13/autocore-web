@@ -34,6 +34,7 @@ import {
 } from "@/lib/warehouse/warehouse-selection-storage";
 import { createWarehouseRepository } from "@/infrastructure/firestore/warehouse-repository";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 const warehouseRepository = createWarehouseRepository();
 
@@ -130,7 +131,7 @@ export function WarehouseTopBarSelector({ className }: { className?: string }) {
       setNewName("");
       setAddOpen(false);
     } catch (createError) {
-      setError(createError instanceof Error ? createError.message : "Не удалось создать склад");
+      setError(createError instanceof Error ? createError.message : userCopy.warehouse.createFailed);
     } finally {
       setBusy(false);
     }
@@ -139,7 +140,7 @@ export function WarehouseTopBarSelector({ className }: { className?: string }) {
   if (loading || ensuringDefault) {
     return (
       <span className={cn("text-xs text-muted-foreground", className)}>
-        {ensuringDefault ? "Создаём склад…" : "Склад…"}
+        {ensuringDefault ? userCopy.warehouse.creatingWarehouse : userCopy.warehouse.warehouseEllipsis}
       </span>
     );
   }
@@ -181,7 +182,7 @@ export function WarehouseTopBarSelector({ className }: { className?: string }) {
           {activeWarehouse ? (
             <DropdownMenuItem onClick={() => setLocationsOpen(true)}>
               <MapPin className="size-4" />
-              Места склада
+              {userCopy.warehouse.locationsMenu}
             </DropdownMenuItem>
           ) : null}
           {canManage ? (
@@ -195,7 +196,7 @@ export function WarehouseTopBarSelector({ className }: { className?: string }) {
                 }}
               >
                 <Plus className="size-4" />
-                Новый склад
+                {userCopy.warehouse.newWarehouse}
               </DropdownMenuItem>
             </>
           ) : null}
@@ -217,15 +218,15 @@ export function WarehouseTopBarSelector({ className }: { className?: string }) {
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Новый склад</DialogTitle>
+            <DialogTitle>{userCopy.warehouse.newWarehouseTitle}</DialogTitle>
             <DialogDescription>
-              Остатки и движения будут отдельными — данные других складов не смешиваются.
+              {userCopy.warehouse.newWarehouseDescription}
             </DialogDescription>
           </DialogHeader>
           <Input
             value={newName}
             onChange={(event) => setNewName(event.target.value)}
-            placeholder="Например: Склад №2"
+            placeholder={userCopy.warehouse.newWarehousePlaceholder}
             autoFocus
             onKeyDown={(event) => {
               if (event.key === "Enter") void confirmCreateWarehouse();
@@ -234,10 +235,10 @@ export function WarehouseTopBarSelector({ className }: { className?: string }) {
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <DialogFooter>
             <Button type="button" variant="ghost" disabled={busy} onClick={() => setAddOpen(false)}>
-              Отмена
+              {userCopy.warehouse.cancel}
             </Button>
             <Button type="button" disabled={busy || !newName.trim()} onClick={() => void confirmCreateWarehouse()}>
-              {busy ? "Создаём…" : "Создать"}
+              {busy ? userCopy.warehouse.creating : userCopy.warehouse.create}
             </Button>
           </DialogFooter>
         </DialogContent>

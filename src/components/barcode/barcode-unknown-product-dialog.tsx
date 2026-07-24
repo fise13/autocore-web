@@ -1,6 +1,7 @@
 "use client";
 
 import { Barcode, PackagePlus } from "lucide-react";
+import { userCopy } from "@/lib/user-copy";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -39,24 +40,22 @@ export function BarcodeUnknownProductDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Barcode />
-            Товар не найден
+            {userCopy.warehouse.dialogs.barcode.unknownTitle}
           </DialogTitle>
           <DialogDescription>
-            Штрихкод <span className="font-mono font-medium text-foreground">{barcode}</span> отсутствует
-            на складе. Добавить новую позицию?
+            {userCopy.warehouse.dialogs.barcode.unknownDescription(barcode)}
           </DialogDescription>
         </DialogHeader>
         <div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-          После добавления штрихкод будет привязан к товару — повторное сканирование сразу откроет
-          карточку на складе.
+          {userCopy.warehouse.dialogs.barcode.unknownHint}
         </div>
         <DialogFooter className="gap-2 sm:gap-0">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Отмена
+            {userCopy.layout.cancel}
           </Button>
           <Button type="button" onClick={onAddToWarehouse}>
             <PackagePlus data-icon="inline-start" />
-            Добавить на склад
+            {userCopy.warehouse.dialogs.barcode.addToWarehouse}
           </Button>
         </DialogFooter>
       </DialogContent>

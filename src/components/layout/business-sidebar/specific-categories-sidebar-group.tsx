@@ -102,7 +102,7 @@ export function SpecificCategoriesSidebarGroup({
     if (!dialog) return;
     const trimmed = text.trim();
     if (!trimmed) {
-      setError("Введите название");
+      setError(userCopy.specificSheets.nameRequired);
       return;
     }
 
@@ -122,7 +122,7 @@ export function SpecificCategoriesSidebarGroup({
       setDialog(null);
       setText("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось выполнить действие");
+      setError(e instanceof Error ? e.message : userCopy.specificSheets.actionFailed);
     } finally {
       setPending(false);
     }
@@ -146,7 +146,7 @@ export function SpecificCategoriesSidebarGroup({
     setDialog({ kind: "delete", category });
   }
 
-  const groupLabel = groupIdForCollection(activeCollection) === "parts" ? "Листы запчастей" : "Листы агрегатов";
+  const groupLabel = groupIdForCollection(activeCollection) === "parts" ? userCopy.specificSheets.partsGroup : userCopy.specificSheets.aggregatesGroup;
 
   return (
     <>
@@ -165,8 +165,8 @@ export function SpecificCategoriesSidebarGroup({
                     variant="ghost"
                     size="icon-xs"
                     className="size-6 text-muted-foreground hover:text-foreground"
-                    aria-label="Колонки листа"
-                    title="Колонки"
+                    aria-label={userCopy.specificSheets.columnsAria}
+                    title={userCopy.specificSheets.columnsShort}
                     onClick={onOpenColumnsSettings}
                   >
                     <Settings2 className="size-3.5" />
@@ -178,8 +178,8 @@ export function SpecificCategoriesSidebarGroup({
                     variant="ghost"
                     size="icon-xs"
                     className="size-6 text-muted-foreground hover:text-foreground"
-                    aria-label="Создать лист"
-                    title="Создать лист"
+                    aria-label={userCopy.specificSheets.createSheetAria}
+                    title={userCopy.specificSheets.createSheetTitle}
                     onClick={openCreate}
                   >
                     <Plus className="size-3.5" />
@@ -200,7 +200,7 @@ export function SpecificCategoriesSidebarGroup({
                     <span data-sidebar-hide-collapsed>{userCopy.specificSheets.emptyCta}</span>
                   </SidebarMenuButton>
                 ) : (
-                  <p className="px-3 py-2 text-xs text-muted-foreground">Нет листов</p>
+                  <p className="px-3 py-2 text-xs text-muted-foreground">{userCopy.specificSheets.empty}</p>
                 )}
               </SidebarMenuItem>
             )
@@ -228,20 +228,20 @@ export function SpecificCategoriesSidebarGroup({
                     <DropdownMenu>
                       <DropdownMenuTrigger
                         render={
-                          <SidebarMenuAction showOnHover title={`Действия: ${category.name}`} />
+                          <SidebarMenuAction showOnHover title={userCopy.specificSheets.actionsFor(category.name)} />
                         }
                       >
                         <MoreHorizontal className="size-3.5" />
-                        <span className="sr-only">Действия</span>
+                        <span className="sr-only">{userCopy.specificSheets.actions}</span>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent side="right" align="start" className="min-w-40">
                         <DropdownMenuItem onClick={() => openRename(category)}>
                           <Pencil className="size-3.5" />
-                          Переименовать
+                          {userCopy.specificSheets.rename}
                         </DropdownMenuItem>
                         <DropdownMenuItem variant="destructive" onClick={() => openDelete(category)}>
                           <Trash2 className="size-3.5" />
-                          Удалить
+                          {userCopy.specificSheets.delete}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -275,7 +275,7 @@ export function SpecificCategoriesSidebarGroup({
 
             {dialog?.kind === "delete" ? null : (
               <div className="py-2">
-                <Label htmlFor="specific-category-name">Название</Label>
+                <Label htmlFor="specific-category-name">{userCopy.specificSheets.nameLabel}</Label>
                 <Input
                   id="specific-category-name"
                   value={text}
@@ -294,7 +294,7 @@ export function SpecificCategoriesSidebarGroup({
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialog(null)}>
-                Отмена
+                {userCopy.specificSheets.cancel}
               </Button>
               <Button
                 type="submit"
@@ -302,10 +302,10 @@ export function SpecificCategoriesSidebarGroup({
                 disabled={pending}
               >
                 {pending
-                  ? "Сохраняем..."
+                  ? userCopy.specificSheets.saving
                   : dialog?.kind === "delete"
                     ? userCopy.specificSheets.deleteAction
-                    : "Сохранить"}
+                    : userCopy.specificSheets.save}
               </Button>
             </DialogFooter>
           </form>

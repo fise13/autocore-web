@@ -19,8 +19,8 @@ import {
 } from "@/domain/document-header-config";
 import { DocumentWatermarkConfig } from "@/domain/document-watermark-config";
 import { buildBrandingPreviewContext } from "@/lib/documents/build-branding-preview-context";
-import { DOCUMENT_THEME_LABELS_RU } from "@/lib/documents/themes/tokens";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 export type BrandingLivePreviewInput = {
   companyName: string;
@@ -129,6 +129,8 @@ function ScaledPreviewFrame({
 }
 
 export function BrandingLivePreview({ input, compact = false }: BrandingLivePreviewProps) {
+  const copy = userCopy.settings.brandingPreview;
+  const themeLabels = userCopy.settings.brandingUi.themes;
   const theme = input.documentTheme ?? "modern";
   const [dialogOpen, setDialogOpen] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -141,10 +143,10 @@ export function BrandingLivePreview({ input, compact = false }: BrandingLivePrev
   const qrDataUri = showQr ? PREVIEW_QR_DATA_URI : undefined;
 
   const palette = [
-    { label: "Бренд", color: input.primaryColor ?? "#111827" },
-    { label: "Шапка", color: input.headerBackgroundColor ?? "#ffffff" },
-    { label: "Текст", color: input.headerTextColor ?? "#111827" },
-    { label: "Акцент", color: input.secondaryColor ?? "#4f46e5" },
+    { label: copy.swatchBrand, color: input.primaryColor ?? "#111827" },
+    { label: copy.swatchHeader, color: input.headerBackgroundColor ?? "#ffffff" },
+    { label: copy.swatchText, color: input.headerTextColor ?? "#111827" },
+    { label: copy.swatchAccent, color: input.secondaryColor ?? "#4f46e5" },
   ];
 
   const previewPage = <WorkOrderDocument context={previewContext} qrDataUri={qrDataUri} />;
@@ -163,12 +165,12 @@ export function BrandingLivePreview({ input, compact = false }: BrandingLivePrev
               <Eye className="size-3.5" />
             </span>
             <div>
-              <p className="text-sm font-semibold">Живое превью PDF</p>
-              <p className="text-[11px] text-muted-foreground">Нажмите на страницу для увеличения</p>
+              <p className="text-sm font-semibold">{copy.title}</p>
+              <p className="text-[11px] text-muted-foreground">{copy.clickToZoom}</p>
             </div>
           </div>
           <span className="rounded-full border bg-background px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            {DOCUMENT_THEME_LABELS_RU[theme]}
+            {themeLabels[theme]}
           </span>
         </div>
 
@@ -192,7 +194,7 @@ export function BrandingLivePreview({ input, compact = false }: BrandingLivePrev
             <div className="flex items-center justify-between gap-2 border-b bg-background/70 px-3 py-2">
               <div className="flex items-center gap-2">
                 <FileText className="size-3.5 text-muted-foreground" />
-                <span className="text-[11px] font-medium text-muted-foreground">Заказ-наряд · пример</span>
+                <span className="text-[11px] font-medium text-muted-foreground">{copy.sampleWorkOrder}</span>
               </div>
               <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
                 <Maximize2 className="size-3" />
@@ -205,7 +207,7 @@ export function BrandingLivePreview({ input, compact = false }: BrandingLivePrev
                 type="button"
                 className="branding-preview-trigger"
                 onClick={() => setDialogOpen(true)}
-                aria-label="Открыть превью PDF в полном размере"
+                aria-label={copy.openFullAria}
               >
                 <motion.div
                   key={`${theme}-${input.logoUrl}-${input.documentWatermark?.type}-${input.documentWatermark?.opacity}-${input.documentWatermark?.scale}-${input.documentWatermark?.rotation}-${input.documentWatermark?.position}-${input.documentWatermark?.blend}-${input.warrantyTemplateId}-${input.warrantyLabel}-${input.showServiceLogbook}`}
@@ -215,14 +217,14 @@ export function BrandingLivePreview({ input, compact = false }: BrandingLivePrev
                 >
                   <ScaledPreviewFrame scale={inlineScale}>{previewPage}</ScaledPreviewFrame>
                 </motion.div>
-                <p className="branding-preview-hint">Нажмите, чтобы открыть превью</p>
+                <p className="branding-preview-hint">{copy.clickOpen}</p>
               </button>
             </div>
           </motion.div>
 
           <p className="flex items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
             <Palette className="mt-0.5 size-3.5 shrink-0" />
-            Изменения логотипа, водяного знака, цветов, темы и элементов шапки сразу отражаются здесь и в реальных PDF после сохранения.
+            {copy.hint}
           </p>
         </div>
       </div>
@@ -230,7 +232,7 @@ export function BrandingLivePreview({ input, compact = false }: BrandingLivePrev
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-[920px] gap-0 overflow-hidden p-0 sm:max-w-[920px]">
           <DialogHeader className="border-b px-5 py-4">
-            <DialogTitle className="text-base">Превью PDF · {DOCUMENT_THEME_LABELS_RU[theme]}</DialogTitle>
+            <DialogTitle className="text-base">{copy.dialogTitle(themeLabels[theme])}</DialogTitle>
           </DialogHeader>
           <div ref={dialogViewportRef} className="branding-preview-dialog-body">
             <ScaledPreviewFrame scale={dialogScale}>{previewPage}</ScaledPreviewFrame>

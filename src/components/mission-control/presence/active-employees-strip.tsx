@@ -7,7 +7,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { CompanyEmployee } from "@/domain/rbac";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
 import { isEmployeeOnline } from "@/lib/mission-control/compute-overview-metrics";
-import { formatRole } from "@/lib/user-copy";
+import { formatRole, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 type ActiveEmployeesStripProps = {
@@ -25,6 +25,7 @@ export const ActiveEmployeesStrip = memo(function ActiveEmployeesStrip({
   const selfUid = profile?.id ?? firebaseUser?.uid ?? "";
   const active = employees.filter((employee) => employee.isActive);
   const online = active.filter(isEmployeeOnline);
+  const presence = userCopy.missionControl.presence;
 
   if (isLoading) {
     return <div className="h-14 animate-pulse rounded-lg bg-muted/50" />;
@@ -33,9 +34,9 @@ export const ActiveEmployeesStrip = memo(function ActiveEmployeesStrip({
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground">
-        <span className="font-semibold text-foreground">{online.length}</span> онлайн
+        <span className="font-semibold text-foreground">{online.length}</span> {presence.online}
         <span className="mx-1 text-border">/</span>
-        <span className="font-semibold text-foreground">{active.length}</span> активных
+        <span className="font-semibold text-foreground">{active.length}</span> {presence.active}
       </p>
       <div className="flex flex-wrap gap-1.5">
         {active.slice(0, 6).map((employee) => {

@@ -62,7 +62,7 @@ export function WarehouseMovementDrawer({
               </p>
               {movement.referenceType ? (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Источник: {referenceLabels()[movement.referenceType] ?? movement.referenceType}
+                  {userCopy.warehouse.movementSource(referenceLabels()[movement.referenceType] ?? movement.referenceType)}
                   {movement.referenceId && movement.referenceType === "work_order" ? (
                     <>
                       {" · "}

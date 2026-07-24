@@ -1,4 +1,5 @@
 import { CSSProperties } from "react";
+import { userCopy } from "@/lib/user-copy";
 
 import { companyBrandStyle, companyMonogram } from "@/lib/documents/company-brand";
 import { DocumentContext } from "@/lib/documents/document-context";
@@ -37,20 +38,22 @@ export function ServiceTagDocument({ context }: ServiceTagDocumentProps) {
 
       <div className="doc-tag-body">
         <div className="doc-tag-highlight">
-          <p className="doc-tag-highlight-label">Следующая замена масла</p>
-          <p className="doc-tag-highlight-value">{nextOilKm.toLocaleString("ru-KZ")} км</p>
+          <p className="doc-tag-highlight-label">{userCopy.documents.serviceTag.nextOilChange}</p>
+          <p className="doc-tag-highlight-value">
+            {userCopy.documents.serviceTag.km(nextOilKm.toLocaleString("en-US"))}
+          </p>
         </div>
 
         <div className="doc-tag-row">
-          <span>Автомобиль</span>
+          <span>{userCopy.documents.serviceTag.vehicle}</span>
           <strong>{documentVehicleLabel(context)}</strong>
         </div>
         <div className="doc-tag-row">
-          <span>Текущий пробег</span>
-          <strong>{mileage.toLocaleString("ru-KZ")} км</strong>
+          <span>{userCopy.documents.serviceTag.currentMileage}</span>
+          <strong>{userCopy.documents.serviceTag.km(mileage.toLocaleString("en-US"))}</strong>
         </div>
         <div className="doc-tag-row">
-          <span>Дата ТО</span>
+          <span>{userCopy.documents.serviceTag.serviceDate}</span>
           <strong>{formatDocumentDateShort(nextServiceDate)}</strong>
         </div>
       </div>

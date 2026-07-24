@@ -9,23 +9,15 @@ import {
   DOCUMENT_WATERMARK_BLENDS,
   DOCUMENT_WATERMARK_POSITIONS,
   DOCUMENT_WATERMARK_TYPES,
-  WATERMARK_POSITION_LABELS_RU,
-  WATERMARK_TYPE_LABELS_RU,
 } from "@/domain/document-watermark-config";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 import { Label } from "@/components/ui/label";
 
 type DocumentWatermarkSettingsProps = {
   value: DocumentWatermarkConfig;
   hasLogo: boolean;
   onChange: (next: DocumentWatermarkConfig) => void;
-};
-
-const TYPE_HINTS: Record<DocumentWatermarkType, string> = {
-  none: "Чистый лист без фонового брендинга",
-  logo: "Диагональный корпоративный водяной знак по центру страницы",
-  brand_mark: "Массивный бренд-марк с названием компании",
-  pattern: "Тонкий повторяющийся узор как на премиальных сертификатах",
 };
 
 function WatermarkSlider({
@@ -96,6 +88,7 @@ function ToggleChip({
 }
 
 export function DocumentWatermarkSettings({ value, hasLogo, onChange }: DocumentWatermarkSettingsProps) {
+  const copy = userCopy.settings.watermark;
   const active = value.type !== "none";
 
   function update(patch: Partial<DocumentWatermarkConfig>) {
@@ -127,8 +120,8 @@ export function DocumentWatermarkSettings({ value, hasLogo, onChange }: Document
                   : "border-border/80 bg-card hover:border-primary/25 hover:bg-muted/20",
               )}
             >
-              <p className="text-sm font-semibold">{WATERMARK_TYPE_LABELS_RU[type]}</p>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{TYPE_HINTS[type]}</p>
+              <p className="text-sm font-semibold">{copy.types[type]}</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{copy.typeHints[type]}</p>
             </button>
           );
         })}
@@ -136,7 +129,7 @@ export function DocumentWatermarkSettings({ value, hasLogo, onChange }: Document
 
       {logoMissing ? (
         <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
-          Загрузите логотип в разделе «Компания», чтобы использовать режим водяного знака.
+          {copy.needsLogo}
         </p>
       ) : null}
 
@@ -144,7 +137,7 @@ export function DocumentWatermarkSettings({ value, hasLogo, onChange }: Document
         <div className="space-y-4 rounded-xl border bg-muted/15 p-4">
           <WatermarkSlider
             id="wm-opacity"
-            label="Прозрачность"
+            label={copy.opacity}
             value={value.opacity}
             min={value.type === "brand_mark" ? 1 : value.type === "pattern" ? 1 : 3}
             max={value.type === "brand_mark" ? 3 : value.type === "pattern" ? 2 : 6}
@@ -155,7 +148,7 @@ export function DocumentWatermarkSettings({ value, hasLogo, onChange }: Document
 
           <WatermarkSlider
             id="wm-scale"
-            label="Масштаб"
+            label={copy.scale}
             value={value.scale}
             min={value.type === "brand_mark" ? 70 : 35}
             max={value.type === "brand_mark" ? 120 : value.type === "pattern" ? 70 : 70}
@@ -167,7 +160,7 @@ export function DocumentWatermarkSettings({ value, hasLogo, onChange }: Document
           {value.type === "logo" ? (
             <WatermarkSlider
               id="wm-rotation"
-              label="Поворот"
+              label={copy.rotation}
               value={value.rotation}
               min={25}
               max={35}
@@ -180,7 +173,7 @@ export function DocumentWatermarkSettings({ value, hasLogo, onChange }: Document
           {value.type === "pattern" ? (
             <WatermarkSlider
               id="wm-spacing"
-              label="Интервал узора"
+              label={copy.spacing}
               value={value.repeatSpacing}
               min={80}
               max={220}
@@ -192,13 +185,13 @@ export function DocumentWatermarkSettings({ value, hasLogo, onChange }: Document
 
           {value.type !== "pattern" ? (
             <div className="space-y-2">
-              <Label>Позиция</Label>
+              <Label>{copy.position}</Label>
               <div className="flex flex-wrap gap-2">
                 {DOCUMENT_WATERMARK_POSITIONS.map((position) => (
                   <ToggleChip
                     key={position}
                     active={value.position === position}
-                    label={WATERMARK_POSITION_LABELS_RU[position]}
+                    label={copy.positions[position]}
                     onClick={() => update({ position: position as DocumentWatermarkPosition })}
                   />
                 ))}
@@ -208,23 +201,23 @@ export function DocumentWatermarkSettings({ value, hasLogo, onChange }: Document
 
           <div className="flex flex-wrap gap-4">
             <div className="space-y-2">
-              <Label>Оттенки серого</Label>
+              <Label>{copy.grayscale}</Label>
               <div className="flex gap-2">
                 <ToggleChip
                   active={value.grayscale}
-                  label="Вкл"
+                  label={copy.on}
                   onClick={() => update({ grayscale: true })}
                 />
                 <ToggleChip
                   active={!value.grayscale}
-                  label="Выкл"
+                  label={copy.off}
                   onClick={() => update({ grayscale: false })}
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Смешивание</Label>
+              <Label>{copy.blend}</Label>
               <div className="flex gap-2">
                 {DOCUMENT_WATERMARK_BLENDS.map((blend) => (
                   <ToggleChip

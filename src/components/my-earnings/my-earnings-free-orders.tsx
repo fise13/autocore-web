@@ -34,10 +34,10 @@ export function MyEarningsFreeOrders({ orders }: MyEarningsFreeOrdersProps) {
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">
-                    №{order.number} · {order.vehicleLabel ?? order.clientName ?? "Наряд"}
+                    №{order.number} · {order.vehicleLabel ?? order.clientName ?? userCopy.myEarnings.orderFallback}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {order.licensePlate || "Без номера"}
+                    {order.licensePlate || userCopy.myEarnings.noPlate}
                   </p>
                 </div>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />

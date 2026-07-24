@@ -22,6 +22,7 @@ export function WorkOrderClaimBanner({ order, onClaimed }: WorkOrderClaimBannerP
   const [claiming, setClaiming] = useState(false);
   const canClaim = Boolean(uid) && canMechanicClaimWorkOrder(order, uid!);
   const unassignedCount = order.laborLines.filter((line) => !line.assigneeIds.length).length;
+  const claim = userCopy.workOrders.claim;
 
   if (!canClaim) return null;
 
@@ -29,7 +30,7 @@ export function WorkOrderClaimBanner({ order, onClaimed }: WorkOrderClaimBannerP
     setClaiming(true);
     try {
       const token = await firebaseUser?.getIdToken();
-      if (!token) throw new Error(userCopy.workOrders.claim.authRequired);
+      if (!token) throw new Error(claim.authRequired);
 
       const response = await fetch(`/api/work-orders/${order.id}/claim`, {
         method: "POST",
@@ -40,12 +41,12 @@ export function WorkOrderClaimBanner({ order, onClaimed }: WorkOrderClaimBannerP
       });
       const payload = (await response.json()) as { error?: string };
       if (!response.ok) {
-        throw new Error(payload.error ?? userCopy.workOrders.claim.claimFailed);
+        throw new Error(payload.error ?? claim.claimFailed);
       }
-      toast.success(`Наряд №${order.number} взят в работу`);
+      toast.success(claim.claimed(order.number));
       onClaimed?.();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : userCopy.workOrders.claim.claimFailed);
+      toast.error(error instanceof Error ? error.message : claim.claimFailed);
     } finally {
       setClaiming(false);
     }
@@ -57,16 +58,14 @@ export function WorkOrderClaimBanner({ order, onClaimed }: WorkOrderClaimBannerP
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <Wrench className="size-4 text-primary" />
-            Кто возьмёт?
+            {claim.whoTakes}
           </div>
           <p className="text-sm text-muted-foreground">
-            {unassignedCount === 1
-              ? userCopy.workOrders.claim.freeWorkHint
-              : `Свободных работ: ${unassignedCount}.`}
+            {unassignedCount === 1 ? claim.freeWorkHint : claim.freeJobsCount(unassignedCount)}
           </p>
         </div>
         <Button onClick={() => void handleClaim()} disabled={claiming}>
-          {claiming ? userCopy.workOrders.claim.claiming : userCopy.workOrders.claim.claim}
+          {claiming ? claim.claiming : claim.claim}
         </Button>
       </div>
     </div>

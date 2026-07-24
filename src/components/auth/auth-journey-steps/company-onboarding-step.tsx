@@ -36,7 +36,7 @@ export function CompanyOnboardingStep() {
 
     void (async () => {
       setIsSubmitting(true);
-      setSubmitMessage("Присоединяем к команде…");
+      setSubmitMessage(userCopy.company.joiningTeam);
       setError(null);
       try {
         await joinCompanyWithInviteToken(token);
@@ -69,7 +69,7 @@ export function CompanyOnboardingStep() {
     await runAction(async () => {
       await createCompany(companyName.trim());
       setCompanyName("");
-    }, "Создание компании…");
+    }, userCopy.company.creatingCompany);
   }
 
   async function onJoinCompany(event: FormEvent<HTMLFormElement>) {
@@ -78,13 +78,13 @@ export function CompanyOnboardingStep() {
     await runAction(async () => {
       await joinCompanyWithInvite(inviteCode.trim());
       setInviteCode("");
-    }, "Присоединение к компании…");
+    }, userCopy.company.joiningCompany);
   }
 
   async function onSwitchCompany(companyId: string) {
     await runAction(async () => {
       await switchCompany(companyId);
-    }, "Переключение компании…");
+    }, userCopy.company.switchingCompany);
   }
 
   if (isSubmitting) {
@@ -98,7 +98,7 @@ export function CompanyOnboardingStep() {
         <Loader2 className="size-6 animate-spin text-primary motion-reduce:animate-none" aria-hidden />
         <div className="space-y-1">
           <p className="text-sm font-medium">{submitMessage ?? userCopy.auth.completing}</p>
-          <p className="text-xs text-muted-foreground">Это займёт несколько секунд</p>
+          <p className="text-xs text-muted-foreground">{userCopy.company.pleaseWait}</p>
         </div>
       </motion.div>
     );
@@ -119,9 +119,9 @@ export function CompanyOnboardingStep() {
         {companies.length > 0 ? (
           <AuthJourneyReveal index={2} className="space-y-4">
             <div className="space-y-1">
-              <p className="font-medium">Ваши компании</p>
+              <p className="font-medium">{userCopy.company.yourCompanies}</p>
               <p className="text-sm text-muted-foreground">
-                Активная компания не выбрана. Откройте существующее рабочее пространство.
+                {userCopy.company.noActiveCompany}
               </p>
             </div>
             <div className="space-y-2">
@@ -209,12 +209,12 @@ export function CompanyOnboardingStep() {
                     id="inviteCode"
                     value={inviteCode}
                     onChange={(event) => setInviteCode(event.target.value)}
-                    placeholder="Например: DUAVV5"
+                    placeholder={userCopy.company.inviteCodePlaceholder}
                     required
                   />
                 </div>
                 <Button type="submit" variant="outline" className="h-11 w-full">
-                  Присоединиться
+                  {userCopy.company.joinButton}
                 </Button>
               </form>
             </AuthJourneyReveal>

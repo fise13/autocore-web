@@ -19,16 +19,10 @@ import {
   buildWorkOrdersDailySeries,
   growthPercent,
 } from "@/lib/mission-control/compute-dashboard-charts";
+import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 import { WorkOrder } from "@/domain/work-order";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const chartConfig = {
-  count: {
-    label: "Наряды",
-    color: "var(--chart-2)",
-  },
-} satisfies ChartConfig;
 
 type McWorkOrdersChartProps = {
   workOrders: WorkOrder[];
@@ -37,13 +31,21 @@ type McWorkOrdersChartProps = {
 };
 
 export function McWorkOrdersChart({ workOrders, isLoading, className }: McWorkOrdersChartProps) {
+  const copy = userCopy.missionControl.dashboard.charts;
+  const chartConfig = {
+    count: {
+      label: copy.ordersSeries,
+      color: "var(--chart-2)",
+    },
+  } satisfies ChartConfig;
+
   const chartRows = useMemo(() => buildWorkOrdersDailySeries(workOrders, 7), [workOrders]);
   const growth = growthPercent(chartRows[0]?.count ?? 0, chartRows.at(-1)?.count ?? 0);
 
   if (isLoading) {
     return (
       <McPanel className={cn("shadow-none md:col-span-2 dark:ring-0", className)}>
-        <McPanelHeader title="Заказ-наряды" />
+        <McPanelHeader title={copy.workOrders} />
         <McPanelBody>
           <Skeleton className="aspect-video w-full" />
         </McPanelBody>
@@ -54,8 +56,8 @@ export function McWorkOrdersChart({ workOrders, isLoading, className }: McWorkOr
   return (
     <McPanel className={cn("shadow-none md:col-span-2 dark:ring-0", className)}>
       <McPanelHeader
-        title="Заказ-наряды"
-        description="Новые наряды по дням за последнюю неделю"
+        title={copy.workOrders}
+        description={copy.workOrdersDesc}
         badge={
           <Delta value={growth} variant="badge">
             <DeltaIcon variant="trend" />
@@ -69,7 +71,9 @@ export function McWorkOrdersChart({ workOrders, isLoading, className }: McWorkOr
             <CartesianGrid vertical={false} strokeDasharray="4 4" />
             <XAxis axisLine={false} dataKey="day" tickLine={false} tickMargin={10} />
             <ChartTooltip
-              content={<ChartTooltipContent formatter={(value) => `${value} шт.`} />}
+              content={
+                <ChartTooltipContent formatter={(value) => copy.pieces(String(value))} />
+              }
               cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
             />
             <Line

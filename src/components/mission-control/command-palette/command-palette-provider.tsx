@@ -37,7 +37,7 @@ import { useClientsRealtime } from "@/hooks/use-clients-realtime";
 import { canAccessMotorsArea, canAccessMissionControl, canAccessPath, isNavAllowed } from "@/lib/auth/app-access";
 import { can } from "@/lib/auth/permissions";
 import { operationCategoryLabel, operationTypeLabel } from "@/lib/accounting/labels";
-import { formatRole } from "@/lib/user-copy";
+import { formatRole, userCopy } from "@/lib/user-copy";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { businessNavCopy } from "@/lib/navigation/business-nav-copy";
 import { buildCollectionHref } from "@/lib/navigation/inventory-collections";
@@ -286,12 +286,13 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
   const showNavigation = !normalizedQuery;
 
   const resultGroups = useMemo(() => {
+    const cp = userCopy.missionControl.commandPalette;
     const groups: { type: SearchResultType; node: ReactNode }[] = [
       {
         type: "motor",
         node:
           motorHits.length > 0 ? (
-            <Command.Group key="motors" heading="Моторы">
+            <Command.Group key="motors" heading={cp.motors}>
               {motorHits.map((motor) => (
                 <CommandItem
                   key={motor.id}
@@ -314,7 +315,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
         type: "work_order",
         node:
           workOrderHits.length > 0 ? (
-            <Command.Group key="work-orders" heading="Заказ-наряды">
+            <Command.Group key="work-orders" heading={cp.workOrders}>
               {workOrderHits.map((order) => (
                 <CommandItem
                   key={order.id}
@@ -338,7 +339,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
         type: "client",
         node:
           clientHits.length > 0 ? (
-            <Command.Group key="clients" heading="Клиенты">
+            <Command.Group key="clients" heading={cp.clients}>
               {clientHits.map((client) => (
                 <CommandItem
                   key={client.id}
@@ -362,7 +363,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
         type: "warehouse_item",
         node:
           warehouseHits.length > 0 ? (
-            <Command.Group key="warehouse" heading="Склад">
+            <Command.Group key="warehouse" heading={cp.warehouse}>
               {warehouseHits.map((item) => (
                 <CommandItem
                   key={item.id}
@@ -386,7 +387,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
         type: "operation",
         node:
           operationHits.length > 0 ? (
-            <Command.Group key="operations" heading="Операции">
+            <Command.Group key="operations" heading={cp.operations}>
               {operationHits.map((operation) => (
                 <CommandItem
                   key={operation.id}
@@ -403,7 +404,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
         type: "employee",
         node:
           employeeHits.length > 0 ? (
-            <Command.Group key="employees" heading="Сотрудники">
+            <Command.Group key="employees" heading={cp.employees}>
               {employeeHits.map((employee) => (
                 <CommandItem
                   key={employee.uid}
@@ -442,6 +443,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
   ]);
 
   const toggle = useCallback(() => setOpen((current) => !current), []);
+  const cp = userCopy.missionControl.commandPalette;
 
   return (
     <CommandPaletteContext.Provider value={{ open, setOpen, toggle }}>
@@ -460,17 +462,17 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
               <Command.Input
                 value={query}
                 onValueChange={setQuery}
-                placeholder="Мотор, клиент, заказ-наряд, склад, раздел…"
+                placeholder={cp.placeholder}
                 className="flex h-12 w-full bg-transparent py-3 text-sm outline-none"
               />
             </div>
             <Command.List className="max-h-80 overflow-auto p-2">
               <Command.Empty className="py-6 text-center text-sm text-muted-foreground">
-                Ничего не найдено
+                {cp.empty}
               </Command.Empty>
 
               {showNavigation ? (
-              <Command.Group heading="Бизнес">
+              <Command.Group heading={cp.business}>
                 {canAccessMissionControl(profile) ? (
                   <CommandItem icon={LayoutGrid} onSelect={() => navigate("/")}>
                     {businessNavCopy.workspace.dashboard}
@@ -509,7 +511,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
                 ) : null}
                 {canAccessPath(profile, "/settings") ? (
                   <CommandItem icon={Settings} onSelect={() => navigate("/settings")}>
-                    Настройки
+                    {cp.settings}
                   </CommandItem>
                 ) : null}
               </Command.Group>
@@ -524,7 +526,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
                     {businessNavCopy.quickActions.importBusiness}
                   </CommandItem>
                   <CommandItem icon={Download} onSelect={() => navigate(deepActionRoutes.export())}>
-                    Экспорт Excel
+                    {cp.exportExcel}
                   </CommandItem>
                   <CommandItem icon={Receipt} onSelect={() => navigate(deepActionRoutes.sell())}>
                     {businessNavCopy.quickActions.sellItem}
@@ -533,17 +535,17 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
               ) : null}
 
               {showNavigation && can(profile, "accounting_edit") ? (
-                <Command.Group heading="Финансы">
+                <Command.Group heading={cp.finance}>
                   <CommandItem icon={Wallet} onSelect={() => navigate(deepActionRoutes.expense())}>
-                    Добавить расход
+                    {cp.addExpense}
                   </CommandItem>
                 </Command.Group>
               ) : null}
 
               {showNavigation && isPro && can(profile, "employee_manage") ? (
-                <Command.Group heading="Команда">
+                <Command.Group heading={cp.team}>
                   <CommandItem icon={UserPlus} onSelect={() => navigate(deepActionRoutes.invite())}>
-                    Пригласить сотрудника
+                    {cp.invite}
                   </CommandItem>
                 </Command.Group>
               ) : null}

@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast-provider";
+import { userCopy } from "@/lib/user-copy";
 
 export function MigrationSupportDialog({
   open,
@@ -30,6 +31,7 @@ export function MigrationSupportDialog({
   email?: string;
 }) {
   const { toast } = useToast();
+  const copy = userCopy.migration.support;
   const [comment, setComment] = useState("");
   const [contact, setContact] = useState(email ?? "");
   const [file, setFile] = useState<File | null>(defaultFile ?? null);
@@ -38,7 +40,7 @@ export function MigrationSupportDialog({
 
   async function submit() {
     if (!comment.trim() && !file) {
-      toast({ title: "Опишите проблему или приложите файл", variant: "error" });
+      toast({ title: copy.needComment, variant: "error" });
       return;
     }
     setSending(true);
@@ -53,17 +55,17 @@ export function MigrationSupportDialog({
       if (!response.ok) {
         const data = (await response.json().catch(() => null)) as { support?: string } | null;
         if (response.status === 503 && data?.support) {
-          window.location.href = `mailto:${data.support}?subject=${encodeURIComponent("Помощь с импортом")}`;
+          window.location.href = `mailto:${data.support}?subject=${encodeURIComponent(copy.mailSubject)}`;
           onOpenChange(false);
           return;
         }
         throw new Error();
       }
-      toast({ title: "Запрос отправлен", description: "Команда AutoCore свяжется с вами.", variant: "success" });
+      toast({ title: copy.sentTitle, description: copy.sentDescription, variant: "success" });
       setComment("");
       onOpenChange(false);
     } catch {
-      toast({ title: "Не удалось отправить", description: "Попробуйте ещё раз позже.", variant: "error" });
+      toast({ title: copy.failedTitle, description: copy.failedDescription, variant: "error" });
     } finally {
       setSending(false);
     }
@@ -75,27 +77,25 @@ export function MigrationSupportDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <LifeBuoy className="size-4 text-emerald-600" />
-            Поможем с импортом
+            {copy.title}
           </DialogTitle>
-          <DialogDescription>
-            Приложите файл и опишите, что не получилось. Мы настроим перенос под вашу таблицу.
-          </DialogDescription>
+          <DialogDescription>{copy.description}</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="support-comment">Что пошло не так</Label>
+            <Label htmlFor="support-comment">{copy.commentLabel}</Label>
             <Textarea
               id="support-comment"
               value={comment}
               onChange={(event) => setComment(event.target.value)}
-              placeholder="Например: не распознались колонки с ценой и складом"
+              placeholder={copy.commentPlaceholder}
               rows={4}
             />
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="support-email">Email для ответа</Label>
+            <Label htmlFor="support-email">{copy.emailLabel}</Label>
             <Input
               id="support-email"
               type="email"
@@ -115,7 +115,7 @@ export function MigrationSupportDialog({
             />
             <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
               <Paperclip data-icon="inline-start" />
-              {file ? "Заменить файл" : "Приложить файл"}
+              {file ? copy.replaceFile : copy.attachFile}
             </Button>
             {file && <span className="truncate text-xs text-muted-foreground">{file.name}</span>}
           </div>
@@ -123,11 +123,11 @@ export function MigrationSupportDialog({
 
         <div className="-mx-4 -mb-4 flex justify-end gap-2 rounded-b-xl border-t bg-muted/50 p-4">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={sending}>
-            Отмена
+            {copy.cancel}
           </Button>
           <Button onClick={submit} disabled={sending}>
             {sending && <Loader2 className="animate-spin" data-icon="inline-start" />}
-            Отправить в поддержку
+            {copy.submit}
           </Button>
         </div>
       </DialogContent>

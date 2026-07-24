@@ -164,8 +164,8 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
       return {
         key: "empty:transmissions",
         kind: "empty",
-        title: "КПП",
-        description: "Лист КПП появится после первого импорта или настройки компании.",
+        title: userCopy.motors.transmissionSheetTitle,
+        description: userCopy.motors.transmissionSheetDescription,
       };
     }
 
@@ -331,7 +331,7 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
         case "import": {
           requirePro("import", () => {
             if (!triggerMotorImportPicker()) {
-              setDeepActionError("Импорт недоступен на этой странице");
+              setDeepActionError(userCopy.motors.importUnavailable);
             }
           });
           break;
@@ -341,7 +341,7 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
             try {
               await triggerMotorExport();
             } catch (error) {
-              setDeepActionError(error instanceof Error ? error.message : "Не удалось экспортировать");
+              setDeepActionError(error instanceof Error ? error.message : userCopy.motors.exportFailed);
             }
           });
           break;
@@ -350,7 +350,7 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
           requirePro("sync", async () => {
             const synced = await triggerSync();
             if (!synced) {
-              setDeepActionError("Дождитесь загрузки таблицы моторов");
+              setDeepActionError(userCopy.motors.waitForGrid);
             }
           });
           break;
@@ -375,7 +375,7 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
       const clientName = payload.clientName?.trim() ?? "";
       const clientPhone = payload.clientPhone?.trim() ?? "";
       if (clientName.length < 2 || clientPhone.length < 3) {
-        throw new Error("Укажите покупателя и телефон");
+        throw new Error(userCopy.motors.buyerRequired);
       }
 
       const client =
@@ -389,7 +389,7 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
 
       const saleComment =
         payload.comment?.trim() ||
-        `Продажа · ${motor.serialCode} · ${client.fullName}`;
+        userCopy.motors.saleCommentPrefix(motor.serialCode, client.fullName);
 
       const effects = await enqueueMotorSoldEffects(motor, {
         amount: payload.amount,
@@ -476,13 +476,13 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
           amount: 0,
           account: "cashbox",
           paymentMethod: "cash",
-          comment: "Продажа мотора",
+          comment: userCopy.motors.saleComment,
         });
         const effects = await enqueueMotorSoldEffects(motor, {
           amount: 0,
           account: "cashbox",
           paymentMethod: "cash",
-          comment: "Продажа мотора",
+          comment: userCopy.motors.saleComment,
         });
         if (effects.warrantyId) {
           writeMotorWarrantySeed(motor.id, effects.warrantyId);
@@ -507,7 +507,7 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
           amount: 0,
           account: "cashbox",
           paymentMethod: "cash",
-          comment: "Возврат продажи мотора (web)",
+          comment: userCopy.motors.returnComment,
         });
       }
     } finally {
@@ -591,14 +591,14 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
                       onImportFile={async (file) => {
                         requirePro("import", async () => {
                           if (!motorExcelIo.canImport) {
-                            setDeepActionError("Импорт недоступен на этой странице");
+                            setDeepActionError(userCopy.motors.importUnavailable);
                             return;
                           }
                           try {
                             await triggerMotorImport(file);
                           } catch (error) {
                             setDeepActionError(
-                              error instanceof Error ? error.message : "Не удалось начать импорт",
+                              error instanceof Error ? error.message : userCopy.motors.importHost.startFailed,
                             );
                           }
                         });
@@ -606,7 +606,7 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
                       onPickFile={() =>
                         requirePro("import", () => {
                           if (!triggerMotorImportPicker()) {
-                            setDeepActionError("Импорт недоступен на этой странице");
+                            setDeepActionError(userCopy.motors.importUnavailable);
                           }
                         })
                       }
@@ -627,14 +627,14 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
                     {sellHintVisible ? (
                       <div className="mx-3 mt-3 flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
                         <p className="flex-1 text-muted-foreground">
-                          Выберите мотор в таблице и отметьте продажу через контекстное меню.
+                          {userCopy.motors.saleHint}
                         </p>
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon-sm"
                           onClick={() => setSellHintVisible(false)}
-                          aria-label="Закрыть подсказку"
+                          aria-label={userCopy.motors.closeHintAria}
                         >
                           <X className="size-4" />
                         </Button>

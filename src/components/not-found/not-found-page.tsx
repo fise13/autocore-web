@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CompassIcon, HomeIcon } from "lucide-react";
+import { userCopy } from "@/lib/user-copy";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,16 +20,15 @@ export function NotFoundPage() {
           <EmptyTitle className="mask-b-from-20% mask-b-to-80% text-9xl font-extrabold">
             404
           </EmptyTitle>
-          <EmptyDescription className="-mt-8 text-nowrap text-foreground/80">
-            Страница, которую вы ищете, могла быть <br />
-            перемещена или не существует.
+          <EmptyDescription className="-mt-8 text-balance text-foreground/80">
+            {userCopy.notFound.description}
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
           <div className="flex gap-2">
             <Button render={<Link href="/" />} nativeButton={false}>
               <HomeIcon data-icon="inline-start" />
-              На главную
+              {userCopy.notFound.home}
             </Button>
             <Button
               variant="outline"
@@ -36,7 +36,7 @@ export function NotFoundPage() {
               nativeButton={false}
             >
               <CompassIcon data-icon="inline-start" />
-              Модули
+              {userCopy.notFound.modules}
             </Button>
           </div>
         </EmptyContent>

@@ -34,11 +34,14 @@ export async function POST(request: NextRequest) {
     await assertOrderCompanyAccess(access.companyId, context.order.companyId);
 
     const { generateAndPersistAllDocuments } = await import("@/lib/documents/generate-documents");
+    const { withDocumentLocale } = await import("@/lib/documents/document-locale");
+    const localized = withDocumentLocale(context, access.preferredLocale);
     const documents = await generateAndPersistAllDocuments({
       companyId: access.companyId,
       workOrderId: orderId,
-      context,
+      context: localized,
       slugs,
+      locale: access.preferredLocale,
     });
 
     return NextResponse.json({

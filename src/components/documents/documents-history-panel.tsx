@@ -136,7 +136,7 @@ export function DocumentsHistoryPanel() {
   if (!canRead) {
     return (
       <div className="rounded-xl border border-dashed bg-muted/15 px-6 py-12 text-center text-sm text-muted-foreground">
-        Недостаточно прав для просмотра истории документов.
+        {userCopy.documents.history.noPermission}
       </div>
     );
   }
@@ -147,11 +147,11 @@ export function DocumentsHistoryPanel() {
         <div className="space-y-1">
           <p className="text-sm font-medium">{userCopy.documents.history.title}</p>
           <p className="text-xs text-muted-foreground">
-            История PDF по заказ-нарядам. Ищите по типу, номеру заказа или дате.
+            {userCopy.documents.history.pdfHistoryHint}
           </p>
         </div>
         <Badge variant="secondary" className="w-fit tabular-nums">
-          {filtered.length} из {documents.length}
+          {userCopy.documents.history.shownOf(filtered.length, documents.length)}
         </Badge>
       </div>
 
@@ -173,7 +173,7 @@ export function DocumentsHistoryPanel() {
 
       {isLoading ? (
         <div className="rounded-xl border bg-card px-6 py-12 text-center text-sm text-muted-foreground">
-          Загрузка истории…
+          {userCopy.documents.history.loading}
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed bg-muted/10 px-6 py-14 text-center">
@@ -212,7 +212,7 @@ export function DocumentsHistoryPanel() {
                     <p className="text-xs text-muted-foreground">
                       <span className="tabular-nums">{when}</span>
                       <span className="mx-1.5 text-border">·</span>
-                      <span>{orderNumber ? `Заказ ${orderNumber}` : `Заказ ${doc.workOrderId.slice(0, 8)}…`}</span>
+                      <span>{userCopy.documents.history.orderLabel(orderNumber || `${doc.workOrderId.slice(0, 8)}…`)}</span>
                     </p>
                   </div>
                 </div>
@@ -225,7 +225,7 @@ export function DocumentsHistoryPanel() {
                     onClick={() => handlePreview(doc)}
                   >
                     <Eye className="size-4" />
-                    Открыть
+                    {userCopy.documents.history.open}
                   </Button>
                   <Button
                     type="button"

@@ -30,7 +30,7 @@ type PeriodDays = 7 | 30;
 
 const chartConfig = {
   amount: {
-    label: "Начисления",
+    label: userCopy.myEarnings.accrualsSeries,
     color: "var(--chart-2)",
   },
 } satisfies ChartConfig;
@@ -61,7 +61,7 @@ export function MyEarningsCharts({ summary }: MyEarningsChartsProps) {
               onValueChange={(value) => setPeriodDays(Number(value) as PeriodDays)}
               value={String(periodDays)}
             >
-              <SelectTrigger aria-label="Период начислений" className="w-full min-w-32 sm:w-fit" size="sm">
+              <SelectTrigger aria-label={userCopy.myEarnings.accrualsPeriodAria} className="w-full min-w-32 sm:w-fit" size="sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent align="end">

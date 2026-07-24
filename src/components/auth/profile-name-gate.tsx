@@ -51,7 +51,7 @@ export function ProfileNameGate({ children }: ProfileNameGateProps) {
     const trimmedFirst = firstName.trim();
     const trimmedLast = lastName.trim();
     if (!trimmedFirst || !trimmedLast) {
-      setError("Укажите имя и фамилию.");
+      setError(userCopy.auth.profileName.requireName);
       return;
     }
 
@@ -69,7 +69,7 @@ export function ProfileNameGate({ children }: ProfileNameGateProps) {
         setPhase("hidden");
       }, EXIT_MS);
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Не удалось сохранить имя");
+      setError(submitError instanceof Error ? submitError.message : userCopy.auth.profileName.saveFailed);
       setIsSubmitting(false);
     }
   }
@@ -121,9 +121,9 @@ export function ProfileNameGate({ children }: ProfileNameGateProps) {
                       <CheckCircle2 className="size-7 text-primary" />
                     </div>
                     <div className="flex flex-col gap-1">
-                      <p className="text-lg font-semibold tracking-tight">Профиль сохранён</p>
+                      <p className="text-lg font-semibold tracking-tight">{userCopy.auth.profileName.savedTitle}</p>
                       <p className="text-sm text-muted-foreground">
-                        {savedName ? `Приятно познакомиться, ${savedName.split(" ")[0]}!` : "Готовим рабочее пространство…"}
+                        {savedName ? userCopy.auth.profileName.niceToMeet(savedName.split(" ")[0]!) : userCopy.auth.profileName.preparingWorkspace}
                       </p>
                     </div>
                     <Loader2 className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none" aria-hidden />
@@ -143,11 +143,11 @@ export function ProfileNameGate({ children }: ProfileNameGateProps) {
                         <div className="flex flex-col gap-1.5">
                           <div className="inline-flex items-center justify-center gap-1.5 self-center rounded-full border border-border/60 bg-background px-2.5 py-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
                             <Sparkles className="size-3 text-primary" />
-                            Шаг 1 из 2
+                            {userCopy.auth.profileName.step1of2}
                           </div>
-                          <h1 className="text-xl font-semibold tracking-tight">Как к вам обращаться?</h1>
+                          <h1 className="text-xl font-semibold tracking-tight">{userCopy.auth.profileName.title}</h1>
                           <p className="max-w-xs text-sm text-muted-foreground">
-                            Имя и фамилия появятся в документах, команде и подписях.
+                            {userCopy.auth.profileName.description}
                           </p>
                         </div>
                       </div>
@@ -166,10 +166,10 @@ export function ProfileNameGate({ children }: ProfileNameGateProps) {
                         {isSubmitting ? (
                           <>
                             <Loader2 className="animate-spin" data-icon="inline-start" aria-hidden />
-                            Сохраняем…
+                            {userCopy.auth.profileName.saving}
                           </>
                         ) : (
-                          "Продолжить"
+                          userCopy.auth.profileName.continue
                         )}
                       </Button>
 

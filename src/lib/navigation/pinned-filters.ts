@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
+import { userCopy } from "@/lib/user-copy";
 
 export const PINNED_FILTER_IDS = [
   "available",
@@ -30,50 +31,48 @@ export type PinnedFilterMeta = {
   icon: LucideIcon;
 };
 
-export const PINNED_FILTERS: readonly PinnedFilterMeta[] = [
+const PINNED_FILTER_ICONS: Record<PinnedFilterId, LucideIcon> = {
+  available: PackageCheck,
+  reserved: PackageMinus,
+  sold: Sparkles,
+  warranty: ShieldCheck,
+  recent: Clock,
+  attention: AlertCircle,
+};
+
+export function getPinnedFilters(): PinnedFilterMeta[] {
+  const copy = userCopy.pinnedFilters;
+  return PINNED_FILTER_IDS.map((id) => ({
+    id,
+    label: copy[id].label,
+    description: copy[id].description,
+    icon: PINNED_FILTER_ICONS[id],
+  }));
+}
+
+/** Locale-aware pinned filters — prefer getPinnedFilters() at call time. */
+export const PINNED_FILTERS: readonly PinnedFilterMeta[] = new Proxy(
+  [] as PinnedFilterMeta[],
   {
-    id: "available",
-    label: "В наличии",
-    description: "Доступно для продажи",
-    icon: PackageCheck,
+    get(_target, prop, receiver) {
+      const live = getPinnedFilters();
+      if (prop === "length") return live.length;
+      if (prop === Symbol.iterator) return live[Symbol.iterator].bind(live);
+      if (typeof prop === "string" && /^\d+$/.test(prop)) {
+        return live[Number(prop)];
+      }
+      const value = Reflect.get(live, prop, receiver);
+      return typeof value === "function" ? value.bind(live) : value;
+    },
   },
-  {
-    id: "reserved",
-    label: "Забронировано",
-    description: "Зарезервировано под заказ-наряд",
-    icon: PackageMinus,
-  },
-  {
-    id: "sold",
-    label: "Продано",
-    description: "Проданные позиции",
-    icon: Sparkles,
-  },
-  {
-    id: "warranty",
-    label: "На гарантии",
-    description: "Продано с активной гарантией",
-    icon: ShieldCheck,
-  },
-  {
-    id: "recent",
-    label: "Недавно добавлено",
-    description: "Поступило за последние 14 дней",
-    icon: Clock,
-  },
-  {
-    id: "attention",
-    label: "Требует внимания",
-    description: "Долго на складе или мало остатков",
-    icon: AlertCircle,
-  },
-] as const;
+) as readonly PinnedFilterMeta[];
 
 export const STALE_INVENTORY_DAYS = 90;
 export const RECENT_INVENTORY_DAYS = 14;
 
 export function pinnedFilterMeta(id: PinnedFilterId): PinnedFilterMeta {
-  return PINNED_FILTERS.find((item) => item.id === id) ?? PINNED_FILTERS[0];
+  const filters = getPinnedFilters();
+  return filters.find((item) => item.id === id) ?? filters[0]!;
 }
 
 export function isPinnedFilterId(value: unknown): value is PinnedFilterId {

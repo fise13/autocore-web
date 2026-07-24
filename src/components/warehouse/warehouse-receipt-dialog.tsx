@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { InventoryItem } from "@/domain/inventory";
 import { formatGroupedNumber } from "@/lib/money/format-number";
+import { userCopy } from "@/lib/user-copy";
 
 type WarehouseReceiptDialogProps = {
   item: InventoryItem | null;
@@ -35,9 +36,10 @@ export function WarehouseReceiptDialog({
   onOpenChange,
   onConfirm,
 }: WarehouseReceiptDialogProps) {
+  const copy = userCopy.warehouse.dialogs;
   const [quantity, setQuantity] = useState(formatGroupedNumber(1));
   const [unitCost, setUnitCost] = useState("");
-  const [reason, setReason] = useState("Приход на склад");
+  const [reason, setReason] = useState<string>(copy.receipt.defaultReason);
   const [createExpense, setCreateExpense] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +48,7 @@ export function WarehouseReceiptDialog({
     event.preventDefault();
     const parsedQty = parseGroupedNumber(quantity);
     if (!Number.isFinite(parsedQty) || parsedQty <= 0) {
-      setError("Укажите корректное количество");
+      setError(copy.invalidQty);
       return;
     }
     setSubmitting(true);
@@ -55,12 +57,12 @@ export function WarehouseReceiptDialog({
       await onConfirm({
         quantity: parsedQty,
         unitCost: unitCost.trim() ? parseGroupedNumber(unitCost) : item?.purchasePrice,
-        reason: reason.trim() || "Приход на склад",
+        reason: reason.trim() || copy.receipt.defaultReason,
         createExpense,
       });
       onOpenChange(false);
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Ошибка прихода");
+      setError(submitError instanceof Error ? submitError.message : copy.receipt.error);
     } finally {
       setSubmitting(false);
     }
@@ -70,26 +72,32 @@ export function WarehouseReceiptDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Приход на склад</DialogTitle>
+          <DialogTitle>{copy.receipt.title}</DialogTitle>
           <DialogDescription>{item ? `${item.sku} · ${item.name}` : ""}</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="receipt-qty">Количество</Label>
+            <Label htmlFor="receipt-qty">{copy.quantity}</Label>
             <AmountInput id="receipt-qty" value={quantity} onChange={setQuantity} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="receipt-cost">Цена закупки (за ед.)</Label>
+            <Label htmlFor="receipt-cost">{copy.receipt.unitCost}</Label>
             <AmountInput
               id="receipt-cost"
               value={unitCost}
               onChange={setUnitCost}
-              placeholder={item?.purchasePrice != null ? formatGroupedNumber(item.purchasePrice) : ""}
+              placeholder={
+                item?.purchasePrice != null ? formatGroupedNumber(item.purchasePrice) : ""
+              }
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="receipt-reason">Причина</Label>
-            <Textarea id="receipt-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+            <Label htmlFor="receipt-reason">{copy.reason}</Label>
+            <Textarea
+              id="receipt-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
           </div>
           <label className="flex items-start gap-2 rounded-lg border bg-muted/20 p-3 text-sm">
             <input
@@ -99,19 +107,19 @@ export function WarehouseReceiptDialog({
               className="mt-1"
             />
             <span>
-              Создать расход в бухгалтерии
+              {copy.receipt.createExpense}
               <span className="block text-xs text-muted-foreground">
-                Использует цену закупки и связывает операцию с движением склада.
+                {copy.receipt.createExpenseHint}
               </span>
             </span>
           </label>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Отмена
+              {copy.cancel}
             </Button>
             <Button type="submit" disabled={submitting || !item}>
-              Принять
+              {copy.receipt.accept}
             </Button>
           </DialogFooter>
         </form>

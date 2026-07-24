@@ -5,16 +5,17 @@ import { FileText, Shield } from "lucide-react";
 
 import {
   DOCUMENT_SECTION_KEYS,
-  DOCUMENT_SECTION_LABELS,
   DocumentSectionConfig,
   WARRANTY_TEMPLATE_IDS,
   type WarrantyTemplateId,
+  type DocumentSectionKey,
 } from "@/domain/document-config";
 import { WARRANTY_TEMPLATE_PRESETS } from "@/lib/documents/warranty/warranty-templates";
 import { formatWarrantyDurationLabel } from "@/lib/documents/warranty/custom-warranty";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 export type DocumentConfigDraft = {
   documentSections: DocumentSectionConfig;
@@ -62,10 +63,10 @@ export function DocumentConfigSettings({ draft, onChange }: DocumentConfigSettin
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <FileText className="size-4 text-primary" />
-          <Label className="text-sm font-medium">Секции PDF-документов</Label>
+          <Label className="text-sm font-medium">{userCopy.settings.documentConfig.sectionsTitle}</Label>
         </div>
         <p className="text-xs text-muted-foreground">
-          Отключите блоки, которые не использует ваша компания. Документ собирается автоматически из включённых секций.
+          {userCopy.settings.documentConfig.sectionsHint}
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
           {CONFIGURABLE_SECTIONS.map((key) => (
@@ -82,7 +83,7 @@ export function DocumentConfigSettings({ draft, onChange }: DocumentConfigSettin
                 checked={isSectionOn(key)}
                 onChange={(event) => toggleSection(key, event.target.checked)}
               />
-              <span>{DOCUMENT_SECTION_LABELS[key]}</span>
+              <span>{userCopy.settings.documentConfig.sectionLabels[key as DocumentSectionKey]}</span>
             </label>
           ))}
         </div>
@@ -91,7 +92,7 @@ export function DocumentConfigSettings({ draft, onChange }: DocumentConfigSettin
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Shield className="size-4 text-primary" />
-          <Label className="text-sm font-medium">Шаблон гарантии</Label>
+          <Label className="text-sm font-medium">{userCopy.settings.documentConfig.warrantyTemplate}</Label>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
           {WARRANTY_TEMPLATE_IDS.map((id) => {
@@ -122,10 +123,10 @@ export function DocumentConfigSettings({ draft, onChange }: DocumentConfigSettin
                           Number(draft.customWarrantyDays),
                           Number(draft.customWarrantyKm),
                         )
-                      : "Укажите срок и текст гарантии"
+                      : userCopy.settings.documentConfig.specifyWarranty
                     : preset.days > 0
-                      ? `${preset.days} дн · ${preset.km.toLocaleString("ru-KZ")} км`
-                      : "Без гарантийных обязательств"}
+                      ? userCopy.settings.documentConfig.daysKm(preset.days, preset.km.toLocaleString())
+                      : userCopy.settings.documentConfig.noWarranty}
                 </span>
               </button>
             );
@@ -134,12 +135,11 @@ export function DocumentConfigSettings({ draft, onChange }: DocumentConfigSettin
         {draft.warrantyTemplateId === "custom" ? (
           <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
             <p className="text-xs text-muted-foreground">
-              Задайте срок и текст — они попадут в гарантийный талон. При продаже двигателя можно
-              изменить условия для конкретной сделки.
+              {userCopy.settings.documentConfig.customWarrantyHint}
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1">
-                <Label htmlFor="custom-warranty-days">Срок, дн</Label>
+                <Label htmlFor="custom-warranty-days">{userCopy.settings.documentConfig.customDays}</Label>
                 <Input
                   id="custom-warranty-days"
                   type="number"
@@ -152,7 +152,7 @@ export function DocumentConfigSettings({ draft, onChange }: DocumentConfigSettin
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="custom-warranty-km">Пробег, км</Label>
+                <Label htmlFor="custom-warranty-km">{userCopy.settings.documentConfig.customKm}</Label>
                 <Input
                   id="custom-warranty-km"
                   type="number"
@@ -164,7 +164,7 @@ export function DocumentConfigSettings({ draft, onChange }: DocumentConfigSettin
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              Текст условий — в полях «Заголовок гарантии» и «Условия гарантии» на вкладке «Оформление».
+              {userCopy.settings.documentConfig.customTextHint}
             </p>
           </div>
         ) : null}
@@ -172,28 +172,28 @@ export function DocumentConfigSettings({ draft, onChange }: DocumentConfigSettin
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="qr-link">QR-ссылка компании</Label>
+          <Label htmlFor="qr-link">{userCopy.settings.documentConfig.qrLink}</Label>
           <Input
             id="qr-link"
             value={draft.qrLinkUrl}
             onChange={(event) => onChange({ ...draft, qrLinkUrl: event.target.value })}
-            placeholder="https://company.kz или ссылка на карточку"
+            placeholder={userCopy.settings.documentConfig.qrLinkPlaceholder}
           />
           <p className="text-xs text-muted-foreground">
-            Если указано — QR на документах ведёт сюда. Иначе: заказ, гарантия или история авто.
+            {userCopy.settings.documentConfig.qrLinkHint}
           </p>
         </div>
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="doc-footer">Подпись внизу документов</Label>
+          <Label htmlFor="doc-footer">{userCopy.settings.documentConfig.footer}</Label>
           <Input
             id="doc-footer"
             value={draft.documentFooter}
             onChange={(event) => onChange({ ...draft, documentFooter: event.target.value })}
-            placeholder="Документ сформирован для клиентов компании …"
+            placeholder={userCopy.settings.documentConfig.footerPlaceholder}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="invoice-days">Срок действия счёта (дней)</Label>
+          <Label htmlFor="invoice-days">{userCopy.settings.documentConfig.invoiceDays}</Label>
           <Input
             id="invoice-days"
             value={draft.invoiceValidityDays}

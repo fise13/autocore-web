@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { Check, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 import type { MigrationProgress } from "./migration-types";
@@ -15,6 +16,8 @@ export function MigrationProgressView({
   progress: MigrationProgress | null;
   onCancel: () => void;
 }) {
+  const copy = userCopy.migration.progress;
+  const numberLocale = getActiveUserCopyLocale() === "en" ? "en-US" : "ru-RU";
   const stages = progress?.stages ?? [];
   const recordsStage = stages.find((stage) => stage.key === "records");
   const prepareStage = stages.find((stage) => stage.key === "prepare");
@@ -40,11 +43,14 @@ export function MigrationProgressView({
         <div className="relative flex size-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600">
           <Loader2 className="size-7 animate-spin" />
         </div>
-        <h2 className="font-heading text-2xl font-semibold tracking-tight">Переносим ваш бизнес</h2>
+        <h2 className="font-heading text-2xl font-semibold tracking-tight">{copy.title}</h2>
         <p className="text-sm text-muted-foreground">
           {isLargeImport
-            ? `Импортировано ${doneRecords.toLocaleString("ru-RU")} из ${totalRecords.toLocaleString("ru-RU")}. Не закрывайте вкладку — это может занять несколько минут.`
-            : "Можно не закрывать окно. Это займёт несколько секунд."}
+            ? copy.largeHint(
+                doneRecords.toLocaleString(numberLocale),
+                totalRecords.toLocaleString(numberLocale),
+              )
+            : copy.smallHint}
         </p>
       </div>
 
@@ -88,7 +94,7 @@ export function MigrationProgressView({
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium tabular-nums">{percent}%</span>
         <Button variant="ghost" size="sm" onClick={onCancel}>
-          Отменить
+          {copy.cancel}
         </Button>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { ActivityLogEntry, CompanyEmployee } from "@/domain/rbac";
+import { userCopy } from "@/lib/user-copy";
 
 function looksLikeUid(value: string): boolean {
   return value.length >= 20 && !value.includes("@") && !value.includes(" ");
@@ -16,7 +17,7 @@ export function resolveActorDisplayName(
   if (employee?.fullName?.trim()) return employee.fullName.trim();
   if (employee?.email?.includes("@")) return employee.email.split("@")[0] ?? employee.email;
 
-  return "Сотрудник";
+  return userCopy.activity.actorFallback;
 }
 
 export function enrichActivityLogs(

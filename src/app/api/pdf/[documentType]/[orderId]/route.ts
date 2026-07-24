@@ -117,10 +117,14 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const documentContext = await resolveDocumentContext(access.companyId, orderId, aggregateType);
     await assertOrderCompanyAccess(access.companyId, documentContext.order.companyId);
 
+    const { withDocumentLocale } = await import("@/lib/documents/document-locale");
+    const localized = withDocumentLocale(documentContext, access.preferredLocale);
+
     const { generateDocumentPdf } = await import("@/lib/documents/generate-pdf");
     const pdf = await generateDocumentPdf(slug, access.companyId, orderId, {
-      theme: documentContext.theme,
+      theme: localized.theme,
       aggregateType,
+      locale: access.preferredLocale,
     });
 
     if (aggregateType === "work_order" && pdf) {

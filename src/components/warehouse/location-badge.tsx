@@ -4,6 +4,7 @@ import { MapPin } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 type LocationBadgeProps = {
   label?: string | null;
@@ -14,7 +15,7 @@ type LocationBadgeProps = {
 
 export function LocationBadge({
   label,
-  emptyLabel = "Без места",
+  emptyLabel = userCopy.warehouse.noLocation,
   className,
   mutedWhenEmpty = true,
 }: LocationBadgeProps) {

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 
 import { EnterprisePanelCard } from "@/components/layout/enterprise-panel-card";
 import { EnterpriseWorkspaceShell } from "@/components/layout/enterprise-workspace-shell";
@@ -9,14 +10,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   getHighlightedProductUpdate,
+  getProductUpdates,
   productUpdateTagLabels,
   sortProductUpdatesByDate,
-  productUpdates,
 } from "@/lib/product/product-updates";
 
 function formatUpdateDate(isoDate: string): string {
   const date = new Date(`${isoDate}T12:00:00`);
-  return new Intl.DateTimeFormat("ru-RU", {
+  const locale = getActiveUserCopyLocale() === "ru" ? "ru-RU" : "en-US";
+  return new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -24,13 +26,13 @@ function formatUpdateDate(isoDate: string): string {
 }
 
 export function ChangelogWorkspace() {
-  const updates = sortProductUpdatesByDate(productUpdates);
+  const updates = sortProductUpdatesByDate(getProductUpdates());
   const highlight = getHighlightedProductUpdate();
 
   return (
     <EnterpriseWorkspaceShell
-      title="Что нового"
-      description="Обновления AutoCore: новые возможности, улучшения и исправления."
+      title={userCopy.product.changelogTitle}
+      description={userCopy.product.changelogDescription}
     >
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
         {updates.map((update) => (
@@ -41,7 +43,7 @@ export function ChangelogWorkspace() {
             action={
               update.id === highlight?.id ? (
                 <Badge variant="secondary" className="shrink-0">
-                  Последнее
+                  {userCopy.product.latest}
                 </Badge>
               ) : null
             }
@@ -72,7 +74,7 @@ export function ChangelogWorkspace() {
                   render={<Link href={update.href} />}
                   nativeButton={false}
                 >
-                  Открыть
+                  {userCopy.product.open}
                   <ArrowUpRight className="size-3.5" />
                 </Button>
               ) : null}

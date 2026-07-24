@@ -19,6 +19,12 @@ import type {
   DocumentTemplateVariant,
 } from "@/lib/documents/templates/document-template-meta";
 import { CustomWarrantyFields } from "@/lib/documents/warranty/custom-warranty";
+import {
+  documentLocaleTag,
+  getDocumentPdfUi,
+} from "@/lib/documents/document-locale";
+import { getActiveUserCopyLocale } from "@/lib/user-copy";
+import type { AppLocale } from "@autocore/i18n/config";
 
 export type DocumentCompanyInfo = {
   name: string;
@@ -55,7 +61,7 @@ export type VehicleLogbookSource = {
   title: string;
 };
 
-/** Optional PDF chrome labels. When omitted, Russian defaults are used (dashboard unchanged). */
+/** Optional PDF chrome labels. When omitted, active-locale defaults from `userCopy.documents.pdfUi` are used. */
 export type DocumentUiLabels = {
   number: string;
   date: string;
@@ -151,103 +157,25 @@ export type DocumentUiLabels = {
   itemsCount: string;
 };
 
-export const DEFAULT_DOCUMENT_UI_LABELS: DocumentUiLabels = {
-  number: "Номер",
-  date: "Дата",
-  name: "Наименование",
-  qty: "Кол-во",
-  amount: "Сумма",
-  eventOne: "событие",
-  eventFew: "события",
-  eventMany: "событий",
-  labor: "Работы",
-  parts: "Запчасти",
-  engine: "Двигатель",
-  engineCost: "Стоимость двигателя",
-  transmission: "КПП",
-  discount: "Скидка",
-  tax: "Налог",
-  totalsTitle: "Итоговая сумма",
-  warranty: "Гарантия.",
-  recommendations: "Рекомендации.",
-  grandTotal: "Итого",
-  executor: "Исполнитель:",
-  participants: "Участники",
-  client: "Клиент",
-  vehicle: "Автомобиль",
-  term: "Срок",
-  mileage: "Пробег",
-  untilDate: "До даты",
-  daysShort: "дн.",
-  vehicleHistory: "История автомобиля",
-  aggregateHistory: "История агрегата",
-  photos: "Фотофиксация",
-  photoCount: "фото",
-  diagnostics: "Диагностика",
-  recommendationsTitle: "Рекомендации",
-  signature: "подпись",
-  emptyWarrantyTitle: "Гарантийный талон двигателя",
-  emptyWarrantyMessage: "Для этого заказ-наряда двигатель не указан.",
-  emptyWaybillTitle: "Накладная на двигатель",
-  emptyWaybillMessage: "Для этой операции двигатель не указан.",
-  racingEmptyPit: "Пит-стоп без работ",
-  racingPartsHeading: "КУПИЛИ / ПОСТАВИЛИ",
-  racingEmptyLogbook: "Бортжурнал пуст",
-  racingWaiting: "ждём {date}",
-  racingEmptyMotor: "Данные двигателя не указаны",
-  racingPlate: "ГОС. НОМЕР",
-  racingNextMilestone: "СЛЕДУЮЩИЙ РУБЕЖ",
-  racingRemaining: "осталось {km} км — поможем достигнуть",
-  racingMileage: "ПРОБЕГ",
-  racingSum: "СУММА",
-  racingPitStop: "ЧТО СДЕЛАЛИ — ПИТ-СТОП",
-  racingLogbook: "БОРТЖУРНАЛ",
-  racingEngine: "ДВИГАТЕЛЬ",
-  racingPilot: "ЗАКАЗЧИК — ПИЛОТ",
-  racingPreparedBy: "ОФОРМИЛ:",
-  laborKind: "Работа",
-  partKind: "Запчасть",
-  contractEngine: "Контрактный двигатель",
-  hoursSuffix: " ч",
-  daysKm: "{days} дн · {km} км",
-  serviceOperation: "Сервисная операция",
-  untilDateValue: "до {date}",
-  untilScopeAgreed: "до согласования состава работ",
-  brandCode: "Марка / код",
-  configuration: "Комплектация",
-  mark: "Пометка",
-  cost: "Стоимость",
-  saleDate: "Дата продажи",
-  operation: "Операция",
-  engineMileage: "Пробег ДВС",
-  kmSuffix: " км",
-  buyer: "Покупатель",
-  deal: "Сделка",
-  fullName: "ФИО",
-  phone: "Телефон",
-  note: "Примечание",
-  product: "Товар",
-  serialNumber: "Серийный номер",
-  sum: "Сумма",
-  makeModel: "Марка / модель",
-  engineSpecs: "Характеристики двигателя",
-  transmissionFull: "Коробка передач",
-  model: "Модель",
-  laborList: "Перечень работ",
-  laborHint: "Сервисные операции",
-  partsMaterials: "Запчасти и материалы",
-  seller: "Продавец",
-  handedOver: "Передал (исполнитель)",
-  executorRole: "Исполнитель",
-  receivedClient: "Получил (клиент)",
-  engineToPay: "Двигатель к оплате",
-  itemsToPay: "Позиции к оплате",
-  oneItem: "1 позиция",
-  itemsCount: "{n} поз.",
-};
+/** Locale-aware defaults — prefer `resolveDocumentUi()` / `getDocumentPdfUi()`. */
+export const DEFAULT_DOCUMENT_UI_LABELS: DocumentUiLabels = new Proxy({} as DocumentUiLabels, {
+  get(_target, prop) {
+    const bundle = getDocumentPdfUi();
+    return Reflect.get(bundle, prop);
+  },
+  ownKeys() {
+    return Reflect.ownKeys(getDocumentPdfUi());
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    return Reflect.getOwnPropertyDescriptor(getDocumentPdfUi(), prop);
+  },
+  has(_target, prop) {
+    return Reflect.has(getDocumentPdfUi(), prop);
+  },
+});
 
 export function resolveDocumentUi(ui?: Partial<DocumentUiLabels> | null): DocumentUiLabels {
-  return { ...DEFAULT_DOCUMENT_UI_LABELS, ...ui };
+  return { ...getDocumentPdfUi(), ...ui };
 }
 
 export type DocumentContext = {
@@ -268,7 +196,7 @@ export type DocumentContext = {
   warrantyOverride?: CustomWarrantyFields;
   /** Display-only marks from label polish (e.g. «с коробкой»), keyed by motor line id. */
   motorLineMarks?: Record<string, string[]>;
-  /** Optional localized PDF chrome. Omitting keeps Russian dashboard defaults. */
+  /** Optional localized PDF chrome. Omitting uses active-locale `userCopy.documents.pdfUi`. */
   ui?: Partial<DocumentUiLabels>;
   /** Optional per-variant template copy overrides (marketing i18n). */
   templateMeta?: Partial<Record<DocumentTemplateVariant, DocumentTemplateMeta>>;
@@ -292,6 +220,11 @@ export type DocumentContextInput = {
   warrantyVerificationToken?: string;
   photos?: DocumentPhoto[];
   warrantyOverride?: CustomWarrantyFields;
+  /** UI / PDF language. Defaults to active user-copy locale. */
+  locale?: AppLocale | DocumentContext["locale"];
+  ui?: Partial<DocumentUiLabels>;
+  templateMeta?: Partial<Record<DocumentTemplateVariant, DocumentTemplateMeta>>;
+  statusLabels?: Partial<Record<WorkOrderStatus, string>>;
 };
 
 export function buildDocumentContext(input: DocumentContextInput): DocumentContext {
@@ -312,6 +245,12 @@ export function buildDocumentContext(input: DocumentContextInput): DocumentConte
     } as Record<string, unknown>);
   const branding = companyBrandingFromRecord(companyRecord);
   const documentConfig = parseCompanyDocumentConfig(companyRecord);
+  const appLocale: AppLocale =
+    input.locale === "en" || input.locale === "en-US"
+      ? "en"
+      : input.locale === "ru" || input.locale === "ru-KZ"
+        ? "ru"
+        : getActiveUserCopyLocale();
 
   return {
     company: {
@@ -354,10 +293,13 @@ export function buildDocumentContext(input: DocumentContextInput): DocumentConte
     assigneeNames,
     vehicleLogbook: input.vehicleLogbook ?? [],
     generatedAt: input.generatedAt ?? new Date(),
-    locale: "ru-KZ",
+    locale: documentLocaleTag(appLocale),
     theme: branding.documentTheme ?? "modern",
     warrantyVerificationToken: input.warrantyVerificationToken,
     photos: input.photos,
     warrantyOverride: input.warrantyOverride,
+    ui: input.ui ?? getDocumentPdfUi(appLocale),
+    templateMeta: input.templateMeta,
+    statusLabels: input.statusLabels,
   };
 }

@@ -9,6 +9,7 @@ import {
   waitingPartsAssignedCount,
   type WeekBar,
 } from "@/lib/my-earnings/compute-my-earnings";
+import { userCopy } from "@/lib/user-copy";
 
 export type EmployeeAttentionItem = {
   id: string;
@@ -63,6 +64,7 @@ export function computeEmployeeDashboard(input: {
   now?: Date;
 }): EmployeeMissionControlSnapshot {
   const { uid, canAccessEarnings } = input;
+  const copy = userCopy.missionControl.employee;
   const scoped = scopedWorkOrdersForEmployee(input.workOrders, uid);
   const summary = computeMyEarningsSummary({
     transactions: input.transactions,
@@ -79,7 +81,7 @@ export function computeEmployeeDashboard(input: {
     attentionItems.push({
       id: "waiting-parts",
       count: waitingParts,
-      text: waitingParts === 1 ? "наряд ждёт запчасти" : "нарядов ждут запчасти",
+      text: waitingParts === 1 ? copy.attention.waitingPartsOne : copy.attention.waitingPartsMany,
       tone: "warning",
       href: "/work-orders?status=waiting_parts",
     });
@@ -89,7 +91,7 @@ export function computeEmployeeDashboard(input: {
     attentionItems.push({
       id: "claimable",
       count: claimable.length,
-      text: claimable.length === 1 ? "свободный наряд" : "свободных нарядов",
+      text: claimable.length === 1 ? copy.attention.claimableOne : copy.attention.claimableMany,
       tone: "warning",
       href: "/work-orders",
     });
@@ -99,7 +101,7 @@ export function computeEmployeeDashboard(input: {
     attentionItems.push({
       id: "pending-pay",
       count: 1,
-      text: "есть начисления к выплате",
+      text: copy.attention.pendingPay,
       tone: "positive",
       href: "/my-earnings",
     });
@@ -108,25 +110,25 @@ export function computeEmployeeDashboard(input: {
   const statTiles: EmployeeStatTile[] = [
     {
       key: "open",
-      label: "Открытые наряды",
+      label: copy.stats.openOrders,
       value: summary.myOpen,
       format: "integer",
-      hint: "в работе",
+      hint: copy.stats.openHint,
       href: "/work-orders",
     },
     {
       key: "closed-week",
-      label: "Закрыто за неделю",
+      label: copy.stats.closedWeek,
       value: closedThisWeekCount(scoped, uid, input.now),
       format: "integer",
-      hint: "завершено",
+      hint: copy.stats.closedWeekHint,
     },
     {
       key: "claimable",
-      label: "Свободные",
+      label: copy.stats.claimable,
       value: summary.freePool,
       format: "integer",
-      hint: "можно взять",
+      hint: copy.stats.claimableHint,
       href: "/work-orders",
     },
   ];
@@ -134,19 +136,19 @@ export function computeEmployeeDashboard(input: {
   if (canAccessEarnings) {
     statTiles.push({
       key: "pending",
-      label: "К выплате",
+      label: copy.stats.pending,
       value: summary.pending,
       format: "currency",
-      hint: "начисления",
+      hint: copy.stats.pendingHint,
       href: "/my-earnings",
     });
   } else {
     statTiles.push({
       key: "month",
-      label: "Закрыто в месяце",
+      label: copy.stats.closedMonth,
       value: summary.closedThisMonth,
       format: "integer",
-      hint: "нарядов",
+      hint: copy.stats.closedMonthHint,
     });
   }
 
@@ -155,27 +157,27 @@ export function computeEmployeeDashboard(input: {
   if (waitingParts > 0) {
     featuredInsight = {
       id: "waiting-parts-insight",
-      title: `${waitingParts} наряд${waitingParts > 1 ? "а" : ""} ждут запчасти`,
-      detail: "Проверьте статус заказов и сроки поставки — клиенты ждут.",
-      cta: "Открыть наряды",
+      title: copy.insights.waitingPartsTitle(waitingParts),
+      detail: copy.insights.waitingPartsDetail,
+      cta: copy.insights.waitingPartsCta,
       href: "/work-orders?status=waiting_parts",
       tone: "warning",
     };
   } else if (claimable.length > 0) {
     featuredInsight = {
       id: "claimable-insight",
-      title: `${claimable.length} свободн${claimable.length === 1 ? "ый наряд" : "ых наряда"}`,
-      detail: "Можно взять в работу прямо сейчас.",
-      cta: "Смотреть очередь",
+      title: copy.insights.claimableTitle(claimable.length),
+      detail: copy.insights.claimableDetail,
+      cta: copy.insights.claimableCta,
       href: "/work-orders",
       tone: "positive",
     };
   } else if (canAccessEarnings && summary.growthPercent !== null && summary.growthPercent > 0) {
     featuredInsight = {
       id: "growth-insight",
-      title: `Выплаты выросли на ${Math.round(summary.growthPercent)}%`,
-      detail: "За последнюю неделю по сравнению с предыдущей.",
-      cta: "Мои начисления",
+      title: copy.insights.growthTitle(Math.round(summary.growthPercent)),
+      detail: copy.insights.growthDetail,
+      cta: copy.insights.growthCta,
       href: "/my-earnings",
       tone: "positive",
     };
@@ -184,14 +186,14 @@ export function computeEmployeeDashboard(input: {
   const quickActions: EmployeeQuickAction[] = [
     {
       id: "orders",
-      label: "Заказ-наряды",
-      description: "Все назначенные и свободные.",
+      label: copy.actions.orders,
+      description: copy.actions.ordersDesc,
       href: "/work-orders",
     },
     {
       id: "new-order",
-      label: "Новый наряд",
-      description: "Создать заказ-наряд.",
+      label: copy.actions.newOrder,
+      description: copy.actions.newOrderDesc,
       href: "/work-orders?compose=1",
     },
   ];
@@ -199,8 +201,8 @@ export function computeEmployeeDashboard(input: {
   if (canAccessEarnings) {
     quickActions.push({
       id: "earnings",
-      label: "Мои начисления",
-      description: "Выплаты и графики.",
+      label: copy.actions.earnings,
+      description: copy.actions.earningsDesc,
       href: "/my-earnings",
     });
   }

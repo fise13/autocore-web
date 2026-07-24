@@ -4,7 +4,7 @@ import { MARKETING_BRAND } from "@/lib/seo/marketing-seo";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "AutoCore: программа для авторазборок и автосервисов",
+    name: "AutoCore — auto parts inventory software",
     short_name: MARKETING_BRAND.name,
     description: MARKETING_BRAND.shortDescription,
     start_url: "/",

@@ -11,6 +11,7 @@ import {
 } from "@/lib/warehouse/warehouse-location-filter";
 import { cn } from "@/lib/utils";
 import type { InventoryItem } from "@/domain/inventory";
+import { userCopy } from "@/lib/user-copy";
 
 type WarehouseLocationFilterBarProps = {
   items: InventoryItem[];
@@ -57,16 +58,16 @@ export function WarehouseLocationFilterBar({
     <div className="flex items-center gap-2 overflow-x-auto border-b border-border/50 px-3 py-2">
       <span className="flex shrink-0 items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
         <MapPin className="size-3" />
-        Место
+        {userCopy.warehouse.locationFilter}
       </span>
       <Chip active={filter.kind === "all"} onClick={() => onChange({ kind: "all" })}>
-        Все
+        {userCopy.warehouse.allLocations}
       </Chip>
       <Chip
         active={filter.kind === "unlocated"}
         onClick={() => onChange({ kind: "unlocated" })}
       >
-        Без места{unlocated > 0 ? ` · ${unlocated}` : ""}
+        {userCopy.warehouse.noLocationFilter}{unlocated > 0 ? ` · ${unlocated}` : ""}
       </Chip>
       {options.map((option) => (
         <Chip

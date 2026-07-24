@@ -184,7 +184,7 @@ function DocumentsWorkspaceContent() {
                       <CardDescription className="line-clamp-2">{document.description}</CardDescription>
                     </CardHeader>
                     <CardContent className="flex items-center justify-between gap-2 p-4">
-                      <span className="text-xs text-muted-foreground">Откроется в новой вкладке</span>
+                      <span className="text-xs text-muted-foreground">{userCopy.documents.preview.opensInNewTab}</span>
                       <Button
                         type="button"
                         size="sm"
@@ -195,7 +195,7 @@ function DocumentsWorkspaceContent() {
                         }}
                       >
                         <EyeIcon data-icon="inline-start" />
-                        Открыть
+                        {userCopy.documents.preview.open}
                       </Button>
                     </CardContent>
                   </Card>

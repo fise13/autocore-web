@@ -38,7 +38,7 @@ export default async function PricingPage({ params }: PageProps) {
         extra={[
           buildWebPageJsonLd("pricing", locale),
           buildBreadcrumbJsonLd("pricing", locale),
-          buildPricingOfferJsonLd(),
+          buildPricingOfferJsonLd(locale),
           buildFaqJsonLd(faqItems),
         ]}
       />

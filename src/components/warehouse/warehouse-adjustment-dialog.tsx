@@ -23,6 +23,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { InventoryItem } from "@/domain/inventory";
 import { formatGroupedNumber } from "@/lib/money/format-number";
+import { userCopy } from "@/lib/user-copy";
 
 type WarehouseAdjustmentDialogProps = {
   item: InventoryItem | null;
@@ -41,6 +42,7 @@ export function WarehouseAdjustmentDialog({
   onOpenChange,
   onConfirm,
 }: WarehouseAdjustmentDialogProps) {
+  const copy = userCopy.warehouse.dialogs;
   const [quantity, setQuantity] = useState(formatGroupedNumber(1));
   const [direction, setDirection] = useState<"increase" | "decrease">("increase");
   const [reason, setReason] = useState("");
@@ -51,11 +53,11 @@ export function WarehouseAdjustmentDialog({
     event.preventDefault();
     const parsedQty = parseGroupedNumber(quantity);
     if (!Number.isFinite(parsedQty) || parsedQty <= 0) {
-      setError("Укажите корректное количество");
+      setError(copy.invalidQty);
       return;
     }
     if (!reason.trim()) {
-      setError("Укажите причину корректировки");
+      setError(copy.adjustment.reasonRequired);
       return;
     }
     setSubmitting(true);
@@ -64,7 +66,7 @@ export function WarehouseAdjustmentDialog({
       await onConfirm({ quantity: parsedQty, direction, reason: reason.trim() });
       onOpenChange(false);
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Ошибка корректировки");
+      setError(submitError instanceof Error ? submitError.message : copy.adjustment.error);
     } finally {
       setSubmitting(false);
     }
@@ -74,37 +76,37 @@ export function WarehouseAdjustmentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Корректировка остатка</DialogTitle>
+          <DialogTitle>{copy.adjustment.title}</DialogTitle>
           <DialogDescription>{item ? `${item.sku} · ${item.name}` : ""}</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4">
           <div className="grid gap-2">
-            <Label>Направление</Label>
+            <Label>{copy.adjustment.direction}</Label>
             <Select value={direction} onValueChange={(value) => setDirection(value as "increase" | "decrease")}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="increase">Увеличить</SelectItem>
-                <SelectItem value="decrease">Уменьшить</SelectItem>
+                <SelectItem value="increase">{copy.adjustment.increase}</SelectItem>
+                <SelectItem value="decrease">{copy.adjustment.decrease}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="adjust-qty">Количество</Label>
+            <Label htmlFor="adjust-qty">{copy.quantity}</Label>
             <AmountInput id="adjust-qty" value={quantity} onChange={setQuantity} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="adjust-reason">Причина</Label>
+            <Label htmlFor="adjust-reason">{copy.reason}</Label>
             <Textarea id="adjust-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
           </div>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Отмена
+              {copy.cancel}
             </Button>
             <Button type="submit" disabled={submitting || !item}>
-              Применить
+              {copy.apply}
             </Button>
           </DialogFooter>
         </form>

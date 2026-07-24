@@ -36,7 +36,7 @@ import { ROLE_PERMISSIONS, USER_ROLES, UserRole } from "@/domain/user";
 import { createEmployeeRbacRepository } from "@/infrastructure/firestore/employee-rbac-repository";
 import { canManageEmployees } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
-import { formatRole } from "@/lib/user-copy";
+import { formatRole, getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 const employeeRepository = createEmployeeRbacRepository();
@@ -132,25 +132,26 @@ export function EmployeeProfileSheet({
   const lastActive = member.lastActiveAt?.getTime() ?? 0;
   const online =
     member.isActive && lastActive > 0 && now - lastActive <= ONLINE_WINDOW_MS;
+  const sheet = userCopy.employees.profileSheet;
   const displayName =
     member.fullName?.trim() ||
     (member.email.includes("@") ? member.email.split("@")[0] : null) ||
-    "Сотрудник";
+    sheet.fallbackName;
   const openOrdersLabel =
     typeof assignmentCount === "number"
       ? `${assignmentCount} ${
           assignmentCount === 1
-            ? "заказ-наряд"
+            ? sheet.workOrderOne
             : assignmentCount < 5
-              ? "заказ-наряда"
-              : "заказ-нарядов"
+              ? sheet.workOrderFew
+              : sheet.workOrderMany
         }`
       : null;
   const rolePermissions = ROLE_PERMISSIONS[member.role]?.length ?? 0;
   const permissionsLabel =
     member.permissions.length === 0
-      ? `По роли (${rolePermissions})`
-      : `По роли +${member.permissions.length}`;
+      ? sheet.permissionsByRole(rolePermissions)
+      : sheet.permissionsByRoleExtra(member.permissions.length);
 
   async function runAction(action: () => Promise<void>) {
     setBusy(true);
@@ -158,7 +159,7 @@ export function EmployeeProfileSheet({
     try {
       await action();
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Не удалось выполнить действие");
+      setError(nextError instanceof Error ? nextError.message : userCopy.employees.profileSheet.actionFailed);
     } finally {
       setBusy(false);
     }
@@ -208,9 +209,9 @@ export function EmployeeProfileSheet({
         >
           <motion.div variants={reduceMotion ? undefined : sheetRevealItem}>
             <SheetHeader className="border-b border-border/70 px-5 py-5 text-left">
-          <SheetTitle className="sr-only">Профиль сотрудника</SheetTitle>
+          <SheetTitle className="sr-only">{sheet.title}</SheetTitle>
           <SheetDescription className="sr-only">
-            Карточка сотрудника {displayName}
+            {sheet.description(displayName)}
           </SheetDescription>
 
           <div className="flex flex-col items-center gap-4 pt-2 text-center">
@@ -226,7 +227,7 @@ export function EmployeeProfileSheet({
               <p className="text-lg font-semibold tracking-tight">
                 {displayName}
                 {isSelf ? (
-                  <span className="ml-1.5 text-sm font-normal text-muted-foreground">(вы)</span>
+                  <span className="ml-1.5 text-sm font-normal text-muted-foreground">{userCopy.employees.youSuffix}</span>
                 ) : null}
               </p>
               <p className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
@@ -236,7 +237,7 @@ export function EmployeeProfileSheet({
               <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
                 <Badge variant="secondary" className="gap-1.5 font-normal">
                   <StatusIndicator color={online ? "emerald" : "amber"} pulse={online} />
-                  {online ? "Онлайн" : member.isActive ? "Не в сети" : "Отключён"}
+                  {online ? sheet.online : member.isActive ? sheet.offline : sheet.disabled}
                 </Badge>
                 <Badge variant="outline" className="font-normal">
                   {formatRole(member.role)}
@@ -252,7 +253,7 @@ export function EmployeeProfileSheet({
             className="flex-1 overflow-y-auto px-5 py-5"
           >
           <div className="overflow-hidden rounded-xl border border-border/70 bg-card">
-            <ProfileRow label="Роль">
+            <ProfileRow label={sheet.role}>
               {canManage && !isSelf && member.role !== "owner" ? (
                 <Select
                   value={draftRole}
@@ -275,7 +276,7 @@ export function EmployeeProfileSheet({
               )}
             </ProfileRow>
 
-            <ProfileRow label="Статус">
+            <ProfileRow label={sheet.status}>
               {canManage && !isSelf ? (
                 <Button
                   type="button"
@@ -285,15 +286,15 @@ export function EmployeeProfileSheet({
                   disabled={busy}
                   onClick={() => void handleToggleActive()}
                 >
-                  {member.isActive ? "Активен" : "Отключён"}
+                  {member.isActive ? userCopy.employees.statusActive : sheet.disabled}
                   <ChevronRight className="size-3.5 text-muted-foreground" />
                 </Button>
               ) : (
-                <span>{member.isActive ? "Активен" : "Отключён"}</span>
+                <span>{member.isActive ? userCopy.employees.statusActive : sheet.disabled}</span>
               )}
             </ProfileRow>
 
-            <ProfileRow label="Права">
+            <ProfileRow label={sheet.permissions}>
               {canManage && onOpenPermissions ? (
                 <Button
                   type="button"
@@ -310,14 +311,14 @@ export function EmployeeProfileSheet({
               )}
             </ProfileRow>
 
-            <ProfileRow label="Нагрузка">
+            <ProfileRow label={sheet.workload}>
               <Link
                 href="/work-orders"
                 className="inline-flex items-center gap-1 text-sm font-medium hover:text-primary"
                 onClick={() => onOpenChange(false)}
               >
                 <ClipboardList className="size-3.5 text-muted-foreground" />
-                {openOrdersLabel ?? "Заказ-наряды"}
+                {openOrdersLabel ?? sheet.workOrders}
                 <ChevronRight className="size-3.5 text-muted-foreground" />
               </Link>
             </ProfileRow>
@@ -330,14 +331,17 @@ export function EmployeeProfileSheet({
               </span>
             </ProfileRow>
             {member.lastActiveAt ? (
-              <ProfileRow label="Был в сети">
+              <ProfileRow label={sheet.lastSeen}>
                 <span className="text-muted-foreground">
-                  {member.lastActiveAt.toLocaleString("ru-RU", {
-                    day: "2-digit",
-                    month: "short",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  {member.lastActiveAt.toLocaleString(
+                    getActiveUserCopyLocale() === "en" ? "en-US" : "ru-RU",
+                    {
+                      day: "2-digit",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    },
+                  )}
                 </span>
               </ProfileRow>
             ) : null}
@@ -359,7 +363,7 @@ export function EmployeeProfileSheet({
                 onClick={() => void handleToggleActive()}
               >
                 <UserRound className="size-4" />
-                {member.isActive ? "Отключить доступ" : "Включить доступ"}
+                {member.isActive ? sheet.disableAccess : sheet.enableAccess}
               </Button>
               <Button
                 type="button"
@@ -369,7 +373,7 @@ export function EmployeeProfileSheet({
                 onClick={() => void handleRemove()}
               >
                 <UserX className="size-4" />
-                Удалить из команды
+                {sheet.removeFromTeam}
               </Button>
             </div>
           ) : null}
@@ -382,7 +386,7 @@ export function EmployeeProfileSheet({
               onClick={() => onOpenPermissions(member)}
             >
               <Shield className="size-4" />
-              Дополнительные права
+              {sheet.extraPermissions}
             </Button>
           ) : null}
           </motion.div>

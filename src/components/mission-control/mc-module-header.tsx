@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ChevronRight, LucideIcon } from "lucide-react";
 
+import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 type McModuleHeaderProps = {
@@ -49,7 +50,7 @@ export function McModuleHeader({
           {href ? (
             <Link
               href={href}
-              aria-label={`Открыть ${title}`}
+              aria-label={userCopy.missionControl.modules.openAria(title)}
               className="flex size-7 items-center justify-center rounded-lg border border-border/50 text-muted-foreground transition-colors hover:border-primary/25 hover:text-foreground"
             >
               <ChevronRight className="size-4" />

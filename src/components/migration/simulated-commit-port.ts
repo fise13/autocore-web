@@ -9,6 +9,7 @@
  */
 
 import { RECORD_TYPE_LABELS, type RecordType } from "@/lib/import";
+import { userCopy } from "@/lib/user-copy";
 
 import type {
   MigrationCommitInput,
@@ -19,15 +20,31 @@ import type {
   ReviewRow,
 } from "./migration-types";
 
-const STAGE_PLAN: Array<{ key: string; label: string; types?: RecordType[]; synthetic?: "index" | "photos" }> = [
-  { key: "engines", label: "Импорт двигателей", types: ["engine"] },
-  { key: "transmissions", label: "Импорт КПП и агрегатов", types: ["transmission", "transferCase", "reducer"] },
-  { key: "parts", label: "Импорт запчастей", types: ["turbo", "body", "optics", "suspension", "electrical"] },
-  { key: "consumables", label: "Импорт расходников", types: ["consumable"] },
-  { key: "vehicles", label: "Импорт авто-доноров", types: ["donorCar"] },
-  { key: "index", label: "Построение поискового индекса", synthetic: "index" },
-  { key: "photos", label: "Привязка фотографий", synthetic: "photos" },
-];
+function stagePlan(): Array<{
+  key: string;
+  label: string;
+  types?: RecordType[];
+  synthetic?: "index" | "photos";
+}> {
+  const stages = userCopy.migration.stages;
+  return [
+    { key: "engines", label: stages.engines, types: ["engine"] },
+    {
+      key: "transmissions",
+      label: stages.transmissions,
+      types: ["transmission", "transferCase", "reducer"],
+    },
+    {
+      key: "parts",
+      label: stages.parts,
+      types: ["turbo", "body", "optics", "suspension", "electrical"],
+    },
+    { key: "consumables", label: stages.consumables, types: ["consumable"] },
+    { key: "vehicles", label: stages.vehicles, types: ["donorCar"] },
+    { key: "index", label: stages.buildIndex, synthetic: "index" },
+    { key: "photos", label: stages.bindPhotos, synthetic: "photos" },
+  ];
+}
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -36,7 +53,7 @@ function buildStages(rows: ReviewRow[]): MigrationStage[] {
   const photos = active.filter((row) => row.photo).length;
 
   const stages: MigrationStage[] = [];
-  for (const plan of STAGE_PLAN) {
+  for (const plan of stagePlan()) {
     let total = 0;
     if (plan.synthetic === "index") total = active.length;
     else if (plan.synthetic === "photos") total = photos;

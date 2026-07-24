@@ -25,6 +25,7 @@ import { InventoryItem } from "@/domain/inventory";
 import { OperationAccount, PaymentMethod } from "@/domain/financial-operation";
 import { operationAccountLabel, paymentMethodLabel } from "@/lib/accounting/labels";
 import { formatGroupedNumber } from "@/lib/money/format-number";
+import { userCopy } from "@/lib/user-copy";
 
 type WarehouseSaleDialogProps = {
   item: InventoryItem | null;
@@ -45,6 +46,7 @@ export function WarehouseSaleDialog({
   onOpenChange,
   onConfirm,
 }: WarehouseSaleDialogProps) {
+  const copy = userCopy.warehouse.dialogs;
   const [quantity, setQuantity] = useState(formatGroupedNumber(1));
   const [amount, setAmount] = useState("");
   const [account, setAccount] = useState<OperationAccount>("cashbox");
@@ -59,11 +61,11 @@ export function WarehouseSaleDialog({
     const parsedQty = parseGroupedNumber(quantity);
     const parsedAmount = parseGroupedNumber(amount);
     if (!Number.isFinite(parsedQty) || parsedQty <= 0) {
-      setError("Укажите корректное количество");
+      setError(copy.invalidQty);
       return;
     }
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      setError("Укажите корректную сумму");
+      setError(copy.invalidAmount);
       return;
     }
     setSubmitting(true);
@@ -74,11 +76,11 @@ export function WarehouseSaleDialog({
         amount: parsedAmount,
         account,
         paymentMethod,
-        comment: comment.trim() || `Продажа: ${item.name}`,
+        comment: comment.trim() || copy.sale.defaultComment(item.name),
       });
       onOpenChange(false);
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Ошибка продажи");
+      setError(submitError instanceof Error ? submitError.message : copy.sale.error);
     } finally {
       setSubmitting(false);
     }
@@ -88,22 +90,20 @@ export function WarehouseSaleDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Продажа со склада</DialogTitle>
+          <DialogTitle>{copy.sale.title}</DialogTitle>
           <DialogDescription>
-            {item ? `${item.sku} · ${item.name} · доступно ${item.totalAvailable} ${item.unit}` : ""}
+            {item
+              ? copy.sale.available(item.sku, item.name, item.totalAvailable, item.unit)
+              : ""}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="sale-qty">Количество</Label>
-            <AmountInput
-              id="sale-qty"
-              value={quantity}
-              onChange={setQuantity}
-            />
+            <Label htmlFor="sale-qty">{copy.quantity}</Label>
+            <AmountInput id="sale-qty" value={quantity} onChange={setQuantity} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="sale-amount">Сумма</Label>
+            <Label htmlFor="sale-amount">{copy.sale.amount}</Label>
             <AmountInput
               id="sale-amount"
               value={amount}
@@ -112,7 +112,7 @@ export function WarehouseSaleDialog({
             />
           </div>
           <div className="grid gap-2">
-            <Label>Счёт</Label>
+            <Label>{copy.sale.account}</Label>
             <Select value={account} onValueChange={(value) => setAccount(value as OperationAccount)}>
               <SelectTrigger>
                 <SelectValue />
@@ -124,7 +124,7 @@ export function WarehouseSaleDialog({
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label>Способ оплаты</Label>
+            <Label>{copy.sale.paymentMethod}</Label>
             <Select
               value={paymentMethod}
               onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
@@ -140,16 +140,20 @@ export function WarehouseSaleDialog({
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="sale-comment">Комментарий</Label>
-            <Textarea id="sale-comment" value={comment} onChange={(event) => setComment(event.target.value)} />
+            <Label htmlFor="sale-comment">{copy.comment}</Label>
+            <Textarea
+              id="sale-comment"
+              value={comment}
+              onChange={(event) => setComment(event.target.value)}
+            />
           </div>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Отмена
+              {copy.cancel}
             </Button>
             <Button type="submit" disabled={submitting || !item}>
-              Подтвердить продажу
+              {copy.sale.confirm}
             </Button>
           </DialogFooter>
         </form>

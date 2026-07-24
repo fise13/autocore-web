@@ -64,7 +64,7 @@ import {
   dispatchDemoReset,
   hasDemoSessionMarker,
 } from "@/lib/demo/demo-session.client";
-import { mapAuthError } from "@/lib/user-copy";
+import { mapAuthError, userCopy } from "@/lib/user-copy";
 import { marketingHomeUrl } from "@/lib/site-urls";
 import {
   coerceAppLocale,
@@ -188,13 +188,13 @@ function resolveSignupLocale(): ReturnType<typeof coerceAppLocale> {
 function assertEmailProvider(user: User) {
   const info = getAccountProviderInfo(user);
   if (info?.kind === "google") {
-    throw new Error("Пароль меняется в настройках Google-аккаунта.");
+    throw new Error(userCopy.account.googlePasswordChange);
   }
   if (info?.kind === "apple") {
-    throw new Error("Пароль меняется в настройках Apple ID.");
+    throw new Error(userCopy.account.applePasswordChange);
   }
   if (info?.kind !== "email") {
-    throw new Error("Смена пароля недоступна для этого способа входа.");
+    throw new Error(userCopy.account.passwordChangeUnavailable);
   }
 }
 

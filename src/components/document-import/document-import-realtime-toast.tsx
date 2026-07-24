@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ImageIcon, Smartphone, X } from "lucide-react";
 import { toast as sonnerToast } from "sonner";
+import { userCopy } from "@/lib/user-copy";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { useDocumentImportJobsRealtime } from "@/hooks/use-document-import-jobs-realtime";
@@ -54,13 +55,13 @@ function DocumentImportToastCard({
           }}
           className="mt-2.5 inline-flex h-9 min-w-[5.5rem] shrink-0 items-center justify-center rounded-xl bg-sky-600 px-3.5 text-xs font-semibold text-white transition hover:bg-sky-600/90 dark:bg-sky-500"
         >
-          Открыть
+          {userCopy.documentImport.open}
         </button>
       </div>
 
       <button
         type="button"
-        aria-label="Закрыть"
+        aria-label={userCopy.documentImport.closeAria}
         onClick={() => sonnerToast.dismiss(toastId)}
         className="absolute right-1.5 top-1.5 inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
       >

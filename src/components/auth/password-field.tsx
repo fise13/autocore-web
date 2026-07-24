@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { userCopy } from "@/lib/user-copy";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,7 +57,7 @@ export function PasswordField({
           className="absolute top-1/2 right-1.5 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           onClick={() => setVisible((current) => !current)}
           disabled={disabled}
-          aria-label={visible ? "Скрыть пароль" : "Показать пароль"}
+          aria-label={visible ? userCopy.auth.hidePasswordAria : userCopy.auth.showPasswordAria}
         >
           {visible ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
         </Button>

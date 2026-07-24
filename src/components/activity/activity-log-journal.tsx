@@ -49,6 +49,7 @@ import {
 } from "@/lib/activity/activity-journal-utils";
 import { moduleLabel, resolveActivityLabel } from "@/lib/mission-control/activity-labels";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 type ActivityLogJournalProps = {
   entries: ActivityLogEntry[];
@@ -87,8 +88,8 @@ function ActivityJournalFiltersBar({
           <InputGroupInput
             value={filters.search}
             onChange={(event) => onChange({ ...filters, search: event.target.value })}
-            placeholder="Автор, действие или объект…"
-            aria-label="Поиск в журнале"
+            placeholder={userCopy.activity.searchPlaceholder}
+            aria-label={userCopy.activity.searchAria}
           />
         </InputGroup>
 
@@ -98,7 +99,7 @@ function ActivityJournalFiltersBar({
             onChange({ ...filters, module: value as ActivityJournalFilters["module"] })
           }
         >
-          <SelectTrigger size="sm" className="w-[11rem]" aria-label="Фильтр по модулю">
+          <SelectTrigger size="sm" className="w-[11rem]" aria-label={userCopy.activity.moduleFilterAria}>
             <SelectValue>{moduleFilterLabel(filters.module)}</SelectValue>
           </SelectTrigger>
           <SelectContent align="end">
@@ -118,7 +119,7 @@ function ActivityJournalFiltersBar({
             onChange({ ...filters, severity: value as ActivityJournalFilters["severity"] })
           }
         >
-          <SelectTrigger size="sm" className="w-[11.5rem]" aria-label="Фильтр по уровню">
+          <SelectTrigger size="sm" className="w-[11.5rem]" aria-label={userCopy.activity.levelFilterAria}>
             <SelectValue>{severityFilterLabel(filters.severity)}</SelectValue>
           </SelectTrigger>
           <SelectContent align="end">
@@ -136,7 +137,7 @@ function ActivityJournalFiltersBar({
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>
           {filtersActive
-            ? `Показано ${filteredCount} из ${totalCount}`
+            ? userCopy.activity.shownOf(filteredCount, totalCount)
             : formatEventCountLabel(totalCount)}
         </span>
         {filtersActive ? (
@@ -145,7 +146,7 @@ function ActivityJournalFiltersBar({
             className="font-medium text-primary transition-opacity hover:opacity-80"
             onClick={() => onChange({ search: "", module: "all", severity: "all" })}
           >
-            Сбросить
+            {userCopy.activity.reset}
           </button>
         ) : null}
       </div>
@@ -161,13 +162,13 @@ const ActivityJournalRow = memo(function ActivityJournalRow({
   highlight?: boolean;
 }) {
   const resolved = resolveActivityLabel(entry.action);
-  const actorName = entry.actorName?.trim() || "Сотрудник";
+  const actorName = entry.actorName?.trim() || userCopy.activity.actorFallback;
   const module = entry.module ?? resolved.module;
   const severity = entry.severity ?? resolved.severity;
   const targetName = formatActivityTargetName(entry, module);
   const when = entry.timestamp
     ? formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: ru })
-    : "сейчас";
+    : userCopy.activity.now;
 
   return (
     <article
@@ -257,9 +258,9 @@ export function ActivityLogJournal({
     >
       <CardHeader className="shrink-0 border-b bg-muted/20">
         <div className="min-w-0">
-          <CardTitle className="text-base">Журнал событий</CardTitle>
+          <CardTitle className="text-base">{userCopy.activity.journalTitle}</CardTitle>
           <CardDescription className="mt-1">
-            Кто что сделал — по модулям, авторам и объектам
+            {userCopy.activity.journalDescription}
           </CardDescription>
         </div>
         {!isLoading && !error ? (
@@ -276,7 +277,7 @@ export function ActivityLogJournal({
         {error ? (
           <div className="p-4">
             <Alert variant="destructive">
-              <AlertTitle>Не удалось загрузить журнал</AlertTitle>
+              <AlertTitle>{userCopy.activity.loadError}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           </div>
@@ -289,12 +290,12 @@ export function ActivityLogJournal({
                 <SearchIcon />
               </EmptyMedia>
               <EmptyTitle>
-                {entries.length === 0 ? "Пока пусто" : "Ничего не найдено"}
+                {entries.length === 0 ? userCopy.activity.empty : userCopy.activity.nothingFound}
               </EmptyTitle>
               <EmptyDescription>
                 {entries.length === 0
-                  ? "События появятся после работы со складом, финансами и заказ-нарядами."
-                  : "Измените фильтры или поисковый запрос."}
+                  ? userCopy.activity.emptyHint
+                  : userCopy.activity.nothingFoundHint}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -302,9 +303,9 @@ export function ActivityLogJournal({
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
             <div className="sticky top-0 z-10 hidden border-b bg-muted/80 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground backdrop-blur-sm sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:gap-x-4">
               <span className="w-6" aria-hidden />
-              <span>Событие</span>
-              <span className="w-[5.5rem]">Модуль</span>
-              <span className="w-[5.5rem] text-right">Время</span>
+              <span>{userCopy.activity.colEvent}</span>
+              <span className="w-[5.5rem]">{userCopy.activity.colModule}</span>
+              <span className="w-[5.5rem] text-right">{userCopy.activity.colTime}</span>
             </div>
 
             {dayGroups.map((group, groupIndex) => (

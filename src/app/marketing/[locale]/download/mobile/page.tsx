@@ -43,6 +43,7 @@ export default async function DownloadMobilePage({ params }: PageProps) {
             t("seo.pages.downloadMobile.title"),
             t("pages.downloadMobile.hero.description"),
             platforms.map((platform) => platform.title),
+            locale,
           ),
         ]}
       />

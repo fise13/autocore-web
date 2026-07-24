@@ -5,6 +5,7 @@ import { memo } from "react";
 import { ActivityLogEntry } from "@/domain/rbac";
 import { ActivityItem } from "@/components/mission-control/activity/activity-item";
 import { Skeleton } from "@/components/ui/skeleton";
+import { userCopy } from "@/lib/user-copy";
 
 type ActivityTimelineProps = {
   entries: ActivityLogEntry[];
@@ -36,7 +37,11 @@ export const ActivityTimeline = memo(function ActivityTimeline({
   }
 
   if (entries.length === 0) {
-    return <p className="px-1 py-6 text-center text-sm text-muted-foreground">Пока нет записей</p>;
+    return (
+      <p className="px-1 py-6 text-center text-sm text-muted-foreground">
+        {userCopy.missionControl.dashboard.activity.timelineEmpty}
+      </p>
+    );
   }
 
   return (

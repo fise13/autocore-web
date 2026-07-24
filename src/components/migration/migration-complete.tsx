@@ -4,13 +4,14 @@ import { motion } from "motion/react";
 import { Check, Cog, Download, RotateCcw, Save, Warehouse } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 import type { MigrationResult, ReviewRow } from "./migration-types";
 import { recordTypeIcon } from "./record-type-meta";
 
 function downloadReport(rows: ReviewRow[]) {
-  const header = ["Тип", "Название", "Серийный", "SKU", "Уверенность", "Статус"];
+  const header = [...userCopy.migration.complete.reportHeaders];
   const lines = rows.map((row) =>
     [
       row.recordType,
@@ -52,6 +53,8 @@ export function MigrationCompleteView({
   onSaveProfile: () => void;
   onReset: () => void;
 }) {
+  const copy = userCopy.migration.complete;
+  const numberLocale = getActiveUserCopyLocale() === "en" ? "en-US" : "ru-RU";
   const importedTotal = result.imported.reduce((sum, item) => sum + item.count, 0);
 
   return (
@@ -67,10 +70,10 @@ export function MigrationCompleteView({
         </motion.div>
         <div className="flex flex-col gap-1.5">
           <h2 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">
-            Бизнес перенесён в AutoCore
+            {copy.title}
           </h2>
           <p className="text-muted-foreground">
-            {importedTotal.toLocaleString("ru-RU")} позиций готовы к работе.
+            {copy.ready(importedTotal.toLocaleString(numberLocale))}
           </p>
         </div>
       </div>
@@ -83,32 +86,32 @@ export function MigrationCompleteView({
               <Icon className="size-4 text-emerald-600" />
               <span className="flex-1 text-sm">{item.label}</span>
               <span className="font-heading text-sm font-semibold tabular-nums">
-                {item.count.toLocaleString("ru-RU")}
+                {item.count.toLocaleString(numberLocale)}
               </span>
             </div>
           );
         })}
         <div className="flex flex-wrap gap-x-5 gap-y-1 px-3 py-2 text-xs text-muted-foreground">
-          {result.updated > 0 && <span>Обновлено: {result.updated}</span>}
-          {result.skipped > 0 && <span>Пропущено: {result.skipped}</span>}
-          {result.needsReview > 0 && <span>Требуют проверки: {result.needsReview}</span>}
+          {result.updated > 0 && <span>{copy.updated(result.updated)}</span>}
+          {result.skipped > 0 && <span>{copy.skipped(result.skipped)}</span>}
+          {result.needsReview > 0 && <span>{copy.needsReview(result.needsReview)}</span>}
         </div>
       </div>
 
       <div className="flex flex-col gap-3">
         {variant === "onboarding" ? (
           <Button size="lg" onClick={onOpenMotors}>
-            Продолжить в AutoCore
+            {copy.continueInApp}
           </Button>
         ) : (
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Button onClick={onOpenMotors}>
               <Cog data-icon="inline-start" />
-              Открыть двигатели
+              {copy.openMotors}
             </Button>
             <Button onClick={onOpenWarehouse}>
               <Warehouse data-icon="inline-start" />
-              Открыть склад
+              {copy.openWarehouse}
             </Button>
           </div>
         )}
@@ -117,11 +120,11 @@ export function MigrationCompleteView({
             <div className="flex items-center gap-1.5">
               <Button variant="outline" size="sm" onClick={() => downloadReport(result.reportRows)}>
                 <Download data-icon="inline-start" />
-                Скачать отчёт
+                {copy.downloadReport}
               </Button>
               <Button variant="outline" size="sm" onClick={onSaveProfile}>
                 <Save data-icon="inline-start" />
-                Сохранить профиль импорта
+                {copy.saveProfile}
               </Button>
             </div>
             <Button
@@ -132,7 +135,7 @@ export function MigrationCompleteView({
               className={cn(!canUndo && "opacity-50")}
             >
               <RotateCcw data-icon="inline-start" />
-              Отменить импорт
+              {copy.undoImport}
             </Button>
           </div>
         ) : null}
@@ -142,7 +145,7 @@ export function MigrationCompleteView({
             onClick={onReset}
             className="mx-auto text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
           >
-            Перенести ещё один файл
+            {copy.migrateAnother}
           </button>
         ) : null}
       </div>

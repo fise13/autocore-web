@@ -2,12 +2,15 @@ import { WorkOrder } from "@/domain/work-order";
 import { DocumentContext } from "@/lib/documents/document-context";
 import { DEFAULT_COMPANY_PRIMARY_COLOR, DEFAULT_COMPANY_SECONDARY_COLOR } from "@/domain/company-branding";
 import { parseDocumentHeaderConfig } from "@/domain/document-header-config";
+import { documentLocaleTag, getDocumentPdfUi } from "@/lib/documents/document-locale";
+import { getActiveUserCopyLocale } from "@/lib/user-copy";
 
 /** Lightweight context for client-side document policy (no Firestore reads). */
 export function buildDocumentContextFromOrder(order: WorkOrder): DocumentContext {
+  const locale = getActiveUserCopyLocale();
   return {
     company: {
-      name: "Сервис",
+      name: locale === "en" ? "Service" : "Сервис",
       primaryColor: DEFAULT_COMPANY_PRIMARY_COLOR,
       secondaryColor: DEFAULT_COMPANY_SECONDARY_COLOR,
       headerConfig: parseDocumentHeaderConfig(undefined, "modern"),
@@ -39,7 +42,8 @@ export function buildDocumentContextFromOrder(order: WorkOrder): DocumentContext
     assigneeNames: new Map(),
     vehicleLogbook: [],
     generatedAt: new Date(),
-    locale: "ru-KZ",
+    locale: documentLocaleTag(locale),
     theme: "modern",
+    ui: getDocumentPdfUi(locale),
   };
 }

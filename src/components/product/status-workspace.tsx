@@ -9,13 +9,13 @@ import { EnterpriseWorkspaceShell } from "@/components/layout/enterprise-workspa
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  getSystemStatusComponents,
   readExternalStatusUrl,
-  systemStatusComponents,
   systemStatusIncidents,
-  systemStatusLevelLabels,
   type SystemStatusLevel,
 } from "@/lib/product/product-status";
 import { cn } from "@/lib/utils";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 
 type StatusApiResponse = {
   overall: SystemStatusLevel;
@@ -35,7 +35,8 @@ const statusTone: Record<SystemStatusLevel, string> = {
 
 function formatCheckedAt(iso: string): string {
   const date = new Date(iso);
-  return new Intl.DateTimeFormat("ru-RU", {
+  const locale = getActiveUserCopyLocale() === "ru" ? "ru-RU" : "en-US";
+  return new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "long",
     hour: "2-digit",
@@ -58,7 +59,7 @@ export function StatusWorkspace() {
       const data = (await response.json()) as StatusApiResponse;
       setPayload(data);
     } catch {
-      setError("Не удалось получить статус. Попробуйте обновить страницу.");
+      setError(userCopy.systemStatus.fetchError);
       setPayload(null);
     } finally {
       setLoading(false);
@@ -73,8 +74,8 @@ export function StatusWorkspace() {
 
   return (
     <EnterpriseWorkspaceShell
-      title="Статус системы"
-      description="Доступность сервисов AutoCore в реальном времени."
+      title={userCopy.systemStatus.title}
+      description={userCopy.systemStatus.description}
       action={
         <div className="flex flex-wrap gap-2">
           {externalUrl ? (
@@ -86,7 +87,7 @@ export function StatusWorkspace() {
                 <a href={externalUrl} target="_blank" rel="noopener noreferrer" />
               }
             >
-              Полная страница
+              {userCopy.systemStatus.fullPage}
               <ExternalLink className="size-3.5" />
             </Button>
           ) : null}
@@ -98,18 +99,18 @@ export function StatusWorkspace() {
             disabled={loading}
           >
             <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
-            Обновить
+            {userCopy.systemStatus.refresh}
           </Button>
         </div>
       }
       meta={
         <div className="flex flex-wrap items-center gap-3">
           <Badge className={cn("border-0 font-medium", statusTone[overall])}>
-            {systemStatusLevelLabels[overall]}
+            {userCopy.systemStatus.levels[overall]}
           </Badge>
           {payload?.checkedAt ? (
             <span className="text-xs text-muted-foreground">
-              Проверено {formatCheckedAt(payload.checkedAt)}
+              {userCopy.systemStatus.checkedAt(formatCheckedAt(payload.checkedAt))}
             </span>
           ) : null}
         </div>
@@ -118,16 +119,16 @@ export function StatusWorkspace() {
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
         {error ? (
           <EnterprisePanelCard
-            title="Ошибка проверки"
+            title={userCopy.systemStatus.checkErrorTitle}
             contentClassName="px-6 py-5 text-sm text-muted-foreground"
           >
             {error}
           </EnterprisePanelCard>
         ) : null}
 
-        <EnterprisePanelCard title="Компоненты" contentClassName="divide-y divide-border px-0 py-0">
+        <EnterprisePanelCard title={userCopy.systemStatus.components} contentClassName="divide-y divide-border px-0 py-0">
           <ul>
-            {systemStatusComponents.map((definition) => {
+            {getSystemStatusComponents().map((definition) => {
               const live = payload?.components.find((item) => item.id === definition.id);
               const level = live?.status ?? (loading ? "operational" : "degraded");
               return (
@@ -136,14 +137,14 @@ export function StatusWorkspace() {
                   className="flex flex-col gap-2 px-6 py-4 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-medium">{definition.name}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{definition.description}</p>
+                    <p className="text-sm font-medium">{userCopy.systemStatus.componentsMeta[definition.id].name}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{userCopy.systemStatus.componentsMeta[definition.id].description}</p>
                     {live?.message ? (
                       <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{live.message}</p>
                     ) : null}
                   </div>
                   <Badge className={cn("w-fit shrink-0 border-0", statusTone[level])}>
-                    {systemStatusLevelLabels[level]}
+                    {userCopy.systemStatus.levels[level]}
                   </Badge>
                 </li>
               );
@@ -152,13 +153,13 @@ export function StatusWorkspace() {
         </EnterprisePanelCard>
 
         {systemStatusIncidents.length > 0 ? (
-          <EnterprisePanelCard title="Инциденты" contentClassName="divide-y divide-border px-0 py-0">
+          <EnterprisePanelCard title={userCopy.systemStatus.incidents} contentClassName="divide-y divide-border px-0 py-0">
             <ul>
               {systemStatusIncidents.map((incident) => (
                 <li key={incident.id} className="px-6 py-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-medium">{incident.title}</p>
-                    <Badge variant="outline">{incident.resolved ? "Решено" : "Активно"}</Badge>
+                    <Badge variant="outline">{incident.resolved ? userCopy.systemStatus.resolved : userCopy.systemStatus.active}</Badge>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">{incident.date}</p>
                   <p className="mt-2 text-sm text-muted-foreground">{incident.summary}</p>
@@ -168,17 +169,17 @@ export function StatusWorkspace() {
           </EnterprisePanelCard>
         ) : (
           <EnterprisePanelCard
-            title="Инциденты"
+            title={userCopy.systemStatus.incidents}
             contentClassName="px-6 py-5 text-sm text-muted-foreground"
           >
-            За последнее время сбоев не зафиксировано.
+            {userCopy.systemStatus.noIncidents}
           </EnterprisePanelCard>
         )}
 
         <p className="text-center text-xs text-muted-foreground">
-          Вопросы по доступности?{" "}
+          {userCopy.systemStatus.helpPrompt}{" "}
           <Link href="/help" className="font-medium text-primary hover:underline">
-            Справка
+            {userCopy.systemStatus.helpLink}
           </Link>
         </p>
       </div>

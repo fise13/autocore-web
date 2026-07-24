@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { MOBILE_UNIVERSAL_LINKS_HOST } from "@/lib/mobile/universal-links";
+import { userCopy } from "@/lib/user-copy";
 
 type ImportPhoneQrSheetProps = {
   batchId: string | null;
@@ -49,10 +50,10 @@ export function ImportPhoneQrSheet({ batchId, open, onOpenChange }: ImportPhoneQ
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Smartphone className="size-5" />
-            Продолжить на телефоне
+            {userCopy.importBatch.continueOnPhone}
           </DialogTitle>
           <DialogDescription>
-            Отсканируйте QR в приложении AutoCore — фото сразу попадут в эту сессию на компьютере.
+            {userCopy.importBatch.phoneQrHint}
           </DialogDescription>
         </DialogHeader>
 
@@ -61,14 +62,14 @@ export function ImportPhoneQrSheet({ batchId, open, onOpenChange }: ImportPhoneQ
             <div className="rounded-2xl bg-white p-4 shadow-sm">
               {dataUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- generated QR data URL
-                <img src={dataUrl} alt="QR для импорта" width={200} height={200} />
+                <img src={dataUrl} alt={userCopy.importBatch.qrAlt} width={200} height={200} />
               ) : (
                 <div className="size-[200px] animate-pulse rounded-lg bg-muted" />
               )}
             </div>
             <p className="break-all text-center text-xs text-muted-foreground">{url}</p>
             <p className="text-center text-sm text-muted-foreground">
-              Нужен вход в тот же аккаунт. Гостевая загрузка без приложения не используется.
+              {userCopy.importBatch.phoneQrNote}
             </p>
           </div>
         ) : null}

@@ -7,6 +7,7 @@ import { FIELD_SIGNATURE_BY_FIELD } from "@/lib/import";
 import { cn } from "@/lib/utils";
 
 import type { ReviewTableMapping } from "./migration-types";
+import { userCopy } from "@/lib/user-copy";
 
 const TIER_DOT = {
   high: "bg-emerald-500",
@@ -29,10 +30,10 @@ export function DetectedFieldsPanel({ mappings }: { mappings: ReviewTableMapping
       >
         <span className="flex items-center gap-2.5">
           <ListChecks className="size-4 text-emerald-600" />
-          <span className="text-sm font-medium">AutoCore сопоставил {totalFields} полей</span>
+          <span className="text-sm font-medium">{userCopy.migration.detectedFields.matched(totalFields)}</span>
         </span>
         <span className="flex items-center gap-2 text-xs text-muted-foreground">
-          Посмотреть соответствия
+          {userCopy.migration.detectedFields.viewMappings}
           <ChevronDown className="size-4 transition-transform group-data-[panel-open]:rotate-180" />
         </span>
       </CollapsibleTrigger>
@@ -63,7 +64,7 @@ export function DetectedFieldsPanel({ mappings }: { mappings: ReviewTableMapping
               </div>
               {mapping.unmappedHeaders.length > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Не сопоставлено: {mapping.unmappedHeaders.join(", ")}
+                  {userCopy.migration.detectedFields.unmapped(mapping.unmappedHeaders.join(", "))}
                 </p>
               )}
             </div>

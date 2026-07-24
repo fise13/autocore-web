@@ -2,6 +2,7 @@
 
 import { ClipboardEvent, KeyboardEvent, useEffect, useRef } from "react";
 import { motion } from "motion/react";
+import { userCopy } from "@/lib/user-copy";
 
 import { authJourneyEase, authJourneyShake } from "@/lib/motion/auth-journey-motion";
 import { prefersReducedMotion } from "@/lib/motion/cross-route-transition";
@@ -104,7 +105,7 @@ export function VerificationCodeInput({
       className="flex justify-center gap-2 sm:gap-2.5"
     >
       <span id={`${id}-label`} className="sr-only">
-        Код подтверждения из 6 цифр
+        {userCopy.auth.verifyCodeDigitsHint}
       </span>
       {digits.map((digit, index) => {
         const filled = digit.length > 0;
@@ -129,7 +130,7 @@ export function VerificationCodeInput({
               maxLength={CODE_LENGTH}
               value={digit}
               disabled={disabled}
-              aria-label={`Цифра ${index + 1}`}
+              aria-label={userCopy.auth.verifyDigitAria(index + 1)}
               onChange={(event) => handleChange(index, event.target.value)}
               onKeyDown={(event) => handleKeyDown(index, event)}
               onPaste={handlePaste}

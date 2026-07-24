@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, Loader2, MessageCircleQuestion, Sparkles, X } fr
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/toast-provider";
+import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 import type { DomainCategory } from "@/lib/domain/types";
 import type { DomainDictionary } from "@/lib/domain/domain-dictionary";
@@ -78,10 +79,11 @@ export function BusinessMigration(props: BusinessMigrationProps) {
     isOnboarding &&
     props.onManualSetup &&
     (m.phase === "idle" || m.phase === "recognition" || m.phase === "error");
-  const shellTitle = isOnboarding ? "Шаг 5 · Перенос данных" : "Перенос в AutoCore";
+  const mCopy = userCopy.migration;
+  const shellTitle = isOnboarding ? mCopy.shellTitleOnboarding : mCopy.shellTitleStandalone;
   const shellSubtitle = isOnboarding
-    ? "Загрузите прайсы, склад или список позиций сейчас, либо пропустите и заполните всё позже."
-    : "Загрузите файл и перенесите позиции в AutoCore.";
+    ? mCopy.shellSubtitleOnboarding
+    : mCopy.shellSubtitleStandalone;
 
   const handleAttachPhotoPath = (rowId: string, path: string) => {
     const image = m.images.find((item) => item.path === path);
@@ -96,8 +98,8 @@ export function BusinessMigration(props: BusinessMigrationProps) {
       );
     }
     toast({
-      title: "Профиль импорта сохранён",
-      description: "Следующая загрузка пройдёт быстрее — сопоставление переиспользуется.",
+      title: mCopy.profileSavedTitle,
+      description: mCopy.profileSavedDescription,
       variant: "success",
     });
   };
@@ -121,7 +123,7 @@ export function BusinessMigration(props: BusinessMigrationProps) {
         >
           <div className="flex items-center gap-2.5">
             {canStartOver && (
-              <Button variant="ghost" size="icon-sm" aria-label="Начать заново" onClick={m.reset}>
+              <Button variant="ghost" size="icon-sm" aria-label={mCopy.startOverAria} onClick={m.reset}>
                 <ArrowLeft />
               </Button>
             )}
@@ -133,7 +135,7 @@ export function BusinessMigration(props: BusinessMigrationProps) {
           <div className="flex items-center gap-1">
             {canManualSkip && (
               <Button variant="outline" size="sm" onClick={props.onManualSetup}>
-                Всё вручную
+                {mCopy.allManual}
               </Button>
             )}
             <Button
@@ -147,14 +149,14 @@ export function BusinessMigration(props: BusinessMigrationProps) {
                 className="size-3.5 opacity-80 transition-opacity group-hover/button:opacity-100"
                 strokeWidth={1.75}
               />
-              Не получается импортировать?
+              {mCopy.needHelp}
             </Button>
             {canExit && props.onExit && (
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label="Закрыть и вернуться в AutoCore"
-                title="Вернуться в AutoCore"
+                aria-label={mCopy.exitAria}
+                title={mCopy.exitTitle}
                 onClick={props.onExit}
               >
                 <X />
@@ -171,11 +173,11 @@ export function BusinessMigration(props: BusinessMigrationProps) {
                   <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-6 pb-6 pt-8 text-center">
                     <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/8 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-emerald-600">
                       <Sparkles className="size-3.5" aria-hidden />
-                      Финальный шаг
+                      {mCopy.finalStep}
                     </div>
                     <div className="space-y-2">
                       <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
-                        Перенесите данные в AutoCore
+                        {mCopy.onboardingHeadline}
                       </h1>
                       <p className="mx-auto max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
                         {shellSubtitle}
@@ -187,7 +189,7 @@ export function BusinessMigration(props: BusinessMigrationProps) {
                 {canManualSkip && (
                   <div className="flex justify-center pb-10">
                     <Button variant="ghost" size="sm" onClick={props.onManualSetup}>
-                      Заполню всё вручную позже
+                      {mCopy.fillLater}
                     </Button>
                   </div>
                 )}
@@ -214,12 +216,9 @@ export function BusinessMigration(props: BusinessMigrationProps) {
               <motion.div key="review" {...fade} className={cn("mx-auto flex w-full flex-col gap-4 px-4 py-6 md:px-6", reviewMaxWidth)}>
                 <div className="flex flex-col gap-1">
                   <h2 className="font-heading text-xl font-semibold tracking-tight">
-                    Проверьте, что AutoCore понял
+                    {mCopy.reviewTitle}
                   </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Зелёные строки готовы к переносу. Жёлтые стоит проверить — наведите на процент, чтобы
-                    увидеть почему.
-                  </p>
+                  <p className="text-sm text-muted-foreground">{mCopy.reviewHint}</p>
                 </div>
 
                 <DetectedFieldsPanel mappings={m.mappings} />
@@ -244,10 +243,10 @@ export function BusinessMigration(props: BusinessMigrationProps) {
 
                 <div className="sticky bottom-0 -mx-4 flex items-center justify-between gap-3 border-t bg-background/90 px-4 py-3 backdrop-blur-sm">
                   <span className="text-sm text-muted-foreground">
-                    К переносу: <strong className="font-medium text-foreground">{m.pendingCount}</strong> позиций
+                    {mCopy.pendingLabel(m.pendingCount)}
                   </span>
                   <Button size="lg" onClick={m.startMigration} disabled={m.pendingCount === 0}>
-                    Перенести в AutoCore
+                    {mCopy.migrateCta}
                     <ArrowRight data-icon="inline-end" />
                   </Button>
                 </div>
@@ -278,7 +277,16 @@ export function BusinessMigration(props: BusinessMigrationProps) {
             {m.phase === "error" && (
               <motion.div key="error" {...fade}>
                 <ErrorState
-                  title={m.error?.includes("Миграция") || m.error?.includes("сохран") || m.error?.includes("прав") ? "Не удалось сохранить данные" : "Не получилось разобрать файл"}
+                  title={
+                    m.error?.includes("Миграция") ||
+                    m.error?.includes("migration") ||
+                    m.error?.includes("сохран") ||
+                    m.error?.includes("save") ||
+                    m.error?.includes("прав") ||
+                    m.error?.includes("permission")
+                      ? mCopy.saveFailedTitle
+                      : mCopy.parseFailedTitle
+                  }
                   message={m.error}
                   onRetry={m.reset}
                   onSupport={() => setSupportOpen(true)}
@@ -306,9 +314,11 @@ function AnalyzingState({ fileNames }: { fileNames: string[] }) {
         <Loader2 className="size-7 animate-spin" />
       </div>
       <div className="flex flex-col gap-1">
-        <h2 className="font-heading text-xl font-semibold tracking-tight">Изучаем ваш файл</h2>
+        <h2 className="font-heading text-xl font-semibold tracking-tight">
+          {userCopy.migration.analyzingTitle}
+        </h2>
         <p className="text-sm text-muted-foreground">
-          Читаем {fileNames[0]}, ищем двигатели, запчасти и фотографии…
+          {userCopy.migration.analyzingHint(fileNames[0] ?? "")}
         </p>
       </div>
     </div>
@@ -331,15 +341,15 @@ function ErrorState({
       <div className="flex flex-col gap-2">
         <h2 className="font-heading text-xl font-semibold tracking-tight">{title}</h2>
         <p className={cn("text-sm text-muted-foreground")}>
-          {message ?? "Что-то пошло не так. Попробуйте другой файл."}
+          {message ?? userCopy.migration.errorFallback}
         </p>
       </div>
       <div className="flex items-center gap-2">
         <Button variant="outline" onClick={onSupport}>
           <MessageCircleQuestion data-icon="inline-start" className="size-3.5" strokeWidth={1.75} />
-          Запросить помощь
+          {userCopy.migration.requestHelp}
         </Button>
-        <Button onClick={onRetry}>Попробовать другой файл</Button>
+        <Button onClick={onRetry}>{userCopy.migration.tryAnotherFile}</Button>
       </div>
     </div>
   );

@@ -16,6 +16,7 @@ import { ChevronRight, ClipboardList, Download, Package, Plus, Upload, UserPlus,
 import Link from "next/link";
 
 import { deepActionRoutes } from "@/lib/navigation/deep-actions";
+import { userCopy } from "@/lib/user-copy";
 
 type QuickAction = {
   kind: "link";
@@ -30,72 +31,75 @@ type QuickAction = {
   requiresWarehouse?: boolean;
 };
 
-const actions: QuickAction[] = [
-  {
-    kind: "link",
-    href: "/work-orders",
-    label: "Заказ-наряд",
-    description: "Новый ремонт или сервис.",
-    icon: ClipboardList,
-    permission: "work_orders_edit",
-    shortcut: "O",
-  },
-  {
-    kind: "link",
-    href: "/warehouse",
-    label: "Склад",
-    description: "Остатки и движения.",
-    icon: Package,
-    permission: "inventory_view",
-    requiresWarehouse: true,
-  },
-  {
-    kind: "link",
-    href: deepActionRoutes.add(),
-    label: "Мотор",
-    description: "Добавить позицию в каталог.",
-    icon: Plus,
-    permission: "inventory_edit",
-    requiresMotors: true,
-    shortcut: "M",
-  },
-  {
-    kind: "link",
-    href: deepActionRoutes.expense(),
-    label: "Расход",
-    description: "Запись в бухгалтерии.",
-    icon: Wallet,
-    permission: "accounting_edit",
-    shortcut: "E",
-  },
-  {
-    kind: "link",
-    href: deepActionRoutes.invite(),
-    label: "Пригласить",
-    description: "Новый сотрудник в команду.",
-    icon: UserPlus,
-    permission: "employee_manage",
-    shortcut: "I",
-    proOnly: true,
-  },
-  {
-    kind: "link",
-    href: "/motors",
-    label: "Импорт моторов",
-    description: "Magic Import на странице «Все моторы».",
-    icon: Upload,
-    permission: "import_data",
-    requiresMotors: true,
-  },
-  {
-    kind: "link",
-    href: deepActionRoutes.export(),
-    label: "Экспорт",
-    description: "Выгрузка данных.",
-    icon: Download,
-    permission: "export_data",
-  },
-];
+function buildQuickActions(): QuickAction[] {
+  const qa = userCopy.missionControl.quickActions;
+  return [
+    {
+      kind: "link",
+      href: "/work-orders",
+      label: qa.workOrder,
+      description: qa.workOrderDesc,
+      icon: ClipboardList,
+      permission: "work_orders_edit",
+      shortcut: "O",
+    },
+    {
+      kind: "link",
+      href: "/warehouse",
+      label: qa.warehouse,
+      description: qa.warehouseDesc,
+      icon: Package,
+      permission: "inventory_view",
+      requiresWarehouse: true,
+    },
+    {
+      kind: "link",
+      href: deepActionRoutes.add(),
+      label: qa.motor,
+      description: qa.motorDesc,
+      icon: Plus,
+      permission: "inventory_edit",
+      requiresMotors: true,
+      shortcut: "M",
+    },
+    {
+      kind: "link",
+      href: deepActionRoutes.expense(),
+      label: qa.expense,
+      description: qa.expenseDesc,
+      icon: Wallet,
+      permission: "accounting_edit",
+      shortcut: "E",
+    },
+    {
+      kind: "link",
+      href: deepActionRoutes.invite(),
+      label: qa.invite,
+      description: qa.inviteDesc,
+      icon: UserPlus,
+      permission: "employee_manage",
+      shortcut: "I",
+      proOnly: true,
+    },
+    {
+      kind: "link",
+      href: "/motors",
+      label: qa.importMotors,
+      description: qa.importMotorsDesc,
+      icon: Upload,
+      permission: "import_data",
+      requiresMotors: true,
+    },
+    {
+      kind: "link",
+      href: deepActionRoutes.export(),
+      label: qa.export,
+      description: qa.exportDesc,
+      icon: Download,
+      permission: "export_data",
+    },
+  ];
+}
 
 export function QuickActionsPanel({
   variant = "default",
@@ -106,6 +110,8 @@ export function QuickActionsPanel({
 }) {
   const { profile } = useAuth();
   const { isPro } = useBillingGate();
+  const qa = userCopy.missionControl.quickActions;
+  const actions = buildQuickActions();
 
   const visible = actions.filter((action) => {
     if (!can(profile, action.permission)) return false;
@@ -120,13 +126,13 @@ export function QuickActionsPanel({
     return (
       <Card className={cn("gap-0 shadow-none dark:ring-0", className)}>
         <CardHeader className="border-b">
-          <CardTitle>Быстрые действия</CardTitle>
-          <CardDescription>Короткие пути к частым задачам</CardDescription>
+          <CardTitle>{qa.title}</CardTitle>
+          <CardDescription>{qa.description}</CardDescription>
         </CardHeader>
         <CardContent className="px-0">
           <ul className="flex flex-col divide-y divide-border">
             {visible.map((action) => (
-              <li key={action.label}>
+              <li key={action.href}>
                 <Link
                   href={action.href}
                   className="flex h-16 items-center gap-3 px-3 transition-colors hover:bg-muted/40"
@@ -144,13 +150,13 @@ export function QuickActionsPanel({
   return (
     <Card size="sm" className={cn("mc-quick-actions mc-sidebar-panel overflow-hidden", className)}>
       <CardHeader className="border-b border-border/50 pb-3">
-        <CardTitle className="text-sm">Быстрые действия</CardTitle>
-        <CardDescription>Короткие пути к частым задачам</CardDescription>
+        <CardTitle className="text-sm">{qa.title}</CardTitle>
+        <CardDescription>{qa.description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-1 p-2">
         <div className="space-y-1">
           {visible.map((action) => (
-            <div key={action.label}>
+            <div key={action.href}>
               <Link href={action.href} className="mc-action-tile group py-2 text-sm">
                 <ActionRowContent action={action} shortcut={action.shortcut} />
               </Link>

@@ -38,7 +38,7 @@ type McStatusDonutProps = {
 function buildChartModel(breakdown: StatusBreakdownSlice[]) {
   const total = breakdown.reduce((sum, slice) => sum + slice.amount, 0);
   const chartConfig: ChartConfig = {
-    share: { label: "Доля" },
+    share: { label: userCopy.missionControl.dashboard.charts.share },
   };
 
   const legendRows: Array<{

@@ -107,7 +107,7 @@ function progressFromJob(job: MotorImportJob) {
     jobId: job.id,
     phase: job.progress?.phase ?? (job.status === "applying" ? "apply" : "analyze"),
     percent: job.progress?.percent ?? fallbackPercent,
-    message: job.progress?.message ?? "Обработка…",
+    message: job.progress?.message ?? userCopy.motors.importJob.processing,
     fileName: job.sourceFileName,
   } as const;
 }
@@ -152,7 +152,7 @@ export function MotorImportJobSync({ onPreviewReady, onCompleted }: MotorImportJ
     if (!jobsErrorMessage || jobsErrorNotifiedRef.current) return;
     jobsErrorNotifiedRef.current = true;
     toast({
-      title: "Не удалось отслеживать импорт",
+      title: userCopy.motors.importJob.trackFailed,
       description: jobsErrorMessage,
       variant: "error",
       durationMs: 10000,
@@ -211,7 +211,7 @@ export function MotorImportJobSync({ onPreviewReady, onCompleted }: MotorImportJ
           jobId: previewJob.id,
           phase: "analyze",
           percent: 98,
-          message: "Готовим загрузку в базу…",
+          message: userCopy.motors.importJob.preparingUpload,
           fileName: previewJob.sourceFileName,
         });
         setMotorImportReview(null);
@@ -285,16 +285,16 @@ export function MotorImportJobSync({ onPreviewReady, onCompleted }: MotorImportJ
         toast({
           title: userCopy.motors.magicImportDone,
           description: summary
-            ? `${summary.imported} моторов загружено · обновлено ${summary.updated}`
-            : "Импорт завершён",
+            ? userCopy.motors.importJob.importedSummary(summary.imported, summary.updated)
+            : userCopy.motors.importJob.importComplete,
           variant: "success",
           durationMs: 8000,
         });
         onCompleted?.(completed);
       } else {
         toast({
-          title: "Ошибка импорта",
-          description: completed.errorMessage ?? "Не удалось завершить импорт",
+          title: userCopy.motors.importJob.importError,
+          description: completed.errorMessage ?? userCopy.motors.importJob.importErrorFallback,
           variant: "error",
           durationMs: 10000,
         });

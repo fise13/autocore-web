@@ -8,6 +8,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
+import { userCopy } from "@/lib/user-copy";
 
 import { cn } from "@/lib/utils";
 
@@ -33,7 +34,7 @@ export function Toaster({ ...props }: ToasterProps) {
       className="toaster group"
       toastOptions={{
         unstyled: true,
-        closeButtonAriaLabel: "Закрыть",
+        closeButtonAriaLabel: userCopy.commonUi.closeAria,
         classNames: {
           toast: cn(toastBase, "flex items-start gap-2.5"),
           title: "text-sm font-medium tracking-tight text-foreground",

@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 
 import "@/styles/marketing-experience.css";
 
-import { MarketingJsonLd } from "@/components/marketing/seo/marketing-json-ld";
 import { YandexMetrika } from "@/components/marketing/seo/yandex-metrika";
 
 export const dynamic = "force-static";
@@ -12,11 +11,10 @@ type MarketingLayoutProps = {
   children: ReactNode;
 };
 
-/** Outer marketing chrome (CSS + SEO). Nav/footer live under `[locale]` with next-intl. */
+/** Outer marketing chrome (CSS + analytics). Locale SEO lives under `[locale]`. */
 export default function MarketingLayout({ children }: MarketingLayoutProps) {
   return (
     <>
-      <MarketingJsonLd />
       <YandexMetrika />
       {children}
     </>

@@ -27,6 +27,7 @@ import {
   paymentMethodLabel,
 } from "@/lib/accounting/labels";
 import { formatGroupedNumber } from "@/lib/money/format-number";
+import { userCopy } from "@/lib/user-copy";
 
 export type SellFinancialPayload = {
   amount: number;
@@ -72,7 +73,7 @@ function SellFinancialDialogForm({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      setError("Введите корректную сумму");
+      setError(userCopy.accounting.newOperation.invalidAmount);
       return;
     }
 
@@ -86,7 +87,7 @@ function SellFinancialDialogForm({
         comment: comment.trim(),
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось выполнить операцию");
+      setError(e instanceof Error ? e.message : userCopy.accounting.sellFinancial.operationFailed);
     } finally {
       setSubmitting(false);
     }
@@ -101,25 +102,25 @@ function SellFinancialDialogForm({
 
       <form className="space-y-4" onSubmit={submit}>
         <div className="space-y-1">
-          <Label>Сумма</Label>
+          <Label>{userCopy.accounting.newOperation.amount}</Label>
           <AmountInput value={amount} onChange={setAmount} />
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
-            <Label>Счёт</Label>
+            <Label>{userCopy.accounting.newOperation.account}</Label>
             <Select value={account} onValueChange={(value) => setAccount(value as OperationAccount)}>
               <SelectTrigger>
                 <SelectValue>{operationAccountLabel(account)}</SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="cashbox">Касса</SelectItem>
-                <SelectItem value="kaspi">Kaspi</SelectItem>
+                <SelectItem value="cashbox">{userCopy.accounting.accounts.cashbox}</SelectItem>
+                <SelectItem value="kaspi">{userCopy.accounting.accounts.kaspi}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
-            <Label>Оплата</Label>
+            <Label>{userCopy.accounting.newOperation.payment}</Label>
             <Select
               value={paymentMethod}
               onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
@@ -128,16 +129,16 @@ function SellFinancialDialogForm({
                 <SelectValue>{paymentMethodLabel(paymentMethod)}</SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="cash">Наличные</SelectItem>
-                <SelectItem value="transfer">Перевод</SelectItem>
-                <SelectItem value="mixed">Смешанная</SelectItem>
+                <SelectItem value="cash">{userCopy.accounting.paymentMethods.cash}</SelectItem>
+                <SelectItem value="transfer">{userCopy.accounting.paymentMethods.transfer}</SelectItem>
+                <SelectItem value="mixed">{userCopy.accounting.paymentMethods.mixed}</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
         <div className="space-y-1">
-          <Label>Комментарий</Label>
+          <Label>{userCopy.accounting.newOperation.comment}</Label>
           <Textarea value={comment} onChange={(event) => setComment(event.target.value)} rows={2} />
         </div>
 
@@ -145,10 +146,14 @@ function SellFinancialDialogForm({
 
         <DialogFooter className="px-0 pb-0">
           <Button type="button" variant="outline" onClick={onCancel}>
-            Отмена
+            {userCopy.accounting.sellFinancial.cancel}
           </Button>
           <Button type="submit" disabled={submitting}>
-            {submitting ? "Сохраняем..." : mode === "sell" ? "Продать" : "Вернуть"}
+            {submitting
+              ? userCopy.accounting.sellFinancial.saving
+              : mode === "sell"
+                ? userCopy.accounting.sellFinancial.sell
+                : userCopy.accounting.sellFinancial.unsell}
           </Button>
         </DialogFooter>
       </form>

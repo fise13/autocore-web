@@ -1,11 +1,12 @@
 import { subDays, startOfDay } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS, ru } from "date-fns/locale";
 import { format } from "date-fns";
 
 import { FinancialOperation } from "@/domain/financial-operation";
 import { InventoryItem } from "@/domain/inventory";
 import { WorkOrder } from "@/domain/work-order";
 import { MissionControlOverviewMetrics } from "@/lib/mission-control/compute-overview-metrics";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 
 export type DailyRevenueRow = {
   day: string;
@@ -30,6 +31,14 @@ export type DashboardStat = {
   deltaKind: DashboardStatDeltaKind;
   hint: string;
 };
+
+function dateFnsLocale() {
+  return getActiveUserCopyLocale() === "en" ? enUS : ru;
+}
+
+function numberLocale(): string {
+  return getActiveUserCopyLocale() === "en" ? "en-US" : "ru-RU";
+}
 
 function isIncomeOperation(operation: FinancialOperation): boolean {
   return operation.type === "sale" || operation.type === "income";
@@ -65,6 +74,7 @@ export function buildDailyRevenueSeries(
   days = 7,
 ): DailyRevenueRow[] {
   const today = startOfDay(new Date());
+  const locale = dateFnsLocale();
   return Array.from({ length: days }, (_, index) => {
     const day = subDays(today, days - 1 - index);
     const key = day.toDateString();
@@ -76,8 +86,8 @@ export function buildDailyRevenueSeries(
       .reduce((sum, operation) => sum + operation.amount, 0);
 
     return {
-      day: format(day, "EEE", { locale: ru }),
-      label: format(day, "d MMM", { locale: ru }),
+      day: format(day, "EEE", { locale }),
+      label: format(day, "d MMM", { locale }),
       revenue,
     };
   });
@@ -88,6 +98,7 @@ export function buildIncomeExpenseSeries(
   days = 14,
 ): IncomeExpenseRow[] {
   const today = startOfDay(new Date());
+  const locale = dateFnsLocale();
   return Array.from({ length: days }, (_, index) => {
     const day = subDays(today, days - 1 - index);
     const key = day.toDateString();
@@ -103,8 +114,8 @@ export function buildIncomeExpenseSeries(
       .reduce((sum, operation) => sum + operation.amount, 0);
 
     return {
-      day: format(day, "d MMM", { locale: ru }),
-      label: format(day, "d MMM", { locale: ru }),
+      day: format(day, "d MMM", { locale }),
+      label: format(day, "d MMM", { locale }),
       income,
       expense,
     };
@@ -134,74 +145,77 @@ export function buildDashboardStats(input: {
   formatMoney?: (value: number) => string;
 }): DashboardStat[] {
   const { metrics, operations, permissions } = input;
+  const copy = userCopy.missionControl.dashboard.stats;
   const formatMoney =
-    input.formatMoney ?? ((value: number) => `${value.toLocaleString("ru-RU")} ₸`);
+    input.formatMoney ??
+    ((value: number) => `${value.toLocaleString(numberLocale())} ₸`);
   const revenueDelta = computeRevenueDelta(operations);
   const stats: DashboardStat[] = [];
 
   if (permissions.canAccounting) {
     stats.push({
       key: "revenue",
-      label: "Выручка сегодня",
+      label: copy.revenueToday,
       value: formatMoney(metrics.todayRevenue),
       delta: revenueDelta,
       deltaKind: "percent",
-      hint: "к прошлой неделе",
+      hint: copy.vsLastWeek,
     });
     stats.push({
       key: "balance",
-      label: "Баланс",
+      label: copy.balance,
       value: formatMoney(metrics.totalBalance),
       delta: growthPercent(
         metrics.todayExpenses,
         metrics.todayRevenue - metrics.todayExpenses,
       ),
       deltaKind: "percent",
-      hint: "чистый поток сегодня",
+      hint: copy.netFlowToday,
     });
   }
 
   if (permissions.canMotors) {
     stats.push({
       key: "motors",
-      label: "Моторы",
+      label: copy.motors,
       value: String(metrics.activeInventoryCount),
       delta: metrics.lowStockCount > 0 ? -metrics.lowStockCount : 0,
       deltaKind: metrics.lowStockCount > 0 ? "count" : "none",
-      hint: metrics.lowStockCount > 0 ? `${metrics.lowStockCount} с низким остатком` : "в наличии",
+      hint:
+        metrics.lowStockCount > 0 ? copy.lowStock(metrics.lowStockCount) : copy.inStock,
     });
   }
 
   if (permissions.canWarehouse) {
     stats.push({
       key: "warehouse",
-      label: "Склад",
+      label: copy.warehouse,
       value: String(metrics.warehouseItemCount),
       delta: metrics.warehouseLowStockCount > 0 ? -metrics.warehouseLowStockCount : 0,
       deltaKind: metrics.warehouseLowStockCount > 0 ? "count" : "none",
-      hint: `${formatMoney(metrics.warehouseStockValue)} остатков`,
+      hint: copy.stockValue(formatMoney(metrics.warehouseStockValue)),
     });
   }
 
   if (permissions.canEmployees) {
     stats.push({
       key: "online",
-      label: "Команда онлайн",
+      label: copy.teamOnline,
       value: `${metrics.onlineEmployeesCount} / ${metrics.activeEmployeesCount}`,
       delta: metrics.changesToday,
       deltaKind: metrics.changesToday > 0 ? "count" : "none",
-      hint: `${metrics.changesToday} изменений сегодня`,
+      hint: copy.changesToday(metrics.changesToday),
     });
   }
 
   if (stats.length === 0) {
     stats.push({
       key: "activity",
-      label: "Изменений сегодня",
+      label: copy.changesTodayLabel,
       value: String(metrics.changesToday),
       delta: 0,
       deltaKind: "none",
-      hint: "активность в системе",
+      hint: copy.systemActivity,
     });
   }
 
@@ -220,7 +234,7 @@ export function countLowStockIssues(
 }
 
 export function formatMoneyKztFallback(value: number): string {
-  return `${value.toLocaleString("ru-RU")} ₸`;
+  return `${value.toLocaleString(numberLocale())} ₸`;
 }
 
 export type DailyWorkOrderRow = {
@@ -231,14 +245,15 @@ export type DailyWorkOrderRow = {
 
 export function buildWorkOrdersDailySeries(workOrders: WorkOrder[], days = 7): DailyWorkOrderRow[] {
   const today = startOfDay(new Date());
+  const locale = dateFnsLocale();
   return Array.from({ length: days }, (_, index) => {
     const day = subDays(today, days - 1 - index);
     const key = day.toDateString();
     const count = workOrders.filter((order) => order.createdAt.toDateString() === key).length;
 
     return {
-      day: format(day, "EEE", { locale: ru }),
-      label: format(day, "d MMM", { locale: ru }),
+      day: format(day, "EEE", { locale }),
+      label: format(day, "d MMM", { locale }),
       count,
     };
   });

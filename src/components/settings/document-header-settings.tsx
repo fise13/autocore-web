@@ -17,21 +17,25 @@ import {
   DocumentHeaderVisibility,
 } from "@/domain/document-header-config";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
-const HEADER_ELEMENT_FIELDS: Array<{
+function headerElementFields(): Array<{
   key: Exclude<keyof DocumentHeaderVisibility, "showHeader">;
   label: string;
   icon: typeof Image;
-}> = [
-  { key: "showLogo", label: "Логотип", icon: Image },
-  { key: "showCompanyName", label: "Название", icon: Type },
-  { key: "showPhone", label: "Телефон", icon: Phone },
-  { key: "showEmail", label: "Email", icon: Mail },
-  { key: "showWebsite", label: "Сайт", icon: Globe },
-  { key: "showQr", label: "QR-код", icon: QrCode },
-  { key: "showDocumentNumber", label: "Номер", icon: Hash },
-  { key: "showDate", label: "Дата", icon: Calendar },
-];
+}> {
+  const fields = userCopy.settings.documentHeader.fields;
+  return [
+    { key: "showLogo", label: fields.showLogo, icon: Image },
+    { key: "showCompanyName", label: fields.showCompanyName, icon: Type },
+    { key: "showPhone", label: fields.showPhone, icon: Phone },
+    { key: "showEmail", label: fields.showEmail, icon: Mail },
+    { key: "showWebsite", label: fields.showWebsite, icon: Globe },
+    { key: "showQr", label: fields.showQr, icon: QrCode },
+    { key: "showDocumentNumber", label: fields.showDocumentNumber, icon: Hash },
+    { key: "showDate", label: fields.showDate, icon: Calendar },
+  ];
+}
 
 type DocumentHeaderSettingsProps = {
   visibility: DocumentHeaderVisibility;
@@ -39,6 +43,7 @@ type DocumentHeaderSettingsProps = {
 };
 
 export function DocumentHeaderSettings({ visibility, onChange }: DocumentHeaderSettingsProps) {
+  const copy = userCopy.settings.documentHeader;
   const headerEnabled = visibility.showHeader;
 
   return (
@@ -69,11 +74,11 @@ export function DocumentHeaderSettings({ visibility, onChange }: DocumentHeaderS
             <EyeOff className="size-4" />
           </span>
           <div>
-            <p className="text-sm font-semibold">{headerEnabled ? "Шапка включена" : "Шапка скрыта"}</p>
+            <p className="text-sm font-semibold">{headerEnabled ? copy.enabled : copy.hidden}</p>
             <p className="text-xs text-muted-foreground">
               {headerEnabled
-                ? "Отключите, чтобы убрать шапку из всех PDF"
-                : "Включите, чтобы вернуть фирменную шапку"}
+                ? copy.disableHint
+                : copy.enableHint}
             </p>
           </div>
         </div>
@@ -83,15 +88,15 @@ export function DocumentHeaderSettings({ visibility, onChange }: DocumentHeaderS
             headerEnabled ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
           )}
         >
-          {headerEnabled ? "Вкл" : "Выкл"}
+          {headerEnabled ? copy.on : copy.off}
         </span>
       </button>
 
       {headerEnabled ? (
         <>
-          <p className="text-xs text-muted-foreground">Элементы внутри шапки</p>
+          <p className="text-xs text-muted-foreground">{copy.elements}</p>
           <div className="grid gap-2 sm:grid-cols-2">
-            {HEADER_ELEMENT_FIELDS.map((field) => {
+            {headerElementFields().map((field) => {
               const active = visibility[field.key];
               const Icon = field.icon;
               return (
@@ -119,7 +124,7 @@ export function DocumentHeaderSettings({ visibility, onChange }: DocumentHeaderS
             })}
           </div>
           <p className="text-[11px] leading-relaxed text-muted-foreground">
-            Если логотип не загружен, в шапке автоматически показывается название компании.
+            {copy.logoFallback}
           </p>
         </>
       ) : null}

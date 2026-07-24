@@ -3,39 +3,44 @@ import * as XLSX from "xlsx";
 import { MotorEntity } from "@/domain/motor";
 import { formatExportDate } from "@/lib/motors/excel-dates";
 import { MotorExcelExportOptions } from "@/lib/motors/excel-types";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 
-const ENGINE_SHEET_HEADERS = [
-  "НОМЕР ДВИГАТЕЛЯ",
-  "КОМПЛЕКТАЦИЯ",
-  "ОСОБЫЕ ОТМЕТКИ",
-  "КОЛ-ВО",
-  "КОРОБКА",
-  "ДАТА ПРИХОДА",
-  "ДАТА ПРОДАЖИ",
-];
+function engineSheetHeaders(): string[] {
+  const h = userCopy.motors.excelExport.headers;
+  return [h.serial, h.configuration, h.notes, h.quantity, h.transmission, h.arrivalDate, h.soldDate];
+}
 
-const FULL_SHEET_HEADERS = [
-  "БРЕНД",
-  "ДВИГАТЕЛЬ",
-  "НОМЕР ДВИГАТЕЛЯ",
-  "КОМПЛЕКТАЦИЯ",
-  "ОСОБЫЕ ОТМЕТКИ",
-  "КОЛ-ВО",
-  "КОРОБКА",
-  "ДАТА ПРИХОДА",
-  "ДАТА ПРОДАЖИ",
-];
+function fullSheetHeaders(): string[] {
+  const h = userCopy.motors.excelExport.headers;
+  return [
+    h.brand,
+    h.engine,
+    h.serial,
+    h.configuration,
+    h.notes,
+    h.quantity,
+    h.transmission,
+    h.arrivalDate,
+    h.soldDate,
+  ];
+}
 
 function truncateSheetName(name: string): string {
   const clean = name.replace(/[/\\?*[\]:]/g, "").trim();
-  if (!clean) return "ЛИСТ";
+  if (!clean) return userCopy.motors.excelExport.sheetFallback;
   return clean.length <= 31 ? clean : clean.slice(0, 31);
 }
 
+function brandLabel(brandName: string | null | undefined): string {
+  return (brandName || userCopy.motors.excelExport.brandUnspecified).toUpperCase().trim();
+}
+
+function engineLabel(engineCode: string | null | undefined): string {
+  return (engineCode || userCopy.motors.excelExport.engineFallback).toUpperCase().trim();
+}
+
 function makeSheetName(brandName: string, engineCode: string): string {
-  const brand = (brandName || "Не указан").toUpperCase().trim();
-  const engine = (engineCode || "—").toUpperCase().trim();
-  return truncateSheetName(`${brand}_${engine}`);
+  return truncateSheetName(`${brandLabel(brandName)}_${engineLabel(engineCode)}`);
 }
 
 function motorEngineRow(motor: MotorEntity, dateFormat: MotorExcelExportOptions["dateFormat"]): string[] {
@@ -51,9 +56,10 @@ function motorEngineRow(motor: MotorEntity, dateFormat: MotorExcelExportOptions[
 }
 
 function motorFullRow(motor: MotorEntity, dateFormat: MotorExcelExportOptions["dateFormat"]): string[] {
+  const exportCopy = userCopy.motors.excelExport;
   return [
-    motor.brandName ?? "Не указан",
-    motor.engineCode ?? "—",
+    motor.brandName ?? exportCopy.brandUnspecified,
+    motor.engineCode ?? exportCopy.engineFallback,
     motor.serialCode,
     motor.configuration,
     motor.notes,
@@ -89,6 +95,8 @@ export function buildMotorExportWorkbook(
 ): XLSX.WorkBook {
   const workbook = XLSX.utils.book_new();
   const usedNames = new Set<string>();
+  const exportCopy = userCopy.motors.excelExport;
+  const locale = getActiveUserCopyLocale() === "en" ? "en" : "ru";
 
   const available = motors.filter((motor) => !motor.soldDate && !motor.deletedAt);
   const sold = motors.filter((motor) => Boolean(motor.soldDate) && !motor.deletedAt);
@@ -96,19 +104,19 @@ export function buildMotorExportWorkbook(
   if (options.separateByEngine) {
     const byEngine = new Map<string, MotorEntity[]>();
     for (const motor of available) {
-      const key = `${motor.brandName ?? "Не указан"}::${motor.engineCode ?? "—"}`;
+      const key = `${motor.brandName ?? exportCopy.brandUnspecified}::${motor.engineCode ?? exportCopy.engineFallback}`;
       const bucket = byEngine.get(key) ?? [];
       bucket.push(motor);
       byEngine.set(key, bucket);
     }
 
-    const sortedKeys = [...byEngine.keys()].sort((a, b) => a.localeCompare(b, "ru"));
+    const sortedKeys = [...byEngine.keys()].sort((a, b) => a.localeCompare(b, locale));
     for (const key of sortedKeys) {
       const group = byEngine.get(key) ?? [];
       if (group.length === 0) continue;
       const [brandName, engineCode] = key.split("::");
       const rows = [
-        ENGINE_SHEET_HEADERS,
+        engineSheetHeaders(),
         ...group
           .sort((a, b) => (b.arrivalDate?.getTime() ?? 0) - (a.arrivalDate?.getTime() ?? 0))
           .map((motor) => motorEngineRow(motor, options.dateFormat)),
@@ -117,26 +125,26 @@ export function buildMotorExportWorkbook(
     }
   } else if (available.length > 0) {
     const rows = [
-      FULL_SHEET_HEADERS,
+      fullSheetHeaders(),
       ...available
         .sort((a, b) => (b.arrivalDate?.getTime() ?? 0) - (a.arrivalDate?.getTime() ?? 0))
         .map((motor) => motorFullRow(motor, options.dateFormat)),
     ];
-    appendUniqueSheet(workbook, usedNames, "В НАЛИЧИИ", rows);
+    appendUniqueSheet(workbook, usedNames, exportCopy.sheetInStock, rows);
   }
 
   if (options.includeSold && sold.length > 0) {
     const rows = [
-      FULL_SHEET_HEADERS,
+      fullSheetHeaders(),
       ...sold
         .sort((a, b) => (b.soldDate?.getTime() ?? 0) - (a.soldDate?.getTime() ?? 0))
         .map((motor) => motorFullRow(motor, options.dateFormat)),
     ];
-    appendUniqueSheet(workbook, usedNames, "ПРОДАННЫЕ", rows);
+    appendUniqueSheet(workbook, usedNames, exportCopy.sheetSold, rows);
   }
 
   if (workbook.SheetNames.length === 0) {
-    appendUniqueSheet(workbook, usedNames, "В НАЛИЧИИ", [ENGINE_SHEET_HEADERS]);
+    appendUniqueSheet(workbook, usedNames, exportCopy.sheetInStock, [engineSheetHeaders()]);
   }
 
   return workbook;

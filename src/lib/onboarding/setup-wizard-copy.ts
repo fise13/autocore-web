@@ -17,6 +17,7 @@ import type {
 } from "@/domain/company-config";
 import { SETUP_WIZARD_CATEGORY_PRESETS } from "@/domain/company-config";
 import type { InventoryGroupId } from "@/domain/inventory-taxonomy";
+import { userCopy } from "@/lib/user-copy";
 
 export type SetupWizardCategoryId =
   | "gearboxes"
@@ -37,10 +38,24 @@ export type SetupWizardCategoryGroup = {
   ids: readonly SetupWizardCategoryId[];
 };
 
+function setupCopy() {
+  return userCopy.onboarding.setupWizard;
+}
+
+export function getSetupWizardCategoryGroups(): readonly SetupWizardCategoryGroup[] {
+  const labels = setupCopy().categories;
+  return [
+    { id: "aggregates", label: labels.aggregates, ids: ["gearboxes", "turbos", "reducers", "transfer_cases"] },
+    { id: "parts", label: labels.parts, ids: ["body", "optics", "interior", "suspension", "electrical"] },
+    { id: "consumables", label: labels.consumables, ids: [] },
+  ] as const;
+}
+
+/** Structural category groups (labels via getSetupWizardCategoryGroups / SETUP_WIZARD_COPY.categories.groups). */
 export const SETUP_WIZARD_CATEGORY_GROUPS = [
-  { id: "aggregates", label: "Агрегаты", ids: ["gearboxes", "turbos", "reducers", "transfer_cases"] },
-  { id: "parts", label: "Запчасти", ids: ["body", "optics", "interior", "suspension", "electrical"] },
-  { id: "consumables", label: "Расходники", ids: [] },
+  { id: "aggregates", label: "Aggregates", ids: ["gearboxes", "turbos", "reducers", "transfer_cases"] },
+  { id: "parts", label: "Parts", ids: ["body", "optics", "interior", "suspension", "electrical"] },
+  { id: "consumables", label: "Consumables", ids: [] },
 ] as const satisfies readonly SetupWizardCategoryGroup[];
 
 export function categoriesInGroup(group: SetupWizardCategoryGroup): CompanySpecificCategoryConfig[] {
@@ -62,125 +77,87 @@ export type SetupWizardStepMeta = {
   icon: LucideIcon;
 };
 
+const MODULE_ICONS = {
+  motors: Cog,
+  workOrders: ClipboardList,
+  accounting: Receipt,
+  warehouse: Warehouse,
+  specifics: Package,
+} as const satisfies Record<CompanyModuleKey, LucideIcon>;
+
+const STEP_ICONS = [Sparkles, Boxes, ShieldCheck] as const;
+
+/**
+ * Locale-aware setup wizard copy. Property access reads the active userCopy locale.
+ */
 export const SETUP_WIZARD_COPY = {
-  shell: {
-    title: "Настройка",
-    subtitle: "Можно изменить позже в настройках.",
-    loadingTitle: "Загружаем настройки",
-    loadingSubtitle: "Секунду…",
+  get shell() {
+    return setupCopy().shell;
   },
-  steps: [
-    {
-      id: 1,
-      title: "Разделы",
-      subtitle: "Что показывать в меню",
-      icon: Sparkles,
-    },
-    {
-      id: 2,
-      title: "Каталог",
-      subtitle: "Типы запчастей",
-      icon: Boxes,
-    },
-    {
-      id: 3,
-      title: "Гарантия",
-      subtitle: "Шаблон по умолчанию",
-      icon: ShieldCheck,
-    },
-  ] satisfies SetupWizardStepMeta[],
-  presets: {
-    title: "Шаблон",
-    hint: "",
-    options: [
-      {
-        id: "service",
-        label: "СТО",
-        description: "Наряды · склад",
-      },
-      {
-        id: "dismantling",
-        label: "Разбор",
-        description: "Моторы · продажи",
-      },
-      {
-        id: "full",
-        label: "Всё",
-        description: "Полный цикл",
-      },
-    ] as const,
+  get steps(): SetupWizardStepMeta[] {
+    const steps = setupCopy().steps;
+    return [
+      { id: 1, title: steps.sections.title, subtitle: steps.sections.subtitle, icon: STEP_ICONS[0] },
+      { id: 2, title: steps.catalog.title, subtitle: steps.catalog.subtitle, icon: STEP_ICONS[1] },
+      { id: 3, title: steps.warranty.title, subtitle: steps.warranty.subtitle, icon: STEP_ICONS[2] },
+    ];
   },
-  modules: {
-    motors: {
-      label: "Двигатели",
-      description: "Агрегаты и продажи",
-    },
-    workOrders: {
-      label: "Заказ-наряды",
-      description: "Приём и цех",
-    },
-    accounting: {
-      label: "Финансы",
-      description: "Операции и счета",
-    },
-    warehouse: {
-      label: "Расходники",
-      description: "Масла, фильтры, склад",
-    },
-    specifics: {
-      label: "Каталог учёта",
-      description: "Агрегаты и запчасти",
-    },
-  } satisfies Record<CompanyModuleKey, { label: string; description: string }>,
-  moduleIcons: {
-    motors: Cog,
-    workOrders: ClipboardList,
-    accounting: Receipt,
-    warehouse: Warehouse,
-    specifics: Package,
-  } satisfies Record<CompanyModuleKey, LucideIcon>,
-  categories: {
-    specificsDisabled: "Включите «Каталог учёта» на шаге 1 или пропустите.",
-    emptyHint: "",
-    trackedHint: "Склад",
-    quickHint: "Без склада",
-    modeTracked: "Склад",
-    modeQuick: "Быстро",
-    modeTrackedAria: "С учётом склада",
-    modeQuickAria: "Без учёта склада",
-    groups: SETUP_WIZARD_CATEGORY_GROUPS,
+  get presets() {
+    const presets = setupCopy().presets;
+    return {
+      title: presets.title,
+      hint: "",
+      options: [
+        { id: "service" as const, label: presets.service.label, description: presets.service.description },
+        {
+          id: "dismantling" as const,
+          label: presets.dismantling.label,
+          description: presets.dismantling.description,
+        },
+        { id: "full" as const, label: presets.full.label, description: presets.full.description },
+      ],
+    };
   },
-  warranty: {
-    customHint: "На каждой сделке",
-    noWarranty: "Без гарантии",
+  get modules() {
+    return setupCopy().modules;
   },
-  actions: {
-    back: "Назад",
-    next: "Далее",
-    skipCategories: "Пропустить",
-    finish: "Готово",
-    saving: "Сохраняем…",
-    stepCounter: (current: number, total: number) => `${current} / ${total}`,
-    modulesSelected: (count: number, total: number) => `${count}/${total}`,
-    categoriesSelected: (count: number) => (count === 0 ? "0" : String(count)),
+  moduleIcons: MODULE_ICONS,
+  get categories() {
+    const categories = setupCopy().categories;
+    return {
+      specificsDisabled: categories.specificsDisabled,
+      emptyHint: "",
+      trackedHint: categories.trackedHint,
+      quickHint: categories.quickHint,
+      modeTracked: categories.modeTracked,
+      modeQuick: categories.modeQuick,
+      modeTrackedAria: categories.modeTrackedAria,
+      modeQuickAria: categories.modeQuickAria,
+      groups: getSetupWizardCategoryGroups(),
+    };
   },
-  validation: {
-    pickModule: "Выберите хотя бы один раздел.",
-    saveFailed: "Не удалось сохранить. Попробуйте снова.",
+  get warranty() {
+    return setupCopy().warranty;
   },
-  success: {
-    title: "Готово",
-    subtitle: "Открываем рабочее пространство…",
+  get actions() {
+    const actions = setupCopy().actions;
+    return {
+      ...actions,
+      stepCounter: (current: number, total: number) => `${current} / ${total}`,
+      modulesSelected: (count: number, total: number) => `${count}/${total}`,
+      categoriesSelected: (count: number) => (count === 0 ? "0" : String(count)),
+    };
   },
-  settings: {
-    title: "Система",
-    subtitle: "Разделы меню, каталог запчастей и гарантия по умолчанию.",
-    hint: "Изменения применяются к меню и рабочим разделам после сохранения.",
-    save: "Сохранить",
-    saving: "Сохраняем…",
-    saved: "Настройки системы сохранены",
+  get validation() {
+    return setupCopy().validation;
   },
-} as const;
+  get success() {
+    return setupCopy().success;
+  },
+  get settings() {
+    return setupCopy().settings;
+  },
+};
 
 export type BusinessPresetId = (typeof SETUP_WIZARD_COPY.presets.options)[number]["id"];
 

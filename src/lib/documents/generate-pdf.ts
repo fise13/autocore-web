@@ -22,6 +22,7 @@ export type PdfFromUrlOptions = {
   slug: DocumentSlug;
   aggregateType?: "work_order" | "warranty" | "quote";
   theme?: DocumentTheme;
+  locale?: "en" | "ru";
 };
 
 type PdfPage = Awaited<ReturnType<Awaited<ReturnType<typeof getPuppeteerBrowser>>["newPage"]>>;
@@ -167,7 +168,11 @@ export async function generateDocumentPdf(
   slug: DocumentSlug,
   companyId: string,
   orderId: string,
-  options?: { theme?: DocumentTheme; aggregateType?: "work_order" | "warranty" | "quote" },
+  options?: {
+    theme?: DocumentTheme;
+    aggregateType?: "work_order" | "warranty" | "quote";
+    locale?: "en" | "ru";
+  },
 ): Promise<Buffer> {
   return generatePdfFromRenderUrl({
     slug,
@@ -175,5 +180,6 @@ export async function generateDocumentPdf(
     orderId,
     theme: options?.theme,
     aggregateType: options?.aggregateType,
+    locale: options?.locale,
   });
 }

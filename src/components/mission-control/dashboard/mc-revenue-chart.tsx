@@ -27,18 +27,12 @@ import {
   growthPercent,
 } from "@/lib/mission-control/compute-dashboard-charts";
 import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
+import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 import { FinancialOperation } from "@/domain/financial-operation";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type PeriodDays = 7 | 30;
-
-const chartConfig = {
-  revenue: {
-    label: "Выручка",
-    color: "var(--chart-1)",
-  },
-} satisfies ChartConfig;
 
 type McRevenueChartProps = {
   operations: FinancialOperation[];
@@ -51,6 +45,14 @@ export function McRevenueChart({ operations, isLoading, className }: McRevenueCh
   const chartUid = useId().replace(/:/g, "");
   const gradientId = `mc-revenue-area-grad-${chartUid}`;
   const [periodDays, setPeriodDays] = useState<PeriodDays>(7);
+  const copy = userCopy.missionControl.dashboard.charts;
+
+  const chartConfig = {
+    revenue: {
+      label: copy.revenue,
+      color: "var(--chart-1)",
+    },
+  } satisfies ChartConfig;
 
   const chartRows = useMemo(
     () => buildDailyRevenueSeries(operations, periodDays),
@@ -62,7 +64,7 @@ export function McRevenueChart({ operations, isLoading, className }: McRevenueCh
   if (isLoading) {
     return (
       <McPanel className={cn("shadow-none md:col-span-2 lg:col-span-3 dark:ring-0", className)}>
-        <McPanelHeader title="Выручка" />
+        <McPanelHeader title={copy.revenue} />
         <McPanelBody>
           <Skeleton className="aspect-22/8 w-full" />
         </McPanelBody>
@@ -73,8 +75,8 @@ export function McRevenueChart({ operations, isLoading, className }: McRevenueCh
   return (
     <McPanel className={cn("shadow-none md:col-span-2 lg:col-span-3 dark:ring-0", className)}>
       <McPanelHeader
-        title="Выручка"
-        description="Дневная выручка за выбранный период"
+        title={copy.revenue}
+        description={copy.revenueDesc}
         badge={
           <Delta value={growth} variant="badge">
             <DeltaIcon variant="trend" />
@@ -86,12 +88,12 @@ export function McRevenueChart({ operations, isLoading, className }: McRevenueCh
             onValueChange={(value) => setPeriodDays(Number(value) as PeriodDays)}
             value={String(periodDays)}
           >
-            <SelectTrigger aria-label="Период выручки" className="w-full min-w-36 sm:w-fit" size="sm">
-              <SelectValue placeholder="Период" />
+            <SelectTrigger aria-label={copy.revenuePeriodAria} className="w-full min-w-36 sm:w-fit" size="sm">
+              <SelectValue placeholder={copy.period} />
             </SelectTrigger>
             <SelectContent align="end">
-              <SelectItem value="7">7 дней</SelectItem>
-              <SelectItem value="30">30 дней</SelectItem>
+              <SelectItem value="7">{copy.period7}</SelectItem>
+              <SelectItem value="30">{copy.period30}</SelectItem>
             </SelectContent>
           </Select>
         }

@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2, Sparkles } from "lucide-react";
 import { useEffect } from "react";
+import { userCopy } from "@/lib/user-copy";
 
 type MotorSaleSuccessOverlayProps = {
   open: boolean;
@@ -75,7 +76,7 @@ export function MotorSaleSuccessOverlay({ open, serialCode, amount, onClose }: M
               transition={{ delay: 0.14 }}
               className="text-lg font-semibold tracking-tight"
             >
-              Мотор продан
+              {userCopy.motors.soldOverlayTitle}
             </motion.p>
             <motion.p
               initial={{ opacity: 0, y: 8 }}
@@ -99,7 +100,7 @@ export function MotorSaleSuccessOverlay({ open, serialCode, amount, onClose }: M
               transition={{ delay: 0.34 }}
               className="mt-4 text-xs text-muted-foreground"
             >
-              Гарантия и документы формируются автоматически
+              {userCopy.motors.soldOverlayHint}
             </motion.p>
           </motion.div>
         </motion.div>

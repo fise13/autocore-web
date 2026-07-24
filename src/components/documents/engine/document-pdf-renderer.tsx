@@ -306,7 +306,7 @@ function renderSection(section: DocumentSectionModel, ui: DocumentUiLabels) {
               </div>
               <div>
                 <span>{ui.mileage}</span>
-                <strong>{section.warranty.km.toLocaleString("ru-KZ")} км</strong>
+                <strong>{section.warranty.km.toLocaleString("ru-KZ")} {"\u043a\u043c"}</strong>
               </div>
               <div>
                 <span>{ui.untilDate}</span>

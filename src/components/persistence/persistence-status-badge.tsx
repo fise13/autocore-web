@@ -2,16 +2,12 @@
 
 import { usePersistenceOptional } from "@/components/persistence/persistence-provider";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 import type { PersistenceUiStatus } from "@/lib/persistence";
 
-const STATUS_COPY: Record<PersistenceUiStatus, string> = {
-  clean: "Все изменения сохранены",
-  dirty: "Есть локальные изменения",
-  saving: "Сохранение…",
-  offline: "Работа офлайн",
-  error: "Ошибка синхронизации",
-  conflict: "Конфликт версий",
-};
+function statusCopy(): Record<PersistenceUiStatus, string> {
+  return userCopy.persistence.status;
+}
 
 const STATUS_DOT: Record<PersistenceUiStatus, string> = {
   clean: "bg-emerald-500",
@@ -35,12 +31,12 @@ export function PersistenceStatusBadge({ className }: { className?: string }) {
         "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] text-muted-foreground",
         className,
       )}
-      title={error ?? STATUS_COPY[status]}
+      title={error ?? statusCopy()[status]}
       role="status"
       aria-live="polite"
     >
       <span className={cn("size-1.5 shrink-0 rounded-full", STATUS_DOT[status])} aria-hidden />
-      <span className="truncate">{STATUS_COPY[status]}</span>
+      <span className="truncate">{statusCopy()[status]}</span>
     </div>
   );
 }

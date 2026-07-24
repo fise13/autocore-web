@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { motion } from "motion/react";
+import { userCopy } from "@/lib/user-copy";
 
 import {
   CategoryGridTile,
@@ -65,7 +66,7 @@ export function CompanyAppConfigForm({
             id === "custom"
               ? SETUP_WIZARD_COPY.warranty.customHint
               : template.days > 0
-                ? `${template.days} дн. · ${template.km.toLocaleString("ru-RU")} км`
+                ? userCopy.companyConfig.warrantyTemplateMeta(template.days, template.km.toLocaleString("en-US"))
                 : SETUP_WIZARD_COPY.warranty.noWarranty,
         };
       }),
@@ -197,7 +198,7 @@ export function CompanyAppConfigForm({
                   </div>
                 ) : (
                   <p className="rounded-xl border border-dashed border-border/80 bg-muted/15 px-4 py-3 text-sm text-muted-foreground">
-                    Масла, антифриз, фильтры, свечи и герметики доступны в разделе «Расходники» после сохранения.
+                    {userCopy.companyConfig.consumablesHint}
                   </p>
                 )}
               </section>
@@ -262,7 +263,7 @@ export function CompanyAppConfigForm({
                 </div>
               ) : (
                 <p className="rounded-xl border border-dashed border-border/80 bg-muted/15 px-4 py-3 text-sm text-muted-foreground">
-                  Масла, антифриз, фильтры, свечи и герметики доступны в разделе «Расходники» после сохранения.
+                  {userCopy.companyConfig.consumablesHint}
                 </p>
               )}
             </div>

@@ -19,13 +19,6 @@ import { WorkOrder } from "@/domain/work-order";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-const chartConfig = {
-  amount: {
-    label: "Наряды",
-    color: "var(--chart-1)",
-  },
-} satisfies ChartConfig;
-
 type McMyWorkChartProps = {
   workOrders: WorkOrder[];
   uid: string;
@@ -35,6 +28,12 @@ type McMyWorkChartProps = {
 
 export function McMyWorkChart({ workOrders, uid, isLoading, className }: McMyWorkChartProps) {
   const rows = buildClosedOrdersDailySeries(workOrders, uid, 7);
+  const chartConfig = {
+    amount: {
+      label: userCopy.missionControl.employee.charts.ordersSeries,
+      color: "var(--chart-1)",
+    },
+  } satisfies ChartConfig;
 
   if (isLoading) {
     return (

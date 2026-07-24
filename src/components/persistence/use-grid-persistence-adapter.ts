@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { userCopy } from "@/lib/user-copy";
 
 import { usePersistenceOptional } from "@/components/persistence/persistence-provider";
 import type { PersistenceKey, PersistenceSyncHandler } from "@/lib/persistence";
@@ -34,7 +35,7 @@ export function useGridPersistenceAdapter(input: {
     } catch (error) {
       return {
         ok: false as const,
-        error: error instanceof Error ? error.message : "Не удалось сохранить",
+        error: error instanceof Error ? error.message : userCopy.sync.error,
       };
     }
   };

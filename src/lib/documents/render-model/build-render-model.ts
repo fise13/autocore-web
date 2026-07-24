@@ -90,7 +90,9 @@ function resolveInvoiceDisclaimer(
   if (disclaimer.includes("{days}")) {
     return disclaimer.replaceAll("{days}", String(invoiceDays));
   }
-  return disclaimer.replace(/\d+\s+рабочих\s+дней?/i, `${invoiceDays} рабочих дней`);
+  return disclaimer
+    .replace(/\d+\s+рабочих\s+дней?/i, `${invoiceDays} рабочих дней`)
+    .replace(/\d+\s+business\s+days?/i, `${invoiceDays} business days`);
 }
 
 function buildUnifiedLineItems(context: DocumentContext, ui: DocumentUiLabels): DocumentLineItem[] {
@@ -141,9 +143,10 @@ function buildPrimaryValue(
   const motor = documentPrimaryMotor(context);
 
   if (slug === "engine-warranty") {
+    const numLocale = context.locale?.toLowerCase().startsWith("en") ? "en-US" : "ru-KZ";
     return ui.daysKm
       .replace("{days}", String(warrantyDays))
-      .replace("{km}", warrantyKm.toLocaleString("ru-KZ"));
+      .replace("{km}", warrantyKm.toLocaleString(numLocale));
   }
   if (slug === "engine-waybill" && motor) {
     return formatDocumentMoney(motor.unitPrice);
@@ -183,7 +186,7 @@ function buildSections(
   const recommendations = order.comment?.trim() || null;
   const expiresAt = formatDocumentDate(addDays(documentOrderDate(context), warranty.days));
   const mileageText = mileage
-    ? `${mileage.toLocaleString("ru-KZ")}${ui.kmSuffix}`
+    ? `${mileage.toLocaleString(context.locale?.toLowerCase().startsWith("en") ? "en-US" : "ru-KZ")}${ui.kmSuffix}`
     : "—";
 
   const laborLines = buildLaborLinesForDocument(context);

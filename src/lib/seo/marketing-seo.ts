@@ -20,20 +20,49 @@ export function getMarketingMessages(locale: AppLocale) {
 
 const platformContacts = getPlatformContacts();
 
+const enBrand = enMarketingMessages.seo.brand;
+
 export const MARKETING_BRAND = {
   name: "AutoCore",
-  legalName: "AutoCore",
-  tagline: "Операционная система для авторазборок и автосервисов",
-  shortDescription:
-    "AutoCore: операционная система для авторазборок и автосервисов. Склад, цех, заказ-наряды, документы и бухгалтерия в одном контуре.",
+  legalName: enBrand.legalName,
+  tagline: enBrand.tagline,
+  shortDescription: enBrand.shortDescription,
   supportEmail: platformContacts.email,
   supportPhone: platformContacts.phone,
-  locale: "ru_RU",
-  language: "ru",
+  locale: "en_US",
+  language: "en",
   themeColor: "#0a0a0a",
   /** Primary market for Yandex region + schema areaServed */
-  regionCountries: ["KZ", "RU"] as const,
+  regionCountries: ["KZ", "RU", "US"] as const,
 } as const;
+
+function brandForLocale(locale: AppLocale) {
+  const seoBrand = getMarketingMessages(locale).seo.brand;
+  return {
+    name: MARKETING_BRAND.name,
+    legalName: seoBrand.legalName,
+    tagline: seoBrand.tagline,
+    shortDescription: seoBrand.shortDescription,
+    supportEmail: MARKETING_BRAND.supportEmail,
+    supportPhone: MARKETING_BRAND.supportPhone,
+    language: locale,
+  };
+}
+
+const KNOWS_ABOUT = [
+  "auto parts inventory software",
+  "automotive inventory software",
+  "salvage yard software",
+  "auto recycler software",
+  "used auto parts inventory",
+  "used engine inventory software",
+  "warehouse inventory software",
+  "VIN barcode SKU tracking",
+  "программа учёта автозапчастей",
+  "программа для авторазборки",
+  "складской учёт автозапчастей",
+  "учёт двигателей разборка",
+] as const;
 
 const marketingUrl = getMarketingUrl().replace(/\/$/, "");
 const appUrl = getAppUrl().replace(/\/$/, "");
@@ -47,28 +76,8 @@ function breadcrumbTitle(key: MarketingPathKey, locale: AppLocale): string {
   return messages.seo.breadcrumbs[key];
 }
 
-/**
- * Core commercial keywords for Yandex + Google (RU).
- * Long-tails first: intent queries owners actually type.
- */
-export const MARKETING_KEYWORDS = [
-  "программа для авторазборки",
-  "программа для автосервиса",
-  "программа учёта авторазборка",
-  "система управления автосервисом",
-  "учёт запчастей авторазборка",
-  "складской учёт автосервис",
-  "заказ-наряды СТО",
-  "учёт двигателей разборка",
-  "программа для магазина автозапчастей",
-  "бухгалтерия автосервиса",
-  "CRM для авторазборки",
-  "ПО для разборки авто",
-  "система для автосервиса",
-  "учёт моторов разборка",
-  "облачная программа автосервис",
-  "AutoCore",
-] as const;
+/** Fallback commercial keywords (EN). Live metadata uses i18n `seo.keywords.*`. */
+export const MARKETING_KEYWORDS = enMarketingMessages.seo.keywords.general;
 
 export type MarketingSeoPageConfig = {
   key: MarketingPathKey;
@@ -78,96 +87,25 @@ export type MarketingSeoPageConfig = {
   ogTitle?: string;
 };
 
-/**
- * Titles ~55-70 Cyrillic chars, keyword near the start.
- * Descriptions ~140-160 chars, no em-dashes, concrete benefit + CTA cue.
- */
-export const MARKETING_SEO_PAGES: Record<MarketingPathKey, MarketingSeoPageConfig> = {
-  home: {
-    key: "home",
-    title: "Программа для авторазборки и автосервиса | AutoCore",
-    description:
-      "Склад запчастей, заказ-наряды, учёт двигателей и документы в одной системе. Desktop и телефон синхронизируются. 14 дней бесплатно, без карты.",
-    keywords: [
-      "операционная система автосервис",
-      "демо программа авторазборка",
-      "замена Excel автосервис",
-    ],
-    ogTitle: "AutoCore: программа для авторазборок и автосервисов",
+/** Fallback page SEO (EN). Prefer `buildMarketingMetadata` / i18n messages at runtime. */
+export const MARKETING_SEO_PAGES: Record<MarketingPathKey, MarketingSeoPageConfig> = (
+  Object.keys(enMarketingMessages.seo.pages) as MarketingPathKey[]
+).reduce(
+  (acc, key) => {
+    const page = enMarketingMessages.seo.pages[key];
+    const pageKeywords =
+      (enMarketingMessages.seo.keywords as Record<string, string[] | undefined>)[key] ?? [];
+    acc[key] = {
+      key,
+      title: page.title,
+      description: page.description,
+      ogTitle: page.ogTitle,
+      keywords: [...enMarketingMessages.seo.keywords.general, ...pageKeywords],
+    };
+    return acc;
   },
-  product: {
-    key: "product",
-    title: "Как работает AutoCore в авторазборке и автосервисе",
-    description:
-      "Рабочий день в AutoCore: Mission Control утром, склад и наряды днём, документы и синхронизация устройств без Excel и ночных сверок.",
-    keywords: [
-      "рабочий процесс авторазборка",
-      "Mission Control автосервис",
-      "обзор программы авторазборка",
-    ],
-    ogTitle: "AutoCore: рабочий день в одной системе",
-  },
-  modules: {
-    key: "modules",
-    title: "Модули: склад, наряды, моторы, бухгалтерия | AutoCore",
-    description:
-      "Каталог модулей для авторазборки и СТО: склад запчастей, заказ-наряды, учёт двигателей, бухгалтерия, команда и Mission Control.",
-    keywords: ["модуль склад автосервис", "учёт моторов программа", "модули СТО"],
-  },
-  pricing: {
-    key: "pricing",
-    title: "Цена AutoCore: $39 в месяц за компанию",
-    description:
-      "Одна подписка $39/мес за компанию. Полный доступ без скрытых лимитов. 14 дней бесплатно, карта не нужна. Для авторазборок и автосервисов.",
-    keywords: ["цена программа автосервис", "тариф авторазборка", "стоимость ПО СТО"],
-  },
-  contact: {
-    key: "contact",
-    title: "Контакты AutoCore: демо и поддержка",
-    description:
-      "Запросите демо или напишите в поддержку AutoCore. Ответим в рабочий день. Помогаем авторазборкам и автосервисам с внедрением.",
-    keywords: ["демо программа автосервис", "поддержка авторазборка", "связаться AutoCore"],
-  },
-  download: {
-    key: "download",
-    title: "Скачать AutoCore: Windows, web и телефон",
-    description:
-      "Установите AutoCore на Windows или откройте в браузере и на телефоне. Один аккаунт, склад и наряды синхронизируются в реальном времени.",
-    keywords: [
-      "скачать AutoCore",
-      "desktop авторазборка",
-      "веб программа для автосервиса",
-    ],
-  },
-  downloadMobile: {
-    key: "downloadMobile",
-    title: "Скачать AutoCore на iPhone и Android",
-    description:
-      "Мобильное приложение AutoCore для склада и цеха. Сканирование, наряды и остатки с тем же аккаунтом, что на desktop и в web.",
-    keywords: ["скачать AutoCore iOS", "AutoCore Android", "приложение автосервис"],
-  },
-  privacy: {
-    key: "privacy",
-    title: "Политика конфиденциальности AutoCore",
-    description:
-      "Как AutoCore обрабатывает персональные и операционные данные авторазборок и автосервисов: хранение, права, безопасность и контакты.",
-    keywords: ["политика конфиденциальности", "обработка данных автосервис"],
-  },
-  terms: {
-    key: "terms",
-    title: "Условия использования AutoCore",
-    description:
-      "Условия использования облачной программы AutoCore: аккаунт, подписка, данные клиента, ответственность и прекращение доступа.",
-    keywords: ["условия использования", "лицензия AutoCore"],
-  },
-  security: {
-    key: "security",
-    title: "Безопасность AutoCore: роли, аудит, изоляция",
-    description:
-      "Роли по модулям, журнал действий, изоляция данных компаний и проверки на сервере. Безопасность для операционного автобизнеса.",
-    keywords: ["безопасность SaaS автосервис", "RBAC склад", "аудит программа СТО"],
-  },
-};
+  {} as Record<MarketingPathKey, MarketingSeoPageConfig>,
+);
 
 export function getMarketingSeoPage(key: MarketingPathKey): MarketingSeoPageConfig {
   return MARKETING_SEO_PAGES[key];
@@ -211,29 +149,79 @@ export function buildFaqJsonLd(items: ReadonlyArray<{ readonly q: string; readon
 /** Alias: FAQ JSON-LD built directly from next-intl message items (`t.raw(...)`). */
 export const buildFaqJsonLdFromMessages = buildFaqJsonLd;
 
-export function buildMarketingJsonLd() {
+const SOFTWARE_COPY = {
+  en: {
+    trialName: "14-day free trial",
+    trialDescription: "Full access for 14 days, no card required",
+    proName: "Pro subscription",
+    proDescription: "Full AutoCore for one company",
+    audience: "Salvage yards, auto recyclers, repair shops, used auto parts sellers",
+    features: [
+      "Auto parts warehouse inventory",
+      "Work orders for repair shops",
+      "Used engine inventory and catalog",
+      "Accounting and ledger entries",
+      "Mission Control for owners",
+      "RBAC and activity audit log",
+      "Windows desktop and mobile apps",
+      "VIN, barcode, and SKU tracking",
+    ],
+    contactName: "Contact AutoCore",
+    contactDescription: "Demo, sales, support, and partnerships for AutoCore inventory software.",
+    offerDescription:
+      "Full AutoCore access for one company with a 14-day free trial.",
+  },
+  ru: {
+    trialName: "Пробный период 14 дней",
+    trialDescription: "Полный доступ на 14 дней без карты",
+    proName: "Подписка Pro",
+    proDescription: "Полный AutoCore для одной компании",
+    audience: "Авторазборки, авторециклеры, автосервисы, магазины б/у запчастей",
+    features: [
+      "Складской учёт автозапчастей",
+      "Заказ-наряды для автосервиса",
+      "Учёт двигателей и каталог моторов",
+      "Бухгалтерия и проводки",
+      "Mission Control для владельца",
+      "RBAC и журнал активности",
+      "Desktop Windows и мобильные приложения",
+      "VIN, штрихкод и SKU",
+    ],
+    contactName: "Контакты AutoCore",
+    contactDescription: "Демо, продажи, поддержка и партнёрства AutoCore.",
+    offerDescription:
+      "Полный доступ к AutoCore для одной компании с 14-дневным пробным периодом.",
+  },
+} as const;
+
+export function buildMarketingJsonLd(locale: AppLocale = DEFAULT_LOCALE) {
+  const brand = brandForLocale(locale);
+  const copy = SOFTWARE_COPY[locale] ?? SOFTWARE_COPY.en;
+  const downloadUrl = marketingAbsoluteUrl("download", locale);
+  const pricingUrl = marketingAbsoluteUrl("pricing", locale);
+
   return [
     {
       "@context": "https://schema.org",
       "@type": "Organization",
       "@id": `${marketingUrl}#organization`,
-      name: MARKETING_BRAND.name,
-      legalName: MARKETING_BRAND.legalName,
+      name: brand.name,
+      legalName: brand.legalName,
       url: marketingUrl,
       logo: {
         "@type": "ImageObject",
         url: logoUrl,
       },
       image: defaultOgImage,
-      description: MARKETING_BRAND.shortDescription,
-      email: MARKETING_BRAND.supportEmail,
-      telephone: MARKETING_BRAND.supportPhone,
+      description: brand.shortDescription,
+      email: brand.supportEmail,
+      telephone: brand.supportPhone,
       contactPoint: [
         {
           "@type": "ContactPoint",
           contactType: "customer support",
-          email: MARKETING_BRAND.supportEmail,
-          telephone: MARKETING_BRAND.supportPhone,
+          email: brand.supportEmail,
+          telephone: brand.supportPhone,
           url: supportUrl,
           availableLanguage: ["ru", "en", "kk"],
           areaServed: MARKETING_BRAND.regionCountries.map((code) => ({
@@ -244,7 +232,7 @@ export function buildMarketingJsonLd() {
         {
           "@type": "ContactPoint",
           contactType: "sales",
-          email: MARKETING_BRAND.supportEmail,
+          email: brand.supportEmail,
           url: supportUrl,
           availableLanguage: ["ru", "en"],
         },
@@ -253,24 +241,17 @@ export function buildMarketingJsonLd() {
         "@type": "Country",
         name: code,
       })),
-      knowsAbout: [
-        "авторазборка",
-        "автосервис",
-        "складской учёт автозапчастей",
-        "заказ-наряды",
-        "учёт двигателей",
-        "программа для СТО",
-      ],
+      knowsAbout: [...KNOWS_ABOUT],
       sameAs: [],
     },
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
       "@id": `${marketingUrl}#website`,
-      name: MARKETING_BRAND.name,
+      name: brand.name,
       url: marketingUrl,
-      description: MARKETING_BRAND.shortDescription,
-      inLanguage: MARKETING_BRAND.language,
+      description: brand.shortDescription,
+      inLanguage: brand.language,
       publisher: { "@id": `${marketingUrl}#organization` },
       copyrightHolder: { "@id": `${marketingUrl}#organization` },
     },
@@ -278,16 +259,16 @@ export function buildMarketingJsonLd() {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "@id": `${marketingUrl}#software`,
-      name: MARKETING_BRAND.name,
+      name: brand.name,
       applicationCategory: "BusinessApplication",
-      applicationSubCategory: "Automotive dismantling and repair shop software",
+      applicationSubCategory: "Auto parts inventory and salvage yard software",
       operatingSystem: "Web, Windows, iOS, Android",
-      description: MARKETING_BRAND.shortDescription,
-      inLanguage: MARKETING_BRAND.language,
+      description: brand.shortDescription,
+      inLanguage: brand.language,
       image: defaultOgImage,
       screenshot: defaultOgImage,
       url: marketingUrl,
-      downloadUrl: marketingAbsoluteUrl("download"),
+      downloadUrl,
       installUrl: appUrl,
       softwareVersion: "1",
       author: { "@id": `${marketingUrl}#organization` },
@@ -295,29 +276,29 @@ export function buildMarketingJsonLd() {
       offers: {
         "@type": "AggregateOffer",
         lowPrice: "0",
-        highPrice: "20",
+        highPrice: "39",
         priceCurrency: "USD",
         offerCount: 2,
         offers: [
           {
             "@type": "Offer",
-            name: "Пробный период 14 дней",
+            name: copy.trialName,
             price: "0",
             priceCurrency: "USD",
             url: `${appUrl}/demo`,
             availability: "https://schema.org/InStock",
-            description: "Полный доступ на 14 дней без карты",
+            description: copy.trialDescription,
           },
           {
             "@type": "Offer",
-            name: "Подписка Pro",
-            price: "20",
+            name: copy.proName,
+            price: "39",
             priceCurrency: "USD",
-            url: marketingAbsoluteUrl("pricing"),
+            url: pricingUrl,
             availability: "https://schema.org/InStock",
             priceSpecification: {
               "@type": "UnitPriceSpecification",
-              price: "20",
+              price: "39",
               priceCurrency: "USD",
               billingDuration: "P1M",
               referenceQuantity: {
@@ -326,23 +307,15 @@ export function buildMarketingJsonLd() {
                 unitText: "company",
               },
             },
-            description: "Полный AutoCore для одной компании",
+            description: copy.proDescription,
           },
         ],
       },
       audience: {
         "@type": "BusinessAudience",
-        audienceType: "Авторазборки, автосервисы, магазины автозапчастей",
+        audienceType: copy.audience,
       },
-      featureList: [
-        "Складской учёт запчастей",
-        "Заказ-наряды для автосервиса",
-        "Учёт двигателей и моторов",
-        "Бухгалтерия и проводки",
-        "Mission Control для владельца",
-        "RBAC и журнал активности",
-        "Desktop Windows и мобильные приложения",
-      ],
+      featureList: [...copy.features],
       countriesSupported: MARKETING_BRAND.regionCountries.join(", "),
     },
   ];
@@ -353,8 +326,9 @@ export function buildCollectionPageJsonLd(
   name: string,
   description: string,
   items?: ReadonlyArray<string>,
+  locale: AppLocale = DEFAULT_LOCALE,
 ) {
-  const url = marketingAbsoluteUrl(key);
+  const url = marketingAbsoluteUrl(key, locale);
 
   return {
     "@context": "https://schema.org",
@@ -363,7 +337,7 @@ export function buildCollectionPageJsonLd(
     url,
     name,
     description,
-    inLanguage: MARKETING_BRAND.language,
+    inLanguage: locale,
     isPartOf: { "@id": `${marketingUrl}#website` },
     about: { "@id": `${marketingUrl}#software` },
     ...(items?.length
@@ -381,32 +355,35 @@ export function buildCollectionPageJsonLd(
   };
 }
 
-export function buildContactPageJsonLd() {
-  const url = marketingAbsoluteUrl("contact");
+export function buildContactPageJsonLd(locale: AppLocale = DEFAULT_LOCALE) {
+  const url = marketingAbsoluteUrl("contact", locale);
+  const copy = SOFTWARE_COPY[locale] ?? SOFTWARE_COPY.en;
+  const brand = brandForLocale(locale);
 
   return {
     "@context": "https://schema.org",
     "@type": "ContactPage",
     "@id": `${url}#contact-page`,
     url,
-    name: "Контакты AutoCore",
-    description: "Демо, продажи, поддержка и партнёрства AutoCore.",
-    inLanguage: MARKETING_BRAND.language,
+    name: copy.contactName,
+    description: copy.contactDescription,
+    inLanguage: locale,
     isPartOf: { "@id": `${marketingUrl}#website` },
     about: { "@id": `${marketingUrl}#organization` },
     mainEntity: {
       "@type": "Organization",
       "@id": `${marketingUrl}#organization`,
-      name: MARKETING_BRAND.name,
-      email: MARKETING_BRAND.supportEmail,
-      telephone: MARKETING_BRAND.supportPhone,
+      name: brand.name,
+      email: brand.supportEmail,
+      telephone: brand.supportPhone,
       url: supportUrl,
     },
   };
 }
 
-export function buildPricingOfferJsonLd() {
-  const url = marketingAbsoluteUrl("pricing");
+export function buildPricingOfferJsonLd(locale: AppLocale = DEFAULT_LOCALE) {
+  const url = marketingAbsoluteUrl("pricing", locale);
+  const copy = SOFTWARE_COPY[locale] ?? SOFTWARE_COPY.en;
 
   return {
     "@context": "https://schema.org",
@@ -415,11 +392,11 @@ export function buildPricingOfferJsonLd() {
     url,
     name: "AutoCore Pro",
     category: "SaaS subscription",
-    price: "20",
+    price: "39",
     priceCurrency: "USD",
     priceSpecification: {
       "@type": "UnitPriceSpecification",
-      price: "20",
+      price: "39",
       priceCurrency: "USD",
       billingDuration: "P1M",
       referenceQuantity: {
@@ -440,6 +417,6 @@ export function buildPricingOfferJsonLd() {
     },
     seller: { "@id": `${marketingUrl}#organization` },
     availability: "https://schema.org/InStock",
-    description: "Полный доступ к AutoCore для одной компании с 14-дневным пробным периодом.",
+    description: copy.offerDescription,
   };
 }

@@ -3,6 +3,7 @@
 import { ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, LucideIcon, Package, Zap } from "lucide-react";
+import { userCopy } from "@/lib/user-copy";
 
 import { AppLogo } from "@/components/brand/app-logo";
 import { Badge } from "@/components/ui/badge";
@@ -131,7 +132,7 @@ function SetupWizardStepRail({
 
   return (
     <nav
-      aria-label="Шаги настройки"
+      aria-label={userCopy.commonUi.setupStepsAria}
       className={cn(
         "flex gap-2",
         compact ? "flex-wrap" : "hidden flex-col gap-1 lg:flex",

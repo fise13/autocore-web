@@ -17,17 +17,21 @@ import type { WarehouseLocation } from "@/domain/warehouse-location";
 import { isUnlocatedLocation } from "@/domain/warehouse-location";
 import { buildLocationEntityLink } from "@/lib/warehouse/location-entity-link";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 export type LocationLabelSize = "50x30" | "70x40" | "a6";
 
-const SIZE_PRESETS: Record<
+function sizePresets(): Record<
   LocationLabelSize,
   { label: string; qr: number; className: string }
-> = {
-  "50x30": { label: "50×30 мм", qr: 96, className: "w-[190px] min-h-[114px]" },
-  "70x40": { label: "70×40 мм", qr: 120, className: "w-[264px] min-h-[152px]" },
-  a6: { label: "A6", qr: 160, className: "w-[320px] min-h-[220px]" },
-};
+> {
+  const copy = userCopy.warehouse.dialogs.labelPrint;
+  return {
+    "50x30": { label: copy.size50x30, qr: 96, className: "w-[190px] min-h-[114px]" },
+    "70x40": { label: copy.size70x40, qr: 120, className: "w-[264px] min-h-[152px]" },
+    a6: { label: copy.sizeA6, qr: 160, className: "w-[320px] min-h-[220px]" },
+  };
+}
 
 type LocationLabelPrintDialogProps = {
   open: boolean;
@@ -52,9 +56,10 @@ function humanLinesFor(location: WarehouseLocation): string[] {
   }
   const parts = location.path.length ? location.path : [location.code];
   if (parts.length <= 1) return [];
+  const copy = userCopy.warehouse.dialogs.labelPrint;
   return parts.map((part, index) => {
     const kind =
-      index === 0 ? "Зона" : index === 1 ? "Стеллаж" : index === 2 ? "Полка" : "Ячейка";
+      index === 0 ? copy.zone : index === 1 ? copy.rack : index === 2 ? copy.shelf : copy.bin;
     return `${kind} ${part}`;
   });
 }
@@ -79,7 +84,8 @@ export function LocationLabelPrintDialog({
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    const preset = SIZE_PRESETS[size];
+    const presets = sizePresets();
+    const preset = presets[size];
 
     void (async () => {
       const next: LabelCard[] = [];
@@ -122,16 +128,15 @@ export function LocationLabelPrintDialog({
         <DialogHeader className="print:hidden">
           <DialogTitle className="flex items-center gap-2">
             <Printer className="size-4 opacity-70" />
-            Этикетки мест — {warehouseName}
+            {userCopy.warehouse.dialogs.labelPrint.title(warehouseName)}
           </DialogTitle>
           <DialogDescription>
-            QR кодирует `autocore://loc/…` — сканер открывает место без поиска. Выберите размер
-            и печатайте.
+            {userCopy.warehouse.dialogs.labelPrint.description}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-wrap gap-2 print:hidden">
-          {(Object.keys(SIZE_PRESETS) as LocationLabelSize[]).map((key) => (
+          {(Object.keys(sizePresets()) as LocationLabelSize[]).map((key) => (
             <Button
               key={key}
               type="button"
@@ -139,14 +144,14 @@ export function LocationLabelPrintDialog({
               variant={size === key ? "default" : "outline"}
               onClick={() => setSize(key)}
             >
-              {SIZE_PRESETS[key].label}
+              {sizePresets()[key].label}
             </Button>
           ))}
         </div>
 
         <div className="max-h-[55vh] overflow-y-auto rounded-lg border border-border/60 bg-muted/20 p-3 print:max-h-none print:overflow-visible print:border-0 print:bg-transparent print:p-0">
           {cards.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">Нет мест для печати</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">{userCopy.warehouse.dialogs.labelPrint.empty}</p>
           ) : (
             <div className="flex flex-wrap justify-center gap-3 print:gap-2">
               {cards.map((card) => (
@@ -154,7 +159,7 @@ export function LocationLabelPrintDialog({
                   key={card.id}
                   className={cn(
                     "flex flex-col items-center justify-between gap-2 rounded-md border border-border bg-white p-3 text-zinc-900 shadow-sm print:break-inside-avoid print:shadow-none",
-                    SIZE_PRESETS[size].className,
+                    sizePresets()[size].className,
                   )}
                 >
                   <p className="text-center text-lg font-bold tracking-tight tabular-nums">
@@ -165,16 +170,16 @@ export function LocationLabelPrintDialog({
                     <img
                       src={card.dataUrl}
                       alt={`QR ${card.displayCode}`}
-                      width={SIZE_PRESETS[size].qr}
-                      height={SIZE_PRESETS[size].qr}
+                      width={sizePresets()[size].qr}
+                      height={sizePresets()[size].qr}
                       className="rounded-sm"
                     />
                   ) : (
                     <div
                       className="animate-pulse rounded-sm bg-zinc-100"
                       style={{
-                        width: SIZE_PRESETS[size].qr,
-                        height: SIZE_PRESETS[size].qr,
+                        width: sizePresets()[size].qr,
+                        height: sizePresets()[size].qr,
                       }}
                     />
                   )}
@@ -193,11 +198,11 @@ export function LocationLabelPrintDialog({
 
         <DialogFooter className="print:hidden">
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-            Закрыть
+            {userCopy.warehouse.dialogs.close}
           </Button>
           <Button type="button" disabled={cards.length === 0} onClick={handlePrint}>
             <Printer className="size-4" />
-            Печать ({cards.length})
+            {userCopy.warehouse.dialogs.labelPrint.print(cards.length)}
           </Button>
         </DialogFooter>
       </DialogContent>

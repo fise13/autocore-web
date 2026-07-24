@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 
 import type { RowExplanation } from "@/lib/import";
+import { userCopy } from "@/lib/user-copy";
 
 const TIER_STYLES = {
   high: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300",
@@ -22,7 +23,7 @@ const TIER_DOT = {
 /** A reason bullet line (positive checkmark or amber warning). */
 export function ConfidenceReasons({ explanation }: { explanation: RowExplanation }) {
   if (explanation.reasons.length === 0) {
-    return <p className="text-xs text-muted-foreground">Подтверждено автоматически</p>;
+    return <p className="text-xs text-muted-foreground">{userCopy.migration.confidence.autoConfirmed}</p>;
   }
   return (
     <ul className="flex flex-col gap-1">

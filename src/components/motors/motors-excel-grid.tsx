@@ -1480,7 +1480,7 @@ export function MotorsExcelGrid({
               closeContextMenu();
             }}
           >
-            Копировать
+            {userCopy.motors.contextMenu.copy}
           </GridContextMenuItem>
 
           {canEdit ? (
@@ -1492,7 +1492,7 @@ export function MotorsExcelGrid({
                   closeContextMenu();
                 }}
               >
-                Вырезать
+                {userCopy.motors.contextMenu.cut}
               </GridContextMenuItem>
               <GridContextMenuItem
                 shortcut={modShortcutLabel("V")}
@@ -1501,7 +1501,7 @@ export function MotorsExcelGrid({
                   closeContextMenu();
                 }}
               >
-                Вставить
+                {userCopy.motors.contextMenu.paste}
               </GridContextMenuItem>
               <GridContextMenuItem
                 shortcut={deleteShortcutLabel()}
@@ -1510,7 +1510,7 @@ export function MotorsExcelGrid({
                   closeContextMenu();
                 }}
               >
-                Очистить
+                {userCopy.motors.contextMenu.clear}
               </GridContextMenuItem>
               <GridContextMenuItem
                 shortcut={modShortcutLabel("D")}
@@ -1519,7 +1519,7 @@ export function MotorsExcelGrid({
                   closeContextMenu();
                 }}
               >
-                Заполнить вниз
+                {userCopy.motors.contextMenu.fillDown}
               </GridContextMenuItem>
               <GridContextMenuItem
                 onClick={() => {
@@ -1530,7 +1530,7 @@ export function MotorsExcelGrid({
                 }}
                 disabled={!isEditableColumn(contextMenu.cell.column, layoutColumns)}
               >
-                Редактировать
+                {userCopy.motors.contextMenu.edit}
               </GridContextMenuItem>
             </>
           ) : null}
@@ -1549,7 +1549,7 @@ export function MotorsExcelGrid({
                   closeContextMenu();
                 }}
               >
-                Продать ({contextMenu.selected.filter((item) => !item.soldDate).length})
+                {userCopy.motors.contextMenu.sell(contextMenu.selected.filter((item) => !item.soldDate).length)}
               </GridContextMenuItem>
               <GridContextMenuItem
                 disabled={contextMenu.selected.every((item) => !item.soldDate)}
@@ -1562,7 +1562,7 @@ export function MotorsExcelGrid({
                   closeContextMenu();
                 }}
               >
-                Вернуть в наличие ({contextMenu.selected.filter((item) => item.soldDate).length})
+                {userCopy.motors.contextMenu.returnToStock(contextMenu.selected.filter((item) => item.soldDate).length)}
               </GridContextMenuItem>
             </>
           ) : null}
@@ -1577,7 +1577,7 @@ export function MotorsExcelGrid({
                     closeContextMenu();
                   }}
                 >
-                  Копировать номер
+                  {userCopy.motors.contextMenu.copySerial}
                 </GridContextMenuItem>
               ) : null}
               <GridContextMenuItem
@@ -1586,7 +1586,7 @@ export function MotorsExcelGrid({
                   closeContextMenu();
                 }}
               >
-                История изменений
+                {userCopy.motors.contextMenu.history}
               </GridContextMenuItem>
               <GridContextMenuItem
                 onClick={() => {
@@ -1594,7 +1594,7 @@ export function MotorsExcelGrid({
                   closeContextMenu();
                 }}
               >
-                PDF · гарантия / счёт
+                {userCopy.motors.contextMenu.pdfDocs}
               </GridContextMenuItem>
             </>
           ) : null}

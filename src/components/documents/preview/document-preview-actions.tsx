@@ -3,6 +3,7 @@
 import { ArrowLeft, Download, Printer } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { userCopy } from "@/lib/user-copy";
 
 import { Button } from "@/components/ui/button";
 import { DOCUMENT_BY_SLUG, DocumentSlug } from "@/lib/documents/document-types";
@@ -81,7 +82,7 @@ export function DocumentPreviewActions({
       const filename = `${definition.slug}-${orderId}.pdf`;
       deliverPdfToUser(blob, filename);
     } catch (error) {
-      onError?.(mapDocumentError(error, "Не удалось скачать PDF"));
+      onError?.(mapDocumentError(error, userCopy.documents.preview.downloadFailed));
     } finally {
       setBusy(null);
     }
@@ -95,7 +96,7 @@ export function DocumentPreviewActions({
       const { blob } = await resolvePdfBlob();
       await printPdfBlob(blob);
     } catch (error) {
-      onError?.(mapDocumentError(error, "Не удалось напечатать PDF"));
+      onError?.(mapDocumentError(error, userCopy.documents.preview.printFailed));
     } finally {
       setBusy(null);
     }
@@ -117,11 +118,11 @@ export function DocumentPreviewActions({
         }}
       >
         <ArrowLeft className="size-4" />
-        Закрыть
+        {userCopy.documents.preview.close}
       </Button>
       <div className="min-w-0 text-center">
         <p className="truncate text-sm font-medium text-white">{definition.title}</p>
-        <p className="text-xs text-neutral-400">Предпросмотр документа</p>
+        <p className="text-xs text-neutral-400">{userCopy.documents.preview.documentPreview}</p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <Button
@@ -133,7 +134,7 @@ export function DocumentPreviewActions({
           onClick={() => void handlePrint()}
         >
           <Printer className="size-4" />
-          {busy === "print" ? "Печать…" : "Печать"}
+          {busy === "print" ? userCopy.documents.preview.printing : userCopy.documents.preview.print}
         </Button>
         <Button
           type="button"
@@ -143,7 +144,7 @@ export function DocumentPreviewActions({
           onClick={() => void handleDownload()}
         >
           <Download className="size-4" />
-          {busy === "download" ? "Скачивание…" : "Скачать PDF"}
+          {busy === "download" ? userCopy.documents.preview.downloading : userCopy.documents.preview.downloadPdf}
         </Button>
       </div>
     </div>

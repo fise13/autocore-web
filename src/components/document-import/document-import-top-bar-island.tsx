@@ -21,6 +21,7 @@ import { normalizeCompanyId } from "@/lib/company-id";
 import { cn } from "@/lib/utils";
 import type { DocumentImportJob } from "@/domain/document-import";
 import type { ImportBatch } from "@/domain/import-batch";
+import { userCopy } from "@/lib/user-copy";
 
 function pickTopBarJob(jobs: DocumentImportJob[], dismissed: Set<string>): DocumentImportJob | null {
   const candidates = jobs.filter(
@@ -59,7 +60,7 @@ function MobileImportIslandShell({
   subtitle,
   onOpen,
   onDismiss,
-  dismissLabel = "Скрыть",
+  dismissLabel = userCopy.documentImport.hide,
 }: IslandShellProps) {
   return (
     <AnimatePresence mode="wait">
@@ -158,10 +159,10 @@ export function DocumentImportTopBarIsland({ className }: DocumentImportTopBarIs
   if (batch) {
     const title =
       batch.status === "processing"
-        ? "Импорт · AI разбирает"
+        ? userCopy.documentImport.toastAi
         : batch.status === "review"
-          ? `Импорт · ${batch.counts.rows} строк`
-          : `Импорт · ${batch.counts.files} файл.`;
+          ? userCopy.documentImport.toastRows(batch.counts.rows)
+          : userCopy.documentImport.toastFiles(batch.counts.files);
 
     return (
       <MobileImportIslandShell
@@ -169,7 +170,7 @@ export function DocumentImportTopBarIsland({ className }: DocumentImportTopBarIs
         islandKey={batch.id}
         icon={<Sparkles className="size-3" aria-hidden />}
         title={title}
-        subtitle="Откройте и подтвердите"
+        subtitle={userCopy.documentImport.openConfirm}
         onOpen={() => router.push(`/imports/batch/${batch.id}`)}
         onDismiss={() => {
           setDismissedBatchIds((prev) => new Set(prev).add(batch.id));
@@ -182,10 +183,10 @@ export function DocumentImportTopBarIsland({ className }: DocumentImportTopBarIs
 
   const title =
     job.status === "pending"
-      ? "С телефона · обработка"
+      ? userCopy.documentImport.phoneProcessing
       : pendingCount > 1
-        ? `С телефона · ${pendingCount} к проверке`
-        : "С телефона · готов";
+        ? userCopy.documentImport.phonePending(pendingCount)
+        : userCopy.documentImport.phoneReady;
 
   return (
     <MobileImportIslandShell
@@ -201,10 +202,10 @@ export function DocumentImportTopBarIsland({ className }: DocumentImportTopBarIs
       title={title}
       subtitle={
         job.status === "pending"
-          ? "Готовим превью"
+          ? userCopy.documentImport.preparingPreview
           : job.fileName?.trim()
             ? job.fileName
-            : "Откройте снимок"
+            : userCopy.documentImport.openSnapshot
       }
       onOpen={() => {
         markDocumentImportInboxSeen();
@@ -214,7 +215,7 @@ export function DocumentImportTopBarIsland({ className }: DocumentImportTopBarIs
         dismissDocumentImport(job.id);
         setDismissTick((value) => value + 1);
       }}
-      dismissLabel="Скрыть до следующего импорта"
+      dismissLabel={userCopy.documentImport.dismissUntilNext}
     />
   );
 }

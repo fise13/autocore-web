@@ -253,7 +253,7 @@ export function NewOperationDialog({
               onChange={(event) => setMarkAsAdvance(event.target.checked)}
               className="size-4 rounded border"
             />
-            <span>Пометить как аванс</span>
+            <span>{userCopy.accounting.newOperation.markAdvance}</span>
           </label>
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}

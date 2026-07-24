@@ -15,6 +15,7 @@ import { ActivityLogEntry } from "@/domain/rbac";
 import { EmptyState } from "@/components/ui/empty-state";
 import { resolveActivityLabel } from "@/lib/mission-control/activity-labels";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 const moduleIcons: Record<string, LucideIcon> = {
   inventory: PackageIcon,
@@ -38,8 +39,8 @@ export function WorkspaceActivityFeed({ entries, limit, className }: WorkspaceAc
     return (
       <EmptyState
         icon={ClipboardListIcon}
-        title="Пока тихо"
-        description="События появятся после действий в складе, бухгалтерии и заказ-нарядах."
+        title={userCopy.activity.emptyTitle}
+        description={userCopy.activity.emptyDescription}
         className="m-4 border-none bg-transparent py-8"
       />
     );
@@ -53,8 +54,8 @@ export function WorkspaceActivityFeed({ entries, limit, className }: WorkspaceAc
         const Icon = moduleIcons[module] ?? SettingsIcon;
         const when = entry.timestamp
           ? formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: ru })
-          : "сейчас";
-        const actor = entry.actorName?.trim() || "Сотрудник";
+          : userCopy.activity.now;
+        const actor = entry.actorName?.trim() || userCopy.activity.actorFallback;
         const title = `${actor}: ${resolved.label}${entry.targetName ? ` · ${entry.targetName}` : ""}`;
 
         return (

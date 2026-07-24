@@ -14,6 +14,7 @@ import {
   workOrdersListItemVariants,
   workOrdersListVariants,
 } from "@/components/work-orders/work-orders-motion";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 import { workOrdersHref } from "@/lib/navigation/work-orders-nav";
 
 type WorkOrdersVehiclesPanelProps = {
@@ -24,6 +25,8 @@ type WorkOrdersVehiclesPanelProps = {
 
 export function WorkOrdersVehiclesPanel({ vehicles, clients, canEdit }: WorkOrdersVehiclesPanelProps) {
   const [search, setSearch] = useState("");
+  const copy = userCopy.workOrders;
+  const numberLocale = getActiveUserCopyLocale() === "ru" ? "ru-RU" : "en-US";
 
   const clientById = useMemo(() => new Map(clients.map((client) => [client.id, client])), [clients]);
 
@@ -48,19 +51,19 @@ export function WorkOrdersVehiclesPanel({ vehicles, clients, canEdit }: WorkOrde
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
       <WorkOrdersPanelHeader
-        title="Автомобили"
-        description={`${vehicles.length} в базе`}
+        title={copy.vehicles.title}
+        description={copy.vehicles.inDatabase(vehicles.length)}
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Марка, номер, VIN, клиент…"
+        searchPlaceholder={copy.vehicles.searchPlaceholder}
         actionHref={canEdit ? workOrdersHref({ section: "orders", create: true }) : undefined}
-        actionLabel="Новый заказ-наряд"
+        actionLabel={copy.newOrder}
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-5">
         {filtered.length === 0 ? (
           <p className="py-16 text-center text-sm text-muted-foreground">
-            {vehicles.length === 0 ? "Автомобилей пока нет" : "Ничего не найдено"}
+            {vehicles.length === 0 ? copy.vehicles.empty : copy.nothingFound}
           </p>
         ) : (
           <motion.ul
@@ -72,14 +75,15 @@ export function WorkOrdersVehiclesPanel({ vehicles, clients, canEdit }: WorkOrde
           >
             {filtered.map((vehicle) => {
               const client = clientById.get(vehicle.clientId);
-              const title = [vehicle.make, vehicle.model].filter(Boolean).join(" ") || "Автомобиль";
+              const title =
+                [vehicle.make, vehicle.model].filter(Boolean).join(" ") || copy.vehicles.fallbackTitle;
               const plateOrVin = [vehicle.licensePlate, vehicle.vin].filter(Boolean).join(" · ");
               const meta: string[] = [];
               if (client?.fullName) {
                 meta.push(client.phone ? `${client.fullName} · ${client.phone}` : client.fullName);
               }
               if (vehicle.currentMileage > 0) {
-                meta.push(`Пробег ${vehicle.currentMileage.toLocaleString("ru-RU")} км`);
+                meta.push(copy.vehicles.mileage(vehicle.currentMileage.toLocaleString(numberLocale)));
               }
 
               return (

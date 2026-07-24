@@ -19,7 +19,7 @@ export function AdvancesOverview({ snapshot }: AdvancesOverviewProps) {
       <div>
         <p className="text-sm font-medium">{userCopy.accounting.advances.title}</p>
         <p className="text-xs text-muted-foreground">
-          Операции с «аванс», «предоплата» и другими признаками в категории или комментарии.
+          {userCopy.accounting.advances.hint}
         </p>
       </div>
 
@@ -40,7 +40,7 @@ export function AdvancesOverview({ snapshot }: AdvancesOverviewProps) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Операций с признаками аванса: {snapshot.totalCount}
+        {userCopy.accounting.advances.count(snapshot.totalCount)}
       </p>
     </div>
   );

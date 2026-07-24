@@ -16,6 +16,7 @@ import { emitKnowledgeEvent } from "@/lib/knowledge/knowledge-api.client";
 import { triggerWorkOrderEventProcessing } from "@/lib/work-orders/process-work-order-events";
 import { useDocumentGenerationJobsRealtime } from "@/hooks/use-document-generation-jobs-realtime";
 import { buildDocumentContextFromOrder } from "@/lib/documents/build-context-from-order";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 
 export type WorkOrderDocumentsPanelLabels = {
   dateLocale: "en" | "ru";
@@ -36,22 +37,25 @@ export type WorkOrderDocumentsPanelLabels = {
   descriptions?: Partial<Record<DocumentSlug, string>>;
 };
 
-const DEFAULT_LABELS: WorkOrderDocumentsPanelLabels = {
-  dateLocale: "ru",
-  autoHint: "Документы формируются автоматически при создании и закрытии заказа.",
-  refresh: "Обновить PDF",
-  generating: "Формирование…",
-  pdfGenerating: "PDF формируются…",
-  noneForStatus: "Для текущего статуса заказа нет клиентских PDF.",
-  pending: "формируется…",
-  ready: "готов",
-  preview: "Предпросмотр",
-  openPdfFailed: "Не удалось открыть PDF",
-  downloadPdfFailed: "Не удалось скачать PDF",
-  refreshFailed: "Не удалось обновить документы",
-  savedCount: (count) => `Сохранено документов: ${count}`,
-  updated: (date) => ` · обновлено ${date}`,
-};
+function getDefaultLabels(): WorkOrderDocumentsPanelLabels {
+  const d = userCopy.workOrders.detail.documents;
+  return {
+    dateLocale: getActiveUserCopyLocale(),
+    autoHint: d.autoHint,
+    refresh: d.refresh,
+    generating: d.generating,
+    pdfGenerating: d.pdfGenerating,
+    noneForStatus: d.noneForStatus,
+    pending: d.pending,
+    ready: d.ready,
+    preview: d.preview,
+    openPdfFailed: d.openPdfFailed,
+    downloadPdfFailed: d.downloadPdfFailed,
+    refreshFailed: d.refreshFailed,
+    savedCount: d.savedCount,
+    updated: d.updated,
+  };
+}
 
 type WorkOrderDocumentsPanelProps = {
   companyId: string;
@@ -86,7 +90,7 @@ export function WorkOrderDocumentsPanel({
   demoMode = false,
   onDemoPreview,
   onDemoDownload,
-  labels = DEFAULT_LABELS,
+  labels = getDefaultLabels(),
 }: WorkOrderDocumentsPanelProps) {
   const [busySlug, setBusySlug] = useState<DocumentSlug | null>(null);
   const [refreshing, setRefreshing] = useState(false);

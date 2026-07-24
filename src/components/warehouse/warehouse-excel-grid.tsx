@@ -82,7 +82,7 @@ import { InventoryStockLevelRepository } from "@/infrastructure/firestore/invent
 import { FinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
 import { WarehouseRepository } from "@/infrastructure/firestore/warehouse-repository";
 import { formatGroupedNumber, parseGroupedNumber } from "@/lib/money/format-number";
-import { mapAuthError, mapGridSaveError } from "@/lib/user-copy";
+import { mapAuthError, mapGridSaveError, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 type WarehouseExcelGridProps = {
@@ -737,8 +737,8 @@ export function WarehouseExcelGrid({
         } catch (rowError) {
           const label =
             row.rowKind === "saved"
-              ? row.sku || row.name || "строка"
-              : row.draft.sku || row.draft.name || "новая строка";
+              ? row.sku || row.name || userCopy.warehouse.excelGrid.rowFallback
+              : row.draft.sku || row.draft.name || userCopy.warehouse.excelGrid.newRowFallback;
           rowErrors.push(`${label}: ${mapGridSaveError(rowError)}`);
         }
       }
@@ -759,7 +759,7 @@ export function WarehouseExcelGrid({
         setSaveStatus(pushedRowIds.length > 0 ? "saved" : "error");
         setSaveError(
           pushedRowIds.length > 0
-            ? `Сохранено ${pushedRowIds.length} строк. Ошибки: ${rowErrors.join(" · ")}`
+            ? userCopy.warehouse.excelGrid.savedWithErrors(pushedRowIds.length, rowErrors.join(" · "))
             : rowErrors.join(" · "),
         );
       } else {
@@ -866,7 +866,7 @@ export function WarehouseExcelGrid({
     }),
     pushToCloud,
     enabled: isActive && canEdit,
-    label: "Склад",
+    label: userCopy.warehouse.excelGrid.persistenceLabel,
     scheduleInEngine: false,
   });
 
@@ -1545,7 +1545,7 @@ export function WarehouseExcelGrid({
                                   onSale(row);
                                 }}
                               >
-                                Продать
+                                {userCopy.warehouse.excelGrid.sell}
                               </button>
                             ) : null
                           ) : (
@@ -1688,7 +1688,7 @@ export function WarehouseExcelGrid({
               closeContextMenu();
             }}
           >
-            Копировать
+            {userCopy.warehouse.excelGrid.copy}
           </GridContextMenuItem>
 
           {canEdit ? (
@@ -1700,7 +1700,7 @@ export function WarehouseExcelGrid({
                   closeContextMenu();
                 }}
               >
-                Вырезать
+                {userCopy.warehouse.excelGrid.cut}
               </GridContextMenuItem>
               <GridContextMenuItem
                 shortcut={modShortcutLabel("V")}
@@ -1709,7 +1709,7 @@ export function WarehouseExcelGrid({
                   closeContextMenu();
                 }}
               >
-                Вставить
+                {userCopy.warehouse.excelGrid.paste}
               </GridContextMenuItem>
               <GridContextMenuItem
                 shortcut={deleteShortcutLabel()}
@@ -1718,7 +1718,7 @@ export function WarehouseExcelGrid({
                   closeContextMenu();
                 }}
               >
-                Очистить
+                {userCopy.warehouse.excelGrid.clear}
               </GridContextMenuItem>
               <GridContextMenuItem
                 shortcut={modShortcutLabel("D")}
@@ -1727,7 +1727,7 @@ export function WarehouseExcelGrid({
                   closeContextMenu();
                 }}
               >
-                Заполнить вниз
+                {userCopy.warehouse.excelGrid.fillDown}
               </GridContextMenuItem>
               <GridContextMenuItem
                 onClick={() => {
@@ -1738,7 +1738,7 @@ export function WarehouseExcelGrid({
                 }}
                 disabled={!isEditableColumn(contextMenu.cell.column)}
               >
-                Редактировать
+                {userCopy.warehouse.excelGrid.edit}
               </GridContextMenuItem>
               <GridContextMenuSeparator />
               <GridContextMenuItem
@@ -1748,7 +1748,7 @@ export function WarehouseExcelGrid({
                   closeContextMenu();
                 }}
               >
-                Удалить строку
+                {userCopy.warehouse.excelGrid.deleteRow}
               </GridContextMenuItem>
             </>
           ) : null}
@@ -1764,7 +1764,7 @@ export function WarehouseExcelGrid({
                   closeContextMenu();
                 }}
               >
-                Приход
+                {userCopy.warehouse.excelGrid.receipt}
               </GridContextMenuItem>
               <GridContextMenuItem
                 icon={SlidersHorizontal}
@@ -1774,7 +1774,7 @@ export function WarehouseExcelGrid({
                   closeContextMenu();
                 }}
               >
-                Корректировка
+                {userCopy.warehouse.excelGrid.adjustment}
               </GridContextMenuItem>
               <GridContextMenuItem
                 onClick={() => {
@@ -1783,7 +1783,7 @@ export function WarehouseExcelGrid({
                   closeContextMenu();
                 }}
               >
-                Перемещение
+                {userCopy.warehouse.excelGrid.transfer}
               </GridContextMenuItem>
               {canEdit && onAssignLocation ? (
                 <GridContextMenuItem
@@ -1794,7 +1794,7 @@ export function WarehouseExcelGrid({
                     closeContextMenu();
                   }}
                 >
-                  Назначить место
+                  {userCopy.warehouse.excelGrid.assignLocation}
                   {contextMenu.selected.length > 1
                     ? ` (${contextMenu.selected.length})`
                     : ""}
@@ -1807,7 +1807,7 @@ export function WarehouseExcelGrid({
                   closeContextMenu();
                 }}
               >
-                История
+                {userCopy.warehouse.excelGrid.history}
               </GridContextMenuItem>
               {contextMenu.selected[0]?.sku.trim() ? (
                 <GridContextMenuItem
@@ -1816,7 +1816,7 @@ export function WarehouseExcelGrid({
                     closeContextMenu();
                   }}
                 >
-                  Копировать артикул
+                  {userCopy.warehouse.excelGrid.copySku}
                 </GridContextMenuItem>
               ) : null}
             </>

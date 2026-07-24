@@ -28,10 +28,10 @@ import { normalizeCompanyId } from "@/lib/company-id";
 import { userCopy } from "@/lib/user-copy";
 
 const ACTIVITY_NAV = [
-  { id: "overview", label: "На смене", icon: LayoutGridIcon, href: "/team" },
+  { id: "overview", label: userCopy.activity.navOnShift, icon: LayoutGridIcon, href: "/team" },
   { id: "employees", label: userCopy.settings.employees, icon: UsersIcon, href: "/team?tab=employees" },
   { id: "roles", label: userCopy.settings.roles, icon: ShieldIcon, href: "/team?tab=roles" },
-  { id: "activity", label: "Активность", icon: ActivityIcon },
+  { id: "activity", label: userCopy.activity.navActivity, icon: ActivityIcon },
 ] as const;
 
 export function ActivityWorkspace() {
@@ -54,12 +54,12 @@ export function ActivityWorkspace() {
 
   if (!canView) {
     return (
-      <EnterpriseWorkspaceShell title="Активность" description="Журнал событий компании">
+      <EnterpriseWorkspaceShell title={userCopy.activity.title} description={userCopy.activity.description}>
         <EnterprisePanelCard
-          title="Pro и права команды"
+          title={userCopy.activity.proRightsTitle}
           contentClassName="px-6 py-10 text-center text-sm text-muted-foreground"
         >
-          Журнал активности доступен на тарифе Pro для ролей с доступом к команде.
+          {userCopy.activity.proRightsDescription}
         </EnterprisePanelCard>
       </EnterpriseWorkspaceShell>
     );
@@ -67,21 +67,21 @@ export function ActivityWorkspace() {
 
   return (
     <EnterpriseWorkspaceShell
-      title="Активность"
-      description="Склад, финансы, заказ-наряды, команда и настройки — в одном журнале."
+      title={userCopy.activity.title}
+      description={userCopy.activity.shellDescription}
       meta={
-        <Badge variant="secondary">{formatEventCountLabel(enrichedEntries.length)} в журнале</Badge>
+        <Badge variant="secondary">{userCopy.activity.inJournal(formatEventCountLabel(enrichedEntries.length))}</Badge>
       }
       action={
         <Button type="button" variant="outline" render={<Link href="/team" />}>
-          К команде
+          {userCopy.activity.toTeam}
         </Button>
       }
     >
       <ProFeatureGate
         feature="invite"
-        title="Активность доступна на Pro"
-        description="Журнал событий компании открывается на тарифе Pro."
+        title={userCopy.activity.proTitle}
+        description={userCopy.activity.proDescription}
       >
         <div className="flex flex-col gap-5">
           <EnterpriseWorkspaceNav
@@ -93,13 +93,13 @@ export function ActivityWorkspace() {
 
           <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] xl:items-start">
             <EnterprisePanelCard
-              title="Лента событий"
-              description="Компактный вид, как в центре управления"
+              title={userCopy.activity.feedTitle}
+              description={userCopy.activity.feedDescription}
               className="xl:sticky xl:top-4 xl:max-h-[min(72vh,720px)] xl:self-start"
               contentClassName="min-h-0 overflow-hidden"
               footer={
                 <Button type="button" variant="ghost" size="sm" className="w-full" render={<Link href="/" />}>
-                  Центр управления
+                  {userCopy.activity.missionControl}
                 </Button>
               }
             >

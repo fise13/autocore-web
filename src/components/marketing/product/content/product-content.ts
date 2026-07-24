@@ -65,7 +65,7 @@ export const productContent = {
       id: "finance" as const,
       title: "Финансы",
       question: "Где отражается операция?",
-      line: "Касса, Каспи и операции по наряду — тот же экран бухгалтерии.",
+      line: "Касса, карта и операции по наряду — тот же экран бухгалтерии.",
     },
     mobile: {
       id: "mobile" as const,

@@ -14,14 +14,15 @@ import {
 
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Button } from "@/components/ui/button";
+import { userCopy } from "@/lib/user-copy";
 
 import type { RecognitionSummary } from "./migration-types";
 import { recordTypeIcon } from "./record-type-meta";
 
 function formatEta(seconds: number): string {
-  if (seconds < 60) return `≈ ${seconds} сек`;
-  const minutes = Math.round(seconds / 60);
-  return `≈ ${minutes} мин`;
+  const copy = userCopy.migration.recognition;
+  if (seconds < 60) return copy.etaSeconds(seconds);
+  return copy.etaMinutes(Math.round(seconds / 60));
 }
 
 export function RecognitionSummaryView({
@@ -33,6 +34,7 @@ export function RecognitionSummaryView({
   fileNames: string[];
   onContinue: () => void;
 }) {
+  const copy = userCopy.migration.recognition;
   const cards = [
     ...summary.byType.map((item) => ({
       key: item.type as string,
@@ -41,25 +43,25 @@ export function RecognitionSummaryView({
       label: item.label,
     })),
     ...(summary.unknown > 0
-      ? [{ key: "unknown", Icon: HelpCircle, count: summary.unknown, label: "Без категории" }]
+      ? [{ key: "unknown", Icon: HelpCircle, count: summary.unknown, label: copy.uncategorized }]
       : []),
     ...(summary.photos > 0
-      ? [{ key: "photos", Icon: Images, count: summary.photos, label: "Фотографий" }]
+      ? [{ key: "photos", Icon: Images, count: summary.photos, label: copy.photos }]
       : []),
   ];
 
   const source =
-    fileNames.length > 1 ? `${fileNames.length} файла` : fileNames[0] ?? "ваш файл";
+    fileNames.length > 1 ? copy.filesCount(fileNames.length) : fileNames[0] ?? copy.yourFile;
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-7 px-6 py-12">
       <div className="flex flex-col gap-2 text-center">
         <span className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
           <Sparkles className="size-3.5" />
-          AutoCore разобрал {source}
+          {copy.badge(source)}
         </span>
         <h2 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">
-          Вот что мы нашли в вашем бизнесе
+          {copy.title}
         </h2>
       </div>
 
@@ -70,26 +72,26 @@ export function RecognitionSummaryView({
             value={summary.totalRows}
             className="font-heading text-3xl font-semibold tabular-nums"
           />
-          <span className="text-sm text-muted-foreground">строк найдено</span>
+          <span className="text-sm text-muted-foreground">{copy.rowsFound}</span>
         </div>
         <div className="grid gap-2 sm:grid-cols-3">
           <ConfidenceStat
             tone="emerald"
             Icon={CheckCircle2}
             value={summary.recognized}
-            label="распознано автоматически"
+            label={copy.autoRecognized}
           />
           <ConfidenceStat
             tone="amber"
             Icon={TriangleAlert}
             value={summary.needsReview}
-            label="требуют проверки"
+            label={copy.needsReview}
           />
           <ConfidenceStat
             tone="sky"
             Icon={Copy}
             value={summary.duplicates}
-            label="возможных дублей"
+            label={copy.possibleDupes}
           />
         </div>
       </div>
@@ -120,11 +122,11 @@ export function RecognitionSummaryView({
       <div className="flex flex-col gap-4 rounded-xl border bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
         <span className="flex items-center gap-1.5 text-sm">
           <Clock className="size-4 text-muted-foreground" />
-          Примерное время переноса{" "}
+          {copy.etaPrefix}{" "}
           <strong className="font-medium">{formatEta(summary.etaSeconds)}</strong>
         </span>
         <Button size="lg" onClick={onContinue} className="shrink-0">
-          Проверить и перенести
+          {copy.continue}
           <ArrowRight data-icon="inline-end" />
         </Button>
       </div>

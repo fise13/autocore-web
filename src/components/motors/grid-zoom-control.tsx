@@ -3,6 +3,7 @@
 import { Search } from "lucide-react";
 
 import { useWorkspace } from "@/components/layout/workspace-context";
+import { userCopy } from "@/lib/user-copy";
 
 const MIN_ZOOM = 0.75;
 const MAX_ZOOM = 1.6;
@@ -25,7 +26,7 @@ export function GridZoomControl() {
             setGridZoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value)));
           }}
           className="h-1 w-[110px] accent-emerald-600 transition-opacity duration-200"
-          aria-label="Масштаб таблицы"
+          aria-label={userCopy.motors.gridZoomAria}
         />
       </div>
     </div>

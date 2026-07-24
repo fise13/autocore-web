@@ -11,7 +11,7 @@ import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { EmployeeProfileSheet } from "@/components/employees/employee-profile-sheet";
 import { useDeepAction } from "@/hooks/use-deep-action";
 import { normalizeCompanyId } from "@/lib/company-id";
-import { buildInviteUrl, INVITE_STATUS_LABELS, normalizeInviteStatus, type InviteStatus } from "@autocore/org";
+import { buildInviteUrl, normalizeInviteStatus, type InviteStatus } from "@autocore/org";
 import { CompanyEmployee, InviteDocument } from "@/domain/rbac";
 import { PERMISSIONS, Permission, ROLE_PERMISSIONS, USER_ROLES, UserRole } from "@/domain/user";
 import { getFirebaseAuth } from "@/infrastructure/firebase/client";
@@ -40,7 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatPermission, formatRole, userCopy } from "@/lib/user-copy";
+import { formatPermission, formatRole, getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 const employeeRepository = createEmployeeRbacRepository();
@@ -55,17 +55,17 @@ const INVITE_ROLES: UserRole[] = [
   "admin",
 ];
 
-const INVITE_ROLE_HINTS: Partial<Record<UserRole, string>> = {
-  mechanic: "Заказ-наряды, клиенты, авто",
-  diagnostician: "Заказ-наряды и диагностика",
-  manager: "Управление и отчёты",
-  accountant: "Бухгалтерия",
-  employee: "Базовый просмотр",
-  admin: "Полный доступ",
-};
+function inviteRoleHints(): Partial<Record<UserRole, string>> {
+  return { ...userCopy.employees.roleHints };
+}
+
+function inviteStatusLabel(status: InviteStatus): string {
+  return userCopy.employees.inviteStatuses[status] ?? status;
+}
 
 function formatInviteExpiry(expiresAt: Date): string {
-  return expiresAt.toLocaleString("ru-RU", {
+  const locale = getActiveUserCopyLocale() === "en" ? "en-US" : "ru-RU";
+  return expiresAt.toLocaleString(locale, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -77,16 +77,18 @@ function formatInviteExpiry(expiresAt: Date): string {
 function formatLastActive(lastActiveAt?: Date): string {
   if (!lastActiveAt) return "—";
   const deltaMs = Date.now() - lastActiveAt.getTime();
-  if (deltaMs < 5 * 60 * 1000) return "Сейчас";
+  const copy = userCopy.employees;
+  if (deltaMs < 5 * 60 * 1000) return copy.lastActiveNow;
   if (deltaMs < 60 * 60 * 1000) {
     const minutes = Math.max(1, Math.round(deltaMs / 60_000));
-    return `${minutes} мин. назад`;
+    return copy.lastActiveMinutes(minutes);
   }
   if (deltaMs < 24 * 60 * 60 * 1000) {
     const hours = Math.max(1, Math.round(deltaMs / 3_600_000));
-    return `${hours} ч. назад`;
+    return copy.lastActiveHours(hours);
   }
-  return lastActiveAt.toLocaleString("ru-RU", {
+  const locale = getActiveUserCopyLocale() === "en" ? "en-US" : "ru-RU";
+  return lastActiveAt.toLocaleString(locale, {
     day: "2-digit",
     month: "2-digit",
     hour: "2-digit",
@@ -97,9 +99,9 @@ function formatLastActive(lastActiveAt?: Date): string {
 function mapEmployeeError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   if (message.includes("Missing or insufficient permissions")) {
-    return "Недостаточно прав. Обновите страницу — если ошибка повторится, правила Firebase ещё не обновились.";
+    return userCopy.employees.errorInsufficientPermissions;
   }
-  return message || "Не удалось выполнить действие";
+  return message || userCopy.employees.errorGeneric;
 }
 
 function employeeDisplayName(
@@ -109,13 +111,15 @@ function employeeDisplayName(
   if (employee.fullName?.trim()) return employee.fullName.trim();
   if (employee.uid === self?.id && self.displayName?.trim()) return self.displayName.trim();
   if (employee.email?.includes("@")) return employee.email.split("@")[0] ?? employee.email;
-  return "Сотрудник";
+  return userCopy.employees.fallbackName;
 }
 
 function permissionsSummary(employee: CompanyEmployee): string {
   const extra = employee.permissions.length;
-  if (extra === 0) return `По роли (${ROLE_PERMISSIONS[employee.role]?.length ?? 0})`;
-  return `+${extra} доп.`;
+  if (extra === 0) {
+    return userCopy.employees.permissionsByRole(ROLE_PERMISSIONS[employee.role]?.length ?? 0);
+  }
+  return userCopy.employees.permissionsExtra(extra);
 }
 
 const ASSIGNABLE_ROLES = USER_ROLES.filter((role) => role !== "owner");
@@ -224,7 +228,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
         body: JSON.stringify({ inviteId: invite.id }),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "Не удалось отправить повторно");
+      if (!response.ok) throw new Error(payload.error ?? userCopy.employees.errorResend);
       if (payload.joinUrl) {
         await navigator.clipboard.writeText(payload.joinUrl);
       }
@@ -246,7 +250,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
         body: JSON.stringify({ inviteId: invite.id }),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "Не удалось отменить");
+      if (!response.ok) throw new Error(payload.error ?? userCopy.employees.errorCancel);
     } finally {
       setBusy(false);
     }
@@ -300,7 +304,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
     setGeneratedCode(null);
     try {
       const user = getFirebaseAuth().currentUser;
-      if (!user) throw new Error("Войдите в аккаунт");
+      if (!user) throw new Error(userCopy.employees.errorSignIn);
       const token = await user.getIdToken();
       const response = await fetch("/api/invites/create", {
         method: "POST",
@@ -315,7 +319,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
       });
       const payload = (await response.json()) as { error?: string; code?: string };
       if (!response.ok) {
-        throw new Error(payload.error ?? "Не удалось создать приглашение");
+        throw new Error(payload.error ?? userCopy.employees.errorCreateInvite);
       }
       setGeneratedCode(payload.code ?? null);
     } catch (nextError) {
@@ -330,7 +334,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
     try {
       await navigator.clipboard.writeText(generatedCode);
     } catch {
-      setError("Не удалось скопировать код");
+      setError(userCopy.employees.errorCopyCode);
     }
   }
 
@@ -338,7 +342,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
     if (!profile || !companyId) return;
     const email = inviteEmail.trim().toLowerCase();
     if (!email.includes("@")) {
-      setError("Укажите корректный email");
+      setError(userCopy.employees.errorInvalidEmail);
       return;
     }
     setBusy(true);
@@ -347,7 +351,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
     setEmailInviteJoinUrl(null);
     try {
       const user = getFirebaseAuth().currentUser;
-      if (!user) throw new Error("Войдите в аккаунт");
+      if (!user) throw new Error(userCopy.employees.errorSignIn);
       const token = await user.getIdToken();
       const response = await fetch("/api/invites/send", {
         method: "POST",
@@ -365,13 +369,13 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
       if (!response.ok) {
         if (response.status === 503 && payload.joinUrl) {
           setEmailInviteJoinUrl(payload.joinUrl);
-          setEmailInviteSent("Сервис почты не настроен — скопируйте ссылку и отправьте сотруднику вручную.");
+          setEmailInviteSent(userCopy.employees.mailNotConfigured);
           return;
         }
-        throw new Error(payload.error ?? "Не удалось отправить приглашение");
+        throw new Error(payload.error ?? userCopy.employees.errorSendInvite);
       }
       setEmailInviteJoinUrl(payload.joinUrl ?? null);
-      setEmailInviteSent(`Приглашение отправлено на ${payload.email ?? email}`);
+      setEmailInviteSent(userCopy.employees.inviteSent(payload.email ?? email));
       setInviteEmail("");
     } catch (nextError) {
       setError(mapEmployeeError(nextError));
@@ -439,8 +443,8 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
     return (
       <ProFeatureGate
         feature="invite"
-        title="Команда доступна на Pro"
-        description="Управление сотрудниками и приглашениями включается на тарифе Pro."
+        title={userCopy.employees.proTitle}
+        description={userCopy.employees.proDescription}
       >
         <></>
       </ProFeatureGate>
@@ -452,8 +456,8 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
       <div className="mx-auto w-full max-w-3xl py-10">
         <Card>
           <CardHeader>
-            <CardTitle>Доступ ограничен</CardTitle>
-            <CardDescription>У вас нет прав на просмотр сотрудников компании.</CardDescription>
+            <CardTitle>{userCopy.employees.accessDeniedTitle}</CardTitle>
+            <CardDescription>{userCopy.employees.accessDeniedDescription}</CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -464,11 +468,14 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
     <section className={cn("flex w-full flex-col gap-8", !embedded && "mx-auto max-w-6xl gap-4")}>
       <WorkspaceSection
         embedded={embedded}
-        title="Сотрудники"
-        description={`Активно: ${activeCount} из ${subscriptionsEnabled ? employees.length : 0}`}
+        title={userCopy.employees.title}
+        description={userCopy.employees.activeCount(
+          activeCount,
+          subscriptionsEnabled ? employees.length : 0,
+        )}
         action={
           canManage ? (
-            <Button onClick={openInviteDialog}>Пригласить сотрудника</Button>
+            <Button onClick={openInviteDialog}>{userCopy.employees.inviteEmployee}</Button>
           ) : null
         }
       >
@@ -479,18 +486,18 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
               ))}
             </div>
           ) : employees.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Пока нет сотрудников. Пригласите первого участника команды.</p>
+            <p className="text-sm text-muted-foreground">{userCopy.employees.empty}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Сотрудник</TableHead>
+                  <TableHead>{userCopy.employees.columns.employee}</TableHead>
                   <TableHead>{userCopy.account.emailLabel}</TableHead>
-                  <TableHead>Роль</TableHead>
-                  <TableHead>Статус</TableHead>
-                  <TableHead>Активность</TableHead>
-                  <TableHead>Права</TableHead>
-                  <TableHead className="text-right">Действия</TableHead>
+                  <TableHead>{userCopy.employees.columns.role}</TableHead>
+                  <TableHead>{userCopy.employees.columns.status}</TableHead>
+                  <TableHead>{userCopy.employees.columns.activity}</TableHead>
+                  <TableHead>{userCopy.employees.columns.permissions}</TableHead>
+                  <TableHead className="text-right">{userCopy.employees.columns.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -505,7 +512,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                       <TableCell className="font-medium">
                         {employeeDisplayName(employee, profile ?? undefined)}
                         {isSelf ? (
-                          <span className="ml-1.5 text-xs text-muted-foreground">(вы)</span>
+                          <span className="ml-1.5 text-xs text-muted-foreground">{userCopy.employees.youSuffix}</span>
                         ) : null}
                       </TableCell>
                       <TableCell>{employee.email}</TableCell>
@@ -532,7 +539,9 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                       </TableCell>
                       <TableCell>
                         <Badge variant={employee.isActive ? "outline" : "secondary"}>
-                          {employee.isActive ? "Активен" : "Отключен"}
+                          {employee.isActive
+                            ? userCopy.employees.statusActive
+                            : userCopy.employees.statusDisabled}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
@@ -549,7 +558,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                             size="sm"
                             onClick={() => openProfile(employee)}
                           >
-                            Профиль
+                            {userCopy.employees.profile}
                           </Button>
                           <Button
                             variant="outline"
@@ -557,7 +566,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                             disabled={!canManage}
                             onClick={() => openPermissions(employee)}
                           >
-                            Права
+                            {userCopy.employees.permissions}
                           </Button>
                           <Button
                             variant="outline"
@@ -565,7 +574,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                             disabled={!canManage || isSelf}
                             onClick={() => toggleActive(employee)}
                           >
-                            {employee.isActive ? "Отключить" : "Включить"}
+                            {employee.isActive ? userCopy.employees.disable : userCopy.employees.enable}
                           </Button>
                           <Button
                             variant="destructive"
@@ -573,7 +582,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                             disabled={!canManage || isSelf}
                             onClick={() => removeEmployee(employee)}
                           >
-                            Удалить
+                            {userCopy.employees.remove}
                           </Button>
                         </div>
                       </TableCell>
@@ -589,8 +598,8 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
       {canManage ? (
         <WorkspaceSection
           embedded={embedded}
-          title="Коды приглашений"
-          description={`Активных кодов: ${activeInvites.length}. Новый сотрудник вводит код при входе в AutoCore.`}
+          title={userCopy.employees.invitesTitle}
+          description={userCopy.employees.invitesDescription(activeInvites.length)}
           action={
             <Select
               value={inviteStatusFilter}
@@ -599,15 +608,15 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
               <SelectTrigger className="w-44">
                 <SelectValue>
                   {inviteStatusFilter === "all"
-                    ? "Все статусы"
-                    : (INVITE_STATUS_LABELS[inviteStatusFilter] ?? inviteStatusFilter)}
+                    ? userCopy.employees.allStatuses
+                    : inviteStatusLabel(inviteStatusFilter)}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Все статусы</SelectItem>
-                {(Object.keys(INVITE_STATUS_LABELS) as InviteStatus[]).map((status) => (
+                <SelectItem value="all">{userCopy.employees.allStatuses}</SelectItem>
+                {(Object.keys(userCopy.employees.inviteStatuses) as InviteStatus[]).map((status) => (
                   <SelectItem key={status} value={status}>
-                    {INVITE_STATUS_LABELS[status]}
+                    {inviteStatusLabel(status)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -616,16 +625,16 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
           className={embedded ? "border-t border-border/60 pt-6" : undefined}
         >
             {filteredInvites.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Нет приглашений с выбранным статусом.</p>
+              <p className="text-sm text-muted-foreground">{userCopy.employees.invitesEmpty}</p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Код</TableHead>
-                    <TableHead>Роль</TableHead>
-                    <TableHead>Статус</TableHead>
-                    <TableHead>Действует до</TableHead>
-                    <TableHead className="text-right">Действия</TableHead>
+                    <TableHead>{userCopy.employees.inviteColumns.code}</TableHead>
+                    <TableHead>{userCopy.employees.inviteColumns.role}</TableHead>
+                    <TableHead>{userCopy.employees.inviteColumns.status}</TableHead>
+                    <TableHead>{userCopy.employees.inviteColumns.expires}</TableHead>
+                    <TableHead className="text-right">{userCopy.employees.inviteColumns.actions}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -641,7 +650,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                       <TableCell>{formatRole(invite.role)}</TableCell>
                       <TableCell>
                         <Badge variant={status === "pending" ? "secondary" : "outline"}>
-                          {INVITE_STATUS_LABELS[status] ?? status}
+                          {inviteStatusLabel(status)}
                         </Badge>
                       </TableCell>
                       <TableCell>{formatInviteExpiry(invite.expiresAt)}</TableCell>
@@ -655,7 +664,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                                 void navigator.clipboard.writeText(buildInviteUrl(invite.token!))
                               }
                             >
-                              Ссылка
+                              {userCopy.employees.link}
                             </Button>
                           ) : null}
                           <Button
@@ -671,7 +680,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                               size="sm"
                               onClick={() => void resendInvite(invite)}
                             >
-                              Повтор
+                              {userCopy.employees.resend}
                             </Button>
                           ) : null}
                           <Button
@@ -695,14 +704,14 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Пригласить сотрудника</DialogTitle>
+            <DialogTitle>{userCopy.employees.inviteDialogTitle}</DialogTitle>
             <DialogDescription>
-              Отправьте приглашение на email или создайте код для ручной передачи.
+              {userCopy.employees.inviteDialogDescription}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="inviteEmail">Email сотрудника</Label>
+              <Label htmlFor="inviteEmail">{userCopy.employees.inviteEmailLabel}</Label>
               <div className="flex gap-2">
                 <Input
                   id="inviteEmail"
@@ -719,7 +728,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                   }}
                 />
                 <Button type="button" disabled={busy} onClick={() => void sendEmailInvite()}>
-                  {busy ? "Отправка…" : "Отправить на email"}
+                  {busy ? userCopy.employees.sending : userCopy.employees.sendEmail}
                 </Button>
               </div>
               {emailInviteSent ? (
@@ -733,19 +742,19 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                       onClick={() => void navigator.clipboard.writeText(emailInviteJoinUrl)}
                     >
                       <Copy className="mr-2 size-4" />
-                      Скопировать ссылку-приглашение
+                      {userCopy.employees.copyInviteLink}
                     </Button>
                   ) : null}
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  Сотрудник получит письмо со ссылкой для входа в команду.
+                  {userCopy.employees.inviteEmailHint}
                 </p>
               )}
             </div>
 
             <div className="grid gap-2">
-              <p className="text-sm font-medium">Роль нового сотрудника</p>
+              <p className="text-sm font-medium">{userCopy.employees.newEmployeeRole}</p>
               <div className="grid gap-2 sm:grid-cols-2">
                 {INVITE_ROLES.map((role) => (
                   <button
@@ -760,8 +769,8 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                     )}
                   >
                     <p className="text-sm font-medium">{formatRole(role)}</p>
-                    {INVITE_ROLE_HINTS[role] ? (
-                      <p className="mt-0.5 text-xs text-muted-foreground">{INVITE_ROLE_HINTS[role]}</p>
+                    {inviteRoleHints()[role] ? (
+                      <p className="mt-0.5 text-xs text-muted-foreground">{inviteRoleHints()[role]}</p>
                     ) : null}
                   </button>
                 ))}
@@ -769,7 +778,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
             </div>
 
             <div className="grid gap-2">
-              <p className="text-sm font-medium">Срок действия: {inviteTtlHours} ч</p>
+              <p className="text-sm font-medium">{userCopy.employees.ttlHours(inviteTtlHours)}</p>
               <input
                 type="range"
                 min={6}
@@ -784,25 +793,29 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
             {generatedCode ? (
               <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-center">
                 <p className="mb-1 text-sm text-muted-foreground">
-                  Код для роли «{formatRole(inviteRole)}»
+                  {userCopy.employees.codeForRole(formatRole(inviteRole))}
                 </p>
                 <p className="font-mono text-3xl font-bold tracking-[0.25em]">{generatedCode}</p>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Действует {inviteTtlHours} ч · передайте код сотруднику при входе в AutoCore
+                  {userCopy.employees.codeHint(inviteTtlHours)}
                 </p>
                 <Button variant="outline" className="mt-3" onClick={() => void copyInviteCode()}>
                   <Copy className="mr-2 size-4" />
-                  Скопировать код
+                  {userCopy.employees.copyCode}
                 </Button>
               </div>
             ) : null}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setInviteOpen(false)}>
-              {generatedCode ? "Готово" : "Отмена"}
+              {generatedCode ? userCopy.employees.done : userCopy.employees.cancel}
             </Button>
             <Button disabled={busy} onClick={() => void createInviteCode()}>
-              {busy ? "Создание…" : generatedCode ? "Создать ещё" : "Создать код"}
+              {busy
+                ? userCopy.employees.creating
+                : generatedCode
+                  ? userCopy.employees.createAnother
+                  : userCopy.employees.createCode}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -832,9 +845,11 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
       <Dialog open={selectedEmployee != null} onOpenChange={(open) => !open && setSelectedEmployee(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Права сотрудника</DialogTitle>
+            <DialogTitle>{userCopy.employees.permissionsDialogTitle}</DialogTitle>
             <DialogDescription>
-              Дополнительные права поверх роли для {selectedEmployee?.fullName || selectedEmployee?.email}.
+              {userCopy.employees.permissionsDialogDescription(
+                selectedEmployee?.fullName || selectedEmployee?.email || "",
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="grid max-h-72 gap-2 overflow-y-auto">
@@ -861,9 +876,9 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSelectedEmployee(null)}>
-              Отмена
+              {userCopy.employees.cancel}
             </Button>
-            <Button onClick={() => void saveOverrides()}>Сохранить</Button>
+            <Button onClick={() => void saveOverrides()}>{userCopy.employees.save}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

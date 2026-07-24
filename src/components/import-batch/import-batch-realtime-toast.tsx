@@ -10,6 +10,7 @@ import type { ImportBatch } from "@/domain/import-batch";
 import { useImportBatchesRealtime } from "@/hooks/use-import-batches-realtime";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 function BatchToastCard({
   batch,
@@ -22,11 +23,11 @@ function BatchToastCard({
 }) {
   const title =
     batch.status === "processing"
-      ? "Импорт · AI разбирает"
+      ? userCopy.importBatch.toastAi
       : batch.status === "review"
-        ? "Импорт · готов к проверке"
-        : "Новый импорт с телефона";
-  const description = `${batch.counts.files} файл. · ${batch.counts.rows} строк`;
+        ? userCopy.importBatch.toastReady
+        : userCopy.importBatch.toastNew;
+  const description = userCopy.importBatch.toastFilesRows(batch.counts.files, batch.counts.rows);
 
   return (
     <div
@@ -49,12 +50,12 @@ function BatchToastCard({
           }}
           className="mt-2.5 inline-flex h-8 shrink-0 items-center rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground transition hover:bg-primary/90"
         >
-          Открыть
+          {userCopy.importBatch.open}
         </button>
       </div>
       <button
         type="button"
-        aria-label="Закрыть"
+        aria-label={userCopy.importBatch.closeAria}
         onClick={() => sonnerToast.dismiss(toastId)}
         className="absolute right-2 top-2 inline-flex size-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
       >

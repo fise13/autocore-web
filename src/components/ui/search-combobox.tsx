@@ -5,6 +5,7 @@ import { Combobox } from "@base-ui/react/combobox";
 import { CheckIcon, ChevronDownIcon, XIcon } from "lucide-react";
 
 import { filterSearchOptions, type SearchOption } from "@/lib/search/filter-options";
+import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 export type { SearchOption };
@@ -28,9 +29,9 @@ export function SearchCombobox({
   onValueChange,
   onOptionSelect,
   options,
-  placeholder = "Начните вводить…",
+  placeholder = userCopy.searchCombobox.placeholder,
   emptyOption,
-  emptyMessage = "Ничего не найдено",
+  emptyMessage = userCopy.searchCombobox.empty,
   disabled = false,
   className,
   maxResults = 50,
@@ -54,7 +55,7 @@ export function SearchCombobox({
       {
         value: trimmed,
         label: trimmed,
-        description: "Свой вариант",
+        description: userCopy.searchCombobox.customOption,
         keywords: trimmed,
       },
       ...base,
@@ -108,14 +109,14 @@ export function SearchCombobox({
           {value ? (
             <Combobox.Clear
               className="flex size-7 items-center justify-center rounded-md hover:bg-muted hover:text-foreground"
-              aria-label="Очистить"
+              aria-label={userCopy.searchCombobox.clearAria}
             >
               <XIcon className="size-3.5" />
             </Combobox.Clear>
           ) : null}
           <Combobox.Trigger
             className="flex size-7 items-center justify-center rounded-md hover:bg-muted hover:text-foreground"
-            aria-label="Открыть список"
+            aria-label={userCopy.searchCombobox.openAria}
           >
             <ChevronDownIcon className="size-4 opacity-60" />
           </Combobox.Trigger>

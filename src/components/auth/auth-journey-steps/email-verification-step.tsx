@@ -47,12 +47,12 @@ export function EmailVerificationStep({ onVerified }: EmailVerificationStepProps
       .then(() => setStatus(userCopy.auth.verifyEmailAutoSent))
       .catch((sendError) => {
         const message = sendError instanceof Error ? sendError.message : "";
-        if (message.includes("Подождите")) {
+        if (message.includes(userCopy.auth.waitToken)) {
           setStatus(userCopy.auth.verifyEmailAutoSent);
           return;
         }
         autoSentRef.current = false;
-        setError(message || "Не удалось отправить код.");
+        setError(message || userCopy.auth.verifySendFailed);
       });
   }, [sendEmailVerification]);
 
@@ -128,7 +128,7 @@ export function EmailVerificationStep({ onVerified }: EmailVerificationStepProps
       await sendEmailVerification();
       setStatus(userCopy.auth.verifyEmailResent);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось отправить код.");
+      setError(e instanceof Error ? e.message : userCopy.auth.verifySendFailed);
     } finally {
       setBusy(false);
     }
@@ -221,7 +221,7 @@ export function EmailVerificationStep({ onVerified }: EmailVerificationStepProps
                     disabled={busy}
                     onClick={() => void onResend()}
                   >
-                    Отправить код повторно
+                    {userCopy.auth.verifyResend}
                   </Button>
                 </AuthJourneyReveal>
                 <AuthJourneyReveal index={6}>
@@ -232,7 +232,7 @@ export function EmailVerificationStep({ onVerified }: EmailVerificationStepProps
                     disabled={busy}
                     onClick={() => void logout()}
                   >
-                    Выйти
+                    {userCopy.auth.verifyLogout}
                   </Button>
                 </AuthJourneyReveal>
               </div>

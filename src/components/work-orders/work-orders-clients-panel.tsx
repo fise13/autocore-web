@@ -15,6 +15,7 @@ import {
   workOrdersListItemVariants,
   workOrdersListVariants,
 } from "@/components/work-orders/work-orders-motion";
+import { userCopy } from "@/lib/user-copy";
 import { workOrdersHref } from "@/lib/navigation/work-orders-nav";
 
 type WorkOrdersClientsPanelProps = {
@@ -31,6 +32,7 @@ export function WorkOrdersClientsPanel({
   initialSearch = "",
 }: WorkOrdersClientsPanelProps) {
   const [search, setSearch] = useState(initialSearch);
+  const copy = userCopy.workOrders;
 
   useEffect(() => {
     if (initialSearch) setSearch(initialSearch);
@@ -57,19 +59,19 @@ export function WorkOrdersClientsPanel({
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
       <WorkOrdersPanelHeader
-        title="Клиенты"
-        description={`${clients.length} в базе`}
+        title={copy.clients.title}
+        description={copy.clients.inDatabase(clients.length)}
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Имя, телефон, email…"
+        searchPlaceholder={copy.clients.searchPlaceholder}
         actionHref={canEdit ? workOrdersHref({ section: "orders", create: true }) : undefined}
-        actionLabel="Новый заказ-наряд"
+        actionLabel={copy.newOrder}
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-5">
         {filtered.length === 0 ? (
           <p className="py-16 text-center text-sm text-muted-foreground">
-            {clients.length === 0 ? "Клиентов пока нет" : "Ничего не найдено"}
+            {clients.length === 0 ? copy.clients.empty : copy.nothingFound}
           </p>
         ) : (
           <motion.ul
@@ -88,8 +90,8 @@ export function WorkOrdersClientsPanel({
                 <motion.li key={client.id} variants={workOrdersListItemVariants} layout>
                   <WorkOrdersDirectoryCard
                     icon={UserRound}
-                    title={client.fullName || "Без имени"}
-                    subtitle={client.phone || "Телефон не указан"}
+                    title={client.fullName || copy.clients.unnamed}
+                    subtitle={client.phone || copy.clients.noPhone}
                     meta={meta}
                     actionHref={
                       canEdit

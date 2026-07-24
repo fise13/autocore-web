@@ -7,6 +7,7 @@ import { InventoryItem } from "@/domain/inventory";
 import { InventoryMovement } from "@/domain/inventory-movement";
 import { McModuleHeader } from "@/components/mission-control/mc-module-header";
 import { movementTypeLabel } from "@/lib/inventory/movement-labels";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 
 type WarehouseModuleProps = {
   recentItems: InventoryItem[];
@@ -22,17 +23,20 @@ export const WarehouseModule = memo(function WarehouseModule({
   stockValue,
   isLoading,
 }: WarehouseModuleProps) {
+  const copy = userCopy.missionControl.modules.warehouse;
+  const localeTag = getActiveUserCopyLocale() === "ru" ? "ru-RU" : "en-US";
+
   return (
     <article className="mc-module-card">
       <McModuleHeader
         icon={Boxes}
-        title="Запчасти"
-        description={`${Math.round(stockValue).toLocaleString("ru-RU")} ₸`}
+        title={copy.title}
+        description={`${Math.round(stockValue).toLocaleString(localeTag)} ₸`}
         href="/warehouse"
         accent="blue"
       />
       <div className="mc-module-body grid gap-3 md:grid-cols-2">
-        <Section title="Дефицит" empty="В норме" isLoading={isLoading}>
+        <Section title={copy.deficit} empty={copy.deficitEmpty} isLoading={isLoading}>
           {lowStockItems.map((item) => (
             <Row
               key={item.id}
@@ -41,12 +45,12 @@ export const WarehouseModule = memo(function WarehouseModule({
             />
           ))}
         </Section>
-        <Section title="Движения" empty="Нет движений" isLoading={isLoading}>
+        <Section title={copy.movements} empty={copy.movementsEmpty} isLoading={isLoading}>
           {recentMovements.map((movement) => (
             <Row
               key={movement.id}
               primary={movementTypeLabel(movement.type)}
-              secondary={`${movement.quantity} · ${movement.createdAt.toLocaleString("ru-RU")}`}
+              secondary={`${movement.quantity} · ${movement.createdAt.toLocaleString(localeTag)}`}
             />
           ))}
         </Section>

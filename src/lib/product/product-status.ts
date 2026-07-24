@@ -1,3 +1,5 @@
+import { userCopy } from "@/lib/user-copy";
+
 export type SystemStatusLevel = "operational" | "degraded" | "outage";
 
 export type SystemStatusComponentId = "app" | "firestore" | "auth" | "storage";
@@ -8,28 +10,38 @@ export type SystemStatusComponentDefinition = {
   description: string;
 };
 
-export const systemStatusComponents: SystemStatusComponentDefinition[] = [
-  {
-    id: "app",
-    name: "Приложение",
-    description: "Веб-интерфейс и API AutoCore.",
-  },
-  {
-    id: "firestore",
-    name: "База данных",
-    description: "Хранение данных компаний, склада и нарядов.",
-  },
-  {
-    id: "auth",
-    name: "Авторизация",
-    description: "Вход, сессии и права доступа.",
-  },
-  {
-    id: "storage",
-    name: "Файлы",
-    description: "Логотипы, PDF и вложения.",
-  },
+const SYSTEM_STATUS_COMPONENT_IDS: SystemStatusComponentId[] = [
+  "app",
+  "firestore",
+  "auth",
+  "storage",
 ];
+
+export function getSystemStatusComponents(): SystemStatusComponentDefinition[] {
+  const meta = userCopy.systemStatus.componentsMeta;
+  return SYSTEM_STATUS_COMPONENT_IDS.map((id) => ({
+    id,
+    name: meta[id].name,
+    description: meta[id].description,
+  }));
+}
+
+/** Locale-aware component list — prefer getSystemStatusComponents() at call time. */
+export const systemStatusComponents: SystemStatusComponentDefinition[] = new Proxy(
+  [] as SystemStatusComponentDefinition[],
+  {
+    get(_target, prop, receiver) {
+      const live = getSystemStatusComponents();
+      if (prop === "length") return live.length;
+      if (prop === Symbol.iterator) return live[Symbol.iterator].bind(live);
+      if (typeof prop === "string" && /^\d+$/.test(prop)) {
+        return live[Number(prop)];
+      }
+      const value = Reflect.get(live, prop, receiver);
+      return typeof value === "function" ? value.bind(live) : value;
+    },
+  },
+);
 
 export type SystemStatusIncident = {
   id: string;
@@ -54,8 +66,31 @@ export function isExternalHref(href: string): boolean {
   return /^https?:\/\//i.test(href);
 }
 
-export const systemStatusLevelLabels: Record<SystemStatusLevel, string> = {
-  operational: "Работает",
-  degraded: "Частичные сбои",
-  outage: "Недоступно",
-};
+export function getSystemStatusLevelLabels(): Record<SystemStatusLevel, string> {
+  return { ...userCopy.systemStatus.levels };
+}
+
+/** Locale-aware level labels — read at call/render time. */
+export const systemStatusLevelLabels: Record<SystemStatusLevel, string> = new Proxy(
+  {} as Record<SystemStatusLevel, string>,
+  {
+    get(_target, prop) {
+      if (typeof prop !== "string") return undefined;
+      return userCopy.systemStatus.levels[prop as SystemStatusLevel];
+    },
+    ownKeys() {
+      return Reflect.ownKeys(userCopy.systemStatus.levels);
+    },
+    getOwnPropertyDescriptor(_target, prop) {
+      if (typeof prop !== "string") return undefined;
+      return {
+        configurable: true,
+        enumerable: true,
+        value: userCopy.systemStatus.levels[prop as SystemStatusLevel],
+      };
+    },
+    has(_target, prop) {
+      return Reflect.has(userCopy.systemStatus.levels, prop);
+    },
+  },
+);

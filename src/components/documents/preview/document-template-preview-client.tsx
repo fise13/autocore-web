@@ -1,13 +1,14 @@
 "use client";
 
 import { ArrowLeft, Printer } from "lucide-react";
+import { userCopy } from "@/lib/user-copy";
 
 import { RenderDocument } from "@/components/documents/registry/render-document";
 import { DocumentPreviewFrame } from "@/components/documents/preview/document-preview-frame";
 import { Button } from "@/components/ui/button";
 import { DOCUMENT_BY_SLUG, type DocumentSlug } from "@/lib/documents/document-types";
 import { printPreviewInBrowser } from "@/lib/documents/preview-document-output";
-import { demoDocumentContext } from "@/lib/marketing/demo-document-context";
+import { getDemoDocumentContext } from "@/lib/marketing/demo-document-context";
 
 type DocumentTemplatePreviewClientProps = {
   slug: DocumentSlug;
@@ -24,6 +25,7 @@ function closePreviewTab() {
 
 export function DocumentTemplatePreviewClient({ slug }: DocumentTemplatePreviewClientProps) {
   const definition = DOCUMENT_BY_SLUG[slug];
+  const context = getDemoDocumentContext();
 
   return (
     <DocumentPreviewFrame
@@ -37,11 +39,11 @@ export function DocumentTemplatePreviewClient({ slug }: DocumentTemplatePreviewC
             onClick={closePreviewTab}
           >
             <ArrowLeft className="size-4" />
-            Закрыть
+            {userCopy.documents.preview.close}
           </Button>
           <div className="min-w-0 text-center">
             <p className="truncate text-sm font-medium text-white">{definition.title}</p>
-            <p className="text-xs text-neutral-400">Предпросмотр шаблона</p>
+            <p className="text-xs text-neutral-400">{userCopy.documents.preview.templatePreview}</p>
           </div>
           <Button
             type="button"
@@ -51,7 +53,7 @@ export function DocumentTemplatePreviewClient({ slug }: DocumentTemplatePreviewC
             onClick={() => printPreviewInBrowser()}
           >
             <Printer className="size-4" />
-            Печать
+            {userCopy.documents.preview.print}
           </Button>
         </div>
       }
@@ -60,7 +62,7 @@ export function DocumentTemplatePreviewClient({ slug }: DocumentTemplatePreviewC
         id="doc-preview-print-root"
         className="doc-preview-paper overflow-hidden rounded-lg shadow-[0_24px_80px_rgb(0_0_0/0.55)]"
       >
-        <RenderDocument slug={slug} context={demoDocumentContext} />
+        <RenderDocument slug={slug} context={context} />
       </div>
     </DocumentPreviewFrame>
   );

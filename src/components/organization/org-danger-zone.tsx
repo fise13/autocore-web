@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getFirebaseAuth } from "@/infrastructure/firebase/client";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 type OrgDangerZoneProps = {
   companyId: string;
@@ -98,7 +99,7 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
 
   async function authFetch(path: string, body: Record<string, unknown>) {
     const token = await getFirebaseAuth().currentUser?.getIdToken();
-    if (!token) throw new Error("Требуется авторизация");
+    if (!token) throw new Error(userCopy.organization.danger.authRequired);
     const response = await fetch(path, {
       method: "POST",
       headers: {
@@ -109,7 +110,7 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
     });
     const payload = await response.json();
     if (!response.ok) {
-      throw new Error(payload.error ?? "Не удалось выполнить действие");
+      throw new Error(payload.error ?? userCopy.organization.danger.actionFailed);
     }
     return payload;
   }
@@ -124,7 +125,7 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
       router.refresh();
       router.replace("/");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Ошибка");
+      setError(e instanceof Error ? e.message : userCopy.organization.danger.errorGeneric);
     } finally {
       setBusy(false);
     }
@@ -140,7 +141,7 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
       await refreshProfile();
       router.replace("/");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Ошибка");
+      setError(e instanceof Error ? e.message : userCopy.organization.danger.errorGeneric);
     } finally {
       setBusy(false);
     }
@@ -153,16 +154,16 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
           <span className="flex size-7 items-center justify-center rounded-lg border border-destructive/20 bg-destructive/10">
             <AlertTriangle className="size-3.5" />
           </span>
-          Опасная зона
+          {userCopy.organization.danger.title}
         </CardTitle>
-        <CardDescription>Необратимые действия с организацией</CardDescription>
+        <CardDescription>{userCopy.organization.danger.description}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-2.5">
         <DangerActionRow
           icon={<LogOut className="size-4" />}
-          title="Покинуть организацию"
-          description={`Вы потеряете доступ к «${companyName}». Данные команды сохранятся.`}
-          actionLabel="Покинуть"
+          title={userCopy.organization.danger.leaveTitle}
+          description={userCopy.organization.danger.leaveDescription(companyName)}
+          actionLabel={userCopy.organization.danger.leaveAction}
           onAction={() => {
             setError(null);
             setLeaveOpen(true);
@@ -171,9 +172,9 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
         {isOwner ? (
           <DangerActionRow
             icon={<Trash2 className="size-4" />}
-            title="Удалить организацию"
-            description="Заказы, клиенты, склад и все настройки будут удалены безвозвратно."
-            actionLabel="Удалить"
+            title={userCopy.organization.danger.deleteTitle}
+            description={userCopy.organization.danger.deleteDescription}
+            actionLabel={userCopy.organization.danger.deleteAction}
             tone="destructive"
             onAction={() => {
               setError(null);
@@ -187,22 +188,22 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
       <Dialog open={leaveOpen} onOpenChange={setLeaveOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Покинуть организацию?</DialogTitle>
+            <DialogTitle>{userCopy.organization.danger.leaveConfirmTitle}</DialogTitle>
             <DialogDescription>
-              Вы потеряете доступ к {companyName}. Данные организации останутся у команды.
+              {userCopy.organization.danger.leaveConfirmBody(companyName)}
             </DialogDescription>
           </DialogHeader>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <DialogFooter>
             <Button variant="ghost" onClick={() => setLeaveOpen(false)}>
-              Отмена
+              {userCopy.organization.danger.cancel}
             </Button>
             <Button
               className="bg-destructive text-white hover:bg-destructive/90"
               onClick={() => void handleLeave()}
               disabled={busy}
             >
-              {busy ? <Loader2 className="size-4 animate-spin" /> : "Покинуть"}
+              {busy ? <Loader2 className="size-4 animate-spin" /> : userCopy.organization.danger.leaveAction}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -211,15 +212,14 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Удалить организацию навсегда?</DialogTitle>
+            <DialogTitle>{userCopy.organization.danger.deleteConfirmTitle}</DialogTitle>
             <DialogDescription>
-              Будут удалены заказы, клиенты, склад, документы и все настройки. Введите «{companyName}»
-              для подтверждения.
+              {userCopy.organization.danger.deleteConfirmBody(companyName)}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={(event) => void handleDelete(event)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="confirm-name">Название организации</Label>
+              <Label htmlFor="confirm-name">{userCopy.organization.danger.confirmNameLabel}</Label>
               <Input
                 id="confirm-name"
                 value={confirmName}
@@ -231,14 +231,14 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setDeleteOpen(false)}>
-                Отмена
+                {userCopy.organization.danger.cancel}
               </Button>
               <Button
                 type="submit"
                 className="bg-destructive text-white hover:bg-destructive/90 disabled:opacity-50"
                 disabled={busy || confirmName.trim() !== companyName}
               >
-                {busy ? <Loader2 className="size-4 animate-spin" /> : "Удалить навсегда"}
+                {busy ? <Loader2 className="size-4 animate-spin" /> : userCopy.organization.danger.deleteForever}
               </Button>
             </DialogFooter>
           </form>

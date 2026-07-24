@@ -6,6 +6,7 @@ import { Loader2, X } from "lucide-react";
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { ImportProgressBar } from "@/components/warehouse/import/shared/import-progress-bar";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 type ImportProgressBannerProps = {
   progress: {
@@ -60,8 +61,8 @@ export function ImportProgressBanner({
                 "flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition",
                 "hover:bg-destructive/10 hover:text-destructive",
               )}
-              aria-label="Отменить импорт"
-              title="Отменить импорт"
+              aria-label={userCopy.warehouse.import.cancelImportAria}
+              title={userCopy.warehouse.import.cancelImportAria}
             >
               <X className="size-4" />
             </button>
@@ -80,7 +81,7 @@ export function WarehouseImportProgressBanner() {
       progress={warehouseImportProgress}
       onCancel={cancelWarehouseImport}
       titleAnalyze="Magic Import"
-      titleApply="Загрузка в базу"
+      titleApply={userCopy.warehouse.import.titleApply}
     />
   );
 }
@@ -92,8 +93,8 @@ export function MotorImportProgressBanner() {
     <ImportProgressBanner
       progress={motorImportProgress}
       onCancel={cancelMotorImport}
-      titleAnalyze="Импорт моторов"
-      titleApply="Загрузка моторов"
+      titleAnalyze={userCopy.warehouse.import.titleAnalyzeMotors}
+      titleApply={userCopy.warehouse.import.titleApplyMotors}
     />
   );
 }

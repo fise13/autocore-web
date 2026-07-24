@@ -18,7 +18,7 @@ type MyEarningsPeriodFilterProps = {
 export function MyEarningsPeriodFilter({ value, onChange }: MyEarningsPeriodFilterProps) {
   return (
     <Select onValueChange={(next) => onChange(next as MyEarningsPeriod)} value={value}>
-      <SelectTrigger aria-label="Период" className="w-full min-w-36 sm:w-40" size="sm">
+      <SelectTrigger aria-label={userCopy.myEarnings.periodAria} className="w-full min-w-36 sm:w-40" size="sm">
         <SelectValue />
       </SelectTrigger>
       <SelectContent align="end">

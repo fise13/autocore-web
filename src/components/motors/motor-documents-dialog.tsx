@@ -12,6 +12,7 @@ import {
 import { MotorSaleDocumentsPanel } from "@/components/motors/motor-sale-documents-panel";
 import { MotorEntity } from "@/domain/motor";
 import { useMotorSaleDocuments } from "@/hooks/use-motor-sale-documents";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 
 type MotorDocumentsDialogProps = {
   motor: MotorEntity | null;
@@ -21,10 +22,11 @@ type MotorDocumentsDialogProps = {
 
 export function MotorDocumentsDialog({ motor, open, onOpenChange }: MotorDocumentsDialogProps) {
   const { documents, isLoading, status, errorMessage, retry } = useMotorSaleDocuments(motor, open);
+  const copy = userCopy.motors.documentsDialog;
 
   const motorLabel = documents
     ? [documents.brandName, documents.engineCode, documents.serialCode].filter(Boolean).join(" · ")
-    : motor?.serialCode ?? "Продажа двигателя";
+    : motor?.serialCode ?? copy.saleFallback;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -35,9 +37,9 @@ export function MotorDocumentsDialog({ motor, open, onOpenChange }: MotorDocumen
               <FileStack className="size-4" aria-hidden />
             </div>
             <div className="min-w-0 space-y-1">
-              <DialogTitle>Документы двигателя</DialogTitle>
+              <DialogTitle>{copy.title}</DialogTitle>
               <DialogDescription>
-                {motor?.serialCode ? `Серийный номер ${motor.serialCode}` : "Гарантия и счёт по продаже"}
+                {motor?.serialCode ? copy.serial(motor.serialCode) : copy.fallbackDescription}
               </DialogDescription>
             </div>
           </div>
@@ -67,15 +69,10 @@ type MotorHistoryDialogProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-const HISTORY_LABELS: Record<string, string> = {
-  reserved: "Зарезервирован",
-  released: "Снята резервация",
-  installed: "Установлен",
-  sold: "Продан",
-};
-
 export function MotorHistoryDialog({ motor, open, onOpenChange }: MotorHistoryDialogProps) {
   const entries = motor?.motorHistory ?? [];
+  const copy = userCopy.motors.historyDialog;
+  const dateLocale = getActiveUserCopyLocale() === "en" ? "en-US" : "ru-RU";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -83,24 +80,24 @@ export function MotorHistoryDialog({ motor, open, onOpenChange }: MotorHistoryDi
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <History className="size-4" />
-            История мотора
+            {copy.title}
           </DialogTitle>
           <DialogDescription>{motor?.serialCode ?? ""}</DialogDescription>
         </DialogHeader>
 
         {entries.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Пока нет записей. Изменения статуса, цены и продажи появятся здесь по мере работы команды.
-          </p>
+          <p className="text-sm text-muted-foreground">{copy.empty}</p>
         ) : (
           <ul className="max-h-72 flex flex-col gap-2 overflow-y-auto">
             {[...entries]
               .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
               .map((entry) => (
                 <li key={entry.id} className="rounded-lg border bg-muted/20 px-3 py-2 text-sm">
-                  <div className="font-medium">{HISTORY_LABELS[entry.type] ?? entry.type}</div>
+                  <div className="font-medium">
+                    {copy.labels[entry.type as keyof typeof copy.labels] ?? entry.type}
+                  </div>
                   <div className="text-xs text-muted-foreground">
-                    {entry.createdAt.toLocaleString("ru-RU")}
+                    {entry.createdAt.toLocaleString(dateLocale)}
                     {entry.actorUserId ? ` · ${entry.actorUserId}` : ""}
                   </div>
                 </li>

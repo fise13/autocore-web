@@ -137,7 +137,7 @@ export function SpecificColumnManagerDialog({
       onSaved?.(updated);
       onOpenChange(false);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "Не удалось сохранить колонки");
+      setError(saveError instanceof Error ? saveError.message : userCopy.specificSheets.columnManager.saveFailed);
     } finally {
       setBusy(false);
     }
@@ -153,7 +153,7 @@ export function SpecificColumnManagerDialog({
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Базовые колонки</Label>
+            <Label className="text-xs text-muted-foreground">{userCopy.specificSheets.columnManager.baseColumns}</Label>
             <div className="space-y-1.5">
               {canonical.map((column) => (
                 <div key={column.id} className="flex items-center gap-2 rounded-lg border bg-muted/20 px-2 py-1.5">
@@ -167,7 +167,7 @@ export function SpecificColumnManagerDialog({
                     className="h-8"
                   />
                   {column.slotIndex === 6 ? (
-                    <span className="shrink-0 text-[10px] text-muted-foreground">только продажа</span>
+                    <span className="shrink-0 text-[10px] text-muted-foreground">{userCopy.specificSheets.columnManager.saleOnly}</span>
                   ) : null}
                 </div>
               ))}
@@ -175,9 +175,9 @@ export function SpecificColumnManagerDialog({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Дополнительные колонки</Label>
+            <Label className="text-xs text-muted-foreground">{userCopy.specificSheets.columnManager.customColumns}</Label>
             {custom.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Пока нет дополнительных колонок</p>
+              <p className="text-xs text-muted-foreground">{userCopy.specificSheets.columnManager.noCustom}</p>
             ) : (
               <div className="space-y-1.5">
                 {custom.map((column, index) => (
@@ -196,7 +196,7 @@ export function SpecificColumnManagerDialog({
                           "rounded p-1 text-muted-foreground hover:bg-muted",
                           index === 0 && "opacity-30",
                         )}
-                        aria-label="Выше"
+                        aria-label={userCopy.specificSheets.columnManager.moveUpAria}
                       >
                         <ArrowUp className="size-3.5" />
                       </button>
@@ -208,7 +208,7 @@ export function SpecificColumnManagerDialog({
                           "rounded p-1 text-muted-foreground hover:bg-muted",
                           index === custom.length - 1 && "opacity-30",
                         )}
-                        aria-label="Ниже"
+                        aria-label={userCopy.specificSheets.columnManager.moveDownAria}
                       >
                         <ArrowDown className="size-3.5" />
                       </button>
@@ -216,7 +216,7 @@ export function SpecificColumnManagerDialog({
                         type="button"
                         onClick={() => removeCustomColumn(column.id)}
                         className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                        aria-label="Удалить колонку"
+                        aria-label={userCopy.specificSheets.columnManager.deleteColumnAria}
                       >
                         <Trash2 className="size-3.5" />
                       </button>
@@ -230,7 +230,7 @@ export function SpecificColumnManagerDialog({
               <Input
                 value={newCustomTitle}
                 onChange={(event) => setNewCustomTitle(event.target.value)}
-                placeholder="Название колонки"
+                placeholder={userCopy.specificSheets.columnManager.columnNamePlaceholder}
                 className="h-8"
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
@@ -241,13 +241,13 @@ export function SpecificColumnManagerDialog({
               />
               <Button type="button" variant="outline" size="sm" onClick={addCustomColumn} disabled={!newCustomTitle.trim()}>
                 <Plus className="size-3.5" />
-                Добавить
+                {userCopy.specificSheets.columnManager.add}
               </Button>
             </div>
           </div>
 
           <div className="rounded-lg border bg-muted/30 p-3">
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Превью заголовков</p>
+            <p className="mb-2 text-xs font-medium text-muted-foreground">{userCopy.specificSheets.columnManager.headersPreview}</p>
             <div className="flex flex-wrap gap-1">
               {draft.map((column) => (
                 <span
@@ -265,10 +265,10 @@ export function SpecificColumnManagerDialog({
 
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
-            Отмена
+            {userCopy.specificSheets.columnManager.cancel}
           </Button>
           <Button type="button" onClick={() => void handleSave()} disabled={busy}>
-            Сохранить
+            {userCopy.specificSheets.columnManager.save}
           </Button>
         </DialogFooter>
       </DialogContent>

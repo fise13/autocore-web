@@ -116,7 +116,7 @@ export function PayrollTable({
                     <Link href={`/work-orders?order=${row.workOrderId}`} className="text-primary hover:underline">
                       {workOrder
                         ? formatWorkOrderLabel(workOrder, displayIndex)
-                        : `Заказ-наряд №${row.workOrderId.slice(0, 6)}`}
+                        : userCopy.accounting.payrollTable.workOrderFallback(row.workOrderId.slice(0, 6))}
                     </Link>
                   </TableCell>
                 ) : null}
@@ -124,7 +124,7 @@ export function PayrollTable({
                   {row.rateType === "percent"
                     ? `${row.rate}%`
                     : row.rateType === "hourly"
-                      ? `${money(row.rate)}/ч`
+                      ? `${money(row.rate)}${userCopy.accounting.payrollTable.hourlySuffix}`
                       : money(row.rate)}
                 </TableCell>
                 <TableCell className="text-right font-medium tabular-nums">{money(row.amount)}</TableCell>

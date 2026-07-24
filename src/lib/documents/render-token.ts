@@ -82,6 +82,8 @@ type RenderTokenPayload = {
   orderId: string;
   slug: DocumentSlug;
   aggregateType?: "work_order" | "warranty" | "quote";
+  /** App UI locale for PDF chrome (en | ru). */
+  locale?: "en" | "ru";
   expiresAt: number;
 };
 
@@ -105,6 +107,7 @@ export function createDocumentRenderToken(params: {
   orderId: string;
   slug: DocumentSlug;
   aggregateType?: "work_order" | "warranty" | "quote";
+  locale?: "en" | "ru";
   ttlMs?: number;
   theme?: string;
 }): string {
@@ -114,6 +117,7 @@ export function createDocumentRenderToken(params: {
     slug: params.slug,
     aggregateType: params.aggregateType ?? "work_order",
     expiresAt: Date.now() + (params.ttlMs ?? 5 * 60 * 1000),
+    ...(params.locale ? { locale: params.locale } : {}),
     ...(params.theme ? { theme: params.theme } : {}),
   };
   const encoded = encodePayload(payload);
@@ -152,6 +156,7 @@ export function documentRenderUrl(params: {
   orderId: string;
   slug: DocumentSlug;
   aggregateType?: "work_order" | "warranty" | "quote";
+  locale?: "en" | "ru";
   theme?: string;
   export?: boolean;
 }): string {
@@ -162,6 +167,7 @@ export function documentRenderUrl(params: {
     params.aggregateType && params.aggregateType !== "work_order"
       ? `&aggregate=${encodeURIComponent(params.aggregateType)}`
       : "";
+  const localeQuery = params.locale ? `&lang=${encodeURIComponent(params.locale)}` : "";
   const exportQuery = params.export ? "&export=pdf" : "";
-  return `${baseUrl}/render/documents/${params.orderId}/${params.slug}?token=${encodeURIComponent(token)}${themeQuery}${aggregateQuery}${exportQuery}`;
+  return `${baseUrl}/render/documents/${params.orderId}/${params.slug}?token=${encodeURIComponent(token)}${themeQuery}${aggregateQuery}${localeQuery}${exportQuery}`;
 }

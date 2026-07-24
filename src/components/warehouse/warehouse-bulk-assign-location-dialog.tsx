@@ -20,6 +20,7 @@ import { useWarehouseLocationsRealtime } from "@/hooks/use-warehouse-locations-r
 import type { InventoryItem } from "@/domain/inventory";
 import { createWarehouseLocationRepository } from "@/infrastructure/firestore/warehouse-location-repository";
 import { resolveItemLocationLabel } from "@/lib/warehouse/resolve-item-location-label";
+import { userCopy } from "@/lib/user-copy";
 
 const locationRepository = createWarehouseLocationRepository();
 
@@ -64,7 +65,7 @@ export function WarehouseBulkAssignLocationDialog({
       items.slice(0, 5).map((item) => ({
         id: item.id,
         name: item.name,
-        from: resolveItemLocationLabel(item) || "Без места",
+        from: resolveItemLocationLabel(item) || userCopy.warehouse.noLocation,
       })),
     [items],
   );
@@ -92,7 +93,7 @@ export function WarehouseBulkAssignLocationDialog({
       setPickedId(null);
       onDone?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось назначить место");
+      setError(err instanceof Error ? err.message : userCopy.warehouse.assignFailed);
     } finally {
       setBusy(false);
     }
@@ -104,13 +105,13 @@ export function WarehouseBulkAssignLocationDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="size-4 opacity-70" />
-            Назначить место
+            {userCopy.warehouse.assignLocation}
           </DialogTitle>
           <DialogDescription>
             {items.length === 1
-              ? "Выбрана 1 позиция"
-              : `Выбрано позиций: ${items.length}`}
-            . Остаток с «Без места» переедет на выбранный код.
+              ? userCopy.warehouse.assignSelectedOne
+              : userCopy.warehouse.assignSelectedMany(items.length)}
+            {userCopy.warehouse.assignHint}
           </DialogDescription>
         </DialogHeader>
 
@@ -126,12 +127,11 @@ export function WarehouseBulkAssignLocationDialog({
                 setDraftCode(location.displayCode);
               }
             }}
-            placeholder="Выберите существующее место"
+            placeholder={userCopy.warehouse.pickExistingLocation}
           />
           {pickedId && (occupancyByLocationId[pickedId]?.lineCount ?? 0) > 0 ? (
             <p className="text-xs text-amber-600 dark:text-amber-400">
-              Место уже занято ({occupancyByLocationId[pickedId].lineCount} поз.) — можно всё равно
-              назначить.
+              {userCopy.warehouse.locationOccupied(occupancyByLocationId[pickedId].lineCount)}
             </p>
           ) : null}
           <Input
@@ -140,7 +140,7 @@ export function WarehouseBulkAssignLocationDialog({
               setDraftCode(event.target.value);
               setPickedId(null);
             }}
-            placeholder="Или введите новый код, например A-03-B-12"
+            placeholder={userCopy.warehouse.orNewCodePlaceholder}
             onKeyDown={(event) => {
               if (event.key === "Enter") void confirm();
             }}
@@ -156,7 +156,7 @@ export function WarehouseBulkAssignLocationDialog({
                 </li>
               ))}
               {items.length > preview.length ? (
-                <li className="pt-1 opacity-70">и ещё {items.length - preview.length}…</li>
+                <li className="pt-1 opacity-70">{userCopy.warehouse.andMore(items.length - preview.length)}</li>
               ) : null}
             </ul>
           ) : null}
@@ -165,14 +165,14 @@ export function WarehouseBulkAssignLocationDialog({
 
         <DialogFooter>
           <Button type="button" variant="ghost" disabled={busy} onClick={() => onOpenChange(false)}>
-            Отмена
+            {userCopy.warehouse.cancel}
           </Button>
           <Button
             type="button"
             disabled={busy || !targetCode || items.length === 0}
             onClick={() => void confirm()}
           >
-            {busy ? "Сохраняем…" : "Назначить"}
+            {busy ? userCopy.warehouse.saving : userCopy.warehouse.assign}
           </Button>
         </DialogFooter>
       </DialogContent>

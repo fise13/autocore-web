@@ -9,6 +9,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
+import { userCopy } from "@/lib/user-copy";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -108,12 +109,12 @@ export function DocumentImportViewer({
     return (
       <div className={cn("flex h-full min-h-0 flex-col items-center justify-center gap-2 rounded-2xl border bg-muted/20", className)}>
         <p className="text-sm font-medium text-foreground">
-          {imageError ? "Не удалось загрузить изображение" : "Нет изображения"}
+          {imageError ? userCopy.documentImport.imageLoadFailed : userCopy.documentImport.noImage}
         </p>
         <p className="text-xs text-muted-foreground">
           {imageError
-            ? "Ссылка на файл недоступна — попробуйте открыть импорт заново с телефона"
-            : "Документ ещё загружается или повреждён"}
+            ? userCopy.documentImport.urlUnavailable
+            : userCopy.documentImport.stillLoading}
         </p>
       </div>
     );
@@ -171,7 +172,7 @@ export function DocumentImportViewer({
           className="text-xs text-white/80 hover:bg-white/10 hover:text-white"
           onClick={resetView}
         >
-          Вписать
+          {userCopy.documentImport.fit}
         </Button>
         <div className="flex-1" />
         <Button

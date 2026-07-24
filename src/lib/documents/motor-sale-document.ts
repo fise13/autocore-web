@@ -3,7 +3,9 @@ import { DocumentSlug } from "@/lib/documents/document-types";
 import { DocumentTemplateMeta } from "@/lib/documents/templates/document-template-meta";
 import { ResolvedWarranty } from "@/lib/documents/warranty/resolve-warranty";
 import { documentPrimaryMotor } from "@/lib/documents/document-helpers";
+import { isEnglishDocumentLocale } from "@/lib/documents/document-locale";
 import { formatMotorLineLabel } from "@/lib/motors/format-motor-display-name";
+import { userCopy } from "@/lib/user-copy";
 
 /** Standalone motor sale: sold engine without work-order labor/parts. */
 export function isStandaloneMotorSale(context: DocumentContext): boolean {
@@ -14,18 +16,16 @@ export function isStandaloneMotorSale(context: DocumentContext): boolean {
   return true;
 }
 
-function isEnglishLocale(locale?: string): boolean {
-  return Boolean(locale?.toLowerCase().startsWith("en"));
-}
-
 export function formatMotorSaleDocumentLabel(context: DocumentContext): string {
-  const en = isEnglishLocale(context.locale);
+  const en = isEnglishDocumentLocale(context.locale);
   const motor = documentPrimaryMotor(context);
+  const engineWord = userCopy.documents.motor.engineFallback;
   if (!motor) return en ? "Engine sale" : "Продажа двигателя";
-  const engineWord = en ? "Engine" : "Двигатель";
   const saleWord = en ? "Engine sale" : "Продажа двигателя";
   const label = formatMotorLineLabel(motor, { includeSerial: true });
-  return label !== engineWord && label !== "Двигатель" ? `${saleWord} · ${label}` : saleWord;
+  return label !== engineWord && label !== "Двигатель" && label !== "Engine"
+    ? `${saleWord} · ${label}`
+    : saleWord;
 }
 
 export function motorSaleDocumentMeta(
@@ -33,7 +33,7 @@ export function motorSaleDocumentMeta(
   base: DocumentTemplateMeta,
   locale?: DocumentContext["locale"],
 ): DocumentTemplateMeta {
-  const en = isEnglishLocale(locale);
+  const en = isEnglishDocumentLocale(locale);
 
   if (slug === "engine-warranty") {
     return {
@@ -97,7 +97,7 @@ export function adaptWarrantyForMotorSale(
   warranty: ResolvedWarranty,
   locale?: DocumentContext["locale"],
 ): ResolvedWarranty {
-  const en = isEnglishLocale(locale);
+  const en = isEnglishDocumentLocale(locale);
   if (en) {
     return {
       ...warranty,

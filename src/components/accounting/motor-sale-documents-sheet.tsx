@@ -17,6 +17,7 @@ import { MotorEntity } from "@/domain/motor";
 import { useMotorSaleDocuments } from "@/hooks/use-motor-sale-documents";
 import { MOTOR_SALE_CATEGORY } from "@/lib/accounting/categories";
 import { operationCategoryLabel } from "@/lib/accounting/labels";
+import { userCopy } from "@/lib/user-copy";
 
 type MotorSaleDocumentsSheetProps = {
   operation: FinancialOperation | null;
@@ -76,7 +77,7 @@ export function MotorSaleDocumentsSheet({
 
   const motorLabel = documents
     ? [documents.brandName, documents.engineCode, documents.serialCode].filter(Boolean).join(" · ")
-    : operation?.description ?? operation?.comment ?? "Продажа двигателя";
+    : operation?.description ?? operation?.comment ?? userCopy.accounting.motorSaleDocuments.saleFallback;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -87,11 +88,11 @@ export function MotorSaleDocumentsSheet({
               <FileStack className="size-4" aria-hidden />
             </div>
             <div className="min-w-0 space-y-1">
-              <DialogTitle>Документы продажи</DialogTitle>
+              <DialogTitle>{userCopy.accounting.motorSaleDocuments.title}</DialogTitle>
               <DialogDescription>
                 {operation
                   ? operationCategoryLabel(operation.category ?? MOTOR_SALE_CATEGORY)
-                  : "Гарантийный талон и счёт на двигатель"}
+                  : userCopy.accounting.motorSaleDocuments.fallbackDescription}
               </DialogDescription>
             </div>
           </div>

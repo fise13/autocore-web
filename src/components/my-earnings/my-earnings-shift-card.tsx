@@ -53,7 +53,7 @@ export function MyEarningsShiftCard({ companyId, employeeId, shiftOn }: MyEarnin
                 })
                 .catch((error) => {
                   toast.error(
-                    error instanceof Error ? error.message : "Не удалось обновить смену",
+                    error instanceof Error ? error.message : userCopy.myEarnings.shiftUpdateFailed,
                   );
                 })
                 .finally(() => setBusy(false));

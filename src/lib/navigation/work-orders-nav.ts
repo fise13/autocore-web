@@ -1,18 +1,33 @@
 import type { OrderListFilter } from "@/components/work-orders/work-order-list-panel";
+import { userCopy } from "@/lib/user-copy";
 
-export const WORK_ORDERS_SECTIONS = [
-  { value: "orders", label: "Заказ-наряды" },
-  { value: "clients", label: "Клиенты" },
-  { value: "vehicles", label: "Автомобили" },
-] as const;
+export type WorkOrdersSection = "orders" | "clients" | "vehicles";
 
-export type WorkOrdersSection = (typeof WORK_ORDERS_SECTIONS)[number]["value"];
+/** Locale-aware section labels for work-orders navigation. */
+export function getWorkOrdersSections(): { value: WorkOrdersSection; label: string }[] {
+  const sidebar = userCopy.workOrders.sidebar;
+  return [
+    { value: "orders", label: sidebar.section },
+    { value: "clients", label: sidebar.clients },
+    { value: "vehicles", label: sidebar.vehicles },
+  ];
+}
 
-export const WORK_ORDERS_FILTERS: { value: OrderListFilter; label: string }[] = [
-  { value: "open", label: "Открытые" },
-  { value: "all", label: "Все" },
-  { value: "done", label: "Закрытые" },
-];
+/** Locale-aware filter labels for the orders list. */
+export function getWorkOrdersFilters(): { value: OrderListFilter; label: string }[] {
+  const filters = userCopy.workOrders.filters;
+  return [
+    { value: "open", label: filters.open },
+    { value: "all", label: filters.all },
+    { value: "done", label: filters.done },
+  ];
+}
+
+/** @deprecated Prefer `getWorkOrdersSections()` — labels follow active locale. */
+export const WORK_ORDERS_SECTIONS = getWorkOrdersSections;
+
+/** @deprecated Prefer `getWorkOrdersFilters()` — labels follow active locale. */
+export const WORK_ORDERS_FILTERS = getWorkOrdersFilters;
 
 export function parseWorkOrdersSection(value: string | null): WorkOrdersSection {
   if (value === "clients" || value === "vehicles") return value;

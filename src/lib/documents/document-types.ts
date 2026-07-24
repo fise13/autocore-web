@@ -1,4 +1,5 @@
 import { WorkOrderDocumentType } from "@/domain/work-order";
+import { userCopy } from "@/lib/user-copy";
 
 export type DocumentSlug =
   | "work-order"
@@ -19,68 +20,105 @@ export type DocumentDefinition = {
   pageSize: "A4" | "service-tag";
 };
 
+/** Locale-aware catalog — titles/descriptions follow active `userCopy` locale. */
 export const DOCUMENT_DEFINITIONS: DocumentDefinition[] = [
   {
     slug: "work-order",
     type: "work_order_pdf",
-    title: "Заказ-наряд",
-    description: "Полный состав работ, запчастей и двигателя",
+    get title() {
+      return userCopy.documents.catalog["work-order"].title;
+    },
+    get description() {
+      return userCopy.documents.catalog["work-order"].description;
+    },
     pageSize: "A4",
   },
   {
     slug: "service-act",
     type: "completion_act",
-    title: "Акт выполненных работ",
-    description: "Подтверждение выполненных работ и суммы",
+    get title() {
+      return userCopy.documents.catalog["service-act"].title;
+    },
+    get description() {
+      return userCopy.documents.catalog["service-act"].description;
+    },
     pageSize: "A4",
   },
   {
     slug: "engine-warranty",
     type: "engine_warranty",
-    title: "Гарантийный талон двигателя",
-    description: "Условия и срок гарантии на двигатель",
+    get title() {
+      return userCopy.documents.catalog["engine-warranty"].title;
+    },
+    get description() {
+      return userCopy.documents.catalog["engine-warranty"].description;
+    },
     pageSize: "A4",
   },
   {
     slug: "service-tag",
     type: "maintenance_tag",
-    title: "Бирка следующего ТО",
-    description: "Наклейка 70×100 мм для следующего обслуживания",
+    get title() {
+      return userCopy.documents.catalog["service-tag"].title;
+    },
+    get description() {
+      return userCopy.documents.catalog["service-tag"].description;
+    },
     pageSize: "service-tag",
   },
   {
     slug: "invoice",
     type: "client_invoice",
-    title: "Счёт клиенту",
-    description: "Счёт на оплату работ и материалов",
+    get title() {
+      return userCopy.documents.catalog.invoice.title;
+    },
+    get description() {
+      return userCopy.documents.catalog.invoice.description;
+    },
     pageSize: "A4",
   },
   {
     slug: "engine-waybill",
     type: "engine_waybill",
-    title: "Накладная на двигатель",
-    description: "Передача двигателя клиенту",
+    get title() {
+      return userCopy.documents.catalog["engine-waybill"].title;
+    },
+    get description() {
+      return userCopy.documents.catalog["engine-waybill"].description;
+    },
     pageSize: "A4",
   },
   {
     slug: "commercial-proposal",
     type: "commercial_proposal",
-    title: "Коммерческое предложение",
-    description: "Предварительное предложение до оформления заказа",
+    get title() {
+      return userCopy.documents.catalog["commercial-proposal"].title;
+    },
+    get description() {
+      return userCopy.documents.catalog["commercial-proposal"].description;
+    },
     pageSize: "A4",
   },
   {
     slug: "vehicle-intake-act",
     type: "vehicle_intake_act",
-    title: "Акт приёма автомобиля",
-    description: "Фиксация состояния автомобиля при приёмке",
+    get title() {
+      return userCopy.documents.catalog["vehicle-intake-act"].title;
+    },
+    get description() {
+      return userCopy.documents.catalog["vehicle-intake-act"].description;
+    },
     pageSize: "A4",
   },
   {
     slug: "sales-receipt",
     type: "sales_receipt",
-    title: "Товарный чек",
-    description: "Подтверждение продажи запчастей и агрегатов",
+    get title() {
+      return userCopy.documents.catalog["sales-receipt"].title;
+    },
+    get description() {
+      return userCopy.documents.catalog["sales-receipt"].description;
+    },
     pageSize: "A4",
   },
 ];

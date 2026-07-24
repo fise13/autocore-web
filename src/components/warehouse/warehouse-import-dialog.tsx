@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { InventoryImportRow } from "@/domain/inventory-import";
 import { parseCsvText } from "@/lib/warehouse/import-rules-engine";
+import { userCopy } from "@/lib/user-copy";
 
 type WarehouseImportDialogProps = {
   open: boolean;
@@ -31,6 +32,7 @@ export function WarehouseImportDialog({
   onPreview,
   onApply,
 }: WarehouseImportDialogProps) {
+  const copy = userCopy.warehouse.dialogs;
   const [previewRows, setPreviewRows] = useState<InventoryImportRow[]>([]);
   const [stats, setStats] = useState<{ total: number; valid: number; duplicates: number; errors: number } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -57,7 +59,7 @@ export function WarehouseImportDialog({
       setPreviewRows(preview.rows);
       setStats(preview.stats);
     } catch (fileError) {
-      setError(fileError instanceof Error ? fileError.message : "Ошибка чтения файла");
+      setError(fileError instanceof Error ? fileError.message : copy.importCsv.readError);
     } finally {
       setLoading(false);
     }
@@ -71,9 +73,9 @@ export function WarehouseImportDialog({
       onOpenChange(false);
       setPreviewRows([]);
       setStats(null);
-      alert(`Импортировано строк: ${result.applied}`);
+      alert(copy.importCsv.importedRows(result.applied));
     } catch (applyError) {
-      setError(applyError instanceof Error ? applyError.message : "Ошибка импорта");
+      setError(applyError instanceof Error ? applyError.message : copy.importCsv.applyError);
     } finally {
       setLoading(false);
     }
@@ -83,14 +85,14 @@ export function WarehouseImportDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Импорт склада</DialogTitle>
-          <DialogDescription>Загрузите CSV/TSV. AI-подсказки и diff — на этапе preview.</DialogDescription>
+          <DialogTitle>{copy.importCsv.title}</DialogTitle>
+          <DialogDescription>{copy.importCsv.description}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
           <input type="file" accept=".csv,.tsv,.txt" onChange={handleFile} />
           {stats ? (
             <p className="text-sm text-muted-foreground">
-              Всего: {stats.total} · валидных: {stats.valid} · дубликатов: {stats.duplicates} · ошибок: {stats.errors}
+              {copy.importCsv.stats(stats.total, stats.valid, stats.duplicates, stats.errors)}
             </p>
           ) : null}
           {previewRows.length > 0 ? (
@@ -99,11 +101,11 @@ export function WarehouseImportDialog({
                 <thead className="sticky top-0 bg-muted/80">
                   <tr>
                     <th className="px-2 py-1 text-left">✓</th>
-                    <th className="px-2 py-1 text-left">Артикул</th>
-                    <th className="px-2 py-1 text-left">Название</th>
+                    <th className="px-2 py-1 text-left">{copy.importCsv.colSku}</th>
+                    <th className="px-2 py-1 text-left">{copy.importCsv.colName}</th>
                     <th className="px-2 py-1 text-left">Qty</th>
                     <th className="px-2 py-1 text-left">Conf.</th>
-                    <th className="px-2 py-1 text-left">Ошибки</th>
+                    <th className="px-2 py-1 text-left">{copy.importCsv.colErrors}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -139,9 +141,11 @@ export function WarehouseImportDialog({
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Закрыть</Button>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            {copy.close}
+          </Button>
           <Button type="button" disabled={loading || selectedCount === 0} onClick={() => void applySelected()}>
-            Применить ({selectedCount})
+            {copy.importCsv.applySelected(selectedCount)}
           </Button>
         </DialogFooter>
       </DialogContent>

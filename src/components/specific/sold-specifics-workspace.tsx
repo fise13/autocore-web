@@ -16,6 +16,7 @@ import {
 } from "@/lib/specific/specific-header-mapping";
 import { resolveCategoryColumnSchema } from "@/lib/specific/specific-category-schema";
 import { filterSpecificRecords } from "@/lib/specific/specific-table";
+import { userCopy } from "@/lib/user-copy";
 import {
   createSpecificCategoryRepository,
   SpecificCategoryEntity,
@@ -84,7 +85,7 @@ export function SoldSpecificsWorkspace() {
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-        Загрузка проданных позиций каталога…
+        {userCopy.specificSheets.soldLoading}
       </div>
     );
   }
@@ -92,9 +93,9 @@ export function SoldSpecificsWorkspace() {
   if (soldGroups.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-        <p className="text-sm font-medium">Проданных позиций каталога пока нет</p>
+        <p className="text-sm font-medium">{userCopy.specificSheets.soldEmptyTitle}</p>
         <p className="text-sm text-muted-foreground">
-          Отметьте продажу в разделе «Учёт» — запись появится здесь автоматически.
+          {userCopy.specificSheets.soldEmptyHint}
         </p>
       </div>
     );
@@ -110,7 +111,7 @@ export function SoldSpecificsWorkspace() {
             </div>
             <div>
               <h2 className="text-sm font-semibold tracking-tight">{category.name}</h2>
-              <p className="text-xs text-muted-foreground">Продано: {categoryRecords.length}</p>
+              <p className="text-xs text-muted-foreground">{userCopy.specificSheets.soldCount(categoryRecords.length)}</p>
             </div>
           </div>
           <div className="min-h-[280px] flex-1">

@@ -35,7 +35,7 @@ export default async function ContactPage({ params }: PageProps) {
         extra={[
           buildWebPageJsonLd("contact", locale),
           buildBreadcrumbJsonLd("contact", locale),
-          buildContactPageJsonLd(),
+          buildContactPageJsonLd(locale),
         ]}
       />
       <ContactExperience />

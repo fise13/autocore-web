@@ -12,6 +12,7 @@ import { workOrdersNavSpring } from "@/components/work-orders/work-orders-motion
 import { sidebarNavIconClass, sidebarNavRowClass, sidebarSectionLabelClass } from "@/components/layout/sidebar-nav-row";
 import { can } from "@/lib/auth/permissions";
 import { parseWorkOrdersSection, workOrdersHref } from "@/lib/navigation/work-orders-nav";
+import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 function NavLink({
@@ -55,6 +56,7 @@ export function WorkOrdersSidebarContext() {
   const { profile } = useAuth();
   const canEdit = can(profile, "work_orders_edit");
   const section = parseWorkOrdersSection(searchParams.get("section"));
+  const copy = userCopy.workOrders;
 
   if (pathname !== "/work-orders" && !pathname.startsWith("/work-orders/")) {
     return null;
@@ -63,20 +65,20 @@ export function WorkOrdersSidebarContext() {
   return (
     <div className="space-y-3 px-1 py-1">
       <div>
-        <p className={sidebarSectionLabelClass}>Заказ-наряды</p>
+        <p className={sidebarSectionLabelClass}>{copy.sidebar.section}</p>
         <LayoutGroup id="work-orders-sidebar">
           <div className="space-y-0.5">
             <NavLink
               href={workOrdersHref({ section: "clients" })}
               active={section === "clients"}
               icon={Users}
-              label="Клиенты"
+              label={copy.sidebar.clients}
             />
             <NavLink
               href={workOrdersHref({ section: "vehicles" })}
               active={section === "vehicles"}
               icon={Car}
-              label="Автомобили"
+              label={copy.sidebar.vehicles}
             />
           </div>
         </LayoutGroup>
@@ -90,7 +92,7 @@ export function WorkOrdersSidebarContext() {
         >
           <WorkOrdersPrimaryAction
             href={workOrdersHref({ section: "orders", create: true })}
-            label="Новый заказ-наряд"
+            label={copy.newOrder}
           />
         </motion.div>
       ) : null}

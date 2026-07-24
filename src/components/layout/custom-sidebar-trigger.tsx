@@ -12,7 +12,7 @@ export function CustomSidebarTrigger() {
     <Tooltip>
       <TooltipTrigger delay={1000} render={<SidebarTrigger />} />
       <TooltipContent className="px-2 py-1" side="right">
-        Свернуть панель{" "}
+        {userCopy.commonUi.collapsePanel}{" "}
         <KbdGroup>
           <Kbd>⌘</Kbd>
           <Kbd>B</Kbd>

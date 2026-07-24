@@ -1,288 +1,46 @@
-export type ProductHelpSectionId =
-  | "getting-started"
-  | "warehouse"
-  | "motors"
-  | "work-orders"
-  | "finance"
-  | "documents"
-  | "mobile"
-  | "team";
+import { getActiveUserCopyLocale } from "@/lib/user-copy";
+import { productHelpSectionsEn } from "@/lib/product/product-help.en";
+import { productHelpSectionsRu } from "@/lib/product/product-help.ru";
+import type {
+  ProductHelpArticle,
+  ProductHelpSection,
+  ProductHelpSectionId,
+} from "@/lib/product/product-help-types";
 
-export type ProductHelpArticle = {
-  id: string;
-  q: string;
-  a: string;
-  /** Extra tokens for search (lowercase optional; matched case-insensitively). */
-  keywords?: string[];
-  /** In-app deep link when the answer points to a concrete screen. */
-  href?: string;
-  hrefLabel?: string;
-};
+export type {
+  ProductHelpArticle,
+  ProductHelpItem,
+  ProductHelpSection,
+  ProductHelpSectionId,
+} from "@/lib/product/product-help-types";
 
-export type ProductHelpSection = {
-  id: ProductHelpSectionId;
-  title: string;
-  description: string;
-  items: ProductHelpArticle[];
-};
+/**
+ * Locale-aware help articles. Re-evaluated when AppLocaleProvider remounts on locale change.
+ */
+export function getProductHelpSections(): ProductHelpSection[] {
+  return getActiveUserCopyLocale() === "en" ? productHelpSectionsEn : productHelpSectionsRu;
+}
 
-/** @deprecated Prefer ProductHelpArticle; kept for older imports/tests. */
-export type ProductHelpItem = ProductHelpArticle;
-
-export const productHelpSections: ProductHelpSection[] = [
-  {
-    id: "getting-started",
-    title: "С чего начать",
-    description: "Первый запуск компании, меню и базовые настройки.",
-    items: [
-      {
-        id: "invite-team",
-        q: "Как пригласить сотрудников?",
-        a: "Откройте «Команда», вкладку сотрудников и отправьте приглашение на email. После принятия приглашения выдайте роль с нужными правами.",
-        keywords: ["приглашение", "сотрудник", "email", "команда"],
-        href: "/team",
-        hrefLabel: "Открыть команду",
-      },
-      {
-        id: "company-branding",
-        q: "Где настроить компанию и брендинг PDF?",
-        a: "В «Настройках» заполните реквизиты компании и загрузите логотип в разделе брендинга. Эти данные подставляются в шапку печатных документов.",
-        keywords: ["настройки", "логотип", "реквизиты", "pdf", "бренд"],
-        href: "/settings",
-        hrefLabel: "Открыть настройки",
-      },
-      {
-        id: "sidebar-customize",
-        q: "Как скрыть ненужные разделы в меню?",
-        a: "В шапке нажмите «Настроить сайдбар». Можно скрыть блоки и перетащить пункты в удобном порядке. Настройки сохраняются для вашего аккаунта.",
-        keywords: ["меню", "сайдбар", "настроить", "порядок"],
-      },
-      {
-        id: "mission-control",
-        q: "Что такое Mission Control?",
-        a: "Это главный дашборд AutoCore: сводка по складу, нарядам и команде. Отсюда удобно начинать рабочий день и переходить в нужный модуль.",
-        keywords: ["дашборд", "главная", "сводка", "mission control"],
-        href: "/",
-        hrefLabel: "Открыть дашборд",
-      },
-    ],
+/**
+ * Active-locale sections (same remount semantics as `userCopy`).
+ * Prefer `getProductHelpSections()` in new code.
+ */
+export const productHelpSections: ProductHelpSection[] = new Proxy([] as ProductHelpSection[], {
+  get(_target, prop, receiver) {
+    const sections = getProductHelpSections();
+    const value = Reflect.get(sections, prop, receiver);
+    return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(sections) : value;
   },
-  {
-    id: "warehouse",
-    title: "Склад",
-    description: "Расходники, остатки, локации и импорт прайса.",
-    items: [
-      {
-        id: "import-price-list",
-        q: "Как импортировать прайс расходников?",
-        a: "В разделе «Расходники» откройте импорт, загрузите Excel и сопоставьте колонки. После проверки позиции попадут в общую таблицу склада.",
-        keywords: ["импорт", "excel", "прайс", "расходники", "таблица"],
-        href: "/warehouse",
-        hrefLabel: "Открыть склад",
-      },
-      {
-        id: "consumables-taxonomy",
-        q: "Есть ли категории у расходников?",
-        a: "Расходники ведутся в одной таблице. Ищите по артикулу, названию или штрихкоду. Категории и отдельные листы нужны для двигателей, КПП и запчастей.",
-        keywords: ["категории", "поиск", "артикул", "штрихкод"],
-      },
-      {
-        id: "reserve-part",
-        q: "Как зарезервировать деталь под наряд?",
-        a: "Резерв создаётся из заказ-наряда при добавлении запчасти со склада. Остаток уменьшается при закрытии наряда по правилам компании.",
-        keywords: ["резерв", "наряд", "остаток", "списание"],
-        href: "/work-orders",
-        hrefLabel: "Открыть наряды",
-      },
-      {
-        id: "warehouse-locations",
-        q: "Как работать с локациями на складе?",
-        a: "В складе можно задать локации (ячейки, полки) и назначать их позициям, в том числе массово. Так проще найти деталь на полу и в таблице.",
-        keywords: ["локация", "ячейка", "полка", "адрес", "хранение"],
-      },
-    ],
+  ownKeys() {
+    return Reflect.ownKeys(getProductHelpSections());
   },
-  {
-    id: "motors",
-    title: "Двигатели и агрегаты",
-    description: "Учёт моторов, КПП, запчастей и продажи.",
-    items: [
-      {
-        id: "sell-buyer",
-        q: "Как указать покупателя при продаже?",
-        a: "В диалоге продажи заполните ФИО и телефон. Клиент сохранится в базе и подставится в документы продажи.",
-        keywords: ["продажа", "покупатель", "клиент", "телефон"],
-        href: "/sold",
-        hrefLabel: "Открыть продажи",
-      },
-      {
-        id: "collections-diff",
-        q: "Чем отличаются «Двигатели», «КПП» и «Запчасти»?",
-        a: "Это разные коллекции учёта с собственными карточками и колонками. Двигатели: каталог моторов. КПП и запчасти: отдельные листы учёта. Расходники живут в разделе склада.",
-        keywords: ["коллекция", "кпп", "запчасти", "двигатели", "моторы"],
-        href: "/motors?collection=engines",
-        hrefLabel: "Открыть двигатели",
-      },
-      {
-        id: "motor-import",
-        q: "Как импортировать моторы из Excel?",
-        a: "В разделе моторов запустите мастер импорта, загрузите файл и проверьте предпросмотр перед применением. Ошибки сопоставления видны до записи в базу.",
-        keywords: ["импорт", "excel", "мастер", "двигатели"],
-      },
-      {
-        id: "specific-sheets",
-        q: "Что такое листы «Специфика»?",
-        a: "Это настраиваемые таблицы учёта под вашу номенклатуру. Категории и колонки задаются в компании, чтобы вести то, чего нет в стандартных коллекциях.",
-        keywords: ["специфика", "категория", "колонки", "номенклатура"],
-      },
-    ],
+  getOwnPropertyDescriptor(_target, prop) {
+    return Reflect.getOwnPropertyDescriptor(getProductHelpSections(), prop);
   },
-  {
-    id: "work-orders",
-    title: "Заказ-наряды",
-    description: "Создание, резерв запчастей и закрытие наряда.",
-    items: [
-      {
-        id: "close-work-order",
-        q: "Как закрыть наряд?",
-        a: "Переведите наряд в финальный статус. Списание со склада и проводки в финансах создаются автоматически по настройкам компании.",
-        keywords: ["закрыть", "статус", "списание", "проводки"],
-        href: "/work-orders",
-        hrefLabel: "Открыть наряды",
-      },
-      {
-        id: "work-order-visibility",
-        q: "Мастер видит только свои наряды?",
-        a: "Зависит от роли. Владелец и администратор обычно видят все наряды; ограниченные роли видят только назначенные. Проверьте разрешения в «Роли».",
-        keywords: ["мастер", "роль", "видимость", "назначение"],
-        href: "/roles",
-        hrefLabel: "Открыть роли",
-      },
-      {
-        id: "work-order-parts",
-        q: "Как добавить запчасть в наряд со склада?",
-        a: "В карточке наряда добавьте позицию со склада. Система создаст резерв; при закрытии наряда остаток спишется по правилам компании.",
-        keywords: ["запчасть", "резерв", "склад", "позиция"],
-      },
-    ],
+  has(_target, prop) {
+    return Reflect.has(getProductHelpSections(), prop);
   },
-  {
-    id: "finance",
-    title: "Финансы",
-    description: "Операции, связь с нарядами и начисления.",
-    items: [
-      {
-        id: "accounting-ops",
-        q: "Где вести доходы и расходы?",
-        a: "В разделе «Финансы» создавайте операции вручную или получайте проводки из закрытых нарядов и продаж, если это включено в настройках компании.",
-        keywords: ["финансы", "бухгалтерия", "доход", "расход", "операция"],
-        href: "/accounting",
-        hrefLabel: "Открыть финансы",
-      },
-      {
-        id: "my-earnings",
-        q: "Где сотруднику смотреть свои начисления?",
-        a: "Раздел «Мои начисления» показывает персональные суммы по выполненным работам, если роль даёт к нему доступ.",
-        keywords: ["начисления", "зарплата", "мастер", "earnings"],
-        href: "/my-earnings",
-        hrefLabel: "Открыть начисления",
-      },
-      {
-        id: "finance-from-orders",
-        q: "Почему после закрытия наряда нет проводки?",
-        a: "Проверьте настройки компании и права роли на финансы. Проводки появляются только если для закрытия наряда включена автоматическая фиксация операций.",
-        keywords: ["проводка", "закрытие", "настройки", "автоматика"],
-      },
-    ],
-  },
-  {
-    id: "documents",
-    title: "Документы и импорт",
-    description: "PDF, история документов и распознавание файлов.",
-    items: [
-      {
-        id: "generate-pdf",
-        q: "Как сформировать PDF?",
-        a: "Из карточки мотора, наряда или продажи откройте нужный тип документа. PDF собирается из актуальных данных компании и карточки.",
-        keywords: ["pdf", "печать", "документ", "бланк"],
-        href: "/documents",
-        hrefLabel: "Открыть документы",
-      },
-      {
-        id: "stale-requisites",
-        q: "Почему в документе старые реквизиты?",
-        a: "Обновите брендинг и реквизиты в настройках, затем сформируйте документ заново. В PDF попадают текущие данные компании на момент генерации.",
-        keywords: ["реквизиты", "устарели", "логотип", "настройки"],
-        href: "/settings",
-        hrefLabel: "Открыть настройки",
-      },
-      {
-        id: "document-import",
-        q: "Как импортировать накладную или прайс с фото/PDF?",
-        a: "Откройте «Импорт» (/imports), загрузите файл или снимок. Система извлечёт позиции для проверки и переноса в склад. На телефоне тот же сценарий доступен через камеру.",
-        keywords: ["импорт", "накладная", "распознавание", "ai", "pdf", "фото"],
-        href: "/imports",
-        hrefLabel: "Открыть импорт",
-      },
-    ],
-  },
-  {
-    id: "mobile",
-    title: "Мобильное приложение",
-    description: "Сканер, приёмка и импорт с телефона.",
-    items: [
-      {
-        id: "mobile-scan",
-        q: "Для чего сканер в приложении?",
-        a: "Сканер читает штрихкоды и коды на деталях, чтобы быстро найти позицию на складе или принять агрегат. Результат сразу виден в веб-кабинете той же компании.",
-        keywords: ["сканер", "штрихкод", "barcode", "vin", "телефон"],
-      },
-      {
-        id: "mobile-import",
-        q: "Можно ли импортировать документы с телефона?",
-        a: "Да. В мобильном импорте сфотографируйте документ или выберите файл. После распознавания проверьте позиции и отправьте их в складной контур компании.",
-        keywords: ["камера", "фото", "накладная", "мобильный импорт"],
-      },
-      {
-        id: "mobile-sync",
-        q: "Данные на телефоне и в браузере совпадают?",
-        a: "Да, это одна компания и одна база. Изменения на складе, в нарядах и карточках синхронизируются между веб-кабинетом и приложением.",
-        keywords: ["синхронизация", "realtime", "онлайн", "одна база"],
-      },
-    ],
-  },
-  {
-    id: "team",
-    title: "Команда и роли",
-    description: "Доступ, права и журнал действий.",
-    items: [
-      {
-        id: "role-warehouse-only",
-        q: "Как выдать доступ только к складу?",
-        a: "В «Команда» → «Роли» создайте или отредактируйте роль и отметьте разрешения только для склада (и при необходимости просмотра остатков). Затем назначьте роль сотруднику.",
-        keywords: ["роль", "права", "доступ", "склад", "permissions"],
-        href: "/roles",
-        hrefLabel: "Открыть роли",
-      },
-      {
-        id: "activity-log",
-        q: "Где смотреть, кто что изменил?",
-        a: "Журнал активности фиксирует ключевые операции сотрудников: кто, когда и что сделал. Его удобно открывать из раздела команды или активности.",
-        keywords: ["журнал", "активность", "аудит", "история"],
-        href: "/activity",
-        hrefLabel: "Открыть активность",
-      },
-      {
-        id: "employees-roles",
-        q: "Где управлять сотрудниками и ролями отдельно?",
-        a: "Сотрудники и приглашения живут в «Команда» / «Сотрудники». Матрица прав настраивается в «Роли». Так можно менять доступ без повторного приглашения.",
-        keywords: ["сотрудники", "роли", "приглашение", "права"],
-        href: "/employees",
-        hrefLabel: "Открыть сотрудников",
-      },
-    ],
-  },
-];
+});
 
 function articleMatches(article: ProductHelpArticle, normalized: string): boolean {
   if (article.q.toLowerCase().includes(normalized)) return true;
@@ -313,12 +71,15 @@ export function filterProductHelpSections(
 
 export function getProductHelpSection(
   sectionId: ProductHelpSectionId | "all",
+  sections: ProductHelpSection[] = getProductHelpSections(),
 ): ProductHelpSection | undefined {
   if (sectionId === "all") return undefined;
-  return productHelpSections.find((section) => section.id === sectionId);
+  return sections.find((section) => section.id === sectionId);
 }
 
-export function countProductHelpArticles(sections: ProductHelpSection[] = productHelpSections): number {
+export function countProductHelpArticles(
+  sections: ProductHelpSection[] = getProductHelpSections(),
+): number {
   return sections.reduce((total, section) => total + section.items.length, 0);
 }
 
@@ -333,7 +94,7 @@ export const productHelpPopularIds = [
 ] as const;
 
 export function getPopularHelpArticles(
-  sections: ProductHelpSection[] = productHelpSections,
+  sections: ProductHelpSection[] = getProductHelpSections(),
 ): ProductHelpArticle[] {
   const byId = new Map<string, ProductHelpArticle>();
   for (const section of sections) {
@@ -348,7 +109,7 @@ export function getPopularHelpArticles(
 
 export function findHelpArticleSectionId(
   articleId: string,
-  sections: ProductHelpSection[] = productHelpSections,
+  sections: ProductHelpSection[] = getProductHelpSections(),
 ): ProductHelpSectionId | undefined {
   for (const section of sections) {
     if (section.items.some((item) => item.id === articleId)) {

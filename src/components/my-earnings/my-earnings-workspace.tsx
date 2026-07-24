@@ -52,7 +52,7 @@ export function MyEarningsWorkspace() {
     return (
       <EmptyState
         icon={Wallet}
-        title="Нет доступа"
+        title={userCopy.myEarnings.noAccessTitle}
         description={userCopy.myEarnings.emptyStates.noAccess}
       />
     );

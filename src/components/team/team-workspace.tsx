@@ -39,12 +39,14 @@ const ONLINE_WINDOW_MS = 15 * 60 * 1000;
 
 type TeamTab = "overview" | "employees" | "roles";
 
-const TEAM_NAV = [
-  { id: "overview", label: "На смене", icon: LayoutGridIcon },
-  { id: "employees", label: userCopy.settings.employees, icon: UsersIcon },
-  { id: "roles", label: userCopy.settings.roles, icon: ShieldIcon },
-  { id: "activity", label: "Активность", icon: ActivityIcon, href: "/activity" },
-] as const;
+function teamNav() {
+  return [
+    { id: "overview", label: userCopy.team.navOnDuty, icon: LayoutGridIcon },
+    { id: "employees", label: userCopy.settings.employees, icon: UsersIcon },
+    { id: "roles", label: userCopy.settings.roles, icon: ShieldIcon },
+    { id: "activity", label: userCopy.team.navActivity, icon: ActivityIcon, href: "/activity" },
+  ] as const;
+}
 
 function resolveTeamTab(value: string | null): TeamTab {
   if (value === "employees" || value === "roles") return value;
@@ -102,9 +104,9 @@ function TeamWorkspaceContent() {
 
   if (!canView) {
     return (
-      <EnterpriseWorkspaceShell title="Команда" description="Доступ к разделу ограничен">
-        <EnterprisePanelCard title="Нет доступа" contentClassName="px-6 py-10 text-center text-sm text-muted-foreground">
-          У вашей роли нет прав на просмотр команды.
+      <EnterpriseWorkspaceShell title={userCopy.team.title} description={userCopy.team.accessDeniedDescription}>
+        <EnterprisePanelCard title={userCopy.team.noAccessTitle} contentClassName="px-6 py-10 text-center text-sm text-muted-foreground">
+          {userCopy.team.noAccessBody}
         </EnterprisePanelCard>
       </EnterpriseWorkspaceShell>
     );
@@ -112,33 +114,33 @@ function TeamWorkspaceContent() {
 
   return (
     <EnterpriseWorkspaceShell
-      title="Команда"
-      description="Сотрудники, роли, нагрузка по заказ-нарядам и журнал действий."
+      title={userCopy.team.title}
+      description={userCopy.team.description}
       meta={
         <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary">{stats.total} активных</Badge>
-          <Badge variant="outline">{stats.online} онлайн</Badge>
-          <Badge variant="outline">{stats.openOrders} заказ-нарядов</Badge>
+          <Badge variant="secondary">{userCopy.team.activeCount(stats.total)}</Badge>
+          <Badge variant="outline">{userCopy.team.onlineCount(stats.online)}</Badge>
+          <Badge variant="outline">{userCopy.team.openOrdersCount(stats.openOrders)}</Badge>
         </div>
       }
       action={
         canManage ? (
           <Button type="button" onClick={() => router.push(deepActionRoutes.invite())}>
             <UserPlusIcon data-icon="inline-start" />
-            Пригласить
+            {userCopy.team.invite}
           </Button>
         ) : null
       }
     >
       <ProFeatureGate
         feature="invite"
-        title="Команда доступна на Pro"
-        description="Управление сотрудниками и журнал активности — на тарифе Pro."
+        title={userCopy.team.proTitle}
+        description={userCopy.team.proDescription}
       >
         <div className="flex flex-col gap-5">
           <EnterpriseWorkspaceNav
             layoutId="team-workspace-nav"
-            items={[...TEAM_NAV]}
+            items={[...teamNav()]}
             activeId={tab}
             onSelect={(id) => {
               if (id === "activity") return;
@@ -150,8 +152,8 @@ function TeamWorkspaceContent() {
             {tab === "overview" ? (
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)]">
                 <EnterprisePanelCard
-                  title="Команда на смене"
-                  description="Кто онлайн и сколько заказ-нарядов ведёт"
+                  title={userCopy.team.onDutyTitle}
+                  description={userCopy.team.onDutyDescription}
                 >
                   {loading ? (
                     <div className="flex flex-col gap-2 p-4">
@@ -165,26 +167,26 @@ function TeamWorkspaceContent() {
                 </EnterprisePanelCard>
 
                 <EnterprisePanelCard
-                  title="Разделы"
-                  description="Переходы внутри команды"
+                  title={userCopy.team.sectionsTitle}
+                  description={userCopy.team.sectionsDescription}
                   contentClassName="flex flex-col gap-1 p-2"
                 >
                   <EnterpriseQuickLink
                     icon={UsersIcon}
                     label={userCopy.settings.employees}
-                    hint="Приглашения и статусы"
+                    hint={userCopy.team.employeesHint}
                     onClick={() => setTab("employees")}
                   />
                   <EnterpriseQuickLink
                     icon={ShieldIcon}
                     label={userCopy.settings.roles}
-                    hint="Системные и кастомные роли"
+                    hint={userCopy.team.rolesHint}
                     onClick={() => setTab("roles")}
                   />
                   <EnterpriseQuickLink
                     icon={ActivityIcon}
-                    label="Журнал активности"
-                    hint="События по всей компании"
+                    label={userCopy.team.activityLog}
+                    hint={userCopy.team.activityHint}
                     href="/activity"
                   />
                 </EnterprisePanelCard>

@@ -182,7 +182,7 @@ export function AccountingWorkspace() {
       "type" | "amount" | "account" | "paymentMethod" | "category" | "comment"
     >,
   ) {
-    if (!profile || !companyId) throw new Error("Компания не найдена");
+    if (!profile || !companyId) throw new Error(userCopy.accounting.companyNotFound);
 
     const basePayload: Omit<CreateFinancialOperationInput, "type"> = {
       companyId,
@@ -402,7 +402,7 @@ export function AccountingWorkspace() {
                     </div>
                     <div className="rounded-lg border bg-muted/30 px-3 py-2">
                       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Итого
+                        {userCopy.accounting.total}
                       </p>
                       <p className="mt-0.5 text-sm font-semibold tabular-nums">
                         {formatMoney(workOrderFinanceSummary.net)}
@@ -441,7 +441,7 @@ export function AccountingWorkspace() {
                   />
                   {payrollExpenseRows.length > 0 ? (
                     <div className="space-y-2">
-                      <h3 className="text-sm font-medium">Расходы на зарплату в бухгалтерии</h3>
+                      <h3 className="text-sm font-medium">{userCopy.accounting.payrollExpensesTitle}</h3>
                       <OperationsTable
                         rows={payrollExpenseRows}
                         canEdit={canEdit}

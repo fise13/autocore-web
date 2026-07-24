@@ -1,3 +1,5 @@
+import { userCopy } from "@/lib/user-copy";
+
 type MotorNameParts = {
   brandName?: string | null;
   engineCode?: string | null;
@@ -20,7 +22,7 @@ export function formatMotorLineLabel(
     name ||
     (options?.includeSerial && parts.serialCode?.trim()
       ? parts.serialCode.trim()
-      : options?.fallback ?? "Двигатель");
+      : options?.fallback ?? userCopy.documents.motor.engineFallback);
   const marks = (options?.marks ?? []).map((m) => m.trim()).filter(Boolean);
   if (marks.length === 0) return base;
   return `${base} · ${marks.join(" · ")}`;
@@ -31,7 +33,7 @@ export function formatMotorLineSubtitle(
   outcome: "install" | "sell" | undefined,
   marks?: string[],
 ): string {
-  const base = outcome === "sell" ? "Продажа" : "Установка";
+  const base = outcome === "sell" ? userCopy.documents.motor.sell : userCopy.documents.motor.install;
   const cleanMarks = (marks ?? []).map((m) => m.trim()).filter(Boolean);
   if (cleanMarks.length === 0) return base;
   return `${base} · ${cleanMarks.join(" · ")}`;

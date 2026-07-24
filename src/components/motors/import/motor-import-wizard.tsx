@@ -75,34 +75,31 @@ type MotorImportWizardProps = {
 };
 
 const stepOrder: WizardStep[] = ["analyze", "review", "confirm"];
-const stepLabels: Record<WizardStep, string> = {
-  analyze: "Анализ",
-  review: "Проверка",
-  mapping: "Листы",
-  confirm: "Импорт",
-};
+function stepLabels(): Record<WizardStep, string> {
+  return { ...userCopy.motors.importWizard.steps };
+}
 
-const stepHints: Record<WizardStep, string> = {
-  analyze: "ИИ найдёт листы двигателей и каталоги учёта (КПП, раздатки, электрика…) — колонки, бренды, комплектации и даты",
-  review: "Снимите галочки только с лишних строк — по умолчанию импортируются все данные из файла",
-  mapping: "Уточните тип листов, бренд и категорию каталога учёта",
-  confirm: "Можно закрыть окно — загрузка продолжится, прогресс будет сверху",
-};
+function stepHints(): Record<WizardStep, string> {
+  return { ...userCopy.motors.importWizard.stepHints };
+}
 
-const importTypeOptions: { value: SheetImportType; label: string }[] = [
-  { value: "engines", label: "Двигатели" },
-  { value: "specific", label: "Каталог учёта" },
-  { value: "skip", label: "Пропустить" },
-];
+function importTypeOptions(): { value: SheetImportType; label: string }[] {
+  const labels = userCopy.motors.importWizard.sheetTypes;
+  return [
+    { value: "engines", label: labels.engines },
+    { value: "specific", label: labels.specific },
+    { value: "skip", label: labels.skip },
+  ];
+}
 
 function actionLabel(action: MotorImportPreviewRow["action"]): string {
   switch (action) {
     case "create":
-      return "Создание";
+      return userCopy.motors.importWizard.actionCreate;
     case "update":
-      return "Обновление";
+      return userCopy.motors.importWizard.actionUpdate;
     case "skip":
-      return "Пропуск";
+      return userCopy.motors.importWizard.actionSkip;
     default:
       return action;
   }
@@ -145,7 +142,7 @@ export function MotorImportWizard({
   const uncertainRows = useMemo(
     () =>
       engineRows.filter((row) =>
-        row.aiMeta?.warnings.some((warning) => warning.includes("не уверен")),
+        row.aiMeta?.warnings.some((warning) => warning.includes(userCopy.motors.importWizard.uncertainToken)),
       ),
     [engineRows],
   );
@@ -241,7 +238,7 @@ export function MotorImportWizard({
     setError(null);
     cancelRef.current = false;
     runningInBackgroundRef.current = true;
-    pushGlobalProgress("apply", { percent: 0, message: "Загружаем моторы в базу…" });
+    pushGlobalProgress("apply", { percent: 0, message: userCopy.motors.importWizard.uploadingMotors });
     onOpenChange(false);
 
     try {
@@ -252,7 +249,7 @@ export function MotorImportWizard({
           setApplyProgress(value.percent);
           pushGlobalProgress("apply", {
             percent: value.percent,
-            message: `Загрузка в базу · ${value.applied}/${value.total}`,
+            message: userCopy.motors.importWizard.uploadingProgress(value.applied, value.total),
           });
         },
         shouldCancel: () => cancelRef.current,
@@ -267,12 +264,12 @@ export function MotorImportWizard({
           !result.cancelled;
         if (!isServerDeferred) {
           if (result.imported > 0 || result.updated > 0 || (result.specificRecordsImported ?? 0) > 0) {
-            const parts = [`${result.imported} моторов загружено`];
+            const parts = [userCopy.motors.importWizard.importedMotors(result.imported)];
             if (result.specificRecordsImported) {
-              parts.push(`${result.specificRecordsImported} строк каталога`);
+              parts.push(userCopy.motors.importWizard.importedSpecific(result.specificRecordsImported));
             }
             if (result.errors.length) {
-              parts.push(`ошибок: ${result.errors.length}`);
+              parts.push(userCopy.motors.importWizard.errorsCount(result.errors.length));
             }
             toast({
               title: userCopy.motors.magicImportDone,
@@ -297,7 +294,7 @@ export function MotorImportWizard({
       if (cancelRef.current) return;
       runningInBackgroundRef.current = false;
       setMotorImportProgress(null);
-      setError(applyError instanceof Error ? applyError.message : "Ошибка загрузки в базу");
+      setError(applyError instanceof Error ? applyError.message : userCopy.motors.importWizard.applyFailed);
       onOpenChange(true);
     } finally {
       setLoading(false);
@@ -319,7 +316,7 @@ export function MotorImportWizard({
 
     if (shouldClose) {
       runningInBackgroundRef.current = true;
-      pushGlobalProgress("analyze", { percent: 2, message: "Читаем листы Excel…" });
+      pushGlobalProgress("analyze", { percent: 2, message: userCopy.motors.importWizard.readingSheets });
       onOpenChange(false);
     }
 
@@ -368,7 +365,7 @@ export function MotorImportWizard({
       if (cancelRef.current) return;
       runningInBackgroundRef.current = false;
       setMotorImportProgress(null);
-      setError(analyzeError instanceof Error ? analyzeError.message : "Ошибка анализа");
+      setError(analyzeError instanceof Error ? analyzeError.message : userCopy.motors.importWizard.analyzeFailed);
       onOpenChange(true);
     } finally {
       analyzingRef.current = false;
@@ -425,7 +422,7 @@ export function MotorImportWizard({
     runningInBackgroundRef.current = true;
     pushGlobalProgress("analyze", {
       percent: progress?.percent ?? 2,
-      message: progress?.message ?? "Анализ файла…",
+      message: progress?.message ?? userCopy.motors.importWizard.analyzingFile,
     });
     onOpenChange(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -480,16 +477,16 @@ export function MotorImportWizard({
   }
 
   function primaryActionLabel(): string {
-    if (activeStep === "confirm") return "Загрузить в базу";
-    if (activeStep === "review" && !mappingDirty && !showMapping) return "Загрузить в базу";
+    if (activeStep === "confirm") return userCopy.motors.importWizard.uploadToDb;
+    if (activeStep === "review" && !mappingDirty && !showMapping) return userCopy.motors.importWizard.uploadToDb;
     if (
       (showMapping && mappingDirty) ||
       activeStep === "mapping" ||
       (activeStep === "review" && mappingDirty)
     ) {
-      return "Пересчитать";
+      return userCopy.motors.importWizard.recalculate;
     }
-    return "Далее";
+    return userCopy.motors.importWizard.next;
   }
 
   function canProceed() {
@@ -559,8 +556,8 @@ export function MotorImportWizard({
             : (progress?.percent ?? 2),
         message:
           phase === "apply"
-            ? `Загрузка в базу · ${applyProgress ?? progress?.percent ?? 0}%`
-            : (progress?.message ?? "Анализ файла…"),
+            ? userCopy.motors.importWizard.uploadingPercent(applyProgress ?? progress?.percent ?? 0)
+            : (progress?.message ?? userCopy.motors.importWizard.analyzingFile),
       });
     }
     onOpenChange(false);
@@ -607,16 +604,16 @@ export function MotorImportWizard({
             <div>
               <DialogTitle className="flex items-center gap-2">
                 <Sparkles className="size-4 text-primary" />
-                Magic Import · Моторы
+                {userCopy.motors.importWizard.title}
               </DialogTitle>
               <DialogDescription>
-                {stepLabels[activeStep]} · {stepHints[activeStep]}
-                {!useAi ? " · только правила" : ""}
+                {stepLabels()[activeStep]} · {stepHints()[activeStep]}
+                {!useAi ? userCopy.motors.importWizard.rulesOnly : ""}
               </DialogDescription>
             </div>
             {onOpenHistory ? (
               <Button variant="ghost" size="sm" onClick={onOpenHistory}>
-                История
+                {userCopy.motors.importWizard.history}
               </Button>
             ) : null}
           </div>
@@ -628,7 +625,7 @@ export function MotorImportWizard({
             <ImportProgressBar percent={progress.percent} message={progress.message} className="mb-4" />
           ) : null}
           {!motorImportProgress && applyProgress != null ? (
-            <ImportProgressBar percent={applyProgress} message="Загрузка в базу…" className="mb-4" />
+            <ImportProgressBar percent={applyProgress} message={userCopy.motors.importWizard.uploadingBanner} className="mb-4" />
           ) : null}
 
           <AnimatePresence mode="wait">
@@ -644,14 +641,13 @@ export function MotorImportWizard({
                 {!preview ? (
                   <div className="rounded-xl border border-dashed border-primary/25 bg-primary/5 p-8 text-center">
                     <Sparkles className="mx-auto mb-3 size-8 text-primary/70" />
-                    <p className="text-sm font-medium">Разбираем файл авторазбора</p>
+                    <p className="text-sm font-medium">{userCopy.motors.importWizard.analyzingTitle}</p>
                     <p className="mx-auto mt-2 max-w-lg text-xs text-muted-foreground">
-                      ИИ определит листы двигателей, сопоставит серийники, бренды, комплектации, КПП и даты —
-                      даже если таблица без нормальных заголовков
+                      {userCopy.motors.importWizard.analyzingHint}
                     </p>
                   </div>
                 ) : null}
-                {sourceFileName ? <p className="text-sm text-muted-foreground">Файл: {sourceFileName}</p> : null}
+                {sourceFileName ? <p className="text-sm text-muted-foreground">{userCopy.motors.importWizard.fileLabel(sourceFileName)}</p> : null}
                 {preview ? (
                   <ImportStatsCards
                     preview={preview}
@@ -661,7 +657,7 @@ export function MotorImportWizard({
                     selectedCount={selectedCount}
                   />
                 ) : (
-                  <p className="text-sm text-muted-foreground">{loading ? "Анализ файла…" : "Ожидание файла"}</p>
+                  <p className="text-sm text-muted-foreground">{loading ? userCopy.motors.importWizard.analyzingFile : userCopy.motors.importWizard.waitingFile}</p>
                 )}
               </motion.div>
             ) : null}
@@ -677,7 +673,7 @@ export function MotorImportWizard({
               >
                 {loading && engineRows.length === 0 && (preview?.stats.totalEngineRows ?? 0) > 0 ? (
                   <div className="rounded-lg border border-dashed border-primary/25 bg-primary/5 px-4 py-6 text-center text-sm text-muted-foreground">
-                    Загружаем данные импорта…
+                    {userCopy.motors.importWizard.loadingImportData}
                   </div>
                 ) : null}
                 {preview ? (
@@ -698,36 +694,38 @@ export function MotorImportWizard({
 
                 <div className="rounded-lg border bg-muted/20 p-3 text-sm">
                   <p>
-                    К импорту: <span className="font-medium text-foreground">{selectedCount}</span> из{" "}
-                    {engineRows.length || preview?.stats.totalEngineRows || 0} моторов
+                    {userCopy.motors.importWizard.selectedMotors(
+                      selectedCount,
+                      engineRows.length || preview?.stats.totalEngineRows || 0,
+                    )}
                   </p>
                   {engineRows.length === 0 && (preview?.stats.totalEngineRows ?? 0) > 0 ? (
                     <p className="mt-1 text-destructive">
-                      Строки preview не загрузились — закройте окно и откройте импорт снова
+                      {userCopy.motors.importWizard.previewMissing}
                     </p>
                   ) : null}
                   {uncertainRows.length > 0 ? (
                     <p className="mt-1 text-amber-700 dark:text-amber-300">
-                      {uncertainRows.length} строк с низкой уверенностью ИИ — проверьте перед загрузкой
+                      {userCopy.motors.importWizard.uncertainHint(uncertainRows.length)}
                     </p>
                   ) : null}
                   {duplicateRows.length > 0 ? (
                     <p className="mt-1 text-muted-foreground">
-                      {duplicateRows.length} совпадений с базой — часть строк обновит существующие моторы
+                      {userCopy.motors.importWizard.duplicateHint(duplicateRows.length)}
                     </p>
                   ) : null}
                   {hasSpecificSheets ? (
                     <p className="mt-1 text-muted-foreground">
-                      Листы каталога будут импортированы в свои категории
+                      {userCopy.motors.importWizard.catalogSheetsNote}
                     </p>
                   ) : null}
                 </div>
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium">Листы файла</p>
+                    <p className="text-sm font-medium">{userCopy.motors.importWizard.sheetsTitle}</p>
                     <Button variant="outline" size="sm" onClick={() => setShowMapping((current) => !current)}>
-                      {showMapping ? "Свернуть" : "Развернуть настройки"}
+                      {showMapping ? userCopy.motors.importWizard.collapse : userCopy.motors.importWizard.expandSettings}
                       <ChevronDown
                         className={cn("ml-1 size-3.5 transition-transform", showMapping && "rotate-180")}
                       />
@@ -749,7 +747,7 @@ export function MotorImportWizard({
 
                 {mappingDirty ? (
                   <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
-                    <p>Настройки листов изменены — пересчитайте preview перед импортом</p>
+                    <p>{userCopy.motors.importWizard.mappingDirty}</p>
                   </div>
                 ) : null}
 
@@ -771,10 +769,10 @@ export function MotorImportWizard({
                   const specificMeta = preview?.specificSheets.find((item) => item.configId === mapping.config.id);
                   const rowHint =
                     mapping.config.importType === "engines"
-                      ? `${motorCount} моторов`
+                      ? userCopy.motors.importWizard.motorsCount(motorCount)
                       : mapping.config.importType === "specific"
-                        ? `${specificMeta?.rowCount ?? 0} строк`
-                        : "пропуск";
+                        ? userCopy.motors.importWizard.rowsCount(specificMeta?.rowCount ?? 0)
+                        : userCopy.motors.importWizard.skipLabel;
                   return (
                     <SheetMappingCard
                       key={mapping.config.id}
@@ -798,24 +796,26 @@ export function MotorImportWizard({
                 className="space-y-4 text-sm"
               >
                 <div className="rounded-lg border p-4">
-                  <p className="font-medium">Загрузим {selectedCount} моторов</p>
+                  <p className="font-medium">{userCopy.motors.importWizard.confirmTitle(selectedCount)}</p>
                   <p className="mt-1 text-muted-foreground">
-                    Новых: {engineRows.filter((row) => row.action === "create" && row.selected).length} · обновим:{" "}
-                    {engineRows.filter((row) => row.action === "update" && row.selected).length}
+                    {userCopy.motors.importWizard.createUpdate(
+                      engineRows.filter((row) => row.action === "create" && row.selected).length,
+                      engineRows.filter((row) => row.action === "update" && row.selected).length,
+                    )}
                   </p>
                   {hasSpecificSheets ? (
                     <p className="mt-1 text-muted-foreground">
-                      Категорий учёта: {preview?.stats.specificSheets ?? 0}
+                      {userCopy.motors.importWizard.specificCategories(preview?.stats.specificSheets ?? 0)}
                     </p>
                   ) : null}
                 </div>
                 {hasSpecificSheets ? (
                   <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-900 dark:text-amber-200">
-                    Листы каталога будут полностью заменены в своих категориях.
+                    {userCopy.motors.importWizard.catalogReplaceNote}
                   </p>
                 ) : null}
                 <p className="text-xs text-muted-foreground">
-                  После нажатия «Загрузить» окно закроется — прогресс будет в шапке рядом с фильтрами.
+                  {userCopy.motors.importWizard.afterUploadHint}
                 </p>
               </motion.div>
             ) : null}
@@ -824,11 +824,11 @@ export function MotorImportWizard({
 
         <DialogFooter className="border-t px-6 py-4">
           <Button variant="outline" onClick={() => (loading ? minimizeImport() : cancelImport())}>
-            {loading ? "Свернуть" : "Отмена"}
+            {loading ? userCopy.motors.importWizard.collapse : userCopy.motors.importWizard.cancel}
           </Button>
           {activeStep !== "analyze" ? (
             <Button variant="outline" onClick={goBack} disabled={loading}>
-              Назад
+              {userCopy.motors.importWizard.back}
             </Button>
           ) : null}
           {loading && activeStep === "confirm" ? (
@@ -838,11 +838,11 @@ export function MotorImportWizard({
                 cancelRef.current = true;
               }}
             >
-              Остановить
+              {userCopy.motors.importWizard.stop}
             </Button>
           ) : null}
           {activeStep === "analyze" && preview && !loading ? (
-            <Button onClick={() => setStep("review")}>К проверке</Button>
+            <Button onClick={() => setStep("review")}>{userCopy.motors.importWizard.toReview}</Button>
           ) : null}
           {activeStep !== "analyze" ? (
             <Button onClick={() => void goNext()} disabled={!canProceed()}>
@@ -872,13 +872,17 @@ function ImportStatsCards({
 
   return (
     <div className="grid gap-3 sm:grid-cols-4">
-      <StatCard label="Листов" value={sheetCount} hint={`${engineSheetCount} двигатели`} />
-      <StatCard label="Моторов" value={totalMotors} hint={`${selectedCount} к загрузке`} />
-      <StatCard label="Готово" value={preview.stats.validEngineRows} hint={`${preview.stats.errors} ошибок`} />
+      <StatCard label={userCopy.motors.importWizard.statSheets} value={sheetCount} hint={userCopy.motors.importWizard.enginesHint(engineSheetCount)} />
+      <StatCard label={userCopy.motors.importWizard.statMotors} value={totalMotors} hint={userCopy.motors.importWizard.toUploadHint(selectedCount)} />
+      <StatCard label={userCopy.motors.importWizard.statReady} value={preview.stats.validEngineRows} hint={userCopy.motors.importWizard.errorsHint(preview.stats.errors)} />
       <StatCard
-        label="Каталог"
+        label={userCopy.motors.importWizard.catalog}
         value={preview.stats.specificSheets}
-        hint={preview.stats.duplicates ? `${preview.stats.duplicates} дубликатов` : "без дубликатов"}
+        hint={
+          preview.stats.duplicates
+            ? userCopy.motors.importWizard.duplicatesHint(preview.stats.duplicates)
+            : userCopy.motors.importWizard.noDuplicates
+        }
       />
     </div>
   );
@@ -911,7 +915,7 @@ function sheetMappingHint(mapping: MotorSheetMappingResult): string {
 function canSwitchSheetToEngines(mapping: MotorSheetMappingResult): boolean {
   if (mapping.config.importType !== "specific") return false;
   if (isLikelyMotorCatalogName(mapping.config.sheetName)) return true;
-  return mapping.warnings.some((warning) => /серийник/i.test(warning));
+  return mapping.warnings.some((warning) => /\u0441\u0435\u0440\u0438\u0439\u043d\u0438\u043a/i.test(warning));
 }
 
 function SheetMappingList({
@@ -941,10 +945,10 @@ function SheetMappingList({
         const specificMeta = specificByConfigId.get(mapping.config.id);
         const rowHint =
           mapping.config.importType === "engines"
-            ? `${motorCount} моторов`
+            ? userCopy.motors.importWizard.motorsCount(motorCount)
             : mapping.config.importType === "specific"
-              ? `${specificMeta?.rowCount ?? 0} строк`
-              : "пропуск";
+              ? userCopy.motors.importWizard.rowsCount(specificMeta?.rowCount ?? 0)
+              : userCopy.motors.importWizard.skipLabel;
 
         if (!expanded) {
           const hint = sheetMappingHint(mapping);
@@ -971,7 +975,7 @@ function SheetMappingList({
                   className="mt-2 h-7 text-xs"
                   onClick={() => onUpdate(mapping.config.id, { importType: "engines", categoryName: "" })}
                 >
-                  Импортировать как моторы
+                  {userCopy.motors.importWizard.importAsMotors}
                 </Button>
               ) : null}
             </div>
@@ -994,7 +998,7 @@ function SheetMappingList({
 
 function ImportTypeBadge({ type }: { type: SheetImportType }) {
   const label =
-    type === "engines" ? "Двигатели" : type === "specific" ? "Каталог" : "Пропуск";
+    type === "engines" ? userCopy.motors.importWizard.typeEngines : type === "specific" ? userCopy.motors.importWizard.typeCatalog : userCopy.motors.importWizard.typeSkip;
   const className =
     type === "engines"
       ? "bg-primary/10 text-primary"
@@ -1019,10 +1023,10 @@ function SpecificSheetsPreview({
   return (
     <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-4">
       <p className="text-sm font-medium text-amber-950 dark:text-amber-100">
-        Каталоги учёта ({sheets.length})
+        {userCopy.motors.importWizard.inventoryCatalogs(sheets.length)}
       </p>
       <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-200/80">
-        Эти листы загрузятся в выбранные листы учёта. Старые записи в каждом листе будут заменены.
+        {userCopy.motors.importWizard.inventoryCatalogsHint}
       </p>
       <ul className="mt-3 space-y-2">
         {sheets.map((sheet) => {
@@ -1038,11 +1042,11 @@ function SpecificSheetsPreview({
                   <p className="text-xs text-muted-foreground">→ {sheet.categoryName}</p>
                   {columns.length > 0 ? (
                     <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">
-                      Колонки: {columns.join(", ")}
+                      {userCopy.motors.importWizard.columns(columns.join(", "))}
                     </p>
                   ) : null}
                 </div>
-                <span className="shrink-0 tabular-nums text-muted-foreground">{sheet.rowCount} строк</span>
+                <span className="shrink-0 tabular-nums text-muted-foreground">{userCopy.motors.importWizard.rowsShort(sheet.rowCount)}</span>
               </div>
             </li>
           );
@@ -1071,7 +1075,7 @@ function SheetMappingCard({
         <div>
           <p className="font-medium">{mapping.config.sheetName}</p>
           <p className="text-xs text-muted-foreground">
-            {mapping.source === "ai" ? "ИИ" : mapping.source === "manual" ? "Вручную" : "Правила"} ·{" "}
+            {mapping.source === "ai" ? userCopy.motors.importWizard.sourceAi : mapping.source === "manual" ? userCopy.motors.importWizard.sourceManual : userCopy.motors.importWizard.sourceRules} ·{" "}
             {rowHint} · {mapping.reasoning}
           </p>
           {hint ? <p className="mt-1 text-xs text-amber-800 dark:text-amber-200">{hint}</p> : null}
@@ -1086,15 +1090,15 @@ function SheetMappingCard({
             variant="outline"
             onClick={() => onUpdate({ importType: "engines", categoryName: "" })}
           >
-            Импортировать как моторы
+            {userCopy.motors.importWizard.importAsMotors}
           </Button>
         </div>
       ) : null}
       <div className="space-y-3">
         <div className="space-y-2">
-          <Label>Тип листа</Label>
+          <Label>{userCopy.motors.importWizard.sheetType}</Label>
           <div className="flex flex-wrap gap-2">
-            {importTypeOptions.map((option) => (
+            {importTypeOptions().map((option) => (
               <Button
                 key={option.value}
                 type="button"
@@ -1108,16 +1112,16 @@ function SheetMappingCard({
           </div>
           <p className="text-xs text-muted-foreground">
             {mapping.config.importType === "engines"
-              ? "Серийники → моторы в базе. Укажите бренд и код двигателя для листа."
+              ? userCopy.motors.importWizard.enginesHintDetail
               : mapping.config.importType === "specific"
-                ? "Данные загрузятся в выбранный лист учёта. Создайте лист в сайдбаре, если его ещё нет."
-                : "Лист не будет импортирован."}
+                ? userCopy.motors.importWizard.specificHintDetail
+                : userCopy.motors.importWizard.skipHintDetail}
           </p>
         </div>
         {mapping.config.importType === "engines" ? (
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
-              <Label>Бренд листа</Label>
+              <Label>{userCopy.motors.importWizard.sheetBrand}</Label>
               <Input
                 value={mapping.config.customBrand}
                 onChange={(event) => onUpdate({ customBrand: event.target.value })}
@@ -1125,7 +1129,7 @@ function SheetMappingCard({
               />
             </div>
             <div className="space-y-1">
-              <Label>Код двигателя</Label>
+              <Label>{userCopy.motors.importWizard.engineCode}</Label>
               <Input
                 value={mapping.config.customEngineCode}
                 onChange={(event) => onUpdate({ customEngineCode: event.target.value })}
@@ -1136,7 +1140,7 @@ function SheetMappingCard({
         ) : null}
         {mapping.config.importType === "specific" ? (
           <div className="space-y-1">
-            <Label>Лист в приложении</Label>
+            <Label>{userCopy.motors.importWizard.appSheet}</Label>
             {specificCategories.length === 0 ? (
               <p className="text-xs text-amber-700 dark:text-amber-300">
                 {userCopy.specificSheets.selectSheetHint}
@@ -1180,18 +1184,18 @@ function MotorPreviewTable({
         <thead className="sticky top-0 bg-muted/80">
           <tr>
             <th className="px-3 py-2 text-left">✓</th>
-            <th className="px-3 py-2 text-left">Серийник</th>
-            <th className="px-3 py-2 text-left">Бренд</th>
-            <th className="px-3 py-2 text-left">Двигатель</th>
-            <th className="px-3 py-2 text-left">Комплектация</th>
-            <th className="px-3 py-2 text-left">КПП</th>
-            <th className="px-3 py-2 text-left">Приход</th>
-            <th className="px-3 py-2 text-left">Статус</th>
+            <th className="px-3 py-2 text-left">{userCopy.motors.importWizard.colSerial}</th>
+            <th className="px-3 py-2 text-left">{userCopy.motors.importWizard.colBrand}</th>
+            <th className="px-3 py-2 text-left">{userCopy.motors.importWizard.colEngine}</th>
+            <th className="px-3 py-2 text-left">{userCopy.motors.importWizard.colConfig}</th>
+            <th className="px-3 py-2 text-left">{userCopy.motors.importWizard.colTransmission}</th>
+            <th className="px-3 py-2 text-left">{userCopy.motors.importWizard.colReceipt}</th>
+            <th className="px-3 py-2 text-left">{userCopy.motors.importWizard.colStatus}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => {
-            const uncertain = row.aiMeta?.warnings.some((warning) => warning.includes("не уверен"));
+            const uncertain = row.aiMeta?.warnings.some((warning) => warning.includes(userCopy.motors.importWizard.uncertainToken));
             const status =
               row.errors.length > 0 ? row.errors[0] : row.summary ?? actionLabel(row.action);
 

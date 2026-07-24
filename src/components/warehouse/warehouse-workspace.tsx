@@ -457,7 +457,7 @@ export function WarehouseWorkspace() {
           </>
         ) : isGridReady ? (
           <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
-            Выберите или создайте склад в меню слева
+            {userCopy.warehouse.selectOrCreate}
           </div>
         ) : null}
       </div>

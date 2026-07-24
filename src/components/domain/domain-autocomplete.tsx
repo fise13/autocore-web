@@ -11,6 +11,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { Search } from "lucide-react";
+import { userCopy } from "@/lib/user-copy";
 
 import { DomainSuggestionList } from "@/components/domain/domain-suggestion-list";
 import { useDomainAutocomplete } from "@/hooks/use-domain-autocomplete";
@@ -45,7 +46,7 @@ export const DomainAutocomplete = forwardRef<DomainAutocompleteHandle, DomainAut
       value,
       onValueChange,
       onSelectEntry,
-      placeholder = "Начните вводить…",
+      placeholder = userCopy.domain.startTyping,
       disabled = false,
       className,
       limit = 20,

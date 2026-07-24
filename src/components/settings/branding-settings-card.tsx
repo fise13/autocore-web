@@ -365,8 +365,8 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
                 <motion.div variants={listMotion} initial="hidden" animate="show" className="space-y-4">
                     <BrandingSection
                       icon={ImageUp}
-                      title="Логотип"
-                      description="Загрузите логотип — он появится в шапке PDF. Без логотипа показывается название компании."
+                      title={userCopy.settings.brandingUi.logoSectionTitle}
+                      description={userCopy.settings.brandingUi.logoSectionDescription}
                     >
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                         <div className="relative mx-auto flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border bg-muted/20 sm:mx-0">
@@ -374,7 +374,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={previewSrc} alt="" className="max-h-full max-w-full object-contain p-3" />
                           ) : (
-                            <span className="text-xs text-muted-foreground">Нет логотипа</span>
+                            <span className="text-xs text-muted-foreground">{userCopy.settings.brandingUi.noLogo}</span>
                           )}
                           {uploadingLogo ? (
                             <div className="absolute inset-0 flex items-center justify-center bg-background/75">
@@ -383,7 +383,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
                           ) : null}
                         </div>
                         <div className="min-w-0 flex-1 space-y-2">
-                          <Label htmlFor="company-logo">Файл логотипа</Label>
+                          <Label htmlFor="company-logo">{userCopy.settings.brandingUi.logoFile}</Label>
                           <Input
                             id="company-logo"
                             type="file"
@@ -397,14 +397,14 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
                             }}
                           />
                           <p className="text-xs text-muted-foreground">
-                            PNG, JPG, WebP или SVG · до 2 МБ · сжимается автоматически
+                            {userCopy.settings.brandingUi.logoFileHint}
                           </p>
                           {previewSrc ? (
                             <div className="space-y-2 pt-1">
                               <div className="flex items-center justify-between gap-2">
-                                <Label htmlFor="logo-size">Размер в шапке PDF</Label>
+                                <Label htmlFor="logo-size">{userCopy.settings.brandingUi.logoSize}</Label>
                                 <span className="text-xs font-medium tabular-nums text-muted-foreground">
-                                  {logoMaxHeightMm} мм
+                                  {logoMaxHeightMm} {userCopy.settings.brandingUi.mm}
                                 </span>
                               </div>
                               <input
@@ -423,7 +423,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
                                 }
                               />
                               <p className="text-xs text-muted-foreground">
-                                Высота логотипа в шапке документов. Ширина подстраивается автоматически.
+                                {userCopy.settings.brandingUi.logoSizeHint}
                               </p>
                             </div>
                           ) : null}
@@ -433,45 +433,45 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
 
                     <BrandingSection
                       icon={Building2}
-                      title="Данные компании"
-                      description="Эти поля попадают в шапку и контактный блок PDF-документов."
+                      title={userCopy.settings.brandingUi.companyDataTitle}
+                      description={userCopy.settings.brandingUi.companyDataDescription}
                     >
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2 sm:col-span-2">
-                          <Label htmlFor="brand-name">Название компании</Label>
+                          <Label htmlFor="brand-name">{userCopy.settings.brandingUi.legalName}</Label>
                           <Input
                             id="brand-name"
                             value={draft.legalName ?? ""}
                             onChange={(event) =>
                               setDraft((current) => ({ ...current, legalName: event.target.value }))
                             }
-                            placeholder="Официальное название для документов"
+                            placeholder={userCopy.settings.brandingUi.legalNamePlaceholder}
                           />
                         </div>
                         <div className="space-y-2 sm:col-span-2">
-                          <Label htmlFor="brand-short-name">Короткое название</Label>
+                          <Label htmlFor="brand-short-name">{userCopy.settings.brandingUi.shortName}</Label>
                           <Input
                             id="brand-short-name"
                             value={draft.shortName ?? ""}
                             onChange={(event) =>
                               setDraft((current) => ({ ...current, shortName: event.target.value }))
                             }
-                            placeholder="Краткое имя в шапке"
+                            placeholder={userCopy.settings.brandingUi.shortNamePlaceholder}
                           />
                         </div>
                         <div className="space-y-2 sm:col-span-2">
-                          <Label htmlFor="brand-slogan">Слоган</Label>
+                          <Label htmlFor="brand-slogan">{userCopy.settings.brandingUi.slogan}</Label>
                           <Input
                             id="brand-slogan"
                             value={draft.slogan ?? ""}
                             onChange={(event) =>
                               setDraft((current) => ({ ...current, slogan: event.target.value }))
                             }
-                            placeholder="Премиальный сервис · честная гарантия"
+                            placeholder={userCopy.settings.brandingUi.sloganPlaceholder}
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="brand-phone">Телефон</Label>
+                          <Label htmlFor="brand-phone">{userCopy.settings.brandingUi.phone}</Label>
                           <Input
                             id="brand-phone"
                             value={draft.phone ?? ""}
@@ -494,18 +494,18 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
                           />
                         </div>
                         <div className="space-y-2 sm:col-span-2">
-                          <Label htmlFor="brand-address">Адрес</Label>
+                          <Label htmlFor="brand-address">{userCopy.settings.brandingUi.address}</Label>
                           <Input
                             id="brand-address"
                             value={draft.address ?? ""}
                             onChange={(event) =>
                               setDraft((current) => ({ ...current, address: event.target.value }))
                             }
-                            placeholder="г. Алматы, ул. Примерная, 10"
+                            placeholder={userCopy.settings.brandingUi.addressPlaceholder}
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="brand-website">Сайт</Label>
+                          <Label htmlFor="brand-website">{userCopy.settings.brandingUi.website}</Label>
                           <Input
                             id="brand-website"
                             value={draft.website ?? ""}
@@ -516,7 +516,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="brand-social">Соцсеть</Label>
+                          <Label htmlFor="brand-social">{userCopy.settings.brandingUi.social}</Label>
                           <Input
                             id="brand-social"
                             value={draft.socialHandle ?? ""}
@@ -544,8 +544,8 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
                 <motion.div variants={listMotion} initial="hidden" animate="show" className="space-y-4">
                     <BrandingSection
                       icon={LayoutTemplate}
-                      title="Тема документов"
-                      description="Выберите визуальный стиль PDF. Цвета шапки подстроятся под тему, их можно изменить ниже."
+                      title={userCopy.settings.brandingUi.themeTitle}
+                      description={userCopy.settings.brandingUi.themeDescription}
                     >
                       <BrandingThemePicker
                         value={activeTheme}
@@ -556,8 +556,8 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
 
                     <BrandingSection
                       icon={ScanLine}
-                      title="Фон документа"
-                      description="Корпоративный водяной знак на всю страницу PDF — как у заводских motorsport и инженерных компаний."
+                      title={userCopy.settings.brandingUi.backgroundTitle}
+                      description={userCopy.settings.brandingUi.backgroundDescription}
                     >
                       <DocumentWatermarkSettings
                         value={watermarkConfig}
@@ -570,26 +570,26 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
 
                     <BrandingSection
                       icon={Palette}
-                      title="Цвета бренда"
-                      description="Основной цвет — акцент в шапке и элементах документа."
+                      title={userCopy.settings.brandingUi.colorsTitle}
+                      description={userCopy.settings.brandingUi.colorsDescription}
                     >
                       <div className="grid gap-4 sm:grid-cols-2">
                         <BrandingColorField
                           id="brand-primary"
-                          label="Цвет бренда"
+                          label={userCopy.settings.brandingUi.colorBrand}
                           value={draft.primaryColor ?? DEFAULT_COMPANY_PRIMARY_COLOR}
                           onChange={(value) => setDraft((current) => ({ ...current, primaryColor: value }))}
                         />
                         <BrandingColorField
                           id="brand-secondary"
-                          label="Дополнительный"
-                          hint="Акценты в таблицах и блоках"
+                          label={userCopy.settings.brandingUi.colorSecondary}
+                          hint={userCopy.settings.brandingUi.colorSecondaryHint}
                           value={draft.secondaryColor ?? DEFAULT_COMPANY_SECONDARY_COLOR}
                           onChange={(value) => setDraft((current) => ({ ...current, secondaryColor: value }))}
                         />
                         <BrandingColorField
                           id="brand-header-bg"
-                          label="Фон шапки"
+                          label={userCopy.settings.brandingUi.colorHeaderBg}
                           value={draft.headerBackgroundColor ?? themeHeaderDefaults.headerBackgroundColor}
                           onChange={(value) =>
                             setDraft((current) => ({ ...current, headerBackgroundColor: value }))
@@ -597,7 +597,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
                         />
                         <BrandingColorField
                           id="brand-header-text"
-                          label="Текст шапки"
+                          label={userCopy.settings.brandingUi.colorHeaderText}
                           value={draft.headerTextColor ?? themeHeaderDefaults.headerTextColor}
                           onChange={(value) =>
                             setDraft((current) => ({ ...current, headerTextColor: value }))
@@ -620,8 +620,8 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
               >
                 <BrandingSection
                     icon={PanelTop}
-                    title="Шапка PDF"
-                    description="Управляйте видимостью шапки и отдельных элементов. Изменения видны в превью справа."
+                    title={userCopy.settings.brandingUi.headerSectionTitle}
+                    description={userCopy.settings.brandingUi.headerSectionDescription}
                   >
                     <DocumentHeaderSettings
                       visibility={headerVisibility}
@@ -645,16 +645,16 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
                 <motion.div variants={listMotion} initial="hidden" animate="show" className="space-y-4">
                     <BrandingSection
                       icon={FileStack}
-                      title="Секции и шаблоны"
-                      description="Какие блоки включать в PDF и куда ведёт QR-код."
+                      title={userCopy.settings.brandingUi.sectionsTitle}
+                      description={userCopy.settings.brandingUi.sectionsDescription}
                     >
                       <DocumentConfigSettings draft={docConfig} onChange={setDocConfig} />
                     </BrandingSection>
 
                     <BrandingSection
                       icon={Shield}
-                      title="Гарантия и регламент"
-                      description="Текст появится в сервисном отчёте и гарантийных документах."
+                      title={userCopy.settings.brandingUi.warrantyTitle}
+                      description={userCopy.settings.brandingUi.warrantyDescription}
                     >
                       <div className="grid gap-4 sm:grid-cols-2">
                         <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2.5 sm:col-span-2">
@@ -670,38 +670,37 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
                             }
                           />
                           <span className="space-y-1">
-                            <span className="block text-sm font-medium">Бортжурнал в заказ-наряде</span>
+                            <span className="block text-sm font-medium">{userCopy.settings.brandingUi.logbookTitle}</span>
                             <span className="block text-xs text-muted-foreground">
-                              Показывать историю обслуживания в racing-теме. Если выключено — блок работ и данные
-                              двигателя занимают всю страницу.
+                              {userCopy.settings.brandingUi.logbookDescription}
                             </span>
                           </span>
                         </label>
                         <div className="space-y-2 sm:col-span-2">
-                          <Label htmlFor="brand-warranty-label">Заголовок гарантии</Label>
+                          <Label htmlFor="brand-warranty-label">{userCopy.settings.brandingUi.warrantyLabel}</Label>
                           <Input
                             id="brand-warranty-label"
                             value={draft.warrantyLabel ?? ""}
                             onChange={(event) =>
                               setDraft((current) => ({ ...current, warrantyLabel: event.target.value }))
                             }
-                            placeholder="ГАРАНТИЯ 60 ДНЕЙ"
+                            placeholder={userCopy.settings.brandingUi.warrantyLabelPlaceholder}
                           />
                         </div>
                         <div className="space-y-2 sm:col-span-2">
-                          <Label htmlFor="brand-warranty-text">Условия гарантии</Label>
+                          <Label htmlFor="brand-warranty-text">{userCopy.settings.brandingUi.warrantyText}</Label>
                           <Textarea
                             id="brand-warranty-text"
                             value={draft.warrantyText ?? ""}
                             onChange={(event) =>
                               setDraft((current) => ({ ...current, warrantyText: event.target.value }))
                             }
-                            placeholder="Каждый абзац — с новой строки"
+                            placeholder={userCopy.settings.brandingUi.warrantyTextPlaceholder}
                             rows={5}
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="brand-interval-km">Интервал ТО, км</Label>
+                          <Label htmlFor="brand-interval-km">{userCopy.settings.brandingUi.intervalKm}</Label>
                           <Input
                             id="brand-interval-km"
                             type="number"
@@ -714,7 +713,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="brand-interval-months">Интервал ТО, мес</Label>
+                          <Label htmlFor="brand-interval-months">{userCopy.settings.brandingUi.intervalMonths}</Label>
                           <Input
                             id="brand-interval-months"
                             type="number"

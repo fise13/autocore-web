@@ -9,6 +9,7 @@ import {
   type ServiceOrderProfile,
 } from "@/lib/documents/classify-service-order";
 import { DocumentContext } from "@/lib/documents/document-context";
+import { numberLocaleForDocument } from "@/lib/documents/document-locale";
 import {
   documentOrderDate,
   documentPrimaryMotor,
@@ -21,6 +22,7 @@ import { addDays, addMonths,
 } from "@/lib/documents/format";
 import { resolveWarrantyForDocument } from "@/lib/documents/warranty/resolve-warranty";
 import { getAppUrl } from "@/lib/site-urls";
+import { userCopy } from "@/lib/user-copy";
 
 export type WarrantyInsight = {
   days: number;
@@ -92,10 +94,13 @@ export function buildLogbookTimeline(context: DocumentContext, profile?: Service
 
   for (const source of history) {
     const isCurrent = source.workOrderId === currentId;
+    const numLocale = numberLocaleForDocument(context.locale);
     entries.push({
       id: source.workOrderId,
       date: formatDocumentDateShort(coerceDocumentDate(source.date, documentReleaseDate(context))),
-      mileage: source.mileage ? `${source.mileage.toLocaleString("ru-KZ")} км` : undefined,
+      mileage: source.mileage
+        ? userCopy.documents.insights.km(source.mileage.toLocaleString(numLocale))
+        : undefined,
       title: source.title,
       state: isCurrent ? "current" : "past",
     });
@@ -103,11 +108,12 @@ export function buildLogbookTimeline(context: DocumentContext, profile?: Service
 
   const hasCurrent = entries.some((entry) => entry.state === "current");
   if (!hasCurrent) {
+    const numLocale = numberLocaleForDocument(context.locale);
     entries.push({
       id: currentId,
       date: formatDocumentDateShort(documentReleaseDate(context)),
       mileage: context.order.mileage
-        ? `${context.order.mileage.toLocaleString("ru-KZ")} км`
+        ? userCopy.documents.insights.km(context.order.mileage.toLocaleString(numLocale))
         : undefined,
       title: summarizeOrderForLogbook(context),
       state: "current",
@@ -116,22 +122,24 @@ export function buildLogbookTimeline(context: DocumentContext, profile?: Service
 
   if (resolvedProfile.showOilInterval) {
     const next = buildNextServiceInsight(context);
+    const numLocale = numberLocaleForDocument(context.locale);
     entries.push({
       id: "next-oil",
       date: formatDocumentDateShort(next.dueDate),
-      mileage: `${next.dueMileage.toLocaleString("ru-KZ")} км`,
-      title: "Замена масла",
+      mileage: userCopy.documents.insights.km(next.dueMileage.toLocaleString(numLocale)),
+      title: userCopy.documents.insights.oilChange,
       state: "future",
     });
   }
 
   if (resolvedProfile.showControlInspection) {
     const mileage = (context.order.mileage || 0) + 1_000;
+    const numLocale = numberLocaleForDocument(context.locale);
     entries.push({
       id: "next-inspection",
       date: formatDocumentDateShort(addMonths(documentReleaseDate(context), 1)),
-      mileage: `${mileage.toLocaleString("ru-KZ")} км`,
-      title: "Контрольный осмотр",
+      mileage: userCopy.documents.insights.km(mileage.toLocaleString(numLocale)),
+      title: userCopy.documents.insights.inspection,
       state: "future",
     });
   }
@@ -170,7 +178,7 @@ export function documentVehicleTitle(context: DocumentContext): string {
   if (context.vehicle) {
     return [context.vehicle.make, context.vehicle.model].filter(Boolean).join(" ");
   }
-  return context.order.vehicleLabel?.trim() || "Автомобиль";
+  return context.order.vehicleLabel?.trim() || userCopy.documents.insights.vehicleFallback;
 }
 
 export function documentVehicleYear(context: DocumentContext): string {
@@ -233,8 +241,14 @@ export function buildNextServiceInsight(context: DocumentContext): NextServiceIn
 export function documentEngineMileage(context: DocumentContext): string {
   const motor = documentPrimaryMotorEntity(context);
   const notes = motor?.notes ?? "";
-  const kmMatch = notes.match(/(\d[\d\s]*)\s*км/i);
-  if (kmMatch?.[1]) return `${kmMatch[1].replace(/\s/g, "")} км`;
-  if (context.order.mileage) return `${context.order.mileage.toLocaleString("ru-KZ")} км`;
+  const kmMatch = notes.match(/(\d[\d\s]*)\s*(?:км|km)/i);
+  if (kmMatch?.[1]) {
+    return userCopy.documents.insights.km(kmMatch[1].replace(/\s/g, ""));
+  }
+  if (context.order.mileage) {
+    return userCopy.documents.insights.km(
+      context.order.mileage.toLocaleString(numberLocaleForDocument(context.locale)),
+    );
+  }
   return "—";
 }

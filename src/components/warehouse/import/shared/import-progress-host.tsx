@@ -43,9 +43,11 @@ type ImportProgressCoreProps = {
 
 function phaseLabel(progress: ActiveImportProgress["progress"], kind: ActiveImportProgress["kind"]) {
   if (progress.phase === "apply") {
-    return kind === "motors" ? "Загрузка моторов" : "Загрузка склада";
+    return kind === "motors"
+      ? userCopy.warehouse.import.titleApplyMotors
+      : userCopy.warehouse.import.titleApplyWarehouse;
   }
-  return "Анализ";
+  return userCopy.warehouse.import.analyzingShort;
 }
 
 export function ImportProgressCore({
@@ -113,8 +115,8 @@ export function ImportProgressCore({
               "relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition",
               "hover:bg-destructive/10 hover:text-destructive",
             )}
-            aria-label="Отменить импорт"
-            title="Отменить"
+            aria-label={userCopy.warehouse.import.cancelImportAria}
+            title={userCopy.warehouse.import.cancelShort}
           >
             <X className="size-3.5" />
           </button>
@@ -132,7 +134,7 @@ export function ImportProgressCore({
               {progress.fileName ? (
                 <p className="mt-1 truncate text-[11px] text-muted-foreground">{progress.fileName}</p>
               ) : null}
-              <p className="mt-2 text-[11px] text-muted-foreground">{progress.message ?? "Обработка…"}</p>
+              <p className="mt-2 text-[11px] text-muted-foreground">{progress.message ?? userCopy.warehouse.import.processing}</p>
               <p className="mt-1 text-right text-[11px] tabular-nums text-muted-foreground">{clamped}%</p>
             </motion.div>
           ) : null}
@@ -170,7 +172,7 @@ export function ImportProgressCore({
             onCancel();
           }}
           className="relative z-10 rounded-md p-1 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
-          aria-label="Отменить импорт"
+          aria-label={userCopy.warehouse.import.cancelImportAria}
         >
           <X className="size-3.5" />
         </button>
@@ -188,7 +190,7 @@ export function ImportProgressCore({
           />
         </div>
         <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-          <span className="truncate">{progress.message ?? "Обработка…"}</span>
+          <span className="truncate">{progress.message ?? userCopy.warehouse.import.processing}</span>
           <span className="shrink-0 tabular-nums">{clamped}%</span>
         </div>
       </div>
@@ -209,10 +211,12 @@ function ImportReviewIsland({
 }) {
   const motorsLabel =
     review.totalMotors > 0
-      ? `${review.validMotors > 0 ? review.validMotors : review.totalMotors} моторов`
-      : "нет моторов";
+      ? userCopy.motors.emptyLanding.motorsCount(
+          review.validMotors > 0 ? review.validMotors : review.totalMotors,
+        )
+      : userCopy.warehouse.import.noMotors;
   const specificLabel =
-    review.specificSheets > 0 ? ` · ${review.specificSheets} листов каталога` : "";
+    review.specificSheets > 0 ? userCopy.warehouse.import.catalogSheetsShort(review.specificSheets) : "";
 
   return (
     <motion.div
@@ -253,8 +257,8 @@ function ImportReviewIsland({
           "flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition",
           "hover:bg-destructive/10 hover:text-destructive",
         )}
-        aria-label="Скрыть"
-        title="Скрыть до следующего импорта"
+        aria-label={userCopy.warehouse.import.dismissAria}
+        title={userCopy.documentImport.dismissUntilNext}
       >
         <X className="size-3.5" />
       </button>

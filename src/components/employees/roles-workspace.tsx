@@ -16,7 +16,7 @@ import { WorkspaceSection } from "@/components/layout/workspace-section";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatPermission, formatRole } from "@/lib/user-copy";
+import { formatPermission, formatRole, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 const employeeRepository = createEmployeeRbacRepository();
@@ -57,7 +57,7 @@ export function RolesWorkspace({ embedded = false }: { embedded?: boolean } = {}
     try {
       await employeeRepository.seedDefaultRoles(companyId, profile.id);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Не удалось применить роли");
+      setError(nextError instanceof Error ? nextError.message : userCopy.employees.roles.applyFailed);
     } finally {
       setBusyRole(null);
     }
@@ -70,8 +70,8 @@ export function RolesWorkspace({ embedded = false }: { embedded?: boolean } = {}
     return (
       <ProFeatureGate
         feature="invite"
-        title="Роли доступны на Pro"
-        description="Гибкая ролевая модель сотрудников доступна на тарифе Pro."
+        title={userCopy.employees.roles.proTitle}
+        description={userCopy.employees.roles.proDescription}
       >
         <></>
       </ProFeatureGate>
@@ -83,8 +83,8 @@ export function RolesWorkspace({ embedded = false }: { embedded?: boolean } = {}
       <div className="mx-auto w-full max-w-3xl py-10">
         <Card>
           <CardHeader>
-            <CardTitle>Доступ ограничен</CardTitle>
-            <CardDescription>У вас нет прав на просмотр ролевой модели.</CardDescription>
+            <CardTitle>{userCopy.employees.roles.accessDeniedTitle}</CardTitle>
+            <CardDescription>{userCopy.employees.roles.accessDeniedDescription}</CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -95,11 +95,11 @@ export function RolesWorkspace({ embedded = false }: { embedded?: boolean } = {}
     <section className={cn("flex w-full flex-col gap-4", !embedded && "mx-auto max-w-6xl")}>
       <WorkspaceSection
         embedded={embedded}
-        title="Управление ролями"
-        description="Базовая матрица прав по ролям. Дополнительные права настраиваются в карточке сотрудника."
+        title={userCopy.employees.roles.title}
+        description={userCopy.employees.roles.description}
       >
           {!loaded && subscriptionsEnabled ? (
-            <p className="text-sm text-muted-foreground">Загрузка ролей…</p>
+            <p className="text-sm text-muted-foreground">{userCopy.employees.roles.loading}</p>
           ) : (
             <div className="space-y-3">
               {USER_ROLES.map((role, roleIndex) => {
@@ -120,7 +120,7 @@ export function RolesWorkspace({ embedded = false }: { embedded?: boolean } = {}
                     <div className="mb-2 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <h3 className="text-sm font-semibold">{formatRole(role)}</h3>
-                        {persisted?.isSystem ? <Badge variant="outline">Системная</Badge> : null}
+                        {persisted?.isSystem ? <Badge variant="outline">{userCopy.employees.roles.systemBadge}</Badge> : null}
                       </div>
                       {canManage ? (
                         <Button
@@ -129,7 +129,7 @@ export function RolesWorkspace({ embedded = false }: { embedded?: boolean } = {}
                           disabled={busyRole === role}
                           onClick={() => void resetRole(role)}
                         >
-                          {busyRole === role ? "Применяем…" : "Сбросить к стандартным"}
+                          {busyRole === role ? userCopy.employees.roles.applying : userCopy.employees.roles.resetDefaults}
                         </Button>
                       ) : null}
                     </div>

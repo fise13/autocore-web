@@ -25,6 +25,7 @@ import { emitKnowledgeEvent } from "@/lib/knowledge/knowledge-api.client";
 import { downloadDocumentPdf, printDocumentPdf } from "@/lib/documents/fetch-document-pdf";
 import { mapServerError } from "@/lib/errors/map-server-error";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 type MotorSaleDocumentsPanelProps = {
   documents: MotorSaleDocumentsPayload | null;
@@ -122,7 +123,7 @@ function MotorSaleSummary({
                 {serialCode}
               </Badge>
             ) : null}
-            <span className="text-xs font-medium tracking-wide text-primary uppercase">Продажа двигателя</span>
+            <span className="text-xs font-medium tracking-wide text-primary uppercase">{userCopy.motors.saleDocuments.eyebrow}</span>
           </div>
           <p className="mt-1.5 text-sm font-semibold tracking-tight">{motorLabel}</p>
           {amount != null || saleDate ? (
@@ -214,7 +215,7 @@ export function MotorSaleDocumentsPanel({
         payload: { docTypes: [DOC_TYPE_BY_SLUG[slug]] },
       });
     } catch (e) {
-      setActionError(mapServerError(e, mode === "print" ? "Не удалось напечатать документ" : "Не удалось скачать документ"));
+      setActionError(mapServerError(e, mode === "print" ? userCopy.motors.saleDocuments.printFailed : userCopy.motors.saleDocuments.downloadFailed));
     } finally {
       setBusy(null);
     }
@@ -235,7 +236,7 @@ export function MotorSaleDocumentsPanel({
           className="flex items-start gap-2 rounded-xl border border-destructive/25 bg-destructive/5 px-3.5 py-3 text-sm text-destructive"
         >
           <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <p>Не удалось найти двигатель для этой операции.</p>
+          <p>{userCopy.motors.saleDocuments.motorNotFound}</p>
         </div>
       ) : null}
 
@@ -250,7 +251,7 @@ export function MotorSaleDocumentsPanel({
           </div>
           {onRetry ? (
             <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={onRetry}>
-              Повторить
+              {userCopy.motors.saleDocuments.retry}
             </Button>
           ) : null}
         </div>
@@ -268,7 +269,7 @@ export function MotorSaleDocumentsPanel({
 
       {docPackHints.length > 0 ? (
         <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/15 px-3.5 py-3">
-          <p className="text-xs font-medium text-muted-foreground">Обычно печатают вместе</p>
+          <p className="text-xs font-medium text-muted-foreground">{userCopy.motors.saleDocuments.usuallyTogether}</p>
           <KnowledgeSuggestionChips suggestions={docPackHints} onAccept={() => undefined} />
         </div>
       ) : null}
@@ -280,19 +281,19 @@ export function MotorSaleDocumentsPanel({
             aria-live="polite"
           >
             <Loader2 className="size-4 shrink-0 animate-spin text-primary" aria-hidden />
-            <span>Подготавливаем гарантию и счёт…</span>
+            <span>{userCopy.motors.saleDocuments.preparing}</span>
           </div>
         ) : isReady ? (
           <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-3.5 py-2.5 text-sm text-emerald-700 dark:text-emerald-300">
             <ShieldCheck className="size-4 shrink-0" aria-hidden />
-            <span>Документы готовы к печати и отправке</span>
+            <span>{userCopy.motors.saleDocuments.ready}</span>
           </div>
         ) : null}
 
         <section className="flex flex-col gap-2">
           <div className="flex items-center gap-2 px-0.5">
             <ShieldCheck className="size-3.5 text-primary" aria-hidden />
-            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Гарантия</h3>
+            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{userCopy.motors.saleDocuments.warranty}</h3>
           </div>
           <div className="flex flex-col gap-2">
             {isLoading ? (
@@ -305,16 +306,16 @@ export function MotorSaleDocumentsPanel({
                 <DocumentActionRow
                   icon={Printer}
                   tone="primary"
-                  title={busy === "warranty-print" ? "Открываем печать…" : "Печать гарантийного талона"}
-                  description="Официальный талон на двигатель"
+                  title={busy === "warranty-print" ? userCopy.motors.saleDocuments.warrantyPrintBusy : userCopy.motors.saleDocuments.warrantyPrint}
+                  description={userCopy.motors.saleDocuments.warrantyPrintHint}
                   busy={busy === "warranty-print"}
                   disabled={actionsDisabled}
                   onClick={() => void runAction("warranty-print", "engine-warranty", "print")}
                 />
                 <DocumentActionRow
                   icon={Download}
-                  title={busy === "warranty-download" ? "Скачиваем PDF…" : "Скачать гарантийный талон"}
-                  description="PDF для отправки клиенту"
+                  title={busy === "warranty-download" ? userCopy.motors.saleDocuments.warrantyDownloadBusy : userCopy.motors.saleDocuments.warrantyDownload}
+                  description={userCopy.motors.saleDocuments.warrantyDownloadHint}
                   busy={busy === "warranty-download"}
                   disabled={actionsDisabled}
                   onClick={() => void runAction("warranty-download", "engine-warranty", "download")}
@@ -329,7 +330,7 @@ export function MotorSaleDocumentsPanel({
         <section className="flex flex-col gap-2">
           <div className="flex items-center gap-2 px-0.5">
             <Receipt className="size-3.5 text-primary" aria-hidden />
-            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Счёт</h3>
+            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{userCopy.motors.saleDocuments.invoice}</h3>
           </div>
           <div className="flex flex-col gap-2">
             {isLoading ? (
@@ -342,16 +343,16 @@ export function MotorSaleDocumentsPanel({
                 <DocumentActionRow
                   icon={Printer}
                   tone="primary"
-                  title={busy === "invoice-print" ? "Открываем печать…" : "Печать счёта на двигатель"}
-                  description="Счёт на оплату контрактного двигателя"
+                  title={busy === "invoice-print" ? userCopy.motors.saleDocuments.invoicePrintBusy : userCopy.motors.saleDocuments.invoicePrint}
+                  description={userCopy.motors.saleDocuments.invoicePrintHint}
                   busy={busy === "invoice-print"}
                   disabled={actionsDisabled}
                   onClick={() => void runAction("invoice-print", "invoice", "print")}
                 />
                 <DocumentActionRow
                   icon={Download}
-                  title={busy === "invoice-download" ? "Скачиваем PDF…" : "Скачать счёт на двигатель"}
-                  description="PDF для бухгалтерии и клиента"
+                  title={busy === "invoice-download" ? userCopy.motors.saleDocuments.invoiceDownloadBusy : userCopy.motors.saleDocuments.invoiceDownload}
+                  description={userCopy.motors.saleDocuments.invoiceDownloadHint}
                   busy={busy === "invoice-download"}
                   disabled={actionsDisabled}
                   onClick={() => void runAction("invoice-download", "invoice", "download")}

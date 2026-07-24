@@ -1,5 +1,6 @@
 import { DocumentContext } from "@/lib/documents/document-context";
 import { getAppUrl } from "@/lib/site-urls";
+import { userCopy } from "@/lib/user-copy";
 
 type DocumentQrProps = {
   verificationToken?: string;
@@ -11,7 +12,7 @@ export function buildWarrantyVerifyUrl(token: string): string {
   return `${getAppUrl()}/warranty/${token}`;
 }
 
-export function DocumentQr({ verificationToken, dataUri, label = "Проверка гарантии" }: DocumentQrProps) {
+export function DocumentQr({ verificationToken, dataUri, label = userCopy.documents.preview.warrantyCheck }: DocumentQrProps) {
   if (!dataUri && !verificationToken) return null;
 
   return (
@@ -30,5 +31,5 @@ export function DocumentQr({ verificationToken, dataUri, label = "Проверк
 }
 
 export function warrantyQrLabel(_context: DocumentContext): string {
-  return "Сканируйте для проверки гарантии";
+  return userCopy.documents.preview.scanWarranty;
 }

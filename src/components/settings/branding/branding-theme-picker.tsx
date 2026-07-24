@@ -5,15 +5,8 @@ import { Check } from "lucide-react";
 
 import { DOCUMENT_THEMES, DocumentTheme } from "@/domain/company-branding";
 import { defaultHeaderColorsForTheme } from "@/domain/document-header-config";
-import { DOCUMENT_THEME_LABELS_RU } from "@/lib/documents/themes/tokens";
 import { cn } from "@/lib/utils";
-
-const THEME_DESCRIPTIONS: Record<DocumentTheme, string> = {
-  modern: "Sans-serif, воздух и brand-акценты — SaaS-счёт",
-  premium: "Serif, тёплая бумага и letterhead — премиальное письмо",
-  classic: "Serif, строгие рамки — официальный бухгалтерский документ",
-  racing: "Motorsport: тёмная шапка, белый текст, красный акцент",
-};
+import { userCopy } from "@/lib/user-copy";
 
 type BrandingThemePickerProps = {
   value: DocumentTheme;
@@ -84,9 +77,9 @@ export function BrandingThemePicker({ value, brandColor, onChange }: BrandingThe
 
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-sm font-semibold">{DOCUMENT_THEME_LABELS_RU[theme]}</p>
+                <p className="text-sm font-semibold">{userCopy.settings.brandingUi.themes[theme]}</p>
                 <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                  {THEME_DESCRIPTIONS[theme]}
+                  {userCopy.settings.brandingUi.themeDescriptions[theme]}
                 </p>
               </div>
               {selected ? (

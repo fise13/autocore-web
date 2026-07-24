@@ -1,6 +1,7 @@
 "use client";
 
 import { XIcon } from "lucide-react";
+import { userCopy } from "@/lib/user-copy";
 
 import type { KnowledgeSuggestion } from "@/domain/knowledge/types";
 import { cn } from "@/lib/utils";
@@ -50,7 +51,7 @@ export function KnowledgeSuggestionChips({
           {onDismiss ? (
             <button
               type="button"
-              aria-label="Отклонить"
+              aria-label={userCopy.knowledge.dismissAria}
               className="rounded p-0.5 text-muted-foreground opacity-60 hover:bg-background hover:opacity-100"
               onClick={() => onDismiss(suggestion)}
             >

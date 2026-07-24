@@ -77,7 +77,7 @@ import {
   SpecificCategoryRepository,
   SpecificRecordEntity,
 } from "@/infrastructure/firestore/specific-category-repository";
-import { mapAuthError } from "@/lib/user-copy";
+import { mapAuthError, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 import { getFirebaseAuth } from "@/infrastructure/firebase/client";
 
@@ -531,7 +531,7 @@ export function SpecificExcelGrid({
 
     try {
       const actorUid = getFirebaseAuth().currentUser?.uid;
-      if (!actorUid) throw new Error("Требуется авторизация");
+      if (!actorUid) throw new Error(userCopy.specificSheets.grid.authRequired);
 
       const pendingDeletes = [...pendingDeleteIdsRef.current];
       if (pendingDeletes.length > 0) {
@@ -1351,7 +1351,7 @@ export function SpecificExcelGrid({
                                   handleSellAction(row);
                                 }}
                               >
-                                {sold ? "Вернуть" : "Продать"}
+                                {sold ? userCopy.specificSheets.grid.unsell : userCopy.specificSheets.grid.sell}
                               </button>
                             ) : null
                           ) : (
@@ -1452,7 +1452,7 @@ export function SpecificExcelGrid({
               closeContextMenu();
             }}
           >
-            Копировать
+            {userCopy.specificSheets.grid.copy}
           </GridContextMenuItem>
 
           {canEdit ? (
@@ -1464,7 +1464,7 @@ export function SpecificExcelGrid({
                   closeContextMenu();
                 }}
               >
-                Вырезать
+                {userCopy.specificSheets.grid.cut}
               </GridContextMenuItem>
               <GridContextMenuItem
                 shortcut={modShortcutLabel("V")}
@@ -1473,7 +1473,7 @@ export function SpecificExcelGrid({
                   closeContextMenu();
                 }}
               >
-                Вставить
+                {userCopy.specificSheets.grid.paste}
               </GridContextMenuItem>
               <GridContextMenuItem
                 shortcut={deleteShortcutLabel()}
@@ -1482,7 +1482,7 @@ export function SpecificExcelGrid({
                   closeContextMenu();
                 }}
               >
-                Очистить
+                {userCopy.specificSheets.grid.clear}
               </GridContextMenuItem>
               <GridContextMenuItem
                 shortcut={modShortcutLabel("D")}
@@ -1491,7 +1491,7 @@ export function SpecificExcelGrid({
                   closeContextMenu();
                 }}
               >
-                Заполнить вниз
+                {userCopy.specificSheets.grid.fillDown}
               </GridContextMenuItem>
               <GridContextMenuItem
                 onClick={() => {
@@ -1502,7 +1502,7 @@ export function SpecificExcelGrid({
                 }}
                 disabled={!isEditableColumn(contextMenu.cell.column)}
               >
-                Редактировать
+                {userCopy.specificSheets.grid.edit}
               </GridContextMenuItem>
             </>
           ) : null}
@@ -1519,8 +1519,8 @@ export function SpecificExcelGrid({
                 }}
               >
                 {isSpecificRecordSold(contextMenu.selected[0]!, headerMapping)
-                  ? "Вернуть в наличие"
-                  : "Продать"}
+                  ? userCopy.specificSheets.grid.returnToStock
+                  : userCopy.specificSheets.grid.sell}
               </GridContextMenuItem>
               <GridContextMenuItem
                 onClick={() => {
@@ -1528,7 +1528,7 @@ export function SpecificExcelGrid({
                   closeContextMenu();
                 }}
               >
-                Удалить строку
+                {userCopy.specificSheets.grid.deleteRow}
               </GridContextMenuItem>
             </>
           ) : null}

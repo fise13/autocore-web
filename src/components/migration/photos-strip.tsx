@@ -7,6 +7,7 @@ import type { ImageAsset } from "@/lib/import";
 
 import { PHOTO_DRAG_TYPE } from "./photo-drag";
 import { PhotoThumb } from "./photo-thumb";
+import { userCopy } from "@/lib/user-copy";
 
 /** Unmatched photos the user can drag onto a row to attach instantly. */
 export function PhotosStrip({
@@ -23,7 +24,7 @@ export function PhotosStrip({
     <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
       <span className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
         <Images className="size-4" />
-        {unmatched.length} фото без привязки
+        {userCopy.migration.photos.unmatched(unmatched.length)}
       </span>
       <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1">
         {unmatched.map((image) => (
@@ -45,7 +46,7 @@ export function PhotosStrip({
         ))}
       </div>
       <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
-        Перетащите на строку
+        {userCopy.migration.photos.dragHint}
       </span>
     </div>
   );

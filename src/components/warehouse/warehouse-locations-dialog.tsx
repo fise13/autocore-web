@@ -20,6 +20,7 @@ import { isUnlocatedLocation } from "@/domain/warehouse-location";
 import { createWarehouseLocationRepository } from "@/infrastructure/firestore/warehouse-location-repository";
 import { buildLocationEntityLink } from "@/lib/warehouse/location-entity-link";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 const locationRepository = createWarehouseLocationRepository();
 
@@ -78,7 +79,7 @@ export function WarehouseLocationsDialog({
       await locationRepository.ensureCustomLeaf(companyId, warehouseId, code, actorUserId);
       setDraftCode("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось создать место");
+      setError(err instanceof Error ? err.message : userCopy.warehouse.createLocationFailed);
     } finally {
       setBusy(false);
     }
@@ -91,7 +92,7 @@ export function WarehouseLocationsDialog({
     try {
       await locationRepository.deactivate(locationId, actorUserId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось удалить место");
+      setError(err instanceof Error ? err.message : userCopy.warehouse.deleteLocationFailed);
     } finally {
       setBusy(false);
     }
@@ -106,7 +107,7 @@ export function WarehouseLocationsDialog({
         printable.map((location) => locationRepository.ensureEntityLink(location.id, actorUserId)),
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось обновить QR");
+      setError(err instanceof Error ? err.message : userCopy.warehouse.updateQrFailed);
     } finally {
       setBusy(false);
     }
@@ -124,11 +125,10 @@ export function WarehouseLocationsDialog({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MapPin className="size-4 opacity-70" />
-              Места — {warehouseName}
+              {userCopy.warehouse.locationsTitle(warehouseName)}
             </DialogTitle>
             <DialogDescription>
-              Каждое место получает QR `autocore://loc/…` автоматически. Сканер открывает место
-              сразу — без поиска.
+              {userCopy.warehouse.locationsDescription}
             </DialogDescription>
           </DialogHeader>
 
@@ -137,7 +137,7 @@ export function WarehouseLocationsDialog({
               <Input
                 value={draftCode}
                 onChange={(event) => setDraftCode(event.target.value)}
-                placeholder="Код места, например A-03-B-12"
+                placeholder={userCopy.warehouse.locationCodePlaceholder}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") void handleCreate();
                 }}
@@ -148,7 +148,7 @@ export function WarehouseLocationsDialog({
                 onClick={() => void handleCreate()}
               >
                 <Plus className="size-4" />
-                Добавить
+                {userCopy.warehouse.add}
               </Button>
             </div>
           ) : null}
@@ -162,7 +162,7 @@ export function WarehouseLocationsDialog({
               onClick={() => openPrint()}
             >
               <Printer className="size-3.5" />
-              Печать этикеток
+              {userCopy.warehouse.printLabels}
             </Button>
             {canManage ? (
               <Button
@@ -173,17 +173,17 @@ export function WarehouseLocationsDialog({
                 onClick={() => void handleEnsureLinks()}
               >
                 <QrCode className="size-3.5" />
-                Обновить QR
+                {userCopy.warehouse.refreshQr}
               </Button>
             ) : null}
           </div>
 
           <div className="max-h-72 overflow-y-auto rounded-lg border border-border/60">
             {loading ? (
-              <p className="px-3 py-6 text-center text-sm text-muted-foreground">Загрузка…</p>
+              <p className="px-3 py-6 text-center text-sm text-muted-foreground">{userCopy.warehouse.loading}</p>
             ) : visible.length === 0 ? (
               <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-                Пока нет мест. Добавьте код или импортируйте Excel с колонкой «Место».
+                {userCopy.warehouse.locationsEmpty}
               </p>
             ) : (
               <ul className="divide-y divide-border/50">
@@ -199,13 +199,13 @@ export function WarehouseLocationsDialog({
                       <p className="truncate font-medium tabular-nums">{location.displayCode}</p>
                       <p className="truncate text-xs text-muted-foreground">
                         {location.isSystem
-                          ? "Системное"
+                          ? userCopy.warehouse.systemLocation
                           : (() => {
                               const occ = occupancyByLocationId[location.id];
                               const occLabel =
                                 !occ || occ.lineCount === 0
-                                  ? "свободно"
-                                  : `${occ.lineCount} поз. · ${occ.totalOnHand} шт`;
+                                  ? userCopy.warehouse.free
+                                  : userCopy.warehouse.occupancy(occ.lineCount, occ.totalOnHand);
                               return `${occLabel} · ${location.barcode || buildLocationEntityLink(location.id)}`;
                             })()}
                       </p>
@@ -218,7 +218,7 @@ export function WarehouseLocationsDialog({
                         className="size-8 shrink-0"
                         disabled={busy}
                         onClick={() => openPrint([location.id])}
-                        aria-label="Печать этикетки"
+                        aria-label={userCopy.warehouse.printLabelAria}
                       >
                         <Printer className="size-3.5 opacity-70" />
                       </Button>
@@ -231,7 +231,7 @@ export function WarehouseLocationsDialog({
                         className="size-8 shrink-0"
                         disabled={busy}
                         onClick={() => void handleDeactivate(location.id)}
-                        aria-label="Удалить место"
+                        aria-label={userCopy.warehouse.deleteLocationAria}
                       >
                         <Trash2 className="size-3.5 opacity-70" />
                       </Button>
@@ -248,7 +248,7 @@ export function WarehouseLocationsDialog({
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              Закрыть
+              {userCopy.warehouse.close}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -40,7 +40,7 @@ export function McMyOrdersPreview({ orders, isLoading, className }: McMyOrdersPr
         title={userCopy.missionControl.employee.openOrdersTitle}
         action={
           <Link href="/work-orders" className="text-xs font-medium text-primary hover:underline">
-            Все
+            {userCopy.missionControl.employee.openOrdersViewAll}
           </Link>
         }
       />
@@ -59,10 +59,14 @@ export function McMyOrdersPreview({ orders, isLoading, className }: McMyOrdersPr
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">
-                      №{order.number} · {order.vehicleLabel ?? order.clientName ?? "Наряд"}
+                      №{order.number} ·{" "}
+                      {order.vehicleLabel ??
+                        order.clientName ??
+                        userCopy.missionControl.employee.orderFallback}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {order.licensePlate || "Без номера"} · {STATUS_LABELS[order.status]}
+                      {order.licensePlate || userCopy.missionControl.employee.noPlate} ·{" "}
+                      {STATUS_LABELS[order.status]}
                     </p>
                   </div>
                   <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />

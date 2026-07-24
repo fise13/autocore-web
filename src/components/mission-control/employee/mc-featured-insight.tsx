@@ -27,7 +27,7 @@ export function McFeaturedInsight({ insight, className }: McFeaturedInsightProps
     id: "fallback",
     title: userCopy.missionControl.employee.insightFallback,
     detail: "",
-    cta: "Заказ-наряды",
+    cta: userCopy.missionControl.employee.insightFallbackCta,
     href: "/work-orders",
     tone: "neutral" as const,
   };

@@ -16,17 +16,13 @@ import {
 } from "@/components/mission-control/dashboard/dashboard-panel";
 import { buildIncomeExpenseSeries } from "@/lib/mission-control/compute-dashboard-charts";
 import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
+import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 import { FinancialOperation } from "@/domain/financial-operation";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const VISIBLE_DAYS = 10;
 const BAR_RADIUS = 5;
-
-const chartConfig = {
-  income: { label: "Доход", color: "var(--chart-1)" },
-  expense: { label: "Расход", color: "var(--chart-3)" },
-} satisfies ChartConfig;
 
 function ColumnHoverCursor(props: React.ComponentProps<typeof Rectangle>) {
   return (
@@ -48,12 +44,18 @@ type McOperationsChartProps = {
 
 export function McOperationsChart({ operations, isLoading, className }: McOperationsChartProps) {
   const { formatMoney } = useAppDisplayCurrency();
+  const copy = userCopy.missionControl.dashboard.charts;
   const chartRows = buildIncomeExpenseSeries(operations, VISIBLE_DAYS);
+
+  const chartConfig = {
+    income: { label: copy.income, color: "var(--chart-1)" },
+    expense: { label: copy.expense, color: "var(--chart-3)" },
+  } satisfies ChartConfig;
 
   if (isLoading) {
     return (
       <McPanel className={cn("shadow-none md:col-span-2 dark:ring-0", className)}>
-        <McPanelHeader title="Доход и расход" />
+        <McPanelHeader title={copy.incomeExpense} />
         <McPanelBody>
           <Skeleton className="aspect-video w-full" />
         </McPanelBody>
@@ -64,8 +66,8 @@ export function McOperationsChart({ operations, isLoading, className }: McOperat
   return (
     <McPanel className={cn("shadow-none md:col-span-2 dark:ring-0", className)}>
       <McPanelHeader
-        title="Доход и расход"
-        description={`Операции по дням за последние ${VISIBLE_DAYS} дней`}
+        title={copy.incomeExpense}
+        description={copy.incomeExpenseDesc(VISIBLE_DAYS)}
       />
       <McPanelBody>
         <ChartContainer className="aspect-video w-full" config={chartConfig}>

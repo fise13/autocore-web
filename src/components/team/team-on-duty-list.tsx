@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CompanyEmployee } from "@/domain/rbac";
-import { formatRole } from "@/lib/user-copy";
+import { formatRole, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 const ONLINE_WINDOW_MS = 15 * 60 * 1000;
@@ -80,8 +80,8 @@ export function TeamOnDutyList({
     return (
       <EmptyState
         icon={UsersIcon}
-        title="Никого на смене"
-        description="Когда сотрудники войдут в систему, они появятся здесь."
+        title={userCopy.team.onDutyEmptyTitle}
+        description={userCopy.team.onDutyEmptyDescription}
         className="m-4 border-none bg-transparent py-8"
       />
     );
@@ -95,7 +95,7 @@ export function TeamOnDutyList({
           const openCount = assignmentCounts?.get(employee.id);
           const workloadLabel =
             typeof openCount === "number"
-              ? `${openCount} ${openCount === 1 ? "заказ-наряд" : openCount < 5 ? "заказ-наряда" : "заказ-нарядов"}`
+              ? userCopy.team.openWorkOrders(openCount)
               : formatRole(employee.role);
 
           return (
@@ -131,7 +131,7 @@ export function TeamOnDutyList({
                   <p className="mt-0.5 flex items-center gap-2 text-[11px] leading-snug text-muted-foreground">
                     <span className="flex shrink-0 items-center gap-1">
                       <StatusIndicator color={online ? "emerald" : "amber"} pulse={online} />
-                      {online ? "Онлайн" : "Не в сети"}
+                      {online ? userCopy.team.online : userCopy.team.offline}
                     </span>
                     <span className="inline-flex size-1 rounded-full bg-foreground/50" />
                     <span className="truncate tabular-nums">{workloadLabel}</span>
@@ -143,7 +143,7 @@ export function TeamOnDutyList({
                   <DropdownMenuTrigger
                     render={
                       <Button
-                        aria-label={`Действия для ${employee.fullName}`}
+                        aria-label={userCopy.team.actionsFor(employee.fullName)}
                         className="opacity-0 transition-opacity group-hover:opacity-100 data-[popup-open]:opacity-100"
                         size="icon-xs"
                         variant="ghost"
@@ -161,10 +161,10 @@ export function TeamOnDutyList({
                     <DropdownMenuSeparator />
                     <DropdownMenuGroup>
                       <DropdownMenuItem onClick={() => setProfileEmployee(employee)}>
-                        Профиль сотрудника
+                        {userCopy.team.employeeProfile}
                       </DropdownMenuItem>
                       <DropdownMenuItem render={<Link href="/work-orders" />}>
-                        Заказ-наряды
+                        {userCopy.team.workOrdersLink}
                       </DropdownMenuItem>
                     </DropdownMenuGroup>
                   </DropdownMenuContent>

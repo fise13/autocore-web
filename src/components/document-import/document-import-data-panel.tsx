@@ -18,6 +18,7 @@ import type { PersistenceSyncHandler } from "@/lib/persistence";
 import { cn } from "@/lib/utils";
 import { formatDocumentImportToastCopy } from "@/lib/document-import/toast-copy";
 import { emitKnowledgeEvent } from "@/lib/knowledge/knowledge-api.client";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 
 export type ExtractedEngine = {
   serialCode?: string;
@@ -114,7 +115,7 @@ export function DocumentImportDataPanel({
 
   async function authHeaders(): Promise<HeadersInit> {
     const token = await getAuth(getFirebaseApp()).currentUser?.getIdToken();
-    if (!token) throw new Error("Войдите в аккаунт");
+    if (!token) throw new Error(userCopy.documentImport.signIn);
     return {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
@@ -140,14 +141,14 @@ export function DocumentImportDataPanel({
         extractedData?: ExtractedPayload;
         aiStatus?: string;
       } | null;
-      if (!response.ok) throw new Error(body?.error || "Не удалось распознать");
+      if (!response.ok) throw new Error(body?.error || userCopy.documentImport.recognizeFailed);
       setLocalExtracted(body?.extractedData ?? null);
       aiBaselineRef.current = body?.extractedData ?? null;
       setAiStatus((body?.aiStatus as DocumentImportJob["aiStatus"]) ?? "done");
       setSaveHint(null);
     } catch (err) {
       setAiStatus("failed");
-      setError(err instanceof Error ? err.message : "Ошибка AI");
+      setError(err instanceof Error ? err.message : userCopy.documentImport.aiError);
     } finally {
       setBusy(false);
     }
@@ -231,15 +232,15 @@ export function DocumentImportDataPanel({
         error?: string;
         extractedData?: ExtractedPayload;
       } | null;
-      if (!response.ok) throw new Error(body?.error || "Не удалось сохранить");
+      if (!response.ok) throw new Error(body?.error || userCopy.documentImport.saveFailed);
       emitOcrLineConfirmations(payload.engines ?? []);
       setLocalExtracted(body?.extractedData ?? payload);
       aiBaselineRef.current = body?.extractedData ?? payload;
       setDirty(false);
-      setSaveHint("Сохранено");
+      setSaveHint(userCopy.documentImport.saved);
       setAiStatus("done");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ошибка сохранения");
+      setError(err instanceof Error ? err.message : userCopy.documentImport.saveError);
     } finally {
       setSaving(false);
     }
@@ -252,7 +253,7 @@ export function DocumentImportDataPanel({
 
   const importSync = useCallback<PersistenceSyncHandler>(
     async ({ snapshot }) => {
-      if (!job?.id) return { ok: false, error: "Нет задания" };
+      if (!job?.id) return { ok: false, error: userCopy.documentImport.noJob };
       try {
         const payload = snapshot as ExtractedPayload;
         const response = await fetch(`/api/imports/${job.id}`, {
@@ -262,15 +263,15 @@ export function DocumentImportDataPanel({
         });
         if (!response.ok) {
           const body = (await response.json().catch(() => null)) as { error?: string } | null;
-          return { ok: false, error: body?.error || "Не удалось сохранить" };
+          return { ok: false, error: body?.error || userCopy.documentImport.saveFailed };
         }
         setDirty(false);
-        setSaveHint("Сохранено");
+        setSaveHint(userCopy.documentImport.saved);
         return { ok: true };
       } catch (err) {
         return {
           ok: false,
-          error: err instanceof Error ? err.message : "Ошибка сохранения",
+          error: err instanceof Error ? err.message : userCopy.documentImport.saveError,
         };
       }
     },
@@ -280,14 +281,15 @@ export function DocumentImportDataPanel({
   usePersistedDocument({
     key: importKey,
     value: localExtracted,
-    label: job ? formatDocumentImportToastCopy(job).title : "Импорт",
+    label: job ? formatDocumentImportToastCopy(job).title : userCopy.documentImport.title,
     sync: importSync,
     enabled: Boolean(importKey) && dirty,
     patchOnEnable: true,
   });
 
   const engines = localExtracted?.engines ?? [];
-  const titleCopy = job ? formatDocumentImportToastCopy(job).title : "Документ";
+  const titleCopy = job ? formatDocumentImportToastCopy(job).title : userCopy.documentImport.documentFallback;
+  const dateLocale = getActiveUserCopyLocale() === "en" ? "en-US" : "ru-RU";
 
   return (
     <motion.aside
@@ -301,11 +303,11 @@ export function DocumentImportDataPanel({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
-          <h2 className="text-lg font-semibold tracking-tight">Данные документа</h2>
+          <h2 className="text-lg font-semibold tracking-tight">{userCopy.documentImport.dataTitle}</h2>
           <p className="text-sm text-muted-foreground">{titleCopy}</p>
         </div>
         <Badge variant="secondary" className="rounded-full px-2.5 py-0.5 text-[11px] font-medium">
-          {aiStatus === "processing" ? "AI…" : dirty ? "Изменено" : aiStatus === "done" ? "Готово" : "Beta"}
+          {aiStatus === "processing" ? userCopy.documentImport.aiBusy : dirty ? userCopy.documentImport.dirty : aiStatus === "done" ? userCopy.documentImport.ready : userCopy.documentImport.beta}
         </Badge>
       </div>
 
@@ -313,8 +315,8 @@ export function DocumentImportDataPanel({
         {aiStatus === "processing" || busy ? (
           <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed bg-muted/20 px-5 py-10 text-center">
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            <p className="text-sm font-medium">Распознаём двигатели…</p>
-            <p className="text-xs text-muted-foreground">Обычно 5–15 секунд</p>
+            <p className="text-sm font-medium">{userCopy.documentImport.recognizing}</p>
+            <p className="text-xs text-muted-foreground">{userCopy.documentImport.recognizingHint}</p>
           </div>
         ) : engines.length > 0 || dirty ? (
           <div className="space-y-3">
@@ -322,7 +324,7 @@ export function DocumentImportDataPanel({
               <div key={index} className="space-y-2.5 rounded-xl border bg-background/60 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-semibold text-muted-foreground">
-                    Двигатель {index + 1}
+                    {userCopy.documentImport.engineN(index + 1)}
                     {typeof engine.confidence === "number" ? (
                       <span className="ml-2 font-normal">
                         · {Math.round(engine.confidence * 100)}%
@@ -335,14 +337,14 @@ export function DocumentImportDataPanel({
                     size="sm"
                     className="h-7 px-2 text-muted-foreground hover:text-destructive"
                     onClick={() => removeEngine(index)}
-                    aria-label={`Удалить двигатель ${index + 1}`}
+                    aria-label={userCopy.documentImport.removeEngineAria(index + 1)}
                   >
                     <Trash2 className="size-3.5" />
                   </Button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
-                  <Field label="Бренд">
+                  <Field label={userCopy.documentImport.fields.brand}>
                     <Input
                       value={engine.brandName ?? ""}
                       onChange={(event) => updateEngine(index, { brandName: event.target.value })}
@@ -351,7 +353,7 @@ export function DocumentImportDataPanel({
                       className="h-8"
                     />
                   </Field>
-                  <Field label="Двигатель">
+                  <Field label={userCopy.documentImport.fields.engine}>
                     <Input
                       value={engine.engineCode ?? ""}
                       onChange={(event) => updateEngine(index, { engineCode: event.target.value })}
@@ -361,7 +363,7 @@ export function DocumentImportDataPanel({
                     />
                   </Field>
                   <div className="col-span-2">
-                    <Field label="Номер двигателя">
+                    <Field label={userCopy.documentImport.fields.serial}>
                       <Input
                         value={engine.serialCode ?? ""}
                         onChange={(event) => updateEngine(index, { serialCode: event.target.value })}
@@ -370,7 +372,7 @@ export function DocumentImportDataPanel({
                       />
                     </Field>
                   </div>
-                  <Field label="Комплектация">
+                  <Field label={userCopy.documentImport.fields.configuration}>
                     <Input
                       value={engine.configuration ?? ""}
                       onChange={(event) =>
@@ -379,7 +381,7 @@ export function DocumentImportDataPanel({
                       className="h-8"
                     />
                   </Field>
-                  <Field label="Кол-во">
+                  <Field label={userCopy.documentImport.fields.qty}>
                     <Input
                       type="number"
                       min={1}
@@ -392,7 +394,7 @@ export function DocumentImportDataPanel({
                       className="h-8"
                     />
                   </Field>
-                  <Field label="Коробка">
+                  <Field label={userCopy.documentImport.fields.transmission}>
                     <Input
                       value={engine.transmission ?? ""}
                       onChange={(event) =>
@@ -401,7 +403,7 @@ export function DocumentImportDataPanel({
                       className="h-8"
                     />
                   </Field>
-                  <Field label="Место">
+                  <Field label={userCopy.documentImport.fields.location}>
                     <Input
                       value={engine.warehouseLocation ?? ""}
                       onChange={(event) =>
@@ -411,7 +413,7 @@ export function DocumentImportDataPanel({
                     />
                   </Field>
                   <div className="col-span-2">
-                    <Field label="Дата прихода">
+                    <Field label={userCopy.documentImport.fields.arrivalDate}>
                       <Input
                         type="date"
                         value={engine.arrivalDate ?? ""}
@@ -424,7 +426,7 @@ export function DocumentImportDataPanel({
                   </div>
                 </div>
 
-                <Field label="Особые отметки">
+                <Field label={userCopy.documentImport.fields.notes}>
                   <Textarea
                     value={engine.notes ?? ""}
                     onChange={(event) => updateEngine(index, { notes: event.target.value })}
@@ -442,7 +444,7 @@ export function DocumentImportDataPanel({
             <div className="flex flex-col gap-2 pt-1">
               <Button type="button" variant="outline" size="sm" className="w-full" onClick={addEngine}>
                 <Plus className="size-3.5" />
-                Добавить строку
+                {userCopy.documentImport.addRow}
               </Button>
               <Button
                 type="button"
@@ -452,7 +454,7 @@ export function DocumentImportDataPanel({
                 onClick={() => void saveEdits()}
               >
                 {saving ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                Сохранить изменения
+                {userCopy.documentImport.saveChanges}
               </Button>
               <Button
                 type="button"
@@ -463,24 +465,24 @@ export function DocumentImportDataPanel({
                 onClick={() => void runExtract(true)}
               >
                 <Sparkles className="size-3.5" />
-                Перераспознать
+                {userCopy.documentImport.reRecognize}
               </Button>
               <Link
                 href="/imports"
                 className="inline-flex h-8 w-full items-center justify-center rounded-md border border-transparent bg-muted/60 px-3 text-xs font-medium transition hover:bg-muted"
               >
-                К списку импортов
+                {userCopy.documentImport.backToList}
               </Link>
             </div>
           </div>
         ) : (
           <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed bg-muted/20 px-5 py-8">
             <p className="text-sm font-medium text-foreground">
-              {error ? "Не удалось распознать" : "Пока нет распознанных полей"}
+              {error ? userCopy.documentImport.recognizeFailed : userCopy.documentImport.noFieldsYet}
             </p>
             <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
               {error ||
-                "Нажмите кнопку — AI извлечёт бренд, код и серийный номер с фото. Можно править вручную."}
+                userCopy.documentImport.extractHint}
             </p>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -490,11 +492,11 @@ export function DocumentImportDataPanel({
                 onClick={() => void runExtract(true)}
               >
                 <Sparkles className="size-3.5" />
-                Распознать
+                {userCopy.documentImport.recognize}
               </Button>
               <Button type="button" size="sm" variant="outline" onClick={addEngine}>
                 <Plus className="size-3.5" />
-                Ввести вручную
+                {userCopy.documentImport.enterManually}
               </Button>
             </div>
           </div>
@@ -504,13 +506,13 @@ export function DocumentImportDataPanel({
       {job ? (
         <div className="mt-4 space-y-2 border-t pt-4 text-xs text-muted-foreground">
           <div className="flex justify-between gap-3">
-            <span>Статус</span>
+            <span>{userCopy.documentImport.statusLabel}</span>
             <span className="font-medium text-foreground capitalize">{job.status}</span>
           </div>
           <div className="flex justify-between gap-3">
-            <span>Создан</span>
+            <span>{userCopy.documentImport.createdLabel}</span>
             <span className="font-medium text-foreground">
-              {job.createdAt.toLocaleString("ru-RU")}
+              {job.createdAt.toLocaleString(dateLocale)}
             </span>
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { userCopy } from "@/lib/user-copy";
 
 import { lookupBarcodeUseCase } from "@/application/use-cases/warehouse/lookup-barcode";
 import { BarcodeUnknownProductDialog } from "@/components/barcode/barcode-unknown-product-dialog";
@@ -51,7 +52,7 @@ export function BarcodeScanProvider({ children }: BarcodeScanProviderProps) {
       setLastBarcodeScan({ barcode: item.barcodes[0] ?? item.sku, itemId: item.id, itemName: item.name });
       toast({
         title: item.name,
-        description: `Доступно ${item.totalAvailable} ${item.unit}`,
+        description: userCopy.warehouse.dialogs.barcode.available(item.totalAvailable, item.unit),
         variant: "success",
       });
     },
@@ -83,7 +84,7 @@ export function BarcodeScanProvider({ children }: BarcodeScanProviderProps) {
 
       toast({
         title: item.name,
-        description: "Товар найден, но нет доступа к складу",
+        description: userCopy.warehouse.dialogs.barcode.foundNoAccess,
         variant: "default",
       });
     },
@@ -107,7 +108,7 @@ export function BarcodeScanProvider({ children }: BarcodeScanProviderProps) {
         return;
       }
       toast({
-        title: "Товар не найден",
+        title: userCopy.warehouse.dialogs.barcode.unknownTitle,
         description: barcode,
         variant: "error",
       });
@@ -129,8 +130,8 @@ export function BarcodeScanProvider({ children }: BarcodeScanProviderProps) {
         }
       } catch (error) {
         toast({
-          title: "Ошибка сканирования",
-          description: error instanceof Error ? error.message : "Не удалось найти товар",
+          title: userCopy.warehouse.dialogs.barcode.scanError,
+          description: error instanceof Error ? error.message : userCopy.warehouse.dialogs.barcode.lookupFailed,
           variant: "error",
         });
       } finally {

@@ -17,6 +17,7 @@ import { MotorImportRepository } from "@/infrastructure/firestore/motor-import-r
 import { useMotorImportJobsRealtime } from "@/hooks/use-motor-import-jobs-realtime";
 import { MotorImportPreviewResult } from "@/lib/motors/import/types";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 type MotorImportHistoryPanelProps = {
   open: boolean;
@@ -26,16 +27,9 @@ type MotorImportHistoryPanelProps = {
   onResume?: (jobId: string, preview: MotorImportPreviewResult) => void;
 };
 
-const statusLabels: Record<MotorImportJob["status"], string> = {
-  queued: "В очереди",
-  analyzing: "Анализ",
-  preview: "Предпросмотр",
-  applying: "Применение",
-  completed: "Завершён",
-  failed: "Ошибка",
-  cancelled: "Отменён",
-  rolled_back: "Откачен",
-};
+function statusLabels(): Record<string, string> {
+  return { ...userCopy.motors.importHistory.status };
+}
 
 export function MotorImportHistoryPanel({
   open,
@@ -75,19 +69,19 @@ export function MotorImportHistoryPanel({
       });
       onOpenChange(false);
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Не удалось загрузить импорт");
+      setActionError(error instanceof Error ? error.message : userCopy.motors.importHistory.loadFailed);
     } finally {
       setBusyJobId(null);
     }
   }
 
   async function handleRollback(job: MotorImportJob) {
-    if (!confirm(`Отметить импорт «${job.sourceFileName ?? job.id}» как откаченный?`)) return;
+    if (!confirm(userCopy.motors.importHistory.rollbackConfirm(job.sourceFileName ?? job.id))) return;
     setBusyJobId(job.id);
     try {
       await importRepository.markRolledBack(job.id, companyId, job.createdByUserId);
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Не удалось откатить");
+      setActionError(error instanceof Error ? error.message : userCopy.motors.importHistory.rollbackFailed);
     } finally {
       setBusyJobId(null);
     }
@@ -97,40 +91,40 @@ export function MotorImportHistoryPanel({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent overlayClassName="z-[100]" className="z-[100] max-w-2xl">
         <DialogHeader>
-          <DialogTitle>История импортов моторов</DialogTitle>
-          <DialogDescription>Последние импорты Excel с возможностью продолжить preview.</DialogDescription>
+          <DialogTitle>{userCopy.motors.importHistory.title}</DialogTitle>
+          <DialogDescription>{userCopy.motors.importHistory.description}</DialogDescription>
         </DialogHeader>
         {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
         {actionError ? <p className="text-sm text-destructive">{actionError}</p> : null}
         <div className="max-h-[420px] space-y-2 overflow-auto">
-          {loading ? <p className="text-sm text-muted-foreground">Загрузка…</p> : null}
+          {loading ? <p className="text-sm text-muted-foreground">{userCopy.motors.importHistory.loading}</p> : null}
           {!loading && jobs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Импортов пока нет.</p>
+            <p className="text-sm text-muted-foreground">{userCopy.motors.importHistory.empty}</p>
           ) : null}
           {jobs.map((job) => (
             <div key={job.id} className="rounded-lg border p-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-medium">{job.sourceFileName ?? "Импорт моторов"}</p>
+                  <p className="text-sm font-medium">{job.sourceFileName ?? userCopy.motors.importHistory.fallback}</p>
                   <p className="text-xs text-muted-foreground">
-                    {format(job.createdAt, "d MMM yyyy, HH:mm", { locale: ru })} · {statusLabels[job.status]}
+                    {format(job.createdAt, "d MMM yyyy, HH:mm", { locale: ru })} · {statusLabels()[job.status]}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Строк: {job.stats.totalEngineRows} · валидных: {job.stats.validEngineRows}
+                    {userCopy.motors.importHistory.stats(job.stats.totalEngineRows, job.stats.validEngineRows)}
                     {job.appliedSummary
-                      ? ` · импорт: ${job.appliedSummary.imported} · обновлено: ${job.appliedSummary.updated}`
+                      ? userCopy.motors.importHistory.applied(job.appliedSummary.imported, job.appliedSummary.updated)
                       : null}
                   </p>
                 </div>
                 <div className="flex flex-col gap-1">
                   {job.status === "preview" && onResume ? (
                     <Button size="sm" variant="outline" disabled={busyJobId === job.id} onClick={() => void handleResume(job)}>
-                      Продолжить
+                      {userCopy.motors.importHistory.continue}
                     </Button>
                   ) : null}
                   {job.status === "completed" ? (
                     <Button size="sm" variant="outline" disabled={busyJobId === job.id} onClick={() => void handleRollback(job)}>
-                      Откатить
+                      {userCopy.motors.importHistory.rollback}
                     </Button>
                   ) : null}
                 </div>

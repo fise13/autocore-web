@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { InventoryItem } from "@/domain/inventory";
+import { userCopy } from "@/lib/user-copy";
 
 type WarehouseBarcodePanelProps = {
   open: boolean;
@@ -30,6 +31,7 @@ export function WarehouseBarcodePanel({
   onLookup,
   onFound,
 }: WarehouseBarcodePanelProps) {
+  const copy = userCopy.warehouse.dialogs;
   const [barcode, setBarcode] = useState("");
   const [result, setResult] = useState<InventoryItem | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -57,9 +59,9 @@ export function WarehouseBarcodePanel({
       const item = await onLookup(barcode.trim());
       setResult(item);
       if (item) onFound?.(item);
-      if (!item) setError("Позиция не найдена на складе");
+      if (!item) setError(copy.barcode.notFound);
     } catch (lookupError) {
-      setError(lookupError instanceof Error ? lookupError.message : "Ошибка поиска");
+      setError(lookupError instanceof Error ? lookupError.message : copy.barcode.lookupError);
     } finally {
       setLoading(false);
     }
@@ -71,15 +73,13 @@ export function WarehouseBarcodePanel({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ScanLine />
-            Сканер штрихкода
+            {copy.barcode.title}
           </DialogTitle>
-          <DialogDescription>
-            Отсканируйте код или введите артикул — глобальный сканер работает на всех экранах
-          </DialogDescription>
+          <DialogDescription>{copy.barcode.description}</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="barcode-input">Штрихкод / артикул</Label>
+            <Label htmlFor="barcode-input">{copy.barcode.label}</Label>
             <div className="relative">
               <Barcode className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 opacity-40" />
               <Input
@@ -88,7 +88,7 @@ export function WarehouseBarcodePanel({
                 className="pl-9 font-mono"
                 value={barcode}
                 onChange={(event) => setBarcode(event.target.value)}
-                placeholder="Наведите сканер и нажмите Enter"
+                placeholder={copy.barcode.placeholder}
                 autoComplete="off"
               />
             </div>
@@ -105,7 +105,7 @@ export function WarehouseBarcodePanel({
                 ) : null}
               </div>
               <p className="text-sm text-muted-foreground">
-                Доступно: {result.totalAvailable} {result.unit}
+                {copy.barcode.available(result.totalAvailable, result.unit)}
                 {result.brandName ? ` · ${result.brandName}` : ""}
               </p>
             </div>
@@ -115,10 +115,10 @@ export function WarehouseBarcodePanel({
 
           <DialogFooter className="gap-2 sm:gap-0">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Закрыть
+              {copy.close}
             </Button>
             <Button type="submit" disabled={loading || !barcode.trim()}>
-              Найти
+              {copy.barcode.find}
             </Button>
           </DialogFooter>
         </form>

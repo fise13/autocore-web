@@ -7,6 +7,7 @@ import { OperationsStats } from "@/lib/mission-control/compute-operations-stats"
 import { moduleLabel } from "@/lib/mission-control/activity-labels";
 import { ActivityModule } from "@/domain/activity-log";
 import { McModuleHeader } from "@/components/mission-control/mc-module-header";
+import { userCopy } from "@/lib/user-copy";
 
 type OperationsStatsModuleProps = {
   stats: OperationsStats;
@@ -28,14 +29,15 @@ export const OperationsStatsModule = memo(function OperationsStatsModule({
   stats,
   isLoading,
 }: OperationsStatsModuleProps) {
+  const copy = userCopy.missionControl.modules.operations;
   const maxModuleCount = Math.max(1, ...MODULE_ORDER.map((m) => stats.editsTodayByModule[m]));
 
   return (
     <article className="mc-module-card">
       <McModuleHeader
         icon={BarChart3}
-        title="Операционная статистика"
-        description="Изменения и активность команды сегодня"
+        title={copy.title}
+        description={copy.description}
         accent="amber"
       />
       <div className="mc-module-body space-y-4">
@@ -48,13 +50,13 @@ export const OperationsStatsModule = memo(function OperationsStatsModule({
         ) : (
           <>
             <div className="grid grid-cols-3 gap-3">
-              <MiniStat label="Изменений" value={stats.totalEditsToday} />
-              <MiniStat label="Импорт/экспорт" value={stats.importExportCount} />
-              <MiniStat label="Обновлений" value={stats.syncEventsToday} />
+              <MiniStat label={copy.edits} value={stats.totalEditsToday} />
+              <MiniStat label={copy.importExport} value={stats.importExportCount} />
+              <MiniStat label={copy.syncs} value={stats.syncEventsToday} />
             </div>
 
             <div className="space-y-2.5">
-              <p className="mc-section-label">По модулям</p>
+              <p className="mc-section-label">{copy.byModule}</p>
               {MODULE_ORDER.map((module) => {
                 const count = stats.editsTodayByModule[module];
                 if (count === 0 && module === "settings") return null;
@@ -76,9 +78,9 @@ export const OperationsStatsModule = memo(function OperationsStatsModule({
             </div>
 
             <div className="space-y-2">
-              <p className="mc-section-label">Топ участников</p>
+              <p className="mc-section-label">{copy.topContributors}</p>
               {stats.topContributors.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Сегодня изменений ещё не было</p>
+                <p className="text-sm text-muted-foreground">{copy.empty}</p>
               ) : (
                 stats.topContributors.map((contributor, index) => (
                   <div

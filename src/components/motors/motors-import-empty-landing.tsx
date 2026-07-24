@@ -122,8 +122,8 @@ export function MotorsImportEmptyLanding({
                     variant="ghost"
                     size="icon-sm"
                     onClick={onCancelImport}
-                    aria-label="Отменить импорт"
-                    title="Отменить импорт"
+                    aria-label={userCopy.motors.emptyLanding.cancelImportAria}
+                    title={userCopy.motors.emptyLanding.cancelImportAria}
                   >
                     <X className="size-4" />
                   </Button>
@@ -157,8 +157,8 @@ export function MotorsImportEmptyLanding({
                     {review.fileName ?? userCopy.motors.magicImport}
                   </p>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {review.validMotors > 0 ? review.validMotors : review.totalMotors} моторов
-                    {review.specificSheets > 0 ? ` · ${review.specificSheets} спец. листов` : ""}
+                    {userCopy.motors.emptyLanding.motorsCount(review.validMotors > 0 ? review.validMotors : review.totalMotors)}
+                    {review.specificSheets > 0 ? userCopy.motors.emptyLanding.specificSheets(review.specificSheets) : ""}
                   </p>
                 </div>
               </div>
@@ -266,7 +266,7 @@ export function MotorsImportEmptyLanding({
                   className="flex items-center justify-center gap-1.5 text-xs font-medium text-primary underline-offset-4 hover:underline"
                 >
                   <Sparkles className="size-3.5" aria-hidden />
-                  Переносите целый бизнес? Откройте миграцию
+                  {userCopy.motors.emptyLanding.migrateHint}
                   <ArrowRight className="size-3.5" aria-hidden />
                 </Link>
               </div>

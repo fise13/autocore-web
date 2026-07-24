@@ -5,6 +5,7 @@ import { Package } from "lucide-react";
 
 import { MotorEntity } from "@/domain/motor";
 import { McModuleHeader } from "@/components/mission-control/mc-module-header";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 
 type InventoryModuleProps = {
   latestMotors: MotorEntity[];
@@ -17,25 +18,28 @@ export const InventoryModule = memo(function InventoryModule({
   recentlyModified,
   isLoading,
 }: InventoryModuleProps) {
+  const copy = userCopy.missionControl.modules.inventory;
+  const localeTag = getActiveUserCopyLocale() === "ru" ? "ru-RU" : "en-US";
+
   return (
     <article className="mc-module-card">
-      <McModuleHeader icon={Package} title="Моторы" href="/motors" accent="green" />
+      <McModuleHeader icon={Package} title={copy.title} href="/motors" accent="green" />
       <div className="mc-module-body grid gap-4 md:grid-cols-2">
-        <Section title="Новые" empty="Нет новых моторов" isLoading={isLoading}>
+        <Section title={copy.newest} empty={copy.newestEmpty} isLoading={isLoading}>
           {latestMotors.map((motor) => (
             <Row
               key={motor.id}
               primary={motor.serialCode || "—"}
-              secondary={`${motor.brandName ?? ""} ${motor.engineCode ?? ""}`.trim() || "Без бренда"}
+              secondary={`${motor.brandName ?? ""} ${motor.engineCode ?? ""}`.trim() || copy.noBrand}
             />
           ))}
         </Section>
-        <Section title="Недавно изменены" empty="Изменений пока нет" isLoading={isLoading}>
+        <Section title={copy.recentlyModified} empty={copy.modifiedEmpty} isLoading={isLoading}>
           {recentlyModified.map((motor) => (
             <Row
               key={`mod-${motor.id}`}
               primary={motor.serialCode || "—"}
-              secondary={motor.updatedAt?.toLocaleString("ru-RU") ?? "—"}
+              secondary={motor.updatedAt?.toLocaleString(localeTag) ?? "—"}
             />
           ))}
         </Section>

@@ -15,6 +15,7 @@ import {
   McPanelBody,
   McPanelHeader,
 } from "@/components/mission-control/dashboard/dashboard-panel";
+import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 import { InventoryItem } from "@/domain/inventory";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,13 +27,6 @@ type InventorySegment = {
   share: number;
   fill: string;
 };
-
-const chartConfig = {
-  share: { label: "Доля" },
-  motors: { label: "Моторы", color: "var(--chart-1)" },
-  warehouse: { label: "Склад", color: "var(--chart-2)" },
-  deficits: { label: "Дефициты", color: "var(--chart-3)" },
-} satisfies ChartConfig;
 
 type McWarehouseHealthProps = {
   warehouseItems: InventoryItem[];
@@ -53,6 +47,15 @@ export function McWarehouseHealth({
   canMotors,
   className,
 }: McWarehouseHealthProps) {
+  const copy = userCopy.missionControl.dashboard.charts;
+
+  const chartConfig = {
+    share: { label: copy.share },
+    motors: { label: copy.motors, color: "var(--chart-1)" },
+    warehouse: { label: copy.warehouse, color: "var(--chart-2)" },
+    deficits: { label: copy.deficits, color: "var(--chart-3)" },
+  } satisfies ChartConfig;
+
   const chartData = useMemo(() => {
     const activeWarehouse = warehouseItems.filter((item) => item.status === "active");
     const warehouseLow = activeWarehouse.filter(
@@ -94,7 +97,7 @@ export function McWarehouseHealth({
   if (isLoading) {
     return (
       <McPanel className={cn("shadow-none dark:ring-0", className)}>
-        <McPanelHeader title="Остатки" />
+        <McPanelHeader title={copy.stock} />
         <McPanelBody className="flex items-center justify-center py-8">
           <Skeleton className="mx-auto aspect-square max-h-72 w-full rounded-full" />
         </McPanelBody>
@@ -109,8 +112,8 @@ export function McWarehouseHealth({
   return (
     <McPanel className={cn("flex flex-col shadow-none dark:ring-0", className)}>
       <McPanelHeader
-        title="Остатки"
-        description="Структура моторов и склада"
+        title={copy.stock}
+        description={copy.stockDesc}
         badge={
           <Delta value={delta} variant="badge">
             <DeltaIcon variant="trend" />

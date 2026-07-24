@@ -14,6 +14,7 @@ import { useDocumentImportJobRealtime } from "@/hooks/use-document-import-jobs-r
 import { useImportBatchRealtime } from "@/hooks/use-import-batches-realtime";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { formatDocumentImportToastCopy } from "@/lib/document-import/toast-copy";
+import { userCopy } from "@/lib/user-copy";
 
 type DocumentImportWorkspaceProps = {
   jobId: string;
@@ -41,7 +42,7 @@ export function DocumentImportWorkspace({ jobId }: DocumentImportWorkspaceProps)
   const title = job
     ? formatDocumentImportToastCopy(job).title
     : loading
-      ? "Загрузка…"
+      ? userCopy.documentImport.loading
       : "Imported document";
 
   return (
@@ -52,7 +53,7 @@ export function DocumentImportWorkspace({ jobId }: DocumentImportWorkspaceProps)
           className="inline-flex h-7 items-center gap-1.5 rounded-lg px-2 text-[0.8rem] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <ArrowLeft className="size-4" />
-          Импорт
+          {userCopy.documentImport.title}
         </Link>
         <div className="min-w-0">
           <h1 className="truncate text-base font-semibold tracking-tight">{title}</h1>
@@ -67,8 +68,8 @@ export function DocumentImportWorkspace({ jobId }: DocumentImportWorkspaceProps)
 
       {!loading && !job && !batch ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl border bg-muted/20">
-          <p className="text-sm font-medium">Документ не найден</p>
-          <p className="text-xs text-muted-foreground">Проверьте ссылку или права доступа</p>
+          <p className="text-sm font-medium">{userCopy.documentImport.notFoundTitle}</p>
+          <p className="text-xs text-muted-foreground">{userCopy.documentImport.notFoundHint}</p>
         </div>
       ) : (
         <HorizontalResizableSplit

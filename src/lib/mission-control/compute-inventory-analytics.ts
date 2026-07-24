@@ -3,8 +3,19 @@ import { differenceInCalendarDays } from "date-fns";
 import { FinancialOperation } from "@/domain/financial-operation";
 import { MotorEntity } from "@/domain/motor";
 import { MOTOR_SALE_CATEGORY } from "@/lib/accounting/categories";
+import { userCopyEn } from "@/lib/user-copy.en";
+import { userCopyRu } from "@/lib/user-copy.ru";
 
 const STALE_DAYS = 90;
+
+const UNSPECIFIED_BRANDS = new Set(
+  [
+    "—",
+    "-",
+    userCopyEn.missionControl.analytics.unspecified,
+    userCopyRu.missionControl.analytics.unspecified,
+  ].map((value) => value.toLowerCase()),
+);
 
 export type InventoryAnalytics = {
   avgDaysToSale: number | null;
@@ -27,7 +38,7 @@ function topCounts<T>(
   const counts = new Map<string, number>();
   for (const item of items) {
     const key = pick(item).trim();
-    if (!key || key === "—" || key === "Не указан") continue;
+    if (!key || UNSPECIFIED_BRANDS.has(key.toLowerCase())) continue;
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   return [...counts.entries()]

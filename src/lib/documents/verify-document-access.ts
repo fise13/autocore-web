@@ -9,6 +9,7 @@ import { normalizeCompanyId } from "@/lib/company-id";
 export type VerifiedDocumentAccess = {
   uid: string;
   companyId: string;
+  preferredLocale?: "en" | "ru";
 };
 
 function readBearerToken(request: Request): string | null {
@@ -46,7 +47,10 @@ export async function verifyDocumentAccess(request: Request): Promise<VerifiedDo
     throw new DocumentAccessError("Pro subscription required", 402);
   }
 
-  return { uid, companyId };
+  const rawLocale = (userSnapshot.data() as Record<string, unknown> | undefined)?.preferredLocale;
+  const preferredLocale = rawLocale === "en" || rawLocale === "ru" ? rawLocale : undefined;
+
+  return { uid, companyId, preferredLocale };
 }
 
 export class DocumentAccessError extends Error {

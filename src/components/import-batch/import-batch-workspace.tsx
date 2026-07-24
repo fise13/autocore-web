@@ -28,6 +28,7 @@ import { getFirebaseApp } from "@/infrastructure/firebase/client";
 import { uploadImportBatchFileClient } from "@/lib/import-batch/fetch-import-batches.client";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 type ImportBatchWorkspaceProps = {
   batchId: string;
@@ -47,7 +48,7 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
 
   async function authHeader(): Promise<string> {
     const token = await getAuth(getFirebaseApp()).currentUser?.getIdToken();
-    if (!token) throw new Error("Войдите в аккаунт");
+    if (!token) throw new Error(userCopy.importBatch.signIn);
     return `Bearer ${token}`;
   }
 
@@ -62,7 +63,7 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
     });
     if (!response.ok) {
       const body = (await response.json().catch(() => null)) as { error?: string } | null;
-      throw new Error(body?.error || "Не удалось сохранить");
+      throw new Error(body?.error || userCopy.importBatch.saveFailed);
     }
   }
 
@@ -82,10 +83,10 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
         error?: string;
         imported?: number;
       } | null;
-      if (!response.ok) throw new Error(body?.error || "Импорт не удался");
+      if (!response.ok) throw new Error(body?.error || userCopy.importBatch.importFailed);
       router.push(batch?.target === "warehouse" ? "/warehouse" : "/motors");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ошибка");
+      setError(err instanceof Error ? err.message : userCopy.importBatch.errorGeneric);
     } finally {
       setBusy(false);
     }
@@ -101,10 +102,10 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(body?.error || "Откат не удался");
+        throw new Error(body?.error || userCopy.importBatch.rollbackFailed);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ошибка");
+      setError(err instanceof Error ? err.message : userCopy.importBatch.errorGeneric);
     } finally {
       setBusy(false);
     }
@@ -119,7 +120,7 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
         await uploadImportBatchFileClient({ batchId, file });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Загрузка не удалась");
+      setError(err instanceof Error ? err.message : userCopy.importBatch.uploadFailed);
     } finally {
       setBusy(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -131,7 +132,7 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
     try {
       await Promise.all(rows.map((row) => patchRow(row.id, { selected })));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ошибка");
+      setError(err instanceof Error ? err.message : userCopy.importBatch.errorGeneric);
     } finally {
       setBusy(false);
     }
@@ -149,9 +150,9 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
   if (!batch) {
     return (
       <div className="p-8 text-sm text-muted-foreground">
-        Сессия не найдена.{" "}
+        {userCopy.importBatch.sessionMissing}{" "}
         <Link href="/imports" className="text-foreground underline">
-          К списку
+          {userCopy.importBatch.toList}
         </Link>
       </div>
     );
@@ -170,24 +171,24 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
       <header className="flex flex-wrap items-center gap-3 border-b px-4 py-3 md:px-6">
         <Link
           href="/imports"
-          aria-label="Назад"
+          aria-label={userCopy.importBatch.backAria}
           className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
         >
           <ArrowLeft className="size-4" />
         </Link>
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-lg font-semibold tracking-tight">
-            {batch.title || "Импорт двигателей"}
+            {batch.title || userCopy.importBatch.motorsFallback}
           </h1>
           <p className="text-xs text-muted-foreground">
-            {batch.counts.files} файл. · {batch.counts.rows} строк · {selectedCount} выбрано
-            {batch.aiStatus === "processing" ? " · AI работает…" : null}
+            {userCopy.importBatch.filesRowsSelected(batch.counts.files, batch.counts.rows, selectedCount)}
+            {batch.aiStatus === "processing" ? "{userCopy.importBatch.aiWorking}" : null}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" size="sm" onClick={() => setPhoneOpen(true)}>
             <Smartphone className="size-4" />
-            Телефон
+            {userCopy.importBatch.phone}
           </Button>
           <Button
             type="button"
@@ -197,7 +198,7 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
             onClick={() => fileInputRef.current?.click()}
           >
             <FileUp className="size-4" />
-            Файлы
+            {userCopy.importBatch.files}
           </Button>
           <input
             ref={fileInputRef}
@@ -210,12 +211,12 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
           {batch.status === "completed" ? (
             <Button type="button" variant="destructive" size="sm" disabled={busy} onClick={() => void rollback()}>
               <Trash2 className="size-4" />
-              Откатить
+              {userCopy.importBatch.rollback}
             </Button>
           ) : (
             <Button type="button" size="sm" disabled={!canCommit || busy} onClick={() => void commit()}>
               {busy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-              Импортировать {selectedCount || ""}
+              {userCopy.importBatch.importSelected(selectedCount || "")}
             </Button>
           )}
         </div>
@@ -230,11 +231,11 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
       <div className="grid min-h-0 flex-1 gap-0 lg:grid-cols-[220px_1fr]">
         <aside className="border-b border-border/80 p-3 lg:border-b-0 lg:border-r">
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Файлы
+            {userCopy.importBatch.files}
           </p>
           <div className="flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
             {files.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Пока пусто — добавьте с телефона или с диска</p>
+              <p className="text-xs text-muted-foreground">{userCopy.importBatch.filesEmpty}</p>
             ) : (
               files.map((file) => (
                 <div
@@ -266,13 +267,13 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
 
         <div className="min-h-0 overflow-auto p-3 md:p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
-            <p className="text-sm font-medium">Предпросмотр строк</p>
+            <p className="text-sm font-medium">{userCopy.importBatch.previewRows}</p>
             <div className="flex gap-2">
               <Button type="button" variant="ghost" size="sm" disabled={busy || rows.length === 0} onClick={() => void selectAll(true)}>
-                Выбрать все
+                {userCopy.importBatch.selectAll}
               </Button>
               <Button type="button" variant="ghost" size="sm" disabled={busy || rows.length === 0} onClick={() => void selectAll(false)}>
-                Снять
+                {userCopy.importBatch.clearSelection}
               </Button>
             </div>
           </div>
@@ -282,13 +283,13 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
               {batch.aiStatus === "processing" ? (
                 <>
                   <Loader2 className="size-5 animate-spin text-muted-foreground" />
-                  <p className="text-sm font-medium">AI разбирает файлы…</p>
+                  <p className="text-sm font-medium">{userCopy.importBatch.aiParsing}</p>
                 </>
               ) : (
                 <>
-                  <p className="text-sm font-medium">Строк пока нет</p>
+                  <p className="text-sm font-medium">{userCopy.importBatch.noRowsYet}</p>
                   <p className="max-w-sm text-sm text-muted-foreground">
-                    Добавьте фото или Excel — распознанные двигатели появятся здесь автоматически.
+                    {userCopy.importBatch.previewDropHint}
                   </p>
                 </>
               )}
@@ -299,11 +300,11 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
                 <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
                   <tr>
                     <th className="w-10 px-3 py-2" />
-                    <th className="px-2 py-2 font-medium">Бренд</th>
-                    <th className="px-2 py-2 font-medium">Код</th>
-                    <th className="px-2 py-2 font-medium">Серийный</th>
-                    <th className="px-2 py-2 font-medium">Кол-во</th>
-                    <th className="px-2 py-2 font-medium">Заметки</th>
+                    <th className="px-2 py-2 font-medium">{userCopy.importBatch.colBrand}</th>
+                    <th className="px-2 py-2 font-medium">{userCopy.importBatch.colCode}</th>
+                    <th className="px-2 py-2 font-medium">{userCopy.importBatch.colSerial}</th>
+                    <th className="px-2 py-2 font-medium">{userCopy.importBatch.colQty}</th>
+                    <th className="px-2 py-2 font-medium">{userCopy.importBatch.colNotes}</th>
                     <th className="px-2 py-2 font-medium">AI</th>
                   </tr>
                 </thead>
@@ -354,7 +355,7 @@ function ReviewRow({
           checked={row.selected}
           disabled={disabled}
           onChange={(event) => onPatch({ selected: event.target.checked })}
-          aria-label="Выбрать строку"
+          aria-label={userCopy.importBatch.selectRowAria}
         />
       </td>
       <td className="px-2 py-1.5">

@@ -6,6 +6,7 @@ import { DocumentImportsList } from "@/components/document-import/document-impor
 import { useAuth } from "@/components/providers/auth-provider";
 import { useDocumentImportJobsRealtime } from "@/hooks/use-document-import-jobs-realtime";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { userCopy } from "@/lib/user-copy";
 
 export function DocumentImportsListWorkspace() {
   const { profile } = useAuth();
@@ -19,9 +20,9 @@ export function DocumentImportsListWorkspace() {
           <Smartphone className="size-5" aria-hidden />
         </div>
         <div className="min-w-0 space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">С телефона</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{userCopy.documentImport.listTitle}</h1>
           <p className="text-sm text-muted-foreground">
-            Документы с мобильного импорта. Откройте снимок, проверьте данные и подтвердите.
+            {userCopy.documentImport.listDescription}
           </p>
         </div>
       </div>

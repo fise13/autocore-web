@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 import type { ImageAsset, RecordSuggestion } from "@/lib/import";
 
@@ -52,6 +53,7 @@ export type ReviewGridProps = {
 
 export function ReviewGrid(props: ReviewGridProps) {
   const { rows, selection } = props;
+  const copy = userCopy.migration.review;
   const [filter, setFilter] = useState<Filter>("all");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -91,16 +93,16 @@ export function ReviewGrid(props: ReviewGridProps) {
       <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
         <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5 text-sm">
           <FilterTab active={filter === "all"} onClick={() => setFilter("all")}>
-            Все {rows.length}
+            {copy.all(rows.length)}
           </FilterTab>
           <FilterTab active={filter === "attention"} onClick={() => setFilter("attention")}>
-            Требуют внимания {attentionCount}
+            {copy.attention(attentionCount)}
           </FilterTab>
         </div>
         {suggestionCount > 0 && (
           <Button variant="outline" size="sm" onClick={props.onAcceptAllSuggestions}>
             <CheckCircle2 data-icon="inline-start" />
-            Принять все предложения ({suggestionCount})
+            {copy.acceptAll(suggestionCount)}
           </Button>
         )}
       </div>
@@ -109,17 +111,17 @@ export function ReviewGrid(props: ReviewGridProps) {
       <div className={cn(GRID, "border-b bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground")}>
         <button
           type="button"
-          aria-label="Выбрать все"
+          aria-label={copy.selectAllAria}
           onClick={() => (allSelected ? props.onClearSelection() : props.onSelectAll(visibleIds))}
           className="flex items-center justify-center text-muted-foreground hover:text-foreground"
         >
           {allSelected ? <CheckSquare className="size-4 text-emerald-600" /> : <Square className="size-4" />}
         </button>
-        <span>Тип</span>
-        <span>Позиция</span>
-        <span>Что заметил AutoCore</span>
-        <span className="text-right">Уверенность</span>
-        <span className="text-center">Фото</span>
+        <span>{copy.colType}</span>
+        <span>{copy.colItem}</span>
+        <span>{copy.colNoticed}</span>
+        <span className="text-right">{copy.colConfidence}</span>
+        <span className="text-center">{copy.colPhoto}</span>
         <span />
       </div>
 
@@ -162,7 +164,7 @@ export function ReviewGrid(props: ReviewGridProps) {
                 {/* Select */}
                 <button
                   type="button"
-                  aria-label="Выбрать строку"
+                  aria-label={copy.selectRowAria}
                   onClick={() => props.onToggleSelect(row.id)}
                   className="flex items-center justify-center text-muted-foreground hover:text-foreground"
                 >
@@ -210,7 +212,7 @@ export function ReviewGrid(props: ReviewGridProps) {
                         !row.values.name && "text-muted-foreground italic",
                       )}
                     >
-                      {row.values.name || "Без названия"}
+                      {row.values.name || copy.untitled}
                     </button>
                   )}
                   <span className="truncate px-1 text-xs text-muted-foreground">
@@ -242,7 +244,7 @@ export function ReviewGrid(props: ReviewGridProps) {
                 {/* Actions */}
                 <DropdownMenu>
                   <DropdownMenuTrigger
-                    render={<Button variant="ghost" size="icon-sm" aria-label="Действия со строкой" />}
+                    render={<Button variant="ghost" size="icon-sm" aria-label={copy.rowActionsAria} />}
                   >
                     <MoreHorizontal />
                   </DropdownMenuTrigger>
@@ -250,18 +252,18 @@ export function ReviewGrid(props: ReviewGridProps) {
                     {skipped ? (
                       <DropdownMenuItem onClick={() => props.onRestore([row.id])}>
                         <RotateCcw />
-                        Вернуть в импорт
+                        {copy.restore}
                       </DropdownMenuItem>
                     ) : (
                       <DropdownMenuItem onClick={() => props.onSkip([row.id])}>
                         <TriangleAlert />
-                        Пропустить строку
+                        {copy.skipRow}
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem variant="destructive" onClick={() => props.onDelete([row.id])}>
                       <Trash2 />
-                      Удалить
+                      {copy.delete}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -274,20 +276,20 @@ export function ReviewGrid(props: ReviewGridProps) {
       {/* Batch toolbar */}
       {selection.size > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/60 px-3 py-2 text-sm">
-          <span className="font-medium">Выбрано: {selection.size}</span>
+          <span className="font-medium">{copy.selected(selection.size)}</span>
           <div className="flex items-center gap-1.5">
             <Button variant="ghost" size="sm" onClick={() => props.onSkip(selectedArray)}>
-              Пропустить
+              {copy.skip}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => props.onRestore(selectedArray)}>
-              Вернуть
+              {copy.restoreShort}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => props.onDelete(selectedArray)}>
               <Trash2 data-icon="inline-start" />
-              Удалить
+              {copy.delete}
             </Button>
             <Button variant="outline" size="sm" onClick={props.onClearSelection}>
-              Снять выделение
+              {copy.clearSelection}
             </Button>
           </div>
         </div>
@@ -357,7 +359,7 @@ function AttentionCell({
   return (
     <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
       <CheckCircle2 className="size-3 shrink-0 text-emerald-500" />
-      Готово к переносу
+      {userCopy.migration.review.readyToMigrate}
     </span>
   );
 }

@@ -15,6 +15,7 @@ import {
   operationTypeLabel,
 } from "@/lib/accounting/labels";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 export type WorkOrderFinancePanelLabels = {
   notReady: string;
@@ -31,19 +32,21 @@ export type WorkOrderFinancePanelLabels = {
   typeBadge?: Record<string, string>;
 };
 
-const DEFAULT_LABELS: WorkOrderFinancePanelLabels = {
-  notReady: "Финансы и зарплаты появятся после завершения заказ-наряда (статус «Готов»).",
-  income: "Доход",
-  expenses: "Расходы",
-  payroll: "Зарплата механикам",
-  operationsTitle: "Операции в бухгалтерии",
-  openAccounting: "Открыть бухгалтерию",
-  opsProcessing: "Операции ещё обрабатываются сервером",
-  opsAfterComplete: "Операции появятся после завершения заказа",
-  payrollTitle: "Начисления зарплаты",
-  payrollEmpty:
-    "Начислений зарплаты пока нет. Они появятся после завершения заказ-наряда с работами и исполнителями.",
-};
+function getDefaultLabels(): WorkOrderFinancePanelLabels {
+  const f = userCopy.workOrders.detail.finance;
+  return {
+    notReady: f.notReady,
+    income: f.income,
+    expenses: f.expenses,
+    payroll: f.payroll,
+    operationsTitle: f.operationsTitle,
+    openAccounting: f.openAccounting,
+    opsProcessing: f.opsProcessing,
+    opsAfterComplete: f.opsAfterComplete,
+    payrollTitle: f.payrollTitle,
+    payrollEmpty: f.payrollEmpty,
+  };
+}
 
 type WorkOrderFinancePanelProps = {
   order: WorkOrder;
@@ -58,7 +61,7 @@ export function WorkOrderFinancePanel({
   operations,
   payroll,
   employees,
-  labels = DEFAULT_LABELS,
+  labels = getDefaultLabels(),
 }: WorkOrderFinancePanelProps) {
   const summary = useMemo(() => {
     const income = operations

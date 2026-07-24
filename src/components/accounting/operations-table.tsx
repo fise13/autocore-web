@@ -75,7 +75,7 @@ type OperationsTableProps = {
   onMotorSaleSelect?: (operation: FinancialOperation) => void;
   showWorkOrderColumn?: boolean;
   workOrders?: WorkOrder[];
-  /** Show Доход/Расход flow badges for WO-linked categories. */
+  /** Show Income/Expense flow badges for WO-linked categories. */
   emphasizeWorkOrderFlow?: boolean;
   labels?: OperationsTableLabels;
 };

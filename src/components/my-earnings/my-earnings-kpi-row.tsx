@@ -23,7 +23,7 @@ export function MyEarningsKpiRow({ summary }: MyEarningsKpiRowProps) {
         variant="dashboard"
         footer={
           <span className="text-muted-foreground">
-            по {summary.paidOrderCount} наряд{summary.paidOrderCount === 1 ? "у" : "ам"}
+            {userCopy.myEarnings.paidOrdersHint(summary.paidOrderCount)}
           </span>
         }
       />
@@ -49,7 +49,7 @@ export function MyEarningsKpiRow({ summary }: MyEarningsKpiRowProps) {
           summary.pending > 0 ? (
             <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
               <Wallet className="size-3" aria-hidden="true" />
-              <McAnimatedValue value={summary.pending} format="currency" suffix=" ₸ к выплате" />
+              <McAnimatedValue value={summary.pending} format="currency" suffix={userCopy.myEarnings.pendingSuffix} />
             </span>
           ) : undefined
         }

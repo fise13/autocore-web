@@ -42,7 +42,7 @@ import {
   filterProductHelpSections,
   findHelpArticleSectionId,
   getPopularHelpArticles,
-  productHelpSections,
+  getProductHelpSections,
   type ProductHelpArticle,
   type ProductHelpSection,
   type ProductHelpSectionId,
@@ -50,6 +50,7 @@ import {
 import { getPlatformContacts } from "@/lib/platform/platform-contacts";
 import { marketingPageUrl } from "@/lib/site-urls";
 import { marketingRoutes } from "@/lib/marketing-routes";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 
 type CategoryFilter = ProductHelpSectionId | "all";
 
@@ -94,7 +95,7 @@ function HelpArticleLink({ article }: { article: ProductHelpArticle }) {
       render={<Link href={article.href} />}
       nativeButton={false}
     >
-      {article.hrefLabel ?? "Открыть раздел"}
+      {article.hrefLabel ?? userCopy.help.openSection}
       <ArrowUpRight className="size-3.5" />
     </Button>
   );
@@ -166,14 +167,20 @@ export function HelpWorkspace() {
   const [openIds, setOpenIds] = useState<string[]>([]);
   const contacts = getPlatformContacts();
   const reduceMotion = useReducedMotion();
+  const locale = getActiveUserCopyLocale();
+  // Stable across renders for a locale — fresh array from getter must not enter effect deps.
+  const productHelpSections = useMemo(() => getProductHelpSections(), [locale]);
 
-  const totalArticles = countProductHelpArticles();
-  const popular = useMemo(() => getPopularHelpArticles(), []);
+  const totalArticles = countProductHelpArticles(productHelpSections);
+  const popular = useMemo(
+    () => getPopularHelpArticles(productHelpSections),
+    [productHelpSections],
+  );
 
   const scopedSections = useMemo(() => {
     if (category === "all") return productHelpSections;
     return productHelpSections.filter((section) => section.id === category);
-  }, [category]);
+  }, [category, productHelpSections]);
 
   const sections = useMemo(
     () => filterProductHelpSections(scopedSections, query),
@@ -195,14 +202,24 @@ export function HelpWorkspace() {
         ? "search"
         : category;
 
-  useEffect(() => {
-    if (!isSearching) return;
-    const ids = sections.flatMap((section) => section.items.map((item) => item.id));
-    setOpenIds(ids.slice(0, 8));
+  const searchOpenIdsKey = useMemo(() => {
+    if (!isSearching) return "";
+    return sections
+      .flatMap((section) => section.items.map((item) => item.id))
+      .slice(0, 8)
+      .join("\0");
   }, [isSearching, sections]);
 
+  useEffect(() => {
+    if (!isSearching) return;
+    const ids = searchOpenIdsKey ? searchOpenIdsKey.split("\0") : [];
+    setOpenIds((prev) =>
+      prev.length === ids.length && prev.every((id, index) => id === ids[index]) ? prev : ids,
+    );
+  }, [isSearching, searchOpenIdsKey]);
+
   const selectPopular = (articleId: string) => {
-    const sectionId = findHelpArticleSectionId(articleId);
+    const sectionId = findHelpArticleSectionId(articleId, productHelpSections);
     if (sectionId) setCategory(sectionId);
     setQuery("");
     setOpenIds([articleId]);
@@ -220,15 +237,15 @@ export function HelpWorkspace() {
 
   return (
     <EnterpriseWorkspaceShell
-      title="Справка"
-      description="Практические ответы по складу, нарядам, финансам, документам и мобильному приложению."
+      title={userCopy.help.title}
+      description={userCopy.help.description}
       meta={
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <Badge variant="outline" className="font-normal tabular-nums">
-            {totalArticles} статей
+            {userCopy.help.articlesCount(totalArticles)}
           </Badge>
           <span className="hidden sm:inline">·</span>
-          <span>{productHelpSections.length} разделов</span>
+          <span>{userCopy.help.sectionsCount(productHelpSections.length)}</span>
         </div>
       }
     >
@@ -236,13 +253,13 @@ export function HelpWorkspace() {
         <aside className="lg:sticky lg:top-4 lg:self-start">
           <LayoutGroup id={HELP_NAV_LAYOUT_ID}>
             <nav
-              aria-label="Разделы справки"
+              aria-label={userCopy.help.sectionsAria}
               className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:rounded-xl lg:border lg:border-border/60 lg:bg-card lg:p-2"
             >
               <CategoryButton
                 active={category === "all"}
                 icon={BookOpen}
-                label="Все разделы"
+                label={userCopy.help.allSections}
                 hint={`${totalArticles}`}
                 onClick={() => selectCategory("all")}
               />
@@ -271,7 +288,7 @@ export function HelpWorkspace() {
             className="rounded-xl border border-border/60 bg-gradient-to-br from-primary/[0.06] via-background to-background p-4 sm:p-5"
           >
             <label htmlFor="help-search" className="sr-only">
-              Поиск по справке
+              {userCopy.help.searchTitle}
             </label>
             <InputGroup>
               <InputGroupAddon>
@@ -281,8 +298,8 @@ export function HelpWorkspace() {
                 id="help-search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Склад, наряд, импорт, роль, сканер…"
-                aria-label="Поиск по справке"
+                placeholder={userCopy.help.searchPlaceholder}
+                aria-label={userCopy.help.searchTitle}
                 className="h-11 bg-background/80 pr-10 text-[15px]"
               />
               <AnimatePresence initial={false}>
@@ -296,7 +313,7 @@ export function HelpWorkspace() {
                     transition={{ duration: 0.15 }}
                     onClick={clearSearch}
                     className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground transition-colors hover:text-foreground"
-                    aria-label="Очистить поиск"
+                    aria-label={userCopy.help.clearSearchAria}
                   >
                     <X className="size-4" />
                   </motion.button>
@@ -306,10 +323,10 @@ export function HelpWorkspace() {
             <p className="mt-3 text-xs leading-relaxed text-muted-foreground sm:text-sm">
               {isSearching
                 ? resultCount > 0
-                  ? `Найдено: ${resultCount}`
-                  : "Ничего не найдено по этому запросу"
+                  ? userCopy.help.found(resultCount)
+                  : userCopy.help.nothingFoundQuery
                 : category === "all"
-                  ? "Выберите раздел слева или начните с частых вопросов ниже."
+                  ? userCopy.help.pickSectionHint
                   : (productHelpSections.find((section) => section.id === category)?.description ??
                     "")}
             </p>
@@ -324,10 +341,10 @@ export function HelpWorkspace() {
                       id="help-popular-heading"
                       className="text-sm font-semibold tracking-tight text-foreground"
                     >
-                      Частые вопросы
+                      {userCopy.help.popular}
                     </h2>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      Быстрый вход в самые востребованные сценарии
+                      {userCopy.help.popularHint}
                     </p>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
@@ -369,10 +386,10 @@ export function HelpWorkspace() {
                       id="help-catalog-heading"
                       className="text-sm font-semibold tracking-tight text-foreground"
                     >
-                      Разделы
+                      {userCopy.help.sections}
                     </h2>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      Выберите тему, чтобы открыть статьи
+                      {userCopy.help.sectionsHint}
                     </p>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
@@ -421,15 +438,15 @@ export function HelpWorkspace() {
             {!showPopular && sections.length === 0 ? (
               <EmptyState
                 icon={Search}
-                title="Ничего не найдено"
-                description="Попробуйте другие слова: «резерв», «PDF», «роль», «сканер». Или напишите в поддержку."
+                title={userCopy.help.nothingFoundTitle}
+                description={userCopy.help.nothingFoundDescription}
                 primaryAction={{
-                  label: "Сбросить поиск",
+                  label: userCopy.help.resetSearch,
                   onClick: clearSearch,
                   variant: "outline",
                 }}
                 secondaryAction={{
-                  label: "Все разделы",
+                  label: userCopy.help.allSections,
                   onClick: () => {
                     clearSearch();
                     selectCategory("all");
@@ -450,8 +467,8 @@ export function HelpWorkspace() {
           </EnterpriseAnimatedPanel>
 
           <EnterprisePanelCard
-            title="Нужна помощь?"
-            description="Команда AutoCore ответит по почте или телефону"
+            title={userCopy.help.needHelpTitle}
+            description={userCopy.help.needHelpDescription}
             contentClassName="px-6 py-5"
           >
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -485,7 +502,7 @@ export function HelpWorkspace() {
                 }
                 nativeButton={false}
               >
-                Страница контактов
+                {userCopy.help.contactsPage}
                 <ExternalLink className="size-3.5" />
               </Button>
             </div>

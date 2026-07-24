@@ -12,6 +12,7 @@ import {
 import { WarehouseLocation } from "@/domain/warehouse-location";
 import type { LocationOccupancy } from "@/hooks/use-warehouse-location-occupancy-realtime";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 type LocationPickerProps = {
   locations: WarehouseLocation[];
@@ -31,15 +32,15 @@ function occupancyLabel(
   occupancyByLocationId?: Record<string, LocationOccupancy>,
 ): string {
   const occ = occupancyByLocationId?.[locationId];
-  if (!occ || occ.lineCount === 0) return "свободно";
-  return `${occ.lineCount} поз.`;
+  if (!occ || occ.lineCount === 0) return userCopy.warehouse.free;
+  return userCopy.warehouse.occupancyShort(occ.lineCount);
 }
 
 export function LocationPicker({
   locations,
   valueId,
   onChange,
-  placeholder = "Выберите место",
+  placeholder = userCopy.warehouse.pickLocation,
   disabled,
   allowClear = true,
   className,
@@ -81,7 +82,7 @@ export function LocationPicker({
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
-        {allowClear ? <SelectItem value="__none__">Без места</SelectItem> : null}
+        {allowClear ? <SelectItem value="__none__">{userCopy.warehouse.noLocation}</SelectItem> : null}
         {options.map((location) => {
           const label = occupancyLabel(location.id, occupancyByLocationId);
           const occupied = (occupancyByLocationId?.[location.id]?.lineCount ?? 0) > 0;

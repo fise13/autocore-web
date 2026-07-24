@@ -33,6 +33,7 @@ import { createMotorImportRepository } from "@/infrastructure/firestore/motor-im
 import { createMotorRepository } from "@/infrastructure/firestore/motor-repository";
 import { createSpecificCategoryRepository } from "@/infrastructure/firestore/specific-category-repository";
 import type { MotorImportReviewSnapshot } from "@/components/layout/workspace-context";
+import { userCopy } from "@/lib/user-copy";
 
 const motorImportRepository = createMotorImportRepository();
 const motorRepository = createMotorRepository();
@@ -169,8 +170,8 @@ export function MotorImportHost() {
 
       if (engineRows.length === 0 && (resolvedJob.rowCount ?? resolvedJob.stats.totalEngineRows) > 0) {
         toast({
-          title: "Не все строки загрузились",
-          description: remote.error ?? "Подождите и откройте импорт снова",
+          title: userCopy.motors.importHost.partialTitle,
+          description: remote.error ?? userCopy.motors.importHost.partialDescription,
           variant: "error",
         });
       }
@@ -234,7 +235,7 @@ export function MotorImportHost() {
     setMotorImportProgress({
       phase: "analyze",
       percent: 1,
-      message: "Загружаем файл на сервер…",
+      message: userCopy.motors.importHost.uploadingFile,
       fileName: file.name,
     });
 
@@ -242,7 +243,7 @@ export function MotorImportHost() {
     if (!result.ok) {
       setMotorImportProgress(null);
       toast({
-        title: "Не удалось начать импорт",
+        title: userCopy.motors.importHost.startFailed,
         description: result.error,
         variant: "error",
       });
@@ -252,7 +253,7 @@ export function MotorImportHost() {
     setMotorImportProgress({
       phase: "analyze",
       percent: 3,
-      message: "Файл загружен, анализ на сервере…",
+      message: userCopy.motors.importHost.analyzing,
       fileName: file.name,
       jobId: result.jobId,
     });
@@ -412,7 +413,7 @@ export function MotorImportHost() {
           onAnalyze={async (input) => {
             const jobId = importResumeSession.jobId;
             if (!input.manualSheetMappings) {
-              throw new Error("Нет данных для пересчёта");
+              throw new Error(userCopy.motors.importHost.noRemapData);
             }
             const remote = await reanalyzeMotorImportJobRemote({
               jobId,
@@ -441,7 +442,7 @@ export function MotorImportHost() {
               jobId: input.jobId,
               phase: "apply",
               percent: 1,
-              message: "Загружаем моторы в базу…",
+              message: userCopy.motors.importHost.uploadingMotors,
               fileName: importSourceFileName,
             });
             const remote = await applyMotorImportJobRemote({

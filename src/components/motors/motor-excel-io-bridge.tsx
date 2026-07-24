@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { userCopy } from "@/lib/user-copy";
 
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { MotorEntity } from "@/domain/motor";
@@ -36,7 +37,7 @@ export function useMotorExcelIoBridge({
 
   const exportMotors = useCallback(async () => {
     if (!uid) {
-      throw new Error("Экспорт недоступен");
+      throw new Error(userCopy.layout.exportUnavailable);
     }
 
     setBusy("export");
@@ -46,7 +47,7 @@ export function useMotorExcelIoBridge({
         (motor) => importExportPrefs.includeDeleted || !motor.deletedAt,
       );
       if (scoped.length === 0) {
-        throw new Error("Нет данных для экспорта");
+        throw new Error(userCopy.motors.exportEmpty);
       }
 
       exportMotorsToExcelFile(scoped, buildExportFilename(), {
@@ -76,7 +77,7 @@ export function useMotorExcelIoBridge({
   const importMotors = useCallback(
     async (file: File) => {
       if (!uid || !canEdit) {
-        throw new Error("Импорт недоступен");
+        throw new Error(userCopy.layout.importUnavailable);
       }
       setBusy("import");
       try {
