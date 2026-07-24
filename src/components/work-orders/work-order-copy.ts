@@ -1,43 +1,94 @@
 import { WorkOrderAssigneeRole, WorkOrderStatus } from "@/domain/work-order";
+import { userCopy } from "@/lib/user-copy";
 
 export const STATUS_LABELS: Record<WorkOrderStatus, string> = {
-  draft: "Черновик",
-  confirmed: "Подтверждён",
-  in_progress: "В работе",
-  waiting_parts: "Ждём запчасти",
-  completed: "Готов",
-  delivered: "Выдан",
-  cancelled: "Отменён",
+  get draft() {
+    return userCopy.workOrders.status.draft;
+  },
+  get confirmed() {
+    return userCopy.workOrders.status.confirmed;
+  },
+  get in_progress() {
+    return userCopy.workOrders.status.in_progress;
+  },
+  get waiting_parts() {
+    return userCopy.workOrders.status.waiting_parts;
+  },
+  get completed() {
+    return userCopy.workOrders.status.completed;
+  },
+  get delivered() {
+    return userCopy.workOrders.status.delivered;
+  },
+  get cancelled() {
+    return userCopy.workOrders.status.cancelled;
+  },
 };
 
 export const STATUS_HINTS: Record<WorkOrderStatus, string> = {
-  draft: "Заказ создан, можно редактировать состав",
-  confirmed: "Клиент согласовал, можно начинать работу",
-  in_progress: "Мастера выполняют работы",
-  waiting_parts: "Ожидание поставки со склада",
-  completed: "Работы завершены, можно выдать авто",
-  delivered: "Автомобиль передан клиенту",
-  cancelled: "Заказ закрыт без выполнения",
+  get draft() {
+    return userCopy.workOrders.statusHint.draft;
+  },
+  get confirmed() {
+    return userCopy.workOrders.statusHint.confirmed;
+  },
+  get in_progress() {
+    return userCopy.workOrders.statusHint.in_progress;
+  },
+  get waiting_parts() {
+    return userCopy.workOrders.statusHint.waiting_parts;
+  },
+  get completed() {
+    return userCopy.workOrders.statusHint.completed;
+  },
+  get delivered() {
+    return userCopy.workOrders.statusHint.delivered;
+  },
+  get cancelled() {
+    return userCopy.workOrders.statusHint.cancelled;
+  },
 };
 
 export const ROLE_LABELS: Record<WorkOrderAssigneeRole, string> = {
-  mechanic: "Механик",
-  diagnostician: "Диагност",
-  manager: "Менеджер",
+  get mechanic() {
+    return userCopy.workOrders.roles.mechanic;
+  },
+  get diagnostician() {
+    return userCopy.workOrders.roles.diagnostician;
+  },
+  get manager() {
+    return userCopy.workOrders.roles.manager;
+  },
 };
 
 export const TRANSITION_LABELS: Partial<Record<WorkOrderStatus, string>> = {
-  confirmed: "Подтвердить заказ",
-  in_progress: "Начать работу",
-  waiting_parts: "Ждём запчасти",
-  completed: "Завершить работы",
-  delivered: "Выдать клиенту",
-  cancelled: "Отменить",
+  get confirmed() {
+    return userCopy.workOrders.transitions.confirmed;
+  },
+  get in_progress() {
+    return userCopy.workOrders.transitions.in_progress;
+  },
+  get waiting_parts() {
+    return userCopy.workOrders.transitions.waiting_parts;
+  },
+  get completed() {
+    return userCopy.workOrders.transitions.completed;
+  },
+  get delivered() {
+    return userCopy.workOrders.transitions.delivered;
+  },
+  get cancelled() {
+    return userCopy.workOrders.transitions.cancelled;
+  },
 };
 
 export function transitionLabel(from: WorkOrderStatus, to: WorkOrderStatus): string {
-  if (to === "in_progress" && from === "waiting_parts") return "Продолжить работу";
-  if (to === "in_progress" && from === "confirmed") return "Начать работу";
+  if (to === "in_progress" && from === "waiting_parts") {
+    return userCopy.workOrders.transitions.continueWork;
+  }
+  if (to === "in_progress" && from === "confirmed") {
+    return userCopy.workOrders.transitions.in_progress;
+  }
   return TRANSITION_LABELS[to] ?? STATUS_LABELS[to];
 }
 
@@ -51,24 +102,6 @@ export function statusTone(status: WorkOrderStatus): string {
 }
 
 export function eventTypeLabel(type: string): string {
-  const map: Record<string, string> = {
-    OrderCreated: "Заказ создан",
-    OrderConfirmed: "Заказ подтверждён",
-    OrderStarted: "Работы начаты",
-    OrderWaitingParts: "Ожидание запчастей",
-    OrderCompleted: "Работы завершены",
-    OrderDelivered: "Авто выдано",
-    OrderCancelled: "Заказ отменён",
-    EngineReserved: "Двигатель зарезервирован",
-    EngineReleased: "Резерв двигателя снят",
-    EngineInstalled: "Двигатель установлен",
-    InventoryReserved: "Запчасти зарезервированы",
-    InventoryDeducted: "Запчасти списаны",
-    InventoryReleased: "Резерв запчастей снят",
-    SalaryCalculated: "Зарплата рассчитана",
-    FinancialTransactionCreated: "Финансовая операция",
-    VehicleHistoryRecorded: "История авто обновлена",
-    DocumentsGenerated: "Документы сформированы",
-  };
-  return map[type] ?? type;
+  const events = userCopy.workOrders.events as Record<string, string>;
+  return events[type] ?? type;
 }

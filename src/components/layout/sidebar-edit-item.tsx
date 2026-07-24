@@ -5,6 +5,7 @@ import type { DragEvent as ReactDragEvent } from "react";
 
 import { SidebarNavRow } from "@/components/layout/sidebar-nav-row";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 export function reorderList<T>(list: T[], fromIndex: number, toIndex: number): T[] {
   if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return list;
@@ -58,7 +59,7 @@ export function SidebarEditItem({
           onRemove();
         }}
         className="absolute left-0 top-1/2 z-10 flex size-3.5 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-        title="Убрать"
+        title={userCopy.layout.hide}
       >
         <Minus className="size-2.5" strokeWidth={2.5} />
       </button>

@@ -34,40 +34,36 @@ import {
 } from "@/lib/documents/open-document-preview";
 import { canManageSettings } from "@/lib/auth/permissions";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 type DocumentCategory = "all" | "service" | "sales" | "engine" | "history";
 
 const CATEGORY_NAV: {
   id: DocumentCategory;
-  label: string;
   icon: typeof FileStackIcon;
   match?: (doc: DocumentDefinition) => boolean;
 }[] = [
-  { id: "all", label: "Все шаблоны", icon: FileStackIcon, match: () => true },
+  { id: "all", icon: FileStackIcon, match: () => true },
   {
     id: "service",
-    label: "Сервис",
     icon: WrenchIcon,
     match: (doc) =>
       ["work-order", "service-act", "vehicle-intake-act"].includes(doc.slug),
   },
   {
     id: "sales",
-    label: "Продажи",
     icon: ReceiptIcon,
     match: (doc) =>
       ["invoice", "sales-receipt", "commercial-proposal"].includes(doc.slug),
   },
   {
     id: "engine",
-    label: "Двигатель",
     icon: CarIcon,
     match: (doc) =>
       ["engine-warranty", "engine-waybill", "service-tag"].includes(doc.slug),
   },
   {
     id: "history",
-    label: "Распечатанные",
     icon: HistoryIcon,
   },
 ];
@@ -77,6 +73,10 @@ function resolveCategory(value: string | null): DocumentCategory {
     return value;
   }
   return "all";
+}
+
+function categoryLabel(id: DocumentCategory): string {
+  return userCopy.documents.categories[id];
 }
 
 function DocumentsWorkspaceContent() {
@@ -109,20 +109,20 @@ function DocumentsWorkspaceContent() {
 
   return (
     <EnterpriseWorkspaceShell
-      title="Документы"
+      title={userCopy.documents.title}
       description={
         isHistory
-          ? "Все PDF, которые когда-либо формировались по заказ-нарядам — с поиском по дате и типу."
-          : "PDF-шаблоны для заказ-нарядов, актов, гарантий и продаж — с фирменным брендингом компании."
+          ? userCopy.documents.descriptionHistory
+          : userCopy.documents.descriptionTemplates
       }
       meta={
         <div className="flex flex-wrap gap-2">
           {isHistory ? (
-            <Badge variant="secondary">История PDF</Badge>
+            <Badge variant="secondary">{userCopy.documents.historyBadge}</Badge>
           ) : (
             <>
-              <Badge variant="secondary">{DOCUMENT_DEFINITIONS.length} шаблонов</Badge>
-              <Badge variant="outline">{filteredDocuments.length} в разделе</Badge>
+              <Badge variant="secondary">{userCopy.documents.templatesCount(DOCUMENT_DEFINITIONS.length)}</Badge>
+              <Badge variant="outline">{userCopy.documents.inSection(filteredDocuments.length)}</Badge>
             </>
           )}
         </div>
@@ -131,7 +131,7 @@ function DocumentsWorkspaceContent() {
         canManage ? (
           <Button variant="outline" render={<Link href="/settings?section=branding" />} nativeButton={false}>
             <PaletteIcon data-icon="inline-start" />
-            Брендинг PDF
+            {userCopy.settings.branding}
           </Button>
         ) : null
       }
@@ -139,7 +139,11 @@ function DocumentsWorkspaceContent() {
       <div className="flex flex-col gap-5">
         <EnterpriseWorkspaceNav
           layoutId="documents-workspace-nav"
-          items={CATEGORY_NAV.map(({ id, label, icon }) => ({ id, label, icon }))}
+          items={CATEGORY_NAV.map(({ id, icon }) => ({
+            id,
+            label: categoryLabel(id),
+            icon,
+          }))}
           activeId={category}
           onSelect={(id) => setCategory(id as DocumentCategory)}
         />

@@ -15,9 +15,10 @@ import { userCopyRu } from "@/lib/user-copy.ru";
 const copies = {
   en: userCopyEn,
   ru: userCopyRu,
-} as const;
+} as const satisfies Record<AppLocale, typeof userCopyEn | typeof userCopyRu>;
 
-type UserCopyBundle = (typeof copies)[AppLocale];
+/** Structural EN shape; RU is asserted to match at runtime (validated by key-parity checks). */
+type UserCopyBundle = typeof userCopyEn;
 
 let activeLocale: AppLocale = ACCOUNT_LOCALE_FALLBACK;
 
@@ -30,7 +31,7 @@ export function getActiveUserCopyLocale(): AppLocale {
 }
 
 function activeCopy(): UserCopyBundle {
-  return copies[activeLocale] ?? copies[ACCOUNT_LOCALE_FALLBACK];
+  return (copies[activeLocale] ?? copies[ACCOUNT_LOCALE_FALLBACK]) as unknown as UserCopyBundle;
 }
 
 /**

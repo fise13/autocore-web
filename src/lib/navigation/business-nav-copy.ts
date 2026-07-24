@@ -1,42 +1,31 @@
 import type { InventoryCollectionId } from "@/lib/navigation/inventory-collections";
+import { userCopy } from "@/lib/user-copy";
 
+/** Locale-aware nav labels — always read through userCopy (never freeze at module load). */
 export const businessNavCopy = {
-  workspace: {
-    dashboard: "Дашборд",
+  get workspace() {
+    return userCopy.nav.workspace;
   },
-  business: {
-    inventory: "Склад",
-    sales: "Продажи",
-    workOrders: "Заказ-наряды",
-    accounting: "Финансы",
-    documents: "Документы",
-    myEarnings: "Мои начисления",
-    team: "Команда",
+  get business() {
+    return userCopy.nav.business;
   },
-  collections: {
-    brands: "Бренды",
-    consumableCategories: "Категории",
-    uncategorized: "Неразобранное",
+  get collections() {
+    return userCopy.nav.collections;
   },
-  quickActions: {
-    section: "Быстрые действия",
-    importBusiness: "Импорт бизнеса",
-    addEngine: "Добавить двигатель",
-    sellItem: "Продать",
-    createWorkOrder: "Создать заказ-наряд",
+  get quickActions() {
+    return userCopy.nav.quickActions;
   },
-  empty: {
-    brands: "Бренды появятся после импорта двигателей",
-    brandsAction: "Импортировать",
+  get empty() {
+    return userCopy.nav.empty;
   },
-  inventoryCollection: {
-    engines: "Двигатели",
-    transmissions: "КПП",
-    parts: "Запчасти",
-    consumables: "Расходники",
-  } satisfies Record<InventoryCollectionId, string>,
-} as const;
+  get inventoryCollection() {
+    return userCopy.nav.inventoryCollection;
+  },
+  get groupBusiness() {
+    return userCopy.nav.groupBusiness;
+  },
+};
 
 export function inventoryCollectionLabel(collection: InventoryCollectionId): string {
-  return businessNavCopy.inventoryCollection[collection];
+  return userCopy.nav.inventoryCollection[collection];
 }

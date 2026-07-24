@@ -1,5 +1,7 @@
 "use client";
 
+import { userCopy } from "@/lib/user-copy";
+
 import { ArrowDownLeft, ArrowUpRight, Scale } from "lucide-react";
 
 import { AdvanceSnapshot } from "@/lib/accounting/advances";
@@ -15,7 +17,7 @@ export function AdvancesOverview({ snapshot }: AdvancesOverviewProps) {
   return (
     <div className="autocore-surface-group space-y-4 p-4">
       <div>
-        <p className="text-sm font-medium">Авансы</p>
+        <p className="text-sm font-medium">{userCopy.accounting.advances.title}</p>
         <p className="text-xs text-muted-foreground">
           Операции с «аванс», «предоплата» и другими признаками в категории или комментарии.
         </p>
@@ -23,14 +25,14 @@ export function AdvancesOverview({ snapshot }: AdvancesOverviewProps) {
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Metric
-          label="Получено"
+          label={userCopy.accounting.advances.received}
           value={formatMoney(snapshot.received)}
           icon={ArrowDownLeft}
           tone="green"
         />
-        <Metric label="Выдано" value={formatMoney(snapshot.paid)} icon={ArrowUpRight} tone="orange" />
+        <Metric label={userCopy.accounting.advances.paid} value={formatMoney(snapshot.paid)} icon={ArrowUpRight} tone="orange" />
         <Metric
-          label="Баланс"
+          label={userCopy.accounting.advances.balance}
           value={formatMoney(snapshot.balance)}
           icon={Scale}
           tone={snapshot.balance >= 0 ? "green" : "red"}

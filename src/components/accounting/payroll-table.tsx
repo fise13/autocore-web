@@ -18,6 +18,7 @@ import {
   resolveEmployeeName,
 } from "@/lib/work-order/work-order-display";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 type PayrollTableProps = {
   rows: PayrollTransaction[];
@@ -30,11 +31,9 @@ type PayrollTableProps = {
   emptyLabel?: string;
 };
 
-const STATUS_LABELS = {
-  pending: "К выплате",
-  paid: "Выплачено",
-  cancelled: "Не выплачивать",
-} as const;
+function payrollStatusLabels() {
+  return userCopy.accounting.payrollTable.status;
+}
 
 function nextPayrollStatus(current: PayrollTransactionStatus): PayrollTransactionStatus {
   if (current === "pending") return "paid";
@@ -50,8 +49,10 @@ export function PayrollTable({
   canEdit = false,
   onStatusChange,
   updatingId = null,
-  emptyLabel = "Начислений зарплаты пока нет. Они появятся после завершения заказ-наряда с работами и исполнителями.",
+  emptyLabel,
 }: PayrollTableProps) {
+  const resolvedEmptyLabel = emptyLabel ?? userCopy.accounting.payrollTable.empty;
+  const cols = userCopy.accounting.payrollTable;
   const workOrderById = useMemo(
     () => new Map(workOrders.map((order) => [order.id, order])),
     [workOrders],
@@ -61,7 +62,7 @@ export function PayrollTable({
   if (rows.length === 0) {
     return (
       <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center text-sm text-muted-foreground">
-        {emptyLabel}
+        {resolvedEmptyLabel}
       </div>
     );
   }
@@ -71,13 +72,13 @@ export function PayrollTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/30 hover:bg-muted/30">
-            <TableHead>Дата</TableHead>
-            <TableHead>Сотрудник</TableHead>
-            <TableHead>Роль</TableHead>
-            {showWorkOrderLink ? <TableHead>Заказ-наряд</TableHead> : null}
-            <TableHead className="text-right">Ставка</TableHead>
-            <TableHead className="text-right">Сумма</TableHead>
-            <TableHead>Статус</TableHead>
+            <TableHead>{cols.colDate}</TableHead>
+            <TableHead>{cols.colEmployee}</TableHead>
+            <TableHead>{cols.colRole}</TableHead>
+            {showWorkOrderLink ? <TableHead>{cols.colWorkOrder}</TableHead> : null}
+            <TableHead className="text-right">{cols.colRate}</TableHead>
+            <TableHead className="text-right">{cols.colAmount}</TableHead>
+            <TableHead>{cols.colStatus}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -97,7 +98,7 @@ export function PayrollTable({
                   isUpdating && "opacity-60",
                 )}
               >
-                {isUpdating ? "…" : STATUS_LABELS[row.status]}
+                {isUpdating ? "…" : payrollStatusLabels()[row.status]}
               </span>
             );
 
@@ -107,7 +108,7 @@ export function PayrollTable({
                   {format(row.createdAt, "dd.MM.yyyy", { locale: ru })}
                 </TableCell>
                 <TableCell className="font-medium">
-                  {resolveEmployeeName(row.employeeId, employees) ?? "Сотрудник"}
+                  {resolveEmployeeName(row.employeeId, employees) ?? cols.employeeFallback}
                 </TableCell>
                 <TableCell>{roleLabel}</TableCell>
                 {showWorkOrderLink ? (
@@ -131,7 +132,7 @@ export function PayrollTable({
                   {canEdit && onStatusChange ? (
                     <button
                       type="button"
-                      title="Нажмите, чтобы сменить статус: К выплате → Выплачено → Не выплачивать"
+                      title={cols.statusCycleHint}
                       disabled={isUpdating}
                       onClick={() => onStatusChange(row.id, nextPayrollStatus(row.status))}
                       className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50"

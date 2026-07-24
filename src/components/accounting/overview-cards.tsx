@@ -6,6 +6,7 @@ import { MetricCard } from "@/components/accounting/metric-card";
 import { BalanceSnapshot } from "@/application/use-cases/calculate-cash-balance";
 import { FinancialOperation } from "@/domain/financial-operation";
 import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
+import { userCopy } from "@/lib/user-copy";
 
 export type OverviewCardsLabels = {
   totalBalance: string;
@@ -15,13 +16,16 @@ export type OverviewCardsLabels = {
   todayHint: (income: string, expenses: string) => string;
 };
 
-const DEFAULT_LABELS: OverviewCardsLabels = {
-  totalBalance: "Общий баланс",
-  cashbox: "Касса",
-  kaspi: "Каспи",
-  today: "Сегодня",
-  todayHint: (income, expenses) => `Доход: ${income} · Расходы: ${expenses}`,
-};
+function getDefaultOverviewCardsLabels(): OverviewCardsLabels {
+  const o = userCopy.accounting.overview;
+  return {
+    totalBalance: o.totalBalance,
+    cashbox: o.cashbox,
+    kaspi: o.kaspi,
+    today: o.today,
+    todayHint: o.todayHint,
+  };
+}
 
 type OverviewCardsProps = {
   balance: BalanceSnapshot;
@@ -29,7 +33,8 @@ type OverviewCardsProps = {
   labels?: OverviewCardsLabels;
 };
 
-export function OverviewCards({ balance, operations, labels = DEFAULT_LABELS }: OverviewCardsProps) {
+export function OverviewCards({ balance, operations, labels: labelsProp }: OverviewCardsProps) {
+  const labels = labelsProp ?? getDefaultOverviewCardsLabels();
   const { formatMoney } = useAppDisplayCurrency();
   const today = new Date().toDateString();
 

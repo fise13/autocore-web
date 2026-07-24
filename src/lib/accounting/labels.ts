@@ -4,40 +4,97 @@ import {
   PaymentMethod,
 } from "@/domain/financial-operation";
 import { MOTOR_SALE_CATEGORY } from "@/lib/accounting/categories";
+import { userCopy } from "@/lib/user-copy";
+import { userCopyEn } from "@/lib/user-copy.en";
+import { userCopyRu } from "@/lib/user-copy.ru";
 
+const CATEGORY_KEYS = [
+  MOTOR_SALE_CATEGORY,
+  "work_order",
+  "work_order_income",
+  "work_order_parts_cost",
+  "payroll",
+  "motor_import",
+  "warehouse_import",
+] as const;
+
+type CategoryKey = (typeof CATEGORY_KEYS)[number];
+
+function categoryBundle(): Record<CategoryKey, string> {
+  return userCopy.accounting.categories as Record<CategoryKey, string>;
+}
+
+/** Live labels — read via getters so locale switches apply without module remount freezes. */
 export const OPERATION_TYPE_LABELS: Record<OperationType, string> = {
-  sale: "Продажа",
-  income: "Приход",
-  expense: "Расход",
-  refund: "Возврат",
-  transfer: "Перевод",
+  get sale() {
+    return userCopy.accounting.operationTypes.sale;
+  },
+  get income() {
+    return userCopy.accounting.operationTypes.income;
+  },
+  get expense() {
+    return userCopy.accounting.operationTypes.expense;
+  },
+  get refund() {
+    return userCopy.accounting.operationTypes.refund;
+  },
+  get transfer() {
+    return userCopy.accounting.operationTypes.transfer;
+  },
 };
 
 export const OPERATION_ACCOUNT_LABELS: Record<OperationAccount, string> = {
-  cashbox: "Касса",
-  kaspi: "Каспи",
+  get cashbox() {
+    return userCopy.accounting.accounts.cashbox;
+  },
+  get kaspi() {
+    return userCopy.accounting.accounts.kaspi;
+  },
 };
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
-  cash: "Наличные",
-  transfer: "Безнал",
-  mixed: "Смешанная",
+  get cash() {
+    return userCopy.accounting.paymentMethods.cash;
+  },
+  get transfer() {
+    return userCopy.accounting.paymentMethods.transfer;
+  },
+  get mixed() {
+    return userCopy.accounting.paymentMethods.mixed;
+  },
 };
 
-/** Canonical Firestore keys → labels shown in UI. */
+/** Canonical Firestore keys → labels shown in UI (live). */
 export const OPERATION_CATEGORY_LABELS: Record<string, string> = {
-  [MOTOR_SALE_CATEGORY]: "Продажа мотора",
-  work_order: "Доход заказ-наряда",
-  work_order_income: "Доход заказ-наряда",
-  work_order_parts_cost: "Себестоимость запчастей",
-  payroll: "Зарплата",
-  motor_import: "Закупка моторов",
-  warehouse_import: "Закупка на склад",
+  get [MOTOR_SALE_CATEGORY]() {
+    return userCopy.accounting.categories.motor_sale;
+  },
+  get work_order() {
+    return userCopy.accounting.categories.work_order;
+  },
+  get work_order_income() {
+    return userCopy.accounting.categories.work_order_income;
+  },
+  get work_order_parts_cost() {
+    return userCopy.accounting.categories.work_order_parts_cost;
+  },
+  get payroll() {
+    return userCopy.accounting.categories.payroll;
+  },
+  get motor_import() {
+    return userCopy.accounting.categories.motor_import;
+  },
+  get warehouse_import() {
+    return userCopy.accounting.categories.warehouse_import;
+  },
 };
 
-const OPERATION_CATEGORY_LABEL_LOOKUP = new Map<string, string>(
-  Object.entries(OPERATION_CATEGORY_LABELS).map(([key, label]) => [label.toLowerCase(), key]),
-);
+const OPERATION_CATEGORY_LABEL_LOOKUP = new Map<string, string>();
+for (const bundle of [userCopyEn, userCopyRu]) {
+  for (const [key, label] of Object.entries(bundle.accounting.categories)) {
+    OPERATION_CATEGORY_LABEL_LOOKUP.set(label.toLowerCase(), key);
+  }
+}
 
 export const CREATABLE_OPERATION_TYPES = ["expense", "income", "sale", "refund"] as const;
 
@@ -59,20 +116,20 @@ export function operationCategoryLabel(category: string | null | undefined): str
   if (!category) return "—";
   const trimmed = category.trim();
   if (!trimmed) return "—";
-  return OPERATION_CATEGORY_LABELS[trimmed] ?? trimmed;
+  return categoryBundle()[trimmed as CategoryKey] ?? trimmed;
 }
 
 export function operationCategoryDisplayValue(category: string): string {
   const trimmed = category.trim();
   if (!trimmed) return "";
-  return OPERATION_CATEGORY_LABELS[trimmed] ?? trimmed;
+  return categoryBundle()[trimmed as CategoryKey] ?? trimmed;
 }
 
 export function resolveOperationCategoryValue(input: string): string {
   const trimmed = input.trim();
   if (!trimmed) return "";
 
-  if (OPERATION_CATEGORY_LABELS[trimmed]) return trimmed;
+  if (trimmed in categoryBundle()) return trimmed;
 
   const fromLabel = OPERATION_CATEGORY_LABEL_LOOKUP.get(trimmed.toLowerCase());
   if (fromLabel) return fromLabel;
@@ -81,5 +138,5 @@ export function resolveOperationCategoryValue(input: string): string {
 }
 
 export function isKnownOperationCategory(category: string): boolean {
-  return category.trim() in OPERATION_CATEGORY_LABELS;
+  return category.trim() in categoryBundle();
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { userCopy } from "@/lib/user-copy";
+
 import { useState } from "react";
 import { Wrench } from "lucide-react";
 
@@ -27,7 +29,7 @@ export function WorkOrderClaimBanner({ order, onClaimed }: WorkOrderClaimBannerP
     setClaiming(true);
     try {
       const token = await firebaseUser?.getIdToken();
-      if (!token) throw new Error("Требуется авторизация");
+      if (!token) throw new Error(userCopy.workOrders.claim.authRequired);
 
       const response = await fetch(`/api/work-orders/${order.id}/claim`, {
         method: "POST",
@@ -38,12 +40,12 @@ export function WorkOrderClaimBanner({ order, onClaimed }: WorkOrderClaimBannerP
       });
       const payload = (await response.json()) as { error?: string };
       if (!response.ok) {
-        throw new Error(payload.error ?? "Не удалось взять наряд");
+        throw new Error(payload.error ?? userCopy.workOrders.claim.claimFailed);
       }
       toast.success(`Наряд №${order.number} взят в работу`);
       onClaimed?.();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Не удалось взять наряд");
+      toast.error(error instanceof Error ? error.message : userCopy.workOrders.claim.claimFailed);
     } finally {
       setClaiming(false);
     }
@@ -59,12 +61,12 @@ export function WorkOrderClaimBanner({ order, onClaimed }: WorkOrderClaimBannerP
           </div>
           <p className="text-sm text-muted-foreground">
             {unassignedCount === 1
-              ? "Есть свободная работа — можете взять наряд в работу."
+              ? userCopy.workOrders.claim.freeWorkHint
               : `Свободных работ: ${unassignedCount}.`}
           </p>
         </div>
         <Button onClick={() => void handleClaim()} disabled={claiming}>
-          {claiming ? "Берём…" : "Взять в работу"}
+          {claiming ? userCopy.workOrders.claim.claiming : userCopy.workOrders.claim.claim}
         </Button>
       </div>
     </div>

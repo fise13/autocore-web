@@ -14,6 +14,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { userCopy } from "@/lib/user-copy";
+
 export type SidebarPosition = "left" | "right";
 
 export type SidebarBlockId =
@@ -69,56 +71,82 @@ export const DEFAULT_NAV_ORDER: SidebarNavItemId[] = [
 export const SIDEBAR_BLOCK_META: Record<
   SidebarBlockId,
   { label: string; description: string; icon: LucideIcon }
-> = {
-  navigation: {
-    label: "Разделы",
-    description: "Центр управления, моторы, склад…",
-    icon: LayoutGrid,
+> = new Proxy({} as Record<SidebarBlockId, { label: string; description: string; icon: LucideIcon }>, {
+  get(_target, prop: string) {
+    const id = prop as SidebarBlockId;
+    const icons: Record<SidebarBlockId, LucideIcon> = {
+      navigation: LayoutGrid,
+      context: Sparkles,
+      documents: FileText,
+      team: Users,
+      specific: FileText,
+      brands: Tag,
+      profile: UserCircle,
+    };
+    if (!(id in icons)) return undefined;
+    const copy = userCopy.nav.sidebarBlocks[id];
+    return { label: copy.label, description: copy.description, icon: icons[id] };
   },
-  context: {
-    label: "Действия раздела",
-    description: "Кнопки для текущей страницы",
-    icon: Sparkles,
-  },
-  documents: {
-    label: "Документы",
-    description: "Брендинг PDF и реквизиты",
-    icon: FileText,
-  },
-  team: {
-    label: "Команда",
-    description: "Сотрудники, роли и приглашения",
-    icon: Users,
-  },
-  specific: {
-    label: "Учёт",
-    description: "Агрегаты, запчасти, расходники",
-    icon: FileText,
-  },
-  brands: {
-    label: "Бренды",
-    description: "Фильтр по брендам и двигателям",
-    icon: Tag,
-  },
-  profile: {
-    label: "Профиль",
-    description: "Аккаунт, настройки и выход",
-    icon: UserCircle,
-  },
-};
+  ownKeys: () => [
+    "navigation",
+    "context",
+    "documents",
+    "team",
+    "specific",
+    "brands",
+    "profile",
+  ],
+  getOwnPropertyDescriptor: (_t, prop) =>
+    typeof prop === "string" &&
+    ["navigation", "context", "documents", "team", "specific", "brands", "profile"].includes(prop)
+      ? { enumerable: true, configurable: true }
+      : undefined,
+});
 
 export const SIDEBAR_NAV_META: Record<
   SidebarNavItemId,
   { label: string; href: string; icon: LucideIcon }
-> = {
-  home: { label: "Дашборд", href: "/", icon: Radar },
-  motors: { label: "Двигатели", href: "/motors?collection=engines", icon: LayoutGrid },
-  sold: { label: "Продажи", href: "/sold", icon: Receipt },
-  work_orders: { label: "Заказ-наряды", href: "/work-orders", icon: ClipboardList },
-  my_earnings: { label: "Мои начисления", href: "/my-earnings", icon: Wallet },
-  accounting: { label: "Финансы", href: "/accounting", icon: CircleDollarSign },
-  warehouse: { label: "Расходники", href: "/warehouse", icon: Package },
-};
+> = new Proxy({} as Record<SidebarNavItemId, { label: string; href: string; icon: LucideIcon }>, {
+  get(_target, prop: string) {
+    const id = prop as SidebarNavItemId;
+    const icons: Record<SidebarNavItemId, LucideIcon> = {
+      home: Radar,
+      motors: LayoutGrid,
+      sold: Receipt,
+      work_orders: ClipboardList,
+      my_earnings: Wallet,
+      accounting: CircleDollarSign,
+      warehouse: Package,
+    };
+    const hrefs: Record<SidebarNavItemId, string> = {
+      home: "/",
+      motors: "/motors?collection=engines",
+      sold: "/sold",
+      work_orders: "/work-orders",
+      my_earnings: "/my-earnings",
+      accounting: "/accounting",
+      warehouse: "/warehouse",
+    };
+    if (!(id in icons)) return undefined;
+    return { label: userCopy.nav.sidebarNav[id], href: hrefs[id], icon: icons[id] };
+  },
+  ownKeys: () => [
+    "home",
+    "motors",
+    "sold",
+    "work_orders",
+    "my_earnings",
+    "accounting",
+    "warehouse",
+  ],
+  getOwnPropertyDescriptor: (_t, prop) =>
+    typeof prop === "string" &&
+    ["home", "motors", "sold", "work_orders", "my_earnings", "accounting", "warehouse"].includes(
+      prop,
+    )
+      ? { enumerable: true, configurable: true }
+      : undefined,
+});
 
 export const DEFAULT_SIDEBAR_CUSTOMIZATION: SidebarCustomization = {
   version: 1,

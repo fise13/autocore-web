@@ -36,6 +36,7 @@ import { createClientRepository } from "@/infrastructure/firestore/client-reposi
 import { formatWarrantyDurationLabel } from "@/lib/documents/warranty/custom-warranty";
 import type { MotorSaleWarrantyOverride } from "@/lib/documents/warranty/custom-warranty";
 import { formatGroupedNumber } from "@/lib/money/format-number";
+import { userCopy } from "@/lib/user-copy";
 
 export type MotorSellPayload = SellFinancialPayload & {
   clientId?: string;
@@ -88,52 +89,44 @@ export type SellMotorDialogLabels = {
   };
 };
 
-const DEFAULT_SELL_MOTOR_LABELS: SellMotorDialogLabels = {
-  titleSell: "Продажа мотора",
-  titleReturn: "Возврат мотора",
-  description: (serial, withWarranty) =>
-    `Мотор ${serial}. Будет создана одна финансовая операция${
-      withWarranty ? " и гарантийный талон с вашими условиями" : ""
-    }.`,
-  selectMotor: "Выберите мотор для операции.",
-  buyer: "Покупатель",
-  fullName: "ФИО",
-  phone: "Телефон",
-  namePlaceholder: "Иванов Алексей",
-  buyerHint: "Новый покупатель будет сохранён в базе клиентов.",
-  frequentlyBought: "Часто берут с этим мотором",
-  skuLabel: "Артикул:",
-  commentSellPrefix: "Продажа ·",
-  commentReturnPrefix: "Возврат ·",
-  amount: "Сумма",
-  account: "Счёт",
-  payment: "Оплата",
-  cashbox: "Касса",
-  kaspi: "Kaspi",
-  cash: "Наличные",
-  transfer: "Перевод",
-  mixed: "Смешанная",
-  warrantyTitle: "Гарантия на эту продажу",
-  warrantyDays: "Срок, дн",
-  warrantyKm: "Пробег, км",
-  warrantyLabel: "Заголовок (необязательно)",
-  warrantyText: "Условия гарантии",
-  warrantyTextPlaceholder: "Каждый абзац — с новой строки",
-  comment: "Комментарий",
-  cancel: "Отмена",
-  sell: "Продать",
-  return: "Вернуть",
-  saving: "Сохраняем...",
-  errors: {
-    amount: "Введите корректную сумму",
-    buyerName: "Укажите имя покупателя",
-    buyerPhone: "Укажите телефон покупателя",
-    warrantyDays: "Укажите срок гарантии в днях",
-    warrantyKm: "Укажите пробег гарантии в км",
-    warrantyText: "Введите текст гарантии для этой продажи",
-    generic: "Не удалось выполнить операцию",
-  },
-};
+function getDefaultSellMotorLabels(): SellMotorDialogLabels {
+  const sell = userCopy.motors.sell;
+  return {
+    titleSell: sell.titleSell,
+    titleReturn: sell.titleReturn,
+    description: (serial, withWarranty) => sell.description(serial, withWarranty),
+    selectMotor: sell.selectMotor,
+    buyer: sell.buyer,
+    fullName: sell.fullName,
+    phone: sell.phone,
+    namePlaceholder: sell.namePlaceholder,
+    buyerHint: sell.buyerHint,
+    frequentlyBought: sell.frequentlyBought,
+    skuLabel: sell.skuLabel,
+    commentSellPrefix: sell.commentSellPrefix,
+    commentReturnPrefix: sell.commentReturnPrefix,
+    amount: sell.amount,
+    account: sell.account,
+    payment: sell.payment,
+    cashbox: sell.cashbox,
+    kaspi: sell.kaspi,
+    cash: sell.cash,
+    transfer: sell.transfer,
+    mixed: sell.mixed,
+    warrantyTitle: sell.warrantyTitle,
+    warrantyDays: sell.warrantyDays,
+    warrantyKm: sell.warrantyKm,
+    warrantyLabel: sell.warrantyLabel,
+    warrantyText: sell.warrantyText,
+    warrantyTextPlaceholder: sell.warrantyTextPlaceholder,
+    comment: sell.comment,
+    cancel: sell.cancel,
+    sell: sell.sell,
+    return: sell.return,
+    saving: sell.saving,
+    errors: { ...sell.errors },
+  };
+}
 
 const clientRepository = createClientRepository();
 
@@ -153,7 +146,7 @@ type SellMotorDialogProps = {
     paymentMethod?: PaymentMethod;
     comment?: string;
   };
-  /** Optional localized UI copy (marketing demos). Defaults to Russian app UI. */
+  /** Optional localized UI copy (marketing demos). Defaults to active userCopy locale. */
   labels?: SellMotorDialogLabels;
 };
 
@@ -164,7 +157,7 @@ function SellMotorDialogForm({
   onCancel,
   onConfirm,
   initialValues,
-  labels = DEFAULT_SELL_MOTOR_LABELS,
+  labels: labelsProp,
 }: {
   companyId: string | null | undefined;
   motor: MotorEntity;
@@ -174,6 +167,7 @@ function SellMotorDialogForm({
   initialValues?: SellMotorDialogProps["initialValues"];
   labels?: SellMotorDialogLabels;
 }) {
+  const labels = labelsProp ?? getDefaultSellMotorLabels();
   const { profile } = useCompanyBranding(companyId);
   const { clients } = useClientsRealtime(clientRepository, companyId ?? "", mode === "sell");
   const usesCustomWarranty = profile.warrantyTemplateId === "custom" && mode === "sell";
@@ -548,8 +542,9 @@ export function SellMotorDialog({
   onOpenChange,
   onConfirm,
   initialValues,
-  labels = DEFAULT_SELL_MOTOR_LABELS,
+  labels,
 }: SellMotorDialogProps) {
+  const resolvedLabels = labels ?? getDefaultSellMotorLabels();
   async function handleConfirm(payload: MotorSellPayload) {
     await onConfirm(payload);
     onOpenChange(false);
@@ -560,8 +555,8 @@ export function SellMotorDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-md duration-300">
           <DialogHeader>
-            <DialogTitle>{labels.titleSell}</DialogTitle>
-            <DialogDescription>{labels.selectMotor}</DialogDescription>
+            <DialogTitle>{resolvedLabels.titleSell}</DialogTitle>
+            <DialogDescription>{resolvedLabels.selectMotor}</DialogDescription>
           </DialogHeader>
         </DialogContent>
       </Dialog>
@@ -577,7 +572,7 @@ export function SellMotorDialog({
           motor={motor}
           mode={mode}
           initialValues={initialValues}
-          labels={labels}
+          labels={resolvedLabels}
           onCancel={() => onOpenChange(false)}
           onConfirm={handleConfirm}
         />

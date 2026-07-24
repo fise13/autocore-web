@@ -20,6 +20,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { useSidebarCounts } from "@/hooks/use-sidebar-counts";
 import { isNavAllowed } from "@/lib/auth/app-access";
 import { parseCollectionFromSearchParams } from "@/lib/navigation/inventory-collections";
+import { businessNavCopy } from "@/lib/navigation/business-nav-copy";
 import {
   getDisabledBlocks,
   getDisabledNavItems,
@@ -171,7 +172,9 @@ function BusinessSidebarInner({
 
   const visibleNavGroups = useMemo(() => {
     if (isEditing || !collapsed) return navGroups;
-    return navGroups.filter((group) => group.label == null || group.label === "Бизнес");
+    return navGroups.filter(
+      (group) => group.label == null || group.label === businessNavCopy.groupBusiness,
+    );
   }, [collapsed, isEditing, navGroups]);
 
   const effectiveCollapsed = isEditing ? false : collapsed;

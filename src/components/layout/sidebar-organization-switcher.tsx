@@ -99,7 +99,9 @@ export function SidebarOrganizationSwitcher({ collapsed = false }: SidebarOrgani
                   </p>
                   <p className="mt-1 truncate text-[11px] text-muted-foreground">
                     {companies.length}{" "}
-                    {companies.length === 1 ? "пространство" : "пространства"}
+                    {companies.length === 1
+                      ? userCopy.layout.spaceSingular
+                      : userCopy.layout.spacePlural}
                   </p>
                 </div>
                 <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />

@@ -78,7 +78,7 @@ export function SettingsWorkspace() {
   useEffect(() => {
     const checkout = searchParams.get("checkout");
     if (checkout === "canceled") {
-      setStatus("Оплата отменена");
+      setStatus(userCopy.settings.paymentCanceled);
     }
   }, [searchParams]);
 
@@ -127,27 +127,29 @@ export function SettingsWorkspace() {
                     <CircleDollarSign className="size-4 text-primary" />
                     <CardTitle>{userCopy.settings.accounting}</CardTitle>
                   </div>
-                  <CardDescription>Списки сотрудников и категорий для операций.</CardDescription>
+                  <CardDescription>{userCopy.settings.financesListsDescription}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {isLoading ? <Badge variant="secondary">Загрузка…</Badge> : null}
+                  {isLoading ? (
+                    <Badge variant="secondary">{userCopy.settings.loading}</Badge>
+                  ) : null}
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label>Сотрудники</Label>
+                      <Label>{userCopy.settings.employees}</Label>
                       <Textarea
                         value={employeesValue}
                         onChange={(event) => setEmployeesDraft(event.target.value)}
                         className="min-h-28"
-                        placeholder={"Саня\nВалера"}
+                        placeholder={userCopy.settings.financesEmployeesPlaceholder}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Специфика финансов</Label>
+                      <Label>{userCopy.settings.financesSpecifics}</Label>
                       <Textarea
                         value={specificsValue}
                         onChange={(event) => setSpecificsDraft(event.target.value)}
                         className="min-h-28"
-                        placeholder={"аванс\nлогистика"}
+                        placeholder={userCopy.settings.financesSpecificsPlaceholder}
                       />
                     </div>
                   </div>
@@ -162,19 +164,21 @@ export function SettingsWorkspace() {
                         await savePreferences({ employees, specifics, isConfigured: true });
                         setEmployeesDraft(null);
                         setSpecificsDraft(null);
-                        setStatus("Настройки финансов сохранены");
+                        setStatus(userCopy.settings.financesSaved);
                       } catch (error) {
                         setStatus(
                           error instanceof Error
                             ? error.message
-                            : "Не удалось сохранить настройки финансов",
+                            : userCopy.settings.financesSaveFailed,
                         );
                       } finally {
                         setSavingAccounting(false);
                       }
                     }}
                   >
-                    {savingAccounting ? "Сохраняем…" : "Сохранить настройки финансов"}
+                    {savingAccounting
+                      ? userCopy.settings.financesSaving
+                      : userCopy.settings.financesSave}
                   </Button>
                 </CardContent>
               </Card>
@@ -185,7 +189,7 @@ export function SettingsWorkspace() {
                     <Workflow className="size-4 text-primary" />
                     <CardTitle>{userCopy.settings.workflow}</CardTitle>
                   </div>
-                  <CardDescription>Общие параметры поведения списка моторов.</CardDescription>
+                  <CardDescription>{userCopy.settings.workflowDescription}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-wrap gap-2">
                   <Button
@@ -200,7 +204,10 @@ export function SettingsWorkspace() {
                       })
                     }
                   >
-                    Автопереход к проданным: {preferences.workflow.autoSwitchToSold ? "вкл." : "выкл."}
+                    {userCopy.settings.workflowAutoSwitchSold}:{" "}
+                    {preferences.workflow.autoSwitchToSold
+                      ? userCopy.settings.on
+                      : userCopy.settings.off}
                   </Button>
                   <Button
                     variant={preferences.workflow.rememberBrand ? "default" : "outline"}
@@ -214,7 +221,10 @@ export function SettingsWorkspace() {
                       })
                     }
                   >
-                    Запоминать бренд: {preferences.workflow.rememberBrand ? "вкл." : "выкл."}
+                    {userCopy.settings.workflowRememberBrand}:{" "}
+                    {preferences.workflow.rememberBrand
+                      ? userCopy.settings.on
+                      : userCopy.settings.off}
                   </Button>
                 </CardContent>
               </Card>
@@ -227,18 +237,21 @@ export function SettingsWorkspace() {
                   </div>
                   <CardDescription>
                     {isPro
-                      ? "Параметры импорта и экспорта, общие для всех устройств."
+                      ? userCopy.settings.importExportDescription
                       : userCopy.billing.paywall.export.description}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm text-muted-foreground">
                   <p>
-                    При конфликте:{" "}
+                    {userCopy.settings.conflictBehavior}{" "}
                     {preferences.importExport.conflictBehavior === "keepLocal"
-                      ? "сохранять локальные изменения"
-                      : "предпочитать облако"}
+                      ? userCopy.settings.keepLocal
+                      : userCopy.settings.preferCloud}
                   </p>
-                  <p>Формат даты экспорта: {preferences.importExport.exportDateFormat}</p>
+                  <p>
+                    {userCopy.settings.exportDateFormat}{" "}
+                    {preferences.importExport.exportDateFormat}
+                  </p>
                   <div className="flex flex-wrap gap-2 pt-2">
                     <Button
                       variant="outline"
@@ -255,7 +268,7 @@ export function SettingsWorkspace() {
                         })
                       }
                     >
-                      Переключить поведение конфликтов
+                      {userCopy.settings.toggleConflictBehavior}
                     </Button>
                   </div>
                 </CardContent>

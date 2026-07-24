@@ -41,6 +41,7 @@ import {
   vehicleModelOptions as buildVehicleModelOptions,
 } from "@/lib/vehicles/vehicle-catalog";
 import { ROLE_LABELS } from "@/components/work-orders/work-order-copy";
+import { userCopy } from "@/lib/user-copy";
 import {
   WORK_ORDERS_MOTION_EASE,
 } from "@/components/work-orders/work-orders-motion";

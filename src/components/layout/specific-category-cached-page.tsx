@@ -9,6 +9,7 @@ import { useSpecificCategoriesRealtime } from "@/hooks/use-specific-categories-r
 import { normalizeCompanyId } from "@/lib/company-id";
 import { scopedCategoryDocumentId } from "@/lib/specific/specific-sync-ids";
 import { createSpecificCategoryRepository } from "@/infrastructure/firestore/specific-category-repository";
+import { userCopy } from "@/lib/user-copy";
 
 const specificCategoryRepository = createSpecificCategoryRepository();
 
@@ -37,16 +38,14 @@ export function SpecificCategoryCachedPage({ categoryId }: SpecificCategoryCache
   }, [categories, companyId, categoryId]);
 
   if (isLoading) {
-    return <AppLoadingScreen message="Загрузка…" />;
+    return <AppLoadingScreen message={userCopy.layout.loading} />;
   }
 
   if (!category) {
     return (
       <div className="mx-auto flex max-w-lg flex-col gap-2 py-16 text-center">
-        <h1 className="text-lg font-semibold">Категория не найдена</h1>
-        <p className="text-sm text-muted-foreground">
-          Возможно, категория ещё не загружена или была удалена.
-        </p>
+        <h1 className="text-lg font-semibold">{userCopy.layout.categoryNotFound}</h1>
+        <p className="text-sm text-muted-foreground">{userCopy.layout.categoryNotFoundHint}</p>
       </div>
     );
   }

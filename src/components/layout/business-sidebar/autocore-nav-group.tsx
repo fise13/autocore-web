@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/sidebar";
 import type { SidebarBlockId, SidebarNavItemId } from "@/lib/navigation/sidebar-customization";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 type AutocoreNavGroupProps = AutocoreNavGroup & {
   collapsed?: boolean;
@@ -71,7 +72,7 @@ function EditRemoveButton({ onClick }: { onClick: () => void }) {
         onClick();
       }}
       className="absolute left-0 top-1/2 z-10 flex size-4 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-      title="Скрыть"
+      title={userCopy.layout.hide}
     >
       <Minus className="size-2.5" strokeWidth={2.5} />
     </button>

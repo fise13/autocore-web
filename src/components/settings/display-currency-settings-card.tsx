@@ -13,6 +13,7 @@ import {
   formatAppMoneyExample,
 } from "@/lib/money/display-currency";
 import { convertFromBaseCurrency } from "@/lib/money/exchange-rates";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 const EXAMPLE_BASE_AMOUNT = 100_000;
@@ -21,10 +22,23 @@ type DisplayCurrencySettingsCardProps = {
   onStatus?: (message: string | null) => void;
 };
 
+function currencyOptionCopy(id: AppDisplayCurrency): { label: string; description: string } {
+  const copy = userCopy.settings.displayCurrency;
+  switch (id) {
+    case "KZT":
+      return { label: copy.kztLabel, description: copy.kztDescription };
+    case "RUB":
+      return { label: copy.rubLabel, description: copy.rubDescription };
+    case "USD":
+      return { label: copy.usdLabel, description: copy.usdDescription };
+  }
+}
+
 export function DisplayCurrencySettingsCard({ onStatus }: DisplayCurrencySettingsCardProps) {
   const { currency, formatMoney, setCurrency, exchangeRateHint, rates, isLoading } =
     useAppDisplayCurrency();
   const [saving, setSaving] = useState(false);
+  const locale = getActiveUserCopyLocale() === "en" ? "en-US" : "ru-RU";
 
   async function onSelect(next: AppDisplayCurrency) {
     if (next === currency || saving) return;
@@ -32,9 +46,11 @@ export function DisplayCurrencySettingsCard({ onStatus }: DisplayCurrencySetting
     onStatus?.(null);
     try {
       await setCurrency(next);
-      onStatus?.("Валюта отображения сохранена");
+      onStatus?.(userCopy.settings.displayCurrency.saved);
     } catch (error) {
-      onStatus?.(error instanceof Error ? error.message : "Не удалось сохранить валюту");
+      onStatus?.(
+        error instanceof Error ? error.message : userCopy.settings.displayCurrency.saveError,
+      );
     } finally {
       setSaving(false);
     }
@@ -45,19 +61,19 @@ export function DisplayCurrencySettingsCard({ onStatus }: DisplayCurrencySetting
       <CardHeader>
         <div className="flex items-center gap-2">
           <Coins className="size-4 text-primary" />
-          <CardTitle>Валюта отображения</CardTitle>
+          <CardTitle>{userCopy.settings.displayCurrency.title}</CardTitle>
         </div>
-        <CardDescription>
-          Суммы в бухгалтерии и на дашборде хранятся в тенге и пересчитываются по актуальному курсу
-          при показе в рублях или долларах.
-        </CardDescription>
+        <CardDescription>{userCopy.settings.displayCurrency.description}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {isLoading ? <Badge variant="secondary">Загрузка курсов…</Badge> : null}
+        {isLoading ? (
+          <Badge variant="secondary">{userCopy.settings.displayCurrency.loadingRates}</Badge>
+        ) : null}
 
         <div className="grid gap-2 sm:grid-cols-3">
           {APP_DISPLAY_CURRENCY_OPTIONS.map((option) => {
             const active = currency === option.id;
+            const labels = currencyOptionCopy(option.id);
             const example = formatAppMoneyExample(EXAMPLE_BASE_AMOUNT, option.id, (value) =>
               convertFromBaseCurrency(value, option.id, rates),
             );
@@ -75,12 +91,14 @@ export function DisplayCurrencySettingsCard({ onStatus }: DisplayCurrencySetting
                     : "border-border bg-card/80 hover:border-primary/40 hover:bg-muted/30",
                 )}
               >
-                <span className="text-sm font-medium">{option.label}</span>
-                <span className="text-xs text-muted-foreground">{option.description}</span>
+                <span className="text-sm font-medium">{labels.label}</span>
+                <span className="text-xs text-muted-foreground">{labels.description}</span>
                 <span className="mt-1 text-sm font-semibold tabular-nums">{example}</span>
                 {option.id !== "KZT" ? (
                   <span className="text-[11px] text-muted-foreground">
-                    из {EXAMPLE_BASE_AMOUNT.toLocaleString("ru-RU")} ₸
+                    {userCopy.settings.displayCurrency.fromBase(
+                      EXAMPLE_BASE_AMOUNT.toLocaleString(locale),
+                    )}
                   </span>
                 ) : null}
               </button>
@@ -89,15 +107,17 @@ export function DisplayCurrencySettingsCard({ onStatus }: DisplayCurrencySetting
         </div>
 
         <Alert>
-          <AlertTitle>Пример с текущей настройкой</AlertTitle>
+          <AlertTitle>{userCopy.settings.displayCurrency.exampleTitle}</AlertTitle>
           <AlertDescription className="space-y-1">
             <p className="tabular-nums">{formatMoney(1_250_000)}</p>
             {exchangeRateHint ? (
-              <p className="text-xs text-muted-foreground">Курс: {exchangeRateHint}</p>
+              <p className="text-xs text-muted-foreground">
+                {userCopy.settings.displayCurrency.ratePrefix} {exchangeRateHint}
+              </p>
             ) : null}
             {rates.source === "fallback" ? (
               <p className="text-xs text-muted-foreground">
-                Используется резервный курс — обновление с сервера недоступно.
+                {userCopy.settings.displayCurrency.fallbackRate}
               </p>
             ) : null}
           </AlertDescription>

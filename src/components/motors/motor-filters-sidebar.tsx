@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 import { MotorAvailability } from "@/infrastructure/firestore/motor-repository";
 import { BrandEntity, EngineEntity } from "@/infrastructure/firestore/catalog-repository";
 
@@ -37,13 +38,13 @@ export function MotorFiltersSidebar({
   return (
     <aside className="w-full shrink-0 space-y-4 lg:w-56">
       <div className="space-y-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Наличие</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{userCopy.motors.filters.availability}</p>
         <div className="grid gap-1">
           {(
             [
-              ["all", "Все"],
-              ["available", "В наличии"],
-              ["sold", "Проданные"],
+              ["all", userCopy.motors.filters.all],
+              ["available", userCopy.motors.filters.available],
+              ["sold", userCopy.motors.filters.sold],
             ] as const
           ).map(([value, label]) => (
             <button
@@ -65,7 +66,7 @@ export function MotorFiltersSidebar({
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Бренды</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{userCopy.motors.filters.brands}</p>
         <div className="max-h-48 space-y-1 overflow-y-auto pr-1">
           <button
             type="button"
@@ -78,7 +79,7 @@ export function MotorFiltersSidebar({
                 : "text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
           >
-            Все бренды
+            {userCopy.motors.filters.allBrands}
           </button>
           {brands.map((brand) => (
             <button
@@ -100,7 +101,7 @@ export function MotorFiltersSidebar({
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Двигатели</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{userCopy.motors.filters.engines}</p>
         <div className="max-h-48 space-y-1 overflow-y-auto pr-1">
           <button
             type="button"
@@ -113,7 +114,7 @@ export function MotorFiltersSidebar({
                 : "text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
           >
-            Все двигатели
+            {userCopy.motors.filters.allEngines}
           </button>
           {visibleEngines.map((engine) => (
             <button
@@ -136,7 +137,7 @@ export function MotorFiltersSidebar({
 
       {(selectedBrand || selectedEngine) && (
         <p className="text-xs text-muted-foreground">
-          Фильтр: {[selectedBrand?.name, selectedEngine?.code].filter(Boolean).join(" · ")}
+          {userCopy.motors.filters.availability}: {[selectedBrand?.name, selectedEngine?.code].filter(Boolean).join(" · ")}
         </p>
       )}
     </aside>

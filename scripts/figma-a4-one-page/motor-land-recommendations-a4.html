@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Рекомендации после установки ДВС/КПП — Motor Land</title>
+  <style>
+    :root {
+      --ink: #141414;
+      --muted: #5c5c5c;
+      --line: #e0e0de;
+      --paper: #ffffff;
+      --surface: #f7f7f6;
+      --warn-bg: #fff8eb;
+      --warn-border: #e5a533;
+      --warn-text: #8a4b0a;
+      --note-bg: #f7f7f6;
+      --note-border: #d4d4d4;
+      --crit-bg: #fef2f2;
+      --crit-border: #b91c1c;
+      --crit-text: #991b1b;
+      --font: Inter, "Helvetica Neue", ui-sans-serif, system-ui, sans-serif;
+      --fs: 11px;
+      --gap: 2.4mm;
+      --a4-w: 210mm;
+      --a4-h: 297mm;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #d4d4d4;
+      font-family: var(--font);
+      color: var(--ink);
+    }
+
+    .toolbar {
+      width: min(100% - 24px, 210mm);
+      margin: 16px auto 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      color: #52525b;
+    }
+    .toolbar button {
+      border: 1px solid #a1a1aa;
+      background: #fff;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .stage {
+      width: min(calc(100vw - 24px), 210mm);
+      margin: 0 auto 28px;
+      aspect-ratio: 210 / 297;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 28px rgb(0 0 0 / 0.12);
+      background: #fff;
+    }
+
+    .page {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: var(--a4-w);
+      height: var(--a4-h);
+      padding: 8mm 7.5mm 6mm;
+      background: var(--paper);
+      overflow: hidden;
+      transform-origin: top left;
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+      isolation: isolate;
+    }
+
+    .bg {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .bg__logo {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 160mm;
+      opacity: 0.08;
+      transform: translate(-50%, -50%) rotate(-24deg);
+    }
+
+    .surface {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap);
+    }
+
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex: 0 0 auto;
+      margin: 0;
+      padding: 0;
+    }
+    .top__left {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      min-width: 0;
+    }
+    .logo {
+      width: 56px;
+      height: 56px;
+      object-fit: contain;
+      flex: 0 0 auto;
+      display: block;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      background: #141414;
+      color: #fff;
+      font-size: calc(var(--fs) * 0.95);
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border-radius: 2px;
+    }
+    .top__right {
+      text-align: right;
+      font-size: calc(var(--fs) * 0.95);
+      color: var(--muted);
+      line-height: 1.35;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .title-block { flex: 0 0 auto; }
+    .title {
+      margin: 0;
+      font-size: calc(var(--fs) * 1.85);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.12;
+    }
+    .lead {
+      margin: 2px 0 0;
+      font-size: calc(var(--fs) * 1.02);
+      color: var(--muted);
+      line-height: 1.32;
+      width: 100%;
+    }
+
+    .rule {
+      height: 1.5px;
+      background: #1a1a1a;
+      border: 0;
+      margin: 0;
+      flex: 0 0 auto;
+    }
+
+    .chips {
+      display: flex;
+      gap: 4px;
+      flex: 0 0 auto;
+    }
+    .chip {
+      flex: 1;
+      text-align: center;
+      padding: 3px 4px;
+      border: 1px solid #d0d0ce;
+      border-radius: 2px;
+      background: #fff;
+      font-size: calc(var(--fs) * 0.95);
+      font-weight: 600;
+      color: #333;
+    }
+
+    .body {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: calc(var(--gap) * 1.15);
+      overflow: visible;
+    }
+
+    .sec-head {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      margin: 0 0 2px;
+    }
+    .sec-head .idx {
+      font-size: calc(var(--fs) * 1.05);
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: #8a8a8a;
+    }
+    .sec-head h2 {
+      margin: 0;
+      font-size: calc(var(--fs) * 1.2);
+      font-weight: 800;
+      line-height: 1.2;
+    }
+    .sec-rule {
+      height: 1px;
+      background: var(--line);
+      margin: 0 0 4px;
+      border: 0;
+    }
+
+    .block { flex: 0 0 auto; }
+
+    .text {
+      margin: 0;
+      font-size: var(--fs);
+      line-height: 1.28;
+      color: #222;
+    }
+    .text + .text { margin-top: 0.55em; }
+
+    .callout {
+      margin: 3px 0;
+      padding: 5px 7px;
+      border-radius: 3px;
+      font-size: calc(var(--fs) * 0.96);
+      line-height: 1.4;
+    }
+    .callout b {
+      display: block;
+      margin-bottom: 3px;
+      font-size: calc(var(--fs) * 0.9);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      line-height: 1.3;
+    }
+    .callout--note {
+      background: var(--note-bg);
+      border: 1px solid var(--note-border);
+      border-left: 3px solid #141414;
+      color: #3f3f46;
+    }
+    .callout--warn {
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+      color: var(--warn-text);
+    }
+    .callout--crit {
+      background: var(--crit-bg);
+      border: 1.5px solid var(--crit-border);
+      color: var(--crit-text);
+    }
+
+    .steps {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .steps li {
+      display: grid;
+      grid-template-columns: 16px 1fr;
+      gap: 5px;
+      padding: 2px 0;
+      font-size: var(--fs);
+      line-height: 1.28;
+      color: #222;
+    }
+    .steps .n {
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 2.5mm;
+      padding-top: 5px;
+      border-top: 1px solid var(--line);
+      font-size: calc(var(--fs) * 0.9);
+      color: var(--muted);
+      flex: 0 0 auto;
+      gap: 8px;
+    }
+    .footer strong { color: var(--ink); font-weight: 700; }
+
+    @page {
+      size: 210mm 297mm;
+      margin: 0;
+    }
+
+    @media print {
+      html, body {
+        width: 210mm;
+        height: 297mm;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        overflow: hidden !important;
+      }
+      .toolbar { display: none !important; }
+      .stage {
+        width: 210mm !important;
+        height: 297mm !important;
+        margin: 0 !important;
+        aspect-ratio: auto;
+        box-shadow: none !important;
+        overflow: hidden !important;
+      }
+      .page {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 210mm !important;
+        height: 297mm !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        transform: none !important;
+        overflow: hidden !important;
+        page-break-after: avoid !important;
+        page-break-inside: avoid !important;
+        break-after: avoid !important;
+        break-inside: avoid !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <span>A4 210×297 mm · Рекомендации после установки</span>
+    <button type="button" onclick="window.print()">Печать / PDF</button>
+  </div>
+
+  <div class="stage" id="stage">
+  <article class="page" id="page">
+    <div class="bg" aria-hidden="true">
+      <img class="bg__logo" src="motor-land-logo.png" alt="" />
+    </div>
+
+    <div class="surface" id="surface">
+      <div class="top">
+        <div class="top__left">
+          <img class="logo" src="motor-land-logo.png" alt="Motor Land" />
+          <span class="badge">Рекомендации · Важно</span>
+        </div>
+        <div class="top__right">www.motor-land.kz</div>
+      </div>
+
+      <div class="title-block">
+        <h1 class="title">Рекомендации после установки ДВС/КПП</h1>
+        <p class="lead">Правила эксплуатации в первые недели после установки. Соблюдение рекомендаций снижает риск повреждений и спорных ситуаций по гарантии.</p>
+      </div>
+
+      <hr class="rule" />
+
+      <div class="chips">
+        <span class="chip">1. Контроль жидкостей</span>
+        <span class="chip">2. Резинотехника</span>
+        <span class="chip">3. Приборы</span>
+      </div>
+
+      <div class="body">
+        <div class="block">
+          <div class="sec-head"><span class="idx">01</span><h2>Контроль в первые недели эксплуатации</h2></div>
+          <hr class="sec-rule" />
+          <div class="callout callout--note">
+            <b>Ежедневный контроль</b>
+            В первые недели эксплуатации ежедневно контролируйте уровень моторного масла и охлаждающей жидкости (антифриза). Регулярно осматривайте двигатель и пространство под автомобилем на предмет возможных подтёков технических жидкостей.
+          </div>
+        </div>
+
+        <div class="block">
+          <div class="sec-head"><span class="idx">02</span><h2>Ответственность за резинотехнические изделия</h2></div>
+          <hr class="sec-rule" />
+          <p class="text">При установке двигателя замене подлежат только те шланги, сальники, уплотнения и другие резинотехнические изделия, которые были согласованы с заказчиком и включены в перечень выполняемых работ.</p>
+          <p class="text">Большая часть резинотехнических изделий (патрубки, шланги, уплотнения и другие элементы), установленных на автомобиле до ремонта, продолжает использоваться. В связи с этим исполнитель несёт ответственность только за новые детали, которые были заменены в процессе ремонта, и не отвечает за неисправности, возникшие вследствие износа или выхода из строя ранее установленных на автомобиле деталей.</p>
+
+          <div class="callout callout--warn" style="margin-top: 0.6em;">
+            <b>Скрытые дефекты при повторной установке</b>
+            Важно понимать, что при демонтаже и повторной установке бывших в эксплуатации резинотехнических изделий (патрубков, шлангов, уплотнений и т.д.) возможно проявление скрытых дефектов. На практике нередко встречаются случаи, когда после снятия и установки шланг визуально остаётся целым, не имеет течей при первоначальной проверке, однако спустя некоторое время эксплуатации из-за естественного старения материала появляются трещины или начинается подтекание.
+          </div>
+
+          <p class="text" style="margin-top: 0.6em;">Такие неисправности являются следствием естественного износа деталей, а не качества выполненных работ. В связи с этим исполнитель несёт ответственность только за новые детали, заменённые в процессе ремонта, и не отвечает за выход из строя ранее установленных на автомобиле резинотехнических изделий, срок службы которых невозможно определить визуально.</p>
+        </div>
+
+        <div class="block">
+          <div class="sec-head"><span class="idx">03</span><h2>Контроль приборов во время движения</h2></div>
+          <hr class="sec-rule" />
+          <div class="callout callout--crit">
+            <b>Обязательно к соблюдению</b>
+            Во время движения обязательно следите за показаниями приборов и контрольными лампами давления масла и температуры двигателя.
+          </div>
+        </div>
+      </div>
+
+      <footer class="footer">
+        <span><strong>Motor Land</strong> · Рекомендации после установки ДВС/КПП</span>
+        <span>Стр. 1 · Обязательно к ознакомлению</span>
+      </footer>
+    </div>
+  </article>
+  </div>
+
+  <script>
+    (function () {
+      const stage = document.getElementById("stage");
+      const page = document.getElementById("page");
+      const surface = document.getElementById("surface");
+      if (!stage || !page || !surface) return;
+
+      const setType = (fs, gap) => {
+        surface.style.setProperty("--fs", fs.toFixed(2) + "px");
+        surface.style.setProperty("--gap", gap.toFixed(2) + "mm");
+      };
+
+      function scalePreview() {
+        page.style.transform = "none";
+        const pageW = page.getBoundingClientRect().width;
+        const stageW = stage.clientWidth;
+        if (!pageW || !stageW) return;
+        page.style.transform = "scale(" + (stageW / pageW) + ")";
+      }
+
+      function fitContent() {
+        surface.style.transform = "";
+        surface.style.width = "";
+        surface.style.height = "";
+
+        const fs = 11;
+        let g = 2.4;
+        setType(fs, g);
+
+        const fits = () => surface.scrollHeight <= page.clientHeight - 12;
+        while (!fits() && g > 1.6) {
+          g -= 0.1;
+          setType(fs, g);
+        }
+
+        page.dataset.fs = fs.toFixed(2);
+        page.dataset.gap = g.toFixed(2);
+        page.dataset.fits = String(fits());
+      }
+
+      function run() {
+        fitContent();
+        scalePreview();
+      }
+
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(run);
+      } else {
+        run();
+      }
+      window.addEventListener("resize", scalePreview);
+      window.addEventListener("beforeprint", function () {
+        page.style.transform = "none";
+        fitContent();
+      });
+      window.addEventListener("afterprint", scalePreview);
+    })();
+  </script>
+</body>
+</html>

@@ -55,11 +55,7 @@ function TopBarPageLabel({ title }: { title: string }) {
   );
 }
 
-const availabilityOptions: { value: MotorAvailability; label: string }[] = [
-  { value: "all", label: "Все" },
-  { value: "available", label: "В наличии" },
-  { value: "sold", label: "Продан" },
-];
+const availabilityOptionValues: MotorAvailability[] = ["all", "available", "sold"];
 
 function isWorkspaceRoute(pathname: string): boolean {
   return pathname === "/motors" || pathname === "/sold" || pathname === "/warehouse";
@@ -185,13 +181,13 @@ export function DashboardTopBar() {
       accounting: businessNavCopy.business.accounting,
       documents: businessNavCopy.business.documents,
       team: businessNavCopy.business.team,
-      activity: "Активность",
+      activity: userCopy.layout.activity,
     };
 
     if (sectionByMode[sidebarMode]) return sectionByMode[sidebarMode]!;
     if (pathname.startsWith("/my-earnings")) return businessNavCopy.business.myEarnings;
-    if (pathname.startsWith("/settings")) return "Настройки";
-    if (pathname.startsWith("/help")) return "Справка";
+    if (pathname.startsWith("/settings")) return userCopy.layout.settings;
+    if (pathname.startsWith("/help")) return userCopy.layout.help;
 
     return userCopy.appName;
   }, [
@@ -240,7 +236,7 @@ export function DashboardTopBar() {
         await triggerMotorExport();
       }
     } catch (error) {
-      setExcelError(error instanceof Error ? error.message : "Не удалось экспортировать файл");
+      setExcelError(error instanceof Error ? error.message : userCopy.layout.exportFailed);
     }
   }
 
@@ -257,6 +253,16 @@ export function DashboardTopBar() {
   const centerKey = topBarCenterKey(sidebarMode, workspace, isSpecificView);
   const rightKey = topBarRightKey(sidebarMode, workspace);
 
+  const availabilityOptions = availabilityOptionValues.map((value) => ({
+    value,
+    label:
+      value === "all"
+        ? userCopy.layout.filterAll
+        : value === "available"
+          ? userCopy.layout.filterAvailable
+          : userCopy.layout.filterSold,
+  }));
+
   return (
     <header
       className={cn(
@@ -272,8 +278,8 @@ export function DashboardTopBar() {
           variant="ghost"
           size="icon-sm"
           onClick={toggleMobileSidebar}
-          title="Меню"
-          aria-label="Открыть меню"
+          title={userCopy.layout.menu}
+          aria-label={userCopy.layout.openMenu}
           className="md:hidden"
         >
           <PanelLeft className="size-4" />
@@ -282,8 +288,14 @@ export function DashboardTopBar() {
           variant="ghost"
           size="icon-sm"
           onClick={toggleSidebar}
-          title={sidebarCollapsed ? "Развернуть боковую панель (⌘B)" : "Свернуть боковую панель (⌘B)"}
-          aria-label={sidebarCollapsed ? "Развернуть боковую панель" : "Свернуть боковую панель"}
+          title={
+            sidebarCollapsed
+              ? userCopy.layout.expandSidebarHint
+              : userCopy.layout.collapseSidebarHint
+          }
+          aria-label={
+            sidebarCollapsed ? userCopy.layout.expandSidebar : userCopy.layout.collapseSidebar
+          }
           className="hidden md:inline-flex"
         >
           <PanelLeft
@@ -334,10 +346,10 @@ export function DashboardTopBar() {
               className={cn("w-full max-w-md md:max-w-lg", workspace && "workspace-search-mobile")}
               placeholder={
                 isWarehouseRoute
-                  ? "Поиск по артикулу, названию, бренду..."
+                  ? userCopy.layout.searchSku
                   : isSpecificView
-                    ? "Поиск по записям..."
-                    : "Поиск по номеру, бренду, комплектации..."
+                    ? userCopy.layout.searchRecords
+                    : userCopy.layout.searchMotors
               }
             />
           ) : null}
@@ -368,8 +380,8 @@ export function DashboardTopBar() {
             <Button
               variant="ghost"
               size="icon-sm"
-              title="Колонки"
-              aria-label="Колонки"
+              title={userCopy.layout.columns}
+              aria-label={userCopy.layout.columns}
               onClick={() => setSpecificColumnsDialogOpen(true)}
             >
               <Settings2 className="size-4" />
@@ -396,10 +408,10 @@ export function DashboardTopBar() {
                   variant="ghost"
                   size="icon-sm"
                   disabled={!canEdit}
-                  title="Сканер штрихкода"
+                  title={userCopy.layout.barcodeScanner}
                   onClick={() => {
                     if (!triggerWarehouseBarcode()) {
-                      setExcelError("Сканер склада ещё не готов");
+                      setExcelError(userCopy.layout.warehouseScannerNotReady);
                     }
                   }}
                 >
@@ -417,9 +429,9 @@ export function DashboardTopBar() {
                 }
                 title={
                   isWarehouseRoute
-                    ? "Экспорт CSV"
+                    ? userCopy.layout.exportCsv
                     : isPro
-                      ? "Экспорт в Excel"
+                      ? userCopy.layout.exportExcel
                       : userCopy.billing.paywall.export.title
                 }
                 onClick={() => void handleExport()}
@@ -437,7 +449,7 @@ export function DashboardTopBar() {
             <Button
               variant="ghost"
               size="icon-sm"
-              title="Настройки"
+              title={userCopy.layout.settings}
               render={<Link href="/settings" />}
               nativeButton={false}
             >
@@ -451,7 +463,7 @@ export function DashboardTopBar() {
               render={<Link href="/settings" />}
               nativeButton={false}
             >
-              Настройки
+              {userCopy.layout.settings}
             </Button>
           )}
 

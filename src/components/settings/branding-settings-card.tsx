@@ -152,7 +152,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
       } catch (error) {
         return {
           ok: false,
-          error: error instanceof Error ? error.message : "Не удалось сохранить брендинг",
+          error: error instanceof Error ? error.message : userCopy.settings.brandingUi.saveError,
         };
       }
     },
@@ -162,7 +162,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
   usePersistedDocument({
     key: brandingKey,
     value: brandingSnapshot,
-    label: "Брендинг",
+    label: userCopy.settings.brandingUi.persistenceLabel,
     sync: brandingSync,
     enabled: Boolean(brandingKey) && !isLoading,
   });
@@ -178,7 +178,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
     if (!file) return;
     setLocalPreview(file);
     setUploadingLogo(true);
-    onStatus?.("Загружаем логотип…");
+    onStatus?.(userCopy.settings.brandingUi.uploadingLogo);
     try {
       const logoUrl = await uploadCompanyLogo(normalizedCompanyId, file);
       setDraft((current) => ({ ...current, logoUrl }));
@@ -187,9 +187,11 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
         URL.revokeObjectURL(previewRef.current);
         previewRef.current = null;
       }
-      onStatus?.("Логотип загружен и сохранён.");
+      onStatus?.(userCopy.settings.brandingUi.logoUploaded);
     } catch (error) {
-      onStatus?.(error instanceof Error ? error.message : "Не удалось загрузить логотип");
+      onStatus?.(
+        error instanceof Error ? error.message : userCopy.settings.brandingUi.logoUploadError,
+      );
     } finally {
       setUploadingLogo(false);
     }
@@ -201,9 +203,11 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
     try {
       await saveCompanyBranding(normalizedCompanyId, { ...draft, ...docConfig });
       setSaveConfirmOpen(false);
-      onStatus?.("Брендинг сохранён. Новые PDF будут использовать эти настройки.");
+      onStatus?.(userCopy.settings.brandingUi.saved);
     } catch (error) {
-      onStatus?.(error instanceof Error ? error.message : "Не удалось сохранить брендинг");
+      onStatus?.(
+        error instanceof Error ? error.message : userCopy.settings.brandingUi.saveError,
+      );
     } finally {
       setSaving(false);
     }
@@ -254,7 +258,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
 
   const previewInput = useMemo(
     () => ({
-      companyName: draft.legalName || profile.name || "Название компании",
+      companyName: draft.legalName || profile.name || userCopy.settings.brandingUi.defaultCompanyName,
       shortName: draft.shortName,
       slogan: draft.slogan,
       address: draft.address,
@@ -283,7 +287,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
       <div className="flex min-h-[320px] items-center justify-center">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" />
-          Загружаем брендинг…
+          {userCopy.settings.brandingUi.loading}
         </div>
       </div>
     );
@@ -296,11 +300,12 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
           <div className="max-w-xl space-y-1">
             <div className="flex items-center gap-2">
               <Palette className="size-5 text-primary" />
-              <h3 className="text-lg font-semibold tracking-tight">Брендинг PDF</h3>
+              <h3 className="text-lg font-semibold tracking-tight">
+                {userCopy.settings.brandingUi.title}
+              </h3>
             </div>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Настройте фирменный стиль один раз — все заказ-наряды, акты и гарантии для клиентов будут
-              собираться автоматически с вашим логотипом и цветами.
+              {userCopy.settings.brandingUi.subtitle}
             </p>
           </div>
           <Button
@@ -311,12 +316,12 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
             {saving ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                Сохраняем…
+                {userCopy.settings.brandingUi.saving}
               </>
             ) : (
               <>
                 <Save className="size-4" />
-                Сохранить
+                {userCopy.settings.brandingUi.save}
               </>
             )}
           </Button>
@@ -331,19 +336,19 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
               <TabsList variant="line" className="h-auto w-max min-w-full justify-start gap-1 bg-transparent p-0">
                 <TabsTrigger value="identity" className="cursor-pointer gap-1.5 px-3 py-2 text-xs sm:text-sm">
                   <Building2 className="size-3.5" />
-                  Компания
+                  {userCopy.settings.brandingUi.tabIdentity}
                 </TabsTrigger>
                 <TabsTrigger value="appearance" className="cursor-pointer gap-1.5 px-3 py-2 text-xs sm:text-sm">
                   <LayoutTemplate className="size-3.5" />
-                  Оформление
+                  {userCopy.settings.brandingUi.tabAppearance}
                 </TabsTrigger>
                 <TabsTrigger value="header" className="cursor-pointer gap-1.5 px-3 py-2 text-xs sm:text-sm">
                   <PanelTop className="size-3.5" />
-                  Шапка
+                  {userCopy.settings.brandingUi.tabHeader}
                 </TabsTrigger>
                 <TabsTrigger value="documents" className="cursor-pointer gap-1.5 px-3 py-2 text-xs sm:text-sm">
                   <FileStack className="size-3.5" />
-                  Документы
+                  {userCopy.settings.brandingUi.tabDocuments}
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -751,12 +756,12 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
           {saving ? (
             <>
               <Loader2 className="size-4 animate-spin" />
-              Сохраняем брендинг…
+              {userCopy.settings.brandingUi.savingBranding}
             </>
           ) : (
             <>
               <Save className="size-4" />
-              Сохранить брендинг
+              {userCopy.settings.brandingUi.saveBranding}
             </>
           )}
         </Button>
@@ -765,27 +770,30 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
       <Dialog open={saveConfirmOpen} onOpenChange={setSaveConfirmOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Сохранить брендинг?</DialogTitle>
+            <DialogTitle>{userCopy.settings.brandingUi.saveConfirmTitle}</DialogTitle>
             <DialogDescription>
-              Изменения применятся ко всем новым PDF: заказ-наряды, акты, гарантии и счета. Уже
-              сформированные документы не перезапишутся.
+              {userCopy.settings.brandingUi.saveConfirmDescription}
             </DialogDescription>
           </DialogHeader>
           <ul className="space-y-1.5 rounded-lg border bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground">
             <li>
-              Компания:{" "}
+              {userCopy.settings.brandingUi.companyPrefix}{" "}
               <span className="font-medium text-foreground">
-                {draft.legalName?.trim() || draft.shortName?.trim() || "без названия"}
+                {draft.legalName?.trim() ||
+                  draft.shortName?.trim() ||
+                  userCopy.settings.brandingUi.unnamedCompany}
               </span>
             </li>
             <li>
-              Тема PDF:{" "}
+              {userCopy.settings.brandingUi.themePrefix}{" "}
               <span className="font-medium text-foreground">{activeTheme}</span>
             </li>
             <li>
-              Логотип:{" "}
+              {userCopy.settings.brandingUi.logoPrefix}{" "}
               <span className="font-medium text-foreground">
-                {previewSrc ? "загружен" : "не задан"}
+                {previewSrc
+                  ? userCopy.settings.brandingUi.logoPresent
+                  : userCopy.settings.brandingUi.logoMissing}
               </span>
             </li>
           </ul>
@@ -796,18 +804,18 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
               onClick={() => setSaveConfirmOpen(false)}
               disabled={saving}
             >
-              Отмена
+              {userCopy.settings.brandingUi.cancel}
             </Button>
             <Button type="button" onClick={() => void handleSave()} disabled={saving}>
               {saving ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Сохраняем…
+                  {userCopy.settings.brandingUi.saving}
                 </>
               ) : (
                 <>
                   <Save className="size-4" />
-                  Сохранить
+                  {userCopy.settings.brandingUi.save}
                 </>
               )}
             </Button>

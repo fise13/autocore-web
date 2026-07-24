@@ -1,5 +1,7 @@
 "use client";
 
+import { userCopy } from "@/lib/user-copy";
+
 import { FormEvent, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -49,7 +51,7 @@ export function MotorDialog({
   const [engineCode, setEngineCode] = useState(initialMotor?.engineCode ?? "");
 
   const title = useMemo(
-    () => (mode === "create" ? "Новый мотор" : `Редактировать ${initialMotor?.serialCode ?? ""}`),
+    () => (mode === "create" ? userCopy.motors.dialog.newMotor : userCopy.motors.dialog.editMotor(initialMotor?.serialCode ?? "")),
     [mode, initialMotor],
   );
 
@@ -57,11 +59,11 @@ export function MotorDialog({
     event.preventDefault();
     const parsedQty = parseGroupedNumber(quantity);
     if (!serialCode.trim()) {
-      setError("Номер двигателя обязателен");
+      setError(userCopy.motors.dialog.serialRequired);
       return;
     }
     if (!Number.isInteger(parsedQty) || parsedQty <= 0) {
-      setError("Количество должно быть больше 0");
+      setError(userCopy.motors.dialog.quantityPositive);
       return;
     }
 
@@ -84,7 +86,7 @@ export function MotorDialog({
       });
       setOpen(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось сохранить мотор");
+      setError(e instanceof Error ? e.message : userCopy.motors.dialog.saveFailed);
     } finally {
       setIsSubmitting(false);
     }
@@ -92,45 +94,45 @@ export function MotorDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button disabled={disabled}>{triggerLabel ?? "Новый мотор"}</Button>} />
+      <DialogTrigger render={<Button disabled={disabled}>{triggerLabel ?? userCopy.motors.dialog.newMotor}</Button>} />
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
             {mode === "create"
-              ? "Создание новой позиции мотора."
-              : "Изменения сохраняются в users/{uid}/motors."}
+              ? userCopy.motors.dialog.createDescription
+              : userCopy.motors.dialog.editDescription}
           </DialogDescription>
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={submit}>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
-              <Label>Номер двигателя</Label>
+              <Label>{userCopy.motors.dialog.serial}</Label>
               <Input value={serialCode} onChange={(e) => setSerialCode(e.target.value)} required />
             </div>
             <div className="space-y-1">
-              <Label>Количество</Label>
+              <Label>{userCopy.motors.dialog.quantity}</Label>
               <AmountInput value={quantity} onChange={setQuantity} />
             </div>
             <div className="space-y-1">
-              <Label>Бренд</Label>
+              <Label>{userCopy.motors.dialog.brand}</Label>
               <Input value={brandName} onChange={(e) => setBrandName(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label>Код двигателя</Label>
+              <Label>{userCopy.motors.dialog.engineCode}</Label>
               <Input value={engineCode} onChange={(e) => setEngineCode(e.target.value)} />
             </div>
             <div className="space-y-1 sm:col-span-2">
-              <Label>Комплектация</Label>
+              <Label>{userCopy.motors.dialog.configuration}</Label>
               <Input value={configuration} onChange={(e) => setConfiguration(e.target.value)} />
             </div>
             <div className="space-y-1 sm:col-span-2">
-              <Label>Коробка</Label>
+              <Label>{userCopy.motors.dialog.transmission}</Label>
               <Input value={transmission} onChange={(e) => setTransmission(e.target.value)} />
             </div>
             <div className="space-y-1 sm:col-span-2">
-              <Label>Особые отметки</Label>
+              <Label>{userCopy.motors.dialog.notes}</Label>
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
             </div>
           </div>
@@ -139,7 +141,7 @@ export function MotorDialog({
 
           <DialogFooter className="px-0 pb-0">
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Сохраняем..." : "Сохранить"}
+              {isSubmitting ? userCopy.motors.dialog.saving : userCopy.motors.dialog.save}
             </Button>
           </DialogFooter>
         </form>

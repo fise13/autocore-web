@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/sidebar";
 import { can, canManageSettings } from "@/lib/auth/permissions";
 import type { SidebarDocumentsPanelProps } from "@/lib/navigation/sidebar-types";
+import { userCopy } from "@/lib/user-copy";
 
 export function SidebarDocumentsPanel({
   collapsed = false,
@@ -28,12 +29,12 @@ export function SidebarDocumentsPanel({
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Документы</SidebarGroupLabel>
+      <SidebarGroupLabel>{userCopy.nav.business.documents}</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
           <SidebarNavLink
             href="/documents"
-            label="Документы"
+            label={userCopy.nav.business.documents}
             icon={FileTextIcon}
             pathname={pathname}
             collapsed={collapsed}

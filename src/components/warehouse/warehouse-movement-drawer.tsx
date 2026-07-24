@@ -1,5 +1,7 @@
 "use client";
 
+import { userCopy } from "@/lib/user-copy";
+
 import Link from "next/link";
 
 import {
@@ -20,28 +22,13 @@ type WarehouseMovementDrawerProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-const movementTypeLabels: Record<InventoryMovement["type"], string> = {
-  receipt: "Приход",
-  issue: "Расход",
-  transfer_out: "Перемещение · списание",
-  transfer_in: "Перемещение · приход",
-  adjustment: "Корректировка",
-  consumption: "Заказ-наряд",
-  return_in: "Возврат",
-  reservation_hold: "Резерв",
-  reservation_release: "Снятие резерва",
-  reversal: "Откат",
-  relocation: "Место → место",
-};
+function movementTypeLabels(): Record<InventoryMovement["type"], string> {
+  return { ...userCopy.warehouse.movementTypes };
+}
 
-const referenceLabels: Record<NonNullable<InventoryMovement["referenceType"]>, string> = {
-  purchase: "Закупка",
-  sale: "Продажа",
-  work_order: "Заказ-наряд",
-  transfer: "Перемещение",
-  import: "Импорт",
-  manual: "Вручную",
-};
+function referenceLabels(): Record<NonNullable<InventoryMovement["referenceType"]>, string> {
+  return { ...userCopy.warehouse.references };
+}
 
 export function WarehouseMovementDrawer({
   item,
@@ -54,20 +41,20 @@ export function WarehouseMovementDrawer({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>История движений</DialogTitle>
+          <DialogTitle>{userCopy.warehouse.movementsTitle}</DialogTitle>
           <DialogDescription>
-            {item ? `${item.sku} · ${item.name}` : "Выберите позицию"}
+            {item ? `${item.sku} · ${item.name}` : userCopy.warehouse.selectItem}
           </DialogDescription>
         </DialogHeader>
         <div className="max-h-[60vh] space-y-2 overflow-auto">
-          {loading ? <p className="text-sm text-muted-foreground">Загрузка...</p> : null}
+          {loading ? <p className="text-sm text-muted-foreground">{userCopy.warehouse.loading}</p> : null}
           {!loading && movements.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Движений пока нет</p>
+            <p className="text-sm text-muted-foreground">{userCopy.warehouse.movementsEmpty}</p>
           ) : null}
           {movements.map((movement) => (
             <div key={movement.id} className="rounded-lg border p-3 text-sm">
               <div className="flex items-center justify-between gap-2">
-                <span className="font-medium">{movementTypeLabels[movement.type] ?? movement.type}</span>
+                <span className="font-medium">{movementTypeLabels()[movement.type] ?? movement.type}</span>
                 <span>{movement.quantity}</span>
               </div>
               <p className="text-xs text-muted-foreground">
@@ -75,7 +62,7 @@ export function WarehouseMovementDrawer({
               </p>
               {movement.referenceType ? (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Источник: {referenceLabels[movement.referenceType] ?? movement.referenceType}
+                  Источник: {referenceLabels()[movement.referenceType] ?? movement.referenceType}
                   {movement.referenceId && movement.referenceType === "work_order" ? (
                     <>
                       {" · "}

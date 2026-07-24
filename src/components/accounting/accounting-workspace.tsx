@@ -61,14 +61,14 @@ const WORK_ORDER_CATEGORIES = new Set([
   "payroll",
 ]);
 
-const TAB_ITEMS = [
-  { value: "overview", label: "Обзор" },
-  { value: "cashbox", label: "Касса" },
-  { value: "expenses", label: "Расходы" },
-  { value: "operations", label: "Операции" },
-  { value: "work_orders", label: "Заказ-наряды" },
-  { value: "payroll", label: "Зарплаты" },
-  { value: "advances", label: "Авансы" },
+const TAB_VALUES = [
+  "overview",
+  "cashbox",
+  "expenses",
+  "operations",
+  "work_orders",
+  "payroll",
+  "advances",
 ] as const;
 
 export function AccountingWorkspace() {
@@ -150,7 +150,7 @@ export function AccountingWorkspace() {
   const canEdit = can(profile, "accounting_edit");
 
   const activeTab =
-    TAB_ITEMS.find((tab) => tab.value === searchParams.get("tab"))?.value ?? "overview";
+    TAB_VALUES.find((value) => value === searchParams.get("tab")) ?? "overview";
 
   const openExpenseDialog = useCallback(() => {
     setOperationDialogType("expense");
@@ -234,15 +234,20 @@ export function AccountingWorkspace() {
     setTabEpoch((current) => current + 1);
   }
 
+  const tabItems = TAB_VALUES.map((value) => ({
+    value,
+    label: userCopy.accounting.tabs[value],
+  }));
+
   return (
     <section className="mx-auto flex w-full max-w-[1400px] flex-col gap-5">
       <header className="animate-autocore-fade-in-up flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="text-2xl font-semibold tracking-tight">Финансы</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">{userCopy.accounting.title}</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="transition-colors">
-            {operations.length} операций
+            {userCopy.accounting.operationsCount(operations.length)}
           </Badge>
           <Badge
             variant={operationsQuery.isError ? "destructive" : "outline"}
@@ -271,10 +276,10 @@ export function AccountingWorkspace() {
       {showEmptyState ? (
         <EmptyState
           icon={Receipt}
-          title="Операций пока нет"
-          description="Добавьте первую финансовую операцию — расход, приход или продажу."
+          title={userCopy.accounting.emptyTitle}
+          description={userCopy.accounting.emptyDescription}
           primaryAction={{
-            label: "Добавить первую операцию",
+            label: userCopy.accounting.emptyCreate,
             onClick: openExpenseDialog,
           }}
         />
@@ -295,13 +300,13 @@ export function AccountingWorkspace() {
       {!companyId ? (
         <Card>
           <CardContent className="py-8 text-sm text-muted-foreground">
-            Компания не выбрана — операции недоступны.
+            {userCopy.accounting.noCompany}
           </CardContent>
         </Card>
       ) : isBootstrapping ? null : (
         <Tabs value={activeTab} onValueChange={onTabChange} className="gap-4">
           <TabsList className="autocore-segmented-tabs h-9 w-full max-w-2xl justify-start gap-0.5 p-1 md:w-auto">
-            {TAB_ITEMS.map((tab) => (
+            {tabItems.map((tab) => (
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
@@ -324,8 +329,8 @@ export function AccountingWorkspace() {
             <AnimatedTabsPanel active={activeTab === "cashbox"} epoch={tabEpoch} className="space-y-4">
               <Card className="overflow-hidden">
                 <CardHeader className="border-b border-border/50 bg-muted/20">
-                  <CardTitle>Касса</CardTitle>
-                  <CardDescription>Операции по счёту «Касса».</CardDescription>
+                  <CardTitle>{userCopy.accounting.sections.cashboxTitle}</CardTitle>
+                  <CardDescription>{userCopy.accounting.sections.cashboxDescription}</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-4">
                   <OperationsTable rows={cashboxRows} canEdit={canEdit} onDelete={onDelete} onMotorSaleSelect={setMotorSaleOperation} />
@@ -338,8 +343,8 @@ export function AccountingWorkspace() {
             <AnimatedTabsPanel active={activeTab === "expenses"} epoch={tabEpoch} className="space-y-4">
               <Card className="overflow-hidden">
                 <CardHeader className="border-b border-border/50 bg-muted/20">
-                  <CardTitle>Расходы</CardTitle>
-                  <CardDescription>Все расходные операции компании.</CardDescription>
+                  <CardTitle>{userCopy.accounting.sections.expensesTitle}</CardTitle>
+                  <CardDescription>{userCopy.accounting.sections.expensesDescription}</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-4">
                   <OperationsTable rows={expenseRows} canEdit={canEdit} onDelete={onDelete} onMotorSaleSelect={setMotorSaleOperation} />
@@ -354,8 +359,8 @@ export function AccountingWorkspace() {
                 <CardHeader className="border-b border-border/50 bg-muted/20">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <CardTitle>Все операции</CardTitle>
-                      <CardDescription>Полный журнал финансовых записей.</CardDescription>
+                      <CardTitle>{userCopy.accounting.sections.operationsTitle}</CardTitle>
+                      <CardDescription>{userCopy.accounting.sections.operationsDescription}</CardDescription>
                     </div>
                     <Badge variant="outline" className="gap-1">
                       <Plus className="size-3" />
@@ -374,16 +379,14 @@ export function AccountingWorkspace() {
             <AnimatedTabsPanel active={activeTab === "work_orders"} epoch={tabEpoch} className="space-y-4">
               <Card className="overflow-hidden">
                 <CardHeader className="border-b border-border/50 bg-muted/20">
-                  <CardTitle>Заказ-наряды</CardTitle>
-                  <CardDescription>
-                    Доход, себестоимость запчастей и зарплата по заказ-нарядам.
-                  </CardDescription>
+                  <CardTitle>{userCopy.accounting.sections.workOrdersTitle}</CardTitle>
+                  <CardDescription>{userCopy.accounting.sections.workOrdersDescription}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-4">
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-lg border bg-emerald-500/5 px-3 py-2">
                       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Доход
+                        {userCopy.accounting.workOrderFinance.income}
                       </p>
                       <p className="mt-0.5 text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
                         {formatMoney(workOrderFinanceSummary.income)}
@@ -391,7 +394,7 @@ export function AccountingWorkspace() {
                     </div>
                     <div className="rounded-lg border bg-red-500/5 px-3 py-2">
                       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Расход
+                        {userCopy.accounting.workOrderFinance.expense}
                       </p>
                       <p className="mt-0.5 text-sm font-semibold tabular-nums text-red-700 dark:text-red-300">
                         {formatMoney(workOrderFinanceSummary.expense)}
@@ -424,10 +427,8 @@ export function AccountingWorkspace() {
             <AnimatedTabsPanel active={activeTab === "payroll"} epoch={tabEpoch} className="space-y-4">
               <Card className="overflow-hidden">
                 <CardHeader className="border-b border-border/50 bg-muted/20">
-                  <CardTitle>Зарплаты</CardTitle>
-                  <CardDescription>
-                    Начисления механикам и диагностам по завершённым заказ-нарядам.
-                  </CardDescription>
+                  <CardTitle>{userCopy.accounting.sections.payrollTitle}</CardTitle>
+                  <CardDescription>{userCopy.accounting.sections.payrollDescription}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-4">
                   <PayrollTable
@@ -461,10 +462,8 @@ export function AccountingWorkspace() {
               <AdvancesOverview snapshot={advanceSnapshot} />
               <Card className="overflow-hidden">
                 <CardHeader className="border-b border-border/50 bg-muted/20">
-                  <CardTitle>Журнал авансов</CardTitle>
-                  <CardDescription>
-                    Показываются операции, где в категории или комментарии есть признаки аванса.
-                  </CardDescription>
+                  <CardTitle>{userCopy.accounting.sections.advancesTitle}</CardTitle>
+                  <CardDescription>{userCopy.accounting.sections.advancesDescription}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-4">
                   <div className="flex flex-wrap gap-2">

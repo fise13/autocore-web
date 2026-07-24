@@ -17,24 +17,6 @@ export type SettingsSectionId =
   | "accounting"
   | "dataCleanup";
 
-const allSections: { id: SettingsSectionId; label: string; icon: typeof UserCircle }[] = [
-  { id: "account", label: userCopy.settings.account, icon: UserCircle },
-  { id: "company", label: userCopy.settings.company, icon: Building2 },
-  { id: "appConfig", label: userCopy.settings.appConfig, icon: Sparkles },
-  { id: "branding", label: "Брендинг", icon: Palette },
-  { id: "accounting", label: userCopy.settings.accounting, icon: CircleDollarSign },
-  { id: "dataCleanup", label: userCopy.settings.dataCleanup, icon: Trash2 },
-];
-
-const sectionSubtitles: Record<SettingsSectionId, string> = {
-  account: userCopy.settings.subtitleAccount,
-  company: userCopy.settings.subtitleCompany,
-  appConfig: userCopy.settings.subtitleAppConfig,
-  branding: "Фирменный стиль PDF: логотип, тема, шапка и живое превью документа.",
-  accounting: userCopy.settings.subtitleAccounting,
-  dataCleanup: userCopy.settings.subtitleDataCleanup,
-};
-
 const navSpring = { type: "spring" as const, stiffness: 420, damping: 34, mass: 0.85 };
 
 type SettingsShellProps = {
@@ -47,6 +29,32 @@ export function SettingsShell({ children, initialSection = "account" }: Settings
   const hasCompany = Boolean(profile?.companyId?.trim());
   const canCleanupData =
     can(profile, "accounting_delete") || can(profile, "inventory_delete");
+
+  const allSections = useMemo(
+    () =>
+      [
+        { id: "account" as const, label: userCopy.settings.account, icon: UserCircle },
+        { id: "company" as const, label: userCopy.settings.company, icon: Building2 },
+        { id: "appConfig" as const, label: userCopy.settings.appConfig, icon: Sparkles },
+        { id: "branding" as const, label: userCopy.settings.branding, icon: Palette },
+        { id: "accounting" as const, label: userCopy.settings.accounting, icon: CircleDollarSign },
+        { id: "dataCleanup" as const, label: userCopy.settings.dataCleanup, icon: Trash2 },
+      ] as const,
+    [],
+  );
+
+  const sectionSubtitles = useMemo(
+    (): Record<SettingsSectionId, string> => ({
+      account: userCopy.settings.subtitleAccount,
+      company: userCopy.settings.subtitleCompany,
+      appConfig: userCopy.settings.subtitleAppConfig,
+      branding: userCopy.settings.subtitleBranding,
+      accounting: userCopy.settings.subtitleAccounting,
+      dataCleanup: userCopy.settings.subtitleDataCleanup,
+    }),
+    [],
+  );
+
   const sections = useMemo(
     () =>
       allSections.filter((section) => {
@@ -57,7 +65,7 @@ export function SettingsShell({ children, initialSection = "account" }: Settings
         if (section.id === "dataCleanup") return canCleanupData;
         return true;
       }),
-    [canCleanupData, hasCompany, profile],
+    [allSections, canCleanupData, hasCompany, profile],
   );
   const resolvedInitialSection = sections.some((section) => section.id === initialSection)
     ? initialSection

@@ -30,17 +30,19 @@ export function SidebarSettingsCard() {
       <CardContent className="flex flex-wrap items-center gap-2">
         <motion.div whileTap={{ scale: 0.98 }} transition={{ duration: 0.12 }}>
           <Button type="button" onClick={openSidebarEditor} disabled={isEditing}>
-            {isEditing ? "Режим настройки открыт" : "Настроить боковую панель"}
+            {isEditing
+              ? userCopy.settings.configureSidebarOpen
+              : userCopy.settings.configureSidebar}
           </Button>
         </motion.div>
         {isEditing ? (
           <Button type="button" variant="outline" size="sm" onClick={exitEditMode}>
-            Закрыть
+            {userCopy.settings.configureSidebarClose}
           </Button>
         ) : null}
         {isEditing ? (
           <p className="w-full text-xs text-muted-foreground">
-            Слева — боковая панель: нажмите «−», чтобы скрыть раздел, внизу — вернуть скрытые.
+            {userCopy.settings.configureSidebarHint}
           </p>
         ) : null}
       </CardContent>

@@ -16,6 +16,7 @@ import { useCompanyAppConfigDraft } from "@/hooks/use-company-app-config-draft";
 import type { PersistenceSyncHandler } from "@/lib/persistence";
 import { saveCompanyAppConfig } from "@/lib/onboarding/save-company-app-config";
 import { SETUP_WIZARD_COPY } from "@/lib/onboarding/setup-wizard-copy";
+import { userCopy } from "@/lib/user-copy";
 
 type CompanyAppConfigSettingsCardProps = {
   companyId: string;
@@ -53,7 +54,7 @@ export function CompanyAppConfigSettingsCard({ companyId, onStatus }: CompanyApp
 
   const appConfigSync = useCallback<PersistenceSyncHandler>(
     async ({ snapshot }) => {
-      if (!profile?.id) return { ok: false, error: "Нет пользователя" };
+      if (!profile?.id) return { ok: false, error: userCopy.settings.appConfigUi.noUser };
       try {
         await saveCompanyAppConfig({
           companyId,
@@ -74,7 +75,7 @@ export function CompanyAppConfigSettingsCard({ companyId, onStatus }: CompanyApp
   usePersistedDocument({
     key: appConfigKey,
     value: draft,
-    label: "Конфиг приложения",
+    label: userCopy.settings.appConfigUi.persistenceLabel,
     sync: appConfigSync,
     enabled: Boolean(appConfigKey) && loaded && canSave,
   });
@@ -126,24 +127,24 @@ export function CompanyAppConfigSettingsCard({ companyId, onStatus }: CompanyApp
 
       <CardContent className="space-y-5">
         {!loaded ? (
-          <Badge variant="secondary">Загрузка…</Badge>
+          <Badge variant="secondary">{userCopy.settings.appConfigUi.loading}</Badge>
         ) : (
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ConfigTab)}>
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="modules" className="gap-1.5">
                 <Sparkles className="size-3.5" />
                 <span className="hidden sm:inline">{SETUP_WIZARD_COPY.steps[0].title}</span>
-                <span className="sm:hidden">Разделы</span>
+                <span className="sm:hidden">{userCopy.settings.appConfigUi.tabModulesShort}</span>
               </TabsTrigger>
               <TabsTrigger value="categories" className="gap-1.5">
                 <Boxes className="size-3.5" />
                 <span className="hidden sm:inline">{SETUP_WIZARD_COPY.steps[1].title}</span>
-                <span className="sm:hidden">Каталог</span>
+                <span className="sm:hidden">{userCopy.settings.appConfigUi.tabCategoriesShort}</span>
               </TabsTrigger>
               <TabsTrigger value="warranty" className="gap-1.5">
                 <ShieldCheck className="size-3.5" />
                 <span className="hidden sm:inline">{SETUP_WIZARD_COPY.steps[2].title}</span>
-                <span className="sm:hidden">Гарантия</span>
+                <span className="sm:hidden">{userCopy.settings.appConfigUi.tabWarrantyShort}</span>
               </TabsTrigger>
             </TabsList>
 

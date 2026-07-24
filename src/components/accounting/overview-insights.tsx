@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
 import { operationCategoryLabel } from "@/lib/accounting/labels";
 import { cn } from "@/lib/utils";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 import { motionStagger } from "@/lib/motion";
 
 export type OverviewInsightsLabels = {
@@ -25,23 +26,21 @@ export type OverviewInsightsLabels = {
   categoryLabels?: Record<string, string>;
 };
 
-const DEFAULT_LABELS: OverviewInsightsLabels = {
-  dateLocale: "ru",
-  weeklyTitle: "Динамика за 7 дней",
-  weeklyDescription: "Чистый поток: доходы/продажи минус расходы.",
-  topCategoriesTitle: "Топ категорий",
-  topCategoriesDescription: "Самые объёмные направления.",
-  noCategories: "Пока нет категорий.",
-  typeDistributionTitle: "Распределение по типам операций",
-  typeDistributionDescription: "Быстрый срез продаж, доходов, расходов и возвратов.",
-  uncategorized: "Без категории",
-  typeLabels: {
-    sale: "Продажи",
-    income: "Доходы",
-    expense: "Расходы",
-    refund: "Возвраты",
-  },
-};
+function getDefaultOverviewInsightsLabels(): OverviewInsightsLabels {
+  const i = userCopy.accounting.insights;
+  return {
+    dateLocale: getActiveUserCopyLocale(),
+    weeklyTitle: i.weeklyTitle,
+    weeklyDescription: i.weeklyDescription,
+    topCategoriesTitle: i.topCategoriesTitle,
+    topCategoriesDescription: i.topCategoriesDescription,
+    noCategories: i.noCategories,
+    typeDistributionTitle: i.typeDistributionTitle,
+    typeDistributionDescription: i.typeDistributionDescription,
+    uncategorized: i.uncategorized,
+    typeLabels: { ...i.typeLabels },
+  };
+}
 
 const TYPE_COLORS: Record<string, string> = {
   sale: "bg-chart-1",
@@ -89,8 +88,9 @@ function buildLast7DaysSeries(
 
 export function OverviewInsights({
   operations,
-  labels = DEFAULT_LABELS,
+  labels: labelsProp,
 }: OverviewInsightsProps) {
+  const labels = labelsProp ?? getDefaultOverviewInsightsLabels();
   const { formatMoney } = useAppDisplayCurrency();
   const [mounted, setMounted] = useState(false);
   useEffect(() => {

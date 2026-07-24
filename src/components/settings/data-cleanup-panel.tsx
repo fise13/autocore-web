@@ -102,7 +102,7 @@ export function DataCleanupPanel({ onStatus }: DataCleanupPanelProps) {
 
   async function runCleanup(actionId: CleanupActionId) {
     if (!profile || !companyId || !uid) {
-      onStatus?.("Компания не найдена");
+      onStatus?.(userCopy.settings.companyNotFound);
       return;
     }
 
@@ -170,7 +170,7 @@ export function DataCleanupPanel({ onStatus }: DataCleanupPanelProps) {
                   disabled={busyAction != null}
                   onClick={() => setPendingAction(action.id)}
                 >
-                  {busyAction === action.id ? "Удаляем…" : "Удалить"}
+                  {busyAction === action.id ? userCopy.settings.deleting : userCopy.settings.delete}
                 </Button>
               </div>
             );
@@ -191,7 +191,7 @@ export function DataCleanupPanel({ onStatus }: DataCleanupPanelProps) {
               disabled={busyAction != null}
               onClick={() => setPendingAction(null)}
             >
-              Отмена
+              {userCopy.settings.cancel}
             </Button>
             <Button
               type="button"
@@ -199,7 +199,7 @@ export function DataCleanupPanel({ onStatus }: DataCleanupPanelProps) {
               disabled={busyAction != null || activeAction == null}
               onClick={() => activeAction && void runCleanup(activeAction.id)}
             >
-              {busyAction != null ? "Удаляем…" : "Удалить безвозвратно"}
+              {busyAction != null ? userCopy.settings.deleting : userCopy.settings.deleteForever}
             </Button>
           </DialogFooter>
         </DialogContent>

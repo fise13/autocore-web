@@ -11,13 +11,14 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { sidebarFooterContent } from "@/lib/navigation/sidebar-footer-content";
+import { getSidebarFooterContent } from "@/lib/navigation/sidebar-footer-content";
 import {
   dismissProductUpdate,
   isProductUpdateDismissed,
 } from "@/lib/product/product-update-dismiss";
 import type { SystemStatusLevel } from "@/lib/product/product-status";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 type SidebarFooterProps = {
   collapsed?: boolean;
@@ -75,7 +76,7 @@ function FooterLink({
 }
 
 export function SidebarFooter({ collapsed = false, onNavigate }: SidebarFooterProps) {
-  const { announcement, help, status } = sidebarFooterContent;
+  const { announcement, help, status } = getSidebarFooterContent();
   const [announcementVisible, setAnnouncementVisible] = useState(false);
   const [statusLevel, setStatusLevel] = useState<SystemStatusLevel>("operational");
 
@@ -124,7 +125,7 @@ export function SidebarFooter({ collapsed = false, onNavigate }: SidebarFooterPr
             size="icon-sm"
             className="absolute top-1.5 right-1.5 size-6 text-muted-foreground hover:text-foreground"
             onClick={handleDismissAnnouncement}
-            title="Скрыть"
+            title={userCopy.layout.hide}
           >
             <X className="size-3.5" />
           </Button>

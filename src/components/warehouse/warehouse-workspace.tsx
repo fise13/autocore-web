@@ -48,6 +48,7 @@ import {
 } from "@/application/use-cases/warehouse/backfill-inventory-taxonomy";
 import { projectItemsForWarehouse } from "@/lib/warehouse/warehouse-stock-projection";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 import { createBarcodeMappingRepository } from "@/infrastructure/firestore/barcode-mapping-repository";
 import { createFinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
 import { createInventoryDocumentRepository } from "@/infrastructure/firestore/inventory-document-repository";
@@ -71,14 +72,6 @@ const importRepository = createInventoryImportRepository();
 const presenceRepository = createWarehousePresenceRepository();
 
 type DialogKind = "receipt" | "adjust" | "sale" | "transfer" | "history" | "barcode" | "import" | "import-history";
-
-function formatDirtyCount(count: number): string {
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-  if (mod10 === 1 && mod100 !== 11) return `${count} изменение`;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${count} изменения`;
-  return `${count} изменений`;
-}
 
 export function WarehouseWorkspace() {
   const { profile } = useAuth();
@@ -237,8 +230,8 @@ export function WarehouseWorkspace() {
   useEffect(() => {
     if (prevDialogRef.current !== null && dialog === null && cloudPending) {
       toast({
-        title: "Есть несинхронизированные правки в таблице",
-        description: "Нажмите ⌘S или дождитесь автосохранения",
+        title: userCopy.warehouse.unsyncedTitle,
+        description: userCopy.warehouse.unsyncedDescription,
         durationMs: 4200,
       });
     }
@@ -258,18 +251,18 @@ export function WarehouseWorkspace() {
     setIoBusy("export");
     try {
       const header = [
-        "Артикул",
-        "Название",
-        "Бренд",
-        "На складе",
-        "Резерв",
-        "Доступно",
-        "Закупка",
-        "Продажа",
-        "Поставщик",
-        "Штрихкод",
-        "Место",
-        "Мин. запас",
+        userCopy.warehouse.exportColumns.sku,
+        userCopy.warehouse.exportColumns.name,
+        userCopy.warehouse.exportColumns.brand,
+        userCopy.warehouse.exportColumns.onHand,
+        userCopy.warehouse.exportColumns.reserved,
+        userCopy.warehouse.exportColumns.available,
+        userCopy.warehouse.exportColumns.purchase,
+        userCopy.warehouse.exportColumns.sale,
+        userCopy.warehouse.exportColumns.supplier,
+        userCopy.warehouse.exportColumns.barcode,
+        userCopy.warehouse.exportColumns.location,
+        userCopy.warehouse.exportColumns.minStock,
       ];
       const lines = filteredItems.map((item) =>
         [
@@ -346,7 +339,7 @@ export function WarehouseWorkspace() {
   if (itemsQuery.isError) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-sm">
-        <p className="text-destructive">{itemsQuery.errorMessage ?? "Не удалось загрузить склад"}</p>
+        <p className="text-destructive">{itemsQuery.errorMessage ?? userCopy.warehouse.loadError}</p>
       </div>
     );
   }
@@ -354,7 +347,7 @@ export function WarehouseWorkspace() {
   if (!canView) {
     return (
       <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-        Нет доступа к складу
+        {userCopy.warehouse.noAccess}
       </div>
     );
   }
@@ -365,7 +358,7 @@ export function WarehouseWorkspace() {
     <div ref={lifecycleRef} className="relative flex h-full min-h-0 flex-1 flex-col">
       {readOnly ? (
         <div className="border-b border-amber-500/25 bg-amber-500/10 px-4 py-2 text-center text-xs text-amber-800 dark:text-amber-200">
-          Режим просмотра — для редактирования нужна роль с правом «Редактирование инвентаря»
+          {userCopy.warehouse.viewOnlyBanner}
         </div>
       ) : null}
       {saveError ? (
@@ -376,32 +369,32 @@ export function WarehouseWorkspace() {
             className="shrink-0 rounded-md border border-destructive/20 px-2.5 py-1 text-[11px] font-medium transition-colors hover:bg-destructive/10"
             onClick={() => setSaveError(null)}
           >
-            Скрыть
+            {userCopy.warehouse.hide}
           </button>
         </div>
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sidebar-border bg-sidebar px-4 py-2 text-xs text-muted-foreground">
         <span>
-          Расходники
+          {userCopy.warehouse.consumables}
           <span className="text-muted-foreground">
             {" "}
-            · {activeWarehouse?.name ?? "выберите склад в меню слева"}
+            · {activeWarehouse?.name ?? userCopy.warehouse.selectWarehouse}
           </span>
           {warehouses.length > 1 ? (
-            <span className="text-muted-foreground"> · остатки только этого склада</span>
+            <span className="text-muted-foreground"> · {userCopy.warehouse.stockThisWarehouseOnly}</span>
           ) : null}
         </span>
         <div className="flex flex-wrap items-center gap-2">
           {dirtyCount > 0 ? (
             <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-800 dark:text-amber-200">
-              {formatDirtyCount(dirtyCount)}
+              {userCopy.warehouse.dirtyCount(dirtyCount)}
             </span>
           ) : null}
           {lastBarcodeScan ? (
             <span className="rounded-full border bg-background px-2.5 py-1 text-[11px] text-foreground">
               {lastBarcodeScan.itemName
-                ? `Скан: ${lastBarcodeScan.itemName}`
-                : `Скан: ${lastBarcodeScan.barcode}`}
+                ? userCopy.warehouse.scan(lastBarcodeScan.itemName)
+                : userCopy.warehouse.scan(lastBarcodeScan.barcode)}
             </span>
           ) : null}
           {canEdit && !defaultWarehouse ? (
@@ -417,7 +410,7 @@ export function WarehouseWorkspace() {
                 );
               }}
             >
-              Создать основной склад
+              {userCopy.warehouse.createMainWarehouse}
             </button>
           ) : null}
         </div>
@@ -675,10 +668,10 @@ export function WarehouseWorkspace() {
           actorUserId={actorUserId}
           onDone={() => {
             toast({
-              title: "Место назначено",
+              title: userCopy.warehouse.locationAssigned,
               description:
                 assignItems.length > 1
-                  ? `Обновлено позиций: ${assignItems.length}`
+                  ? userCopy.warehouse.updatedPositions(assignItems.length)
                   : undefined,
               durationMs: 2800,
             });

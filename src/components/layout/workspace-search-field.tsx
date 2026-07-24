@@ -6,6 +6,7 @@ import { Search } from "lucide-react";
 import { useWorkspace, type WorkspaceSearchSuggestion } from "@/components/layout/workspace-context";
 import { Input } from "@/components/ui/input";
 import { filterSearchOptions, type SearchOption } from "@/lib/search/filter-options";
+import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 type WorkspaceSearchFieldProps = {
@@ -147,7 +148,9 @@ export function buildWarehouseSearchSuggestions(
   return items.map((item) => ({
     id: item.id,
     label: `${item.sku} · ${item.name}`,
-    description: [item.brandName, `в наличии ${item.totalAvailable}`].filter(Boolean).join(" · "),
+    description: [item.brandName, userCopy.layout.inStockCount(item.totalAvailable)]
+      .filter(Boolean)
+      .join(" · "),
     searchValue: item.sku || item.name,
   }));
 }

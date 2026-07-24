@@ -22,6 +22,7 @@ import {
   type SidebarCustomization,
   type SidebarNavItemId,
 } from "@/lib/navigation/sidebar-customization";
+import { businessNavCopy } from "@/lib/navigation/business-nav-copy";
 import { createElement } from "react";
 
 const BRAND_COLLECTIONS = new Set<InventoryCollectionId>(["engines", "transmissions", "parts"]);
@@ -129,7 +130,7 @@ export function buildAutocoreNavGroups({
 
   if (businessNavItems.length > 0) {
     groups.push({
-      label: "Бизнес",
+      label: businessNavCopy.groupBusiness,
       items: businessNavItems,
     });
   }

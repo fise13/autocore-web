@@ -23,6 +23,7 @@ import {
   readMotorImportSession,
 } from "@/lib/motors/import/motor-import-session";
 import { cancelMotorImportJobRemote } from "@/lib/motors/motor-import-api.client";
+import { userCopy } from "@/lib/user-copy";
 
 export type GridSaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
 
@@ -206,17 +207,17 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const syncHandlerRef = useRef<(() => Promise<void>) | null>(null);
   const savingRef = useRef(false);
   const motorExportRef = useRef<(() => Promise<void>)>(async () => {
-    throw new Error("Экспорт недоступен");
+    throw new Error(userCopy.layout.exportUnavailable);
   });
   const motorImportRef = useRef<(file: File) => Promise<void>>(async () => {
-    throw new Error("Импорт недоступен");
+    throw new Error(userCopy.layout.importUnavailable);
   });
   const motorImportPickerRef = useRef<(() => void) | null>(null);
   const warehouseExportRef = useRef<(() => Promise<void>)>(async () => {
-    throw new Error("Экспорт недоступен");
+    throw new Error(userCopy.layout.exportUnavailable);
   });
   const warehouseImportRef = useRef<(() => Promise<void>)>(async () => {
-    throw new Error("Импорт недоступен");
+    throw new Error(userCopy.layout.importUnavailable);
   });
   const warehouseImportPickerRef = useRef<(() => void) | null>(null);
   const warehouseBarcodeHandlerRef = useRef<(() => void) | null>(null);
@@ -430,7 +431,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const triggerCloudPush = useCallback(async () => {
     if (!cloudPushHandlerRef.current) {
-      throw new Error("Сохранение недоступно: таблица ещё не готова.");
+      throw new Error(userCopy.layout.saveUnavailable);
     }
     await cloudPushHandlerRef.current();
   }, []);
@@ -448,10 +449,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     ) => {
       if (!handlers) {
         motorExportRef.current = async () => {
-          throw new Error("Экспорт недоступен");
+          throw new Error(userCopy.layout.exportUnavailable);
         };
         motorImportRef.current = async () => {
-          throw new Error("Импорт недоступен");
+          throw new Error(userCopy.layout.importUnavailable);
         };
         return;
       }
@@ -477,14 +478,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const triggerMotorExport = useCallback(async () => {
     if (!motorExcelIo.canExport) {
-      throw new Error("Экспорт недоступен");
+      throw new Error(userCopy.layout.exportUnavailable);
     }
     await motorExportRef.current();
   }, [motorExcelIo.canExport]);
 
   const triggerMotorImport = useCallback(async (file: File) => {
     if (!motorExcelIo.canImport) {
-      throw new Error("Импорт недоступен");
+      throw new Error(userCopy.layout.importUnavailable);
     }
     await motorImportRef.current(file);
   }, [motorExcelIo.canImport]);
@@ -510,10 +511,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     ) => {
       if (!handlers) {
         warehouseExportRef.current = async () => {
-          throw new Error("Экспорт недоступен");
+          throw new Error(userCopy.layout.exportUnavailable);
         };
         warehouseImportRef.current = async () => {
-          throw new Error("Импорт недоступен");
+          throw new Error(userCopy.layout.importUnavailable);
         };
         return;
       }
@@ -539,14 +540,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const triggerWarehouseExport = useCallback(async () => {
     if (!warehouseExcelIo.canExport) {
-      throw new Error("Экспорт недоступен");
+      throw new Error(userCopy.layout.exportUnavailable);
     }
     await warehouseExportRef.current();
   }, [warehouseExcelIo.canExport]);
 
   const triggerWarehouseImport = useCallback(async () => {
     if (!warehouseExcelIo.canImport) {
-      throw new Error("Импорт недоступен");
+      throw new Error(userCopy.layout.importUnavailable);
     }
     await warehouseImportRef.current();
   }, [warehouseExcelIo.canImport]);

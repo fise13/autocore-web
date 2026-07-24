@@ -31,7 +31,7 @@ import { AnimatedTabsPanel } from "@/components/ui/animated-tabs-panel";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { userCopy } from "@/lib/user-copy";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 import { formatMotorLineLabel } from "@/lib/motors/format-motor-display-name";
 import {
@@ -88,73 +88,72 @@ export type WorkOrderDetailPanelLabels = {
   finance: WorkOrderFinancePanelLabels;
 };
 
-const DEFAULT_LABELS: WorkOrderDetailPanelLabels = {
-  dateLocale: "ru",
-  orderTitle: (number) => `Заказ-наряд №${number}`,
-  assignees: "Исполнители:",
-  lineSummary: (labor, parts, motors) => `${labor} работ · ${parts} запч. · ${motors} двиг.`,
-  edit: "Редактировать",
-  client: "Клиент",
-  vehicle: "Автомобиль",
-  km: (n) => `${n} км`,
-  comment: "Комментарий:",
-  tabLines: "Состав заказа",
-  tabFinance: "Финансы",
-  tabDocuments: "Документы",
-  laborTitle: "Работы",
-  partsTitle: "Запчасти",
-  motorsTitle: "Двигатели",
-  laborEmpty: "Работы не указаны",
-  partsEmpty: "Запчасти не указаны",
-  motorsEmpty: "Двигатели не указаны",
-  adhocTag: " · разово",
-  install: "установка",
-  sale: "продажа",
-  discount: (amount) => `Скидка: ${amount}`,
-  systemHistory: (count) => `Системная история (${count})`,
-  noEvents: "Событий пока нет",
-  eventPending: "ожидание",
-  eventReady: "готово",
-  noAssignee: "без исполнителя",
-  hoursAt: (hours, price, total) => `${hours} ч × ${price} = ${total}`,
-  fixedPrice: (total) => total,
-  roleLabels: {
-    mechanic: "Механик",
-    diagnostician: "Диагност",
-    manager: "Менеджер",
-  },
-  status: { ...STATUS_LABELS },
-  statusHint: { ...STATUS_HINTS },
-  documents: {
-    dateLocale: "ru",
-    autoHint: "Документы формируются автоматически при создании и закрытии заказа.",
-    refresh: "Обновить PDF",
-    generating: "Формирование…",
-    pdfGenerating: "PDF формируются…",
-    noneForStatus: "Для текущего статуса заказа нет клиентских PDF.",
-    pending: "формируется…",
-    ready: "готов",
-    preview: "Предпросмотр",
-    openPdfFailed: "Не удалось открыть PDF",
-    downloadPdfFailed: "Не удалось скачать PDF",
-    refreshFailed: "Не удалось обновить документы",
-    savedCount: (count) => `Сохранено документов: ${count}`,
-    updated: (date) => ` · обновлено ${date}`,
-  },
-  finance: {
-    notReady: "Финансы и зарплаты появятся после завершения заказ-наряда (статус «Готов»).",
-    income: "Доход",
-    expenses: "Расходы",
-    payroll: "Зарплата механикам",
-    operationsTitle: "Операции в бухгалтерии",
-    openAccounting: "Открыть бухгалтерию",
-    opsProcessing: "Операции ещё обрабатываются сервером",
-    opsAfterComplete: "Операции появятся после завершения заказа",
-    payrollTitle: "Начисления зарплаты",
-    payrollEmpty:
-      "Начислений зарплаты пока нет. Они появятся после завершения заказ-наряда с работами и исполнителями.",
-  },
-};
+function getDefaultDetailLabels(): WorkOrderDetailPanelLabels {
+  const locale = getActiveUserCopyLocale();
+  const d = userCopy.workOrders.detail;
+  return {
+    dateLocale: locale,
+    orderTitle: d.orderTitle,
+    assignees: d.assignees,
+    lineSummary: d.lineSummary,
+    edit: d.edit,
+    client: d.client,
+    vehicle: d.vehicle,
+    km: d.km,
+    comment: d.comment,
+    tabLines: d.tabLines,
+    tabFinance: d.tabFinance,
+    tabDocuments: d.tabDocuments,
+    laborTitle: d.laborTitle,
+    partsTitle: d.partsTitle,
+    motorsTitle: d.motorsTitle,
+    laborEmpty: d.laborEmpty,
+    partsEmpty: d.partsEmpty,
+    motorsEmpty: d.motorsEmpty,
+    adhocTag: d.adhocTag,
+    install: d.install,
+    sale: d.sale,
+    discount: d.discount,
+    systemHistory: d.systemHistory,
+    noEvents: d.noEvents,
+    eventPending: d.eventPending,
+    eventReady: d.eventReady,
+    noAssignee: d.noAssignee,
+    hoursAt: d.hoursAt,
+    fixedPrice: (total) => total,
+    roleLabels: { ...userCopy.workOrders.roles },
+    status: { ...STATUS_LABELS },
+    statusHint: { ...STATUS_HINTS },
+    documents: {
+      dateLocale: locale,
+      autoHint: d.documents.autoHint,
+      refresh: d.documents.refresh,
+      generating: d.documents.generating,
+      pdfGenerating: d.documents.pdfGenerating,
+      noneForStatus: d.documents.noneForStatus,
+      pending: d.documents.pending,
+      ready: d.documents.ready,
+      preview: d.documents.preview,
+      openPdfFailed: d.documents.openPdfFailed,
+      downloadPdfFailed: d.documents.downloadPdfFailed,
+      refreshFailed: d.documents.refreshFailed,
+      savedCount: d.documents.savedCount,
+      updated: d.documents.updated,
+    },
+    finance: {
+      notReady: d.finance.notReady,
+      income: d.finance.income,
+      expenses: d.finance.expenses,
+      payroll: d.finance.payroll,
+      operationsTitle: d.finance.operationsTitle,
+      openAccounting: d.finance.openAccounting,
+      opsProcessing: d.finance.opsProcessing,
+      opsAfterComplete: d.finance.opsAfterComplete,
+      payrollTitle: d.finance.payrollTitle,
+      payrollEmpty: d.finance.payrollEmpty,
+    },
+  };
+}
 
 type WorkOrderDetailPanelProps = {
   order: WorkOrder;
@@ -196,8 +195,9 @@ export function WorkOrderDetailPanel({
   documentsDemoMode = false,
   onDemoDocumentPreview,
   onDemoDocumentDownload,
-  labels = DEFAULT_LABELS,
+  labels: labelsProp,
 }: WorkOrderDetailPanelProps) {
+  const labels = labelsProp ?? getDefaultDetailLabels();
   const [showSystemLog, setShowSystemLog] = useState(false);
   const [activeTab, setActiveTab] = useState<DetailTab>(preferredTab ?? "lines");
   const [tabEpoch, setTabEpoch] = useState(0);

@@ -1,5 +1,7 @@
 "use client";
 
+import { userCopy } from "@/lib/user-copy";
+
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { ACCOUNTING_CATEGORY_SUGGESTIONS } from "@/components/accounting/accounting-categories";
@@ -98,7 +100,7 @@ export function NewOperationDialog({
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      setError("Введите корректную сумму");
+      setError(userCopy.accounting.newOperation.invalidAmount);
       return;
     }
 
@@ -129,7 +131,7 @@ export function NewOperationDialog({
       setPaymentMethod("cash");
       setAccount("cashbox");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось создать операцию");
+      setError(e instanceof Error ? e.message : userCopy.accounting.newOperation.createFailed);
     } finally {
       setSubmitting(false);
     }
@@ -138,18 +140,18 @@ export function NewOperationDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {hideTrigger ? null : (
-        <DialogTrigger render={<Button disabled={disabled}>Новая операция</Button>} />
+        <DialogTrigger render={<Button disabled={disabled}>{userCopy.accounting.newOperation.trigger}</Button>} />
       )}
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Новая операция</DialogTitle>
-          <DialogDescription>Добавьте финансовую операцию в журнал компании.</DialogDescription>
+          <DialogTitle>{userCopy.accounting.newOperation.title}</DialogTitle>
+          <DialogDescription>{userCopy.accounting.newOperation.description}</DialogDescription>
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={onSubmit}>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
-              <Label>Тип</Label>
+              <Label>{userCopy.accounting.newOperation.type}</Label>
               <Select value={type} onValueChange={(value) => setType(value as OperationType)}>
                 <SelectTrigger className="w-full">
                   <SelectValue>{operationTypeLabel(type)}</SelectValue>
@@ -165,7 +167,7 @@ export function NewOperationDialog({
             </div>
 
             <div className="space-y-1">
-              <Label>Сумма</Label>
+              <Label>{userCopy.accounting.newOperation.amount}</Label>
               <AmountInput
                 value={amount}
                 onChange={setAmount}
@@ -174,7 +176,7 @@ export function NewOperationDialog({
             </div>
 
             <div className="space-y-1">
-              <Label>Счёт</Label>
+              <Label>{userCopy.accounting.newOperation.account}</Label>
               <Select value={account} onValueChange={(value) => setAccount(value as OperationAccount)}>
                 <SelectTrigger className="w-full">
                   <SelectValue>{operationAccountLabel(account)}</SelectValue>
@@ -190,7 +192,7 @@ export function NewOperationDialog({
             </div>
 
             <div className="space-y-1">
-              <Label>Оплата</Label>
+              <Label>{userCopy.accounting.newOperation.payment}</Label>
               <Select
                 value={paymentMethod}
                 onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
@@ -210,7 +212,7 @@ export function NewOperationDialog({
           </div>
 
           <div className="space-y-1">
-            <Label>Категория</Label>
+            <Label>{userCopy.accounting.newOperation.category}</Label>
             <Input
               value={categoryInput}
               onChange={(event) => setCategoryInput(event.target.value)}
@@ -218,7 +220,7 @@ export function NewOperationDialog({
                 const resolved = resolveOperationCategoryValue(categoryInput);
                 setCategoryInput(operationCategoryLabel(resolved === "—" ? "" : resolved));
               }}
-              placeholder="Например: зарплата Сане"
+              placeholder={userCopy.accounting.newOperation.categoryPlaceholder}
             />
             <div className="flex flex-wrap gap-2 pt-1">
               {visibleSuggestions.map((item) => (
@@ -235,11 +237,11 @@ export function NewOperationDialog({
           </div>
 
           <div className="space-y-1">
-            <Label>Комментарий</Label>
+            <Label>{userCopy.accounting.newOperation.comment}</Label>
             <Textarea
               value={comment}
               onChange={(event) => setComment(event.target.value)}
-              placeholder="Комментарий к операции"
+              placeholder={userCopy.accounting.newOperation.commentPlaceholder}
               rows={3}
             />
           </div>
@@ -258,7 +260,7 @@ export function NewOperationDialog({
 
           <DialogFooter className="px-0 pt-0 pb-0">
             <Button type="submit" disabled={submitting}>
-              {submitting ? "Сохраняем..." : "Сохранить"}
+              {submitting ? userCopy.accounting.newOperation.saving : userCopy.accounting.newOperation.save}
             </Button>
           </DialogFooter>
         </form>

@@ -1,5 +1,7 @@
 "use client";
 
+import { userCopy } from "@/lib/user-copy";
+
 import { useMemo, useState } from "react";
 import { Download, Eye, FileText, History, Search } from "lucide-react";
 
@@ -119,7 +121,7 @@ export function DocumentsHistoryPanel() {
         doc.downloadUrl ? { cachedDownloadUrl: doc.downloadUrl } : undefined,
       );
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Не удалось скачать PDF");
+      setError(nextError instanceof Error ? nextError.message : userCopy.documents.history.downloadFailed);
     } finally {
       setBusyId(null);
     }
@@ -143,7 +145,7 @@ export function DocumentsHistoryPanel() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <p className="text-sm font-medium">Все распечатанные и скачанные</p>
+          <p className="text-sm font-medium">{userCopy.documents.history.title}</p>
           <p className="text-xs text-muted-foreground">
             История PDF по заказ-нарядам. Ищите по типу, номеру заказа или дате.
           </p>
@@ -158,7 +160,7 @@ export function DocumentsHistoryPanel() {
         <Input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Поиск: акт, НЗ-2026, 04.07.2026…"
+          placeholder={userCopy.documents.history.searchPlaceholder}
           className="h-10 pl-9"
         />
       </div>
@@ -178,12 +180,12 @@ export function DocumentsHistoryPanel() {
           <History className="size-8 text-muted-foreground" />
           <div className="space-y-1">
             <p className="text-sm font-medium">
-              {documents.length === 0 ? "Пока нет сохранённых PDF" : "Ничего не найдено"}
+              {documents.length === 0 ? userCopy.documents.history.empty : userCopy.documents.history.nothingFound}
             </p>
             <p className="text-xs text-muted-foreground">
               {documents.length === 0
-                ? "Документы появятся здесь после формирования в заказ-нарядах."
-                : "Попробуйте другой запрос — тип документа, номер заказа или дату."}
+                ? userCopy.documents.history.emptyHint
+                : userCopy.documents.history.filteredHint}
             </p>
           </div>
         </div>

@@ -91,7 +91,9 @@ export function CompanySwitcherMenu({
       onClose?.();
       router.refresh();
     } catch (switchError) {
-      setError(switchError instanceof Error ? switchError.message : "Не удалось переключить компанию");
+      setError(
+        switchError instanceof Error ? switchError.message : userCopy.layout.switchCompanyFailed,
+      );
     } finally {
       setBusy(false);
     }
@@ -100,10 +102,10 @@ export function CompanySwitcherMenu({
   const companyRows = isLoading ? (
     variant === "dropdown" ? (
       <DropdownMenuItem disabled className="text-muted-foreground">
-        Загрузка…
+        {userCopy.layout.loading}
       </DropdownMenuItem>
     ) : (
-      <p className="px-2 py-2 text-sm text-muted-foreground">Загрузка…</p>
+      <p className="px-2 py-2 text-sm text-muted-foreground">{userCopy.layout.loading}</p>
     )
   ) : companies.length === 0 ? (
     variant === "dropdown" ? (
@@ -111,7 +113,7 @@ export function CompanySwitcherMenu({
         <AppLogo size={32} className="rounded-lg" alt={userCopy.appName} />
         <div className="min-w-0 flex-1 leading-none">
           <p className="truncate text-sm font-medium">{userCopy.appName}</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">Нет доступных компаний</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">{userCopy.layout.noCompanies}</p>
         </div>
       </DropdownMenuItem>
     ) : (
@@ -119,7 +121,7 @@ export function CompanySwitcherMenu({
         <AppLogo size={32} className="rounded-lg" alt={userCopy.appName} />
         <div className="min-w-0 flex-1 leading-none">
           <p className="truncate text-sm font-medium">{userCopy.appName}</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">Нет доступных компаний</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">{userCopy.layout.noCompanies}</p>
         </div>
       </div>
     )
@@ -176,7 +178,7 @@ export function CompanySwitcherMenu({
         onClick={() => onOpenJoinDialog?.()}
       >
         <Users className="size-4 text-muted-foreground" />
-        <span className="leading-none">Присоединиться к компании</span>
+        <span className="leading-none">{userCopy.layout.joinCompany}</span>
       </DropdownMenuItem>
     ) : (
       <button
@@ -186,7 +188,7 @@ export function CompanySwitcherMenu({
         onClick={() => onOpenJoinDialog?.()}
       >
         <Users className="size-4 text-muted-foreground" />
-        <span className="leading-none">Присоединиться к компании</span>
+        <span className="leading-none">{userCopy.layout.joinCompany}</span>
       </button>
     );
 
@@ -198,7 +200,7 @@ export function CompanySwitcherMenu({
         onClick={() => onOpenCreateDialog?.()}
       >
         <Plus className="size-4 text-muted-foreground" />
-        <span className="leading-none">Создать компанию</span>
+        <span className="leading-none">{userCopy.layout.createCompany}</span>
       </DropdownMenuItem>
     ) : (
       <button
@@ -208,7 +210,7 @@ export function CompanySwitcherMenu({
         onClick={() => onOpenCreateDialog?.()}
       >
         <Plus className="size-4 text-muted-foreground" />
-        <span className="leading-none">Создать компанию</span>
+        <span className="leading-none">{userCopy.layout.createCompany}</span>
       </button>
     );
 
@@ -217,10 +219,10 @@ export function CompanySwitcherMenu({
       <>
         <DropdownMenuGroup>
           <DropdownMenuLabel className="px-2 pt-1.5 pb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-            Компании
+            {userCopy.layout.companies}
             {isSyncing && companies.length > 0 ? (
               <span className="ml-1 normal-case tracking-normal text-muted-foreground/70">
-                · обновление…
+                · {userCopy.layout.updating}
               </span>
             ) : null}
           </DropdownMenuLabel>
@@ -235,7 +237,7 @@ export function CompanySwitcherMenu({
     ) : (
       <>
         <p className="px-2 pt-1.5 pb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-          Компании
+          {userCopy.layout.companies}
         </p>
         {companyRows}
         <div className="my-1.5 h-px bg-border/70" />
@@ -285,7 +287,9 @@ export function CreateCompanyDialog({
       onCreated?.();
       router.refresh();
     } catch (createError) {
-      setError(createError instanceof Error ? createError.message : "Не удалось создать компанию");
+      setError(
+        createError instanceof Error ? createError.message : userCopy.layout.createCompanyFailed,
+      );
     } finally {
       setBusy(false);
     }
@@ -321,7 +325,7 @@ export function CreateCompanyDialog({
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
-              Отмена
+              {userCopy.layout.cancel}
             </Button>
             <Button type="submit" disabled={busy || !companyName.trim()}>
               {userCopy.company.createButton}
@@ -387,7 +391,7 @@ export function JoinCompanyDialog({ open, onOpenChange, onJoined }: JoinCompanyD
       onJoined?.();
       router.refresh();
     } catch (joinError) {
-      setError(joinError instanceof Error ? joinError.message : "Не удалось присоединиться");
+      setError(joinError instanceof Error ? joinError.message : userCopy.layout.joinCompanyFailed);
     } finally {
       setBusy(false);
     }
@@ -407,9 +411,7 @@ export function JoinCompanyDialog({ open, onOpenChange, onJoined }: JoinCompanyD
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{userCopy.company.inviteTitle}</DialogTitle>
-          <DialogDescription>
-            Вставьте ссылку или код приглашения. Текущая компания останется в списке — можно переключиться позже.
-          </DialogDescription>
+          <DialogDescription>{userCopy.layout.joinHint}</DialogDescription>
         </DialogHeader>
         <form onSubmit={(event) => void handleJoinCompany(event)} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
@@ -418,17 +420,17 @@ export function JoinCompanyDialog({ open, onOpenChange, onJoined }: JoinCompanyD
               id="company-switcher-join-invite"
               value={inviteInput}
               onChange={(event) => setInviteInput(event.target.value)}
-              placeholder="Ссылка или код, например DUAVV5"
+              placeholder={userCopy.layout.joinPlaceholder}
               autoFocus
             />
           </div>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
-              Отмена
+              {userCopy.layout.cancel}
             </Button>
             <Button type="submit" disabled={busy || !inviteInput.trim()}>
-              Присоединиться
+              {userCopy.layout.join}
             </Button>
           </DialogFooter>
         </form>

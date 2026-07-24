@@ -60,7 +60,7 @@ import { MotorRepository, isMotorRowEmpty } from "@/infrastructure/firestore/mot
 import { BrandEntity, CatalogRepository, EngineEntity } from "@/infrastructure/firestore/catalog-repository";
 import { resolveGridColumnAutocomplete, pickColumnAutocompleteMatch, filterColumnSuggestions } from "@/lib/grid/grid-column-autocomplete";
 import { gridPalette } from "@/lib/grid/grid-palette";
-import { mapGridSaveError } from "@/lib/user-copy";
+import { mapGridSaveError, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 type MotorsExcelGridProps = {
@@ -1353,7 +1353,7 @@ export function MotorsExcelGrid({
                                   else onSell(row);
                                 }}
                               >
-                                {row.soldDate ? "Вернуть" : "Продать"}
+                                {row.soldDate ? userCopy.motors.grid.return : userCopy.motors.grid.sell}
                               </button>
                             ) : null
                           ) : (

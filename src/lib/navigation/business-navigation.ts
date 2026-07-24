@@ -96,7 +96,12 @@ export function buildBusinessNavTree(user: UserEntity | null | undefined): {
       label: businessNavCopy.business.inventory,
       href: buildCollectionHref({ collection: "engines" }),
       icon: Package,
-      children: INVENTORY_COLLECTION_NAV.filter((item) => isCollectionAllowed(user, item.id)),
+      children: INVENTORY_COLLECTION_NAV.filter((item) => isCollectionAllowed(user, item.id)).map(
+        (item) => ({
+          ...item,
+          label: inventoryCollectionLabel(item.id),
+        }),
+      ),
     });
   }
 

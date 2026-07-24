@@ -27,14 +27,6 @@ import { showSidebarContextInSidebar, type SidebarMode } from "@/lib/navigation/
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
-const ACCOUNTING_TABS = [
-  { value: "overview", label: "Обзор" },
-  { value: "cashbox", label: "Касса" },
-  { value: "expenses", label: "Расходы" },
-  { value: "operations", label: "Операции" },
-  { value: "advances", label: "Авансы" },
-] as const;
-
 type SidebarContextPanelProps = {
   mode: SidebarMode;
 };
@@ -102,17 +94,24 @@ function SidebarContextContent({ mode }: SidebarContextPanelProps) {
   const canEditAccounting = can(profile, "accounting_edit");
 
   const accountingTab = searchParams.get("tab") ?? "overview";
+  const accountingTabs = [
+    { value: "overview" as const, label: userCopy.accounting.tabs.overview },
+    { value: "cashbox" as const, label: userCopy.accounting.tabs.cashbox },
+    { value: "expenses" as const, label: userCopy.accounting.tabs.expenses },
+    { value: "operations" as const, label: userCopy.accounting.tabs.operations },
+    { value: "advances" as const, label: userCopy.accounting.tabs.advances },
+  ];
 
   if (mode === "motors" || mode === "specific") {
     return (
-      <PanelSection title="Моторы">
+      <PanelSection title={userCopy.layout.contextPanel.motors}>
         {mode === "specific" ? (
           <Link
             href="/motors"
             className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-sidebar-foreground transition hover:bg-sidebar-accent"
           >
             <LayoutGrid className="size-4 shrink-0 opacity-80" />
-            Все моторы
+            {userCopy.layout.contextPanel.allMotors}
           </Link>
         ) : null}
         {mode === "motors" ? (
@@ -131,26 +130,28 @@ function SidebarContextContent({ mode }: SidebarContextPanelProps) {
             />
             <ActionButton
               icon={Upload}
-              label="Экспорт Excel"
+              label={userCopy.motors.exportExcel}
               disabled={!canEditInventory || !motorExcelIo.canExport || motorExcelIo.busy === "export"}
               onClick={() => {
                 requirePro("export", () => void triggerMotorExport().catch(() => undefined));
               }}
             />
             {!isPro ? (
-              <p className="px-3 text-[11px] text-muted-foreground">Импорт и экспорт — на тарифе Pro</p>
+              <p className="px-3 text-[11px] text-muted-foreground">
+                {userCopy.layout.contextPanel.proImportExport}
+              </p>
             ) : null}
           </>
         ) : null}
         <ActionButton
           icon={Receipt}
-          label="Продать мотор"
+          label={userCopy.layout.contextPanel.sellMotor}
           disabled={!canEditInventory}
           onClick={() => router.push(deepActionRoutes.sell())}
         />
         <ActionButton
           icon={Plus}
-          label="Добавить мотор"
+          label={userCopy.layout.contextPanel.addMotor}
           disabled={!canEditInventory}
           onClick={() => router.push(deepActionRoutes.add())}
         />
@@ -160,21 +161,21 @@ function SidebarContextContent({ mode }: SidebarContextPanelProps) {
 
   if (mode === "sold") {
     return (
-      <PanelSection title="Проданные">
+      <PanelSection title={userCopy.layout.contextPanel.sold}>
         <Link
           href="/motors"
           className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-sidebar-foreground transition hover:bg-sidebar-accent"
         >
           <LayoutGrid className="size-4 shrink-0 opacity-80" />
-          Все моторы
+          {userCopy.layout.contextPanel.allMotors}
         </Link>
         <p className="flex items-start gap-2 px-3 py-1 text-[11px] leading-relaxed text-muted-foreground">
           <RotateCcw className="mt-0.5 size-3.5 shrink-0 opacity-70" />
-          Вернуть в наличие — правый клик по мотору в таблице.
+          {userCopy.layout.contextPanel.returnHint}
         </p>
         <ActionButton
           icon={Upload}
-          label="Экспорт Excel"
+          label={userCopy.motors.exportExcel}
           disabled={!canEditInventory || !motorExcelIo.canExport || motorExcelIo.busy === "export"}
           onClick={() => {
             requirePro("export", () => void triggerMotorExport().catch(() => undefined));
@@ -190,42 +191,42 @@ function SidebarContextContent({ mode }: SidebarContextPanelProps) {
 
   if (mode === "warehouse") {
     return (
-      <PanelSection title="Действия">
+      <PanelSection title={userCopy.layout.contextPanel.actions}>
         <ActionButton
           icon={Barcode}
-          label="Сканер штрихкода"
+          label={userCopy.layout.barcodeScanner}
           disabled={!canEditInventory}
           onClick={() => triggerWarehouseBarcode()}
         />
         <ActionButton
           icon={Download}
-          label="Импорт CSV"
+          label={userCopy.layout.contextPanel.importCsv}
           disabled={!canImportWarehouse || !warehouseExcelIo.canImport || warehouseExcelIo.busy === "import"}
           onClick={() => triggerWarehouseImportPicker()}
         />
         <ActionButton
           icon={Upload}
-          label="Экспорт CSV"
+          label={userCopy.layout.contextPanel.exportCsv}
           disabled={!canExportWarehouse || !warehouseExcelIo.canExport || warehouseExcelIo.busy === "export"}
           onClick={() => void triggerWarehouseExport().catch(() => undefined)}
         />
         <ActionButton
           icon={MinusCircle}
-          label="Корректировка остатков"
-          hint="Выберите позицию в таблице → контекстное меню"
+          label={userCopy.layout.contextPanel.adjustStock}
+          hint={userCopy.layout.contextPanel.adjustStockHint}
           disabled={!canEditInventory}
         />
         <p className="px-3 text-[11px] leading-relaxed text-muted-foreground">
-          Приход, продажа и перемещение — через контекстное меню строки.
+          {userCopy.layout.contextPanel.rowContextHint}
         </p>
-        </PanelSection>
+      </PanelSection>
     );
   }
 
   if (mode === "accounting") {
     return (
-      <PanelSection title="Финансы">
-        {ACCOUNTING_TABS.map((tab) => {
+      <PanelSection title={userCopy.layout.contextPanel.finances}>
+        {accountingTabs.map((tab) => {
           const href = `/accounting?tab=${tab.value}`;
           const active = pathname === "/accounting" && accountingTab === tab.value;
           return (
@@ -252,7 +253,7 @@ function SidebarContextContent({ mode }: SidebarContextPanelProps) {
             onClick={() => router.push(deepActionRoutes.expense())}
           >
             <Wallet className="size-4" />
-            Новая операция
+            {userCopy.layout.contextPanel.newOperation}
           </Button>
         </div>
       </PanelSection>

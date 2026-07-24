@@ -40,9 +40,9 @@ export function WorkspaceStatusBar({
 
   const persistenceText =
     persistence?.uiStatus === "offline"
-      ? "Офлайн — изменения в очереди"
+      ? userCopy.layout.offlineQueued
       : persistence?.uiStatus === "conflict"
-        ? "Конфликт версий"
+        ? userCopy.layout.versionConflict
         : null;
 
   const saveStatusText = persistenceText

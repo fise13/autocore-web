@@ -5,6 +5,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { userCopy } from "@/lib/user-copy";
 
 export function CustomSidebarTrigger() {
   return (

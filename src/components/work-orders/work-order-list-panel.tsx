@@ -38,11 +38,7 @@ type WorkOrderListPanelProps = {
   onStartCreate: () => void;
 };
 
-const FILTER_OPTIONS: { value: OrderListFilter; label: string }[] = [
-  { value: "all", label: "Все" },
-  { value: "open", label: "Открытые" },
-  { value: "done", label: "Закрытые" },
-];
+const FILTER_VALUES: OrderListFilter[] = ["all", "open", "done"];
 
 export function WorkOrderListPanel({
   orders,
@@ -59,6 +55,11 @@ export function WorkOrderListPanel({
   onSelectOrder,
   onStartCreate,
 }: WorkOrderListPanelProps) {
+  const filterOptions = FILTER_VALUES.map((value) => ({
+    value,
+    label: userCopy.workOrders.filters[value],
+  }));
+
   const query = search.trim().toLowerCase();
   const filtered = orders.filter((order) => {
     if (filter === "open" && !isOpenStatus(order.status)) return false;
@@ -92,7 +93,7 @@ export function WorkOrderListPanel({
             onClick={onStartCreate}
           >
             <Plus className="size-4" />
-            Новый заказ-наряд
+            {userCopy.workOrders.newOrder}
           </Button>
         ) : null}
         <div className="relative">
@@ -100,13 +101,13 @@ export function WorkOrderListPanel({
           <Input
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Поиск: клиент, номер, авто…"
+            placeholder={userCopy.workOrders.searchPlaceholder}
             className="h-9 bg-background pl-8 text-sm"
           />
         </div>
         <LayoutGroup id="work-orders-filter">
           <div className="flex rounded-lg border bg-muted/40 p-0.5">
-            {FILTER_OPTIONS.map((option) => {
+            {filterOptions.map((option) => {
               const active = filter === option.value;
               return (
                 <button
@@ -136,8 +137,8 @@ export function WorkOrderListPanel({
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {isCreating ? (
           <div className="mb-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm animate-autocore-fade-in-up motion-reduce:animate-none">
-            <p className="font-medium text-primary">Новый заказ</p>
-            <p className="text-xs text-muted-foreground">Заполните форму справа</p>
+            <p className="font-medium text-primary">{userCopy.workOrders.newOrderShort}</p>
+            <p className="text-xs text-muted-foreground">{userCopy.workOrders.fillFormHint}</p>
           </div>
         ) : null}
 
@@ -151,7 +152,7 @@ export function WorkOrderListPanel({
               transition={workOrdersSectionTransition}
               className="px-2 py-8 text-center text-sm text-muted-foreground"
             >
-              {orders.length === 0 ? userCopy.workOrders.emptyTitle : "Ничего не найдено"}
+              {orders.length === 0 ? userCopy.workOrders.emptyTitle : userCopy.workOrders.nothingFound}
             </motion.p>
           ) : (
             <motion.ul

@@ -43,6 +43,7 @@ import { canAccessMotorsArea } from "@/lib/auth/app-access";
 import { can } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { groupIdForCollection, parseCollectionFromSearchParams } from "@/lib/navigation/inventory-collections";
+import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 import { countSoldMotorsByBrand, filterCatalogBySoldMotors } from "@/lib/catalog-sold-filter";
 import { createCatalogRepository } from "@/infrastructure/firestore/catalog-repository";
@@ -306,7 +307,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
                   "absolute inset-0 bg-black/45 transition-opacity duration-300",
                   mobileSidebarOpen ? "opacity-100" : "opacity-0",
                 )}
-                aria-label="Закрыть меню"
+                aria-label={userCopy.layout.closeMenu}
                 tabIndex={mobileSidebarOpen ? 0 : -1}
                 onClick={() => setMobileSidebarOpen(false)}
               />

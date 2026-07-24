@@ -14,6 +14,7 @@ import {
 import { canViewEmployees } from "@/lib/auth/permissions";
 import type { SidebarTeamPanelProps } from "@/lib/navigation/sidebar-types";
 import { isSidebarNavActive } from "@/lib/navigation/sidebar-types";
+import { userCopy } from "@/lib/user-copy";
 
 export function SidebarTeamPanel({
   collapsed = false,
@@ -32,12 +33,12 @@ export function SidebarTeamPanel({
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Команда</SidebarGroupLabel>
+      <SidebarGroupLabel>{userCopy.nav.business.team}</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
           <SidebarNavLink
             href="/team"
-            label="Команда"
+            label={userCopy.nav.business.team}
             icon={UsersIcon}
             pathname={pathname}
             isActive={teamActive}

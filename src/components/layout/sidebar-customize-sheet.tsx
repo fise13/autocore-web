@@ -15,6 +15,7 @@ import {
   type SidebarNavItemId,
   type SidebarPosition,
 } from "@/lib/navigation/sidebar-customization";
+import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 type SidebarCustomizeSheetProps = {
@@ -54,7 +55,7 @@ export function SidebarCustomizeSheet({
           onClick={exitEditMode}
           className="shrink-0 text-xs font-medium text-primary transition-opacity hover:opacity-80"
         >
-          Готово
+          {userCopy.layout.done}
         </button>
 
         <div className="relative flex shrink-0 rounded-md border border-sidebar-border/80 p-0.5 text-[10px]">
@@ -78,7 +79,7 @@ export function SidebarCustomizeSheet({
                   />
                 ) : null}
                 {side === "left" ? <PanelLeft className="size-3" /> : <PanelRight className="size-3" />}
-                {side === "left" ? "Слева" : "Справа"}
+                {side === "left" ? userCopy.layout.positionLeft : userCopy.layout.positionRight}
               </button>
             );
           })}
@@ -87,7 +88,9 @@ export function SidebarCustomizeSheet({
 
       {hasPool ? (
         <div className="min-h-0 overflow-hidden">
-          <p className="px-3 py-1 text-[10px] text-muted-foreground">Скрытые — нажмите, чтобы вернуть</p>
+          <p className="px-3 py-1 text-[10px] text-muted-foreground">
+            {userCopy.layout.hiddenPoolHint}
+          </p>
           <div className="max-h-[min(38vh,11rem)] space-y-0.5 overflow-y-auto overscroll-y-contain pr-0.5">
             {disabledNav.map((navId) => {
               const meta = SIDEBAR_NAV_META[navId];
@@ -131,7 +134,7 @@ export function SidebarCustomizeSheet({
         className="flex w-full shrink-0 items-center justify-center gap-1 py-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
       >
         <RotateCcw className="size-3" />
-        По умолчанию
+        {userCopy.layout.resetDefaults}
       </button>
     </motion.div>
   );

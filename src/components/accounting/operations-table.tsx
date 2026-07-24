@@ -18,6 +18,7 @@ import {
 import { MOTOR_SALE_CATEGORY } from "@/lib/accounting/categories";
 import { isAdvanceOperation } from "@/lib/accounting/advances";
 import { cn } from "@/lib/utils";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 import { motionStagger } from "@/lib/motion";
 import { WorkOrder } from "@/domain/work-order";
 import {
@@ -46,23 +47,26 @@ export type OperationsTableLabels = {
   categoryLabels?: Record<string, string>;
 };
 
-const DEFAULT_LABELS: OperationsTableLabels = {
-  dateLocale: "ru",
-  empty: "Пока нет операций в выбранном фильтре.",
-  colDate: "Дата",
-  colType: "Тип",
-  colAccount: "Счёт",
-  colCategory: "Категория",
-  colAmount: "Сумма",
-  colDetails: "Детали",
-  colWorkOrder: "Заказ-наряд",
-  colActions: "Действия",
-  advance: "аванс",
-  incomeFlow: "Доход",
-  expenseFlow: "Расход",
-  delete: "Удалить",
-  workOrderTitle: (number) => `Заказ-наряд №${number}`,
-};
+function getDefaultOperationsTableLabels(): OperationsTableLabels {
+  const t = userCopy.accounting.operationsTable;
+  return {
+    dateLocale: getActiveUserCopyLocale(),
+    empty: t.empty,
+    colDate: t.colDate,
+    colType: t.colType,
+    colAccount: t.colAccount,
+    colCategory: t.colCategory,
+    colAmount: t.colAmount,
+    colDetails: t.colDetails,
+    colWorkOrder: t.colWorkOrder,
+    colActions: t.colActions,
+    advance: t.advance,
+    incomeFlow: t.incomeFlow,
+    expenseFlow: t.expenseFlow,
+    delete: t.delete,
+    workOrderTitle: t.workOrderTitle,
+  };
+}
 
 type OperationsTableProps = {
   rows: FinancialOperation[];
@@ -141,8 +145,10 @@ export function OperationsTable({
   showWorkOrderColumn = false,
   workOrders = [],
   emphasizeWorkOrderFlow = false,
-  labels = DEFAULT_LABELS,
+  labels: labelsProp,
 }: OperationsTableProps) {
+  const labels = labelsProp ?? getDefaultOperationsTableLabels();
+
   const { formatMoney } = useAppDisplayCurrency();
   const workOrderIndex = useMemo(() => buildWorkOrderDisplayIndex(workOrders), [workOrders]);
   const workOrderById = useMemo(
