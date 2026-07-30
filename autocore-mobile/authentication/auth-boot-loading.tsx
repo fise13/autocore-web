@@ -6,6 +6,6 @@ type AuthBootLoadingProps = {
 };
 
 /** @deprecated Use AppLoadingScreen — kept for call sites that pass title/subtitle. */
-export function AuthBootLoading({ title = 'Загрузка…' }: AuthBootLoadingProps) {
+export function AuthBootLoading({ title = 'Loading…' }: AuthBootLoadingProps) {
   return <AppLoadingScreen message={title} />;
 }

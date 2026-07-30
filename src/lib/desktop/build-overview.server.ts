@@ -60,7 +60,7 @@ function mapInventoryItem(id: string, data: Record<string, unknown>): InventoryI
     sku: String(data.sku ?? id),
     name: String(data.name ?? ""),
     barcodes: [],
-    unit: String(data.unit ?? "шт"),
+    unit: String(data.unit ?? "pcs"),
     currency: String(data.currency ?? "KZT"),
     brandName: typeof data.brandName === "string" ? data.brandName : String(data.brand ?? ""),
     status: (String(data.status ?? "active") as InventoryItem["status"]) || "active",
@@ -99,7 +99,7 @@ export type DesktopOverviewPayload = {
 };
 
 function formatMoneyKzt(value: number): string {
-  return `${value.toLocaleString("ru-RU")} ₸`;
+  return `${value.toLocaleString("en-US")} ₸`;
 }
 
 export async function buildDesktopOverview(

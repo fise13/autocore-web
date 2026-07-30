@@ -1,4 +1,6 @@
-const GROUP_LOCALE = "ru-RU";
+// Drives digit grouping app-wide: en-US gives `1,234,567` where the previous
+// ru-RU gave `1 234 567`.
+const GROUP_LOCALE = "en-US";
 
 export type GroupedNumberFormatOptions = {
   allowDecimals?: boolean;

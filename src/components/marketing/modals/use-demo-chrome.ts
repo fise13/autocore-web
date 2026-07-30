@@ -671,8 +671,8 @@ export function useDemoChrome() {
       noteParts: (km: string) => t("motorsSnapshot.noteParts", { km }),
       noteKm: (km: string) => t("motorsSnapshot.noteKm", { km }),
       kmSuffix: t("motorsSnapshot.kmSuffix"),
-      orderPrefixRu: t("motorsSnapshot.orderPrefixRu"),
-      orderPrefixEn: t("motorsSnapshot.orderPrefixEn"),
+      orderPrefixSource: t("motorsSnapshot.orderPrefixSource"),
+      orderPrefixLocalized: t("motorsSnapshot.orderPrefixLocalized"),
     }),
     [t],
   );

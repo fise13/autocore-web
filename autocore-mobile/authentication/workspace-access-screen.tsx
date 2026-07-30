@@ -98,19 +98,19 @@ export function WorkspaceAccessScreen() {
 
         <View style={{ width: '100%', maxWidth: 340, gap: rhythm.inline }}>
           {canSwitchCompany ? (
-            <Button onPress={() => setSwitcherOpen(true)}>Переключить компанию</Button>
+            <Button onPress={() => setSwitcherOpen(true)}>Switch company</Button>
           ) : null}
           <Button
             variant={canSwitchCompany ? 'secondary' : 'default'}
             onPress={() => router.push('/(tabs)/profile/join-company' as never)}
           >
-            Присоединиться к компании
+            Join a company
           </Button>
           <Button variant="secondary" loading={refreshing} onPress={() => void handleRefresh()}>
-            Обновить статус
+            Refresh status
           </Button>
           <Button variant="outline" onPress={signOut}>
-            Выйти
+            Sign out
           </Button>
         </View>
       </View>

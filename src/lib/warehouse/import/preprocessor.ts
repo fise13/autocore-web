@@ -106,7 +106,7 @@ export function preprocessRows(rows: Record<string, string>[]): {
     if (!hash.replace(/\|/g, "")) return;
     if (seen.has(hash)) {
       duplicateRowIndexes.add(index);
-      warnings.push(`Строка ${index + 1} — дубликат строки ${(seen.get(hash) ?? 0) + 1}`);
+      warnings.push(`Row ${index + 1} — duplicate of row ${(seen.get(hash) ?? 0) + 1}`);
     } else {
       seen.set(hash, index);
     }

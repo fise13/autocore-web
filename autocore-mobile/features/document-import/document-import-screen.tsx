@@ -46,7 +46,7 @@ export function DocumentImportScreen() {
   const [uploadedCount, setUploadedCount] = useState(0);
   const [sessionBatchId, setSessionBatchId] = useState<string | null>(paramBatchId || null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const [uploadLabel, setUploadLabel] = useState('Отправляем документ…');
+  const [uploadLabel, setUploadLabel] = useState('Uploading document…');
   const [lastJobId, setLastJobId] = useState<string | null>(null);
   const [parseStatus, setParseStatus] = useState<ImportParseStatus>('processing');
   const [busy, setBusy] = useState(false);
@@ -98,7 +98,7 @@ export function DocumentImportScreen() {
     haptics.light();
     const uri = await cameraRef.current?.takePicture();
     if (!uri) {
-      toast({ title: 'Не удалось сделать снимок', variant: 'warning' });
+      toast({ title: 'Could not take photo', variant: 'warning' });
       return;
     }
     setPhotoUri(uri);
@@ -111,8 +111,8 @@ export function DocumentImportScreen() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       toast({
-        title: 'Нет доступа к фото',
-        description: 'Разрешите доступ к галерее в настройках.',
+        title: 'No access to photos',
+        description: 'Allow access to your photo library in Settings.',
         variant: 'warning',
       });
       return;
@@ -172,7 +172,7 @@ export function DocumentImportScreen() {
           const uri = uris[i];
           if (!uri) continue;
           setUploadLabel(
-            uris.length > 1 ? `Отправляем ${i + 1} из ${uris.length}…` : 'Отправляем документ…',
+            uris.length > 1 ? `Uploading ${i + 1} of ${uris.length}…` : 'Uploading document…',
           );
           setUploadProgress(0);
 
@@ -199,7 +199,7 @@ export function DocumentImportScreen() {
         }
       } catch (error) {
         toast({
-          title: okCount > 0 ? 'Часть фото не отправилась' : 'Не удалось отправить',
+          title: okCount > 0 ? 'Some photos failed to upload' : 'Upload failed',
           description: error instanceof Error ? error.message : undefined,
           variant: 'destructive',
         });
@@ -227,10 +227,10 @@ export function DocumentImportScreen() {
   const cameraActive = isFocused && phase === 'capture';
   const hint =
     uploadedCount > 0
-      ? `${uploadedCount} загружено · можно добавить ещё страницу`
+      ? `${uploadedCount} uploaded · you can add another page`
       : queue.length > 1
-        ? `${queue.length} фото из галереи · проверьте и отправьте`
-        : 'Расположите документ в рамке · можно несколько страниц подряд';
+        ? `${queue.length} photos from gallery · review and send`
+        : 'Frame the document · you can capture several pages in a row';
 
   return (
     <View style={styles.root}>
@@ -253,19 +253,19 @@ export function DocumentImportScreen() {
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Назад"
+          accessibilityLabel="Back"
           onPress={goBack}
           style={styles.iconBtn}
         >
           <ArrowLeftIcon size={20} color="#fff" strokeWidth={2} />
         </Pressable>
         <Text variant="body" style={styles.topTitle}>
-          Импорт документов
+          Document import
         </Text>
         {phase === 'capture' ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Фонарик"
+            accessibilityLabel="Flashlight"
             onPress={() => {
               haptics.selection();
               setTorchOn((value) => !value);
@@ -287,7 +287,7 @@ export function DocumentImportScreen() {
           <View style={styles.captureRow}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Галерея"
+              accessibilityLabel="Gallery"
               onPress={() => void handlePickGallery()}
               style={styles.sideBtn}
             >
@@ -295,7 +295,7 @@ export function DocumentImportScreen() {
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Сделать снимок"
+              accessibilityLabel="Take photo"
               onPress={() => void handleCapture()}
               style={styles.shutter}
             >
@@ -314,7 +314,7 @@ export function DocumentImportScreen() {
         >
           {queue.length > 1 ? (
             <Text variant="caption" style={styles.hint}>
-              К отправке: {queue.length} фото
+              To send: {queue.length} photos
             </Text>
           ) : null}
           <Pressable
@@ -323,7 +323,7 @@ export function DocumentImportScreen() {
             style={[styles.secondaryButton, { borderColor: 'rgba(255,255,255,0.35)' }]}
           >
             <Text variant="body" style={{ color: '#fff', fontWeight: '600' }}>
-              {queue.length > 1 ? 'Отменить' : 'Переснять'}
+              {queue.length > 1 ? 'Cancel' : 'Retake'}
             </Text>
           </Pressable>
           <Pressable
@@ -333,7 +333,7 @@ export function DocumentImportScreen() {
             style={[styles.primaryButton, { backgroundColor: colors.primary, opacity: busy ? 0.7 : 1 }]}
           >
             <Text variant="body" style={{ color: colors.primaryForeground, fontWeight: '700' }}>
-              {queue.length > 1 ? `Отправить (${queue.length})` : 'Отправить'}
+              {queue.length > 1 ? `Send (${queue.length})` : 'Send'}
             </Text>
           </Pressable>
         </Animated.View>

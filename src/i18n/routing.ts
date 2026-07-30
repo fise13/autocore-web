@@ -1,10 +1,9 @@
 import { defineRouting } from "next-intl/routing";
 
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@autocore/i18n/config";
-
 /**
- * Public marketing pathnames (locale prefix applied by next-intl).
- * Internal App Router files live under `/marketing/[locale]/…`.
+ * Public marketing pathnames — clean, no locale prefix (US market, English-only).
+ * Internal App Router files still live under `/marketing/en/…` on disk; see
+ * `toMarketingInternalPath` in `src/i18n/marketing-paths.ts`.
  */
 export const marketingPathnames = {
   "/": "/",
@@ -21,10 +20,18 @@ export const marketingPathnames = {
 
 export type MarketingPathname = keyof typeof marketingPathnames;
 
+/**
+ * `locales` intentionally only lists the one this site serves. It used to
+ * spread the shared `SUPPORTED_LOCALES` (`["en", "ru"]`) from
+ * `@autocore/i18n/config`, which is still `["en", "ru"]` for the dashboard's
+ * separate `userCopy` locale system — that one stays untouched and
+ * restorable. This routing config governs only the marketing site's URL
+ * structure and no longer needs a second locale.
+ */
 export const routing = defineRouting({
-  locales: [...SUPPORTED_LOCALES],
-  defaultLocale: DEFAULT_LOCALE,
-  localePrefix: "always",
+  locales: ["en"],
+  defaultLocale: "en",
+  localePrefix: "never",
   localeDetection: false,
   pathnames: marketingPathnames,
 });

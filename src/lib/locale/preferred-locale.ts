@@ -11,9 +11,22 @@ export const PREFERRED_LOCALE_STORAGE_KEY = "autocore_preferred_locale";
 
 /**
  * Fallback when the user has no preference yet.
- * Existing accounts are Russian-first; EN is set explicitly on marketing EN signup.
  */
-export const ACCOUNT_LOCALE_FALLBACK: AppLocale = "ru";
+export const ACCOUNT_LOCALE_FALLBACK: AppLocale = "en";
+
+/**
+ * The product ships English-only, for the US market.
+ *
+ * Russian is deliberately kept in the repo — `user-copy.ru.ts`, the `ru`
+ * message catalogue and the `ru` marketing routes are all intact — so the
+ * second locale can be restored by setting this back to `null`. Nothing else
+ * needs to change.
+ *
+ * Document rendering (`src/lib/documents/document-locale.ts`) has its own
+ * `DOCUMENT_LOCALE_LOCK`, forcing invoices/warranties/waybills to English too
+ * regardless of what locale a caller asks for.
+ */
+export const UI_LOCALE_LOCK: AppLocale | null = "en";
 
 export function readStoredPreferredLocale(): AppLocale | null {
   if (typeof window === "undefined") return null;
@@ -56,6 +69,9 @@ export function resolveAccountLocale(input: {
   storedLocale?: unknown;
   queryLocale?: unknown;
 }): AppLocale {
+  // A stored or profile preference of `ru` must not resurface while locked.
+  if (UI_LOCALE_LOCK) return UI_LOCALE_LOCK;
+
   return resolveLocale(
     [input.profileLocale, input.queryLocale, input.storedLocale],
     ACCOUNT_LOCALE_FALLBACK,

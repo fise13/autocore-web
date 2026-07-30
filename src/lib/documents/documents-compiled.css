@@ -1778,6 +1778,9 @@
   .scale-\[0\.92\] {
     scale: 0.92;
   }
+  .-rotate-90 {
+    rotate: calc(90deg * -1);
+  }
   .rotate-45 {
     rotate: 45deg;
   }
@@ -2490,6 +2493,9 @@
     @supports (color: color-mix(in lab, red, red)) {
       background-color: color-mix(in oklab, var(--color-blue-500) 10%, transparent);
     }
+  }
+  .bg-current {
+    background-color: currentcolor;
   }
   .bg-emerald-50 {
     background-color: var(--color-emerald-50);

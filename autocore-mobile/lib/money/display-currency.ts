@@ -13,34 +13,34 @@ export type AppDisplayCurrencyOption = {
 
 export const APP_DISPLAY_CURRENCY_OPTIONS: AppDisplayCurrencyOption[] = [
   {
-    id: 'KZT',
-    label: 'Тенге',
-    description: 'Казахстан · ₸',
-    locale: 'ru-KZ',
-    currency: 'KZT',
-    example: '100 000 ₸',
-  },
-  {
-    id: 'RUB',
-    label: 'Рубли',
-    description: 'Россия · ₽',
-    locale: 'ru-RU',
-    currency: 'RUB',
-    example: '100 000 ₽',
-  },
-  {
     id: 'USD',
-    label: 'Доллары',
-    description: 'Международные расчёты · $',
+    label: 'Dollars',
+    description: 'United States · $',
     locale: 'en-US',
     currency: 'USD',
     example: '$1,000',
+  },
+  {
+    id: 'KZT',
+    label: 'Tenge',
+    description: 'Kazakhstan · ₸',
+    locale: 'ru-KZ',
+    currency: 'KZT',
+    example: '100,000 ₸',
+  },
+  {
+    id: 'RUB',
+    label: 'Rubles',
+    description: 'Russia · ₽',
+    locale: 'ru-RU',
+    currency: 'RUB',
+    example: '100,000 ₽',
   },
 ];
 
 export function normalizeAppDisplayCurrency(value: unknown): AppDisplayCurrency {
   if (value === 'RUB' || value === 'USD' || value === 'KZT') return value;
-  return 'KZT';
+  return 'USD';
 }
 
 export function appDisplayCurrencyOption(currency: AppDisplayCurrency): AppDisplayCurrencyOption {

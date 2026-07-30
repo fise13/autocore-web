@@ -6,6 +6,7 @@ import { Plus, Search, UserRound } from "lucide-react";
 import { WorkOrder } from "@/domain/work-order";
 import { CompanyEmployee } from "@/domain/rbac";
 import { PayrollTransaction } from "@/domain/payroll-transaction";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,7 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
 import { formatWorkOrderLabel, workOrderAssigneeSummary } from "@/lib/work-order/work-order-display";
-import { STATUS_LABELS, statusTone } from "@/components/work-orders/work-order-copy";
+import { STATUS_LABELS, statusBadgeVariant } from "@/components/work-orders/work-order-copy";
 import { isOpenStatus, money } from "@/components/work-orders/work-order-utils";
 
 export type OrderListFilter = "all" | "open" | "done";
@@ -195,14 +196,9 @@ export function WorkOrderListPanel({
                             </p>
                           ) : null}
                         </div>
-                        <span
-                          className={cn(
-                            "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset",
-                            statusTone(order.status),
-                          )}
-                        >
+                        <Badge variant={statusBadgeVariant(order.status)} className="shrink-0">
                           {STATUS_LABELS[order.status]}
-                        </span>
+                        </Badge>
                       </div>
                       <div className="mt-2 flex items-center justify-between gap-2 text-xs">
                         <span className="line-clamp-1 min-w-0 flex-1 text-muted-foreground">

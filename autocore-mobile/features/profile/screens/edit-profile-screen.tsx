@@ -55,7 +55,7 @@ export function EditProfileScreen() {
     setError(null);
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      setError('Нужен доступ к фото.');
+      setError('Photo access is required.');
       return;
     }
 
@@ -75,7 +75,7 @@ export function EditProfileScreen() {
       await uploadUserAvatar(asset.uri);
       await refreshProfile();
       haptics.success();
-      setStatus('Фото профиля обновлено.');
+      setStatus('Profile photo updated.');
     } catch (uploadError) {
       setError(mapAuthError(uploadError));
     } finally {
@@ -89,14 +89,14 @@ export function EditProfileScreen() {
     setStatus(null);
     try {
       if (!firebaseUser) {
-        throw new Error('Требуется авторизация');
+        throw new Error('Authentication required');
       }
       await updateUserAccountProfile(firebaseUser, {
         name: displayName.trim() || null,
         phone: phone.trim() || null,
       });
       await refreshProfile();
-      setStatus('Профиль сохранён.');
+      setStatus('Profile saved.');
     } catch (saveError) {
       setError(mapAuthError(saveError));
     } finally {
@@ -106,13 +106,13 @@ export function EditProfileScreen() {
 
   const changePassword = async () => {
     if (newPassword.length < 6) {
-      setError('Пароль слишком короткий (минимум 6 символов).');
+      setError('Password is too short (minimum 6 characters).');
       return;
     }
 
     const user = getFirebaseAuth().currentUser;
     if (!user?.email) {
-      setError('Недоступно для этого способа входа.');
+      setError('Not available for this sign-in method.');
       return;
     }
 
@@ -125,7 +125,7 @@ export function EditProfileScreen() {
       await updatePassword(user, newPassword);
       setCurrentPassword('');
       setNewPassword('');
-      setStatus('Пароль обновлён.');
+      setStatus('Password updated.');
     } catch (passwordError) {
       setError(mapAuthError(passwordError));
     } finally {
@@ -140,7 +140,7 @@ export function EditProfileScreen() {
     setError(null);
     try {
       await sendPasswordResetForEmail(email);
-      setStatus('Ссылка для сброса пароля отправлена на email.');
+      setStatus('Password reset link sent to your email.');
     } catch (resetError) {
       setError(mapAuthError(resetError));
     } finally {
@@ -160,11 +160,11 @@ export function EditProfileScreen() {
           gap: 8,
         }}
       >
-        <IconButton accessibilityLabel="Назад" variant="ghost" size="sm" onPress={() => goBackOrReplace(router)}>
+        <IconButton accessibilityLabel="Back" variant="ghost" size="sm" onPress={() => goBackOrReplace(router)}>
           <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
         </IconButton>
         <Text variant="heading" style={{ fontSize: 20, fontWeight: '700' }}>
-          Редактировать профиль
+          Edit Profile
         </Text>
       </View>
 
@@ -211,26 +211,26 @@ export function EditProfileScreen() {
           >
             <ImagesIcon size="sm" color={colors.foreground} strokeWidth={2} />
             <Text variant="caption" style={{ fontWeight: '600' }}>
-              Изменить фото
+              Change Photo
             </Text>
           </Pressable>
           <Text variant="caption" color="muted" style={{ textAlign: 'center', lineHeight: 18 }}>
-            Фото синхронизируется между устройствами через ваш аккаунт.
+            Your photo syncs across devices through your account.
           </Text>
         </View>
 
         <View style={{ gap: 8 }}>
           <Text variant="caption" color="muted">
-            Имя и фамилия
+            Full Name
           </Text>
-          <Input value={displayName} onChangeText={setDisplayName} autoCapitalize="words" placeholder="Имя Фамилия" />
+          <Input value={displayName} onChangeText={setDisplayName} autoCapitalize="words" placeholder="First Last" />
         </View>
 
         <View style={{ gap: 8 }}>
           <Text variant="caption" color="muted">
-            Телефон
+            Phone
           </Text>
-          <Input value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+7 …" />
+          <Input value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+1 …" />
         </View>
 
         <View style={{ gap: 8 }}>
@@ -241,7 +241,7 @@ export function EditProfileScreen() {
         </View>
 
         <Button loading={saving} onPress={saveProfile}>
-          Сохранить профиль
+          Save Profile
         </Button>
 
         {emailProvider ? (
@@ -257,27 +257,27 @@ export function EditProfileScreen() {
             }}
           >
             <Text variant="body" style={{ fontWeight: '600' }}>
-              Пароль
+              Password
             </Text>
             <Input
               value={currentPassword}
               onChangeText={setCurrentPassword}
               secureTextEntry
-              placeholder="Текущий пароль"
+              placeholder="Current password"
               autoCapitalize="none"
             />
             <Input
               value={newPassword}
               onChangeText={setNewPassword}
               secureTextEntry
-              placeholder="Новый пароль"
+              placeholder="New password"
               autoCapitalize="none"
             />
             <Button variant="secondary" loading={saving} onPress={changePassword}>
-              Сменить пароль
+              Change Password
             </Button>
             <Button variant="link" onPress={resetPassword}>
-              Отправить ссылку для сброса
+              Send Reset Link
             </Button>
           </View>
         ) : null}

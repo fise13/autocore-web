@@ -103,10 +103,10 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
         <Text variant="body" color="muted">
-          Наряд не найден
+          Work order not found
         </Text>
         <Button variant="outline" onPress={() => router.back()} style={{ marginTop: 16 }}>
-          Назад
+          Back
         </Button>
       </View>
     );
@@ -114,7 +114,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
 
   const setDomainStatus = async (status: WorkOrderStatus) => {
     if (!can('work_orders_edit')) {
-      toast({ title: 'Нет прав на изменение наряда', variant: 'warning' });
+      toast({ title: 'You do not have permission to edit this order', variant: 'warning' });
       return;
     }
     setTransitioning(true);
@@ -124,13 +124,13 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
       haptics.success();
       toast({
         title: STATUS_LABELS[status],
-        description: `Наряд ${formatWorkOrderLabel(order.number)} обновлён`,
+        description: `Order ${formatWorkOrderLabel(order.number)} updated`,
         variant: 'success',
       });
     } catch (error) {
       haptics.warning();
       toast({
-        title: 'Не удалось обновить статус',
+        title: 'Failed to update status',
         description: error instanceof Error ? error.message : undefined,
         variant: 'destructive',
       });
@@ -168,14 +168,14 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
       await claimWorkOrder(orderId);
       haptics.success();
       toast({
-        title: 'Наряд взят в работу',
-        description: `№${order.number} теперь у вас`,
+        title: 'Order claimed',
+        description: `#${order.number} is now yours`,
         variant: 'success',
       });
     } catch (error) {
       haptics.warning();
       toast({
-        title: 'Не удалось взять наряд',
+        title: 'Failed to claim order',
         description: error instanceof Error ? error.message : undefined,
         variant: 'destructive',
       });
@@ -199,7 +199,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
     .map((line) => {
       const item = line.itemId ? inventoryById.get(line.itemId) : undefined;
       const shelf = item ? resolveInventoryShelf(item) : undefined;
-      const detailParts = [line.sku, shelf ? `Место ${shelf}` : null].filter(Boolean);
+      const detailParts = [line.sku, shelf ? `Shelf ${shelf}` : null].filter(Boolean);
       return {
         id: line.id,
         label: line.name,
@@ -217,7 +217,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
   const motorLines = domainOrder?.motorLines.map((line) => ({
     id: line.id,
     label: [line.brandName, line.engineCode, line.serialCode].filter(Boolean).join(' ') || line.serialCode,
-    detail: line.outcome === 'sell' ? 'Продажа' : 'Установка',
+    detail: line.outcome === 'sell' ? 'Sale' : 'Installation',
     price: line.unitPrice,
   })) ?? [];
 
@@ -237,7 +237,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
   if (canEditOrder) {
     actions.unshift({
       id: 'edit',
-      label: 'Редактировать',
+      label: 'Edit',
       icon: ClipboardListIcon,
       tone: 'primary',
       onPress: () => {
@@ -250,7 +250,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
   if (order.phone) {
     actions.push({
       id: 'call',
-      label: 'Позвонить',
+      label: 'Call',
       icon: PhoneIcon,
       tone: 'primary',
       onPress: () => {
@@ -262,7 +262,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
 
   actions.push({
     id: 'payment',
-    label: 'Оплата',
+    label: 'Payment',
     icon: ReceiptIcon,
     tone: 'muted',
     onPress: () => {
@@ -283,7 +283,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
           gap: rhythm.inline,
         }}
       >
-        <IconButton accessibilityLabel="Назад" variant="ghost" size="sm" onPress={() => router.back()}>
+        <IconButton accessibilityLabel="Back" variant="ghost" size="sm" onPress={() => router.back()}>
           <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
         </IconButton>
         <View style={{ flex: 1 }}>
@@ -338,7 +338,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <Text variant="meta" color="muted">
-              Срок: {order.estimated}
+              Due: {order.estimated}
             </Text>
             <Text variant="meta" color="muted">
               {orderStatusLabel[order.status]}
@@ -362,16 +362,16 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
 
         <Animated.View style={[{ gap: ordersLayout.section }, contentStyle]}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>
-            <DetailRow label="Клиент" value={order.customer} />
-            <DetailRow label="Авто" value={formatOrderVehicleLine(order)} />
-            <DetailRow label="Двигатель" value={order.engine} />
-            <DetailRow label="Срок" value={order.estimated} />
+            <DetailRow label="Customer" value={order.customer} />
+            <DetailRow label="Vehicle" value={formatOrderVehicleLine(order)} />
+            <DetailRow label="Engine" value={order.engine} />
+            <DetailRow label="Due" value={order.estimated} />
             {order.vin ? <DetailRow label="VIN" value={order.vin} /> : null}
           </View>
 
           <View style={{ gap: 12 }}>
             <Text variant="body" style={{ fontSize: 15, fontWeight: '600', letterSpacing: -0.2 }}>
-              Состав наряда
+              Order contents
             </Text>
             <OrderLinesList
               laborLines={laborLines}
@@ -383,7 +383,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
 
           <View style={{ gap: 12 }}>
             <Text variant="body" style={{ fontSize: 15, fontWeight: '600', letterSpacing: -0.2 }}>
-              Действия
+              Actions
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
               {actions.map((action) => {
@@ -450,7 +450,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
 
           <View style={{ gap: 12 }}>
             <Text variant="body" style={{ fontSize: 15, fontWeight: '600', letterSpacing: -0.2 }}>
-              Таймлайн
+              Timeline
             </Text>
             {order.timeline.map((event, index) => {
               const isLast = index === order.timeline.length - 1;
@@ -481,7 +481,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
           {order.partsNote ? (
             <View style={{ gap: 4 }}>
               <Text variant="caption" color="muted">
-                Запчасти
+                Parts
               </Text>
               <Text variant="body" style={{ fontSize: 14 }}>
                 {order.partsNote}
@@ -491,7 +491,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
           {order.paymentNote ? (
             <View style={{ gap: 4 }}>
               <Text variant="caption" color="muted">
-                Оплата
+                Payment
               </Text>
               <Text variant="body" style={{ fontSize: 14 }}>
                 {order.paymentNote}

@@ -11,7 +11,7 @@ type AnimatedNumberProps = {
 
 export function AnimatedNumber({
   value,
-  format = (n) => n.toLocaleString("ru-RU"),
+  format = (n) => n.toLocaleString("en-US"),
   durationMs = 650,
   className,
 }: AnimatedNumberProps) {

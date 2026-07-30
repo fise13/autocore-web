@@ -58,7 +58,7 @@ async function completeAppleFirebaseSignIn(
   rawNonce: string,
 ): Promise<User> {
   if (!credential.identityToken) {
-    throw new Error('Apple не вернул identity token. Проверьте Sign in with Apple в Apple Developer.');
+    throw new Error('Apple did not return an identity token. Check Sign in with Apple in Apple Developer.');
   }
 
   // Native iOS hashes the nonce inside the identity token (base64url).
@@ -70,12 +70,12 @@ async function completeAppleFirebaseSignIn(
 
 export async function signInWithAppleNative(): Promise<User> {
   if (Platform.OS !== 'ios') {
-    throw new Error('Вход через Apple доступен только на iPhone и iPad.');
+    throw new Error('Sign in with Apple is only available on iPhone and iPad.');
   }
 
   const available = await isAppleSignInAvailable();
   if (!available) {
-    throw new Error('Вход через Apple недоступен на этом устройстве.');
+    throw new Error('Sign in with Apple is not available on this device.');
   }
 
   const rawNonce = createRandomNonce();

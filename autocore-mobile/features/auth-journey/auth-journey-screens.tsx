@@ -21,7 +21,7 @@ export function ProfileNameJourneyScreen() {
     if (!firebaseUser) return;
     const fullName = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ').trim();
     if (fullName.split(/\s+/).length < 2) {
-      setError('Укажите имя и фамилию');
+      setError('Enter your first and last name');
       return;
     }
 
@@ -40,22 +40,22 @@ export function ProfileNameJourneyScreen() {
   return (
     <AuthShell
       stepLabel={AUTH_JOURNEY_STEP_LABELS['profile-name']}
-      title="Ваш профиль"
-      description="Укажите имя и фамилию — так коллеги увидят вас в заказ-нарядах и уведомлениях."
+      title="Your profile"
+      description="Enter your first and last name so coworkers can recognize you in work orders and notifications."
     >
       <View style={{ gap: rhythm.stack }}>
-        <Input placeholder="Имя" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
-        <Input placeholder="Фамилия" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
+        <Input placeholder="First name" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
+        <Input placeholder="Last name" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
         {error ? (
           <Text variant="caption" color="destructive">
             {error}
           </Text>
         ) : null}
         <Button onPress={() => void handleSave()} loading={loading}>
-          Продолжить
+          Continue
         </Button>
         <Button variant="ghost" onPress={() => void signOut()}>
-          Выйти
+          Sign out
         </Button>
       </View>
     </AuthShell>
@@ -76,15 +76,15 @@ export function VerifyEmailJourneyScreen() {
     if (autoSentRef.current) return;
     autoSentRef.current = true;
     void sendEmailVerification()
-      .then(() => setStatus('Код отправлен на вашу почту'))
+      .then(() => setStatus('Code sent to your email'))
       .catch((sendError) => {
         const message = sendError instanceof Error ? sendError.message : '';
         if (message.includes('Подождите')) {
-          setStatus('Код уже отправлен — проверьте почту');
+          setStatus('Code already sent — check your email');
           return;
         }
         autoSentRef.current = false;
-        setError(message || 'Не удалось отправить код');
+        setError(message || 'Could not send the code');
       });
   }, [sendEmailVerification]);
 
@@ -92,20 +92,20 @@ export function VerifyEmailJourneyScreen() {
     async (nextCode: string) => {
       setBusy(true);
       setError(null);
-      setStatus('Проверяем код…');
+      setStatus('Checking code…');
       try {
         const verified = await verifyEmailWithCode(nextCode);
         if (verified) {
-          setStatus('Email подтверждён. Продолжаем…');
+          setStatus('Email verified. Continuing…');
           await refreshProfile();
           return;
         }
         setStatus(null);
-        setError('Email ещё не подтверждён. Попробуйте снова.');
+        setError('Email not verified yet. Please try again.');
         verifyAttemptRef.current = null;
         setCode('');
       } catch (verifyError) {
-        setError(verifyError instanceof Error ? verifyError.message : 'Неверный код');
+        setError(verifyError instanceof Error ? verifyError.message : 'Invalid code');
         setStatus(null);
         verifyAttemptRef.current = null;
         setCode('');
@@ -129,7 +129,7 @@ export function VerifyEmailJourneyScreen() {
     setStatus(null);
     try {
       await sendEmailVerification();
-      setStatus('Новый код отправлен');
+      setStatus('New code sent');
     } catch (cause) {
       setError(mapAuthError(cause));
     } finally {
@@ -140,11 +140,11 @@ export function VerifyEmailJourneyScreen() {
   return (
     <AuthShell
       stepLabel={AUTH_JOURNEY_STEP_LABELS['verify-email']}
-      title="Подтвердите email"
+      title="Verify your email"
       description={
         firebaseUser?.email
-          ? `Введите 6-значный код из письма на ${firebaseUser.email}`
-          : 'Введите код из письма, чтобы продолжить'
+          ? `Enter the 6-digit code sent to ${firebaseUser.email}`
+          : 'Enter the code from the email to continue'
       }
     >
       <View style={{ gap: rhythm.stack }}>
@@ -160,10 +160,10 @@ export function VerifyEmailJourneyScreen() {
           </Text>
         ) : null}
         <Button onPress={() => void handleResend()} loading={resending} variant="outline" disabled={busy}>
-          Отправить код снова
+          Resend code
         </Button>
         <Button variant="ghost" onPress={() => void signOut()}>
-          Выйти / сменить аккаунт
+          Sign out / switch account
         </Button>
       </View>
     </AuthShell>

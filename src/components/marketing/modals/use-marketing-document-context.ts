@@ -15,7 +15,7 @@ import {
 function localizeDocumentContext(
   base: DocumentContext,
   options: {
-    documentLocale: "en-US" | "ru-KZ";
+    documentLocale: "en-US" | "en-US";
     demo: ReturnType<typeof useDemoChrome>["workOrderUi"]["demo"];
     documentDemo: ReturnType<typeof useDemoChrome>["documentDemo"];
     documentPdf: DocumentUiLabels;
@@ -92,7 +92,7 @@ export function useMarketingDocumentContext() {
   return useMemo(() => {
     const documentLocale = locale === "en" ? "en-US" : "ru-KZ";
     const options = {
-      documentLocale: documentLocale as "en-US" | "ru-KZ",
+      documentLocale: documentLocale as "en-US" | "en-US",
       demo: chrome.workOrderUi.demo,
       documentDemo: chrome.documentDemo,
       documentPdf: chrome.documentPdf,

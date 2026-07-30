@@ -1,57 +1,101 @@
 import { View, type ViewProps } from 'react-native';
 
 import { useTheme } from '@/hooks';
-import { layout } from '@/theme';
+import { layout, radius, spacing, type ToneName } from '@/theme';
+import type { IconProps } from '@/assets/icons';
+
 import { Text } from './text';
 
-type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline' | 'ghost' | 'success' | 'warning';
+type BadgeVariant =
+  | 'default'
+  | 'secondary'
+  | 'destructive'
+  | 'outline'
+  | 'ghost'
+  | 'success'
+  | 'warning';
+
+/** Legacy variant names map onto the tone scale so callers need no changes. */
+const VARIANT_TONE: Record<Exclude<BadgeVariant, 'outline' | 'ghost'>, ToneName> = {
+  default: 'primary',
+  secondary: 'default',
+  destructive: 'danger',
+  success: 'success',
+  warning: 'warning',
+};
 
 type BadgeProps = ViewProps & {
   variant?: BadgeVariant;
+  /** `subtle` (default) tints the surface; `solid` fills it with the tone. */
+  emphasis?: 'subtle' | 'solid';
+  /** Leading 6pt dot — the category-chip pattern. */
+  dot?: boolean;
+  /** Leading glyph — the status-chip pattern. Ignored when `dot` is set. */
+  icon?: React.ComponentType<IconProps>;
   children: React.ReactNode;
 };
 
-export function Badge({ variant = 'default', children, style, ...props }: BadgeProps) {
-  const { colors } = useTheme();
+export function Badge({
+  variant = 'default',
+  emphasis = 'subtle',
+  dot = false,
+  icon: Icon,
+  children,
+  style,
+  ...props
+}: BadgeProps) {
+  const { colors, tones } = useTheme();
 
-  const variantStyle = (() => {
-    switch (variant) {
-      case 'secondary':
-        return { backgroundColor: colors.secondary, color: colors.secondaryForeground };
-      case 'destructive':
-        return { backgroundColor: `${colors.destructive}1A`, color: colors.destructive };
-      case 'outline':
-        return { backgroundColor: 'transparent', color: colors.foreground, borderWidth: 1, borderColor: colors.border };
-      case 'ghost':
-        return { backgroundColor: 'transparent', color: colors.mutedForeground };
-      case 'success':
-        return { backgroundColor: `${colors.success}14`, color: colors.success };
-      case 'warning':
-        return { backgroundColor: `${colors.warning}14`, color: colors.warning };
-      default:
-        return { backgroundColor: colors.primary, color: colors.primaryForeground };
+  const chrome = (() => {
+    if (variant === 'outline') {
+      return { bg: 'transparent', fg: colors.foreground, border: colors.border };
     }
+    if (variant === 'ghost') {
+      return { bg: 'transparent', fg: colors.mutedForeground, border: 'transparent' };
+    }
+    const tone = tones[VARIANT_TONE[variant]];
+    return emphasis === 'solid'
+      ? { bg: tone.solid, fg: tone.onSolid, border: 'transparent' }
+      : { bg: tone.bg, fg: tone.fg, border: tone.border };
   })();
+
+  const hasLeading = dot || Boolean(Icon);
 
   return (
     <View
       style={[
         {
-          height: layout.badge.height,
-          paddingHorizontal: layout.badge.paddingHorizontal,
+          minHeight: layout.badge.height,
+          paddingVertical: spacing[0.5],
+          paddingLeft: hasLeading ? spacing[1.5] : layout.badge.paddingHorizontal,
+          paddingRight: layout.badge.paddingHorizontal,
           borderRadius: layout.badge.borderRadius,
           alignSelf: 'flex-start',
+          flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: variantStyle.backgroundColor,
-          borderWidth: variantStyle.borderWidth ?? 0,
-          borderColor: variantStyle.borderColor,
+          gap: spacing[1],
+          backgroundColor: chrome.bg,
+          borderWidth: 1,
+          borderColor: chrome.border,
         },
         style,
       ]}
       {...props}
     >
-      <Text variant="caption" style={{ color: variantStyle.color, fontWeight: '500' }}>
+      {dot ? (
+        <View
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: radius.full,
+            backgroundColor: chrome.fg,
+          }}
+        />
+      ) : Icon ? (
+        <Icon size="xs" color={chrome.fg} />
+      ) : null}
+
+      <Text variant="caption" style={{ color: chrome.fg, fontWeight: '500' }}>
         {children}
       </Text>
     </View>

@@ -19,52 +19,52 @@ export function mapAuthError(error: unknown): string {
 
   switch (code) {
     case 'auth/invalid-email':
-      return 'Некорректный email.';
+      return 'Invalid email address.';
     case 'auth/user-disabled':
-      return 'Аккаунт отключён.';
+      return 'This account has been disabled.';
     case 'auth/user-not-found':
     case 'auth/wrong-password':
-      return 'Неверный email или пароль.';
+      return 'Incorrect email or password.';
     case 'auth/password-required':
-      return 'Введите текущий пароль, чтобы удалить аккаунт.';
+      return 'Enter your current password to delete this account.';
     case 'auth/requires-recent-login':
-      return 'Нужно подтвердить личность ещё раз, затем повторите удаление.';
+      return 'Please verify your identity again, then retry the deletion.';
     case 'auth/invalid-credential':
-      return 'Не удалось подтвердить вход. Попробуйте ещё раз.';
+      return "Couldn't confirm sign-in. Please try again.";
     case 'auth/missing-or-invalid-nonce':
-      return 'Ошибка безопасности Apple Sign In. Обновите приложение и попробуйте снова.';
+      return 'Apple Sign In security error. Update the app and try again.';
     case 'auth/account-exists-with-different-credential':
-      return 'Этот email уже связан с другим способом входа.';
+      return 'This email is already linked to a different sign-in method.';
     case 'auth/email-already-in-use':
-      return 'Этот email уже зарегистрирован.';
+      return 'This email is already registered.';
     case 'auth/weak-password':
-      return 'Пароль слишком короткий (минимум 6 символов).';
+      return 'Password is too short (minimum 6 characters).';
     case 'auth/too-many-requests':
-      return 'Слишком много попыток. Попробуйте позже.';
+      return 'Too many attempts. Please try again later.';
     case 'auth/network-request-failed':
-      return 'Не удалось подключиться к сети. Проверьте интернет и попробуйте снова.';
+      return "Couldn't connect to the network. Check your internet connection and try again.";
     case 'auth/operation-not-allowed':
-      return 'Этот способ входа временно недоступен. Включите Apple в Firebase Console.';
+      return 'This sign-in method is temporarily unavailable. Enable Apple in Firebase Console.';
     default:
       if (error instanceof Error && error.message) {
         if (/network|internet|offline/i.test(error.message)) {
-          return 'Не удалось подключиться к сети. Проверьте интернет и попробуйте снова.';
+          return "Couldn't connect to the network. Check your internet connection and try again.";
         }
-        if (/apple sign in не настроен|apple sign in недоступен|apple не вернул/i.test(error.message)) {
+        if (/apple sign in is not (configured|available)|apple did not return|sign in with apple is (only available|not available)/i.test(error.message)) {
           return error.message;
         }
         if (/authorization attempt failed|authenticationServices/i.test(error.message)) {
-          return 'Apple Sign In не настроен в этой сборке. Пересоберите приложение: npx expo run:ios.';
+          return 'Apple Sign In is not configured in this build. Rebuild the app: npx expo run:ios.';
         }
         if (/apple/i.test(error.message)) {
           return error.message;
         }
         if (/signInWithIdp|INVALID_IDP_RESPONSE|FEDERATED_USER_ID_ALREADY_LINKED/i.test(error.message)) {
-          return 'Не удалось подтвердить вход через Apple. Попробуйте снова или войдите по email.';
+          return "Couldn't confirm sign-in via Apple. Try again or sign in by email.";
         }
         return error.message.replace(/\s*\([a-z0-9/-]+\)\s*$/i, '').trim();
       }
-      return 'Не удалось выполнить вход. Попробуйте снова.';
+      return "Couldn't sign in. Please try again.";
   }
 }
 

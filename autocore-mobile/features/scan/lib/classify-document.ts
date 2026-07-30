@@ -42,14 +42,14 @@ export function classifyDocument(text: string): DocumentClass {
 export function documentClassLabel(kind: DocumentClass): string {
   switch (kind) {
     case 'invoice':
-      return 'Счёт';
+      return 'Invoice';
     case 'receipt':
-      return 'Чек';
+      return 'Receipt';
     case 'waybill':
-      return 'Накладная';
+      return 'Waybill';
     case 'work-order':
-      return 'Заказ-наряд';
+      return 'Work Order';
     default:
-      return 'Документ';
+      return 'Document';
   }
 }

@@ -35,7 +35,7 @@ const iconToneClass: Record<KpiCardTone, string> = {
 
 function formatValue(value: number): string {
   if (!Number.isFinite(value)) return "0";
-  return new Intl.NumberFormat("ru-RU").format(value);
+  return new Intl.NumberFormat("en-US").format(value);
 }
 
 export function KpiCard({

@@ -68,7 +68,7 @@ function mapItem(id: string, data: Record<string, unknown>): InventoryItem {
     categoryPath,
     inventoryGroup,
     subcategoryId,
-    unit: typeof data.unit === "string" ? data.unit : "шт",
+    unit: typeof data.unit === "string" ? data.unit : "pcs",
     purchasePrice: data.purchasePrice == null ? undefined : Number(data.purchasePrice),
     averageCost: Number.isFinite(averageCost) ? averageCost : undefined,
     sellPrice: data.sellPrice == null ? undefined : Number(data.sellPrice),
@@ -132,7 +132,7 @@ function buildItemPayload(input: UpsertInventoryItemInput, options?: { isUpdate?
     sku: input.sku.trim(),
     name: input.name.trim(),
     barcodes,
-    unit: input.unit?.trim() || "шт",
+    unit: input.unit?.trim() || "pcs",
     currency: input.currency ?? "KZT",
     status: input.status ?? "active",
     searchTokens: buildInventorySearchTokens({

@@ -23,7 +23,7 @@ export function createInventoryCategoryRepository() {
           id: categoryDocumentId(companyId, preset.id),
           companyId,
           name: preset.label,
-          path: ["Расходники", preset.label],
+          path: ["Consumables", preset.label],
         };
         await setDoc(
           doc(db, "inventoryCategories", category.id),

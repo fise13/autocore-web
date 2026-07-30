@@ -131,8 +131,8 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
     const warehouseId = activeResult.stockLevels?.[0]?.warehouseId;
     if (!warehouseId) {
       toast({
-        title: 'Нет склада',
-        description: 'У позиции нет остатка на складе — сначала оприходуйте.',
+        title: 'No warehouse',
+        description: "This item has no stock on hand — receive it first.",
         variant: 'warning',
       });
       return;
@@ -178,15 +178,15 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
         const outcome = await service.resolvePhoto(uri, preferDocument);
         if (outcome === 'retry') {
           toast({
-            title: 'Ничего не распознано',
-            description: 'Попробуйте снять чётче.',
+            title: 'Nothing recognized',
+            description: 'Try taking a clearer shot.',
             variant: 'warning',
           });
         }
       } catch (error) {
         toast({
-          title: 'Ошибка распознавания',
-          description: error instanceof Error ? error.message : 'Не удалось распознать фото',
+          title: 'Recognition error',
+          description: error instanceof Error ? error.message : 'Could not recognize the photo',
           variant: 'destructive',
         });
         onSheetClosed();
@@ -201,8 +201,8 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       toast({
-        title: 'Нет доступа к фото',
-        description: 'Разрешите доступ к галерее в настройках.',
+        title: 'No photo access',
+        description: 'Allow access to your photo library in Settings.',
         variant: 'warning',
       });
       void Linking.openSettings();
@@ -275,7 +275,7 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
             <View style={styles.ocrOverlay} pointerEvents="none">
               <ActivityIndicator color="#fff" />
               <Text variant="caption" style={styles.ocrLabel}>
-                Распознаём…
+                Recognizing…
               </Text>
             </View>
           ) : null}
@@ -294,15 +294,15 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
             <ScanRelocateBanner
               title={
                 relocatePending.kind === 'fill-location'
-                  ? 'Сканируйте двигатель'
-                  : 'Сканируйте место'
+                  ? 'Scan the engine'
+                  : 'Scan the location'
               }
               subtitle={
                 relocatePending.kind === 'fill-location'
-                  ? `Разместить в ${relocatePending.displayCode}`
+                  ? `Place at ${relocatePending.displayCode}`
                   : relocatePending.kind === 'assign-asset'
-                    ? `Куда переместить «${relocatePending.title}»`
-                    : `Куда переместить «${relocatePending.itemTitle}»`
+                    ? `Where to move "${relocatePending.title}"`
+                    : `Where to move "${relocatePending.itemTitle}"`
               }
               onCancel={cancelRelocate}
             />
@@ -313,11 +313,11 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
           <Text variant="caption" style={styles.hint}>
             {relocatePending
               ? relocatePending.kind === 'fill-location'
-                ? 'Наведите на QR двигателя'
-                : 'Наведите камеру на QR места или код ячейки'
+                ? 'Point at the engine QR code'
+                : 'Point the camera at the location QR or bin code'
               : isOrderContext
-                ? 'Наведите камеру на штрихкод — позиция добавится в наряд'
-                : 'Наведите камеру на штрихкод'}
+                ? 'Point the camera at a barcode — the item will be added to the work order'
+                : 'Point the camera at a barcode'}
           </Text>
           {!isOrderContext ? (
             <ScanGlassPanel
@@ -439,11 +439,11 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
         >
           <BottomSheetView style={{ ...sheet.compactContentStyle, gap: 4 }}>
             <Text variant="body" style={{ fontSize: 15, fontWeight: '600', marginBottom: 8 }}>
-              Недавние сканы
+              Recent scans
             </Text>
             {recentScans.length === 0 ? (
               <Text variant="caption" color="muted">
-                Пока пусто — отсканируйте первую позицию.
+                Nothing here yet — scan your first item.
               </Text>
             ) : (
               recentScans.map((item, index) => (

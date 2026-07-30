@@ -86,7 +86,7 @@ export async function readWarehouseSpreadsheet(file: File): Promise<ParsedImport
     const worksheet = workbook.Sheets[sheetName];
     const parseWarnings: string[] = [];
     if (!worksheet) {
-      return { sheetName, headers: [], rows: [], parseWarnings: ["Пустой лист"] };
+      return { sheetName, headers: [], rows: [], parseWarnings: ["Empty sheet"] };
     }
     const matrix = matrixFromWorksheet(worksheet);
     const parsed = rowsFromMatrix(matrix, parseWarnings);

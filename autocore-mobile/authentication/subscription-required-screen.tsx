@@ -57,7 +57,7 @@ export function SubscriptionRequiredScreen({
               lineHeight: 30,
             }}
           >
-            Для продолжения необходима активная подписка.
+            An active subscription is required to continue.
           </Text>
           <Text
             variant="pageSubtitle"
@@ -67,19 +67,19 @@ export function SubscriptionRequiredScreen({
               lineHeight: 20,
             }}
           >
-            Управление подпиской доступно на сайте.
+            Subscription management is available on the website.
           </Text>
         </View>
 
         <View style={{ width: '100%', maxWidth: 320, gap: rhythm.inline }}>
-          <Button onPress={openWebsite}>Открыть сайт</Button>
+          <Button onPress={openWebsite}>Open website</Button>
           {onRefresh ? (
             <Button variant="secondary" loading={refreshing} onPress={onRefresh}>
-              Обновить статус
+              Refresh status
             </Button>
           ) : null}
           <Button variant="ghost" onPress={() => void signOut()}>
-            Выйти
+            Sign out
           </Button>
         </View>
       </View>

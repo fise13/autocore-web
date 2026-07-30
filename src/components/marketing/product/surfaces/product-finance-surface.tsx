@@ -11,7 +11,7 @@ import { OverviewInsights } from "@/components/accounting/overview-insights";
 import { AnimatedTabsPanel } from "@/components/ui/animated-tabs-panel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FinancialOperation } from "@/domain/financial-operation";
-import { formatKzt } from "@/lib/marketing/landing-demo-snapshot";
+import { formatUsd } from "@/lib/marketing/landing-demo-snapshot";
 import { cn } from "@/lib/utils";
 
 /**
@@ -116,7 +116,7 @@ export function ProductFinanceSurface({ className }: { className?: string }) {
           <p className="product-finance-real-title">{chrome.finance.title}</p>
         </div>
         <p className="product-finance-real-balance">
-          {chrome.finance.balance(formatKzt(balance.total))}
+          {chrome.finance.balance(formatUsd(balance.total))}
         </p>
       </div>
 

@@ -35,7 +35,7 @@ import {
 import { Delta, DeltaIcon, DeltaValue } from "@/components/ui/delta";
 import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import {
-  formatKzt,
+  formatUsd,
   landingDemoInventory,
   landingDemoMissionControl,
   landingDemoWorkOrders,
@@ -69,8 +69,8 @@ export function MissionControlSurface({ className }: MissionControlSurfaceProps)
   const chartUid = useId().replace(/:/g, "");
 
   const localizeOrderNumber = (number: string) => {
-    if (number.startsWith(motorsSnapshot.orderPrefixRu)) {
-      return `${motorsSnapshot.orderPrefixEn}${number.slice(motorsSnapshot.orderPrefixRu.length)}`;
+    if (number.startsWith(motorsSnapshot.orderPrefixSource)) {
+      return `${motorsSnapshot.orderPrefixLocalized}${number.slice(motorsSnapshot.orderPrefixSource.length)}`;
     }
     return number;
   };
@@ -227,7 +227,7 @@ export function MissionControlSurface({ className }: MissionControlSurfaceProps)
     {
       key: "revenue",
       label: t("stats.revenueToday"),
-      value: `${formatKzt(mc.revenueToday)} ₸`,
+      value: `${formatUsd(mc.revenueToday)}`,
       delta: mc.revenueDelta,
       hint: t("stats.vsYesterday"),
       percent: true,
@@ -235,7 +235,7 @@ export function MissionControlSurface({ className }: MissionControlSurfaceProps)
     {
       key: "balance",
       label: t("stats.balance"),
-      value: `${formatKzt(mc.balance)} ₸`,
+      value: `${formatUsd(mc.balance)}`,
       delta: mc.balanceDelta,
       hint: t("stats.cashAndBank"),
       percent: true,
@@ -243,7 +243,7 @@ export function MissionControlSurface({ className }: MissionControlSurfaceProps)
     {
       key: "motors",
       label: t("stats.motors"),
-      value: formatKzt(mc.motorsOnHand),
+      value: formatUsd(mc.motorsOnHand),
       delta: mc.motorsDelta,
       hint: t("stats.inStock"),
       percent: false,
@@ -251,7 +251,7 @@ export function MissionControlSurface({ className }: MissionControlSurfaceProps)
     {
       key: "warehouse",
       label: t("stats.warehouse"),
-      value: formatKzt(mc.warehouseSku),
+      value: formatUsd(mc.warehouseSku),
       delta: mc.warehouseDelta,
       hint: t("stats.positions"),
       percent: true,
@@ -338,7 +338,7 @@ export function MissionControlSurface({ className }: MissionControlSurfaceProps)
                   content={
                     <ChartTooltipContent
                       className="min-w-34"
-                      formatter={(value) => `${formatKzt(Number(value))} ₸`}
+                      formatter={(value) => `${formatUsd(Number(value))} ₸`}
                       indicator="line"
                     />
                   }
@@ -416,7 +416,7 @@ export function MissionControlSurface({ className }: MissionControlSurfaceProps)
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
-                      formatter={(value) => `${formatKzt(Number(value))} ₸`}
+                      formatter={(value) => `${formatUsd(Number(value))} ₸`}
                     />
                   }
                 />

@@ -26,7 +26,7 @@ function buildAppleRedirectBridgeHtml(payload: AppleRedirectPayload, loginReturn
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Вход через Apple…</title>
+    <title>Signing in with Apple…</title>
     <style>
       body { font-family: system-ui, sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; background: #fafafa; color: #111; }
       p { font-size: 14px; opacity: 0.7; }

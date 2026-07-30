@@ -114,7 +114,7 @@ export function suggestColumnMappingWithConfidence(headers: string[]): ColumnMap
       mapping,
       fieldConfidence,
       source: "preset",
-      reasoning: `Распознан формат «${presetMatch.preset.label}»`,
+      reasoning: `Recognized format "${presetMatch.preset.label}"`,
       warnings: [],
       preset: {
         id: presetMatch.preset.id,
@@ -159,14 +159,14 @@ export function suggestColumnMappingWithConfidence(headers: string[]): ColumnMap
 
   for (const field of REQUIRED_FIELDS) {
     if (!mapping[field]) {
-      warnings.push(`Не найдена колонка для поля «${field}»`);
+      warnings.push(`No column found for field "${field}"`);
     }
   }
 
   const duplicateTargets = new Set<string>();
   for (const header of Object.values(mapping)) {
     if (duplicateTargets.has(header)) {
-      warnings.push(`Колонка «${header}» сопоставлена с несколькими полями`);
+      warnings.push(`Column "${header}" is mapped to multiple fields`);
     }
     duplicateTargets.add(header);
   }
@@ -175,7 +175,7 @@ export function suggestColumnMappingWithConfidence(headers: string[]): ColumnMap
     mapping,
     fieldConfidence,
     source: "rules",
-    reasoning: "Автоматическое сопоставление по алиасам",
+    reasoning: "Automatic mapping by alias",
     warnings,
   };
 }
@@ -220,7 +220,7 @@ export function applyManualColumnMapping(
     mapping: manualMapping,
     fieldConfidence,
     source: "manual",
-    reasoning: "Ручное сопоставление пользователем",
+    reasoning: "Manual mapping by user",
     warnings: base.warnings,
   };
 }

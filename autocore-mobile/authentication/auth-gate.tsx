@@ -88,7 +88,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       <>
         <AuthRedirectEffect />
         <AuthLoadingScreen
-          message={firebaseUser ? 'Синхронизация данных…' : 'Загрузка…'}
+          message={firebaseUser ? 'Syncing data…' : 'Loading…'}
         />
       </>
     );
@@ -101,7 +101,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       <>
         {pushRegistration}
         <AuthRedirectEffect />
-        <AuthLoadingScreen message="Подготовка рабочего пространства…" />
+        <AuthLoadingScreen message="Preparing your workspace…" />
       </>
     );
   }

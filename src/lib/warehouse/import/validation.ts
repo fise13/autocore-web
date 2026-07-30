@@ -10,14 +10,14 @@ export function validateImportRow(row: EnhancedImportRow): EnhancedImportRow {
   const purchasePrice = normalized.purchasePrice != null ? Number(normalized.purchasePrice) : undefined;
   const sellPrice = normalized.sellPrice != null ? Number(normalized.sellPrice) : undefined;
 
-  if (!sku && !name) errors.push("Не удалось определить товар");
+  if (!sku && !name) errors.push("Couldn't identify the item");
   if (!sku && name) {
-    warnings.push("Артикул сгенерирован автоматически");
+    warnings.push("SKU generated automatically");
   }
-  if (!Number.isFinite(quantity)) errors.push("Некорректное количество");
-  if (quantity < 0) errors.push("Количество не может быть отрицательным");
-  if (purchasePrice != null && !Number.isFinite(purchasePrice)) errors.push("Некорректная закупочная цена");
-  if (sellPrice != null && !Number.isFinite(sellPrice)) errors.push("Некорректная цена продажи");
+  if (!Number.isFinite(quantity)) errors.push("Invalid quantity");
+  if (quantity < 0) errors.push("Quantity cannot be negative");
+  if (purchasePrice != null && !Number.isFinite(purchasePrice)) errors.push("Invalid purchase price");
+  if (sellPrice != null && !Number.isFinite(sellPrice)) errors.push("Invalid sell price");
   if (
     purchasePrice != null &&
     sellPrice != null &&
@@ -25,10 +25,10 @@ export function validateImportRow(row: EnhancedImportRow): EnhancedImportRow {
     Number.isFinite(sellPrice) &&
     sellPrice < purchasePrice
   ) {
-    warnings.push("Цена продажи ниже закупочной");
+    warnings.push("Sell price is below purchase price");
   }
   if (quantity > 0 && (purchasePrice == null || purchasePrice === 0)) {
-    warnings.push("Приход без закупочной цены");
+    warnings.push("Incoming stock without a purchase price");
   }
 
   const confidenceBase = row.aiMeta?.confidence ?? row.confidence;

@@ -56,7 +56,7 @@ export function OrdersScreen() {
   const markReady = useCallback(
     async (order: WorkOrder) => {
       if (!canEdit) {
-        toast({ title: 'Нет прав на изменение наряда', variant: 'warning' });
+        toast({ title: 'You do not have permission to edit this work order', variant: 'warning' });
         return;
       }
       if (order.status === 'completed' || order.status === 'ready') {
@@ -67,11 +67,11 @@ export function OrdersScreen() {
         haptics.medium();
         await transitionWorkOrder(order.id, 'completed');
         haptics.success();
-        toast({ title: 'Наряд отмечен выполненным', variant: 'success' });
+        toast({ title: 'Work order marked as completed', variant: 'success' });
       } catch (error) {
         haptics.warning();
         toast({
-          title: 'Не удалось обновить статус',
+          title: 'Failed to update status',
           description: error instanceof Error ? error.message : undefined,
           variant: 'destructive',
         });
@@ -130,21 +130,21 @@ export function OrdersScreen() {
         ) : (
           <EmptyState
             icon={ClipboardListIcon}
-            title={orders.length === 0 ? 'Нарядов пока нет' : 'Ничего не найдено'}
+            title={orders.length === 0 ? 'No work orders yet' : 'Nothing found'}
             description={
               orders.length === 0
-                ? 'Создайте первый заказ-наряд — это займёт меньше минуты.'
-                : 'Измените фильтр или поисковый запрос.'
+                ? 'Create your first work order — it takes less than a minute.'
+                : 'Try changing the filter or search query.'
             }
             primaryAction={
               canCreate && orders.length === 0
                 ? {
-                    label: 'Создать наряд',
+                    label: 'Create work order',
                     onPress: () => router.push('/(tabs)/orders/new'),
                   }
                 : query
                   ? {
-                      label: 'Сбросить поиск',
+                      label: 'Clear search',
                       onPress: () => {
                         setQuery('');
                         setFilter('open');
@@ -165,10 +165,10 @@ export function OrdersScreen() {
       <Screen style={{ justifyContent: 'center', paddingHorizontal: ordersLayout.pad }}>
         <EmptyState
           icon={ClipboardListIcon}
-          title="Нет рабочего пространства"
-          description="Выберите компанию в профиле, чтобы видеть заказ-наряды."
+          title="No workspace"
+          description="Select a company in your profile to see work orders."
           primaryAction={{
-            label: 'Открыть профиль',
+            label: 'Open profile',
             onPress: () => router.navigate('/(tabs)/profile'),
           }}
         />
@@ -181,8 +181,8 @@ export function OrdersScreen() {
       <Screen style={{ justifyContent: 'center', paddingHorizontal: ordersLayout.pad }}>
         <EmptyState
           icon={ClipboardListIcon}
-          title="Нет доступа"
-          description="У вашей роли нет прав на просмотр заказ-нарядов."
+          title="No access"
+          description="Your role does not have permission to view work orders."
         />
       </Screen>
     );

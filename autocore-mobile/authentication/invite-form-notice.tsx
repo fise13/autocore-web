@@ -26,13 +26,13 @@ export function InviteFormNotice({ companyName }: InviteFormNoticeProps) {
       <Text variant="caption" color="muted" style={{ lineHeight: 20 }}>
         {companyName ? (
           <>
-            Вы войдёте в компанию{' '}
+            You'll join the company{' '}
             <Text variant="caption" style={{ fontWeight: '600', color: colors.foreground }}>
-              «{companyName}»
+              "{companyName}"
             </Text>
           </>
         ) : (
-          'После входа вы присоединитесь к команде по приглашению.'
+          "Once signed in, you'll join the team via the invite."
         )}
       </Text>
     </View>

@@ -32,10 +32,10 @@ import { isMotorStale, isWarehouseLowStock } from '@/lib/inventory/is-low-stock'
 import { isOpenStatus, STATUS_LABELS } from '@/lib/work-order/work-order-utils';
 import type { WorkOrder, WorkOrderStatus } from '@/types/work-order';
 
-const WEEKDAY_SHORT_RU = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'] as const;
+const WEEKDAY_SHORT_EN = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'] as const;
 
 function weekDayShortLabel(date: Date): string {
-  return WEEKDAY_SHORT_RU[date.getDay()] ?? '';
+  return WEEKDAY_SHORT_EN[date.getDay()] ?? '';
 }
 
 function orderRevenue(order: WorkOrder): number {
@@ -165,7 +165,7 @@ export function useMissionControlData(): MissionControlSnapshot {
     if (waitingParts > 0) {
       attentionItems.push({
         count: waitingParts,
-        text: 'ждут запчасти',
+        text: 'waiting on parts',
         tone: 'warning',
         route: '/(tabs)/orders',
       });
@@ -173,7 +173,7 @@ export function useMissionControlData(): MissionControlSnapshot {
     if (lowStock > 0) {
       attentionItems.push({
         count: lowStock,
-        text: 'на исходе',
+        text: 'running low',
         tone: 'warning',
         route: '/(tabs)/warehouse',
         routeParams: { lowStock: '1' },
@@ -182,7 +182,7 @@ export function useMissionControlData(): MissionControlSnapshot {
     if (staleMotors > 0) {
       attentionItems.push({
         count: staleMotors,
-        text: 'моторов залежались',
+        text: 'motors sitting idle',
         tone: 'warning',
         route: '/(tabs)/search',
         routeParams: { filter: 'motors', stale: '1' },
@@ -194,7 +194,7 @@ export function useMissionControlData(): MissionControlSnapshot {
     if (rbac.scopes.workOrders !== 'none') {
       statTiles.push({
         id: 'new-orders',
-        label: 'Новые наряды',
+        label: 'New work orders',
         value: newOrdersWeek,
         format: 'integer',
         icon: ClipboardListIcon,
@@ -205,7 +205,7 @@ export function useMissionControlData(): MissionControlSnapshot {
     if (rbac.scopes.inventory !== 'none') {
       statTiles.push({
         id: 'inventory',
-        label: 'Позиций на складе',
+        label: 'Items in stock',
         value: items.length,
         format: 'grouped',
         icon: BoxIcon,
@@ -219,10 +219,10 @@ export function useMissionControlData(): MissionControlSnapshot {
     if (staleMotors > 0) {
       featuredInsight = {
         id: 'stale-motors',
-        title: `${staleMotors} моторов залежались на складе`,
-        detail: 'Позиции давно без движения — стоит пересмотреть цену или продвижение.',
-        body: 'Обновление цен может ускорить продажи и освободить оборотные средства.',
-        cta: 'Смотреть рекомендации',
+        title: `${staleMotors} motors sitting idle in stock`,
+        detail: 'These have had no movement in a while — consider a price cut or promotion.',
+        body: 'Adjusting prices can speed up sales and free up cash flow.',
+        cta: 'View recommendations',
         tone: 'neutral',
         route: '/(tabs)/search',
         routeParams: { filter: 'motors', stale: '1' },
@@ -230,10 +230,10 @@ export function useMissionControlData(): MissionControlSnapshot {
     } else if (lowStock > 0) {
       featuredInsight = {
         id: 'low-stock',
-        title: `${lowStock} позиций на исходе`,
-        detail: 'Запасы подходят к минимуму — риск простоя в нарядах.',
-        body: 'Пополните склад заранее, чтобы не задерживать закрытие нарядов.',
-        cta: 'Открыть список',
+        title: `${lowStock} items running low`,
+        detail: 'Stock is nearing the minimum — this could stall open work orders.',
+        body: 'Restock ahead of time to avoid delaying work order completion.',
+        cta: 'Open list',
         tone: 'warning',
         route: '/(tabs)/warehouse',
         routeParams: { lowStock: '1' },
@@ -241,9 +241,9 @@ export function useMissionControlData(): MissionControlSnapshot {
     } else if (openOrders.length > 0 && now.getHours() >= 18) {
       featuredInsight = {
         id: 'open-evening',
-        title: `${openOrders.length} нарядов ещё открыты`,
-        detail: 'К концу дня стоит закрыть или обновить статусы.',
-        cta: 'Перейти к нарядам',
+        title: `${openOrders.length} work orders still open`,
+        detail: 'Consider closing them out or updating statuses before end of day.',
+        cta: 'Go to work orders',
         tone: 'neutral',
         route: '/(tabs)/orders',
       };
@@ -255,10 +255,10 @@ export function useMissionControlData(): MissionControlSnapshot {
       if (closedShare >= 40 && closedShare < 100) {
         featuredInsight = {
           id: 'close-rate',
-          title: 'Хороший темп закрытия нарядов',
-          detail: `${closedShare}% нарядов уже закрыто.`,
-          body: 'Сохраняйте ритм — это помогает точнее планировать выручку.',
-          cta: 'Смотреть наряды',
+          title: 'Good pace on closing work orders',
+          detail: `${closedShare}% of work orders are already closed.`,
+          body: 'Keep up the rhythm — it makes revenue easier to forecast.',
+          cta: 'View work orders',
           tone: 'positive',
           route: '/(tabs)/orders',
         };
@@ -268,8 +268,8 @@ export function useMissionControlData(): MissionControlSnapshot {
     if (openOrders.length > 0 && now.getHours() >= 18 && featuredInsight?.id !== 'open-evening') {
       insights.push({
         id: 'open-evening-secondary',
-        title: 'Незакрытые наряды',
-        detail: `${openOrders.length} к концу дня`,
+        title: 'Unclosed work orders',
+        detail: `${openOrders.length} by end of day`,
         tone: 'neutral',
         route: '/(tabs)/orders',
       });
@@ -297,16 +297,16 @@ export function useMissionControlData(): MissionControlSnapshot {
 
     const quickActions = [
       rbac.can('work_orders_edit')
-        ? { id: 'order', label: 'Наряд', icon: PlusIcon, route: '/(tabs)/orders/new' as const }
+        ? { id: 'order', label: 'Order', icon: PlusIcon, route: '/(tabs)/orders/new' as const }
         : null,
       rbac.scopes.inventory !== 'none'
-        ? { id: 'scan', label: 'Скан', icon: ScanSearchIcon, route: '/(tabs)/scan' as const }
+        ? { id: 'scan', label: 'Scan', icon: ScanSearchIcon, route: '/(tabs)/scan' as const }
         : null,
       rbac.scopes.inventory !== 'none'
-        ? { id: 'inventory', label: 'Склад', icon: BoxIcon, route: '/(tabs)/warehouse' as const }
+        ? { id: 'inventory', label: 'Stock', icon: BoxIcon, route: '/(tabs)/warehouse' as const }
         : null,
       rbac.scopes.accounting !== 'none'
-        ? { id: 'finance', label: 'Финансы', icon: BarChart3Icon, route: '/(tabs)/accounting' as const }
+        ? { id: 'finance', label: 'Finance', icon: BarChart3Icon, route: '/(tabs)/accounting' as const }
         : null,
     ].filter((action): action is NonNullable<typeof action> => action !== null);
 
@@ -322,7 +322,7 @@ export function useMissionControlData(): MissionControlSnapshot {
 
     return {
       attention: {
-        title: 'Нужно действие',
+        title: 'Needs attention',
         items: attentionItems,
       },
       revenue: visibleRevenue,

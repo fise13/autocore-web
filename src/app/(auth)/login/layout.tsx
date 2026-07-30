@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { Suspense, type ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "Вход",
-  description: "Вход в AutoCore — программу для авторазборок и автосервисов.",
+  title: "Sign in",
+  description: "Sign in to AutoCore — software for dismantlers and repair shops.",
   robots: {
     index: false,
     follow: false,

@@ -1,5 +1,6 @@
 import { DocumentPdfHeader } from "@/components/documents/header/document-pdf-header";
 import { DocumentWatermarkLayer } from "@/components/documents/watermark/document-watermark-layer";
+import { documentNumberLocale } from "@/lib/documents/format";
 import type { DocumentUiLabels } from "@/lib/documents/document-context";
 import { DocumentRenderModel } from "@/lib/documents/render-model/types";
 import { RacingViewModel } from "@/lib/documents/render-model/build-racing-view-model";
@@ -123,9 +124,10 @@ export function DocumentPdfRacingRenderer({ model }: { model: DocumentRenderMode
   if (!racing) return null;
 
   const ui = model.ui;
+  const numberLocale = documentNumberLocale();
   const qrSection = model.sections.find((s) => s.key === "qr");
-  const milestoneKm = racing.milestoneTarget.toLocaleString("ru-KZ");
-  const remainingKm = racing.milestoneRemaining.toLocaleString("ru-KZ");
+  const milestoneKm = racing.milestoneTarget.toLocaleString(numberLocale);
+  const remainingKm = racing.milestoneRemaining.toLocaleString(numberLocale);
 
   return (
     <main
@@ -156,7 +158,7 @@ export function DocumentPdfRacingRenderer({ model }: { model: DocumentRenderMode
 
         <div className="doc-racing-milestone">
           <span>
-            {ui.racingNextMilestone} <b>{milestoneKm} {"\u043a\u043c"}</b>
+            {ui.racingNextMilestone} <b>{milestoneKm} {ui.kmSuffix}</b>
           </span>
           <span>{ui.racingRemaining.replace("{km}", remainingKm)}</span>
         </div>
@@ -165,7 +167,7 @@ export function DocumentPdfRacingRenderer({ model }: { model: DocumentRenderMode
           <div className="doc-racing-stat">
             <span className="doc-racing-stat-label">{ui.racingMileage}</span>
             <strong className="doc-racing-stat-value">
-              {racing.mileage.toLocaleString("ru-KZ")}
+              {racing.mileage.toLocaleString(numberLocale)}
             </strong>
             <em>{racing.mileageLabel}</em>
           </div>

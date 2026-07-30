@@ -56,7 +56,7 @@ function ExpoGoogleSignInButton({
 
       if (response.type !== 'success') {
         if (response.type === 'error') {
-          onError(response.error?.message ?? 'Не удалось войти через Google.');
+          onError(response.error?.message ?? 'Could not sign in with Google.');
         }
         return;
       }
@@ -70,7 +70,7 @@ function ExpoGoogleSignInButton({
           : null);
 
       if (!idToken) {
-        onError('Не удалось завершить вход через Google. Попробуйте снова или используйте email.');
+        onError('Could not complete Google sign-in. Try again or use email.');
         return;
       }
 
@@ -86,7 +86,7 @@ function ExpoGoogleSignInButton({
 
   const onPress = async () => {
     if (!isGoogleOAuthConfigured()) {
-      onError('Вход через Google временно недоступен. Попробуйте email или Apple.');
+      onError('Google sign-in is temporarily unavailable. Try email or Apple.');
       return;
     }
 
@@ -101,7 +101,7 @@ function ExpoGoogleSignInButton({
   return (
     <AuthOAuthButton
       provider="google"
-      label="Войти через Google"
+      label="Sign in with Google"
       disabled={disabled || !request}
       loading={loading}
       onPress={onPress}
@@ -112,7 +112,7 @@ function ExpoGoogleSignInButton({
 export function GoogleSignInButton(props: GoogleSignInButtonProps) {
   const onPressNative = async () => {
     if (!isGoogleOAuthConfigured()) {
-      props.onError('Вход через Google временно недоступен. Попробуйте email или Apple.');
+      props.onError('Google sign-in is temporarily unavailable. Try email or Apple.');
       return;
     }
 
@@ -132,7 +132,7 @@ export function GoogleSignInButton(props: GoogleSignInButtonProps) {
     return (
       <AuthOAuthButton
         provider="google"
-        label="Войти через Google"
+        label="Sign in with Google"
         disabled={props.disabled}
         loading={props.loading}
         onPress={onPressNative}

@@ -3,7 +3,7 @@
 import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import { ProductWindow } from "@/components/marketing/experience/ui/product-window";
 import { Badge } from "@/components/ui/badge";
-import { formatKzt, landingDemoWorkOrders } from "@/lib/marketing/landing-demo-snapshot";
+import { formatUsd, landingDemoWorkOrders } from "@/lib/marketing/landing-demo-snapshot";
 import { cn } from "@/lib/utils";
 
 const primary = landingDemoWorkOrders[0];
@@ -30,8 +30,8 @@ export function WorkOrderSurface({
   const openOnly = layout === "open";
 
   const localizeOrderNumber = (number: string) => {
-    if (number.startsWith(snap.orderPrefixRu)) {
-      return `${snap.orderPrefixEn}${number.slice(snap.orderPrefixRu.length)}`;
+    if (number.startsWith(snap.orderPrefixSource)) {
+      return `${snap.orderPrefixLocalized}${number.slice(snap.orderPrefixSource.length)}`;
     }
     return number;
   };
@@ -109,7 +109,7 @@ export function WorkOrderSurface({
             <Badge variant="outline" className="font-normal">
               {localized.statusLabel}
             </Badge>
-            <p className="exp-mock-mono text-sm font-semibold">{formatKzt(order.grandTotal)} ₸</p>
+            <p className="exp-mock-mono text-sm font-semibold">{formatUsd(order.grandTotal)}</p>
           </div>
         </div>
 
@@ -123,7 +123,7 @@ export function WorkOrderSurface({
             <div key={line.title} className="flex items-center justify-between gap-2 text-xs">
               <span>{line.title}</span>
               <span className="exp-mock-mono text-muted-foreground">
-                {chrome.workOrder.hoursAt(line.hours, formatKzt(line.unitPrice))}
+                {chrome.workOrder.hoursAt(line.hours, formatUsd(line.unitPrice))}
               </span>
             </div>
           ))}
@@ -144,7 +144,7 @@ export function WorkOrderSurface({
                   <span className="ml-2 font-medium">{line.name}</span>
                 </span>
                 <span className="exp-mock-mono">
-                  ×{line.quantity} · {formatKzt(line.unitPrice)}
+                  ×{line.quantity} · {formatUsd(line.unitPrice)}
                 </span>
               </div>
             ))}

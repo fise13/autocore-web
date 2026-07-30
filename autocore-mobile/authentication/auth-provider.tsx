@@ -517,7 +517,7 @@ function useAuthActionsController(): AuthActions {
         activeCompanyName: null,
         status: 'unauthenticated',
       });
-      useAuthStore.getState().setError('Firebase не настроен. Добавьте `EXPO_PUBLIC_FIREBASE_*` переменные.');
+      useAuthStore.getState().setError('Firebase is not configured. Add the `EXPO_PUBLIC_FIREBASE_*` variables.');
       return;
     }
 
@@ -624,7 +624,7 @@ function useAuthActionsController(): AuthActions {
   const signIn = useCallback(
     async (email: string, password: string) => {
       if (!useAuthStore.getState().isOnline) {
-        throw new Error('Нет подключения к интернету.');
+        throw new Error('No internet connection.');
       }
       await withFullSessionHydration(() => signInWithEmail(email.trim(), password));
     },
@@ -638,7 +638,7 @@ function useAuthActionsController(): AuthActions {
       profile?: { firstName: string; lastName: string },
     ) => {
       if (!useAuthStore.getState().isOnline) {
-        throw new Error('Нет подключения к интернету.');
+        throw new Error('No internet connection.');
       }
 
       await withFullSessionHydration(async () => {
@@ -663,7 +663,7 @@ function useAuthActionsController(): AuthActions {
   const resolveEmailMethods = useCallback(
     async (email: string): Promise<ResolveEmailLookupResult> => {
       if (!useAuthStore.getState().isOnline) {
-        throw new Error('Нет подключения к интернету.');
+        throw new Error('No internet connection.');
       }
       if (!isFirebaseReady) {
         throw new Error(mapAuthError(new Error('auth/operation-not-allowed')));
@@ -684,7 +684,7 @@ function useAuthActionsController(): AuthActions {
   const signInWithGoogle = useCallback(
     async (idToken?: string) => {
       if (!useAuthStore.getState().isOnline) {
-        throw new Error('Нет подключения к интернету.');
+        throw new Error('No internet connection.');
       }
       await withFullSessionHydration(async () => {
         let token = idToken;
@@ -700,7 +700,7 @@ function useAuthActionsController(): AuthActions {
 
   const signInWithApple = useCallback(async () => {
     if (!useAuthStore.getState().isOnline) {
-      throw new Error('Нет подключения к интернету.');
+      throw new Error('No internet connection.');
     }
     await withFullSessionHydration(signInWithAppleNative);
   }, [withFullSessionHydration]);
@@ -708,7 +708,7 @@ function useAuthActionsController(): AuthActions {
   const sendPasswordReset = useCallback(
     async (email: string) => {
       if (!useAuthStore.getState().isOnline) {
-        throw new Error('Нет подключения к интернету.');
+        throw new Error('No internet connection.');
       }
       if (!isFirebaseReady) {
         throw new Error(mapAuthError(new Error('auth/operation-not-allowed')));
@@ -724,7 +724,7 @@ function useAuthActionsController(): AuthActions {
 
   const sendEmailVerification = useCallback(async () => {
     if (!useAuthStore.getState().isOnline) {
-      throw new Error('Нет подключения к интернету.');
+      throw new Error('No internet connection.');
     }
     if (!isFirebaseReady) {
       throw new Error(mapAuthError(new Error('auth/operation-not-allowed')));
@@ -756,11 +756,11 @@ function useAuthActionsController(): AuthActions {
 
   const deleteAccount = useCallback(async (password?: string) => {
     if (!useAuthStore.getState().isOnline) {
-      throw new Error('Нет подключения к интернету.');
+      throw new Error('No internet connection.');
     }
     const user = getFirebaseAuth().currentUser;
     if (!user) {
-      throw new Error('Требуется авторизация.');
+      throw new Error('Authorization required.');
     }
 
     await deleteAccountForCurrentUser(user, { password });
@@ -825,7 +825,7 @@ function useAuthActionsController(): AuthActions {
   const createCompany = useCallback(
     async (name: string) => {
       if (!useAuthStore.getState().isOnline) {
-        throw new Error('Нет подключения к интернету.');
+        throw new Error('No internet connection.');
       }
       if (!isFirebaseReady) {
         throw new Error(mapAuthError(new Error('auth/operation-not-allowed')));

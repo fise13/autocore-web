@@ -26,7 +26,7 @@ import {
 } from "@/lib/documents/open-document-preview";
 const workOrderRepository = createWorkOrderRepository();
 
-const dateTimeFormatter = new Intl.DateTimeFormat("ru-RU", {
+const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   day: "2-digit",
   month: "short",
   year: "numeric",
@@ -34,7 +34,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat("ru-RU", {
   minute: "2-digit",
 });
 
-const dateOnlyFormatter = new Intl.DateTimeFormat("ru-RU", {
+const dateOnlyFormatter = new Intl.DateTimeFormat("en-US", {
   day: "2-digit",
   month: "2-digit",
   year: "numeric",

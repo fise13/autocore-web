@@ -18,9 +18,9 @@ function formatAnimatedValue(value: number, format: McAnimatedValueFormat): stri
   const safe = Number.isFinite(value) ? value : 0;
   const rounded = Math.round(safe);
   if (format === "currency") {
-    return rounded.toLocaleString("ru-RU");
+    return rounded.toLocaleString("en-US");
   }
-  return rounded.toLocaleString("ru-RU");
+  return rounded.toLocaleString("en-US");
 }
 
 export function McAnimatedValue({

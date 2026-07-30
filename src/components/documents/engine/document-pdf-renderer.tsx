@@ -8,6 +8,7 @@ import {
   DocumentTimelineEvent,
   DocumentTotalsBlock,
 } from "@/lib/documents/render-model/types";
+import { documentNumberLocale } from "@/lib/documents/format";
 import type { DocumentUiLabels } from "@/lib/documents/document-context";
 import { cn } from "@/lib/utils";
 
@@ -306,7 +307,7 @@ function renderSection(section: DocumentSectionModel, ui: DocumentUiLabels) {
               </div>
               <div>
                 <span>{ui.mileage}</span>
-                <strong>{section.warranty.km.toLocaleString("ru-KZ")} {"\u043a\u043c"}</strong>
+                <strong>{section.warranty.km.toLocaleString(documentNumberLocale())} {ui.kmSuffix}</strong>
               </div>
               <div>
                 <span>{ui.untilDate}</span>

@@ -43,13 +43,13 @@ type OrderCompositionStepProps = {
 };
 
 const PAYMENT_TYPE_OPTIONS = [
-  { value: 'fixed', label: 'Фикс. сумма → зарплата' },
-  { value: 'hourly', label: 'Почасовая → зарплата' },
+  { value: 'fixed', label: 'Fixed amount → payroll' },
+  { value: 'hourly', label: 'Hourly → payroll' },
 ];
 
 const MOTOR_OUTCOME_OPTIONS = [
-  { value: 'install', label: 'Установка' },
-  { value: 'sell', label: 'Продажа' },
+  { value: 'install', label: 'Install' },
+  { value: 'sell', label: 'Sell' },
 ];
 
 export function OrderCompositionStep({
@@ -69,11 +69,11 @@ export function OrderCompositionStep({
   const { colors } = useTheme();
   const isHourly = composition.laborDraft.pricingMode === 'hourly';
   const motorWarrantyOptions = [
-    { value: '', label: 'По умолчанию компании' },
+    { value: '', label: 'Company default' },
     ...warrantyTemplateOptions(true).map((option) => ({ value: option.value, label: option.label })),
   ];
   const catalogWarrantyOptions = [
-    { value: 'none', label: 'Без гарантии' },
+    { value: 'none', label: 'No warranty' },
     ...warrantyTemplateOptions(false).map((option) => ({ value: option.value, label: option.label })),
   ];
   const categoryOptions = composition.quickSpecificCategories.map((category) => ({
@@ -94,16 +94,16 @@ export function OrderCompositionStep({
       <ComposerTabPanel tab={tab} direction={direction}>
         {tab === 'labor' ? (
           <View style={{ gap: 14 }}>
-            <CompositionAddCard title="Добавить работу">
-              <CompositionField label="Наименование" required>
+            <CompositionAddCard title="Add labor">
+              <CompositionField label="Description" required>
                 <Input
-                  placeholder="Замена двигателя"
+                  placeholder="Engine replacement"
                   value={composition.laborDraft.title}
                   onChangeText={(value) => composition.patchLaborDraft({ title: value })}
                 />
               </CompositionField>
 
-              <CompositionField label="Тип оплаты">
+              <CompositionField label="Payment type">
                 <Dropdown
                   value={composition.laborDraft.pricingMode}
                   onValueChange={(value) =>
@@ -117,16 +117,16 @@ export function OrderCompositionStep({
 
               <CompositionRow>
                 {isHourly ? (
-                  <CompositionField label="Нормо-часы">
+                  <CompositionField label="Labor hours">
                     <Input
-                      placeholder="2,5"
+                      placeholder="2.5"
                       value={composition.laborDraft.hours}
                       onChangeText={(value) => composition.patchLaborDraft({ hours: value })}
                       keyboardType="decimal-pad"
                     />
                   </CompositionField>
                 ) : null}
-                <CompositionField label={isHourly ? 'Ставка, ₸/час' : 'Сумма работы, ₸'}>
+                <CompositionField label={isHourly ? 'Rate, ₸/hour' : 'Labor amount, ₸'}>
                   <Input
                     placeholder={isHourly ? '5 000' : '90 000'}
                     value={composition.laborDraft.unitPrice}
@@ -136,11 +136,11 @@ export function OrderCompositionStep({
                 </CompositionField>
               </CompositionRow>
 
-              <CompositionField label="Исполнитель" required hint="Tab ↹ или своё имя">
+              <CompositionField label="Assignee" required hint="Tab ↹ or enter a name">
                 <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                   <View style={{ flex: 1 }}>
                     <AutocompleteInput
-                      placeholder="Сотрудник или ФИО"
+                      placeholder="Employee or full name"
                       value={composition.laborDraft.assigneeName}
                       fieldKey="assignee"
                       onValueChange={(value) =>
@@ -152,7 +152,7 @@ export function OrderCompositionStep({
                   </View>
                   {currentUserId ? (
                     <Button size="sm" variant="outline" onPress={composition.assignSelf}>
-                      Я
+                      Me
                     </Button>
                   ) : null}
                 </View>
@@ -160,19 +160,19 @@ export function OrderCompositionStep({
 
               <Text variant="caption" color="muted" style={{ fontSize: 11, lineHeight: 15 }}>
                 {composition.laborDraft.assigneeId
-                  ? 'Сотрудник компании · начисление в зарплату при закрытии наряда'
+                  ? 'Company employee · added to payroll when the work order closes'
                   : composition.laborDraft.assigneeName.trim()
-                    ? 'Внешний исполнитель — без начисления в зарплату'
-                    : 'Сотрудник из списка, кнопка «Я» или произвольное имя'}
+                    ? 'Outside contractor — not added to payroll'
+                    : 'Pick an employee, tap "Me", or enter any name'}
               </Text>
 
               <Button variant="secondary" onPress={composition.addLabor}>
-                Добавить
+                Add
               </Button>
             </CompositionAddCard>
 
             <CompositionLineList
-              empty="Работы не добавлены"
+              empty="No labor added yet"
               items={composition.laborLineItems}
               onRemove={composition.removeLabor}
             />
@@ -182,8 +182,8 @@ export function OrderCompositionStep({
         {tab === 'parts' ? (
           <View style={{ gap: 14 }}>
             <CompositionAddCard
-              title="Добавить запчасть"
-              description="Со склада или разово — цена попадёт в накладную и бухгалтерию"
+              title="Add part"
+              description="From inventory or one-off — the price flows into the invoice and accounting"
               footer={
                 <ScanLauncherRow
                   orderId={orderId}
@@ -192,7 +192,7 @@ export function OrderCompositionStep({
                 />
               }
             >
-              <CompositionField label="Артикул (необяз.)">
+              <CompositionField label="SKU (optional)">
                 <AutocompleteInput
                   placeholder="SKU-001"
                   value={composition.partSku}
@@ -205,9 +205,9 @@ export function OrderCompositionStep({
               </CompositionField>
 
               <CompositionRow>
-                <CompositionField label="Название">
+                <CompositionField label="Name">
                   <AutocompleteInput
-                    placeholder="Фильтр масляный Mann"
+                    placeholder="Mann oil filter"
                     value={composition.partName}
                     fieldKey="partName"
                     onValueChange={composition.setPartName}
@@ -216,7 +216,7 @@ export function OrderCompositionStep({
                     onOptionSelect={(value) => composition.fillPartFromInventory(value, 'name')}
                   />
                 </CompositionField>
-                <CompositionField label="Кол-во">
+                <CompositionField label="Qty">
                   <Input
                     placeholder="1"
                     value={composition.partQuantity}
@@ -227,7 +227,7 @@ export function OrderCompositionStep({
               </CompositionRow>
 
               <CompositionRow>
-                <CompositionField label="Цена, ₸">
+                <CompositionField label="Price, ₸">
                   <Input
                     placeholder="12 500"
                     value={composition.partUnitPrice}
@@ -237,18 +237,18 @@ export function OrderCompositionStep({
                 </CompositionField>
                 <View style={{ justifyContent: 'flex-end' }}>
                   <Button variant="secondary" onPress={composition.addPart}>
-                    Добавить
+                    Add
                   </Button>
                 </View>
               </CompositionRow>
 
               <Text variant="caption" color="muted" style={{ fontSize: 11, lineHeight: 15 }}>
-                Нет на складе — введите название и цену вручную. Со склада подставятся артикул и цена продажи.
+                Not in inventory? Enter the name and price manually. Inventory items auto-fill SKU and sale price.
               </Text>
             </CompositionAddCard>
 
             <CompositionLineList
-              empty="Запчасти не выбраны"
+              empty="No parts selected yet"
               items={composition.regularPartLineItems}
               onRemove={composition.removePart}
             />
@@ -257,10 +257,10 @@ export function OrderCompositionStep({
 
         {tab === 'motors' && motorsEnabled ? (
           <View style={{ gap: 14 }}>
-            <CompositionAddCard title="Добавить двигатель">
-              <CompositionField label="Номер двигателя">
+            <CompositionAddCard title="Add motor">
+              <CompositionField label="Motor serial">
                 <AutocompleteInput
-                  placeholder="Номер двигателя · Tab ↹"
+                  placeholder="Motor serial · Tab ↹"
                   value={composition.motorSerial}
                   fieldKey="motorSerial"
                   source="engineCode"
@@ -271,7 +271,7 @@ export function OrderCompositionStep({
               </CompositionField>
 
               <CompositionRow>
-                <CompositionField label="Операция">
+                <CompositionField label="Operation">
                   <Dropdown
                     value={composition.motorOutcome}
                     onValueChange={(value) =>
@@ -280,9 +280,9 @@ export function OrderCompositionStep({
                     options={MOTOR_OUTCOME_OPTIONS}
                   />
                 </CompositionField>
-                <CompositionField label="Цена">
+                <CompositionField label="Price">
                   <Input
-                    placeholder="Цена"
+                    placeholder="Price"
                     value={composition.motorPrice}
                     onChangeText={composition.setMotorPrice}
                     keyboardType="number-pad"
@@ -290,22 +290,22 @@ export function OrderCompositionStep({
                 </CompositionField>
               </CompositionRow>
 
-              <CompositionField label="Гарантия на двигатель">
+              <CompositionField label="Motor warranty">
                 <Dropdown
                   value={composition.motorWarrantyTemplateId}
                   onValueChange={composition.setMotorWarrantyTemplateId}
                   options={motorWarrantyOptions}
-                  placeholder="По умолчанию компании"
+                  placeholder="Company default"
                 />
               </CompositionField>
 
               <Button variant="secondary" onPress={composition.addMotor}>
-                Добавить
+                Add
               </Button>
             </CompositionAddCard>
 
             <CompositionLineList
-              empty="Двигатели не добавлены"
+              empty="No motors added yet"
               items={composition.motorLineItems}
               onRemove={composition.removeMotor}
             />
@@ -315,35 +315,35 @@ export function OrderCompositionStep({
         {tab === 'specific' && specificsEnabled && composition.quickSpecificCategories.length > 0 ? (
           <View style={{ gap: 14 }}>
             <CompositionAddCard
-              title="Быстрая позиция"
-              description="Генератор, стартер, кузовные — без учёта на складе"
+              title="Quick line item"
+              description="Alternator, starter, body parts — not tracked in inventory"
             >
-              <CompositionField label="Категория">
+              <CompositionField label="Category">
                 <Dropdown
                   value={composition.specificCategoryId}
                   onValueChange={composition.setSpecificCategoryId}
                   options={categoryOptions}
-                  placeholder="Выберите…"
+                  placeholder="Select…"
                 />
               </CompositionField>
 
-              <CompositionField label="Название">
+              <CompositionField label="Name">
                 <Input
-                  placeholder="Генератор Toyota 1NZ"
+                  placeholder="Toyota 1NZ alternator"
                   value={composition.specificPartName}
                   onChangeText={composition.setSpecificPartName}
                 />
               </CompositionField>
 
               <CompositionRow>
-                <CompositionField label="Цена, ₸">
+                <CompositionField label="Price, ₸">
                   <Input
                     value={composition.specificPartPrice}
                     onChangeText={composition.setSpecificPartPrice}
                     keyboardType="number-pad"
                   />
                 </CompositionField>
-                <CompositionField label="Гарантия">
+                <CompositionField label="Warranty">
                   <Dropdown
                     value={composition.specificWarrantyTemplateId}
                     onValueChange={composition.setSpecificWarrantyTemplateId}
@@ -368,12 +368,12 @@ export function OrderCompositionStep({
               ) : null}
 
               <Button variant="secondary" onPress={composition.addSpecificPart}>
-                Добавить
+                Add
               </Button>
             </CompositionAddCard>
 
             <CompositionLineList
-              empty="Позиции каталога не добавлены"
+              empty="No catalog items added yet"
               items={composition.specificPartLineItems}
               onRemove={composition.removePart}
             />

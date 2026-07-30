@@ -160,15 +160,15 @@ export function LoginScreen() {
   }, [clearError, inviteTokenParam, params.mode, resolveSignInMethodsForEmail]);
 
   const passwordStrength = useMemo(() => getPasswordStrengthState(password), [password]);
-  const emailError = emailAttempted && !isValidEmail(email) ? 'Введите корректный email.' : null;
+  const emailError = emailAttempted && !isValidEmail(email) ? 'Enter a valid email address.' : null;
   const passwordError = credentialAttempted
     ? isSignUp
       ? validateSignupPassword(password)
       : password.trim().length < 6
-        ? 'Пароль слишком короткий (минимум 6 символов).'
+        ? 'Password is too short (minimum 6 characters).'
         : null
     : null;
-  const nameError = credentialAttempted && isSignUp && (!firstName.trim() || !lastName.trim()) ? 'Укажите имя и фамилию.' : null;
+  const nameError = credentialAttempted && isSignUp && (!firstName.trim() || !lastName.trim()) ? 'Enter your first and last name.' : null;
 
   const submitDisabled = useMemo(() => {
     return isSubmitting || isDetecting || !isOnline || !isFirebaseReady || oauthLoading !== null;
@@ -192,7 +192,7 @@ export function LoginScreen() {
     clearError();
     setError(null);
     if (!appleAvailable) {
-      setError('Apple Sign In недоступен на этом устройстве.');
+      setError('Apple Sign In is not available on this device.');
       return;
     }
 
@@ -271,16 +271,16 @@ export function LoginScreen() {
       }
     } catch (authError) {
       const message = mapAuthError(authError);
-      if (isSignUp && message.includes('уже зарегистрирован')) {
+      if (isSignUp && message.includes('already registered')) {
         setEmailMode('login');
         setFirstName('');
         setLastName('');
         setCredentialAttempted(false);
-        setError('Этот email уже зарегистрирован. Введите пароль для входа.');
+        setError('This email is already registered. Enter your password to sign in.');
         return;
       }
 
-      if (!isSignUp && message.includes('Неверный email или пароль')) {
+      if (!isSignUp && message.includes('Incorrect email or password')) {
         try {
           const lookup = await resolveSignInMethodsForEmail(email);
           if (lookup.apiResolved && lookup.methods.length === 0) {
@@ -289,7 +289,7 @@ export function LoginScreen() {
             setFirstName('');
             setLastName('');
             setCredentialAttempted(false);
-            setError('Аккаунта с этим email нет. Придумайте пароль для регистрации.');
+            setError("There's no account with this email. Choose a password to sign up.");
             return;
           }
         } catch {
@@ -340,18 +340,18 @@ export function LoginScreen() {
   };
 
   const authTitle = isInviteFlow && emailStep && isSignUp
-    ? 'Создать аккаунт'
+    ? 'Create an account'
     : isInviteFlow && emailStep
-      ? 'Вход в команду'
-      : 'Войти или создать аккаунт';
+      ? 'Sign in to your team'
+      : 'Sign in or create an account';
 
   const authDescription = isInviteFlow && emailStep
     ? isSignUp
-      ? 'Email уже указан в приглашении — осталось придумать пароль и имя.'
-      : 'Email уже указан в приглашении — введите пароль.'
+      ? 'Your email is already set from the invite — just choose a password and name.'
+      : 'Your email is already set from the invite — enter your password.'
     : isInviteFlow
-      ? 'Загружаем приглашение…'
-      : 'Вход в AutoCore или регистрация новой команды.';
+      ? 'Loading invite…'
+      : 'Sign in to AutoCore or register a new team.';
 
   const stepKey = !emailStep ? 'entry' : emailMode;
   const entering = reducedMotion
@@ -367,24 +367,24 @@ export function LoginScreen() {
 
   return (
     <AuthShell
-      stepLabel="Вход и регистрация"
+      stepLabel="Sign in and registration"
       footer={
         <Text variant="caption" color="muted" style={{ fontSize: 14, lineHeight: 20 }}>
-          Нажимая «Продолжить», вы соглашаетесь с{' '}
+          By continuing, you agree to the{' '}
           <Text
             variant="caption"
             style={{ textDecorationLine: 'underline' }}
             onPress={() => void Linking.openURL('https://myautocore.com/legal/terms')}
           >
-            Условиями использования
+            Terms of Use
           </Text>{' '}
-          и{' '}
+          and{' '}
           <Text
             variant="caption"
             style={{ textDecorationLine: 'underline' }}
             onPress={() => void Linking.openURL('https://myautocore.com/legal/privacy')}
           >
-            Политикой конфиденциальности
+            Privacy Policy
           </Text>
           .
         </Text>
@@ -404,16 +404,16 @@ export function LoginScreen() {
       {!isFirebaseReady && __DEV__ ? (
         <Alert
           variant="warning"
-          title="Firebase не настроен"
-          description="Добавьте `EXPO_PUBLIC_FIREBASE_*` переменные окружения для mobile-приложения."
+          title="Firebase is not configured"
+          description="Add the `EXPO_PUBLIC_FIREBASE_*` environment variables for the mobile app."
         />
       ) : null}
 
       {!isOnline ? (
         <Alert
           variant="warning"
-          title="Нет подключения"
-          description="Проверьте интернет. Без сети вход и сброс пароля недоступны."
+          title="No connection"
+          description="Check your internet connection. Sign-in and password reset are unavailable offline."
         />
       ) : null}
 
@@ -421,7 +421,7 @@ export function LoginScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 40 }}>
           <Loader2Icon size="sm" color={colors.mutedForeground} />
           <Text variant="caption" color="muted">
-            Загружаем приглашение…
+            Loading invite…
           </Text>
         </View>
       ) : (
@@ -450,11 +450,11 @@ export function LoginScreen() {
             ) : null}
           </View>
 
-          <AuthDivider>ИЛИ</AuthDivider>
+          <AuthDivider>OR</AuthDivider>
 
           <View style={{ gap: spacing[3], width: '100%' }}>
             <Text variant="caption" color="muted" style={{ fontSize: form.captionFontSize }}>
-              Email для входа или создания аккаунта
+              Email to sign in or create an account
             </Text>
             <Input
               size="lg"
@@ -464,7 +464,7 @@ export function LoginScreen() {
               textContentType="username"
               autoCapitalize="none"
               autoCorrect={false}
-              placeholder="ваш@email.ru"
+              placeholder="your@email.com"
               error={emailError ?? undefined}
               returnKeyType="done"
               onSubmitEditing={onEmailContinue}
@@ -479,18 +479,18 @@ export function LoginScreen() {
             leftIcon={isDetecting ? <Loader2Icon size="sm" color={colors.primaryForeground} /> : undefined}
             style={{ width: '100%', height: form.controlHeightLg }}
           >
-            {isDetecting ? 'Проверяем email…' : 'Продолжить с email'}
+            {isDetecting ? 'Checking email…' : 'Continue with email'}
           </Button>
 
           <Pressable onPress={() => void onForgotPassword()} disabled={submitDisabled} style={{ alignItems: 'center' }}>
             <Text variant="caption" color="muted" style={{ fontSize: 14, textDecorationLine: 'underline' }}>
-              Забыли пароль?
+              Forgot password?
             </Text>
           </Pressable>
 
           {resetSent ? (
             <Text variant="caption" color="muted">
-              Ссылка для сброса пароля отправлена на {email}.
+              A password reset link has been sent to {email}.
             </Text>
           ) : null}
         </>
@@ -505,9 +505,9 @@ export function LoginScreen() {
           {isInviteFlow ? <InviteFormNotice companyName={inviteCompanyName} /> : null}
 
           <Text variant="small" color="muted" style={{ lineHeight: 20 }}>
-            Этот email зарегистрирован через{' '}
+            This email is registered via{' '}
             {oauthProviders.includes('google.com') ? 'Google' : 'Apple'}
-            {oauthProviders.length > 1 ? ' или Apple' : ''}. Войдите тем же способом.
+            {oauthProviders.length > 1 ? ' or Apple' : ''}. Sign in the same way.
           </Text>
 
           <View style={{ gap: spacing[3], width: '100%' }}>
@@ -541,7 +541,7 @@ export function LoginScreen() {
               </Text>
               <Pressable disabled={submitDisabled || isInviteFlow} onPress={changeEmail}>
                 <Text variant="caption" style={{ color: colors.primary, textDecorationLine: 'underline' }}>
-                  Назад
+                  Back
                 </Text>
               </Pressable>
             </View>
@@ -552,7 +552,7 @@ export function LoginScreen() {
               textContentType="username"
               autoCapitalize="none"
               autoCorrect={false}
-              placeholder="ваш@email.ru"
+              placeholder="your@email.com"
               returnKeyType="next"
               editable={!isSubmitting && !isInviteFlow}
               selectTextOnFocus={!isInviteFlow}
@@ -567,29 +567,29 @@ export function LoginScreen() {
             {isSignUp ? (
               <>
                 <Input
-                  label="Имя"
+                  label="First name"
                   size="lg"
                   value={firstName}
                   onChangeText={setFirstName}
                   textContentType="givenName"
                   autoCapitalize="words"
-                  placeholder="Имя"
+                  placeholder="First name"
                   error={nameError ?? undefined}
                 />
                 <Input
-                  label="Фамилия"
+                  label="Last name"
                   size="lg"
                   value={lastName}
                   onChangeText={setLastName}
                   textContentType="familyName"
                   autoCapitalize="words"
-                  placeholder="Фамилия"
+                  placeholder="Last name"
                 />
               </>
             ) : null}
 
             <Input
-              label={isSignUp ? 'Придумайте пароль' : 'Пароль'}
+              label={isSignUp ? 'Choose a password' : 'Password'}
               size="lg"
               value={password}
               onChangeText={setPassword}
@@ -597,7 +597,7 @@ export function LoginScreen() {
               textContentType={isSignUp ? 'newPassword' : 'password'}
               autoCapitalize="none"
               autoCorrect={false}
-              placeholder={isSignUp ? '' : 'Введите пароль'}
+              placeholder={isSignUp ? '' : 'Enter your password'}
               error={passwordError ?? undefined}
               returnKeyType="done"
               onSubmitEditing={onSubmit}
@@ -637,7 +637,7 @@ export function LoginScreen() {
                   })}
                 </View>
                 <Text variant="body" color="muted">
-                  {passwordStrength.strengthText}. Должен содержать:
+                  {passwordStrength.strengthText}. Must contain:
                 </Text>
                 <View style={{ gap: spacing[2] }}>
                   {passwordStrength.requirements.map((requirement) => (
@@ -664,19 +664,19 @@ export function LoginScreen() {
             onPress={onSubmit}
             style={{ width: '100%', height: form.controlHeightLg }}
           >
-            {isSubmitting ? (isSignUp ? 'Создание аккаунта…' : 'Вход…') : isSignUp ? 'Создать аккаунт' : 'Войти по почте'}
+            {isSubmitting ? (isSignUp ? 'Creating account…' : 'Signing in…') : isSignUp ? 'Create account' : 'Sign in with email'}
           </Button>
 
           {!isSignUp ? (
             <>
               <Pressable onPress={() => void onForgotPassword()} disabled={submitDisabled} style={{ alignItems: 'center' }}>
                 <Text variant="caption" color="muted" style={{ fontSize: 14, textDecorationLine: 'underline' }}>
-                  Забыли пароль?
+                  Forgot password?
                 </Text>
               </Pressable>
               {resetSent ? (
                 <Text variant="caption" color="muted">
-                  Ссылка для сброса пароля отправлена на {email}.
+                  A password reset link has been sent to {email}.
                 </Text>
               ) : null}
             </>

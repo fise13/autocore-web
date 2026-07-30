@@ -11,6 +11,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { InventoryItem } from "@/domain/inventory";
 import { InventoryMovement } from "@/domain/inventory-movement";
 
@@ -30,6 +39,16 @@ function referenceLabels(): Record<NonNullable<InventoryMovement["referenceType"
   return { ...userCopy.warehouse.references };
 }
 
+function movementTypeBadgeVariant(
+  type: InventoryMovement["type"],
+): "success" | "destructive" | "info" | "warning" | "outline" {
+  if (type === "receipt" || type === "return_in") return "success";
+  if (type === "issue" || type === "consumption" || type === "transfer_out") return "destructive";
+  if (type === "transfer_in" || type === "relocation") return "info";
+  if (type === "adjustment" || type === "reversal") return "warning";
+  return "outline";
+}
+
 export function WarehouseMovementDrawer({
   item,
   movements,
@@ -39,47 +58,77 @@ export function WarehouseMovementDrawer({
 }: WarehouseMovementDrawerProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{userCopy.warehouse.movementsTitle}</DialogTitle>
           <DialogDescription>
             {item ? `${item.sku} · ${item.name}` : userCopy.warehouse.selectItem}
           </DialogDescription>
         </DialogHeader>
-        <div className="max-h-[60vh] space-y-2 overflow-auto">
-          {loading ? <p className="text-sm text-muted-foreground">{userCopy.warehouse.loading}</p> : null}
-          {!loading && movements.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{userCopy.warehouse.movementsEmpty}</p>
+        <div className="max-h-[60vh] overflow-auto rounded-lg border">
+          {loading ? (
+            <p className="p-4 text-sm text-muted-foreground">{userCopy.warehouse.loading}</p>
           ) : null}
-          {movements.map((movement) => (
-            <div key={movement.id} className="rounded-lg border p-3 text-sm">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-medium">{movementTypeLabels()[movement.type] ?? movement.type}</span>
-                <span>{movement.quantity}</span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {movement.createdAt.toLocaleString("ru-RU")} · {movement.beforeOnHand} → {movement.afterOnHand}
-              </p>
-              {movement.referenceType ? (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {userCopy.warehouse.movementSource(referenceLabels()[movement.referenceType] ?? movement.referenceType)}
-                  {movement.referenceId && movement.referenceType === "work_order" ? (
-                    <>
-                      {" · "}
-                      <Link href={`/work-orders/${movement.referenceId}`} className="text-primary hover:underline">
-                        {movement.referenceId}
-                      </Link>
-                    </>
-                  ) : movement.referenceId ? (
-                    ` · ${movement.referenceId}`
-                  ) : (
-                    ""
-                  )}
-                </p>
-              ) : null}
-              {movement.reason ? <p className="mt-1 text-xs">{movement.reason}</p> : null}
-            </div>
-          ))}
+          {!loading && movements.length === 0 ? (
+            <p className="p-4 text-sm text-muted-foreground">{userCopy.warehouse.movementsEmpty}</p>
+          ) : null}
+          {!loading && movements.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>{userCopy.warehouse.movementColumns.type}</TableHead>
+                  <TableHead className="text-right">{userCopy.warehouse.movementColumns.quantity}</TableHead>
+                  <TableHead>{userCopy.warehouse.movementColumns.onHand}</TableHead>
+                  <TableHead>{userCopy.warehouse.movementColumns.reference}</TableHead>
+                  <TableHead>{userCopy.warehouse.movementColumns.date}</TableHead>
+                  <TableHead>{userCopy.warehouse.movementColumns.reason}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {movements.map((movement) => (
+                  <TableRow key={movement.id}>
+                    <TableCell>
+                      <Badge variant={movementTypeBadgeVariant(movement.type)}>
+                        {movementTypeLabels()[movement.type] ?? movement.type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums font-medium">{movement.quantity}</TableCell>
+                    <TableCell className="text-muted-foreground tabular-nums">
+                      {movement.beforeOnHand} → {movement.afterOnHand}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {movement.referenceType ? (
+                        <span>
+                          {referenceLabels()[movement.referenceType] ?? movement.referenceType}
+                          {movement.referenceId && movement.referenceType === "work_order" ? (
+                            <>
+                              {" · "}
+                              <Link
+                                href={`/work-orders/${movement.referenceId}`}
+                                className="text-primary hover:underline"
+                              >
+                                {movement.referenceId}
+                              </Link>
+                            </>
+                          ) : movement.referenceId ? (
+                            ` · ${movement.referenceId}`
+                          ) : null}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground whitespace-nowrap">
+                      {movement.createdAt.toLocaleString("en-US")}
+                    </TableCell>
+                    <TableCell className="max-w-40 truncate text-muted-foreground">
+                      {movement.reason ?? "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : null}
         </div>
       </DialogContent>
     </Dialog>

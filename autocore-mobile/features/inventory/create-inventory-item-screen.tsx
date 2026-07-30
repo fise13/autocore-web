@@ -44,7 +44,7 @@ export function CreateInventoryItemScreen() {
   const orderLabel =
     (typeof params.orderLabel === 'string' ? params.orderLabel.trim() : '') ||
     (pendingContext?.mode === 'order' ? pendingContext.orderLabel : undefined) ||
-    'новый заказ-наряд';
+    'new work order';
 
   const [sku, setSku] = useState(barcode);
   const [name, setName] = useState('');
@@ -57,7 +57,7 @@ export function CreateInventoryItemScreen() {
   const canEdit = can('inventory_edit');
 
   const submitLabel = useMemo(
-    () => (orderContext ? 'Создать и добавить в наряд' : 'Создать на склад'),
+    () => (orderContext ? 'Create and add to work order' : 'Create in warehouse'),
     [orderContext],
   );
 
@@ -80,8 +80,8 @@ export function CreateInventoryItemScreen() {
       }
 
       toast({
-        title: 'Товар создан',
-        description: 'Позиция появится в каталоге склада',
+        title: 'Item created',
+        description: 'The item will appear in the warehouse catalog',
         variant: 'success',
       });
       handleClose();
@@ -92,8 +92,8 @@ export function CreateInventoryItemScreen() {
   const handleSubmit = useCallback(async () => {
     if (!canEdit) {
       toast({
-        title: 'Нет доступа',
-        description: 'Для создания товара нужно право редактирования склада',
+        title: 'No access',
+        description: 'You need warehouse edit permission to create an item',
         variant: 'warning',
       });
       return;
@@ -101,11 +101,11 @@ export function CreateInventoryItemScreen() {
 
     const trimmedName = name.trim();
     if (!barcode) {
-      toast({ title: 'Штрихкод не указан', variant: 'warning' });
+      toast({ title: 'No barcode provided', variant: 'warning' });
       return;
     }
     if (!trimmedName) {
-      toast({ title: 'Укажите название товара', variant: 'warning' });
+      toast({ title: 'Enter an item name', variant: 'warning' });
       return;
     }
 
@@ -127,7 +127,7 @@ export function CreateInventoryItemScreen() {
     } catch (error) {
       haptics.warning();
       toast({
-        title: 'Не удалось создать товар',
+        title: 'Could not create item',
         description: error instanceof Error ? error.message : undefined,
         variant: 'destructive',
       });
@@ -151,10 +151,10 @@ export function CreateInventoryItemScreen() {
       <Screen>
         <View style={{ flex: 1, justifyContent: 'center', padding: rhythm.pad, gap: rhythm.stack }}>
           <Text variant="body" color="muted" style={{ textAlign: 'center' }}>
-            Штрихкод не передан. Вернитесь к сканеру и попробуйте снова.
+            No barcode was passed in. Go back to the scanner and try again.
           </Text>
           <Button variant="secondary" onPress={handleClose}>
-            Назад
+            Back
           </Button>
         </View>
       </Screen>
@@ -180,17 +180,17 @@ export function CreateInventoryItemScreen() {
               gap: rhythm.inline,
             }}
           >
-            <IconButton accessibilityLabel="Назад" variant="ghost" onPress={handleClose}>
+            <IconButton accessibilityLabel="Back" variant="ghost" onPress={handleClose}>
               <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={1.85} />
             </IconButton>
             <View style={{ flex: 1, gap: 2 }}>
               <Text variant="bodyStrong" style={{ fontSize: 17, fontWeight: '700' }}>
-                Новый товар
+                New item
               </Text>
               <Text variant="caption" color="muted" numberOfLines={1}>
                 {orderContext
-                  ? `Будет добавлен в ${orderLabel}`
-                  : 'Создание позиции на складе'}
+                  ? `Will be added to ${orderLabel}`
+                  : 'Creating an item in the warehouse'}
               </Text>
             </View>
           </View>
@@ -223,7 +223,7 @@ export function CreateInventoryItemScreen() {
               </View>
               <View style={{ flex: 1, gap: 4 }}>
                 <Text variant="caption" color="muted">
-                  Штрихкод
+                  Barcode
                 </Text>
                 <Text variant="bodyStrong" style={{ fontVariant: ['tabular-nums'] }}>
                   {barcode}
@@ -234,22 +234,22 @@ export function CreateInventoryItemScreen() {
 
           <Surface inset style={{ gap: rhythm.stack }}>
             <Input
-              label="Название"
-              placeholder="Фильтр масляный Mann"
+              label="Name"
+              placeholder="Mann oil filter"
               value={name}
               onChangeText={setName}
               autoFocus
             />
             <Input
-              label="Артикул (SKU)"
+              label="SKU"
               placeholder={barcode}
               value={sku}
               onChangeText={setSku}
-              helperText="По умолчанию совпадает со штрихкодом"
+              helperText="Defaults to the barcode"
             />
             <View style={{ gap: 6 }}>
               <Text variant="caption" color="muted">
-                Бренд
+                Brand
               </Text>
               <AutocompleteInput
                 source="manufacturer"
@@ -261,7 +261,7 @@ export function CreateInventoryItemScreen() {
             </View>
             <View style={{ gap: 6 }}>
               <Text variant="caption" color="muted">
-                Ячейка склада
+                Warehouse location
               </Text>
               <AutocompleteInput
                 source="previousValue"
@@ -274,7 +274,7 @@ export function CreateInventoryItemScreen() {
             <View style={{ flexDirection: 'row', gap: rhythm.inline }}>
               <View style={{ flex: 1 }}>
                 <Input
-                  label="Цена продажи"
+                  label="Sell price"
                   placeholder="0"
                   value={sellPrice}
                   onChangeText={setSellPrice}
@@ -283,7 +283,7 @@ export function CreateInventoryItemScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Input
-                  label="Закупка"
+                  label="Purchase price"
                   placeholder="0"
                   value={purchasePrice}
                   onChangeText={setPurchasePrice}
@@ -292,12 +292,12 @@ export function CreateInventoryItemScreen() {
               </View>
             </View>
             <Input
-              label="Начальный остаток"
+              label="Starting quantity"
               placeholder="0"
               value={initialQuantity}
               onChangeText={setInitialQuantity}
               keyboardType="number-pad"
-              helperText="Если указать количество, товар сразу оприходуется на склад"
+              helperText="If you enter a quantity, the item is added to stock immediately"
             />
           </Surface>
       </KeyboardFormShell>

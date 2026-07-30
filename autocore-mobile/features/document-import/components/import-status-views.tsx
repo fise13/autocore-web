@@ -15,9 +15,9 @@ type ImportUploadingViewProps = {
 };
 
 export function ImportUploadingView({
-  progressLabel = 'Отправляем документ…',
+  progressLabel = 'Uploading document…',
   progress = null,
-  detail = 'Оригинал сохранится, на компьютере начнётся разбор',
+  detail = 'The original will be saved and parsing will start on the computer',
 }: ImportUploadingViewProps) {
   const pct = progress != null ? Math.round(Math.min(1, Math.max(0, progress)) * 100) : null;
 
@@ -54,24 +54,24 @@ type ImportSuccessViewProps = {
 
 function parseCopy(status: ImportParseStatus | undefined, uploadedCount: number): string {
   const countHint =
-    uploadedCount > 1 ? `${uploadedCount} фото в этой сессии. ` : uploadedCount === 1 ? '1 фото. ' : '';
+    uploadedCount > 1 ? `${uploadedCount} photos in this session. ` : uploadedCount === 1 ? '1 photo. ' : '';
 
   switch (status) {
     case 'ready':
-      return `${countHint}На компьютере документ уже в разборе / готов к просмотру.`;
+      return `${countHint}The document is already being parsed or ready to review on the computer.`;
     case 'failed':
-      return `${countHint}Разбор не удался — откройте импорт на компьютере или попробуйте ещё раз.`;
+      return `${countHint}Parsing failed — open the import on the computer or try again.`;
     case 'processing':
-      return `${countHint}На компьютере идёт разбор — можно снимать дальше.`;
+      return `${countHint}Parsing is in progress on the computer — you can keep shooting.`;
     default:
-      return `${countHint}На компьютере уже идёт разбор — можно снимать дальше.`;
+      return `${countHint}Parsing is already in progress on the computer — you can keep shooting.`;
   }
 }
 
 export function ImportSuccessView({
   onDone,
   onContinue,
-  continueLabel = 'Ещё фото',
+  continueLabel = 'More photos',
   uploadedCount = 0,
   parseStatus = 'processing',
   onRetryStatus,
@@ -85,7 +85,7 @@ export function ImportSuccessView({
       </Animated.View>
       <Animated.View entering={FadeInUp.delay(80).duration(280)} style={{ alignItems: 'center', gap: 8 }}>
         <Text variant="heading" style={styles.title}>
-          Загружено
+          Uploaded
         </Text>
         <Text variant="caption" style={styles.caption}>
           {parseCopy(parseStatus, uploadedCount)}
@@ -101,7 +101,7 @@ export function ImportSuccessView({
           style={styles.linkButton}
         >
           <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
-            Проверить статус ещё раз
+            Check status again
           </Text>
         </Pressable>
       ) : null}
@@ -134,7 +134,7 @@ export function ImportSuccessView({
             fontWeight: '700',
           }}
         >
-          Готово
+          Done
         </Text>
       </Pressable>
     </Animated.View>

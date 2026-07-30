@@ -269,7 +269,7 @@ function MetricTile({
       </CardHeader>
       <CardContent className={cn("pt-1", compact && "px-2 pb-2 pt-0")}>
         <span className={cn("font-semibold tabular-nums", compact ? "text-sm" : "text-lg")}>
-          {value.toLocaleString("ru-RU")}
+          {value.toLocaleString("en-US")}
         </span>
       </CardContent>
     </Card>

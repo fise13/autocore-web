@@ -47,10 +47,15 @@ function findHeader(headers: string[], ...candidates: string[]): string | undefi
   return undefined;
 }
 
-/** Экспорт «Номенклатура» из учётных систем автосервисов (RU). */
+/**
+ * "Nomenklatura" parts-catalog export from Russian-language repair-shop
+ * accounting systems (1C and similar). Detection matches the literal Russian
+ * header words such exports actually use — those stay untranslated on
+ * purpose, independent of the app's own UI language.
+ */
 const nomenclaturePreset: ImportFormatPreset = {
   id: "ru-nomenclature",
-  label: "Номенклатура (RU)",
+  label: "Nomenklatura export (RU)",
   score(headers) {
     let score = 0;
     if (hasHeader(headers, "наименование")) score += 0.25;

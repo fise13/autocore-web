@@ -89,14 +89,14 @@ function findFuzzyDuplicate(
     if (skuDistance <= 2) {
       const score = 0.75 - skuDistance * 0.05;
       if (!best || score > best.score) {
-        best = { item, score, reason: "Похожий артикул" };
+        best = { item, score, reason: "Similar SKU" };
       }
     }
     const titleScore = jaccard(tokenSet(title), tokenSet(item.name));
     if (titleScore >= 0.65) {
       const score = titleScore * 0.6;
       if (!best || score > best.score) {
-        best = { item, score, reason: "Похожее название" };
+        best = { item, score, reason: "Similar name" };
       }
     }
   }
@@ -127,7 +127,7 @@ function enrichSingleRow(
     if (byBarcode) {
       duplicateOfItemId = byBarcode.id;
       duplicateConfidence = Math.max(duplicateConfidence, 1);
-      reasons.push("Совпадение штрихкода");
+      reasons.push("Barcode match");
     }
   }
 
@@ -136,7 +136,7 @@ function enrichSingleRow(
     if (bySku) {
       duplicateOfItemId = bySku.id;
       duplicateConfidence = Math.max(duplicateConfidence, 0.95);
-      reasons.push("Совпадение артикула");
+      reasons.push("SKU match");
       conflictList = [...new Set([...conflictList, ...conflictFields(bySku, normalized)])];
     } else if (allowFuzzy && existingItems.length > 0) {
       const fuzzy = findFuzzyDuplicate(sku, title, existingItems);
@@ -170,8 +170,8 @@ function enrichSingleRow(
       row.errors.length > 0
         ? row.errors[0]
         : duplicateOfItemId
-          ? "Обновит существующую позицию после подтверждения"
-          : "Создаст новую позицию после подтверждения",
+          ? "Will update the existing item after confirmation"
+          : "Will create a new item after confirmation",
   };
 }
 

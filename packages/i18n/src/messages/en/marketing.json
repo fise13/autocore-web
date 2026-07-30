@@ -902,8 +902,8 @@
       "noteParts": "{km} · for parts",
       "noteKm": "{km} km",
       "kmSuffix": "km",
-      "orderPrefixRu": "НЗ-",
-      "orderPrefixEn": "WO-"
+      "orderPrefixSource": "RES-",
+      "orderPrefixLocalized": "WO-"
     }
   },
   "landing": {
@@ -1893,8 +1893,8 @@
         "languagesLabel": "Languages",
         "languages": [
           "English",
-          "Русский",
-          "Қазақша"
+          "Russian",
+          "Kazakh"
         ]
       },
       "closing": {

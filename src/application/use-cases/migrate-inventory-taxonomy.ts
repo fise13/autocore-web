@@ -17,15 +17,15 @@ import {
 export const INVENTORY_TAXONOMY_VERSION = 2;
 
 const LEGACY_CATEGORY_IDS: Record<string, { name: string; groupId: InventoryGroupId; subcategoryId?: InventorySubcategoryId }> = {
-  gearboxes: { name: "КПП", groupId: "aggregates", subcategoryId: "gearboxes" },
-  transfer_cases: { name: "Раздатки", groupId: "aggregates", subcategoryId: "transfer_cases" },
-  turbos: { name: "Турбины", groupId: "aggregates", subcategoryId: "turbos" },
-  ecu: { name: "Электрика", groupId: "parts", subcategoryId: "electrical" },
-  alternators: { name: "Электрика", groupId: "parts", subcategoryId: "electrical" },
-  starters: { name: "Электрика", groupId: "parts", subcategoryId: "electrical" },
-  bumpers: { name: "Кузовщина", groupId: "parts", subcategoryId: "body" },
-  fenders: { name: "Кузовщина", groupId: "parts", subcategoryId: "body" },
-  headlights: { name: "Оптика", groupId: "parts", subcategoryId: "optics" },
+  gearboxes: { name: "Transmissions", groupId: "aggregates", subcategoryId: "gearboxes" },
+  transfer_cases: { name: "Transfer cases", groupId: "aggregates", subcategoryId: "transfer_cases" },
+  turbos: { name: "Turbos", groupId: "aggregates", subcategoryId: "turbos" },
+  ecu: { name: "Electrical", groupId: "parts", subcategoryId: "electrical" },
+  alternators: { name: "Electrical", groupId: "parts", subcategoryId: "electrical" },
+  starters: { name: "Electrical", groupId: "parts", subcategoryId: "electrical" },
+  bumpers: { name: "Body", groupId: "parts", subcategoryId: "body" },
+  fenders: { name: "Body", groupId: "parts", subcategoryId: "body" },
+  headlights: { name: "Lighting", groupId: "parts", subcategoryId: "optics" },
 };
 
 export function normalizeCompanySpecificCategoryForTaxonomy(
@@ -67,9 +67,7 @@ export function normalizeCompanyConfigForTaxonomy(config: CompanyAppConfig): Com
 
 function normalizeSpecificCategoryEntity(category: SpecificCategoryEntity): Partial<SpecificCategoryEntity> {
   const resolvedSubcategory = resolveSubcategoryForCategoryName(category.name);
-  const nextName = category.name.trim().localeCompare("Коробки", "ru", { sensitivity: "accent" }) === 0
-    ? "КПП"
-    : resolvedSubcategory?.label ?? category.name;
+  const nextName = resolvedSubcategory?.label ?? category.name;
   const nextGroupId = resolvedSubcategory?.groupId ?? resolveGroupForCategoryName(nextName);
   return {
     name: nextName,

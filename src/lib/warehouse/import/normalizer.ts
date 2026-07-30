@@ -53,13 +53,19 @@ export function normalizeTitle(value: string | undefined, brand?: string): strin
   return title.charAt(0).toUpperCase() + title.slice(1);
 }
 
+/**
+ * Recognizes both Russian and English unit words on input — a supplier's
+ * spreadsheet can still say "шт"/"литр" regardless of the app's own
+ * language — but always normalizes to the English abbreviation used
+ * everywhere else in the product (US market).
+ */
 export function normalizeUnit(value: string | undefined): string {
-  if (!value?.trim()) return "шт";
+  if (!value?.trim()) return "pcs";
   const normalized = value.trim().toLowerCase();
-  if (normalized === "штука" || normalized === "шт." || normalized === "шт") return "шт";
-  if (normalized === "литр" || normalized === "л") return "л";
-  if (normalized === "килограмм" || normalized === "кг") return "кг";
-  if (normalized === "упаковка" || normalized === "уп") return "уп";
+  if (["штука", "шт.", "шт", "piece", "pieces", "pc", "pcs"].includes(normalized)) return "pcs";
+  if (["литр", "л", "liter", "litre", "l"].includes(normalized)) return "L";
+  if (["килограмм", "кг", "kilogram", "kg"].includes(normalized)) return "kg";
+  if (["упаковка", "уп", "package", "pack", "pkg"].includes(normalized)) return "pack";
   return value.trim();
 }
 

@@ -12,22 +12,22 @@ export function getWorkspaceAccessCopy(block: WorkspaceAccessBlock): WorkspaceAc
   switch (block.kind) {
     case 'removed':
       return {
-        title: `Вас удалили из «${block.companyName}»`,
+        title: `You were removed from "${block.companyName}"`,
         description:
-          'Администратор отключил ваш доступ к этой компании. Вы больше не можете работать в её рабочем пространстве.',
-        hint: 'Если у вас есть доступ к другой компании, переключитесь на неё или присоединитесь по новому приглашению.',
+          'An administrator disabled your access to this company. You can no longer work in its workspace.',
+        hint: 'If you have access to another company, switch to it or join via a new invite.',
       };
     case 'deactivated':
       return {
-        title: 'Доступ приостановлен',
-        description: `Ваш доступ к «${block.companyName}» временно отключён администратором.`,
-        hint: 'Обратитесь к владельцу или администратору компании, чтобы восстановить доступ.',
+        title: 'Access suspended',
+        description: `Your access to "${block.companyName}" has been temporarily disabled by an administrator.`,
+        hint: 'Contact the company owner or administrator to restore access.',
       };
     case 'no_company':
       return {
-        title: 'Нет активной компании',
+        title: 'No active company',
         description:
-          'Аккаунт вошёл успешно, но рабочее пространство ещё не выбрано. Присоединитесь по приглашению или выберите компанию.',
+          "You're signed in, but no workspace has been selected yet. Join via an invite or choose a company.",
       };
   }
 }

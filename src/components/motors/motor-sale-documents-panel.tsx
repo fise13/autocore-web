@@ -130,13 +130,13 @@ function MotorSaleSummary({
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
               {amount != null ? (
                 <span className="font-medium text-foreground tabular-nums">
-                  {amount.toLocaleString("ru-RU")} ₸
+                  {amount.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })}
                 </span>
               ) : null}
               {saleDate ? (
                 <span className="inline-flex items-center gap-1.5">
                   <CalendarDays className="size-3.5" aria-hidden />
-                  {saleDate.toLocaleDateString("ru-RU")}
+                  {saleDate.toLocaleDateString("en-US")}
                 </span>
               ) : null}
             </div>

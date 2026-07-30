@@ -13,9 +13,9 @@ export function nextId(prefix: string) {
 }
 
 export function money(value: number) {
-  return new Intl.NumberFormat("ru-KZ", {
+  return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "KZT",
+    currency: "USD",
     maximumFractionDigits: 0,
   }).format(value);
 }

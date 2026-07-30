@@ -18,7 +18,7 @@ const mobileCreateInventoryItemSchema = z.object({
   name: z.string().trim().min(1),
   brandName: z.string().trim().optional(),
   warehouseLocation: z.string().trim().optional(),
-  unit: z.string().trim().default("шт"),
+  unit: z.string().trim().default("pcs"),
   sellPrice: z.number().nonnegative().optional(),
   purchasePrice: z.number().nonnegative().optional(),
   initialQuantity: z.number().int().nonnegative().optional(),

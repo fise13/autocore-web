@@ -57,9 +57,9 @@ import {
 import { ordersLayout } from './layout';
 
 const STEPS = [
-  { id: 1, label: 'Клиент и авто', icon: UserRoundIcon },
-  { id: 2, label: 'Состав', icon: WrenchIcon },
-  { id: 3, label: 'Проверка', icon: ClipboardListIcon },
+  { id: 1, label: 'Client & vehicle', icon: UserRoundIcon },
+  { id: 2, label: 'Composition', icon: WrenchIcon },
+  { id: 3, label: 'Review', icon: ClipboardListIcon },
 ] as const;
 
 function SectionCard({
@@ -234,8 +234,8 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
         const item = inventoryItems.find((entry) => entry.id === result.itemId);
         if (!item) {
           toast({
-            title: 'Позиция не найдена',
-            description: 'Обновите каталог и попробуйте снова',
+            title: 'Item not found',
+            description: 'Refresh the catalog and try again',
             variant: 'warning',
           });
           return;
@@ -259,7 +259,7 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
         setTab('parts');
         setStep(2);
         toast({
-          title: 'Запчасть добавлена',
+          title: 'Part added',
           description: item.name,
           variant: 'success',
         });
@@ -271,8 +271,8 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
         setTab('parts');
         setStep(2);
         toast({
-          title: 'Произвольная запчасть',
-          description: 'Проверьте название и цену перед добавлением',
+          title: 'Custom part',
+          description: 'Check the name and price before adding',
           variant: 'default',
         });
         return;
@@ -282,8 +282,8 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
   );
 
   const orderScanLabel = isEdit
-    ? `наряд №${existingOrder?.number ?? ''}`
-    : 'новый заказ-наряд';
+    ? `work order #${existingOrder?.number ?? ''}`
+    : 'new work order';
 
   useEffect(() => {
     if (!isEdit || !existingOrder || hydrated) return;
@@ -493,8 +493,8 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
         });
         haptics.success();
         toast({
-          title: 'Наряд обновлён',
-          description: existingOrder ? `№${existingOrder.number}` : undefined,
+          title: 'Work order updated',
+          description: existingOrder ? `#${existingOrder.number}` : undefined,
           variant: 'success',
         });
         router.back();
@@ -521,12 +521,12 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
       });
 
       haptics.success();
-      toast({ title: 'Наряд создан', description: `№${order.number}`, variant: 'success' });
+      toast({ title: 'Work order created', description: `#${order.number}`, variant: 'success' });
       router.replace(`/(tabs)/orders/${order.id}`);
     } catch (error) {
       haptics.warning();
       toast({
-        title: 'Не удалось создать наряд',
+        title: 'Could not create work order',
         description: error instanceof Error ? error.message : undefined,
         variant: 'destructive',
       });
@@ -540,10 +540,10 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
     if (step === 1) {
       return (
         <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={{ gap: 14 }}>
-          <SectionCard title="Клиент" icon={UserRoundIcon}>
-            <Field label="ФИО клиента" required>
+          <SectionCard title="Client" icon={UserRoundIcon}>
+            <Field label="Client name" required>
               <AutocompleteInput
-                placeholder="Алексей Смирнов"
+                placeholder="John Smith"
                 value={clientName}
                 source="customer"
                 context={{ field: 'name' }}
@@ -558,9 +558,9 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
                 }}
               />
             </Field>
-            <Field label="Телефон" required>
+            <Field label="Phone" required>
               <AutocompleteInput
-                placeholder="+7 701 234 56 78"
+                placeholder="+1 555 234 5678"
                 value={clientPhone}
                 source="customer"
                 context={{ field: 'phone' }}
@@ -579,10 +579,10 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
             </Field>
           </SectionCard>
 
-          <SectionCard title="Автомобиль" icon={CarIcon}>
+          <SectionCard title="Vehicle" icon={CarIcon}>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <View style={{ flex: 1 }}>
-                <Field label="Марка">
+                <Field label="Make">
                   <AutocompleteInput
                     placeholder="BMW"
                     value={vehicleMake}
@@ -607,9 +607,9 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
                 </Field>
               </View>
               <View style={{ flex: 1 }}>
-                <Field label="Модель">
+                <Field label="Model">
                   <AutocompleteInput
-                    placeholder={vehicleMake.trim() ? '320d F30' : 'Сначала марка'}
+                    placeholder={vehicleMake.trim() ? '320d F30' : 'Select make first'}
                     value={vehicleModel}
                     source="manufacturer"
                     context={{ field: 'model', make: vehicleMake }}
@@ -622,9 +622,9 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
                 </Field>
               </View>
             </View>
-            <Field label="Госномер">
+            <Field label="License plate">
               <AutocompleteInput
-                placeholder="A 123 BC 02"
+                placeholder="ABC 1234"
                 value={licensePlate}
                 source="previousValue"
                 fieldKey="licensePlate"
@@ -664,11 +664,11 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
                 }}
               />
             </Field>
-            <Field label="Пробег, км">
-              <Input placeholder="142 000" value={mileage} onChangeText={setMileage} keyboardType="number-pad" />
+            <Field label="Mileage, mi">
+              <Input placeholder="142,000" value={mileage} onChangeText={setMileage} keyboardType="number-pad" />
             </Field>
-            <Field label="Комментарий / жалобы клиента">
-              <Input placeholder="Стук при холодном пуске…" value={comment} onChangeText={setComment} multiline />
+            <Field label="Comment / client complaints">
+              <Input placeholder="Knocking noise on cold start…" value={comment} onChangeText={setComment} multiline />
             </Field>
           </SectionCard>
         </Animated.View>
@@ -677,10 +677,10 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
 
     if (step === 2) {
       const tabs = [
-        { id: 'labor' as const, label: 'Работы', icon: WrenchIcon, badge: composition.laborLines.length },
+        { id: 'labor' as const, label: 'Labor', icon: WrenchIcon, badge: composition.laborLines.length },
         {
           id: 'parts' as const,
-          label: 'Запчасти',
+          label: 'Parts',
           icon: PackageIcon,
           badge: composition.regularPartLines.length,
         },
@@ -688,7 +688,7 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
           ? [
               {
                 id: 'motors' as const,
-                label: 'Двигатели',
+                label: 'Motors',
                 icon: BoxIcon,
                 badge: composition.motorLines.length,
               },
@@ -698,7 +698,7 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
           ? [
               {
                 id: 'specific' as const,
-                label: 'Каталог',
+                label: 'Catalog',
                 icon: TagIcon,
                 badge: composition.specificPartLines.length,
               },
@@ -728,16 +728,16 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
 
     return (
       <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={{ gap: 14 }}>
-        <SectionCard title="Проверка" icon={CheckCircle2Icon}>
+        <SectionCard title="Review" icon={CheckCircle2Icon}>
           <View style={{ gap: 10 }}>
-            <SummaryRow label="Клиент" value={clientName || '—'} />
-            <SummaryRow label="Телефон" value={clientPhone || '—'} />
-            <SummaryRow label="Авто" value={vehicleLabel} />
-            <SummaryRow label="Госномер / VIN" value={licensePlate || vin || '—'} />
-            <SummaryRow label="Работы" value={String(composition.laborLines.length)} />
-            <SummaryRow label="Запчасти" value={String(composition.regularPartLines.length)} />
-            <SummaryRow label="Каталог" value={String(composition.specificPartLines.length)} />
-            <SummaryRow label="Двигатели" value={String(composition.motorLines.length)} />
+            <SummaryRow label="Client" value={clientName || '—'} />
+            <SummaryRow label="Phone" value={clientPhone || '—'} />
+            <SummaryRow label="Vehicle" value={vehicleLabel} />
+            <SummaryRow label="Plate / VIN" value={licensePlate || vin || '—'} />
+            <SummaryRow label="Labor" value={String(composition.laborLines.length)} />
+            <SummaryRow label="Parts" value={String(composition.regularPartLines.length)} />
+            <SummaryRow label="Catalog" value={String(composition.specificPartLines.length)} />
+            <SummaryRow label="Motors" value={String(composition.motorLines.length)} />
           </View>
         </SectionCard>
 
@@ -754,7 +754,7 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
           }}
         >
           <Text variant="body" style={{ fontSize: 14, fontWeight: '600' }}>
-            Итого
+            Total
           </Text>
           <Text variant="heading" style={{ fontSize: 22, fontWeight: '700', fontVariant: ['tabular-nums'] }}>
             {formatPrice(grandTotal)}
@@ -768,10 +768,10 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
         <Text variant="body" color="muted">
-          Наряд не найден
+          Work order not found
         </Text>
         <Button variant="outline" onPress={() => router.back()} style={{ marginTop: 16 }}>
-          Назад
+          Back
         </Button>
       </View>
     );
@@ -789,10 +789,10 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
         }}
       >
         <Text variant="body" color="muted" style={{ textAlign: 'center' }}>
-          Редактирование доступно только для черновиков и подтверждённых нарядов
+          Editing is only available for draft and confirmed work orders
         </Text>
         <Button variant="outline" onPress={() => router.back()} style={{ marginTop: 16 }}>
-          Назад
+          Back
         </Button>
       </View>
     );
@@ -819,15 +819,15 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <IconButton accessibilityLabel="Назад" variant="ghost" size="sm" onPress={() => router.back()}>
+            <IconButton accessibilityLabel="Back" variant="ghost" size="sm" onPress={() => router.back()}>
               <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
             </IconButton>
             <View style={{ flex: 1 }}>
               <Text variant="caption" color="muted" style={{ fontSize: 11 }}>
-                {isEdit ? `Редактирование №${existingOrder?.number ?? ''}` : 'Новый заказ-наряд'}
+                {isEdit ? `Editing #${existingOrder?.number ?? ''}` : 'New work order'}
               </Text>
               <Text variant="heading" style={{ fontSize: 20, fontWeight: '700', letterSpacing: -0.3 }}>
-                {isEdit ? 'Редактирование' : 'Создание'}
+                {isEdit ? 'Edit' : 'Create'}
               </Text>
             </View>
           </View>
@@ -838,7 +838,7 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
         <ScreenActionFooter horizontalPadding={ordersLayout.pad} aboveTabBar={false}>
           {step > 1 ? (
             <Button variant="outline" onPress={() => setStep((value) => value - 1)} style={{ flex: 1 }}>
-              Назад
+              Back
             </Button>
           ) : null}
           {step < 3 ? (
@@ -848,11 +848,11 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
               style={{ flex: 1 }}
               rightIcon={<ArrowRightIcon size="sm" color="#fff" strokeWidth={2} />}
             >
-              Далее
+              Next
             </Button>
           ) : (
             <Button onPress={handleSave} loading={saving} style={{ flex: 1 }} leftIcon={<ClipboardListIcon size="sm" color="#fff" strokeWidth={2} />}>
-              {isEdit ? 'Сохранить изменения' : 'Сохранить черновик'}
+              {isEdit ? 'Save changes' : 'Save draft'}
             </Button>
           )}
         </ScreenActionFooter>

@@ -4,15 +4,17 @@ const path = require('path');
 
 const config = getDefaultConfig(__dirname);
 
-config.watchFolders = [
-  path.resolve(__dirname, '../packages/rbac'),
-  path.resolve(__dirname, '../packages/domain-search'),
-  path.resolve(__dirname, '../packages/org'),
-];
-config.resolver.extraNodeModules = {
-  '@autocore/rbac': path.resolve(__dirname, '../packages/rbac'),
-  '@autocore/domain-search': path.resolve(__dirname, '../packages/domain-search'),
-  '@autocore/org': path.resolve(__dirname, '../packages/org'),
-};
+// Keep in sync with the `@autocore/*` entries in package.json and tsconfig.json.
+const sharedPackages = ['rbac', 'domain-search', 'org', 'avatars', 'design-tokens'];
+
+config.watchFolders = sharedPackages.map((name) =>
+  path.resolve(__dirname, `../packages/${name}`),
+);
+config.resolver.extraNodeModules = Object.fromEntries(
+  sharedPackages.map((name) => [
+    `@autocore/${name}`,
+    path.resolve(__dirname, `../packages/${name}`),
+  ]),
+);
 
 module.exports = withNativeWind(config, { input: './global.css' });

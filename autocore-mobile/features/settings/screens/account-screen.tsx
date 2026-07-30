@@ -21,20 +21,20 @@ import { ProfileMetaRow } from '@/features/profile/components/profile-meta-card'
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
 
 const ROLE_LABELS: Record<string, string> = {
-  owner: 'Владелец',
-  admin: 'Администратор',
-  manager: 'Менеджер',
-  accountant: 'Бухгалтер',
-  mechanic: 'Механик',
-  diagnostician: 'Диагност',
-  employee: 'Сотрудник',
+  owner: 'Owner',
+  admin: 'Admin',
+  manager: 'Manager',
+  accountant: 'Accountant',
+  mechanic: 'Mechanic',
+  diagnostician: 'Diagnostic Technician',
+  employee: 'Employee',
 };
 
 function resolveProvider(providerIds: string[]): string {
   if (providerIds.includes('google.com')) return 'Google';
   if (providerIds.includes('apple.com')) return 'Apple';
-  if (providerIds.includes('password')) return 'Email и пароль';
-  return 'Аккаунт AutoCore';
+  if (providerIds.includes('password')) return 'Email and password';
+  return 'AutoCore account';
 }
 
 export function AccountScreen() {
@@ -48,18 +48,18 @@ export function AccountScreen() {
   const emailProvider = providerIds.includes('password');
 
   return (
-    <ProfileScreenShell title="Аккаунт" subtitle="Профиль, вход и безопасность">
+    <ProfileScreenShell title="Account" subtitle="Profile, sign-in, and security">
       <SettingsInset>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: rhythm.stack }}>
           <UserAvatar
-            displayName={profile?.displayName ?? 'Пользователь'}
+            displayName={profile?.displayName ?? 'User'}
             photoURL={photoURL}
             seed={profile?.id}
             size="lg"
           />
           <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
             <Text variant="body" style={{ fontSize: 16, fontWeight: '600' }} numberOfLines={1}>
-              {profile?.displayName?.trim() || 'Пользователь'}
+              {profile?.displayName?.trim() || 'User'}
             </Text>
             <Text variant="caption" color="muted" numberOfLines={1}>
               {profile?.email ?? firebaseUser?.email ?? '—'}
@@ -68,53 +68,53 @@ export function AccountScreen() {
         </View>
       </SettingsInset>
 
-      <SettingsSectionCard title="Основное" description="Данные профиля">
+      <SettingsSectionCard title="General" description="Profile details">
         <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
-          <ProfileMetaRow label="Имя" value={profile?.displayName?.trim() || '—'} />
+          <ProfileMetaRow label="Name" value={profile?.displayName?.trim() || '—'} />
           <ProfileMetaRow label="Email" value={profile?.email ?? firebaseUser?.email ?? '—'} />
-          <ProfileMetaRow label="Способ входа" value={resolveProvider(providerIds)} />
-          <ProfileMetaRow label="Роль" value={ROLE_LABELS[profile?.role ?? 'employee'] ?? 'Сотрудник'} />
+          <ProfileMetaRow label="Sign-in method" value={resolveProvider(providerIds)} />
+          <ProfileMetaRow label="Role" value={ROLE_LABELS[profile?.role ?? 'employee'] ?? 'Employee'} />
         </View>
       </SettingsSectionCard>
 
-      <SettingsSectionCard title="Настройки" description="Профиль и интерфейс">
+      <SettingsSectionCard title="Settings" description="Profile and interface">
         <SettingsLinkRow
-          title="Редактировать профиль"
-          value="Имя, телефон, фото"
+          title="Edit profile"
+          value="Name, phone, photo"
           onPress={() => router.push(settingsRouteHref('edit-profile'))}
         />
         <SettingsLinkRow
-          title="Тема"
+          title="Theme"
           value={themePreferenceLabel(preference)}
           bordered
           onPress={() => router.push(settingsRouteHref('appearance'))}
         />
       </SettingsSectionCard>
 
-      <SettingsSectionCard title="Пароль">
+      <SettingsSectionCard title="Password">
         <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX }}>
           <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
             {emailProvider
-              ? 'Изменить пароль можно в редактировании профиля.'
-              : `Вход через ${resolveProvider(providerIds)}. Пароль приложения не используется.`}
+              ? 'You can change your password from Edit Profile.'
+              : `Signed in via ${resolveProvider(providerIds)}. No app password is used.`}
           </Text>
         </View>
       </SettingsSectionCard>
 
-      <SettingsSectionCard title="Подключение к компьютеру">
+      <SettingsSectionCard title="Desktop connection">
         <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
-          <ProfileMetaRow label="Статус" value="Не подключено" />
+          <ProfileMetaRow label="Status" value="Not connected" />
           <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-            Синхронизация с AutoCore Desktop появится в следующих обновлениях. Сейчас все данные
-            доступны в облаке и на веб-версии.
+            Syncing with AutoCore Desktop is coming in a future update. For now, all data is
+            available in the cloud and on the web app.
           </Text>
         </View>
       </SettingsSectionCard>
 
-      <SettingsSectionCard title="Опасная зона" tone="danger" description="Удаление необратимо">
+      <SettingsSectionCard title="Danger zone" tone="danger" description="Deletion is permanent">
         <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
           <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-            Профиль и доступ к AutoCore будут удалены. Данные компании останутся у других участников.
+            Your profile and access to AutoCore will be deleted. Company data will remain with other members.
           </Text>
           <Button
             onPress={deleteAccount.requestDelete}
@@ -122,7 +122,7 @@ export function AccountScreen() {
             loading={deleteAccount.loading}
             style={{ backgroundColor: colors.destructive }}
           >
-            Удалить аккаунт
+            Delete account
           </Button>
         </View>
       </SettingsSectionCard>

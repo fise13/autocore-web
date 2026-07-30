@@ -110,7 +110,7 @@ export async function seedDemoWorkspaceData(ownerUid: string): Promise<void> {
       name: item.name,
       brandName: item.brandName,
       inventoryGroup: "consumables",
-      unit: "шт",
+      unit: "pcs",
       purchasePrice: item.purchasePrice,
       averageCost: item.purchasePrice,
       sellPrice: item.sellPrice,

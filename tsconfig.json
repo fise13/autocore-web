@@ -64,6 +64,12 @@
       ],
       "@autocore/i18n/*": [
         "./packages/i18n/src/*"
+      ],
+      "@autocore/design-tokens": [
+        "./packages/design-tokens/src"
+      ],
+      "@autocore/design-tokens/*": [
+        "./packages/design-tokens/src/*"
       ]
     }
   },

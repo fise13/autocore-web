@@ -7,8 +7,8 @@ import { RequireAuth } from "@/components/auth/require-auth";
 import { DomainDictionaryProvider } from "@/components/domain/domain-dictionary-provider";
 
 export const metadata: Metadata = {
-  title: "Перенос бизнеса",
-  description: "Перенесите существующий бизнес в AutoCore из одного файла",
+  title: "Business migration",
+  description: "Move an existing business into AutoCore from a single file",
   robots: { index: false, follow: false },
 };
 

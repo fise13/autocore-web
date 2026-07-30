@@ -18,7 +18,7 @@ function InputGroupAddon({
       data-slot="input-group-addon"
       className={cn(
         "pointer-events-none absolute inset-y-0 flex items-center text-muted-foreground",
-        align === "inline-start" ? "left-0 pl-3" : "right-0 pr-3",
+        align === "inline-start" ? "left-0 pl-2.5" : "right-0 pr-2.5",
         className,
       )}
       {...props}

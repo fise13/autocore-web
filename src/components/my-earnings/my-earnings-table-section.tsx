@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import Link from "next/link";
 
 import { PayrollTransaction } from "@/domain/payroll-transaction";
@@ -66,7 +66,7 @@ export function MyEarningsTableSection({ rows, workOrders, isLoading }: MyEarnin
                     <div>
                       <p className="text-base font-semibold tabular-nums">{money(row.amount)}</p>
                       <p className="text-xs text-muted-foreground">
-                        {format(row.paidAt ?? row.createdAt, "d MMM yyyy", { locale: ru })}
+                        {format(row.paidAt ?? row.createdAt, "d MMM yyyy", { locale: enUS })}
                       </p>
                     </div>
                     <span

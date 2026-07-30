@@ -11,7 +11,7 @@ function categoryDocumentId(companyId: string, slug: string): string {
   return `${companyId}_${slug}`;
 }
 
-/** Seeds consumable taxonomy categories used by the warehouse (Расходники) UI. */
+/** Seeds consumable taxonomy categories used by the warehouse (Consumables) UI. */
 export async function ensureConsumableCategoriesAdmin(companyId: string): Promise<void> {
   const db = getAdminFirestore();
   const normalized = normalizeCompanyId(companyId);
@@ -27,7 +27,7 @@ export async function ensureConsumableCategoriesAdmin(companyId: string): Promis
           {
             companyId: normalized,
             name: preset.label,
-            path: ["Расходники", preset.label],
+            path: ["Consumables", preset.label],
             inventoryGroup: "consumables",
             subcategoryId: preset.id,
             updatedAt: FieldValue.serverTimestamp(),
@@ -38,7 +38,7 @@ export async function ensureConsumableCategoriesAdmin(companyId: string): Promis
   );
 }
 
-/** Ensures «Основной склад» exists for the company consumables workspace. */
+/** Ensures the default warehouse exists for the company consumables workspace. */
 export async function ensureDefaultWarehouseAdmin(companyId: string): Promise<string> {
   const db = getAdminFirestore();
   const normalized = normalizeCompanyId(companyId);
@@ -66,7 +66,7 @@ export async function ensureDefaultWarehouseAdmin(companyId: string): Promise<st
 
     await ref.set({
       companyId: normalized,
-      name: "Основной склад",
+      name: "Main Warehouse",
       code: "MAIN",
       isDefault: true,
       createdAt: FieldValue.serverTimestamp(),

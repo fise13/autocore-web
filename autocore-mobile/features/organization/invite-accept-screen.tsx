@@ -105,7 +105,7 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
 
   if (loading) {
     return (
-      <AuthShell title="Приглашение" description="Загружаем данные…">
+      <AuthShell title="Invite" description="Loading invite details…">
         <View style={{ gap: rhythm.stack }}>
           <Skeleton width="100%" height={120} rounded="lg" />
           <Skeleton width="100%" height={44} rounded="lg" />
@@ -116,24 +116,24 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
 
   if (!preview) {
     return (
-      <AuthShell title="Приглашение недоступно" description={error ?? 'Ссылка устарела или уже использована'}>
-        <Button onPress={() => void load()}>Повторить</Button>
+      <AuthShell title="Invite unavailable" description={error ?? 'This link has expired or already been used'}>
+        <Button onPress={() => void load()}>Retry</Button>
       </AuthShell>
     );
   }
 
   if (!firebaseUser) {
     return (
-      <AuthShell title="Приглашение в команду" description="Войдите, чтобы принять приглашение">
+      <AuthShell title="Team invite" description="Sign in to accept the invite">
         <InvitePreviewCard preview={preview} />
         <Button onPress={() => router.push(`/(auth)/login?invite=${encodeURIComponent(token)}`)}>
-          Войти
+          Sign in
         </Button>
         <Button
           variant="secondary"
           onPress={() => router.push(`/(auth)/login?invite=${encodeURIComponent(token)}&mode=signup`)}
         >
-          Создать аккаунт
+          Create account
         </Button>
       </AuthShell>
     );
@@ -142,15 +142,15 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
   if (emailMismatch) {
     return (
       <AuthShell
-        title="Другой аккаунт"
-        description={`Приглашение для ${preview.email}. Вы вошли как ${userEmail}.`}
+        title="Different account"
+        description={`This invite is for ${preview.email}. You're signed in as ${userEmail}.`}
       >
         <InvitePreviewCard preview={preview} />
         <Button variant="secondary" onPress={() => void handleAccept(false)} loading={busy}>
-          Продолжить с текущим
+          Continue with current account
         </Button>
         <Button variant="ghost" onPress={() => void signOut()}>
-          Сменить аккаунт
+          Switch account
         </Button>
       </AuthShell>
     );
@@ -158,14 +158,14 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
 
   if (busy && preview.canAccept && !emailMismatch) {
     return (
-      <AuthShell title="Присоединяем к команде" description="Это займёт пару секунд">
+      <AuthShell title="Joining the team" description="This will just take a second">
         <InvitePreviewCard preview={preview} />
       </AuthShell>
     );
   }
 
   return (
-    <AuthShell title="Приглашение в команду" description="Примите приглашение, чтобы получить доступ">
+    <AuthShell title="Team invite" description="Accept the invite to get access">
       <InvitePreviewCard preview={preview} />
       {error ? (
         <Text variant="caption" color="destructive">
@@ -175,18 +175,18 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
       {preview.canAccept ? (
         <>
           <Button onPress={() => void handleAccept(true)} loading={busy}>
-            Принять и перейти
+            Accept and switch
           </Button>
           <Button variant="secondary" onPress={() => void handleAccept(false)} loading={busy}>
-            Принять без переключения
+            Accept without switching
           </Button>
           <Button variant="ghost" onPress={() => void handleDecline()} disabled={busy}>
-            Отклонить
+            Decline
           </Button>
         </>
       ) : (
         <Text variant="caption" color="muted">
-          Статус: {INVITE_STATUS_LABELS[preview.status]}
+          Status: {INVITE_STATUS_LABELS[preview.status]}
         </Text>
       )}
     </AuthShell>
@@ -196,15 +196,15 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
 function InvitePreviewCard({ preview }: { preview: InvitePreview }) {
   return (
     <SettingsSectionCard
-      title="Организация"
-      description="Детали приглашения"
+      title="Organization"
+      description="Invite details"
       icon={UsersIcon}
       inset={false}
     >
       <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.tight }}>
-        <MetaRow label="Компания" value={preview.companyName} />
-        <MetaRow label="Роль" value={formatRole(preview.role)} />
-        {preview.inviterName ? <MetaRow label="Пригласил" value={preview.inviterName} /> : null}
+        <MetaRow label="Company" value={preview.companyName} />
+        <MetaRow label="Role" value={formatRole(preview.role)} />
+        {preview.inviterName ? <MetaRow label="Invited by" value={preview.inviterName} /> : null}
         {preview.email ? <MetaRow label="Email" value={preview.email} /> : null}
       </View>
     </SettingsSectionCard>

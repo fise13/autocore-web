@@ -25,7 +25,7 @@ function isCancelled(error: unknown): boolean {
     const code = String((error as { code?: string }).code);
     return code === 'auth/cancelled' || code === 'ERR_REQUEST_CANCELED' || code === 'ERR_CANCELED';
   }
-  return error instanceof Error && /отмен|cancel/i.test(error.message);
+  return error instanceof Error && /cancel/i.test(error.message);
 }
 
 async function reauthenticateForDeletion(user: User, password?: string): Promise<void> {
@@ -34,7 +34,7 @@ async function reauthenticateForDeletion(user: User, password?: string): Promise
   if (providers.includes('password')) {
     const pwd = password?.trim();
     if (!pwd) {
-      throw Object.assign(new Error('Введите текущий пароль, чтобы удалить аккаунт.'), {
+      throw Object.assign(new Error('Enter your current password to delete this account.'), {
         code: 'auth/password-required',
       });
     }
@@ -54,7 +54,7 @@ async function reauthenticateForDeletion(user: User, password?: string): Promise
 
   if (providers.includes('apple.com')) {
     if (Platform.OS !== 'ios') {
-      throw new Error('Удаление аккаунта Apple доступно только на iPhone и iPad.');
+      throw new Error('Deleting an Apple account is only available on iPhone and iPad.');
     }
     const rawNonce = Crypto.randomUUID();
     const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
@@ -63,13 +63,13 @@ async function reauthenticateForDeletion(user: User, password?: string): Promise
       nonce: hashedNonce,
     });
     if (!credential.identityToken) {
-      throw new Error('Apple не вернул identity token.');
+      throw new Error('Apple did not return an identity token.');
     }
     await reauthenticateWithAppleIdentityToken(user, credential.identityToken, rawNonce);
     return;
   }
 
-  throw new Error('Не удалось подтвердить личность для удаления аккаунта.');
+  throw new Error('Could not verify identity to delete this account.');
 }
 
 /**
@@ -84,7 +84,7 @@ export async function deleteAccountForCurrentUser(
     await reauthenticateForDeletion(user, input.password);
   } catch (error) {
     if (isCancelled(error)) {
-      throw Object.assign(new Error('Удаление отменено.'), { code: 'auth/cancelled' });
+      throw Object.assign(new Error('Deletion cancelled.'), { code: 'auth/cancelled' });
     }
     throw error;
   }

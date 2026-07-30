@@ -86,7 +86,7 @@ export function AccountingScreen() {
   const employeeNames = useMemo(() => {
     const map: Record<string, string> = {};
     for (const employee of employees) {
-      const label = employee.fullName || employee.email || 'Сотрудник';
+      const label = employee.fullName || employee.email || 'Employee';
       map[employee.id] = label;
       map[employee.uid] = label;
     }
@@ -107,7 +107,7 @@ export function AccountingScreen() {
 
   const openNewOperation = useCallback((preset?: NewOperationPreset | 'expense' | 'income') => {
     if (!canEdit || isDemo) {
-      toast({ title: 'Нет прав на создание операций', variant: 'warning' });
+      toast({ title: 'You don’t have permission to create operations', variant: 'warning' });
       return;
     }
     router.push(newOperationHref(preset ?? 'expense'));
@@ -124,14 +124,14 @@ export function AccountingScreen() {
           openNewOperation({
             type: 'income',
             paymentMethod: 'transfer',
-            comment: 'Выставленный счёт',
+            comment: 'Invoice issued',
           });
           return;
         case 'payment':
           openNewOperation({
             type: 'income',
             paymentMethod: 'cash',
-            comment: 'Поступление оплаты',
+            comment: 'Payment received',
           });
           return;
         case 'expense':
@@ -142,14 +142,14 @@ export function AccountingScreen() {
           return;
         case 'transfer':
           if (!canEdit || isDemo) {
-            toast({ title: 'Нет прав на перевод', variant: 'warning' });
+            toast({ title: 'You don’t have permission to transfer funds', variant: 'warning' });
             return;
           }
           transferSheetRef.current?.present();
           return;
         case 'export':
           if (operations.length === 0) {
-            toast({ title: 'Нет операций для экспорта', variant: 'warning' });
+            toast({ title: 'No operations to export', variant: 'warning' });
             return;
           }
           try {
@@ -158,7 +158,7 @@ export function AccountingScreen() {
           } catch (error) {
             haptics.warning();
             toast({
-              title: 'Не удалось экспортировать',
+              title: 'Failed to export',
               description: error instanceof Error ? error.message : undefined,
               variant: 'destructive',
             });
@@ -174,17 +174,17 @@ export function AccountingScreen() {
   const handleDeleteOperation = useCallback(
     async (operation: FinancialOperation) => {
       if (!canEdit || isDemo) {
-        toast({ title: 'Нет прав на удаление', variant: 'warning' });
+        toast({ title: 'You don’t have permission to delete', variant: 'warning' });
         return;
       }
       try {
         await financialOperationRepository.delete(operation.id);
         haptics.success();
-        toast({ title: 'Операция удалена', variant: 'success' });
+        toast({ title: 'Operation deleted', variant: 'success' });
       } catch (error) {
         haptics.warning();
         toast({
-          title: 'Не удалось удалить',
+          title: 'Failed to delete',
           description: error instanceof Error ? error.message : undefined,
           variant: 'destructive',
         });
@@ -196,7 +196,7 @@ export function AccountingScreen() {
   const handlePayrollStatusChange = useCallback(
     async (id: string, status: PayrollTransactionStatus) => {
       if (!canEdit || isDemo || !companyId) {
-        toast({ title: 'Нет прав на изменение начислений', variant: 'warning' });
+        toast({ title: 'You don’t have permission to change payroll entries', variant: 'warning' });
         return;
       }
       setPayrollUpdatingId(id);
@@ -205,13 +205,13 @@ export function AccountingScreen() {
         await payrollTransactionRepository.updateStatus(companyId, id, status);
         haptics.success();
         toast({
-          title: status === 'paid' ? 'Зарплата отмечена выплаченной' : 'Статус начисления обновлён',
+          title: status === 'paid' ? 'Payroll marked as paid' : 'Payroll status updated',
           variant: 'success',
         });
       } catch (error) {
         haptics.warning();
         toast({
-          title: 'Не удалось обновить начисление',
+          title: 'Failed to update payroll entry',
           description: error instanceof Error ? error.message : undefined,
           variant: 'destructive',
         });
@@ -236,8 +236,8 @@ export function AccountingScreen() {
     return (
       <ScreenPlaceholder
         icon={BarChart3Icon}
-        title="Нет рабочего пространства"
-        description="Выберите компанию, чтобы видеть финансы и бухгалтерские показатели."
+        title="No workspace"
+        description="Select a company to view finances and accounting metrics."
       />
     );
   }
@@ -246,8 +246,8 @@ export function AccountingScreen() {
     return (
       <ScreenPlaceholder
         icon={BarChart3Icon}
-        title="Нет доступа"
-        description="У вашей роли нет прав на просмотр финансов. Обратитесь к администратору компании."
+        title="No access"
+        description="Your role doesn't have permission to view finances. Contact your company administrator."
       />
     );
   }
@@ -276,11 +276,11 @@ export function AccountingScreen() {
         <View style={{ paddingHorizontal: ac.pad, gap: ac.section, paddingBottom: ac.section }}>
           {isDemo ? (
             <Text variant="caption" color="muted" style={{ textAlign: 'center' }}>
-              Демо-данные · только в режиме разработки
+              Demo data · development mode only
             </Text>
           ) : !isProductionCompanyId(companyId) ? (
             <Text variant="caption" color="muted" style={{ textAlign: 'center' }}>
-              Подключите компанию, чтобы видеть финансовые данные
+              Connect a company to see financial data
             </Text>
           ) : null}
 
@@ -320,8 +320,8 @@ export function AccountingScreen() {
 
             {activeTab === 'cashbox' ? (
               <AcOperationsList
-                title="Касса"
-                description="Операции по счёту «Касса»"
+                title="Cash Register"
+                description="Operations on the “Cash Register” account"
                 rows={filterCashboxOperations(operations)}
                 {...operationsListProps}
               />
@@ -329,8 +329,8 @@ export function AccountingScreen() {
 
             {activeTab === 'expenses' ? (
               <AcOperationsList
-                title="Расходы"
-                description="Все расходные операции компании"
+                title="Expenses"
+                description="All company expense operations"
                 rows={filterExpenseOperations(operations)}
                 {...operationsListProps}
               />
@@ -338,8 +338,8 @@ export function AccountingScreen() {
 
             {activeTab === 'operations' ? (
               <AcOperationsList
-                title="Все операции"
-                description="Полный журнал финансовых записей"
+                title="All Operations"
+                description="Full log of financial records"
                 rows={operations}
                 {...operationsListProps}
               />
@@ -347,8 +347,8 @@ export function AccountingScreen() {
 
             {activeTab === 'work_orders' ? (
               <AcOperationsList
-                title="Заказ-наряды"
-                description="Доход и расходы по нарядам"
+                title="Work Orders"
+                description="Income and expenses by work order"
                 rows={filterWorkOrderOperations(operations)}
                 showWorkOrder
                 workOrderNumbers={workOrderNumbers}
@@ -368,8 +368,8 @@ export function AccountingScreen() {
                 />
                 {filterPayrollExpenseOperations(operations).length > 0 ? (
                   <AcOperationsList
-                    title="Расходы на зарплату"
-                    description="Проводки по зарплате"
+                    title="Payroll Expenses"
+                    description="Payroll entries"
                     rows={filterPayrollExpenseOperations(operations)}
                     showWorkOrder
                     workOrderNumbers={workOrderNumbers}
@@ -392,10 +392,10 @@ export function AccountingScreen() {
                   delay={0}
                 />
                 <AcOperationsList
-                  title="Журнал авансов"
-                  description="Операции с признаками аванса"
+                  title="Advances Log"
+                  description="Operations flagged as advances"
                   rows={advancesRows}
-                  emptyLabel="Авансовых операций пока нет"
+                  emptyLabel="No advance operations yet"
                   {...operationsListProps}
                 />
               </View>

@@ -1160,6 +1160,14 @@ export const userCopyEn = {
       import: "Import",
       manual: "Manual",
     },
+    movementColumns: {
+      type: "Type",
+      quantity: "Qty",
+      onHand: "On hand",
+      reference: "Reference",
+      date: "Date",
+      reason: "Reason",
+    },
     dialogs: {
       invalidQty: "Enter a valid quantity",
       invalidAmount: "Enter a valid amount",

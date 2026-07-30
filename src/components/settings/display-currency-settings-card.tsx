@@ -94,7 +94,7 @@ export function DisplayCurrencySettingsCard({ onStatus }: DisplayCurrencySetting
                 <span className="text-sm font-medium">{labels.label}</span>
                 <span className="text-xs text-muted-foreground">{labels.description}</span>
                 <span className="mt-1 text-sm font-semibold tabular-nums">{example}</span>
-                {option.id !== "KZT" ? (
+                {option.id !== "USD" ? (
                   <span className="text-[11px] text-muted-foreground">
                     {userCopy.settings.displayCurrency.fromBase(
                       EXAMPLE_BASE_AMOUNT.toLocaleString(locale),

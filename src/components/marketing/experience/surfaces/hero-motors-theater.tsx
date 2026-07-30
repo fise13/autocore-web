@@ -33,7 +33,7 @@ import {
   primaryRange,
 } from "@/lib/grid/selection-controller";
 import {
-  formatKzt,
+  formatUsd,
   landingDemoMotorsAtmosphere,
   landingDemoMotorsHero,
   landingDemoMotorsSale,
@@ -188,7 +188,7 @@ function readCell(
     case "reserve":
       return motor.reservedFor ?? "—";
     case "price":
-      return motor.price != null ? `${formatKzt(motor.price)} ₸` : "";
+      return motor.price != null ? `${formatUsd(motor.price)}` : "";
     case "box":
       return motor.transmission;
     case "status":

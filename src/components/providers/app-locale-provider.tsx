@@ -18,6 +18,7 @@ import {
   readStoredPreferredLocale,
   resolveAccountLocale,
   storePreferredLocale,
+  UI_LOCALE_LOCK,
 } from "@/lib/locale/preferred-locale";
 import { setActiveUserCopyLocale } from "@/lib/user-copy";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
@@ -37,6 +38,7 @@ export function AppLocaleProvider({ children }: { children: ReactNode }) {
   const [overrideLocale, setOverrideLocale] = useState<AppLocale | null>(null);
 
   const locale = useMemo(() => {
+    if (UI_LOCALE_LOCK) return UI_LOCALE_LOCK;
     if (overrideLocale) return overrideLocale;
     return resolveAccountLocale({
       profileLocale: profile?.preferredLocale,
@@ -45,6 +47,7 @@ export function AppLocaleProvider({ children }: { children: ReactNode }) {
   }, [overrideLocale, profile?.preferredLocale]);
 
   useEffect(() => {
+    if (UI_LOCALE_LOCK) return;
     if (typeof window === "undefined") return;
     const lang = new URLSearchParams(window.location.search).get("lang");
     if (!lang) return;
@@ -63,6 +66,10 @@ export function AppLocaleProvider({ children }: { children: ReactNode }) {
 
   const setLocale = useCallback(
     async (next: AppLocale) => {
+      // While locked, the switcher is inert rather than writing a preference
+      // that would take effect the moment the lock is lifted.
+      if (UI_LOCALE_LOCK) return;
+
       const normalized = coerceAppLocale(next);
       setOverrideLocale(normalized);
       storePreferredLocale(normalized);

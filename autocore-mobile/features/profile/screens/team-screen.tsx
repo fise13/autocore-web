@@ -75,9 +75,9 @@ function getInviteStatus(invite: Pick<InviteDocument, 'status' | 'used' | 'expir
 function mapEmployeeError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   if (message.includes('Missing or insufficient permissions')) {
-    return 'Недостаточно прав для этого действия.';
+    return 'You don\'t have permission to do this.';
   }
-  return message || 'Не удалось выполнить действие';
+  return message || 'Failed to complete the action';
 }
 
 export function TeamScreen() {
@@ -134,21 +134,21 @@ export function TeamScreen() {
   };
 
   const shareCode = async (code: string) => {
-    await Share.share({ message: `Код приглашения AutoCore: ${code}` });
+    await Share.share({ message: `AutoCore invite code: ${code}` });
   };
 
   const shareLink = async (url: string) => {
-    await Share.share({ message: `Приглашение в AutoCore: ${url}`, url });
+    await Share.share({ message: `Join AutoCore: ${url}`, url });
   };
 
   const confirmRemove = (employee: CompanyEmployee) => {
     Alert.alert(
-      'Удалить сотрудника?',
-      `${employeeDisplayName(employee, profile ?? undefined)} будет удалён из компании.`,
+      'Remove employee?',
+      `${employeeDisplayName(employee, profile ?? undefined)} will be removed from the company.`,
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Удалить',
+          text: 'Remove',
           style: 'destructive',
           onPress: () => {
             if (!companyId) return;
@@ -169,8 +169,8 @@ export function TeamScreen() {
 
       <View>
         <TeamSectionHeader
-          title="Сотрудники"
-          actionLabel={canManage ? 'Пригласить' : undefined}
+          title="Employees"
+          actionLabel={canManage ? 'Invite' : undefined}
           onAction={canManage ? () => inviteSheetRef.current?.present() : undefined}
         />
         {isLoading ? (
@@ -183,11 +183,11 @@ export function TeamScreen() {
           <View style={{ paddingHorizontal: rhythm.pad }}>
             <EmptyState
               icon={UsersIcon}
-              title="Пока нет сотрудников"
-              description="Пригласите первого участника команды по коду или ссылке."
+              title="No employees yet"
+              description="Invite your first team member with a code or a link."
               primaryAction={
                 canManage
-                  ? { label: 'Пригласить', onPress: () => inviteSheetRef.current?.present() }
+                  ? { label: 'Invite', onPress: () => inviteSheetRef.current?.present() }
                   : undefined
               }
             />
@@ -221,12 +221,12 @@ export function TeamScreen() {
 
       {canManage ? (
         <SettingsSectionCard
-          title="Коды приглашений"
-          description="Делитесь кодом или ссылкой, чтобы добавить сотрудника в компанию"
+          title="Invite codes"
+          description="Share a code or link to add an employee to the company"
         >
           <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
             <View style={{ gap: rhythm.tight }}>
-              <SectionHeader title="Статус" label />
+              <SectionHeader title="Status" label />
               <TeamInviteStatusFilters value={inviteStatusFilter} onChange={setInviteStatusFilter} />
             </View>
             {invitesLoading ? (
@@ -236,7 +236,7 @@ export function TeamScreen() {
               </View>
             ) : filteredInvites.length === 0 ? (
               <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-                Нет приглашений с выбранным статусом.
+                No invites with this status.
               </Text>
             ) : (
               <ListGroup inset={false}>
@@ -275,7 +275,7 @@ export function TeamScreen() {
 
   const renderRolesTab = () => (
     <View style={{ gap: rhythm.section }}>
-      <SettingsSectionCard title="Роли" description="Базовые наборы прав для каждой роли в компании">
+      <SettingsSectionCard title="Roles" description="Default permission sets for each role in the company">
         <ListGroup inset={false}>
           {USER_ROLES.filter((role) => role !== 'owner').map((role, index) => (
             <TeamRoleCard key={role} role={role} index={index} />
@@ -283,7 +283,7 @@ export function TeamScreen() {
         </ListGroup>
       </SettingsSectionCard>
 
-      <SettingsSectionCard title="Группы прав" description="Что входит в каждую область доступа">
+      <SettingsSectionCard title="Permission groups" description="What's included in each access area">
         <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
           {(Object.keys(PERMISSION_GROUPS) as Array<keyof typeof PERMISSION_GROUPS>).map((groupId) => (
             <View key={groupId} style={{ gap: 4 }}>
@@ -302,16 +302,16 @@ export function TeamScreen() {
 
   return (
     <BottomSheetModalProvider>
-      <ProfileScreenShell title="Команда и роли" subtitle="Сотрудники, роли и права доступа">
+      <ProfileScreenShell title="Team and roles" subtitle="Employees, roles, and access permissions">
         <TeamProGate>
           {!canView ? (
-            <SettingsSectionCard title="Доступ ограничен">
+            <SettingsSectionCard title="Access restricted">
               <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: 4 }}>
                 <Text variant="body" style={{ fontWeight: '600' }}>
-                  Недостаточно прав
+                  Insufficient permissions
                 </Text>
                 <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-                  У вас нет прав на просмотр сотрудников компании.
+                  You don't have permission to view the company's employees.
                 </Text>
               </View>
             </SettingsSectionCard>
@@ -321,8 +321,8 @@ export function TeamScreen() {
                 value={tab}
                 onChange={setTab}
                 options={[
-                  { value: 'employees', label: 'Сотрудники' },
-                  { value: 'roles', label: 'Роли' },
+                  { value: 'employees', label: 'Employees' },
+                  { value: 'roles', label: 'Roles' },
                 ]}
               />
               {tab === 'employees' ? renderEmployeesTab() : renderRolesTab()}
@@ -351,16 +351,16 @@ export function TeamScreen() {
           onOpenChange={(open) => {
             if (!open) setPermissionsEmployee(null);
           }}
-          title="Дополнительные права"
+          title="Additional permissions"
           description={
             permissionsEmployee
-              ? `${employeeDisplayName(permissionsEmployee, profile ?? undefined)} · базовые права по роли ${formatRole(permissionsEmployee.role)}`
+              ? `${employeeDisplayName(permissionsEmployee, profile ?? undefined)} · base permissions for ${formatRole(permissionsEmployee.role)} role`
               : undefined
           }
           footer={
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <Button variant="secondary" onPress={() => setPermissionsEmployee(null)}>
-                Отмена
+                Cancel
               </Button>
               <Button
                 loading={busy}
@@ -374,7 +374,7 @@ export function TeamScreen() {
                   });
                 }}
               >
-                Сохранить
+                Save
               </Button>
             </View>
           }
@@ -394,7 +394,7 @@ export function TeamScreen() {
                       </Text>
                       {inRole ? (
                         <Text variant="caption" color="muted">
-                          Уже входит в роль
+                          Already included in the role
                         </Text>
                       ) : null}
                     </View>

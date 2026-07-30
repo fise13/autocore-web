@@ -1163,6 +1163,14 @@ export const userCopyRu = {
       import: "Импорт",
       manual: "Вручную",
     },
+    movementColumns: {
+      type: "Тип",
+      quantity: "Кол-во",
+      onHand: "Остаток",
+      reference: "Источник",
+      date: "Дата",
+      reason: "Причина",
+    },
     dialogs: {
       invalidQty: "Укажите корректное количество",
       invalidAmount: "Укажите корректную сумму",

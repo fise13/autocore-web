@@ -165,7 +165,7 @@ export function useScanExperience(initialContext?: ScanContext) {
         next();
       } catch (error) {
         toast({
-          title: 'Не удалось выполнить действие',
+          title: 'Action failed',
           description: error instanceof Error ? error.message : undefined,
           variant: 'destructive',
         });
@@ -217,8 +217,8 @@ export function useScanExperience(initialContext?: ScanContext) {
         const classified = classifyScanPayload(payload);
         if (classified.type !== 'entity-link' || classified.entity !== 'motor') {
           toast({
-            title: 'Сканируйте двигатель',
-            description: `Размещаем в ${pending.displayCode}`,
+            title: 'Scan a motor',
+            description: `Placing in ${pending.displayCode}`,
             variant: 'warning',
           });
           service.dismissSheet();
@@ -241,14 +241,14 @@ export function useScanExperience(initialContext?: ScanContext) {
             itemId: classified.id,
           });
           toast({
-            title: 'Размещено',
+            title: 'Placed',
             description: `${classified.id} → ${result.toLocationCode}`,
             variant: 'success',
           });
           service.dismissSheet();
         } catch (error) {
           toast({
-            title: 'Не удалось разместить',
+            title: 'Could not place item',
             description: error instanceof Error ? error.message : undefined,
             variant: 'destructive',
           });
@@ -262,7 +262,7 @@ export function useScanExperience(initialContext?: ScanContext) {
       const target = interpretRelocateScan(payload);
       if (target.kind === 'reject') {
         toast({
-          title: 'Нужно место',
+          title: 'Location needed',
           description: target.reason,
           variant: 'warning',
         });

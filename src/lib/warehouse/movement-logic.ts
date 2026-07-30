@@ -35,7 +35,7 @@ export function applyMovementToStock(
     case "transfer_out":
     case "consumption":
       if (computeAvailable(onHand, reserved) < qty) {
-        throw new Error("Недостаточно доступного остатка");
+        throw new Error("Insufficient available stock");
       }
       onHand -= qty;
       if (type === "consumption") {
@@ -44,7 +44,7 @@ export function applyMovementToStock(
       break;
     case "reservation_hold":
       if (computeAvailable(onHand, reserved) < qty) {
-        throw new Error("Недостаточно остатка для резервирования");
+        throw new Error("Insufficient stock to reserve");
       }
       reserved += qty;
       break;
@@ -57,7 +57,7 @@ export function applyMovementToStock(
         onHand += qty;
       } else {
         if (computeAvailable(onHand, reserved) < qty) {
-          throw new Error("Недостаточно остатка для корректировки");
+          throw new Error("Insufficient stock to adjust");
         }
         onHand -= qty;
       }
@@ -67,9 +67,9 @@ export function applyMovementToStock(
       // Warehouse totals unchanged — location balances are updated separately.
       break;
     case "reversal":
-      throw new Error("reversal должен вычисляться из исходного движения");
+      throw new Error("reversal must be computed from the original movement");
     default:
-      throw new Error(`Неизвестный тип движения: ${type}`);
+      throw new Error(`Unknown movement type: ${type}`);
   }
 
   return {

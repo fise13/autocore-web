@@ -8,7 +8,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Barcode,
   PanelLeft,
-  Settings,
   Settings2,
   Upload,
 } from "lucide-react";
@@ -444,28 +443,6 @@ export function DashboardTopBar() {
               </Button>
             </>
           ) : null}
-
-          {workspace ? (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              title={userCopy.layout.settings}
-              render={<Link href="/settings" />}
-              nativeButton={false}
-            >
-              <Settings className="size-4" />
-            </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground"
-              render={<Link href="/settings" />}
-              nativeButton={false}
-            >
-              {userCopy.layout.settings}
-            </Button>
-          )}
 
           <AccountMenu />
         </AnimatedSlot>

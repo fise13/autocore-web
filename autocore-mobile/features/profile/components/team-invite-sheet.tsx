@@ -35,9 +35,9 @@ type TeamInviteSheetProps = {
 };
 
 const TTL_OPTIONS = [
-  { value: 24, label: '24 ч' },
-  { value: 72, label: '72 ч' },
-  { value: 168, label: '7 дн' },
+  { value: 24, label: '24 hr' },
+  { value: 72, label: '72 hr' },
+  { value: 168, label: '7 days' },
 ] as const;
 
 export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetProps>(
@@ -91,7 +91,7 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
 
         if (result.kind === 'sent') {
           haptics.success();
-          setSuccessMessage(`Приглашение отправлено на ${result.email}`);
+          setSuccessMessage(`Invite sent to ${result.email}`);
           setJoinUrl(result.joinUrl ?? null);
           setEmail('');
           void NotificationService.syncInbox();
@@ -102,7 +102,7 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
         }
       } catch (nextError) {
         haptics.warning();
-        setError(nextError instanceof Error ? nextError.message : 'Не удалось отправить приглашение');
+        setError(nextError instanceof Error ? nextError.message : 'Failed to send invite');
       } finally {
         setBusy(false);
       }
@@ -125,7 +125,7 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
         haptics.success();
       } catch (nextError) {
         haptics.warning();
-        setError(nextError instanceof Error ? nextError.message : 'Не удалось создать код');
+        setError(nextError instanceof Error ? nextError.message : 'Failed to create code');
       } finally {
         setBusy(false);
       }
@@ -149,26 +149,26 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
         >
           <View style={{ gap: 4 }}>
             <Text variant="heading" style={{ fontSize: 22, fontWeight: '700', letterSpacing: -0.4 }}>
-              Пригласить сотрудника
+              Invite a team member
             </Text>
             <Text variant="caption" color="muted" style={{ fontSize: 13, lineHeight: 18 }}>
-              Отправьте приглашение на email или создайте код для ручной передачи.
+              Send an email invite or generate a code to share manually.
             </Text>
           </View>
 
           <Input
-            label="Email сотрудника"
-            helperText="Сотрудник получит письмо со ссылкой для входа в команду."
+            label="Employee email"
+            helperText="The employee will get an email with a link to join the team."
             value={email}
             onChangeText={setEmail}
-            placeholder="colleague@company.ru"
+            placeholder="colleague@company.com"
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
             leftIcon={<MailIcon size="sm" color={colors.mutedForeground} strokeWidth={1.9} />}
           />
           <Button loading={busy} disabled={!email.trim()} onPress={() => void handleSendEmail()}>
-            Отправить на email
+            Send by email
           </Button>
 
           {successMessage ? (
@@ -187,7 +187,7 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
               </Text>
               {joinUrl ? (
                 <Button variant="secondary" size="sm" onPress={() => onShareLink(joinUrl)}>
-                  Поделиться ссылкой
+                  Share link
                 </Button>
               ) : null}
             </View>
@@ -201,7 +201,7 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
 
           <View style={{ gap: 10 }}>
             <Text variant="caption" color="muted" style={{ fontSize: 11, fontWeight: '600' }}>
-              РОЛЬ НОВОГО СОТРУДНИКА
+              NEW EMPLOYEE ROLE
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {INVITE_ROLES.map((role) => {
@@ -241,7 +241,7 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
 
           <View style={{ gap: 8 }}>
             <Text variant="caption" color="muted" style={{ fontSize: 11, fontWeight: '600' }}>
-              СРОК ДЕЙСТВИЯ
+              EXPIRATION
             </Text>
             <View
               style={{
@@ -284,7 +284,7 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
             <Text variant="caption" color="muted" style={{ fontSize: 11, fontWeight: '600' }}>
-              ИЛИ КОД
+              OR CODE
             </Text>
             <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
           </View>
@@ -302,18 +302,18 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
               }}
             >
               <Text variant="caption" color="muted">
-                Код для роли «{formatRole(inviteRole)}»
+                Code for the "{formatRole(inviteRole)}" role
               </Text>
               <Text variant="heading" style={{ fontSize: 32, fontWeight: '800', letterSpacing: 4, fontVariant: ['tabular-nums'] }}>
                 {generatedCode}
               </Text>
               <Button variant="secondary" size="sm" onPress={() => onShareCode(generatedCode)}>
-                Поделиться кодом
+                Share code
               </Button>
             </View>
           ) : (
             <Button variant="outline" loading={busy} onPress={() => void handleCreateCode()}>
-              Создать код приглашения
+              Generate invite code
             </Button>
           )}
         </BottomSheetScrollView>

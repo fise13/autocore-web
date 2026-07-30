@@ -4,26 +4,42 @@ import { buildSpecificColumnKeys } from "@/lib/specific/specific-table";
 
 export const SPECIFIC_SLOT_COUNT = 7;
 
+/**
+ * Default column titles for a brand-new "Specific" category with no schema
+ * saved yet — `createDefaultColumnSchema()` in specific-category-schema.ts
+ * uses each title as BOTH the display label and the Firestore field key.
+ *
+ * This only affects categories with zero saved columns/records: any category
+ * that already has a `columnSchema` or existing rows keeps whatever keys it
+ * was already using (Russian or otherwise) via `buildSpecificColumnKeys`,
+ * completely independent of this constant. Safe to translate.
+ */
 export const SPECIFIC_CANONICAL_TITLES = [
-  "Номер двигателя",
-  "Комплектация",
-  "Особые отметки",
-  "Кол-во",
-  "Коробка",
-  "Дата прихода",
-  "Дата продажи",
+  "Engine number",
+  "Configuration",
+  "Notes",
+  "Qty",
+  "Transmission",
+  "Arrival date",
+  "Sale date",
 ] as const;
 
 export const SPECIFIC_SOLD_DATE_KEY = SPECIFIC_CANONICAL_TITLES[6];
 
+/**
+ * Both Russian and English forms stay listed so a category whose columns
+ * were established before the English-only switch (real field keys are
+ * literal Russian text, e.g. "Дата продажи") still gets recognized —
+ * `isSpecificRecordSold` and header inference both read through this list.
+ */
 const SEMANTIC_ALIASES: string[][] = [
-  ["номердвигателя", "номер", "serial", "serialcode", "enginenumber", "двигатель"],
-  ["комплектация", "configuration", "config"],
-  ["особыеотметки", "примечание", "заметка", "notes", "note", "comment", "описание"],
-  ["колво", "количество", "qty", "quantity", "count"],
-  ["коробка", "transmission", "кпп", "at", "mt"],
-  ["датаприхода", "arrivaldate", "приход", "датыприхода", "datein"],
-  ["датапродажи", "solddate", "продажа", "датыпродажи", "dateout"],
+  ["enginenumber", "номердвигателя", "номер", "serial", "serialcode", "двигатель"],
+  ["configuration", "комплектация", "config"],
+  ["notes", "особыеотметки", "примечание", "заметка", "note", "comment", "описание"],
+  ["qty", "колво", "количество", "quantity", "count"],
+  ["transmission", "коробка", "кпп", "at", "mt"],
+  ["arrivaldate", "датаприхода", "приход", "датыприхода", "datein"],
+  ["saledate", "датапродажи", "solddate", "продажа", "датыпродажи", "dateout"],
 ];
 
 function normalizeKey(key: string): string {
@@ -110,7 +126,7 @@ export function buildSpecificHeaderMapping(records: SpecificRecordEntity[]): Spe
 export function specificSlotTitle(mapping: SpecificHeaderMapping, slotIndex: number): string {
   const key = mapping.slotKeys[slotIndex]?.trim();
   if (key) return key;
-  return SPECIFIC_CANONICAL_TITLES[slotIndex] ?? `Поле ${slotIndex + 1}`;
+  return SPECIFIC_CANONICAL_TITLES[slotIndex] ?? `Field ${slotIndex + 1}`;
 }
 
 export function specificValueForSlot(

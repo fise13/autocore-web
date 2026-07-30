@@ -71,7 +71,7 @@ describe("nomenclature import preset", () => {
     assert.equal(normalized.sku, "10944AA070");
     assert.equal(normalized.quantity, 1);
     assert.deepEqual(normalized.barcodes, ["10944AA070"]);
-    assert.equal(normalized.unit, "шт");
+    assert.equal(normalized.unit, "pcs");
     assert.equal(normalized.purchasePrice, 18000);
   });
 

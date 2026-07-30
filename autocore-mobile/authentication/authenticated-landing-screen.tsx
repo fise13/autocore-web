@@ -11,30 +11,30 @@ import { useAuth } from './auth-provider';
 export function AuthenticatedLandingScreen({ inactive = false }: { inactive?: boolean }) {
   const { colors } = useTheme();
   const { profile, error, requiresCompanySelection, hasAccess, signOut } = useAuth();
-  const { companyName } = useActiveCompanyName('Не найдена');
-  const companyLabel = requiresCompanySelection ? 'Не выбрана' : companyName;
+  const { companyName } = useActiveCompanyName('Not found');
+  const companyLabel = requiresCompanySelection ? 'Not selected' : companyName;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background, padding: spacing[4], gap: spacing[4] }}>
       <View style={{ gap: spacing[1] }}>
         <Text variant="title">AutoCore Mobile</Text>
         <Text variant="body" color="muted">
-          Базовый auth layer готов. Используется тот же Firebase project и RBAC-модель, что и в основном приложении.
+          Base auth layer is ready. Uses the same Firebase project and RBAC model as the main app.
         </Text>
       </View>
 
       <Card>
         <CardHeader>
           <Badge variant="secondary">{profile?.role ?? 'employee'}</Badge>
-          <CardTitle>{profile?.displayName ?? profile?.email ?? 'Пользователь'}</CardTitle>
-          <CardDescription>{profile?.email ?? 'Email не найден'}</CardDescription>
+          <CardTitle>{profile?.displayName ?? profile?.email ?? 'User'}</CardTitle>
+          <CardDescription>{profile?.email ?? 'Email not found'}</CardDescription>
         </CardHeader>
         <CardContent style={{ gap: spacing[2] }}>
           <Text variant="body">
-            Компания: {companyLabel}
+            Company: {companyLabel}
           </Text>
           <Text variant="body">
-            Статус доступа: {hasAccess ? 'Активен' : inactive ? 'Сотрудник деактивирован' : 'Нужна проверка роли или сотрудника'}
+            Access status: {hasAccess ? 'Active' : inactive ? 'Employee deactivated' : 'Role or employee check needed'}
           </Text>
         </CardContent>
       </Card>
@@ -42,9 +42,9 @@ export function AuthenticatedLandingScreen({ inactive = false }: { inactive?: bo
       {requiresCompanySelection ? (
         <Card>
           <CardHeader>
-            <CardTitle>Нужно выбрать компанию</CardTitle>
+            <CardTitle>A company needs to be selected</CardTitle>
             <CardDescription>
-              Аккаунт вошёл успешно, но в профиле пока нет активной компании. Выберите рабочее пространство в настройках или обратитесь к администратору.
+              You're signed in, but your profile has no active company yet. Choose a workspace in settings or contact an administrator.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -53,11 +53,11 @@ export function AuthenticatedLandingScreen({ inactive = false }: { inactive?: bo
       {!hasAccess ? (
         <Card>
           <CardHeader>
-            <CardTitle>Доступ ограничен</CardTitle>
+            <CardTitle>Access restricted</CardTitle>
             <CardDescription>
               {inactive
-                ? 'Ваш доступ к компании отключён администратором. Обратитесь к владельцу компании для восстановления.'
-                : 'Сотрудник может быть неактивен или ещё не получил нужные права. Проверьте роль в разделе сотрудников компании.'}
+                ? 'Your access to the company has been disabled by an administrator. Contact the company owner to restore it.'
+                : 'The employee record may be inactive or missing the needed permissions. Check the role in the company employees section.'}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -66,14 +66,14 @@ export function AuthenticatedLandingScreen({ inactive = false }: { inactive?: bo
       {error ? (
         <Card>
           <CardHeader>
-            <CardTitle>Есть проблема с профилем</CardTitle>
+            <CardTitle>There's a problem with the profile</CardTitle>
             <CardDescription>{error}</CardDescription>
           </CardHeader>
         </Card>
       ) : null}
 
       <Button variant="outline" size="lg" onPress={signOut}>
-        Выйти
+        Sign out
       </Button>
     </View>
   );

@@ -32,115 +32,129 @@ export type InventoryTaxonomySubcategory = {
   aliases: readonly string[];
 };
 
+/**
+ * Labels are English (US market). `aliases` still include the original
+ * Russian terms so a supplier spreadsheet or a free-typed search in Russian
+ * keeps matching the right subcategory — see `resolveSubcategoryForCategoryName`.
+ */
 export const INVENTORY_GROUPS = [
-  { id: "aggregates", label: "Агрегаты" },
-  { id: "parts", label: "Запчасти" },
-  { id: "consumables", label: "Расходники" },
+  { id: "aggregates", label: "Aggregates" },
+  { id: "parts", label: "Parts" },
+  { id: "consumables", label: "Consumables" },
 ] as const satisfies readonly InventoryTaxonomyGroup[];
 
 export const INVENTORY_TAXONOMY = [
   {
     id: "engines",
     groupId: "aggregates",
-    label: "Двигатели",
+    label: "Engines",
     kind: "motors",
-    aliases: ["двигатель", "двигатели", "мотор", "моторы"],
+    aliases: ["двигатель", "двигатели", "мотор", "моторы", "engine", "motor"],
   },
   {
     id: "gearboxes",
     groupId: "aggregates",
-    label: "КПП",
+    label: "Transmissions",
     kind: "catalog",
     aliases: ["кпп", "коробка", "коробки", "акпп", "мкпп", "akpp", "mkpp", "gearbox", "transmission"],
   },
   {
     id: "turbos",
     groupId: "aggregates",
-    label: "Турбины",
+    label: "Turbos",
     kind: "catalog",
-    aliases: ["турбина", "турбины", "турбо", "turbo"],
+    aliases: ["турбина", "турбины", "турбо", "turbo", "turbos"],
   },
   {
     id: "reducers",
     groupId: "aggregates",
-    label: "Редукторы",
+    label: "Differentials",
     kind: "catalog",
-    aliases: ["редуктор", "редукторы", "мост", "мосты", "axle"],
+    aliases: ["редуктор", "редукторы", "мост", "мосты", "axle", "axles", "differential", "differentials"],
   },
   {
     id: "transfer_cases",
     groupId: "aggregates",
-    label: "Раздатки",
+    label: "Transfer cases",
     kind: "catalog",
-    aliases: ["раздатка", "раздатки", "раздаточная", "transfer", "tcase"],
+    aliases: ["раздатка", "раздатки", "раздаточная", "transfer", "tcase", "transfer case"],
   },
   {
     id: "body",
     groupId: "parts",
-    label: "Кузовщина",
+    label: "Body",
     kind: "catalog",
-    aliases: ["кузов", "кузовщина", "бампер", "бамперы", "крыло", "крылья", "дверь", "двери"],
+    aliases: [
+      "кузов", "кузовщина", "бампер", "бамперы", "крыло", "крылья", "дверь", "двери",
+      "body", "bumper", "bumpers", "fender", "fenders", "door", "doors",
+    ],
   },
   {
     id: "optics",
     groupId: "parts",
-    label: "Оптика",
+    label: "Lighting",
     kind: "catalog",
-    aliases: ["оптика", "фара", "фары", "фонарь", "фонари", "headlight", "headlights"],
+    aliases: ["оптика", "фара", "фары", "фонарь", "фонари", "headlight", "headlights", "taillight", "taillights"],
   },
   {
     id: "interior",
     groupId: "parts",
-    label: "Салон",
+    label: "Interior",
     kind: "catalog",
-    aliases: ["салон", "интерьер", "сиденье", "сиденья", "торпедо"],
+    aliases: ["салон", "интерьер", "сиденье", "сиденья", "торпедо", "interior", "seat", "seats", "dashboard"],
   },
   {
     id: "suspension",
     groupId: "parts",
-    label: "Подвеска",
+    label: "Suspension",
     kind: "catalog",
-    aliases: ["подвеска", "рычаг", "рычаги", "стойка", "стойки", "амортизатор"],
+    aliases: [
+      "подвеска", "рычаг", "рычаги", "стойка", "стойки", "амортизатор",
+      "suspension", "control arm", "strut", "struts", "shock", "shocks",
+    ],
   },
   {
     id: "electrical",
     groupId: "parts",
-    label: "Электрика",
+    label: "Electrical",
     kind: "catalog",
-    aliases: ["электрика", "эбу", "ecu", "блок", "блоки", "генератор", "генераторы", "стартер", "стартеры"],
+    aliases: [
+      "электрика", "эбу", "ecu", "блок", "блоки", "генератор", "генераторы", "стартер", "стартеры",
+      "electrical", "alternator", "alternators", "starter", "starters",
+    ],
   },
   {
     id: "oils",
     groupId: "consumables",
-    label: "Масла",
+    label: "Oils",
     kind: "warehouse",
     aliases: ["масло", "масла", "oil", "oils"],
   },
   {
     id: "antifreeze",
     groupId: "consumables",
-    label: "Антифриз",
+    label: "Antifreeze",
     kind: "warehouse",
-    aliases: ["антифриз", "охлаждающая жидкость", "coolant"],
+    aliases: ["антифриз", "охлаждающая жидкость", "coolant", "antifreeze"],
   },
   {
     id: "filters",
     groupId: "consumables",
-    label: "Фильтры",
+    label: "Filters",
     kind: "warehouse",
     aliases: ["фильтр", "фильтры", "filter", "filters"],
   },
   {
     id: "spark_plugs",
     groupId: "consumables",
-    label: "Свечи",
+    label: "Spark plugs",
     kind: "warehouse",
     aliases: ["свеча", "свечи", "spark plug", "spark plugs"],
   },
   {
     id: "sealants",
     groupId: "consumables",
-    label: "Герметики",
+    label: "Sealants",
     kind: "warehouse",
     aliases: ["герметик", "герметики", "sealant", "sealants"],
   },

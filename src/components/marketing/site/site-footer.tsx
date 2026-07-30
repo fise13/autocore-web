@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 
 import { AppLogo } from "@/components/brand/app-logo";
 import { DesktopDownloadIcons } from "@/components/marketing/desktop-download-buttons";
-import { LanguageSwitcher } from "@/components/marketing/site/language-switcher";
 import { TrialButton } from "@/components/marketing/experience/ui/trial-button";
 import { Link } from "@/i18n/navigation";
 import type { MarketingPathname } from "@/i18n/routing";
@@ -116,7 +115,6 @@ export function SiteFooter() {
             <NextLink href={appLoginUrl()} className="hover:text-foreground">
               {t("footer.signIn")}
             </NextLink>
-            <LanguageSwitcher />
           </div>
         </div>
       </div>

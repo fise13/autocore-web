@@ -6,7 +6,7 @@ import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import { useLandingDemoSnapshot } from "@/components/marketing/modals/use-landing-demo-snapshot";
 import { ProductWindow } from "@/components/marketing/experience/ui/product-window";
 import { Badge } from "@/components/ui/badge";
-import { formatKzt, landingDemoInventory } from "@/lib/marketing/landing-demo-snapshot";
+import { formatUsd, landingDemoInventory } from "@/lib/marketing/landing-demo-snapshot";
 import { cn } from "@/lib/utils";
 
 type MotorsSurfaceProps = {
@@ -151,7 +151,7 @@ function InventoryTable({
               <td className="exp-mock-mono px-3 py-2.5">{item.reserved}</td>
               <td className="exp-mock-mono px-3 py-2.5 font-medium">{item.available}</td>
               <td className="px-3 py-2.5">{item.location}</td>
-              <td className="exp-mock-mono px-3 py-2.5">{formatKzt(item.sellPrice)}</td>
+              <td className="exp-mock-mono px-3 py-2.5">{formatUsd(item.sellPrice)}</td>
             </tr>
           ))}
         </tbody>

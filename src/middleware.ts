@@ -13,7 +13,6 @@ import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isAppLocale } from "@autocore/i18n/c
 import {
   cleanPathFromInternal,
   isMarketingContentPath,
-  resolveMarketingPathFromClean,
 } from "@/lib/seo/marketing-paths";
 import {
   getAppUrl,
@@ -72,23 +71,25 @@ function isLocalePrefixedPath(pathname: string): boolean {
   return localeFromPathname(pathname) !== null;
 }
 
-function rewriteLocalizedMarketing(request: NextRequest, pathname: string): NextResponse | null {
-  const locale = localeFromPathname(pathname);
-  if (!locale) return null;
+/** Old `/en/*` or `/ru/*` request → permanent redirect to the clean, unprefixed path. */
+function redirectLocalizedToClean(request: NextRequest, pathname: string): NextResponse | null {
+  if (!isLocalePrefixedPath(pathname)) return null;
+  const clean = stripLocalePrefix(pathname);
+  return NextResponse.redirect(new URL(clean + request.nextUrl.search, request.url), 301);
+}
 
-  const rest = stripLocalePrefix(pathname);
-  if (rest !== "/" && !KNOWN_CLEAN.has(rest) && !rest.startsWith("/legal/")) {
-    // Allow known marketing tree only
-    if (![...KNOWN_CLEAN].some((p) => rest === p || rest.startsWith(`${p}/`))) {
+/** Serve a public clean path (`/`, `/product`, `/pricing`, …) from the internal `/marketing/en/…` tree. */
+function rewriteCleanMarketing(request: NextRequest, pathname: string): NextResponse | null {
+  if (pathname !== "/" && !KNOWN_CLEAN.has(pathname) && !pathname.startsWith("/legal/")) {
+    if (![...KNOWN_CLEAN].some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
       return null;
     }
   }
-
-  const internal = toMarketingInternalPath(locale, rest);
+  const internal = toMarketingInternalPath(DEFAULT_LOCALE, pathname);
   return NextResponse.rewrite(new URL(internal + request.nextUrl.search, request.url));
 }
 
-/** Marketing host + unified localhost: locale URLs + legacy clean /marketing/* → locale. */
+/** Marketing host + unified localhost: clean public paths served from the internal tree. */
 function handleMarketingRoutes(
   request: NextRequest,
   pathname: string,
@@ -99,45 +100,29 @@ function handleMarketingRoutes(
     if (canonicalRedirect) return canonicalRedirect;
   }
 
-  // Prefer locale-prefixed public URLs → rewrite into /marketing/[locale]/…
-  if (isLocalePrefixedPath(pathname)) {
-    const rewritten = rewriteLocalizedMarketing(request, pathname);
+  // Old /en/* or /ru/* bookmark or backlink → 301 to the clean path.
+  const localizedRedirect = redirectLocalizedToClean(request, pathname);
+  if (localizedRedirect) return localizedRedirect;
+
+  // Clean public path (/, /product, /pricing, …) → serve directly, no redirect.
+  if (pathname === "/" || KNOWN_CLEAN.has(pathname) || pathname.startsWith("/legal/")) {
+    const rewritten = rewriteCleanMarketing(request, pathname);
     if (rewritten) return rewritten;
-  }
-
-  // Marketing host root → default locale
-  if (pathname === "/" && isMarketingHost) {
-    return NextResponse.redirect(
-      new URL(localizedPath(DEFAULT_LOCALE, "/") + request.nextUrl.search, request.url),
-      302,
-    );
-  }
-
-  // Legacy clean paths without locale (/product, /pricing, …) → /en/…
-  const internalFromClean = resolveMarketingPathFromClean(pathname);
-  if (internalFromClean || KNOWN_CLEAN.has(pathname)) {
-    const localized = legacyPathToLocalized(pathname, DEFAULT_LOCALE);
-    if (localized) {
-      return NextResponse.redirect(new URL(localized + request.nextUrl.search, request.url), 301);
-    }
   }
 
   const isLocalDev = isLocalDevHost(request.headers.get("host") ?? "");
 
-  // Legacy /marketing and /marketing/* → /en/…
+  // Legacy /marketing and /marketing/* (internal-tree URL hit directly) → 301 to clean.
   if (pathname === "/marketing" || pathname.startsWith("/marketing/")) {
-    // Already localized internal tree: /marketing/en/... — serve directly
+    // Internal tree shape (/marketing/en/...) — serve directly, only in local dev.
     const segments = pathname.split("/").filter(Boolean);
-    // ["marketing", "en", ...]
-    if (segments.length >= 2 && isAppLocale(segments[1])) {
+    if (isLocalDev && segments.length >= 2 && isAppLocale(segments[1])) {
       return NextResponse.next();
     }
 
-    if (!isLocalDev || pathname === "/marketing" || !pathname.match(/^\/marketing\/(en|ru)(\/|$)/)) {
-      const localized = legacyPathToLocalized(pathname, DEFAULT_LOCALE);
-      if (localized) {
-        return NextResponse.redirect(new URL(localized + request.nextUrl.search, request.url), 301);
-      }
+    const localized = legacyPathToLocalized(pathname, DEFAULT_LOCALE);
+    if (localized) {
+      return NextResponse.redirect(new URL(localized + request.nextUrl.search, request.url), 301);
     }
   }
 
@@ -160,10 +145,8 @@ export function middleware(request: NextRequest) {
 
   // Localhost: locale marketing URLs + clean legacy marketing paths
   if (kind === "local") {
-    if (isLocalePrefixedPath(pathname)) {
-      const rewritten = rewriteLocalizedMarketing(request, pathname);
-      if (rewritten) return rewritten;
-    }
+    const localizedRedirect = redirectLocalizedToClean(request, pathname);
+    if (localizedRedirect) return localizedRedirect;
 
     if (isMarketingContentPath(pathname) && !isAppRoute(pathname)) {
       return handleMarketingRoutes(request, pathname, false);
@@ -194,13 +177,10 @@ export function middleware(request: NextRequest) {
     }
 
     if (pathname.startsWith("/marketing") || isLocalePrefixedPath(pathname)) {
-      const locale = localeFromPathname(pathname);
-      if (locale) {
-        return redirectToMarketing(request, pathname);
-      }
-      const clean = cleanPathFromInternal(pathname);
+      // Any /en/* or /ru/* hitting the app host still lands on the clean marketing path.
+      const clean = isLocalePrefixedPath(pathname) ? stripLocalePrefix(pathname) : cleanPathFromInternal(pathname);
       const localized = legacyPathToLocalized(clean ?? pathname, DEFAULT_LOCALE);
-      return redirectToMarketing(request, localized ?? localizedPath(DEFAULT_LOCALE, "/"));
+      return redirectToMarketing(request, localized ?? clean ?? localizedPath(DEFAULT_LOCALE, "/"));
     }
 
     if (isMarketingPublicPath(pathname) && pathname !== "/") {

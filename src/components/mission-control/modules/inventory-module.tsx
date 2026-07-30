@@ -19,7 +19,7 @@ export const InventoryModule = memo(function InventoryModule({
   isLoading,
 }: InventoryModuleProps) {
   const copy = userCopy.missionControl.modules.inventory;
-  const localeTag = getActiveUserCopyLocale() === "ru" ? "ru-RU" : "en-US";
+  const localeTag = getActiveUserCopyLocale() === "ru" ? "en-US" : "en-US";
 
   return (
     <article className="mc-module-card">

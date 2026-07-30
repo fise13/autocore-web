@@ -39,8 +39,8 @@ export const OrderNotifications = {
       orderId,
       type: ORDER_EVENTS.ASSIGNED,
       priority: 'important',
-      title: 'Наряд назначен',
-      message: assigneeName ? `Назначен: ${assigneeName}` : 'Вам назначен новый наряд',
+      title: 'Work order assigned',
+      message: assigneeName ? `Assigned to: ${assigneeName}` : 'A new work order was assigned to you',
     }),
 
   completed: (orderId: string) =>
@@ -48,8 +48,8 @@ export const OrderNotifications = {
       orderId,
       type: ORDER_EVENTS.COMPLETED,
       priority: 'normal',
-      title: 'Наряд завершён',
-      message: 'Работа по наряду выполнена',
+      title: 'Work order completed',
+      message: 'The work order has been completed',
     }),
 
   statusChanged: (orderId: string, statusLabel: string) =>
@@ -57,7 +57,7 @@ export const OrderNotifications = {
       orderId,
       type: ORDER_EVENTS.STATUS_CHANGED,
       priority: 'normal',
-      title: 'Статус изменён',
+      title: 'Status changed',
       message: statusLabel,
     }),
 
@@ -66,8 +66,8 @@ export const OrderNotifications = {
       orderId,
       type: ORDER_EVENTS.EDITED,
       priority: 'silent',
-      title: 'Наряд изменён',
-      message: 'Данные наряда обновлены',
+      title: 'Work order edited',
+      message: 'Work order details were updated',
     }),
 
   customerChanged: (orderId: string, customerName: string) =>
@@ -75,7 +75,7 @@ export const OrderNotifications = {
       orderId,
       type: ORDER_EVENTS.CUSTOMER_CHANGED,
       priority: 'normal',
-      title: 'Клиент изменён',
+      title: 'Customer changed',
       message: customerName,
     }),
 
@@ -84,7 +84,7 @@ export const OrderNotifications = {
       orderId,
       type: ORDER_EVENTS.VEHICLE_CHANGED,
       priority: 'normal',
-      title: 'Автомобиль изменён',
+      title: 'Vehicle changed',
       message: vehicleLabel,
     }),
 
@@ -93,7 +93,7 @@ export const OrderNotifications = {
       orderId,
       type: ORDER_EVENTS.MECHANIC_CHANGED,
       priority: 'normal',
-      title: 'Механик изменён',
+      title: 'Mechanic changed',
       message: mechanicName,
     }),
 
@@ -102,7 +102,7 @@ export const OrderNotifications = {
       orderId,
       type: ORDER_EVENTS.PART_ADDED,
       priority: 'silent',
-      title: 'Добавлена запчасть',
+      title: 'Part added',
       message: partName,
     }),
 
@@ -111,7 +111,7 @@ export const OrderNotifications = {
       orderId,
       type: ORDER_EVENTS.COMMENT_ADDED,
       priority: 'normal',
-      title: 'Новый комментарий',
+      title: 'New comment',
       message: authorName,
     }),
 
@@ -120,8 +120,8 @@ export const OrderNotifications = {
       orderId,
       type: ORDER_EVENTS.CANCELLED,
       priority: 'important',
-      title: 'Наряд отменён',
-      message: 'Наряд был отменён',
+      title: 'Work order cancelled',
+      message: 'The work order was cancelled',
     }),
 
   paymentAttached: (orderId: string, amount: string) =>
@@ -129,7 +129,7 @@ export const OrderNotifications = {
       orderId,
       type: ORDER_EVENTS.PAYMENT_ATTACHED,
       priority: 'normal',
-      title: 'Платёж прикреплён',
+      title: 'Payment attached',
       message: amount,
     }),
 
@@ -138,8 +138,8 @@ export const OrderNotifications = {
       orderId,
       type: ORDER_EVENTS.PAYMENT_REMOVED,
       priority: 'normal',
-      title: 'Платёж удалён',
-      message: 'Платёж откреплён от наряда',
+      title: 'Payment removed',
+      message: 'Payment was detached from the work order',
     }),
 
   liveEditing: (orderId: string, editorName: string) =>

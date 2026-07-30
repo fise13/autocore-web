@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "AutoCore: программа для авторазборок и автосервисов";
+export const alt = "AutoCore: software for dismantlers and repair shops";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -51,7 +51,7 @@ export default function MarketingOpenGraphImage() {
               color: "rgba(250,250,250,0.65)",
             }}
           >
-            Программа для авторазборок и автосервисов
+            Software for dismantlers and repair shops
           </p>
           <h1
             style={{
@@ -62,10 +62,10 @@ export default function MarketingOpenGraphImage() {
               letterSpacing: "-0.04em",
             }}
           >
-            Склад, цех и бухгалтерия в одной системе
+            Warehouse, shop floor and accounting in one system
           </h1>
           <p style={{ margin: 0, fontSize: 26, lineHeight: 1.45, color: "rgba(250,250,250,0.78)" }}>
-            Учёт запчастей, двигателей, заказ-нарядов и гарантий без Excel
+            Track parts, engines, work orders and warranties without Excel
           </p>
         </div>
 

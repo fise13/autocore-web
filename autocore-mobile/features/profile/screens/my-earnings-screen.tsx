@@ -19,14 +19,14 @@ import { haptics, rhythm } from '@/theme';
 
 import { ProfileScreenShell } from '../components/profile-screen-shell';
 
-const WEEKDAY_SHORT_RU = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'] as const;
+const WEEKDAY_SHORT_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 
 function formatMoney(value: number): string {
-  return `${Math.round(value).toLocaleString('ru-RU')} ₸`;
+  return `$${Math.round(value).toLocaleString('en-US')}`;
 }
 
 function weekDayShortLabel(date: Date): string {
-  return WEEKDAY_SHORT_RU[date.getDay()] ?? '';
+  return WEEKDAY_SHORT_EN[date.getDay()] ?? '';
 }
 
 function isSameDay(a: Date, b: Date): boolean {
@@ -133,14 +133,14 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
     if (!allowed) {
       return (
         <Text variant="body" color="muted">
-          Раздел доступен с правом просмотра своих выплат.
+          This section requires permission to view your own payouts.
         </Text>
       );
     }
 
     return (
       <>
-        <SettingsSectionCard title="Смена" description="Получайте push о свободных нарядах и берите их в работу" inset={false}>
+        <SettingsSectionCard title="Shift" description="Get push notifications for open work orders and claim them" inset={false}>
           <View
             style={{
               flexDirection: 'row',
@@ -153,10 +153,10 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
           >
             <View style={{ flex: 1, gap: 4 }}>
               <Text variant="body" style={{ fontWeight: '600' }}>
-                {shiftOn ? 'На смене' : 'Смена выключена'}
+                {shiftOn ? 'On shift' : 'Shift off'}
               </Text>
               <Text variant="caption" color="muted">
-                Лимит активных нарядов: {DEFAULT_MAX_ACTIVE_WORK_ORDERS}
+                Active work order limit: {DEFAULT_MAX_ACTIVE_WORK_ORDERS}
               </Text>
             </View>
             <Switch
@@ -169,14 +169,14 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
                   .then(() => {
                     haptics.selection();
                     toast({
-                      title: next ? 'Смена включена' : 'Смена выключена',
+                      title: next ? 'Shift turned on' : 'Shift turned off',
                       variant: 'success',
                     });
                   })
                   .catch((error) => {
                     haptics.warning();
                     toast({
-                      title: 'Не удалось обновить смену',
+                      title: 'Could not update shift',
                       description: error instanceof Error ? error.message : undefined,
                       variant: 'destructive',
                     });
@@ -189,9 +189,9 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
 
         <View style={{ flexDirection: 'row', gap: rhythm.stack }}>
           {[
-            { label: 'Мои открытые', value: String(shiftStats.myOpen) },
-            { label: 'Свободные', value: String(shiftStats.freePool) },
-            { label: 'К выплате', value: formatMoney(shiftStats.pending) },
+            { label: 'My open', value: String(shiftStats.myOpen) },
+            { label: 'Open pool', value: String(shiftStats.freePool) },
+            { label: 'Pending payout', value: formatMoney(shiftStats.pending) },
           ].map((tile) => (
             <View
               key={tile.label}
@@ -213,14 +213,14 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
           ))}
         </View>
 
-        <SettingsSectionCard title="Продуктивность" description="Закрытые наряды за 7 дней" inset={false}>
+        <SettingsSectionCard title="Productivity" description="Completed work orders in the last 7 days" inset={false}>
           <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX }}>
             <McWeekBars bars={shiftStats.weekBars} delay={80} />
           </View>
         </SettingsSectionCard>
 
         {freePreview.length > 0 ? (
-          <SettingsSectionCard title="Свободные наряды" description="Можно взять в работу" inset={false}>
+          <SettingsSectionCard title="Open work orders" description="Available to claim" inset={false}>
             <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.tight }}>
               {freePreview.map((order) => (
                 <Pressable
@@ -233,16 +233,16 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
                   }}
                 >
                   <Text variant="body" style={{ fontWeight: '600' }}>
-                    №{order.number} · {order.vehicleLabel ?? order.clientName ?? 'Наряд'}
+                    #{order.number} · {order.vehicleLabel ?? order.clientName ?? 'Work order'}
                   </Text>
                   <Text variant="caption" color="muted">
-                    {order.licensePlate || 'Без номера'}
+                    {order.licensePlate || 'No plate'}
                   </Text>
                 </Pressable>
               ))}
               <Pressable onPress={() => router.push('/(tabs)/orders')}>
                 <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
-                  Все наряды →
+                  All work orders →
                 </Text>
               </Pressable>
             </View>
@@ -250,10 +250,10 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
         ) : null}
 
         <View style={{ gap: rhythm.tight }}>
-          <Text variant="sectionLabel">Начисления</Text>
+          <Text variant="sectionLabel">Earnings</Text>
           {payroll.length === 0 ? (
             <Text variant="body" color="muted">
-              Пока нет начислений
+              No earnings yet
             </Text>
           ) : (
             payroll.slice(0, 12).map((row) => {
@@ -272,7 +272,7 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
                     {formatMoney(row.amount)} · {row.status}
                   </Text>
                   <Text variant="caption" color="muted">
-                    {order ? `Наряд №${order.number}` : row.workOrderId}
+                    {order ? `Work order #${order.number}` : row.workOrderId}
                   </Text>
                 </View>
               );
@@ -300,11 +300,11 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
     uid,
   ]);
 
-  const title = isShiftHub ? 'Смена' : 'Мои начисления';
+  const title = isShiftHub ? 'Shift' : 'My earnings';
   const subtitle = isShiftHub
-    ? 'Ваши наряды, свободная очередь и выплаты'
+    ? 'Your work orders, the open queue, and payouts'
     : allowed
-      ? 'Начисления по закрытым нарядам'
+      ? 'Earnings from completed work orders'
       : undefined;
 
   if (variant === 'tab') {

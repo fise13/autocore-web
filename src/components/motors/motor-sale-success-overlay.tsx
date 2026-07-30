@@ -92,7 +92,7 @@ export function MotorSaleSuccessOverlay({ open, serialCode, amount, onClose }: M
               transition={{ delay: 0.26 }}
               className="mt-3 text-2xl font-semibold tabular-nums text-emerald-600"
             >
-              +{amount.toLocaleString("ru-RU")} ₸
+              +{amount.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })}
             </motion.p>
             <motion.p
               initial={{ opacity: 0 }}

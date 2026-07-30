@@ -15,5 +15,5 @@ export function specificRecordLabel(
   const secondary = specificValueForSlot(record.data, mapping, 1).trim();
   if (secondary) return secondary;
 
-  return `Строка ${record.rowIndex}`;
+  return `Row ${record.rowIndex}`;
 }

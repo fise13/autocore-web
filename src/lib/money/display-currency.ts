@@ -13,41 +13,41 @@ export type AppDisplayCurrencyOption = {
 
 export const APP_DISPLAY_CURRENCY_OPTIONS: AppDisplayCurrencyOption[] = [
   {
-    id: "KZT",
-    label: "Тенге",
-    description: "Казахстан · ₸",
-    locale: "ru-KZ",
-    currency: "KZT",
-    example: "100 000 ₸",
-  },
-  {
-    id: "RUB",
-    label: "Рубли",
-    description: "Россия · ₽",
-    locale: "ru-RU",
-    currency: "RUB",
-    example: "100 000 ₽",
-  },
-  {
     id: "USD",
-    label: "Доллары",
-    description: "Международные расчёты · $",
+    label: "Dollars",
+    description: "United States · $",
     locale: "en-US",
     currency: "USD",
     example: "$1,000",
+  },
+  {
+    id: "KZT",
+    label: "Tenge",
+    description: "Kazakhstan · ₸",
+    locale: "ru-KZ",
+    currency: "KZT",
+    example: "100,000 ₸",
+  },
+  {
+    id: "RUB",
+    label: "Rubles",
+    description: "Russia · ₽",
+    locale: "ru-RU",
+    currency: "RUB",
+    example: "100,000 ₽",
   },
 ];
 
 export function normalizeAppDisplayCurrency(value: unknown): AppDisplayCurrency {
   if (value === "RUB" || value === "USD" || value === "KZT") return value;
-  return "KZT";
+  return "USD";
 }
 
 export function appDisplayCurrencyOption(currency: AppDisplayCurrency): AppDisplayCurrencyOption {
   return APP_DISPLAY_CURRENCY_OPTIONS.find((item) => item.id === currency) ?? APP_DISPLAY_CURRENCY_OPTIONS[0];
 }
 
-export function formatAppMoney(value: number, currency: AppDisplayCurrency = "KZT"): string {
+export function formatAppMoney(value: number, currency: AppDisplayCurrency = "USD"): string {
   const option = appDisplayCurrencyOption(currency);
   const fractionDigits = currency === "USD" && Math.abs(value) < 1000 ? 2 : 0;
   return new Intl.NumberFormat(option.locale, {
@@ -66,7 +66,17 @@ export function formatAppMoneyExample(
   return formatAppMoney(convert(amountInBase), currency);
 }
 
-/** Marketing site uses KZT (Kazakhstan). */
+/** Marketing site uses USD (US market). */
+export function formatMarketingUsd(value: number): string {
+  const rounded = Math.round(value * 10) / 10;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: Number.isInteger(rounded) ? 0 : 1,
+  }).format(rounded);
+}
+
+/** @deprecated Marketing site uses USD — prefer {@link formatMarketingUsd}. */
 export function formatMarketingKzt(value: number): string {
   const rounded = Math.round(value);
   return new Intl.NumberFormat("ru-KZ", {
@@ -74,15 +84,5 @@ export function formatMarketingKzt(value: number): string {
     currency: "KZT",
     maximumFractionDigits: 0,
     minimumFractionDigits: 0,
-  }).format(rounded);
-}
-
-/** @deprecated Marketing site uses KZT — prefer {@link formatMarketingKzt}. */
-export function formatMarketingUsd(value: number): string {
-  const rounded = Math.round(value * 10) / 10;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: Number.isInteger(rounded) ? 0 : 1,
   }).format(rounded);
 }

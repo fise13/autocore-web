@@ -75,16 +75,16 @@ export async function buildImportPreview(
     const quantityRaw = readMapped(raw, mapping, "quantity");
     const purchasePriceRaw = readMapped(raw, mapping, "purchasePrice");
     const sellPriceRaw = readMapped(raw, mapping, "sellPrice");
-    const unit = readMapped(raw, mapping, "unit") || "шт";
+    const unit = readMapped(raw, mapping, "unit") || "pcs";
     const lowStockRaw = readMapped(raw, mapping, "lowStockThreshold");
 
     const rowErrors: string[] = [];
-    if (!sku) rowErrors.push("Артикул обязателен");
-    if (!name && !sku) rowErrors.push("Название обязательно");
+    if (!sku) rowErrors.push("SKU is required");
+    if (!name && !sku) rowErrors.push("Name is required");
 
     const quantity = quantityRaw ? Number(quantityRaw.replace(",", ".")) : 0;
     if (quantityRaw && !Number.isFinite(quantity)) {
-      rowErrors.push("Некорректное количество");
+      rowErrors.push("Invalid quantity");
     }
 
     let duplicateOfItemId: string | undefined;
@@ -145,7 +145,7 @@ export function buildImportDiffRows(rows: InventoryImportRow[]): InventoryImport
       return {
         ...row,
         action: "skip",
-        summary: row.errors[0] ?? "Строка выключена из импорта",
+        summary: row.errors[0] ?? "Row excluded from import",
       };
     }
 
@@ -153,14 +153,14 @@ export function buildImportDiffRows(rows: InventoryImportRow[]): InventoryImport
       return {
         ...row,
         action: "update",
-        summary: "Обновит существующую позицию после подтверждения",
+        summary: "Will update the existing item after confirmation",
       };
     }
 
     return {
       ...row,
       action: "create",
-      summary: "Создаст новую позицию после подтверждения",
+      summary: "Will create a new item after confirmation",
     };
   });
 }

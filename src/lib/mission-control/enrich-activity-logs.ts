@@ -24,9 +24,13 @@ export function enrichActivityLogs(
   entries: ActivityLogEntry[],
   employees: CompanyEmployee[],
 ): ActivityLogEntry[] {
-  return entries.map((entry) => ({
-    ...entry,
-    actorName: resolveActorDisplayName(entry.actor, employees, entry.actorName),
-    actorRole: entry.actorRole ?? employees.find((item) => item.uid === entry.actor)?.role,
-  }));
+  return entries.map((entry) => {
+    const employee = employees.find((item) => item.uid === entry.actor);
+    return {
+      ...entry,
+      actorName: resolveActorDisplayName(entry.actor, employees, entry.actorName),
+      actorRole: entry.actorRole ?? employee?.role,
+      actorPhotoURL: entry.actorPhotoURL ?? employee?.photoURL,
+    };
+  });
 }

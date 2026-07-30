@@ -35,7 +35,7 @@ export const AccountingModule = memo(function AccountingModule({
   isLoading,
 }: AccountingModuleProps) {
   const copy = userCopy.missionControl.modules.accounting;
-  const localeTag = getActiveUserCopyLocale() === "ru" ? "ru-RU" : "en-US";
+  const localeTag = getActiveUserCopyLocale() === "ru" ? "en-US" : "en-US";
   const recent = useMemo(
     () => [...operations].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 5),
     [operations],

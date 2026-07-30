@@ -73,7 +73,7 @@ function mapItem(id: string, data: Record<string, unknown>): MobileScanItem {
     id,
     sku: String(data.sku ?? ""),
     name: String(data.name ?? ""),
-    unit: typeof data.unit === "string" ? data.unit : "шт",
+    unit: typeof data.unit === "string" ? data.unit : "pcs",
     barcodes: Array.isArray(data.barcodes) ? data.barcodes.map(String) : [],
     brandName: typeof data.brandName === "string" ? data.brandName : undefined,
     warehouseLocation:

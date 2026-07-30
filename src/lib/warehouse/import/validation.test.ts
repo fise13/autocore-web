@@ -21,7 +21,7 @@ function baseRow(overrides: Partial<EnhancedImportRow> = {}): EnhancedImportRow 
 describe("import validation", () => {
   it("warns when sell price is below purchase price", () => {
     const row = validateImportRow(baseRow());
-    assert.ok(row.aiMeta?.warnings.some((warning: string) => warning.includes("продажи")));
+    assert.ok(row.aiMeta?.warnings.some((warning: string) => warning.includes("below purchase price")));
   });
 
   it("rejects negative quantity", () => {
@@ -30,7 +30,7 @@ describe("import validation", () => {
         normalized: { sku: "A1", name: "Oil", quantity: -1 },
       }),
     );
-    assert.ok(row.errors.some((error: string) => error.includes("отрицательным")));
+    assert.ok(row.errors.some((error: string) => error.includes("negative")));
     assert.equal(row.selected, false);
   });
 });

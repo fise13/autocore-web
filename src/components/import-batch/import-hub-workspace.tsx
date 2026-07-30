@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import { FileUp, Plus, Smartphone, Sparkles } from "lucide-react";
 
 import type { ImportBatch, ImportBatchStatus } from "@/domain/import-batch";
@@ -226,7 +226,7 @@ function BatchListRow({ batch }: { batch: ImportBatch }) {
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {userCopy.importBatch.toastFilesRows(batch.counts.files, batch.counts.rows)} ·{" "}
-          {formatDistanceToNow(batch.createdAt, { addSuffix: true, locale: ru })}
+          {formatDistanceToNow(batch.createdAt, { addSuffix: true, locale: enUS })}
         </p>
       </div>
       <span className="shrink-0 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium">

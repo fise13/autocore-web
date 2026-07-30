@@ -136,7 +136,7 @@ async function commitImportBatchWarehouse(params: {
         sku: validated.sku.trim(),
         name: validated.name.trim(),
         barcodes: [],
-        unit: "шт",
+        unit: "pcs",
         currency: "KZT",
         status: "active",
         inventoryGroup: "consumables",

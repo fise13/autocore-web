@@ -2,14 +2,22 @@
 
 import { memo, useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { ru } from "date-fns/locale";
-import { SearchIcon } from "lucide-react";
+import { enUS } from "date-fns/locale";
+import {
+  ClipboardListIcon,
+  FolderIcon,
+  PackageIcon,
+  SearchIcon,
+  SettingsIcon,
+  UsersRoundIcon,
+  type LucideIcon,
+} from "lucide-react";
 
 import { ActivityLogEntry } from "@/domain/rbac";
 import { ActivitySeverity } from "@/domain/activity-log";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { GradientAvatarFallback } from "@/components/account/gradient-avatar-fallback";
-import { Avatar, AvatarBadge } from "@/components/ui/avatar";
+import { Avatar, AvatarBadge, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -37,6 +45,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  actorInitials,
   filterActivityEntries,
   formatActivityTargetName,
   formatEventCountLabel,
@@ -64,6 +73,15 @@ const severityBadgeClass: Record<ActivitySeverity, string> = {
   critical: "bg-destructive",
 };
 
+const moduleIcons: Record<string, LucideIcon> = {
+  inventory: PackageIcon,
+  accounting: FolderIcon,
+  employees: UsersRoundIcon,
+  work_orders: ClipboardListIcon,
+  settings: SettingsIcon,
+  system: SettingsIcon,
+};
+
 function ActivityJournalFiltersBar({
   filters,
   onChange,
@@ -83,13 +101,14 @@ function ActivityJournalFiltersBar({
       <div className="flex flex-wrap items-center gap-2">
         <InputGroup className="min-w-[min(100%,14rem)] flex-1">
           <InputGroupAddon align="inline-start">
-            <SearchIcon aria-hidden />
+            <SearchIcon className="size-4" aria-hidden />
           </InputGroupAddon>
           <InputGroupInput
             value={filters.search}
             onChange={(event) => onChange({ ...filters, search: event.target.value })}
             placeholder={userCopy.activity.searchPlaceholder}
             aria-label={userCopy.activity.searchAria}
+            className="h-8 border-border/50 bg-muted/20 pl-8 shadow-none"
           />
         </InputGroup>
 
@@ -99,7 +118,7 @@ function ActivityJournalFiltersBar({
             onChange({ ...filters, module: value as ActivityJournalFilters["module"] })
           }
         >
-          <SelectTrigger size="sm" className="w-[11rem]" aria-label={userCopy.activity.moduleFilterAria}>
+          <SelectTrigger className="w-44 shrink-0" aria-label={userCopy.activity.moduleFilterAria}>
             <SelectValue>{moduleFilterLabel(filters.module)}</SelectValue>
           </SelectTrigger>
           <SelectContent align="end">
@@ -119,7 +138,7 @@ function ActivityJournalFiltersBar({
             onChange({ ...filters, severity: value as ActivityJournalFilters["severity"] })
           }
         >
-          <SelectTrigger size="sm" className="w-[11.5rem]" aria-label={userCopy.activity.levelFilterAria}>
+          <SelectTrigger className="w-44 shrink-0" aria-label={userCopy.activity.levelFilterAria}>
             <SelectValue>{severityFilterLabel(filters.severity)}</SelectValue>
           </SelectTrigger>
           <SelectContent align="end">
@@ -167,19 +186,23 @@ const ActivityJournalRow = memo(function ActivityJournalRow({
   const severity = entry.severity ?? resolved.severity;
   const targetName = formatActivityTargetName(entry, module);
   const when = entry.timestamp
-    ? formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: ru })
+    ? formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: enUS })
     : userCopy.activity.now;
+  const ModuleIcon = moduleIcons[module] ?? SettingsIcon;
 
   return (
     <article
       className={cn(
-        "grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1 border-b border-border/50 px-4 py-3 transition-colors last:border-b-0 hover:bg-muted/30 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:gap-x-4",
-        highlight && "bg-primary/[0.03]",
+        "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-1.5 px-4 py-3.5 transition-colors hover:bg-muted/30 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:items-center sm:gap-x-4",
+        highlight && "bg-primary/[0.04]",
       )}
     >
-      <Avatar size="sm" className="row-span-2 sm:row-span-1">
-        <GradientAvatarFallback seed={entry.actor || actorName} />
-        <AvatarBadge className={severityBadgeClass[severity] ?? severityBadgeClass.info} />
+      <Avatar size="default" className="row-span-2 sm:row-span-1">
+        {entry.actorPhotoURL ? <AvatarImage alt={actorName} src={entry.actorPhotoURL} /> : null}
+        <GradientAvatarFallback seed={entry.actor || actorName} className="text-[11px] font-semibold text-white/90">
+          {actorInitials(actorName)}
+        </GradientAvatarFallback>
+        {severity !== "info" ? <AvatarBadge className={severityBadgeClass[severity]} /> : null}
       </Avatar>
 
       <div className="min-w-0">
@@ -192,14 +215,18 @@ const ActivityJournalRow = memo(function ActivityJournalRow({
         ) : null}
       </div>
 
-      <Badge variant="outline" className="col-start-2 row-start-2 w-fit sm:col-start-3 sm:row-start-1">
+      <Badge
+        variant="outline"
+        className="col-start-2 row-start-2 w-fit gap-1 text-muted-foreground sm:col-start-3 sm:row-start-1"
+      >
+        <ModuleIcon className="size-3" aria-hidden />
         {moduleLabel(module)}
       </Badge>
 
       <time
         className="col-start-2 row-start-3 shrink-0 text-xs tabular-nums text-muted-foreground sm:col-start-4 sm:row-start-1 sm:text-right"
         dateTime={entry.timestamp?.toISOString()}
-        title={entry.timestamp?.toLocaleString("ru-RU")}
+        title={entry.timestamp?.toLocaleString("en-US")}
       >
         {when}
       </time>
@@ -318,7 +345,7 @@ export function ActivityLogJournal({
                   </span>
                 </div>
 
-                <div>
+                <div className="divide-y divide-border/50">
                   {group.entries.map((entry) => (
                     <ActivityJournalRow
                       key={entry.id}

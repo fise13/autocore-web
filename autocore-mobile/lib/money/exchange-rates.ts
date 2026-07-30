@@ -58,8 +58,8 @@ export function convertFromBaseCurrency(
 export function formatExchangeRateHint(currency: AppDisplayCurrency, rates: ExchangeRates): string | null {
   if (currency === 'KZT') return null;
   if (currency === 'USD') {
-    return `1 USD ≈ ${Math.round(rates.kztPerUsd).toLocaleString('ru-RU')} ₸`;
+    return `1 USD ≈ ${Math.round(rates.kztPerUsd).toLocaleString('en-US')} ₸`;
   }
   const kztPerRub = rates.kztPerUsd / rates.rubPerUsd;
-  return `1 ₽ ≈ ${kztPerRub.toFixed(2).replace('.', ',')} ₸`;
+  return `1 ₽ ≈ ${kztPerRub.toFixed(2)} ₸`;
 }

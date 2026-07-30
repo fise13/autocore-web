@@ -1,5 +1,4 @@
 import { format, isToday, isYesterday, startOfDay, startOfMonth, subDays, subMonths } from 'date-fns';
-import { ru } from 'date-fns/locale';
 
 import {
   CarIcon,
@@ -30,25 +29,25 @@ import type { FinancialOperation } from '@/types/financial-operation';
 import type { PayrollTransaction } from '@/types/payroll-transaction';
 
 const CATEGORY_LABELS: Record<string, string> = {
-  motor_sale: 'Продажа моторов',
-  work_order_income: 'Наряды',
-  work_order_parts_cost: 'Запчасти',
-  payroll: 'Зарплата',
-  logistics: 'Логистика',
-  warehouse: 'Склад',
-  transport: 'Транспорт',
-  fuel: 'Топливо',
-  advertising: 'Реклама',
-  office: 'Офис',
-  taxes: 'Налоги',
+  motor_sale: 'Motor sales',
+  work_order_income: 'Work orders',
+  work_order_parts_cost: 'Parts',
+  payroll: 'Payroll',
+  logistics: 'Logistics',
+  warehouse: 'Warehouse',
+  transport: 'Transport',
+  fuel: 'Fuel',
+  advertising: 'Advertising',
+  office: 'Office',
+  taxes: 'Taxes',
 };
 
 const OPERATION_TITLES: Record<FinancialOperation['type'], string> = {
-  sale: 'Продажа',
-  income: 'Поступление',
-  expense: 'Расход',
-  refund: 'Возврат',
-  transfer: 'Перевод',
+  sale: 'Sale',
+  income: 'Income',
+  expense: 'Expense',
+  refund: 'Refund',
+  transfer: 'Transfer',
 };
 
 function isIncomeOperation(operation: FinancialOperation): boolean {
@@ -155,7 +154,7 @@ export function buildSummaryCards(
   return [
     {
       id: 'revenue',
-      label: 'Выручка',
+      label: 'Revenue',
       value: revenue,
       changePct: growthPercent(prevRevenue, revenue),
       tone: toneForChange(growthPercent(prevRevenue, revenue)),
@@ -163,7 +162,7 @@ export function buildSummaryCards(
     },
     {
       id: 'expenses',
-      label: 'Расходы',
+      label: 'Expenses',
       value: expenses,
       changePct: growthPercent(prevExpenses, expenses),
       tone: toneForChange(growthPercent(prevExpenses, expenses), true),
@@ -171,7 +170,7 @@ export function buildSummaryCards(
     },
     {
       id: 'profit',
-      label: 'Прибыль',
+      label: 'Profit',
       value: profit,
       changePct: growthPercent(prevProfit, profit),
       tone: toneForChange(growthPercent(prevProfit, profit)),
@@ -184,7 +183,7 @@ export function buildSummaryCards(
     },
     {
       id: 'pending',
-      label: 'Ожидают оплаты',
+      label: 'Awaiting payment',
       value: pendingPayroll,
       changePct: pendingPayroll > 0 ? -pendingPayroll : 0,
       tone: pendingPayroll > 0 ? 'neutral' : 'up',
@@ -199,7 +198,7 @@ function operationCustomer(operation: FinancialOperation): string {
     operation.comment?.trim() ||
     operation.source?.trim() ||
     operation.details?.trim();
-  if (!raw) return 'Клиент';
+  if (!raw) return 'Customer';
   const firstSegment = raw.split('·')[0]?.trim();
   return firstSegment || raw;
 }
@@ -219,8 +218,8 @@ function operationIcon(operation: FinancialOperation) {
 
 function formatOperationTime(date: Date): string {
   if (isToday(date)) return format(date, 'HH:mm');
-  if (isYesterday(date)) return 'Вчера';
-  return format(date, 'd MMM', { locale: ru });
+  if (isYesterday(date)) return 'Yesterday';
+  return format(date, 'd MMM');
 }
 
 function operationStatus(operation: FinancialOperation): TransactionStatus {
@@ -250,7 +249,7 @@ function buildPeriodSeries(
 
   if (period === '7d') {
     const labels = Array.from({ length: 7 }, (_, index) =>
-      format(subDays(today, 6 - index), 'EEE', { locale: ru }),
+      format(subDays(today, 6 - index), 'EEE'),
     );
     const revenue = buildDailySeries(operations, 7, isIncomeOperation);
     const expenses = buildDailySeries(operations, 7, isExpenseOperation);
@@ -283,7 +282,7 @@ function buildPeriodSeries(
   }
 
   if (period === '90d') {
-    const labels = ['Апр', '', 'Май', '', 'Июн', '', 'Июл'];
+    const labels = ['Apr', '', 'May', '', 'Jun', '', 'Jul'];
     const revenue = Array.from({ length: 7 }, (_, index) => {
       const month = subMonths(today, 6 - index);
       return sumIncomeInMonth(operations, month);
@@ -300,7 +299,7 @@ function buildPeriodSeries(
     };
   }
 
-  const labels = ['Янв', 'Мар', 'Май', 'Июл', 'Сен', 'Ноя'];
+  const labels = ['Jan', 'Mar', 'May', 'Jul', 'Sep', 'Nov'];
   const revenue = Array.from({ length: 6 }, (_, index) => {
     const month = subMonths(today, 11 - index * 2);
     return sumIncomeInMonth(operations, month);
@@ -350,9 +349,9 @@ export function buildAttentionItems(
       id: 'payroll',
       title:
         pendingPayroll.length === 1
-          ? '1 начисление зарплаты'
-          : `${pendingPayroll.length} начислений зарплаты`,
-      subtitle: `${pendingPayrollTotal.toLocaleString('ru-RU')} ₸ ожидают выплаты`,
+          ? '1 payroll entry'
+          : `${pendingPayroll.length} payroll entries`,
+      subtitle: `${pendingPayrollTotal.toLocaleString('ru-RU')} ₸ awaiting payout`,
       tone: 'warning',
       action: 'payroll',
     });
@@ -361,8 +360,8 @@ export function buildAttentionItems(
   if (refunds.length > 0) {
     items.push({
       id: 'refunds',
-      title: refunds.length === 1 ? '1 возврат' : `${refunds.length} возврата`,
-      subtitle: 'Проверьте гарантийные кейсы',
+      title: refunds.length === 1 ? '1 refund' : `${refunds.length} refunds`,
+      subtitle: 'Review warranty cases',
       tone: 'danger',
       action: 'operations',
     });
@@ -371,8 +370,8 @@ export function buildAttentionItems(
   if (totalBalance < 0) {
     items.push({
       id: 'negative-balance',
-      title: 'Отрицательный баланс',
-      subtitle: `${totalBalance.toLocaleString('ru-RU')} ₸ на счетах`,
+      title: 'Negative balance',
+      subtitle: `${totalBalance.toLocaleString('ru-RU')} ₸ across accounts`,
       tone: 'danger',
       action: 'cashbox',
     });
@@ -381,7 +380,7 @@ export function buildAttentionItems(
   if (todayExpenses > 0) {
     items.push({
       id: 'today-expenses',
-      title: 'Расходы сегодня',
+      title: 'Expenses today',
       subtitle: `${todayExpenses.toLocaleString('ru-RU')} ₸`,
       tone: 'neutral',
       action: 'expenses',
@@ -403,7 +402,7 @@ export function buildInvoices(
       customer: operationCustomer(operation),
       amount: operation.amount,
       status: 'paid' as InvoiceStatus,
-      dueDate: format(operation.createdAt, 'd MMM', { locale: ru }),
+      dueDate: format(operation.createdAt, 'd MMM'),
       progress: 100,
     }));
 
@@ -412,10 +411,10 @@ export function buildInvoices(
     .slice(0, 2)
     .map((item) => ({
       id: `payroll-${item.id}`,
-      customer: `Наряд #${item.workOrderId.slice(-4)}`,
+      customer: `Work order #${item.workOrderId.slice(-4)}`,
       amount: item.amount,
       status: 'waiting' as InvoiceStatus,
-      dueDate: 'Скоро',
+      dueDate: 'Soon',
       progress: 0,
     }));
 

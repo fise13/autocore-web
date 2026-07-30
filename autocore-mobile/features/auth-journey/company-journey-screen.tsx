@@ -42,7 +42,7 @@ export function CompanyJourneyScreen() {
 
     void (async () => {
       setJoiningInvite(true);
-      setSubmitMessage('Присоединяем к команде…');
+      setSubmitMessage('Joining the team…');
       setError(null);
       try {
         await acceptInvite(token, true);
@@ -81,7 +81,7 @@ export function CompanyJourneyScreen() {
       setCompanyName('');
       await refreshProfile();
       await NotificationService.syncInbox();
-    }, 'Создаём компанию…');
+    }, 'Creating company…');
   };
 
   const handleJoin = async () => {
@@ -93,7 +93,7 @@ export function CompanyJourneyScreen() {
       setInviteCode('');
       await refreshProfile();
       await NotificationService.syncInbox();
-    }, 'Присоединяем…');
+    }, 'Joining…');
   };
 
   const handleSwitch = async (targetCompanyId: string) => {
@@ -102,15 +102,15 @@ export function CompanyJourneyScreen() {
       await switchActiveCompany(firebaseUser.uid, targetCompanyId);
       await refreshProfile();
       await NotificationService.syncInbox();
-    }, 'Переключаем компанию…');
+    }, 'Switching company…');
   };
 
   if (joiningInvite || (loading && submitMessage)) {
     return (
       <AuthShell
         stepLabel={AUTH_JOURNEY_STEP_LABELS.company}
-        title="Команда и доступ"
-        description={submitMessage ?? 'Присоединяем к команде…'}
+        title="Team & access"
+        description={submitMessage ?? 'Joining the team…'}
       >
         <Skeleton width="100%" height={120} rounded="lg" />
       </AuthShell>
@@ -120,13 +120,13 @@ export function CompanyJourneyScreen() {
   return (
     <AuthShell
       stepLabel={AUTH_JOURNEY_STEP_LABELS.company}
-      title="Добро пожаловать в AutoCore"
-      description="Создайте рабочее пространство или присоединитесь к существующей команде."
+      title="Welcome to AutoCore"
+      description="Create a workspace or join an existing team."
     >
       {memberships.length > 0 ? (
         <SettingsSectionCard
-          title="Ваши компании"
-          description="Активная компания не выбрана"
+          title="Your companies"
+          description="No active company selected"
           inset={false}
         >
           {memberships.map((membership, index) => (
@@ -142,40 +142,40 @@ export function CompanyJourneyScreen() {
         </SettingsSectionCard>
       ) : null}
 
-      <SettingsSectionCard title="Создать компанию" icon={StoreIcon} inset={false}>
+      <SettingsSectionCard title="Create a company" icon={StoreIcon} inset={false}>
         <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.inline }}>
           <Text variant="caption" color="muted">
-            Отдельное рабочее пространство для вашей команды.
+            A separate workspace for your team.
           </Text>
           <SettingsInset embedded>
             <Input
-              placeholder="Название компании"
+              placeholder="Company name"
               value={companyName}
               onChangeText={setCompanyName}
               autoCapitalize="words"
             />
           </SettingsInset>
           <Button onPress={() => void handleCreate()} loading={loading} disabled={!companyName.trim()}>
-            Создать компанию
+            Create company
           </Button>
         </View>
       </SettingsSectionCard>
 
       <Pressable onPress={() => setShowInvite((current) => !current)} accessibilityRole="button">
         <Text variant="caption" color="muted" style={{ textAlign: 'center', textDecorationLine: 'underline' }}>
-          {showInvite ? 'Скрыть код приглашения' : 'Есть код приглашения?'}
+          {showInvite ? 'Hide invite code' : 'Have an invite code?'}
         </Text>
       </Pressable>
 
       {showInvite ? (
-        <SettingsSectionCard title="Код приглашения" icon={UsersIcon} inset={false}>
+        <SettingsSectionCard title="Invite code" icon={UsersIcon} inset={false}>
           <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.inline }}>
             <Text variant="caption" color="muted">
-              Введите код, который отправил администратор.
+              Enter the code your admin sent you.
             </Text>
             <SettingsInset embedded>
               <Input
-                placeholder="Например: DUAVV5"
+                placeholder="e.g. DUAVV5"
                 value={inviteCode}
                 onChangeText={setInviteCode}
                 autoCapitalize="characters"
@@ -183,7 +183,7 @@ export function CompanyJourneyScreen() {
               />
             </SettingsInset>
             <Button onPress={() => void handleJoin()} loading={loading} disabled={!inviteCode.trim()} variant="outline">
-              Присоединиться
+              Join
             </Button>
           </View>
         </SettingsSectionCard>

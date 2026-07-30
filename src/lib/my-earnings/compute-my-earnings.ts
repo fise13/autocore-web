@@ -1,6 +1,6 @@
 import { subDays, startOfDay, startOfMonth } from "date-fns";
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 
 import { PayrollTransaction, PayrollTransactionStatus } from "@/domain/payroll-transaction";
 import { WorkOrder } from "@/domain/work-order";
@@ -177,8 +177,8 @@ export function computeMyEarningsSummary(input: {
     const day = subDays(today, 29 - index);
     const key = day.toDateString();
     return {
-      day: format(day, "EEE", { locale: ru }),
-      label: format(day, "d MMM", { locale: ru }),
+      day: format(day, "EEE", { locale: enUS }),
+      label: format(day, "d MMM", { locale: enUS }),
       amount: earningsByDay.get(key) ?? 0,
     };
   });
@@ -287,8 +287,8 @@ export function buildClosedOrdersDailySeries(
     const day = subDays(today, days - 1 - index);
     const key = day.toDateString();
     return {
-      day: format(day, "EEE", { locale: ru }),
-      label: format(day, "d MMM", { locale: ru }),
+      day: format(day, "EEE", { locale: enUS }),
+      label: format(day, "d MMM", { locale: enUS }),
       amount: completedByDay.get(key) ?? 0,
     };
   });

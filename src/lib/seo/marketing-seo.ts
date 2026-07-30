@@ -58,10 +58,9 @@ const KNOWS_ABOUT = [
   "used engine inventory software",
   "warehouse inventory software",
   "VIN barcode SKU tracking",
-  "программа учёта автозапчастей",
-  "программа для авторазборки",
-  "складской учёт автозапчастей",
-  "учёт двигателей разборка",
+  // Russian keywords removed with the English-only switch. They were emitted on
+  // every page regardless of locale; the `ru` structured-data branch below is
+  // untouched and still carries Russian for whenever `ru` is re-enabled.
 ] as const;
 
 const marketingUrl = getMarketingUrl().replace(/\/$/, "");

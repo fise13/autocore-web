@@ -150,7 +150,7 @@ export function buildInventoryInputFromMigrationRow(
     warehouseLocation: location,
     inventoryGroup,
     subcategoryId: recordType === "consumable" ? subcategoryId : undefined,
-    unit: "шт",
+    unit: "pcs",
     purchasePrice: parsePrice(enriched.price),
     sellPrice: parsePrice(enriched.price),
     currency: enriched.currency?.trim() || "KZT",

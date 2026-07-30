@@ -91,13 +91,13 @@ export default function WarrantyVerifyPage() {
           ) : null}
           <div>
             <dt className="text-muted-foreground">Установлен</dt>
-            <dd className="font-medium">{new Intl.DateTimeFormat("ru-KZ").format(new Date(payload.installedAt))}</dd>
+            <dd className="font-medium">{new Intl.DateTimeFormat("en-US").format(new Date(payload.installedAt))}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Действует до</dt>
             <dd className="font-medium">
-              {new Intl.DateTimeFormat("ru-KZ").format(new Date(payload.expiresAt))} · до{" "}
-              {payload.expiresAtMileage.toLocaleString("ru-KZ")} км
+              {new Intl.DateTimeFormat("en-US").format(new Date(payload.expiresAt))} · до{" "}
+              {payload.expiresAtMileage.toLocaleString("en-US")} км
             </dd>
           </div>
         </dl>

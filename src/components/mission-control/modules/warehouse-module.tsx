@@ -24,7 +24,7 @@ export const WarehouseModule = memo(function WarehouseModule({
   isLoading,
 }: WarehouseModuleProps) {
   const copy = userCopy.missionControl.modules.warehouse;
-  const localeTag = getActiveUserCopyLocale() === "ru" ? "ru-RU" : "en-US";
+  const localeTag = getActiveUserCopyLocale() === "ru" ? "en-US" : "en-US";
 
   return (
     <article className="mc-module-card">

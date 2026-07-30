@@ -101,6 +101,17 @@ export function statusTone(status: WorkOrderStatus): string {
   return "bg-muted text-muted-foreground ring-border/60";
 }
 
+export function statusBadgeVariant(
+  status: WorkOrderStatus,
+): "success" | "destructive" | "info" | "warning" | "outline" {
+  if (status === "completed" || status === "delivered") return "success";
+  if (status === "cancelled") return "destructive";
+  if (status === "in_progress") return "info";
+  if (status === "waiting_parts") return "warning";
+  if (status === "confirmed") return "info";
+  return "outline";
+}
+
 export function eventTypeLabel(type: string): string {
   const events = userCopy.workOrders.events as Record<string, string>;
   return events[type] ?? type;

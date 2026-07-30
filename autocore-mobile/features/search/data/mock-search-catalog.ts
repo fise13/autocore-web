@@ -9,25 +9,25 @@ import type {
 } from '../types';
 
 export const searchFilters: SearchFilterOption[] = [
-  { id: 'all', label: 'Все' },
-  { id: 'engines', label: 'Двигатели' },
-  { id: 'gearboxes', label: 'КПП' },
-  { id: 'parts', label: 'Запчасти' },
-  { id: 'documents', label: 'Документы' },
-  { id: 'clients', label: 'Клиенты' },
-  { id: 'sales', label: 'Продажи' },
-  { id: 'orders', label: 'Заказы' },
-  { id: 'accounting', label: 'Бухгалтерия' },
+  { id: 'all', label: 'All' },
+  { id: 'engines', label: 'Engines' },
+  { id: 'gearboxes', label: 'Transmissions' },
+  { id: 'parts', label: 'Parts' },
+  { id: 'documents', label: 'Documents' },
+  { id: 'clients', label: 'Clients' },
+  { id: 'sales', label: 'Sales' },
+  { id: 'orders', label: 'Orders' },
+  { id: 'accounting', label: 'Accounting' },
 ];
 
 export const recentQueries = ['EJ205', 'OM651', 'EA888', '4G63'] as const;
 
 export const quickCategories: QuickCategory[] = [
-  { id: 'engines', label: 'Двигатели' },
-  { id: 'gearboxes', label: 'КПП' },
-  { id: 'parts', label: 'Запчасти' },
-  { id: 'documents', label: 'Документы' },
-  { id: 'sales', label: 'Продажи' },
+  { id: 'engines', label: 'Engines' },
+  { id: 'gearboxes', label: 'Transmissions' },
+  { id: 'parts', label: 'Parts' },
+  { id: 'documents', label: 'Documents' },
+  { id: 'sales', label: 'Sales' },
 ];
 
 export const searchEngines: SearchEngine[] = [
@@ -151,9 +151,9 @@ const catalog: CatalogEntry[] = [
     haystack: `${item.title} ${item.subtitle} ${item.shelf}`.toLowerCase(),
   })),
   ...[
-    { id: 'part-turbo-ej205', title: 'Турбина EJ205', subtitle: 'VF34', shelf: 'F-03' },
-    { id: 'part-filter-mann', title: 'Фильтр Mann W712/95', subtitle: 'Масляный', shelf: 'F-12' },
-    { id: 'part-injector-om651', title: 'Форсунка OM651', subtitle: 'Bosch', shelf: 'F-18' },
+    { id: 'part-turbo-ej205', title: 'EJ205 turbo', subtitle: 'VF34', shelf: 'F-03' },
+    { id: 'part-filter-mann', title: 'Mann W712/95 filter', subtitle: 'Oil filter', shelf: 'F-12' },
+    { id: 'part-injector-om651', title: 'OM651 injector', subtitle: 'Bosch', shelf: 'F-18' },
   ].map((item) => ({
     ...item,
     kind: 'part' as const,
@@ -161,9 +161,9 @@ const catalog: CatalogEntry[] = [
     haystack: `${item.title} ${item.subtitle} ${item.shelf}`.toLowerCase(),
   })),
   ...[
-    { id: 'doc-warranty-ej205', title: 'Гарантия EJ205', subtitle: '№ГР-2041' },
-    { id: 'doc-act-om651', title: 'Акт приёма OM651', subtitle: 'Склад A' },
-    { id: 'doc-invoice-1842', title: 'Счёт №1842', subtitle: 'ООО АвтоТрейд' },
+    { id: 'doc-warranty-ej205', title: 'EJ205 warranty', subtitle: 'No. WR-2041' },
+    { id: 'doc-act-om651', title: 'OM651 receiving report', subtitle: 'Warehouse A' },
+    { id: 'doc-invoice-1842', title: 'Invoice #1842', subtitle: 'AutoTrade LLC' },
   ].map((item) => ({
     ...item,
     kind: 'document' as const,
@@ -171,11 +171,11 @@ const catalog: CatalogEntry[] = [
     haystack: `${item.title} ${item.subtitle}`.toLowerCase(),
   })),
   ...[
-    { id: 'client-smirnov', title: 'Алексей Смирнов', subtitle: '+7 701 204 18 22' },
-    { id: 'client-petrov', title: 'Иван Петров', subtitle: 'ИП Петров' },
-    { id: 'client-kasymov', title: 'Марат Касымов', subtitle: 'Дизель Сервис' },
-    { id: 'client-autotrade', title: 'ООО АвтоТрейд', subtitle: 'Оптовый клиент' },
-    { id: 'client-diesel', title: 'Дизель Сервис', subtitle: 'СТО' },
+    { id: 'client-smirnov', title: 'Alex Smirnov', subtitle: '+1 701 204 1822' },
+    { id: 'client-petrov', title: 'Ivan Petrov', subtitle: 'Petrov Sole Proprietorship' },
+    { id: 'client-kasymov', title: 'Marat Kasymov', subtitle: 'Diesel Service' },
+    { id: 'client-autotrade', title: 'AutoTrade LLC', subtitle: 'Wholesale client' },
+    { id: 'client-diesel', title: 'Diesel Service', subtitle: 'Repair shop' },
   ].map((item) => ({
     ...item,
     kind: 'client' as const,
@@ -183,9 +183,9 @@ const catalog: CatalogEntry[] = [
     haystack: `${item.title} ${item.subtitle}`.toLowerCase(),
   })),
   ...[
-    { id: 'sale-185', title: 'Продажа 185 000 ₸', subtitle: '4G63 · Иван Петров' },
-    { id: 'sale-420', title: 'Продажа 420 000 ₸', subtitle: 'EJ205 · Алексей Смирнов' },
-    { id: 'sale-610', title: 'Продажа 610 000 ₸', subtitle: 'EA888 · ООО АвтоТрейд' },
+    { id: 'sale-185', title: 'Sale $185,000', subtitle: '4G63 · Ivan Petrov' },
+    { id: 'sale-420', title: 'Sale $420,000', subtitle: 'EJ205 · Alex Smirnov' },
+    { id: 'sale-610', title: 'Sale $610,000', subtitle: 'EA888 · AutoTrade LLC' },
   ].map((item) => ({
     ...item,
     kind: 'sale' as const,
@@ -193,9 +193,9 @@ const catalog: CatalogEntry[] = [
     haystack: `${item.title} ${item.subtitle}`.toLowerCase(),
   })),
   ...[
-    { id: 'order-1842', title: '№1842', subtitle: 'Разбор Toyota 2AD' },
-    { id: 'order-1836', title: '№1836', subtitle: 'Резерв EJ207' },
-    { id: 'order-1829', title: '№1829', subtitle: 'Поставка OM651' },
+    { id: 'order-1842', title: '#1842', subtitle: 'Toyota 2AD teardown' },
+    { id: 'order-1836', title: '#1836', subtitle: 'EJ207 reservation' },
+    { id: 'order-1829', title: '#1829', subtitle: 'OM651 delivery' },
   ].map((item) => ({
     ...item,
     kind: 'order' as const,
@@ -215,8 +215,8 @@ const catalog: CatalogEntry[] = [
     haystack: item.haystack,
   })),
   ...[
-    { id: 'acc-invoice-441', title: 'Счёт-фактура №441', subtitle: 'Бухгалтерия · март' },
-    { id: 'acc-payment-228', title: 'Платёж №228', subtitle: 'ООО АвтоТрейд' },
+    { id: 'acc-invoice-441', title: 'Invoice #441', subtitle: 'Accounting · March' },
+    { id: 'acc-payment-228', title: 'Payment #228', subtitle: 'AutoTrade LLC' },
   ].map((item) => ({
     ...item,
     kind: 'accounting' as const,
@@ -226,17 +226,17 @@ const catalog: CatalogEntry[] = [
 ];
 
 const groupTitles: Record<SearchFilterId | 'vehicles', string> = {
-  all: 'Все',
-  engines: 'Двигатели',
-  gearboxes: 'КПП',
-  motors: 'Моторы',
-  parts: 'Запчасти',
-  documents: 'Документы',
-  clients: 'Клиенты',
-  sales: 'Продажи',
-  orders: 'Заказы',
-  accounting: 'Бухгалтерия',
-  vehicles: 'Автомобили',
+  all: 'All',
+  engines: 'Engines',
+  gearboxes: 'Transmissions',
+  motors: 'Motors',
+  parts: 'Parts',
+  documents: 'Documents',
+  clients: 'Clients',
+  sales: 'Sales',
+  orders: 'Orders',
+  accounting: 'Accounting',
+  vehicles: 'Vehicles',
 };
 
 const groupOrder: Array<SearchFilterId | 'vehicles'> = [

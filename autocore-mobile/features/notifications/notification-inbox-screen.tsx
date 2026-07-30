@@ -79,17 +79,17 @@ export function NotificationInboxScreen() {
 
   const subtitle =
     syncing || refreshing
-      ? 'Синхронизация…'
+      ? 'Syncing…'
       : unreadCount > 0
-        ? `${unreadCount} непрочитанных`
-        : 'Все прочитано';
+        ? `${unreadCount} unread`
+        : 'All caught up';
 
   const showSkeleton = loading && filteredItems.length === 0 && !error;
   const showEmpty = !loading && filteredItems.length === 0 && !error;
 
   return (
     <ProfileScreenShell
-      title="Центр активности"
+      title="Activity Center"
       subtitle={subtitle}
       backFallbackHref={backFallbackHref}
       onBack={() => router.replace(backFallbackHref)}
@@ -101,7 +101,7 @@ export function NotificationInboxScreen() {
         <SearchInput
           value={localSearch}
           onChangeText={handleSearch}
-          placeholder="Поиск уведомлений…"
+          placeholder="Search notifications…"
         />
 
         <ActivityFeedFilters
@@ -111,21 +111,21 @@ export function NotificationInboxScreen() {
 
         {unreadCount > 0 ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Badge variant="secondary">{`${unreadCount} новых`}</Badge>
+            <Badge variant="secondary">{`${unreadCount} new`}</Badge>
             <Button variant="ghost" size="sm" onPress={() => void NotificationService.markAllRead()}>
-              Прочитать все
+              Mark all read
             </Button>
           </View>
         ) : null}
 
         {error ? (
-          <SettingsSectionCard title="Не удалось загрузить" tone="danger" inset>
+          <SettingsSectionCard title="Couldn't load" tone="danger" inset>
             <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.tight }}>
               <Text variant="caption" color="muted">
                 {error}
               </Text>
               <Button variant="secondary" size="sm" onPress={() => void handleRefresh()}>
-                Повторить
+                Retry
               </Button>
             </View>
           </SettingsSectionCard>
@@ -136,17 +136,17 @@ export function NotificationInboxScreen() {
         {showEmpty ? (
           <EmptyState
             icon={BellIcon}
-            title="Нет уведомлений"
+            title="No notifications"
             description={
               canManageTeam
-                ? 'События появляются в момент действия. Если сотрудники присоединились раньше, восстановите уведомления о команде.'
-                : 'Здесь появятся события по нарядам, финансам, команде и документам.'
+                ? 'Events show up here as they happen. If team members joined earlier, you can restore their notification history.'
+                : 'Work order, billing, team, and document events will show up here.'
             }
-            primaryAction={{ label: 'Обновить', onPress: () => void handleRefresh() }}
+            primaryAction={{ label: 'Refresh', onPress: () => void handleRefresh() }}
             secondaryAction={
               canManageTeam
                 ? {
-                    label: backfilling ? 'Восстановление…' : 'Восстановить команду',
+                    label: backfilling ? 'Restoring…' : 'Restore team history',
                     onPress: () => void handleBackfillTeam(),
                   }
                 : undefined
@@ -162,7 +162,7 @@ export function NotificationInboxScreen() {
 
         {hasMore ? (
           <Button variant="secondary" size="sm" onPress={() => NotificationService.loadMore()}>
-            Загрузить ещё
+            Load more
           </Button>
         ) : null}
       </View>

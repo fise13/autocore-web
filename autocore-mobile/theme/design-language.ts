@@ -4,7 +4,7 @@
  */
 import type { ColorScheme } from './colors';
 import { getColors } from './colors';
-import { withAlpha, toneBackground } from './color-utils';
+import { withAlpha } from './color-utils';
 import { radius, baseRadius } from './radius';
 import { spacing, screenPadding, minTouchTarget, headerHeight } from './spacing';
 import { typography, fontFamily, fontWeight } from './typography';
@@ -164,18 +164,63 @@ export const typeScale = typography;
 export const typeFamily = fontFamily;
 export const typeWeight = fontWeight;
 
-/** Semantic tone backgrounds for badges/icons */
+/**
+ * Semantic tone styles for badges, chips and tinted icon tiles.
+ *
+ * `bg`/`fg`/`border` come from the pre-composited tone tokens rather than
+ * runtime alpha, so the pairing is guaranteed to clear WCAG AA — the old
+ * alpha-blended version dropped to 2.45:1 for success in the light theme.
+ * `solid`/`onSolid` are the filled-button counterpart of the same tone.
+ */
 export function toneStyles(scheme: ColorScheme) {
   const c = getColors(scheme);
   return {
-    primary: { bg: toneBackground(c.primary, 0.12), fg: c.primary, border: withAlpha(c.primary, 0.2) },
-    success: { bg: toneBackground(c.success, 0.12), fg: c.success, border: withAlpha(c.success, 0.25) },
-    warning: { bg: toneBackground(c.warning, 0.12), fg: c.warning, border: withAlpha(c.warning, 0.25) },
-    danger: { bg: toneBackground(c.destructive, 0.1), fg: c.destructive, border: withAlpha(c.destructive, 0.2) },
-    muted: { bg: c.muted, fg: c.mutedForeground, border: c.borderMuted },
-    default: { bg: c.secondary, fg: c.foreground, border: c.border },
+    primary: {
+      bg: c.primarySubtle,
+      fg: c.primaryOnSubtle,
+      border: c.primaryBorder,
+      solid: c.primary,
+      onSolid: c.primaryForeground,
+    },
+    success: {
+      bg: c.successSubtle,
+      fg: c.successOnSubtle,
+      border: c.successBorder,
+      solid: c.success,
+      onSolid: c.successForeground,
+    },
+    warning: {
+      bg: c.warningSubtle,
+      fg: c.warningOnSubtle,
+      border: c.warningBorder,
+      solid: c.warning,
+      onSolid: c.warningForeground,
+    },
+    danger: {
+      bg: c.dangerSubtle,
+      fg: c.dangerOnSubtle,
+      border: c.dangerBorder,
+      solid: c.danger,
+      onSolid: c.dangerForeground,
+    },
+    muted: {
+      bg: c.muted,
+      fg: c.mutedForeground,
+      border: c.borderMuted,
+      solid: c.muted,
+      onSolid: c.mutedForeground,
+    },
+    default: {
+      bg: c.secondary,
+      fg: c.foreground,
+      border: c.border,
+      solid: c.secondary,
+      onSolid: c.secondaryForeground,
+    },
   } as const;
 }
+
+export type ToneName = keyof ReturnType<typeof toneStyles>;
 
 /** Z-index reference */
 export const layering = zIndex;

@@ -101,7 +101,7 @@ export function DraftRecoveryDialog({
           <DialogTitle>{userCopy.persistence.draftTitle}</DialogTitle>
           <DialogDescription>
             {(() => {
-              const locale = getActiveUserCopyLocale() === "ru" ? "ru-RU" : "en-US";
+              const locale = getActiveUserCopyLocale() === "ru" ? "en-US" : "en-US";
               const when = new Date(draft.updatedAt).toLocaleString(locale);
               return draft.label
                 ? userCopy.persistence.draftLabeled(draft.label, when)

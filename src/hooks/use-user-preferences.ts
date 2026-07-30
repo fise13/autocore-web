@@ -48,7 +48,7 @@ const defaultUserPreferences: UserPreferences = {
   employees: [],
   specifics: [],
   isConfigured: false,
-  displayCurrency: "KZT",
+  displayCurrency: "USD",
   motorSyncEnabled: true,
   workflow: defaultWorkflow,
   importExport: defaultImportExport,

@@ -259,7 +259,7 @@ export function BrandsSidebarGroup({
                     <span className="min-w-0 flex-1 truncate">{brand.name}</span>
                     {brandCount > 0 ? (
                       <span className="shrink-0 text-xs tabular-nums tracking-tight text-muted-foreground">
-                        {brandCount.toLocaleString("ru-RU")}
+                        {brandCount.toLocaleString("en-US")}
                       </span>
                     ) : null}
                   </SidebarMenuButton>

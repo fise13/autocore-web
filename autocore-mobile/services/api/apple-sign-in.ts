@@ -32,12 +32,12 @@ export async function exchangeAppleSignInViaApi(
 
   if (status === 404) {
     throw new Error(
-      'Вход через Apple на сервере ещё не обновлён. Войдите по email или попробуйте позже.',
+      'Apple Sign In is not yet supported on the server. Sign in with email or try again later.',
     );
   }
 
   if (!ok || !data.customToken?.trim()) {
-    throw new Error(data.error?.trim() || 'Не удалось подтвердить вход через Apple');
+    throw new Error(data.error?.trim() || 'Could not verify Apple Sign In');
   }
 
   return data.customToken.trim();

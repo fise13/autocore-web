@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import { FileText } from "lucide-react";
 
 import type { DocumentImportJob, DocumentImportStatus } from "@/domain/document-import";
@@ -95,7 +95,7 @@ export function DocumentImportsList({
             </p>
             <p className="truncate text-xs text-muted-foreground">
               {STATUS_LABELS[job.status]} ·{" "}
-              {formatDistanceToNow(job.createdAt, { addSuffix: true, locale: ru })}
+              {formatDistanceToNow(job.createdAt, { addSuffix: true, locale: enUS })}
             </p>
           </div>
           <span className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-sky-700 opacity-0 transition group-hover:opacity-100 dark:text-sky-300">

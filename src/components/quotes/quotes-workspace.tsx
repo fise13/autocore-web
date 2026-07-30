@@ -13,7 +13,7 @@ import { getFirebaseAuth } from "@/infrastructure/firebase/client";
 import { userCopy } from "@/lib/user-copy";
 
 function formatQuoteTotal(value: number): string {
-  return new Intl.NumberFormat("ru-KZ", { style: "currency", currency: "KZT", maximumFractionDigits: 0 }).format(value);
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
 }
 
 async function convertQuote(quoteId: string): Promise<string> {

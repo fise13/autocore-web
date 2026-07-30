@@ -128,7 +128,7 @@ function deliverNotification(
       actions: notification.deepLink
         ? [
             {
-              label: 'Открыть',
+              label: 'Open',
               onPress: () => void openNotificationDeepLink(notification.deepLink),
             },
           ]
@@ -188,12 +188,12 @@ export const NotificationService = {
         void NotificationService.syncInbox();
 
         store.showBanner({
-          title: title || 'Уведомление',
+          title: title || 'Notification',
           message: body,
           priority: 'important',
           deepLink,
           actions: deepLink
-            ? [{ label: 'Открыть', onPress: () => void openNotificationDeepLink(deepLink) }]
+            ? [{ label: 'Open', onPress: () => void openNotificationDeepLink(deepLink) }]
             : undefined,
         });
       }),
@@ -269,13 +269,13 @@ export const NotificationService = {
     options?: { message?: string; retry?: () => void; details?: string },
   ): string {
     const messages: Record<ErrorNotificationCode, { title: string; message: string }> = {
-      network: { title: 'Нет сети', message: 'Проверьте подключение к интернету' },
-      auth_expired: { title: 'Сессия истекла', message: 'Войдите снова для продолжения' },
-      permission_denied: { title: 'Нет доступа', message: 'У вас нет прав для этого действия' },
-      upload_failed: { title: 'Ошибка загрузки', message: 'Не удалось загрузить файл' },
-      download_failed: { title: 'Ошибка скачивания', message: 'Не удалось скачать файл' },
-      server_unavailable: { title: 'Сервер недоступен', message: 'Попробуйте позже' },
-      unexpected: { title: 'Неожиданная ошибка', message: 'Что-то пошло не так' },
+      network: { title: 'No connection', message: 'Check your internet connection' },
+      auth_expired: { title: 'Session expired', message: 'Sign in again to continue' },
+      permission_denied: { title: 'Access denied', message: "You don't have permission for this action" },
+      upload_failed: { title: 'Upload failed', message: 'Could not upload the file' },
+      download_failed: { title: 'Download failed', message: 'Could not download the file' },
+      server_unavailable: { title: 'Server unavailable', message: 'Try again later' },
+      unexpected: { title: 'Unexpected error', message: 'Something went wrong' },
     };
 
     const copy = messages[code];
@@ -284,11 +284,11 @@ export const NotificationService = {
 
     const actions: Array<{ label: string; onPress: () => void }> = [];
     if (options?.retry) {
-      actions.push({ label: 'Повторить', onPress: options.retry });
+      actions.push({ label: 'Retry', onPress: options.retry });
     }
     if (options?.details) {
       actions.push({
-        label: 'Подробнее',
+        label: 'Details',
         onPress: () => {
           store.showBanner({
             title: copy.title,
@@ -299,7 +299,7 @@ export const NotificationService = {
         },
       });
     }
-    actions.push({ label: 'Закрыть', onPress: () => {} });
+    actions.push({ label: 'Dismiss', onPress: () => {} });
 
     store.showBanner({
       title: copy.title,
@@ -317,7 +317,7 @@ export const NotificationService = {
       message,
       force: true,
       action: options?.retry
-        ? { label: 'Повторить', type: 'retry', payload: { code } }
+        ? { label: 'Retry', type: 'retry', payload: { code } }
         : undefined,
     });
   },
@@ -328,39 +328,39 @@ export const NotificationService = {
 
     if (event.type === 'synced') {
       void import('@/components/ui/toast-store').then(({ toast }) => {
-        toast({ title: 'Все изменения синхронизированы', variant: 'success', duration: 3000 });
+        toast({ title: 'All changes synced', variant: 'success', duration: 3000 });
       });
       return;
     }
 
     if (event.type === 'failed') {
       store.showBanner({
-        title: 'Ошибка синхронизации',
-        message: event.error ?? 'Не удалось синхронизировать данные',
+        title: 'Sync failed',
+        message: event.error ?? 'Could not sync data',
         priority: 'warning',
         actions: event.retry
-          ? [{ label: 'Повторить', onPress: event.retry }]
+          ? [{ label: 'Retry', onPress: event.retry }]
           : undefined,
       });
       this.notify({
         type: 'sync.failed',
         category: 'sync',
         priority: 'silent',
-        title: 'Ошибка синхронизации',
-        message: event.error ?? 'Не удалось синхронизировать',
+        title: 'Sync failed',
+        message: event.error ?? 'Could not sync',
       });
       return;
     }
 
     if (event.type === 'conflict') {
       store.showBanner({
-        title: 'Конфликт данных',
-        message: 'Обнаружены расхождения. Требуется разрешение.',
+        title: 'Data conflict',
+        message: 'Conflicting changes were found. Resolution required.',
         priority: 'critical',
         deepLink: 'autocoremobile://sync/conflict',
         actions: [
           {
-            label: 'Разрешить',
+            label: 'Resolve',
             onPress: () => void openNotificationDeepLink('autocoremobile://sync/conflict'),
           },
         ],
@@ -373,13 +373,13 @@ export const NotificationService = {
     store.setImportProgress(progress);
 
     const stageLabels: Record<ImportProgressNotification['stage'], string> = {
-      preparing: 'Подготовка…',
-      uploading: 'Загрузка…',
-      analyzing: 'Анализ…',
-      importing: 'Импорт…',
-      completed: 'Импорт завершён',
-      failed: 'Импорт не удался',
-      partial: 'Импорт частично завершён',
+      preparing: 'Preparing…',
+      uploading: 'Uploading…',
+      analyzing: 'Analyzing…',
+      importing: 'Importing…',
+      completed: 'Import complete',
+      failed: 'Import failed',
+      partial: 'Import partially complete',
     };
 
     if (progress.stage === 'completed') {
@@ -388,8 +388,8 @@ export const NotificationService = {
         type: 'import.completed',
         category: 'import',
         priority: 'important',
-        title: progress.title ?? 'Импорт завершён',
-        message: progress.message ?? 'Данные готовы к просмотру',
+        title: progress.title ?? 'Import complete',
+        message: progress.message ?? 'Data is ready to review',
         deepLink: progress.deepLink ?? buildImportDeepLink(progress.importId),
       });
       return;
@@ -409,7 +409,7 @@ export const NotificationService = {
     }
 
     store.showBanner({
-      title: progress.title ?? 'Импорт данных',
+      title: progress.title ?? 'Data import',
       message: stageLabels[progress.stage],
       priority: 'warning',
       autoDismissMs: 3000,
@@ -423,8 +423,8 @@ export const NotificationService = {
       type: ORDER_EVENTS.LIVE_EDITING,
       category: 'order',
       priority: 'normal',
-      title: 'Наряд редактируется',
-      message: `${editorName} сейчас редактирует этот наряд`,
+      title: 'Work order being edited',
+      message: `${editorName} is currently editing this work order`,
       createdAt: new Date().toISOString(),
       read: false,
       deepLink: buildOrderDeepLink(orderId),
@@ -445,7 +445,7 @@ export const NotificationService = {
         title,
         description,
         variant: 'default',
-        action: { label: 'Отменить', onPress: onUndo },
+        action: { label: 'Undo', onPress: onUndo },
         duration: 6000,
       });
     });
@@ -480,7 +480,7 @@ export const NotificationService = {
       const message =
         error instanceof MobileApiError
           ? error.message
-          : 'Не удалось синхронизировать уведомления';
+          : 'Could not sync notifications';
 
       if (cache.items.length === 0) {
         store.setError(message);

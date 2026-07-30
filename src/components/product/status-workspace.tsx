@@ -35,7 +35,7 @@ const statusTone: Record<SystemStatusLevel, string> = {
 
 function formatCheckedAt(iso: string): string {
   const date = new Date(iso);
-  const locale = getActiveUserCopyLocale() === "ru" ? "ru-RU" : "en-US";
+  const locale = getActiveUserCopyLocale() === "ru" ? "en-US" : "en-US";
   return new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "long",

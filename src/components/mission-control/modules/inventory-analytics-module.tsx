@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 const copy = userCopy.missionControl.analytics;
 
 function numberLocaleTag() {
-  return getActiveUserCopyLocale() === "ru" ? "ru-RU" : "en-US";
+  return getActiveUserCopyLocale() === "ru" ? "en-US" : "en-US";
 }
 
 type InventoryAnalyticsModuleProps = {

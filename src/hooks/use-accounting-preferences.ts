@@ -21,7 +21,7 @@ const defaultAccountingPreferences: AccountingPreferences = {
   employees: [],
   specifics: [],
   isConfigured: false,
-  displayCurrency: "KZT",
+  displayCurrency: "USD",
 };
 
 function mapPreferences(data: Record<string, unknown> | null | undefined): AccountingPreferences {

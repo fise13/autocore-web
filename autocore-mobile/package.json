@@ -60,7 +60,8 @@
     "@autocore/org": "file:../packages/org",
     "@autocore/avatars": "file:../packages/avatars",
     "@autocore/rbac": "file:../packages/rbac",
-    "@autocore/domain-search": "file:../packages/domain-search"
+    "@autocore/domain-search": "file:../packages/domain-search",
+    "@autocore/design-tokens": "file:../packages/design-tokens"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",

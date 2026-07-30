@@ -28,6 +28,7 @@ export { ListRow } from './list-row';
 export { SettingsSectionCard, SettingsInset } from './settings-section-card';
 export { SettingsLinkRow } from './settings-link-row';
 export { StatCard } from './stat-card';
+export { UsageMeterRow, UsageRing, usageTone } from './usage-meter';
 export { DashboardCard } from './dashboard-card';
 export { FormField, FormHelper, FormLabel, FormStack } from './form';
 export { FormPanel } from './form-panel';

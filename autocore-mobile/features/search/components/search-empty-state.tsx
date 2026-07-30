@@ -24,20 +24,20 @@ const actions: Array<{
 }> = [
   {
     id: 'scan',
-    label: 'Сканировать код',
-    description: 'Камера · QR и штрихкод',
+    label: 'Scan a code',
+    description: 'Camera · QR and barcode',
     icon: ScanSearchIcon,
   },
   {
     id: 'new-order',
-    label: 'Создать наряд',
-    description: 'Новый заказ-наряд',
+    label: 'Create work order',
+    description: 'New work order',
     icon: PlusIcon,
   },
   {
     id: 'parts-filter',
-    label: 'Поиск по складу',
-    description: 'Артикул или название',
+    label: 'Search inventory',
+    description: 'Part number or name',
     icon: SearchIcon,
   },
 ];

@@ -45,11 +45,11 @@ export type LocationContentsResponse = {
 function kindLabel(kind: LocationContentsResponse['items'][number]['kind']): string {
   switch (kind) {
     case 'motor':
-      return 'Двигатель';
+      return 'Engine';
     case 'specific':
-      return 'Позиция';
+      return 'Item';
     default:
-      return 'Запчасть';
+      return 'Part';
   }
 }
 
@@ -74,7 +74,7 @@ export function LocationScreen() {
         // Production may not have the route yet — fall back to Firestore.
         if (
           error instanceof MobileApiError &&
-          (error.status === 404 || error.message.includes('HTML') || error.message.includes('деплой'))
+          (error.status === 404 || error.message.includes('HTML') || error.message.includes('deploy'))
         ) {
           return fetchLocationContentsFromFirestore({ companyId: companyId!, locationId });
         }
@@ -104,8 +104,8 @@ export function LocationScreen() {
     });
     haptics.success();
     toast({
-      title: 'Сканируйте двигатель',
-      description: `Разместим в ${data.location.displayCode}`,
+      title: 'Scan the engine',
+      description: `We'll place it at ${data.location.displayCode}`,
       variant: 'success',
     });
     router.push('/(tabs)/scan' as Href);
@@ -131,11 +131,11 @@ export function LocationScreen() {
     if (!variance) return;
     haptics.success();
     toast({
-      title: variance.missing === 0 ? 'Пересчёт совпал' : 'Есть расхождения',
+      title: variance.missing === 0 ? 'Count matches' : 'Discrepancy found',
       description:
         variance.missing === 0
-          ? `Все ${variance.expected} позиций подтверждены`
-          : `Найдено ${variance.found} из ${variance.expected}`,
+          ? `All ${variance.expected} items confirmed`
+          : `Found ${variance.found} of ${variance.expected}`,
       variant: variance.missing === 0 ? 'success' : 'warning',
     });
     setCounting(false);
@@ -164,11 +164,11 @@ export function LocationScreen() {
           hitSlop={10}
         >
           <Text variant="body" style={{ fontWeight: '600', color: colors.primary }}>
-            Назад
+            Back
           </Text>
         </Pressable>
         <Text variant="caption" color="muted" style={{ fontWeight: '600' }}>
-          {counting ? 'Пересчёт' : 'Место'}
+          {counting ? 'Count' : 'Location'}
         </Text>
         <View style={{ width: 56 }} />
       </View>
@@ -180,10 +180,10 @@ export function LocationScreen() {
       ) : query.isError || !data ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: rhythm.pad }}>
           <Text variant="body" style={{ fontWeight: '600', textAlign: 'center' }}>
-            Место не найдено
+            Location not found
           </Text>
           <Text variant="caption" color="muted" style={{ marginTop: 8, textAlign: 'center' }}>
-            {query.error instanceof Error ? query.error.message : 'Попробуйте отсканировать QR ещё раз'}
+            {query.error instanceof Error ? query.error.message : 'Try scanning the QR code again'}
           </Text>
         </View>
       ) : (
@@ -223,7 +223,7 @@ export function LocationScreen() {
                   variant="body"
                   style={{ fontSize: 16, fontWeight: '700', color: colors.primaryForeground }}
                 >
-                  Принять сюда
+                  Receive here
                 </Text>
               </Pressable>
               <Pressable
@@ -240,14 +240,14 @@ export function LocationScreen() {
                 }}
               >
                 <Text variant="body" style={{ fontSize: 15, fontWeight: '600' }}>
-                  Пересчёт
+                  Count
                 </Text>
               </Pressable>
             </View>
           ) : (
             <View style={{ gap: 8 }}>
               <Text variant="caption" color="muted">
-                Отметьте найденные позиции. Расхождения подсвечены.
+                Mark the items you find. Discrepancies are highlighted.
               </Text>
               <Pressable
                 accessibilityRole="button"
@@ -264,26 +264,26 @@ export function LocationScreen() {
                   variant="body"
                   style={{ fontSize: 15, fontWeight: '700', color: colors.primaryForeground }}
                 >
-                  Завершить ({variance?.found ?? 0}/{variance?.expected ?? 0})
+                  Finish ({variance?.found ?? 0}/{variance?.expected ?? 0})
                 </Text>
               </Pressable>
             </View>
           )}
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            <StatPill label="Позиций" value={String(data.occupancy.lineCount)} />
-            <StatPill label="Двигатели" value={String(data.occupancy.engineCount)} />
-            <StatPill label="Остаток" value={String(data.occupancy.totalOnHand)} />
-            <StatPill label="Доступно" value={String(data.occupancy.totalAvailable)} />
+            <StatPill label="Items" value={String(data.occupancy.lineCount)} />
+            <StatPill label="Engines" value={String(data.occupancy.engineCount)} />
+            <StatPill label="On hand" value={String(data.occupancy.totalOnHand)} />
+            <StatPill label="Available" value={String(data.occupancy.totalAvailable)} />
           </View>
 
           <View style={{ gap: 8 }}>
             <Text variant="body" style={{ fontSize: 15, fontWeight: '700' }}>
-              {counting ? 'Ожидается здесь' : 'Содержимое'}
+              {counting ? 'Expected here' : 'Contents'}
             </Text>
             {data.items.length === 0 ? (
               <Text variant="caption" color="muted">
-                Пусто — нажмите «Принять сюда» и отсканируйте двигатель.
+                Empty — tap "Receive here" and scan an engine.
               </Text>
             ) : (
               data.items.map((item) => {

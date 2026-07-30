@@ -44,7 +44,7 @@ function applyAiSuggestion(
   const uncertain = suggestion.confidence < AI_UNCERTAIN_THRESHOLD;
   const warnings = [...suggestion.warnings];
   if (uncertain) {
-    warnings.push("AI не уверен — проверьте строку перед импортом");
+    warnings.push("AI isn't confident — review this row before importing");
   }
 
   return {
@@ -52,9 +52,9 @@ function applyAiSuggestion(
     normalized,
     confidence: suggestion.confidence,
     selected: !uncertain && row.errors.length === 0,
-    errors: uncertain ? [...row.errors, "Требует проверки"] : row.errors,
+    errors: uncertain ? [...row.errors, "Needs review"] : row.errors,
     action: uncertain ? "skip" : row.action,
-    summary: uncertain ? "AI не уверен — строка отключена" : row.summary,
+    summary: uncertain ? "AI isn't confident — row disabled" : row.summary,
     aiMeta: {
       normalizedTitle: suggestion.normalizedTitle,
       brand: suggestion.brand,
@@ -90,7 +90,7 @@ export async function magicEnhanceImportRows(
       current: processed,
       total: rows.length,
       percent: 40 + Math.round((processed / Math.max(rows.length, 1)) * 35),
-      message: `ИИ разбирает строки ${processed + 1}–${processed + batch.length} из ${rows.length}…`,
+      message: `AI is parsing rows ${processed + 1}–${processed + batch.length} of ${rows.length}…`,
     });
 
     const payload = batch.map((row) => ({
@@ -119,7 +119,7 @@ export async function magicEnhanceImportRows(
           aiMeta: {
             confidence: 0.85,
             duplicateRisk: row.duplicateConfidence ?? 0,
-            reasoning: ["Автосопоставление"],
+            reasoning: ["Auto-mapped"],
             warnings: [],
             source: "rules",
           },
@@ -141,7 +141,7 @@ export async function magicEnhanceImportRows(
     current: rows.length,
     total: rows.length,
     percent: 75,
-    message: "ИИ завершил разбор — готовим импорт…",
+    message: "AI finished parsing — preparing import…",
   });
 
   return enhanced;
@@ -152,10 +152,10 @@ export function applyMagicImportDefaults(rows: EnhancedImportRow[]): EnhancedImp
     const sku = String(row.normalized.sku ?? "").trim();
     const name = String(row.normalized.name ?? "").trim();
     const hasIdentity = Boolean(sku || name);
-    const uncertain = row.aiMeta?.warnings.some((warning) => warning.includes("не уверен"));
+    const uncertain = row.aiMeta?.warnings.some((warning) => warning.includes("isn't confident"));
     const qty = Number(row.normalized.quantity ?? 0);
     const errors = uncertain
-      ? row.errors.filter((error) => !error.includes("проверки"))
+      ? row.errors.filter((error) => !error.includes("Needs review"))
       : row.errors;
 
     return {
@@ -170,14 +170,14 @@ export function applyMagicImportDefaults(rows: EnhancedImportRow[]): EnhancedImp
             : "create",
       summary:
         !hasIdentity
-          ? "Не удалось определить товар"
+          ? "Couldn't identify the item"
           : uncertain
-            ? "Импорт с пометкой — проверьте позже"
+            ? "Imported with a flag — review later"
             : row.duplicateOfItemId
-              ? "Обновит существующую позицию"
+              ? "Will update the existing item"
               : qty > 0
-                ? `Создаст · ${qty} шт`
-                : "Будет создано",
+                ? `Will create · ${qty} pcs`
+                : "Will be created",
     };
   });
 }

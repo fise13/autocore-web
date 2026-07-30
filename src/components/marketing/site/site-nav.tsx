@@ -7,7 +7,6 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 
 import { AppLogo } from "@/components/brand/app-logo";
-import { LanguageSwitcher } from "@/components/marketing/site/language-switcher";
 import { isMarketingNavActive } from "@/components/marketing/site/site-navigation";
 import { Button } from "@/components/ui/button";
 import { useScroll } from "@/hooks/use-scroll";
@@ -99,8 +98,8 @@ export function SiteNav() {
           ))}
         </nav>
 
+        {/* LanguageSwitcher unmounted while UI_LOCALE_LOCK pins the app to English. */}
         <div className="hidden items-center gap-3 md:flex">
-          <LanguageSwitcher />
           <Button
             variant="ghost"
             size="sm"
@@ -188,10 +187,6 @@ export function SiteNav() {
                       </li>
                     ))}
                   </ul>
-                </div>
-
-                <div className="exp-site-mobile-nav-section flex items-center justify-between">
-                  <LanguageSwitcher />
                 </div>
 
                 <div className="exp-site-mobile-cta-row">

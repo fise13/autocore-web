@@ -10,6 +10,7 @@ import {
   getElevation,
   getShadows,
   ringBorder,
+  toneStyles,
 } from '@/theme';
 
 export type ThemePreference = 'light' | 'dark' | 'system';
@@ -25,6 +26,8 @@ type ThemeContextValue = {
   elevation: ReturnType<typeof getElevation>;
   shadows: ReturnType<typeof getShadows>;
   ring: ReturnType<typeof ringBorder>;
+  /** Badge/chip tone pairings — pre-composited, AA-guaranteed. */
+  tones: ReturnType<typeof toneStyles>;
   isDark: boolean;
 };
 
@@ -74,6 +77,7 @@ export function ThemeProvider({ children, forcedScheme }: ThemeProviderProps) {
       elevation: getElevation(scheme),
       shadows: getShadows(scheme),
       ring: ringBorder(scheme),
+      tones: toneStyles(scheme),
       isDark: scheme === 'dark',
     };
   }, [preference, scheme, setPreference]);

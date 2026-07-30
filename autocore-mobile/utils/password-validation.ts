@@ -5,10 +5,10 @@ export type PasswordRequirement = {
 };
 
 export const SIGNUP_PASSWORD_REQUIREMENTS: PasswordRequirement[] = [
-  { id: 'length', text: 'Минимум 8 символов', test: (password) => password.length >= 8 },
-  { id: 'digit', text: 'Хотя бы 1 цифра', test: (password) => /\d/.test(password) },
-  { id: 'lower', text: 'Хотя бы 1 строчная буква', test: (password) => /[a-zа-яё]/.test(password) },
-  { id: 'upper', text: 'Хотя бы 1 заглавная буква', test: (password) => /[A-ZА-ЯЁ]/.test(password) },
+  { id: 'length', text: 'At least 8 characters', test: (password) => password.length >= 8 },
+  { id: 'digit', text: 'At least 1 number', test: (password) => /\d/.test(password) },
+  { id: 'lower', text: 'At least 1 lowercase letter', test: (password) => /[a-zа-яё]/.test(password) },
+  { id: 'upper', text: 'At least 1 uppercase letter', test: (password) => /[A-ZА-ЯЁ]/.test(password) },
 ];
 
 export type PasswordStrengthState = {
@@ -26,18 +26,18 @@ export function getPasswordStrengthState(password: string): PasswordStrengthStat
   }));
   const score = requirements.filter((requirement) => requirement.met).length;
 
-  let strengthText = 'Введите пароль';
+  let strengthText = 'Enter a password';
   let barTone: PasswordStrengthState['barTone'] = 'empty';
 
   if (score > 0) {
     if (score <= 2) {
-      strengthText = 'Слабый пароль';
+      strengthText = 'Weak password';
       barTone = score <= 1 ? 'weak' : 'fair';
     } else if (score === 3) {
-      strengthText = 'Средний пароль';
+      strengthText = 'Fair password';
       barTone = 'good';
     } else {
-      strengthText = 'Надёжный пароль';
+      strengthText = 'Strong password';
       barTone = 'strong';
     }
   }
@@ -55,5 +55,5 @@ export function validateSignupPassword(password: string): string | null {
   const state = getPasswordStrengthState(password);
   if (state.isValid) return null;
   const firstUnmet = state.requirements.find((requirement) => !requirement.met);
-  return firstUnmet?.text ?? 'Слабый пароль';
+  return firstUnmet?.text ?? 'Weak password';
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import {
   ClipboardListIcon,
   FolderIcon,
@@ -53,7 +53,7 @@ export function WorkspaceActivityFeed({ entries, limit, className }: WorkspaceAc
         const module = entry.module ?? resolved.module;
         const Icon = moduleIcons[module] ?? SettingsIcon;
         const when = entry.timestamp
-          ? formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: ru })
+          ? formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: enUS })
           : userCopy.activity.now;
         const actor = entry.actorName?.trim() || userCopy.activity.actorFallback;
         const title = `${actor}: ${resolved.label}${entry.targetName ? ` · ${entry.targetName}` : ""}`;

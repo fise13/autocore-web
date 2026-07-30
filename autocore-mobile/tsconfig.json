@@ -27,6 +27,12 @@
       "@autocore/avatars": [
         "../packages/avatars/src"
       ],
+      "@autocore/design-tokens": [
+        "../packages/design-tokens/src"
+      ],
+      "@autocore/design-tokens/*": [
+        "../packages/design-tokens/src/*"
+      ],
       "@autocore/avatars/*": [
         "../packages/avatars/src/*"
       ]

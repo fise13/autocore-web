@@ -21,9 +21,14 @@ export function localeFromPathname(pathname: string): AppLocale | null {
   return isAppLocale(candidate) ? candidate : null;
 }
 
-/** Build a localized public path. */
+/**
+ * Public marketing path — no locale prefix. The `locale` parameter is kept
+ * only so callers built for the old two-locale routing don't all need
+ * signature changes; the site is English-only now (US market), so every
+ * locale resolves to the same clean path.
+ */
 export function localizedPath(
-  locale: AppLocale,
+  _locale: AppLocale,
   pathname: MarketingPathname | string = "/",
 ): string {
   const base =
@@ -32,17 +37,16 @@ export function localizedPath(
       : pathname.startsWith("/")
         ? pathname
         : `/${pathname}`;
-  if (base === "/") return `/${locale}`;
-  return `/${locale}${base}`;
+  return base;
 }
 
-/** Swap locale while preserving the path after the locale prefix. */
+/** @deprecated No-op now that there's only one locale — kept for old call sites. */
 export function swapLocaleInPathname(pathname: string, nextLocale: AppLocale): string {
   const withoutLocale = stripLocalePrefix(pathname);
   return localizedPath(nextLocale, withoutLocale);
 }
 
-/** Map a legacy unprefixed marketing path to the default-locale public URL. */
+/** Map a legacy `/marketing/...` path to its public clean-path equivalent. */
 export function legacyPathToLocalized(
   pathname: string,
   locale: AppLocale = DEFAULT_LOCALE,
@@ -59,12 +63,19 @@ export function legacyPathToLocalized(
   return null;
 }
 
-/** Internal Next.js file path for a locale + public pathname. */
+/**
+ * Internal Next.js file path for a public pathname. The App Router tree
+ * still lives under `/marketing/en/...` on disk (renaming ~10 route
+ * directories and every import that references them was out of scope for
+ * this pass) — this always resolves to the `en` segment since it's the only
+ * locale served. The `locale` param is unused but kept for call-site
+ * compatibility.
+ */
 export function toMarketingInternalPath(
-  locale: AppLocale,
+  _locale: AppLocale,
   publicPathWithoutLocale: string,
 ): string {
   const suffix =
     publicPathWithoutLocale === "/" ? "" : publicPathWithoutLocale.replace(/\/$/, "");
-  return `/marketing/${locale}${suffix}`;
+  return `/marketing/en${suffix}`;
 }

@@ -14,7 +14,7 @@ import {
   primaryRange,
 } from "@/lib/grid/selection-controller";
 import { formatMotorDate } from "@/lib/motor-dates";
-import { formatKzt, type LandingSaleMotor } from "@/lib/marketing/landing-demo-snapshot";
+import { formatUsd, type LandingSaleMotor } from "@/lib/marketing/landing-demo-snapshot";
 import { scaleMotorGridDimension } from "@/lib/motor-grid-layout";
 import { cn } from "@/lib/utils";
 import { useLandingDemoSnapshot } from "@/components/marketing/modals/use-landing-demo-snapshot";
@@ -192,7 +192,7 @@ export function SaleMotorsExcel({
       case "warehouseLocation":
         return motor.location;
       case "notes":
-        return `${formatKzt(motor.price)} ₸`;
+        return `${formatUsd(motor.price)}`;
       case "transmission":
         return motor.transmission;
       case "configuration":

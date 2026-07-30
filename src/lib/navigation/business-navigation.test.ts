@@ -6,6 +6,7 @@ import {
   countPrimaryNavItems,
   PRIMARY_BUSINESS_NAV_IDS,
 } from "@/lib/navigation/business-navigation";
+import { businessNavCopy } from "@/lib/navigation/business-nav-copy";
 import type { UserEntity } from "@/domain/user";
 
 function ownerUser(): UserEntity {
@@ -27,7 +28,8 @@ describe("business-navigation", () => {
   it("builds workspace and business sections for owner", () => {
     const tree = buildBusinessNavTree(ownerUser());
     assert.ok(tree.workspace);
-    assert.equal(tree.workspace?.label, "Дашборд");
+    // Assert the wiring, not the translation, so the test holds in any locale.
+    assert.equal(tree.workspace?.label, businessNavCopy.workspace.dashboard);
     assert.ok(tree.business.some((item) => item.id === "inventory"));
     assert.ok(tree.business.some((item) => item.id === "sales"));
   });

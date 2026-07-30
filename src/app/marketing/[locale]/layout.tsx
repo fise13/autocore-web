@@ -6,8 +6,7 @@ import { getMessages, setRequestLocale } from "next-intl/server";
 import { MarketingBarbaLayout } from "@/components/marketing/motion/marketing-barba-layout";
 import { MarketingJsonLd } from "@/components/marketing/seo/marketing-json-ld";
 import { LocaleHtmlLang } from "@/components/marketing/site/locale-html-lang";
-import { routing } from "@/i18n/routing";
-import { isAppLocale } from "@autocore/i18n/config";
+import { routing, type AppLocale } from "@/i18n/routing";
 
 type LocaleLayoutProps = {
   children: ReactNode;
@@ -18,9 +17,13 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
+function isMarketingLocale(value: string): value is AppLocale {
+  return (routing.locales as readonly string[]).includes(value);
+}
+
 export default async function MarketingLocaleLayout({ children, params }: LocaleLayoutProps) {
   const { locale } = await params;
-  if (!isAppLocale(locale) || !routing.locales.includes(locale)) {
+  if (!isMarketingLocale(locale)) {
     notFound();
   }
 

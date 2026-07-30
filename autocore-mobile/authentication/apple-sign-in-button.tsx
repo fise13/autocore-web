@@ -10,7 +10,7 @@ export function AppleSignInButton({ disabled, loading, onPress }: AppleSignInBut
   return (
     <AuthOAuthButton
       provider="apple"
-      label="Войти через Apple"
+      label="Sign in with Apple"
       disabled={disabled}
       loading={loading}
       onPress={onPress}

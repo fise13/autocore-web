@@ -240,18 +240,18 @@ export const RECORD_TYPE_TARGET: Record<RecordType, RecordTarget> = {
   unknown: "inventory",
 };
 
-/** Russian labels for record types, shown across the wizard. */
+/** Labels for record types, shown across the wizard. */
 export const RECORD_TYPE_LABELS: Record<RecordType, string> = {
-  engine: "Двигатель",
-  transmission: "КПП",
-  transferCase: "Раздатка",
-  reducer: "Редуктор",
-  turbo: "Турбина",
-  body: "Кузовщина",
-  optics: "Оптика",
-  suspension: "Подвеска",
-  electrical: "Электрика",
-  consumable: "Расходники",
-  donorCar: "Автомобиль-донор",
-  unknown: "Не определено",
+  engine: "Engine",
+  transmission: "Transmission",
+  transferCase: "Transfer case",
+  reducer: "Differential",
+  turbo: "Turbo",
+  body: "Body",
+  optics: "Lighting",
+  suspension: "Suspension",
+  electrical: "Electrical",
+  consumable: "Consumable",
+  donorCar: "Donor vehicle",
+  unknown: "Unknown",
 };

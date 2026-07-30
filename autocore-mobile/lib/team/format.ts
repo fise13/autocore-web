@@ -4,19 +4,19 @@ import type { CompanyEmployee } from '@/types/rbac';
 export function formatRole(role: string | null | undefined): string {
   switch (role) {
     case 'owner':
-      return 'Владелец';
+      return 'Owner';
     case 'admin':
-      return 'Администратор';
+      return 'Admin';
     case 'manager':
-      return 'Менеджер';
+      return 'Manager';
     case 'accountant':
-      return 'Бухгалтер';
+      return 'Accountant';
     case 'mechanic':
-      return 'Механик';
+      return 'Mechanic';
     case 'diagnostician':
-      return 'Диагност';
+      return 'Diagnostic Tech';
     case 'employee':
-      return 'Сотрудник';
+      return 'Employee';
     default:
       return role ?? '—';
   }
@@ -25,45 +25,45 @@ export function formatRole(role: string | null | undefined): string {
 export function formatPermission(permission: Permission): string {
   switch (permission) {
     case 'inventory_view':
-      return 'Просмотр склада';
+      return 'View inventory';
     case 'inventory_edit':
-      return 'Редактирование склада';
+      return 'Edit inventory';
     case 'inventory_delete':
-      return 'Удаление со склада';
+      return 'Delete inventory items';
     case 'inventory_export':
-      return 'Экспорт склада';
+      return 'Export inventory';
     case 'inventory_import':
-      return 'Импорт склада';
+      return 'Import inventory';
     case 'warehouse_manage':
-      return 'Управление складами';
+      return 'Manage warehouses';
     case 'work_orders_view':
-      return 'Просмотр заказ-нарядов';
+      return 'View work orders';
     case 'work_orders_edit':
-      return 'Редактирование заказ-нарядов';
+      return 'Edit work orders';
     case 'clients_manage':
-      return 'Управление клиентами';
+      return 'Manage clients';
     case 'vehicles_manage':
-      return 'Управление автомобилями';
+      return 'Manage vehicles';
     case 'accounting_view':
-      return 'Просмотр бухгалтерии';
+      return 'View accounting';
     case 'accounting_edit':
-      return 'Редактирование бухгалтерии';
+      return 'Edit accounting';
     case 'accounting_delete':
-      return 'Удаление в бухгалтерии';
+      return 'Delete accounting entries';
     case 'employee_manage':
-      return 'Управление сотрудниками';
+      return 'Manage employees';
     case 'employee_view':
-      return 'Просмотр сотрудников';
+      return 'View employees';
     case 'analytics_view':
-      return 'Аналитика';
+      return 'Analytics';
     case 'settings_manage':
-      return 'Настройки';
+      return 'Settings';
     case 'export_data':
-      return 'Экспорт данных';
+      return 'Export data';
     case 'import_data':
-      return 'Импорт данных';
+      return 'Import data';
     case 'payroll_view_own':
-      return 'Своя зарплата';
+      return 'Own payroll';
     default:
       return permission;
   }
@@ -71,23 +71,23 @@ export function formatPermission(permission: Permission): string {
 
 export function permissionsSummary(employee: CompanyEmployee): string {
   const extra = employee.permissions.length;
-  if (extra === 0) return `По роли (${ROLE_PERMISSIONS[employee.role]?.length ?? 0})`;
-  return `+${extra} доп.`;
+  if (extra === 0) return `By role (${ROLE_PERMISSIONS[employee.role]?.length ?? 0})`;
+  return `+${extra} extra`;
 }
 
 export function formatLastActive(lastActiveAt?: Date): string {
   if (!lastActiveAt) return '—';
   const deltaMs = Date.now() - lastActiveAt.getTime();
-  if (deltaMs < 5 * 60 * 1000) return 'Сейчас';
+  if (deltaMs < 5 * 60 * 1000) return 'Just now';
   if (deltaMs < 60 * 60 * 1000) {
     const minutes = Math.max(1, Math.round(deltaMs / 60_000));
-    return `${minutes} мин. назад`;
+    return `${minutes} min ago`;
   }
   if (deltaMs < 24 * 60 * 60 * 1000) {
     const hours = Math.max(1, Math.round(deltaMs / 3_600_000));
-    return `${hours} ч. назад`;
+    return `${hours} h ago`;
   }
-  return lastActiveAt.toLocaleString('ru-RU', {
+  return lastActiveAt.toLocaleString('en-US', {
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',
@@ -102,11 +102,11 @@ export function employeeDisplayName(
   if (employee.fullName?.trim()) return employee.fullName.trim();
   if (employee.uid === self?.id && self.displayName?.trim()) return self.displayName.trim();
   if (employee.email?.includes('@')) return employee.email.split('@')[0] ?? employee.email;
-  return 'Сотрудник';
+  return 'Employee';
 }
 
 export function formatInviteExpiry(date: Date): string {
-  return date.toLocaleString('ru-RU', {
+  return date.toLocaleString('en-US', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -136,10 +136,10 @@ export const ASSIGNABLE_ROLES: UserRole[] = [
 export const ALL_PERMISSIONS = [...PERMISSIONS] as Permission[];
 
 export const INVITE_ROLE_HINTS: Partial<Record<UserRole, string>> = {
-  mechanic: 'Заказ-наряды, клиенты, авто',
-  diagnostician: 'Заказ-наряды и диагностика',
-  manager: 'Управление и отчёты',
-  accountant: 'Бухгалтерия',
-  employee: 'Базовый просмотр',
-  admin: 'Полный доступ',
+  mechanic: 'Work orders, clients, vehicles',
+  diagnostician: 'Work orders and diagnostics',
+  manager: 'Management and reports',
+  accountant: 'Accounting',
+  employee: 'Basic view access',
+  admin: 'Full access',
 };

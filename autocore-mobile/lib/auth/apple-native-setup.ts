@@ -5,10 +5,10 @@ const MOBILE_BUNDLE_ID = 'com.wise.autocore.mobile';
 /** Actionable checklist when native Apple Sign In fails before Firebase (entitlements / Apple Developer). */
 export function getAppleNativeSetupHint(): string {
   return [
-    `1. Apple Developer → Identifiers → App ID ${MOBILE_BUNDLE_ID} → включите Sign in with Apple.`,
-    '2. Пересоберите iOS-проект: npx expo prebuild --platform ios && npx expo run:ios.',
-    '3. Firebase → Authentication → Apple: Team ID, Key ID, Services ID com.wise.autocore.web и .p8 ключ (как на web).',
-    `4. Убедитесь, что в ios/AutoCore/AutoCore.entitlements есть com.apple.developer.applesignin.`,
+    `1. Apple Developer → Identifiers → App ID ${MOBILE_BUNDLE_ID} → enable Sign in with Apple.`,
+    '2. Rebuild the iOS project: npx expo prebuild --platform ios && npx expo run:ios.',
+    '3. Firebase → Authentication → Apple: Team ID, Key ID, Services ID com.wise.autocore.web, and the .p8 key (same as web).',
+    `4. Make sure ios/AutoCore/AutoCore.entitlements includes com.apple.developer.applesignin.`,
   ].join('\n');
 }
 
@@ -32,8 +32,8 @@ export function formatAppleNativeErrorForUi(error: unknown): string | null {
     /AKAuthenticationError.*-7026/i.test(message)
   ) {
     return (
-      'Apple Sign In не настроен в этой сборке. ' +
-      `Включите capability для ${getAppleNativeBundleId()} в Apple Developer и пересоберите приложение (npx expo run:ios).`
+      'Apple Sign In is not configured in this build. ' +
+      `Enable the capability for ${getAppleNativeBundleId()} in Apple Developer and rebuild the app (npx expo run:ios).`
     );
   }
 

@@ -902,8 +902,8 @@
       "noteParts": "{km} · на разбор",
       "noteKm": "{km} км",
       "kmSuffix": "км",
-      "orderPrefixRu": "НЗ-",
-      "orderPrefixEn": "НЗ-"
+      "orderPrefixSource": "RES-",
+      "orderPrefixLocalized": "НЗ-"
     }
   },
   "landing": {

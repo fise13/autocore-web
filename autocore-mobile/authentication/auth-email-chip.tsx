@@ -13,7 +13,7 @@ type AuthEmailChipProps = {
 
 export function AuthEmailChip({
   email,
-  actionLabel = 'Изменить',
+  actionLabel = 'Change',
   onAction,
   actionDisabled = false,
 }: AuthEmailChipProps) {

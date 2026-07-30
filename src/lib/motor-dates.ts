@@ -1,9 +1,9 @@
 import { format, isValid, parse } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 
 export function formatMotorDate(value: Date | null | undefined): string {
   if (!value || !isValid(value)) return "";
-  return format(value, "dd.MM.yyyy", { locale: ru });
+  return format(value, "dd.MM.yyyy", { locale: enUS });
 }
 
 export function parseMotorDateInput(value: unknown): Date | null {

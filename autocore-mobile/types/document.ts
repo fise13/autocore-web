@@ -18,43 +18,43 @@ export type DocumentDefinition = {
 export const DOCUMENT_DEFINITIONS: DocumentDefinition[] = [
   {
     slug: 'work-order',
-    title: 'Заказ-наряд',
-    description: 'Полный состав работ, запчастей и двигателя',
+    title: 'Work Order',
+    description: 'Full breakdown of labor, parts, and engine',
   },
   {
     slug: 'vehicle-intake-act',
-    title: 'Акт приёма автомобиля',
-    description: 'Фиксация состояния автомобиля при приёмке',
+    title: 'Vehicle Intake Report',
+    description: 'Records vehicle condition at intake',
   },
   {
     slug: 'service-act',
-    title: 'Акт выполненных работ',
-    description: 'Подтверждение выполненных работ и суммы',
+    title: 'Certificate of Completion',
+    description: 'Confirms completed work and total amount',
   },
   {
     slug: 'engine-warranty',
-    title: 'Гарантийный талон двигателя',
-    description: 'Условия и срок гарантии на двигатель',
+    title: 'Engine Warranty Card',
+    description: 'Warranty terms and coverage period for the engine',
   },
   {
     slug: 'service-tag',
-    title: 'Бирка следующего ТО',
-    description: 'Наклейка 70×100 мм для следующего обслуживания',
+    title: 'Next Service Tag',
+    description: '70x100 mm sticker for the next service reminder',
   },
   {
     slug: 'invoice',
-    title: 'Счёт клиенту',
-    description: 'Счёт на оплату работ и материалов',
+    title: 'Customer Invoice',
+    description: 'Invoice for labor and materials',
   },
   {
     slug: 'engine-waybill',
-    title: 'Накладная на двигатель',
-    description: 'Передача двигателя клиенту',
+    title: 'Engine Waybill',
+    description: 'Engine handover to the customer',
   },
   {
     slug: 'sales-receipt',
-    title: 'Товарный чек',
-    description: 'Подтверждение продажи запчастей и агрегатов',
+    title: 'Sales Receipt',
+    description: 'Confirms the sale of parts and assemblies',
   },
 ];
 

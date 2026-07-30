@@ -26,7 +26,7 @@ type WorkOrdersVehiclesPanelProps = {
 export function WorkOrdersVehiclesPanel({ vehicles, clients, canEdit }: WorkOrdersVehiclesPanelProps) {
   const [search, setSearch] = useState("");
   const copy = userCopy.workOrders;
-  const numberLocale = getActiveUserCopyLocale() === "ru" ? "ru-RU" : "en-US";
+  const numberLocale = getActiveUserCopyLocale() === "ru" ? "en-US" : "en-US";
 
   const clientById = useMemo(() => new Map(clients.map((client) => [client.id, client])), [clients]);
 

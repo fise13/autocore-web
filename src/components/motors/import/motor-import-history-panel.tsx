@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -107,7 +107,7 @@ export function MotorImportHistoryPanel({
                 <div>
                   <p className="text-sm font-medium">{job.sourceFileName ?? userCopy.motors.importHistory.fallback}</p>
                   <p className="text-xs text-muted-foreground">
-                    {format(job.createdAt, "d MMM yyyy, HH:mm", { locale: ru })} · {statusLabels()[job.status]}
+                    {format(job.createdAt, "d MMM yyyy, HH:mm", { locale: enUS })} · {statusLabels()[job.status]}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {userCopy.motors.importHistory.stats(job.stats.totalEngineRows, job.stats.validEngineRows)}

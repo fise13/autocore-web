@@ -34,6 +34,7 @@ export type ActivityLogEntry = {
   actor: string;
   actorName?: string;
   actorRole?: UserRole;
+  actorPhotoURL?: string | null;
   action: string;
   module?: ActivityModule;
   target: string;

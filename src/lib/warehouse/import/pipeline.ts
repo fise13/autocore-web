@@ -60,7 +60,7 @@ function buildRowsFromSheet(
       errors: [],
       selected: true,
       action: "create",
-      summary: "Создаст новую позицию после подтверждения",
+      summary: "Will create a new item after confirmation",
     };
   });
 }
@@ -81,7 +81,7 @@ async function maybeEnhanceMapping(
       current: 1,
       total: 3,
       percent: 35,
-      message: "AI анализирует колонки…",
+      message: "AI is analyzing columns…",
     });
     const ai = await requestAiColumnMapping(
       options.companyId,
@@ -119,7 +119,7 @@ async function maybeEnhanceRowsWithAi(
       current: 2,
       total: 3,
       percent: 55,
-      message: "AI нормализует названия…",
+      message: "AI is normalizing names…",
     });
     const ai = await requestAiNormalizeBatch(options.companyId, ambiguous);
     const byIndex = new Map<number, NormalizeBatchItem>(
@@ -143,7 +143,7 @@ async function maybeEnhanceRowsWithAi(
           category: suggestion.category,
           confidence: suggestion.confidence,
           duplicateRisk: suggestion.duplicateRisk,
-          reasoning: ["AI-нормализация"],
+          reasoning: ["AI normalization"],
           warnings: suggestion.warnings,
           source: "ai",
         },
@@ -163,7 +163,7 @@ export async function runImportPreviewPipeline(
     current: 0,
     total: 100,
     percent: 5,
-    message: "Чтение файла…",
+    message: "Reading file…",
   });
 
   const sheets = await readWarehouseSpreadsheet(options.file);
@@ -171,7 +171,7 @@ export async function runImportPreviewPipeline(
     sheets.find((sheet) => sheet.sheetName === options.selectedSheetName) ??
     pickDefaultSheet(sheets);
   if (!selectedSheet) {
-    throw new Error("Файл не содержит данных для импорта");
+    throw new Error("The file has no data to import");
   }
 
   emit(options.onProgress, {
@@ -179,7 +179,7 @@ export async function runImportPreviewPipeline(
     current: 20,
     total: 100,
     percent: 20,
-    message: "Предобработка…",
+    message: "Preprocessing…",
   });
 
   let columnMapping = suggestColumnMappingWithConfidence(selectedSheet.headers);
@@ -205,7 +205,7 @@ export async function runImportPreviewPipeline(
     current: 70,
     total: 100,
     percent: 70,
-    message: "Поиск дубликатов…",
+    message: "Finding duplicates…",
   });
 
   rows = await enrichRowsWithDuplicates(
@@ -220,7 +220,7 @@ export async function runImportPreviewPipeline(
           current,
           total,
           percent: 70 + Math.round((current / Math.max(total, 1)) * 25),
-          message: `Поиск дубликатов… ${current}/${total}`,
+          message: `Finding duplicates… ${current}/${total}`,
         });
       },
     },
@@ -246,7 +246,7 @@ export async function runImportPreviewPipeline(
     current: 100,
     total: 100,
     percent: 100,
-    message: "Готово к просмотру",
+    message: "Ready to review",
   });
 
   return {

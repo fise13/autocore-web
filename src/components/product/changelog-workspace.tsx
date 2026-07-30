@@ -17,7 +17,7 @@ import {
 
 function formatUpdateDate(isoDate: string): string {
   const date = new Date(`${isoDate}T12:00:00`);
-  const locale = getActiveUserCopyLocale() === "ru" ? "ru-RU" : "en-US";
+  const locale = getActiveUserCopyLocale() === "ru" ? "en-US" : "en-US";
   return new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "long",

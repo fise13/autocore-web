@@ -14,7 +14,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import { IPhoneSimulatorFrame } from "@/components/marketing/experience/devices/iphone-simulator-frame";
 import {
-  formatKzt,
+  formatUsd,
   landingDemoMotorsSale,
   type LandingSaleMotor,
 } from "@/lib/marketing/landing-demo-snapshot";
@@ -208,7 +208,7 @@ export function ProductMobilePhone({ className }: { className?: string }) {
                               +
                             </button>
                           </div>
-                          <span className="ac-mobile-row-price">{formatKzt(motor.price)} ₸</span>
+                          <span className="ac-mobile-row-price">{formatUsd(motor.price)}</span>
                         </div>
                       </li>
                     );
@@ -302,7 +302,7 @@ export function ProductMobilePhone({ className }: { className?: string }) {
                       <div className="ac-mobile-sheet-price-row">
                         <div className="ac-mobile-sheet-price">
                           <span>{chrome.mobile.price}</span>
-                          <strong>{formatKzt(selected.price)} ₸</strong>
+                          <strong>{formatUsd(selected.price)}</strong>
                         </div>
                         <span className="ac-mobile-sheet-status">{chrome.status.inStock}</span>
                       </div>

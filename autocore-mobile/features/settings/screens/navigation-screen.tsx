@@ -42,17 +42,17 @@ export function NavigationScreen() {
   };
 
   return (
-    <ProfileScreenShell title="Навигация" subtitle="Нижняя панель">
+    <ProfileScreenShell title="Navigation" subtitle="Bottom bar">
       <SettingsSectionCard
-        title="Предпросмотр"
-        description="До 5 вкладок · остальное в «Ещё»"
+        title="Preview"
+        description="Up to 5 tabs · the rest go under \"More\""
       >
         <NavigationPreview order={editableOrder} enabled={enabled} />
       </SettingsSectionCard>
 
       <SettingsSectionCard
-        title="Разделы"
-        description="Удерживайте строку, чтобы перетащить, или используйте ↑ ↓"
+        title="Sections"
+        description="Hold a row to drag it, or use ↑ ↓"
       >
         <NavigationEditorList
           order={editableOrder}

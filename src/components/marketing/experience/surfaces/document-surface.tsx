@@ -3,7 +3,7 @@
 import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
 import { ProductWindow } from "@/components/marketing/experience/ui/product-window";
 import {
-  formatKzt,
+  formatUsd,
   landingDemoCompany,
   landingDemoMotor,
   landingDemoWorkOrders,
@@ -53,28 +53,28 @@ export function DocumentSurface({ className }: DocumentSurfaceProps) {
           <div className="flex justify-between gap-2 text-xs">
             <span>{demo.labor1}</span>
             <span className="exp-mock-mono text-muted-foreground">
-              {formatKzt(order.laborLines[0].hours * order.laborLines[0].unitPrice)}
+              {formatUsd(order.laborLines[0].hours * order.laborLines[0].unitPrice)}
             </span>
           </div>
           {order.laborLines[1] ? (
             <div className="flex justify-between gap-2 text-xs">
               <span>{demo.labor2}</span>
               <span className="exp-mock-mono text-muted-foreground">
-                {formatKzt(order.laborLines[1].hours * order.laborLines[1].unitPrice)}
+                {formatUsd(order.laborLines[1].hours * order.laborLines[1].unitPrice)}
               </span>
             </div>
           ) : null}
           {order.partLines.map((line, index) => (
             <div key={line.sku} className="flex justify-between gap-2 text-xs">
               <span>{index === 0 ? demo.part1 : index === 1 ? demo.part2 : line.name}</span>
-              <span className="exp-mock-mono text-muted-foreground">{formatKzt(line.unitPrice)}</span>
+              <span className="exp-mock-mono text-muted-foreground">{formatUsd(line.unitPrice)}</span>
             </div>
           ))}
         </div>
 
         <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-3 text-sm">
           <span className="font-medium">{chrome.common.total}</span>
-          <span className="exp-mock-mono font-semibold">{formatKzt(order.grandTotal)} ₸</span>
+          <span className="exp-mock-mono font-semibold">{formatUsd(order.grandTotal)}</span>
         </div>
       </div>
     </ProductWindow>

@@ -1,5 +1,6 @@
 import { DocumentSlug } from "@/lib/documents/document-types";
 import { DocumentContext } from "@/lib/documents/document-context";
+import { isEnglishDocumentLocale } from "@/lib/documents/document-locale";
 import { getAppUrl, getMarketingUrl } from "@/lib/site-urls";
 import { documentVehicleHistoryUrl } from "@/lib/documents/work-order-insights";
 
@@ -13,17 +14,18 @@ export function resolveDocumentQrTarget(
   context: DocumentContext,
   options?: { companyQrLinkUrl?: string },
 ): QrTarget {
+  const en = isEnglishDocumentLocale(context.locale);
   const appUrl = getAppUrl().replace(/\/$/, "");
   const companyLink = options?.companyQrLinkUrl?.trim();
 
   if (companyLink && /^https?:\/\//i.test(companyLink)) {
-    return { url: companyLink, label: "Карточка компании" };
+    return { url: companyLink, label: en ? "Company card" : "Карточка компании" };
   }
 
   if (slug === "engine-warranty" && context.warrantyVerificationToken) {
     return {
       url: `${appUrl}/warranty/${context.warrantyVerificationToken}`,
-      label: "Проверка гарантии",
+      label: en ? "Verify warranty" : "Проверка гарантии",
     };
   }
 
@@ -32,7 +34,7 @@ export function resolveDocumentQrTarget(
     if (motor?.id) {
       return {
         url: `${appUrl}/motors?highlight=${encodeURIComponent(motor.id)}`,
-        label: "Карточка двигателя",
+        label: en ? "Engine card" : "Карточка двигателя",
       };
     }
   }
@@ -40,17 +42,17 @@ export function resolveDocumentQrTarget(
   if (slug === "commercial-proposal") {
     return {
       url: `${getMarketingUrl().replace(/\/$/, "")}/contact`,
-      label: "Связаться с компанией",
+      label: en ? "Contact the company" : "Связаться с компанией",
     };
   }
 
   const historyUrl = documentVehicleHistoryUrl(context);
   if (historyUrl) {
-    return { url: historyUrl, label: "История автомобиля" };
+    return { url: historyUrl, label: en ? "Vehicle history" : "История автомобиля" };
   }
 
   return {
     url: `${appUrl}/work-orders/${encodeURIComponent(context.order.id)}`,
-    label: "Карточка заказа",
+    label: en ? "Order card" : "Карточка заказа",
   };
 }

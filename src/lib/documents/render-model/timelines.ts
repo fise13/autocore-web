@@ -1,6 +1,7 @@
 import { MotorHistoryEntry } from "@/domain/motor";
 import { DocumentContext } from "@/lib/documents/document-context";
-import { formatDocumentDate, isValidDocumentDate } from "@/lib/documents/format";
+import { isEnglishDocumentLocale } from "@/lib/documents/document-locale";
+import { documentNumberLocale, formatDocumentDate, isValidDocumentDate } from "@/lib/documents/format";
 import {
   documentAssigneeSummary,
   documentPrimaryMotorEntity,
@@ -8,14 +9,22 @@ import {
 import { buildLogbookTimeline, classifyServiceOrder } from "@/lib/documents/work-order-insights";
 import { DocumentTimelineEvent } from "@/lib/documents/render-model/types";
 
-const MOTOR_HISTORY_LABELS: Record<MotorHistoryEntry["type"], string> = {
+const MOTOR_HISTORY_LABELS_RU: Record<MotorHistoryEntry["type"], string> = {
   reserved: "Зарезервирован",
   released: "Снята резервация",
   installed: "Установлен",
   sold: "Продан",
 };
 
+const MOTOR_HISTORY_LABELS_EN: Record<MotorHistoryEntry["type"], string> = {
+  reserved: "Reserved",
+  released: "Reservation released",
+  installed: "Installed",
+  sold: "Sold",
+};
+
 export function buildVehicleHistoryTimeline(context: DocumentContext): DocumentTimelineEvent[] {
+  const en = isEnglishDocumentLocale(context.locale);
   const profile = classifyServiceOrder(context);
   const logbook = buildLogbookTimeline(context, profile);
   const assignee = documentAssigneeSummary(context);
@@ -26,9 +35,11 @@ export function buildVehicleHistoryTimeline(context: DocumentContext): DocumentT
   if (isValidDocumentDate(context.order.createdAt)) {
     events.push({
       id: "intake",
-      label: "Поступление автомобиля",
+      label: en ? "Vehicle intake" : "Поступление автомобиля",
       date: formatDocumentDate(context.order.createdAt),
-      mileage: context.order.mileage ? `${context.order.mileage.toLocaleString("ru-KZ")} км` : undefined,
+      mileage: context.order.mileage
+        ? `${context.order.mileage.toLocaleString(documentNumberLocale())} ${en ? "km" : "км"}`
+        : undefined,
       responsible,
       kind: "vehicle",
     });
@@ -48,7 +59,7 @@ export function buildVehicleHistoryTimeline(context: DocumentContext): DocumentT
   if (context.order.status === "completed" && isValidDocumentDate(context.order.completedAt)) {
     events.push({
       id: "handover",
-      label: "Выдача клиенту",
+      label: en ? "Handed over to customer" : "Выдача клиенту",
       date: formatDocumentDate(context.order.completedAt),
       responsible,
       kind: "vehicle",
@@ -59,6 +70,8 @@ export function buildVehicleHistoryTimeline(context: DocumentContext): DocumentT
 }
 
 export function buildAggregateHistoryTimeline(context: DocumentContext): DocumentTimelineEvent[] {
+  const en = isEnglishDocumentLocale(context.locale);
+  const motorHistoryLabels = en ? MOTOR_HISTORY_LABELS_EN : MOTOR_HISTORY_LABELS_RU;
   const motor = documentPrimaryMotorEntity(context);
   if (!motor) return [];
 
@@ -69,7 +82,7 @@ export function buildAggregateHistoryTimeline(context: DocumentContext): Documen
   if (isValidDocumentDate(motor.arrivalDate)) {
     events.push({
       id: "arrival",
-      label: "Поступил на склад",
+      label: en ? "Arrived at warehouse" : "Поступил на склад",
       date: formatDocumentDate(motor.arrivalDate),
       responsible,
       kind: "aggregate",
@@ -82,7 +95,7 @@ export function buildAggregateHistoryTimeline(context: DocumentContext): Documen
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())) {
       events.push({
         id: entry.id,
-        label: MOTOR_HISTORY_LABELS[entry.type] ?? entry.type,
+        label: motorHistoryLabels[entry.type] ?? entry.type,
         date: formatDocumentDate(entry.createdAt),
         responsible: entry.actorUserId ?? responsible,
         kind: "aggregate",
@@ -92,7 +105,7 @@ export function buildAggregateHistoryTimeline(context: DocumentContext): Documen
     if (motor.status === "sold" || motor.soldDate) {
       events.push({
         id: "sold",
-        label: "Продан",
+        label: en ? "Sold" : "Продан",
         date: isValidDocumentDate(motor.soldDate)
           ? formatDocumentDate(motor.soldDate)
           : formatDocumentDate(context.generatedAt),
@@ -103,7 +116,7 @@ export function buildAggregateHistoryTimeline(context: DocumentContext): Documen
     if (motor.status === "installed" || motor.installedWorkOrderId) {
       events.push({
         id: "installed",
-        label: "Установлен",
+        label: en ? "Installed" : "Установлен",
         date: formatDocumentDate(context.generatedAt),
         responsible,
         kind: "aggregate",
@@ -114,7 +127,7 @@ export function buildAggregateHistoryTimeline(context: DocumentContext): Documen
   if (context.warrantyVerificationToken) {
     events.push({
       id: "warranty-active",
-      label: "Гарантия активна",
+      label: en ? "Warranty active" : "Гарантия активна",
       date: formatDocumentDate(context.generatedAt),
       responsible: context.company.name,
       kind: "aggregate",

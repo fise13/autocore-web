@@ -119,8 +119,8 @@ export function WarehouseScreen() {
     (itemId: string, delta: 1 | -1) => {
       if (!canEdit) {
         toast({
-          title: 'Нет доступа',
-          description: 'Для изменения остатка нужно право редактирования склада.',
+          title: 'No access',
+          description: 'You need warehouse edit permission to change stock.',
           variant: 'warning',
         });
         return;
@@ -152,8 +152,8 @@ export function WarehouseScreen() {
       <Screen>
         <EmptyState
           icon={BoxIcon}
-          title="Нет рабочего пространства"
-          description="Выберите компанию, чтобы видеть склад и остатки."
+          title="No workspace"
+          description="Select a company to view warehouse and stock."
         />
       </Screen>
     );
@@ -164,8 +164,8 @@ export function WarehouseScreen() {
       <Screen>
         <EmptyState
           icon={BoxIcon}
-          title="Нет доступа"
-          description="У вашей роли нет прав на просмотр склада."
+          title="No access"
+          description="Your role doesn't have permission to view the warehouse."
         />
       </Screen>
     );
@@ -190,7 +190,7 @@ export function WarehouseScreen() {
               <SearchInput
                 value={query}
                 onChangeText={setQuery}
-                placeholder="Поиск по названию, SKU, ячейке…"
+                placeholder="Search by name, SKU, bin…"
                 returnKeyType="search"
               />
             </View>
@@ -202,7 +202,7 @@ export function WarehouseScreen() {
             ) : null}
             {isBootstrapping && filteredItems.length === 0 ? (
               <Text variant="caption" color="muted" style={{ paddingHorizontal: wh.pad }}>
-                Загружаем склад…
+                Loading warehouse…
               </Text>
             ) : null}
           </View>
@@ -212,11 +212,11 @@ export function WarehouseScreen() {
             <View style={{ paddingHorizontal: wh.pad, paddingTop: 24 }}>
               <EmptyState
                 icon={BoxIcon}
-                title={filter === 'low' ? 'Всё в норме' : 'Склад пуст'}
+                title={filter === 'low' ? 'All good' : 'Warehouse is empty'}
                 description={
                   filter === 'low'
-                    ? 'Нет позиций ниже минимального остатка.'
-                    : 'Добавьте товары через сканирование или приёмку.'
+                    ? 'No items below the minimum stock level.'
+                    : 'Add items by scanning or receiving stock.'
                 }
               />
             </View>

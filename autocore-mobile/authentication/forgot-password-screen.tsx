@@ -18,7 +18,7 @@ export function ForgotPasswordScreen() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const emailError = attempted && !isValidEmail(email) ? 'Введите корректный email.' : null;
+  const emailError = attempted && !isValidEmail(email) ? 'Enter a valid email address.' : null;
   const submitDisabled = useMemo(() => isSubmitting || !isOnline, [isOnline, isSubmitting]);
 
   const onSubmit = async () => {
@@ -32,7 +32,7 @@ export function ForgotPasswordScreen() {
     try {
       setIsSubmitting(true);
       await sendPasswordReset(email);
-      setSuccess('Ссылка для сброса пароля отправлена. Проверьте входящие и папку «Спам».');
+      setSuccess('A password reset link has been sent. Check your inbox and spam folder.');
     } catch (reason) {
       setError(mapAuthError(reason));
     } finally {
@@ -42,13 +42,13 @@ export function ForgotPasswordScreen() {
 
   return (
     <AuthShell
-      stepLabel="Вход и регистрация"
-      title="Сброс пароля"
-      description="Отправим письмо на тот же email, который вы используете для входа в AutoCore."
+      stepLabel="Sign in and registration"
+      title="Reset password"
+      description="We'll send an email to the same address you use to sign in to AutoCore."
       footer={
         <Link href={'/login' as never} asChild>
           <Button variant="link" size="sm">
-            Вернуться ко входу
+            Back to sign in
           </Button>
         </Link>
       }
@@ -56,13 +56,13 @@ export function ForgotPasswordScreen() {
       {!isOnline ? (
         <Alert
           variant="warning"
-          title="Нет подключения"
-          description="Для отправки письма нужен интернет."
+          title="No connection"
+          description="An internet connection is required to send the email."
         />
       ) : null}
 
-      {success ? <Alert variant="success" title="Письмо отправлено" description={success} /> : null}
-      {error ? <Alert variant="destructive" title="Не удалось отправить письмо" description={error} /> : null}
+      {success ? <Alert variant="success" title="Email sent" description={success} /> : null}
+      {error ? <Alert variant="destructive" title="Couldn't send the email" description={error} /> : null}
 
       <Input
         label="Email"
@@ -73,14 +73,14 @@ export function ForgotPasswordScreen() {
         textContentType="username"
         autoCapitalize="none"
         autoCorrect={false}
-        placeholder="ваш@email.ru"
+        placeholder="your@email.com"
         error={emailError ?? undefined}
         returnKeyType="send"
         onSubmitEditing={onSubmit}
       />
 
       <Button size="lg" loading={isSubmitting} disabled={submitDisabled} onPress={onSubmit} style={{ width: '100%' }}>
-        Отправить ссылку
+        Send reset link
       </Button>
     </AuthShell>
   );

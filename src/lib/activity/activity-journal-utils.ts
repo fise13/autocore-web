@@ -1,5 +1,5 @@
 import { format, isToday, isYesterday } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 
 import { ActivityLogEntry } from "@/domain/rbac";
 import { ActivityModule, ActivitySeverity } from "@/domain/activity-log";
@@ -38,9 +38,9 @@ export function formatActivityTargetName(entry: ActivityLogEntry, module: Activi
 }
 
 export function formatDayLabel(date: Date): string {
-  if (isToday(date)) return "Сегодня";
-  if (isYesterday(date)) return "Вчера";
-  return format(date, "d MMMM yyyy", { locale: ru });
+  if (isToday(date)) return "Today";
+  if (isYesterday(date)) return "Yesterday";
+  return format(date, "d MMMM yyyy", { locale: enUS });
 }
 
 export function filterActivityEntries(
@@ -53,7 +53,7 @@ export function filterActivityEntries(
     const resolved = resolveActivityLabel(entry.action);
     const module = entry.module ?? resolved.module;
     const severity = entry.severity ?? resolved.severity;
-    const actorName = entry.actorName?.trim() || "Сотрудник";
+    const actorName = entry.actorName?.trim() || "Employee";
     const targetName = formatActivityTargetName(entry, module);
 
     if (filters.module !== "all" && module !== filters.module) return false;
@@ -82,7 +82,7 @@ export function groupActivityEntriesByDay(entries: ActivityLogEntry[]): Activity
   for (const entry of entries) {
     const timestamp = entry.timestamp ?? new Date(0);
     const key = entry.timestamp ? format(timestamp, "yyyy-MM-dd") : "unknown";
-    const label = entry.timestamp ? formatDayLabel(timestamp) : "Без даты";
+    const label = entry.timestamp ? formatDayLabel(timestamp) : "No date";
 
     const existing = groups.get(key);
     if (existing) {
@@ -97,7 +97,7 @@ export function groupActivityEntriesByDay(entries: ActivityLogEntry[]): Activity
 }
 
 export const MODULE_FILTER_OPTIONS: { value: ActivityJournalModuleFilter; label: string }[] = [
-  { value: "all", label: "Все модули" },
+  { value: "all", label: "All modules" },
   { value: "inventory", label: moduleLabel("inventory") },
   { value: "accounting", label: moduleLabel("accounting") },
   { value: "work_orders", label: moduleLabel("work_orders") },
@@ -107,26 +107,20 @@ export const MODULE_FILTER_OPTIONS: { value: ActivityJournalModuleFilter; label:
 ];
 
 export const SEVERITY_FILTER_OPTIONS: { value: ActivityJournalSeverityFilter; label: string }[] = [
-  { value: "all", label: "Все уровни" },
-  { value: "info", label: "Обычные" },
-  { value: "warning", label: "Предупреждения" },
-  { value: "critical", label: "Критичные" },
+  { value: "all", label: "All levels" },
+  { value: "info", label: "Normal" },
+  { value: "warning", label: "Warnings" },
+  { value: "critical", label: "Critical" },
 ];
 
-/** Russian plural for «событие». */
 export function formatEventCountLabel(count: number): string {
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-  if (mod100 >= 11 && mod100 <= 14) return `${count} событий`;
-  if (mod10 === 1) return `${count} событие`;
-  if (mod10 >= 2 && mod10 <= 4) return `${count} события`;
-  return `${count} событий`;
+  return `${count} ${count === 1 ? "event" : "events"}`;
 }
 
 export function moduleFilterLabel(value: ActivityJournalModuleFilter): string {
-  return MODULE_FILTER_OPTIONS.find((option) => option.value === value)?.label ?? "Все модули";
+  return MODULE_FILTER_OPTIONS.find((option) => option.value === value)?.label ?? "All modules";
 }
 
 export function severityFilterLabel(value: ActivityJournalSeverityFilter): string {
-  return SEVERITY_FILTER_OPTIONS.find((option) => option.value === value)?.label ?? "Все уровни";
+  return SEVERITY_FILTER_OPTIONS.find((option) => option.value === value)?.label ?? "All levels";
 }

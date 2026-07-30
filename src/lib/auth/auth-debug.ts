@@ -62,7 +62,7 @@ export function logAuthDebug(source: string, message: string, detail?: unknown) 
 
   const entry: AuthDebugEntry = {
     id: nextId++,
-    at: new Date().toLocaleTimeString("ru-RU", { hour12: false }),
+    at: new Date().toLocaleTimeString("en-US", { hour12: false }),
     source,
     message,
     detail:

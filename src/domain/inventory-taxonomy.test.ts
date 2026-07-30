@@ -19,7 +19,7 @@ describe("inventory taxonomy", () => {
     assert.equal(resolveSubcategoryForCategoryName("ЭБУ")?.id, "electrical");
     assert.equal(resolveSubcategoryForCategoryName("Фары")?.id, "optics");
     assert.equal(resolveGroupForCategoryName("Насосы"), "aggregates");
-    assert.equal(subcategoryLabel("filters"), "Фильтры");
+    assert.equal(subcategoryLabel("filters"), "Filters");
   });
 
   it("normalizes legacy company category presets", () => {
@@ -44,9 +44,9 @@ describe("inventory taxonomy", () => {
     assert.deepEqual(
       migrated.specificCategories.map((item) => [item.name, item.groupId, item.subcategoryId]),
       [
-        ["КПП", "aggregates", "gearboxes"],
-        ["Электрика", "parts", "electrical"],
-        ["Оптика", "parts", "optics"],
+        ["Transmissions", "aggregates", "gearboxes"],
+        ["Electrical", "parts", "electrical"],
+        ["Lighting", "parts", "optics"],
       ],
     );
   });
@@ -59,11 +59,11 @@ describe("inventory taxonomy", () => {
           companyId: "company",
           type: "consumable",
           sku: "OIL-1",
-          name: "Масло 5W-30",
+          name: "Oil 5W-30",
           barcodes: [],
-          categoryPath: ["Расходники", "Масла"],
-          unit: "л",
-          currency: "KZT",
+          categoryPath: ["Consumables", "Oils"],
+          unit: "L",
+          currency: "USD",
           totalOnHand: 1,
           totalReserved: 0,
           totalAvailable: 1,
@@ -83,11 +83,11 @@ describe("inventory taxonomy", () => {
           companyId: "company",
           type: "filter",
           sku: "FLT-1",
-          name: "Фильтр",
+          name: "Filter",
           barcodes: [],
           subcategoryId: "filters",
-          unit: "шт",
-          currency: "KZT",
+          unit: "pcs",
+          currency: "USD",
           totalOnHand: 1,
           totalReserved: 0,
           totalAvailable: 1,
@@ -114,10 +114,10 @@ describe("inventory taxonomy", () => {
           companyId: "company",
           type: "generic",
           sku: "X-1",
-          name: "Болт",
+          name: "Bolt",
           barcodes: [],
-          unit: "шт",
-          currency: "KZT",
+          unit: "pcs",
+          currency: "USD",
           totalOnHand: 1,
           totalReserved: 0,
           totalAvailable: 1,

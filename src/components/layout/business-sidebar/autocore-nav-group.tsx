@@ -54,10 +54,10 @@ type NavCollapsibleItemProps = {
 function NavItemCountBadge({ count }: { count: number }) {
   return (
     <span
-      title={count.toLocaleString("ru-RU")}
+      title={count.toLocaleString("en-US")}
       className="shrink-0 text-xs tabular-nums tracking-tight text-muted-foreground"
     >
-      {count.toLocaleString("ru-RU")}
+      {count.toLocaleString("en-US")}
     </span>
   );
 }

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     default: "AutoCore",
     template: "%s · AutoCore",
   },
-  description: "Рабочее пространство AutoCore",
+  description: "AutoCore workspace",
   robots: {
     index: false,
     follow: false,

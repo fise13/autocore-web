@@ -394,7 +394,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
                   icon={Folder}
                   onSelect={() => selectSearchResult("/accounting", "operation", operation.id)}
                 >
-                  {`${operation.category ? operationCategoryLabel(operation.category) : operationTypeLabel(operation.type)} · ${operation.amount.toLocaleString("ru-RU")} ₸`}
+                  {`${operation.category ? operationCategoryLabel(operation.category) : operationTypeLabel(operation.type)} · ${operation.amount.toLocaleString("en-US")} ₸`}
                 </CommandItem>
               ))}
             </Command.Group>

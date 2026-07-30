@@ -143,7 +143,7 @@ export async function applyImportJobUseCase(
               inventoryGroup: normalized.inventoryGroup as InventoryGroupId | undefined,
               subcategoryId: normalized.subcategoryId as InventorySubcategoryId | undefined,
               barcodes: Array.isArray(normalized.barcodes) ? normalized.barcodes.map(String) : undefined,
-              unit: normalized.unit ? String(normalized.unit) : "шт",
+              unit: normalized.unit ? String(normalized.unit) : "pcs",
               purchasePrice:
                 normalized.purchasePrice != null ? Number(normalized.purchasePrice) : undefined,
               sellPrice: normalized.sellPrice != null ? Number(normalized.sellPrice) : undefined,

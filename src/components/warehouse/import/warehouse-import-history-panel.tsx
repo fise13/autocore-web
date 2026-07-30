@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 
 import { rollbackImportJobUseCase } from "@/application/use-cases/warehouse/rollback-import-job";
 import { Button } from "@/components/ui/button";
@@ -130,7 +130,7 @@ export function WarehouseImportHistoryPanel({
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{job.sourceFileName ?? userCopy.warehouse.import.historyFallback}</p>
                   <p className="text-xs text-muted-foreground">
-                    {format(job.createdAt, "d MMM yyyy, HH:mm", { locale: ru })}
+                    {format(job.createdAt, "d MMM yyyy, HH:mm", { locale: enUS })}
                     {" · "}
                     <span className={cn(statusTone(job.status))}>{statusLabels()[job.status]}</span>
                   </p>

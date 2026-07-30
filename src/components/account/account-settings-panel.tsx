@@ -3,7 +3,6 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { Camera, KeyRound, Loader2, Mail, RefreshCw, Shield } from "lucide-react";
 
-import { AccountLanguageSettingsCard } from "@/components/account/account-language-settings-card";
 import { UserAvatar } from "@/components/account/user-avatar";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -335,7 +334,7 @@ export function AccountSettingsPanel({ onStatus }: AccountSettingsPanelProps) {
         </CardContent>
       </Card>
 
-      <AccountLanguageSettingsCard />
+      {/* Language card unmounted while UI_LOCALE_LOCK pins the app to English. */}
 
       <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
         <DialogContent className="sm:max-w-md">

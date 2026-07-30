@@ -3,7 +3,7 @@ import { useCompanyProfile } from '@/hooks/use-company-profile';
 import { useSession } from '@/hooks/use-session';
 import { resolveActiveCompanyName } from '@/lib/resolve-active-company-name';
 
-export function useActiveCompanyName(fallback = 'Рабочее пространство') {
+export function useActiveCompanyName(fallback = 'Workspace') {
   const activeCompanyName = useAuthStore((s) => s.activeCompanyName);
   const memberships = useAuthStore((s) => s.memberships);
   const { companyId } = useSession();

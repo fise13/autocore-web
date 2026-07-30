@@ -1,4 +1,5 @@
 import { DocumentContext } from "@/lib/documents/document-context";
+import { isEnglishDocumentLocale } from "@/lib/documents/document-locale";
 import { WorkOrder } from "@/domain/work-order";
 import { documentLaborLineTotal } from "@/lib/documents/document-helpers";
 import { formatDocumentMoney } from "@/lib/documents/format";
@@ -74,6 +75,7 @@ export function classifyServiceOrder(context: DocumentContext): ServiceOrderProf
 }
 
 export function summarizeOrderForLogbook(context: DocumentContext): string {
+  const en = isEnglishDocumentLocale(context.locale);
   const profile = classifyServiceOrder(context);
   const { laborTitles, hasMotorInstall } = collectText(context);
 
@@ -81,20 +83,22 @@ export function summarizeOrderForLogbook(context: DocumentContext): string {
     const motor = context.order.motorLines[0];
     const code = [motor.brandName, motor.engineCode, motor.serialCode].filter(Boolean).join(" ");
     if (motor.outcome === "sell") {
-      return code ? `Продажа двигателя ${code}` : "Продажа двигателя";
+      const label = en ? "Engine sale" : "Продажа двигателя";
+      return code ? `${label} ${code}` : label;
     }
-    return code ? `Установка двигателя ${code}` : "Установка двигателя";
+    const label = en ? "Engine installation" : "Установка двигателя";
+    return code ? `${label} ${code}` : label;
   }
 
   if (profile.kind === "engine_install") {
-    return "Установка двигателя";
+    return en ? "Engine installation" : "Установка двигателя";
   }
 
-  if (profile.kind === "oil_change") return "Замена масла";
-  if (profile.kind === "diagnostics") return laborTitles[0] ?? "Диагностика";
+  if (profile.kind === "oil_change") return en ? "Oil change" : "Замена масла";
+  if (profile.kind === "diagnostics") return laborTitles[0] ?? (en ? "Diagnostics" : "Диагностика");
   if (laborTitles.length >= 1) return laborTitles[0]!;
-  if (hasMotorInstall) return "Установка агрегата";
-  return "Обслуживание";
+  if (hasMotorInstall) return en ? "Unit installation" : "Установка агрегата";
+  return en ? "Service" : "Обслуживание";
 }
 
 export function buildLaborLinesForDocument(context: DocumentContext) {
@@ -145,6 +149,12 @@ export function buildOilRelatedParts(context: DocumentContext) {
   );
 }
 
+/**
+ * Feeds activity-log / work-order-effects titles (not a per-document render
+ * path), so unlike `summarizeOrderForLogbook` above it has no `DocumentContext`
+ * to read a locale from. Follows the app-wide English-only lock rather than
+ * branching.
+ */
 export function summarizeWorkOrderForLogbook(order: WorkOrder): string {
   const laborTitles = order.laborLines.map((line) => line.title);
   const partNames = order.partLines.map((line) => line.name);
@@ -164,12 +174,12 @@ export function summarizeWorkOrderForLogbook(order: WorkOrder): string {
     const motor = order.motorLines[0];
     const code = [motor.brandName, motor.engineCode, motor.serialCode].filter(Boolean).join(" ");
     if (motor.outcome === "sell") {
-      return code ? `Продажа двигателя ${code}` : "Продажа двигателя";
+      return code ? `Engine sale ${code}` : "Engine sale";
     }
-    return code ? `Установка двигателя ${code}` : "Установка двигателя";
+    return code ? `Engine installation ${code}` : "Engine installation";
   }
-  if (isOilChange) return "Замена масла";
-  if (isDiagnostics) return laborTitles[0] ?? "Диагностика";
+  if (isOilChange) return "Oil change";
+  if (isDiagnostics) return laborTitles[0] ?? "Diagnostics";
   if (laborTitles.length >= 1) return laborTitles[0]!;
-  return "Обслуживание";
+  return "Service";
 }
