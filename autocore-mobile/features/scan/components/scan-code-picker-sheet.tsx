@@ -3,13 +3,17 @@ import { Pressable, View } from 'react-native';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 
 import { Text } from '@/components/ui';
-import { useModalBottomSheet, useTheme } from '@/hooks';
-
+import { useModalBottomSheet } from '@/hooks';
 import { formatScanPayloadPreview, symbologyLabel } from '@/lib/scan/symbology-label';
 import { haptics } from '@/theme';
 import type { ScanDetection } from '@/services/scan';
 
 import { scanSheetAnimationConfigs } from '../animation/scan-sheet-motion';
+import { scanLayout } from '../layout';
+import {
+  ScanSheetHairline,
+  ScanSheetHeader,
+} from './scan-sheet-chrome';
 
 type ScanCodePickerSheetProps = {
   detections: ScanDetection[];
@@ -19,7 +23,6 @@ type ScanCodePickerSheetProps = {
 
 export const ScanCodePickerSheet = forwardRef<BottomSheetModal, ScanCodePickerSheetProps>(
   function ScanCodePickerSheet({ detections, onPick, onDismiss }, ref) {
-    const { colors } = useTheme();
     const sheet = useModalBottomSheet();
 
     return (
@@ -35,40 +38,38 @@ export const ScanCodePickerSheet = forwardRef<BottomSheetModal, ScanCodePickerSh
         handleIndicatorStyle={sheet.handleIndicatorStyle}
         animationConfigs={scanSheetAnimationConfigs}
       >
-        <BottomSheetScrollView contentContainerStyle={{ ...sheet.compactContentStyle, gap: 12 }}>
-          <View style={{ gap: 4 }}>
-            <Text variant="heading" style={{ fontSize: 20, fontWeight: '700' }}>
-              Несколько кодов в кадре
-            </Text>
-            <Text variant="caption" color="muted">
-              Выберите, какой код обработать
-            </Text>
-          </View>
+        <BottomSheetScrollView
+          contentContainerStyle={{
+            ...sheet.compactContentStyle,
+            paddingHorizontal: scanLayout.sheetPadX,
+            gap: 0,
+          }}
+        >
+          <ScanSheetHeader title="Multiple codes" meta="Choose which code to use" />
+          <View style={{ height: 8 }} />
 
-          {detections.map((detection) => (
-            <Pressable
-              key={`${detection.symbology}:${detection.payload}`}
-              accessibilityRole="button"
-              onPress={() => {
-                haptics.light();
-                onPick(detection);
-              }}
-              style={{
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: colors.border,
-                backgroundColor: colors.secondary,
-                padding: 14,
-                gap: 6,
-              }}
-            >
-              <Text variant="caption" color="muted" style={{ fontWeight: '600' }}>
-                {symbologyLabel(detection.symbology)}
-              </Text>
-              <Text variant="body" style={{ fontSize: 15, fontWeight: '600', fontVariant: ['tabular-nums'] }}>
-                {formatScanPayloadPreview(detection.payload)}
-              </Text>
-            </Pressable>
+          {detections.map((detection, index) => (
+            <View key={`${detection.symbology}:${detection.payload}`}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  haptics.light();
+                  onPick(detection);
+                }}
+                style={{ paddingVertical: 14, gap: 4 }}
+              >
+                <Text variant="caption" color="muted" style={{ fontWeight: '600', fontSize: 12 }}>
+                  {symbologyLabel(detection.symbology)}
+                </Text>
+                <Text
+                  variant="body"
+                  style={{ fontSize: 16, fontWeight: '500', fontVariant: ['tabular-nums'] }}
+                >
+                  {formatScanPayloadPreview(detection.payload)}
+                </Text>
+              </Pressable>
+              {index < detections.length - 1 ? <ScanSheetHairline /> : null}
+            </View>
           ))}
         </BottomSheetScrollView>
       </BottomSheetModal>

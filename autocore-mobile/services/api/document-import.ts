@@ -63,7 +63,7 @@ export async function uploadDocumentImportWithRetry(
       await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
     }
   }
-  throw lastError instanceof Error ? lastError : new Error('Не удалось отправить');
+  throw lastError instanceof Error ? lastError : new Error('Failed to upload');
 }
 
 export async function getDocumentImportStatus(id: string): Promise<DocumentImportJobStatus> {

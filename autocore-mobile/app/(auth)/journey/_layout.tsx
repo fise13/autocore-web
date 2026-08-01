@@ -1,5 +1,14 @@
 import { Stack } from 'expo-router';
 
 export default function JourneyLayout() {
-  return <Stack screenOptions={{ headerShown: false, animation: 'fade_from_bottom' }} />;
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        animation: 'slide_from_right',
+        gestureEnabled: true,
+        fullScreenGestureEnabled: true,
+      }}
+    />
+  );
 }

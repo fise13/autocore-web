@@ -225,13 +225,13 @@ export default function DesignSystemScreen() {
           </Text>
           <View style={{ gap: spacing[3], marginTop: spacing[3] }}>
             <EngineCard title="Toyota 2GR-FE" code="ENG-2041" vin="JTDBT923..." status="available" price="420 000 ₸" />
-            <InventoryCard name="Генератор Denso" sku="GEN-DEN-042" quantity={3} location="A-12" lowStock />
-            <OrderCard id="WO-1042" clientName="Алексей К." status="В работе" total="85 000 ₸" vehicle="Camry 70" />
-            <AnalyticsCard label="Выручка" value="1.2M" suffix=" ₸" delta={12} icon={LayoutGridIcon} />
-            <QuickActionCard label="Новый заказ" description="Создать заказ-наряд" icon={WrenchIcon} onPress={() => {}} />
-            <QuickActionCard label="Приёмка" description="Быстрое оприходование" icon={PackageIcon} onPress={() => {}} />
-            <TimelineCard title="Двигатель оприходован" description="Склад A, полка 12" time="14:32" />
-            <ActivityCard action="обновил остаток" actor="Виктор" target="GEN-DEN-042" time="5 мин назад" />
+            <InventoryCard name="Denso Alternator" sku="GEN-DEN-042" quantity={3} location="A-12" lowStock />
+            <OrderCard id="WO-1042" clientName="Alex K." status="In progress" total="85 000 ₸" vehicle="Camry 70" />
+            <AnalyticsCard label="Revenue" value="1.2M" suffix=" ₸" delta={12} icon={LayoutGridIcon} />
+            <QuickActionCard label="New order" description="Create a work order" icon={WrenchIcon} onPress={() => {}} />
+            <QuickActionCard label="Receiving" description="Quick stock receipt" icon={PackageIcon} onPress={() => {}} />
+            <TimelineCard title="Engine received" description="Warehouse A, shelf 12" time="14:32" />
+            <ActivityCard action="updated stock" actor="Victor" target="GEN-DEN-042" time="5 min ago" />
           </View>
         </AnimatedContainer>
       </ScrollView>

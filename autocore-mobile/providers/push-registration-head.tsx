@@ -15,10 +15,14 @@ export function PushRegistrationHead() {
   useEffect(() => {
     if (!uid || isHydrating) return;
 
-    void ensurePushDeviceRegistered(pushEnabled);
+    // First run after sign-in is where the iOS prompt is raised: notifications
+    // are core to the product (work orders, shift, payouts), and nothing else
+    // asks outside the notification settings screen.
+    void ensurePushDeviceRegistered(pushEnabled, { promptIfUndetermined: true });
 
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
+        // Resumes only re-register an existing grant — never re-prompt.
         void ensurePushDeviceRegistered(pushEnabled);
       }
     });

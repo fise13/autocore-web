@@ -3,14 +3,14 @@ import { ProfileScreenShell } from '@/features/profile/components/profile-screen
 
 export function TaxesSettingsScreen() {
   return (
-    <ProfileScreenShell title="Налоги" subtitle="Ставки и правила налогообложения">
-      <ProfileMetaCard title="НДС">
-        <ProfileMetaRow label="Ставка" value="12%" />
-        <ProfileMetaRow label="Режим" value="Общий" />
+    <ProfileScreenShell title="Taxes" subtitle="Rates and tax rules">
+      <ProfileMetaCard title="VAT">
+        <ProfileMetaRow label="Rate" value="12%" />
+        <ProfileMetaRow label="Mode" value="Standard" />
       </ProfileMetaCard>
 
-      <ProfileMetaCard title="Источник">
-        <ProfileMetaRow label="Настройки" value="Компания · Финансы" />
+      <ProfileMetaCard title="Source">
+        <ProfileMetaRow label="Settings" value="Company · Finance" />
       </ProfileMetaCard>
     </ProfileScreenShell>
   );

@@ -85,7 +85,7 @@ export function AcQuickActions({ actions, onAction }: AcQuickActionsProps) {
 
   return (
     <Reanimated.View style={sectionStyle}>
-      <McSectionTitle title="Быстрые действия" />
+      <McSectionTitle title="Quick actions" />
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

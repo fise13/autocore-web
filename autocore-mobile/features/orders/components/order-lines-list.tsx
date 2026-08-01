@@ -4,7 +4,7 @@ import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { formatPrice } from '@/features/search/lib/format';
 
-import { ordersLayout } from '../layout';
+import { wo } from '../theme/wo-visual';
 
 type OrderLine = {
   id: string;
@@ -62,8 +62,8 @@ function Section({ title, lines, compact }: { title: string; lines: OrderLine[];
       </Text>
       <View
         style={{
-          borderRadius: ordersLayout.radius,
-          borderWidth: ordersLayout.hairline,
+          borderRadius: wo.radius,
+          borderWidth: wo.rule,
           borderColor: colors.border,
           backgroundColor: colors.card,
           paddingHorizontal: 12,
@@ -74,7 +74,7 @@ function Section({ title, lines, compact }: { title: string; lines: OrderLine[];
           <View key={line.id}>
             <LineRow {...line} compact={compact} />
             {index < lines.length - 1 ? (
-              <View style={{ height: ordersLayout.hairline, backgroundColor: colors.border }} />
+              <View style={{ height: wo.rule, backgroundColor: colors.border }} />
             ) : null}
           </View>
         ))}
@@ -99,21 +99,21 @@ export function OrderLinesList({
   if (empty) {
     return (
       <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-        Позиции не добавлены. Используйте сканер или поиск.
+        No items added yet. Use the scanner or search.
       </Text>
     );
   }
 
   return (
     <View style={{ gap: 12 }}>
-      <Section title="Работы" lines={laborLines} compact={compact} />
-      <Section title="Запчасти" lines={partLines} compact={compact} />
-      <Section title="Каталог" lines={catalogLines} compact={compact} />
-      <Section title="Двигатели" lines={motorLines} compact={compact} />
+      <Section title="Labor" lines={laborLines} compact={compact} />
+      <Section title="Parts" lines={partLines} compact={compact} />
+      <Section title="Catalog" lines={catalogLines} compact={compact} />
+      <Section title="Engines" lines={motorLines} compact={compact} />
       {!compact ? (
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 4 }}>
           <Text variant="body" style={{ fontWeight: '600' }}>
-            Итого по позициям
+            Line items total
           </Text>
           <Text variant="body" style={{ fontWeight: '700', fontVariant: ['tabular-nums'] }}>
             {formatPrice(total)}

@@ -16,12 +16,12 @@ type StoredRecentScan = {
 function formatRelativeTime(timestamp: number): string {
   const diffMs = Date.now() - timestamp;
   const minutes = Math.floor(diffMs / 60_000);
-  if (minutes < 1) return 'только что';
-  if (minutes < 60) return `${minutes} мин назад`;
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} ч назад`;
+  if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
-  return `${days} дн назад`;
+  return `${days}d ago`;
 }
 
 function mapStored(item: StoredRecentScan): RecentScan {

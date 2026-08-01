@@ -175,7 +175,7 @@ export function useMissionControlData(): MissionControlSnapshot {
         count: lowStock,
         text: 'running low',
         tone: 'warning',
-        route: '/(tabs)/warehouse',
+        route: '/warehouse',
         routeParams: { lowStock: '1' },
       });
     }
@@ -184,7 +184,7 @@ export function useMissionControlData(): MissionControlSnapshot {
         count: staleMotors,
         text: 'motors sitting idle',
         tone: 'warning',
-        route: '/(tabs)/search',
+        route: '/search',
         routeParams: { filter: 'motors', stale: '1' },
       });
     }
@@ -209,7 +209,7 @@ export function useMissionControlData(): MissionControlSnapshot {
         value: items.length,
         format: 'grouped',
         icon: BoxIcon,
-        route: '/(tabs)/warehouse',
+        route: '/warehouse',
       });
     }
 
@@ -224,7 +224,7 @@ export function useMissionControlData(): MissionControlSnapshot {
         body: 'Adjusting prices can speed up sales and free up cash flow.',
         cta: 'View recommendations',
         tone: 'neutral',
-        route: '/(tabs)/search',
+        route: '/search',
         routeParams: { filter: 'motors', stale: '1' },
       };
     } else if (lowStock > 0) {
@@ -235,7 +235,7 @@ export function useMissionControlData(): MissionControlSnapshot {
         body: 'Restock ahead of time to avoid delaying work order completion.',
         cta: 'Open list',
         tone: 'warning',
-        route: '/(tabs)/warehouse',
+        route: '/warehouse',
         routeParams: { lowStock: '1' },
       };
     } else if (openOrders.length > 0 && now.getHours() >= 18) {
@@ -303,7 +303,7 @@ export function useMissionControlData(): MissionControlSnapshot {
         ? { id: 'scan', label: 'Scan', icon: ScanSearchIcon, route: '/(tabs)/scan' as const }
         : null,
       rbac.scopes.inventory !== 'none'
-        ? { id: 'inventory', label: 'Stock', icon: BoxIcon, route: '/(tabs)/warehouse' as const }
+        ? { id: 'inventory', label: 'Stock', icon: BoxIcon, route: '/warehouse' as const }
         : null,
       rbac.scopes.accounting !== 'none'
         ? { id: 'finance', label: 'Finance', icon: BarChart3Icon, route: '/(tabs)/accounting' as const }

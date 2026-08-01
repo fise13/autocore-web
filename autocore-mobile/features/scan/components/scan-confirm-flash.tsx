@@ -10,11 +10,14 @@ import Animated, {
 
 import { useReducedMotion } from '@/hooks';
 
+import { useScanChromeColors } from '../lib/scan-chrome-colors';
+
 type ScanConfirmFlashProps = {
   visible: boolean;
 };
 
 export function ScanConfirmFlash({ visible }: ScanConfirmFlashProps) {
+  const chrome = useScanChromeColors();
   const reduced = useReducedMotion();
   const progress = useSharedValue(0);
 
@@ -47,7 +50,7 @@ export function ScanConfirmFlash({ visible }: ScanConfirmFlashProps) {
       <Animated.View
         style={[
           StyleSheet.absoluteFill,
-          { backgroundColor: '#4DA3FF' },
+          { backgroundColor: chrome.flash },
           flashStyle,
         ]}
       />
@@ -61,7 +64,7 @@ export function ScanConfirmFlash({ visible }: ScanConfirmFlashProps) {
             height: 120,
             borderRadius: 60,
             borderWidth: 2,
-            borderColor: 'rgba(255,255,255,0.85)',
+            borderColor: chrome.flashRing,
           },
           ringStyle,
         ]}

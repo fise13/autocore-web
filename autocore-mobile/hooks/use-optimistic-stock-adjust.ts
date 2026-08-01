@@ -88,7 +88,7 @@ export function useOptimisticStockAdjust(companyId: string | null) {
       } catch (error) {
         haptics.warning();
         toast({
-          title: 'Не удалось изменить остаток',
+          title: 'Failed to update stock',
           description: error instanceof Error ? error.message : undefined,
           variant: 'destructive',
         });

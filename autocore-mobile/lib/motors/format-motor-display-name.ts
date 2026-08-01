@@ -16,5 +16,5 @@ export function formatMotorLineLabel(
   const name = formatMotorDisplayName(parts);
   if (name) return name;
   if (options?.includeSerial && parts.serialCode?.trim()) return parts.serialCode.trim();
-  return options?.fallback ?? 'Двигатель';
+  return options?.fallback ?? 'Engine';
 }

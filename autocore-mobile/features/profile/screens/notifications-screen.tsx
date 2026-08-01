@@ -41,29 +41,29 @@ export function NotificationsScreen() {
   const { preferences, loaded, updatePreference } = useNotificationPreferences();
 
   return (
-    <ProfileScreenShell title="Уведомления" subtitle="Push-уведомления в приложении">
-      <ProfileMetaCard title="Мобильные уведомления" delay={80}>
+    <ProfileScreenShell title="Notifications" subtitle="Push notifications in the app">
+      <ProfileMetaCard title="Mobile notifications" delay={80}>
         {!loaded ? (
           <Text variant="caption" color="muted">
-            Загрузка…
+            Loading…
           </Text>
         ) : (
           <>
             <ToggleRow
-              title="Push-уведомления"
-              subtitle="Разрешить уведомления от AutoCore на этом устройстве."
+              title="Push notifications"
+              subtitle="Allow notifications from AutoCore on this device."
               value={preferences.channels.push}
               onValueChange={(value) => void updatePreference('pushEnabled', value)}
             />
             <ToggleRow
-              title="Наряды"
-              subtitle="Изменения статуса и назначения в нарядах."
+              title="Work orders"
+              subtitle="Status changes and assignments on work orders."
               value={preferences.categories.work_orders}
               onValueChange={(value) => void updatePreference('orderUpdates', value)}
             />
             <ToggleRow
-              title="Сканирование"
-              subtitle="Результаты сканирования и быстрый приём."
+              title="Scanning"
+              subtitle="Scan results and quick intake."
               value={preferences.categories.scan}
               onValueChange={(value) => void updatePreference('scanAlerts', value)}
             />
@@ -73,7 +73,7 @@ export function NotificationsScreen() {
 
       <ProfileMetaCard delay={120}>
         <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-          Email-уведомления настраиваются в аккаунте и синхронизируются с основным кабинетом.
+          Email notifications are managed in your account and synced with the main dashboard.
         </Text>
       </ProfileMetaCard>
     </ProfileScreenShell>

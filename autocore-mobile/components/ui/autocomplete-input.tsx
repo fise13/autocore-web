@@ -1,5 +1,5 @@
-import { memo, useCallback } from 'react';
-import type { TextInputProps } from 'react-native';
+import { memo, useCallback, useRef } from 'react';
+import { View, type LayoutChangeEvent, type TextInputProps, type View as RNView } from 'react-native';
 
 import { InputField } from '@/components/ui/input/input-field';
 import { useAutocomplete } from '@/hooks/use-autocomplete';
@@ -30,16 +30,18 @@ export const AutocompleteInput = memo(function AutocompleteInput({
   options,
   onOptionSelect,
   replaceMode = 'full',
-  matchMode = 'prefix',
+  matchMode = 'flexible',
   debounceMs,
   minQueryLength,
   invalid,
   onFocus,
   onBlur,
   onSubmitEditing,
+  onKeyPress,
   ...props
 }: AutocompleteInputProps) {
-  const { inputProps } = useAutocomplete({
+  const anchorRef = useRef<RNView>(null);
+  const { inputProps, setAnchor } = useAutocomplete({
     source,
     fieldKey,
     context,
@@ -53,12 +55,28 @@ export const AutocompleteInput = memo(function AutocompleteInput({
     minQueryLength,
   });
 
+  const measureAnchor = useCallback(() => {
+    anchorRef.current?.measureInWindow((x, y, width, height) => {
+      if (width <= 0 || height <= 0) return;
+      setAnchor({ x, y, width, height });
+    });
+  }, [setAnchor]);
+
   const handleFocus = useCallback<NonNullable<TextInputProps['onFocus']>>(
     (event) => {
       inputProps.onFocus?.(event);
+      // Register happens on focus, so measure right after it to seat the panel.
+      requestAnimationFrame(measureAnchor);
       onFocus?.(event);
     },
-    [inputProps, onFocus],
+    [inputProps, measureAnchor, onFocus],
+  );
+
+  const handleLayout = useCallback(
+    (_event: LayoutChangeEvent) => {
+      measureAnchor();
+    },
+    [measureAnchor],
   );
 
   const handleBlur = useCallback<NonNullable<TextInputProps['onBlur']>>(
@@ -77,16 +95,27 @@ export const AutocompleteInput = memo(function AutocompleteInput({
     [inputProps, onSubmitEditing],
   );
 
+  const handleKeyPress = useCallback<NonNullable<TextInputProps['onKeyPress']>>(
+    (event) => {
+      inputProps.onKeyPress?.(event);
+      onKeyPress?.(event);
+    },
+    [inputProps, onKeyPress],
+  );
+
   return (
-    <InputField
-      {...props}
-      {...inputProps}
-      value={value}
-      invalid={invalid}
-      onFocus={handleFocus}
-      onBlur={handleBlur}
-      onSubmitEditing={handleSubmit}
-      returnKeyType={props.returnKeyType ?? 'done'}
-    />
+    <View ref={anchorRef} collapsable={false} onLayout={handleLayout}>
+      <InputField
+        {...props}
+        {...inputProps}
+        value={value}
+        invalid={invalid}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        onSubmitEditing={handleSubmit}
+        onKeyPress={handleKeyPress}
+        returnKeyType={props.returnKeyType ?? 'done'}
+      />
+    </View>
   );
 });

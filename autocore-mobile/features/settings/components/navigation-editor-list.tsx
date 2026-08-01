@@ -92,7 +92,7 @@ export function NavigationEditorList({ order, enabled, onToggle, onMove }: Navig
 
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Выше"
+                  accessibilityLabel="Move up"
                   disabled={index === 0}
                   hitSlop={8}
                   onPress={() => {
@@ -107,7 +107,7 @@ export function NavigationEditorList({ order, enabled, onToggle, onMove }: Navig
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Ниже"
+                  accessibilityLabel="Move down"
                   disabled={index === order.length - 1}
                   hitSlop={8}
                   onPress={() => {

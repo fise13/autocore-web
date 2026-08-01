@@ -3,9 +3,25 @@ import { radius } from './radius';
 import { sidebarWidth, contentMaxWidth } from './breakpoints';
 import { rhythm } from './screen';
 
-/** Layout constants from Autocore app shell */
+/**
+ * Screen primitive contract — feature `layout.ts` files must alias these
+ * (or `rhythm.*`) instead of inventing local pad / radius / title sizes.
+ *
+ * | Token | Source | Use |
+ * |-------|--------|-----|
+ * | screenPad | rhythm.pad | Horizontal inset |
+ * | sectionGap | rhythm.section | Between major sections |
+ * | cardRadius | rhythm.cardRadius | Cards / list groups |
+ * | pageTitle | rhythm.pageTitle | Hub titles (Login form weight) |
+ */
 export const layout = {
   screenPadding,
+  /** @see rhythm.pad — preferred name for new code */
+  screenPad: rhythm.pad,
+  sectionGap: rhythm.section,
+  cardRadius: rhythm.cardRadius,
+  pageTitle: rhythm.pageTitle,
+  pageTitleLineHeight: rhythm.pageTitleLineHeight,
   headerHeight,
   minTouchTarget,
   tabBarHeight: 52,

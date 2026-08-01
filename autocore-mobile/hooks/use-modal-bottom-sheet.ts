@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useFloatingTabBarInset } from '@/hooks/use-floating-tab-bar-inset';
 import { useTheme } from '@/hooks/use-theme';
-import { layout, rhythm } from '@/theme';
+import { layout, rhythm, spacing } from '@/theme';
 
 /**
  * Shared layout for BottomSheetModal overlays that should sit like stack modals
@@ -60,21 +60,28 @@ export function useModalBottomSheet(options?: { backdropOpacity?: number }) {
     [],
   );
 
+  /**
+   * A modal sheet renders over the floating tab bar, so its content must clear
+   * the home indicator — not the tab bar. Reserving tab-bar space here left a
+   * screenful of dead scroll under every sheet's actions.
+   */
+  const sheetContentBottom = Math.max(insets.bottom, spacing[3]) + spacing[4];
+
   const formContentStyle = useMemo(
     () => ({
       paddingHorizontal: rhythm.pad,
-      paddingBottom: scrollBottom,
+      paddingBottom: sheetContentBottom,
       gap: 14 as const,
     }),
-    [scrollBottom],
+    [sheetContentBottom],
   );
 
   const compactContentStyle = useMemo(
     () => ({
       paddingHorizontal: rhythm.pad,
-      paddingBottom: footerBottom,
+      paddingBottom: sheetContentBottom,
     }),
-    [footerBottom],
+    [sheetContentBottom],
   );
 
   return {
@@ -90,5 +97,6 @@ export function useModalBottomSheet(options?: { backdropOpacity?: number }) {
     compactContentStyle,
     footerBottom,
     scrollBottom,
+    sheetContentBottom,
   };
 }

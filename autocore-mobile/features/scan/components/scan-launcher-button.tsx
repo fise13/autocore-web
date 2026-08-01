@@ -25,7 +25,7 @@ export function ScanLauncherButton({
   const { colors } = useTheme();
   const router = useRouter();
   const isOrderFlow = onScanResult != null;
-  const buttonLabel = label ?? (isOrderFlow ? 'Сканировать запчасть' : 'Сканировать');
+  const buttonLabel = label ?? (isOrderFlow ? 'Scan Part' : 'Scan');
 
   return (
     <Pressable
@@ -78,7 +78,7 @@ export function ScanLauncherRow({
   return (
     <View style={{ gap: 8, alignItems: 'flex-end' }}>
       <Text variant="caption" style={{ color: colors.mutedForeground, textAlign: 'right' }}>
-        Штрихкод добавит позицию в этот заказ-наряд
+        Scanning a barcode adds a line item to this work order
       </Text>
       <ScanLauncherButton
         orderId={orderId}

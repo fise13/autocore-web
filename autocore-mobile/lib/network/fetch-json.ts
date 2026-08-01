@@ -16,7 +16,7 @@ export async function fetchJsonWithTimeout<T>(
     return { ok: response.ok, status: response.status, data };
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Превышено время ожидания ответа сервера. Проверьте интернет и попробуйте снова.');
+      throw new Error('The server took too long to respond. Check your connection and try again.');
     }
     throw error;
   } finally {

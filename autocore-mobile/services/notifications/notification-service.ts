@@ -204,7 +204,11 @@ export const NotificationService = {
     });
     teardownFns.push(() => receivedSub.remove());
 
-    await ensurePushDeviceRegistered(options.pushEnabled !== false);
+    // Either this or PushRegistrationHead may run first; both may prompt, and
+    // the undetermined-only guard means exactly one of them ever will.
+    await ensurePushDeviceRegistered(options.pushEnabled !== false, {
+      promptIfUndetermined: true,
+    });
 
     store.setInitialized(true);
     void NotificationService.syncInbox();

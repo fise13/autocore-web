@@ -1,24 +1,7 @@
 /**
- * Hide the floating tab bar on nested stack screens (order detail, settings, …).
- * Modal overlays (new order, new operation sheet, …) keep the bar visible.
+ * The floating tab bar stays visible on every tab route.
+ * Nested-stack detection is still used so tapping the active tab can pop to root.
  */
-const TAB_ROOTS = new Set([
-  '/',
-  '/(tabs)',
-  '/(tabs)/',
-  '/(tabs)/index',
-  '/(tabs)/search',
-  '/(tabs)/scan',
-  '/(tabs)/orders',
-  '/(tabs)/my-earnings',
-  '/(tabs)/accounting',
-  '/(tabs)/profile',
-  '/search',
-  '/scan',
-  '/orders',
-  '/accounting',
-  '/profile',
-]);
 
 /** Stack screens presented as modals above the tab bar. */
 const TAB_BAR_VISIBLE_NESTED_ROUTES = new Set(['new', '[id]/edit']);
@@ -43,15 +26,7 @@ function isModalOverlayRoute(routeName: string): boolean {
   return TAB_BAR_VISIBLE_NESTED_ROUTES.has(routeName);
 }
 
-function isModalOverlayPath(path: string): boolean {
-  return (
-    /\/orders\/new$/.test(path) ||
-    /\/orders\/[^/]+\/edit$/.test(path) ||
-    /\/accounting\/new$/.test(path)
-  );
-}
-
-/** True when the active tab has a nested stack screen that should hide the tab bar. */
+/** True when the active tab has a nested stack screen (not a modal overlay). */
 export function isNestedTabStackActive(routes: TabNavRoute[], index: number): boolean {
   const active = routes[index];
   if (!active?.state || typeof active.state.index !== 'number') return false;
@@ -63,19 +38,12 @@ export function isNestedTabStackActive(routes: TabNavRoute[], index: number): bo
   return active.state.index > 0;
 }
 
-export function shouldHideTabBarFromNavState(routes: TabNavRoute[], index: number): boolean {
-  return isNestedTabStackActive(routes, index);
+/** Tab bar is always shown — nested screens no longer hide it. */
+export function shouldHideTabBarFromNavState(_routes: TabNavRoute[], _index: number): boolean {
+  return false;
 }
 
-export function shouldHideTabBar(pathname: string): boolean {
-  const path = pathname.replace(/\/$/, '') || '/';
-  if (TAB_ROOTS.has(path) || TAB_ROOTS.has(`${path}/`)) return false;
-  if (isModalOverlayPath(path)) return false;
-
-  if (path.includes('/profile/') || path.includes('/orders/')) {
-    return true;
-  }
-
-  const parts = path.split('/').filter(Boolean).filter((part) => !part.startsWith('('));
-  return parts.length > 1;
+/** Tab bar is always shown — nested screens no longer hide it. */
+export function shouldHideTabBar(_pathname: string): boolean {
+  return false;
 }

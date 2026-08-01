@@ -32,7 +32,7 @@ export async function fetchWorkOrderDocumentPdf(
   try {
     return await mobileFetchBlob(buildPdfPath(slug, orderId));
   } catch (error) {
-    throw new Error(mapDocumentError(error, 'Не удалось получить PDF'));
+    throw new Error(mapDocumentError(error, 'Failed to get PDF'));
   }
 }
 
@@ -44,7 +44,7 @@ export async function fetchDocumentPdf(
   try {
     return await mobileFetchBlob(buildPdfPath(slug, aggregateId, options));
   } catch (error) {
-    throw new Error(mapDocumentError(error, 'Не удалось получить PDF'));
+    throw new Error(mapDocumentError(error, 'Failed to get PDF'));
   }
 }
 

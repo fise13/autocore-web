@@ -1,6 +1,7 @@
 import type { OrderStatus } from '../types';
+import { WO_DOMAIN_STAGES } from '../theme/wo-visual';
 
-export type WorkflowStageId = 'received' | 'reserved' | 'waiting_parts' | 'ready';
+export type WorkflowStageId = OrderStatus;
 
 export type WorkflowStage = {
   id: WorkflowStageId;
@@ -9,48 +10,40 @@ export type WorkflowStage = {
   current: boolean;
 };
 
-const STAGE_ORDER: WorkflowStageId[] = ['received', 'reserved', 'waiting_parts', 'ready'];
-
 const STAGE_LABELS: Record<WorkflowStageId, string> = {
-  received: 'Принят',
-  reserved: 'Резерв',
-  waiting_parts: 'Запчасти',
-  ready: 'Готов',
+  draft: 'Draft',
+  confirmed: 'Confirmed',
+  in_progress: 'Progress',
+  waiting_parts: 'Parts',
+  completed: 'Done',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
 };
 
 function resolveStageIndex(status: OrderStatus): number {
-  switch (status) {
-    case 'completed':
-    case 'warranty':
-      return 3;
-    case 'ready':
-      return 3;
-    case 'waiting_parts':
-    case 'overdue':
-      return 2;
-    case 'in_progress':
-      return 1;
-    default:
-      return 0;
-  }
+  if (status === 'cancelled') return -1;
+  const index = WO_DOMAIN_STAGES.indexOf(status);
+  return index >= 0 ? index : 0;
 }
 
+/** Domain path: draft → confirmed → in_progress → waiting_parts → completed → delivered */
 export function getWorkflowStages(status: OrderStatus): WorkflowStage[] {
-  if (status === 'ready' || status === 'completed' || status === 'warranty') {
-    return STAGE_ORDER.map((id) => ({
+  if (status === 'cancelled') {
+    return WO_DOMAIN_STAGES.map((id) => ({
       id,
       label: STAGE_LABELS[id],
-      done: true,
+      done: false,
       current: false,
     }));
   }
 
   const currentIndex = resolveStageIndex(status);
+  const terminal = status === 'delivered' || status === 'completed';
 
-  return STAGE_ORDER.map((id, index) => ({
+  return WO_DOMAIN_STAGES.map((id, index) => ({
     id,
     label: STAGE_LABELS[id],
-    done: index < currentIndex,
-    current: index === currentIndex,
+    done: terminal ? index <= currentIndex : index < currentIndex,
+    current: !terminal && index === currentIndex,
   }));
 }

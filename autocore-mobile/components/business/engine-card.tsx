@@ -27,10 +27,10 @@ const statusTone: Record<NonNullable<EngineCardProps['status']>, 'success' | 'wa
 };
 
 const statusLabel: Record<NonNullable<EngineCardProps['status']>, string> = {
-  available: 'В наличии',
-  reserved: 'Резерв',
-  sold: 'Продан',
-  dismantling: 'В разборе',
+  available: 'In stock',
+  reserved: 'Reserved',
+  sold: 'Sold',
+  dismantling: 'Dismantling',
 };
 
 export const EngineCard = memo(function EngineCard({

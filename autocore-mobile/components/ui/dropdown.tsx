@@ -9,7 +9,9 @@ import {
   type View as RNView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated from 'react-native-reanimated';
 
+import { backdropIn, backdropOut, popoverIn, popoverOut } from '@/animations';
 import { CheckIcon, ChevronDownIcon } from '@/assets/icons';
 import { useTheme } from '@/hooks';
 import { haptics, radius, spacing } from '@/theme';
@@ -45,7 +47,7 @@ export function Dropdown({
   value,
   onValueChange,
   options,
-  placeholder = 'Выберите…',
+  placeholder = 'Select…',
 }: DropdownProps) {
   const { colors, shadows } = useTheme();
   const insets = useSafeAreaInsets();
@@ -133,14 +135,22 @@ export function Dropdown({
       <Modal
         visible={open && Boolean(menuLayout)}
         transparent
-        animationType="fade"
+        animationType="none"
         statusBarTranslucent
         onRequestClose={close}
       >
         <View style={styles.overlay} pointerEvents="box-none">
-          <Pressable style={StyleSheet.absoluteFill} onPress={close} />
+          <Animated.View
+            entering={backdropIn}
+            exiting={backdropOut}
+            style={StyleSheet.absoluteFill}
+          >
+            <Pressable style={StyleSheet.absoluteFill} onPress={close} />
+          </Animated.View>
           {menuLayout ? (
-            <View
+            <Animated.View
+              entering={popoverIn}
+              exiting={popoverOut}
               style={[
                 styles.menu,
                 {
@@ -208,7 +218,7 @@ export function Dropdown({
                   );
                 })}
               </ScrollView>
-            </View>
+            </Animated.View>
           ) : null}
         </View>
       </Modal>

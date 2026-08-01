@@ -26,7 +26,10 @@ export function uniqueAutocompleteOptions(options: AutocompleteOption[], limit =
 
   for (const option of options) {
     const key = option.value.trim().toLowerCase();
-    if (!key || seen.has(key)) continue;
+    const hasCopy = Boolean(
+      option.meta?.title?.trim() || option.label?.trim() || option.value.trim(),
+    );
+    if (!key || !hasCopy || seen.has(key)) continue;
     seen.add(key);
     merged.push(option);
     if (merged.length >= limit) break;

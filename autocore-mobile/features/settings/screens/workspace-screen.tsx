@@ -2,7 +2,8 @@ import { useState } from 'react';
 
 import { useAuth } from '@/authentication/auth-provider';
 import { useGuardedRouter } from '@/hooks/use-guarded-router';
-import { useSession, useCompanySubscription, useActiveCompanyName } from '@/hooks';
+import { useSession, useActiveCompanyName } from '@/hooks';
+import { useEntitlement } from '@/hooks/use-entitlement';
 import { switchActiveCompany } from '@/services/firestore/company-membership-service';
 import { NotificationService } from '@/services/notifications';
 import { haptics } from '@/theme';
@@ -19,26 +20,24 @@ export function WorkspaceScreen() {
   const { firebaseUser, memberships, refreshProfile } = useAuth();
   const { profile, companyId } = useSession();
   const { companyName, isLoading: isCompanyNameLoading } = useActiveCompanyName();
-  const { subscription, isPro } = useCompanySubscription(companyId);
+  const { entitlement } = useEntitlement();
   const [switcherOpen, setSwitcherOpen] = useState(false);
 
   const canSwitchOrg = memberships.length > 1;
 
   return (
-    <ProfileScreenShell title="Рабочее пространство" subtitle="Компания, подписка и синхронизация">
+    <ProfileScreenShell title="Workspace" subtitle="Company, subscription, and sync">
       <WorkspaceHeroCard
         companyName={companyName}
         role={profile?.role ?? 'employee'}
         isOwner={profile?.isCompanyOwner === true}
-        isPro={isPro}
         isLoading={isCompanyNameLoading}
         onPress={canSwitchOrg ? () => setSwitcherOpen(true) : undefined}
         showSwitcherHint={canSwitchOrg}
       />
 
       <WorkspaceSubscriptionCard
-        isPro={isPro}
-        subscription={subscription}
+        entitlement={entitlement}
         onManage={() => router.push(settingsRouteHref('subscription'))}
       />
 

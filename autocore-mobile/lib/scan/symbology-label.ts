@@ -1,14 +1,14 @@
 const SYMBOLOGY_LABELS: Record<string, string> = {
-  qr: 'QR-код',
-  ean13: 'Штрихкод EAN-13',
-  ean8: 'Штрихкод EAN-8',
-  upc_a: 'Штрихкод UPC-A',
-  upc_e: 'Штрихкод UPC-E',
-  code128: 'Штрихкод Code 128',
-  code39: 'Штрихкод Code 39',
-  code93: 'Штрихкод Code 93',
-  itf14: 'Штрихкод ITF-14',
-  codabar: 'Штрихкод Codabar',
+  qr: 'QR code',
+  ean13: 'EAN-13 barcode',
+  ean8: 'EAN-8 barcode',
+  upc_a: 'UPC-A barcode',
+  upc_e: 'UPC-E barcode',
+  code128: 'Code 128 barcode',
+  code39: 'Code 39 barcode',
+  code93: 'Code 93 barcode',
+  itf14: 'ITF-14 barcode',
+  codabar: 'Codabar barcode',
   datamatrix: 'Data Matrix',
   pdf417: 'PDF417',
   aztec: 'Aztec',
@@ -16,7 +16,7 @@ const SYMBOLOGY_LABELS: Record<string, string> = {
 
 export function symbologyLabel(symbology: string): string {
   const key = symbology.toLowerCase().replace(/[^a-z0-9_]/g, '');
-  return SYMBOLOGY_LABELS[key] ?? 'Код';
+  return SYMBOLOGY_LABELS[key] ?? 'Code';
 }
 
 export function formatScanPayloadPreview(payload: string, maxLength = 56): string {

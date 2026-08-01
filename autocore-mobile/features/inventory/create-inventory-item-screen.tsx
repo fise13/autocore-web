@@ -4,8 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ArrowLeftIcon, BoxIcon } from '@/assets/icons';
-import { ScreenActionFooter } from '@/components/navigation/screen-action-footer';
-import { Button, AutocompleteInput, IconButton, Input, KeyboardFormShell, Screen, Surface, Text, toast } from '@/components/ui';
+import { Button, AutocompleteInput, IconButton, Input, KeyboardFormShell, Screen, StickyActionBar, Surface, Text, toast } from '@/components/ui';
 import {
   useMobileCreateInventoryItem,
   useSession,
@@ -166,7 +165,7 @@ export function CreateInventoryItemScreen() {
       <KeyboardFormShell
         contentContainerStyle={{
           paddingHorizontal: ordersLayout.pad,
-          paddingBottom: 120 + insets.bottom,
+          paddingBottom: ordersLayout.section,
           gap: ordersLayout.section,
         }}
         header={
@@ -196,15 +195,17 @@ export function CreateInventoryItemScreen() {
           </View>
         }
         footer={
-          <ScreenActionFooter aboveTabBar={false}>
+          <StickyActionBar>
             <Button
+              size="xl"
+              style={{ flex: 1 }}
               onPress={() => void handleSubmit()}
               loading={createItem.isPending}
               disabled={!canEdit || createItem.isPending}
             >
               {submitLabel}
             </Button>
-          </ScreenActionFooter>
+          </StickyActionBar>
         }
       >
           <Surface inset>

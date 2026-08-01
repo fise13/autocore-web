@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { enUS } from 'date-fns/locale';
 import { Alert, Pressable, View } from 'react-native';
 
 import { FileStackIcon } from '@/assets/icons';
@@ -23,6 +23,7 @@ import { mcType } from '@/features/mission-control/layout';
 
 import { ac } from '../layout';
 import { formatKzt } from '../utils/format';
+import { formatTimestamp } from '@/lib/firestore-timestamp';
 
 type AcOperationsListProps = {
   title: string;
@@ -79,10 +80,10 @@ const OperationRow = memo(function OperationRow({
       : null;
 
   const confirmDelete = () => {
-    Alert.alert('Удалить операцию?', 'Запись будет удалена из журнала.', [
-      { text: 'Отмена', style: 'cancel' },
+    Alert.alert('Delete this operation?', 'The entry will be removed from the journal.', [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Удалить',
+        text: 'Delete',
         style: 'destructive',
         onPress: () => {
           haptics.warning();
@@ -135,7 +136,7 @@ const OperationRow = memo(function OperationRow({
             .join(' · ')}
           <Text variant="meta" color="muted" style={{ fontVariant: ['tabular-nums'] }}>
             {' · '}
-            {format(operation.createdAt, 'd MMM, HH:mm', { locale: ru })}
+            {formatTimestamp(operation.createdAt, 'd MMM, HH:mm')}
           </Text>
         </Text>
       </View>
@@ -157,9 +158,9 @@ const OperationRow = memo(function OperationRow({
             </Pressable>
           ) : null}
           {onDelete && canEdit ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Удалить" onPress={confirmDelete} hitSlop={4}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Delete" onPress={confirmDelete} hitSlop={4}>
               <Text variant="caption" style={{ fontSize: 11, fontWeight: '600', color: colors.destructive }}>
-                Удалить
+                Delete
               </Text>
             </Pressable>
           ) : null}
@@ -176,7 +177,7 @@ export function AcOperationsList({
   title,
   description,
   rows,
-  emptyLabel = 'Операций пока нет',
+  emptyLabel = 'No operations yet',
   showWorkOrder,
   workOrderNumbers,
   canEdit,
@@ -216,7 +217,7 @@ export function AcOperationsList({
 
       {rows.length > MAX_VISIBLE_ROWS ? (
         <Text variant="caption" color="muted" style={{ textAlign: 'center', paddingTop: rhythm.tight }}>
-          Показаны первые {MAX_VISIBLE_ROWS} из {rows.length}
+          Showing the first {MAX_VISIBLE_ROWS} of {rows.length}
         </Text>
       ) : null}
     </View>

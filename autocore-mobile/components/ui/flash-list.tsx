@@ -1,5 +1,5 @@
-import { memo } from 'react';
-import { FlashList as ShopifyFlashList, type FlashListProps } from '@shopify/flash-list';
+import { forwardRef, memo } from 'react';
+import { FlashList as ShopifyFlashList, type FlashListProps, type FlashListRef } from '@shopify/flash-list';
 
 import { rhythm } from '@/theme';
 
@@ -9,13 +9,13 @@ type OptimizedListProps<T> = FlashListProps<T> & {
 };
 
 /** FlashList with Autocore defaults for 60fps scrolling (FlashList v2). */
-function FlashListInner<T>({
-  contentContainerStyle,
-  padded = false,
-  ...props
-}: OptimizedListProps<T>) {
+function FlashListInner<T>(
+  { contentContainerStyle, padded = false, ...props }: OptimizedListProps<T>,
+  ref: React.ForwardedRef<FlashListRef<T>>,
+) {
   return (
     <ShopifyFlashList
+      ref={ref}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={[padded ? { paddingHorizontal: rhythm.pad } : null, contentContainerStyle]}
@@ -24,7 +24,9 @@ function FlashListInner<T>({
   );
 }
 
-export const FlashList = memo(FlashListInner) as typeof FlashListInner;
+export const FlashList = memo(forwardRef(FlashListInner)) as <T>(
+  props: OptimizedListProps<T> & { ref?: React.Ref<FlashListRef<T>> },
+) => React.ReactElement;
 
 export function useListStaggerDelay(index: number, baseMs = 40) {
   return Math.min(index, 6) * baseMs;

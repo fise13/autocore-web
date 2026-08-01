@@ -27,7 +27,7 @@ export function normalizeInventoryItem(item: InventoryItem): InventoryItem {
     ...item,
     sku: coerceInventoryString(item.sku),
     name: coerceInventoryString(item.name),
-    unit: coerceInventoryString(item.unit, 'шт'),
+    unit: coerceInventoryString(item.unit, 'pc'),
     description: item.description != null ? coerceInventoryString(item.description) : undefined,
     brandName: item.brandName != null ? coerceInventoryString(item.brandName) : undefined,
     warehouseLocation:
@@ -59,7 +59,7 @@ function mapItem(id: string, data: Record<string, unknown>): InventoryItem {
       data.primaryLocationId == null ? undefined : coerceInventoryString(data.primaryLocationId),
     primaryLocationCode:
       data.primaryLocationCode == null ? undefined : coerceInventoryString(data.primaryLocationCode),
-    unit: coerceInventoryString(data.unit, 'шт'),
+    unit: coerceInventoryString(data.unit, 'pc'),
     sellPrice: data.sellPrice == null ? undefined : Number(data.sellPrice),
     purchasePrice: data.purchasePrice == null ? undefined : Number(data.purchasePrice),
     totalOnHand,

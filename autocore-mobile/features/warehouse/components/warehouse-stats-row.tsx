@@ -67,9 +67,9 @@ export function WarehouseStatsRow({ availableUnits, lowStockCount }: WarehouseSt
 
   return (
     <Animated.View style={[{ flexDirection: 'row', gap: 12, paddingHorizontal: wh.pad }, rowStyle]}>
-      <StatCard label="Доступно" value={availableUnits} delay={whTimeline.stats} />
+      <StatCard label="Available" value={availableUnits} delay={whTimeline.stats} />
       <StatCard
-        label="На исходе"
+        label="Low stock"
         value={lowStockCount}
         accent={lowStockCount > 0}
         delay={whTimeline.stats + 50}

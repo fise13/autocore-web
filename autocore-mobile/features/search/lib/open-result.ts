@@ -23,9 +23,10 @@ export type MotorActionHandlers = {
 
 function showPartActions(
   item: SearchResultItem,
+  router: SearchRouter,
   addToOrder: AddToOrderHandlers,
 ): void {
-  const options = ['Добавить в наряд', 'Показать остаток', 'Отмена'];
+  const options = ['Add to work order', 'Show stock', 'Cancel'];
   const addIndex = 0;
   const showIndex = 1;
   const cancelIndex = 2;
@@ -36,12 +37,7 @@ function showPartActions(
       return;
     }
     if (index === showIndex) {
-      const detail = [item.subtitle, item.meta].filter(Boolean).join(' · ');
-      toast({
-        title: item.title,
-        description: detail || 'Позиция склада',
-        variant: 'default',
-      });
+      router.push(`/warehouse?q=${encodeURIComponent(item.title)}` as Href);
     }
   };
 
@@ -54,9 +50,9 @@ function showPartActions(
   }
 
   Alert.alert(item.title, item.subtitle, [
-    { text: 'Добавить в наряд', onPress: () => onSelect(addIndex) },
-    { text: 'Показать остаток', onPress: () => onSelect(showIndex) },
-    { text: 'Отмена', style: 'cancel' },
+    { text: 'Add to work order', onPress: () => onSelect(addIndex) },
+    { text: 'Show stock', onPress: () => onSelect(showIndex) },
+    { text: 'Cancel', style: 'cancel' },
   ]);
 }
 
@@ -73,7 +69,7 @@ function motorActionMessage(item: SearchResultItem): string | undefined {
 }
 
 function showMotorActions(item: SearchResultItem, handlers: MotorActionHandlers): void {
-  const options = ['Продать', 'Добавить в наряд', 'Отмена'];
+  const options = ['Sell', 'Add to work order', 'Cancel'];
   const sellIndex = 0;
   const orderIndex = 1;
   const cancelIndex = 2;
@@ -104,9 +100,47 @@ function showMotorActions(item: SearchResultItem, handlers: MotorActionHandlers)
   }
 
   Alert.alert(title, message, [
-    { text: 'Продать', onPress: () => onSelect(sellIndex) },
-    { text: 'Добавить в наряд', onPress: () => onSelect(orderIndex) },
-    { text: 'Отмена', style: 'cancel' },
+    { text: 'Sell', onPress: () => onSelect(sellIndex) },
+    { text: 'Add to work order', onPress: () => onSelect(orderIndex) },
+    { text: 'Cancel', style: 'cancel' },
+  ]);
+}
+
+function showCatalogActions(item: SearchResultItem, router: SearchRouter): void {
+  const kindLabel = item.kind === 'engine' ? 'engines' : 'gearboxes';
+  const options = ['Find in warehouse', 'Search related', 'Cancel'];
+  const warehouseIndex = 0;
+  const searchIndex = 1;
+  const cancelIndex = 2;
+  const query = encodeURIComponent(item.title);
+
+  const onSelect = (index: number) => {
+    if (index === warehouseIndex) {
+      router.push(`/warehouse?q=${query}` as Href);
+      return;
+    }
+    if (index === searchIndex) {
+      router.push(`/search?q=${query}&filter=${kindLabel}` as Href);
+    }
+  };
+
+  if (Platform.OS === 'ios') {
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex: cancelIndex,
+        title: item.title,
+        message: item.subtitle ?? item.meta,
+      },
+      onSelect,
+    );
+    return;
+  }
+
+  Alert.alert(item.title, item.subtitle ?? item.meta, [
+    { text: 'Find in warehouse', onPress: () => onSelect(warehouseIndex) },
+    { text: 'Search related', onPress: () => onSelect(searchIndex) },
+    { text: 'Cancel', style: 'cancel' },
   ]);
 }
 
@@ -117,8 +151,6 @@ export async function openSearchResult(
   addToOrder: AddToOrderHandlers,
   motorActions?: MotorActionHandlers,
 ): Promise<void> {
-  void router;
-
   if (item.kind === 'order') {
     router.push(`/(tabs)/orders/${item.id}` as Href);
     return;
@@ -131,7 +163,7 @@ export async function openSearchResult(
   }
 
   if (item.kind === 'part') {
-    showPartActions(item, addToOrder);
+    showPartActions(item, router, addToOrder);
     return;
   }
 
@@ -150,9 +182,14 @@ export async function openSearchResult(
   }
 
   if (item.kind === 'engine' || item.kind === 'gearbox') {
+    showCatalogActions(item, router);
+    return;
+  }
+
+  if (item.kind === 'document' || item.kind === 'sale' || item.kind === 'accounting') {
     toast({
       title: item.title,
-      description: item.subtitle ?? item.meta,
+      description: item.subtitle ?? item.meta ?? 'Open this item on web for full detail.',
     });
   }
 }

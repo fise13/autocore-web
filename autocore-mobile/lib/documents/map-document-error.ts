@@ -1,12 +1,12 @@
 import { MobileApiError } from '@/services/api/mobile-client';
 
-export function mapDocumentError(error: unknown, fallback = 'Не удалось выполнить операцию'): string {
+export function mapDocumentError(error: unknown, fallback = 'Could not complete the operation'): string {
   if (error instanceof MobileApiError) {
-    if (error.status === 401) return 'Требуется повторный вход';
-    if (error.status === 402) return 'Для документов нужна подписка Pro';
-    if (error.status === 403) return 'Недостаточно прав для просмотра документов';
+    if (error.status === 401) return 'Please sign in again';
+    if (error.status === 402) return 'Documents require a Pro subscription';
+    if (error.status === 403) return 'You do not have permission to view documents';
     if (error.status === 202) {
-      return error.message || 'PDF формируется. Повторите через несколько секунд.';
+      return error.message || 'The PDF is being generated. Try again in a few seconds.';
     }
     return error.message || fallback;
   }
@@ -15,7 +15,7 @@ export function mapDocumentError(error: unknown, fallback = 'Не удалось
 
   const message = error.message;
   if (message.includes('PUPPETEER') || message.includes('Chrome не найден')) {
-    return 'Не удалось сгенерировать PDF на сервере. Попробуйте позже.';
+    return 'Could not generate the PDF on the server. Please try again later.';
   }
 
   return message || fallback;

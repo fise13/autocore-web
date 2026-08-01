@@ -102,7 +102,7 @@ export function AcAttention({ items, onItemPress }: AcAttentionProps) {
 
   return (
     <Reanimated.View style={[{ gap: ac.sectionGap }, titleStyle]}>
-      <McSectionTitle title="Требует внимания" />
+      <McSectionTitle title="Needs Attention" />
       {items.map((item, index) => (
         <AttentionCard key={item.id} item={item} index={index} onItemPress={onItemPress} />
       ))}

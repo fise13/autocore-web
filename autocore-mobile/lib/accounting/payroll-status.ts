@@ -1,9 +1,9 @@
 import type { PayrollTransactionStatus } from '@/types/payroll-transaction';
 
 export const PAYROLL_STATUS_LABELS: Record<PayrollTransactionStatus, string> = {
-  pending: 'К выплате',
-  paid: 'Выплачено',
-  cancelled: 'Не выплачивать',
+  pending: 'Pending',
+  paid: 'Paid',
+  cancelled: 'Do not pay',
 };
 
 export function nextPayrollStatus(current: PayrollTransactionStatus): PayrollTransactionStatus {

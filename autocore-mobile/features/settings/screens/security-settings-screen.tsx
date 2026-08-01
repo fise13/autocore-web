@@ -11,8 +11,8 @@ import { ProfileScreenShell } from '@/features/profile/components/profile-screen
 function resolveProvider(providerIds: string[]): string {
   if (providerIds.includes('google.com')) return 'Google';
   if (providerIds.includes('apple.com')) return 'Apple';
-  if (providerIds.includes('password')) return 'Email и пароль';
-  return 'Аккаунт AutoCore';
+  if (providerIds.includes('password')) return 'Email and password';
+  return 'AutoCore account';
 }
 
 export function SecuritySettingsScreen() {
@@ -22,18 +22,18 @@ export function SecuritySettingsScreen() {
   const emailProvider = providerIds.includes('password');
 
   return (
-    <ProfileScreenShell title="Безопасность" subtitle="Вход и защита аккаунта">
-      <ProfileMetaCard title="Способ входа">
-        <ProfileMetaRow label="Провайдер" value={resolveProvider(providerIds)} />
+    <ProfileScreenShell title="Security" subtitle="Sign-in and account protection">
+      <ProfileMetaCard title="Sign-in method">
+        <ProfileMetaRow label="Provider" value={resolveProvider(providerIds)} />
         <ProfileMetaRow label="Email" value={profile?.email ?? firebaseUser?.email ?? '—'} />
       </ProfileMetaCard>
 
-      <ProfileMetaCard title="Пароль">
+      <ProfileMetaCard title="Password">
         <View style={{ gap: rhythm.tight }}>
           <Text variant="body" style={{ fontSize: 14, lineHeight: 20 }}>
             {emailProvider
-              ? 'Изменить пароль можно в редактировании профиля.'
-              : `Вход через ${resolveProvider(providerIds)}. Пароль приложения не используется.`}
+              ? 'You can change your password from profile editing.'
+              : `Signed in with ${resolveProvider(providerIds)}. No app password is used.`}
           </Text>
         </View>
       </ProfileMetaCard>

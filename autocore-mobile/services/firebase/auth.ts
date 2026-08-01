@@ -108,7 +108,7 @@ export function getAuthProviderIds(user: User): string[] {
 export async function reauthenticateWithPassword(user: User, password: string): Promise<void> {
   const email = user.email?.trim();
   if (!email) {
-    throw new Error('Для удаления аккаунта нужен email и пароль.');
+    throw new Error('Deleting your account requires an email and password.');
   }
   const credential = EmailAuthProvider.credential(email, password);
   await reauthenticateWithCredential(user, credential);

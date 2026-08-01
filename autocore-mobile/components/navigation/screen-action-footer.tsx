@@ -42,20 +42,23 @@ export function ScreenActionFooter({
       style={[
         {
           paddingHorizontal: horizontalPadding,
-          paddingTop: 12,
-          paddingBottom: absolute ? 0 : bottomInset,
+          paddingTop: spacing[3.5],
+          // Absolute footers still reserve the inset so their background runs
+          // all the way to the screen edge — otherwise content scrolls through
+          // the gap between the footer and the tab bar.
+          paddingBottom: bottomInset,
           borderTopWidth: 1,
           borderTopColor: colors.border,
           backgroundColor: colors.background,
           flexDirection: 'row',
-          gap: 10,
+          gap: spacing[2.5],
         },
         absolute
           ? {
               position: 'absolute',
               left: 0,
               right: 0,
-              bottom: bottomInset,
+              bottom: 0,
             }
           : null,
         style,

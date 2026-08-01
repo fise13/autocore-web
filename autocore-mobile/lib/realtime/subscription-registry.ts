@@ -1,4 +1,5 @@
 import { clearScheduledQueryDataApplies } from '@/lib/realtime/query-data-scheduler';
+import { sessionInteractiveQueryKeys } from '@/lib/realtime/session-bootstrap-keys';
 import {
   clearRealtimeSnapshots,
   readRealtimeSnapshotSync,
@@ -256,8 +257,8 @@ export function areAcquiredSessionListenersReady(): boolean {
 }
 
 /**
- * Bootstrap gate: company config must be live, and every acquired keepAlive
- * listener must have delivered a first snapshot. Returns ready listener count.
+ * Bootstrap gate: interactive shell keys only (config + work orders / clients /
+ * employees). Heavy catalogs may still stream in after reveal.
  */
 export function getSessionBootstrapStatus(companyId: string): {
   ready: boolean;
@@ -265,11 +266,14 @@ export function getSessionBootstrapStatus(companyId: string): {
   pendingCount: number;
   configReady: boolean;
 } {
+  const interactiveKeys = sessionInteractiveQueryKeys(companyId);
   const configReady = isRealtimeReady(['realtime', 'company-app-config', companyId]);
   let readyCount = 0;
   let pendingCount = 0;
 
-  for (const entry of registry.values()) {
+  for (const queryKey of interactiveKeys) {
+    const entry = registry.get(keyOf(queryKey));
+    if (!entry) continue;
     if (!entry.keepAlive && entry.subscribers.size === 0) continue;
     if (entry.ready) readyCount += 1;
     else pendingCount += 1;
@@ -279,7 +283,7 @@ export function getSessionBootstrapStatus(companyId: string): {
     configReady,
     readyCount,
     pendingCount,
-    ready: configReady && pendingCount === 0 && readyCount > 0,
+    ready: areInteractiveSessionReady(companyId, interactiveKeys) && readyCount > 0 && pendingCount === 0,
   };
 }
 

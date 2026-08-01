@@ -1,22 +1,27 @@
 import { useEffect, useState } from 'react';
 import { AccessibilityInfo, PixelRatio, I18nManager } from 'react-native';
 
-/** Reduced motion — respects iOS/Android system setting */
+import { useAppearanceSettingsStore } from '@/features/settings/store/appearance-settings-store';
+
+/** Reduced motion — system setting OR user disabled animations in Appearance. */
 export function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
+  const [systemReduced, setSystemReduced] = useState(false);
+  const animationsEnabled = useAppearanceSettingsStore((s) => s.animationsEnabled);
 
   useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled().then(setReduced);
-    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduced);
+    AccessibilityInfo.isReduceMotionEnabled().then(setSystemReduced);
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setSystemReduced);
     return () => sub.remove();
   }, []);
 
-  return reduced;
+  return systemReduced || !animationsEnabled;
 }
 
-/** Dynamic Type scale factor */
+/** Dynamic Type scale factor (+15% when Large text is on in Appearance). */
 export function useFontScale(): number {
-  return PixelRatio.getFontScale();
+  const largeText = useAppearanceSettingsStore((s) => s.largeText);
+  const system = PixelRatio.getFontScale();
+  return largeText ? system * 1.15 : system;
 }
 
 /** High contrast detection (iOS invert colors / Android high contrast) */

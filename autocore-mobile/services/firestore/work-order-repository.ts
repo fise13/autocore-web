@@ -168,7 +168,7 @@ export function createWorkOrderRepository() {
       );
 
       const snapshot = await getDoc(targetRef);
-      if (!snapshot.exists()) throw new Error('Не удалось создать заказ-наряд');
+      if (!snapshot.exists()) throw new Error('Failed to create work order');
       return mapWorkOrder(snapshot.id, snapshot.data() as Record<string, unknown>);
     },
 

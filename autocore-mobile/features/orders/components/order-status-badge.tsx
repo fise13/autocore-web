@@ -2,59 +2,66 @@ import { View } from 'react-native';
 
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { toneBackground } from '@/theme/color-utils';
 
-import { orderStatusLabel, orderStatusTone, type OrderStatusTone } from '../lib/status';
+import { resolveStatusInk } from '../lib/status';
+import { wo, woType } from '../theme/wo-visual';
 import type { OrderStatus } from '../types';
 
 type OrderStatusBadgeProps = {
   status: OrderStatus;
   size?: 'sm' | 'md';
+  /** Leading dot — drop it where a separate status dot already leads the row. */
+  showDot?: boolean;
 };
 
-function toneToColor(tone: OrderStatusTone, colors: ReturnType<typeof useTheme>['colors']) {
-  switch (tone) {
-    case 'success':
-      return colors.success;
-    case 'warning':
-      return colors.warning;
-    case 'destructive':
-      return colors.destructive;
-    case 'muted':
-      return colors.mutedForeground;
-    case 'chart2':
-      return colors.chart2;
-    default:
-      return colors.primary;
-  }
-}
-
-export function OrderStatusBadge({ status, size = 'sm' }: OrderStatusBadgeProps) {
+/**
+ * Status pill. Filled when the order needs someone to act on it, tinted when it
+ * is parked — see `resolveStatusInk`.
+ */
+export function OrderStatusBadge({ status, size = 'sm', showDot = true }: OrderStatusBadgeProps) {
   const { colors } = useTheme();
-  const tone = orderStatusTone[status];
-  const tint = toneToColor(tone, colors);
+  const ink = resolveStatusInk(colors, status);
   const isMd = size === 'md';
+  const solid = ink.emphasis === 'solid';
+
+  const background = solid ? ink.solid : ink.subtle;
+  const foreground = solid ? ink.onSolid : ink.onSubtle;
 
   return (
     <View
       style={{
         alignSelf: 'flex-start',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
         paddingHorizontal: isMd ? 10 : 8,
         paddingVertical: isMd ? 5 : 4,
-        borderRadius: isMd ? 9 : 8,
-        backgroundColor: toneBackground(tint, 0.1),
+        borderRadius: wo.radiusPill,
+        borderWidth: wo.rule,
+        borderColor: solid ? 'transparent' : ink.border,
+        backgroundColor: background,
       }}
     >
+      {showDot ? (
+        <View
+          style={{
+            width: 5,
+            height: 5,
+            borderRadius: 2.5,
+            backgroundColor: foreground,
+            opacity: solid ? 0.9 : 1,
+          }}
+        />
+      ) : null}
       <Text
         variant="caption"
         style={{
-          fontSize: isMd ? 12 : 10,
-          fontWeight: '600',
-          color: tint,
-          letterSpacing: 0.1,
+          ...woType.statusPill,
+          fontSize: isMd ? 11 : 10.5,
+          color: foreground,
         }}
       >
-        {orderStatusLabel[status]}
+        {ink.label}
       </Text>
     </View>
   );

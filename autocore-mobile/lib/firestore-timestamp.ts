@@ -1,3 +1,5 @@
+import { format } from 'date-fns';
+import { enUS } from 'date-fns/locale';
 import { Timestamp } from 'firebase/firestore';
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
@@ -86,4 +88,18 @@ export function reviveDatesDeep<T>(value: T, key?: string): T {
   }
 
   return value;
+}
+
+/**
+ * `format` from date-fns calls Date methods on its input, so it throws on the
+ * Timestamps and rehydrated ISO strings that reach the UI through fields typed
+ * as `Date`. Coerce first and fall back rather than crashing a whole screen.
+ */
+export function formatTimestamp(
+  value: unknown,
+  pattern: string,
+  fallback = '—',
+): string {
+  const date = coerceToDate(value);
+  return date ? format(date, pattern, { locale: enUS }) : fallback;
 }

@@ -12,13 +12,13 @@ export function writePdfCacheFile(filename: string, bytes: ArrayBuffer): File {
   file.write(new Uint8Array(bytes));
 
   if (!file.exists) {
-    throw new Error(`Не удалось сохранить PDF «${filename}»`);
+    throw new Error(`Failed to save PDF "${filename}"`);
   }
 
   const size = file.info().size ?? 0;
   if (size <= 0) {
     file.delete();
-    throw new Error('Сервер вернул пустой PDF');
+    throw new Error('Server returned an empty PDF');
   }
 
   return file;
@@ -35,7 +35,7 @@ export function writePdfDocumentFile(filename: string, bytes: ArrayBuffer): File
   file.write(new Uint8Array(bytes));
 
   if (!file.exists) {
-    throw new Error(`Не удалось сохранить PDF «${filename}»`);
+    throw new Error(`Failed to save PDF "${filename}"`);
   }
 
   return file;

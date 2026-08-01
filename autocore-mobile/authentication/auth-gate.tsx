@@ -19,7 +19,8 @@ import { AutocompleteDataHead } from '@/providers/autocomplete-data-head';
 import { MoneyFormatSync } from '@/providers/money-format-sync';
 import { NotificationProvider } from '@/providers/notification-provider';
 import { PushRegistrationHead } from '@/providers/push-registration-head';
-import { refreshCompanyBilling } from '@/services/api/billing';
+import { SubscriptionProvider } from '@/providers/subscription-provider';
+import { reconcile } from '@/lib/subscriptions/subscription-manager';
 
 const MemoAppTree = memo(function MemoAppTree({ children }: { children: React.ReactNode }) {
   return (
@@ -62,9 +63,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     if (!companyId) return;
     setRefreshing(true);
     try {
-      await refreshCompanyBilling(companyId);
+      await reconcile(companyId);
     } catch {
-      // Listener will pick up changes when billing updates on the web.
+      // Listener picks up the change whenever billing next updates.
     } finally {
       setRefreshing(false);
     }
@@ -96,10 +97,15 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   const pushRegistration = firebaseUser ? <PushRegistrationHead /> : null;
 
+  // Mounted for every signed-in user, not just paying ones: a blocked free user
+  // is exactly who needs the store connection and the product catalog.
+  const subscriptionHead = firebaseUser ? <SubscriptionProvider /> : null;
+
   if (firebaseUser && journeyStep === 'loading') {
     return (
       <>
         {pushRegistration}
+        {subscriptionHead}
         <AuthRedirectEffect />
         <AuthLoadingScreen message="Preparing your workspace…" />
       </>
@@ -110,6 +116,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     return (
       <>
         {pushRegistration}
+        {subscriptionHead}
         <AuthRedirectEffect />
         <SubscriptionRequiredScreen onRefresh={() => void refreshSubscription()} refreshing={refreshing} />
       </>
@@ -120,6 +127,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     return (
       <>
         {pushRegistration}
+        {subscriptionHead}
         <AuthRedirectEffect />
         <WorkspaceAccessScreen />
       </>
@@ -130,6 +138,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     return (
       <>
         {pushRegistration}
+        {subscriptionHead}
         <AuthRedirectEffect />
         <MemoAppTree>{children}</MemoAppTree>
       </>

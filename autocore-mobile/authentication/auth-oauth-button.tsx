@@ -1,8 +1,10 @@
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
+import { usePressAnimation } from '@/animations';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { haptics } from '@/theme';
+import { haptics, radius } from '@/theme';
 
 import { AppleIcon, GoogleIcon } from './auth-brand-icons';
 import {
@@ -11,6 +13,10 @@ import {
   AUTH_BUTTON_ICON_SIZE,
   AUTH_BUTTON_LINE_HEIGHT,
   AUTH_BUTTON_RADIUS,
+  AUTH_HERO_BUTTON_FONT_SIZE,
+  AUTH_HERO_BUTTON_HEIGHT,
+  AUTH_HERO_BUTTON_ICON_SIZE,
+  AUTH_HERO_BUTTON_LINE_HEIGHT,
 } from './auth-button-metrics';
 import { getOAuthButtonTheme } from './auth-oauth-theme';
 
@@ -19,6 +25,8 @@ type AuthOAuthButtonProps = {
   label: string;
   disabled?: boolean;
   loading?: boolean;
+  /** Tall full-radius pill used on the login landing screen. */
+  hero?: boolean;
   onPress: () => void;
 };
 
@@ -27,17 +35,25 @@ export function AuthOAuthButton({
   label,
   disabled = false,
   loading = false,
+  hero = false,
   onPress,
 }: AuthOAuthButtonProps) {
   const { scheme } = useTheme();
   const theme = getOAuthButtonTheme(provider, scheme);
   const isGoogle = provider === 'google';
+  const press = usePressAnimation(0.97);
+
+  const height = hero ? AUTH_HERO_BUTTON_HEIGHT : AUTH_BUTTON_HEIGHT;
+  const iconSize = hero ? AUTH_HERO_BUTTON_ICON_SIZE : AUTH_BUTTON_ICON_SIZE;
 
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
       accessibilityState={{ disabled: disabled || loading, busy: loading }}
       disabled={disabled || loading}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
       onPress={() => {
         haptics.selection();
         onPress();
@@ -45,27 +61,29 @@ export function AuthOAuthButton({
       style={styles.pressable}
     >
       {({ pressed }) => (
-        <View
+        <Animated.View
           style={[
             styles.container,
-            theme.shadow,
+            hero ? null : theme.shadow,
             {
+              height,
+              borderRadius: hero ? radius.full : AUTH_BUTTON_RADIUS,
               backgroundColor:
                 pressed && !disabled ? theme.pressedBackgroundColor : theme.backgroundColor,
               borderColor: theme.borderColor,
-              opacity: disabled ? 0.65 : 1,
-              transform: [{ translateY: pressed && !disabled ? 1 : 0 }],
+              opacity: disabled ? 0.55 : 1,
             },
+            press.style,
           ]}
         >
           <View style={styles.content}>
-            <View style={styles.iconSlot}>
+            <View style={{ width: iconSize, height: iconSize, alignItems: 'center', justifyContent: 'center' }}>
               {loading ? (
                 <ActivityIndicator size="small" color={theme.foregroundColor} />
               ) : isGoogle ? (
-                <GoogleIcon size={AUTH_BUTTON_ICON_SIZE} />
+                <GoogleIcon size={iconSize} />
               ) : (
-                <AppleIcon size={AUTH_BUTTON_ICON_SIZE} color={theme.foregroundColor} />
+                <AppleIcon size={iconSize} color={theme.foregroundColor} />
               )}
             </View>
             <Text
@@ -75,13 +93,16 @@ export function AuthOAuthButton({
                 styles.label,
                 {
                   color: theme.foregroundColor,
+                  fontSize: hero ? AUTH_HERO_BUTTON_FONT_SIZE : AUTH_BUTTON_FONT_SIZE,
+                  lineHeight: hero ? AUTH_HERO_BUTTON_LINE_HEIGHT : AUTH_BUTTON_LINE_HEIGHT,
+                  fontWeight: hero ? '700' : '600',
                 },
               ]}
             >
               {label}
             </Text>
           </View>
-        </View>
+        </Animated.View>
       )}
     </Pressable>
   );
@@ -93,8 +114,6 @@ const styles = StyleSheet.create({
   },
   container: {
     width: '100%',
-    height: AUTH_BUTTON_HEIGHT,
-    borderRadius: AUTH_BUTTON_RADIUS,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -107,16 +126,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
   },
-  iconSlot: {
-    width: AUTH_BUTTON_ICON_SIZE,
-    height: AUTH_BUTTON_ICON_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   label: {
-    fontSize: AUTH_BUTTON_FONT_SIZE,
-    fontWeight: '600',
-    lineHeight: AUTH_BUTTON_LINE_HEIGHT,
     letterSpacing: -0.1,
   },
 });

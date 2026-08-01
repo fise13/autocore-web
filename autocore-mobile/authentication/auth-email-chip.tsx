@@ -1,8 +1,10 @@
-import { Pressable, View } from 'react-native';
+import { Pressable } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { Text } from '@/components/ui';
-import { useTheme } from '@/hooks';
-import { form, rhythm } from '@/theme';
+import { useReducedMotion, useTheme } from '@/hooks';
+import { autocoreEase, duration, radius } from '@/theme';
+import { toneBackground } from '@/theme/color-utils';
 
 type AuthEmailChipProps = {
   email: string;
@@ -11,42 +13,57 @@ type AuthEmailChipProps = {
   actionDisabled?: boolean;
 };
 
+/** Read-only email row — same pill language as the landing email field. */
 export function AuthEmailChip({
   email,
   actionLabel = 'Change',
   onAction,
   actionDisabled = false,
 }: AuthEmailChipProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const reducedMotion = useReducedMotion();
+  const entering = reducedMotion
+    ? undefined
+    : FadeIn.duration(duration.normal).easing(autocoreEase);
 
   return (
-    <View
+    <Animated.View
+      entering={entering}
       style={{
-        borderRadius: rhythm.radius,
-        borderWidth: form.controlBorderWidth,
+        width: '100%',
+        minHeight: 52,
+        borderRadius: radius.full,
+        borderWidth: 1,
         borderColor: colors.border,
-        backgroundColor: `${colors.muted}4D`,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
+        backgroundColor: toneBackground(colors.foreground, isDark ? 0.06 : 0.035),
+        paddingHorizontal: 20,
+        paddingVertical: 12,
         flexDirection: 'row',
-        flexWrap: 'wrap',
         alignItems: 'center',
-        gap: 6,
+        gap: 10,
       }}
     >
-      <Text variant="caption" color="muted">
-        Email:
-      </Text>
-      <Text variant="body" style={{ fontSize: 14, fontWeight: '600', flexShrink: 1 }} numberOfLines={1}>
+      <Text
+        variant="body"
+        style={{ fontSize: 16, fontWeight: '500', flex: 1, flexShrink: 1 }}
+        numberOfLines={1}
+      >
         {email}
       </Text>
       {onAction ? (
-        <Pressable disabled={actionDisabled} onPress={onAction} hitSlop={8}>
-          <Text variant="caption" style={{ color: colors.primary, textDecorationLine: 'underline' }}>
+        <Pressable
+          disabled={actionDisabled}
+          onPress={onAction}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={actionLabel}
+          style={{ opacity: actionDisabled ? 0.45 : 1 }}
+        >
+          <Text variant="body" style={{ fontSize: 15, fontWeight: '600', color: colors.primary }}>
             {actionLabel}
           </Text>
         </Pressable>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }

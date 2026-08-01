@@ -5,7 +5,6 @@ import type { IconName } from '@/assets/icons';
 export type SettingsRouteId =
   | 'account'
   | 'workspace'
-  | 'navigation'
   | 'modules'
   | 'company'
   | 'team'

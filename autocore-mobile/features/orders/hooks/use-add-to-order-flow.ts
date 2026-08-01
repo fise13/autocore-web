@@ -81,7 +81,7 @@ export function useAddToOrderFlow() {
     if (!pending) return;
     finishNavigation('new', pending);
     pendingRef.current = null;
-    toast({ title: 'Новый наряд', description: 'Позиция будет добавлена в состав', variant: 'default' });
+    toast({ title: 'New work order', description: 'The item will be added to it', variant: 'default' });
   }, [finishNavigation]);
 
   const handleSelectOrder = useCallback(
@@ -94,7 +94,7 @@ export function useAddToOrderFlow() {
       pendingRef.current = null;
       haptics.success();
       toast({
-        title: 'Добавлено в наряд',
+        title: 'Added to work order',
         description: order ? `№${order.number}` : undefined,
         variant: 'success',
       });

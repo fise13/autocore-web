@@ -21,28 +21,28 @@ export function CacheSettingsScreen() {
       haptics.medium();
       await clearLocalSessionCaches();
       setCacheBytes(estimateCacheSizeBytes());
-      toast({ title: 'Кэш очищен', variant: 'success' });
+      toast({ title: 'Cache cleared', variant: 'success' });
     } catch {
-      toast({ title: 'Не удалось очистить кэш', variant: 'destructive' });
+      toast({ title: 'Failed to clear cache', variant: 'destructive' });
     } finally {
       setClearing(false);
     }
   }, []);
 
   return (
-    <ProfileScreenShell title="Кэш" subtitle="Офлайн-данные и производительность">
-      <ProfileMetaCard title="Локальный кэш">
-        <ProfileMetaRow label="Объём" value={cacheLabel} />
-        <ProfileMetaRow label="Хранилище" value="MMKV" />
-        <ProfileMetaRow label="Офлайн-кэш" value="Включён" />
+    <ProfileScreenShell title="Cache" subtitle="Offline data and performance">
+      <ProfileMetaCard title="Local cache">
+        <ProfileMetaRow label="Size" value={cacheLabel} />
+        <ProfileMetaRow label="Storage" value="MMKV" />
+        <ProfileMetaRow label="Offline cache" value="Enabled" />
       </ProfileMetaCard>
 
       <View style={{ paddingHorizontal: rhythm.pad }}>
         <Button variant="secondary" loading={clearing} onPress={() => void handleClear()}>
-          Сбросить кэш
+          Clear cache
         </Button>
         <Text variant="caption" color="muted" style={{ marginTop: rhythm.inline, lineHeight: 18 }}>
-          Справочники будут загружены заново при следующем входе.
+          Reference data will be reloaded on your next sign-in.
         </Text>
       </View>
     </ProfileScreenShell>

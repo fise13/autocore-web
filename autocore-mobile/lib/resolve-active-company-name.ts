@@ -15,7 +15,7 @@ export function resolveActiveCompanyName(
   companyId: string | null | undefined,
   activeCompanyName: string | null | undefined,
   memberships: UserCompanyMembership[],
-  fallback = 'Рабочее пространство',
+  fallback = 'Workspace',
   realtimeCompanyName?: string | null,
 ): string {
   const normalizedCompanyId = normalizeCompanyId(companyId);

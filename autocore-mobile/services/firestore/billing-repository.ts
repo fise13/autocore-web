@@ -2,13 +2,18 @@ import { doc, getDoc, onSnapshot, type Timestamp } from 'firebase/firestore';
 
 import { toDateFromFirestore } from '@/lib/firestore-timestamp';
 import { getFirebaseDb } from '@/services/firebase';
-import type { BillingPlan, BillingStatus, CompanySubscription } from '@/types/billing';
+import {
+  normalizeBillingPlan,
+  normalizeBillingProvider,
+  normalizeBillingStatus,
+  type CompanySubscription,
+} from '@/types/billing';
 
 type SubscriptionDoc = {
-  plan?: BillingPlan;
-  status?: BillingStatus;
+  plan?: unknown;
+  status?: unknown;
   proActive?: boolean;
-  provider?: 'internal' | 'stripe';
+  provider?: unknown;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
   priceId?: string;
@@ -16,6 +21,13 @@ type SubscriptionDoc = {
   currentPeriodEnd?: Timestamp | Date;
   stripeUpdatedAt?: Timestamp | Date;
   updatedAt?: Timestamp | Date;
+  appleOriginalTransactionId?: string | null;
+  appleProductId?: string | null;
+  appleEnvironment?: 'Sandbox' | 'Production' | null;
+  willAutoRenew?: boolean | null;
+  trialUsed?: boolean;
+  gracePeriodEnd?: Timestamp | Date;
+  revokedAt?: Timestamp | Date;
 };
 
 function toDate(value: unknown): Date | null {
@@ -25,23 +37,19 @@ function toDate(value: unknown): Date | null {
 function mapSubscription(data: SubscriptionDoc | undefined): CompanySubscription | null {
   if (!data) return null;
 
-  const plan: BillingPlan = data.plan === 'pro' ? 'pro' : 'free';
-  const status: BillingStatus =
-    data.status &&
-    (['active', 'trialing', 'past_due', 'canceled', 'unpaid', 'incomplete'] as const).includes(data.status)
-      ? data.status
-      : 'active';
+  const plan = normalizeBillingPlan(data.plan);
+  const status = normalizeBillingStatus(data.status);
 
   const proActive =
     typeof data.proActive === 'boolean'
       ? data.proActive
-      : plan === 'pro' && (status === 'active' || status === 'trialing' || status === 'past_due');
+      : plan !== 'free' && (status === 'active' || status === 'trialing' || status === 'past_due');
 
   return {
     plan,
     status,
     proActive,
-    provider: data.provider ?? 'internal',
+    provider: normalizeBillingProvider(data.provider),
     stripeCustomerId: data.stripeCustomerId,
     stripeSubscriptionId: data.stripeSubscriptionId,
     priceId: data.priceId,
@@ -49,6 +57,13 @@ function mapSubscription(data: SubscriptionDoc | undefined): CompanySubscription
     currentPeriodEnd: toDate(data.currentPeriodEnd),
     stripeUpdatedAt: toDate(data.stripeUpdatedAt),
     updatedAt: toDate(data.updatedAt),
+    appleOriginalTransactionId: data.appleOriginalTransactionId ?? null,
+    appleProductId: data.appleProductId ?? null,
+    appleEnvironment: data.appleEnvironment ?? null,
+    willAutoRenew: data.willAutoRenew ?? null,
+    trialUsed: data.trialUsed === true,
+    gracePeriodEnd: toDate(data.gracePeriodEnd),
+    revokedAt: toDate(data.revokedAt),
   };
 }
 

@@ -1,23 +1,28 @@
 import { rhythm } from '@/theme/screen';
 
-/** Scan — aliases unified screen rhythm */
+/** Scan — Apple Camera chrome + Notion sheet rhythm */
 export const scanLayout = {
   pad: rhythm.pad,
-  radius: rhythm.panelRadius,
+  controlSize: 44,
+  controlRadius: 999,
+  cornerLength: 22,
+  cornerStroke: 2.25,
+  frameRadius: 4,
   frameSize: 248,
-  frameRadius: rhythm.cardRadius,
-  headerLogo: rhythm.logoSm,
-  title: rhythm.pageTitle,
-  subtitle: rhythm.meta,
-  panelRadius: rhythm.panelRadius,
-  panelItemHeight: rhythm.rowMinHeight,
-  /** Glass panel: 4 rows + dividers + padding */
-  glassPanelHeight: rhythm.rowMinHeight * 4 + 28,
-  hintReserve: 40,
-  /** Capture frames by mode — barcode stays live in all modes. */
   frames: {
     auto: { width: 248, height: 248 },
-    vin: { width: 300, height: 96 },
-    document: { width: 280, height: 360 },
+    vin: { width: 300, height: 88 },
+    document: { width: 268, height: 340 },
   },
+  toolbarIconSize: 22,
+  toolbarGap: 28,
+  sheetPadX: 20,
+  sheetPadY: 8,
+  sheetTitleSize: 22,
+  sheetMetaSize: 14,
+  primaryButtonHeight: 52,
+  primaryButtonRadius: 999,
+  noticeTopOffset: 58,
 } as const;
+
+export type ScanCaptureMode = keyof typeof scanLayout.frames;

@@ -30,40 +30,39 @@ export type SettingsHubSectionDef = {
 export const SETTINGS_HUB_SECTIONS: SettingsHubSectionDef[] = [
   {
     id: 'account',
-    label: 'Аккаунт',
+    label: 'Account',
     rows: [
-      { id: 'edit-profile', title: 'Редактировать профиль', icon: UserRoundIcon },
-      { id: 'security', title: 'Безопасность', icon: HelpCircleIcon },
-      { id: 'notifications', title: 'Уведомления', icon: BellIcon },
+      { id: 'edit-profile', title: 'Edit Profile', icon: UserRoundIcon },
+      { id: 'security', title: 'Security', icon: HelpCircleIcon },
+      { id: 'notifications', title: 'Notifications', icon: BellIcon },
     ],
   },
   {
     id: 'company',
-    label: 'Компания',
+    label: 'Company',
     rows: [
-      { id: 'company', title: 'Компания', icon: StoreIcon },
-      { id: 'team', title: 'Команда', icon: UsersIcon },
+      { id: 'company', title: 'Company', icon: StoreIcon },
+      { id: 'team', title: 'Team', icon: UsersIcon },
     ],
   },
   {
     id: 'appearance',
-    label: 'Оформление',
+    label: 'Appearance',
     rows: [
-      { id: 'appearance', title: 'Тема', icon: SparklesIcon },
-      { id: 'navigation', title: 'Навигация', icon: LayoutGridIcon },
+      { id: 'appearance', title: 'Theme', icon: SparklesIcon },
     ],
   },
   {
     id: 'finance',
-    label: 'Финансы',
-    rows: [{ id: 'finance', title: 'Бухгалтерия', icon: ReceiptIcon }],
+    label: 'Finance',
+    rows: [{ id: 'finance', title: 'Accounting', icon: ReceiptIcon }],
   },
   {
     id: 'system',
-    label: 'Система',
+    label: 'System',
     rows: [
-      { id: 'version', title: 'Версия', icon: SettingsIcon },
-      { id: 'advanced', title: 'Расширенные', icon: WrenchIcon },
+      { id: 'version', title: 'Version', icon: SettingsIcon },
+      { id: 'advanced', title: 'Advanced', icon: WrenchIcon },
     ],
   },
 ];

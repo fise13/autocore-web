@@ -13,12 +13,12 @@ const defaultLogo = require('../../assets/branding/login-logo.png');
 type PageHeaderProps = {
   title: string;
   subtitle?: string;
-  /** Pass `null` to hide logo */
+  /** Off by default — the brand mark belongs on launch/login, not on every tab. */
   logo?: ImageSourcePropType | null;
   trailing?: ReactNode;
   /** Light text for dark camera chrome */
   inverted?: boolean;
-  /** Centered (tabs) or start-aligned (orders list) */
+  /** Start-aligned large title (default) or centred, for camera chrome. */
   align?: 'center' | 'start';
   /** Content between title and subtitle (e.g. balance) */
   belowTitle?: ReactNode;
@@ -28,14 +28,21 @@ type PageHeaderProps = {
   subtitleStyle?: StyleProp<TextStyle>;
 };
 
-/** Tab / list page header — static, web-like. */
+/**
+ * Tab / list page header.
+ *
+ * Left-aligned large title by default: it reads as the start of the content
+ * rather than a banner above it, and it keeps roughly a third of the first
+ * screen for actual content. Centred + logo remains available for camera
+ * chrome, where the title is an overlay rather than a heading.
+ */
 export function PageHeader({
   title,
   subtitle,
-  logo = defaultLogo,
+  logo = null,
   trailing,
   inverted = false,
-  align = 'center',
+  align = 'start',
   belowTitle,
   overlay = false,
   titleStyle,
@@ -60,7 +67,7 @@ export function PageHeader({
           : null),
       }}
     >
-      {trailing ? (
+      {trailing && isCenter ? (
         <View
           style={{
             position: 'absolute',
@@ -73,7 +80,14 @@ export function PageHeader({
         </View>
       ) : null}
 
-      <View style={{ alignItems: isCenter ? 'center' : 'flex-start', gap: rhythm.tight }}>
+      <View
+        style={{
+          flexDirection: isCenter ? 'column' : 'row',
+          alignItems: isCenter ? 'center' : 'flex-start',
+          gap: isCenter ? rhythm.tight : rhythm.stack,
+        }}
+      >
+      <View style={{ flex: isCenter ? undefined : 1, alignItems: isCenter ? 'center' : 'flex-start', gap: rhythm.tight }}>
         {logo ? (
           <Image
             source={logo}
@@ -84,7 +98,7 @@ export function PageHeader({
           />
         ) : null}
         <Text
-          variant="pageTitle"
+          variant={isCenter ? 'pageTitle' : 'displayTitle'}
           style={[{ color: titleColor, textAlign: isCenter ? 'center' : 'left' }, titleStyle]}
         >
           {title}
@@ -98,6 +112,7 @@ export function PageHeader({
                 color: subtitleColor,
                 textAlign: isCenter ? 'center' : 'left',
                 maxWidth: isCenter ? 300 : undefined,
+                ...(isCenter ? null : { fontSize: 15, lineHeight: 21 }),
               },
               subtitleStyle,
             ]}
@@ -105,6 +120,8 @@ export function PageHeader({
             {subtitle}
           </Text>
         ) : null}
+      </View>
+      {trailing && !isCenter ? <View style={{ paddingTop: rhythm.micro }}>{trailing}</View> : null}
       </View>
     </View>
   );

@@ -728,46 +728,42 @@ The job is not to redesign from zero. It is to **make every control tell the tru
 
 ## Issue index (quick reference)
 
-| ID | Priority | Area | Complexity |
-|----|----------|------|------------|
-| C1 | Critical | MC avatar hardcoded | S |
-| C2 | Critical | Search dead navigation | M |
-| C3 | Critical | Fake swipe/detail actions | M |
-| C4 | Critical | Email verify trap | S–M |
-| C5 | Critical | No create company | L |
-| C6 | Critical | Broken home shortcuts | S–L |
-| C7 | Critical | Demo data bleed | M |
-| C8 | Critical | Placebo settings / dead section actions | M–L |
-| C9 | Critical | Misleading MC revenue KPI | S |
-| H1 | High | Profile IA | M |
-| H2 | High | Dead-end settings | S |
-| H3 | High | Duplicate settings screens | M |
-| H4 | High | Empty/gate inconsistency | M |
-| H5 | High | Loading inconsistency | M–L |
-| H6 | High | Layout fragmentation | L |
-| H7 | High | Typography overrides | L |
-| H8 | High | Touch targets | M |
-| H9 | High | Non-interactive MC feed | S–M |
-| H10 | High | Alert overflow menu | M |
-| H11 | High | ScrollView lists | M |
-| H12 | High | Incomplete loops | L–XL |
-| H13 | High | Unwired no-access landing / journey exit | S–M |
-| H14 | High | Silent failures / permission denials | S–M |
-| M1–M12 | Medium | Onboarding, motion, a11y, etc. | S–L |
-| L1–L4 | Low | Dead routes, copy, tokens | S |
+| ID | Priority | Area | Complexity | Status (Jul 2026) |
+|----|----------|------|------------|-------------------|
+| C1 | Critical | MC avatar hardcoded | S | Fixed |
+| C2 | Critical | Search dead navigation | M | Fixed (orders/parts/motors/engines) |
+| C3 | Critical | Fake swipe/detail actions | M | Fixed |
+| C4 | Critical | Email verify trap | S–M | Fixed |
+| C5 | Critical | No create company | L | Fixed |
+| C6 | Critical | Broken home shortcuts | S–L | Fixed (sale tile removed) |
+| C7 | Critical | Demo data bleed | M | Fixed (no silent demo fill) |
+| C8 | Critical | Placebo settings / dead section actions | M–L | Fixed (accent/animations/large text wired; compact removed) |
+| C9 | Critical | Misleading MC revenue KPI | S | Fixed |
+| H1 | High | Profile IA | M | Improved (hub sections + Login wash) |
+| H2 | High | Dead-end settings | S | Fixed (language redirects; currency on Company) |
+| H3 | High | Duplicate settings screens | M | Notifications/Appearance canonical |
+| H4 | High | Empty/gate inconsistency | M | Fixed (`ScreenGate` + shared `EmptyState`) |
+| H5 | High | Loading inconsistency | M–L | Partial (orders skeleton; MC/accounting) |
+| H6 | High | Layout fragmentation | L | Contract in `theme/layout.ts` |
+| H7 | High | Typography overrides | L | Partial |
+| H8 | High | Touch targets | M | Partial (accent swatches / tab a11y) |
+| H9 | High | Non-interactive MC feed | S–M | Fixed (expand All) |
+| H10 | High | Alert overflow menu | M | Fixed (`MoreMenuSheet`) |
+| H11 | High | ScrollView lists | M | Orders/warehouse FlashList |
+| H12 | High | Incomplete loops | L–XL | Create company done; sale hidden |
+| H13 | High | Unwired no-access landing / journey exit | S–M | Fixed (create + invite CTAs) |
+| H14 | High | Silent failures / permission denials | S–M | Partial (toasts on order/search) |
+| M1–M12 | Medium | Onboarding, motion, a11y, etc. | S–L | In progress |
+| L1–L4 | Low | Dead routes, copy, tokens | S | Language route redirected |
 
 ---
 
 ## Closing judgment
 
-AutoCore Mobile currently reads as a **high-fidelity prototype with production data hooks** — not yet a production product.
+AutoCore Mobile is moving from **high-fidelity prototype** toward **production honesty**: controls that work, one rhythm from Login DNA (`ProductScreenShell`, `layout.screenPad`), and finished onboarding loops.
 
-Apple-level quality is mostly **restraint and honesty**: fewer screens, fewer animations, zero fake actions, one type system, one spacing rhythm, every row either works or is absent.
-
-Linear-level quality is **density with clarity**: Mission Control that drills down, search that opens records, settings you can scan in one thumb scroll, empty states that teach the next action.
-
-The shortest path to that bar is not more UI. It is **deleting lies, merging duplicates, and finishing the loops users already believe exist**.
+Remaining polish: full typography enforcement pass, remaining list FlashList migrations, and VoiceOver sweep beyond tab bar / scan chrome.
 
 ---
 
-*Audit based on full route map, feature screens, theme tokens, navigation, auth journey, and cross-cutting patterns in `autocore-mobile/` as of 4 July 2026.*
+*Audit based on full route map, feature screens, theme tokens, navigation, auth journey, and cross-cutting patterns in `autocore-mobile/`. Index updated 31 July 2026 after Final Product plan implementation.*

@@ -4,7 +4,8 @@ import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 
 import { getWorkflowStages } from '../lib/workflow';
-import { ordersLayout } from '../layout';
+import { resolveStatusInk } from '../lib/status';
+import { woType } from '../theme/wo-visual';
 import type { OrderStatus } from '../types';
 
 type OrderWorkflowProgressProps = {
@@ -12,85 +13,55 @@ type OrderWorkflowProgressProps = {
   compact?: boolean;
 };
 
+/**
+ * Segmented workflow track. Six stage names at 9pt were unreadable, so the
+ * segments carry the position and a single caption names where the order is.
+ */
 export function OrderWorkflowProgress({ status, compact = false }: OrderWorkflowProgressProps) {
   const { colors } = useTheme();
   const stages = getWorkflowStages(status);
-  const inactiveTrack = colors.textSecondary;
+  const ink = resolveStatusInk(colors, status);
+  const currentIndex = stages.findIndex((stage) => stage.current);
+  const doneCount = stages.filter((stage) => stage.done).length;
+  const step = currentIndex >= 0 ? currentIndex + 1 : doneCount;
 
   return (
-    <View style={{ gap: compact ? 6 : 8 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        {stages.map((stage, index) => {
-          const isLast = index === stages.length - 1;
-          // Full / current progress stays brand blue — no amber accent.
-          const dotColor = stage.done || stage.current ? colors.primary : inactiveTrack;
-          const lineColor = stage.done ? colors.primary : inactiveTrack;
-          const lineOpacity = stage.done ? 1 : 0.35;
-
+    <View style={{ gap: compact ? 6 : 9 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        {stages.map((stage) => {
+          const filled = stage.done || stage.current;
           return (
-            <View key={stage.id} style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-              <View
-                style={{
-                  width: ordersLayout.workflowDot,
-                  height: ordersLayout.workflowDot,
-                  borderRadius: ordersLayout.workflowDot / 2,
-                  backgroundColor: dotColor,
-                  opacity: stage.done || stage.current ? 1 : 0.45,
-                  borderWidth: stage.current && !stage.done ? 1.5 : 0,
-                  borderColor: colors.primary,
-                }}
-              />
-              {!isLast ? (
-                <View
-                  style={{
-                    flex: 1,
-                    height: 1.5,
-                    backgroundColor: lineColor,
-                    opacity: lineOpacity,
-                    marginHorizontal: 2,
-                  }}
-                />
-              ) : null}
-            </View>
+            <View
+              key={stage.id}
+              style={{
+                flex: 1,
+                height: compact ? 3 : 4,
+                borderRadius: 2,
+                backgroundColor: filled ? ink.solid : colors.border,
+                opacity: stage.current ? 1 : stage.done ? 0.55 : 1,
+              }}
+            />
           );
         })}
       </View>
-      {!compact ? (
-        <View style={{ flexDirection: 'row' }}>
-          {stages.map((stage, index) => {
-            const labelColor = stage.current
-              ? colors.foreground
-              : stage.done
-                ? colors.textSecondary
-                : colors.textSecondary;
 
-            return (
-              <View key={stage.id} style={{ flex: 1 }}>
-                <Text
-                  variant="caption"
-                  style={{
-                    fontSize: 10,
-                    lineHeight: 13,
-                    fontWeight: stage.current ? '600' : '500',
-                    textAlign: indexCenter(index, stages.length),
-                    color: labelColor,
-                    opacity: stage.current ? 1 : stage.done ? 0.9 : 0.72,
-                  }}
-                  numberOfLines={1}
-                >
-                  {stage.label}
-                </Text>
-              </View>
-            );
-          })}
+      {!compact ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text variant="meta" style={{ ...woType.meta, fontWeight: '600', color: colors.foreground }}>
+            {ink.label}
+          </Text>
+          <Text
+            variant="meta"
+            style={{
+              ...woType.meta,
+              color: colors.mutedForeground,
+              fontVariant: ['tabular-nums'],
+            }}
+          >
+            {status === 'cancelled' ? 'Void' : `Step ${step} of ${stages.length}`}
+          </Text>
         </View>
       ) : null}
     </View>
   );
-}
-
-function indexCenter(index: number, total: number): 'left' | 'center' | 'right' {
-  if (index === 0) return 'left';
-  if (index === total - 1) return 'right';
-  return 'center';
 }

@@ -67,11 +67,11 @@ export const rhythm = {
 } as const;
 
 /**
- * Shared motion — web-like minimalism.
- * Page enters are off; keep only light press feedback where needed.
+ * Shared motion — hubs may opt into light enter via ProductScreenShell /
+ * useFadeIn. List churn stays quiet (`enabled: false` for useScreenEnter).
  */
 export const screenMotion = {
-  /** Master switch for enter / stagger animations */
+  /** Master switch for list / screen-enter animations */
   enabled: false,
   duration: duration.instant,
   translateY: 0,

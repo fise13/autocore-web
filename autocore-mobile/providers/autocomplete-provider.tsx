@@ -16,7 +16,12 @@ import { AUTOCOMPLETE_BLUR_DISMISS_MS, AUTOCOMPLETE_DEBOUNCE_MS } from '@/lib/au
 import { applySuggestion } from '@/lib/autocomplete/replace-token';
 import { rememberFieldValue, rememberRecentValue } from '@/lib/autocomplete/recent-values-store';
 import { searchAutocomplete } from '@/lib/autocomplete/search-registry';
-import type { AutocompleteConfig, AutocompleteOption, AutocompleteSession } from '@/lib/autocomplete/types';
+import type {
+  AutocompleteAnchor,
+  AutocompleteConfig,
+  AutocompleteOption,
+  AutocompleteSession,
+} from '@/lib/autocomplete/types';
 
 type RegisterInputArgs = {
   inputId: string;
@@ -33,12 +38,17 @@ type AutocompleteContextValue = {
   unregisterInput: (inputId: string) => void;
   setQuery: (inputId: string, query: string) => void;
   setHighlightedIndex: (inputId: string, index: number) => void;
+  moveHighlight: (inputId: string, delta: number) => void;
   commitHighlighted: (inputId: string) => void;
+  dismiss: (inputId?: string) => void;
+  setAnchor: (inputId: string, anchor: AutocompleteAnchor) => void;
   activeInputId: string | null;
   setChromeBottomInset: (height: number) => void;
 };
 
 const AutocompleteContext = createContext<AutocompleteContextValue | null>(null);
+
+const SEARCH_CACHE_LIMIT = 48;
 
 export function AutocompleteProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AutocompleteSession | null>(null);
@@ -46,21 +56,46 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
   const sessionRef = useRef<AutocompleteSession | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const blurRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchCacheRef = useRef<Map<string, AutocompleteOption[]>>(new Map());
 
   sessionRef.current = session;
 
-  const runSearch = useCallback((next: AutocompleteSession) => {
-    const data = getAutocompleteDataSnapshot();
-    const suggestions = searchAutocomplete(next.query, next.config, data, next.customOptions);
-    const updated: AutocompleteSession = {
-      ...next,
-      suggestions,
-      visible: suggestions.length > 0,
-      highlightedIndex: Math.min(next.highlightedIndex, Math.max(0, suggestions.length - 1)),
-    };
-    sessionRef.current = updated;
-    setSession(updated);
-  }, []);
+  const cacheKey = useCallback(
+    (query: string, config: AutocompleteConfig, customOptions?: AutocompleteOption[]) => {
+      const custom = customOptions?.map((entry) => entry.value).join('|') ?? '';
+      return `${config.source}::${config.matchMode ?? ''}::${config.fieldKey ?? ''}::${JSON.stringify(config.context ?? {})}::${query}::${custom}`;
+    },
+    [],
+  );
+
+  const runSearch = useCallback(
+    (next: AutocompleteSession) => {
+      const key = cacheKey(next.query, next.config, next.customOptions);
+      let suggestions = searchCacheRef.current.get(key);
+      if (!suggestions) {
+        const data = getAutocompleteDataSnapshot();
+        suggestions = searchAutocomplete(next.query, next.config, data, next.customOptions);
+        searchCacheRef.current.set(key, suggestions);
+        if (searchCacheRef.current.size > SEARCH_CACHE_LIMIT) {
+          const first = searchCacheRef.current.keys().next().value;
+          if (first) searchCacheRef.current.delete(first);
+        }
+      }
+
+      const updated: AutocompleteSession = {
+        ...next,
+        suggestions,
+        visible: suggestions.length > 0,
+        highlightedIndex: Math.min(
+          next.highlightedIndex,
+          Math.max(0, suggestions.length - 1),
+        ),
+      };
+      sessionRef.current = updated;
+      setSession(updated);
+    },
+    [cacheKey],
+  );
 
   const cancelBlurDismiss = useCallback(() => {
     if (blurRef.current) {
@@ -69,11 +104,40 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const registerInput = useCallback((args: RegisterInputArgs) => {
-    if (blurRef.current) {
-      clearTimeout(blurRef.current);
-      blurRef.current = null;
+  const dismiss = useCallback((inputId?: string) => {
+    cancelBlurDismiss();
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
     }
+    if (!inputId || sessionRef.current?.inputId === inputId) {
+      sessionRef.current = null;
+      setSession(null);
+    }
+  }, [cancelBlurDismiss]);
+
+  /** Position of the focused field, so suggestions can hang off it like on web. */
+  const setAnchor = useCallback((inputId: string, anchor: AutocompleteAnchor) => {
+    setSession((current) => {
+      if (!current || current.inputId !== inputId) return current;
+      const previous = current.anchor;
+      if (
+        previous &&
+        Math.abs(previous.x - anchor.x) < 1 &&
+        Math.abs(previous.y - anchor.y) < 1 &&
+        Math.abs(previous.width - anchor.width) < 1 &&
+        Math.abs(previous.height - anchor.height) < 1
+      ) {
+        return current;
+      }
+      const next = { ...current, anchor };
+      sessionRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const registerInput = useCallback((args: RegisterInputArgs) => {
+    cancelBlurDismiss();
 
     const next: AutocompleteSession = {
       inputId: args.inputId,
@@ -90,12 +154,13 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
     };
     sessionRef.current = next;
     setSession(next);
-  }, []);
+  }, [cancelBlurDismiss]);
 
   const unregisterInput = useCallback((inputId: string) => {
     blurRef.current = setTimeout(() => {
       if (sessionRef.current?.inputId === inputId) {
         setSession(null);
+        sessionRef.current = null;
       }
     }, AUTOCOMPLETE_BLUR_DISMISS_MS);
   }, []);
@@ -106,15 +171,26 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
       if (!current || current.inputId !== inputId) return;
 
       const next = { ...current, query, highlightedIndex: 0 };
+      sessionRef.current = next;
 
       if (debounceRef.current) clearTimeout(debounceRef.current);
+
+      // Immediate clear when empty; debounce typing for corpus search.
+      if (!query.trim()) {
+        runSearch(next);
+        return;
+      }
+
+      // Optimistic hide-while-typing only updates query; search runs debounced.
+      setSession((live) =>
+        live && live.inputId === inputId ? { ...live, query, highlightedIndex: 0 } : live,
+      );
+
       debounceRef.current = setTimeout(() => {
         const live = sessionRef.current;
         if (!live || live.inputId !== inputId) return;
-        runSearch({ ...live, query: live.query });
+        runSearch({ ...live, query: live.query, highlightedIndex: 0 });
       }, current.config.debounceMs ?? AUTOCOMPLETE_DEBOUNCE_MS);
-
-      runSearch(next);
     },
     [runSearch],
   );
@@ -122,34 +198,55 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
   const setHighlightedIndex = useCallback((inputId: string, index: number) => {
     setSession((current) => {
       if (!current || current.inputId !== inputId) return current;
-      return { ...current, highlightedIndex: index };
+      const next = {
+        ...current,
+        highlightedIndex: Math.max(0, Math.min(index, current.suggestions.length - 1)),
+      };
+      sessionRef.current = next;
+      return next;
     });
   }, []);
 
-  const commitSuggestion = useCallback((inputId: string, index: number) => {
-    const current = sessionRef.current;
-    if (!current || current.inputId !== inputId) return;
-
-    const option = current.suggestions[index];
-    if (!option) return;
-
-    cancelBlurDismiss();
-
-    const nextValue = applySuggestion(current.query, option.value, current.replaceMode);
-    current.onChange(nextValue);
-    current.onOptionSelect?.(option.value);
-
-    const companyId = getAutocompleteDataSnapshot().companyId;
-    if (companyId) {
-      rememberRecentValue(companyId, current.config.source, option.value);
-      if (current.config.fieldKey) {
-        rememberFieldValue(companyId, current.config.fieldKey, option.value);
+  const moveHighlight = useCallback((inputId: string, delta: number) => {
+    setSession((current) => {
+      if (!current || current.inputId !== inputId || current.suggestions.length === 0) {
+        return current;
       }
-    }
+      const length = current.suggestions.length;
+      const nextIndex = (current.highlightedIndex + delta + length) % length;
+      const next = { ...current, highlightedIndex: nextIndex };
+      sessionRef.current = next;
+      return next;
+    });
+  }, []);
 
-    setSession(null);
-    Keyboard.dismiss();
-  }, [cancelBlurDismiss]);
+  const commitSuggestion = useCallback(
+    (inputId: string, index: number) => {
+      const current = sessionRef.current;
+      if (!current || current.inputId !== inputId) return;
+
+      const option = current.suggestions[index];
+      if (!option) return;
+
+      cancelBlurDismiss();
+
+      const nextValue = applySuggestion(current.query, option.value, current.replaceMode);
+      current.onChange(nextValue);
+      current.onOptionSelect?.(option.value);
+
+      const companyId = getAutocompleteDataSnapshot().companyId;
+      if (companyId) {
+        rememberRecentValue(companyId, current.config.source, option.value);
+        if (current.config.fieldKey) {
+          rememberFieldValue(companyId, current.config.fieldKey, option.value);
+        }
+      }
+
+      dismiss(inputId);
+      Keyboard.dismiss();
+    },
+    [cancelBlurDismiss, dismiss],
+  );
 
   const commitHighlighted = useCallback(
     (inputId: string) => {
@@ -163,15 +260,14 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const sub = Keyboard.addListener('keyboardDidHide', () => {
-      cancelBlurDismiss();
-      setSession(null);
+      dismiss();
     });
     return () => {
       sub.remove();
       if (debounceRef.current) clearTimeout(debounceRef.current);
       if (blurRef.current) clearTimeout(blurRef.current);
     };
-  }, [cancelBlurDismiss]);
+  }, [dismiss]);
 
   const value = useMemo(
     () => ({
@@ -179,11 +275,24 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
       unregisterInput,
       setQuery,
       setHighlightedIndex,
+      moveHighlight,
       commitHighlighted,
+      dismiss,
       activeInputId: session?.inputId ?? null,
       setChromeBottomInset,
+      setAnchor,
     }),
-    [commitHighlighted, registerInput, session?.inputId, setHighlightedIndex, setQuery, unregisterInput],
+    [
+      commitHighlighted,
+      dismiss,
+      moveHighlight,
+      registerInput,
+      session?.inputId,
+      setAnchor,
+      setHighlightedIndex,
+      setQuery,
+      unregisterInput,
+    ],
   );
 
   return (

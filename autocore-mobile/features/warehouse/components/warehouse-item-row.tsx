@@ -69,7 +69,7 @@ export const WarehouseItemRow = memo(function WarehouseItemRow({
   const { colors } = useTheme();
   const low = isWarehouseLowStock({ ...item, totalAvailable: available });
   const shelf = resolveInventoryShelf(item);
-  const meta = [item.sku, shelf ? `Ячейка ${shelf}` : null].filter(Boolean).join(' · ');
+  const meta = [item.sku, shelf ? `Bin ${shelf}` : null].filter(Boolean).join(' · ');
   const canDecrease = canEdit && available > 0;
 
   return (
@@ -110,7 +110,7 @@ export const WarehouseItemRow = memo(function WarehouseItemRow({
               <Text variant="bodyStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
                 {item.name}
               </Text>
-              {low ? <Badge variant="warning">Мало</Badge> : null}
+              {low ? <Badge variant="warning">Low</Badge> : null}
             </View>
             {meta ? (
               <Text variant="meta" color="muted" numberOfLines={1}>

@@ -116,25 +116,25 @@ export const DEFAULT_EXTENDED_CATEGORY_PREFS: ExtendedCategoryPreferences = Obje
 ) as ExtendedCategoryPreferences;
 
 export const APP_CATEGORY_LABELS: Record<AppNotificationCategory, string> = {
-  order: 'Наряды',
-  inventory: 'Склад',
-  finance: 'Финансы',
-  subscription: 'Подписка',
-  import: 'Импорт',
-  export: 'Экспорт',
-  documents: 'Документы',
-  team: 'Команда',
-  sync: 'Синхронизация',
-  system: 'Система',
+  order: 'Work Orders',
+  inventory: 'Inventory',
+  finance: 'Finance',
+  subscription: 'Subscription',
+  import: 'Import',
+  export: 'Export',
+  documents: 'Documents',
+  team: 'Team',
+  sync: 'Sync',
+  system: 'System',
   ai: 'AI',
-  security: 'Безопасность',
+  security: 'Security',
 };
 
 export const APP_PRIORITY_LABELS: Record<AppNotificationPriority, string> = {
-  critical: 'Критичный',
-  important: 'Важный',
-  normal: 'Обычный',
-  silent: 'Тихий',
+  critical: 'Critical',
+  important: 'Important',
+  normal: 'Normal',
+  silent: 'Silent',
 };
 
 /** Map server inbox record → unified app notification. */

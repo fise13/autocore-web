@@ -67,16 +67,16 @@ export type NotificationRecord = {
 };
 
 export const NOTIFICATION_CATEGORY_LABELS: Record<NotificationCategory, string> = {
-  work_orders: 'Наряды',
-  reservations: 'Бронирования',
-  warranty: 'Гарантия',
-  inventory: 'Склад',
-  payments: 'Платежи',
-  invoices: 'Счета',
-  team: 'Команда',
-  scan: 'Сканирование',
-  sales: 'Продажи',
-  system: 'Система',
+  work_orders: 'Work Orders',
+  reservations: 'Reservations',
+  warranty: 'Warranty',
+  inventory: 'Inventory',
+  payments: 'Payments',
+  invoices: 'Invoices',
+  team: 'Team',
+  scan: 'Scan',
+  sales: 'Sales',
+  system: 'System',
 };
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {

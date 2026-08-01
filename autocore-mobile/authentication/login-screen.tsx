@@ -1,12 +1,12 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Platform, Pressable, View } from 'react-native';
-import Animated, { FadeInLeft, FadeInRight, FadeOutLeft, FadeOutRight } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInLeft, FadeInRight, FadeOut, FadeOutLeft, FadeOutRight } from 'react-native-reanimated';
 
-import { CheckIcon, Loader2Icon, MailIcon, XIcon } from '@/assets/icons';
+import { Loader2Icon } from '@/assets/icons';
 import { Alert, Button, FormStack, Input, Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/hooks';
-import { form, rhythm, spacing } from '@/theme';
+import { radius, spacing, duration } from '@/theme';
 import { mapAuthError } from '@/utils/auth-error';
 import { getPasswordStrengthState, validateSignupPassword } from '@/utils/password-validation';
 import { resolveEmailSignInMode, type EmailSignInMode } from '@/utils/resolve-email-sign-in-mode';
@@ -20,13 +20,14 @@ import {
 import { fetchInvitePreview } from '@/services/api/org-api';
 import { isGoogleOAuthConfigured } from '@/lib/auth/oauth-config';
 
-import { AuthDivider } from './auth-divider';
+import { AUTH_HERO_BUTTON_HEIGHT } from './auth-button-metrics';
 import { AuthEmailChip } from './auth-email-chip';
+import { AuthEmailPill } from './auth-email-pill';
 import { AppleSignInButton } from './apple-sign-in-button';
 import { GoogleSignInButton } from './google-sign-in-button';
 import { InviteFormNotice } from './invite-form-notice';
 import { useAuth } from './auth-provider';
-import { AuthShell } from './auth-shell';
+import { AuthHeroShell } from './auth-hero-shell';
 
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
@@ -347,11 +348,19 @@ export function LoginScreen() {
 
   const authDescription = isInviteFlow && emailStep
     ? isSignUp
-      ? 'Your email is already set from the invite — just choose a password and name.'
-      : 'Your email is already set from the invite — enter your password.'
-    : isInviteFlow
-      ? 'Loading invite…'
-      : 'Sign in to AutoCore or register a new team.';
+      ? 'Your email is set from the invite — choose a name and password.'
+      : 'Your email is set from the invite — enter your password.'
+    : emailMode === 'oauth'
+      ? 'This email uses a social sign-in. Continue the same way.'
+      : isSignUp
+        ? 'Add your name and choose a strong password.'
+        : 'Enter your password to continue.';
+
+  const heroFieldStyle = {
+    borderRadius: radius.full,
+    paddingLeft: 22,
+    paddingRight: 18,
+  } as const;
 
   const stepKey = !emailStep ? 'entry' : emailMode;
   const entering = reducedMotion
@@ -365,42 +374,110 @@ export function LoginScreen() {
       ? FadeOutLeft.duration(180)
       : FadeOutRight.duration(180);
 
-  return (
-    <AuthShell
-      stepLabel="Sign in and registration"
-      footer={
-        <Text variant="caption" color="muted" style={{ fontSize: 14, lineHeight: 20 }}>
-          By continuing, you agree to the{' '}
-          <Text
-            variant="caption"
-            style={{ textDecorationLine: 'underline' }}
-            onPress={() => void Linking.openURL('https://myautocore.com/legal/terms')}
-          >
-            Terms of Use
-          </Text>{' '}
-          and{' '}
-          <Text
-            variant="caption"
-            style={{ textDecorationLine: 'underline' }}
-            onPress={() => void Linking.openURL('https://myautocore.com/legal/privacy')}
-          >
-            Privacy Policy
-          </Text>
-          .
-        </Text>
-      }
+  const legalFooter = (
+    <Text
+      variant="caption"
+      color="muted"
+      style={{ fontSize: 13, lineHeight: 19, textAlign: 'center' }}
     >
-      <View style={{ gap: rhythm.micro }}>
-        <Text
-          variant="pageTitle"
-          style={{ fontSize: 24, fontWeight: '700', letterSpacing: -0.4, lineHeight: 30 }}
-        >
-          {authTitle}
-        </Text>
-        <Text variant="pageSubtitle" style={{ fontSize: 16, lineHeight: 22 }} color="muted">
-          {authDescription}
-        </Text>
-      </View>
+      By continuing, you agree to the{' '}
+      <Text
+        variant="caption"
+        style={{ fontSize: 13, lineHeight: 19, textDecorationLine: 'underline' }}
+        onPress={() => void Linking.openURL('https://myautocore.com/legal/terms')}
+      >
+        Terms of Use
+      </Text>{' '}
+      and{' '}
+      <Text
+        variant="caption"
+        style={{ fontSize: 13, lineHeight: 19, textDecorationLine: 'underline' }}
+        onPress={() => void Linking.openURL('https://myautocore.com/legal/privacy')}
+      >
+        Privacy Policy
+      </Text>
+      .
+    </Text>
+  );
+
+  /** Landing step — animated hero with the OAuth pills and email entry. */
+  if (!emailStep && !inviteBootstrapping) {
+    return (
+      <AuthHeroShell tagline="Run your workshop from anywhere" footer={legalFooter}>
+        {!isFirebaseReady && __DEV__ ? (
+          <Alert
+            variant="warning"
+            title="Firebase is not configured"
+            description="Add the `EXPO_PUBLIC_FIREBASE_*` environment variables for the mobile app."
+          />
+        ) : null}
+
+        {!isOnline ? (
+          <Alert
+            variant="warning"
+            title="No connection"
+            description="Check your internet connection. Sign-in and password reset are unavailable offline."
+          />
+        ) : null}
+
+        {showGoogleSignIn ? (
+          <GoogleSignInButton
+            hero
+            disabled={submitDisabled}
+            loading={oauthLoading === 'google'}
+            onStart={() => {
+              clearError();
+              setError(null);
+            }}
+            onSuccess={runGoogleSignIn}
+            onError={onGoogleError}
+          />
+        ) : null}
+
+        {showAppleSignIn ? (
+          <AppleSignInButton
+            hero
+            disabled={submitDisabled}
+            loading={oauthLoading === 'apple'}
+            onPress={onApplePress}
+          />
+        ) : null}
+
+        <AuthEmailPill
+          value={email}
+          onChangeText={setEmail}
+          onSubmit={() => void onEmailContinue()}
+          canSubmit={isValidEmail(email)}
+          loading={isDetecting}
+          disabled={submitDisabled && !isDetecting}
+        />
+
+        {emailError ? (
+          <Text variant="small" style={{ color: colors.destructive, textAlign: 'center' }}>
+            {emailError}
+          </Text>
+        ) : null}
+
+        {displayError ? (
+          <Animated.View entering={FadeIn.duration(duration.fast)} exiting={FadeOut.duration(duration.instant)}>
+            <Text variant="small" style={{ color: colors.destructive, lineHeight: 20, textAlign: 'center' }}>
+              {displayError}
+            </Text>
+          </Animated.View>
+        ) : null}
+      </AuthHeroShell>
+    );
+  }
+
+  return (
+    <AuthHeroShell
+      variant="form"
+      tagline={authTitle}
+      description={authDescription}
+      footer={legalFooter}
+      onBack={isInviteFlow ? undefined : changeEmail}
+      backDisabled={submitDisabled}
+    >
       {!isFirebaseReady && __DEV__ ? (
         <Alert
           variant="warning"
@@ -425,272 +502,197 @@ export function LoginScreen() {
           </Text>
         </View>
       ) : (
-      <Animated.View key={stepKey} entering={entering} exiting={exiting} style={{ width: '100%', gap: form.groupGap }}>
-      {!emailStep ? (
-        <>
-          <View style={{ gap: spacing[3], width: '100%' }}>
-            {showGoogleSignIn ? (
-              <GoogleSignInButton
-                disabled={submitDisabled}
-                loading={oauthLoading === 'google'}
-                onStart={() => {
-                  clearError();
-                  setError(null);
-                }}
-                onSuccess={runGoogleSignIn}
-                onError={onGoogleError}
-              />
-            ) : null}
-            {showAppleSignIn ? (
-              <AppleSignInButton
-                disabled={submitDisabled}
-                loading={oauthLoading === 'apple'}
-                onPress={onApplePress}
-              />
-            ) : null}
-          </View>
-
-          <AuthDivider>OR</AuthDivider>
-
-          <View style={{ gap: spacing[3], width: '100%' }}>
-            <Text variant="caption" color="muted" style={{ fontSize: form.captionFontSize }}>
-              Email to sign in or create an account
-            </Text>
-            <Input
-              size="lg"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              textContentType="username"
-              autoCapitalize="none"
-              autoCorrect={false}
-              placeholder="your@email.com"
-              error={emailError ?? undefined}
-              returnKeyType="done"
-              onSubmitEditing={onEmailContinue}
-              leftIcon={<MailIcon size="sm" color={colors.mutedForeground} strokeWidth={1.85} />}
-            />
-          </View>
-
-          <Button
-            size="default"
-            disabled={submitDisabled}
-            onPress={onEmailContinue}
-            leftIcon={isDetecting ? <Loader2Icon size="sm" color={colors.primaryForeground} /> : undefined}
-            style={{ width: '100%', height: form.controlHeightLg }}
-          >
-            {isDetecting ? 'Checking email…' : 'Continue with email'}
-          </Button>
-
-          <Pressable onPress={() => void onForgotPassword()} disabled={submitDisabled} style={{ alignItems: 'center' }}>
-            <Text variant="caption" color="muted" style={{ fontSize: 14, textDecorationLine: 'underline' }}>
-              Forgot password?
-            </Text>
-          </Pressable>
-
-          {resetSent ? (
-            <Text variant="caption" color="muted">
-              A password reset link has been sent to {email}.
-            </Text>
-          ) : null}
-        </>
-      ) : emailMode === 'oauth' ? (
-        <>
-          <AuthEmailChip
-            email={email}
-            onAction={changeEmail}
-            actionDisabled={submitDisabled}
-          />
-
-          {isInviteFlow ? <InviteFormNotice companyName={inviteCompanyName} /> : null}
-
-          <Text variant="small" color="muted" style={{ lineHeight: 20 }}>
-            This email is registered via{' '}
-            {oauthProviders.includes('google.com') ? 'Google' : 'Apple'}
-            {oauthProviders.length > 1 ? ' or Apple' : ''}. Sign in the same way.
-          </Text>
-
-          <View style={{ gap: spacing[3], width: '100%' }}>
-            {oauthProviders.includes('google.com') ? (
-              <GoogleSignInButton
-                disabled={submitDisabled}
-                loading={oauthLoading === 'google'}
-                onStart={() => {
-                  clearError();
-                  setError(null);
-                }}
-                onSuccess={runGoogleSignIn}
-                onError={onGoogleError}
-              />
-            ) : null}
-            {oauthProviders.includes('apple.com') && appleAvailable ? (
-              <AppleSignInButton
-                disabled={submitDisabled}
-                loading={oauthLoading === 'apple'}
-                onPress={onApplePress}
-              />
-            ) : null}
-          </View>
-        </>
-      ) : (
-        <>
-          <View style={{ gap: spacing[2] }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text variant="caption" color="muted" style={{ fontSize: form.captionFontSize }}>
-                Email
-              </Text>
-              <Pressable disabled={submitDisabled || isInviteFlow} onPress={changeEmail}>
-                <Text variant="caption" style={{ color: colors.primary, textDecorationLine: 'underline' }}>
-                  Back
-                </Text>
-              </Pressable>
-            </View>
-            <Input
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              textContentType="username"
-              autoCapitalize="none"
-              autoCorrect={false}
-              placeholder="your@email.com"
-              returnKeyType="next"
-              editable={!isSubmitting && !isInviteFlow}
-              selectTextOnFocus={!isInviteFlow}
-              size="lg"
-              leftIcon={<MailIcon size="sm" color={colors.mutedForeground} strokeWidth={1.85} />}
-            />
-          </View>
-
-          {isInviteFlow ? <InviteFormNotice companyName={inviteCompanyName} /> : null}
-
-          <FormStack gap={form.fieldGap}>
-            {isSignUp ? (
-              <>
-                <Input
-                  label="First name"
-                  size="lg"
-                  value={firstName}
-                  onChangeText={setFirstName}
-                  textContentType="givenName"
-                  autoCapitalize="words"
-                  placeholder="First name"
-                  error={nameError ?? undefined}
-                />
-                <Input
-                  label="Last name"
-                  size="lg"
-                  value={lastName}
-                  onChangeText={setLastName}
-                  textContentType="familyName"
-                  autoCapitalize="words"
-                  placeholder="Last name"
-                />
-              </>
-            ) : null}
-
-            <Input
-              label={isSignUp ? 'Choose a password' : 'Password'}
-              size="lg"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              textContentType={isSignUp ? 'newPassword' : 'password'}
-              autoCapitalize="none"
-              autoCorrect={false}
-              placeholder={isSignUp ? '' : 'Enter your password'}
-              error={passwordError ?? undefined}
-              returnKeyType="done"
-              onSubmitEditing={onSubmit}
-            />
-            {isSignUp ? (
-              <View style={{ gap: spacing[2] }}>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    gap: spacing[1],
-                  }}
-                >
-                  {Array.from({ length: 4 }).map((_, index) => {
-                    const active = index < passwordStrength.score;
-                    const tone =
-                      passwordStrength.barTone === 'weak'
-                        ? colors.destructive
-                        : passwordStrength.barTone === 'fair'
-                          ? colors.warning
-                          : passwordStrength.barTone === 'good'
-                            ? '#d39b23'
-                            : passwordStrength.barTone === 'strong'
-                              ? colors.success
-                              : colors.border;
-
-                    return (
-                      <View
-                        key={index}
-                        style={{
-                          flex: 1,
-                          height: 8,
-                          borderRadius: 999,
-                          backgroundColor: active ? tone : colors.borderMuted,
-                        }}
-                      />
-                    );
-                  })}
-                </View>
-                <Text variant="body" color="muted">
-                  {passwordStrength.strengthText}. Must contain:
-                </Text>
-                <View style={{ gap: spacing[2] }}>
-                  {passwordStrength.requirements.map((requirement) => (
-                    <View key={requirement.id} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
-                      {requirement.met ? (
-                        <CheckIcon size="sm" color={colors.success} />
-                      ) : (
-                        <XIcon size="sm" color={colors.mutedForeground} />
-                      )}
-                      <Text variant="body" color={requirement.met ? 'primary' : 'muted'}>
-                        {requirement.text}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            ) : null}
-          </FormStack>
-
-          <Button
-            size="default"
-            loading={isSubmitting}
-            disabled={submitDisabled}
-            onPress={onSubmit}
-            style={{ width: '100%', height: form.controlHeightLg }}
-          >
-            {isSubmitting ? (isSignUp ? 'Creating account…' : 'Signing in…') : isSignUp ? 'Create account' : 'Sign in with email'}
-          </Button>
-
-          {!isSignUp ? (
+        <Animated.View
+          key={stepKey}
+          entering={entering}
+          exiting={exiting}
+          style={{ width: '100%', gap: spacing[4] }}
+        >
+          {emailMode === 'oauth' ? (
             <>
-              <Pressable onPress={() => void onForgotPassword()} disabled={submitDisabled} style={{ alignItems: 'center' }}>
-                <Text variant="caption" color="muted" style={{ fontSize: 14, textDecorationLine: 'underline' }}>
-                  Forgot password?
-                </Text>
-              </Pressable>
-              {resetSent ? (
-                <Text variant="caption" color="muted">
-                  A password reset link has been sent to {email}.
-                </Text>
+              <AuthEmailChip email={email} />
+
+              {isInviteFlow ? <InviteFormNotice companyName={inviteCompanyName} /> : null}
+
+              <View style={{ gap: spacing[3], width: '100%' }}>
+                {oauthProviders.includes('google.com') ? (
+                  <GoogleSignInButton
+                    hero
+                    disabled={submitDisabled}
+                    loading={oauthLoading === 'google'}
+                    onStart={() => {
+                      clearError();
+                      setError(null);
+                    }}
+                    onSuccess={runGoogleSignIn}
+                    onError={onGoogleError}
+                  />
+                ) : null}
+                {oauthProviders.includes('apple.com') && appleAvailable ? (
+                  <AppleSignInButton
+                    hero
+                    disabled={submitDisabled}
+                    loading={oauthLoading === 'apple'}
+                    onPress={onApplePress}
+                  />
+                ) : null}
+              </View>
+            </>
+          ) : (
+            <>
+              <AuthEmailChip email={email} />
+
+              {isInviteFlow ? <InviteFormNotice companyName={inviteCompanyName} /> : null}
+
+              <FormStack gap={spacing[3]}>
+                {isSignUp ? (
+                  <>
+                    <Input
+                      label="First name"
+                      labelVariant="caption"
+                      value={firstName}
+                      onChangeText={setFirstName}
+                      textContentType="givenName"
+                      autoCapitalize="words"
+                      placeholder="First name"
+                      error={nameError ?? undefined}
+                      fieldHeight={AUTH_HERO_BUTTON_HEIGHT}
+                      containerStyle={heroFieldStyle}
+                      textStyle={{ fontSize: 17 }}
+                    />
+                    <Input
+                      label="Last name"
+                      labelVariant="caption"
+                      value={lastName}
+                      onChangeText={setLastName}
+                      textContentType="familyName"
+                      autoCapitalize="words"
+                      placeholder="Last name"
+                      fieldHeight={AUTH_HERO_BUTTON_HEIGHT}
+                      containerStyle={heroFieldStyle}
+                      textStyle={{ fontSize: 17 }}
+                    />
+                  </>
+                ) : null}
+
+                <Input
+                  label={isSignUp ? 'Choose a password' : 'Password'}
+                  labelVariant="caption"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  textContentType={isSignUp ? 'newPassword' : 'password'}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholder={isSignUp ? 'At least 8 characters' : 'Enter your password'}
+                  error={passwordError ?? undefined}
+                  returnKeyType="done"
+                  onSubmitEditing={onSubmit}
+                  fieldHeight={AUTH_HERO_BUTTON_HEIGHT}
+                  containerStyle={heroFieldStyle}
+                  textStyle={{ fontSize: 17 }}
+                />
+
+                {isSignUp ? (
+                  <View style={{ gap: spacing[2], paddingHorizontal: 4 }}>
+                    <View style={{ flexDirection: 'row', gap: spacing[1] }}>
+                      {Array.from({ length: 4 }).map((_, index) => {
+                        const active = index < passwordStrength.score;
+                        const tone =
+                          passwordStrength.barTone === 'weak'
+                            ? colors.destructive
+                            : passwordStrength.barTone === 'fair'
+                              ? colors.warning
+                              : passwordStrength.barTone === 'good'
+                                ? '#d39b23'
+                                : passwordStrength.barTone === 'strong'
+                                  ? colors.success
+                                  : colors.border;
+
+                        return (
+                          <View
+                            key={index}
+                            style={{
+                              flex: 1,
+                              height: 6,
+                              borderRadius: 999,
+                              backgroundColor: active ? tone : colors.borderMuted,
+                            }}
+                          />
+                        );
+                      })}
+                    </View>
+                    <Text
+                      variant="caption"
+                      color="muted"
+                      style={{ fontSize: 13, lineHeight: 18, textAlign: 'center' }}
+                    >
+                      {passwordStrength.strengthText}
+                      {!passwordStrength.isValid && password.length > 0
+                        ? ` · ${passwordStrength.requirements
+                            .filter((requirement) => !requirement.met)
+                            .map((requirement) => requirement.text.replace(/^At least /, ''))
+                            .join(', ')}`
+                        : null}
+                    </Text>
+                  </View>
+                ) : null}
+              </FormStack>
+
+              <Button
+                size="xl"
+                shape="pill"
+                loading={isSubmitting}
+                disabled={submitDisabled}
+                onPress={onSubmit}
+                style={{ width: '100%', minHeight: AUTH_HERO_BUTTON_HEIGHT }}
+              >
+                {isSubmitting
+                  ? isSignUp
+                    ? 'Creating account…'
+                    : 'Signing in…'
+                  : isSignUp
+                    ? 'Create account'
+                    : 'Sign in'}
+              </Button>
+
+              {!isSignUp ? (
+                <>
+                  <Pressable
+                    onPress={() => void onForgotPassword()}
+                    disabled={submitDisabled}
+                    style={{ alignItems: 'center', paddingVertical: 4 }}
+                  >
+                    <Text
+                      variant="caption"
+                      color="muted"
+                      style={{ fontSize: 14, textDecorationLine: 'underline' }}
+                    >
+                      Forgot password?
+                    </Text>
+                  </Pressable>
+                  {resetSent ? (
+                    <Text variant="caption" color="muted" style={{ textAlign: 'center', lineHeight: 18 }}>
+                      A password reset link has been sent to {email}.
+                    </Text>
+                  ) : null}
+                </>
               ) : null}
             </>
-          ) : null}
-        </>
-      )}
-      </Animated.View>
+          )}
+        </Animated.View>
       )}
 
       {displayError ? (
-        <Text variant="small" style={{ color: colors.destructive, lineHeight: 20 }}>
-          {displayError}
-        </Text>
+        <Animated.View entering={FadeIn.duration(duration.fast)} exiting={FadeOut.duration(duration.instant)}>
+          <Text
+            variant="small"
+            style={{ color: colors.destructive, lineHeight: 20, textAlign: 'center' }}
+          >
+            {displayError}
+          </Text>
+        </Animated.View>
       ) : null}
-    </AuthShell>
+    </AuthHeroShell>
   );
 }

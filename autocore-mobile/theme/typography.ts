@@ -52,6 +52,16 @@ export const typography = {
     lineHeight: 30,
     letterSpacing: letterSpacing.tight,
   },
+  /**
+   * Tab screen large title — the presence of the login screen carried into the
+   * app. Use this instead of overriding `pageTitle`'s size inline.
+   */
+  displayTitle: {
+    fontSize: 34,
+    fontWeight: fontWeight.bold,
+    lineHeight: 41,
+    letterSpacing: letterSpacing.tighter,
+  },
   /** Tab / stack page titles — Mission Control, Orders, Profile, Search, Accounting */
   pageTitle: {
     fontSize: 28,

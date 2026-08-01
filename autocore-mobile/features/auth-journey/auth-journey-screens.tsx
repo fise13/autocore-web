@@ -4,11 +4,14 @@ import { View } from 'react-native';
 import { AuthShell } from '@/authentication/auth-shell';
 import { useAuth } from '@/authentication/auth-provider';
 import { VerificationCodeInput } from '@/components/auth/verification-code-input';
-import { Button, Input, Text } from '@/components/ui';
-import { AUTH_JOURNEY_STEP_LABELS } from '@/hooks/use-auth-journey-step';
+import { Button, FormStack, Input, Text } from '@/components/ui';
+import {
+  AUTH_JOURNEY_STEP_LABELS,
+  authJourneyProgressLabel,
+} from '@/hooks/use-auth-journey-step';
 import { updateUserProfileName } from '@/services/firebase/profile';
 import { mapAuthError } from '@/utils/auth-error';
-import { rhythm } from '@/theme';
+import { form, rhythm } from '@/theme';
 
 export function ProfileNameJourneyScreen() {
   const { firebaseUser, refreshProfile, signOut } = useAuth();
@@ -16,15 +19,24 @@ export function ProfileNameJourneyScreen() {
   const [lastName, setLastName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [attempted, setAttempted] = useState(false);
+
+  const nameError =
+    attempted && (!firstName.trim() || !lastName.trim())
+      ? 'Enter your first and last name.'
+      : null;
 
   const handleSave = async () => {
     if (!firebaseUser) return;
-    const fullName = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ').trim();
-    if (fullName.split(/\s+/).length < 2) {
+    setAttempted(true);
+    const trimmedFirst = firstName.trim();
+    const trimmedLast = lastName.trim();
+    if (!trimmedFirst || !trimmedLast) {
       setError('Enter your first and last name');
       return;
     }
 
+    const fullName = `${trimmedFirst} ${trimmedLast}`;
     setLoading(true);
     setError(null);
     try {
@@ -40,30 +52,51 @@ export function ProfileNameJourneyScreen() {
   return (
     <AuthShell
       stepLabel={AUTH_JOURNEY_STEP_LABELS['profile-name']}
-      title="Your profile"
-      description="Enter your first and last name so coworkers can recognize you in work orders and notifications."
+      progressLabel={authJourneyProgressLabel('profile-name')}
+      title="What should we call you?"
+      description="Your name appears on work orders, the team list, and notifications."
+      stepKey="profile-name"
     >
-      <View style={{ gap: rhythm.stack }}>
-        <Input placeholder="First name" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
-        <Input placeholder="Last name" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
+      <FormStack gap={form.fieldGap}>
+        <Input
+          label="First name"
+          size="lg"
+          placeholder="First name"
+          value={firstName}
+          onChangeText={setFirstName}
+          textContentType="givenName"
+          autoCapitalize="words"
+          error={nameError ?? undefined}
+        />
+        <Input
+          label="Last name"
+          size="lg"
+          placeholder="Last name"
+          value={lastName}
+          onChangeText={setLastName}
+          textContentType="familyName"
+          autoCapitalize="words"
+          error={nameError ?? undefined}
+        />
         {error ? (
           <Text variant="caption" color="destructive">
             {error}
           </Text>
         ) : null}
-        <Button onPress={() => void handleSave()} loading={loading}>
+        <Button size="lg" onPress={() => void handleSave()} loading={loading}>
           Continue
         </Button>
         <Button variant="ghost" onPress={() => void signOut()}>
           Sign out
         </Button>
-      </View>
+      </FormStack>
     </AuthShell>
   );
 }
 
 export function VerifyEmailJourneyScreen() {
-  const { firebaseUser, sendEmailVerification, verifyEmailWithCode, refreshProfile, signOut } = useAuth();
+  const { firebaseUser, sendEmailVerification, verifyEmailWithCode, refreshProfile, signOut } =
+    useAuth();
   const [code, setCode] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +112,7 @@ export function VerifyEmailJourneyScreen() {
       .then(() => setStatus('Code sent to your email'))
       .catch((sendError) => {
         const message = sendError instanceof Error ? sendError.message : '';
-        if (message.includes('Подождите')) {
+        if (message.includes('Подождите') || /wait|too many/i.test(message)) {
           setStatus('Code already sent — check your email');
           return;
         }
@@ -140,15 +173,22 @@ export function VerifyEmailJourneyScreen() {
   return (
     <AuthShell
       stepLabel={AUTH_JOURNEY_STEP_LABELS['verify-email']}
-      title="Verify your email"
+      progressLabel={authJourneyProgressLabel('verify-email')}
+      title="Check your email"
       description={
         firebaseUser?.email
-          ? `Enter the 6-digit code sent to ${firebaseUser.email}`
-          : 'Enter the code from the email to continue'
+          ? `Enter the 6-digit code we sent to ${firebaseUser.email}`
+          : 'Enter the 6-digit code from your email to continue.'
       }
+      stepKey="verify-email"
     >
       <View style={{ gap: rhythm.stack }}>
-        <VerificationCodeInput value={code} onChange={setCode} disabled={busy} invalid={Boolean(error)} />
+        <VerificationCodeInput
+          value={code}
+          onChange={setCode}
+          disabled={busy}
+          invalid={Boolean(error)}
+        />
         {status ? (
           <Text variant="caption" color="muted">
             {status}
@@ -159,7 +199,13 @@ export function VerifyEmailJourneyScreen() {
             {error}
           </Text>
         ) : null}
-        <Button onPress={() => void handleResend()} loading={resending} variant="outline" disabled={busy}>
+        <Button
+          size="lg"
+          onPress={() => void handleResend()}
+          loading={resending}
+          variant="outline"
+          disabled={busy}
+        >
           Resend code
         </Button>
         <Button variant="ghost" onPress={() => void signOut()}>

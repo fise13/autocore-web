@@ -11,6 +11,7 @@ type ProfileScreenShellProps = {
   refreshControl?: ScrollViewProps['refreshControl'];
   backFallbackHref?: Href;
   onBack?: () => void;
+  headerAction?: ReactNode;
 };
 
 /** @deprecated Prefer StackScreen from design system — kept as alias for feature imports. */
@@ -21,6 +22,7 @@ export function ProfileScreenShell({
   refreshControl,
   backFallbackHref,
   onBack,
+  headerAction,
 }: ProfileScreenShellProps) {
   return (
     <StackScreen
@@ -29,6 +31,7 @@ export function ProfileScreenShell({
       refreshControl={refreshControl}
       backFallbackHref={backFallbackHref}
       onBack={onBack}
+      headerAction={headerAction}
     >
       {children}
     </StackScreen>

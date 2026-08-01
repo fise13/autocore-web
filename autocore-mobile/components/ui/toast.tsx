@@ -1,7 +1,8 @@
 import { Pressable, View } from 'react-native';
-import Animated, { SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { toastIn, toastOut } from '@/animations';
 import { useTheme } from '@/hooks';
 import { radius, spacing, zIndex } from '@/theme';
 import { useToastStore } from './toast-store';
@@ -45,8 +46,9 @@ export function ToastProvider() {
         return (
           <Animated.View
             key={item.id}
-            entering={SlideInDown.springify().damping(22).stiffness(280)}
-            exiting={SlideOutDown.duration(200)}
+            entering={toastIn}
+            exiting={toastOut}
+            layout={LinearTransition.duration(220)}
           >
             <View
               style={{

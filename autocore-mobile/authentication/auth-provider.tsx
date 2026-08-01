@@ -645,9 +645,14 @@ function useAuthActionsController(): AuthActions {
         const user = await signUpWithEmail(email.trim(), password);
         const fullName = [profile?.firstName?.trim(), profile?.lastName?.trim()].filter(Boolean).join(' ').trim();
         if (fullName) {
-          await updateProfile(user, { displayName: fullName });
-          await updateUserProfileName(user.uid, fullName);
-          await reload(user);
+          try {
+            await updateProfile(user, { displayName: fullName });
+            await updateUserProfileName(user.uid, fullName);
+            await reload(user);
+          } catch (profileError) {
+            // Auth succeeded; profile name can be completed in the journey if rules lag.
+            console.warn('Signup profile name write skipped:', profileError);
+          }
         }
         try {
           await sendVerificationEmailViaApi();

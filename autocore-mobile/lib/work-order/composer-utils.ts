@@ -4,18 +4,18 @@ import type { WorkOrderAssigneeRole, WorkOrderLaborLine } from '@/types/work-ord
 import { laborLineTotal, normalizeLaborPricingMode } from './labor-pricing';
 
 export const ROLE_LABELS: Record<WorkOrderAssigneeRole, string> = {
-  mechanic: 'Механик',
-  diagnostician: 'Диагност',
-  manager: 'Менеджер',
+  mechanic: 'Mechanic',
+  diagnostician: 'Diagnostician',
+  manager: 'Manager',
 };
 
 const EMPLOYEE_ROLE_LABELS: Record<string, string> = {
-  owner: 'Владелец',
-  admin: 'Администратор',
-  manager: 'Менеджер',
-  diagnostician: 'Диагност',
-  mechanic: 'Механик',
-  accountant: 'Бухгалтер',
+  owner: 'Owner',
+  admin: 'Admin',
+  manager: 'Manager',
+  diagnostician: 'Diagnostician',
+  mechanic: 'Mechanic',
+  accountant: 'Accountant',
 };
 
 export function nextComposerLineId(prefix: string): string {
@@ -49,7 +49,7 @@ export function laborAssigneeLabel(line: WorkOrderLaborLine, employees: CompanyE
     if (names.length > 0) return names.join(', ');
   }
   if (line.assigneeDisplayNames?.length) return line.assigneeDisplayNames.join(', ');
-  return 'без исполнителя';
+  return 'unassigned';
 }
 
 export function laborLineLabel(line: WorkOrderLaborLine, employees: CompanyEmployee[]): string {
@@ -59,7 +59,7 @@ export function laborLineLabel(line: WorkOrderLaborLine, employees: CompanyEmplo
   const pricePart =
     mode === 'fixed'
       ? formatMoney(total)
-      : `${line.hours} ч × ${formatMoney(line.unitPrice)} = ${formatMoney(total)}`;
+      : `${line.hours} hr × ${formatMoney(line.unitPrice)} = ${formatMoney(total)}`;
   return `${line.title} · ${pricePart} · ${assignee} (${ROLE_LABELS[line.assigneeRole]})`;
 }
 

@@ -5,16 +5,15 @@ import type React from 'react';
 import { useAuth } from '@/authentication/auth-provider';
 import { useGuardedRouter } from '@/hooks/use-guarded-router';
 import { useReleaseStackNavigationOnFocus } from '@/hooks/use-release-stack-navigation';
-import { ListGroup, ListRow, Screen, ScreenScroll, SectionHeader } from '@/components/ui';
+import { ListGroup, ListRow, ProductScreenShell, ScreenScroll, SectionHeader } from '@/components/ui';
 import { useDeleteAccount, useProfileHubData } from '@/hooks';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
-import { haptics, rhythm, spacing } from '@/theme';
+import { haptics, layout, rhythm } from '@/theme';
 import { SETTINGS_HUB_SECTIONS } from '@/features/settings/data/settings-sections';
 import type { SettingsHubRouteId } from '@/features/settings/types';
-import { CoinsIcon } from '@/assets/icons';
+import { CoinsIcon, StoreIcon } from '@/assets/icons';
 
 import { CompanySwitcherSheet } from '@/features/organization/components/company-switcher-sheet';
-import { OrganizationSwitchButton } from '@/features/organization/components/organization-switch-button';
 
 import { DeleteAccountDialog } from './components/delete-account-dialog';
 import { ProfileHeader } from './components/profile-header';
@@ -27,7 +26,7 @@ type ProfileHubRow = {
   icon: React.ComponentType<{ size?: 'sm' | 'md' | 'lg'; color?: string; strokeWidth?: number }>;
 };
 
-const SECTION_GAP = spacing[4];
+const SECTION_GAP = layout.sectionGap;
 
 export function ProfileScreen() {
   const router = useGuardedRouter();
@@ -56,7 +55,7 @@ export function ProfileScreen() {
     if (rbac.nav.canAccessMyEarnings) {
       const earningsRow: ProfileHubRow = {
         id: 'my-earnings',
-        title: 'Мои начисления',
+        title: 'My Earnings',
         icon: CoinsIcon,
       };
       const financeSectionIndex = next.findIndex((section) => section.id === 'finance');
@@ -68,7 +67,7 @@ export function ProfileScreen() {
       } else {
         next.push({
           id: 'earnings',
-          label: 'Начисления',
+          label: 'Earnings',
           rows: [earningsRow],
         });
       }
@@ -85,14 +84,14 @@ export function ProfileScreen() {
 
   const openRow = (row: ProfileHubRow) => {
     if (row.id === 'my-earnings') {
-      router.push('/(tabs)/my-earnings');
+      router.push('/(tabs)/profile/my-earnings');
       return;
     }
     router.push(profileHubRouteHref(row.id as SettingsHubRouteId));
   };
 
   return (
-    <Screen>
+    <ProductScreenShell brandWash animateEnter={false}>
       <ScreenScroll tabBarInset contentStyle={{ gap: SECTION_GAP }}>
         <ProfileHeader />
         <ProfileHeroCard user={data.user} />
@@ -100,14 +99,21 @@ export function ProfileScreen() {
         {sections.map((section) => (
           <View key={section.id} style={{ gap: rhythm.micro }}>
             <SectionHeader title={section.label} label inset />
-            <View style={{ gap: section.id === 'company' && canSwitchOrg ? rhythm.stack : 0 }}>
-              {section.id === 'company' && canSwitchOrg ? (
-                <OrganizationSwitchButton
-                  companyName={data.user.company || 'Организация'}
-                  onPress={() => setSwitcherOpen(true)}
-                />
-              ) : null}
+            <View>
               <ListGroup>
+                {/* Same card, same row grammar as its neighbours — it is a
+                    navigation row, not a separate kind of thing. */}
+                {section.id === 'company' && canSwitchOrg ? (
+                  <ListRow
+                    title="Switch organization"
+                    subtitle={data.user.company || 'Organization'}
+                    icon={StoreIcon}
+                    onPress={() => {
+                      haptics.selection();
+                      setSwitcherOpen(true);
+                    }}
+                  />
+                ) : null}
                 {section.rows.map((row) => (
                   <ListRow
                     key={row.id}
@@ -124,16 +130,23 @@ export function ProfileScreen() {
 
         {canSwitchOrg && !sections.some((section) => section.id === 'company') ? (
           <View style={{ gap: rhythm.micro }}>
-            <SectionHeader title="Компания" label inset />
-            <OrganizationSwitchButton
-              companyName={data.user.company || 'Организация'}
-              onPress={() => setSwitcherOpen(true)}
-            />
+            <SectionHeader title="Company" label inset />
+            <ListGroup>
+              <ListRow
+                title="Switch organization"
+                subtitle={data.user.company || 'Organization'}
+                icon={StoreIcon}
+                onPress={() => {
+                  haptics.selection();
+                  setSwitcherOpen(true);
+                }}
+              />
+            </ListGroup>
           </View>
         ) : null}
 
         <View style={{ gap: rhythm.micro }}>
-          <SectionHeader title="Опасная зона" label inset />
+          <SectionHeader title="Danger Zone" label inset />
           <ListGroup>
             {data.dangerZone.map((item) => (
               <ListRow
@@ -171,6 +184,6 @@ export function ProfileScreen() {
       {switcherOpen ? (
         <CompanySwitcherSheet open={switcherOpen} onClose={() => setSwitcherOpen(false)} />
       ) : null}
-    </Screen>
+    </ProductScreenShell>
   );
 }

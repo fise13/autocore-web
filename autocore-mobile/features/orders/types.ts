@@ -1,16 +1,11 @@
 import type { ComponentType } from 'react';
 
-export type OrderStatus =
-  | 'in_progress'
-  | 'waiting_parts'
-  | 'ready'
-  | 'completed'
-  | 'overdue'
-  | 'warranty';
+import type { WorkOrderStatus } from '@/types/work-order';
+
+/** Mobile list/detail status — same vocabulary as domain. */
+export type OrderStatus = WorkOrderStatus;
 
 export type OrderPriority = 'normal' | 'high';
-
-export type OrderFilterId = 'all' | 'open' | 'done' | 'free';
 
 export type OrderTimelineEvent = {
   id: string;
@@ -37,11 +32,20 @@ export type WorkOrder = {
   progress: number;
   estimated: string;
   createdAt: string;
+  /**
+   * Raw `updatedAt` epoch — display strings cannot be grouped or sorted.
+   * Optional because fixtures carry no timestamp; those fall to "Earlier".
+   */
+  updatedAtMs?: number;
+  /** True when status is completed/delivered and completedAt/updatedAt is today. */
+  closedToday?: boolean;
   timeline: OrderTimelineEvent[];
   partsNote?: string;
   paymentNote?: string;
   warrantyNote?: string;
 };
+
+export type OrderFilterId = 'all' | 'open' | 'in_progress' | 'waiting' | 'done' | 'free';
 
 export type OrderFilterOption = {
   id: OrderFilterId;
@@ -51,7 +55,12 @@ export type OrderFilterOption = {
 export type OrdersListMeta = {
   total: number;
   openCount: number;
+  inProgressCount: number;
+  waitingCount: number;
+  closedTodayCount: number;
   freeCount?: number;
+  /** Calendar-day closed value — the one number the filter chips cannot show. */
+  closedTodayRevenue?: number;
 };
 
 export type TodayOverview = {
@@ -62,7 +71,8 @@ export type TodayOverview = {
   overdue: number;
   completed: number;
   inProgress: number;
-  salesToday: number;
+  /** Calendar-day closed revenue — not lifetime completed totals. */
+  closedRevenueToday: number;
   salesDelta: number;
 };
 

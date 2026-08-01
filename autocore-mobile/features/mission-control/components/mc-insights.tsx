@@ -80,7 +80,7 @@ export const McInsights = memo(function McInsights({ insights }: McInsightsProps
 
   return (
     <View>
-      <McSectionTitle title="Рекомендации" />
+      <McSectionTitle title="Recommendations" />
       <View style={{ gap: rhythm.micro }}>
         {insights.map((insight, index) => (
           <InsightRow key={insight.id} insight={insight} index={index} onPress={() => navigate(insight)} />

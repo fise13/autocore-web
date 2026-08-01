@@ -18,15 +18,13 @@ import { resolveSessionCompanyId } from '@/lib/session/merge-hydration';
 import { hideNativeSplashAndLogStartup } from '@/lib/splash';
 import { useAuthStore } from '@/store/auth-store';
 
-/** Loader stays up at least this long so it never flashes on a warm cache. */
-const MIN_LOADING_MS = 1_200;
+/** Avoid a one-frame flash when disk cache is already hot. */
+const MIN_LOADING_MS = 220;
 /** Catalog must stay quiet this long after the last apply. */
-const QUIET_MS = 900;
-/** Data conditions must hold continuously this long before we reveal. */
-const SETTLE_MS = 700;
+const QUIET_MS = 120;
 /** Absolute fail-open so a stuck listener can never soft-lock the splash. */
-const FAILSAFE_MS = 15_000;
-const POLL_MS = 120;
+const FAILSAFE_MS = 8_000;
+const POLL_MS = 50;
 
 /**
  * Keeps children mounted at all times (the navigator is never re-parented or
@@ -70,7 +68,6 @@ export const SessionBootstrapGate = memo(function SessionBootstrapGate({
 
     let cancelled = false;
     const startedAt = Date.now();
-    let conditionsMetSince: number | null = null;
 
     const reveal = () => {
       if (cancelled || revealedRef.current) return;
@@ -104,20 +101,12 @@ export const SessionBootstrapGate = memo(function SessionBootstrapGate({
       const pendingApplies = getPendingQueryDataApplyCount();
       const sinceApply = getMsSinceLastCatalogApply();
       const catalogQuiet =
-        hasSeenCatalogApply() && pendingApplies === 0 && sinceApply >= QUIET_MS;
+        !hasSeenCatalogApply() ||
+        (pendingApplies === 0 && sinceApply >= QUIET_MS);
 
-      const dataReady = bootstrap.ready && catalogQuiet;
+      const dataReady = bootstrap.ready && pendingApplies === 0 && catalogQuiet;
 
-      if (dataReady) {
-        if (conditionsMetSince == null) conditionsMetSince = Date.now();
-      } else {
-        conditionsMetSince = null;
-      }
-
-      const settled =
-        conditionsMetSince != null && Date.now() - conditionsMetSince >= SETTLE_MS;
-
-      if (elapsed >= FAILSAFE_MS || (elapsed >= MIN_LOADING_MS && settled)) {
+      if (elapsed >= FAILSAFE_MS || (elapsed >= MIN_LOADING_MS && dataReady)) {
         reveal();
         return;
       }
@@ -140,7 +129,7 @@ export const SessionBootstrapGate = memo(function SessionBootstrapGate({
       {children}
       {showOverlay ? (
         <View style={styles.overlay} pointerEvents="auto">
-          <AuthLoadingScreen message="Подготовка рабочего пространства…" />
+          <AuthLoadingScreen message="Setting up your workspace…" />
         </View>
       ) : null}
     </View>

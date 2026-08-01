@@ -11,13 +11,13 @@ import type { NotificationPreferences } from '@/types/notifications';
 import { DEFAULT_NOTIFICATION_PREFERENCES } from '@/types/notifications';
 
 const ROLE_LABELS: Record<string, string> = {
-  owner: 'Владелец',
-  admin: 'Администратор',
-  manager: 'Менеджер',
-  accountant: 'Бухгалтер',
-  mechanic: 'Механик',
-  diagnostician: 'Диагност',
-  employee: 'Сотрудник',
+  owner: 'Owner',
+  admin: 'Administrator',
+  manager: 'Manager',
+  accountant: 'Accountant',
+  mechanic: 'Mechanic',
+  diagnostician: 'Diagnostician',
+  employee: 'Employee',
 };
 
 const NOTIFICATION_CACHE_KEY = 'autocore-mobile:notification-preferences:v2';
@@ -40,18 +40,18 @@ export function useProfileHubData(): ProfileHubData {
 
     const rowValues: Partial<Record<SettingsHubRouteId, string>> = {
       appearance: themePreferenceLabel(preference),
-      notifications: cachedPrefs.channels.push ? 'Вкл' : 'Выкл',
+      notifications: cachedPrefs.channels.push ? 'On' : 'Off',
       version: `${Constants.expoConfig?.version ?? '1.0.0'} · BETA`,
     };
 
     return {
       user: {
         id: profile?.id ?? firebaseUser?.uid ?? '',
-        name: profile?.displayName?.trim() || 'Пользователь',
+        name: profile?.displayName?.trim() || 'User',
         email: profile?.email ?? firebaseUser?.email ?? '',
-        role: ROLE_LABELS[profile?.role ?? 'employee'] ?? 'Сотрудник',
+        role: ROLE_LABELS[profile?.role ?? 'employee'] ?? 'Employee',
         company: activeCompanyName ?? profile?.companyId ?? '',
-        loginProvider: 'Аккаунт',
+        loginProvider: 'Account',
         photoURL,
         isPro: false,
         planLabel: '',
@@ -61,8 +61,8 @@ export function useProfileHubData(): ProfileHubData {
       workspace: [],
       rowValues,
       dangerZone: [
-        { id: 'sign-out', title: 'Выйти из аккаунта' },
-        { id: 'delete-account', title: 'Удалить аккаунт' },
+        { id: 'sign-out', title: 'Sign out' },
+        { id: 'delete-account', title: 'Delete account' },
       ],
     };
   }, [

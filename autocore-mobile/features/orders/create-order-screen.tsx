@@ -1,11 +1,10 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
-  ArrowLeftIcon,
   ArrowRightIcon,
   BoxIcon,
   CarIcon,
@@ -16,12 +15,10 @@ import {
   UserRoundIcon,
   WrenchIcon,
 } from '@/assets/icons';
-import { Button, AutocompleteInput, IconButton, Input, KeyboardFormShell, Text, toast } from '@/components/ui';
-import { ScreenActionFooter } from '@/components/navigation/screen-action-footer';
+import { Button, AutocompleteInput, Input, KeyboardFormShell, StickyActionBar, Text, toast } from '@/components/ui';
 import {
   useClientsRealtime,
   useEmployeesRealtime,
-  useFloatingTabBarInset,
   useInventoryCatalog,
   useMotorsRealtime,
   useSession,
@@ -32,7 +29,6 @@ import {
   useWorkOrdersRealtime,
 } from '@/hooks';
 import { haptics } from '@/theme';
-import { toneBackground } from '@/theme/color-utils';
 import { formatPrice } from '@/features/search/lib/format';
 import { nextComposerLineId } from '@/lib/work-order/composer-utils';
 import { formatMotorLineLabel } from '@/lib/motors/format-motor-display-name';
@@ -54,7 +50,7 @@ import {
   resolveInventoryUnitPrice,
   useWorkOrderComposerOptions,
 } from './hooks/use-work-order-composer-options';
-import { ordersLayout } from './layout';
+import { wo, woFlatCard, woType } from './theme/wo-visual';
 
 const STEPS = [
   { id: 1, label: 'Client & vehicle', icon: UserRoundIcon },
@@ -74,43 +70,24 @@ function SectionCard({
   const { colors } = useTheme();
 
   return (
-    <View
-      style={{
-        borderRadius: ordersLayout.radius,
-        borderWidth: ordersLayout.hairline,
-        borderColor: colors.border,
-        backgroundColor: colors.card,
-        overflow: 'hidden',
-      }}
-    >
+    <View style={{ ...woFlatCard(colors), overflow: 'hidden' }}>
       <View
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 8,
+          gap: 10,
           paddingHorizontal: 14,
           paddingVertical: 12,
-          borderBottomWidth: ordersLayout.hairline,
+          borderBottomWidth: wo.rule,
           borderBottomColor: colors.border,
         }}
       >
-        <View
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 8,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: toneBackground(colors.primary, 0.1),
-          }}
-        >
-          <Icon size="sm" color={colors.primary} strokeWidth={1.85} />
-        </View>
-        <Text variant="body" style={{ fontSize: 14, fontWeight: '600' }}>
+        <Icon size="sm" color={colors.foreground} strokeWidth={1.85} />
+        <Text variant="meta" style={{ ...woType.section, color: colors.foreground }}>
           {title}
         </Text>
       </View>
-      <View style={{ padding: 14, gap: 14 }}>{children}</View>
+      <View style={{ padding: 14, gap: 12 }}>{children}</View>
     </View>
   );
 }
@@ -127,49 +104,163 @@ function Field({ label, required, children }: { label: string; required?: boolea
   );
 }
 
-function StepIndicator({ step }: { step: number }) {
+function StepIndicator({
+  step,
+  onSelect,
+}: {
+  step: number;
+  onSelect?: (step: number) => void;
+}) {
   const { colors } = useTheme();
 
   return (
-    <View style={{ flexDirection: 'row', gap: 8 }}>
+    <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10 }}>
       {STEPS.map((item) => {
         const Icon = item.icon;
         const active = step === item.id;
         const done = step > item.id;
+        const canJump = item.id < step;
 
         return (
-          <View key={item.id} style={{ flex: 1, alignItems: 'center', gap: 6 }}>
+          <Pressable
+            key={item.id}
+            accessibilityRole="button"
+            accessibilityLabel={item.label}
+            disabled={!canJump}
+            onPress={() => {
+              if (!canJump) return;
+              haptics.selection();
+              onSelect?.(item.id);
+            }}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: wo.radiusSm,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: wo.rule,
+              borderColor: done || active ? colors.foreground : colors.border,
+              backgroundColor: active ? colors.foreground : colors.card,
+              opacity: canJump || active ? 1 : 0.7,
+            }}
+          >
+            {done ? (
+              <CheckCircle2Icon size="sm" color={colors.foreground} strokeWidth={2} />
+            ) : (
+              <Icon
+                size="sm"
+                color={active ? colors.background : colors.mutedForeground}
+                strokeWidth={1.85}
+              />
+            )}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function ComposerChrome({
+  isEdit,
+  saved,
+  step,
+  stepOneValid,
+  saving,
+  onCancel,
+  onNext,
+  onCreate,
+  onSelectStep,
+}: {
+  isEdit: boolean;
+  saved: boolean;
+  step: number;
+  stepOneValid: boolean;
+  saving: boolean;
+  onCancel: () => void;
+  onNext: () => void;
+  onCreate: () => void;
+  onSelectStep: (step: number) => void;
+}) {
+  const { colors } = useTheme();
+  const primaryDisabled = step === 1 && !stepOneValid;
+  const onPrimary = step < 3 ? onNext : onCreate;
+  const primaryLabel = step < 3 ? 'Next' : isEdit ? 'Save' : 'Create';
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Cancel"
+          hitSlop={8}
+          onPress={onCancel}
+          style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 }}
+        >
+          <Text variant="body" color="muted" style={{ fontWeight: '500' }}>
+            Cancel
+          </Text>
+        </Pressable>
+
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 7,
+              borderRadius: wo.radiusSm,
+              borderWidth: wo.rule,
+              borderColor: saved ? colors.success : colors.border,
+              backgroundColor: colors.card,
+            }}
+          >
             <View
               style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: done || active ? colors.primary : colors.secondary,
+                width: 7,
+                height: 7,
+                borderRadius: 1,
+                backgroundColor: saved ? colors.success : colors.mutedForeground,
               }}
-            >
-              {done ? (
-                <CheckCircle2Icon size="sm" color={colors.primaryForeground} strokeWidth={2} />
-              ) : (
-                <Icon size="sm" color={active ? colors.primaryForeground : colors.mutedForeground} strokeWidth={1.85} />
-              )}
-            </View>
+            />
             <Text
               variant="caption"
               style={{
-                fontSize: 10,
-                fontWeight: active ? '600' : '500',
-                color: active ? colors.foreground : colors.mutedForeground,
-                textAlign: 'center',
+                fontWeight: '700',
+                letterSpacing: 0.3,
+                color: saved ? colors.success : colors.mutedForeground,
               }}
-              numberOfLines={2}
             >
-              {item.label}
+              {saved ? 'Saved' : 'Draft'}
             </Text>
           </View>
-        );
-      })}
+        </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={primaryLabel}
+          accessibilityState={{ disabled: primaryDisabled || saving }}
+          disabled={primaryDisabled || saving}
+          onPress={onPrimary}
+          style={{
+            minHeight: 40,
+            paddingHorizontal: 16,
+            borderRadius: wo.radiusSm,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: colors.foreground,
+            opacity: primaryDisabled || saving ? 0.45 : 1,
+            flexDirection: 'row',
+            gap: 6,
+          }}
+        >
+          <Text variant="caption" style={{ fontWeight: '700', color: colors.background }}>
+            {saving ? '…' : primaryLabel}
+          </Text>
+          {step < 3 ? <ArrowRightIcon size="sm" color={colors.background} strokeWidth={2} /> : null}
+        </Pressable>
+      </View>
+      <StepIndicator step={step} onSelect={onSelectStep} />
     </View>
   );
 }
@@ -178,7 +269,6 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
   const isEdit = Boolean(orderId?.trim());
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { modalScrollBottom } = useFloatingTabBarInset();
   const router = useRouter();
   const { companyId, uid, can } = useSession();
   const params = useLocalSearchParams<{ vin?: string; itemId?: string; motorId?: string; outcome?: string }>();
@@ -743,8 +833,8 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
 
         <View
           style={{
-            borderRadius: ordersLayout.radius,
-            borderWidth: ordersLayout.hairline,
+            borderRadius: wo.radius,
+            borderWidth: wo.rule,
             borderColor: colors.border,
             backgroundColor: colors.card,
             padding: 16,
@@ -802,60 +892,48 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
     <KeyboardFormShell
       backgroundColor={colors.background}
       contentContainerStyle={{
-        paddingHorizontal: ordersLayout.pad,
+        paddingHorizontal: wo.pad,
         paddingTop: 16,
-        paddingBottom: modalScrollBottom,
-        gap: 14,
+        paddingBottom: wo.sectionGap,
+        gap: 12,
       }}
       header={
         <View
           style={{
             paddingTop: insets.top + 6,
-            paddingHorizontal: ordersLayout.pad,
+            paddingHorizontal: wo.pad,
             paddingBottom: 12,
-            gap: 14,
-            borderBottomWidth: ordersLayout.hairline,
+            borderBottomWidth: wo.rule,
             borderBottomColor: colors.border,
           }}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <IconButton accessibilityLabel="Back" variant="ghost" size="sm" onPress={() => router.back()}>
-              <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
-            </IconButton>
-            <View style={{ flex: 1 }}>
-              <Text variant="caption" color="muted" style={{ fontSize: 11 }}>
-                {isEdit ? `Editing #${existingOrder?.number ?? ''}` : 'New work order'}
-              </Text>
-              <Text variant="heading" style={{ fontSize: 20, fontWeight: '700', letterSpacing: -0.3 }}>
-                {isEdit ? 'Edit' : 'Create'}
-              </Text>
-            </View>
-          </View>
-          <StepIndicator step={step} />
+          <ComposerChrome
+            isEdit={isEdit}
+            saved={isEdit && hydrated}
+            step={step}
+            stepOneValid={stepOneValid}
+            saving={saving}
+            onCancel={() => router.back()}
+            onNext={() => setStep((value) => value + 1)}
+            onCreate={handleSave}
+            onSelectStep={setStep}
+          />
         </View>
       }
       footer={
-        <ScreenActionFooter horizontalPadding={ordersLayout.pad} aboveTabBar={false}>
-          {step > 1 ? (
-            <Button variant="outline" onPress={() => setStep((value) => value - 1)} style={{ flex: 1 }}>
-              Back
-            </Button>
-          ) : null}
-          {step < 3 ? (
+        step === 3 ? (
+          <StickyActionBar>
             <Button
-              onPress={() => setStep((value) => value + 1)}
-              disabled={step === 1 && !stepOneValid}
+              size="xl"
+              onPress={handleSave}
+              loading={saving}
               style={{ flex: 1 }}
-              rightIcon={<ArrowRightIcon size="sm" color="#fff" strokeWidth={2} />}
+              leftIcon={<ClipboardListIcon size="sm" color="#fff" strokeWidth={2} />}
             >
-              Next
+              {isEdit ? 'Save changes' : 'Create work order'}
             </Button>
-          ) : (
-            <Button onPress={handleSave} loading={saving} style={{ flex: 1 }} leftIcon={<ClipboardListIcon size="sm" color="#fff" strokeWidth={2} />}>
-              {isEdit ? 'Save changes' : 'Save draft'}
-            </Button>
-          )}
-        </ScreenActionFooter>
+          </StickyActionBar>
+        ) : null
       }
     >
       {renderStep()}

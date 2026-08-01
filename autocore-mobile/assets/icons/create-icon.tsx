@@ -2,7 +2,8 @@ import type { LucideIcon } from 'lucide-react-native';
 import { memo } from 'react';
 import Animated, { useAnimatedProps, useAnimatedStyle, withTiming, type SharedValue } from 'react-native-reanimated';
 
-import { useDesignLanguage } from '@/hooks';
+/** Direct import — avoid `@/hooks` barrel (pulls mission-control → icons → cycle). */
+import { useDesignLanguage } from '@/hooks/use-design-language';
 import { iconSizes, type IconSize } from '@/theme/icons';
 import { duration, autocoreEase } from '@/theme/motion';
 
@@ -53,6 +54,10 @@ export function createIcon(IconComponent: LucideIcon, displayName?: string) {
         opacity: animatedOpacity.value * opacity,
       };
     }, [opacity]);
+
+    if (!IconComponent) {
+      return null;
+    }
 
     const icon = (
       <IconComponent

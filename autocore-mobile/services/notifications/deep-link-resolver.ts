@@ -33,7 +33,7 @@ export function resolveNotificationDeepLink(deepLink?: string | null): Href | nu
       // fall through
     }
     // Legacy `/imports/{jobId}` opens capture — do not treat job id as batchId.
-    return '/(tabs)/import' as Href;
+    return '/import' as Href;
   }
 
   if (trimmed.startsWith('/(tabs)') || trimmed.startsWith('/')) {
@@ -61,8 +61,8 @@ export function resolveNotificationDeepLink(deepLink?: string | null): Href | nu
   }
   if (path === 'scan') return '/(tabs)/scan' as Href;
   if (path.startsWith('accounting')) return '/(tabs)/accounting' as Href;
-  if (path.startsWith('search')) return '/(tabs)/search' as Href;
-  if (path.startsWith('warehouse')) return '/(tabs)/warehouse' as Href;
+  if (path.startsWith('search')) return '/search' as Href;
+  if (path.startsWith('warehouse')) return '/warehouse' as Href;
   if (path.startsWith('settings/')) {
     return `/(tabs)/profile/${path}` as Href;
   }
@@ -79,7 +79,7 @@ export function resolveNotificationDeepLink(deepLink?: string | null): Href | nu
       return `/(tabs)/import?batchId=${decodeURIComponent(batchPath[1])}` as Href;
     }
     // `import/{id}` used to be misread as batchId (job id ≠ batch).
-    return '/(tabs)/import' as Href;
+    return '/import' as Href;
   }
   if (path === 'sync/conflict') {
     return '/(tabs)/profile/inbox' as Href;

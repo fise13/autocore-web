@@ -6,7 +6,7 @@ import {
   startOfDay,
   subDays,
 } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { enUS } from 'date-fns/locale';
 
 import type { AppNotification } from '@/services/notifications/types';
 
@@ -19,9 +19,9 @@ export type DateGroup = {
 };
 
 const GROUP_LABELS: Record<DateGroupKey, string> = {
-  today: 'Сегодня',
-  yesterday: 'Вчера',
-  earlier: 'Ранее',
+  today: 'Today',
+  yesterday: 'Yesterday',
+  earlier: 'Earlier',
 };
 
 export function groupNotificationsByDate(items: AppNotification[]): DateGroup[] {
@@ -55,12 +55,12 @@ export function formatNotificationTime(iso: string): string {
   try {
     const date = new Date(iso);
     if (isToday(date)) {
-      return format(date, 'HH:mm', { locale: ru });
+      return format(date, 'HH:mm', { locale: enUS });
     }
     if (isYesterday(date)) {
-      return `Вчера, ${format(date, 'HH:mm', { locale: ru })}`;
+      return `Yesterday, ${format(date, 'HH:mm', { locale: enUS })}`;
     }
-    return format(date, 'd MMM, HH:mm', { locale: ru });
+    return format(date, 'd MMM, HH:mm', { locale: enUS });
   } catch {
     return '';
   }

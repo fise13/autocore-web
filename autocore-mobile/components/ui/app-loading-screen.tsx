@@ -19,7 +19,7 @@ type AppLoadingScreenProps = ViewProps & {
 /** Mirrors src/components/ui/app-loading-screen.tsx */
 export function AppLoadingScreen({
   compact = false,
-  message = 'Загрузка…',
+  message = 'Loading…',
   showAppName = true,
   style,
   ...props

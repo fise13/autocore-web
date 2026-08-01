@@ -21,7 +21,7 @@ export function WorkspaceStorageCard({
   const clampedPct = Math.min(100, Math.max(0, usedPct));
 
   return (
-    <SettingsSectionCard title="Хранилище" description={`${syncStatus} · ${syncMeta}`}>
+    <SettingsSectionCard title="Storage" description={`${syncStatus} · ${syncMeta}`}>
       <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <Text variant="caption" color="muted">

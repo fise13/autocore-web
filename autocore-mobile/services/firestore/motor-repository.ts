@@ -161,7 +161,7 @@ export function createMotorRepository() {
           transmission: motor.transmission ?? '',
           arrivalDate: motor.arrivalDate ?? soldDate,
           soldDate,
-          brandName: (motor.brandName ?? '').trim() || 'Не указан',
+          brandName: (motor.brandName ?? '').trim() || 'Not specified',
           engineCode: (motor.engineCode ?? '').trim() || '—',
           status: 'sold',
           reservedForWorkOrderId: motor.reservedForWorkOrderId ?? null,

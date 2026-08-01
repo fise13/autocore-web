@@ -23,14 +23,14 @@ export const WarehouseCard = memo(function WarehouseCard({
   return (
     <BusinessCardShell
       title={name}
-      subtitle={zone ? `Зона ${zone}` : undefined}
+      subtitle={zone ? `Zone ${zone}` : undefined}
       headerRight={
         <Text variant="kpi">{itemCount}</Text>
       }
       footer={
         utilization !== undefined ? (
           <Text variant="caption" color="muted">
-            Загрузка {utilization}%
+            {utilization}% full
           </Text>
         ) : (
           <StoreIcon size="sm" color={dl.colors.mutedForeground} state="default" />

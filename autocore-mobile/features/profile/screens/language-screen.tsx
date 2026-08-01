@@ -7,17 +7,17 @@ import { rhythm } from '@/theme';
 
 import { ProfileScreenShell } from '../components/profile-screen-shell';
 
-const LANGUAGES = [{ id: 'ru', label: 'Русский' }] as const;
+const LANGUAGES = [{ id: 'en', label: 'English' }] as const;
 
 export function LanguageScreen() {
   const { colors } = useTheme();
 
   return (
-    <ProfileScreenShell title="Язык" subtitle="Язык интерфейса">
+    <ProfileScreenShell title="Language" subtitle="App language">
       <SettingsSectionCard>
         <View style={styles.hint}>
           <Text variant="caption" color="muted" style={styles.hintText}>
-            Приложение локализовано на русский язык.
+            The app is available in English.
           </Text>
         </View>
         {LANGUAGES.map((language) => (

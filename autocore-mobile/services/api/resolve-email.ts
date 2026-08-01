@@ -35,7 +35,7 @@ export async function resolveEmailSignInMethodsLookup(email: string): Promise<Re
 
     if (response.status === 429) {
       const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-      throw new Error(payload?.error ?? 'Слишком много попыток. Попробуйте позже.');
+      throw new Error(payload?.error ?? 'Too many attempts. Please try again later.');
     }
 
     if (response.ok) {
@@ -47,7 +47,7 @@ export async function resolveEmailSignInMethodsLookup(email: string): Promise<Re
       return { methods: normalizeMethods(methods), apiResolved: true };
     }
   } catch (lookupError) {
-    if (lookupError instanceof Error && /попыток/i.test(lookupError.message)) {
+    if (lookupError instanceof Error && /too many attempts/i.test(lookupError.message)) {
       throw lookupError;
     }
     console.warn('resolve-email API fallback:', lookupError);

@@ -12,12 +12,11 @@ import {
 import { printWorkOrderDocument, shareWorkOrderDocument } from '@/lib/documents/document-file-actions';
 import { resolveApplicableDocumentSlugs } from '@/lib/documents/document-policy';
 import { haptics } from '@/theme';
-import { toneBackground } from '@/theme/color-utils';
 import { DOCUMENT_BY_SLUG } from '@/types/document';
 import type { DocumentSlug } from '@/types/document';
 import type { WorkOrder } from '@/types/work-order';
 
-import { ordersLayout } from '../layout';
+import { wo } from '../theme/wo-visual';
 
 type DocumentAction = 'share' | 'print';
 
@@ -66,8 +65,8 @@ function DocumentActionButton({
       style={{
         flex: 1,
         minHeight: 44,
-        borderRadius: 12,
-        borderWidth: primary ? 0 : ordersLayout.hairline,
+        borderRadius: wo.radius,
+        borderWidth: primary ? 0 : wo.rule,
         borderColor: colors.border,
         backgroundColor: primary ? colors.primary : colors.secondary,
         paddingHorizontal: 12,
@@ -99,7 +98,7 @@ function DocumentActionButton({
           color: primary ? colors.primaryForeground : colors.foreground,
         }}
       >
-        {loading ? 'Секунду…' : label}
+        {loading ? 'One sec…' : label}
       </Text>
     </Pressable>
   );
@@ -133,7 +132,7 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
       haptics.success();
     } catch (nextError) {
       haptics.warning();
-      setError(nextError instanceof Error ? nextError.message : 'Не удалось выполнить операцию');
+      setError(nextError instanceof Error ? nextError.message : 'Could not complete the operation');
     } finally {
       setBusyKey(null);
     }
@@ -143,12 +142,12 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
     return (
       <View style={{ gap: 8 }}>
         <Text variant="body" style={{ fontSize: 15, fontWeight: '600', letterSpacing: -0.2 }}>
-          Документы
+          Documents
         </Text>
         <View
           style={{
-            borderRadius: ordersLayout.radius,
-            borderWidth: ordersLayout.hairline,
+            borderRadius: wo.radius,
+            borderWidth: wo.rule,
             borderColor: colors.border,
             borderStyle: 'dashed',
             backgroundColor: colors.card,
@@ -156,7 +155,7 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
           }}
         >
           <Text variant="caption" color="muted" style={{ textAlign: 'center', fontSize: 13 }}>
-            Для текущего статуса заказа нет клиентских PDF.
+            No customer-facing PDFs for the order's current status.
           </Text>
         </View>
       </View>
@@ -167,10 +166,10 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
     <View style={{ gap: 12 }}>
       <View style={{ gap: 4 }}>
         <Text variant="body" style={{ fontSize: 15, fontWeight: '600', letterSpacing: -0.2 }}>
-          Документы
+          Documents
         </Text>
         <Text variant="caption" color="muted" style={{ fontSize: 12, lineHeight: 16 }}>
-          Поделиться или распечатать PDF клиенту. Если файла ещё нет — сформируем при открытии.
+          Share or print a PDF for the customer. If it doesn't exist yet, we'll generate it when opened.
         </Text>
       </View>
 
@@ -180,17 +179,17 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
             flexDirection: 'row',
             alignItems: 'center',
             gap: 8,
-            borderRadius: 12,
-            borderWidth: ordersLayout.hairline,
+            borderRadius: wo.radius,
+            borderWidth: wo.rule,
             borderColor: colors.border,
-            backgroundColor: toneBackground(colors.primary, 0.06),
+            backgroundColor: colors.secondary,
             paddingHorizontal: 12,
             paddingVertical: 10,
           }}
         >
           <ActivityIndicator size="small" color={colors.primary} />
           <Text variant="caption" style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
-            PDF формируются в фоне…
+            PDFs generating in the background…
           </Text>
         </View>
       ) : null}
@@ -198,10 +197,10 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
       {error ? (
         <View
           style={{
-            borderRadius: 12,
-            borderWidth: ordersLayout.hairline,
+            borderRadius: wo.radius,
+            borderWidth: wo.rule,
             borderColor: colors.border,
-            backgroundColor: toneBackground(colors.primary, 0.06),
+            backgroundColor: colors.secondary,
             paddingHorizontal: 12,
             paddingVertical: 10,
           }}
@@ -228,8 +227,8 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
             <View
               key={definition.slug}
               style={{
-                borderRadius: ordersLayout.radius,
-                borderWidth: ordersLayout.hairline,
+                borderRadius: wo.radius,
+                borderWidth: wo.rule,
                 borderColor: colors.border,
                 backgroundColor: colors.card,
                 paddingHorizontal: 14,
@@ -242,10 +241,10 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
                   style={{
                     width: 36,
                     height: 36,
-                    borderRadius: 11,
+                    borderRadius: wo.radiusSm,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: toneBackground(colors.primary, 0.1),
+                    backgroundColor: colors.secondary,
                   }}
                 >
                   <FileTextIcon size="sm" color={colors.primary} strokeWidth={1.85} />
@@ -260,14 +259,12 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
                     </Text>
                     <View
                       style={{
-                        borderRadius: 999,
+                        borderRadius: wo.radiusSm,
+                        borderWidth: wo.rule,
+                        borderColor: colors.border,
                         paddingHorizontal: 8,
                         paddingVertical: 3,
-                        backgroundColor: isReady
-                          ? toneBackground(colors.success, 0.14)
-                          : isPending
-                            ? toneBackground(colors.primary, 0.1)
-                            : toneBackground(colors.mutedForeground, 0.12),
+                        backgroundColor: colors.secondary,
                       }}
                     >
                       <Text
@@ -283,7 +280,7 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
                               : colors.mutedForeground,
                         }}
                       >
-                        {isReady ? 'Готов' : isPending ? 'Формируется' : 'По запросу'}
+                        {isReady ? 'Ready' : isPending ? 'Generating' : 'On request'}
                       </Text>
                     </View>
                   </View>
@@ -300,7 +297,7 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
 
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <DocumentActionButton
-                  label="Поделиться"
+                  label="Share"
                   icon={Share2Icon}
                   primary
                   loading={busyKey === shareKey}
@@ -309,7 +306,7 @@ export function OrderDocumentsSection({ order, colors }: OrderDocumentsSectionPr
                   onPress={() => void runAction(definition.slug, 'share')}
                 />
                 <DocumentActionButton
-                  label="Печать"
+                  label="Print"
                   icon={PrinterIcon}
                   loading={busyKey === printKey}
                   disabled={busyKey !== null && busyKey !== printKey}

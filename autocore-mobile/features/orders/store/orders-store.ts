@@ -16,14 +16,20 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
 
 export function applyStatusPatch(status: OrderStatus): Pick<WorkOrder, 'status' | 'progress'> {
   switch (status) {
-    case 'ready':
-      return { status, progress: 92 };
-    case 'completed':
-      return { status, progress: 100 };
+    case 'draft':
+      return { status, progress: 10 };
+    case 'confirmed':
+      return { status, progress: 25 };
     case 'waiting_parts':
       return { status, progress: 45 };
-    case 'overdue':
-      return { status, progress: 70 };
+    case 'in_progress':
+      return { status, progress: 60 };
+    case 'completed':
+      return { status, progress: 92 };
+    case 'delivered':
+      return { status, progress: 100 };
+    case 'cancelled':
+      return { status, progress: 0 };
     default:
       return { status, progress: 35 };
   }

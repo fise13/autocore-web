@@ -51,14 +51,14 @@ export function AcAdvancesOverview({ snapshot }: AcAdvancesOverviewProps) {
 
   return (
     <Reanimated.View style={[{ gap: ac.sectionGap }, style]}>
-      <McSectionTitle title="Авансы" />
+      <McSectionTitle title="Advances" />
       <ListGroup inset={false}>
-        <AdvanceRow label="Получено" value={formatKzt(snapshot.received)} />
-        <AdvanceRow label="Выдано" value={formatKzt(snapshot.paid)} />
-        <AdvanceRow label="Баланс" value={formatKzt(snapshot.balance)} accent />
+        <AdvanceRow label="Received" value={formatKzt(snapshot.received)} />
+        <AdvanceRow label="Paid out" value={formatKzt(snapshot.paid)} />
+        <AdvanceRow label="Balance" value={formatKzt(snapshot.balance)} accent />
       </ListGroup>
       <Text variant="meta" color="muted" style={mcType.rowMeta}>
-        {snapshot.totalCount} авансовых операций
+        {snapshot.totalCount} advance transactions
       </Text>
     </Reanimated.View>
   );

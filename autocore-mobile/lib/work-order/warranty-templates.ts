@@ -10,12 +10,12 @@ export const WARRANTY_TEMPLATE_IDS = [
 export type WarrantyTemplateId = (typeof WARRANTY_TEMPLATE_IDS)[number];
 
 const WARRANTY_TEMPLATE_LABELS: Record<WarrantyTemplateId, string> = {
-  contract_engine: 'Контрактный двигатель',
-  contract_transmission: 'Контрактная АКПП',
-  contract_starter: 'Контрактный стартер',
-  contract_alternator: 'Контрактный генератор',
-  no_warranty: 'Без гарантии',
-  custom: 'Своя гарантия',
+  contract_engine: 'Contract Engine',
+  contract_transmission: 'Contract Transmission',
+  contract_starter: 'Contract Starter',
+  contract_alternator: 'Contract Alternator',
+  no_warranty: 'No Warranty',
+  custom: 'Custom Warranty',
 };
 
 export function warrantyTemplateLabel(id: string): string {

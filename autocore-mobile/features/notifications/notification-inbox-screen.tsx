@@ -1,15 +1,17 @@
 import { useCallback, useMemo, useState } from 'react';
-import { RefreshControl, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 
-import { BellIcon } from '@/assets/icons';
-import { Badge, Button, EmptyState, SearchInput, SettingsSectionCard, Text } from '@/components/ui';
+import { BellIcon, SearchIcon } from '@/assets/icons';
+import { Button, EmptyState, SearchInput, SettingsSectionCard, Text } from '@/components/ui';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
 import { useSession } from '@/hooks/use-session';
+import { useTheme } from '@/hooks';
 import { NotificationService } from '@/services/notifications';
 import type { AppNotification } from '@/services/notifications';
 import { useNotificationStore } from '@/stores/notification-store';
-import { rhythm, spacing } from '@/theme';
+import { duration, haptics, rhythm, spacing } from '@/theme';
 
 import { ActivityDateGroup } from './components/activity-date-group';
 import { ActivityFeedFilters } from './components/activity-feed-filters';
@@ -19,6 +21,7 @@ import { resolveNotificationInboxReturnHref } from '@/lib/navigation/open-notifi
 
 export function NotificationInboxScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const backFallbackHref = useMemo(
     () => resolveNotificationInboxReturnHref(returnTo),
@@ -47,6 +50,9 @@ export function NotificationInboxScreen() {
 
   const groups = useMemo(() => groupNotificationsByDate(filteredItems), [filteredItems]);
 
+  const filtersActive =
+    categoryFilter !== 'all' || readFilter !== 'all' || searchQuery.trim().length > 0;
+
   const handleBackfillTeam = useCallback(async () => {
     setBackfilling(true);
     try {
@@ -72,9 +78,30 @@ export function NotificationInboxScreen() {
     NotificationService.open(item);
   }, []);
 
+  const handleMarkRead = useCallback((item: AppNotification) => {
+    void NotificationService.markRead(item.id);
+  }, []);
+
+  const handleDelete = useCallback((item: AppNotification) => {
+    void NotificationService.delete(item.id);
+  }, []);
+
+  const handleMarkAllRead = useCallback(() => {
+    haptics.success();
+    void NotificationService.markAllRead();
+  }, []);
+
   const handleSearch = useCallback((text: string) => {
     setLocalSearch(text);
     NotificationService.setSearchQuery(text);
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    haptics.selection();
+    setLocalSearch('');
+    NotificationService.setSearchQuery('');
+    NotificationService.setCategoryFilter('all');
+    NotificationService.setReadFilter('all');
   }, []);
 
   const subtitle =
@@ -89,34 +116,63 @@ export function NotificationInboxScreen() {
 
   return (
     <ProfileScreenShell
-      title="Activity Center"
+      title="Activity"
       subtitle={subtitle}
       backFallbackHref={backFallbackHref}
-      onBack={() => router.replace(backFallbackHref)}
+      onBack={() => {
+        // Same-stack opens (Settings → Activity): prefer pop.
+        // Cross-tab opens (Home/Orders/… → Activity): history can't restore the prior tab,
+        // so replace to the returnTo target encoded when the inbox was opened.
+        const sameStackReturn =
+          !returnTo || returnTo === 'hub' || returnTo === 'notifications';
+        if (sameStackReturn && router.canGoBack()) {
+          router.back();
+          return;
+        }
+        router.replace(backFallbackHref);
+      }}
+      headerAction={
+        unreadCount > 0 ? (
+          <Animated.View entering={FadeIn.duration(duration.fast)} exiting={FadeOut.duration(duration.instant)}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Mark all notifications read"
+              onPress={handleMarkAllRead}
+              hitSlop={8}
+              style={({ pressed }) => ({
+                paddingHorizontal: spacing[2.5],
+                paddingVertical: spacing[1.5],
+                borderRadius: 999,
+                backgroundColor: pressed ? colors.muted : 'transparent',
+              })}
+            >
+              <Text variant="caption" style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>
+                Mark all read
+              </Text>
+            </Pressable>
+          </Animated.View>
+        ) : null
+      }
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={() => void handleRefresh()} />
       }
     >
       <View style={{ gap: rhythm.stack }}>
-        <SearchInput
-          value={localSearch}
-          onChangeText={handleSearch}
-          placeholder="Search notifications…"
-        />
+        <Animated.View entering={FadeIn.duration(duration.normal)}>
+          <SearchInput
+            value={localSearch}
+            onChangeText={handleSearch}
+            placeholder="Search activity…"
+          />
+        </Animated.View>
 
-        <ActivityFeedFilters
-          onCategoryChange={(c) => NotificationService.setCategoryFilter(c)}
-          onReadFilterChange={(f) => NotificationService.setReadFilter(f)}
-        />
-
-        {unreadCount > 0 ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Badge variant="secondary">{`${unreadCount} new`}</Badge>
-            <Button variant="ghost" size="sm" onPress={() => void NotificationService.markAllRead()}>
-              Mark all read
-            </Button>
-          </View>
-        ) : null}
+        <Animated.View entering={FadeIn.duration(duration.normal).delay(40)}>
+          <ActivityFeedFilters
+            items={storeItems}
+            onCategoryChange={(c) => NotificationService.setCategoryFilter(c)}
+            onReadFilterChange={(f) => NotificationService.setReadFilter(f)}
+          />
+        </Animated.View>
 
         {error ? (
           <SettingsSectionCard title="Couldn't load" tone="danger" inset>
@@ -133,10 +189,19 @@ export function NotificationInboxScreen() {
 
         {showSkeleton ? <NotificationInboxSkeleton /> : null}
 
-        {showEmpty ? (
+        {showEmpty && filtersActive ? (
+          <EmptyState
+            icon={SearchIcon}
+            title="Nothing matches"
+            description="No activity matches the current search and filters."
+            primaryAction={{ label: 'Clear filters', onPress: clearFilters }}
+          />
+        ) : null}
+
+        {showEmpty && !filtersActive ? (
           <EmptyState
             icon={BellIcon}
-            title="No notifications"
+            title="No activity yet"
             description={
               canManageTeam
                 ? 'Events show up here as they happen. If team members joined earlier, you can restore their notification history.'
@@ -154,16 +219,33 @@ export function NotificationInboxScreen() {
           />
         ) : null}
 
-        {groups.map((group) => (
-          <View key={group.key} style={{ marginBottom: spacing[1] }}>
-            <ActivityDateGroup label={group.label} items={group.items} onPress={handlePress} />
-          </View>
-        ))}
+        <Animated.View layout={LinearTransition.duration(260)} style={{ gap: rhythm.stack }}>
+          {groups.map((group) => (
+            <ActivityDateGroup
+              key={group.key}
+              label={group.label}
+              items={group.items}
+              onPress={handlePress}
+              onMarkRead={handleMarkRead}
+              onDelete={handleDelete}
+            />
+          ))}
+        </Animated.View>
 
         {hasMore ? (
           <Button variant="secondary" size="sm" onPress={() => NotificationService.loadMore()}>
             Load more
           </Button>
+        ) : null}
+
+        {filteredItems.length > 0 ? (
+          <Text
+            variant="caption"
+            color="muted"
+            style={{ fontSize: 12, textAlign: 'center', paddingTop: spacing[1] }}
+          >
+            Swipe a row to mark it read or remove it
+          </Text>
         ) : null}
       </View>
     </ProfileScreenShell>

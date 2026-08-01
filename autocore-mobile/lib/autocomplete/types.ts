@@ -1,7 +1,20 @@
+export type AutocompleteFuelBadge = 'Gasoline' | 'Diesel' | 'Hybrid';
+
+export type AutocompleteOptionMeta = {
+  manufacturer?: string;
+  generation?: string;
+  badge?: AutocompleteFuelBadge | string;
+  thumbnailUrl?: string;
+  /** Display title override (e.g. "Subaru EJ205"); commit still uses `value`. */
+  title?: string;
+  matchRanges?: Array<{ start: number; end: number }>;
+};
+
 export type AutocompleteOption = {
   value: string;
   label?: string;
   keywords?: string;
+  meta?: AutocompleteOptionMeta;
 };
 
 export type AutocompleteSourceId =
@@ -26,8 +39,17 @@ export type AutocompleteConfig = {
   fieldKey?: string;
 };
 
+/** Window-space rect of the input the suggestions belong to. */
+export type AutocompleteAnchor = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export type AutocompleteSession = {
   inputId: string;
+  anchor?: AutocompleteAnchor;
   query: string;
   config: AutocompleteConfig;
   suggestions: AutocompleteOption[];

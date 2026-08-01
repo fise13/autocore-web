@@ -1,6 +1,7 @@
 import { Modal, Pressable, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, SlideInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
+import { backdropIn, backdropOut, dialogIn, dialogOut } from '@/animations';
 import { useTheme } from '@/hooks';
 import { XIcon } from '@/assets/icons';
 import { rhythm, zIndex } from '@/theme';
@@ -22,8 +23,8 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
   return (
     <Modal visible={open} transparent animationType="none" onRequestClose={() => onOpenChange(false)}>
       <Animated.View
-        entering={FadeIn.duration(200)}
-        exiting={FadeOut.duration(150)}
+        entering={backdropIn}
+        exiting={backdropOut}
         style={{
           flex: 1,
           backgroundColor: colors.overlay,
@@ -35,7 +36,8 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
       >
         <Pressable style={{ position: 'absolute', inset: 0 }} onPress={() => onOpenChange(false)} />
         <Animated.View
-          entering={SlideInDown.duration(280).springify()}
+          entering={dialogIn}
+          exiting={dialogOut}
           style={{
             width: '100%',
             maxWidth: 400,

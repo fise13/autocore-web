@@ -79,11 +79,11 @@ export function findVinInCodes(codes: string[]): string | null {
 /** Deterministic WMI region hint from chars 1–3 (coarse, no network). */
 export function vinRegionHint(vin: string): string | null {
   const wmi = vin.slice(0, 1);
-  if (wmi >= '1' && wmi <= '5') return 'Северная Америка';
-  if (wmi >= 'J' && wmi <= 'R') return 'Азия';
-  if (wmi >= 'S' && wmi <= 'Z') return 'Европа';
-  if (wmi >= '6' && wmi <= '7') return 'Океания';
-  if (wmi >= '8' && wmi <= '9') return 'Южная Америка';
-  if (wmi === 'A' || wmi === 'B' || wmi === 'C' || wmi === 'D') return 'Африка';
+  if (wmi >= '1' && wmi <= '5') return 'North America';
+  if (wmi >= 'J' && wmi <= 'R') return 'Asia';
+  if (wmi >= 'S' && wmi <= 'Z') return 'Europe';
+  if (wmi >= '6' && wmi <= '7') return 'Oceania';
+  if (wmi >= '8' && wmi <= '9') return 'South America';
+  if (wmi === 'A' || wmi === 'B' || wmi === 'C' || wmi === 'D') return 'Africa';
   return null;
 }

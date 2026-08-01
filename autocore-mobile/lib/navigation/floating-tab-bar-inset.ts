@@ -1,30 +1,24 @@
 import { spacing } from '@/theme/spacing';
 
-/** Inner tab row height — keep in sync with AppTabBar. */
-export const TAB_BAR_ROW_HEIGHT = 52;
-
-/** Vertical padding inside the floating pill. */
-export const TAB_BAR_VERTICAL_PADDING = spacing[2];
-
-/** Floating pill tab bar: row + vertical padding + hairline border. */
-export const FLOATING_TAB_PILL_HEIGHT =
-  TAB_BAR_ROW_HEIGHT + TAB_BAR_VERTICAL_PADDING * 2 + 2;
-
-/** Breathing room between the tab pill and screen edges / footers. */
-export const FLOATING_TAB_BAR_GAP = spacing[3];
+/**
+ * Height of the native iOS 26 tab bar capsule.
+ *
+ * `react-native-screens` cannot report the bar's measured height, so this is a
+ * constant. It only has to be close enough for sticky footers to clear the bar —
+ * scroll views get their real inset from the system when they opt into
+ * `contentInsetAdjustmentBehavior="automatic"`.
+ */
+export const NATIVE_TAB_BAR_HEIGHT = 50;
 
 /** Sticky action footer: button row + top padding. */
 export const SCREEN_ACTION_FOOTER_HEIGHT = 52 + 12;
 
+/** Bottom offset for absolutely positioned chrome that must clear the tab bar. */
 export function getFloatingTabBarOffset(bottomSafeInset: number) {
-  return Math.max(bottomSafeInset, spacing[2]) + FLOATING_TAB_PILL_HEIGHT + FLOATING_TAB_BAR_GAP;
+  return Math.max(bottomSafeInset, spacing[2]) + NATIVE_TAB_BAR_HEIGHT;
 }
 
+/** Scroll padding for screens that also carry a sticky action footer. */
 export function getScreenActionScrollInset(bottomSafeInset: number) {
   return getFloatingTabBarOffset(bottomSafeInset) + SCREEN_ACTION_FOOTER_HEIGHT + spacing[3];
-}
-
-/** Scroll inset for modal forms (no floating tab bar under the sheet). */
-export function getModalActionScrollInset(bottomSafeInset: number) {
-  return Math.max(bottomSafeInset, spacing[2]) + SCREEN_ACTION_FOOTER_HEIGHT + spacing[3];
 }

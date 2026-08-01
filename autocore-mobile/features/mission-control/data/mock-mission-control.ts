@@ -45,7 +45,7 @@ export const mockMissionControlSnapshot: MissionControlSnapshot = {
   quickActions: [
     { id: 'order', label: 'Order', icon: PlusIcon, route: '/(tabs)/orders/new' },
     { id: 'scan', label: 'Scan', icon: ScanSearchIcon, route: '/(tabs)/scan' },
-    { id: 'inventory', label: 'Warehouse', icon: BoxIcon, route: '/(tabs)/warehouse' },
+    { id: 'inventory', label: 'Warehouse', icon: BoxIcon, route: '/warehouse' },
     { id: 'finance', label: 'Finance', icon: BarChart3Icon, route: '/(tabs)/accounting' },
   ],
   featuredInsight: {

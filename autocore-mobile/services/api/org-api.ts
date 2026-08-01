@@ -7,7 +7,7 @@ export async function fetchInvitePreview(token: string): Promise<{ preview: Invi
   const response = await fetch(`${getPublicApiBaseUrl()}/api/invites/${encodeURIComponent(token)}`);
   const payload = await response.json();
   if (!response.ok) {
-    throw new Error(payload.error ?? 'Не удалось загрузить приглашение');
+    throw new Error(payload.error ?? 'Failed to load invitation');
   }
   return payload as { preview: InvitePreview };
 }

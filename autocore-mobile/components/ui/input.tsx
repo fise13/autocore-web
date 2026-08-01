@@ -63,7 +63,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
     secureTextEntry && showPasswordToggle ? (
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={passwordVisible ? 'Скрыть пароль' : 'Показать пароль'}
+        accessibilityLabel={passwordVisible ? 'Hide password' : 'Show password'}
         hitSlop={8}
         onPress={() => {
           haptics.selection();
@@ -72,7 +72,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         style={{ minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' }}
       >
         <Text style={{ fontSize: 12, fontWeight: '500', color: colors.mutedForeground }}>
-          {passwordVisible ? 'Скрыть' : 'Показать'}
+          {passwordVisible ? 'Hide' : 'Show'}
         </Text>
       </Pressable>
     ) : null;

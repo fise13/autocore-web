@@ -22,10 +22,10 @@ export function WorkspaceCompaniesSection({
   onSwitchCompany,
 }: WorkspaceCompaniesSectionProps) {
   return (
-    <SettingsSectionCard title="Компании" description="Переключение рабочего пространства">
+    <SettingsSectionCard title="Companies" description="Switch workspace">
       <SettingsLinkRow
-        title="Присоединиться к компании"
-        subtitle="По ссылке или коду приглашения"
+        title="Join a company"
+        subtitle="Via link or invite code"
         onPress={() => {
           haptics.selection();
           onJoinCompany?.();
@@ -33,8 +33,8 @@ export function WorkspaceCompaniesSection({
       />
       <SettingsLinkRow
         bordered
-        title="Создать компанию"
-        subtitle="Новое рабочее пространство"
+        title="Create a company"
+        subtitle="New workspace"
         onPress={() => {
           haptics.selection();
           onCreateCompany?.();
@@ -44,7 +44,7 @@ export function WorkspaceCompaniesSection({
         const active = membership.companyId === activeCompanyId;
         const displayName = resolveActiveCompanyName(membership.companyId, membership.name, []);
         const subtitle = active
-          ? `${formatRole(membership.role)} · активно`
+          ? `${formatRole(membership.role)} · active`
           : formatRole(membership.role);
 
         return (

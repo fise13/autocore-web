@@ -12,6 +12,8 @@ type IconButtonProps = Omit<PressableProps, 'style'> & {
   variant?: 'default' | 'ghost' | 'outline' | 'secondary';
   children: React.ReactNode;
   haptic?: boolean;
+  /** Press-in scale. Lower reads as more deliberate — use for header controls. */
+  pressScale?: number;
 };
 
 const sizes = {
@@ -23,11 +25,24 @@ const sizes = {
 
 export const IconButton = forwardRef<React.ComponentRef<typeof Pressable>, IconButtonProps>(
   function IconButton(
-    { size = 'default', variant = 'ghost', children, haptic = true, onPressIn, onPressOut, ...props },
+    {
+      size = 'default',
+      variant = 'ghost',
+      children,
+      haptic = true,
+      pressScale,
+      onPressIn,
+      onPressOut,
+      ...props
+    },
     ref,
   ) {
     const { colors } = useTheme();
-    const { style: pressStyle, onPressIn: animateIn, onPressOut: animateOut } = usePressAnimation();
+    const {
+      style: pressStyle,
+      onPressIn: animateIn,
+      onPressOut: animateOut,
+    } = usePressAnimation(pressScale);
     const dimension = sizes[size];
     const hitSlop = Math.max(0, Math.ceil((minTouchTarget - dimension) / 2));
 

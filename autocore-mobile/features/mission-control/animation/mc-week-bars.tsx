@@ -98,7 +98,16 @@ function McWeekBar({
 
   return (
     <View style={{ flex: 1, alignItems: 'center', gap: rhythm.tight }}>
-      <View style={{ height: CHART_HEIGHT, justifyContent: 'flex-end', width: '100%', alignItems: 'center' }}>
+      {/* With no activity all week, the column collapses to the stub instead of
+          reserving a chart's worth of empty space. */}
+      <View
+        style={{
+          height: hasAnyData ? CHART_HEIGHT : EMPTY_BAR_HEIGHT,
+          justifyContent: 'flex-end',
+          width: '100%',
+          alignItems: 'center',
+        }}
+      >
         <Animated.View
           style={[
             {

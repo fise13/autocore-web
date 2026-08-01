@@ -1,52 +1,61 @@
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { PackageIcon } from '@/assets/icons';
 import { Text } from '@/components/ui';
-import { rhythm } from '@/theme';
+import { useReducedMotion } from '@/hooks';
+import { autocoreEase, duration } from '@/theme';
+
+import { scanLayout } from '../layout';
+import { useScanChromeColors } from '../lib/scan-chrome-colors';
 
 type ScanOrderContextBannerProps = {
   orderLabel?: string;
 };
 
+/** Order-context notice on brand surfaces. */
 export function ScanOrderContextBanner({ orderLabel }: ScanOrderContextBannerProps) {
+  const chrome = useScanChromeColors();
   const insets = useSafeAreaInsets();
-  const target = orderLabel?.trim() || 'новый заказ-наряд';
+  const reducedMotion = useReducedMotion();
+  const target = orderLabel?.trim() || 'new work order';
+  const entering = reducedMotion
+    ? undefined
+    : FadeInDown.duration(duration.normal).easing(autocoreEase);
 
   return (
-    <View
+    <Animated.View
+      entering={entering}
       pointerEvents="none"
       style={{
         position: 'absolute',
-        top: insets.top + 76,
-        left: rhythm.pad,
-        right: rhythm.pad,
+        top: insets.top + scanLayout.noticeTopOffset,
+        left: scanLayout.pad,
+        right: scanLayout.pad,
         zIndex: 2,
       }}
     >
       <View
         style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 10,
           paddingHorizontal: 14,
           paddingVertical: 10,
-          borderRadius: 14,
-          backgroundColor: 'rgba(0,0,0,0.52)',
-          borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.14)',
+          borderRadius: 12,
+          backgroundColor: chrome.bannerBg,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: chrome.bannerBorder,
+          gap: 2,
         }}
       >
-        <PackageIcon size="sm" color="#fff" strokeWidth={1.85} />
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="caption" style={{ color: '#fff', fontWeight: '700' }}>
-            Добавление в заказ-наряд
-          </Text>
-          <Text variant="caption" style={{ color: 'rgba(255,255,255,0.78)' }}>
-            Отсканированная запчасть попадёт в {target}
-          </Text>
-        </View>
+        <Text
+          variant="caption"
+          style={{ color: chrome.bannerTitle, fontWeight: '600', fontSize: 13 }}
+        >
+          Adding to {target}
+        </Text>
+        <Text variant="caption" style={{ color: chrome.bannerMeta, fontSize: 12 }}>
+          Scan a barcode to add the part
+        </Text>
       </View>
-    </View>
+    </Animated.View>
   );
 }

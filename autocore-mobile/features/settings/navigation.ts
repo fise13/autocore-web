@@ -5,7 +5,6 @@ import type { SettingsRouteId } from './types';
 const SETTINGS_ROUTES: Record<SettingsRouteId, Href> = {
   account: '/(tabs)/profile/account',
   workspace: '/(tabs)/profile/workspace',
-  navigation: '/(tabs)/profile/navigation',
   modules: '/(tabs)/profile/modules',
   company: '/(tabs)/profile/company',
   team: '/(tabs)/profile/team',

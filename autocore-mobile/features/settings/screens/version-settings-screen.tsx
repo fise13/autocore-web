@@ -57,7 +57,7 @@ export function VersionSettingsScreen() {
   const platform = Constants.platform?.ios ? 'iOS' : 'Android';
 
   return (
-    <ProfileScreenShell title="Версия" subtitle="Сборка и поддержка">
+    <ProfileScreenShell title="Version" subtitle="Build and support">
       <View style={{ gap: rhythm.section }}>
         <Surface inset padded>
           <View style={{ gap: rhythm.tight }}>
@@ -71,8 +71,8 @@ export function VersionSettingsScreen() {
               <BetaBadge />
             </View>
             <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-              Ранняя бета-версия. Функции и интерфейс могут меняться — пишите в поддержку, если что-то
-              работает не так.
+              Early beta. Features and the interface may change — contact support if something
+              isn't working right.
             </Text>
           </View>
 
@@ -86,7 +86,7 @@ export function VersionSettingsScreen() {
             }}
           >
             <Text variant="caption" color="muted">
-              Сборка {build} · {platform}
+              Build {build} · {platform}
             </Text>
             <Text variant="caption" color="muted">
               {contacts.supportLine}
@@ -95,8 +95,8 @@ export function VersionSettingsScreen() {
         </Surface>
 
         <SettingsSectionCard
-          title="Поддержка"
-          description="Те же контакты, что на сайте myautocore.com"
+          title="Support"
+          description="Same contacts as on myautocore.com"
         >
           <SettingsLinkRow
             title="Email"
@@ -104,7 +104,7 @@ export function VersionSettingsScreen() {
             onPress={() => void Linking.openURL(contacts.mailtoHref)}
           />
           <SettingsLinkRow
-            title="Телефон"
+            title="Phone"
             value={contacts.formattedPhone}
             bordered
             onPress={() => void openPhone(contacts.phone)}

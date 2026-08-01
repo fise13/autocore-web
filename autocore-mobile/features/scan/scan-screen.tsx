@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, LayoutChangeEvent, Linking, Pressable, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Dimensions,
+  LayoutChangeEvent,
+  Linking,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useIsFocused, useRouter, type Href } from 'expo-router';
@@ -10,11 +17,10 @@ import {
   useFloatingTabBarInset,
   useModalBottomSheet,
   useSession,
-  useTheme,
 } from '@/hooks';
 import { tabNavigationGuard, scanNavigationGuard } from '@/lib/navigation/navigation-guard';
 import { loadRecentScans } from '@/lib/scan/recent-scans';
-import { haptics, rhythm } from '@/theme';
+import { haptics } from '@/theme';
 
 import { ScanCamera, type ScanCameraHandle } from './components/scan-camera';
 import { ScanCandidatesSheet } from './components/scan-candidates-sheet';
@@ -22,18 +28,30 @@ import { ScanCodePickerSheet } from './components/scan-code-picker-sheet';
 import { ScanConfirmFlash } from './components/scan-confirm-flash';
 import { ScanDetectionOverlay } from './components/scan-detection-overlay';
 import { ScanDocumentSheet } from './components/scan-document-sheet';
-import { ScanGlassPanel } from './components/scan-glass-panel';
-import { ScanHeader } from './components/scan-header';
+import { ScanFrameOverlay } from './components/scan-frame-overlay';
 import { ScanIdleIndicator } from './components/scan-idle-indicator';
+import { ScanModeControl } from './components/scan-mode-control';
 import { ScanMoveSheet, type ScanMoveTarget } from './components/scan-move-sheet';
 import { ScanNotFoundSheet } from './components/scan-not-found-sheet';
 import { ScanOrderContextBanner } from './components/scan-order-context-banner';
 import { ScanProductSheet } from './components/scan-product-sheet';
 import { ScanRelocateBanner } from './components/scan-relocate-banner';
+import {
+  ScanSheetHairline,
+  ScanSheetHeader,
+  ScanSheetRow,
+} from './components/scan-sheet-chrome';
+import { ScanShutterButton } from './components/scan-shutter-button';
+import { ScanStatusLine } from './components/scan-status-line';
+import { ScanToolbar } from './components/scan-toolbar';
+import { ScanTopBar } from './components/scan-top-bar';
 import { useScanExperience } from './hooks/use-scan-experience';
+import { useScanChromeColors } from './lib/scan-chrome-colors';
 import { relocatePendingStore } from './lib/relocate-pending-store';
+import { findVinInText, normalizeVin } from './lib/vin';
+import { scanLayout, type ScanCaptureMode } from './layout';
 import type { RecentScan, ScanCandidate } from './types';
-import { scanContextStore } from '@/services/scan';
+import { scanContextStore, type ScanDetection } from '@/services/scan';
 
 type ScanScreenProps = {
   onClose?: () => void;
@@ -43,6 +61,7 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
   const router = useRouter();
   const isFocused = useIsFocused();
   const sheet = useModalBottomSheet();
+  const chrome = useScanChromeColors();
   const { footerBottom } = useFloatingTabBarInset();
   const { can } = useSession();
 
@@ -50,6 +69,7 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
   const recentSheetRef = useRef<BottomSheetModal>(null);
 
   const [torchOn, setTorchOn] = useState(false);
+  const [captureMode, setCaptureMode] = useState<ScanCaptureMode>('auto');
   const [recentScans, setRecentScans] = useState<RecentScan[]>([]);
   const [moveTarget, setMoveTarget] = useState<ScanMoveTarget | null>(null);
   const [relocatePending, setRelocatePending] = useState(() => relocatePendingStore.get());
@@ -111,7 +131,6 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
 
       return () => {
         clearTimeout(recentTimer);
-        // Portal backdrops sit above the whole app — leave them open and every tab dies.
         dismissAllSheets();
         recentSheetRef.current?.dismiss();
         addToOrderFlow.pickerRef.current?.dismiss();
@@ -125,6 +144,12 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
   const isOrderContext = snapshot.context.mode === 'order';
   const orderLabel = snapshot.context.mode === 'order' ? snapshot.context.orderLabel : undefined;
   const canMove = can('inventory_edit') && !isOrderContext;
+  const frame = scanLayout.frames[captureMode];
+  const frameDetected =
+    Boolean(snapshot.detection) &&
+    (snapshot.phase === 'tracking' ||
+      snapshot.phase === 'resolving' ||
+      snapshot.phase === 'confirmed');
 
   const openMoveFlow = useCallback(() => {
     if (!activeResult || activeResult.id === 'candidates') return;
@@ -132,7 +157,7 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
     if (!warehouseId) {
       toast({
         title: 'No warehouse',
-        description: "This item has no stock on hand — receive it first.",
+        description: 'This item has no stock on hand — receive it first.',
         variant: 'warning',
       });
       return;
@@ -184,9 +209,18 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
           });
         }
       } catch (error) {
+        // A 500 here is almost always the server's vision provider being
+        // unconfigured or out of credit — say so instead of surfacing a raw
+        // backend string, which reads as a bug in the scanner itself.
+        const status = (error as { status?: number })?.status;
+        const serverDown = status != null && status >= 500;
         toast({
-          title: 'Recognition error',
-          description: error instanceof Error ? error.message : 'Could not recognize the photo',
+          title: serverDown ? 'Recognition unavailable' : 'Recognition error',
+          description: serverDown
+            ? 'The recognition service is not responding. Scan the barcode instead, or try again later.'
+            : error instanceof Error
+              ? error.message
+              : 'Could not recognize the photo',
           variant: 'destructive',
         });
         onSheetClosed();
@@ -196,6 +230,8 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
     },
     [onSheetClosed, service, setOcrBusy],
   );
+
+  const preferDocumentOcr = captureMode === 'document';
 
   const handleOpenPhotos = useCallback(async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -213,8 +249,59 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
       quality: 0.8,
     });
     if (pick.canceled || !pick.assets[0]?.uri) return;
-    await runOcrOnUri(pick.assets[0].uri, false);
-  }, [runOcrOnUri]);
+    await runOcrOnUri(pick.assets[0].uri, preferDocumentOcr);
+  }, [preferDocumentOcr, runOcrOnUri]);
+
+  const handleCapture = useCallback(async () => {
+    if (ocrBusy) return;
+    const uri = await cameraRef.current?.takePicture();
+    if (!uri) {
+      toast({
+        title: 'Could not capture',
+        description: 'Try again in a moment.',
+        variant: 'warning',
+      });
+      return;
+    }
+    await runOcrOnUri(uri, preferDocumentOcr);
+  }, [ocrBusy, preferDocumentOcr, runOcrOnUri]);
+
+  const handleLiveDetection = useCallback(
+    (detection: ScanDetection) => {
+      if (captureMode === 'document') return;
+      if (captureMode === 'vin') {
+        const vin = normalizeVin(detection.payload) ?? findVinInText(detection.payload);
+        if (!vin) return;
+        onDetection({ ...detection, payload: vin });
+        return;
+      }
+      onDetection(detection);
+    },
+    [captureMode, onDetection],
+  );
+
+  const handleLiveDetections = useCallback(
+    (detections: ScanDetection[]) => {
+      if (captureMode === 'document') return;
+      if (captureMode === 'vin') {
+        const vins = detections.flatMap((detection) => {
+          const vin = normalizeVin(detection.payload) ?? findVinInText(detection.payload);
+          return vin ? [{ ...detection, payload: vin }] : [];
+        });
+        if (vins.length === 0) return;
+        if (vins.length === 1) {
+          onDetection(vins[0]!);
+          return;
+        }
+        onDetections(vins);
+        return;
+      }
+      onDetections(detections);
+    },
+    [captureMode, onDetection, onDetections],
+  );
+
+  const showShutter = captureMode === 'document' || captureMode === 'vin';
 
   const replayPayload = useCallback(
     (payload: string) => {
@@ -243,7 +330,7 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
       }
       const query = doc.lines[0]?.name ?? doc.number ?? doc.merchant;
       const q = query?.trim();
-      router.navigate((q ? `/(tabs)/search?q=${encodeURIComponent(q)}` : '/(tabs)/search') as Href);
+      router.navigate((q ? `/search?q=${encodeURIComponent(q)}` : '/search') as Href);
     });
   }, [dismissSheet, parsedDocument, router]);
 
@@ -253,256 +340,258 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
     return { width, height };
   }, [cameraLayout.height, cameraLayout.width]);
 
+  const relocateHint =
+    relocatePending && !isOrderContext
+      ? relocatePending.kind === 'fill-location'
+        ? 'Point at the engine QR'
+        : 'Point at the location QR'
+      : null;
+
+  const orderHint = isOrderContext ? 'Scan to add to the work order' : null;
+
   return (
-      <View style={styles.root}>
-        <View style={styles.viewport} onLayout={onCameraLayout}>
-          <ScanCamera
-            ref={cameraRef}
-            torch={torchOn && isFocused}
-            active={isFocused && !ocrBusy}
-            scanEnabled={isFocused && scanEnabled && !ocrBusy}
-            onDetection={onDetection}
-            onDetections={onDetections}
-          />
-          <ScanIdleIndicator phase={snapshot.phase} />
-          <ScanDetectionOverlay
-            detection={snapshot.detection}
-            phase={snapshot.phase}
-            layout={overlayLayout}
-          />
-          <ScanConfirmFlash visible={showConfirmFlash} />
-          {ocrBusy ? (
-            <View style={styles.ocrOverlay} pointerEvents="none">
-              <ActivityIndicator color="#fff" />
-              <Text variant="caption" style={styles.ocrLabel}>
-                Recognizing…
-              </Text>
-            </View>
-          ) : null}
-
-          <ScanHeader
-            torchOn={torchOn}
-            onToggleTorch={() => setTorchOn((value) => !value)}
-            onSettingsPress={() => router.navigate('/(tabs)/profile' as const)}
-            orderContext={isOrderContext}
-            orderLabel={orderLabel}
-            onBackPress={isOrderContext ? handleClose : undefined}
-          />
-
-          {isOrderContext ? <ScanOrderContextBanner orderLabel={orderLabel} /> : null}
-          {relocatePending && !isOrderContext ? (
-            <ScanRelocateBanner
-              title={
-                relocatePending.kind === 'fill-location'
-                  ? 'Scan the engine'
-                  : 'Scan the location'
-              }
-              subtitle={
-                relocatePending.kind === 'fill-location'
-                  ? `Place at ${relocatePending.displayCode}`
-                  : relocatePending.kind === 'assign-asset'
-                    ? `Where to move "${relocatePending.title}"`
-                    : `Where to move "${relocatePending.itemTitle}"`
-              }
-              onCancel={cancelRelocate}
-            />
-          ) : null}
-        </View>
-
-        <View style={[styles.footer, { paddingBottom: footerBottom }]}>
-          <Text variant="caption" style={styles.hint}>
-            {relocatePending
-              ? relocatePending.kind === 'fill-location'
-                ? 'Point at the engine QR code'
-                : 'Point the camera at the location QR or bin code'
-              : isOrderContext
-                ? 'Point the camera at a barcode — the item will be added to the work order'
-                : 'Point the camera at a barcode'}
-          </Text>
-          {!isOrderContext ? (
-            <ScanGlassPanel
-              onManualSearch={() => navigateToSearch()}
-              onOpenPhotos={() => void handleOpenPhotos()}
-              onImportDocument={() => {
-                haptics.selection();
-                router.push('/(tabs)/import' as Href);
-              }}
-              onRecentScans={() => {
-                void refreshRecentScans();
-                recentSheetRef.current?.present();
-              }}
-            />
-          ) : null}
-        </View>
-
-        <ScanProductSheet
-          ref={productSheetRef}
-          result={activeResult?.id === 'candidates' ? null : activeResult}
-          onSell={() => {
-            if (!activeResult) return;
-            const itemId = activeResult.id;
-            dismissSheet(productSheetRef, () => addToOrderFlow.addPartToOrder(itemId));
-          }}
-          onEdit={() => {
-            navigateToSearch(activeResult?.subtitle ?? activeResult?.code);
-          }}
-          onOpenCard={() => {
-            navigateToSearch(activeResult?.subtitle ?? activeResult?.title);
-          }}
-          onMove={canMove ? openMoveFlow : undefined}
-          onAddToOrder={
-            activeResult?.id && activeResult.id !== 'candidates' && !isOrderContext
-              ? () => {
-                  const itemId = activeResult.id;
-                  dismissSheet(productSheetRef, () => addToOrderFlow.addPartToOrder(itemId));
-                }
-              : undefined
-          }
-          onClose={() => dismissSheet(productSheetRef)}
-          onDismiss={onSheetClosed}
+    <View style={[styles.root, { backgroundColor: chrome.stage }]}>
+      <View style={styles.viewport} onLayout={onCameraLayout}>
+        <ScanCamera
+          ref={cameraRef}
+          torch={torchOn && isFocused}
+          active={isFocused && !ocrBusy}
+          scanEnabled={isFocused && scanEnabled && !ocrBusy && captureMode !== 'document'}
+          captureMode={captureMode}
+          onDetection={handleLiveDetection}
+          onDetections={handleLiveDetections}
         />
-
-        <ScanMoveSheet
-          ref={moveSheetRef}
-          target={moveTarget}
-          onMoved={() => {
-            relocatePendingStore.clear();
-            setMoveTarget(null);
-            moveSheetRef.current?.dismiss();
-          }}
-          onCancel={() => {
-            cancelRelocate();
-          }}
-          onPreferScan={() => {
-            if (!moveTarget) return;
-            relocatePendingStore.setRelocateItem({
-              ...moveTarget,
-              startedAt: Date.now(),
-            });
-            moveSheetRef.current?.dismiss();
-          }}
-          onDismiss={() => {
-            setMoveTarget(null);
-          }}
+        <ScanIdleIndicator phase={snapshot.phase} />
+        <ScanDetectionOverlay
+          detection={snapshot.detection}
+          phase={snapshot.phase}
+          layout={overlayLayout}
         />
-
-        <ScanCandidatesSheet
-          ref={candidatesSheetRef}
-          result={activeResult}
-          payload={snapshot.pendingPayload}
-          onPick={(candidate: ScanCandidate) => void handlePickCandidate(candidate.id, candidate.score)}
-          onSearch={() => navigateToSearch(snapshot.pendingPayload ?? undefined, candidatesSheetRef)}
-          onDismiss={onSheetClosed}
-        />
-
-        <ScanCodePickerSheet
-          ref={codePickerSheetRef}
-          detections={snapshot.pendingDetections ?? []}
-          onPick={handlePickDetectedCode}
-          onDismiss={onSheetClosed}
-        />
-
-        <ScanNotFoundSheet
-          ref={notFoundSheetRef}
-          payload={snapshot.pendingPayload}
-          isAiLoading={isAiLoading}
-          orderContext={isOrderContext}
-          onCreateItem={handleCreateItem}
-          onAddAsSpecific={handleAddAsSpecific}
-          onTryAi={!isOrderContext ? handleTryAi : undefined}
-          onOpenUrl={handleOpenUrl}
-          onCancel={handleCancelNotFound}
-          onDismiss={onSheetClosed}
-        />
-
-        <ScanDocumentSheet
-          ref={documentSheetRef}
-          document={parsedDocument}
-          onPrimary={handleDocumentPrimary}
-          onSearchVin={
-            parsedDocument?.vin
-              ? () => navigateToSearch(parsedDocument.vin)
-              : undefined
-          }
-          onDismiss={onSheetClosed}
-        />
-
-        <BottomSheetModal
-          ref={recentSheetRef}
-          {...sheet.sheetLayout}
-          index={0}
-          snapPoints={sheet.compactSnapPoints(36)}
-          enablePanDownToClose
-          backdropComponent={sheet.renderBackdrop}
-          backgroundStyle={sheet.backgroundStyle}
-          handleIndicatorStyle={sheet.handleIndicatorStyle}
-        >
-          <BottomSheetView style={{ ...sheet.compactContentStyle, gap: 4 }}>
-            <Text variant="body" style={{ fontSize: 15, fontWeight: '600', marginBottom: 8 }}>
-              Recent scans
+        <ScanConfirmFlash visible={showConfirmFlash} />
+        {ocrBusy ? (
+          <View
+            style={[styles.ocrOverlay, { backgroundColor: chrome.ocrScrim }]}
+            pointerEvents="none"
+          >
+            <ActivityIndicator color={chrome.ocrLabel} />
+            <Text variant="caption" style={[styles.ocrLabel, { color: chrome.ocrLabel }]}>
+              Recognizing…
             </Text>
-            {recentScans.length === 0 ? (
-              <Text variant="caption" color="muted">
-                Nothing here yet — scan your first item.
-              </Text>
-            ) : (
-              recentScans.map((item, index) => (
-                <RecentScanRow
-                  key={item.id}
-                  item={item}
-                  isLast={index === recentScans.length - 1}
+          </View>
+        ) : null}
+
+        <ScanTopBar
+          torchOn={torchOn}
+          onToggleTorch={() => setTorchOn((value) => !value)}
+          onBackPress={isOrderContext ? handleClose : undefined}
+        />
+
+        {isOrderContext ? <ScanOrderContextBanner orderLabel={orderLabel} /> : null}
+        {relocatePending && !isOrderContext ? (
+          <ScanRelocateBanner
+            title={
+              relocatePending.kind === 'fill-location' ? 'Scan item' : 'Scan location'
+            }
+            subtitle={
+              relocatePending.kind === 'fill-location'
+                ? `Place at ${relocatePending.displayCode}`
+                : relocatePending.kind === 'assign-asset'
+                  ? `Where to move “${relocatePending.title}”`
+                  : `Where to move “${relocatePending.itemTitle}”`
+            }
+            onCancel={cancelRelocate}
+          />
+        ) : null}
+
+        <View style={styles.viewfinderStage} pointerEvents="none">
+          <ScanFrameOverlay
+            detected={frameDetected}
+            width={frame.width}
+            height={frame.height}
+          />
+          <View style={{ height: 16 }} />
+          <ScanStatusLine
+            phase={snapshot.phase}
+            mode={captureMode}
+            ocrBusy={ocrBusy}
+            detectedPayload={snapshot.detection?.payload}
+            relocateHint={relocateHint}
+            orderHint={orderHint}
+          />
+        </View>
+      </View>
+
+      <View
+        style={[styles.footer, { paddingBottom: footerBottom, backgroundColor: chrome.stage }]}
+      >
+        <ScanModeControl mode={captureMode} onChange={setCaptureMode} />
+        {showShutter ? (
+          <ScanShutterButton
+            disabled={ocrBusy || !isFocused}
+            onPress={() => void handleCapture()}
+            accessibilityLabel={
+              captureMode === 'vin' ? 'Capture VIN plate' : 'Capture document'
+            }
+          />
+        ) : null}
+        {!isOrderContext ? (
+          <ScanToolbar
+            onPhotos={() => void handleOpenPhotos()}
+            onSearch={() => navigateToSearch()}
+            onRecents={() => {
+              void refreshRecentScans();
+              recentSheetRef.current?.present();
+            }}
+            onImportDocument={() => {
+              haptics.selection();
+              router.push('/import' as Href);
+            }}
+          />
+        ) : (
+          <ScanToolbar
+            compact
+            onPhotos={() => void handleOpenPhotos()}
+            onSearch={() => navigateToSearch()}
+            onRecents={() => {
+              void refreshRecentScans();
+              recentSheetRef.current?.present();
+            }}
+          />
+        )}
+      </View>
+
+      <ScanProductSheet
+        ref={productSheetRef}
+        result={activeResult?.id === 'candidates' ? null : activeResult}
+        onSell={() => {
+          if (!activeResult) return;
+          const itemId = activeResult.id;
+          dismissSheet(productSheetRef, () => addToOrderFlow.addPartToOrder(itemId));
+        }}
+        onEdit={() => {
+          navigateToSearch(activeResult?.code ?? activeResult?.subtitle ?? activeResult?.title);
+        }}
+        onOpenCard={() => {
+          navigateToSearch(activeResult?.code ?? activeResult?.title ?? activeResult?.subtitle);
+        }}
+        onMove={canMove ? openMoveFlow : undefined}
+        onAddToOrder={
+          activeResult?.id && activeResult.id !== 'candidates' && !isOrderContext
+            ? () => {
+                const itemId = activeResult.id;
+                dismissSheet(productSheetRef, () => addToOrderFlow.addPartToOrder(itemId));
+              }
+            : undefined
+        }
+        onClose={() => dismissSheet(productSheetRef)}
+        onDismiss={onSheetClosed}
+      />
+
+      <ScanMoveSheet
+        ref={moveSheetRef}
+        target={moveTarget}
+        onMoved={() => {
+          relocatePendingStore.clear();
+          setMoveTarget(null);
+          moveSheetRef.current?.dismiss();
+        }}
+        onCancel={() => {
+          cancelRelocate();
+        }}
+        onPreferScan={() => {
+          if (!moveTarget) return;
+          relocatePendingStore.setRelocateItem({
+            ...moveTarget,
+            startedAt: Date.now(),
+          });
+          moveSheetRef.current?.dismiss();
+        }}
+        onDismiss={() => {
+          setMoveTarget(null);
+        }}
+      />
+
+      <ScanCandidatesSheet
+        ref={candidatesSheetRef}
+        result={activeResult}
+        payload={snapshot.pendingPayload}
+        onPick={(candidate: ScanCandidate) => void handlePickCandidate(candidate.id, candidate.score)}
+        onSearch={() => navigateToSearch(snapshot.pendingPayload ?? undefined, candidatesSheetRef)}
+        onDismiss={onSheetClosed}
+      />
+
+      <ScanCodePickerSheet
+        ref={codePickerSheetRef}
+        detections={snapshot.pendingDetections ?? []}
+        onPick={handlePickDetectedCode}
+        onDismiss={onSheetClosed}
+      />
+
+      <ScanNotFoundSheet
+        ref={notFoundSheetRef}
+        payload={snapshot.pendingPayload}
+        isAiLoading={isAiLoading}
+        orderContext={isOrderContext}
+        onCreateItem={handleCreateItem}
+        onAddAsSpecific={handleAddAsSpecific}
+        onTryAi={!isOrderContext ? handleTryAi : undefined}
+        onOpenUrl={handleOpenUrl}
+        onCancel={handleCancelNotFound}
+        onDismiss={onSheetClosed}
+      />
+
+      <ScanDocumentSheet
+        ref={documentSheetRef}
+        document={parsedDocument}
+        onPrimary={handleDocumentPrimary}
+        onSearchVin={
+          parsedDocument?.vin ? () => navigateToSearch(parsedDocument.vin) : undefined
+        }
+        onDismiss={onSheetClosed}
+      />
+
+      <BottomSheetModal
+        ref={recentSheetRef}
+        {...sheet.sheetLayout}
+        index={0}
+        snapPoints={sheet.compactSnapPoints(42)}
+        enablePanDownToClose
+        backdropComponent={sheet.renderBackdrop}
+        backgroundStyle={sheet.backgroundStyle}
+        handleIndicatorStyle={sheet.handleIndicatorStyle}
+      >
+        <BottomSheetView style={{ ...sheet.compactContentStyle, gap: 0 }}>
+          <ScanSheetHeader title="Recents" meta="Tap a code to scan it again" />
+          <View style={{ height: 8 }} />
+          {recentScans.length === 0 ? (
+            <Text variant="caption" color="muted" style={{ paddingVertical: 12 }}>
+              Nothing here yet
+            </Text>
+          ) : (
+            recentScans.map((item, index) => (
+              <View key={item.id}>
+                <ScanSheetRow
+                  label={item.label}
+                  detail={item.time}
                   onPress={() => {
                     haptics.selection();
                     replayPayload(item.payload);
                   }}
                 />
-              ))
-            )}
-          </BottomSheetView>
-        </BottomSheetModal>
+                {index < recentScans.length - 1 ? <ScanSheetHairline /> : null}
+              </View>
+            ))
+          )}
+        </BottomSheetView>
+      </BottomSheetModal>
 
-        <OrderPickerSheet
-          ref={addToOrderFlow.pickerRef}
-          drafts={addToOrderFlow.drafts}
-          onSelectNew={addToOrderFlow.handleSelectNew}
-          onSelectOrder={addToOrderFlow.handleSelectOrder}
-          onDismiss={addToOrderFlow.handlePickerDismiss}
-        />
-      </View>
-  );
-}
-
-function RecentScanRow({
-  item,
-  isLast,
-  onPress,
-}: {
-  item: RecentScan;
-  isLast: boolean;
-  onPress: () => void;
-}) {
-  const { colors } = useTheme();
-
-  return (
-    <View>
-      <Pressable
-        accessibilityRole="button"
-        onPress={onPress}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingVertical: 12,
-        }}
-      >
-        <Text variant="body" style={{ fontSize: 14, fontWeight: '600' }}>
-          {item.label}
-        </Text>
-        <Text variant="caption" color="muted">
-          {item.time}
-        </Text>
-      </Pressable>
-      {!isLast ? <View style={{ height: 1, backgroundColor: colors.border }} /> : null}
+      <OrderPickerSheet
+        ref={addToOrderFlow.pickerRef}
+        drafts={addToOrderFlow.drafts}
+        onSelectNew={addToOrderFlow.handleSelectNew}
+        onSelectOrder={addToOrderFlow.handleSelectOrder}
+        onDismiss={addToOrderFlow.handlePickerDismiss}
+      />
     </View>
   );
 }
@@ -510,33 +599,28 @@ function RecentScanRow({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#000',
   },
   viewport: {
     flex: 1,
     overflow: 'hidden',
   },
-  footer: {
-    paddingHorizontal: rhythm.pad,
-    paddingTop: rhythm.inline,
-    gap: rhythm.inline,
-    backgroundColor: '#000',
+  viewfinderStage: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 24,
   },
-  hint: {
-    color: 'rgba(255,255,255,0.78)',
-    fontWeight: '500',
-    textShadowColor: 'rgba(0,0,0,0.45)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
+  footer: {
+    paddingHorizontal: scanLayout.pad,
+    paddingTop: 12,
+    gap: 14,
   },
   ocrOverlay: {
     ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.38)',
   },
   ocrLabel: {
-    color: '#fff',
     fontWeight: '600',
     marginTop: 8,
   },

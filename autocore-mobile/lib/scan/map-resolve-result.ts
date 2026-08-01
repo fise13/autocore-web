@@ -40,17 +40,17 @@ export function mapResolveResultToScanResult(result: MobileScanResolveResult): S
 export function matchTypeLabel(matchType: ScanResult['matchType']): string | null {
   switch (matchType) {
     case 'barcode_mapping':
-      return 'По штрихкоду';
+      return 'By barcode';
     case 'sku':
-      return 'По артикулу';
+      return 'By SKU';
     case 'barcode_field':
-      return 'По коду на карточке';
+      return 'By item code';
     case 'search_token':
-      return 'По индексу';
+      return 'By index';
     case 'fuzzy':
-      return 'Возможное совпадение';
+      return 'Possible match';
     case 'ai':
-      return 'Найдено AI';
+      return 'Found by AI';
     default:
       return null;
   }

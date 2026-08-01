@@ -7,7 +7,7 @@ import {
   LayoutGridIcon,
   PackageIcon,
   ReceiptIcon,
-  ScanSearchIcon,
+  ScanLineIcon,
   SearchIcon,
   SettingsIcon,
   ShoppingCartIcon,
@@ -38,13 +38,13 @@ export const NAV_ITEM_DEFINITIONS: Record<NavItemId, NavItemDefinition> = {
     title: 'Search',
     description: 'Quick search across warehouse and catalog',
     icon: SearchIcon,
-    route: '/(tabs)/warehouse',
+    route: '/warehouse',
   },
   scan: {
     id: 'scan',
     title: 'Scan',
     description: 'QR and barcodes for receiving',
-    icon: ScanSearchIcon,
+    icon: ScanLineIcon,
     route: '/(tabs)/scan',
   },
   orders: {
@@ -59,7 +59,7 @@ export const NAV_ITEM_DEFINITIONS: Record<NavItemId, NavItemDefinition> = {
     title: 'Shift',
     description: 'Orders, queue, and earnings',
     icon: CoinsIcon,
-    route: '/(tabs)/my-earnings',
+    route: '/(tabs)/profile/my-earnings',
   },
   profile: {
     id: 'profile',

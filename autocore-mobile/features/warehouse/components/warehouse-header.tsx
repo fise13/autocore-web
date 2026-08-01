@@ -24,20 +24,20 @@ export function WarehouseHeader({ itemCount, lowStockCount }: WarehouseHeaderPro
 
   const subtitle =
     lowStockCount > 0
-      ? `${itemCount} позиций · ${lowStockCount} на исходе`
-      : `${itemCount} позиций на складе`;
+      ? `${itemCount} items · ${lowStockCount} low stock`
+      : `${itemCount} items in stock`;
 
   return (
     <Animated.View style={enterStyle}>
       <PageHeader
-        title="Склад"
+        title="Warehouse"
         subtitle={subtitle}
         logo={null}
         align="start"
         trailing={
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Сканирование"
+            accessibilityLabel="Scan"
             onPress={() => {
               haptics.light();
               navigateTab('/(tabs)/scan');

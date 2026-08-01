@@ -30,7 +30,7 @@ export function TabScreenPlaceholder({
           </CardHeader>
           <CardContent>
             <Text variant="caption" color="muted">
-              Временная заглушка для локальной разработки.
+              Temporary placeholder for local development.
             </Text>
           </CardContent>
         </Card>

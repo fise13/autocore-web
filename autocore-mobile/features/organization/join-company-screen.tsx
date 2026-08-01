@@ -65,14 +65,14 @@ export function JoinCompanyScreen() {
 
   return (
     <ProfileScreenShell
-      title="Присоединиться"
-      subtitle="Ссылка или код от администратора. Текущая компания останется в списке."
+      title="Join company"
+      subtitle="Link or code from an admin. Your current company stays in the list."
     >
-      <SettingsSectionCard title="Приглашение" description="Вставьте ссылку или код" icon={UsersIcon}>
+      <SettingsSectionCard title="Invitation" description="Paste a link or code" icon={UsersIcon}>
         <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.inline }}>
           <SettingsInset embedded>
             <Input
-              placeholder="https://app.myautocore.com/invite/… или DUAVV5"
+              placeholder="https://app.myautocore.com/invite/… or DUAVV5"
               value={inviteInput}
               onChangeText={setInviteInput}
               autoCapitalize="none"
@@ -87,7 +87,7 @@ export function JoinCompanyScreen() {
           ) : null}
 
           <Button onPress={() => void handleJoin()} loading={loading} disabled={!inviteInput.trim()}>
-            Присоединиться
+            Join
           </Button>
         </View>
       </SettingsSectionCard>

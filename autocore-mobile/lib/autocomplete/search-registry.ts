@@ -6,6 +6,7 @@ import { vehicleMakeOptions, vehicleModelOptions } from '@/lib/vehicles/vehicle-
 import type { AutocompleteDataSnapshot } from './autocomplete-data-store';
 import { AUTOCOMPLETE_MAX_SUGGESTIONS } from './constants';
 import { filterAutocompleteOptions, uniqueAutocompleteOptions } from './filter-options';
+import { computeMatchRanges, inferEngineFuelBadge } from './match-utils';
 import { readFieldValues, readRecentValues } from './recent-values-store';
 import type { AutocompleteConfig, AutocompleteOption } from './types';
 
@@ -19,24 +20,56 @@ function toOptions(values: Iterable<string>, labelFn?: (value: string) => string
   return options;
 }
 
+function withMatchRanges(option: AutocompleteOption, query: string): AutocompleteOption {
+  const title = option.meta?.title ?? option.label ?? option.value;
+  const ranges = computeMatchRanges(title, query);
+  if (ranges.length === 0 && !option.meta) return option;
+  return {
+    ...option,
+    meta: {
+      ...option.meta,
+      matchRanges: ranges,
+    },
+  };
+}
+
 function searchEngineCodes(query: string, data: AutocompleteDataSnapshot): AutocompleteOption[] {
   const domain = searchDomain('engines', query, null, { limit: AUTOCOMPLETE_MAX_SUGGESTIONS });
   const motorCodes = data.motors
     .map((motor) => motor.engineCode?.trim())
     .filter((code): code is string => Boolean(code));
 
-  const merged = uniqueAutocompleteOptions([
-    ...domain.map((hit) => ({
-      value: hit.entry.name,
-      label: hit.entry.hint ? `${hit.entry.name} · ${hit.entry.hint}` : hit.entry.name,
-      keywords: [hit.entry.brand, hit.entry.category, ...(hit.entry.aliases ?? [])]
+  const domainOptions: AutocompleteOption[] = domain.map((hit) => {
+    const brand = hit.entry.brand?.trim();
+    const name = hit.entry.name.trim();
+    const title = brand ? `${brand} ${name}` : name;
+    const badge = inferEngineFuelBadge([
+      hit.entry.hint,
+      hit.entry.category,
+      hit.entry.type,
+      ...(hit.entry.aliases ?? []),
+    ]);
+
+    return {
+      value: name,
+      label: hit.entry.hint ? `${title} · ${hit.entry.hint}` : title,
+      keywords: [brand, hit.entry.category, hit.entry.hint, ...(hit.entry.aliases ?? [])]
         .filter(Boolean)
         .join(' '),
-    })),
-    ...toOptions(motorCodes),
-  ]);
+      meta: {
+        title,
+        manufacturer: brand,
+        generation: hit.entry.hint,
+        badge,
+        matchRanges: computeMatchRanges(title, query),
+      },
+    };
+  });
 
-  return merged;
+  const inventoryCodes = toOptions(motorCodes).map((option) => withMatchRanges(option, query));
+
+  // Domain hits keep score order; inventory fills remaining slots without prefix-killing domain results.
+  return uniqueAutocompleteOptions([...domainOptions, ...inventoryCodes], AUTOCOMPLETE_MAX_SUGGESTIONS);
 }
 
 function searchManufacturers(query: string, data: AutocompleteDataSnapshot, context?: Record<string, string>): AutocompleteOption[] {
@@ -155,32 +188,56 @@ function searchRecent(companyId: string | null, source: AutocompleteConfig['sour
   return toOptions(readRecentValues(companyId, source));
 }
 
+function mergeEngineCustomOptions(
+  query: string,
+  domainHits: AutocompleteOption[],
+  customOptions: AutocompleteOption[],
+): AutocompleteOption[] {
+  const filteredCustom = filterAutocompleteOptions(
+    query,
+    customOptions,
+    'flexible',
+    AUTOCOMPLETE_MAX_SUGGESTIONS,
+  ).map((option) => withMatchRanges(option, query));
+
+  return uniqueAutocompleteOptions(
+    [...domainHits, ...filteredCustom],
+    AUTOCOMPLETE_MAX_SUGGESTIONS,
+  );
+}
+
 export function searchAutocomplete(
   query: string,
   config: AutocompleteConfig,
   data: AutocompleteDataSnapshot,
   customOptions?: AutocompleteOption[],
 ): AutocompleteOption[] {
-  if (customOptions?.length) {
-    return filterAutocompleteOptions(
-      query,
-      customOptions,
-      config.matchMode ?? 'prefix',
-      AUTOCOMPLETE_MAX_SUGGESTIONS,
-    );
-  }
-
   const minLen = config.minQueryLength ?? 0;
   if (query.trim().length < minLen && config.source !== 'recent') {
     return [];
   }
 
+  // Engine code: domain fuzzy first; custom inventory options merge — never replace.
+  if (config.source === 'engineCode') {
+    const domainHits = searchEngineCodes(query, data);
+    if (customOptions?.length) {
+      return mergeEngineCustomOptions(query, domainHits, customOptions);
+    }
+    return domainHits.slice(0, AUTOCOMPLETE_MAX_SUGGESTIONS);
+  }
+
+  if (customOptions?.length) {
+    return filterAutocompleteOptions(
+      query,
+      customOptions,
+      config.matchMode ?? 'flexible',
+      AUTOCOMPLETE_MAX_SUGGESTIONS,
+    ).map((option) => withMatchRanges(option, query));
+  }
+
   let base: AutocompleteOption[] = [];
 
   switch (config.source) {
-    case 'engineCode':
-      base = searchEngineCodes(query, data);
-      break;
     case 'manufacturer':
       base = searchManufacturers(query, data, config.context);
       break;
@@ -212,5 +269,8 @@ export function searchAutocomplete(
       : [];
 
   const merged = uniqueAutocompleteOptions([...recents, ...base]);
-  return filterAutocompleteOptions(query, merged, config.matchMode ?? 'prefix', AUTOCOMPLETE_MAX_SUGGESTIONS);
+  const matchMode = config.matchMode ?? 'flexible';
+  return filterAutocompleteOptions(query, merged, matchMode, AUTOCOMPLETE_MAX_SUGGESTIONS).map(
+    (option) => withMatchRanges(option, query),
+  );
 }

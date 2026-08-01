@@ -46,14 +46,14 @@ const plugins: ExpoConfig['plugins'] = [
   [
     'expo-camera',
     {
-      cameraPermission: 'AutoCore использует камеру для сканирования штрихкодов.',
+      cameraPermission: 'AutoCore uses the camera to scan barcodes.',
       barcodeScannerEnabled: true,
     },
   ],
   [
     'expo-image-picker',
     {
-      photosPermission: 'AutoCore использует фото для импорта кодов из галереи.',
+      photosPermission: 'AutoCore uses photos to import codes from your gallery.',
     },
   ],
   'expo-sharing',
@@ -100,7 +100,7 @@ export default (): ExpoConfig => ({
     icon: './assets/branding/login-logo.png',
     infoPlist: {
       NSUserNotificationsUsageDescription:
-        'AutoCore отправляет уведомления о нарядах, складе, платежах и других событиях вашей компании.',
+        'AutoCore sends notifications about work orders, warehouse activity, payments, and other events at your company.',
       ...(iosUrlScheme
         ? {
             CFBundleURLTypes: [

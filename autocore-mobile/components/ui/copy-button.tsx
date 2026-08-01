@@ -60,7 +60,7 @@ export const CopyButton = forwardRef<React.ComponentRef<typeof Pressable>, CopyB
       disabled,
       style,
       showToast = false,
-      accessibilityLabel = 'Копировать',
+      accessibilityLabel = 'Copy',
       ...props
     },
     ref,
@@ -130,7 +130,7 @@ export const CopyButton = forwardRef<React.ComponentRef<typeof Pressable>, CopyB
 
           if (showToast) {
             void import('@/services/notifications').then(({ NotificationService }) => {
-              NotificationService.toastInfo('Скопировано');
+              NotificationService.toastInfo('Copied');
             });
           }
 
@@ -151,7 +151,7 @@ export const CopyButton = forwardRef<React.ComponentRef<typeof Pressable>, CopyB
         <Pressable
           ref={ref}
           accessibilityRole="button"
-          accessibilityLabel={isCopied ? 'Скопировано' : accessibilityLabel}
+          accessibilityLabel={isCopied ? 'Copied' : accessibilityLabel}
           accessibilityState={{ disabled: disabled ?? false }}
           disabled={disabled}
           onPress={(e) => void handleCopy(e)}

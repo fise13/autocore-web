@@ -7,6 +7,14 @@ export type AutocompleteOptionDisplay = {
 
 export function formatAutocompleteOption(option: AutocompleteOption): AutocompleteOptionDisplay {
   const value = option.value.trim();
+  if (option.meta?.title?.trim()) {
+    return {
+      primary: option.meta.title.trim(),
+      secondary:
+        [option.meta.manufacturer, option.meta.generation].filter(Boolean).join(' · ') || null,
+    };
+  }
+
   const label = option.label?.trim() || value;
 
   if (label.includes(' · ')) {

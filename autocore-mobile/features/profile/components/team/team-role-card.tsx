@@ -21,7 +21,7 @@ export const TeamRoleCard = memo(function TeamRoleCard({ role }: TeamRoleCardPro
           {formatRole(role)}
         </Text>
         <Text variant="caption" color="muted" style={{ fontVariant: ['tabular-nums'] }}>
-          {permissions.length} прав
+          {permissions.length} permissions
         </Text>
       </View>
       <Text variant="caption" color="muted" style={{ lineHeight: 17 }}>

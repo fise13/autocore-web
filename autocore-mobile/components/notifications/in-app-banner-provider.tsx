@@ -47,7 +47,7 @@ export function InAppBannerProvider() {
           >
             <Pressable
               onPress={() => {
-                const openAction = banner.actions?.find((action) => action.label === 'Открыть');
+                const openAction = banner.actions?.find((action) => action.label === 'Open');
                 if (openAction) {
                   haptics.light();
                   openAction.onPress();
@@ -96,7 +96,7 @@ export function InAppBannerProvider() {
               <Pressable
                 onPress={() => dismissBanner(banner.id)}
                 hitSlop={10}
-                accessibilityLabel="Закрыть"
+                accessibilityLabel="Close"
                 style={styles.close}
               >
                 <XIcon size="sm" color={colors.mutedForeground} />

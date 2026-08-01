@@ -3,7 +3,7 @@ import { Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { ordersLayout } from '../../layout';
+import { wo } from '../../theme/wo-visual';
 
 export function CompositionField({
   label,
@@ -50,7 +50,7 @@ export function CompositionAddCard({
   return (
     <View
       style={{
-        borderRadius: ordersLayout.radius,
+        borderRadius: wo.radius,
         borderWidth: 1,
         borderStyle: 'dashed',
         borderColor: colors.border,
@@ -96,8 +96,8 @@ export function CompositionLineList({
   return (
     <View
       style={{
-        borderRadius: ordersLayout.radius,
-        borderWidth: ordersLayout.hairline,
+        borderRadius: wo.radius,
+        borderWidth: wo.rule,
         borderColor: colors.border,
         overflow: 'hidden',
       }}
@@ -118,12 +118,12 @@ export function CompositionLineList({
             </Text>
             <Pressable accessibilityRole="button" onPress={() => onRemove(item.id)} hitSlop={8}>
               <Text variant="caption" style={{ fontSize: 12, fontWeight: '600', color: colors.destructive }}>
-                Удалить
+                Remove
               </Text>
             </Pressable>
           </View>
           {index < items.length - 1 ? (
-            <View style={{ height: ordersLayout.hairline, backgroundColor: colors.border, marginLeft: 14 }} />
+            <View style={{ height: wo.rule, backgroundColor: colors.border, marginLeft: 14 }} />
           ) : null}
         </View>
       ))}

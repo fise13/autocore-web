@@ -33,7 +33,7 @@ export function useUserDisplayCurrency(uid: string | null | undefined) {
 
   const saveCurrency = useCallback(
     async (next: AppDisplayCurrency) => {
-      if (!uid) throw new Error('Пользователь не авторизован');
+      if (!uid) throw new Error('User is not authenticated');
       await saveUserDisplayCurrency(uid, next);
     },
     [uid],

@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { enUS } from 'date-fns/locale';
 import { Pressable } from 'react-native';
 import Reanimated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
@@ -21,9 +21,9 @@ type AcHeaderProps = {
 };
 
 function todayLabel(date = new Date()): string {
-  const weekday = format(date, 'EEEE', { locale: ru });
+  const weekday = format(date, 'EEEE', { locale: enUS });
   const capitalized = weekday.charAt(0).toUpperCase() + weekday.slice(1);
-  const dayMonth = format(date, 'd MMMM', { locale: ru });
+  const dayMonth = format(date, 'd MMMM', { locale: enUS });
   return `${capitalized}, ${dayMonth}`;
 }
 
@@ -35,14 +35,14 @@ export function AcHeader({ operationCount, canEdit, onNewOperation }: AcHeaderPr
   return (
     <Reanimated.View style={enterStyle}>
       <PageHeader
-        title="Финансы"
-        subtitle={`${todayLabel()} · ${operationCount} операций`}
+        title="Finances"
+        subtitle={`${todayLabel()} · ${operationCount} transactions`}
         logo={null}
         align="start"
         trailing={
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={canEdit ? 'Новая операция' : 'Настройки финансов'}
+            accessibilityLabel={canEdit ? 'New transaction' : 'Finance settings'}
             onPress={() => {
               haptics.light();
               if (canEdit) {

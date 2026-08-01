@@ -5,7 +5,7 @@ import {
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { enUS } from 'date-fns/locale';
 
 import { FileStackIcon, PrinterIcon, Share2Icon } from '@/assets/icons';
 import { ActionIconButton, Button, Text } from '@/components/ui';
@@ -25,6 +25,7 @@ import type { FinancialOperation } from '@/types/financial-operation';
 
 import { formatKzt } from '../utils/format';
 import { ac } from '../layout';
+import { formatTimestamp } from '@/lib/firestore-timestamp';
 
 export type AcMotorSaleDocumentsSheetRef = {
   present: (operation: FinancialOperation) => void;
@@ -40,7 +41,7 @@ type DocAction = 'warranty-share' | 'warranty-print' | 'invoice-share' | 'invoic
 function parseClientNameFromComment(comment?: string | null): string | undefined {
   if (!comment?.trim()) return undefined;
   const parts = comment.split('·').map((part) => part.trim()).filter(Boolean);
-  if (parts.length >= 3 && parts[0].toLowerCase().includes('продаж')) {
+  if (parts.length >= 3 && parts[0].toLowerCase().includes('sale')) {
     return parts[parts.length - 1];
   }
   return undefined;
@@ -63,7 +64,7 @@ export const AcMotorSaleDocumentsSheet = forwardRef<
   const prepareDocuments = useCallback(async (next: FinancialOperation) => {
     const motorId = motorSaleMotorId(next);
     if (!motorId) {
-      setError('Не удалось определить двигатель для этой продажи.');
+      setError('Could not determine the motor for this sale.');
       setWarrantyId(null);
       return;
     }
@@ -80,7 +81,7 @@ export const AcMotorSaleDocumentsSheet = forwardRef<
           amount: next.amount,
           account: next.account,
           paymentMethod: next.paymentMethod,
-          comment: next.comment ?? next.description ?? 'Продажа мотора',
+          comment: next.comment ?? next.description ?? 'Motor sale',
           clientId: next.relatedClientId ?? undefined,
           clientName: parseClientNameFromComment(next.comment),
         });
@@ -91,11 +92,11 @@ export const AcMotorSaleDocumentsSheet = forwardRef<
       }
 
       if (!nextWarrantyId) {
-        setError((current) => current ?? 'Не удалось подготовить документы продажи.');
+        setError((current) => current ?? 'Could not prepare the sale documents.');
       }
       setWarrantyId(nextWarrantyId);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : 'Не удалось подготовить документы');
+      setError(nextError instanceof Error ? nextError.message : 'Could not prepare the documents');
       setWarrantyId(null);
     } finally {
       setLoading(false);
@@ -132,7 +133,7 @@ export const AcMotorSaleDocumentsSheet = forwardRef<
       haptics.success();
     } catch (nextError) {
       haptics.warning();
-      setError(nextError instanceof Error ? nextError.message : 'Не удалось открыть PDF');
+      setError(nextError instanceof Error ? nextError.message : 'Could not open the PDF');
     } finally {
       setBusy(null);
     }
@@ -157,7 +158,7 @@ export const AcMotorSaleDocumentsSheet = forwardRef<
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <FileStackIcon size="sm" color={colors.primary} strokeWidth={1.85} />
             <Text variant="heading" style={{ fontSize: 18, fontWeight: '700' }}>
-              Документы продажи
+              Sale documents
             </Text>
           </View>
           {operation ? (
@@ -166,7 +167,7 @@ export const AcMotorSaleDocumentsSheet = forwardRef<
               {' · '}
               {formatKzt(operation.amount)}
               {' · '}
-              {format(operation.createdAt, 'd MMM yyyy, HH:mm', { locale: ru })}
+              {formatTimestamp(operation.createdAt, 'd MMM yyyy, HH:mm')}
             </Text>
           ) : null}
         </View>
@@ -182,7 +183,7 @@ export const AcMotorSaleDocumentsSheet = forwardRef<
             }}
           >
             <Text variant="caption" color="muted">
-              Подготавливаем гарантию и счёт…
+              Preparing warranty and invoice…
             </Text>
           </View>
         ) : null}
@@ -207,7 +208,7 @@ export const AcMotorSaleDocumentsSheet = forwardRef<
                 size="sm"
                 onPress={() => void prepareDocuments(operation)}
               >
-                Повторить
+                Retry
               </Button>
             ) : null}
           </View>
@@ -224,13 +225,13 @@ export const AcMotorSaleDocumentsSheet = forwardRef<
             }}
           >
             <Text variant="caption" style={{ color: colors.success, fontWeight: '600' }}>
-              Документы готовы к печати и отправке
+              Documents are ready to print and share
             </Text>
           </View>
         ) : null}
 
         <DocGroup
-          title="Гарантия"
+          title="Warranty"
           shareAction="warranty-share"
           printAction="warranty-print"
           busy={busy}
@@ -239,7 +240,7 @@ export const AcMotorSaleDocumentsSheet = forwardRef<
         />
 
         <DocGroup
-          title="Счёт"
+          title="Invoice"
           shareAction="invoice-share"
           printAction="invoice-print"
           busy={busy}
@@ -282,14 +283,14 @@ function DocGroup({
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
         <ActionIconButton
           icon={Share2Icon}
-          accessibilityLabel={`Поделиться: ${title}`}
+          accessibilityLabel={`Share: ${title}`}
           loading={busy === shareAction}
           disabled={disabled || (busy !== null && busy !== shareAction)}
           onPress={() => onAction(shareAction)}
         />
         <ActionIconButton
           icon={PrinterIcon}
-          accessibilityLabel={`Печать: ${title}`}
+          accessibilityLabel={`Print: ${title}`}
           loading={busy === printAction}
           disabled={disabled || (busy !== null && busy !== printAction)}
           onPress={() => onAction(printAction)}

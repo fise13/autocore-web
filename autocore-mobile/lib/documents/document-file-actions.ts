@@ -17,7 +17,7 @@ import type { DocumentSlug } from '@/types/document';
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const user = getFirebaseAuth().currentUser;
   if (!user) {
-    throw new Error('Требуется авторизация');
+    throw new Error('Sign-in required');
   }
   const token = await user.getIdToken();
   return {
@@ -39,13 +39,13 @@ async function downloadRemotePdf(url: string, filename: string, headers?: Record
   });
 
   if (!file.exists) {
-    throw new Error(`Не удалось сохранить PDF «${filename}»`);
+    throw new Error(`Failed to save PDF "${filename}"`);
   }
 
   const size = file.info().size ?? 0;
   if (size <= 0) {
     file.delete();
-    throw new Error('Сервер вернул пустой PDF');
+    throw new Error('Server returned an empty PDF');
   }
 
   return file;
@@ -64,7 +64,7 @@ async function downloadPdfFromApi(
   try {
     return await downloadRemotePdf(url, filename, headers);
   } catch (error) {
-    throw new Error(mapDocumentError(error, 'Не удалось получить PDF'));
+    throw new Error(mapDocumentError(error, 'Failed to fetch PDF'));
   }
 }
 
@@ -123,7 +123,7 @@ export async function shareWorkOrderDocument(
   const file = await ensurePdfFile(slug, orderId, orderNumber, cachedDownloadUrl);
   const available = await Sharing.isAvailableAsync();
   if (!available) {
-    throw new Error('На этом устройстве недоступен обмен файлами');
+    throw new Error('File sharing is not available on this device');
   }
 
   await Sharing.shareAsync(file.uri, {
@@ -152,7 +152,7 @@ export async function shareWarrantyDocument(
   const file = await ensureWarrantyPdfFile(slug, warrantyId, serialCode, cachedDownloadUrl);
   const available = await Sharing.isAvailableAsync();
   if (!available) {
-    throw new Error('На этом устройстве недоступен обмен файлами');
+    throw new Error('File sharing is not available on this device');
   }
 
   await Sharing.shareAsync(file.uri, {

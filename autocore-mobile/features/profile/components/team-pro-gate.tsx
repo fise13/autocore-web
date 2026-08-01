@@ -1,45 +1,17 @@
-import { Linking, View } from 'react-native';
-
-import { Button, Text } from '@/components/ui';
-import { useCompanySubscription, useSession } from '@/hooks';
-import { getWebAppUrl, WEB_SUBSCRIPTION_PATH } from '@/lib/app-web-url';
-import { subscriptionPlanLabel } from '@/lib/billing/format-renewal';
-
-import { ProfileMetaCard } from './profile-meta-card';
+import { FeatureGate } from '@/components/subscription/feature-gate';
 
 type TeamProGateProps = {
   children: React.ReactNode;
 };
 
+/**
+ * Thin alias over the shared gate.
+ *
+ * The hand-rolled Pro check that used to live here — including its "open the
+ * website" button — is now one row in `FEATURE_MATRIX`, so team access, its
+ * paywall copy and its RBAC requirement are declared in the same place as every
+ * other premium feature.
+ */
 export function TeamProGate({ children }: TeamProGateProps) {
-  const { companyId } = useSession();
-  const { isPro, isLoading } = useCompanySubscription(companyId);
-
-  if (isLoading) {
-    return (
-      <ProfileMetaCard delay={80}>
-        <Text variant="caption" color="muted">
-          Проверяем подписку…
-        </Text>
-      </ProfileMetaCard>
-    );
-  }
-
-  if (isPro) {
-    return <>{children}</>;
-  }
-
-  return (
-    <ProfileMetaCard title="Команда на Pro" delay={80}>
-      <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-        Сотрудники, роли и коды приглашений доступны на тарифе {subscriptionPlanLabel(true)}. Управление
-        подпиской — на сайте.
-      </Text>
-      <View style={{ gap: 8 }}>
-        <Button onPress={() => void Linking.openURL(getWebAppUrl(WEB_SUBSCRIPTION_PATH))}>
-          Открыть сайт
-        </Button>
-      </View>
-    </ProfileMetaCard>
-  );
+  return <FeatureGate feature="team_management">{children}</FeatureGate>;
 }

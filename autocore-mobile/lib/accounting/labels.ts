@@ -7,31 +7,31 @@ import {
 } from '@/types/financial-operation';
 
 export const OPERATION_TYPE_LABELS: Record<OperationType, string> = {
-  sale: 'Продажа',
-  income: 'Приход',
-  expense: 'Расход',
-  refund: 'Возврат',
-  transfer: 'Перевод',
+  sale: 'Sale',
+  income: 'Income',
+  expense: 'Expense',
+  refund: 'Refund',
+  transfer: 'Transfer',
 };
 
 export const OPERATION_ACCOUNT_LABELS: Record<OperationAccount, string> = {
-  cashbox: 'Касса',
-  kaspi: 'Карта',
+  cashbox: 'Cash',
+  kaspi: 'Card',
 };
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
-  cash: 'Наличные',
-  transfer: 'Безнал',
-  mixed: 'Смешанная',
+  cash: 'Cash',
+  transfer: 'Bank transfer',
+  mixed: 'Mixed',
 };
 
 export const OPERATION_CATEGORY_LABELS: Record<string, string> = {
-  motor_sale: 'Продажа мотора',
-  work_order_income: 'Доход заказ-наряда',
-  work_order_parts_cost: 'Себестоимость запчастей',
-  payroll: 'Зарплата',
-  motor_import: 'Закупка моторов',
-  warehouse_import: 'Закупка на склад',
+  motor_sale: 'Engine sale',
+  work_order_income: 'Work order income',
+  work_order_parts_cost: 'Parts cost',
+  payroll: 'Payroll',
+  motor_import: 'Engine purchase',
+  warehouse_import: 'Warehouse purchase',
 };
 
 export const CREATABLE_OPERATION_TYPES = ['expense', 'income', 'sale', 'refund'] as const;
@@ -43,13 +43,20 @@ export const ACCOUNTING_CATEGORY_SUGGESTIONS = [
   'work_order_income',
   'work_order_parts_cost',
   'payroll',
-  'реклама',
-  'транспорт',
-  'еда',
-  'закупка',
-  'логистика',
-  'прочее',
+  'advertising',
+  'transport',
+  'food',
+  'supplies',
+  'logistics',
+  'other',
 ] as const;
+
+const OUTGOING_OPERATION_TYPES = new Set<OperationType>(['expense', 'refund']);
+
+/** Cash direction of an operation — drives sign and tone in the UI. */
+export function operationDirection(type: OperationType | string): 'in' | 'out' {
+  return OUTGOING_OPERATION_TYPES.has(type as OperationType) ? 'out' : 'in';
+}
 
 export function operationTypeLabel(type: OperationType | string): string {
   return OPERATION_TYPE_LABELS[type as OperationType] ?? String(type);

@@ -41,9 +41,9 @@ export function CurrencyScreen() {
     haptics.light();
     try {
       await setCurrency(next);
-      setStatus('Валюта отображения сохранена');
+      setStatus('Display currency saved');
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Не удалось сохранить валюту');
+      setStatus(error instanceof Error ? error.message : 'Failed to save currency');
     } finally {
       setSaving(null);
     }
@@ -51,20 +51,20 @@ export function CurrencyScreen() {
 
   return (
     <ProfileScreenShell
-      title="Валюта"
-      subtitle="Суммы хранятся в тенге и пересчитываются при показе"
+      title="Currency"
+      subtitle="Amounts are stored in tenge and converted for display"
     >
       <SettingsSectionCard>
         <View style={styles.hint}>
           <Text variant="caption" color="muted" style={styles.hintText}>
-            Настройка синхронизируется с веб-версией AutoCore. Базовая валюта учёта —{' '}
+            This setting syncs with the AutoCore web app. The base accounting currency is{' '}
             {APP_MONEY_BASE_CURRENCY}.
           </Text>
           {isLoading ? (
             <View style={styles.loadingRow}>
               <ActivityIndicator size="small" color={colors.primary} />
               <Text variant="caption" color="muted">
-                Загрузка курсов…
+                Loading rates…
               </Text>
             </View>
           ) : null}
@@ -108,7 +108,7 @@ export function CurrencyScreen() {
                     </Text>
                     {option.id !== 'KZT' ? (
                       <Text variant="caption" color="muted">
-                        из {EXAMPLE_BASE_AMOUNT.toLocaleString('ru-RU')} ₸
+                        from {EXAMPLE_BASE_AMOUNT.toLocaleString('ru-RU')} ₸
                       </Text>
                     ) : null}
                   </View>
@@ -129,19 +129,19 @@ export function CurrencyScreen() {
       <SettingsSectionCard>
         <View style={styles.preview}>
           <Text variant="caption" color="muted">
-            Пример с текущей настройкой
+            Example with the current setting
           </Text>
           <Text variant="title" style={styles.previewValue}>
             {formatMoney(1_250_000)}
           </Text>
           {exchangeRateHint ? (
             <Text variant="caption" color="muted">
-              Курс: {exchangeRateHint}
+              Rate: {exchangeRateHint}
             </Text>
           ) : null}
           {rates.source === 'fallback' ? (
             <Text variant="caption" color="muted">
-              Используется резервный курс — обновление с сервера недоступно.
+              Using a fallback rate — updates from the server aren't available.
             </Text>
           ) : null}
           {status ? (
@@ -150,7 +150,7 @@ export function CurrencyScreen() {
             </Text>
           ) : null}
           <Text variant="caption" color="muted">
-            Сейчас: {activeOption.label} ({activeOption.id})
+            Current: {activeOption.label} ({activeOption.id})
           </Text>
         </View>
       </SettingsSectionCard>

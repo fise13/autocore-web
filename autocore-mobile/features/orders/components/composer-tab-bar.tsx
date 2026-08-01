@@ -4,13 +4,13 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 
 import { Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/hooks';
-import { toneBackground } from '@/theme/color-utils';
+import { haptics } from '@/theme';
 
 import { ordersSpring } from '../animation/orders-timeline';
 import type { ComposerTab } from '../animation/use-composer-tab-state';
-import { ordersLayout } from '../layout';
+import { wo } from '../theme/wo-visual';
 
-const SEGMENT_INSET = 3;
+const SEGMENT_INSET = 2;
 
 type TabIcon = ComponentType<{ size?: 'sm' | 'md' | 'lg'; color?: string; strokeWidth?: number }>;
 
@@ -27,6 +27,7 @@ type ComposerTabBarProps = {
   onTabChange: (tab: ComposerTab) => void;
 };
 
+/** Icon-only industrial toolbar for composition tabs. */
 export function ComposerTabBar({ tabs, activeTab, onTabChange }: ComposerTabBarProps) {
   const { colors } = useTheme();
   const reduced = useReducedMotion();
@@ -73,8 +74,8 @@ export function ComposerTabBar({ tabs, activeTab, onTabChange }: ComposerTabBarP
       onLayout={onTrackLayout}
       style={{
         flexDirection: 'row',
-        borderRadius: 12,
-        borderWidth: ordersLayout.hairline,
+        borderRadius: wo.radiusSm,
+        borderWidth: wo.rule,
         borderColor: colors.border,
         backgroundColor: colors.secondary,
         padding: SEGMENT_INSET,
@@ -90,8 +91,10 @@ export function ComposerTabBar({ tabs, activeTab, onTabChange }: ComposerTabBarP
               top: SEGMENT_INSET,
               bottom: SEGMENT_INSET,
               left: 0,
-              borderRadius: 9,
+              borderRadius: wo.radiusSm - 1,
               backgroundColor: colors.card,
+              borderWidth: wo.rule,
+              borderColor: colors.border,
             },
             pillStyle,
           ]}
@@ -106,46 +109,45 @@ export function ComposerTabBar({ tabs, activeTab, onTabChange }: ComposerTabBarP
           <Pressable
             key={item.id}
             accessibilityRole="button"
+            accessibilityLabel={item.label}
             accessibilityState={{ selected }}
             onPress={() => {
               if (selected) return;
+              haptics.selection();
               onTabChange(item.id);
             }}
             style={{
               flex: 1,
+              minHeight: wo.touch,
               alignItems: 'center',
-              paddingVertical: 8,
-              gap: 4,
+              justifyContent: 'center',
               zIndex: 1,
             }}
           >
-            <Icon size="sm" color={selected ? colors.primary : colors.mutedForeground} strokeWidth={1.85} />
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Text
-                variant="caption"
-                style={{
-                  fontSize: 10,
-                  fontWeight: selected ? '600' : '500',
-                  color: selected ? colors.foreground : colors.mutedForeground,
-                }}
-              >
-                {item.label}
-              </Text>
+            <View style={{ position: 'relative' }}>
+              <Icon
+                size="sm"
+                color={selected ? colors.foreground : colors.mutedForeground}
+                strokeWidth={selected ? 2 : 1.75}
+              />
               {item.badge && item.badge > 0 ? (
                 <View
                   style={{
+                    position: 'absolute',
+                    top: -6,
+                    right: -10,
                     minWidth: 16,
                     height: 16,
-                    borderRadius: 8,
+                    borderRadius: 2,
                     paddingHorizontal: 4,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: toneBackground(colors.primary, 0.12),
+                    backgroundColor: colors.foreground,
                   }}
                 >
                   <Text
                     variant="caption"
-                    style={{ fontSize: 9, fontWeight: '700', color: colors.primary, lineHeight: 12 }}
+                    style={{ fontSize: 9, fontWeight: '700', color: colors.background, lineHeight: 12 }}
                   >
                     {item.badge}
                   </Text>

@@ -69,7 +69,7 @@ export function SearchIdle({
   if (isBootstrapping && !hasData) {
     return (
       <View style={{ paddingHorizontal: searchLayout.pad, paddingTop: 24 }}>
-        <Loading message="Загружаем каталог…" />
+        <Loading message="Loading catalog…" />
       </View>
     );
   }
@@ -79,7 +79,7 @@ export function SearchIdle({
       {recentQueries.length > 0 ? (
         <AnimatedSection delay={searchTimeline.idleRecent}>
           <View style={{ paddingHorizontal: searchLayout.pad, gap: rhythm.inline }}>
-            <SectionHeader title="Недавние запросы" />
+            <SectionHeader title="Recent searches" />
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -124,8 +124,8 @@ export function SearchIdle({
         <View style={{ gap: rhythm.inline }}>
           <View style={{ paddingHorizontal: searchLayout.pad }}>
             <SectionHeader
-              title={hasData ? 'Недавно просмотренные' : 'Каталог пуст'}
-              actionLabel={hasData && recentlyViewed.length > 0 ? 'Склад' : undefined}
+              title={hasData ? 'Recently viewed' : 'Catalog is empty'}
+              actionLabel={hasData && recentlyViewed.length > 0 ? 'Warehouse' : undefined}
               onAction={
                 hasData && recentlyViewed.length > 0
                   ? () => onCategoryPress('parts')
@@ -134,7 +134,7 @@ export function SearchIdle({
             />
             {!hasData ? (
               <Text variant="caption" color="muted" style={{ lineHeight: 18, marginTop: -4 }}>
-                Добавьте товары через приёмку или импорт — они появятся здесь.
+                Add items via intake or import — they'll show up here.
               </Text>
             ) : null}
           </View>
@@ -163,7 +163,7 @@ export function SearchIdle({
         <AnimatedSection delay={searchTimeline.idleViewed + 40}>
           <View style={{ gap: rhythm.inline }}>
             <View style={{ paddingHorizontal: searchLayout.pad }}>
-              <SectionHeader title="Доступные моторы" />
+              <SectionHeader title="Available engines" />
             </View>
             <ScrollView
               horizontal
@@ -189,7 +189,7 @@ export function SearchIdle({
       ) : null}
 
       <AnimatedSection delay={searchTimeline.idleCategories} style={{ paddingHorizontal: searchLayout.pad }}>
-        <SectionHeader title="Категории" />
+        <SectionHeader title="Categories" />
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           {quickCategories.map((category) => {
             const Icon = CATEGORY_ICONS[category.id as keyof typeof CATEGORY_ICONS] ?? PackageIcon;

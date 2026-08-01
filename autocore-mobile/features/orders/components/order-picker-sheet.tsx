@@ -72,14 +72,14 @@ export const OrderPickerSheet = forwardRef<BottomSheetModal, OrderPickerSheetPro
       >
         <BottomSheetScrollView contentContainerStyle={{ ...sheet.compactContentStyle, gap: 8 }}>
           <Text variant="heading" style={{ fontSize: 17, fontWeight: '700', marginBottom: 4 }}>
-            Добавить в наряд
+            Add to work order
           </Text>
-          <OrderPickerRow title="Новый наряд" subtitle="Создать черновик" onPress={onSelectNew} />
+          <OrderPickerRow title="New work order" subtitle="Create a draft" onPress={onSelectNew} />
           {drafts.map((order) => (
             <OrderPickerRow
               key={order.id}
-              title={`№${order.number}`}
-              subtitle={[order.clientName, order.vehicleLabel].filter(Boolean).join(' · ') || 'Черновик'}
+              title={`#${order.number}`}
+              subtitle={[order.clientName, order.vehicleLabel].filter(Boolean).join(' · ') || 'Draft'}
               onPress={() => onSelectOrder(order.id)}
             />
           ))}

@@ -4,7 +4,7 @@ import { INVITE_STATUS_LABELS, type InviteStatus } from '@autocore/org';
 export type InviteStatusFilter = InviteStatus | 'all';
 
 const INVITE_FILTER_OPTIONS: Array<{ value: InviteStatusFilter; label: string }> = [
-  { value: 'all', label: 'Все' },
+  { value: 'all', label: 'All' },
   ...(Object.keys(INVITE_STATUS_LABELS) as InviteStatus[]).map((status) => ({
     value: status,
     label: INVITE_STATUS_LABELS[status],

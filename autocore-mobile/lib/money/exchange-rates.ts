@@ -55,6 +55,18 @@ export function convertFromBaseCurrency(
   return amountInKzt * (rates.rubPerUsd / rates.kztPerUsd);
 }
 
+/** Inverse of `convertFromBaseCurrency` — used when the user types an amount. */
+export function convertToBaseCurrency(
+  amount: number,
+  source: AppDisplayCurrency,
+  rates: ExchangeRates = FALLBACK_EXCHANGE_RATES,
+): number {
+  if (!Number.isFinite(amount)) return 0;
+  if (source === 'KZT') return amount;
+  if (source === 'USD') return amount * rates.kztPerUsd;
+  return amount * (rates.kztPerUsd / rates.rubPerUsd);
+}
+
 export function formatExchangeRateHint(currency: AppDisplayCurrency, rates: ExchangeRates): string | null {
   if (currency === 'KZT') return null;
   if (currency === 'USD') {

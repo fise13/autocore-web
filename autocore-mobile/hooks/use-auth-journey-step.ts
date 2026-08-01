@@ -15,11 +15,32 @@ export type AuthJourneyStep =
   | 'app';
 
 export const AUTH_JOURNEY_STEP_LABELS: Record<Exclude<AuthJourneyStep, 'loading' | 'app'>, string> = {
-  'verify-email': 'Подтверждение email',
-  'profile-name': 'Ваш профиль',
-  company: 'Команда и доступ',
-  'setup-wizard': 'Настройка пространства',
+  'verify-email': 'Verify email',
+  'profile-name': 'Your profile',
+  company: 'Workspace',
+  'setup-wizard': 'Setup',
 };
+
+/** Ordered onboarding screens for quiet progress captions (skips loading/app). */
+export const AUTH_JOURNEY_PROGRESS_ORDER: Array<Exclude<AuthJourneyStep, 'loading' | 'app'>> = [
+  'verify-email',
+  'profile-name',
+  'company',
+  'setup-wizard',
+];
+
+export function authJourneyProgressLabel(
+  step: Exclude<AuthJourneyStep, 'loading' | 'app'>,
+  opts?: { setupSubstep?: number; setupTotal?: number },
+): string {
+  const index = AUTH_JOURNEY_PROGRESS_ORDER.indexOf(step);
+  const total = AUTH_JOURNEY_PROGRESS_ORDER.length;
+  if (step === 'setup-wizard' && opts?.setupSubstep && opts.setupTotal) {
+    // Treat setup as the last outer step; show sub-progress within it.
+    return `${opts.setupSubstep} of ${opts.setupTotal}`;
+  }
+  return `${index + 1} of ${total}`;
+}
 
 function isEmailPasswordUser(email: string | null | undefined, providerIds: string[]): boolean {
   if (providerIds.includes('password')) return true;

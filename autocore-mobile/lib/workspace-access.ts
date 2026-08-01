@@ -27,7 +27,8 @@ export function getWorkspaceAccessCopy(block: WorkspaceAccessBlock): WorkspaceAc
       return {
         title: 'No active company',
         description:
-          "You're signed in, but no workspace has been selected yet. Join via an invite or choose a company.",
+          "You're signed in, but you don't have a workspace yet. Create a company or join with an invite.",
+        hint: 'Owners create a company. Teammates join with an invite code.',
       };
   }
 }

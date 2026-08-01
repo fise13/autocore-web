@@ -90,8 +90,8 @@ function AccountTile({ tile, index }: { tile: TileDef; index: number }) {
 
 export const AcAccountTiles = memo(function AcAccountTiles({ balance }: AcAccountTilesProps) {
   const tiles: TileDef[] = [
-    { id: 'cashbox', label: 'Касса', value: balance.cashbox, icon: CoinsIcon },
-    { id: 'kaspi', label: 'Карта', value: balance.kaspi, icon: ReceiptIcon },
+    { id: 'cashbox', label: 'Cash', value: balance.cashbox, icon: CoinsIcon },
+    { id: 'kaspi', label: 'Card', value: balance.kaspi, icon: ReceiptIcon },
   ];
 
   return (

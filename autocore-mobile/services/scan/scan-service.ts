@@ -51,9 +51,16 @@ function isInstantOutcome(outcome: ScanOutcome): boolean {
 }
 
 function acceptsCameraInput(snapshot: ScanServiceSnapshot): boolean {
-  // Allow re-scan while a result sheet is open so the next barcode replaces content
-  // instead of feeling "dead" until the user dismisses the modal.
-  if (snapshot.phase === 'paused' || snapshot.phase === 'resolving') return false;
+  // Lock the camera while resolving or while a result sheet is confirmed.
+  // Continuous frames after "Found" were racing present() and wiping the product sheet
+  // (often via multi-code picker). Re-scan resumes after the sheet dismisses → idle.
+  if (
+    snapshot.phase === 'paused' ||
+    snapshot.phase === 'resolving' ||
+    snapshot.phase === 'confirmed'
+  ) {
+    return false;
+  }
   return true;
 }
 
@@ -107,18 +114,44 @@ export class ScanService {
   }
 
   onDetections(detections: ScanDetection[]): void {
-    if (detections.length === 1) {
-      this.onDetection(detections[0]!);
+    // Collapse equivalent barcodes (EAN-13 vs UPC-A, leading zeros, etc.)
+    const byKey = new Map<string, ScanDetection>();
+    for (const entry of detections) {
+      const payload = entry.payload.trim();
+      if (!payload) continue;
+      const key = scanPayloadKey(payload);
+      if (!byKey.has(key)) byKey.set(key, { ...entry, payload });
     }
+    const cleaned = [...byKey.values()];
+    if (cleaned.length === 0) return;
+    if (cleaned.length === 1) {
+      this.onDetection(cleaned[0]!);
+      return;
+    }
+    if (!acceptsCameraInput(this.snapshot)) return;
+    this.patch({
+      phase: 'confirmed',
+      detection: cleaned[0]!,
+      pendingDetections: cleaned,
+      sheetKind: 'code-picker',
+      outcome: null,
+      activeResult: null,
+      pendingPayload: null,
+    });
   }
 
   pickDetectedCode(payload: string): void {
     const detection =
       this.snapshot.pendingDetections?.find((entry) => entry.payload === payload) ?? null;
+    // Leave confirmed/code-picker so commitPayload is allowed again.
     this.patch({
+      phase: 'idle',
       pendingDetections: null,
       sheetKind: null,
+      outcome: null,
+      activeResult: null,
       detection,
+      pendingPayload: null,
     });
     void this.commitPayload(payload, 'camera').catch(() => undefined);
   }

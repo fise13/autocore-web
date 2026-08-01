@@ -1,8 +1,9 @@
 import { View } from 'react-native';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 
-import { useTheme } from '@/hooks';
+import { useReducedMotion, useTheme } from '@/hooks';
 import type { IconProps } from '@/assets/icons';
-import { rhythm } from '@/theme';
+import { autocoreEase, duration, rhythm } from '@/theme';
 
 import { Button, type ButtonVariant } from './button';
 import { Text } from './text';
@@ -29,9 +30,14 @@ export function EmptyState({
   secondaryAction,
 }: EmptyStateProps) {
   const { colors } = useTheme();
+  const reducedMotion = useReducedMotion();
+  const entering = reducedMotion
+    ? undefined
+    : FadeInUp.duration(duration.medium).easing(autocoreEase);
 
   return (
-    <View
+    <Animated.View
+      entering={entering}
       style={{
         alignItems: 'center',
         justifyContent: 'center',
@@ -90,6 +96,6 @@ export function EmptyState({
           ) : null}
         </View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }

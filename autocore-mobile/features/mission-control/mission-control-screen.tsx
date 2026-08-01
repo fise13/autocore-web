@@ -1,10 +1,9 @@
 import { memo, useCallback, useState } from 'react';
 import { RefreshControl, View } from 'react-native';
 
-import { Screen, ScreenScroll } from '@/components/ui';
+import { ProductScreenShell, ScreenGate, ScreenScroll } from '@/components/ui';
 import { useMissionControlData, useRealtimeReconnect } from '@/hooks';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
-import { Text } from '@/components/ui';
 
 import { McActivityFeed } from './components/mc-activity-feed';
 import { McFeaturedInsight } from './components/mc-featured-insight';
@@ -46,27 +45,22 @@ export function MissionControlScreen() {
 
   if (!rbac.nav.canAccessMissionControl) {
     return (
-      <Screen>
-        <ScreenScroll tabBarInset>
-          <View style={{ padding: mc.pad, gap: mc.section }}>
-            <Text variant="pageTitle">Mission Control</Text>
-            <Text variant="body" color="muted">
-              У вашей роли нет доступа к панели управления.
-            </Text>
-          </View>
-        </ScreenScroll>
-      </Screen>
+      <ScreenGate
+        variant="no-permission"
+        title="Mission Control"
+        description="Your role doesn't have access to the dashboard."
+      />
     );
   }
 
   return (
-    <Screen>
+    <ProductScreenShell brandWash animateEnter={false}>
       <ScreenScroll
         tabBarInset
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <MemoBody />
       </ScreenScroll>
-    </Screen>
+    </ProductScreenShell>
   );
 }

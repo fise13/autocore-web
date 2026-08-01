@@ -1,41 +1,58 @@
-import type React from 'react';
-import { memo } from 'react';
-import { Tabs } from 'expo-router';
+import { useMemo } from 'react';
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import type { SFSymbol } from 'sf-symbols-typescript';
 
-import { AppTabBar, type AppTabBarProps } from '@/components/navigation/app-tab-bar';
 import { TabTransitionProvider } from '@/components/navigation/tab-transition-context';
+import { useCompanyModuleEnabled, useTheme } from '@/hooks';
+import { useSession } from '@/hooks/use-session';
+import { isNavItemVisible } from '@/lib/navigation/nav-item-availability';
+import { TAB_SPECS } from '@/lib/navigation/tab-specs';
 
-const TAB_SCREEN_OPTIONS = {
-  headerShown: false,
-  tabBarStyle: { display: 'none' },
-  lazy: true,
-  freezeOnBlur: true,
-} as const;
-
-const MemoTabBar = memo(AppTabBar);
-
-function renderTabBar(props: AppTabBarProps) {
-  return <MemoTabBar {...props} />;
-}
-
+/**
+ * Fixed tab bar.
+ *
+ * The set and its order are product decisions, not user settings — a control
+ * centre people can rearrange is one they have to re-learn. Only permissions
+ * and disabled company modules can take a tab away.
+ */
 export default function TabLayout() {
+  const { colors } = useTheme();
+  const { profile } = useSession();
+  const workOrders = useCompanyModuleEnabled('workOrders');
+  const warehouse = useCompanyModuleEnabled('warehouse');
+  const accounting = useCompanyModuleEnabled('accounting');
+
+  const hiddenByRoute = useMemo(() => {
+    const modules = { workOrders, warehouse, accounting };
+    return new Map(
+      TAB_SPECS.map((spec) => [
+        spec.route,
+        spec.navId === null || !isNavItemVisible(spec.navId, profile, modules),
+      ]),
+    );
+  }, [accounting, profile, warehouse, workOrders]);
+
   return (
+    // `useNavigateTab` still reads this context from deep links across the app;
+    // the native bar animates its own transitions.
     <TabTransitionProvider>
-      <Tabs
-        screenOptions={TAB_SCREEN_OPTIONS}
-        tabBar={renderTabBar as React.ComponentProps<typeof Tabs>['tabBar']}
+      <NativeTabs
+        tintColor={colors.primary}
+        minimizeBehavior="onScrollDown"
+        labelStyle={{ fontSize: 10, fontWeight: '600' }}
       >
-        <Tabs.Screen name="index" options={{ title: 'Home' }} />
-        <Tabs.Screen name="search" options={{ title: 'Search' }} />
-        <Tabs.Screen name="warehouse" options={{ href: null, title: 'Warehouse' }} />
-        <Tabs.Screen name="scan" options={{ title: 'Scan' }} />
-        <Tabs.Screen name="import" options={{ href: null, title: 'Import' }} />
-        <Tabs.Screen name="orders" options={{ title: 'Orders' }} />
-        <Tabs.Screen name="my-earnings" options={{ title: 'My earnings' }} />
-        <Tabs.Screen name="accounting" options={{ title: 'Accounting' }} />
-        {/* Prefetch settings hub only — never keep CameraView mounted off-tab. */}
-        <Tabs.Screen name="profile" options={{ title: 'Profile', lazy: false }} />
-      </Tabs>
+        {TAB_SPECS.map((spec) => (
+          <NativeTabs.Trigger
+            key={spec.route}
+            name={spec.route}
+            hidden={hiddenByRoute.get(spec.route) ?? true}
+            role={spec.role}
+          >
+            <NativeTabs.Trigger.Icon sf={spec.sf} />
+            <NativeTabs.Trigger.Label>{spec.label}</NativeTabs.Trigger.Label>
+          </NativeTabs.Trigger>
+        ))}
+      </NativeTabs>
     </TabTransitionProvider>
   );
 }

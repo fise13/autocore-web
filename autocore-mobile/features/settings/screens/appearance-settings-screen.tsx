@@ -18,16 +18,14 @@ export function AppearanceSettingsScreen() {
   const { preference, setPreference, colors } = useTheme();
   const accentColor = useAppearanceSettingsStore((s) => s.accentColor);
   const animationsEnabled = useAppearanceSettingsStore((s) => s.animationsEnabled);
-  const compactMode = useAppearanceSettingsStore((s) => s.compactMode);
   const largeText = useAppearanceSettingsStore((s) => s.largeText);
   const setAccentColor = useAppearanceSettingsStore((s) => s.setAccentColor);
   const setAnimationsEnabled = useAppearanceSettingsStore((s) => s.setAnimationsEnabled);
-  const setCompactMode = useAppearanceSettingsStore((s) => s.setCompactMode);
   const setLargeText = useAppearanceSettingsStore((s) => s.setLargeText);
 
   return (
-    <ProfileScreenShell title="Тема" subtitle="Светлая, тёмная и акцент">
-      <SettingsSectionCard title="Тема" description="Системная тема следует настройкам устройства">
+    <ProfileScreenShell title="Theme" subtitle="Light, dark, and accent color">
+      <SettingsSectionCard title="Theme" description="System theme follows your device settings">
         <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
           <ProfileSegmentedControl
             value={preference}
@@ -40,7 +38,7 @@ export function AppearanceSettingsScreen() {
         </View>
       </SettingsSectionCard>
 
-      <SettingsSectionCard title="Акцентный цвет">
+      <SettingsSectionCard title="Accent color">
         <View
           style={{
             paddingHorizontal: rhythm.cardPadX,
@@ -63,6 +61,7 @@ export function AppearanceSettingsScreen() {
                   alignItems: 'center',
                   gap: 6,
                   minWidth: 64,
+                  minHeight: 44,
                   padding: 8,
                   borderRadius: rhythm.radius,
                   borderWidth: 1,
@@ -97,23 +96,17 @@ export function AppearanceSettingsScreen() {
         </View>
       </SettingsSectionCard>
 
-      <SettingsSectionCard title="Интерфейс">
+      <SettingsSectionCard title="Interface">
         <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: 4 }}>
           <SettingsToggleRow
-            label="Анимации"
-            subtitle="Плавные переходы"
+            label="Animations"
+            subtitle="Motion and enter transitions"
             value={animationsEnabled}
             onValueChange={setAnimationsEnabled}
           />
           <SettingsToggleRow
-            label="Компактный режим"
-            subtitle="Меньше отступов"
-            value={compactMode}
-            onValueChange={setCompactMode}
-          />
-          <SettingsToggleRow
-            label="Крупный текст"
-            subtitle="Улучшенная читаемость"
+            label="Large text"
+            subtitle="Increase text size across the app"
             value={largeText}
             onValueChange={setLargeText}
           />

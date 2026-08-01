@@ -2,8 +2,10 @@ import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, View, type ScrollViewProps, type StyleProp, type ViewStyle } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated from 'react-native-reanimated';
 
 import { ArrowLeftIcon } from '@/assets/icons';
+import { useScreenEnter } from '@/animations';
 import { useFloatingTabBarInset, useReleaseStackNavigationOnFocus, useTheme } from '@/hooks';
 import { goBackOrReplace, PROFILE_SETTINGS_HUB_HREF } from '@/lib/navigation/stack-back';
 import { rhythm, spacing } from '@/theme';
@@ -80,6 +82,8 @@ type StackScreenProps = {
   backFallbackHref?: Href;
   /** Override default back behaviour (e.g. cross-tab inbox). */
   onBack?: () => void;
+  /** Trailing control in the header row (e.g. "Mark all read"). */
+  headerAction?: ReactNode;
 };
 
 /** Stack sub-screen: back chevron, title, scroll body. Section cards provide horizontal inset. */
@@ -91,10 +95,13 @@ export function StackScreen({
   refreshControl,
   backFallbackHref = PROFILE_SETTINGS_HUB_HREF,
   onBack,
+  headerAction,
 }: StackScreenProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const headerEnter = useScreenEnter({ delay: 0, translateY: 8, duration: 280 });
+  const bodyEnter = useScreenEnter({ delay: 60, translateY: 12, duration: 320 });
   useReleaseStackNavigationOnFocus();
 
   const handleBack = () => {
@@ -107,18 +114,21 @@ export function StackScreen({
 
   return (
     <Screen>
-      <View
-        style={{
-          paddingTop: insets.top + rhythm.headerTop,
-          paddingHorizontal: rhythm.pad,
-          paddingBottom: rhythm.headerBottom,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: rhythm.inline,
-        }}
+      <Animated.View
+        style={[
+          {
+            paddingTop: insets.top + rhythm.headerTop,
+            paddingHorizontal: rhythm.pad,
+            paddingBottom: rhythm.headerBottom,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: rhythm.inline,
+          },
+          headerEnter,
+        ]}
       >
         <IconButton
-          accessibilityLabel="Назад"
+          accessibilityLabel="Back"
           variant="ghost"
           size="sm"
           onPress={handleBack}
@@ -141,10 +151,11 @@ export function StackScreen({
             </Text>
           ) : null}
         </View>
-      </View>
+        {headerAction}
+      </Animated.View>
 
-      <ScreenScroll refreshControl={refreshControl}>
-        <View style={{ gap }}>{children}</View>
+      <ScreenScroll tabBarInset refreshControl={refreshControl}>
+        <Animated.View style={[{ gap }, bodyEnter]}>{children}</Animated.View>
       </ScreenScroll>
     </Screen>
   );

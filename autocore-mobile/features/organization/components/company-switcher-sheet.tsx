@@ -6,8 +6,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/authentication/auth-provider';
 import { SettingsLinkRow, Text } from '@/components/ui';
-import { useCompanySubscription, useModalBottomSheet, useSession, useTheme } from '@/hooks';
-import { subscriptionPlanLabel } from '@/lib/billing/format-renewal';
+import { useModalBottomSheet, useSession, useTheme } from '@/hooks';
+import { useEntitlement } from '@/hooks/use-entitlement';
+import { planLabel } from '@/lib/subscriptions/format';
 import { resolveActiveCompanyName } from '@/lib/resolve-active-company-name';
 import { formatRole } from '@/lib/team/format';
 import { switchActiveCompany } from '@/services/firestore/company-membership-service';
@@ -29,7 +30,7 @@ export function CompanySwitcherSheet({ open, onClose }: CompanySwitcherSheetProp
   const sheet = useModalBottomSheet();
   const { firebaseUser, memberships, refreshProfile } = useAuth();
   const { profile } = useSession();
-  const { isPro } = useCompanySubscription(profile?.companyId);
+  const { entitlement } = useEntitlement();
   const snapPoints = useMemo(() => ['42%', '68%'], []);
 
   useEffect(() => {
@@ -62,11 +63,23 @@ export function CompanySwitcherSheet({ open, onClose }: CompanySwitcherSheetProp
     >
       <BottomSheetScrollView contentContainerStyle={contentStyle}>
         <View style={styles.header}>
-          <Text variant="body" style={styles.headerTitle}>
-            Рабочие пространства
+          <Text
+            variant="heading"
+            style={{
+              fontSize: 22,
+              fontWeight: '700',
+              letterSpacing: -0.45,
+              lineHeight: 28,
+              color: colors.foreground,
+            }}
+          >
+            Workspaces
           </Text>
-          <Text variant="caption" color="muted">
-            План: {subscriptionPlanLabel(isPro)}
+          <Text
+            variant="caption"
+            style={{ fontSize: 14, lineHeight: 20, color: colors.mutedForeground }}
+          >
+            {planLabel(entitlement)} plan
           </Text>
         </View>
 
@@ -83,7 +96,7 @@ export function CompanySwitcherSheet({ open, onClose }: CompanySwitcherSheetProp
             const active = membership.companyId === profile?.companyId;
             const label = resolveActiveCompanyName(membership.companyId, membership.name, []);
             const subtitle = active
-              ? `${formatRole(membership.role)} · активно`
+              ? `${formatRole(membership.role)} · active`
               : formatRole(membership.role);
 
             return (
@@ -111,8 +124,8 @@ export function CompanySwitcherSheet({ open, onClose }: CompanySwitcherSheetProp
 
           <SettingsLinkRow
             bordered={memberships.length > 0}
-            title="Присоединиться к компании"
-            subtitle="Ссылка или код"
+            title="Join a company"
+            subtitle="Link or code"
             onPress={() => {
               onClose();
               router.push('/(tabs)/profile/join-company' as never);
@@ -130,13 +143,9 @@ const styles = StyleSheet.create({
     gap: rhythm.stack,
   },
   header: {
-    gap: 2,
+    gap: 4,
     paddingTop: rhythm.tight,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    lineHeight: 22,
+    marginBottom: 4,
   },
   card: {
     borderRadius: rhythm.cardRadius,

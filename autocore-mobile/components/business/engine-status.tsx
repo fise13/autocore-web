@@ -7,11 +7,11 @@ import { useDesignLanguage } from '@/hooks';
 export type EngineStatusType = 'available' | 'reserved' | 'sold' | 'dismantling' | 'incoming';
 
 const labels: Record<EngineStatusType, string> = {
-  available: 'В наличии',
-  reserved: 'Резерв',
-  sold: 'Продан',
-  dismantling: 'В разборе',
-  incoming: 'Ожидается',
+  available: 'In stock',
+  reserved: 'Reserved',
+  sold: 'Sold',
+  dismantling: 'Dismantling',
+  incoming: 'Incoming',
 };
 
 const toneMap: Record<EngineStatusType, 'success' | 'warning' | 'muted' | 'primary' | 'default'> = {

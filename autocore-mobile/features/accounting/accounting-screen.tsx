@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { BarChart3Icon, type IconProps } from '@/assets/icons';
-import { EmptyState, Screen, ScreenScroll, Text, toast } from '@/components/ui';
+import { EmptyState, Screen, ScreenScroll, Text, toast, DemoModeBanner } from '@/components/ui';
 import { useEmployeesRealtime, useSession, useWorkOrdersRealtime } from '@/hooks';
 import { financialOperationRepository } from '@/services/firestore/financial-operation-repository';
 import { payrollTransactionRepository } from '@/services/firestore/payroll-transaction-repository';
@@ -274,11 +274,7 @@ export function AccountingScreen() {
         />
 
         <View style={{ paddingHorizontal: ac.pad, gap: ac.section, paddingBottom: ac.section }}>
-          {isDemo ? (
-            <Text variant="caption" color="muted" style={{ textAlign: 'center' }}>
-              Demo data · development mode only
-            </Text>
-          ) : !isProductionCompanyId(companyId) ? (
+          {isDemo ? <DemoModeBanner /> : !isProductionCompanyId(companyId) ? (
             <Text variant="caption" color="muted" style={{ textAlign: 'center' }}>
               Connect a company to see financial data
             </Text>

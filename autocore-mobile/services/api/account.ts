@@ -18,7 +18,7 @@ export async function uploadUserAvatar(uri: string): Promise<string> {
   );
   const photoURL = result.photoURL?.trim();
   if (!photoURL) {
-    throw new Error('Не удалось получить ссылку на фото');
+    throw new Error('Failed to get photo URL');
   }
 
   const user = getFirebaseAuth().currentUser;

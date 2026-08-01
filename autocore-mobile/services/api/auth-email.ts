@@ -27,11 +27,11 @@ async function postAuthEmailApi(path: string, token: string | null, body?: objec
   const payload = (await response.json().catch(() => null)) as AuthEmailApiError | null;
 
   if (response.status === 429) {
-    throw new Error(payload?.error ?? 'Подождите перед повторной отправкой');
+    throw new Error(payload?.error ?? 'Please wait before resending');
   }
 
   if (!response.ok) {
-    throw new Error(payload?.error ?? 'Не удалось выполнить запрос');
+    throw new Error(payload?.error ?? 'Failed to complete the request');
   }
 }
 
@@ -39,7 +39,7 @@ export async function sendVerificationEmailViaApi(): Promise<void> {
   const { getFirebaseAuth } = await import('@/services/firebase');
   const user = getFirebaseAuth().currentUser;
   if (!user) {
-    throw new Error('Требуется авторизация');
+    throw new Error('Authentication required');
   }
   const token = await user.getIdToken();
   await postAuthEmailApi('/api/auth/send-verification-email', token);
@@ -49,7 +49,7 @@ export async function verifyEmailCodeViaApi(code: string): Promise<void> {
   const { getFirebaseAuth } = await import('@/services/firebase');
   const user = getFirebaseAuth().currentUser;
   if (!user) {
-    throw new Error('Требуется авторизация');
+    throw new Error('Authentication required');
   }
   const token = await user.getIdToken();
   await postAuthEmailApi('/api/auth/verify-email-code', token, { code });
@@ -69,11 +69,11 @@ export async function sendPasswordResetViaApi(email: string): Promise<PasswordRe
   const payload = (await response.json().catch(() => null)) as AuthEmailApiError | null;
 
   if (response.status === 429) {
-    throw new Error(payload?.error ?? 'Подождите перед повторной отправкой');
+    throw new Error(payload?.error ?? 'Please wait before resending');
   }
 
   if (!response.ok) {
-    throw new Error(payload?.error ?? 'Не удалось отправить письмо для сброса пароля');
+    throw new Error(payload?.error ?? 'Failed to send the password reset email');
   }
 
   if (payload?.fallback === 'firebase') {

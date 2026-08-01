@@ -6,11 +6,9 @@ import { usePayrollTransactionsRealtime } from '@/hooks/use-payroll-transactions
 import { useSession } from '@/hooks/use-session';
 import { calculateCashBalance } from '@/lib/accounting/calculate-cash-balance';
 import { computeAccountingSnapshot } from '@/lib/accounting/compute-accounting-snapshot';
-import { isProductionCompanyId } from '@/lib/company-id';
 import type { FinancialOperation } from '@/types/financial-operation';
 import type { PayrollTransaction } from '@/types/payroll-transaction';
 
-import { demoAccountingSnapshot } from '../data/demo-accounting';
 import type { AccountingSnapshot } from '../types';
 import type { BalanceSnapshot } from '@/lib/accounting/calculate-cash-balance';
 
@@ -29,12 +27,14 @@ export type UseAccountingDataResult = {
   canEdit: boolean;
 };
 
+/**
+ * Live accounting only — never silently fill demo balances.
+ * Companies without data show empty state, not fake numbers.
+ */
 export function useAccountingData(): UseAccountingDataResult {
-  const { companyId, profile, can } = useSession();
+  const { companyId, can } = useSession();
   const accountingEnabled = useCompanyModuleEnabled('accounting');
-  const production = isProductionCompanyId(companyId);
   const canView = can('accounting_view') && accountingEnabled;
-  const allowDemoPreview = !production && __DEV__;
 
   const {
     operations,
@@ -50,37 +50,27 @@ export function useAccountingData(): UseAccountingDataResult {
     enabled: payrollEnabled,
   } = usePayrollTransactionsRealtime(companyId);
 
-  const isDemo = allowDemoPreview;
-  const isBootstrapping = production && (operationsLoading || payrollLoading);
-  const isEmpty =
-    (production && !isBootstrapping && operations.length === 0 && payroll.length === 0) ||
-    (!production && !allowDemoPreview);
+  const isDemo = false;
+  const isBootstrapping = Boolean(companyId) && (operationsLoading || payrollLoading);
+  const isEmpty = !isBootstrapping && operations.length === 0 && payroll.length === 0;
   const errorMessage = operationsError ?? payrollError;
   const canEdit = can('accounting_edit');
 
   const balanceSnapshot = useMemo<BalanceSnapshot>(() => {
-    if (production) return calculateCashBalance(operations);
-    if (allowDemoPreview) {
-      return {
-        cashbox: demoAccountingSnapshot.balance.available * 0.62,
-        kaspi: demoAccountingSnapshot.balance.available * 0.38,
-        total: demoAccountingSnapshot.balance.available,
-      };
-    }
-    return { cashbox: 0, kaspi: 0, total: 0 };
-  }, [allowDemoPreview, operations, production]);
+    if (!companyId) return { cashbox: 0, kaspi: 0, total: 0 };
+    return calculateCashBalance(operations);
+  }, [companyId, operations]);
 
-  const data = useMemo(() => {
-    if (production) return computeAccountingSnapshot({ operations, payroll });
-    if (allowDemoPreview) return demoAccountingSnapshot;
-    return computeAccountingSnapshot({ operations: [], payroll: [] });
-  }, [allowDemoPreview, operations, payroll, production]);
+  const data = useMemo(
+    () => computeAccountingSnapshot({ operations, payroll }),
+    [operations, payroll],
+  );
 
   return {
     data,
-    operations: production ? operations : [],
-    payroll: production ? payroll : [],
-    operationCount: production ? operations.length : allowDemoPreview ? demoAccountingSnapshot.transactions.length : 0,
+    operations,
+    payroll,
+    operationCount: operations.length,
     balanceSnapshot,
     isBootstrapping,
     isEmpty,

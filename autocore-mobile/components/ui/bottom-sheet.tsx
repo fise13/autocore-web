@@ -40,7 +40,7 @@ export const BottomSheet = forwardRef<GorhomBottomSheet, BottomSheetComponentPro
         backgroundStyle={sheet.backgroundStyle}
         {...props}
       >
-        <BottomSheetView style={{ padding: rhythm.pad, paddingBottom: sheet.scrollBottom }}>{children}</BottomSheetView>
+        <BottomSheetView style={{ padding: rhythm.pad, paddingBottom: sheet.sheetContentBottom }}>{children}</BottomSheetView>
       </GorhomBottomSheet>
     );
   },

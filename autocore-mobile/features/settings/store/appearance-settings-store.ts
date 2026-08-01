@@ -22,11 +22,11 @@ const DEFAULT_APPEARANCE: AppearanceSettings = {
 };
 
 export const ACCENT_COLORS: Record<AccentColorId, { label: string; hex: string }> = {
-  blue: { label: 'Синий', hex: '#2563eb' },
-  violet: { label: 'Фиолетовый', hex: '#7c3aed' },
-  emerald: { label: 'Изумруд', hex: '#059669' },
-  amber: { label: 'Янтарь', hex: '#d97706' },
-  rose: { label: 'Роза', hex: '#e11d48' },
+  blue: { label: 'Blue', hex: '#2563eb' },
+  violet: { label: 'Violet', hex: '#7c3aed' },
+  emerald: { label: 'Emerald', hex: '#059669' },
+  amber: { label: 'Amber', hex: '#d97706' },
+  rose: { label: 'Rose', hex: '#e11d48' },
 };
 
 export const useAppearanceSettingsStore = create<AppearanceSettingsState>()(

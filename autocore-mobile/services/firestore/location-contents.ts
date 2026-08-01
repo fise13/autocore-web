@@ -25,18 +25,18 @@ export async function fetchLocationContentsFromFirestore(params: {
   const companyId = normalizeCompanyId(params.companyId);
   const locationId = params.locationId.trim();
   if (!companyId || !locationId) {
-    throw new Error('Место не найдено');
+    throw new Error('Location not found');
   }
 
   const db = getFirebaseDb();
   const locationSnap = await getDoc(doc(db, 'warehouseLocations', locationId));
   if (!locationSnap.exists()) {
-    throw new Error('Место не найдено');
+    throw new Error('Location not found');
   }
 
   const locationData = locationSnap.data() as Record<string, unknown>;
   if (normalizeCompanyId(String(locationData.companyId ?? '')) !== companyId) {
-    throw new Error('Место не найдено');
+    throw new Error('Location not found');
   }
 
   const path = Array.isArray(locationData.path)

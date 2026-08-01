@@ -89,8 +89,8 @@ const registry = new Map<string, ScanResult>([
       id: 'shelf-a14',
       kind: 'shelf',
       code: 'A-14',
-      title: 'Полка A-14',
-      subtitle: 'Ряд A · Зона двигателей',
+      title: 'Shelf A-14',
+      subtitle: 'Row A · Engine zone',
       shelf: 'A-14',
       status: 'in_stock',
     },
@@ -101,8 +101,8 @@ const registry = new Map<string, ScanResult>([
       id: 'shelf-b08',
       kind: 'shelf',
       code: 'B-08',
-      title: 'Полка B-08',
-      subtitle: 'Ряд B · Дизель',
+      title: 'Shelf B-08',
+      subtitle: 'Row B · Diesel',
       shelf: 'B-08',
       status: 'in_stock',
     },
@@ -140,12 +140,12 @@ const registry = new Map<string, ScanResult>([
     {
       id: 'order-1842',
       kind: 'order',
-      code: '№1842',
-      title: 'Наряд №1842',
-      subtitle: 'Toyota 2AD · разбор',
+      code: '#1842',
+      title: 'Work Order #1842',
+      subtitle: 'Toyota 2AD · teardown',
       shelf: 'D-04',
       status: 'ready',
-      customer: 'Иван Петров',
+      customer: 'Ivan Petrov',
     },
   ],
   [
@@ -153,11 +153,11 @@ const registry = new Map<string, ScanResult>([
     {
       id: 'warranty-gr2041',
       kind: 'warranty',
-      code: 'ГР-2041',
-      title: 'Гарантия ГР-2041',
-      subtitle: 'EJ205 · Алексей Смирнов',
+      code: 'GR-2041',
+      title: 'Warranty GR-2041',
+      subtitle: 'EJ205 · Aleksey Smirnov',
       status: 'in_stock',
-      customer: 'Алексей Смирнов',
+      customer: 'Aleksey Smirnov',
     },
   ],
   [
@@ -165,11 +165,11 @@ const registry = new Map<string, ScanResult>([
     {
       id: 'invoice-441',
       kind: 'invoice',
-      code: 'СФ-441',
-      title: 'Счёт-фактура СФ-441',
-      subtitle: 'ООО АвтоТрейд',
+      code: 'INV-441',
+      title: 'Invoice INV-441',
+      subtitle: 'AvtoTrade LLC',
       price: 1_240_000,
-      customer: 'ООО АвтоТрейд',
+      customer: 'AvtoTrade LLC',
     },
   ],
   [
@@ -178,9 +178,9 @@ const registry = new Map<string, ScanResult>([
       id: 'client-smirnov',
       kind: 'customer',
       code: 'SMIRNOV',
-      title: 'Алексей Смирнов',
+      title: 'Aleksey Smirnov',
       subtitle: '+7 701 204 18 22',
-      customer: 'Алексей Смирнов',
+      customer: 'Aleksey Smirnov',
     },
   ],
   [
@@ -189,8 +189,8 @@ const registry = new Map<string, ScanResult>([
       id: 'part-mann',
       kind: 'part',
       code: 'W712/95',
-      title: 'Фильтр Mann W712/95',
-      subtitle: 'Масляный · 24 шт.',
+      title: 'Mann Filter W712/95',
+      subtitle: 'Oil filter · 24 pcs.',
       shelf: 'F-12',
       status: 'in_stock',
       price: 4_800,
@@ -199,9 +199,9 @@ const registry = new Map<string, ScanResult>([
 ]);
 
 export const recentScans: RecentScan[] = [
-  { id: 'r1', label: 'EJ205', time: '2 мин назад', payload: 'EJ205' },
-  { id: 'r2', label: 'OM651', time: '18 мин назад', payload: 'OM651' },
-  { id: 'r3', label: 'A-14', time: '1 ч назад', payload: 'A-14' },
+  { id: 'r1', label: 'EJ205', time: '2 min ago', payload: 'EJ205' },
+  { id: 'r2', label: 'OM651', time: '18 min ago', payload: 'OM651' },
+  { id: 'r3', label: 'A-14', time: '1 hr ago', payload: 'A-14' },
 ];
 
 function normalizePayload(raw: string): string {

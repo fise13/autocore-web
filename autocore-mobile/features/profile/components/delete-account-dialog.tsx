@@ -30,12 +30,12 @@ export function DeleteAccountDialog({
       onOpenChange={(next) => {
         if (!next) onCancel();
       }}
-      title="Подтвердите удаление"
-      description="Введите текущий пароль, чтобы навсегда удалить аккаунт."
+      title="Confirm deletion"
+      description="Enter your current password to permanently delete your account."
       footer={
         <View style={{ flexDirection: 'row', gap: 10, flex: 1 }}>
           <Button variant="secondary" disabled={loading} onPress={onCancel} style={{ flex: 1 }}>
-            Отмена
+            Cancel
           </Button>
           <Button
             disabled={loading}
@@ -43,7 +43,7 @@ export function DeleteAccountDialog({
             onPress={onConfirm}
             style={{ flex: 1, backgroundColor: colors.destructive, borderColor: colors.destructive }}
           >
-            Удалить
+            Delete
           </Button>
         </View>
       }
@@ -52,7 +52,7 @@ export function DeleteAccountDialog({
         <Input
           value={password}
           onChangeText={onPasswordChange}
-          placeholder="Текущий пароль"
+          placeholder="Current password"
           secureTextEntry
           autoCapitalize="none"
           autoCorrect={false}

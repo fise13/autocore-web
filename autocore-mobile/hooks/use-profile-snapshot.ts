@@ -11,31 +11,31 @@ import {
   UsersIcon,
 } from '@/assets/icons';
 import { useAuth } from '@/authentication/auth-provider';
-import { subscriptionHint } from '@/lib/billing/format-renewal';
+import { subscriptionHint } from '@/lib/subscriptions/format';
 import { useActiveCompanyName } from '@/hooks/use-active-company-name';
 import { resolveActiveCompanyName } from '@/lib/resolve-active-company-name';
 import { useSession } from '@/hooks/use-session';
-import { useCompanySubscription } from '@/hooks/use-company-subscription';
+import { useEntitlement } from '@/hooks/use-entitlement';
 import { useNotificationPreferences } from '@/hooks/use-notification-preferences';
 import { useUserPhotoUrl } from '@/hooks/use-user-photo';
 import { themePreferenceLabel, useTheme } from '@/hooks/use-theme';
 import type { ProfileSnapshot } from '@/features/profile/types';
 
 const ROLE_LABELS: Record<string, string> = {
-  owner: 'Владелец',
-  admin: 'Администратор',
-  manager: 'Менеджер',
-  accountant: 'Бухгалтер',
-  mechanic: 'Механик',
-  diagnostician: 'Диагност',
-  employee: 'Сотрудник',
+  owner: 'Owner',
+  admin: 'Admin',
+  manager: 'Manager',
+  accountant: 'Accountant',
+  mechanic: 'Mechanic',
+  diagnostician: 'Diagnostician',
+  employee: 'Employee',
 };
 
 function resolveProviderLabel(providerIds: string[]): string {
   if (providerIds.includes('google.com')) return 'Google';
   if (providerIds.includes('apple.com')) return 'Apple';
   if (providerIds.includes('password')) return 'Email';
-  return 'Аккаунт';
+  return 'Account';
 }
 
 export function useProfileSnapshot(): ProfileSnapshot {
@@ -44,19 +44,19 @@ export function useProfileSnapshot(): ProfileSnapshot {
   const { profile } = useSession();
   const { preference } = useTheme();
   const photoURL = useUserPhotoUrl();
-  const { subscription, isPro } = useCompanySubscription(profile?.companyId);
+  const { entitlement, isPro } = useEntitlement();
   const { preferences: notificationPreferences } = useNotificationPreferences();
 
   return useMemo(() => {
     const providerIds = firebaseUser?.providerData.map((entry) => entry.providerId) ?? [];
-    const planLabel = isPro ? 'Pro' : 'Бесплатный';
+    const planLabel = isPro ? 'Pro' : 'Free';
 
     return {
       user: {
         id: profile?.id ?? firebaseUser?.uid ?? '',
-        name: profile?.displayName?.trim() || 'Пользователь',
+        name: profile?.displayName?.trim() || 'User',
         email: profile?.email ?? firebaseUser?.email ?? '',
-        role: ROLE_LABELS[profile?.role ?? 'employee'] ?? 'Сотрудник',
+        role: ROLE_LABELS[profile?.role ?? 'employee'] ?? 'Employee',
         company: companyName,
         loginProvider: resolveProviderLabel(providerIds),
         photoURL,
@@ -66,52 +66,52 @@ export function useProfileSnapshot(): ProfileSnapshot {
       quickActions: [
         {
           id: 'edit-profile',
-          title: 'Редактировать профиль',
-          subtitle: 'Имя, телефон, фото',
+          title: 'Edit profile',
+          subtitle: 'Name, phone, photo',
           icon: UserRoundIcon,
         },
         {
           id: 'company',
-          title: 'Компания',
+          title: 'Company',
           subtitle: companyName,
           icon: StoreIcon,
         },
         {
           id: 'subscription',
-          title: 'Подписка',
-          subtitle: subscriptionHint(subscription, isPro),
+          title: 'Subscription',
+          subtitle: subscriptionHint(entitlement),
           icon: ReceiptIcon,
         },
         {
           id: 'team',
-          title: 'Команда',
-          subtitle: isPro ? 'Сотрудники и приглашения' : 'Доступно на Pro',
+          title: 'Team',
+          subtitle: isPro ? 'Employees and invitations' : 'Available on Pro',
           icon: UsersIcon,
         },
       ],
       preferences: [
         {
           id: 'appearance',
-          title: 'Оформление',
+          title: 'Appearance',
           value: themePreferenceLabel(preference),
           icon: SparklesIcon,
         },
         {
           id: 'language',
-          title: 'Язык',
-          value: 'Русский',
+          title: 'Language',
+          value: 'English',
           icon: SettingsIcon,
         },
         {
           id: 'currency',
-          title: 'Валюта',
+          title: 'Currency',
           value: 'KZT',
           icon: CoinsIcon,
         },
         {
           id: 'notifications',
-          title: 'Уведомления',
-          value: notificationPreferences.channels.push ? 'Включены' : 'Выключены',
+          title: 'Notifications',
+          value: notificationPreferences.channels.push ? 'On' : 'Off',
           icon: BellIcon,
         },
       ],
@@ -121,15 +121,15 @@ export function useProfileSnapshot(): ProfileSnapshot {
         value:
           membership.companyId === profile?.companyId
             ? isPro
-              ? 'Активно · Pro'
-              : 'Активно'
+              ? 'Active · Pro'
+              : 'Active'
             : membership.role,
         companyId: membership.companyId,
       })),
       dangerZone: [
-        { id: 'sign-out', title: 'Выйти из аккаунта' },
-        { id: 'delete-account', title: 'Удалить аккаунт' },
+        { id: 'sign-out', title: 'Sign out' },
+        { id: 'delete-account', title: 'Delete account' },
       ],
     };
-  }, [companyName, firebaseUser?.email, firebaseUser?.providerData, isPro, memberships, notificationPreferences.channels.push, photoURL, preference, profile, subscription]);
+  }, [companyName, firebaseUser?.email, firebaseUser?.providerData, isPro, memberships, notificationPreferences.channels.push, photoURL, preference, profile, entitlement]);
 }

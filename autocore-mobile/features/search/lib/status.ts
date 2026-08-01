@@ -1,12 +1,12 @@
 import type { InventoryStatus } from '../types';
 
 export const statusLabel: Record<InventoryStatus, string> = {
-  in_stock: 'В наличии',
-  reserved: 'В резерве',
-  sold: 'Продан',
-  deficit: 'Дефицит',
-  ready: 'Готов к выдаче',
-  pending_delivery: 'Ожидает поставку',
+  in_stock: 'In Stock',
+  reserved: 'Reserved',
+  sold: 'Sold',
+  deficit: 'Backordered',
+  ready: 'Ready for Pickup',
+  pending_delivery: 'Awaiting Delivery',
 };
 
 export const statusVariant: Record<

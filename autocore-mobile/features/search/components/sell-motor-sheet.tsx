@@ -61,7 +61,7 @@ export const SellMotorSheet = forwardRef<SellMotorSheetRef, SellMotorSheetProps>
       setClientId(undefined);
       setClientName('');
       setClientPhone('');
-      setComment(`Продажа · ${nextMotor.serialCode}`);
+      setComment(`Sale · ${nextMotor.serialCode}`);
       setError(null);
       setSubmitting(false);
     }, []);
@@ -103,15 +103,15 @@ export const SellMotorSheet = forwardRef<SellMotorSheetRef, SellMotorSheetProps>
 
       const parsedAmount = parseAmountInput(amount);
       if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-        setError('Введите корректную сумму');
+        setError('Enter a valid amount');
         return;
       }
       if (clientName.trim().length < 2) {
-        setError('Укажите имя покупателя');
+        setError('Enter the buyer\'s name');
         return;
       }
       if (clientPhone.trim().length < 3) {
-        setError('Укажите телефон покупателя');
+        setError('Enter the buyer\'s phone number');
         return;
       }
 
@@ -139,7 +139,7 @@ export const SellMotorSheet = forwardRef<SellMotorSheetRef, SellMotorSheetProps>
         sheetRef.current?.dismiss();
       } catch (nextError) {
         haptics.warning();
-        setError(nextError instanceof Error ? nextError.message : 'Не удалось продать мотор');
+        setError(nextError instanceof Error ? nextError.message : 'Failed to sell the motor');
       } finally {
         setSubmitting(false);
       }
@@ -163,7 +163,7 @@ export const SellMotorSheet = forwardRef<SellMotorSheetRef, SellMotorSheetProps>
         >
           <View style={{ gap: 4 }}>
             <Text variant="heading" style={{ fontSize: 20, fontWeight: '700' }}>
-              Продажа мотора
+              Sell motor
             </Text>
             {motor ? (
               <Text variant="caption" color="muted" style={{ fontSize: 13, lineHeight: 18 }}>
@@ -175,7 +175,7 @@ export const SellMotorSheet = forwardRef<SellMotorSheetRef, SellMotorSheetProps>
 
           <View style={{ gap: 6 }}>
             <Text variant="caption" color="muted">
-              Сумма
+              Amount
             </Text>
             <Input
               value={amount}
@@ -189,7 +189,7 @@ export const SellMotorSheet = forwardRef<SellMotorSheetRef, SellMotorSheetProps>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <View style={{ flex: 1, gap: 6 }}>
               <Text variant="caption" color="muted">
-                Счёт
+                Account
               </Text>
               <Dropdown
                 value={account}
@@ -199,7 +199,7 @@ export const SellMotorSheet = forwardRef<SellMotorSheetRef, SellMotorSheetProps>
             </View>
             <View style={{ flex: 1, gap: 6 }}>
               <Text variant="caption" color="muted">
-                Оплата
+                Payment
               </Text>
               <Dropdown
                 value={paymentMethod}
@@ -211,7 +211,7 @@ export const SellMotorSheet = forwardRef<SellMotorSheetRef, SellMotorSheetProps>
 
           <View style={{ gap: 6 }}>
             <Text variant="caption" color="muted">
-              Покупатель
+              Buyer
             </Text>
             <AutocompleteInput
               value={clientName}
@@ -222,14 +222,14 @@ export const SellMotorSheet = forwardRef<SellMotorSheetRef, SellMotorSheetProps>
                 setClientId(undefined);
               }}
               onOptionSelect={selectClientByName}
-              placeholder="Имя"
+              placeholder="Name"
               matchMode="flexible"
             />
           </View>
 
           <View style={{ gap: 6 }}>
             <Text variant="caption" color="muted">
-              Телефон
+              Phone
             </Text>
             <AutocompleteInput
               value={clientPhone}
@@ -240,7 +240,7 @@ export const SellMotorSheet = forwardRef<SellMotorSheetRef, SellMotorSheetProps>
                 setClientId(undefined);
               }}
               onOptionSelect={selectClientByPhone}
-              placeholder="+7…"
+              placeholder="+1…"
               keyboardType="phone-pad"
               matchMode="flexible"
             />
@@ -249,7 +249,7 @@ export const SellMotorSheet = forwardRef<SellMotorSheetRef, SellMotorSheetProps>
           {clients.length > 0 ? (
             <View style={{ gap: 8 }}>
               <Text variant="caption" color="muted">
-                Недавние клиенты
+                Recent clients
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {clients.slice(0, 4).map((client) => {
@@ -294,12 +294,12 @@ export const SellMotorSheet = forwardRef<SellMotorSheetRef, SellMotorSheetProps>
 
           <View style={{ gap: 6 }}>
             <Text variant="caption" color="muted">
-              Комментарий
+              Comment
             </Text>
             <Input
               value={comment}
               onChangeText={setComment}
-              placeholder="Комментарий к продаже"
+              placeholder="Comment on the sale"
               multiline
               rows={3}
             />
@@ -312,7 +312,7 @@ export const SellMotorSheet = forwardRef<SellMotorSheetRef, SellMotorSheetProps>
           ) : null}
 
           <Button loading={submitting} disabled={submitting || !motor} onPress={() => void onSubmit()}>
-            Продать
+            Sell
           </Button>
         </BottomSheetScrollView>
       </BottomSheetModal>

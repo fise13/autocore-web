@@ -29,7 +29,7 @@ function resolveInboxContext(): { userId: string; companyId: string } {
   const auth = useAuthStore.getState();
   const userId = auth.firebaseUser?.uid ?? getFirebaseAuth().currentUser?.uid;
   if (!userId) {
-    throw new MobileApiError('Требуется авторизация', 401);
+    throw new MobileApiError('Authorization required', 401);
   }
 
   const companyId =
@@ -37,7 +37,7 @@ function resolveInboxContext(): { userId: string; companyId: string } {
     normalizeCompanyId(auth.profile?.companyId);
 
   if (!isProductionCompanyId(companyId)) {
-    throw new MobileApiError('Сначала присоединитесь к компании', 403);
+    throw new MobileApiError('Join a company first', 403);
   }
 
   return { userId, companyId };
@@ -48,7 +48,7 @@ function mapSyncError(error: unknown): MobileApiError {
   if (error instanceof Error) {
     return new MobileApiError(error.message, 500);
   }
-  return new MobileApiError('Не удалось загрузить уведомления', 500);
+  return new MobileApiError('Failed to load notifications', 500);
 }
 
 function applyInboxPayload(items: ReturnType<typeof fromServerRecord>[], unreadCount: number): void {

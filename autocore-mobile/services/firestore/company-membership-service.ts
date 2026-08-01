@@ -208,7 +208,7 @@ async function resolveCompanyAccess(
   const isOwner = companySnap.exists() && String(companySnap.data()?.ownerId ?? '') === userId;
 
   if (employeeData?.isActive === false && !isOwner) {
-    throw new Error('Нет доступа к этой компании');
+    throw new Error('No access to this company');
   }
 
   let role: UserRole = 'employee';
@@ -219,7 +219,7 @@ async function resolveCompanyAccess(
   } else if (isOwner) {
     role = 'owner';
   } else {
-    throw new Error('Нет доступа к этой компании');
+    throw new Error('No access to this company');
   }
 
   const permissions = Array.isArray(employeeData?.permissions) ? employeeData.permissions : [];

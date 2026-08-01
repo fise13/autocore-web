@@ -12,7 +12,7 @@ export async function joinCompanyWithInviteCode(
 ): Promise<void> {
   const inviteCode = rawCode.trim();
   if (!inviteCode) {
-    throw new Error('Укажите код приглашения');
+    throw new Error('Enter an invite code');
   }
 
   try {

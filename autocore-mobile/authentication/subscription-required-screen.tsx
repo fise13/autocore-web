@@ -1,11 +1,4 @@
-import { Linking, View } from 'react-native';
-import { Image } from 'expo-image';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { Button, Text } from '@/components/ui';
-import { useTheme } from '@/hooks';
-import { getWebAppUrl, WEB_SUBSCRIPTION_PATH } from '@/lib/app-web-url';
-import { rhythm } from '@/theme';
+import { PaywallScreen } from '@/features/subscription';
 
 import { useAuth } from './auth-provider';
 
@@ -15,74 +8,25 @@ type SubscriptionRequiredScreenProps = {
 };
 
 /**
- * Minimal subscription gate — no payment UI.
- * Billing is managed on the web app only.
+ * The gate shown to a signed-in user whose workspace has no active subscription.
+ *
+ * It *is* the paywall rather than a dead end pointing at the website: on iOS,
+ * directing the user to an external purchase mechanism is what guideline 3.1.1
+ * prohibits, and it was also simply a worse experience. The purchase happens
+ * here, in-app, through StoreKit.
  */
 export function SubscriptionRequiredScreen({
   onRefresh,
   refreshing = false,
 }: SubscriptionRequiredScreenProps) {
-  const { colors } = useTheme();
   const { signOut } = useAuth();
 
-  const openWebsite = () => {
-    void Linking.openURL(getWebAppUrl(WEB_SUBSCRIPTION_PATH));
-  };
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View
-        style={{
-          flex: 1,
-          paddingHorizontal: rhythm.pad,
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: rhythm.section,
-        }}
-      >
-        <Image
-          source={require('../assets/branding/login-logo.png')}
-          style={{ width: rhythm.logo, height: rhythm.logo }}
-          contentFit="contain"
-          accessibilityLabel="AutoCore"
-        />
-
-        <View style={{ gap: rhythm.stack, alignItems: 'center', maxWidth: 320 }}>
-          <Text
-            variant="pageTitle"
-            style={{
-              textAlign: 'center',
-              color: colors.foreground,
-              fontSize: 22,
-              lineHeight: 30,
-            }}
-          >
-            An active subscription is required to continue.
-          </Text>
-          <Text
-            variant="pageSubtitle"
-            style={{
-              textAlign: 'center',
-              color: colors.mutedForeground,
-              lineHeight: 20,
-            }}
-          >
-            Subscription management is available on the website.
-          </Text>
-        </View>
-
-        <View style={{ width: '100%', maxWidth: 320, gap: rhythm.inline }}>
-          <Button onPress={openWebsite}>Open website</Button>
-          {onRefresh ? (
-            <Button variant="secondary" loading={refreshing} onPress={onRefresh}>
-              Refresh status
-            </Button>
-          ) : null}
-          <Button variant="ghost" onPress={() => void signOut()}>
-            Sign out
-          </Button>
-        </View>
-      </View>
-    </SafeAreaView>
+    <PaywallScreen
+      variant="gate"
+      onRefresh={onRefresh}
+      refreshing={refreshing}
+      onSignOut={() => void signOut()}
+    />
   );
 }

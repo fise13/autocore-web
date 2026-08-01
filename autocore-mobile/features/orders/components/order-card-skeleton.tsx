@@ -3,51 +3,46 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 
 import { Skeleton } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/hooks';
-import { autocoreEase, duration, rhythm } from '@/theme';
+import { autocoreEase, duration } from '@/theme';
 
-import { ordersLayout } from '../layout';
+import { wo, woFlatCard } from '../theme/wo-visual';
 
 type OrderCardSkeletonProps = {
   index?: number;
 };
 
+/** Mirrors `OrderCard`'s block structure so nothing shifts when data lands. */
 export function OrderCardSkeleton({ index = 0 }: OrderCardSkeletonProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const reducedMotion = useReducedMotion();
 
   const entering = reducedMotion
     ? undefined
     : FadeInUp.duration(duration.medium)
-        .delay(80 + index * 70)
+        .delay(60 + index * 50)
         .easing(autocoreEase);
 
   return (
     <Animated.View
       entering={entering}
       style={{
-        borderRadius: ordersLayout.cardRadius,
-        borderWidth: ordersLayout.hairline,
-        borderColor: colors.border,
-        backgroundColor: colors.card,
-        paddingHorizontal: rhythm.cardPadX,
-        paddingVertical: rhythm.cardPadY,
-        gap: rhythm.inline,
+        ...woFlatCard(colors, { isDark }),
+        paddingHorizontal: wo.cardPadX,
+        paddingVertical: wo.cardPadY,
+        gap: 10,
       }}
     >
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: rhythm.inline,
-        }}
-      >
-        <View style={{ flex: 1, gap: rhythm.tight }}>
-          <Skeleton width="42%" height={18} rounded="sm" />
-          <Skeleton width="68%" height={14} />
-          <Skeleton width="36%" height={12} />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Skeleton width={96} height={21} rounded="full" />
+        <Skeleton width={78} height={11} />
+      </View>
+
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+        <View style={{ flex: 1, gap: 5 }}>
+          <Skeleton width="62%" height={17} />
+          <Skeleton width="80%" height={13} />
         </View>
-        <Skeleton width={76} height={24} rounded="full" />
+        <Skeleton width={72} height={17} />
       </View>
 
       <View
@@ -55,11 +50,16 @@ export function OrderCardSkeleton({ index = 0 }: OrderCardSkeletonProps) {
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: rhythm.inline,
+          paddingTop: 10,
+          borderTopWidth: wo.rule,
+          borderTopColor: colors.border,
         }}
       >
-        <Skeleton width="58%" height={14} />
-        <Skeleton width={72} height={14} />
+        <Skeleton width={104} height={22} rounded="full" />
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Skeleton width={wo.quickAction} height={wo.quickAction} rounded="full" />
+          <Skeleton width={wo.quickAction} height={wo.quickAction} rounded="full" />
+        </View>
       </View>
     </Animated.View>
   );
@@ -69,12 +69,12 @@ type OrdersLoadingStateProps = {
   count?: number;
 };
 
-export function OrdersLoadingState({ count = 3 }: OrdersLoadingStateProps) {
+export function OrdersLoadingState({ count = 4 }: OrdersLoadingStateProps) {
   return (
     <View
       accessibilityRole="progressbar"
-      accessibilityLabel="Загружаем наряды"
-      style={{ gap: rhythm.inline }}
+      accessibilityLabel="Loading orders"
+      style={{ gap: wo.rowGap }}
     >
       {Array.from({ length: count }, (_, index) => (
         <OrderCardSkeleton key={index} index={index} />

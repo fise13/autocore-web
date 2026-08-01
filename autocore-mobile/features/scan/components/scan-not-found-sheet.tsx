@@ -1,13 +1,18 @@
 import { forwardRef } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 
-import { Text } from '@/components/ui';
-import { useModalBottomSheet, useTheme } from '@/hooks';
-import { haptics } from '@/theme';
+import { useModalBottomSheet } from '@/hooks';
 
 import { scanSheetAnimationConfigs } from '../animation/scan-sheet-motion';
 import { isHttpUrl } from '../lib/classify-payload';
+import { scanLayout } from '../layout';
+import {
+  ScanSheetHairline,
+  ScanSheetHeader,
+  ScanSheetPrimaryButton,
+  ScanSheetRow,
+} from './scan-sheet-chrome';
 
 type ScanNotFoundSheetProps = {
   payload: string | null;
@@ -20,53 +25,6 @@ type ScanNotFoundSheetProps = {
   onCancel: () => void;
   onDismiss: () => void;
 };
-
-function OptionButton({
-  label,
-  onPress,
-  primary,
-  disabled,
-}: {
-  label: string;
-  onPress: () => void;
-  primary?: boolean;
-  disabled?: boolean;
-}) {
-  const { colors } = useTheme();
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={disabled}
-      onPress={() => {
-        if (disabled) return;
-        haptics.light();
-        onPress();
-      }}
-      style={{
-        minHeight: 50,
-        borderRadius: 14,
-        paddingHorizontal: 16,
-        justifyContent: 'center',
-        opacity: disabled ? 0.5 : 1,
-        backgroundColor: primary ? colors.primary : colors.secondary,
-        borderWidth: primary ? 0 : 1,
-        borderColor: colors.border,
-      }}
-    >
-      <Text
-        variant="body"
-        style={{
-          fontSize: 15,
-          fontWeight: '600',
-          color: primary ? colors.primaryForeground : colors.foreground,
-        }}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
 
 export const ScanNotFoundSheet = forwardRef<BottomSheetModal, ScanNotFoundSheetProps>(
   function ScanNotFoundSheet(
@@ -88,7 +46,7 @@ export const ScanNotFoundSheet = forwardRef<BottomSheetModal, ScanNotFoundSheetP
     const modalProps = {
       ...sheet.sheetLayout,
       index: 0 as const,
-      snapPoints: sheet.compactSnapPoints(orderContext ? 40 : 44),
+      snapPoints: sheet.compactSnapPoints(orderContext ? 42 : 46),
       enablePanDownToClose: true,
       onDismiss,
       backdropComponent: sheet.renderBackdrop,
@@ -105,7 +63,6 @@ export const ScanNotFoundSheet = forwardRef<BottomSheetModal, ScanNotFoundSheetP
       }
     }
 
-    // Single modal instance — early-return trees remount the portal and can leave a stuck backdrop.
     return (
       <BottomSheetModal ref={ref} {...modalProps}>
         {!payload ? (
@@ -113,40 +70,49 @@ export const ScanNotFoundSheet = forwardRef<BottomSheetModal, ScanNotFoundSheetP
             <View />
           </BottomSheetView>
         ) : (
-          <BottomSheetView style={{ ...sheet.compactContentStyle, gap: 16 }}>
-            <View style={{ gap: 6 }}>
-              <Text variant="heading" style={{ fontSize: 22, fontWeight: '700', letterSpacing: -0.3 }}>
-                {isUrl ? 'Внешняя ссылка' : 'Товар не найден'}
-              </Text>
-              <Text variant="caption" color="muted" numberOfLines={2} style={{ fontVariant: ['tabular-nums'] }}>
-                {isUrl ? host : payload}
-              </Text>
-            </View>
+          <BottomSheetView
+            style={{
+              ...sheet.compactContentStyle,
+              paddingHorizontal: scanLayout.sheetPadX,
+              gap: 8,
+            }}
+          >
+            <ScanSheetHeader
+              title={isUrl ? 'External link' : 'Not found'}
+              meta={isUrl ? host : payload}
+            />
 
-            {isUrl && onOpenUrl ? <OptionButton label="Открыть ссылку" onPress={onOpenUrl} primary /> : null}
+            <View style={{ height: 8 }} />
+
+            {isUrl && onOpenUrl ? (
+              <ScanSheetPrimaryButton label="Open link" onPress={onOpenUrl} />
+            ) : null}
 
             {!isUrl ? (
               <>
-                <OptionButton
-                  label={orderContext ? 'Создать товар на складе' : 'Создать новый товар'}
+                <ScanSheetPrimaryButton
+                  label={orderContext ? 'Create item' : 'Create item'}
                   onPress={onCreateItem}
-                  primary
                 />
-                <OptionButton
-                  label={orderContext ? 'Добавить как произвольную запчасть' : 'Рассмотреть как запчасть'}
+                <ScanSheetHairline />
+                <ScanSheetRow
+                  label={orderContext ? 'Add as custom part' : 'Match as part'}
                   onPress={onAddAsSpecific}
                 />
                 {!orderContext && onTryAi ? (
-                  <OptionButton
-                    label={isAiLoading ? 'Ищем…' : 'Уточнить с AI'}
-                    onPress={onTryAi}
-                    disabled={isAiLoading}
-                  />
+                  <>
+                    <ScanSheetHairline />
+                    <ScanSheetRow
+                      label={isAiLoading ? 'Searching…' : 'Refine with AI'}
+                      onPress={onTryAi}
+                    />
+                  </>
                 ) : null}
               </>
             ) : null}
 
-            <OptionButton label="Отмена" onPress={onCancel} />
+            <ScanSheetHairline />
+            <ScanSheetRow label="Cancel" onPress={onCancel} />
           </BottomSheetView>
         )}
       </BottomSheetModal>

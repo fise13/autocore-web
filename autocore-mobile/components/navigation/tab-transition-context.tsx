@@ -61,10 +61,17 @@ export function TabTransitionProvider({ children }: { children: ReactNode }) {
   return <TabTransitionContext.Provider value={value}>{children}</TabTransitionContext.Provider>;
 }
 
-export function useTabTransition() {
-  const context = useContext(TabTransitionContext);
-  if (!context) {
-    throw new Error('useTabTransition must be used within TabTransitionProvider');
-  }
-  return context;
+/**
+ * Direction bookkeeping is optional: the native tab bar animates its own
+ * switches, and `useNavigateTab` is also called from root-level screens that
+ * sit outside the tab navigator. Missing provider means "no transition", not
+ * a crash.
+ */
+const NO_TRANSITION: TabTransitionContextValue = {
+  beginTransition: () => {},
+  takeTransitionFor: () => 0,
+};
+
+export function useTabTransition(): TabTransitionContextValue {
+  return useContext(TabTransitionContext) ?? NO_TRANSITION;
 }

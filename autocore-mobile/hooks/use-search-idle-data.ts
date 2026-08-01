@@ -11,10 +11,10 @@ import { mapInventoryItemToSearchEngine } from '@/lib/search/map-inventory-to-se
 import { mapMotorToSearchResult } from '@/lib/search/map-motor-to-search';
 
 const QUICK_CATEGORIES: QuickCategory[] = [
-  { id: 'parts', label: 'Склад' },
-  { id: 'motors', label: 'Моторы' },
-  { id: 'clients', label: 'Клиенты' },
-  { id: 'orders', label: 'Заказы' },
+  { id: 'parts', label: 'Inventory' },
+  { id: 'motors', label: 'Motors' },
+  { id: 'clients', label: 'Clients' },
+  { id: 'orders', label: 'Orders' },
 ];
 
 export function useSearchIdleData(companyId: string | null | undefined) {

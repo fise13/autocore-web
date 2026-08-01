@@ -37,13 +37,13 @@ export async function sellMotor(input: SellMotorInput): Promise<SellMotorResult>
   const clientPhone = input.clientPhone.trim();
 
   if (clientName.length < 2) {
-    throw new Error('Укажите имя покупателя');
+    throw new Error('Enter the buyer\'s name');
   }
   if (clientPhone.length < 3) {
-    throw new Error('Укажите телефон покупателя');
+    throw new Error('Enter the buyer\'s phone number');
   }
   if (!Number.isFinite(input.amount) || input.amount <= 0) {
-    throw new Error('Введите корректную сумму');
+    throw new Error('Enter a valid amount');
   }
 
   const existing =
@@ -66,7 +66,7 @@ export async function sellMotor(input: SellMotorInput): Promise<SellMotorResult>
     }));
 
   const saleComment =
-    input.comment?.trim() || `Продажа · ${input.motor.serialCode} · ${client.fullName}`;
+    input.comment?.trim() || `Sale · ${input.motor.serialCode} · ${client.fullName}`;
 
   const motorId = await motorRepository.sell(input.uid, {
     ...input.motor,

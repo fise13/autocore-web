@@ -9,10 +9,10 @@ import {
 import type { AccountingSnapshot } from '@/features/accounting/types';
 
 export const accountingQuickActions: AccountingSnapshot['quickActions'] = [
-  { id: 'invoice', label: 'Счёт', icon: FileTextIcon, primary: true },
-  { id: 'payment', label: 'Оплата', icon: CoinsIcon },
-  { id: 'expense', label: 'Расход', icon: ReceiptIcon },
-  { id: 'salary', label: 'Зарплата', icon: UsersIcon },
-  { id: 'export', label: 'Экспорт', icon: TrendingUpIcon },
-  { id: 'transfer', label: 'Перевод', icon: PackageIcon },
+  { id: 'invoice', label: 'Invoice', icon: FileTextIcon, primary: true },
+  { id: 'payment', label: 'Payment', icon: CoinsIcon },
+  { id: 'expense', label: 'Expense', icon: ReceiptIcon },
+  { id: 'salary', label: 'Payroll', icon: UsersIcon },
+  { id: 'export', label: 'Export', icon: TrendingUpIcon },
+  { id: 'transfer', label: 'Transfer', icon: PackageIcon },
 ];

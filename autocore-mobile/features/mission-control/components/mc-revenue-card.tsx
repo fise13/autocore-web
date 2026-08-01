@@ -33,7 +33,7 @@ export const McRevenueCard = memo(function McRevenueCard({ revenue }: McRevenueC
   const hasTodaySummary =
     revenue.todayIncome != null && revenue.todayExpense != null && revenue.todayNet != null;
   const todayHint = hasTodaySummary
-    ? `Сегодня: ${formatMoney(revenue.todayNet!)} · доход ${formatMoney(revenue.todayIncome!)} · расход ${formatMoney(revenue.todayExpense!)}`
+    ? `Today: ${formatMoney(revenue.todayNet!)} · income ${formatMoney(revenue.todayIncome!)} · expense ${formatMoney(revenue.todayExpense!)}`
     : null;
 
   const navigate = useCallback(() => {

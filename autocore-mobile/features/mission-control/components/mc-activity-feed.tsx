@@ -67,7 +67,7 @@ const ActivityRow = memo(function ActivityRow({
     <Animated.View entering={reveal ? revealEntering : undefined} style={reveal ? undefined : enterStyle}>
       <McPressable
         accessibilityRole="button"
-        accessibilityHint="Открыть наряд"
+        accessibilityHint="Open work order"
         onPress={onPress}
         style={{
           flexDirection: 'row',
@@ -167,8 +167,8 @@ export const McActivityFeed = memo(function McActivityFeed({ items }: McActivity
     <View>
       <Animated.View style={titleStyle}>
         <McSectionTitle
-          title="Недавнее"
-          actionLabel={canExpand ? (expanded ? 'Свернуть' : 'Все') : undefined}
+          title="Recent"
+          actionLabel={canExpand ? (expanded ? 'Collapse' : 'All') : undefined}
           onAction={canExpand ? toggleExpand : undefined}
         />
       </Animated.View>
@@ -184,7 +184,7 @@ export const McActivityFeed = memo(function McActivityFeed({ items }: McActivity
             }}
           >
             <Text variant="caption" color="muted" style={{ ...mcType.rowMeta, textAlign: 'center' }}>
-              Пока тихо — события появятся после действий в нарядах.
+              Nothing yet — activity will appear here once you start working orders.
             </Text>
           </View>
         </Animated.View>
@@ -223,7 +223,7 @@ export const McActivityFeed = memo(function McActivityFeed({ items }: McActivity
               }}
             >
               <Text variant="meta" color="muted" style={mcType.rowMeta}>
-                {items.length} {items.length === 1 ? 'событие' : items.length < 5 ? 'события' : 'событий'}
+                {items.length} {items.length === 1 ? 'event' : 'events'}
               </Text>
             </Animated.View>
           ) : null}

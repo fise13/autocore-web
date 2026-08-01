@@ -26,7 +26,7 @@ import { wh } from './layout';
 
 export function WarehouseScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ lowStock?: string }>();
+  const params = useLocalSearchParams<{ lowStock?: string; q?: string }>();
   const { profile, can } = useSession();
   const companyId = profile?.companyId?.trim() || null;
   const warehouseEnabled = useCompanyModuleEnabled('warehouse');
@@ -37,7 +37,7 @@ export function WarehouseScreen() {
   const { getDisplayAvailable, adjust, flush } = useOptimisticStockAdjust(companyId);
   const reconnectRealtime = useRealtimeReconnect();
 
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => (typeof params.q === 'string' ? params.q : ''));
   const [filter, setFilter] = useState<WarehouseFilter>(params.lowStock === '1' ? 'low' : 'all');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -71,6 +71,12 @@ export function WarehouseScreen() {
   useEffect(() => {
     if (params.lowStock === '1') setFilter('low');
   }, [params.lowStock]);
+
+  useEffect(() => {
+    if (typeof params.q === 'string' && params.q.length > 0) {
+      setQuery(params.q);
+    }
+  }, [params.q]);
 
   const activeItems = useMemo(
     () => items.filter((item) => item.status === 'active'),

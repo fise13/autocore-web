@@ -11,7 +11,7 @@ export function AppearanceScreen() {
   const { preference, setPreference } = useTheme();
 
   return (
-    <ProfileScreenShell title="Оформление" subtitle="Светлая, тёмная или системная тема">
+    <ProfileScreenShell title="Appearance" subtitle="Light, dark, or system theme">
       <ProfileMetaCard delay={80}>
         <ProfileSegmentedControl
           value={preference}
@@ -22,7 +22,7 @@ export function AppearanceScreen() {
       </ProfileMetaCard>
       <ProfileMetaCard delay={140}>
         <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-          Системная тема подстраивается под настройки устройства.
+          System theme follows your device settings.
         </Text>
       </ProfileMetaCard>
     </ProfileScreenShell>

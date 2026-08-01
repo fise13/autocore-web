@@ -12,7 +12,7 @@ export type RelocateScanTarget =
 export function interpretRelocateScan(payload: string): RelocateScanTarget {
   const raw = payload.trim();
   if (!raw) {
-    return { kind: 'reject', reason: 'Пустой код', payload };
+    return { kind: 'reject', reason: 'Empty code', payload };
   }
 
   const classified = classifyScanPayload(raw);
@@ -23,17 +23,17 @@ export function interpretRelocateScan(payload: string): RelocateScanTarget {
     }
     return {
       kind: 'reject',
-      reason: 'Нужен QR места, а не другой сущности',
+      reason: 'Scan a location QR, not another entity',
       payload: raw,
     };
   }
 
   if (classified.type === 'vin') {
-    return { kind: 'reject', reason: 'Отсканируйте место, не VIN', payload: raw };
+    return { kind: 'reject', reason: 'Scan a location, not a VIN', payload: raw };
   }
 
   if (classified.type === 'url') {
-    return { kind: 'reject', reason: 'Отсканируйте QR места или код ячейки', payload: raw };
+    return { kind: 'reject', reason: 'Scan a location QR or cell code', payload: raw };
   }
 
   // product-barcode and free-form codes — treat as location display code.

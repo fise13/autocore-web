@@ -59,9 +59,9 @@ export function buildAdvanceSnapshot(operations: FinancialOperation[]): AdvanceS
 }
 
 export function advanceDirectionLabel(direction: AdvanceDirection): string {
-  if (direction === 'received') return 'Получено';
-  if (direction === 'paid') return 'Выдано';
-  return 'Все';
+  if (direction === 'received') return 'Received';
+  if (direction === 'paid') return 'Paid';
+  return 'All';
 }
 
 export function appendAdvanceMarker(category: string, comment: string): {
@@ -74,7 +74,7 @@ export function appendAdvanceMarker(category: string, comment: string): {
   const commentHasMarker = isAdvanceText(trimmedComment);
 
   return {
-    category: categoryHasMarker ? trimmedCategory : trimmedCategory ? `${trimmedCategory} · аванс` : 'аванс',
-    comment: commentHasMarker ? trimmedComment : trimmedComment ? `${trimmedComment} (аванс)` : 'Аванс',
+    category: categoryHasMarker ? trimmedCategory : trimmedCategory ? `${trimmedCategory} · advance` : 'advance',
+    comment: commentHasMarker ? trimmedComment : trimmedComment ? `${trimmedComment} (advance)` : 'Advance',
   };
 }

@@ -33,6 +33,7 @@ import {
   LayoutGrid,
   LifeBuoy,
   Loader2,
+  Lock,
   LogOut,
   Mail,
   MapPin,
@@ -43,6 +44,7 @@ import {
   Printer,
   Receipt,
   ScanSearch,
+  ScanLine,
   Search,
   Settings2,
   Share2,
@@ -74,6 +76,7 @@ export const ActivityIcon = createIcon(Activity, 'ActivityIcon');
 // Actions
 export const SearchIcon = createIcon(Search, 'SearchIcon');
 export const ScanSearchIcon = createIcon(ScanSearch, 'ScanSearchIcon');
+export const ScanLineIcon = createIcon(ScanLine, 'ScanLineIcon');
 export const PlusIcon = createIcon(Plus, 'PlusIcon');
 export const ArrowRightIcon = createIcon(ArrowRight, 'ArrowRightIcon');
 export const ArrowLeftIcon = createIcon(ArrowLeft, 'ArrowLeftIcon');
@@ -118,6 +121,7 @@ export const UserRoundIcon = createIcon(UserRound, 'UserRoundIcon');
 // Status
 export const AlertTriangleIcon = createIcon(AlertTriangle, 'AlertTriangleIcon');
 export const SparklesIcon = createIcon(Sparkles, 'SparklesIcon');
+export const LockIcon = createIcon(Lock, 'LockIcon');
 export const LogOutIcon = createIcon(LogOut, 'LogOutIcon');
 export const LifeBuoyIcon = createIcon(LifeBuoy, 'LifeBuoyIcon');
 export const MailIcon = createIcon(Mail, 'MailIcon');

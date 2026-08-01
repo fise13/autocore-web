@@ -68,7 +68,7 @@ export const AcTransferSheet = forwardRef<AcTransferSheetRef, AcTransferSheetPro
     async function onSubmit() {
       const parsedAmount = parseAmountInput(amount);
       if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-        setError('Введите корректную сумму');
+        setError('Enter a valid amount');
         return;
       }
 
@@ -78,7 +78,7 @@ export const AcTransferSheet = forwardRef<AcTransferSheetRef, AcTransferSheetPro
 
       const fromLabel = operationAccountLabel(fromAccount);
       const toLabel = operationAccountLabel(toAccount);
-      const note = comment.trim() || `Перевод: ${fromLabel} → ${toLabel}`;
+      const note = comment.trim() || `Transfer: ${fromLabel} → ${toLabel}`;
 
       try {
         await createFinancialOperation(companyId, userId, {
@@ -103,7 +103,7 @@ export const AcTransferSheet = forwardRef<AcTransferSheetRef, AcTransferSheetPro
         onCreated?.();
       } catch (nextError) {
         haptics.warning();
-        setError(nextError instanceof Error ? nextError.message : 'Не удалось выполнить перевод');
+        setError(nextError instanceof Error ? nextError.message : 'Failed to complete the transfer');
       } finally {
         setSubmitting(false);
       }
@@ -127,16 +127,16 @@ export const AcTransferSheet = forwardRef<AcTransferSheetRef, AcTransferSheetPro
         >
           <View style={{ gap: 4 }}>
             <Text variant="heading" style={{ fontSize: 20, fontWeight: '700' }}>
-              Перевод между счетами
+              Transfer Between Accounts
             </Text>
             <Text variant="caption" color="muted" style={{ fontSize: 13 }}>
-              Списание с одного счёта и зачисление на другой.
+              Withdraw from one account and deposit into another.
             </Text>
           </View>
 
           <View style={{ gap: 6 }}>
             <Text variant="caption" color="muted">
-              Со счёта
+              From Account
             </Text>
             <Dropdown
               value={fromAccount}
@@ -147,23 +147,23 @@ export const AcTransferSheet = forwardRef<AcTransferSheetRef, AcTransferSheetPro
 
           <View style={{ gap: 6 }}>
             <Text variant="caption" color="muted">
-              На счёт
+              To Account
             </Text>
             <Text variant="bodyStrong">{toLabel}</Text>
           </View>
 
           <View style={{ gap: 6 }}>
             <Text variant="caption" color="muted">
-              Сумма
+              Amount
             </Text>
             <Input value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="0" />
           </View>
 
           <View style={{ gap: 6 }}>
             <Text variant="caption" color="muted">
-              Комментарий
+              Comment
             </Text>
-            <Input value={comment} onChangeText={setComment} placeholder="Необязательно" />
+            <Input value={comment} onChangeText={setComment} placeholder="Optional" />
           </View>
 
           {error ? (
@@ -173,7 +173,7 @@ export const AcTransferSheet = forwardRef<AcTransferSheetRef, AcTransferSheetPro
           ) : null}
 
           <Button loading={submitting} disabled={disabled || submitting} onPress={() => void onSubmit()}>
-            Перевести
+            Transfer
           </Button>
         </BottomSheetScrollView>
       </BottomSheetModal>

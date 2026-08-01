@@ -9,8 +9,8 @@ import { isMissionControlIndexRoute, isTabRootEntry } from '@/lib/navigation/tab
 import { resolveInitialTabHref } from '@/lib/navigation/nav-item-availability';
 import { canAccessMissionControl } from '@/lib/rbac/navigation-policy';
 import { resolveSessionCompanyId } from '@/lib/session/merge-hydration';
-import { useNavigationConfigStore } from '@/features/settings/store/navigation-config-store';
 import { useCompanyModuleEnabled } from '@/hooks/use-module-enabled';
+import { ROOT_APP_ROUTES } from '@/lib/navigation/tab-specs';
 
 /**
  * Headless auth routing — owns segment subscriptions so AuthGate UI
@@ -39,8 +39,6 @@ export function AuthRedirectEffect() {
 
   const journeyStep = useAuthJourneyStep();
   const { isPro, isLoading: subscriptionLoading } = useCompanySubscription(companyId);
-  const navOrder = useNavigationConfigStore((s) => s.order);
-  const navEnabled = useNavigationConfigStore((s) => s.enabled);
   const workOrdersEnabled = useCompanyModuleEnabled('workOrders');
   const warehouseEnabled = useCompanyModuleEnabled('warehouse');
   const accountingModuleEnabled = useCompanyModuleEnabled('accounting');
@@ -56,6 +54,7 @@ export function AuthRedirectEffect() {
     const onLogin = inAuthGroup && segments[1] === 'login';
     const onForgot = inAuthGroup && segments[1] === 'forgot-password';
     const inJoin = root === 'join';
+    const inRootAppRoute = typeof root === 'string' && ROOT_APP_ROUTES.has(root);
 
     const redirect = (href: string) => {
       if (lastRedirectRef.current === href) return;
@@ -67,8 +66,6 @@ export function AuthRedirectEffect() {
 
     const initialTab = resolveInitialTabHref({
       profile,
-      navOrder,
-      navEnabled,
       modules: {
         workOrders: workOrdersEnabled,
         warehouse: warehouseEnabled,
@@ -100,7 +97,9 @@ export function AuthRedirectEffect() {
     }
 
     if (hasAccess && (isPro || subscriptionLoading)) {
-      if (!inTabs) {
+      // Root-level app screens (search, warehouse, import) are pushed over the
+      // tabs — bouncing them back to a tab would make them unreachable.
+      if (!inTabs && !inRootAppRoute) {
         redirect(initialTab);
         return;
       }
@@ -127,8 +126,6 @@ export function AuthRedirectEffect() {
     segments,
     subscriptionLoading,
     profile,
-    navOrder,
-    navEnabled,
     workOrdersEnabled,
     warehouseEnabled,
     accountingModuleEnabled,

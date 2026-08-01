@@ -1,9 +1,9 @@
 import { View } from 'react-native';
 
-import { WrenchIcon } from '@/assets/icons';
-import { Button, SettingsSectionCard, Text } from '@/components/ui';
+import { Button, Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { rhythm } from '@/theme';
+
+import { wo, woType } from '../theme/wo-visual';
 
 type OrderClaimSectionProps = {
   orderNumber: string;
@@ -23,30 +23,23 @@ export function OrderClaimSection({
   const { colors } = useTheme();
 
   return (
-    <SettingsSectionCard
-      title="Кто возьмёт?"
-      description={`Наряд №${orderNumber} ждёт мастера`}
-      icon={WrenchIcon}
-      tone="default"
-    >
-      <View style={{ gap: rhythm.stack }}>
-        <Text variant="body" color="muted">
-          {unassignedCount === 1
-            ? 'Есть свободная работа — можете взять наряд в работу.'
-            : `Свободных работ: ${unassignedCount}. Возьмите наряд, чтобы начать.`}
+    <View style={{ gap: wo.stackGap }}>
+      <Text variant="body" style={{ fontWeight: '600' }}>
+        WO #{orderNumber} needs a technician
+      </Text>
+      <Text variant="caption" color="muted" style={woType.meta}>
+        {unassignedCount === 1
+          ? 'Unassigned — claim it to put it on your board.'
+          : `${unassignedCount} unassigned labor lines. Claim to start.`}
+      </Text>
+      <Button onPress={onClaim} loading={claiming} disabled={claiming || Boolean(blockedReason)}>
+        Claim work order
+      </Button>
+      {blockedReason ? (
+        <Text variant="caption" color="destructive">
+          {blockedReason}
         </Text>
-        <Button onPress={onClaim} loading={claiming} disabled={claiming || Boolean(blockedReason)}>
-          Взять в работу
-        </Button>
-        {blockedReason ? (
-          <Text variant="caption" color="destructive">
-            {blockedReason}
-          </Text>
-        ) : null}
-        <Text variant="caption" color="muted">
-          После взятия наряд появится в ваших активных заказах.
-        </Text>
-      </View>
-    </SettingsSectionCard>
+      ) : null}
+    </View>
   );
 }

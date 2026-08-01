@@ -1,15 +1,22 @@
 import { forwardRef } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 
 import { Text } from '@/components/ui';
 import { useModalBottomSheet, useTheme } from '@/hooks';
-import { haptics } from '@/theme';
 import { formatPrice } from '@/features/search/lib/format';
 import { matchTypeLabel } from '@/lib/scan/map-resolve-result';
 
 import { scanStatusLabel, scanStatusTone } from '../lib/status';
+import { scanLayout } from '../layout';
 import type { ScanResult } from '../types';
+import {
+  ScanSheetHairline,
+  ScanSheetHeader,
+  ScanSheetMetaRow,
+  ScanSheetPrimaryButton,
+  ScanSheetRow,
+} from './scan-sheet-chrome';
 
 type ScanResultSheetProps = {
   result: ScanResult | null;
@@ -22,178 +29,127 @@ type ScanResultSheetProps = {
   onDismiss: () => void;
 };
 
-function ActionRow({
-  label,
-  primary,
-  disabled,
-  onPress,
-}: {
-  label: string;
-  primary?: boolean;
-  disabled?: boolean;
-  onPress: () => void;
-}) {
-  const { colors } = useTheme();
+export const ScanResultSheet = forwardRef<BottomSheetModal, ScanResultSheetProps>(
+  function ScanResultSheet(
+    { result, onOpen, onAddToOrder, onReceive, onReserve, onSearch, isReceiving, onDismiss },
+    ref,
+  ) {
+    const { colors } = useTheme();
+    const sheet = useModalBottomSheet();
+    const modalProps = {
+      ...sheet.sheetLayout,
+      index: 0 as const,
+      enablePanDownToClose: true,
+      onDismiss,
+      backdropComponent: sheet.renderBackdrop,
+      backgroundStyle: sheet.backgroundStyle,
+      handleIndicatorStyle: sheet.handleIndicatorStyle,
+    };
 
-  return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={disabled}
-      onPress={() => {
-        if (disabled) return;
-        haptics.light();
-        onPress();
-      }}
-      style={{
-        flex: 1,
-        minHeight: 44,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        opacity: disabled ? 0.5 : 1,
-        backgroundColor: primary ? colors.primary : colors.secondary,
-        borderWidth: primary ? 0 : 1,
-        borderColor: colors.border,
-      }}
-    >
-      <Text
-        variant="caption"
-        style={{
-          fontWeight: '600',
-          color: primary ? colors.primaryForeground : colors.foreground,
-        }}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
+    const statusVariant = result?.status ? scanStatusTone[result.status] : 'secondary';
+    const statusColor =
+      statusVariant === 'success'
+        ? colors.success
+        : statusVariant === 'warning'
+          ? colors.warning
+          : statusVariant === 'destructive'
+            ? colors.destructive
+            : colors.mutedForeground;
+    const matchLabel = result ? matchTypeLabel(result.matchType) : null;
 
-export const ScanResultSheet = forwardRef<BottomSheetModal, ScanResultSheetProps>(function ScanResultSheet(
-  { result, onOpen, onAddToOrder, onReceive, onReserve, onSearch, isReceiving, onDismiss },
-  ref,
-) {
-  const { colors } = useTheme();
-  const sheet = useModalBottomSheet();
-  const modalProps = {
-    ...sheet.sheetLayout,
-    index: 0 as const,
-    enablePanDownToClose: true,
-    onDismiss,
-    backdropComponent: sheet.renderBackdrop,
-    backgroundStyle: sheet.backgroundStyle,
-    handleIndicatorStyle: sheet.handleIndicatorStyle,
-  };
-
-  if (!result) {
     return (
       <BottomSheetModal ref={ref} {...modalProps} snapPoints={sheet.compactSnapPoints(54)}>
-        <View style={{ minHeight: 1 }} />
+        {!result ? (
+          <View style={{ minHeight: 1 }} />
+        ) : (
+          <BottomSheetScrollView
+            contentContainerStyle={{
+              ...sheet.compactContentStyle,
+              paddingHorizontal: scanLayout.sheetPadX,
+              gap: 12,
+            }}
+          >
+            <ScanSheetHeader
+              title={result.title}
+              meta={
+                [
+                  result.subtitle,
+                  matchLabel
+                    ? `${matchLabel}${
+                        result.confidence != null && result.confidence < 1
+                          ? ` · ${Math.round(result.confidence * 100)}%`
+                          : ''
+                      }`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ') || undefined
+              }
+            />
+
+            {result.status ? (
+              <Text variant="caption" style={{ fontWeight: '600', color: statusColor }}>
+                {scanStatusLabel[result.status]}
+              </Text>
+            ) : null}
+
+            <View>
+              {result.shelf ? <ScanSheetMetaRow label="Shelf" value={result.shelf} /> : null}
+              {result.price ? (
+                <>
+                  {result.shelf ? <ScanSheetHairline /> : null}
+                  <ScanSheetMetaRow label="Price" value={formatPrice(result.price)} />
+                </>
+              ) : null}
+            </View>
+
+            {result.stockLevels && result.stockLevels.length > 0 ? (
+              <View>
+                {result.stockLevels.map((level, index) => (
+                  <View key={level.warehouseId}>
+                    <ScanSheetMetaRow
+                      label={level.warehouseName}
+                      value={`${level.available} available`}
+                    />
+                    {index < result.stockLevels!.length - 1 ? <ScanSheetHairline /> : null}
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {result.aiReasoning ? (
+              <Text variant="caption" color="muted">
+                {result.aiReasoning}
+              </Text>
+            ) : null}
+
+            <View style={{ gap: 4 }}>
+              {onAddToOrder ? (
+                <ScanSheetPrimaryButton label="Add to order" onPress={onAddToOrder} />
+              ) : (
+                <ScanSheetPrimaryButton label="Open" onPress={onOpen} />
+              )}
+              {onAddToOrder ? (
+                <>
+                  <ScanSheetHairline />
+                  <ScanSheetRow label="Open" onPress={onOpen} />
+                </>
+              ) : null}
+              <ScanSheetHairline />
+              <ScanSheetRow
+                label={isReceiving ? 'Receiving…' : 'Add 1 to stock'}
+                onPress={onReceive}
+              />
+              <ScanSheetHairline />
+              <ScanSheetRow label="Reserve" onPress={onReserve} />
+              <ScanSheetHairline />
+              <ScanSheetRow label="Search" onPress={onSearch} />
+            </View>
+
+            {isReceiving ? <ActivityIndicator color={colors.primary} /> : null}
+          </BottomSheetScrollView>
+        )}
       </BottomSheetModal>
     );
-  }
-
-  const statusVariant = result.status ? scanStatusTone[result.status] : 'secondary';
-  const statusColor =
-    statusVariant === 'success'
-      ? colors.success
-      : statusVariant === 'warning'
-        ? colors.warning
-        : statusVariant === 'destructive'
-          ? colors.destructive
-          : colors.mutedForeground;
-  const matchLabel = matchTypeLabel(result.matchType);
-
-  return (
-    <BottomSheetModal ref={ref} {...modalProps} snapPoints={sheet.compactSnapPoints(54)}>
-      <BottomSheetScrollView contentContainerStyle={{ ...sheet.compactContentStyle, gap: 16 }}>
-        <View style={{ gap: 6 }}>
-          <Text variant="heading" style={{ fontSize: 24, fontWeight: '700', letterSpacing: -0.4 }}>
-            {result.title}
-          </Text>
-          {result.subtitle ? (
-            <Text variant="body" color="muted" style={{ fontSize: 15 }}>
-              {result.subtitle}
-            </Text>
-          ) : null}
-          {matchLabel ? (
-            <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
-              {matchLabel}
-              {result.confidence != null && result.confidence < 1
-                ? ` · ${Math.round(result.confidence * 100)}%`
-                : ''}
-            </Text>
-          ) : null}
-        </View>
-
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-          {result.shelf ? (
-            <Text variant="caption" color="muted" style={{ fontSize: 13 }}>
-              Полка {result.shelf}
-            </Text>
-          ) : null}
-          {result.status ? (
-            <Text variant="caption" style={{ fontSize: 13, fontWeight: '600', color: statusColor }}>
-              {scanStatusLabel[result.status]}
-            </Text>
-          ) : null}
-          {result.price ? (
-            <Text variant="body" style={{ fontSize: 16, fontWeight: '700', fontVariant: ['tabular-nums'] }}>
-              {formatPrice(result.price)}
-            </Text>
-          ) : null}
-        </View>
-
-        {result.stockLevels && result.stockLevels.length > 0 ? (
-          <View style={{ gap: 8 }}>
-            <Text variant="caption" color="muted" style={{ fontWeight: '600' }}>
-              Остатки по складам
-            </Text>
-            {result.stockLevels.map((level) => (
-              <View
-                key={level.warehouseId}
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  paddingVertical: 8,
-                  borderBottomWidth: 1,
-                  borderBottomColor: colors.border,
-                }}
-              >
-                <Text variant="caption">{level.warehouseName}</Text>
-                <Text variant="caption" style={{ fontVariant: ['tabular-nums'] }}>
-                  {level.available} доступно · {level.onHand} всего
-                </Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {result.aiReasoning ? (
-          <Text variant="caption" color="muted">
-            {result.aiReasoning}
-          </Text>
-        ) : null}
-
-        <View style={{ height: 1, backgroundColor: colors.border }} />
-
-        {onAddToOrder ? (
-          <ActionRow label="В наряд" primary onPress={onAddToOrder} />
-        ) : null}
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <ActionRow label="Открыть" primary={!onAddToOrder} onPress={onOpen} />
-          <ActionRow
-            label={isReceiving ? 'Приёмка…' : '+1 на склад'}
-            disabled={isReceiving}
-            onPress={onReceive}
-          />
-        </View>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <ActionRow label="Резерв" onPress={onReserve} />
-          <ActionRow label="Поиск" onPress={onSearch} />
-        </View>
-        {isReceiving ? <ActivityIndicator color={colors.primary} /> : null}
-      </BottomSheetScrollView>
-    </BottomSheetModal>
-  );
-});
+  },
+);

@@ -287,7 +287,7 @@ export function useScanExperience(initialContext?: ScanContext) {
             itemId: pending.entityId,
           });
           toast({
-            title: 'Размещено',
+            title: 'Placed',
             description: `${pending.title} → ${result.toLocationCode}`,
             variant: 'success',
           });
@@ -301,7 +301,7 @@ export function useScanExperience(initialContext?: ScanContext) {
           toLocationId: target.kind === 'locationId' ? target.id : undefined,
           toLocationCode: target.kind === 'locationCode' ? target.code : undefined,
           quantity: pending.quantity,
-          reason: 'Перемещение со сканера',
+          reason: 'Moved from scanner',
         });
         relocatePendingStore.clear();
         haptics.success();
@@ -311,14 +311,14 @@ export function useScanExperience(initialContext?: ScanContext) {
           itemId: pending.itemId,
         });
         toast({
-          title: 'Перемещено',
+          title: 'Moved',
           description: `${pending.itemTitle} → ${result.toLocationCode}`,
           variant: 'success',
         });
         service.dismissSheet();
       } catch (error) {
         toast({
-          title: 'Не удалось переместить',
+          title: 'Could not move item',
           description: error instanceof Error ? error.message : undefined,
           variant: 'destructive',
         });
@@ -402,7 +402,7 @@ export function useScanExperience(initialContext?: ScanContext) {
         });
 
         haptics.success();
-        toast({ title: 'Запчасть добавлена в наряд', variant: 'success' });
+        toast({ title: 'Part added to work order', variant: 'success' });
         return true;
       }
 
@@ -445,25 +445,27 @@ export function useScanExperience(initialContext?: ScanContext) {
       const presentWithRetry = (sheetRef: RefObject<BottomSheetModal | null>, attempt = 0) => {
         const modal = sheetRef.current;
         if (modal) {
-          // Replacing content in an already-open sheet — snap up, skip full re-present.
-          if (replacingOpenSheet) {
-            try {
-              modal.snapToIndex(0);
-            } catch {
-              modal.present();
+          try {
+            if (replacingOpenSheet && attempt === 0) {
+              try {
+                modal.snapToIndex(0);
+                return;
+              } catch {
+                // fall through to present()
+              }
             }
+            modal.present();
             return;
+          } catch {
+            // retry below
           }
-          modal.present();
-          return;
         }
-        if (attempt >= 2) {
-          // Ref never ready — clear key so the next effect/snapshot can retry.
+        if (attempt >= 5) {
           if (presentedKeyRef.current === key) presentedKeyRef.current = null;
           return;
         }
-        // One layout tick is enough; avoid multi-frame rAF chains that delay the sheet.
-        queueMicrotask(() => presentWithRetry(sheetRef, attempt + 1));
+        const delay = [0, 32, 80, 160, 280][attempt] ?? 280;
+        setTimeout(() => presentWithRetry(sheetRef, attempt + 1), delay);
       };
       if (state.sheetKind === 'product') presentWithRetry(productSheetRef);
       else if (state.sheetKind === 'candidates') presentWithRetry(candidatesSheetRef);
@@ -574,18 +576,18 @@ export function useScanExperience(initialContext?: ScanContext) {
               if (router.canGoBack()) router.back();
             });
             haptics.success();
-            toast({ title: 'Запчасть добавлена в наряд', variant: 'success' });
+            toast({ title: 'Part added to work order', variant: 'success' });
             return;
           }
 
           if (!isFocusedRef.current) return;
           presentedKeyRef.current = `product:${payload}`;
           productSheetRef.current?.present();
-          toast({ title: 'Запомним выбор для этого кода', variant: 'success' });
+          toast({ title: "We'll remember this choice for this code", variant: 'success' });
         });
       } catch (error) {
         toast({
-          title: 'Не удалось сохранить выбор',
+          title: 'Could not save selection',
           description: error instanceof Error ? error.message : undefined,
           variant: 'destructive',
         });
@@ -603,7 +605,7 @@ export function useScanExperience(initialContext?: ScanContext) {
         .disambiguate(payload)
         .catch((error) => {
           toast({
-            title: 'Не удалось уточнить позицию',
+            title: 'Could not identify item',
             description: error instanceof Error ? error.message : undefined,
             variant: 'destructive',
           });
@@ -616,7 +618,7 @@ export function useScanExperience(initialContext?: ScanContext) {
     (query?: string, sheetRef: RefObject<BottomSheetModal | null> = productSheetRef) => {
       const q = query?.trim();
       dismissSheet(sheetRef, () => {
-        router.navigate((q ? `/(tabs)/search?q=${encodeURIComponent(q)}` : '/(tabs)/search') as Href);
+        router.navigate((q ? `/search?q=${encodeURIComponent(q)}` : '/search') as Href);
       });
     },
     [dismissSheet, router],
@@ -662,7 +664,7 @@ export function useScanExperience(initialContext?: ScanContext) {
       }
 
       const q = payload.trim();
-      router.navigate((q ? `/(tabs)/search?q=${encodeURIComponent(q)}` : '/(tabs)/search') as Href);
+      router.navigate((q ? `/search?q=${encodeURIComponent(q)}` : '/search') as Href);
     });
   }, [dismissSheet, router]);
 
@@ -681,7 +683,11 @@ export function useScanExperience(initialContext?: ScanContext) {
     });
   }, [dismissSheet, router]);
 
-  const scanEnabled = !ocrBusy;
+  const scanEnabled =
+    !ocrBusy &&
+    snapshot.phase !== 'resolving' &&
+    snapshot.phase !== 'confirmed' &&
+    snapshot.phase !== 'paused';
 
   return {
     snapshot,

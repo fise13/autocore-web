@@ -125,7 +125,7 @@ export function useFadeIn(delayMs = 0, config: { duration: number; easing: typeo
   return { style, opacity, translateY };
 }
 
-export function usePressAnimation(scale = cardPress.scale) {
+export function usePressAnimation(scale: number = cardPress.scale) {
   const pressed = useSharedValue(1);
 
   const style = useAnimatedStyle(() => ({

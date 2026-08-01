@@ -1,54 +1,33 @@
-import { memo } from 'react';
-import { View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 
-import { NotificationCard } from '@/components/business/notification-card';
 import { Surface } from '@/components/ui';
 import { Text } from '@/components/ui/text';
 import type { AppNotification } from '@/services/notifications';
-import { mapAppPriorityToServer } from '@/services/notifications/types';
-import { rhythm, spacing } from '@/theme';
+import { duration, rhythm, spacing } from '@/theme';
 
-import { formatNotificationTime } from '../lib/group-by-date';
-
-type ActivityNotificationRowProps = {
-  item: AppNotification;
-  index: number;
-  isLast: boolean;
-  onPress: (item: AppNotification) => void;
-};
-
-export const ActivityNotificationRow = memo(function ActivityNotificationRow({
-  item,
-  index,
-  isLast,
-  onPress,
-}: ActivityNotificationRowProps) {
-  return (
-    <Animated.View entering={FadeInDown.delay(index * 24).springify().damping(24)}>
-      <NotificationCard
-        title={item.title}
-        body={item.message}
-        time={formatNotificationTime(item.createdAt)}
-        read={item.read}
-        priority={mapAppPriorityToServer(item.priority)}
-        category={item.category}
-        showDivider={!isLast}
-        onPress={() => onPress(item)}
-      />
-    </Animated.View>
-  );
-});
+import { ActivityNotificationRow } from './activity-notification-row';
 
 type ActivityDateGroupProps = {
   label: string;
   items: AppNotification[];
   onPress: (item: AppNotification) => void;
+  onMarkRead: (item: AppNotification) => void;
+  onDelete: (item: AppNotification) => void;
 };
 
-export function ActivityDateGroup({ label, items, onPress }: ActivityDateGroupProps) {
+/**
+ * One day of activity. Rows fade in on first appearance and reflow with a
+ * layout transition, so marking read or removing never snaps the list.
+ */
+export function ActivityDateGroup({
+  label,
+  items,
+  onPress,
+  onMarkRead,
+  onDelete,
+}: ActivityDateGroupProps) {
   return (
-    <View style={{ gap: spacing[1.5] }}>
+    <Animated.View layout={LinearTransition.duration(260)} style={{ gap: spacing[1.5] }}>
       <Text
         variant="meta"
         color="muted"
@@ -64,15 +43,21 @@ export function ActivityDateGroup({ label, items, onPress }: ActivityDateGroupPr
 
       <Surface padded={false} inset={false} style={{ overflow: 'hidden' }}>
         {items.map((item, index) => (
-          <ActivityNotificationRow
+          <Animated.View
             key={item.id}
-            item={item}
-            index={index}
-            isLast={index === items.length - 1}
-            onPress={onPress}
-          />
+            entering={FadeIn.duration(duration.normal)}
+            layout={LinearTransition.duration(260)}
+          >
+            <ActivityNotificationRow
+              item={item}
+              isLast={index === items.length - 1}
+              onPress={onPress}
+              onMarkRead={onMarkRead}
+              onDelete={onDelete}
+            />
+          </Animated.View>
         ))}
       </Surface>
-    </View>
+    </Animated.View>
   );
 }

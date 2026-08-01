@@ -1,5 +1,5 @@
 import { useCallback, useId, useMemo } from 'react';
-import type { TextInput, TextInputProps } from 'react-native';
+import type { TextInputProps } from 'react-native';
 
 import { useAutocompleteContext } from '@/providers/autocomplete-provider';
 import type { AutocompleteConfig, AutocompleteOption } from '@/lib/autocomplete/types';
@@ -20,7 +20,7 @@ export function useAutocomplete({
   onOptionSelect,
   options,
   replaceMode = 'full',
-  matchMode = 'prefix',
+  matchMode = 'flexible',
   ...config
 }: UseAutocompleteArgs) {
   const inputId = useId();
@@ -32,7 +32,7 @@ export function useAutocomplete({
   );
 
   const onFocus = useCallback<NonNullable<TextInputProps['onFocus']>>(
-    (event) => {
+    () => {
       ctx.registerInput({
         inputId,
         config,
@@ -47,8 +47,15 @@ export function useAutocomplete({
     [config, ctx, inputId, matchMode, onOptionSelect, onValueChange, options, replaceMode, value],
   );
 
+  const setAnchor = useCallback(
+    (anchor: { x: number; y: number; width: number; height: number }) => {
+      ctx.setAnchor(inputId, anchor);
+    },
+    [ctx, inputId],
+  );
+
   const onBlur = useCallback<NonNullable<TextInputProps['onBlur']>>(
-    (event) => {
+    () => {
       ctx.unregisterInput(inputId);
     },
     [ctx, inputId],
@@ -69,14 +76,37 @@ export function useAutocomplete({
     [ctx, inputId],
   );
 
+  const onKeyPress = useCallback<NonNullable<TextInputProps['onKeyPress']>>(
+    (event) => {
+      const key = event.nativeEvent.key;
+      if (key === 'ArrowDown') {
+        event.preventDefault?.();
+        ctx.moveHighlight(inputId, 1);
+        return;
+      }
+      if (key === 'ArrowUp') {
+        event.preventDefault?.();
+        ctx.moveHighlight(inputId, -1);
+        return;
+      }
+      if (key === 'Escape') {
+        event.preventDefault?.();
+        ctx.dismiss(inputId);
+      }
+    },
+    [ctx, inputId],
+  );
+
   return {
     inputId,
+    setAnchor,
     inputProps: {
       ...nativeProps,
       onFocus,
       onBlur,
       onChangeText,
       onSubmitEditing,
+      onKeyPress,
     } satisfies Partial<TextInputProps>,
     isActive: ctx.activeInputId === inputId,
   };

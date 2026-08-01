@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/authentication/auth-provider';
@@ -10,11 +11,12 @@ import { CompanySwitcherSheet } from '@/features/organization/components/company
 import { useTheme } from '@/hooks';
 import { getWorkspaceAccessCopy } from '@/lib/workspace-access';
 import { useAuthStore } from '@/store/auth-store';
-import { rhythm } from '@/theme';
+import { productCta, rhythm } from '@/theme';
+import { toneBackground } from '@/theme/color-utils';
 
 export function WorkspaceAccessScreen() {
   const router = useRouter();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { signOut, refreshProfile, memberships } = useAuth();
   const workspaceBlock = useAuthStore((s) => s.workspaceBlock);
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -28,6 +30,7 @@ export function WorkspaceAccessScreen() {
   const hasOtherCompanies = memberships.length > 0;
   const canSwitchCompany =
     workspaceBlock?.kind !== 'no_company' && hasOtherCompanies;
+  const isNoCompany = workspaceBlock?.kind === 'no_company';
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -44,6 +47,15 @@ export function WorkspaceAccessScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 320 }}>
+        <LinearGradient
+          colors={[toneBackground(colors.primary, isDark ? 0.1 : 0.12), 'transparent']}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={{ flex: 1 }}
+        />
+      </View>
+
       <View
         style={{
           flex: 1,
@@ -66,8 +78,10 @@ export function WorkspaceAccessScreen() {
             style={{
               textAlign: 'center',
               color: colors.foreground,
-              fontSize: 22,
-              lineHeight: 30,
+              fontSize: 28,
+              lineHeight: 34,
+              fontWeight: '700',
+              letterSpacing: -0.7,
             }}
           >
             {copy.title}
@@ -77,6 +91,7 @@ export function WorkspaceAccessScreen() {
             style={{
               textAlign: 'center',
               color: colors.mutedForeground,
+              fontSize: 16,
               lineHeight: 22,
             }}
           >
@@ -97,14 +112,22 @@ export function WorkspaceAccessScreen() {
         </View>
 
         <View style={{ width: '100%', maxWidth: 340, gap: rhythm.inline }}>
+          {isNoCompany ? (
+            <Button
+              style={{ minHeight: productCta.heightHero }}
+              onPress={() => router.push('/(auth)/journey/company' as never)}
+            >
+              Create a company
+            </Button>
+          ) : null}
           {canSwitchCompany ? (
             <Button onPress={() => setSwitcherOpen(true)}>Switch company</Button>
           ) : null}
           <Button
-            variant={canSwitchCompany ? 'secondary' : 'default'}
-            onPress={() => router.push('/(tabs)/profile/join-company' as never)}
+            variant={isNoCompany || canSwitchCompany ? 'secondary' : 'default'}
+            onPress={() => router.push('/(auth)/journey/company' as never)}
           >
-            Join a company
+            {isNoCompany ? 'Join with invite' : 'Join a company'}
           </Button>
           <Button variant="secondary" loading={refreshing} onPress={() => void handleRefresh()}>
             Refresh status

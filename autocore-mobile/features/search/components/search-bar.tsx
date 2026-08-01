@@ -82,7 +82,7 @@ export function SearchBar({
           ref={inputRef}
           value={value}
           onChangeText={onChangeText}
-          placeholder="Поиск"
+          placeholder="Search"
           placeholderTextColor={colors.mutedForeground}
           onFocus={() => {
             onFocusChange(true);
@@ -110,7 +110,7 @@ export function SearchBar({
         {value.length > 0 ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Очистить"
+            accessibilityLabel="Clear"
             onPress={() => {
               haptics.selection();
               onChangeText('');
@@ -132,7 +132,7 @@ export function SearchBar({
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Сканировать код"
+          accessibilityLabel="Scan code"
           onPress={() => {
             haptics.light();
             router.navigate('/(tabs)/scan');

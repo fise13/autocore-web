@@ -21,6 +21,7 @@ WebBrowser.maybeCompleteAuthSession();
 type GoogleSignInButtonProps = {
   disabled?: boolean;
   loading?: boolean;
+  hero?: boolean;
   onStart?: () => void;
   onSuccess: (idToken: string) => Promise<void>;
   onError: (message: string) => void;
@@ -29,6 +30,7 @@ type GoogleSignInButtonProps = {
 function ExpoGoogleSignInButton({
   disabled,
   loading,
+  hero,
   onStart,
   onSuccess,
   onError,
@@ -101,9 +103,10 @@ function ExpoGoogleSignInButton({
   return (
     <AuthOAuthButton
       provider="google"
-      label="Sign in with Google"
+      label={hero ? 'Continue with Google' : 'Sign in with Google'}
       disabled={disabled || !request}
       loading={loading}
+      hero={hero}
       onPress={onPress}
     />
   );
@@ -132,9 +135,10 @@ export function GoogleSignInButton(props: GoogleSignInButtonProps) {
     return (
       <AuthOAuthButton
         provider="google"
-        label="Sign in with Google"
+        label={props.hero ? 'Continue with Google' : 'Sign in with Google'}
         disabled={props.disabled}
         loading={props.loading}
+        hero={props.hero}
         onPress={onPressNative}
       />
     );

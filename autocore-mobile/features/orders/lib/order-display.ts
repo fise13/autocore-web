@@ -1,11 +1,11 @@
 import type { OrderStatus } from '../types';
 
 export function isOpenOrderStatus(status: OrderStatus): boolean {
-  return status !== 'completed';
+  return status !== 'completed' && status !== 'delivered' && status !== 'cancelled';
 }
 
 export function formatWorkOrderLabel(number: string): string {
-  return `Заказ-наряд №${number}`;
+  return `WO #${number}`;
 }
 
 export function formatOrderVehicleLine(order: {

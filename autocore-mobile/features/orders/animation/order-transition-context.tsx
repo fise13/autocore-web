@@ -26,7 +26,7 @@ import { orderOpenGuard } from '@/lib/navigation/navigation-guard';
 
 import { OrderStatusBadge } from '../components/order-status-badge';
 import { OrderWorkflowProgress } from '../components/order-workflow-progress';
-import { ordersLayout } from '../layout';
+import { wo } from '../theme/wo-visual';
 import type { WorkOrder } from '../types';
 
 type SourceLayout = {
@@ -76,7 +76,7 @@ function OrderOpenOverlay({ order, source, onDone }: OverlayProps) {
       top: source.y + (insets.top - source.y) * p,
       width: source.width + (SCREEN_W - source.width) * p,
       height: source.height + (SCREEN_H - source.height) * p,
-      borderRadius: ordersLayout.cardRadius + (0 - ordersLayout.cardRadius) * p,
+      borderRadius: wo.radius + (0 - wo.radius) * p,
       backgroundColor: colors.background,
       overflow: 'hidden',
       opacity: 1 - p * 0.15,

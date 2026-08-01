@@ -4,23 +4,31 @@ import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ArrowLeftIcon } from '@/assets/icons';
-import { ScreenActionFooter } from '@/components/navigation/screen-action-footer';
-import { Button, AutocompleteInput, Checkbox, Dropdown, IconButton, Input, KeyboardFormShell, Text, toast } from '@/components/ui';
-import { useFloatingTabBarInset, useSession, useTheme } from '@/hooks';
+import { Button, IconButton, KeyboardFormShell, StickyActionBar, Text, toast } from '@/components/ui';
+import { useAppDisplayCurrency, useSession, useTheme } from '@/hooks';
 import { appendAdvanceMarker } from '@/lib/accounting/advances';
 import {
   ACCOUNTING_CATEGORY_SUGGESTIONS,
   accountOptions,
   creatableTypeOptions,
   operationCategoryLabel,
+  operationDirection,
   paymentMethodOptions,
   resolveOperationCategoryValue,
 } from '@/lib/accounting/labels';
+import { APP_MONEY_BASE_CURRENCY, convertToBaseCurrency } from '@/lib/money/exchange-rates';
+import { appDisplayCurrencyAffix, formatAppMoney } from '@/lib/money/display-currency';
 import { createFinancialOperation } from '@/services/accounting/create-financial-operation';
-import { haptics } from '@/theme';
+import { haptics, spacing } from '@/theme';
 import type { CreatableOperationType } from '@/lib/accounting/labels';
 import type { OperationAccount, PaymentMethod } from '@/types/financial-operation';
 
+import { CoAmountField } from './components/co-amount-field';
+import { CoCategoryField } from './components/co-category-field';
+import { CoCommentField } from './components/co-comment-field';
+import { CoCard, CoSection } from './components/co-section';
+import { CoToggleRow } from './components/co-toggle-row';
+import { CoTypeSelector } from './components/co-type-selector';
 import { ac } from './layout';
 import type { NewOperationPreset } from './navigation';
 
@@ -45,10 +53,13 @@ function readPreset(params: Record<string, string | string[] | undefined>): NewO
   };
 }
 
+const CATEGORY_SUGGESTIONS = ACCOUNTING_CATEGORY_SUGGESTIONS.map((item) =>
+  operationCategoryLabel(item),
+);
+
 export function CreateOperationScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { modalScrollBottom } = useFloatingTabBarInset();
   const router = useRouter();
   const { profile, can } = useSession();
   const rawParams = useLocalSearchParams<Record<string, string>>();
@@ -67,13 +78,27 @@ export function CreateOperationScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const canEdit = can('accounting_edit');
+  const direction = operationDirection(type);
+
+  // Amounts are entered in the currency the rest of the app displays, and
+  // converted back to the ledger's base currency before they are stored.
+  const { currency, rates } = useAppDisplayCurrency();
+  const affix = appDisplayCurrencyAffix(currency);
+  const currencyMark = affix.suffix.trim() || affix.prefix.trim();
+
+  const enteredAmount = parseAmountInput(amount);
+  const amountValid = Number.isFinite(enteredAmount) && enteredAmount > 0;
+  const baseAmount = convertToBaseCurrency(enteredAmount, currency, rates);
+  const baseAmountHint =
+    currency === APP_MONEY_BASE_CURRENCY || !amountValid
+      ? null
+      : `Recorded as ${formatAppMoney(baseAmount, APP_MONEY_BASE_CURRENCY)}`;
 
   async function onSubmit() {
     if (!profile?.id || !profile.companyId) return;
 
-    const parsedAmount = parseAmountInput(amount);
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      setError('Введите корректную сумму');
+    if (!amountValid) {
+      setError('Enter a valid amount');
       return;
     }
 
@@ -91,7 +116,7 @@ export function CreateOperationScreen() {
 
       await createFinancialOperation(profile.companyId, profile.id, {
         type,
-        amount: parsedAmount,
+        amount: baseAmount,
         account,
         paymentMethod,
         category: normalized.category || null,
@@ -99,11 +124,11 @@ export function CreateOperationScreen() {
       });
 
       haptics.success();
-      toast({ title: 'Операция сохранена', variant: 'success' });
+      toast({ title: 'Operation saved', variant: 'success' });
       router.back();
     } catch (nextError) {
       haptics.warning();
-      setError(nextError instanceof Error ? nextError.message : 'Не удалось создать операцию');
+      setError(nextError instanceof Error ? nextError.message : 'Failed to create the operation');
     } finally {
       setSubmitting(false);
     }
@@ -111,12 +136,20 @@ export function CreateOperationScreen() {
 
   if (!canEdit) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.background,
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: spacing[6],
+        }}
+      >
         <Text variant="body" color="muted" style={{ textAlign: 'center' }}>
-          Нет прав на создание операций
+          You don't have permission to create operations
         </Text>
-        <Button variant="outline" onPress={() => router.back()} style={{ marginTop: 16 }}>
-          Назад
+        <Button variant="outline" onPress={() => router.back()} style={{ marginTop: spacing[4] }}>
+          Back
         </Button>
       </View>
     );
@@ -127,134 +160,139 @@ export function CreateOperationScreen() {
       backgroundColor={colors.background}
       contentContainerStyle={{
         paddingHorizontal: ac.pad,
-        paddingTop: 16,
-        paddingBottom: modalScrollBottom,
-        gap: 14,
+        paddingTop: spacing[1],
+        paddingBottom: spacing[5],
+        gap: spacing[4],
       }}
       header={
         <View
           style={{
-            paddingTop: insets.top + 6,
-            paddingHorizontal: ac.pad,
-            paddingBottom: 12,
-            gap: 4,
-            borderBottomWidth: ac.hairline,
-            borderBottomColor: colors.border,
+            paddingTop: insets.top + spacing[1],
+            paddingHorizontal: spacing[2],
+            paddingBottom: spacing[1],
           }}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <IconButton accessibilityLabel="Назад" variant="ghost" size="sm" onPress={() => router.back()}>
-              <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
-            </IconButton>
-            <View style={{ flex: 1 }}>
-              <Text variant="caption" color="muted" style={{ fontSize: 11 }}>
-                Финансы
-              </Text>
-              <Text variant="heading" style={{ fontSize: 20, fontWeight: '700', letterSpacing: -0.3 }}>
-                Новая операция
-              </Text>
-            </View>
-          </View>
+          <IconButton
+            accessibilityLabel="Back"
+            variant="ghost"
+            size="sm"
+            onPress={() => router.back()}
+          >
+            <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
+          </IconButton>
         </View>
       }
       footer={
-        <ScreenActionFooter horizontalPadding={ac.pad} aboveTabBar={false}>
-          <Button loading={submitting} disabled={submitting} onPress={() => void onSubmit()} style={{ flex: 1 }}>
-            Сохранить
+        <StickyActionBar>
+          <Button
+            size="xl"
+            loading={submitting}
+            disabled={!amountValid || submitting}
+            onPress={() => void onSubmit()}
+            style={{ flex: 1 }}
+          >
+            Create Operation
           </Button>
-        </ScreenActionFooter>
+        </StickyActionBar>
       }
     >
-        <Text variant="caption" color="muted" style={{ fontSize: 13 }}>
-          Добавьте финансовую операцию в журнал компании.
+      <View style={{ gap: spacing[1.5], paddingHorizontal: spacing[1] }}>
+        <Text
+          variant="pageTitle"
+          style={{ fontSize: 30, lineHeight: 36, fontWeight: '700', letterSpacing: -0.8 }}
+        >
+          New Operation
         </Text>
+        <Text variant="body" color="muted" style={{ fontSize: 14, lineHeight: 19 }}>
+          Money moving in or out of the company ledger.
+        </Text>
+      </View>
 
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <View style={{ flex: 1, gap: 6 }}>
-            <Text variant="caption" color="muted">
-              Тип
-            </Text>
-            <Dropdown
-              value={type}
-              onValueChange={(value) => setType(value as CreatableOperationType)}
-              options={creatableTypeOptions()}
+      <CoSection title="Transaction">
+        <CoCard style={{ gap: spacing[4] }}>
+          <CoTypeSelector
+            accessibilityLabel="Operation type"
+            segments={creatableTypeOptions()}
+            value={type}
+            onValueChange={(next) => setType(next as CreatableOperationType)}
+          />
+          <View style={{ gap: spacing[2] }}>
+            <CoAmountField
+              value={amount}
+              onChangeText={setAmount}
+              currency={currencyMark}
+              direction={direction}
             />
+            {baseAmountHint ? (
+              <Text variant="caption" color="muted" style={{ fontSize: 13 }}>
+                {baseAmountHint}
+              </Text>
+            ) : null}
           </View>
-          <View style={{ flex: 1, gap: 6 }}>
-            <Text variant="caption" color="muted">
-              Сумма
-            </Text>
-            <Input value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="0" />
-          </View>
-        </View>
+        </CoCard>
+      </CoSection>
 
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <View style={{ flex: 1, gap: 6 }}>
-            <Text variant="caption" color="muted">
-              Счёт
+      <CoSection title="Accounts">
+        <CoCard style={{ gap: spacing[3] }}>
+          <View style={{ gap: spacing[1.5] }}>
+            <Text variant="caption" color="muted" style={{ fontSize: 13, fontWeight: '600' }}>
+              Account
             </Text>
-            <Dropdown
+            <CoTypeSelector
+              accessibilityLabel="Account"
+              segments={accountOptions()}
               value={account}
-              onValueChange={(value) => setAccount(value as OperationAccount)}
-              options={accountOptions()}
+              onValueChange={(next) => setAccount(next as OperationAccount)}
             />
           </View>
-          <View style={{ flex: 1, gap: 6 }}>
-            <Text variant="caption" color="muted">
-              Оплата
-            </Text>
-            <Dropdown
-              value={paymentMethod}
-              onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
-              options={paymentMethodOptions()}
-            />
-          </View>
-        </View>
 
-        <View style={{ gap: 6 }}>
-          <Text variant="caption" color="muted">
-            Категория
-          </Text>
-          <AutocompleteInput
-            source="category"
+          <View style={{ gap: spacing[1.5] }}>
+            <Text variant="caption" color="muted" style={{ fontSize: 13, fontWeight: '600' }}>
+              Payment method
+            </Text>
+            <CoTypeSelector
+              accessibilityLabel="Payment method"
+              segments={paymentMethodOptions()}
+              value={paymentMethod}
+              onValueChange={(next) => setPaymentMethod(next as PaymentMethod)}
+            />
+          </View>
+        </CoCard>
+      </CoSection>
+
+      <CoSection title="Category">
+        <CoCard>
+          <CoCategoryField
             value={categoryInput}
             onValueChange={setCategoryInput}
-            placeholder="Например: зарплата"
+            suggestions={CATEGORY_SUGGESTIONS}
+            bleed={spacing[4]}
           />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {ACCOUNTING_CATEGORY_SUGGESTIONS.slice(0, 6).map((item) => (
-              <Button
-                key={item}
-                size="sm"
-                variant="outline"
-                onPress={() => setCategoryInput(operationCategoryLabel(item))}
-              >
-                {operationCategoryLabel(item)}
-              </Button>
-            ))}
-          </View>
-        </View>
+        </CoCard>
+      </CoSection>
 
-        <View style={{ gap: 6 }}>
-          <Text variant="caption" color="muted">
-            Комментарий
-          </Text>
-          <Input
-            value={comment}
-            onChangeText={setComment}
-            placeholder="Комментарий к операции"
-            multiline
-            rows={3}
+      <CoSection title="Comment">
+        <CoCard>
+          <CoCommentField value={comment} onChangeText={setComment} variant="plain" />
+        </CoCard>
+      </CoSection>
+
+      <CoSection title="Options">
+        <CoCard bare>
+          <CoToggleRow
+            label="Mark as advance"
+            helper="Counts this operation against an employee advance instead of a regular payout."
+            value={markAsAdvance}
+            onValueChange={setMarkAsAdvance}
           />
-        </View>
+        </CoCard>
+      </CoSection>
 
-        <Checkbox checked={markAsAdvance} onCheckedChange={setMarkAsAdvance} label="Пометить как аванс" />
-
-        {error ? (
-          <Text variant="caption" color="destructive">
-            {error}
-          </Text>
-        ) : null}
+      {error ? (
+        <Text variant="caption" color="destructive" style={{ paddingHorizontal: spacing[1] }}>
+          {error}
+        </Text>
+      ) : null}
     </KeyboardFormShell>
   );
 }

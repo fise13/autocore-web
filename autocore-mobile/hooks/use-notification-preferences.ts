@@ -40,7 +40,7 @@ export function useNotificationPreferences() {
       },
       () => {
         setLoaded(true);
-        setError('Не удалось загрузить настройки');
+        setError('Failed to load settings');
       },
     );
 
@@ -66,7 +66,7 @@ export function useNotificationPreferences() {
         const message =
           cause instanceof Error && cause.message.trim()
             ? cause.message
-            : 'Не удалось сохранить настройки';
+            : 'Failed to save settings';
         setError(message);
       } finally {
         setSyncing(false);

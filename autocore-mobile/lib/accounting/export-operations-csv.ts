@@ -1,5 +1,4 @@
 import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
@@ -8,6 +7,7 @@ import {
   operationCategoryLabel,
   operationTypeLabel,
 } from '@/lib/accounting/labels';
+import { coerceToDate, formatTimestamp } from '@/lib/firestore-timestamp';
 import type { FinancialOperation } from '@/types/financial-operation';
 
 function escapeCsv(value: string): string {
@@ -19,7 +19,7 @@ function escapeCsv(value: string): string {
 
 function operationToCsvRow(operation: FinancialOperation): string {
   return [
-    format(operation.createdAt, 'dd.MM.yyyy HH:mm', { locale: ru }),
+    formatTimestamp(operation.createdAt, 'dd.MM.yyyy HH:mm'),
     operationTypeLabel(operation.type),
     operationCategoryLabel(operation.category),
     operationAccountLabel(operation.account),
@@ -31,9 +31,11 @@ function operationToCsvRow(operation: FinancialOperation): string {
 }
 
 export function buildOperationsCsv(operations: FinancialOperation[]): string {
-  const header = 'Дата,Тип,Категория,Счёт,Сумма,Комментарий';
+  const header = 'Date,Type,Category,Account,Amount,Comment';
+  // `createdAt` is typed as a Date but can reach here as a Firestore Timestamp
+  // or a rehydrated string, neither of which has `getTime`.
   const rows = [...operations]
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .sort((a, b) => (coerceToDate(b.createdAt)?.getTime() ?? 0) - (coerceToDate(a.createdAt)?.getTime() ?? 0))
     .map(operationToCsvRow);
   return [header, ...rows].join('\n');
 }
@@ -50,12 +52,12 @@ export async function shareOperationsCsv(operations: FinancialOperation[]): Prom
 
   const available = await Sharing.isAvailableAsync();
   if (!available) {
-    throw new Error('На этом устройстве недоступен обмен файлами');
+    throw new Error('File sharing is not available on this device');
   }
 
   await Sharing.shareAsync(file.uri, {
     mimeType: 'text/csv',
     UTI: 'public.comma-separated-values-text',
-    dialogTitle: 'Экспорт операций',
+    dialogTitle: 'Export Operations',
   });
 }

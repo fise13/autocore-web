@@ -9,10 +9,10 @@ import {
   Text,
 } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { toneBackground } from '@/theme/color-utils';
 import { warrantyTemplateLabel, warrantyTemplateOptions } from '@/lib/work-order/warranty-templates';
 import type { WorkOrderMotorOutcome } from '@/types/work-order';
 
+import { wo } from '../../theme/wo-visual';
 import { ScanLauncherRow } from '@/features/scan/components/scan-launcher-button';
 import type { ScanOrderResult } from '@/services/scan';
 import { ComposerTabBar } from '../composer-tab-bar';
@@ -357,8 +357,10 @@ export function OrderCompositionStep({
                 <View
                   style={{
                     padding: 10,
-                    borderRadius: 10,
-                    backgroundColor: toneBackground(colors.primary, 0.08),
+                    borderRadius: wo.radiusSm,
+                    borderWidth: wo.rule,
+                    borderColor: colors.border,
+                    backgroundColor: colors.secondary,
                   }}
                 >
                   <Text variant="caption" color="muted" style={{ fontSize: 11 }}>

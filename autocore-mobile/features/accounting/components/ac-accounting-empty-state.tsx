@@ -11,12 +11,12 @@ export function AcAccountingEmptyState({ canEdit = false, onAddExpense }: AcAcco
   return (
     <EmptyState
       icon={ReceiptIcon}
-      title="Пока нет операций"
-      description="Здесь появятся продажи, расходы и платежи после первых финансовых движений в AutoCore."
+      title="No transactions yet"
+      description="Sales, expenses, and payments will show up here once you record your first financial activity in AutoCore."
       primaryAction={
         canEdit
           ? {
-              label: 'Записать расход',
+              label: 'Log expense',
               onPress: () => {
                 haptics.light();
                 onAddExpense?.();

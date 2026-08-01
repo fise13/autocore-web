@@ -1,5 +1,5 @@
 import { format, isToday, startOfDay, subDays } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { enUS } from 'date-fns/locale';
 
 import { resolveWeekChartBars } from '@/features/mission-control/lib/revenue-from-operations';
 import type { MissionControlWeekBar } from '@/features/mission-control/types';
@@ -18,7 +18,7 @@ function buildRawWeekBars(operations: FinancialOperation[], now: Date): MissionC
 
   return Array.from({ length: 7 }, (_, index) => {
     const day = subDays(today, 6 - index);
-    const label = format(day, 'EEE', { locale: ru }).slice(0, 2).toLowerCase();
+    const label = format(day, 'EEE', { locale: enUS });
     const key = day.toDateString();
     let income = 0;
     let expense = 0;

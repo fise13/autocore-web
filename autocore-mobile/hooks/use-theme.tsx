@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useColorScheme as useSystemColorScheme } from 'react-native';
 
+import { useAppearanceSettingsStore } from '@/features/settings/store/appearance-settings-store';
 import {
   type ColorScheme,
   type SemanticColors,
@@ -12,6 +13,7 @@ import {
   ringBorder,
   toneStyles,
 } from '@/theme';
+import { applyAccentToColors } from '@/theme/accent';
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 
@@ -48,6 +50,7 @@ function resolveScheme(preference: ThemePreference, systemScheme: ColorScheme | 
 export function ThemeProvider({ children, forcedScheme }: ThemeProviderProps) {
   const systemScheme = useSystemColorScheme();
   const [preference, setPreferenceState] = useState<ThemePreference>('system');
+  const accentColor = useAppearanceSettingsStore((s) => s.accentColor);
 
   useEffect(() => {
     void AsyncStorage.getItem(STORAGE_KEY)
@@ -67,7 +70,8 @@ export function ThemeProvider({ children, forcedScheme }: ThemeProviderProps) {
     forcedScheme ?? resolveScheme(preference, systemScheme === 'dark' ? 'dark' : 'light');
 
   const value = useMemo<ThemeContextValue>(() => {
-    const colors = getColors(scheme);
+    const base = getColors(scheme);
+    const colors = applyAccentToColors(base, scheme, accentColor);
     return {
       scheme,
       preference,
@@ -80,7 +84,7 @@ export function ThemeProvider({ children, forcedScheme }: ThemeProviderProps) {
       tones: toneStyles(scheme),
       isDark: scheme === 'dark',
     };
-  }, [preference, scheme, setPreference]);
+  }, [accentColor, preference, scheme, setPreference]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
@@ -94,7 +98,7 @@ export function useTheme(): ThemeContextValue {
 }
 
 export function themePreferenceLabel(preference: ThemePreference): string {
-  if (preference === 'light') return 'Светлая';
-  if (preference === 'dark') return 'Тёмная';
-  return 'Системная';
+  if (preference === 'light') return 'Light';
+  if (preference === 'dark') return 'Dark';
+  return 'System';
 }

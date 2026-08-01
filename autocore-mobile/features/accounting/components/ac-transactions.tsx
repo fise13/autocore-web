@@ -124,7 +124,7 @@ export function AcTransactions({ items, onShowAll }: AcTransactionsProps) {
 
   return (
     <Reanimated.View style={[{ gap: ac.sectionGap }, titleStyle]}>
-      <McSectionTitle title="Недавние операции" actionLabel="Все" onAction={onShowAll} />
+      <McSectionTitle title="Recent transactions" actionLabel="All" onAction={onShowAll} />
       <Reanimated.View
         style={[
           cardStyle,

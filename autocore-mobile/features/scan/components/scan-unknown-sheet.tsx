@@ -91,19 +91,19 @@ function ScanUnknownSheetContent({
     <View style={{ gap: 14 }}>
       <View style={{ gap: 4 }}>
         <Text variant="heading" style={{ fontSize: 20, fontWeight: '700' }}>
-          {isUrl ? 'Внешняя ссылка' : 'Код не найден'}
+          {isUrl ? 'External link' : 'Code not found'}
         </Text>
         <Text variant="caption" color="muted" numberOfLines={2}>
           {isUrl ? host : payload}
         </Text>
       </View>
 
-      {isUrl && onOpenUrl ? <OptionRow label="Открыть ссылку" onPress={onOpenUrl} primary /> : null}
-      {!isUrl ? <OptionRow label="Привязать к запчасти" onPress={onBindPart} primary /> : null}
+      {isUrl && onOpenUrl ? <OptionRow label="Open link" onPress={onOpenUrl} primary /> : null}
+      {!isUrl ? <OptionRow label="Bind to part" onPress={onBindPart} primary /> : null}
       {!isUrl ? (
-        <OptionRow label={isAiLoading ? 'Ищем…' : 'Распознать с AI'} onPress={onTryAi} disabled={isAiLoading} />
+        <OptionRow label={isAiLoading ? 'Searching…' : 'Recognize with AI'} onPress={onTryAi} disabled={isAiLoading} />
       ) : null}
-      <OptionRow label="Поиск вручную" onPress={onSearch} />
+      <OptionRow label="Search manually" onPress={onSearch} />
     </View>
   );
 }

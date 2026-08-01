@@ -8,7 +8,7 @@ import type { FinancialOperation } from '@/types/financial-operation';
 
 import type { MissionControlRevenue, MissionControlWeekBar } from '../types';
 
-const WEEKDAY_SHORT_RU = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'] as const;
+const WEEKDAY_SHORT_RU = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 
 export function isIncomeOperation(operation: FinancialOperation): boolean {
   return operation.type === 'sale' || operation.type === 'income';
@@ -107,7 +107,7 @@ export function resolveMissionControlRevenue(input: {
     const hero = buildAccountingHeroMetrics(input.operations, now);
 
     return {
-      label: 'Общий баланс',
+      label: 'Total Balance',
       value: hero.balanceTotal,
       growthPercent: hero.growthPercent,
       weekBars: hero.weekBars,
@@ -119,7 +119,7 @@ export function resolveMissionControlRevenue(input: {
   }
 
   return {
-    label: 'Выручка · За неделю',
+    label: 'Revenue · This Week',
     value: input.orderWeekRevenue,
     growthPercent: input.orderWeekGrowth,
     weekBars: input.orderWeekBars,

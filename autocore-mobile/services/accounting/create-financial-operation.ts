@@ -8,7 +8,7 @@ type CreatePayload = Pick<
 
 function assertValidPayload(payload: CreatePayload): void {
   if (!Number.isFinite(payload.amount) || payload.amount <= 0) {
-    throw new Error('Введите корректную сумму');
+    throw new Error('Enter a valid amount');
   }
 }
 

@@ -120,7 +120,7 @@ export function useOrderCompositionForm({
     }
     patchLaborDraft({
       assigneeId: currentUserId,
-      assigneeName: 'Я',
+      assigneeName: 'Me',
       assigneeRole: 'mechanic',
     });
   }, [commitAssignee, currentUserId, employees, patchLaborDraft]);
@@ -133,19 +133,19 @@ export function useOrderCompositionForm({
     const assigneeName = laborDraft.assigneeName.trim();
 
     if (!title) {
-      setError('Укажите наименование работы');
+      setError('Enter a job title');
       return;
     }
     if (!assigneeName && !laborDraft.assigneeId) {
-      setError('Укажите исполнителя');
+      setError('Assign someone to this job');
       return;
     }
     if (pricingMode === 'fixed' && unitPrice <= 0) {
-      setError('Укажите сумму работы');
+      setError('Enter the job amount');
       return;
     }
     if (pricingMode === 'hourly' && (hours <= 0 || unitPrice <= 0)) {
-      setError('Укажите часы и ставку за час');
+      setError('Enter hours and an hourly rate');
       return;
     }
 
@@ -188,7 +188,7 @@ export function useOrderCompositionForm({
     const manualPrice = parseGroupedNumber(partUnitPrice);
 
     if (!name) {
-      setError('Укажите название запчасти');
+      setError('Enter a part name');
       return;
     }
 
@@ -220,7 +220,7 @@ export function useOrderCompositionForm({
     }
 
     if (manualPrice <= 0) {
-      setError('Укажите цену для запчасти вне склада');
+      setError('Enter a price for this off-inventory part');
       return;
     }
 
@@ -248,7 +248,7 @@ export function useOrderCompositionForm({
     const serial = motorSerial.trim();
     const motor = availableMotors.find((entry) => entry.serialCode === serial);
     if (!motor) {
-      setError('Двигатель не найден');
+      setError('Motor not found');
       haptics.warning();
       return;
     }
@@ -280,15 +280,15 @@ export function useOrderCompositionForm({
     const name = specificPartName.trim();
     const price = parseGroupedNumber(specificPartPrice);
     if (!category) {
-      setError('Выберите категорию');
+      setError('Select a category');
       return;
     }
     if (!name) {
-      setError('Укажите название позиции');
+      setError('Enter a line item name');
       return;
     }
     if (price <= 0) {
-      setError('Укажите цену');
+      setError('Enter a price');
       return;
     }
     setPartLines((lines) => [
@@ -359,7 +359,7 @@ export function useOrderCompositionForm({
   const regularPartLineItems = useMemo(
     () =>
       regularPartLines.map((line) => {
-        const tag = line.source === 'adhoc' || !line.itemId ? ' · разово' : '';
+        const tag = line.source === 'adhoc' || !line.itemId ? ' · one-off' : '';
         return {
           id: line.id,
           label: `${line.name}${tag} × ${line.quantity} = ${formatMoney(line.quantity * line.unitPrice)}`,
@@ -381,7 +381,7 @@ export function useOrderCompositionForm({
     () =>
       motorLines.map((line) => ({
         id: line.id,
-        label: `${line.label} · ${line.outcome === 'install' ? 'установка' : 'продажа'} · ${formatMoney(line.unitPrice)}`,
+        label: `${line.label} · ${line.outcome === 'install' ? 'install' : 'sale'} · ${formatMoney(line.unitPrice)}`,
       })),
     [motorLines],
   );

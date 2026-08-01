@@ -1,12 +1,12 @@
 import type { ScanInventoryStatus } from '../types';
 
 export const scanStatusLabel: Record<ScanInventoryStatus, string> = {
-  in_stock: 'В наличии',
-  reserved: 'В резерве',
-  sold: 'Продан',
-  deficit: 'Дефицит',
-  ready: 'Готов к выдаче',
-  pending_delivery: 'Ожидает поставку',
+  in_stock: 'In Stock',
+  reserved: 'Reserved',
+  sold: 'Sold',
+  deficit: 'Deficit',
+  ready: 'Ready for Pickup',
+  pending_delivery: 'Awaiting Delivery',
 };
 
 export const scanStatusTone: Record<

@@ -74,7 +74,7 @@ export function TeamSummaryCard({
   pendingInvites,
 }: TeamSummaryCardProps) {
   return (
-    <SettingsSectionCard title="Обзор команды" description="Сотрудники и приглашения в одном месте">
+    <SettingsSectionCard title="Team overview" description="Employees and invites in one place">
       <View
         style={{
           flexDirection: 'row',
@@ -85,16 +85,16 @@ export function TeamSummaryCard({
       >
         <SummaryMetric
           icon={UsersIcon}
-          label="Сотрудники"
+          label="Employees"
           value={`${activeEmployees}`}
-          hint={`${totalEmployees} в команде`}
+          hint={`${totalEmployees} on the team`}
           tone="primary"
         />
         <SummaryMetric
           icon={MailIcon}
-          label="Приглашения"
+          label="Invites"
           value={`${pendingInvites}`}
-          hint="ожидают вступления"
+          hint="pending"
         />
       </View>
     </SettingsSectionCard>

@@ -9,10 +9,10 @@ export function ModulesScreen() {
   const toggleModule = useModulesConfigStore((s) => s.toggleModule);
 
   return (
-    <ProfileScreenShell title="Модули" subtitle="Только нужные разделы">
+    <ProfileScreenShell title="Modules" subtitle="Only the sections you need">
       <SettingsSectionCard
-        title="Модули продукта"
-        description="Отключённые модули скрываются из меню и навигации"
+        title="Product modules"
+        description="Disabled modules are hidden from the menu and navigation"
       >
         <ModulesEditorList enabled={enabled} onToggle={toggleModule} />
       </SettingsSectionCard>

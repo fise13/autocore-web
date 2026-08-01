@@ -113,8 +113,8 @@ export function SearchScreen() {
       const motor = availableMotors.find((entry) => entry.id === motorId);
       if (!motor) {
         toast({
-          title: 'Мотор не найден',
-          description: 'Обновите список и попробуйте снова',
+          title: 'Motor not found',
+          description: 'Refresh the list and try again',
           variant: 'destructive',
         });
         return;
@@ -151,7 +151,7 @@ export function SearchScreen() {
       if (partItems.length > 0) {
         next.push({
           id: 'parts',
-          title: lowStockOnly ? 'Позиции на исходе' : 'Склад',
+          title: lowStockOnly ? 'Running low' : 'Inventory',
           filter: 'parts',
           items: partItems,
         });
@@ -171,7 +171,7 @@ export function SearchScreen() {
       if (motorItems.length > 0) {
         next.push({
           id: 'motors',
-          title: staleMotorsOnly ? 'Моторы давно на складе' : 'Моторы',
+          title: staleMotorsOnly ? 'Motors sitting long-term' : 'Motors',
           filter: 'motors',
           items: motorItems,
         });
@@ -196,7 +196,7 @@ export function SearchScreen() {
           meta: client.email,
         }));
       if (items.length > 0) {
-        next.push({ id: 'clients', title: 'Клиенты', filter: 'clients', items });
+        next.push({ id: 'clients', title: 'Clients', filter: 'clients', items });
       }
     }
 
@@ -223,7 +223,7 @@ export function SearchScreen() {
           meta: [order.vehicle, orderStatusLabel[order.status]].filter(Boolean).join(' · '),
         }));
       if (items.length > 0) {
-        next.push({ id: 'orders', title: 'Заказ-наряды', filter: 'orders', items });
+        next.push({ id: 'orders', title: 'Work orders', filter: 'orders', items });
       }
     }
 
@@ -271,7 +271,7 @@ export function SearchScreen() {
     return (
       <Screen style={{ justifyContent: 'center', padding: rhythm.section }}>
         <Text variant="body" color="muted" style={{ textAlign: 'center' }}>
-          Выберите рабочее пространство, чтобы искать по складу, клиентам и заказам.
+          Select a workspace to search inventory, clients, and orders.
         </Text>
       </Screen>
     );
@@ -296,7 +296,7 @@ export function SearchScreen() {
           {hasQuery || showPresetList ? (
             showInitialLoading ? (
               <View style={{ paddingHorizontal: searchLayout.pad, paddingTop: rhythm.section }}>
-                <Loading message="Ищем в базе…" />
+                <Loading message="Searching…" />
               </View>
             ) : (
               <SearchResults
@@ -354,7 +354,7 @@ export function SearchScreen() {
           userId={profile?.id ?? uid}
           onSold={(motor) => {
             toast({
-              title: 'Мотор продан',
+              title: 'Motor sold',
               description: motor.serialCode,
               variant: 'success',
             });

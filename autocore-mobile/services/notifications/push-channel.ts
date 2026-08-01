@@ -56,12 +56,12 @@ export async function ensureAndroidChannel(): Promise<void> {
     vibrationPattern: [0, 250, 250, 250],
   });
   await Notifications.setNotificationChannelAsync('critical', {
-    name: 'Критичные',
+    name: 'Critical',
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 400, 200, 400],
   });
   await Notifications.setNotificationChannelAsync('silent', {
-    name: 'Тихие',
+    name: 'Silent',
     importance: Notifications.AndroidImportance.LOW,
     vibrationPattern: [0],
   });
@@ -196,7 +196,17 @@ export async function requestPushPermissionAndRegister(): Promise<boolean> {
   return true;
 }
 
-export async function ensurePushDeviceRegistered(pushEnabled = true): Promise<void> {
+export async function ensurePushDeviceRegistered(
+  pushEnabled = true,
+  options?: {
+    /**
+     * Show the system prompt when iOS has never asked. Without this the app
+     * only ever gets a token if the user finds the notification settings
+     * screen, so push effectively never works for most accounts.
+     */
+    promptIfUndetermined?: boolean;
+  },
+): Promise<void> {
   if (!pushEnabled || !Device.isDevice) return;
 
   if (pushRegistrationPromise) {
@@ -205,7 +215,13 @@ export async function ensurePushDeviceRegistered(pushEnabled = true): Promise<vo
   }
 
   pushRegistrationPromise = (async () => {
-    const { token, permission } = await setupPushToken({ requestPermission: false });
+    const current = await Notifications.getPermissionsAsync();
+    // Only ever prompt from the undetermined state — re-asking after a denial
+    // is a silent no-op on iOS and just burns a round trip.
+    const shouldPrompt =
+      options?.promptIfUndetermined === true && current.status === 'undetermined';
+
+    const { token, permission } = await setupPushToken({ requestPermission: shouldPrompt });
     if (permission !== 'granted') {
       if (permission === 'denied') {
         logPushIssue('notification permission denied');
@@ -265,7 +281,7 @@ export async function registerPushDevice(pushToken: string): Promise<void> {
 
   const uid = await waitForFirebaseAuthUid();
   if (!uid) {
-    throw new MobileApiError('Требуется авторизация для push-уведомлений', 401);
+    throw new MobileApiError('Authorization required for push notifications', 401);
   }
 
   const devicePayload = {

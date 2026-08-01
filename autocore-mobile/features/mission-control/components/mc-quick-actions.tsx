@@ -75,7 +75,7 @@ export const McQuickActions = memo(function McQuickActions({ actions }: McQuickA
 
   return (
     <Animated.View style={sectionStyle}>
-      <McSectionTitle title="Быстрые действия" />
+      <McSectionTitle title="Quick actions" />
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: rhythm.inline }}>
         {actions.map((action, index) => (
           <QuickActionButton key={action.id} action={action} index={index} />

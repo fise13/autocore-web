@@ -39,7 +39,7 @@ export const MarketplaceCard = memo(function MarketplaceCard({
       footer={
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text variant="heading">{price}</Text>
-          {views !== undefined ? <Text variant="caption" color="muted">{views} просмотров</Text> : null}
+          {views !== undefined ? <Text variant="caption" color="muted">{views} views</Text> : null}
         </View>
       }
     />

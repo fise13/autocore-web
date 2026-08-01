@@ -13,13 +13,13 @@ type ScanRouter = {
 };
 
 const ENTITY_LABELS: Record<ScanEntityLinkKind, string> = {
-  order: 'Заказ-наряд',
-  item: 'Позиция',
-  client: 'Клиент',
-  shelf: 'Полка',
-  location: 'Место',
-  invoice: 'Счёт',
-  motor: 'Мотор',
+  order: 'Work Order',
+  item: 'Item',
+  client: 'Client',
+  shelf: 'Shelf',
+  location: 'Location',
+  invoice: 'Invoice',
+  motor: 'Engine',
 };
 
 export function entityLinkLabel(entity: ScanEntityLinkKind): string {
@@ -56,10 +56,10 @@ export function openEntityLink(
   }
 
   if (entity === 'location' || entity === 'shelf') {
-    router.push(`/(tabs)/warehouse/location/${encodeURIComponent(id)}` as Href);
+    router.push(`/warehouse/location/${encodeURIComponent(id)}` as Href);
     return;
   }
 
   // Client — search is the fastest path.
-  router.navigate(`/(tabs)/search?q=${encodeURIComponent(id)}` as Href);
+  router.navigate(`/search?q=${encodeURIComponent(id)}` as Href);
 }

@@ -61,10 +61,10 @@ export function SearchResultRow({ item, query, index = 0, onPress }: SearchResul
           accessibilityRole="button"
           accessibilityHint={
             item.kind === 'order'
-              ? 'Открыть наряд'
+              ? 'Open work order'
               : item.kind === 'client'
-                ? 'Позвонить клиенту'
-                : 'Показать действия'
+                ? 'Call client'
+                : 'Show actions'
           }
           onPress={() => {
             haptics.light();
@@ -123,7 +123,7 @@ export function SearchResultRow({ item, query, index = 0, onPress }: SearchResul
             ) : null}
             {item.shelf ? (
               <Text variant="meta" color="muted" numberOfLines={1}>
-                Ячейка {item.shelf}
+                Shelf {item.shelf}
               </Text>
             ) : null}
           </View>

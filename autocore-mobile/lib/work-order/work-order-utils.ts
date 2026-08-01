@@ -14,11 +14,11 @@ export function nextStatuses(status: WorkOrderStatus): WorkOrderStatus[] {
 }
 
 export const STATUS_LABELS: Record<WorkOrderStatus, string> = {
-  draft: 'Черновик',
-  confirmed: 'Подтверждён',
-  in_progress: 'В работе',
-  waiting_parts: 'Ожидание запчастей',
-  completed: 'Выполнен',
-  delivered: 'Выдан',
-  cancelled: 'Отменён',
+  draft: 'Draft',
+  confirmed: 'Confirmed',
+  in_progress: 'In Progress',
+  waiting_parts: 'Waiting on Parts',
+  completed: 'Completed',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
 };

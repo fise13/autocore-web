@@ -17,8 +17,8 @@ type WarehouseFilterBarProps = {
 };
 
 const OPTIONS: Array<{ id: WarehouseFilter; label: string }> = [
-  { id: 'all', label: 'Все позиции' },
-  { id: 'low', label: 'На исходе' },
+  { id: 'all', label: 'All items' },
+  { id: 'low', label: 'Running low' },
 ];
 
 export function WarehouseFilterBar({ value, onChange }: WarehouseFilterBarProps) {

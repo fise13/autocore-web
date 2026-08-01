@@ -1,6 +1,7 @@
 import { Modal, Pressable, View } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
+import { backdropIn, backdropOut, popoverIn, popoverOut } from '@/animations';
 import { useTheme } from '@/hooks';
 import { radius, spacing, zIndex } from '@/theme';
 import { Text } from './text';
@@ -23,9 +24,13 @@ export function ContextMenu({ visible, onClose, items, anchor }: ContextMenuProp
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(100)} style={{ flex: 1 }}>
-        <Pressable style={{ flex: 1, backgroundColor: colors.overlay }} onPress={onClose} />
-        <View
+      <View style={{ flex: 1 }}>
+        <Animated.View entering={backdropIn} exiting={backdropOut} style={{ flex: 1 }}>
+          <Pressable style={{ flex: 1, backgroundColor: colors.overlay }} onPress={onClose} />
+        </Animated.View>
+        <Animated.View
+          entering={popoverIn}
+          exiting={popoverOut}
           style={{
             position: 'absolute',
             top: anchor?.y ?? '40%',
@@ -62,8 +67,8 @@ export function ContextMenu({ visible, onClose, items, anchor }: ContextMenuProp
               </Text>
             </Pressable>
           ))}
-        </View>
-      </Animated.View>
+        </Animated.View>
+      </View>
     </Modal>
   );
 }

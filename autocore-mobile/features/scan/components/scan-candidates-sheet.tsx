@@ -8,8 +8,15 @@ import { formatPrice } from '@/features/search/lib/format';
 import { haptics } from '@/theme';
 
 import { scanSheetAnimationConfigs } from '../animation/scan-sheet-motion';
-import { ScanProductThumb } from './scan-product-thumb';
+import { scanLayout } from '../layout';
 import type { ScanCandidate, ScanResult } from '../types';
+import { ScanProductThumb } from './scan-product-thumb';
+import {
+  ScanSheetHairline,
+  ScanSheetHeader,
+  ScanSheetPrimaryButton,
+} from './scan-sheet-chrome';
+
 type ScanCandidatesSheetProps = {
   result: ScanResult | null;
   payload: string | null;
@@ -37,85 +44,67 @@ export const ScanCandidatesSheet = forwardRef<BottomSheetModal, ScanCandidatesSh
         handleIndicatorStyle={sheet.handleIndicatorStyle}
         animationConfigs={scanSheetAnimationConfigs}
       >
-        <BottomSheetScrollView contentContainerStyle={{ ...sheet.compactContentStyle, gap: 12 }}>
-          <View style={{ gap: 4 }}>
-            <Text variant="heading" style={{ fontSize: 20, fontWeight: '700' }}>
-              Выберите позицию
-            </Text>
-            {payload ? (
-              <Text variant="caption" color="muted" style={{ fontVariant: ['tabular-nums'] }}>
-                {payload}
-              </Text>
-            ) : null}
-            {result?.aiReasoning ? (
-              <Text variant="caption" color="muted">
-                {result.aiReasoning}
-              </Text>
-            ) : null}
-          </View>
+        <BottomSheetScrollView
+          contentContainerStyle={{
+            ...sheet.compactContentStyle,
+            paddingHorizontal: scanLayout.sheetPadX,
+            gap: 4,
+          }}
+        >
+          <ScanSheetHeader
+            title="Select an item"
+            meta={
+              [payload, result?.aiReasoning].filter(Boolean).join(' · ') || undefined
+            }
+          />
 
-          {candidates.map((candidate) => (
-            <Pressable
-              key={candidate.id}
-              accessibilityRole="button"
-              onPress={() => {
-                haptics.light();
-                onPick(candidate);
-              }}
-              style={{
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: colors.border,
-                backgroundColor: colors.secondary,
-                padding: 14,
-                flexDirection: 'row',
-                gap: 12,
-                alignItems: 'center',
-              }}
-            >
-              <ScanProductThumb name={candidate.name} imageUrl={candidate.imageUrl} size={52} />
-              <View style={{ flex: 1, gap: 4 }}>
-                <Text variant="body" style={{ fontSize: 15, fontWeight: '600' }}>
-                  {candidate.name}
-                </Text>
-                <Text variant="caption" color="muted">
-                  {candidate.sku} · {candidate.reason}
-                </Text>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}>
-                  {candidate.sellPrice != null ? (
-                    <Text variant="caption" style={{ fontWeight: '600' }}>
-                      {formatPrice(candidate.sellPrice)}
-                    </Text>
-                  ) : (
-                    <View />
-                  )}
-                  <Text variant="caption" color="muted">
-                    Остаток {candidate.totalAvailable}
+          <View style={{ height: 8 }} />
+
+          {candidates.map((candidate, index) => (
+            <View key={candidate.id}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  haptics.light();
+                  onPick(candidate);
+                }}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  paddingVertical: 12,
+                }}
+              >
+                <ScanProductThumb name={candidate.name} imageUrl={candidate.imageUrl} size={44} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text variant="body" style={{ fontSize: 16, fontWeight: '500' }}>
+                    {candidate.name}
+                  </Text>
+                  <Text variant="caption" color="muted" style={{ fontSize: 13 }}>
+                    {candidate.sku}
+                    {candidate.reason ? ` · ${candidate.reason}` : ''}
                   </Text>
                 </View>
-              </View>
-            </Pressable>
+                <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                  {candidate.sellPrice != null ? (
+                    <Text
+                      variant="caption"
+                      style={{ fontWeight: '600', fontVariant: ['tabular-nums'] }}
+                    >
+                      {formatPrice(candidate.sellPrice)}
+                    </Text>
+                  ) : null}
+                  <Text variant="caption" color="muted" style={{ fontSize: 12 }}>
+                    {candidate.totalAvailable} in stock
+                  </Text>
+                </View>
+              </Pressable>
+              {index < candidates.length - 1 ? <ScanSheetHairline /> : null}
+            </View>
           ))}
 
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              haptics.light();
-              onSearch();
-            }}
-            style={{
-              minHeight: 44,
-              borderRadius: 12,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}
-          >
-            <Text variant="caption" style={{ fontWeight: '600' }}>
-              Поиск вручную
-            </Text>
-          </Pressable>
+          <View style={{ height: 12 }} />
+          <ScanSheetPrimaryButton label="Search manually" onPress={onSearch} />
         </BottomSheetScrollView>
       </BottomSheetModal>
     );

@@ -59,7 +59,7 @@ export async function saveNotificationPreferences(
   try {
     await setDoc(preferencesRef(uid), payload, { merge: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Не удалось сохранить настройки';
+    const message = error instanceof Error ? error.message : 'Failed to save settings';
     throw new Error(message);
   }
 }

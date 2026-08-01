@@ -49,10 +49,10 @@ export const AcBalanceCard = memo(function AcBalanceCard({
   const weekBars = hero.weekBars;
   const todayHint =
     operations.length > 0
-      ? `Сегодня: ${formatMoney(hero.todayNet)} · доход ${formatMoney(hero.todayIncome)} · расход ${formatMoney(hero.todayExpense)}`
+      ? `Today: ${formatMoney(hero.todayNet)} · income ${formatMoney(hero.todayIncome)} · expenses ${formatMoney(hero.todayExpense)}`
       : profit.growing
-        ? 'Положительная динамика за месяц'
-        : 'Снижение прибыли за месяц';
+        ? 'Profit trending up this month'
+        : 'Profit down this month';
 
   return (
     <Reanimated.View style={cardStyle}>
@@ -66,7 +66,7 @@ export const AcBalanceCard = memo(function AcBalanceCard({
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text variant="meta" color="muted" style={mcType.statLabel}>
-            Общий баланс
+            Total balance
           </Text>
           {hasGrowth ? (
             <View

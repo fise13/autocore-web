@@ -12,7 +12,7 @@ function resolveMotorShelf(motor: MotorEntity): string | undefined {
 
 export function mapMotorToSearchResult(motor: MotorEntity): SearchResultItem {
   const title = normalizeInventoryCode(
-    formatMotorLineLabel(motor, { includeSerial: true, fallback: motor.serialCode ?? 'Двигатель' }),
+    formatMotorLineLabel(motor, { includeSerial: true, fallback: motor.serialCode ?? 'Motor' }),
   );
   const subtitle =
     inventoryCardSubtitle(title, motor.serialCode ?? '') ??

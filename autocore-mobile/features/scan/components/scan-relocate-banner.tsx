@@ -1,8 +1,13 @@
-import { Pressable, View } from 'react-native';
+import { Pressable, View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { Text } from '@/components/ui';
-import { haptics, rhythm } from '@/theme';
+import { useReducedMotion } from '@/hooks';
+import { autocoreEase, duration, haptics } from '@/theme';
+
+import { scanLayout } from '../layout';
+import { useScanChromeColors } from '../lib/scan-chrome-colors';
 
 type ScanRelocateBannerProps = {
   title: string;
@@ -10,16 +15,23 @@ type ScanRelocateBannerProps = {
   onCancel: () => void;
 };
 
+/** Relocate notice with Cancel. */
 export function ScanRelocateBanner({ title, subtitle, onCancel }: ScanRelocateBannerProps) {
+  const chrome = useScanChromeColors();
   const insets = useSafeAreaInsets();
+  const reducedMotion = useReducedMotion();
+  const entering = reducedMotion
+    ? undefined
+    : FadeInDown.duration(duration.normal).easing(autocoreEase);
 
   return (
-    <View
+    <Animated.View
+      entering={entering}
       style={{
         position: 'absolute',
-        top: insets.top + 76,
-        left: rhythm.pad,
-        right: rhythm.pad,
+        top: insets.top + scanLayout.noticeTopOffset,
+        left: scanLayout.pad,
+        right: scanLayout.pad,
         zIndex: 2,
       }}
     >
@@ -27,43 +39,48 @@ export function ScanRelocateBanner({ title, subtitle, onCancel }: ScanRelocateBa
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 10,
+          gap: 12,
           paddingHorizontal: 14,
           paddingVertical: 10,
-          borderRadius: 14,
-          backgroundColor: 'rgba(0,0,0,0.58)',
-          borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.16)',
+          borderRadius: 12,
+          backgroundColor: chrome.bannerBg,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: chrome.bannerBorder,
         }}
       >
         <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="caption" style={{ color: '#fff', fontWeight: '700' }}>
+          <Text
+            variant="caption"
+            style={{ color: chrome.bannerTitle, fontWeight: '600', fontSize: 13 }}
+          >
             {title}
           </Text>
-          <Text variant="caption" style={{ color: 'rgba(255,255,255,0.78)' }} numberOfLines={2}>
+          <Text
+            variant="caption"
+            style={{ color: chrome.bannerMeta, fontSize: 12 }}
+            numberOfLines={2}
+          >
             {subtitle}
           </Text>
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Отменить"
+          accessibilityLabel="Cancel"
           onPress={() => {
             haptics.selection();
             onCancel();
           }}
           hitSlop={8}
-          style={{
-            paddingHorizontal: 10,
-            paddingVertical: 6,
-            borderRadius: 10,
-            backgroundColor: 'rgba(255,255,255,0.12)',
-          }}
+          style={{ paddingHorizontal: 4, paddingVertical: 6 }}
         >
-          <Text variant="caption" style={{ color: '#fff', fontWeight: '600' }}>
-            Отмена
+          <Text
+            variant="caption"
+            style={{ color: chrome.bannerAction, fontWeight: '600', fontSize: 14 }}
+          >
+            Cancel
           </Text>
         </Pressable>
       </View>
-    </View>
+    </Animated.View>
   );
 }

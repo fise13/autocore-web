@@ -6,7 +6,7 @@ export type MissionControlAttentionItem = {
   count: number;
   text: string;
   tone: 'warning' | 'danger';
-  route?: '/(tabs)/orders' | '/(tabs)/search' | '/(tabs)/warehouse' | '/(tabs)/accounting';
+  route?: '/(tabs)/orders' | '/search' | '/warehouse' | '/(tabs)/accounting';
   routeParams?: Record<string, string>;
 };
 
@@ -26,7 +26,7 @@ export type MissionControlTodayStat = {
   format: TodayStatFormat;
   emphasis?: StatEmphasis;
   tone?: 'default' | 'warning' | 'success';
-  route?: '/(tabs)/orders' | '/(tabs)/search' | '/(tabs)/warehouse' | '/(tabs)/accounting';
+  route?: '/(tabs)/orders' | '/search' | '/warehouse' | '/(tabs)/accounting';
   routeParams?: Record<string, string>;
 };
 
@@ -40,7 +40,7 @@ export type MissionControlKpi = {
   format: TodayStatFormat | 'grouped';
   hint?: string;
   tone: KpiTone;
-  route?: '/(tabs)/orders' | '/(tabs)/search' | '/(tabs)/warehouse' | '/(tabs)/accounting';
+  route?: '/(tabs)/orders' | '/search' | '/warehouse' | '/(tabs)/accounting';
   routeParams?: Record<string, string>;
 };
 
@@ -48,7 +48,7 @@ export type MissionControlQuickAction = {
   id: string;
   label: string;
   icon: ComponentType<{ size?: 'sm' | 'md' | 'lg'; color?: string; strokeWidth?: number }>;
-  route?: '/(tabs)/scan' | '/(tabs)/search' | '/(tabs)/warehouse' | '/(tabs)/orders' | '/(tabs)/orders/new' | '/(tabs)/accounting';
+  route?: '/(tabs)/scan' | '/search' | '/warehouse' | '/(tabs)/orders' | '/(tabs)/orders/new' | '/(tabs)/accounting';
 };
 
 export type InsightTone = 'neutral' | 'positive' | 'warning';
@@ -60,7 +60,7 @@ export type MissionControlInsight = {
   body?: string;
   cta?: string;
   tone: InsightTone;
-  route?: '/(tabs)/orders' | '/(tabs)/search' | '/(tabs)/warehouse' | '/(tabs)/accounting';
+  route?: '/(tabs)/orders' | '/search' | '/warehouse' | '/(tabs)/accounting';
   routeParams?: Record<string, string>;
 };
 
@@ -94,7 +94,7 @@ export type MissionControlRevenue = {
   todayNet?: number;
   todayIncome?: number;
   todayExpense?: number;
-  route?: '/(tabs)/orders' | '/(tabs)/search' | '/(tabs)/warehouse' | '/(tabs)/accounting';
+  route?: '/(tabs)/orders' | '/search' | '/warehouse' | '/(tabs)/accounting';
   routeParams?: Record<string, string>;
 };
 
@@ -104,7 +104,7 @@ export type MissionControlStatTile = {
   value: number;
   format: 'integer' | 'grouped';
   icon: ComponentType<{ size?: 'sm' | 'md' | 'lg'; color?: string; strokeWidth?: number }>;
-  route?: '/(tabs)/orders' | '/(tabs)/search' | '/(tabs)/warehouse' | '/(tabs)/accounting';
+  route?: '/(tabs)/orders' | '/search' | '/warehouse' | '/(tabs)/accounting';
   routeParams?: Record<string, string>;
 };
 

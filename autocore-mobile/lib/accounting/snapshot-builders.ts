@@ -58,6 +58,16 @@ function isExpenseOperation(operation: FinancialOperation): boolean {
   return operation.type === 'expense' || operation.type === 'refund';
 }
 
+/**
+ * `FinancialOperation.createdAt` is typed as a Date but does not always hold
+ * one: straight off Firestore it is a Timestamp, and rehydrated from the
+ * persisted query cache it is an ISO string. Neither has Date methods, so every
+ * read in this file goes through here rather than touching the field directly.
+ */
+function operationDate(operation: FinancialOperation): Date | undefined {
+  return coerceToDate(operation.createdAt);
+}
+
 function inMonth(date: Date, reference: Date): boolean {
   return date.getFullYear() === reference.getFullYear() && date.getMonth() === reference.getMonth();
 }
@@ -114,13 +124,23 @@ function buildDailySeries(
 
 export function buildBalanceTrend(operations: FinancialOperation[], days = 12): number[] {
   const today = startOfDay(new Date());
-  const sorted = [...operations].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+
+  // `createdAt` is typed as a Date but arrives from Firestore as a Timestamp,
+  // so it has no `getTime`. Coerce once up front — the same guard the daily
+  // totals above use — instead of per day inside the loop.
+  const dated = operations
+    .map((operation) => ({ operation, at: coerceToDate(operation.createdAt) }))
+    .filter((entry): entry is { operation: FinancialOperation; at: Date } => entry.at != null)
+    .sort((a, b) => a.at.getTime() - b.at.getTime());
+
   const values: number[] = [];
 
   for (let index = 0; index < days; index += 1) {
     const dayEnd = subDays(today, days - 1 - index);
     const dayEndMs = dayEnd.getTime() + 86_399_999;
-    const subset = sorted.filter((operation) => operation.createdAt.getTime() <= dayEndMs);
+    const subset = dated
+      .filter((entry) => entry.at.getTime() <= dayEndMs)
+      .map((entry) => entry.operation);
     values.push(calculateCashBalance(subset).total);
   }
 
@@ -216,7 +236,8 @@ function operationIcon(operation: FinancialOperation) {
   return FileTextIcon;
 }
 
-function formatOperationTime(date: Date): string {
+function formatOperationTime(date: Date | undefined): string {
+  if (!date) return '—';
   if (isToday(date)) return format(date, 'HH:mm');
   if (isYesterday(date)) return 'Yesterday';
   return format(date, 'd MMM');
@@ -235,7 +256,7 @@ export function buildTransactions(operations: FinancialOperation[]): AccountingS
     description: operationCustomer(operation),
     amount: operation.amount,
     direction: isIncomeOperation(operation) ? ('in' as const) : ('out' as const),
-    time: formatOperationTime(operation.createdAt),
+    time: formatOperationTime(operationDate(operation)),
     status: operationStatus(operation),
     icon: operationIcon(operation),
   }));
@@ -340,7 +361,10 @@ export function buildAttentionItems(
   const pendingPayroll = payroll.filter((item) => item.status === 'pending');
   const pendingPayrollTotal = pendingPayroll.reduce((sum, item) => sum + item.amount, 0);
   const todayExpenses = operations
-    .filter((item) => isToday(item.createdAt) && isExpenseOperation(item))
+    .filter((item) => {
+      const at = operationDate(item);
+      return at != null && isToday(at) && isExpenseOperation(item);
+    })
     .reduce((sum, item) => sum + item.amount, 0);
   const refunds = operations.filter((item) => item.type === 'refund');
 
@@ -402,7 +426,7 @@ export function buildInvoices(
       customer: operationCustomer(operation),
       amount: operation.amount,
       status: 'paid' as InvoiceStatus,
-      dueDate: format(operation.createdAt, 'd MMM'),
+      dueDate: formatOperationTime(operationDate(operation)),
       progress: 100,
     }));
 
@@ -430,7 +454,8 @@ export function buildTopCustomers(operations: FinancialOperation[]): AccountingS
     const current = grouped.get(name) ?? { paid: 0, count: 0, recent: 0, older: 0 };
     current.paid += operation.amount;
     current.count += 1;
-    if (inMonth(operation.createdAt, new Date())) {
+    const at = operationDate(operation);
+    if (at && inMonth(at, new Date())) {
       current.recent += operation.amount;
     } else {
       current.older += operation.amount;

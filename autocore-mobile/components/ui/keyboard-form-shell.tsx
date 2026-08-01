@@ -1,5 +1,12 @@
 import { useState, type ReactNode } from 'react';
-import { View, type LayoutChangeEvent, type ScrollViewProps, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  type LayoutChangeEvent,
+  type ScrollViewProps,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import {
   KeyboardAwareScrollView,
   KeyboardStickyView,
@@ -26,6 +33,7 @@ export function KeyboardFormShell({
   keyboardShouldPersistTaps = 'handled',
   keyboardDismissMode = 'on-drag',
   showsVerticalScrollIndicator = false,
+  style,
   ...scrollProps
 }: KeyboardFormShellProps) {
   const [footerHeight, setFooterHeight] = useState(0);
@@ -35,22 +43,35 @@ export function KeyboardFormShell({
     setFooterHeight((current) => (current === next ? current : next));
   };
 
+  const flattenedContent = StyleSheet.flatten(contentContainerStyle) ?? {};
+  const ownBottomPadding =
+    typeof flattenedContent.paddingBottom === 'number' ? flattenedContent.paddingBottom : 0;
+  const contentBottom = ownBottomPadding + footerHeight;
+
   return (
     <View style={{ flex: 1, backgroundColor }}>
       {header}
+      {/* `flex: 1` is load-bearing: without it the scroll view sizes to its
+          content and pushes the sticky bar off the bottom of the screen. */}
       <KeyboardAwareScrollView
+        style={[{ flex: 1 }, style]}
         bottomOffset={bottomOffset + footerHeight}
         keyboardShouldPersistTaps={keyboardShouldPersistTaps}
         keyboardDismissMode={keyboardDismissMode}
         showsVerticalScrollIndicator={showsVerticalScrollIndicator}
         automaticallyAdjustContentInsets={false}
-        contentContainerStyle={contentContainerStyle}
+        // The bar floats over the content, so the form reserves its measured
+        // height — content scrolls underneath without ever hiding behind it.
+        contentContainerStyle={[contentContainerStyle, { paddingBottom: contentBottom }]}
         {...scrollProps}
       >
         {children}
       </KeyboardAwareScrollView>
       {footer ? (
-        <KeyboardStickyView offset={{ closed: 0, opened: 0 }}>
+        <KeyboardStickyView
+          offset={{ closed: 0, opened: 0 }}
+          style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}
+        >
           <View onLayout={handleFooterLayout}>{footer}</View>
         </KeyboardStickyView>
       ) : null}

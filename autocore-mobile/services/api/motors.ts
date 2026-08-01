@@ -46,7 +46,7 @@ export async function enqueueMotorSoldEffects(
     if (!ok) {
       return {
         ok: false,
-        error: data?.error ?? `Не удалось оформить документы продажи (${status})`,
+        error: data?.error ?? `Failed to process sale documents (${status})`,
       };
     }
 
@@ -54,7 +54,7 @@ export async function enqueueMotorSoldEffects(
   } catch (error) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : 'Не удалось оформить документы продажи',
+      error: error instanceof Error ? error.message : 'Failed to process sale documents',
     };
   }
 }

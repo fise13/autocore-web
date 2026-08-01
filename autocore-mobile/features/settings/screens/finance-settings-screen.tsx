@@ -8,11 +8,11 @@ export function FinanceSettingsScreen() {
   const router = useGuardedRouter();
 
   return (
-    <ProfileScreenShell title="Бухгалтерия" subtitle="Финансовые настройки компании">
+    <ProfileScreenShell title="Accounting" subtitle="Company financial settings">
       <ListGroup>
         <ListRow
-          title="Сотрудники и категории"
-          subtitle="Списки для бухгалтерии и специфики"
+          title="Employees and categories"
+          subtitle="Lists for accounting and other specifics"
           onPress={() => router.push('/(tabs)/accounting')}
         />
       </ListGroup>

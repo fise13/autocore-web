@@ -63,10 +63,10 @@ export const ImportCamera = forwardRef<ImportCameraHandle, ImportCameraProps>(fu
     return (
       <View style={[styles.fill, styles.permission]}>
         <Text variant="body" style={{ color: '#f5f5f7', fontWeight: '600', marginBottom: 8 }}>
-          Камера
+          Camera
         </Text>
         <Text variant="caption" style={{ color: '#9ca3af', textAlign: 'center', marginBottom: 16 }}>
-          Нужен доступ к камере, чтобы сфотографировать документ.
+          Camera access is required to photograph the document.
         </Text>
         {permission.canAskAgain ? (
           <Pressable
@@ -80,13 +80,13 @@ export const ImportCamera = forwardRef<ImportCameraHandle, ImportCameraProps>(fu
             }}
           >
             <Text variant="caption" style={{ color: colors.primaryForeground, fontWeight: '600' }}>
-              Разрешить
+              Allow
             </Text>
           </Pressable>
         ) : (
           <Pressable accessibilityRole="button" onPress={() => void Linking.openSettings()}>
             <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
-              Открыть настройки
+              Open Settings
             </Text>
           </Pressable>
         )}

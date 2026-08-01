@@ -1,28 +1,38 @@
 import { View } from 'react-native';
 
 import { Button, SettingsSectionCard, Text } from '@/components/ui';
+import { planLabel, subscriptionHint } from '@/lib/subscriptions/format';
+import type { Entitlement } from '@/lib/subscriptions/types';
 import { rhythm } from '@/theme';
-import { subscriptionHint, subscriptionPlanLabel } from '@/lib/billing/format-renewal';
-import type { CompanySubscription } from '@/types/billing';
 
 type WorkspaceSubscriptionCardProps = {
-  isPro: boolean;
-  subscription: CompanySubscription | null;
+  entitlement: Entitlement;
   onManage: () => void;
 };
 
-export function WorkspaceSubscriptionCard({ isPro, subscription, onManage }: WorkspaceSubscriptionCardProps) {
+/**
+ * The "Manage on website" button is gone: on iOS that was an external purchase
+ * link (guideline 3.1.1), and everywhere else the in-app subscription screen now
+ * does the same job.
+ */
+export function WorkspaceSubscriptionCard({
+  entitlement,
+  onManage,
+}: WorkspaceSubscriptionCardProps) {
   return (
-    <SettingsSectionCard
-      title="Подписка"
-      description={subscriptionHint(subscription, isPro)}
-    >
-      <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
+    <SettingsSectionCard title="Subscription" description={subscriptionHint(entitlement)}>
+      <View
+        style={{
+          paddingHorizontal: rhythm.cardPadX,
+          paddingBottom: rhythm.cardPadX,
+          gap: rhythm.stack,
+        }}
+      >
         <Text variant="caption" color="muted">
-          План: {subscriptionPlanLabel(isPro)}
+          Plan: {planLabel(entitlement)}
         </Text>
         <Button variant="secondary" onPress={onManage}>
-          Управление на сайте
+          {entitlement.isActive ? 'Manage subscription' : 'View plans'}
         </Button>
       </View>
     </SettingsSectionCard>

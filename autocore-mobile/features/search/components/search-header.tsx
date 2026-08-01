@@ -21,14 +21,12 @@ export function SearchHeader({ onSettingsPress }: SearchHeaderProps) {
   return (
     <Reanimated.View style={enterStyle}>
       <PageHeader
-        title="Поиск"
-        subtitle="Быстрый доступ к складу, моторам и заказам"
-        logo={null}
-        align="center"
+        title="Search"
+        subtitle="Quick access to inventory, motors, and orders"
         trailing={
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Настройки"
+            accessibilityLabel="Settings"
             onPress={() => {
               haptics.light();
               onSettingsPress?.();

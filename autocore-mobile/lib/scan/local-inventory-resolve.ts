@@ -82,7 +82,7 @@ export function resolveBarcodeFromLocalCatalog(
           ? [
               {
                 warehouseId: 'local',
-                warehouseName: hit.item.warehouseLocation?.trim() || 'Склад',
+                warehouseName: hit.item.warehouseLocation?.trim() || 'Warehouse',
                 onHand: hit.item.totalOnHand,
                 reserved: hit.item.totalReserved,
                 available: hit.item.totalAvailable,

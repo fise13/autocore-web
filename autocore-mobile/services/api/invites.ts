@@ -28,7 +28,7 @@ export async function sendEmployeeInviteEmail(input: {
 }): Promise<SendEmployeeInviteResult> {
   const email = input.email.trim().toLowerCase();
   if (!email.includes('@')) {
-    throw new Error('Укажите корректный email');
+    throw new Error('Enter a valid email');
   }
 
   const { ok, status, data } = await mobilePostFlexible<SendInviteApiResponse>(mobileApi.invitesSend, {
@@ -48,10 +48,10 @@ export async function sendEmployeeInviteEmail(input: {
   if (status === 503 && data.joinUrl) {
     return {
       kind: 'manual_link',
-      message: 'Сервис почты не настроен — отправьте ссылку сотруднику вручную.',
+      message: 'Email service is not configured — send the link to the employee manually.',
       joinUrl: data.joinUrl,
     };
   }
 
-  throw new Error(data.error ?? 'Не удалось отправить приглашение');
+  throw new Error(data.error ?? 'Failed to send invite');
 }

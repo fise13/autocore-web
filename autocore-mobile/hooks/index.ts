@@ -20,6 +20,11 @@ export { useMobileCreateInventoryItem } from './use-mobile-create-inventory-item
 export { useMobileRelocate, useMobileWarehouseLocations, useMobileAssignAssetLocation } from './use-mobile-relocate';
 export { useOptimisticStockAdjust } from './use-optimistic-stock-adjust';
 export { useCompanySubscription } from './use-company-subscription';
+export { useEntitlement, useEntitlementFor } from './use-entitlement';
+export { useSubscription } from './use-subscription';
+export { useFeatureGate } from './use-feature-gate';
+export { usePaywall } from './use-paywall';
+export { useSubscriptionSync } from './use-subscription-sync';
 export { useActiveCompanyName } from './use-active-company-name';
 export { useCompanyProfile } from './use-company-profile';
 export { useEmployeesRealtime } from './use-employees-realtime';

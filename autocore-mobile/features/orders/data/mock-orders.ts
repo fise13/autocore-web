@@ -2,10 +2,12 @@ import { isOpenOrderStatus } from '../lib/order-display';
 import type { OrderFilterId, OrderFilterOption, OrdersListMeta, WorkOrder } from '../types';
 
 export const orderFilters: OrderFilterOption[] = [
-  { id: 'all', label: 'All' },
   { id: 'open', label: 'Open' },
-  { id: 'free', label: 'Unassigned' },
+  { id: 'in_progress', label: 'In progress' },
+  { id: 'waiting', label: 'Waiting parts' },
   { id: 'done', label: 'Closed' },
+  { id: 'free', label: 'Free' },
+  { id: 'all', label: 'All' },
 ];
 
 export const mockOrders: WorkOrder[] = [
@@ -44,7 +46,7 @@ export const mockOrders: WorkOrder[] = [
     vin: 'WDD2120021A123456',
     assignee: 'Aibek T.',
     price: 420_000,
-    status: 'ready',
+    status: 'completed',
     priority: 'normal',
     progress: 92,
     estimated: 'Today',
@@ -88,7 +90,7 @@ export const mockOrders: WorkOrder[] = [
     vin: 'JTEBU3FJ5DK123456',
     assignee: 'Aibek T.',
     price: 445_000,
-    status: 'overdue',
+    status: 'in_progress',
     priority: 'high',
     progress: 70,
     estimated: '2 days ago',
@@ -108,7 +110,7 @@ export const mockOrders: WorkOrder[] = [
     engine: 'EJ205',
     licensePlate: 'E 345 JK 09',
     price: 355_000,
-    status: 'warranty',
+    status: 'confirmed',
     priority: 'normal',
     progress: 100,
     estimated: 'Monitoring',
@@ -170,7 +172,7 @@ export const mockOrders: WorkOrder[] = [
     licensePlate: 'H 234 PQ 15',
     assignee: 'Aibek T.',
     price: 145_000,
-    status: 'ready',
+    status: 'completed',
     priority: 'normal',
     progress: 88,
     estimated: 'Today',
@@ -224,6 +226,12 @@ export function computeOrdersListMeta(orders: WorkOrder[]): OrdersListMeta {
   return {
     total: orders.length,
     openCount: orders.filter((order) => isOpenOrderStatus(order.status)).length,
+    inProgressCount: orders.filter(
+      (order) => order.status === 'in_progress' || order.status === 'confirmed',
+    ).length,
+    waitingCount: orders.filter((order) => order.status === 'waiting_parts').length,
+    closedTodayCount: orders.filter((order) => order.closedToday).length,
+    freeCount: orders.filter((order) => order.isUnassigned).length,
   };
 }
 
@@ -231,6 +239,10 @@ export function filterCounts(orders: WorkOrder[]): Record<OrderFilterId, number>
   return {
     all: orders.length,
     open: orders.filter((order) => isOpenOrderStatus(order.status)).length,
+    in_progress: orders.filter(
+      (order) => order.status === 'in_progress' || order.status === 'confirmed',
+    ).length,
+    waiting: orders.filter((order) => order.status === 'waiting_parts').length,
     free: orders.filter((order) => order.isUnassigned).length,
     done: orders.filter((order) => !isOpenOrderStatus(order.status)).length,
   };
@@ -242,8 +254,14 @@ export function filterOrders(orders: WorkOrder[], filter: OrderFilterId, query: 
 
   if (filter === 'open') {
     list = list.filter((order) => isOpenOrderStatus(order.status));
+  } else if (filter === 'in_progress') {
+    list = list.filter((order) => order.status === 'in_progress' || order.status === 'confirmed');
+  } else if (filter === 'waiting') {
+    list = list.filter((order) => order.status === 'waiting_parts');
   } else if (filter === 'done') {
     list = list.filter((order) => !isOpenOrderStatus(order.status));
+  } else if (filter === 'free') {
+    list = list.filter((order) => order.isUnassigned);
   }
 
   if (!q) return list;

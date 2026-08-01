@@ -45,8 +45,14 @@ export function mapAuthError(error: unknown): string {
       return "Couldn't connect to the network. Check your internet connection and try again.";
     case 'auth/operation-not-allowed':
       return 'This sign-in method is temporarily unavailable. Enable Apple in Firebase Console.';
+    case 'permission-denied':
+    case 'firestore/permission-denied':
+      return "Couldn't finish setting up your account. Please try again in a moment.";
     default:
       if (error instanceof Error && error.message) {
+        if (/missing or insufficient permissions/i.test(error.message)) {
+          return "Couldn't finish setting up your account. Please try again in a moment.";
+        }
         if (/network|internet|offline/i.test(error.message)) {
           return "Couldn't connect to the network. Check your internet connection and try again.";
         }

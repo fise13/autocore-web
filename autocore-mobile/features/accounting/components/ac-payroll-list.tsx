@@ -1,5 +1,4 @@
 import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { UsersIcon } from '@/assets/icons';
@@ -13,6 +12,7 @@ import type { PayrollTransaction, PayrollTransactionStatus } from '@/types/payro
 import { ac } from '../layout';
 import { AcDivider } from './ac-primitives';
 import { formatKzt } from '../utils/format';
+import { formatTimestamp } from '@/lib/firestore-timestamp';
 
 type AcPayrollListProps = {
   rows: PayrollTransaction[];
@@ -78,7 +78,7 @@ function PayrollStatusBadge({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityHint="Нажмите, чтобы сменить статус: К выплате → Выплачено → Не выплачивать"
+      accessibilityHint="Tap to change status: Due → Paid → Cancelled"
       onPress={() => {
         haptics.selection();
         onPress();
@@ -108,7 +108,7 @@ function PayrollRow({
   onStatusChange?: (id: string, status: PayrollTransactionStatus) => void;
 }) {
   const { colors } = useTheme();
-  const employee = employeeNames[row.employeeId] ?? 'Сотрудник';
+  const employee = employeeNames[row.employeeId] ?? 'Employee';
   const workOrder = workOrderNumbers[row.workOrderId] ?? row.workOrderId;
   const isUpdating = updatingId === row.id;
 
@@ -151,7 +151,7 @@ function PayrollRow({
               }
             />
             <Text variant="caption" color="muted" style={{ fontSize: 10 }}>
-              {format(row.createdAt, 'd MMM', { locale: ru })}
+              {formatTimestamp(row.createdAt, 'd MMM')}
             </Text>
           </View>
         </View>
@@ -192,19 +192,19 @@ export function AcPayrollList({
         }}
       >
         <Text variant="body" style={{ fontSize: 15, fontWeight: '700' }}>
-          Зарплаты
+          Payroll
         </Text>
         <Text variant="caption" color="muted" style={{ fontSize: 12, lineHeight: 17 }}>
           {canEdit
-            ? 'Начисления по завершённым заказ-нарядам. Нажмите статус, чтобы отметить выплату.'
-            : 'Начисления по завершённым заказ-нарядам.'}
+            ? 'Payouts for completed work orders. Tap a status to mark it paid.'
+            : 'Payouts for completed work orders.'}
         </Text>
       </View>
 
       {rows.length === 0 ? (
         <View style={{ padding: 20 }}>
           <Text variant="caption" color="muted" style={{ textAlign: 'center', fontSize: 13, lineHeight: 18 }}>
-            Начислений пока нет. Они появятся после завершения заказ-наряда с работами и исполнителями.
+            No payroll entries yet. They'll appear once a work order with labor and assigned staff is completed.
           </Text>
         </View>
       ) : (

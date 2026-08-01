@@ -28,7 +28,7 @@ export function ProfileDangerZone({ items, onAction }: ProfileDangerZoneProps) {
           color: colors.mutedForeground,
         }}
       >
-        Опасная зона
+        Danger zone
       </Text>
       <ProfileSettingsGroup>
         {items.map((item) => (

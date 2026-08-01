@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 
 import { Text, toast } from '@/components/ui';
@@ -10,6 +10,14 @@ import {
   type MobileWarehouseLocation,
 } from '@/hooks/use-mobile-relocate';
 import { haptics } from '@/theme';
+
+import { scanLayout } from '../layout';
+import {
+  ScanSheetHairline,
+  ScanSheetHeader,
+  ScanSheetPrimaryButton,
+  ScanSheetRow,
+} from './scan-sheet-chrome';
 
 export type ScanMoveTarget = {
   itemId: string;
@@ -24,7 +32,6 @@ type ScanMoveSheetProps = {
   onMoved: (toLocationCode: string) => void;
   onCancel: () => void;
   onDismiss: () => void;
-  /** Prefer scanning destination QR after closing this sheet. */
   onPreferScan?: () => void;
 };
 
@@ -65,11 +72,11 @@ export const ScanMoveSheet = forwardRef<BottomSheetModal, ScanMoveSheetProps>(
           toLocationId: location.id,
           toLocationCode: location.id ? undefined : location.displayCode,
           quantity: target.quantity,
-          reason: 'Перемещение со сканера',
+          reason: 'Moved from scanner',
         });
         haptics.success();
         toast({
-          title: 'Перемещено',
+          title: 'Moved',
           description: `${target.itemTitle} → ${result.toLocationCode}`,
           variant: 'success',
         });
@@ -77,7 +84,7 @@ export const ScanMoveSheet = forwardRef<BottomSheetModal, ScanMoveSheetProps>(
         onMoved(result.toLocationCode);
       } catch (error) {
         toast({
-          title: 'Не удалось переместить',
+          title: 'Could not move item',
           description: error instanceof Error ? error.message : undefined,
           variant: 'destructive',
         });
@@ -98,47 +105,31 @@ export const ScanMoveSheet = forwardRef<BottomSheetModal, ScanMoveSheetProps>(
         backgroundStyle={sheet.backgroundStyle}
         handleIndicatorStyle={sheet.handleIndicatorStyle}
       >
-        <BottomSheetScrollView contentContainerStyle={{ ...sheet.compactContentStyle, gap: 14 }}>
+        <BottomSheetScrollView
+          contentContainerStyle={{
+            ...sheet.compactContentStyle,
+            paddingHorizontal: scanLayout.sheetPadX,
+            gap: 12,
+          }}
+        >
           {!target ? (
             <View style={{ minHeight: 1 }} />
           ) : (
             <>
-              <View style={{ gap: 4 }}>
-                <Text variant="heading" style={{ fontSize: 20, fontWeight: '700' }}>
-                  Переместить
-                </Text>
-                <Text variant="caption" color="muted" numberOfLines={2}>
-                  {target.itemTitle}
-                  {target.shelf ? ` · сейчас ${target.shelf}` : ' · без места'}
-                </Text>
-              </View>
+              <ScanSheetHeader
+                title="Move"
+                meta={`${target.itemTitle}${target.shelf ? ` · ${target.shelf}` : ''}`}
+              />
 
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  haptics.selection();
-                  onPreferScan?.();
-                }}
-                style={{
-                  minHeight: 48,
-                  borderRadius: 14,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: colors.primary,
-                }}
-              >
-                <Text
-                  variant="body"
-                  style={{ fontSize: 15, fontWeight: '700', color: colors.primaryForeground }}
-                >
-                  Сканировать место
-                </Text>
-              </Pressable>
+              <ScanSheetPrimaryButton
+                label="Scan location"
+                onPress={() => onPreferScan?.()}
+              />
 
               <TextInput
                 value={draft}
                 onChangeText={setDraft}
-                placeholder="Или введите код / выберите ниже"
+                placeholder="Or enter a location code"
                 placeholderTextColor={colors.mutedForeground}
                 autoCapitalize="characters"
                 autoCorrect={false}
@@ -147,14 +138,14 @@ export const ScanMoveSheet = forwardRef<BottomSheetModal, ScanMoveSheetProps>(
                   if (code) void moveTo({ displayCode: code });
                 }}
                 style={{
-                  minHeight: 44,
+                  minHeight: 48,
                   borderRadius: 12,
-                  borderWidth: 1,
+                  borderWidth: StyleSheet.hairlineWidth,
                   borderColor: colors.border,
                   paddingHorizontal: 14,
                   color: colors.foreground,
-                  fontSize: 15,
-                  fontWeight: '600',
+                  fontSize: 16,
+                  fontWeight: '500',
                 }}
               />
 
@@ -162,57 +153,44 @@ export const ScanMoveSheet = forwardRef<BottomSheetModal, ScanMoveSheetProps>(
                 <ActivityIndicator color={colors.mutedForeground} />
               ) : options.length === 0 ? (
                 <Text variant="caption" color="muted">
-                  Мест пока нет — введите новый код и нажмите Return.
+                  No locations yet — enter a code and press Return.
                 </Text>
               ) : (
-                <View style={{ gap: 6 }}>
-                  {options.map((location) => {
+                <View>
+                  {options.map((location, index) => {
                     const busy = busyId === location.id;
                     return (
-                      <Pressable
-                        key={location.id}
-                        accessibilityRole="button"
-                        disabled={Boolean(busyId)}
-                        onPress={() => {
-                          haptics.light();
-                          void moveTo(location);
-                        }}
-                        style={{
-                          minHeight: 48,
-                          borderRadius: 12,
-                          paddingHorizontal: 14,
-                          justifyContent: 'center',
-                          backgroundColor: colors.secondary,
-                          borderWidth: 1,
-                          borderColor: colors.border,
-                          opacity: busyId && !busy ? 0.5 : 1,
-                        }}
-                      >
-                        {busy ? (
-                          <ActivityIndicator color={colors.foreground} />
-                        ) : (
-                          <Text variant="body" style={{ fontSize: 15, fontWeight: '600' }}>
-                            {location.displayCode}
-                          </Text>
-                        )}
-                      </Pressable>
+                      <View key={location.id}>
+                        <Pressable
+                          accessibilityRole="button"
+                          disabled={Boolean(busyId)}
+                          onPress={() => {
+                            haptics.light();
+                            void moveTo(location);
+                          }}
+                          style={{
+                            minHeight: 48,
+                            justifyContent: 'center',
+                            opacity: busyId && !busy ? 0.45 : 1,
+                          }}
+                        >
+                          {busy ? (
+                            <ActivityIndicator color={colors.foreground} />
+                          ) : (
+                            <Text variant="body" style={{ fontSize: 16, fontWeight: '500' }}>
+                              {location.displayCode}
+                            </Text>
+                          )}
+                        </Pressable>
+                        {index < options.length - 1 ? <ScanSheetHairline /> : null}
+                      </View>
                     );
                   })}
                 </View>
               )}
 
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  haptics.selection();
-                  onCancel();
-                }}
-                style={{ alignItems: 'center', paddingVertical: 10 }}
-              >
-                <Text variant="caption" color="muted" style={{ fontWeight: '600' }}>
-                  Отмена
-                </Text>
-              </Pressable>
+              <ScanSheetHairline />
+              <ScanSheetRow label="Cancel" onPress={onCancel} />
             </>
           )}
         </BottomSheetScrollView>

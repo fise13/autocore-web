@@ -1,5 +1,5 @@
-import { SubscriptionScreen } from '@/features/profile/screens/subscription-screen';
+import { ManageSubscriptionScreen } from '@/features/subscription';
 
 export default function SubscriptionRoute() {
-  return <SubscriptionScreen />;
+  return <ManageSubscriptionScreen />;
 }

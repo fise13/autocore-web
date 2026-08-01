@@ -92,19 +92,3 @@ export const ACCOUNTING_DEMO = {
   invoices: { draft: 3, sent: 18, paid: 142, overdue: 2 },
   paymentMethods: ['Cash', 'Card', 'Bank transfer', 'Halyk Terminal'],
 };
-
-export const WORKSPACE_DEMO = {
-  storageUsed: { usedGb: 4.2, totalGb: 50, label: '4.2 GB of 50 GB' },
-  cloudSync: { status: 'Synced', lastSync: '2 min ago', devices: 3 },
-  region: 'Kazakhstan (Almaty)',
-  timezone: 'GMT+5 · Asia/Almaty',
-  inviteCode: 'MTR-4829',
-};
-
-export const DESKTOP_DEMO = {
-  connected: true,
-  deviceName: 'MacBook Pro',
-  appVersion: 'AutoCore Desktop 2.4.1',
-  lastSeen: 'Online now',
-  syncStatus: 'Two-way sync',
-};

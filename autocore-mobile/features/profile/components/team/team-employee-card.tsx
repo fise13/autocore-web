@@ -60,14 +60,14 @@ export const TeamEmployeeCard = memo(function TeamEmployeeCard({
             <Text variant="body" style={{ fontSize: 15, fontWeight: '600', letterSpacing: -0.2 }} numberOfLines={1}>
               {name}
             </Text>
-            {isSelf ? <TeamBadge label="Вы" tone="muted" /> : null}
+            {isSelf ? <TeamBadge label="You" tone="muted" /> : null}
           </View>
           <Text variant="caption" color="muted" numberOfLines={1}>
             {employee.email || '—'}
           </Text>
           <Text variant="caption" color="muted" numberOfLines={1}>
             {formatLastActive(employee.lastActiveAt)} · {permissionsSummary(employee)}
-            {openWorkOrders > 0 ? ` · ${openWorkOrders} наряд${openWorkOrders === 1 ? '' : openWorkOrders < 5 ? 'а' : 'ов'}` : ''}
+            {openWorkOrders > 0 ? ` · ${openWorkOrders} open order${openWorkOrders === 1 ? '' : 's'}` : ''}
           </Text>
         </View>
         <TeamBadge
@@ -89,17 +89,17 @@ export const TeamEmployeeCard = memo(function TeamEmployeeCard({
             value={employee.role}
             onValueChange={(value) => onRoleChange(employee, value as UserRole)}
             options={ASSIGNABLE_ROLES.map((role) => ({ value: role, label: formatRole(role) }))}
-            placeholder="Роль"
+            placeholder="Role"
           />
           <TeamInlineActions>
             <Button variant="secondary" size="sm" onPress={() => onOpenPermissions(employee)}>
-              Права
+              Permissions
             </Button>
             <Button variant="secondary" size="sm" onPress={() => onToggleActive(employee)}>
-              {employee.isActive ? 'Отключить' : 'Включить'}
+              {employee.isActive ? 'Disable' : 'Enable'}
             </Button>
             <Button variant="ghost" size="sm" onPress={() => onRemove(employee)}>
-              Удалить
+              Remove
             </Button>
           </TeamInlineActions>
         </View>

@@ -32,7 +32,7 @@ export function useDeleteAccount() {
         const message = mapAuthError(deleteError);
         setError(message);
         if (!passwordOpen) {
-          Alert.alert('Не удалось удалить аккаунт', message);
+          Alert.alert('Could not delete account', message);
         }
       } finally {
         setLoading(false);
@@ -44,12 +44,12 @@ export function useDeleteAccount() {
   const requestDelete = useCallback(() => {
     setError(null);
     Alert.alert(
-      'Удалить аккаунт?',
-      'Это действие необратимо. Будут удалены ваш профиль и доступ к AutoCore. Данные компании останутся у других участников.',
+      'Delete account?',
+      'This action can\'t be undone. Your profile and access to AutoCore will be removed. Company data will remain with other members.',
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Удалить',
+          text: 'Delete',
           style: 'destructive',
           onPress: () => {
             if (needsPassword) {
@@ -66,7 +66,7 @@ export function useDeleteAccount() {
 
   const confirmPasswordDelete = useCallback(() => {
     if (!password.trim()) {
-      setError('Введите текущий пароль.');
+      setError('Enter your current password.');
       return;
     }
     void runDelete(password);

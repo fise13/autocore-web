@@ -31,7 +31,7 @@ export const CustomerCard = memo(function CustomerCard({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: dl.layout.inlineGap }}>
           <UserRoundIcon size="sm" color={dl.colors.mutedForeground} />
           {ordersCount !== undefined ? (
-            <Text variant="caption" color="muted">{ordersCount} заказов</Text>
+            <Text variant="caption" color="muted">{ordersCount} orders</Text>
           ) : null}
           {lastOrder ? <Text variant="caption" color="muted">· {lastOrder}</Text> : null}
         </View>

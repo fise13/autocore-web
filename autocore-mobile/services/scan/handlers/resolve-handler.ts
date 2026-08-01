@@ -59,7 +59,7 @@ export function mapApiResolve(
           id: 'candidates',
           kind: 'part',
           code: apiResult.barcode,
-          title: 'Несколько совпадений',
+          title: 'Multiple matches',
           subtitle: payload,
           candidates: apiResult.candidates.map((candidate) => ({
             id: candidate.item.id,

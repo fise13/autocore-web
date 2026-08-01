@@ -1,32 +1,33 @@
-import { useRouter } from 'expo-router';
-import { useState, useMemo } from 'react';
+import { Stack, useRouter } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
+import { type ReactNode, useMemo, useState } from 'react';
 import { Keyboard, Pressable, ScrollView, View } from 'react-native';
 import Animated from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import {
-  ArrowLeftIcon,
   CheckCircle2Icon,
   ClipboardListIcon,
   ClockIcon,
   PhoneIcon,
-  ReceiptIcon,
-  TagIcon,
 } from '@/assets/icons';
-import { Button, IconButton, Text, toast } from '@/components/ui';
+import { Button, Text, toast } from '@/components/ui';
+import { ScreenActionFooter } from '@/components/navigation/screen-action-footer';
 import {
   useTheme,
   useSession,
   useEmployeesRealtime,
   useWorkOrdersRealtime,
-  useFloatingTabBarInset,
   useInventoryCatalog,
 } from '@/hooks';
+import { SCREEN_ACTION_FOOTER_HEIGHT } from '@/lib/navigation/floating-tab-bar-inset';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
-import { canMechanicClaimWorkOrder, evaluateClaimEligibility, countOpenAssignedWorkOrders, DEFAULT_MAX_ACTIVE_WORK_ORDERS } from '@autocore/rbac';
+import {
+  canMechanicClaimWorkOrder,
+  evaluateClaimEligibility,
+  countOpenAssignedWorkOrders,
+  DEFAULT_MAX_ACTIVE_WORK_ORDERS,
+} from '@autocore/rbac';
 import { resolveInventoryShelf } from '@/lib/inventory/resolve-shelf';
-import { haptics, rhythm } from '@/theme';
-import { toneBackground } from '@/theme/color-utils';
+import { haptics } from '@/theme';
 import { formatPrice } from '@/features/search/lib/format';
 import { laborLineLabel } from '@/lib/work-order/composer-utils';
 import { laborLineTotal } from '@/lib/work-order/labor-pricing';
@@ -45,39 +46,88 @@ import { OrderDocumentsSection } from './components/order-documents-section';
 import { OrderLinesList } from './components/order-lines-list';
 import { OrderWorkflowProgress } from './components/order-workflow-progress';
 import { navigateOrderEdit } from './lib/order-composition-nav';
-import { orderStatusLabel } from './lib/status';
 import { formatOrderVehicleLine, formatWorkOrderLabel } from './lib/order-display';
-import { ordersLayout } from './layout';
+import { wo, woFlatCard, woRuledSection, woType } from './theme/wo-visual';
 
 type OrderDetailScreenProps = {
   orderId: string;
 };
 
-type ActionItem = {
-  id: string;
-  label: string;
-  icon: typeof CheckCircle2Icon;
-  tone?: 'primary' | 'success' | 'warning' | 'destructive' | 'muted';
-  onPress: () => void;
-};
+/** Every footer control shares this height so the circle and the pill line up. */
+const FOOTER_ACTION_HEIGHT = 52;
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+const FOOTER_BUTTON_STYLE = {
+  width: '100%',
+  minHeight: FOOTER_ACTION_HEIGHT,
+  borderRadius: 16,
+} as const;
+
+/**
+ * `Button` applies the caller's `style` to its inner view, so `flex` on it does
+ * nothing — the stretching has to happen on a wrapper.
+ */
+function FooterAction({ children, grow = 1 }: { children: ReactNode; grow?: number }) {
+  return <View style={{ flex: grow }}>{children}</View>;
+}
+
+function FooterCallButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const { colors } = useTheme();
+  const [pressed, setPressed] = useState(false);
   return (
-    <View style={{ flex: 1, minWidth: '45%', gap: rhythm.micro }}>
-      <Text variant="meta" color="muted" style={{ fontWeight: '500' }}>
-        {label}
-      </Text>
-      <Text variant="bodyStrong" style={{ fontSize: rhythm.valueStrong }}>
-        {value}
-      </Text>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={[
+        {
+          width: FOOTER_ACTION_HEIGHT,
+          height: FOOTER_ACTION_HEIGHT,
+          borderRadius: FOOTER_ACTION_HEIGHT / 2,
+          // The footer sits on `background`; `secondary` is too close to it to
+          // read as a button, so the circle takes the card surface.
+          alignSelf: 'center',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.card,
+          borderWidth: wo.rule,
+          borderColor: colors.border,
+        },
+        pressed ? { backgroundColor: colors.muted } : null,
+      ]}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      onPress={onPress}
+    >
+      <SymbolView
+        name="phone.fill"
+        size={22}
+        weight="semibold"
+        tintColor={colors.foreground}
+        fallback={<PhoneIcon size="md" color={colors.foreground} strokeWidth={2} />}
+      />
+    </Pressable>
+  );
+}
+
+/** Rounded content block, inset from the page edges like every other card. */
+function RuledSection({ title, children }: { title?: string; children: ReactNode }) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ paddingHorizontal: wo.pad }}>
+      {title ? (
+        <Text
+          variant="meta"
+          style={{ ...woType.section, color: colors.mutedForeground, marginBottom: 8, marginLeft: 2 }}
+        >
+          {title}
+        </Text>
+      ) : null}
+      <View style={woRuledSection(colors)}>{children}</View>
     </View>
   );
 }
 
 export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const { scrollBottom } = useFloatingTabBarInset();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const { companyId, can, uid, profile } = useSession();
   const { items: inventoryItems } = useInventoryCatalog(companyId);
@@ -99,9 +149,30 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
   const heroStyle = useOrderDetailHeroEnter(40);
   const contentStyle = useOrderDetailContentEnter(140);
 
+  const claimEligibility = useMemo(() => {
+    if (!domainOrder || !uid || !profile) return null;
+    const openAssignedCount = countOpenAssignedWorkOrders(domainOrders, uid);
+    const selfEmployee = employees.find((entry) => entry.uid === uid);
+    return evaluateClaimEligibility({
+      order: domainOrder,
+      uid,
+      role: profile.role,
+      shiftOn: selfEmployee?.shiftOn !== false,
+      openAssignedCount,
+      maxActive: DEFAULT_MAX_ACTIVE_WORK_ORDERS,
+    });
+  }, [domainOrder, domainOrders, employees, profile, uid]);
+
   if (!order) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.background,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <Text variant="body" color="muted">
           Work order not found
         </Text>
@@ -124,7 +195,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
       haptics.success();
       toast({
         title: STATUS_LABELS[status],
-        description: `Order ${formatWorkOrderLabel(order.number)} updated`,
+        description: `${formatWorkOrderLabel(order.number)} updated`,
         variant: 'success',
       });
     } catch (error) {
@@ -140,23 +211,12 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
   };
 
   const availableTransitions = domainOrder ? nextStatuses(domainOrder.status) : [];
+  const primaryTransition = availableTransitions[0];
   const canClaimBase =
     Boolean(domainOrder && uid) && canMechanicClaimWorkOrder(domainOrder!, uid!);
-  const claimEligibility = useMemo(() => {
-    if (!domainOrder || !uid || !profile) return null;
-    const openAssignedCount = countOpenAssignedWorkOrders(domainOrders, uid);
-    const selfEmployee = employees.find((entry) => entry.uid === uid);
-    return evaluateClaimEligibility({
-      order: domainOrder,
-      uid,
-      role: profile.role,
-      shiftOn: selfEmployee?.shiftOn !== false,
-      openAssignedCount,
-      maxActive: DEFAULT_MAX_ACTIVE_WORK_ORDERS,
-    });
-  }, [domainOrder, domainOrders, employees, profile, uid]);
   const canClaim = canClaimBase && claimEligibility?.ok === true;
-  const claimBlockedReason = canClaimBase && claimEligibility && !claimEligibility.ok ? claimEligibility.reason : undefined;
+  const claimBlockedReason =
+    canClaimBase && claimEligibility && !claimEligibility.ok ? claimEligibility.reason : undefined;
   const unassignedLaborCount =
     domainOrder?.laborLines.filter((line) => !line.assigneeIds.length).length ?? 0;
 
@@ -189,159 +249,156 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
     (domainOrder?.status === 'draft' || domainOrder?.status === 'confirmed') &&
     can('work_orders_edit');
 
-  const laborLines = domainOrder?.laborLines.map((line) => ({
-    id: line.id,
-    label: laborLineLabel(line, employees),
-    price: laborLineTotal(line),
-  })) ?? [];
-  const partLines = domainOrder?.partLines
-    .filter((line) => line.source !== 'specific_quick')
-    .map((line) => {
-      const item = line.itemId ? inventoryById.get(line.itemId) : undefined;
-      const shelf = item ? resolveInventoryShelf(item) : undefined;
-      const detailParts = [line.sku, shelf ? `Shelf ${shelf}` : null].filter(Boolean);
-      return {
-        id: line.id,
-        label: line.name,
-        detail: detailParts.length ? detailParts.join(' · ') : undefined,
-        price: line.quantity * line.unitPrice,
-      };
-    }) ?? [];
-  const catalogLines = domainOrder?.partLines
-    .filter((line) => line.source === 'specific_quick')
-    .map((line) => ({
+  const laborLines =
+    domainOrder?.laborLines.map((line) => ({
       id: line.id,
-      label: line.specificCategoryName ? `${line.specificCategoryName} · ${line.name}` : line.name,
-      price: line.quantity * line.unitPrice,
+      label: laborLineLabel(line, employees),
+      price: laborLineTotal(line),
     })) ?? [];
-  const motorLines = domainOrder?.motorLines.map((line) => ({
-    id: line.id,
-    label: [line.brandName, line.engineCode, line.serialCode].filter(Boolean).join(' ') || line.serialCode,
-    detail: line.outcome === 'sell' ? 'Sale' : 'Installation',
-    price: line.unitPrice,
-  })) ?? [];
+  const partLines =
+    domainOrder?.partLines
+      .filter((line) => line.source !== 'specific_quick')
+      .map((line) => {
+        const item = line.itemId ? inventoryById.get(line.itemId) : undefined;
+        const shelf = item ? resolveInventoryShelf(item) : undefined;
+        const detailParts = [line.sku, shelf ? `Shelf ${shelf}` : null].filter(Boolean);
+        return {
+          id: line.id,
+          label: line.name,
+          detail: detailParts.length ? detailParts.join(' · ') : undefined,
+          price: line.quantity * line.unitPrice,
+        };
+      }) ?? [];
+  const catalogLines =
+    domainOrder?.partLines
+      .filter((line) => line.source === 'specific_quick')
+      .map((line) => ({
+        id: line.id,
+        label: line.specificCategoryName ? `${line.specificCategoryName} · ${line.name}` : line.name,
+        price: line.quantity * line.unitPrice,
+      })) ?? [];
+  const motorLines =
+    domainOrder?.motorLines.map((line) => ({
+      id: line.id,
+      label:
+        [line.brandName, line.engineCode, line.serialCode].filter(Boolean).join(' ') || line.serialCode,
+      detail: line.outcome === 'sell' ? 'Sale' : 'Installation',
+      price: line.unitPrice,
+    })) ?? [];
 
-  const actions: ActionItem[] = availableTransitions.slice(0, 3).map((status) => ({
-    id: status,
-    label: STATUS_LABELS[status],
-    icon: status === 'completed' || status === 'delivered' ? CheckCircle2Icon : ClockIcon,
-    tone:
-      status === 'completed' || status === 'delivered'
-        ? 'success'
-        : status === 'waiting_parts'
-          ? 'warning'
-          : 'primary',
-    onPress: () => void setDomainStatus(status),
-  }));
-
-  if (canEditOrder) {
-    actions.unshift({
-      id: 'edit',
-      label: 'Edit',
-      icon: ClipboardListIcon,
-      tone: 'primary',
-      onPress: () => {
-        haptics.selection();
-        navigateOrderEdit(router, orderId);
-      },
-    });
-  }
-
-  if (order.phone) {
-    actions.push({
-      id: 'call',
-      label: 'Call',
-      icon: PhoneIcon,
-      tone: 'primary',
-      onPress: () => {
-        haptics.selection();
-        void openPhone(order.phone);
-      },
-    });
-  }
-
-  actions.push({
-    id: 'payment',
-    label: 'Payment',
-    icon: ReceiptIcon,
-    tone: 'muted',
-    onPress: () => {
-      haptics.selection();
-      router.navigate('/(tabs)/accounting');
-    },
-  });
+  const openEdit = () => {
+    haptics.selection();
+    navigateOrderEdit(router, orderId);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View
-        style={{
-          paddingTop: insets.top + rhythm.headerTop,
-          paddingHorizontal: ordersLayout.pad,
-          paddingBottom: rhythm.inline,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: rhythm.inline,
+      {/* Native nav bar: system back gesture and button, translucent on scroll. */}
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: formatWorkOrderLabel(order.number),
+          headerTransparent: true,
+          headerBlurEffect: isDark ? 'systemChromeMaterialDark' : 'systemChromeMaterialLight',
+          headerTintColor: colors.primary,
+          headerTitleStyle: { color: colors.foreground },
+          headerShadowVisible: false,
+          headerRight: canEditOrder
+            ? () => (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit work order"
+                  hitSlop={10}
+                  onPress={openEdit}
+                >
+                  <SymbolView
+                    name="square.and.pencil"
+                    size={21}
+                    weight="semibold"
+                    tintColor={colors.primary}
+                    fallback={
+                      <ClipboardListIcon size="sm" color={colors.primary} strokeWidth={1.85} />
+                    }
+                  />
+                </Pressable>
+              )
+            : undefined,
         }}
-      >
-        <IconButton accessibilityLabel="Back" variant="ghost" size="sm" onPress={() => router.back()}>
-          <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
-        </IconButton>
-        <View style={{ flex: 1 }}>
-          <Text variant="meta" color="muted">
-            {formatWorkOrderLabel(order.number)}
-          </Text>
-        </View>
-      </View>
+      />
 
       <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingHorizontal: ordersLayout.pad,
-          paddingBottom: scrollBottom,
-          gap: ordersLayout.section,
+          // The native tab bar contributes its own content inset, so this only
+          // has to clear the sticky action footer.
+          paddingBottom: SCREEN_ACTION_FOOTER_HEIGHT + wo.sectionGap,
+          gap: 0,
         }}
         onScrollBeginDrag={Keyboard.dismiss}
       >
         <Animated.View
           style={[
             {
-              borderWidth: ordersLayout.hairline,
-              borderColor: colors.border,
-              backgroundColor: colors.card,
-              borderRadius: ordersLayout.cardRadius,
-              padding: rhythm.pad,
-              gap: rhythm.stack,
-              overflow: 'hidden',
+              marginHorizontal: wo.pad,
+              marginTop: wo.stackGap,
+              ...woFlatCard(colors, { isDark }),
+              paddingHorizontal: wo.cardPadX,
+              paddingVertical: wo.cardPadY,
+              gap: 14,
             },
             heroStyle,
           ]}
         >
-          <View style={{ gap: rhythm.tight }}>
-            <Text variant="pageTitle">
-              {order.vehicle}
-            </Text>
-            <Text variant="bodyLarge" color="muted" style={{ fontWeight: '500' }}>
-              {order.engine}
-            </Text>
-            <Text variant="pageSubtitle" color="muted" style={{ marginTop: rhythm.micro / 2 }}>
+          <View style={{ gap: 8 }}>
+            {/* Status moved out of the custom header into the hero when the nav
+                bar became native — the native bar owns title and actions only. */}
+            <OrderStatusBadge status={order.status} size="md" />
+            <Text variant="pageTitle" style={woType.heroClient}>
               {order.customer}
             </Text>
+            {order.phone ? (
+              <Text variant="body" color="muted">
+                {order.phone}
+              </Text>
+            ) : null}
           </View>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <OrderStatusBadge status={order.status} size="md" />
-            <Text variant="title" style={{ fontWeight: '700', fontVariant: ['tabular-nums'] }}>
+          <View
+            style={{
+              borderTopWidth: wo.rule,
+              borderBottomWidth: wo.rule,
+              borderColor: colors.border,
+              paddingVertical: 10,
+              gap: 4,
+            }}
+          >
+            <Text variant="bodyStrong" style={woType.vehicleLine}>
+              {order.vehicle}
+            </Text>
+            <Text variant="caption" color="muted" style={woType.meta}>
+              {[order.engine !== '—' ? order.engine : null, formatOrderVehicleLine(order)]
+                .filter(Boolean)
+                .join(' · ')}
+            </Text>
+          </View>
+
+          {/* The workflow track below already names the stage, so the total is
+              the only thing this row needs to say. */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'baseline',
+              justifyContent: 'space-between',
+              gap: 12,
+            }}
+          >
+            <Text variant="meta" style={{ ...woType.overline, color: colors.mutedForeground }}>
+              Total
+            </Text>
+            <Text variant="title" style={{ ...woType.price, fontSize: 26, lineHeight: 31 }}>
               {formatPrice(order.price)}
-            </Text>
-          </View>
-
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Text variant="meta" color="muted">
-              Due: {order.estimated}
-            </Text>
-            <Text variant="meta" color="muted">
-              {orderStatusLabel[order.status]}
             </Text>
           </View>
 
@@ -349,109 +406,68 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
         </Animated.View>
 
         {canClaimBase ? (
-          <Animated.View style={contentStyle}>
-            <OrderClaimSection
-              orderNumber={order.number}
-              unassignedCount={unassignedLaborCount}
-              claiming={claiming}
-              blockedReason={claimBlockedReason}
-              onClaim={() => void handleClaim()}
-            />
+          <Animated.View style={[{ marginTop: wo.sectionGap }, contentStyle]}>
+            <RuledSection title="Claim">
+              <OrderClaimSection
+                orderNumber={order.number}
+                unassignedCount={unassignedLaborCount}
+                claiming={claiming}
+                blockedReason={claimBlockedReason}
+                onClaim={() => void handleClaim()}
+              />
+            </RuledSection>
           </Animated.View>
         ) : null}
 
-        <Animated.View style={[{ gap: ordersLayout.section }, contentStyle]}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>
-            <DetailRow label="Customer" value={order.customer} />
-            <DetailRow label="Vehicle" value={formatOrderVehicleLine(order)} />
-            <DetailRow label="Engine" value={order.engine} />
-            <DetailRow label="Due" value={order.estimated} />
-            {order.vin ? <DetailRow label="VIN" value={order.vin} /> : null}
-          </View>
-
-          <View style={{ gap: 12 }}>
-            <Text variant="body" style={{ fontSize: 15, fontWeight: '600', letterSpacing: -0.2 }}>
-              Order contents
-            </Text>
+        <Animated.View style={[{ marginTop: wo.sectionGap, gap: wo.sectionGap }, contentStyle]}>
+          <RuledSection title="Contents">
             <OrderLinesList
               laborLines={laborLines}
               partLines={partLines}
               catalogLines={catalogLines}
               motorLines={motorLines}
             />
-          </View>
+          </RuledSection>
 
-          <View style={{ gap: 12 }}>
-            <Text variant="body" style={{ fontSize: 15, fontWeight: '600', letterSpacing: -0.2 }}>
-              Actions
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-              {actions.map((action) => {
-                const Icon = action.icon;
-                const tint =
-                  action.tone === 'success'
-                    ? colors.success
-                    : action.tone === 'warning'
-                      ? colors.warning
-                      : action.tone === 'destructive'
-                        ? colors.destructive
-                        : action.tone === 'muted'
-                          ? colors.mutedForeground
-                          : colors.primary;
-
-                const isStatusAction = availableTransitions.some((status) => status === action.id);
-                const disabled = transitioning && isStatusAction;
-
-                return (
+          {availableTransitions.length > 1 ? (
+            <RuledSection title="Workflow">
+              <View style={{ gap: 6 }}>
+                {availableTransitions.slice(1).map((status) => (
                   <Pressable
-                    key={action.id}
+                    key={status}
                     accessibilityRole="button"
-                    disabled={disabled}
-                    onPress={action.onPress}
+                    disabled={transitioning}
+                    onPress={() => void setDomainStatus(status)}
                     style={{
-                      width: '47%',
-                      minHeight: 58,
-                      borderRadius: ordersLayout.radius,
-                      borderWidth: ordersLayout.hairline,
+                      minHeight: wo.touch,
+                      borderRadius: wo.radiusSm,
+                      borderWidth: wo.rule,
                       borderColor: colors.border,
-                      backgroundColor: colors.card,
-                      paddingHorizontal: 14,
-                      paddingVertical: 12,
+                      backgroundColor: colors.secondary,
+                      paddingHorizontal: 12,
                       flexDirection: 'row',
                       alignItems: 'center',
                       gap: 10,
-                      opacity: disabled ? 0.55 : 1,
+                      opacity: transitioning ? 0.55 : 1,
                     }}
                   >
-                    <View
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 9,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: toneBackground(tint, 0.1),
-                      }}
-                    >
-                      <Icon size="sm" color={tint} strokeWidth={1.85} />
-                    </View>
-                    <Text variant="caption" style={{ fontSize: 12, fontWeight: '600', flex: 1 }}>
-                      {action.label}
+                    <ClockIcon size="sm" color={colors.mutedForeground} strokeWidth={1.85} />
+                    <Text variant="caption" style={{ fontWeight: '600' }}>
+                      {STATUS_LABELS[status]}
                     </Text>
                   </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          {domainOrder && can('work_orders_view') ? (
-            <OrderDocumentsSection order={domainOrder} colors={colors} />
+                ))}
+              </View>
+            </RuledSection>
           ) : null}
 
-          <View style={{ gap: 12 }}>
-            <Text variant="body" style={{ fontSize: 15, fontWeight: '600', letterSpacing: -0.2 }}>
-              Timeline
-            </Text>
+          {domainOrder && can('work_orders_view') ? (
+            <RuledSection title="Documents">
+              <OrderDocumentsSection order={domainOrder} colors={colors} />
+            </RuledSection>
+          ) : null}
+
+          <RuledSection title="Activity">
             {order.timeline.map((event, index) => {
               const isLast = index === order.timeline.length - 1;
               const Icon = event.done ? CheckCircle2Icon : ClockIcon;
@@ -462,44 +478,79 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
                   <View style={{ alignItems: 'center', width: 22 }}>
                     <Icon size="sm" color={tint} strokeWidth={1.85} />
                     {!isLast ? (
-                      <View style={{ width: 1, flex: 1, minHeight: 18, backgroundColor: colors.border, marginVertical: 4 }} />
+                      <View
+                        style={{
+                          width: 1,
+                          flex: 1,
+                          minHeight: 18,
+                          backgroundColor: colors.border,
+                          marginVertical: 4,
+                        }}
+                      />
                     ) : null}
                   </View>
                   <View style={{ flex: 1, paddingBottom: isLast ? 0 : 10 }}>
                     <Text variant="body" style={{ fontSize: 14, fontWeight: '600' }}>
                       {event.title}
                     </Text>
-                    <Text variant="caption" color="muted" style={{ fontSize: 12 }}>
+                    <Text variant="caption" color="muted">
                       {event.time}
                     </Text>
                   </View>
                 </View>
               );
             })}
-          </View>
+          </RuledSection>
 
           {order.partsNote ? (
-            <View style={{ gap: 4 }}>
-              <Text variant="caption" color="muted">
-                Parts
-              </Text>
-              <Text variant="body" style={{ fontSize: 14 }}>
-                {order.partsNote}
-              </Text>
-            </View>
-          ) : null}
-          {order.paymentNote ? (
-            <View style={{ gap: 4 }}>
-              <Text variant="caption" color="muted">
-                Payment
-              </Text>
-              <Text variant="body" style={{ fontSize: 14 }}>
-                {order.paymentNote}
-              </Text>
-            </View>
+            <RuledSection title="Parts note">
+              <Text variant="body">{order.partsNote}</Text>
+            </RuledSection>
           ) : null}
         </Animated.View>
       </ScrollView>
+
+      <ScreenActionFooter absolute>
+        {order.phone ? (
+          <FooterCallButton
+            label={`Call ${order.customer}`}
+            onPress={() => {
+              haptics.selection();
+              void openPhone(order.phone);
+            }}
+          />
+        ) : null}
+
+        {canEditOrder ? (
+          <FooterAction>
+            <Button variant="secondary" onPress={openEdit} style={FOOTER_BUTTON_STYLE}>
+              Edit
+            </Button>
+          </FooterAction>
+        ) : null}
+
+        {primaryTransition ? (
+          // The transition is the one thing worth doing here, so it takes the
+          // filled treatment and twice the width of any secondary beside it.
+          <FooterAction grow={canEditOrder ? 2 : 1}>
+            <Button
+              variant="default"
+              loading={transitioning}
+              disabled={transitioning}
+              onPress={() => void setDomainStatus(primaryTransition)}
+              style={FOOTER_BUTTON_STYLE}
+            >
+              {STATUS_LABELS[primaryTransition]}
+            </Button>
+          </FooterAction>
+        ) : canEditOrder ? null : (
+          <FooterAction>
+            <Button variant="secondary" onPress={() => router.back()} style={FOOTER_BUTTON_STYLE}>
+              Done
+            </Button>
+          </FooterAction>
+        )}
+      </ScreenActionFooter>
     </View>
   );
 }

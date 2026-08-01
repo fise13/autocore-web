@@ -36,12 +36,12 @@ function humanizeApiErrorBody(text: string, status: number): string {
 
   if (looksLikeHtml) {
     if (status === 404) {
-      return 'API не найдено на сервере. Нужен деплой веб-приложения.';
+      return 'API not found on the server. The web app needs to be deployed.';
     }
     if (status >= 500) {
-      return 'Ошибка сервера. Попробуйте позже.';
+      return 'Server error. Please try again later.';
     }
-    return `Сервер вернул HTML вместо JSON (HTTP ${status}).`;
+    return `Server returned HTML instead of JSON (HTTP ${status}).`;
   }
 
   if (trimmed.length > 280) {
@@ -62,11 +62,11 @@ function parseJsonPayload(text: string): { error?: string; message?: string } | 
 async function getBearerToken(forceRefresh = false): Promise<string> {
   const user = getFirebaseAuth().currentUser;
   if (!user) {
-    throw new MobileApiError('Требуется авторизация', 401);
+    throw new MobileApiError('Authorization required', 401);
   }
   const token = await user.getIdToken(forceRefresh);
   if (!token) {
-    throw new MobileApiError('Не удалось получить токен', 401);
+    throw new MobileApiError('Failed to get token', 401);
   }
   return token;
 }

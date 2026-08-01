@@ -11,10 +11,13 @@ type SettingsSectionTitleProps = {
   title: string;
   subtitle?: string;
   delay?: number;
+  tone?: 'default' | 'danger';
 };
 
-export function SettingsSectionTitle({ title, subtitle }: SettingsSectionTitleProps) {
+export function SettingsSectionTitle({ title, subtitle, tone = 'default' }: SettingsSectionTitleProps) {
   const { colors } = useTheme();
+  const titleColor =
+    tone === 'danger' ? colors.danger ?? colors.destructive : colors.mutedForeground;
 
   return (
     <View style={{ paddingHorizontal: settingsLayout.pad, gap: 4 }}>
@@ -25,7 +28,7 @@ export function SettingsSectionTitle({ title, subtitle }: SettingsSectionTitlePr
           fontWeight: '600',
           letterSpacing: 0.4,
           textTransform: 'uppercase',
-          color: colors.mutedForeground,
+          color: titleColor,
         }}
       >
         {title}
