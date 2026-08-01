@@ -6,7 +6,7 @@ import { z } from "zod";
 import type { WorkOrderMotorLine, WorkOrderPartLine } from "@/domain/work-order";
 import {
   callOpenRouterJson,
-  readOpenRouterApiKey,
+  readAiTransport,
 } from "@/infrastructure/openrouter/chat-completions.server";
 import {
   GEARBOX_MARK,
@@ -187,7 +187,7 @@ export async function polishDocumentLabels(input: {
 
   const base = deterministicResult(motors, parts);
 
-  if (!readOpenRouterApiKey() || !labelsLookDirty(motors, parts)) {
+  if (!readAiTransport() || !labelsLookDirty(motors, parts)) {
     writeCache(key, base);
     return base;
   }

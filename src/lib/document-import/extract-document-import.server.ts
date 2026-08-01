@@ -5,7 +5,7 @@ import {
   updateDocumentImportJobAdmin,
 } from "@/infrastructure/firestore/admin/document-import-admin";
 import { resolveAdminStorageBucket } from "@/infrastructure/firebase/resolve-storage-bucket";
-import { readOpenRouterApiKey } from "@/infrastructure/openrouter/chat-completions.server";
+import { readAiTransport } from "@/infrastructure/openrouter/chat-completions.server";
 import {
   enginesExtractSchema,
   extractEnginesFromImage,
@@ -51,7 +51,7 @@ export async function extractDocumentImportJob(params: {
     };
   }
 
-  if (!readOpenRouterApiKey()) {
+  if (!readAiTransport()) {
     await updateDocumentImportJobAdmin(job.id, {
       aiStatus: "failed",
       error: "OpenRouter не настроен (OPENROUTER_API_KEY)",

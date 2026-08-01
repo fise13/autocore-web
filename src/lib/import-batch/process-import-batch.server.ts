@@ -10,7 +10,7 @@ import {
   upsertSuggestedRowsAdmin,
 } from "@/infrastructure/firestore/admin/import-batch-admin";
 import { resolveAdminStorageBucket } from "@/infrastructure/firebase/resolve-storage-bucket";
-import { readOpenRouterApiKey } from "@/infrastructure/openrouter/chat-completions.server";
+import { readAiTransport } from "@/infrastructure/openrouter/chat-completions.server";
 import { extractEnginesFromImage } from "@/lib/document-import/engines-extract-ai";
 import { analyzeTable, ingestFiles } from "@/lib/import";
 import { parseNumericValue } from "@/lib/import/value-detectors";
@@ -124,7 +124,7 @@ async function processVisionFile(params: {
   contentType: string;
   fileName?: string;
 }): Promise<number> {
-  if (!readOpenRouterApiKey()) {
+  if (!readAiTransport()) {
     await updateImportBatchFileAdmin(params.batchId, params.fileId, {
       status: "failed",
       error: "OpenRouter не настроен (OPENROUTER_API_KEY)",

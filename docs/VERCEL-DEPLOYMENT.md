@@ -94,12 +94,21 @@ RESEND_FROM_EMAIL
 ### AI
 
 ```text
-OPENROUTER_API_KEY
-OPENROUTER_MODEL
+AI_PROXY_URL
+AI_PROXY_SECRET
 SCAN_AI_MODEL
 IMPORT_AI_MODEL
 DOCUMENT_AI_MODEL
 ```
+
+The OpenRouter API key is **not** a Vercel variable. It lives only in the
+Firebase Functions environment (`firebase/functions/.env`), and Vercel reaches
+OpenRouter through the `openrouterProxy` function using `AI_PROXY_SECRET`.
+
+- `AI_PROXY_URL` — `https://europe-west1-<project>.cloudfunctions.net/openrouterProxy`
+- `AI_PROXY_SECRET` — shared secret, set to the same value in both environments
+
+`OPENROUTER_API_KEY` still works as a direct fallback for local development.
 
 Only configure models used by the enabled product workflows.
 

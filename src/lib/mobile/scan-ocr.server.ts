@@ -18,20 +18,27 @@ export async function ocrAndResolveMobileScan(
   const ocr = await runScanOcr(imageBase64, mimeType);
   const extractedCodes = [...new Set([...ocr.barcodes, ...ocr.partNumbers].map((code) => code.trim()).filter(Boolean))];
 
+  // One OCR pass can yield several codes, each expanding into a few variants.
+  // Resolving those one at a time meant a dozen sequential Firestore round
+  // trips after an already slow AI call; a code's variants are independent, so
+  // they go out together and the first hit wins.
   let resolve: MobileScanResolveResult | null = null;
   for (const code of extractedCodes) {
-    const variants = buildScanCodeVariants(code);
-    for (const variant of variants) {
-      const attempt = await resolveMobileScan(companyId, variant);
-      if (attempt.found) {
-        resolve = attempt;
-        break;
-      }
+    const attempts = await Promise.all(
+      buildScanCodeVariants(code).map((variant) => resolveMobileScan(companyId, variant)),
+    );
+
+    const hit = attempts.find((attempt) => attempt.found);
+    if (hit) {
+      resolve = hit;
+      break;
+    }
+
+    for (const attempt of attempts) {
       if (!resolve || attempt.confidence > resolve.confidence) {
         resolve = attempt;
       }
     }
-    if (resolve?.found) break;
   }
 
   return { ocr, resolve, extractedCodes };
