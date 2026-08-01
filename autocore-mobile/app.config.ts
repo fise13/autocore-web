@@ -47,6 +47,9 @@ const plugins: ExpoConfig['plugins'] = [
     'expo-camera',
     {
       cameraPermission: 'AutoCore uses the camera to scan barcodes.',
+      // Scanning and stills only — no audio is ever recorded, so the app should
+      // not ask for the microphone or ship a permission it cannot justify.
+      microphonePermission: false,
       barcodeScannerEnabled: true,
     },
   ],
@@ -99,6 +102,9 @@ export default (): ExpoConfig => ({
     bundleIdentifier: 'com.wise.autocore.mobile',
     icon: './assets/branding/login-logo.png',
     infoPlist: {
+      // Standard HTTPS/TLS only — no proprietary or non-exempt cryptography.
+      // Declaring it here means App Store Connect stops asking on every build.
+      ITSAppUsesNonExemptEncryption: false,
       NSUserNotificationsUsageDescription:
         'AutoCore sends notifications about work orders, warehouse activity, payments, and other events at your company.',
       ...(iosUrlScheme
