@@ -2,6 +2,8 @@ import "server-only";
 
 import { Timestamp } from "firebase-admin/firestore";
 
+import { resolveProActive } from "@autocore/billing";
+
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { AccountAccessError } from "@/lib/auth/verify-account-access";
 import { DEMO_COMPANY_ID } from "@/lib/demo/demo-config";
@@ -26,13 +28,7 @@ export async function readCompanyProActive(companyId: string): Promise<boolean> 
 
   if (!snap.exists) return false;
 
-  const data = snap.data() as SubscriptionDoc;
-  if (typeof data.proActive === "boolean") return data.proActive;
-
-  return (
-    data.plan === "pro" &&
-    (data.status === "active" || data.status === "trialing" || data.status === "past_due")
-  );
+  return resolveProActive(snap.data() as SubscriptionDoc);
 }
 
 /** Server-side Pro gate for export, invite, and other paid API features. */

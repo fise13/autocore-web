@@ -65,6 +65,8 @@
       "@autocore/i18n/*": [
         "./packages/i18n/src/*"
       ],
+      "@autocore/billing": ["./packages/billing/src"],
+      "@autocore/billing/*": ["./packages/billing/src/*"],
       "@autocore/design-tokens": [
         "./packages/design-tokens/src"
       ],

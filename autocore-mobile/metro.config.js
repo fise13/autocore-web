@@ -5,7 +5,7 @@ const path = require('path');
 const config = getDefaultConfig(__dirname);
 
 // Keep in sync with the `@autocore/*` entries in package.json and tsconfig.json.
-const sharedPackages = ['rbac', 'domain-search', 'org', 'avatars', 'design-tokens'];
+const sharedPackages = ['rbac', 'domain-search', 'org', 'avatars', 'design-tokens', 'billing'];
 
 config.watchFolders = sharedPackages.map((name) =>
   path.resolve(__dirname, `../packages/${name}`),

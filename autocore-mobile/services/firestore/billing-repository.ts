@@ -1,5 +1,6 @@
 import { doc, getDoc, onSnapshot, type Timestamp } from 'firebase/firestore';
 
+import { resolveProActive } from '@autocore/billing';
 import { toDateFromFirestore } from '@/lib/firestore-timestamp';
 import { getFirebaseDb } from '@/services/firebase';
 import {
@@ -40,10 +41,7 @@ function mapSubscription(data: SubscriptionDoc | undefined): CompanySubscription
   const plan = normalizeBillingPlan(data.plan);
   const status = normalizeBillingStatus(data.status);
 
-  const proActive =
-    typeof data.proActive === 'boolean'
-      ? data.proActive
-      : plan !== 'free' && (status === 'active' || status === 'trialing' || status === 'past_due');
+  const proActive = resolveProActive(data);
 
   return {
     plan,

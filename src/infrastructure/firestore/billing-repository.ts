@@ -4,6 +4,7 @@ import { FirebaseError } from "firebase/app";
 import { BillingPlan, BillingStatus, CompanySubscription } from "@/domain/billing";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 import { stripePriceIds } from "@/lib/stripe/prices";
+import { resolveProActive } from "@autocore/billing";
 
 type SubscriptionDoc = {
   plan?: BillingPlan;
@@ -42,11 +43,7 @@ function mapSubscription(data: SubscriptionDoc | undefined): CompanySubscription
       ? data.status
       : "active";
 
-  const proActive =
-    typeof data.proActive === "boolean"
-      ? data.proActive
-      : plan === "pro" &&
-        (status === "active" || status === "trialing" || status === "past_due");
+  const proActive = resolveProActive(data);
 
   return {
     plan,

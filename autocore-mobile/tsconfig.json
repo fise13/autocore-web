@@ -6,6 +6,8 @@
       "@/*": [
         "./*"
       ],
+      "@autocore/billing": ["../packages/billing/src"],
+      "@autocore/billing/*": ["../packages/billing/src/*"],
       "@autocore/rbac": [
         "../packages/rbac/src"
       ],

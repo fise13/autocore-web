@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "dependencies": {
     "@autocore/avatars": "file:../packages/avatars",
+    "@autocore/billing": "file:../packages/billing",
     "@autocore/design-tokens": "file:../packages/design-tokens",
     "@autocore/domain-search": "file:../packages/domain-search",
     "@autocore/org": "file:../packages/org",
