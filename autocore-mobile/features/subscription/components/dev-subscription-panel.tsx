@@ -1,9 +1,11 @@
-import { useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { CheckIcon, CloudIcon, SparklesIcon } from '@/assets/icons';
-import { Button, Text } from '@/components/ui';
+import { Button, Text, toast } from '@/components/ui';
+import { useSession } from '@/hooks/use-session';
 import { useTheme } from '@/hooks/use-theme';
+import { activateProForever } from '@/services/api/subscriptions';
 import {
   DEV_SCENARIOS,
   getDevState,
@@ -30,9 +32,41 @@ import { haptics, radius, rhythm, spacing } from '@/theme';
  */
 export function DevSubscriptionPanel() {
   const { colors, tones } = useTheme();
+  const { companyId } = useSession();
+  const [granting, setGranting] = useState(false);
   const devState = useSyncExternalStore(subscribeDevMode, getDevState, getDevState);
 
   if (!isDevModeAvailable()) return null;
+
+  /**
+   * Unlike the scenario chips, this writes the real subscription document, so
+   * the workspace stays Pro on every device and in release builds — which is
+   * what a review or QA login needs. The server refuses unless internal
+   * activation is enabled for the caller.
+   */
+  const grantForever = async () => {
+    if (!companyId || granting) return;
+    setGranting(true);
+    haptics.medium();
+    try {
+      await activateProForever(companyId);
+      haptics.success();
+      toast({
+        title: 'Pro activated for this workspace',
+        description: 'Written to Firestore — web and mobile both see it.',
+        variant: 'success',
+      });
+    } catch (error) {
+      haptics.warning();
+      toast({
+        title: 'Could not activate Pro',
+        description: error instanceof Error ? error.message : undefined,
+        variant: 'destructive',
+      });
+    } finally {
+      setGranting(false);
+    }
+  };
 
   const select = (id: DevScenarioId) => {
     haptics.selection();
@@ -72,6 +106,16 @@ export function DevSubscriptionPanel() {
 
       <Button size="lg" onPress={simulate}>
         Simulate purchase
+      </Button>
+
+      <Button
+        size="lg"
+        variant="secondary"
+        loading={granting}
+        disabled={!companyId || granting}
+        onPress={() => void grantForever()}
+      >
+        Activate Pro forever (server)
       </Button>
 
       <View style={{ gap: spacing[2] }}>

@@ -14,6 +14,7 @@ export const subscriptionApi = {
   appleRestore: '/api/mobile/billing/apple/restore',
   refresh: '/api/billing/refresh',
   startTrial: '/api/billing/start-trial',
+  activatePro: '/api/billing/activate-pro',
 } as const;
 
 /** Server-minted, stable UUID binding a StoreKit transaction to (uid, company). */
@@ -93,6 +94,23 @@ export function startCompanyTrial(
   companyId: string,
 ): Promise<{ proActive: boolean; started: boolean }> {
   return mobilePost(subscriptionApi.startTrial, { companyId });
+}
+
+/**
+ * Grant Pro without payment, for a development or App Store review account.
+ *
+ * The server decides whether this is allowed: it is off in production unless
+ * `ALLOW_INTERNAL_PRO_ACTIVATION` is set, and can be narrowed to named accounts
+ * with `INTERNAL_PRO_ALLOWED_EMAILS`. The app only offers the button — it never
+ * grants anything itself, so the entitlement stays a server fact that web and
+ * mobile both read from the same Firestore document.
+ */
+export function activateProForever(companyId: string): Promise<{ proActive: boolean }> {
+  return mobilePost(subscriptionApi.activatePro, {
+    companyId,
+    interval: 'yearly',
+    lifetime: true,
+  });
 }
 
 export type { BillingInterval };

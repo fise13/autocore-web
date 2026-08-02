@@ -14,6 +14,13 @@ const INTERNAL_PRO_DAYS: Record<BillingInterval, number> = {
   yearly: 365,
 };
 
+/**
+ * "Forever" for a test or App Store review account. Far enough out that nobody
+ * has to remember to renew it, still a real date so every expiry check and
+ * renewal label keeps working instead of special-casing null.
+ */
+const LIFETIME_DAYS = 365 * 100;
+
 type SubscriptionDoc = {
   plan?: string;
   status?: string;
@@ -149,6 +156,7 @@ export async function activateInternalPro(
   companyId: string,
   uid: string,
   interval: BillingInterval,
+  options?: { lifetime?: boolean },
 ): Promise<{ proActive: boolean }> {
   if (companyId === DEMO_COMPANY_ID) {
     return { proActive: true };
@@ -170,7 +178,7 @@ export async function activateInternalPro(
   }
 
   const now = new Date();
-  const periodEnd = addDays(now, INTERNAL_PRO_DAYS[interval]);
+  const periodEnd = addDays(now, options?.lifetime ? LIFETIME_DAYS : INTERNAL_PRO_DAYS[interval]);
 
   await ref.set(
     {

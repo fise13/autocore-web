@@ -110,6 +110,21 @@ OpenRouter through the `openrouterProxy` function using `AI_PROXY_SECRET`.
 
 `OPENROUTER_API_KEY` still works as a direct fallback for local development.
 
+### Test and review accounts
+
+Granting Pro without payment is off in production. To prepare an App Store
+review or QA login, set both:
+
+```text
+ALLOW_INTERNAL_PRO_ACTIVATION=true
+INTERNAL_PRO_ALLOWED_EMAILS=reviewer@example.com
+```
+
+`ALLOW_INTERNAL_PRO_ACTIVATION` alone would let **any** company owner grant
+themselves Pro for free — always pair it with the allow-list in production, and
+unset both once the account exists. The entitlement is written to
+`companies/{companyId}/billing/subscription`, so web and mobile both pick it up.
+
 Only configure models used by the enabled product workflows.
 
 ### Billing
