@@ -8,12 +8,12 @@ import {
 } from '@/services/firestore/user-preferences-service';
 
 export function useUserDisplayCurrency(uid: string | null | undefined) {
-  const [currency, setCurrency] = useState<AppDisplayCurrency>('KZT');
+  const [currency, setCurrency] = useState<AppDisplayCurrency>('USD');
   const [isLoading, setIsLoading] = useState(Boolean(uid));
 
   useEffect(() => {
     if (!uid) {
-      setCurrency('KZT');
+      setCurrency('USD');
       setIsLoading(false);
       return;
     }

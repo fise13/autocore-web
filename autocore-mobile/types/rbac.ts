@@ -18,6 +18,20 @@ export type CompanyEmployee = {
   isActive: boolean;
 };
 
+/** Name-only roster entry — not an AutoCore account until invited/joined. */
+export type DirectoryPersonStatus = 'named' | 'invited';
+
+export type DirectoryPerson = {
+  id: string;
+  companyId: string;
+  name: string;
+  createdBy: string;
+  createdAt?: Date;
+  status: DirectoryPersonStatus;
+  linkedInviteId?: string;
+  note?: string;
+};
+
 export type RoleDefinition = {
   id: string;
   companyId: string;

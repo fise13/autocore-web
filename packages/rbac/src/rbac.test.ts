@@ -6,9 +6,9 @@ import {
   resolveAccessScopes,
   isAssignedToWorkOrder,
   filterWorkOrdersByScope,
-  canAccessMissionControl,
+  canAccessOverview,
   canAccessMyEarnings,
-  isEmployeeMissionControlUser,
+  isEmployeeOverviewUser,
   isMobileTabAllowed,
   hasPermission,
   ROLE_PERMISSIONS,
@@ -88,19 +88,19 @@ describe('work order assignee filter', () => {
 });
 
 describe('navigation policy', () => {
-  it('mechanic can access employee mission control tab', () => {
-    assert.equal(canAccessMissionControl(user('mechanic')), true);
+  it('mechanic can access employee overview tab', () => {
+    assert.equal(canAccessOverview(user('mechanic')), true);
     assert.equal(isMobileTabAllowed(user('mechanic'), 'index'), true);
     assert.equal(isMobileTabAllowed(user('mechanic'), 'orders'), true);
   });
 
-  it('diagnostician can access employee mission control tab', () => {
-    assert.equal(canAccessMissionControl(user('diagnostician')), true);
+  it('diagnostician can access employee overview tab', () => {
+    assert.equal(canAccessOverview(user('diagnostician')), true);
     assert.equal(isMobileTabAllowed(user('diagnostician'), 'index'), true);
   });
 
-  it('admin can access mission control', () => {
-    assert.equal(canAccessMissionControl(user('admin')), true);
+  it('admin can access overview', () => {
+    assert.equal(canAccessOverview(user('admin')), true);
     assert.equal(isMobileTabAllowed(user('admin'), 'index'), true);
   });
 
@@ -111,10 +111,10 @@ describe('navigation policy', () => {
     assert.equal(canAccessMyEarnings(user('manager')), false);
   });
 
-  it('employee mission control user is assignee-scoped mechanic or diagnostician', () => {
-    assert.equal(isEmployeeMissionControlUser(user('mechanic')), true);
-    assert.equal(isEmployeeMissionControlUser(user('diagnostician')), true);
-    assert.equal(isEmployeeMissionControlUser(user('admin')), false);
-    assert.equal(isEmployeeMissionControlUser(user('manager')), false);
+  it('employee overview user is assignee-scoped mechanic or diagnostician', () => {
+    assert.equal(isEmployeeOverviewUser(user('mechanic')), true);
+    assert.equal(isEmployeeOverviewUser(user('diagnostician')), true);
+    assert.equal(isEmployeeOverviewUser(user('admin')), false);
+    assert.equal(isEmployeeOverviewUser(user('manager')), false);
   });
 });

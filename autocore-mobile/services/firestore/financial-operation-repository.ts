@@ -11,7 +11,7 @@ import {
 } from 'firebase/firestore';
 
 import { normalizeCompanyId } from '@/lib/company-id';
-import { toDateFromFirestore } from '@/lib/firestore-timestamp';
+import { dateMs, toDateFromFirestore } from '@/lib/firestore-timestamp';
 import { notifyFirestoreSnapshotError } from '@/lib/firestore/snapshot-errors';
 import { getFirebaseDb } from '@/services/firebase';
 import type { CreateFinancialOperationInput, FinancialOperation, OperationType } from '@/types/financial-operation';
@@ -115,7 +115,7 @@ export function createFinancialOperationRepository() {
             mapped = mapped.filter((item) => item.type === filters.type);
           }
 
-          mapped.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+          mapped.sort((a, b) => dateMs(b.createdAt) - dateMs(a.createdAt));
           onData(mapped);
         },
         (error) => notifyFirestoreSnapshotError(error, onError),

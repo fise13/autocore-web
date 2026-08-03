@@ -12,7 +12,7 @@ import {
   McPanel,
   McPanelBody,
   McPanelHeader,
-} from "@/components/mission-control/dashboard/dashboard-panel";
+} from "@/components/overview/dashboard/dashboard-panel";
 import { LiveBadge } from "@/components/marketing/experience/ui/live-badge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

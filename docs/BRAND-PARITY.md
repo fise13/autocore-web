@@ -17,7 +17,7 @@ Keep AutoCore identity consistent across Next.js web and Expo mobile.
 
 Already addressed or verified:
 
-- [x] Mission Control header binds avatar to session (`UserAvatar` + `useSession`)
+- [x] Overview header binds avatar to session (`UserAvatar` + `useSession`)
 
 Still open (track in mobile sprints):
 

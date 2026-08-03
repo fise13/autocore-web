@@ -1,8 +1,9 @@
 import { getNavItemHref } from '@/features/settings/lib/tab-bar-integration';
-import { TAB_SPECS } from '@/lib/navigation/tab-specs';
 import type { NavItemId } from '@/features/settings/types';
 import { isMobileNavItemAllowed } from '@/lib/rbac/navigation-policy';
 import type { UserEntity } from '@/types/user';
+
+import { TAB_SPECS } from './tab-specs';
 
 export type NavModuleFlags = {
   workOrders: boolean;

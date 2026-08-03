@@ -11,7 +11,7 @@ import {
   McPanel,
   McPanelBody,
   McPanelHeader,
-} from "@/components/mission-control/dashboard/dashboard-panel";
+} from "@/components/overview/dashboard/dashboard-panel";
 import { money } from "@/components/work-orders/work-order-utils";
 import { ROLE_LABELS } from "@/components/work-orders/work-order-copy";
 import { userCopy } from "@/lib/user-copy";
@@ -32,7 +32,7 @@ type MyEarningsTableSectionProps = {
 function rateLabel(row: PayrollTransaction): string {
   if (row.rateType === "percent") return `${row.rate}%`;
   if (row.rateType === "hourly") return userCopy.myEarnings.hourlyRate(row.rate);
-  return `${row.rate} ₸`;
+  return `$${row.rate}`;
 }
 
 export function MyEarningsTableSection({ rows, workOrders, isLoading }: MyEarningsTableSectionProps) {

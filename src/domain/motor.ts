@@ -19,6 +19,10 @@ export type MotorEntity = {
   serialCode: string;
   configuration: string;
   notes: string;
+  /** Free-text condition / grade (e.g. A / refurbished). */
+  quality?: string;
+  /** Firebase Storage (or data-URL fallback) photo URLs for the row. */
+  photoUrls?: string[];
   quantity: number;
   transmission: string;
   arrivalDate: Date | null;
@@ -47,6 +51,8 @@ export type UpsertMotorInput = {
   serialCode: string;
   configuration?: string;
   notes?: string;
+  quality?: string;
+  photoUrls?: string[];
   quantity?: number;
   transmission?: string;
   arrivalDate?: Date | null;

@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Text, toast } from '@/components/ui';
+import { DetailSkeleton, Button, Text, toast } from '@/components/ui';
 import { relocatePendingStore } from '@/features/scan/lib/relocate-pending-store';
 import { useFloatingTabBarInset, useSession, useTheme } from '@/hooks';
 import { MobileApiError } from '@/services/api/mobile-client';
@@ -174,8 +174,8 @@ export function LocationScreen() {
       </View>
 
       {query.isLoading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={colors.mutedForeground} />
+        <View style={{ flex: 1, padding: rhythm.pad }}>
+          <DetailSkeleton />
         </View>
       ) : query.isError || !data ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: rhythm.pad }}>
@@ -196,9 +196,7 @@ export function LocationScreen() {
           }}
         >
           <View style={{ gap: 6 }}>
-            <Text variant="heading" style={{ fontSize: 32, fontWeight: '700', letterSpacing: -0.6 }}>
-              {data.location.displayCode}
-            </Text>
+            <Text variant="largeTitle">{data.location.displayCode}</Text>
             {data.location.label && data.location.label !== data.location.displayCode ? (
               <Text variant="caption" color="muted">
                 {data.location.label}
@@ -208,65 +206,31 @@ export function LocationScreen() {
 
           {!counting ? (
             <View style={{ gap: 8 }}>
-              <Pressable
-                accessibilityRole="button"
+              <Button
+                native={false}
+                size="xl"
+                systemImage="tray.and.arrow.down.fill"
                 onPress={startReceiveHere}
-                style={{
-                  minHeight: 52,
-                  borderRadius: 14,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: colors.primary,
-                }}
               >
-                <Text
-                  variant="body"
-                  style={{ fontSize: 16, fontWeight: '700', color: colors.primaryForeground }}
-                >
-                  Receive here
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
+                Receive here
+              </Button>
+              <Button
+                native={false}
+                variant="secondary"
+                size="lg"
                 onPress={startCount}
-                style={{
-                  minHeight: 48,
-                  borderRadius: 14,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: colors.secondary,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
               >
-                <Text variant="body" style={{ fontSize: 15, fontWeight: '600' }}>
-                  Count
-                </Text>
-              </Pressable>
+                Count
+              </Button>
             </View>
           ) : (
             <View style={{ gap: 8 }}>
               <Text variant="caption" color="muted">
                 Mark the items you find. Discrepancies are highlighted.
               </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={finishCount}
-                style={{
-                  minHeight: 48,
-                  borderRadius: 14,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: colors.primary,
-                }}
-              >
-                <Text
-                  variant="body"
-                  style={{ fontSize: 15, fontWeight: '700', color: colors.primaryForeground }}
-                >
-                  Finish ({variance?.found ?? 0}/{variance?.expected ?? 0})
-                </Text>
-              </Pressable>
+              <Button native={false} size="lg" onPress={finishCount}>
+                {`Finish (${variance?.found ?? 0}/${variance?.expected ?? 0})`}
+              </Button>
             </View>
           )}
 

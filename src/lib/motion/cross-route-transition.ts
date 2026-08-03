@@ -4,6 +4,7 @@ import {
   playDissolveEnter,
   playDissolveLeave,
   prefersReducedMotion,
+  resetDissolveVeil,
   waitForTransitionTarget,
 } from "@/lib/motion/dissolve-transition";
 
@@ -195,10 +196,14 @@ export async function playCrossRouteEnter(
   try {
     if (prefersReducedMotion()) {
       consumeCrossRouteTransition();
+      resetDissolveVeil();
       return;
     }
 
-    if (!peekCrossRouteTransition()) return;
+    if (!peekCrossRouteTransition()) {
+      resetDissolveVeil();
+      return;
+    }
 
     const target = enterTarget ?? (await waitForTransitionTarget(getEnterSelector(direction)));
     await playDissolveEnter(target);

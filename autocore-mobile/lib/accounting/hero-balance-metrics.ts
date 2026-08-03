@@ -1,8 +1,8 @@
 import { format, isToday, startOfDay, subDays } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 
-import { resolveWeekChartBars } from '@/features/mission-control/lib/revenue-from-operations';
-import type { MissionControlWeekBar } from '@/features/mission-control/types';
+import { resolveWeekChartBars } from '@/features/overview/lib/revenue-from-operations';
+import type { OverviewWeekBar } from '@/features/overview/types';
 import type { FinancialOperation } from '@/types/financial-operation';
 import { coerceToDate } from '@/lib/firestore-timestamp';
 
@@ -13,7 +13,7 @@ function isIncomeOperation(operation: FinancialOperation): boolean {
   return operation.type === 'sale' || operation.type === 'income';
 }
 
-function buildRawWeekBars(operations: FinancialOperation[], now: Date): MissionControlWeekBar[] {
+function buildRawWeekBars(operations: FinancialOperation[], now: Date): OverviewWeekBar[] {
   const today = startOfDay(now);
 
   return Array.from({ length: 7 }, (_, index) => {
@@ -37,14 +37,14 @@ function buildRawWeekBars(operations: FinancialOperation[], now: Date): MissionC
 export type AccountingHeroMetrics = {
   balanceTotal: number;
   growthPercent: number | null;
-  weekBars: MissionControlWeekBar[];
+  weekBars: OverviewWeekBar[];
   todayNet: number;
   todayIncome: number;
   todayExpense: number;
   growing: boolean;
 };
 
-/** Shared hero metrics for Finance balance card and Mission Control revenue card. */
+/** Shared hero metrics for Finance balance card and Overview revenue card. */
 export function buildAccountingHeroMetrics(
   operations: FinancialOperation[],
   now = new Date(),

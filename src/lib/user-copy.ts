@@ -103,6 +103,9 @@ const GRID_FIELD_LABELS_RU: Record<string, string> = {
   engineCode: "Двигатель",
   configuration: "Комплектация",
   notes: "Особые отметки",
+  quality: "Качество",
+  photoUrls: "Фото",
+  imageUrls: "Фото",
   quantity: "Кол-во",
   transmission: "Коробка",
   warehouseLocation: "Место",
@@ -116,6 +119,9 @@ const GRID_FIELD_LABELS_EN: Record<string, string> = {
   engineCode: "Engine",
   configuration: "Configuration",
   notes: "Special notes",
+  quality: "Quality",
+  photoUrls: "Photo",
+  imageUrls: "Photo",
   quantity: "Qty",
   transmission: "Transmission",
   warehouseLocation: "Location",
@@ -214,10 +220,10 @@ export function mapAuthError(error: unknown, context?: AuthErrorContext): string
   const messages = activeLocale === "en" ? authErrorMessagesEn : authErrorMessagesRu;
 
   if (code === "permission-denied") {
-    if (error instanceof Error && error.message.includes("Не удалось")) {
-      return error.message;
-    }
-    if (context?.surface === "onboarding") {
+      if (error instanceof Error && error.message.includes("Не удалось")) {
+        return error.message;
+      }
+      if (context?.surface === "onboarding") {
       return activeLocale === "en"
         ? "Could not complete the action. Refresh the page and try again."
         : "Не удалось выполнить действие. Обновите страницу и попробуйте снова.";
@@ -229,19 +235,19 @@ export function mapAuthError(error: unknown, context?: AuthErrorContext): string
     return messages[code];
   }
 
-  if (error instanceof Error && error.message) {
-    if (/missing or insufficient permissions/i.test(error.message)) {
-      if (context?.surface === "onboarding") {
+      if (error instanceof Error && error.message) {
+        if (/missing or insufficient permissions/i.test(error.message)) {
+          if (context?.surface === "onboarding") {
         return activeLocale === "en"
           ? "Could not complete the action. Refresh the page and try again."
           : "Не удалось выполнить действие. Обновите страницу и попробуйте снова.";
-      }
+          }
       return messages["permission-denied"];
-    }
-    if (error.message.includes("Не удалось")) {
-      return error.message.replace(/\s*\([a-z0-9/-]+\)\s*$/i, "").trim();
-    }
-    return error.message;
-  }
-  return code || "Unknown auth error";
+        }
+        if (error.message.includes("Не удалось")) {
+          return error.message.replace(/\s*\([a-z0-9/-]+\)\s*$/i, "").trim();
+        }
+        return error.message;
+      }
+      return code || "Unknown auth error";
 }

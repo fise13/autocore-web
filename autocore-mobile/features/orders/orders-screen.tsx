@@ -1,11 +1,19 @@
-import { useCallback, useMemo, useState } from 'react';
-import { Keyboard, View } from 'react-native';
-import type { NativeSyntheticEvent, TextInputFocusEventData } from 'react-native';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { View } from 'react-native';
+import type { View as RNView } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import type { ListRenderItemInfo } from '@shopify/flash-list';
+import type { SFSymbol } from 'sf-symbols-typescript';
 
-import { ClipboardListIcon } from '@/assets/icons';
-import { EmptyState, FlashList, Screen, ScreenGate, Text, toast } from '@/components/ui';
+import { ClipboardListIcon, FilterIcon } from '@/assets/icons';
+import {
+  Button,
+  Screen,
+  ScreenGate,
+  StickyActionBar,
+  Text,
+  toast,
+  type IosLiftMenuItem,
+} from '@/components/ui';
 import { useSession, useWorkOrdersRealtime, useModuleEnabled, useTheme } from '@/hooks';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import {
@@ -15,51 +23,43 @@ import {
 } from '@/lib/work-order/map-to-mobile-card';
 import { transitionWorkOrder } from '@/services/api/work-orders';
 import { haptics } from '@/theme';
-import { openPhone } from '@/utils/open-phone';
+import { tokens } from '@/theme/tokens';
 
 import { orderFilters } from './data/mock-orders';
-import { OrderCard } from './components/order-card';
 import { OrdersLoadingState } from './components/order-card-skeleton';
-import { OrdersFilters } from './components/orders-filters';
-import { OrdersAvatarButton } from './components/orders-header-actions';
-import { OrdersCreateFab, ordersFabScrollClearance } from './components/orders-create-fab';
-import { OrdersSummary } from './components/orders-summary';
-import { buildOrderRows, type OrdersRow } from './lib/group-orders';
-import { wo, woType } from './theme/wo-visual';
+import { OrdersHeader } from './components/orders-header';
+import { OrdersLiftProvider, useOrdersLift } from './components/orders-lift-provider';
+import { OrdersMailList } from './components/orders-mail-list';
+import {
+  canMarkCompleted,
+  explainCannotComplete,
+  humanizeTransitionError,
+} from './lib/transition-messages';
 import type { OrderFilterId, WorkOrder } from './types';
 
 const FILTER_IDS = orderFilters.map((filter) => filter.id);
 
-function OrdersGroupHeader({ label, count }: { label: string; count: number }) {
-  const { colors } = useTheme();
+const FILTER_SF: Record<OrderFilterId, SFSymbol> = {
+  open: 'circle',
+  in_progress: 'wrench.and.screwdriver',
+  waiting: 'clock',
+  done: 'checkmark.seal',
+  free: 'person',
+  all: 'square.grid.2x2',
+};
+
+export function OrdersScreen() {
   return (
-    <View
-      style={{
-        paddingHorizontal: wo.pad,
-        paddingTop: wo.stackGap,
-        paddingBottom: 8,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-      }}
-    >
-      <Text variant="meta" style={{ ...woType.groupHeader, color: colors.mutedForeground }}>
-        {label}
-      </Text>
-      <View style={{ flex: 1, height: wo.rule, backgroundColor: colors.border }} />
-      <Text
-        variant="meta"
-        style={{ ...woType.meta, color: colors.mutedForeground, fontVariant: ['tabular-nums'] }}
-      >
-        {count}
-      </Text>
-    </View>
+    <OrdersLiftProvider>
+      <OrdersScreenBody />
+    </OrdersLiftProvider>
   );
 }
 
-export function OrdersScreen() {
+function OrdersScreenBody() {
   const router = useRouter();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
+  const { openLift, filterLifted } = useOrdersLift();
   const { companyId, profile, can, uid } = useSession();
   const rbac = useRbacPolicy();
   const workOrdersEnabled = useModuleEnabled('workOrders');
@@ -73,6 +73,9 @@ export function OrdersScreen() {
 
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<OrderFilterId>('open');
+  const [editing, setEditing] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const filterButtonRef = useRef<RNView>(null);
 
   const meta = useMemo(() => computeMobileOrdersMeta(orders), [orders]);
   const filterCounts = useMemo(() => computeMobileFilterCounts(orders, FILTER_IDS), [orders]);
@@ -82,31 +85,72 @@ export function OrdersScreen() {
     [filter, orders, query],
   );
 
-  const rows = useMemo(() => buildOrderRows(filteredOrders), [filteredOrders]);
+  const activeFilterLabel =
+    orderFilters.find((entry) => entry.id === filter)?.label ?? 'Active';
 
-  /** Native `UISearchBar` under the large title — same options object each render. */
-  const screenOptions = useMemo(
-    () => ({
-      // The app carries its own theme toggle while `userInterfaceStyle` is
-      // `automatic`, so native chrome has to be told which one to match —
-      // otherwise the bar renders light over a dark app.
-      headerBlurEffect: isDark ? ('systemChromeMaterialDark' as const) : ('systemChromeMaterialLight' as const),
-      headerTintColor: colors.primary,
-      headerTitleStyle: { color: colors.foreground },
-      headerLargeTitleStyle: { color: colors.foreground },
-      headerSearchBarOptions: {
-        placeholder: 'Customer, WO #, vehicle',
-        autoCapitalize: 'none' as const,
-        hideWhenScrolling: false,
-        tintColor: colors.primary,
-        onChangeText: (event: NativeSyntheticEvent<TextInputFocusEventData>) =>
-          setQuery(event.nativeEvent.text),
-        onCancelButtonPress: () => setQuery(''),
-      },
-      headerLeft: () => <OrdersAvatarButton />,
-    }),
-    [colors.foreground, colors.primary, isDark],
+  const filterMenuItems = useMemo(
+    () =>
+      orderFilters.map((entry) => ({
+        id: entry.id,
+        label: entry.label,
+        count: filterCounts[entry.id] ?? 0,
+        systemImage: FILTER_SF[entry.id],
+      })),
+    [filterCounts],
   );
+
+  const exitEditing = useCallback(() => {
+    setEditing(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const openFilterMenu = useCallback(() => {
+    filterButtonRef.current?.measureInWindow((x, y, width, height) => {
+      haptics.medium();
+      const items: IosLiftMenuItem[] = orderFilters.map((entry) => {
+        const count = filterCounts[entry.id] ?? 0;
+        const selected = entry.id === filter;
+        return {
+          label: `${entry.label}  ${count}`,
+          systemImage: selected ? 'checkmark' : FILTER_SF[entry.id],
+          selected,
+          onPress: () => {
+            setFilter(entry.id);
+            haptics.selection();
+          },
+        };
+      });
+      openLift({
+        filter: true,
+        anchor: { x, y, width, height },
+        menuPlacement: 'below',
+        items,
+        previewStyle: {
+          borderRadius: tokens.radius.full,
+          backgroundColor: colors.secondary,
+        },
+        preview: (
+          <View
+            style={{
+              minHeight: tokens.control.hitTarget,
+              paddingHorizontal: tokens.space.stack,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: tokens.space.micro + 2,
+            }}
+          >
+            <FilterIcon size={18} color={colors.foreground} strokeWidth={1.85} />
+            <Text
+              variant="headline"
+              style={{ fontSize: 15, fontWeight: '600', color: colors.foreground }}
+            >
+              {orderFilters.find((entry) => entry.id === filter)?.label ?? 'Active'}
+            </Text>
+          </View>
+        ),
+      });
+    });
+  }, [colors.foreground, colors.secondary, filter, filterCounts, openLift]);
 
   const markComplete = useCallback(
     async (order: WorkOrder) => {
@@ -114,8 +158,10 @@ export function OrdersScreen() {
         toast({ title: 'You do not have permission to edit this work order', variant: 'warning' });
         return;
       }
-      if (order.status === 'completed' || order.status === 'delivered' || order.status === 'cancelled') {
-        router.push(`/(tabs)/orders/${order.id}`);
+      if (!canMarkCompleted(order.status)) {
+        const copy = explainCannotComplete(order.status);
+        haptics.warning();
+        toast({ title: copy.title, description: copy.description, variant: 'warning' });
         return;
       }
       try {
@@ -125,117 +171,75 @@ export function OrdersScreen() {
         toast({ title: 'Work order completed', variant: 'success' });
       } catch (error) {
         haptics.warning();
-        toast({
-          title: 'Failed to update status',
-          description: error instanceof Error ? error.message : undefined,
-          variant: 'destructive',
-        });
+        const copy = humanizeTransitionError(
+          error instanceof Error ? error.message : 'Failed to update status',
+          order.status,
+          'completed',
+        );
+        toast({ title: copy.title, description: copy.description, variant: 'destructive' });
       }
     },
-    [canEdit, router],
+    [canEdit],
   );
 
-  const callCustomer = useCallback(async (order: WorkOrder) => {
-    haptics.light();
-    await openPhone(order.phone);
+  const bulkComplete = useCallback(async () => {
+    if (!canEdit || selectedIds.size === 0) return;
+    const selected = filteredOrders.filter((order) => selectedIds.has(order.id));
+    const targets = selected.filter((order) => canMarkCompleted(order.status));
+    const blocked = selected.filter((order) => !canMarkCompleted(order.status));
+
+    if (targets.length === 0) {
+      const sample = blocked[0];
+      const copy = sample
+        ? explainCannotComplete(sample.status)
+        : { title: 'Nothing to complete', description: 'Select orders that are ready to complete.' };
+      toast({ title: copy.title, description: copy.description, variant: 'warning' });
+      return;
+    }
+    try {
+      haptics.medium();
+      await Promise.all(targets.map((order) => transitionWorkOrder(order.id, 'completed')));
+      haptics.success();
+      const skipped = blocked.length;
+      toast({
+        title: targets.length === 1 ? 'Work order completed' : `${targets.length} completed`,
+        description: skipped > 0 ? `${skipped} skipped — not ready to complete yet` : undefined,
+        variant: 'success',
+      });
+      exitEditing();
+    } catch (error) {
+      haptics.warning();
+      const copy = humanizeTransitionError(
+        error instanceof Error ? error.message : 'Failed to update status',
+      );
+      toast({ title: copy.title, description: copy.description, variant: 'destructive' });
+    }
+  }, [canEdit, exitEditing, filteredOrders, selectedIds]);
+
+  const enterEdit = useCallback((order: WorkOrder) => {
+    setEditing(true);
+    setSelectedIds(new Set([order.id]));
   }, []);
 
-  const renderItem = useCallback(
-    ({ item }: ListRenderItemInfo<OrdersRow>) => {
-      if (item.kind === 'header') {
-        return <OrdersGroupHeader label={item.label} count={item.count} />;
-      }
-      return (
-        <View style={{ paddingHorizontal: wo.pad, marginBottom: wo.rowGap }}>
-          <OrderCard
-            order={item.order}
-            index={item.index}
-            onComplete={markComplete}
-            onCall={callCustomer}
-          />
-        </View>
-      );
-    },
-    [callCustomer, markComplete],
-  );
+  const metaLine = [
+    `${meta.openCount} open`,
+    filter !== 'open' ? activeFilterLabel : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
-  const keyExtractor = useCallback((item: OrdersRow) => item.id, []);
-  const getItemType = useCallback((item: OrdersRow) => item.kind, []);
+  const isListEmpty = filteredOrders.length === 0;
+  const emptyTitle = orders.length === 0 ? 'No work orders yet' : 'Nothing here';
+  const emptyDescription =
+    orders.length === 0
+      ? 'Create the first job for this shift — tap New in the toolbar.'
+      : 'No orders match this filter or search.';
 
-  const listHeader = useMemo(
-    () => (
-      <View style={{ paddingTop: wo.stackGap }}>
-        <OrdersSummary meta={meta} />
-        <OrdersFilters
-          filters={orderFilters}
-          activeFilter={filter}
-          onFilterChange={setFilter}
-          counts={filterCounts}
-        />
-        {errorMessage ? (
-          <Text
-            variant="caption"
-            color="destructive"
-            style={{ paddingHorizontal: wo.pad, marginTop: wo.rowGap }}
-          >
-            {errorMessage}
-          </Text>
-        ) : null}
-      </View>
-    ),
-    [errorMessage, filter, filterCounts, meta],
-  );
-
-  const listEmpty = useMemo(
-    () => (
-      <View style={{ paddingHorizontal: wo.pad, paddingTop: wo.sectionGap }}>
-        {isBootstrapping && orders.length === 0 ? (
-          <OrdersLoadingState />
-        ) : (
-          <EmptyState
-            icon={ClipboardListIcon}
-            title={orders.length === 0 ? 'No work orders yet' : 'Nothing here'}
-            description={
-              orders.length === 0
-                ? 'Create the first job for this shift — tap + below.'
-                : 'No orders match this filter or search.'
-            }
-            primaryAction={
-              canCreate && orders.length === 0
-                ? {
-                    label: 'Create work order',
-                    onPress: () => router.push('/(tabs)/orders/new'),
-                  }
-                : query || filter !== 'all'
-                  ? {
-                      label: 'Show all orders',
-                      onPress: () => {
-                        haptics.selection();
-                        setQuery('');
-                        setFilter('all');
-                      },
-                      variant: 'outline',
-                    }
-                  : undefined
-            }
-          />
-        )}
-      </View>
-    ),
-    [canCreate, filter, isBootstrapping, orders.length, query, router],
-  );
-
-  if (!enabled || !profile?.companyId) {
+  if (!profile?.companyId || !enabled) {
     return (
-      <ScreenGate
-        variant="no-company"
-        title="No workspace"
-        description="Select a company in your profile to see work orders."
-        primaryAction={{
-          label: 'Open profile',
-          onPress: () => router.navigate('/(tabs)/profile'),
-        }}
-      />
+      <Screen>
+        <OrdersLoadingState />
+      </Screen>
     );
   }
 
@@ -252,24 +256,65 @@ export function OrdersScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={screenOptions} />
-      <FlashList
-        data={rows}
-        keyExtractor={keyExtractor}
-        getItemType={getItemType}
-        renderItem={renderItem}
-        ListHeaderComponent={listHeader}
-        ListEmptyComponent={listEmpty}
-        // Lets the native large title collapse and the bar blur on scroll.
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{
-          paddingBottom: wo.sectionGap + (canCreate ? ordersFabScrollClearance() : 0),
-        }}
-        onScrollBeginDrag={Keyboard.dismiss}
-        keyboardDismissMode="on-drag"
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <OrdersHeader
+        metaLine={metaLine}
+        query={query}
+        onQueryChange={setQuery}
+        editing={editing}
+        canCreate={canCreate}
+        filterLabel={activeFilterLabel}
+        filters={filterMenuItems}
+        activeFilter={filter}
+        onFilterChange={setFilter}
+        filterButtonRef={filterButtonRef}
+        filterLifted={filterLifted}
+        onExitEdit={exitEditing}
+        onOpenFilter={openFilterMenu}
+        onCreate={() => router.push('/(tabs)/orders/new')}
       />
-      {canCreate ? (
-        <OrdersCreateFab onPress={() => router.push('/(tabs)/orders/new')} />
+
+      {errorMessage ? (
+        <Text
+          variant="caption"
+          color="destructive"
+          style={{ paddingHorizontal: tokens.space.screenX, paddingTop: tokens.space.inline }}
+        >
+          {errorMessage}
+        </Text>
+      ) : null}
+
+      {isBootstrapping && orders.length === 0 ? (
+        <View style={{ paddingHorizontal: tokens.space.screenX, paddingTop: tokens.space.section }}>
+          <OrdersLoadingState />
+        </View>
+      ) : (
+        <OrdersMailList
+          orders={filteredOrders}
+          editing={editing}
+          selectedIds={selectedIds}
+          onSelectionChange={setSelectedIds}
+          onComplete={markComplete}
+          onEnterEdit={enterEdit}
+          canEdit={canEdit}
+          emptyTitle={emptyTitle}
+          emptyDescription={emptyDescription}
+          isEmpty={isListEmpty}
+          onCreateEmpty={
+            canCreate && orders.length === 0
+              ? () => router.push('/(tabs)/orders/new')
+              : undefined
+          }
+        />
+      )}
+
+      {editing && selectedIds.size > 0 ? (
+        <StickyActionBar>
+          <Button native={false} onPress={() => void bulkComplete()}>
+            Mark completed ({selectedIds.size})
+          </Button>
+        </StickyActionBar>
       ) : null}
     </Screen>
   );

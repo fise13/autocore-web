@@ -17,22 +17,22 @@ type MoneyFormatState = {
   rates: ExchangeRates;
   currencyPrefix: string;
   currencySuffix: string;
-  formatMoney: (valueInKzt: number) => string;
-  convertMoney: (valueInKzt: number) => number;
+  formatMoney: (value: number) => string;
+  convertMoney: (value: number) => number;
   setMoneyFormat: (payload: { currency: AppDisplayCurrency; rates: ExchangeRates }) => void;
 };
 
 function buildFormatters(currency: AppDisplayCurrency, rates: ExchangeRates) {
   const affix = appDisplayCurrencyAffix(currency);
-  const convertMoney = (valueInKzt: number) => convertFromBaseCurrency(valueInKzt, currency, rates);
-  const formatMoney = (valueInKzt: number) => formatAppMoney(convertMoney(valueInKzt), currency);
+  const convertMoney = (value: number) => convertFromBaseCurrency(value, currency, rates);
+  const formatMoney = (value: number) => formatAppMoney(convertMoney(value), currency);
   return { ...affix, convertMoney, formatMoney };
 }
 
-const defaults = buildFormatters('KZT', FALLBACK_EXCHANGE_RATES);
+const defaults = buildFormatters('USD', FALLBACK_EXCHANGE_RATES);
 
 export const useMoneyFormatStore = create<MoneyFormatState>((set) => ({
-  currency: 'KZT',
+  currency: 'USD',
   rates: FALLBACK_EXCHANGE_RATES,
   currencyPrefix: defaults.prefix,
   currencySuffix: defaults.suffix,
@@ -52,10 +52,10 @@ export const useMoneyFormatStore = create<MoneyFormatState>((set) => ({
   },
 }));
 
-export function formatPrice(valueInKzt: number): string {
-  return useMoneyFormatStore.getState().formatMoney(valueInKzt);
+export function formatPrice(value: number): string {
+  return useMoneyFormatStore.getState().formatMoney(value);
 }
 
-export function convertPrice(valueInKzt: number): number {
-  return useMoneyFormatStore.getState().convertMoney(valueInKzt);
+export function convertPrice(value: number): number {
+  return useMoneyFormatStore.getState().convertMoney(value);
 }

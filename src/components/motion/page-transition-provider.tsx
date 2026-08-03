@@ -27,6 +27,7 @@ import {
   resolveExternalAppAuthDirection,
   resolveExternalMarketingDirection,
 } from "@/lib/motion/cross-route-transition";
+import { resetDissolveVeil } from "@/lib/motion/dissolve-transition";
 import { getAppUrl, getMarketingUrl } from "@/lib/site-urls";
 
 type PageTransitionContextValue = {
@@ -130,14 +131,23 @@ export function PageTransitionProvider({ children }: PageTransitionProviderProps
   useEffect(() => {
     const direction = peekCrossRouteTransition();
     if (direction) {
-      void playCrossRouteEnter(direction);
+      void playCrossRouteEnter(direction).finally(() => {
+        // Safety: never leave a fullscreen blocker after route settle.
+        window.setTimeout(() => resetDissolveVeil(), 500);
+      });
       return;
     }
 
     const authSession = peekAuthSessionTransition();
     if (authSession) {
-      void playAuthSessionEnter(authSession);
+      void playAuthSessionEnter(authSession).finally(() => {
+        window.setTimeout(() => resetDissolveVeil(), 500);
+      });
+      return;
     }
+
+    // No pending enter animation — clear any leftover veil from interrupted leave.
+    resetDissolveVeil();
   }, [pathname]);
 
   const value: PageTransitionContextValue = {

@@ -18,8 +18,8 @@ import {
 } from '@/lib/accounting/labels';
 import { haptics, rhythm } from '@/theme';
 import type { FinancialOperation, OperationType } from '@/types/financial-operation';
-import { McSectionTitle } from '@/features/mission-control/components/mc-primitives';
-import { mcType } from '@/features/mission-control/layout';
+import { McSectionTitle } from '@/features/overview/components/mc-primitives';
+import { mcType } from '@/features/overview/layout';
 
 import { ac } from '../layout';
 import { formatKzt } from '../utils/format';

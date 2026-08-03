@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, ScrollView, Share, View } from 'react-native';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { useLocalSearchParams } from 'expo-router';
 
 import {
   Button,
@@ -15,12 +16,14 @@ import {
 } from '@/components/ui';
 import { UsersIcon } from '@/assets/icons';
 import {
+  useCompanyDirectory,
   useCompanyInvites,
   useCompanySubscription,
   useEmployeesRealtime,
   useSession,
   useWorkOrdersRealtime,
 } from '@/hooks';
+import { useAccountingPreferences } from '@/hooks/use-accounting-preferences';
 import { useTheme } from '@/hooks/use-theme';
 import {
   ALL_PERMISSIONS,
@@ -34,15 +37,21 @@ import { getPublicApiBaseUrl } from '@/services/api/api-base-url';
 import { resendInvite, revokeInvite } from '@/services/api/org-api';
 import { NotificationService } from '@/services/notifications';
 import {
+  createDirectoryPerson,
+  markDirectoryPersonInvited,
+  removeDirectoryPerson,
+} from '@/services/firestore/directory-service';
+import {
   removeEmployee,
   setEmployeeActive,
   setEmployeePermissionOverrides,
   setEmployeeRole,
 } from '@/services/firestore/employee-rbac-service';
-import type { Permission, UserRole } from '@/types/user';
+import type { Permission } from '@/types/user';
 import { haptics, rhythm } from '@/theme';
+import { tokens } from '@/theme/tokens';
 import { ROLE_PERMISSIONS, USER_ROLES } from '@/types/user';
-import type { CompanyEmployee, InviteDocument } from '@/types/rbac';
+import type { CompanyEmployee, DirectoryPerson, InviteDocument } from '@/types/rbac';
 import { coerceToDate } from '@/lib/firestore-timestamp';
 
 import { ProfileScreenShell } from '../components/profile-screen-shell';
@@ -50,6 +59,7 @@ import { ProfileSegmentedControl } from '../components/profile-animated-section'
 import { TeamInviteSheet, type TeamInviteSheetRef } from '../components/team-invite-sheet';
 import { TeamProGate } from '../components/team-pro-gate';
 import { TeamEmployeeCard } from '../components/team/team-employee-card';
+import { TeamDirectoryComposer, TeamDirectoryRow } from '../components/team/team-directory';
 import { TeamInviteStatusFilters } from '../components/team/team-invite-status-filters';
 import { TeamInviteRow } from '../components/team/team-invite-card';
 import { TeamSectionHeader } from '../components/team/team-primitives';
@@ -75,18 +85,29 @@ function getInviteStatus(invite: Pick<InviteDocument, 'status' | 'used' | 'expir
 function mapEmployeeError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   if (message.includes('Missing or insufficient permissions')) {
-    return 'You don\'t have permission to do this.';
+    return 'You don’t have permission to do this.';
   }
-  return message || 'Failed to complete the action';
+  return message || 'Something went wrong';
+}
+
+function firstParam(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value;
 }
 
 export function TeamScreen() {
   const { colors } = useTheme();
+  const params = useLocalSearchParams<{ inviteName?: string | string[] }>();
   const { profile, companyId, uid } = useSession();
   const { isPro } = useCompanySubscription(companyId);
   const { employees, isLoading, error: employeesError } = useEmployeesRealtime(companyId, isPro);
   const canView = canViewEmployees(profile);
   const canManage = canManageEmployees(profile);
+  const { people: directoryPeople, isLoading: directoryLoading } = useCompanyDirectory(
+    companyId,
+    isPro && canView,
+  );
+  const { employees: financeEmployees, specifics, saveLists } = useAccountingPreferences(uid);
   const { domainOrders } = useWorkOrdersRealtime(canView ? companyId : null);
   const assignmentCounts = useMemo(
     () => computeOpenWorkOrderCounts(domainOrders),
@@ -99,6 +120,7 @@ export function TeamScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inviteSheetRef = useRef<TeamInviteSheetRef>(null);
+  const inviteParamHandled = useRef(false);
   const [permissionsEmployee, setPermissionsEmployee] = useState<CompanyEmployee | null>(null);
   const [selectedPermissions, setSelectedPermissions] = useState<Set<Permission>>(new Set());
 
@@ -113,6 +135,17 @@ export function TeamScreen() {
       return getInviteStatus(invite) === inviteStatusFilter;
     });
   }, [inviteStatusFilter, invites]);
+
+  useEffect(() => {
+    if (inviteParamHandled.current || !canManage || !companyId || !uid) return;
+    const inviteName = firstParam(params.inviteName)?.trim();
+    if (!inviteName) return;
+    inviteParamHandled.current = true;
+    const timer = setTimeout(() => {
+      inviteSheetRef.current?.present({ personName: inviteName });
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [canManage, companyId, params.inviteName, uid]);
 
   const runAction = async (action: () => Promise<void>) => {
     setBusy(true);
@@ -143,8 +176,8 @@ export function TeamScreen() {
 
   const confirmRemove = (employee: CompanyEmployee) => {
     Alert.alert(
-      'Remove employee?',
-      `${employeeDisplayName(employee, profile ?? undefined)} will be removed from the company.`,
+      'Remove?',
+      `${employeeDisplayName(employee, profile ?? undefined)} will leave this company.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -159,17 +192,88 @@ export function TeamScreen() {
     );
   };
 
+  const confirmRemoveDirectory = (person: DirectoryPerson) => {
+    Alert.alert('Remove name?', `${person.name} will be removed from the roster.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => {
+          if (!companyId) return;
+          void runAction(() => removeDirectoryPerson(companyId, person.id));
+        },
+      },
+    ]);
+  };
+
+  const handleAddDirectoryName = async (name: string) => {
+    if (!companyId || !uid) return;
+    await runAction(async () => {
+      await createDirectoryPerson({ companyId, name, createdBy: uid });
+      const alreadyListed = financeEmployees.some(
+        (entry) => entry.toLocaleLowerCase() === name.toLocaleLowerCase(),
+      );
+      if (!alreadyListed) {
+        await saveLists({
+          employees: [...financeEmployees, name],
+          specifics,
+        }).catch(() => undefined);
+      }
+    });
+  };
+
   const renderEmployeesTab = () => (
     <View style={{ gap: rhythm.section }}>
       <TeamSummaryCard
         activeEmployees={activeEmployees.length}
         totalEmployees={employees.length}
         pendingInvites={pendingInvites}
+        namedOnly={directoryPeople.length}
       />
+
+      {canManage ? (
+        <View style={{ gap: rhythm.stack }}>
+          <TeamSectionHeader title="Not on AutoCore yet" />
+          <TeamDirectoryComposer
+            canManage={canManage}
+            busy={busy}
+            onAdd={(name) => void handleAddDirectoryName(name)}
+          />
+          {directoryLoading ? (
+            <View style={{ gap: rhythm.tight, paddingHorizontal: rhythm.pad }}>
+              <Skeleton height={64} rounded="xl" />
+            </View>
+          ) : directoryPeople.length > 0 ? (
+            <ListGroup>
+              {directoryPeople.map((person, index) => (
+                <TeamDirectoryRow
+                  key={person.id}
+                  person={person}
+                  bordered={index > 0}
+                  canManage={canManage}
+                  onInvite={(entry) =>
+                    inviteSheetRef.current?.present({
+                      personName: entry.name,
+                      directoryPersonId: entry.id,
+                    })
+                  }
+                  onRemove={confirmRemoveDirectory}
+                />
+              ))}
+            </ListGroup>
+          ) : (
+            <View style={{ paddingHorizontal: rhythm.pad }}>
+              <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
+                Add a name now. Invite them when you’re ready.
+              </Text>
+            </View>
+          )}
+        </View>
+      ) : null}
 
       <View>
         <TeamSectionHeader
-          title="Employees"
+          title="People"
           actionLabel={canManage ? 'Invite' : undefined}
           onAction={canManage ? () => inviteSheetRef.current?.present() : undefined}
         />
@@ -183,8 +287,8 @@ export function TeamScreen() {
           <View style={{ paddingHorizontal: rhythm.pad }}>
             <EmptyState
               icon={UsersIcon}
-              title="No employees yet"
-              description="Invite your first team member with a code or a link."
+              title="No people yet"
+              description="Add a name above, or invite someone with a code or link."
               primaryAction={
                 canManage
                   ? { label: 'Invite', onPress: () => inviteSheetRef.current?.present() }
@@ -220,10 +324,7 @@ export function TeamScreen() {
       </View>
 
       {canManage ? (
-        <SettingsSectionCard
-          title="Invite codes"
-          description="Share a code or link to add an employee to the company"
-        >
+        <SettingsSectionCard title="Invites" description="Codes and links waiting to be used">
           <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
             <View style={{ gap: rhythm.tight }}>
               <SectionHeader title="Status" label />
@@ -236,7 +337,7 @@ export function TeamScreen() {
               </View>
             ) : filteredInvites.length === 0 ? (
               <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-                No invites with this status.
+                No invites here.
               </Text>
             ) : (
               <ListGroup inset={false}>
@@ -275,7 +376,7 @@ export function TeamScreen() {
 
   const renderRolesTab = () => (
     <View style={{ gap: rhythm.section }}>
-      <SettingsSectionCard title="Roles" description="Default permission sets for each role in the company">
+      <SettingsSectionCard title="Roles" description="Default access for each role">
         <ListGroup inset={false}>
           {USER_ROLES.filter((role) => role !== 'owner').map((role, index) => (
             <TeamRoleCard key={role} role={role} index={index} />
@@ -283,7 +384,7 @@ export function TeamScreen() {
         </ListGroup>
       </SettingsSectionCard>
 
-      <SettingsSectionCard title="Permission groups" description="What's included in each access area">
+      <SettingsSectionCard title="Permission groups" description="What’s in each access area">
         <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
           {(Object.keys(PERMISSION_GROUPS) as Array<keyof typeof PERMISSION_GROUPS>).map((groupId) => (
             <View key={groupId} style={{ gap: 4 }}>
@@ -302,29 +403,31 @@ export function TeamScreen() {
 
   return (
     <BottomSheetModalProvider>
-      <ProfileScreenShell title="Team and roles" subtitle="Employees, roles, and access permissions">
+      <ProfileScreenShell title="Team" subtitle="People, roles, and access">
         <TeamProGate>
           {!canView ? (
-            <SettingsSectionCard title="Access restricted">
+            <SettingsSectionCard title="No access">
               <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: 4 }}>
                 <Text variant="body" style={{ fontWeight: '600' }}>
-                  Insufficient permissions
+                  Can’t open Team
                 </Text>
                 <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-                  You don't have permission to view the company's employees.
+                  Your role can’t view people in this company.
                 </Text>
               </View>
             </SettingsSectionCard>
           ) : (
             <View style={{ gap: rhythm.section }}>
-              <ProfileSegmentedControl
-                value={tab}
-                onChange={setTab}
-                options={[
-                  { value: 'employees', label: 'Employees' },
-                  { value: 'roles', label: 'Roles' },
-                ]}
-              />
+              <View style={{ marginHorizontal: tokens.space.screenX }}>
+                <ProfileSegmentedControl
+                  value={tab}
+                  onChange={setTab}
+                  options={[
+                    { value: 'employees', label: 'People' },
+                    { value: 'roles', label: 'Roles' },
+                  ]}
+                />
+              </View>
               {tab === 'employees' ? renderEmployeesTab() : renderRolesTab()}
             </View>
           )}
@@ -343,6 +446,14 @@ export function TeamScreen() {
             userId={uid}
             onShareCode={(code) => void shareCode(code)}
             onShareLink={(url) => void shareLink(url)}
+            onInviteCreated={(inviteId, directoryPersonId) => {
+              if (!companyId || !directoryPersonId) return;
+              void markDirectoryPersonInvited({
+                companyId,
+                personId: directoryPersonId,
+                inviteId,
+              }).catch(() => undefined);
+            }}
           />
         ) : null}
 
@@ -351,10 +462,10 @@ export function TeamScreen() {
           onOpenChange={(open) => {
             if (!open) setPermissionsEmployee(null);
           }}
-          title="Additional permissions"
+          title="Extra permissions"
           description={
             permissionsEmployee
-              ? `${employeeDisplayName(permissionsEmployee, profile ?? undefined)} · base permissions for ${formatRole(permissionsEmployee.role)} role`
+              ? `${employeeDisplayName(permissionsEmployee, profile ?? undefined)} · ${formatRole(permissionsEmployee.role)}`
               : undefined
           }
           footer={
@@ -394,7 +505,7 @@ export function TeamScreen() {
                       </Text>
                       {inRole ? (
                         <Text variant="caption" color="muted">
-                          Already included in the role
+                          Included in role
                         </Text>
                       ) : null}
                     </View>

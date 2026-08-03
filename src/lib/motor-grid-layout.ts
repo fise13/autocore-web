@@ -6,6 +6,8 @@ export const MOTOR_GRID_COLUMN_WIDTHS = {
   serialCode: 196,
   configuration: 188,
   notes: 228,
+  quality: 100,
+  photo: 72,
   quantity: 72,
   transmission: 124,
   warehouseLocation: 140,

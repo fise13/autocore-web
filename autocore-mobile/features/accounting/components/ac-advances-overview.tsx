@@ -3,9 +3,9 @@ import Reanimated from 'react-native-reanimated';
 
 import { ListGroup, Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { useMcEnter } from '@/features/mission-control/animation';
-import { McSectionTitle } from '@/features/mission-control/components/mc-primitives';
-import { mcType } from '@/features/mission-control/layout';
+import { useMcEnter } from '@/features/overview/animation';
+import { McSectionTitle } from '@/features/overview/components/mc-primitives';
+import { mcType } from '@/features/overview/layout';
 import type { AdvanceSnapshot } from '@/lib/accounting/advances';
 
 import { ac } from '../layout';
@@ -47,7 +47,7 @@ function AdvanceRow({ label, value, accent }: { label: string; value: string; ac
 }
 
 export function AcAdvancesOverview({ snapshot }: AcAdvancesOverviewProps) {
-  const style = useMcEnter({ delay: acTimeline.attention, translateY: 6, fade: true });
+  const style = useMcEnter({ delay: acTimeline.attention, translateY: 6 });
 
   return (
     <Reanimated.View style={[{ gap: ac.sectionGap }, style]}>

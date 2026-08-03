@@ -60,11 +60,21 @@ export function resetDissolveVeil(): void {
   const veil = document.querySelector<HTMLElement>("[data-transition-veil]");
   if (veil) {
     veil.style.opacity = "0";
+    // Clear GSAP inline props that can stick after interrupted timelines.
+    veil.style.removeProperty("opacity");
   }
   const overlay = document.querySelector<HTMLElement>(".page-transition-overlay");
   if (overlay) {
     overlay.style.visibility = "hidden";
     overlay.style.pointerEvents = "none";
+    overlay.style.removeProperty("visibility");
+    overlay.style.removeProperty("pointer-events");
+  }
+  // Also clear via GSAP registry if the overlay was animated.
+  const dissolve = getDissolveOverlay();
+  if (dissolve) {
+    gsap.set(dissolve.root, { visibility: "hidden", pointerEvents: "none" });
+    gsap.set(dissolve.veil, { opacity: 0, clearProps: "opacity" });
   }
 }
 
@@ -110,7 +120,9 @@ export async function playDissolveLeave(target: HTMLElement | null): Promise<voi
   const blur = transitionBlurPx();
 
   const { root, veil } = overlay;
-  gsap.set(root, { visibility: "visible", pointerEvents: "auto" });
+  // Keep pointer-events none: the veil is visual only. Enabling them here and
+  // failing to run playDissolveEnter left an invisible fullscreen click blocker.
+  gsap.set(root, { visibility: "visible", pointerEvents: "none" });
   gsap.set(veil, { opacity: 0 });
 
   const timeline = gsap.timeline();
@@ -140,7 +152,11 @@ export async function playDissolveLeave(target: HTMLElement | null): Promise<voi
     0.08,
   );
 
-  await timeline;
+  try {
+    await timeline;
+  } catch {
+    resetDissolveVeil();
+  }
 }
 
 /** Reveal the next view as the veil lifts. */
@@ -152,7 +168,7 @@ export async function playDissolveEnter(
 
   const { root, veil } = requireDissolveOverlay();
 
-  gsap.set(root, { visibility: "visible", pointerEvents: "auto" });
+  gsap.set(root, { visibility: "visible", pointerEvents: "none" });
   gsap.set(veil, { opacity: 1 });
 
   const blur = transitionBlurPx();

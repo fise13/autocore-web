@@ -1,69 +1,55 @@
 import { View } from 'react-native';
-import Animated, { FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { Skeleton } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/hooks';
-import { autocoreEase, duration } from '@/theme';
+import { duration } from '@/theme';
+import { tokens } from '@/theme/tokens';
 
-import { wo, woFlatCard } from '../theme/wo-visual';
+import { wo } from '../theme/wo-visual';
 
-type OrderCardSkeletonProps = {
+type OrderRowSkeletonProps = {
   index?: number;
 };
 
-/** Mirrors `OrderCard`'s block structure so nothing shifts when data lands. */
-export function OrderCardSkeleton({ index = 0 }: OrderCardSkeletonProps) {
-  const { colors, isDark } = useTheme();
+/** Listing-card placeholder — matches Airbnb-style `OrderRow`. */
+export function OrderRowSkeleton({ index = 0 }: OrderRowSkeletonProps) {
+  const { colors } = useTheme();
   const reducedMotion = useReducedMotion();
 
   const entering = reducedMotion
     ? undefined
-    : FadeInUp.duration(duration.medium)
-        .delay(60 + index * 50)
-        .easing(autocoreEase);
+    : FadeIn.duration(duration.fast).delay(40 + index * 35);
 
   return (
     <Animated.View
       entering={entering}
       style={{
-        ...woFlatCard(colors, { isDark }),
-        paddingHorizontal: wo.cardPadX,
-        paddingVertical: wo.cardPadY,
+        paddingHorizontal: tokens.space.screenX,
+        paddingBottom: tokens.space.section - 4,
         gap: 10,
       }}
     >
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Skeleton width={96} height={21} rounded="full" />
-        <Skeleton width={78} height={11} />
-      </View>
-
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-        <View style={{ flex: 1, gap: 5 }}>
-          <Skeleton width="62%" height={17} />
-          <Skeleton width="80%" height={13} />
+      <Skeleton
+        width="100%"
+        height={wo.heroHeight}
+        rounded="group"
+        style={{ borderRadius: wo.radius, backgroundColor: colors.muted }}
+      />
+      <View style={{ gap: 8, paddingHorizontal: 2 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <Skeleton width="58%" height={18} />
+          <Skeleton width={40} height={16} />
         </View>
-        <Skeleton width={72} height={17} />
-      </View>
-
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingTop: 10,
-          borderTopWidth: wo.rule,
-          borderTopColor: colors.border,
-        }}
-      >
-        <Skeleton width={104} height={22} rounded="full" />
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Skeleton width={wo.quickAction} height={wo.quickAction} rounded="full" />
-          <Skeleton width={wo.quickAction} height={wo.quickAction} rounded="full" />
-        </View>
+        <Skeleton width="42%" height={12} />
+        <Skeleton width="36%" height={14} />
       </View>
     </Animated.View>
   );
 }
+
+/** @deprecated Prefer OrderRowSkeleton — kept as alias for existing imports. */
+export const OrderCardSkeleton = OrderRowSkeleton;
 
 type OrdersLoadingStateProps = {
   count?: number;
@@ -74,10 +60,10 @@ export function OrdersLoadingState({ count = 4 }: OrdersLoadingStateProps) {
     <View
       accessibilityRole="progressbar"
       accessibilityLabel="Loading orders"
-      style={{ gap: wo.rowGap }}
+      style={{ paddingTop: tokens.space.inline }}
     >
       {Array.from({ length: count }, (_, index) => (
-        <OrderCardSkeleton key={index} index={index} />
+        <OrderRowSkeleton key={index} index={index} />
       ))}
     </View>
   );

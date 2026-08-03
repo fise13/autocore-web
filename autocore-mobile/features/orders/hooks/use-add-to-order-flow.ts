@@ -2,8 +2,9 @@ import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useRef } from 'react';
 
-import { toast } from '@/components/ui';
+import { toast } from '@/components/ui/toast-store';
 import { useSession, useWorkOrdersRealtime } from '@/hooks';
+import { dateMs } from '@/lib/firestore-timestamp';
 import { haptics } from '@/theme';
 import type { WorkOrderMotorOutcome } from '@/types/work-order';
 
@@ -29,7 +30,7 @@ export function useAddToOrderFlow() {
     () =>
       domainOrders
         .filter((order) => order.status === 'draft')
-        .sort((a, b) => (b.updatedAt?.getTime() ?? 0) - (a.updatedAt?.getTime() ?? 0))
+        .sort((a, b) => dateMs(b.updatedAt) - dateMs(a.updatedAt))
         .slice(0, 5),
     [domainOrders],
   );

@@ -1,26 +1,22 @@
 import { useEffect, useRef } from 'react';
-import { useRouter, useSegments } from 'expo-router';
+import { useRouter } from 'expo-router';
 
 import { useAuthStore } from '@/store/auth-store';
-import { useCompanySubscription } from '@/hooks/use-company-subscription';
 import { journeyPathForStep, useAuthJourneyStep } from '@/hooks/use-auth-journey-step';
 import { isProductionCompanyId } from '@/lib/company-id';
-import { isMissionControlIndexRoute, isTabRootEntry } from '@/lib/navigation/tab-segments';
 import { resolveInitialTabHref } from '@/lib/navigation/nav-item-availability';
-import { canAccessMissionControl } from '@/lib/rbac/navigation-policy';
 import { resolveSessionCompanyId } from '@/lib/session/merge-hydration';
 import { useCompanyModuleEnabled } from '@/hooks/use-module-enabled';
-import { ROOT_APP_ROUTES } from '@/lib/navigation/tab-specs';
+import { useCompanySubscription } from '@/hooks/use-company-subscription';
+import { isPaywallBypassed } from '@/lib/subscriptions/paywall-bypass';
 
 /**
- * Headless auth routing — owns segment subscriptions so AuthGate UI
- * does not re-render on every tab switch.
+ * Auth-state routing without `useSegments` in the effect deps.
+ * Segment-driven replace loops overflowed the native nav stack.
  */
 export function AuthRedirectEffect() {
   const router = useRouter();
-  const segments = useSegments();
-  const lastRedirectRef = useRef<string | null>(null);
-  const sessionTabBootRef = useRef(false);
+  const lastTargetRef = useRef<string | null>(null);
 
   const status = useAuthStore((s) => s.status);
   const isHydrating = useAuthStore((s) => s.isHydrating);
@@ -44,96 +40,50 @@ export function AuthRedirectEffect() {
   const accountingModuleEnabled = useCompanyModuleEnabled('accounting');
 
   useEffect(() => {
-    if (!isReady) return;
+    if (!isReady) {
+      lastTargetRef.current = null;
+      return;
+    }
 
-    const root = segments[0];
-    const inAuthGroup = root === '(auth)';
-    const inTabs = root === '(tabs)';
-    const inInvite = root === 'invite';
-    const inJourney = inAuthGroup && segments[1] === 'journey';
-    const onLogin = inAuthGroup && segments[1] === 'login';
-    const onForgot = inAuthGroup && segments[1] === 'forgot-password';
-    const inJoin = root === 'join';
-    const inRootAppRoute = typeof root === 'string' && ROOT_APP_ROUTES.has(root);
-
-    const redirect = (href: string) => {
-      if (lastRedirectRef.current === href) return;
-      lastRedirectRef.current = href;
-      router.replace(href as never);
-    };
-
-    const isGenericTabEntry = inTabs && isTabRootEntry(segments);
-
-    const initialTab = resolveInitialTabHref({
-      profile,
-      modules: {
-        workOrders: workOrdersEnabled,
-        warehouse: warehouseEnabled,
-        accounting: accountingModuleEnabled,
-      },
-    });
+    let target: string | null = null;
 
     if (!firebaseUser) {
-      if (!onLogin && !onForgot && !inInvite && !inJoin) {
-        redirect('/(auth)/login');
-      }
-      return;
+      target = '/(auth)/login';
+    } else if (journeyStep !== 'app') {
+      target = journeyPathForStep(journeyStep);
+    } else if (hasAccess && subscriptionLoading && !isPaywallBypassed()) {
+      // Billing still resolving — AuthGate holds splash; do not push tabs yet.
+      target = null;
+    } else if (hasAccess && !isPro && !isPaywallBypassed()) {
+      // Paywall is rendered by AuthGate, not a route.
+      target = null;
+    } else if (hasAccess && (isPro || isPaywallBypassed())) {
+      target = resolveInitialTabHref({
+        profile,
+        modules: {
+          workOrders: workOrdersEnabled,
+          warehouse: warehouseEnabled,
+          accounting: accountingModuleEnabled,
+        },
+      });
     }
 
-    if (inInvite || inJoin) {
-      return;
-    }
-
-    if (journeyStep !== 'app') {
-      const target = journeyPathForStep(journeyStep);
-      if (target && (!inJourney || segments[2] !== journeyStep)) {
-        redirect(target);
-      }
-      return;
-    }
-
-    if (hasAccess && !subscriptionLoading && !isPro) {
-      return;
-    }
-
-    if (hasAccess && (isPro || subscriptionLoading)) {
-      // Root-level app screens (search, warehouse, import) are pushed over the
-      // tabs — bouncing them back to a tab would make them unreachable.
-      if (!inTabs && !inRootAppRoute) {
-        redirect(initialTab);
-        return;
-      }
-
-      if (isGenericTabEntry && !sessionTabBootRef.current) {
-        sessionTabBootRef.current = true;
-        redirect(initialTab);
-        return;
-      }
-
-      const onMission =
-        isMissionControlIndexRoute(segments) && profile && !canAccessMissionControl(profile);
-      if (onMission) {
-        redirect(initialTab);
-      }
-    }
+    if (!target || lastTargetRef.current === target) return;
+    lastTargetRef.current = target;
+    router.replace(target as never);
   }, [
+    accountingModuleEnabled,
     firebaseUser,
     hasAccess,
     isPro,
     isReady,
     journeyStep,
-    router,
-    segments,
-    subscriptionLoading,
     profile,
-    workOrdersEnabled,
+    router,
+    subscriptionLoading,
     warehouseEnabled,
-    accountingModuleEnabled,
+    workOrdersEnabled,
   ]);
-
-  useEffect(() => {
-    lastRedirectRef.current = null;
-  }, [segments]);
 
   return null;
 }

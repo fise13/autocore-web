@@ -19,7 +19,10 @@ const PROFILE_ROUTES: Record<ProfileRouteId, Href> = {
   cache: '/(tabs)/profile/cache',
   diagnostics: '/(tabs)/profile/diagnostics',
   version: '/(tabs)/profile/version',
-  finance: '/(tabs)/profile/finance',
+  finance: {
+    pathname: '/(tabs)/profile/finance',
+    params: { returnTo: 'hub' },
+  } as Href,
 };
 
 export function profileRouteHref(id: ProfileRouteId): Href {

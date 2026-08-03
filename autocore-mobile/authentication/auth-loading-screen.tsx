@@ -1,10 +1,14 @@
-import { AppLoadingScreen } from '@/components/ui/app-loading-screen';
+import { AuthSplashSurface, type AuthSplashSurfaceProps } from './auth-splash-surface';
 
-export function AuthLoadingScreen({
-  message = 'Loading…',
-}: {
-  message?: string;
-}) {
-  // Hides the native splash so the branded React loader is what the user sees.
-  return <AppLoadingScreen message={message} />;
+type AuthLoadingScreenProps = Pick<
+  AuthSplashSurfaceProps,
+  'appear' | 'exiting' | 'exitMode' | 'onExitComplete' | 'style'
+>;
+
+/**
+ * Boot-only Claude-style splash — authentication/ + direct Reanimated import.
+ * Avoids `@/hooks` / `@/components/ui` / `@/animations` barrels on cold start.
+ */
+export function AuthLoadingScreen(props: AuthLoadingScreenProps = {}) {
+  return <AuthSplashSurface {...props} />;
 }

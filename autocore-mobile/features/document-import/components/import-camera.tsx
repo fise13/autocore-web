@@ -25,7 +25,7 @@ export const ImportCamera = forwardRef<ImportCameraHandle, ImportCameraProps>(fu
   const readyRef = useRef(false);
   const { selectedLens, onAvailableLensesChanged, refreshLenses } = usePreferredMacroLens(
     cameraRef,
-    active,
+    true,
   );
 
   useEffect(() => {

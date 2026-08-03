@@ -18,6 +18,7 @@ import { CompanySpecificCategoryConfig } from "@/domain/company-config";
 import { WARRANTY_TEMPLATE_IDS } from "@/domain/document-config";
 import { WorkOrder, WorkOrderAssigneeRole, WorkOrderLaborPricingMode, WorkOrderMotorOutcome } from "@/domain/work-order";
 import { getWarrantyTemplate } from "@/lib/documents/warranty/warranty-templates";
+import { categoryDisplayName } from "@/lib/inventory/category-display-name";
 import { formatMotorLineLabel } from "@/lib/motors/format-motor-display-name";
 import { ClientEntity } from "@/domain/client";
 import { VehicleEntity } from "@/domain/vehicle";
@@ -250,7 +251,16 @@ export function WorkOrderComposer({
   );
   const vehicleMakeOptionsList = useMemo(() => {
     const clientMakes = vehicles.map((vehicle) => vehicle.make).filter(Boolean);
-    const motorMakes = availableMotors.map((motor) => motor.brandName).filter(Boolean) as string[];
+    const motorMakes: string[] = [];
+    const seenMotorMakes = new Set<string>();
+    for (const motor of availableMotors) {
+      const brand = motor.brandName?.trim();
+      if (!brand) continue;
+      const key = brand.toLowerCase();
+      if (seenMotorMakes.has(key)) continue;
+      seenMotorMakes.add(key);
+      motorMakes.push(brand);
+    }
     return buildVehicleMakeOptions([...clientMakes, ...motorMakes]);
   }, [availableMotors, vehicles]);
   const vehicleModelOptionsList = useMemo(() => {
@@ -1065,7 +1075,7 @@ export function WorkOrderComposer({
                           <option value="">{c.selectEllipsis}</option>
                           {quickSpecificCategories.map((category) => (
                             <option key={category.id} value={category.id}>
-                              {category.name}
+                              {categoryDisplayName(category)}
                             </option>
                           ))}
                         </select>
@@ -1077,7 +1087,7 @@ export function WorkOrderComposer({
                           placeholder={c.itemNamePlaceholder}
                         />
                       </Field>
-                      <Field label={c.priceTenge}>
+                      <Field label={c.priceUsd}>
                         <GroupedNumberInput
                           value={form.specificPartPrice}
                           onValueChange={(value) => onFormChange("specificPartPrice", value)}

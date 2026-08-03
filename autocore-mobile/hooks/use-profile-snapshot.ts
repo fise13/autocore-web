@@ -105,7 +105,7 @@ export function useProfileSnapshot(): ProfileSnapshot {
         {
           id: 'currency',
           title: 'Currency',
-          value: 'KZT',
+          value: 'USD',
           icon: CoinsIcon,
         },
         {

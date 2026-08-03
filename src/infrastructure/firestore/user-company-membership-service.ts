@@ -68,7 +68,7 @@ function mergeCompanyMemberships(entries: UserCompanyMembership[]): UserCompanyM
   }
 
   const merged = Array.from(byId.values());
-  merged.sort((left, right) => left.name.localeCompare(right.name, "ru"));
+  merged.sort((left, right) => left.name.localeCompare(right.name, undefined, { sensitivity: "base" }));
   return merged;
 }
 

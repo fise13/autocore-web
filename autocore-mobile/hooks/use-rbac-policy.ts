@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 
 import {
-  canAccessMissionControl,
+  canAccessOverview,
   canAccessMyEarnings,
   canManageEmployees,
   canManageSettings,
@@ -26,7 +26,7 @@ export type RbacPolicy = {
   can: (permission: Permission) => boolean;
   scopeFor: (domain: keyof AccessScopes) => DataScope;
   nav: {
-    canAccessMissionControl: boolean;
+    canAccessOverview: boolean;
     canAccessMyEarnings: boolean;
     canManageSettings: boolean;
     canManageEmployees: boolean;
@@ -55,7 +55,7 @@ export function useRbacPolicy(): RbacPolicy {
 
   const nav = useMemo(
     () => ({
-      canAccessMissionControl: canAccessMissionControl(profile),
+      canAccessOverview: canAccessOverview(profile),
       canAccessMyEarnings: canAccessMyEarnings(profile),
       canManageSettings: canManageSettings(profile),
       canManageEmployees: canManageEmployees(profile),

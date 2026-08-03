@@ -9,9 +9,9 @@ import {
   Easing,
   type SharedValue,
 } from 'react-native-reanimated';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
-import { useReducedMotion } from '@/hooks';
+import { useReducedMotion } from '@/hooks/use-accessibility';
 import {
   autocoreEase,
   cardPress,
@@ -53,19 +53,32 @@ export function useScreenEnter({
   fade = false,
 }: ScreenEnterConfig = {}) {
   const reduced = useReducedMotion() || !enabled || !screenMotion.enabled;
+  const settled = useSharedValue(reduced ? 1 : 0);
   const opacity = useSharedValue(1);
   const y = useSharedValue(0);
   const x = useSharedValue(0);
   const scale = useSharedValue(1);
+  const startedRef = useRef(false);
 
   useEffect(() => {
     if (reduced) {
+      settled.value = 1;
       opacity.value = 1;
       y.value = 0;
       x.value = 0;
       scale.value = 1;
       return;
     }
+
+    if (startedRef.current) {
+      settled.value = 1;
+      opacity.value = 1;
+      y.value = 0;
+      x.value = 0;
+      scale.value = 1;
+      return;
+    }
+    startedRef.current = true;
 
     opacity.value = fade ? 0 : 1;
     y.value = translateY;
@@ -86,61 +99,115 @@ export function useScreenEnter({
     if (scaleFrom !== undefined) {
       scale.value = withDelay(delay, withTiming(1, { duration, easing: autocoreEase }));
     }
-  }, [delay, duration, fade, opacity, reduced, scale, scaleFrom, translateX, translateY, useSpringMotion, x, y]);
 
-  return useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: y.value }, { translateX: x.value }, { scale: scale.value }],
-  }));
+    const settleMs = delay + Math.max(duration, 420) + 48;
+    const timer = setTimeout(() => {
+      settled.value = 1;
+      opacity.value = 1;
+      y.value = 0;
+      x.value = 0;
+      scale.value = 1;
+    }, settleMs);
+    return () => clearTimeout(timer);
+  }, [
+    delay,
+    duration,
+    fade,
+    opacity,
+    reduced,
+    scale,
+    scaleFrom,
+    settled,
+    translateX,
+    translateY,
+    useSpringMotion,
+    x,
+    y,
+  ]);
+
+  return useAnimatedStyle(() => {
+    if (settled.value === 1) {
+      return {};
+    }
+    return {
+      opacity: opacity.value,
+      transform: [{ translateY: y.value }, { translateX: x.value }, { scale: scale.value }],
+    };
+  });
 }
 
-export function useFadeIn(delayMs = 0, config: { duration: number; easing: typeof autocoreEase } = motionTiming.slow) {
+export function useFadeIn(
+  delayMs = 0,
+  config: { duration: number; easing: typeof autocoreEase } = motionTiming.slow,
+) {
   const reduced = useReducedMotion() || !screenMotion.enabled;
+  /** Negative delay = animation disabled (callers use this for animateEnter={false}). */
+  const disabled = reduced || delayMs < 0;
+  const settled = useSharedValue(disabled ? 1 : 0);
   const opacity = useSharedValue<number>(1);
   const translateY = useSharedValue<number>(0);
-
-  const animDuration = reduced ? duration.instant : config.duration;
-  const easing = config.easing;
+  const startedRef = useRef(false);
 
   useEffect(() => {
-    if (reduced) {
+    if (disabled) {
+      settled.value = 1;
       opacity.value = 1;
       translateY.value = 0;
       return;
     }
+
+    // Run once — Strict Mode cleanup must not leave opacity stuck at 0.
+    if (startedRef.current) {
+      if (settled.value !== 1) {
+        settled.value = 1;
+        opacity.value = 1;
+        translateY.value = 0;
+      }
+      return;
+    }
+    startedRef.current = true;
+
     opacity.value = 0;
     translateY.value = enterValues.fadeInUp.translateY[0];
-    opacity.value = withDelay(delayMs, withTiming(1, { duration: animDuration, easing }));
+    opacity.value = withDelay(delayMs, withTiming(1, { duration: config.duration, easing: config.easing }));
     translateY.value = withDelay(
       delayMs,
-      withTiming(enterValues.fadeInUp.translateY[1], { duration: animDuration, easing }),
+      withTiming(enterValues.fadeInUp.translateY[1], {
+        duration: config.duration,
+        easing: config.easing,
+      }),
     );
-  }, [animDuration, delayMs, easing, opacity, reduced, translateY]);
 
-  const style = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }],
-  }));
+    const settleMs = delayMs + config.duration + 48;
+    const timer = setTimeout(() => {
+      settled.value = 1;
+      opacity.value = 1;
+      translateY.value = 0;
+    }, settleMs);
+    return () => clearTimeout(timer);
+  }, [config.duration, config.easing, delayMs, disabled, opacity, settled, translateY]);
+
+  const style = useAnimatedStyle(() => {
+    if (settled.value === 1) {
+      return {};
+    }
+    return {
+      opacity: opacity.value,
+      transform: [{ translateY: translateY.value }],
+    };
+  });
 
   return { style, opacity, translateY };
 }
 
-export function usePressAnimation(scale: number = cardPress.scale) {
-  const pressed = useSharedValue(1);
-
-  const style = useAnimatedStyle(() => ({
-    transform: [{ scale: pressed.value }],
-  }));
-
-  const onPressIn = () => {
-    pressed.value = withTiming(scale, { duration: cardPress.duration, easing: autocoreEase });
+export function usePressAnimation(_scale: number = cardPress.scale) {
+  /** No-op — press springs contended with NativeTabs / sheets and felt like tap lag. */
+  return {
+    style: undefined as undefined,
+    onPressIn: () => {},
+    onPressOut: () => {},
+    pressed: { value: 1 },
   };
-
-  const onPressOut = () => {
-    pressed.value = withSpring(1, spring.snappy);
-  };
-
-  return { style, onPressIn, onPressOut, pressed };
 }
 
 export function useStaggerFadeIn(index: number, baseMs = 55) {

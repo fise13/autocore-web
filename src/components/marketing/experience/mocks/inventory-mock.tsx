@@ -11,7 +11,7 @@ import {
   McPanel,
   McPanelBody,
   McPanelHeader,
-} from "@/components/mission-control/dashboard/dashboard-panel";
+} from "@/components/overview/dashboard/dashboard-panel";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 

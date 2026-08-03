@@ -25,26 +25,27 @@ export type DocumentSectionKey = (typeof DOCUMENT_SECTION_KEYS)[number];
 
 export type DocumentSectionConfig = Partial<Record<DocumentSectionKey, boolean>>;
 
+/** English defaults; settings UI prefers `userCopy.settings.documentConfig.sectionLabels`. */
 export const DOCUMENT_SECTION_LABELS: Record<DocumentSectionKey, string> = {
-  vehicle: "Автомобиль",
-  engine: "Двигатель",
-  transmission: "КПП",
-  labor: "Работы",
-  parts: "Запчасти",
-  warranty: "Гарантия",
-  photos: "Фото",
-  diagnostics: "Диагностика",
-  vehicle_history: "История автомобиля",
-  aggregate_history: "История агрегата",
-  recommendations: "Рекомендации",
-  qr: "QR-код",
-  signatures: "Подписи",
-  totals: "Итоги",
-  motor_spotlight: "Акцент на двигателе",
-  acceptance: "Баннер приёмки",
-  hero: "Шапка документа",
-  disclaimer: "Дисклеймер",
-  unified_lines: "Позиции к оплате",
+  vehicle: "Vehicle",
+  engine: "Engine",
+  transmission: "Transmission",
+  labor: "Labor",
+  parts: "Parts",
+  warranty: "Warranty",
+  photos: "Photos",
+  diagnostics: "Diagnostics",
+  vehicle_history: "Vehicle history",
+  aggregate_history: "Unit history",
+  recommendations: "Recommendations",
+  qr: "QR code",
+  signatures: "Signatures",
+  totals: "Totals",
+  motor_spotlight: "Engine highlight",
+  acceptance: "Acceptance banner",
+  hero: "Document header",
+  disclaimer: "Disclaimer",
+  unified_lines: "Billable lines",
 };
 
 /** Preset warranty templates — content lives here, not in PDF templates. */

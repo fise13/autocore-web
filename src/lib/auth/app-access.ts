@@ -1,8 +1,8 @@
 import { Permission, UserEntity, UserRole } from "@/domain/user";
 import {
-  canAccessMissionControl,
+  canAccessOverview,
   canAccessMyEarnings,
-  isEmployeeMissionControlUser,
+  isEmployeeOverviewUser,
 } from "@autocore/rbac";
 import {
   getEnabledNavItems,
@@ -12,7 +12,7 @@ import {
 } from "@/lib/navigation/sidebar-customization";
 import { can } from "@/lib/auth/permissions";
 
-export { canAccessMyEarnings, canAccessMissionControl, isEmployeeMissionControlUser };
+export { canAccessMyEarnings, canAccessOverview, isEmployeeOverviewUser };
 
 /** Restricted roles see only these sidebar sections (owner/manager use permissions). */
 const ROLE_NAV_ALLOWLIST: Partial<Record<UserRole, readonly SidebarNavItemId[]>> = {
@@ -55,7 +55,7 @@ export function isNavAllowed(
   const allowlist = roleNavAllowlist(user.role);
   if (allowlist && !allowlist.includes(navId)) return false;
 
-  if (navId === "home") return canAccessMissionControl(user);
+  if (navId === "home") return canAccessOverview(user);
 
   const permission = navPermission(navId);
   if (navId === "my_earnings") return canAccessMyEarnings(user);
@@ -83,7 +83,7 @@ export function canAccessPath(
   if (!user) return false;
 
   if (pathname === "/" || pathname === "") {
-    return canAccessMissionControl(user);
+    return canAccessOverview(user);
   }
   if (pathname.startsWith("/work-orders")) {
     return can(user, "work_orders_view");
@@ -132,7 +132,7 @@ export function defaultAppPath(user: UserEntity | null | undefined): string {
     return SIDEBAR_NAV_META[navId].href;
   }
 
-  if (canAccessMissionControl(user)) return "/";
+  if (canAccessOverview(user)) return "/";
   if (can(user, "work_orders_view")) return "/work-orders";
   if (canAccessMyEarnings(user)) return "/my-earnings";
   if (can(user, "accounting_view")) return "/accounting";

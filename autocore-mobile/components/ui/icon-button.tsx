@@ -1,9 +1,12 @@
 import { forwardRef } from 'react';
-import { Pressable, type PressableProps, type ViewStyle } from 'react-native';
-import Animated from 'react-native-reanimated';
+import {
+  Pressable,
+  type PressableProps,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
 import { useTheme } from '@/hooks';
-import { usePressAnimation } from '@/animations';
 import { haptics } from '@/theme';
 import { layout, minTouchTarget, radius } from '@/theme';
 
@@ -14,6 +17,11 @@ type IconButtonProps = Omit<PressableProps, 'style'> & {
   haptic?: boolean;
   /** Press-in scale. Lower reads as more deliberate — use for header controls. */
   pressScale?: number;
+  style?: StyleProp<ViewStyle>;
+  /** Legacy SF Symbol hint for the removed Host path — ignored. */
+  systemImage?: string;
+  /** Legacy Host opt-in — ignored. */
+  native?: boolean;
 };
 
 const sizes = {
@@ -30,19 +38,18 @@ export const IconButton = forwardRef<React.ComponentRef<typeof Pressable>, IconB
       variant = 'ghost',
       children,
       haptic = true,
-      pressScale,
+      pressScale: _pressScale,
+      style,
+      systemImage: _systemImage,
+      native: _native,
       onPressIn,
       onPressOut,
+      onPress,
       ...props
     },
     ref,
   ) {
     const { colors } = useTheme();
-    const {
-      style: pressStyle,
-      onPressIn: animateIn,
-      onPressOut: animateOut,
-    } = usePressAnimation(pressScale);
     const dimension = sizes[size];
     const hitSlop = Math.max(0, Math.ceil((minTouchTarget - dimension) / 2));
 
@@ -60,35 +67,32 @@ export const IconButton = forwardRef<React.ComponentRef<typeof Pressable>, IconB
     })();
 
     return (
-      <Animated.View style={pressStyle}>
-        <Pressable
-          ref={ref}
-          accessibilityRole="button"
-          hitSlop={hitSlop}
-          style={[
-            {
-              width: dimension,
-              height: dimension,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: radius.lg,
-              ...bg,
-            },
-          ]}
-          onPressIn={(e) => {
-            animateIn();
-            if (haptic) haptics.press();
-            onPressIn?.(e);
-          }}
-          onPressOut={(e) => {
-            animateOut();
-            onPressOut?.(e);
-          }}
-          {...props}
-        >
-          {children}
-        </Pressable>
-      </Animated.View>
+      <Pressable
+        ref={ref}
+        accessibilityRole="button"
+        hitSlop={hitSlop}
+        style={({ pressed }) => [
+          {
+            width: dimension,
+            height: dimension,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: radius.lg,
+            opacity: pressed ? 0.72 : 1,
+            ...bg,
+          },
+          style,
+        ]}
+        onPressIn={(e) => {
+          if (haptic) haptics.press();
+          onPressIn?.(e);
+        }}
+        onPressOut={onPressOut}
+        onPress={onPress}
+        {...props}
+      >
+        {children}
+      </Pressable>
     );
   },
 );

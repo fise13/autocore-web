@@ -16,7 +16,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useMyEarningsData } from "@/hooks/use-my-earnings-data";
 import { claimableOrders } from "@/lib/my-earnings/compute-my-earnings";
-import { mcPageVariants } from "@/lib/motion/mission-control-motion";
+import { mcPageVariants } from "@/lib/motion/overview-motion";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { userCopy } from "@/lib/user-copy";
 import { PayrollTransactionStatus } from "@/domain/payroll-transaction";

@@ -126,7 +126,7 @@ export function OrderCompositionStep({
                     />
                   </CompositionField>
                 ) : null}
-                <CompositionField label={isHourly ? 'Rate, ₸/hour' : 'Labor amount, ₸'}>
+                <CompositionField label={isHourly ? 'Rate, $/hour' : 'Labor amount, $'}>
                   <Input
                     placeholder={isHourly ? '5 000' : '90 000'}
                     value={composition.laborDraft.unitPrice}
@@ -227,7 +227,7 @@ export function OrderCompositionStep({
               </CompositionRow>
 
               <CompositionRow>
-                <CompositionField label="Price, ₸">
+                <CompositionField label="Price, $">
                   <Input
                     placeholder="12 500"
                     value={composition.partUnitPrice}
@@ -336,7 +336,7 @@ export function OrderCompositionStep({
               </CompositionField>
 
               <CompositionRow>
-                <CompositionField label="Price, ₸">
+                <CompositionField label="Price, $">
                   <Input
                     value={composition.specificPartPrice}
                     onChangeText={composition.setSpecificPartPrice}

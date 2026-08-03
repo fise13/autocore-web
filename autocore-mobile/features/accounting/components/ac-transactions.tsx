@@ -5,9 +5,9 @@ import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { rhythm } from '@/theme';
 import { radius } from '@/theme/radius';
-import { useMcEnter } from '@/features/mission-control/animation';
-import { McSectionTitle } from '@/features/mission-control/components/mc-primitives';
-import { mcType } from '@/features/mission-control/layout';
+import { useMcEnter } from '@/features/overview/animation';
+import { McSectionTitle } from '@/features/overview/components/mc-primitives';
+import { mcType } from '@/features/overview/layout';
 
 import { acTimeline } from '../animation/timeline';
 import { ac } from '../layout';
@@ -115,8 +115,8 @@ function TransactionRow({
 
 export function AcTransactions({ items, onShowAll }: AcTransactionsProps) {
   const { colors } = useTheme();
-  const titleStyle = useMcEnter({ delay: acTimeline.transactionsTitle, translateY: 4, fade: true });
-  const cardStyle = useMcEnter({ delay: acTimeline.transactionsTitle + 40, translateY: 6, fade: true, scaleFrom: 0.985 });
+  const titleStyle = useMcEnter({ delay: acTimeline.transactionsTitle, translateY: 4 });
+  const cardStyle = useMcEnter({ delay: acTimeline.transactionsTitle + 40, translateY: 6 });
 
   if (items.length === 0) return null;
 

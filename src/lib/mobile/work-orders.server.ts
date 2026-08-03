@@ -247,7 +247,16 @@ export async function transitionMobileWorkOrder(params: {
   }
 
   if (!canTransitionWorkOrderStatus(order.status, params.nextStatus)) {
-    throw new Error(`Недопустимый переход: ${STATUS_LABELS[order.status]} → ${STATUS_LABELS[params.nextStatus]}`);
+    const from = STATUS_LABELS[order.status];
+    const to = STATUS_LABELS[params.nextStatus];
+    const allowed = nextStatuses(order.status)
+      .filter((status) => status !== "cancelled")
+      .map((status) => STATUS_LABELS[status]);
+    const hint =
+      allowed.length > 0
+        ? ` Next step from ${from}: ${allowed.join(" or ")}.`
+        : ` ${from} has no further steps.`;
+    throw new Error(`Cannot move from ${from} to ${to}.${hint}`);
   }
 
   const events = buildWorkOrderTransitionEvents(order, params.nextStatus);

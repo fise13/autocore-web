@@ -11,7 +11,7 @@ import {
 import { ActivityAppendPayload } from "@/domain/activity-log";
 import { ActivityLogEntry } from "@/domain/rbac";
 import { UserRole } from "@/domain/user";
-import { resolveActivityLabel } from "@/lib/mission-control/activity-labels";
+import { resolveActivityLabel } from "@/lib/overview/activity-labels";
 import { toDateFromFirestore } from "@/lib/firestore-timestamp";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 

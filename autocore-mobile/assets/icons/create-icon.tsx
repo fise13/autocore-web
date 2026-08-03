@@ -1,13 +1,14 @@
 import type { LucideIcon } from 'lucide-react-native';
 import { memo } from 'react';
+import { View } from 'react-native';
 import Animated, { useAnimatedProps, useAnimatedStyle, withTiming, type SharedValue } from 'react-native-reanimated';
 
-/** Direct import — avoid `@/hooks` barrel (pulls mission-control → icons → cycle). */
+/** Direct import — avoid `@/hooks` barrel (pulls overview → icons → cycle). */
 import { useDesignLanguage } from '@/hooks/use-design-language';
 import { iconSizes, type IconSize } from '@/theme/icons';
 import { duration, autocoreEase } from '@/theme/motion';
 
-const AnimatedIconWrapper = Animated.createAnimatedComponent(Animated.View);
+const AnimatedIconWrapper = Animated.createAnimatedComponent(View);
 
 export type IconState = 'default' | 'active' | 'disabled';
 

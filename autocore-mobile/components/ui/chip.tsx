@@ -13,9 +13,12 @@ type ChipProps = Omit<PressableProps, 'style'> & {
 
 export function Chip({ selected, children, onPress, style, ...props }: ChipProps) {
   const { colors } = useTheme();
+  const visualHeight = layout.chip.height;
+  const hitSlop = Math.max(0, Math.ceil((44 - visualHeight) / 2));
 
   const baseStyle = {
-    height: layout.chip.height,
+    height: visualHeight,
+    minHeight: visualHeight,
     paddingHorizontal: layout.chip.paddingHorizontal,
     borderRadius: layout.chip.borderRadius,
     backgroundColor: selected ? colors.primary : colors.secondary,
@@ -27,6 +30,9 @@ export function Chip({ selected, children, onPress, style, ...props }: ChipProps
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: Boolean(selected) }}
+      hitSlop={hitSlop}
       onPress={(e) => {
         haptics.selection();
         onPress?.(e);

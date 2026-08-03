@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 
+import { CollectionRow, ListSection } from '@/components/ui';
 import { getStartupSummary } from '@/lib/performance/startup-tracer';
 import { estimateCacheSizeBytes, formatCacheSize } from '@/lib/storage/kv';
 
-import { ProfileMetaCard, ProfileMetaRow } from '@/features/profile/components/profile-meta-card';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
 
 function formatMark(ms: number | undefined): string {
@@ -17,24 +17,40 @@ export function DiagnosticsSettingsScreen() {
 
   return (
     <ProfileScreenShell title="Diagnostics" subtitle="Logs and developer mode">
-      <ProfileMetaCard title="Environment">
-        <ProfileMetaRow label="Build" value={__DEV__ ? 'Development' : 'Production'} />
-        <ProfileMetaRow label="Realtime" value="Firebase" />
-        <ProfileMetaRow label="Cache" value={cacheSize} />
-      </ProfileMetaCard>
+      <ListSection title="Environment">
+        <CollectionRow title="Build" value={__DEV__ ? 'Development' : 'Production'} showChevron={false} />
+        <CollectionRow title="Realtime" value="Firebase" showChevron={false} />
+        <CollectionRow title="Cache" value={cacheSize} showChevron={false} />
+      </ListSection>
 
-      <ProfileMetaCard title="App Startup">
-        <ProfileMetaRow label="JS bundle" value={formatMark(startup.js_bundle_eval)} />
-        <ProfileMetaRow label="Session from cache" value={formatMark(startup.session_cache_read)} />
-        <ProfileMetaRow label="Data snapshots" value={formatMark(startup.snapshots_preloaded)} />
-        <ProfileMetaRow label="Auth ready" value={formatMark(startup.auth_ready)} />
-        <ProfileMetaRow label="Splash hidden" value={formatMark(startup.splash_hidden)} />
-        <ProfileMetaRow label="Tabs ready" value={formatMark(startup.tabs_interactive)} />
-      </ProfileMetaCard>
+      <ListSection title="App startup">
+        <CollectionRow title="JS bundle" value={formatMark(startup.js_bundle_eval)} showChevron={false} />
+        <CollectionRow
+          title="Session from cache"
+          value={formatMark(startup.session_cache_read)}
+          showChevron={false}
+        />
+        <CollectionRow
+          title="Data snapshots"
+          value={formatMark(startup.snapshots_preloaded)}
+          showChevron={false}
+        />
+        <CollectionRow title="Auth ready" value={formatMark(startup.auth_ready)} showChevron={false} />
+        <CollectionRow title="Splash hidden" value={formatMark(startup.splash_hidden)} showChevron={false} />
+        <CollectionRow
+          title="Tabs ready"
+          value={formatMark(startup.tabs_interactive)}
+          showChevron={false}
+        />
+      </ListSection>
 
-      <ProfileMetaCard title="Debug">
-        <ProfileMetaRow label="Developer mode" value={__DEV__ ? 'Enabled' : 'Disabled'} />
-      </ProfileMetaCard>
+      <ListSection title="Debug">
+        <CollectionRow
+          title="Developer mode"
+          value={__DEV__ ? 'Enabled' : 'Disabled'}
+          showChevron={false}
+        />
+      </ListSection>
     </ProfileScreenShell>
   );
 }

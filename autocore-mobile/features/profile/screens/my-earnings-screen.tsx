@@ -4,8 +4,8 @@ import { useRouter } from 'expo-router';
 
 import { ClipboardListIcon } from '@/assets/icons';
 import { PageHeader, Screen, ScreenScroll, SettingsSectionCard, Switch, Text, toast } from '@/components/ui';
-import { McWeekBars } from '@/features/mission-control/animation';
-import type { MissionControlWeekBar } from '@/features/mission-control/types';
+import { McWeekBars } from '@/features/overview/animation';
+import type { OverviewWeekBar } from '@/features/overview/types';
 import { usePayrollTransactionsRealtime } from '@/hooks/use-payroll-transactions-realtime';
 import { useEmployeesRealtime } from '@/hooks/use-employees-realtime';
 import { useSession, useWorkOrdersRealtime } from '@/hooks';
@@ -16,6 +16,7 @@ import { isAssignedToWorkOrder, isClaimableWorkOrder, DEFAULT_MAX_ACTIVE_WORK_OR
 import { setEmployeeShiftOn } from '@/services/firestore/employee-rbac-service';
 import { isOpenStatus } from '@/lib/work-order/work-order-utils';
 import { haptics, rhythm } from '@/theme';
+import { tokens } from '@/theme/tokens';
 
 import { ProfileScreenShell } from '../components/profile-screen-shell';
 
@@ -40,8 +41,8 @@ function isSameDay(a: Date, b: Date): boolean {
 function buildWeekBars(
   completedCountByDay: Map<string, number>,
   endDay: Date,
-): MissionControlWeekBar[] {
-  const bars: MissionControlWeekBar[] = [];
+): OverviewWeekBar[] {
+  const bars: OverviewWeekBar[] = [];
   for (let offset = 6; offset >= 0; offset -= 1) {
     const day = new Date(endDay);
     day.setDate(day.getDate() - offset);
@@ -139,16 +140,16 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
     }
 
     return (
-      <>
-        <SettingsSectionCard title="Shift" description="Get push notifications for open work orders and claim them" inset={false}>
+      <View style={{ gap: tokens.space.section }}>
+        <SettingsSectionCard title="Shift" description="Get push notifications for open work orders and claim them">
           <View
             style={{
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
-              paddingHorizontal: rhythm.cardPadX,
-              paddingBottom: rhythm.cardPadX,
-              gap: rhythm.stack,
+              paddingHorizontal: tokens.space.stack + 2,
+              paddingBottom: tokens.space.stack + 2,
+              gap: tokens.space.stack,
             }}
           >
             <View style={{ flex: 1, gap: 4 }}>
@@ -187,7 +188,7 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
           </View>
         </SettingsSectionCard>
 
-        <View style={{ flexDirection: 'row', gap: rhythm.stack }}>
+        <View style={{ flexDirection: 'row', gap: tokens.space.stack, marginHorizontal: tokens.space.screenX }}>
           {[
             { label: 'My open', value: String(shiftStats.myOpen) },
             { label: 'Open pool', value: String(shiftStats.freePool) },
@@ -197,8 +198,8 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
               key={tile.label}
               style={{
                 flex: 1,
-                padding: rhythm.stack,
-                borderRadius: rhythm.cardRadius,
+                padding: tokens.space.stack,
+                borderRadius: tokens.radius.sheet,
                 backgroundColor: colors.card,
                 gap: 4,
               }}
@@ -213,22 +214,22 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
           ))}
         </View>
 
-        <SettingsSectionCard title="Productivity" description="Completed work orders in the last 7 days" inset={false}>
-          <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX }}>
+        <SettingsSectionCard title="Productivity" description="Completed work orders in the last 7 days">
+          <View style={{ paddingHorizontal: tokens.space.stack + 2, paddingBottom: tokens.space.stack + 2 }}>
             <McWeekBars bars={shiftStats.weekBars} delay={80} />
           </View>
         </SettingsSectionCard>
 
         {freePreview.length > 0 ? (
-          <SettingsSectionCard title="Open work orders" description="Available to claim" inset={false}>
-            <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.tight }}>
+          <SettingsSectionCard title="Open work orders" description="Available to claim">
+            <View style={{ paddingHorizontal: tokens.space.stack + 2, paddingBottom: tokens.space.stack + 2, gap: tokens.space.inline }}>
               {freePreview.map((order) => (
                 <Pressable
                   key={order.id}
                   onPress={() => router.push(`/(tabs)/orders/${order.id}`)}
                   style={{
                     paddingVertical: 10,
-                    borderBottomWidth: rhythm.hairline,
+                    borderBottomWidth: tokens.control.hairline,
                     borderBottomColor: colors.border,
                   }}
                 >
@@ -249,8 +250,18 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
           </SettingsSectionCard>
         ) : null}
 
-        <View style={{ gap: rhythm.tight }}>
-          <Text variant="sectionLabel">Earnings</Text>
+        <View style={{ gap: tokens.space.inline, marginHorizontal: tokens.space.screenX }}>
+          <Text
+            variant="footnote"
+            style={{
+              fontSize: 13,
+              fontWeight: '500',
+              color: colors.mutedForeground,
+              marginHorizontal: tokens.space.stack,
+            }}
+          >
+            Earnings
+          </Text>
           {payroll.length === 0 ? (
             <Text variant="body" color="muted">
               No earnings yet
@@ -262,8 +273,8 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
                 <View
                   key={row.id}
                   style={{
-                    padding: rhythm.stack,
-                    borderRadius: rhythm.cardRadius,
+                    padding: tokens.space.stack,
+                    borderRadius: tokens.radius.sheet,
                     backgroundColor: colors.card,
                     gap: 4,
                   }}
@@ -279,12 +290,13 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
             })
           )}
         </View>
-      </>
+      </View>
     );
   }, [
     allowed,
     colors.border,
     colors.card,
+    colors.mutedForeground,
     colors.primary,
     domainOrders,
     freePreview,
@@ -311,7 +323,7 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
     return (
       <Screen>
         <PageHeader title={title} subtitle={subtitle} logo={null} align="start" />
-        <ScreenScroll tabBarInset contentStyle={{ padding: rhythm.pad, gap: rhythm.section }}>
+        <ScreenScroll tabBarInset contentStyle={{ gap: tokens.space.section, paddingTop: tokens.space.stack }}>
           {body}
         </ScreenScroll>
       </Screen>
@@ -320,7 +332,7 @@ export function MyEarningsScreen({ variant = 'stack' }: MyEarningsScreenProps) {
 
   return (
     <ProfileScreenShell title={title} subtitle={subtitle}>
-      <View style={{ padding: rhythm.pad, gap: rhythm.section }}>{body}</View>
+      {body}
     </ProfileScreenShell>
   );
 }

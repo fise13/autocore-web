@@ -8,6 +8,11 @@ import {
 import { GridCellAddress, GridColumnDefinition, GridColumnId } from "@/lib/grid/grid-types";
 import { SpecificHeaderMapping } from "@/lib/specific/specific-header-mapping";
 import { schemaToHeaderMapping } from "@/lib/specific/specific-category-schema";
+import {
+  SPECIFIC_PHOTO_URLS_KEY,
+  SPECIFIC_QUALITY_KEY,
+} from "@/lib/specific/specific-photo-quality";
+import { userCopy } from "@/lib/user-copy";
 
 const CANONICAL_WIDTHS = [
   MOTOR_GRID_COLUMN_WIDTHS.serialCode,
@@ -57,6 +62,36 @@ function columnAlign(column: SpecificColumnDef, index: number): "left" | "center
 
 export function buildSpecificMotorGridLayout(columnSchema: SpecificColumnDef[], zoom: number) {
   const mapping: SpecificHeaderMapping = schemaToHeaderMapping(columnSchema);
+  const qualityTitle = userCopy.motors.grid.columns.quality;
+  const photoTitle = userCopy.motors.grid.columns.photo;
+
+  const schemaColumns: GridColumnDefinition[] = columnSchema.map((column, index) => ({
+    id: columnGridId(column, index),
+    title: column.title,
+    width: scaleMotorGridDimension(columnWidth(column, index), zoom),
+    editable: column.editable !== false,
+    align: columnAlign(column, index),
+    modelField: column.key,
+  }));
+
+  const injected: GridColumnDefinition[] = [
+    {
+      id: "quality",
+      title: qualityTitle,
+      width: scaleMotorGridDimension(MOTOR_GRID_COLUMN_WIDTHS.quality, zoom),
+      editable: true,
+      modelField: SPECIFIC_QUALITY_KEY,
+    },
+    {
+      id: "photo",
+      title: photoTitle,
+      width: scaleMotorGridDimension(MOTOR_GRID_COLUMN_WIDTHS.photo, zoom),
+      editable: false,
+      align: "center",
+      modelField: SPECIFIC_PHOTO_URLS_KEY,
+      cellKind: "photo",
+    },
+  ];
 
   const columns: GridColumnDefinition[] = [
     {
@@ -66,14 +101,8 @@ export function buildSpecificMotorGridLayout(columnSchema: SpecificColumnDef[], 
       editable: false,
       align: "center",
     },
-    ...columnSchema.map((column, index) => ({
-      id: columnGridId(column, index),
-      title: column.title,
-      width: scaleMotorGridDimension(columnWidth(column, index), zoom),
-      editable: column.editable !== false,
-      align: columnAlign(column, index),
-      modelField: column.key,
-    })),
+    ...schemaColumns,
+    ...injected,
     {
       id: "action",
       title: "",
@@ -92,6 +121,8 @@ export function buildSpecificMotorGridLayout(columnSchema: SpecificColumnDef[], 
     cursor += column.width;
   }
 
+  const dataColumnCount = columnSchema.length + injected.length;
+
   return {
     columns,
     rowHeight,
@@ -100,8 +131,10 @@ export function buildSpecificMotorGridLayout(columnSchema: SpecificColumnDef[], 
     xOffsets,
     mapping,
     columnSchema,
-    dataColumnCount: columnSchema.length,
-    actionColumn: columnSchema.length + 1,
+    dataColumnCount,
+    actionColumn: dataColumnCount + 1,
+    qualityColumn: columnSchema.length + 1,
+    photoColumn: columnSchema.length + 2,
   };
 }
 
@@ -119,7 +152,7 @@ export function specificCellFrame(
 }
 
 export function specificSchemaColumnAt(layout: ReturnType<typeof buildSpecificMotorGridLayout>, column: number) {
-  if (column <= 0 || column > layout.dataColumnCount) return null;
+  if (column <= 0 || column > layout.columnSchema.length) return null;
   return layout.columnSchema[column - 1] ?? null;
 }
 
@@ -127,6 +160,13 @@ export function isSpecificSchemaColumnEditable(
   layout: ReturnType<typeof buildSpecificMotorGridLayout>,
   column: number,
 ): boolean {
+  const def = layout.columns[column];
+  if (!def || def.id === "rowNumber" || def.id === "action" || def.cellKind === "photo") {
+    return false;
+  }
+  if (def.id === "quality" || def.modelField === SPECIFIC_QUALITY_KEY) {
+    return true;
+  }
   const col = specificSchemaColumnAt(layout, column);
   return col != null && col.editable !== false;
 }

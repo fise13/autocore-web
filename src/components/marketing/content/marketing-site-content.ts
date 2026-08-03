@@ -14,7 +14,7 @@ export const marketingSiteContent = {
     meta: {
       title: "Обзор продукта",
       description:
-        "Операционная система для разборок, запчастей и СТО. Mission Control, склад, наряды и бухгалтерия в одном контуре.",
+        "Операционная система для разборок, запчастей и СТО. Overview, склад, наряды и бухгалтерия в одном контуре.",
     },
     hero: {
       title: "Программа для авторазборок и автосервисов",
@@ -23,9 +23,9 @@ export const marketingSiteContent = {
     },
     pillars: [
       {
-        title: "Mission Control",
+        title: "Overview",
         body: "Утренний обзор: выручка, остатки, открытые наряды, команда онлайн и журнал изменений.",
-        href: `${marketingRoutes.modules}#mission-control`,
+        href: `${marketingRoutes.modules}#overview`,
       },
       {
         title: "Связанные процессы",
@@ -72,7 +72,7 @@ export const marketingSiteContent = {
         {
           title: "Владелец и директор",
           pain: "Пять отчётов из разных мест. Непонятно, где утекает маржа.",
-          promise: "Mission Control: правда с утра за одну минуту.",
+          promise: "Overview: правда с утра за одну минуту.",
         },
         {
           title: "Кладовщик и бухгалтер",
@@ -85,7 +85,7 @@ export const marketingSiteContent = {
       title: "Веб, desktop и iPhone",
       description: "Один интерфейс и одна модель данных на всех устройствах.",
       items: [
-        { name: "Веб", detail: "Полный Mission Control и все модули в браузере, для офиса и администратора." },
+        { name: "Веб", detail: "Полный Overview и все модули в браузере, для офиса и администратора." },
         { name: "Desktop", detail: "Приложение с горячими клавишами для склада и realtime-синхронизацией." },
         { name: "iPhone", detail: "Сканирование, остатки, наряды и согласования прямо с пола." },
       ],
@@ -95,10 +95,10 @@ export const marketingSiteContent = {
     meta: {
       title: "Каталог модулей",
       description:
-        "Склад, заказ-наряды, моторы, бухгалтерия, Mission Control и команда: связанная экосистема для автобизнеса.",
+        "Склад, заказ-наряды, моторы, бухгалтерия, Overview и команда: связанная экосистема для автобизнеса.",
     },
     intro:
-      "Каждый модуль - часть одного контура. Склад питает наряды, наряды питают бухгалтерию, Mission Control показывает картину целиком.",
+      "Каждый модуль - часть одного контура. Склад питает наряды, наряды питают бухгалтерию, Overview показывает картину целиком.",
     stats: [
       { value: "6", label: "основных модулей" },
       { value: "1", label: "источник правды" },
@@ -106,8 +106,8 @@ export const marketingSiteContent = {
     ],
     items: [
       {
-        id: "mission-control",
-        title: "Mission Control",
+        id: "overview",
+        title: "Overview",
         tagline: "Командный дашборд",
         description:
           "Точка входа каждое утро. KPI, алерты, журнал активности и команда онлайн: не отчёт ради отчёта, а пульт управления.",
@@ -156,7 +156,7 @@ export const marketingSiteContent = {
         capabilities: [
           "Операции, авансы, выручка дня",
           "Связь с нарядами и складом",
-          "Метрики в Mission Control",
+          "Метрики в Overview",
           "Разделение прав: бухгалтерия ≠ склад",
         ],
         forWhom: "Бухгалтер, финансовый контролёр",
@@ -184,7 +184,7 @@ export const marketingSiteContent = {
         capabilities: [
           "Права по модулям: склад, бухгалтерия, настройки",
           "Приглашения и роли",
-          "Онлайн-статус в Mission Control",
+          "Онлайн-статус в Overview",
           "Аудит изменений прав",
         ],
         forWhom: "HR-админ, владелец, IT",
@@ -232,7 +232,7 @@ export const marketingSiteContent = {
         "Desktop",
         "Cloud Sync",
         "AI Import",
-        "Mission Control",
+        "Overview",
         "Аналитика",
       ],
     },
@@ -284,7 +284,7 @@ export const marketingSiteContent = {
       },
       {
         title: "Журнал активности",
-        body: "Каждое значимое изменение фиксируется с указанием сотрудника, роли и времени. Руководитель видит картину в Mission Control без выгрузок.",
+        body: "Каждое значимое изменение фиксируется с указанием сотрудника, роли и времени. Руководитель видит картину в Overview без выгрузок.",
       },
       {
         title: "Изоляция компаний",

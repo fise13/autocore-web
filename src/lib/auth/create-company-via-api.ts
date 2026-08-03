@@ -19,12 +19,12 @@ export async function createCompanyViaApi(user: User, name: string): Promise<str
   } | null;
 
   if (!response.ok) {
-    throw new Error(payload?.error ?? "Не удалось создать компанию");
+    throw new Error(payload?.error ?? "Could not create company");
   }
 
   const companyId = payload?.companyId?.trim();
   if (!companyId) {
-    throw new Error("Сервер не вернул идентификатор компании");
+    throw new Error("Server did not return a company id");
   }
 
   return companyId;

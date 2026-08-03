@@ -2,14 +2,13 @@ import { Pressable, View } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { toastIn, toastOut } from '@/animations';
-import { useTheme } from '@/hooks';
+import { toastIn, toastOut } from '@/animations/overlay-motion';
+import { useTheme } from '@/hooks/use-theme';
 import { radius, spacing, zIndex } from '@/theme';
-import { useToastStore } from './toast-store';
+import { useToastStore, type ToastVariant } from './toast-store';
 import { Text } from './text';
 
-export type ToastVariant = 'default' | 'success' | 'destructive' | 'warning';
-
+export type { ToastVariant };
 export function ToastProvider() {
   const { colors, shadows } = useTheme();
   const insets = useSafeAreaInsets();

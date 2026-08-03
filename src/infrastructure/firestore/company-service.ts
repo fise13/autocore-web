@@ -56,7 +56,7 @@ async function seedCompanyRoles(companyId: string): Promise<void> {
         { merge: true },
       );
     } catch (error) {
-      rethrowStep("Не удалось настроить роли компании", error);
+      rethrowStep("Could not configure company roles", error);
     }
   }
 }
@@ -91,7 +91,7 @@ async function upsertOwnerEmployee(
       await setDoc(employeeRef, payload);
     }
   } catch (error) {
-    rethrowStep("Не удалось создать профиль владельца", error);
+    rethrowStep("Could not create owner profile", error);
   }
 }
 
@@ -122,7 +122,7 @@ async function linkUserToCompany(
       await setDoc(userRef, payload, { merge: true });
     }
   } catch (error) {
-    rethrowStep("Не удалось привязать аккаунт к компании", error);
+    rethrowStep("Could not link account to company", error);
   }
 }
 
@@ -147,7 +147,7 @@ export async function createCompany(ownerId: string, name: string): Promise<stri
   const db = getFirestoreDb();
   const trimmedName = name.trim();
   if (!trimmedName) {
-    throw new Error("Укажите название компании");
+    throw new Error("Enter a company name");
   }
 
   const userSnap = await getDoc(doc(db, "users", ownerId));
@@ -161,7 +161,7 @@ export async function createCompany(ownerId: string, name: string): Promise<stri
       createdAt: serverTimestamp(),
     });
   } catch (error) {
-    rethrowStep("Не удалось создать компанию", error);
+    rethrowStep("Could not create company", error);
   }
 
   // Match native order: roles → employee → user profile link.
@@ -204,7 +204,8 @@ export async function ensureDefaultCompany(ownerId: string) {
   const db = getFirestoreDb();
   const companyRef = doc(db, "companies", DEFAULT_COMPANY_ID);
   const companyPayload = {
-    name: userCopy.defaultCompanyName,
+    // Locale-independent canonical name — never persist UI copy as the company title.
+    name: "My workspace",
     ownerId,
     createdAt: serverTimestamp(),
   };
@@ -215,7 +216,7 @@ export async function ensureDefaultCompany(ownerId: string) {
     companyDocReady = true;
   } catch (error) {
     if (!(error instanceof FirebaseError) || error.code !== "permission-denied") {
-      rethrowStep("Не удалось создать рабочее пространство", error);
+      rethrowStep("Could not create workspace", error);
     }
   }
 
@@ -224,7 +225,7 @@ export async function ensureDefaultCompany(ownerId: string) {
     const profile = await readOwnerProfile(ownerId);
     await upsertOwnerEmployee(DEFAULT_COMPANY_ID, ownerId, profile);
     await linkUserToCompany(ownerId, DEFAULT_COMPANY_ID, "owner");
-    await recordUserCompanyMembership(ownerId, DEFAULT_COMPANY_ID, "owner");
+    await recordUserCompanyMembership(ownerId, DEFAULT_COMPANY_ID, "owner", "My workspace");
     await seedFreeCompanyBilling(DEFAULT_COMPANY_ID);
     await ensureCompanyConsumablesWorkspace(DEFAULT_COMPANY_ID, ownerId);
   } catch (error) {
@@ -233,8 +234,8 @@ export async function ensureDefaultCompany(ownerId: string) {
       && error instanceof FirebaseError
       && error.code === "permission-denied"
     ) {
-      throw new Error(`${userCopy.company.defaultTaken} Или создайте новую команду ниже.`);
+      throw new Error(`${userCopy.company.defaultTaken} Or create a new team below.`);
     }
-    rethrowStep("Не удалось подключить данные", error);
+    rethrowStep("Could not connect workspace data", error);
   }
 }

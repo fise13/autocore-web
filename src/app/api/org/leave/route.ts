@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as { companyId?: unknown };
     const companyId = typeof body.companyId === "string" ? body.companyId.trim() : "";
     if (!companyId) {
-      return NextResponse.json({ error: "companyId обязателен" }, { status: 400 });
+      return NextResponse.json({ error: "companyId is required" }, { status: 400 });
     }
 
     const result = await leaveCompanyAsUser({ uid: access.uid, companyId });

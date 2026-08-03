@@ -3,7 +3,8 @@ import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
 import { TabTransitionProvider } from '@/components/navigation/tab-transition-context';
-import { useCompanyModuleEnabled, useTheme } from '@/hooks';
+import { useCompanyModuleEnabled } from '@/hooks/use-module-enabled';
+import { useTheme } from '@/hooks/use-theme';
 import { useSession } from '@/hooks/use-session';
 import { isNavItemVisible } from '@/lib/navigation/nav-item-availability';
 import { TAB_SPECS } from '@/lib/navigation/tab-specs';
@@ -38,7 +39,7 @@ export default function TabLayout() {
     <TabTransitionProvider>
       <NativeTabs
         tintColor={colors.primary}
-        minimizeBehavior="onScrollDown"
+        minimizeBehavior="never"
         labelStyle={{ fontSize: 10, fontWeight: '600' }}
       >
         {TAB_SPECS.map((spec) => (

@@ -2,7 +2,7 @@ import { isOpenOrderStatus } from '../lib/order-display';
 import type { OrderFilterId, OrderFilterOption, OrdersListMeta, WorkOrder } from '../types';
 
 export const orderFilters: OrderFilterOption[] = [
-  { id: 'open', label: 'Open' },
+  { id: 'open', label: 'Active' },
   { id: 'in_progress', label: 'In progress' },
   { id: 'waiting', label: 'Waiting parts' },
   { id: 'done', label: 'Closed' },

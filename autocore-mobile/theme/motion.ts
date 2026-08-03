@@ -3,7 +3,6 @@
  * All animations respect reduced motion via useReducedMotion hook.
  */
 import {
-  Easing,
   FadeIn,
   FadeOut,
   FadeInUp,
@@ -73,7 +72,7 @@ export const cardLift = {
 export const cardPress = {
   scale: 0.98,
   duration: duration.fast,
-  spring: spring.snappy,
+  spring: spring.press,
 } as const;
 
 /** Hero / auth transitions */
@@ -81,13 +80,17 @@ export const heroTransition = withReduced(
   FadeInUp.duration(duration.slow)
     .easing(autocoreEase)
     .springify()
-    .damping(spring.gentle.damping)
-    .stiffness(spring.gentle.stiffness),
+    .damping(spring.settle.damping)
+    .stiffness(spring.settle.stiffness),
 );
 
 /** FAB */
 export const fabEnter = withReduced(
-  ZoomIn.duration(duration.medium).easing(autocoreEase).springify().damping(spring.snappy.damping),
+  ZoomIn.duration(duration.medium)
+    .easing(autocoreEase)
+    .springify()
+    .damping(spring.press.damping)
+    .stiffness(spring.press.stiffness),
 );
 export const fabExit = FadeOut.duration(duration.fast);
 
@@ -106,7 +109,8 @@ export const dialogEnter = withReduced(
   ZoomIn.duration(modalTransition.duration)
     .easing(autocoreEase)
     .springify()
-    .damping(spring.default.damping),
+    .damping(spring.settle.damping)
+    .stiffness(spring.settle.stiffness),
 );
 export const dialogExit = ZoomOut.duration(duration.fast).easing(autocoreEase);
 export const dialogBackdropEnter = FadeIn.duration(duration.fast);
@@ -143,17 +147,19 @@ export const sharedElement = {
   easing: autocoreEase,
 } as const;
 
-/** List stagger */
+/** List layout — insert/delete only; do not stagger every remount (DL v3). */
 export const listStagger = {
-  baseMs: 55,
-  itemEnter: FadeInUp.duration(duration.medium).easing(autocoreEase),
-  layout: LinearTransition.duration(duration.normal).easing(autocoreEase),
+  baseMs: 0,
+  itemEnter: FadeIn.duration(duration.fast).easing(autocoreEase),
+  layout: LinearTransition.springify()
+    .damping(spring.list.damping)
+    .stiffness(spring.list.stiffness),
 } as const;
 
-/** Skeleton shimmer */
+/** Skeleton shimmer — ease out, not linear (DL v3). */
 export const skeletonPulse = {
   duration: 1200,
-  easing: Easing.linear,
+  easing: autocoreEase,
   minOpacity: 0.4,
   maxOpacity: 0.8,
 } as const;
@@ -161,7 +167,7 @@ export const skeletonPulse = {
 /** Loading spinner */
 export const loadingFade = FadeIn.duration(duration.fast);
 
-/** Mission control / auth legacy tokens */
+/** Overview / auth legacy tokens */
 export const mcMotion = {
   ease: [0.22, 1, 0.36, 1] as const,
   page: { staggerChildren: 60, delayChildren: 40 },

@@ -47,7 +47,7 @@ export function EmailVerificationStep({ onVerified }: EmailVerificationStepProps
       .then(() => setStatus(userCopy.auth.verifyEmailAutoSent))
       .catch((sendError) => {
         const message = sendError instanceof Error ? sendError.message : "";
-        if (message.includes(userCopy.auth.waitToken)) {
+        if (message.includes(userCopy.auth.waitToken) || /please wait|подождите/i.test(message)) {
           setStatus(userCopy.auth.verifyEmailAutoSent);
           return;
         }

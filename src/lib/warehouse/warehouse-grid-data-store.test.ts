@@ -13,7 +13,7 @@ function item(partial: Partial<InventoryItem> & Pick<InventoryItem, "id" | "sku"
     type: "consumable",
     barcodes: [],
     unit: "шт",
-    currency: "KZT",
+    currency: "USD",
     totalOnHand: 1,
     totalReserved: 0,
     totalAvailable: 1,

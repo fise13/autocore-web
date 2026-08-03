@@ -132,7 +132,7 @@ export function OperationalPreview({
           <span className="size-2.5 rounded-full bg-emerald-500" />
         </div>
         <span className="mx-auto truncate text-[10px] text-muted-foreground sm:text-xs">
-          app.autocore · Mission Control
+          app.autocore · Overview
         </span>
         <span className="site-chip py-0.5 text-[10px]">
           <span className="size-1.5 rounded-full bg-emerald-500" />
@@ -147,7 +147,7 @@ export function OperationalPreview({
             <div>
               <p className="text-[10px] font-semibold tracking-[0.16em] text-primary uppercase">AutoCore</p>
               <p className={cn("font-semibold tracking-tight", large || isShowcase ? "text-lg" : "text-lg")}>
-                Mission Control
+                Overview
               </p>
             </div>
           </div>

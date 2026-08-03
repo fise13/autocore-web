@@ -1,6 +1,6 @@
 import { Pressable, View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { Text } from '@/components/ui';
 import { useReducedMotion } from '@/hooks';
@@ -22,7 +22,7 @@ export function ScanRelocateBanner({ title, subtitle, onCancel }: ScanRelocateBa
   const reducedMotion = useReducedMotion();
   const entering = reducedMotion
     ? undefined
-    : FadeInDown.duration(duration.normal).easing(autocoreEase);
+    : FadeIn.duration(duration.normal).easing(autocoreEase);
 
   return (
     <Animated.View

@@ -8,8 +8,9 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { Text } from '@/components/ui';
-import { useReducedMotion, useTheme } from '@/hooks';
+import { Text } from '@/components/ui/text';
+import { useReducedMotion } from '@/hooks/use-accessibility';
+import { useTheme } from '@/hooks/use-theme';
 import {
   AUTOCOMPLETE_PANEL_RADIUS,
   AUTOCOMPLETE_ROW_HEIGHT,

@@ -1,7 +1,7 @@
 import type { Href } from 'expo-router';
 
 export type NotificationInboxReturnTo =
-  | 'mission'
+  | 'overview'
   | 'search'
   | 'warehouse'
   | 'scan'
@@ -12,7 +12,7 @@ export type NotificationInboxReturnTo =
   | 'hub';
 
 const RETURN_HREFS = {
-  mission: '/(tabs)/index',
+  overview: '/(tabs)/index',
   search: '/search',
   warehouse: '/warehouse',
   scan: '/(tabs)/scan',
@@ -46,8 +46,9 @@ export function resolveNotificationInboxReturnHref(
 export function resolveInboxReturnToFromTab(tabName: string | undefined): NotificationInboxReturnTo {
   switch (tabName) {
     case 'index':
+    case 'overview':
     case 'mission':
-      return 'mission';
+      return 'overview';
     case 'search':
       return 'search';
     case 'warehouse':

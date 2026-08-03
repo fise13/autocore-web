@@ -12,8 +12,8 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { MissionControlSurface } from "@/components/marketing/experience/surfaces/mission-control-surface";
-import { landingDemoMissionControl } from "@/lib/marketing/landing-demo-snapshot";
+import { OverviewSurface } from "@/components/marketing/experience/surfaces/overview-surface";
+import { landingDemoOverview } from "@/lib/marketing/landing-demo-snapshot";
 import { cn } from "@/lib/utils";
 
 const NAV_ICONS = {
@@ -41,10 +41,10 @@ type ProductAppSurfaceProps = {
   compact?: boolean;
 };
 
-/** Real AutoCore app chrome: sidebar + top bar + Mission Control. */
+/** Real AutoCore app chrome: sidebar + top bar + Overview. */
 export function ProductAppSurface({ className, compact = false }: ProductAppSurfaceProps) {
   const t = useTranslations("marketing.landing.productChrome");
-  const mc = landingDemoMissionControl;
+  const mc = landingDemoOverview;
 
   return (
     <div
@@ -97,7 +97,7 @@ export function ProductAppSurface({ className, compact = false }: ProductAppSurf
             <kbd>⌘K</kbd>
           </div>
         </div>
-        <MissionControlSurface className="exp-product-app-mc" />
+        <OverviewSurface className="exp-product-app-mc" />
       </div>
     </div>
   );

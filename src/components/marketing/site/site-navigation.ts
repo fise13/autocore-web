@@ -20,7 +20,7 @@ export const siteNavigation = {
     items: [
       { href: "/product", key: "overview" },
       { href: "/modules", key: "modules" },
-      { href: { pathname: "/modules", hash: "mission-control" }, key: "missionControl" },
+      { href: { pathname: "/modules", hash: "overview" }, key: "overview" },
       { href: { pathname: "/modules", hash: "warehouse" }, key: "warehouse" },
       { href: { pathname: "/modules", hash: "work-orders" }, key: "workOrders" },
       { href: { pathname: "/modules", hash: "accounting" }, key: "accounting" },

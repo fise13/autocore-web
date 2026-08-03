@@ -8,6 +8,10 @@ import {
   specificValueForSlot,
   SpecificHeaderMapping,
 } from "@/lib/specific/specific-header-mapping";
+import {
+  SPECIFIC_PHOTO_URLS_KEY,
+  SPECIFIC_QUALITY_KEY,
+} from "@/lib/specific/specific-photo-quality";
 import { buildSpecificColumnKeys } from "@/lib/specific/specific-table";
 
 export type SpecificGridRow =
@@ -31,6 +35,12 @@ export function createEmptySpecificRow(rowIndex: number): SpecificGridRow {
   };
 }
 
+function injectedColumnKey(schemaLength: number, column: number): string | null {
+  if (column === schemaLength + 1) return SPECIFIC_QUALITY_KEY;
+  if (column === schemaLength + 2) return SPECIFIC_PHOTO_URLS_KEY;
+  return null;
+}
+
 export function specificCellValue(
   row: SpecificGridRow,
   column: number,
@@ -40,8 +50,11 @@ export function specificCellValue(
   if (column === 0) return String(row.rowIndex || "");
   if (schema?.length) {
     const colDef = schema[column - 1];
-    if (!colDef) return "";
-    return row.data[colDef.key] ?? "";
+    if (colDef) return row.data[colDef.key] ?? "";
+    const injected = injectedColumnKey(schema.length, column);
+    if (injected === SPECIFIC_PHOTO_URLS_KEY) return "";
+    if (injected) return row.data[injected] ?? "";
+    return "";
   }
   if (column >= 1 && column <= 7) {
     return specificValueForSlot(row.data, mapping, column - 1);
@@ -59,8 +72,15 @@ export function applySpecificCellValue(
   if (column === 0) return row;
   if (schema?.length) {
     const colDef = schema[column - 1];
-    if (!colDef || colDef.editable === false) return row;
-    const nextData = { ...row.data, [colDef.key]: value };
+    if (colDef) {
+      if (colDef.editable === false) return row;
+      const nextData = { ...row.data, [colDef.key]: value };
+      if (row.rowKind === "saved") return { ...row, data: nextData };
+      return { ...row, data: nextData };
+    }
+    const injected = injectedColumnKey(schema.length, column);
+    if (!injected || injected === SPECIFIC_PHOTO_URLS_KEY) return row;
+    const nextData = { ...row.data, [injected]: value };
     if (row.rowKind === "saved") return { ...row, data: nextData };
     return { ...row, data: nextData };
   }
@@ -81,6 +101,8 @@ export function hasSpecificRowContent(
     for (const column of schema) {
       if ((row.data[column.key] ?? "").trim()) return true;
     }
+    if ((row.data[SPECIFIC_QUALITY_KEY] ?? "").trim()) return true;
+    if ((row.data[SPECIFIC_PHOTO_URLS_KEY] ?? "").trim()) return true;
     return false;
   }
   return hasSpecificMappedContent(row, mapping);

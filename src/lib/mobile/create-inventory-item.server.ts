@@ -107,7 +107,7 @@ export async function createMobileInventoryItem(
     unit: parsed.unit,
     sellPrice: parsed.sellPrice,
     purchasePrice: parsed.purchasePrice,
-    currency: "KZT",
+    currency: "USD",
     status: "active",
     actorUserId: input.actorUserId,
   };
@@ -123,7 +123,7 @@ export async function createMobileInventoryItem(
     name: parsed.name.trim(),
     barcodes: [barcode],
     unit: parsed.unit,
-    currency: "KZT",
+    currency: "USD",
     status: "active",
     inventoryGroup: normalized.inventoryGroup ?? "consumables",
     searchTokens,

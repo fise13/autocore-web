@@ -25,7 +25,7 @@
  * ```
  *
  * Do NOT translate brand/product terms that must stay identical across locales:
- * AutoCore, Mission Control, Operating Loop, VIN, PDF, API, CRM, Excel, WhatsApp,
+ * AutoCore, Overview, Operating Loop, VIN, PDF, API, CRM, Excel, WhatsApp,
  * Apple ID, Windows, iPhone, Desktop, Mobile, engine codes (EJ253, G4KC), Kaspi.
  */
 

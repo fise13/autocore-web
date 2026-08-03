@@ -15,8 +15,8 @@ import {
   McAnimatedCounter,
   McWeekBars,
   useMcEnter,
-} from '@/features/mission-control/animation';
-import { mcType } from '@/features/mission-control/layout';
+} from '@/features/overview/animation';
+import { mcType } from '@/features/overview/layout';
 
 import type { FinancialOperation } from '@/types/financial-operation';
 import type { BalanceSnapshot } from '@/lib/accounting/calculate-cash-balance';
@@ -41,7 +41,7 @@ export const AcBalanceCard = memo(function AcBalanceCard({
   const { convertMoney, formatMoney } = useAppDisplayCurrency();
   const currencyPrefix = useMoneyFormatStore((state) => state.currencyPrefix);
   const currencySuffix = useMoneyFormatStore((state) => state.currencySuffix);
-  const cardStyle = useMcEnter({ delay: acTimeline.hero, translateY: 6, fade: true });
+  const cardStyle = useMcEnter({ delay: acTimeline.hero, translateY: 6 });
   const hero = buildAccountingHeroMetrics(operations);
   const growth = hero.growthPercent;
   const hasGrowth = growth !== null;

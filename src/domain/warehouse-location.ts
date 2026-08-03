@@ -16,7 +16,7 @@ export type WarehouseLocationType = (typeof WAREHOUSE_LOCATION_TYPES)[number];
 
 /** System leaf for stock without an assigned place (per warehouse). */
 export const UNLOCATED_LOCATION_CODE = "UNLOCATED";
-export const UNLOCATED_LOCATION_LABEL = "Без места";
+export const UNLOCATED_LOCATION_LABEL = "Unlocated";
 
 export type LocationLabelScheme = {
   separator: string;

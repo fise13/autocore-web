@@ -1,6 +1,6 @@
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { rhythm } from '@/theme';
+import { tokens } from '@/theme/tokens';
 
 type SectionTitleProps = {
   title: string;
@@ -12,14 +12,10 @@ export function SectionTitle({ title }: SectionTitleProps) {
 
   return (
     <Text
-      variant="caption"
+      variant="sectionLabel"
       style={{
-        paddingHorizontal: rhythm.pad,
-        paddingBottom: rhythm.micro,
-        fontSize: 12,
-        fontWeight: '600',
-        letterSpacing: 0.4,
-        textTransform: 'uppercase',
+        paddingHorizontal: tokens.space.screenX,
+        paddingBottom: tokens.space.micro,
         color: colors.mutedForeground,
       }}
     >

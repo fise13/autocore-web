@@ -1,9 +1,9 @@
 import { View } from 'react-native';
-import Animated, { FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
-import { useReducedMotion, useTheme } from '@/hooks';
+import { useMotion, useTheme } from '@/hooks';
 import type { IconProps } from '@/assets/icons';
-import { autocoreEase, duration, rhythm } from '@/theme';
+import { tokens } from '@/theme/tokens';
 
 import { Button, type ButtonVariant } from './button';
 import { Text } from './text';
@@ -22,6 +22,9 @@ type EmptyStateProps = {
   secondaryAction?: EmptyStateAction;
 };
 
+/**
+ * Type-led empty state (DL v3) — no dashed ornamental wells.
+ */
 export function EmptyState({
   icon: Icon,
   title,
@@ -30,10 +33,10 @@ export function EmptyState({
   secondaryAction,
 }: EmptyStateProps) {
   const { colors } = useTheme();
-  const reducedMotion = useReducedMotion();
-  const entering = reducedMotion
+  const motion = useMotion();
+  const entering = motion.reduced
     ? undefined
-    : FadeInUp.duration(duration.medium).easing(autocoreEase);
+    : FadeIn.duration(motion.duration.medium).easing(motion.ease);
 
   return (
     <Animated.View
@@ -41,36 +44,33 @@ export function EmptyState({
       style={{
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: rhythm.section,
-        paddingVertical: rhythm.section * 2,
-        borderRadius: rhythm.cardRadius,
-        borderWidth: rhythm.hairline,
-        borderStyle: 'dashed',
-        borderColor: `${colors.border}B3`,
-        backgroundColor: `${colors.muted}26`,
+        paddingHorizontal: tokens.space.section,
+        paddingVertical: tokens.space.section * 2,
       }}
     >
       <View
         style={{
-          width: rhythm.rowMinHeight,
-          height: rhythm.rowMinHeight,
+          width: tokens.control.heightLg,
+          height: tokens.control.heightLg,
           alignItems: 'center',
           justifyContent: 'center',
-          borderRadius: rhythm.cardRadius,
-          borderWidth: rhythm.hairline,
-          borderColor: `${colors.border}99`,
-          backgroundColor: colors.background,
-          marginBottom: rhythm.stack,
+          marginBottom: tokens.space.stack,
         }}
       >
-        <Icon size="lg" color={colors.primary} />
+        <Icon size="lg" color={colors.mutedForeground} />
       </View>
 
-      <Text variant="heading">{title}</Text>
+      <Text variant="headline" style={{ textAlign: 'center' }}>
+        {title}
+      </Text>
       <Text
         variant="body"
         color="muted"
-        style={{ marginTop: rhythm.inline, textAlign: 'center', maxWidth: 320 }}
+        style={{
+          marginTop: tokens.space.inline,
+          textAlign: 'center',
+          maxWidth: 320,
+        }}
       >
         {description}
       </Text>
@@ -80,17 +80,26 @@ export function EmptyState({
           style={{
             flexDirection: 'row',
             flexWrap: 'wrap',
-            gap: rhythm.inline,
-            marginTop: rhythm.section,
+            justifyContent: 'center',
+            gap: tokens.space.inline,
+            marginTop: tokens.space.section,
           }}
         >
           {primaryAction ? (
-            <Button variant={primaryAction.variant ?? 'default'} onPress={primaryAction.onPress}>
+            <Button
+              native={false}
+              variant={primaryAction.variant ?? 'default'}
+              onPress={primaryAction.onPress}
+            >
               {primaryAction.label}
             </Button>
           ) : null}
           {secondaryAction ? (
-            <Button variant={secondaryAction.variant ?? 'outline'} onPress={secondaryAction.onPress}>
+            <Button
+              native={false}
+              variant={secondaryAction.variant ?? 'outline'}
+              onPress={secondaryAction.onPress}
+            >
               {secondaryAction.label}
             </Button>
           ) : null}

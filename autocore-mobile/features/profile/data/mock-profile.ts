@@ -62,7 +62,7 @@ export const mockProfileSnapshot: ProfileSnapshot = {
     {
       id: 'currency',
       title: 'Currency',
-      value: 'KZT',
+      value: 'USD',
       icon: CoinsIcon,
     },
     {

@@ -29,10 +29,10 @@ export const productHelpSectionsEn: ProductHelpSection[] = [
         keywords: ["menu", "sidebar", "customize", "order"],
       },
       {
-        id: "mission-control",
-        q: "What is Mission Control?",
+        id: "overview",
+        q: "What is Overview?",
         a: "It is AutoCore’s main dashboard: a snapshot of warehouse, work orders, and team activity. Start the day here and jump into the module you need.",
-        keywords: ["dashboard", "home", "overview", "mission control"],
+        keywords: ["dashboard", "home", "overview", "overview"],
         href: "/",
         hrefLabel: "Open dashboard",
       },

@@ -1,214 +1,45 @@
-import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { CheckIcon } from '@/assets/icons';
-import { SettingsSectionCard, Text } from '@/components/ui';
+import { ListSection, Text } from '@/components/ui';
 import { useAppDisplayCurrency } from '@/hooks/use-app-display-currency';
-import { useTheme } from '@/hooks/use-theme';
-import { haptics, rhythm } from '@/theme';
-import { toneBackground } from '@/theme/color-utils';
-import {
-  APP_DISPLAY_CURRENCY_OPTIONS,
-  appDisplayCurrencyOption,
-  type AppDisplayCurrency,
-} from '@/lib/money/display-currency';
+import { tokens } from '@/theme/tokens';
 import { APP_MONEY_BASE_CURRENCY } from '@/lib/money/exchange-rates';
 
 import { ProfileScreenShell } from '../components/profile-screen-shell';
 
-const EXAMPLE_BASE_AMOUNT = 100_000;
-
+/** Display currency is locked to USD. */
 export function CurrencyScreen() {
-  const { colors } = useTheme();
-  const {
-    currency,
-    formatMoney,
-    formatExample,
-    exchangeRateHint,
-    rates,
-    setCurrency,
-    isLoading,
-  } = useAppDisplayCurrency();
-  const [saving, setSaving] = useState<AppDisplayCurrency | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
-
-  const activeOption = appDisplayCurrencyOption(currency);
-
-  async function onSelect(next: AppDisplayCurrency) {
-    if (next === currency || saving) return;
-    setSaving(next);
-    setStatus(null);
-    haptics.light();
-    try {
-      await setCurrency(next);
-      setStatus('Display currency saved');
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Failed to save currency');
-    } finally {
-      setSaving(null);
-    }
-  }
+  const { formatMoney } = useAppDisplayCurrency();
 
   return (
     <ProfileScreenShell
       title="Currency"
-      subtitle="Amounts are stored in tenge and converted for display"
+      subtitle="All amounts are shown in US dollars"
     >
-      <SettingsSectionCard>
-        <View style={styles.hint}>
-          <Text variant="caption" color="muted" style={styles.hintText}>
-            This setting syncs with the AutoCore web app. The base accounting currency is{' '}
-            {APP_MONEY_BASE_CURRENCY}.
+      <ListSection
+        title="Display currency"
+        footer={`Base accounting currency is ${APP_MONEY_BASE_CURRENCY}.`}
+      >
+        <View style={{ padding: tokens.space.stack + 2, gap: tokens.space.inline }}>
+          <Text variant="body" style={{ fontWeight: '600' }}>
+            Dollars (USD)
           </Text>
-          {isLoading ? (
-            <View style={styles.loadingRow}>
-              <ActivityIndicator size="small" color={colors.primary} />
-              <Text variant="caption" color="muted">
-                Loading rates…
-              </Text>
-            </View>
-          ) : null}
-        </View>
-
-        {APP_DISPLAY_CURRENCY_OPTIONS.map((option) => {
-          const active = currency === option.id;
-          const pending = saving === option.id;
-          const example = formatExample(EXAMPLE_BASE_AMOUNT, option.id);
-
-          return (
-            <Pressable
-              key={option.id}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              disabled={Boolean(saving) || isLoading}
-              onPress={() => void onSelect(option.id)}
-            >
-              {({ pressed }) => (
-                <View
-                  style={[
-                    styles.row,
-                    {
-                      borderTopColor: colors.border,
-                      backgroundColor: pressed ? colors.muted : 'transparent',
-                    },
-                    active && {
-                      backgroundColor: toneBackground(colors.primary, 0.08),
-                    },
-                  ]}
-                >
-                  <View style={styles.rowBody}>
-                    <Text variant="body" style={styles.rowTitle}>
-                      {option.label}
-                    </Text>
-                    <Text variant="caption" color="muted">
-                      {option.description}
-                    </Text>
-                    <Text variant="body" style={styles.example}>
-                      {example}
-                    </Text>
-                    {option.id !== 'KZT' ? (
-                      <Text variant="caption" color="muted">
-                        from {EXAMPLE_BASE_AMOUNT.toLocaleString('ru-RU')} ₸
-                      </Text>
-                    ) : null}
-                  </View>
-                  {pending ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : active ? (
-                    <View style={[styles.check, { backgroundColor: colors.primary }]}>
-                      <CheckIcon size={12} color={colors.primaryForeground} strokeWidth={2.5} />
-                    </View>
-                  ) : null}
-                </View>
-              )}
-            </Pressable>
-          );
-        })}
-      </SettingsSectionCard>
-
-      <SettingsSectionCard>
-        <View style={styles.preview}>
           <Text variant="caption" color="muted">
-            Example with the current setting
-          </Text>
-          <Text variant="title" style={styles.previewValue}>
-            {formatMoney(1_250_000)}
-          </Text>
-          {exchangeRateHint ? (
-            <Text variant="caption" color="muted">
-              Rate: {exchangeRateHint}
-            </Text>
-          ) : null}
-          {rates.source === 'fallback' ? (
-            <Text variant="caption" color="muted">
-              Using a fallback rate — updates from the server aren't available.
-            </Text>
-          ) : null}
-          {status ? (
-            <Text variant="caption" style={{ color: colors.primary }}>
-              {status}
-            </Text>
-          ) : null}
-          <Text variant="caption" color="muted">
-            Current: {activeOption.label} ({activeOption.id})
+            United States · $
           </Text>
         </View>
-      </SettingsSectionCard>
+      </ListSection>
+
+      <ListSection title="Preview">
+        <View style={{ padding: tokens.space.stack + 2, gap: tokens.space.inline }}>
+          <Text variant="caption" color="muted">
+            Example
+          </Text>
+          <Text variant="title" style={{ fontVariant: ['tabular-nums'] }}>
+            {formatMoney(1_250)}
+          </Text>
+        </View>
+      </ListSection>
     </ProfileScreenShell>
   );
 }
-
-const styles = StyleSheet.create({
-  hint: {
-    paddingHorizontal: rhythm.cardPadX,
-    paddingTop: 12,
-    paddingBottom: 8,
-    gap: 8,
-  },
-  hintText: {
-    lineHeight: 18,
-  },
-  loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: rhythm.stack,
-    paddingHorizontal: rhythm.cardPadX,
-    paddingVertical: 14,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  rowBody: {
-    flex: 1,
-    gap: 4,
-  },
-  rowTitle: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  example: {
-    fontSize: 15,
-    fontWeight: '600',
-    fontVariant: ['tabular-nums'],
-    marginTop: 2,
-  },
-  check: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  preview: {
-    paddingHorizontal: rhythm.cardPadX,
-    paddingVertical: 14,
-    gap: 6,
-  },
-  previewValue: {
-    fontVariant: ['tabular-nums'],
-  },
-});

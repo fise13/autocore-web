@@ -22,6 +22,8 @@ export function createEmptyRow(companyId: string, defaults?: MotorRowDefaults): 
     serialCode: "",
     configuration: "",
     notes: "",
+    quality: "",
+    photoUrls: [],
     quantity: 1,
     transmission: "",
     arrivalDate: null,
@@ -75,6 +77,8 @@ export function hasSaveableContent(row: MotorGridRow): boolean {
     row.serialCode.trim().length > 0 ||
     row.configuration.trim().length > 0 ||
     row.notes.trim().length > 0 ||
+    (row.quality?.trim().length ?? 0) > 0 ||
+    (row.photoUrls?.length ?? 0) > 0 ||
     (row.brandName?.trim().length ?? 0) > 0 ||
     (row.engineCode?.trim().length ?? 0) > 0 ||
     row.quantity > 1 ||
@@ -97,6 +101,8 @@ export function buildSavedMotorRowFromCreate(
     serialCode: row.serialCode.trim(),
     configuration: row.configuration,
     notes: row.notes,
+    quality: row.quality ?? "",
+    photoUrls: row.photoUrls ?? [],
     quantity: row.quantity,
     transmission: row.transmission,
     arrivalDate: row.arrivalDate ?? new Date(),
@@ -120,6 +126,10 @@ export function rowFieldValueByModelField(row: MotorGridRow, field: string | und
       return row.configuration ?? "";
     case "notes":
       return row.notes ?? "";
+    case "quality":
+      return row.quality ?? "";
+    case "photoUrls":
+      return (row.photoUrls ?? []).join("\n");
     case "quantity":
       return String(row.quantity ?? 1);
     case "transmission":

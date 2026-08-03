@@ -3,7 +3,7 @@ import { View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { radius, spacing } from '@/theme';
+import { tokens } from '@/theme';
 
 type CoSectionProps = {
   title?: string;
@@ -19,21 +19,17 @@ type CoSectionProps = {
  */
 export function CoSection({ title, action, children, style }: CoSectionProps) {
   return (
-    <View style={[{ gap: spacing[1.5] }, style]}>
+    <View style={[{ gap: tokens.space.inline }, style]}>
       {title ? (
         <View
           style={{
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
-            paddingHorizontal: spacing[1],
+            paddingHorizontal: tokens.space.micro,
           }}
         >
-          <Text
-            variant="caption"
-            color="muted"
-            style={{ fontSize: 13, fontWeight: '600', letterSpacing: 0.1 }}
-          >
+          <Text variant="sectionLabel" color="muted">
             {title}
           </Text>
           {action}
@@ -51,7 +47,7 @@ type CoCardProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-/** White surface with a very soft border — the only container the form uses. */
+/** Grouped island — fill only, no border+shadow stack (DL v3). */
 export function CoCard({ children, bare = false, style }: CoCardProps) {
   const { colors } = useTheme();
 
@@ -60,11 +56,9 @@ export function CoCard({ children, bare = false, style }: CoCardProps) {
       style={[
         {
           backgroundColor: colors.card,
-          borderRadius: radius['3xl'],
-          borderWidth: 1,
-          borderColor: colors.borderMuted,
+          borderRadius: tokens.radius.group,
           overflow: 'hidden',
-          padding: bare ? 0 : spacing[3.5],
+          padding: bare ? 0 : tokens.space.stack + 2,
         },
         style,
       ]}

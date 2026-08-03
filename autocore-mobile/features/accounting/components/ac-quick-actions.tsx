@@ -6,9 +6,9 @@ import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { haptics, rhythm } from '@/theme';
 import { radius } from '@/theme/radius';
-import { McPressable, useMcEnter, useMcNavigatePress } from '@/features/mission-control/animation';
-import { McSectionTitle } from '@/features/mission-control/components/mc-primitives';
-import { mcType } from '@/features/mission-control/layout';
+import { McPressable, useMcEnter, useMcNavigatePress } from '@/features/overview/animation';
+import { McSectionTitle } from '@/features/overview/components/mc-primitives';
+import { mcType } from '@/features/overview/layout';
 
 import { acTimeline } from '../animation/timeline';
 import type { AccountingQuickActionId, AccountingSnapshot } from '../types';
@@ -33,13 +33,13 @@ const QuickActionButton = memo(function QuickActionButton({
   const { colors } = useTheme();
   const Icon = action.icon;
   const delay = acTimeline.quickBase + index * acTimeline.quickStagger;
-  const buttonStyle = useMcEnter({ delay, translateY: 6, fade: true, scaleFrom: 0.92 });
+  const buttonStyle = useMcEnter({ delay, translateY: 6 });
 
   const runAction = useCallback(() => {
     onAction?.(action.id);
   }, [action.id, onAction]);
 
-  const { exitStyle, press } = useMcNavigatePress(runAction);
+  const { press } = useMcNavigatePress(runAction);
 
   const handlePress = useCallback(() => {
     haptics.light();
@@ -50,7 +50,7 @@ const QuickActionButton = memo(function QuickActionButton({
 
   return (
     <Reanimated.View
-      style={[{ width: QUICK_ACTION_SLOT, alignItems: 'center', gap: rhythm.tight }, buttonStyle, exitStyle]}
+      style={[{ width: QUICK_ACTION_SLOT, alignItems: 'center', gap: rhythm.tight }, buttonStyle]}
     >
       <McPressable
         accessibilityRole="button"
@@ -81,7 +81,7 @@ const QuickActionButton = memo(function QuickActionButton({
 });
 
 export function AcQuickActions({ actions, onAction }: AcQuickActionsProps) {
-  const sectionStyle = useMcEnter({ delay: acTimeline.quickTitle, translateY: 4, fade: true });
+  const sectionStyle = useMcEnter({ delay: acTimeline.quickTitle, translateY: 4 });
 
   return (
     <Reanimated.View style={sectionStyle}>

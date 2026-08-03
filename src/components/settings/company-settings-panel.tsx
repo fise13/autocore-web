@@ -255,7 +255,7 @@ export function CompanySettingsPanel({
         <OrgDangerZone
           companyId={companyId}
           companyName={name ?? userCopy.appName}
-          isOwner={profile?.isCompanyOwner === true}
+          isOwner={profile?.isCompanyOwner === true || profile?.role === "owner"}
         />
       </FadeIn>
     </div>

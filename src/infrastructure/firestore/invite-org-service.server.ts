@@ -360,11 +360,9 @@ export async function acceptInviteAsUser(params: {
     };
   }
 
-  if (status === "accepted" && !employeeSnap.exists) {
-    throw new OrgError("invite_already_accepted", 409);
-  }
-
-  if (!inviteCanBeAccepted(status)) {
+  // Invite marked accepted but employee missing (partial write / cleanup) — repair by recreating.
+  const repairingOrphanAccept = status === "accepted" && !employeeSnap.exists;
+  if (!repairingOrphanAccept && !inviteCanBeAccepted(status)) {
     throw new OrgError("invite_not_found", 404);
   }
 
@@ -385,16 +383,18 @@ export async function acceptInviteAsUser(params: {
     { merge: false },
   );
 
-  const nowIso = new Date().toISOString();
-  await db.collection(INVITES).doc(found.id).set(
-    {
-      used: true,
-      status: "accepted",
-      acceptedAt: nowIso,
-      acceptedBy: params.uid,
-    },
-    { merge: true },
-  );
+  if (!repairingOrphanAccept) {
+    const nowIso = new Date().toISOString();
+    await db.collection(INVITES).doc(found.id).set(
+      {
+        used: true,
+        status: "accepted",
+        acceptedAt: nowIso,
+        acceptedBy: params.uid,
+      },
+      { merge: true },
+    );
+  }
 
   await recordMembershipAdmin(params.uid, companyId, role);
 

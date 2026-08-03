@@ -72,7 +72,7 @@ export function PlatformSyncExperience({ className, hideHeader = false }: Platfo
             <div className="keynote-scene-desk-shadow" aria-hidden />
 
             <div className="keynote-scene-mac">
-              <MacBookProFrame windowTitle="AutoCore · Mission Control" className="keynote-macbook">
+              <MacBookProFrame windowTitle="AutoCore · Overview" className="keynote-macbook">
                 <KeynoteDesktopUi snapshot={snapshot} />
               </MacBookProFrame>
             </div>

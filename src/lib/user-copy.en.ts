@@ -20,6 +20,18 @@ export const userCopyEn = {
     warehouseSaving: "Syncing with warehouse…",
   },
 
+  gridPhotos: {
+    addPhoto: "Add photo",
+    changePhoto: "Change photo",
+    takePhoto: "Take photo",
+    chooseFile: "Choose file",
+    remove: "Remove",
+    uploading: "Uploading…",
+    uploadFailed: "Could not upload photo",
+    attachAria: "Attach photo",
+    saveRowFirst: "Save the row before attaching photos",
+  },
+
   auth: {
     signIn: "Sign in",
     signUp: "Sign up",
@@ -143,7 +155,14 @@ export const userCopyEn = {
     verifyResend: "Resend code",
     verifyLogout: "Sign out",
     verifySendFailed: "Could not send the code.",
-    waitToken: "Подождите",
+    waitToken: "Please wait",
+    journeySteps: {
+      verifyEmail: "Verify email",
+      profileName: "Your profile",
+      company: "Team and access",
+      setupWizard: "Workspace setup",
+      businessImport: "Data import",
+    },
   },
 
   company: {
@@ -152,7 +171,7 @@ export const userCopyEn = {
     newTeamTitle: "Create company",
     newTeamDescription: "A separate workspace for your team.",
     companyNameLabel: "Company name",
-    companyNamePlaceholder: "For example: MotorLand",
+    companyNamePlaceholder: "For example: MotorLand Service",
     createButton: "Create company",
     inviteLink: "Have an invite code?",
     inviteTitle: "Join with invitation",
@@ -359,7 +378,7 @@ export const userCopyEn = {
     sidebarBlocks: {
       navigation: {
         label: "Sections",
-        description: "Mission Control, motors, warehouse…",
+        description: "Overview, motors, warehouse…",
       },
       context: {
         label: "Section actions",
@@ -587,21 +606,20 @@ export const userCopyEn = {
     company: "Company",
     displayCurrency: {
       title: "Display currency",
-      description:
-        "Amounts in finances and on the dashboard are stored in tenge and converted at the current rate when shown in rubles or dollars.",
+      description: "Amounts in finances, dashboard, and documents are shown in US dollars (USD).",
       loadingRates: "Loading rates…",
       saved: "Display currency saved",
       saveError: "Could not save currency",
-      fromBase: (amount: string) => `from ${amount} ₸`,
+      fromBase: (amount: string) => `from ${amount}`,
       exampleTitle: "Example with current setting",
       ratePrefix: "Rate:",
       fallbackRate: "Using a fallback rate — server update unavailable.",
-      kztLabel: "Tenge",
-      kztDescription: "Kazakhstan · ₸",
-      rubLabel: "Rubles",
-      rubDescription: "Russia · ₽",
+      kztLabel: "Dollars",
+      kztDescription: "United States · $",
+      rubLabel: "Dollars",
+      rubDescription: "United States · $",
       usdLabel: "Dollars",
-      usdDescription: "International · $",
+      usdDescription: "United States · $",
     },
     appConfigUi: {
       noUser: "No user",
@@ -990,6 +1008,9 @@ export const userCopyEn = {
         supplier: "Supplier",
         barcode: "Barcode",
         location: "Location",
+        notes: "Notes",
+        quality: "Quality",
+        photo: "Photo",
         minStock: "Min. stock",
         updated: "Updated",
       },
@@ -1435,6 +1456,16 @@ export const userCopyEn = {
       payroll: "Payroll",
       motor_import: "Motor purchase",
       warehouse_import: "Warehouse purchase",
+      advertising: "Advertising",
+      transport: "Transport",
+      food: "Food",
+      purchase: "Purchase",
+      logistics: "Logistics",
+      other: "Other",
+    },
+    categorySuggestions: {
+      salaryFor: (employee: string) => `salary ${employee}`,
+      advanceFor: (employee: string) => `advance ${employee}`,
     },
     sellFinancial: {
       cancel: "Cancel",
@@ -1538,6 +1569,8 @@ export const userCopyEn = {
         serial: "Engine number",
         configuration: "Configuration",
         notes: "Special notes",
+        quality: "Quality",
+        photo: "Photo",
         quantity: "Qty",
         transmission: "Transmission",
         location: "Location",
@@ -2073,8 +2106,8 @@ export const userCopyEn = {
       pricingFixed: "Fixed amount → payroll",
       pricingHourly: "Hourly → payroll",
       normHours: "Standard hours",
-      ratePerHour: "Rate, ₸/h",
-      laborAmount: "Job amount, ₸",
+      ratePerHour: "Rate, $/h",
+      laborAmount: "Job amount, $",
       assignee: "Assignee",
       assigneePlaceholder: "Employee or name",
       assigneeEmpty: "Employee not found — you can type a name",
@@ -2091,7 +2124,7 @@ export const userCopyEn = {
       namePlaceholder: "Name",
       nameEmpty: "You can type the name manually",
       quantityAria: "Quantity",
-      pricePlaceholder: "Price, ₸",
+      pricePlaceholder: "Price, $",
       priceAria: "Price",
       partHint:
         "Not in stock — enter name and price manually. Warehouse items fill in SKU and sell price.",
@@ -2111,7 +2144,7 @@ export const userCopyEn = {
       selectEllipsis: "Select…",
       itemName: "Name",
       itemNamePlaceholder: "Toyota 1NZ alternator",
-      priceTenge: "Price, ₸",
+      priceUsd: "Price, $",
       warranty: "Warranty",
       noWarranty: "No warranty",
       catalogEmpty: "No catalog items added",
@@ -2513,7 +2546,7 @@ export const userCopyEn = {
     },
   },
 
-  missionControl: {
+  overview: {
     employee: {
       greetingMorning: "Good morning",
       greetingDay: "Good afternoon",
@@ -2866,10 +2899,10 @@ export const userCopyEn = {
     noPlate: "No plate",
     orderNumber: (number: string | number) => `Order №${number}`,
     rateSuffix: (label: string) => ` · rate ${label}`,
-    hourlyRate: (rate: string | number) => `${rate} ₸/h`,
+    hourlyRate: (rate: string | number) => `$${rate}/h`,
     paidOrdersHint: (count: number) =>
       count === 1 ? `from ${count} order` : `from ${count} orders`,
-    pendingSuffix: " ₸ to pay",
+    pendingSuffix: " to pay",
     shiftUpdateFailed: "Could not update shift",
     noAccessTitle: "No access",
     emptyStates: {
@@ -3214,8 +3247,8 @@ export const userCopyEn = {
     proRightsDescription:
       "The activity journal is available on Pro for roles with team access.",
     feedTitle: "Event feed",
-    feedDescription: "Compact view, like Mission Control",
-    missionControl: "Mission Control",
+    feedDescription: "Compact view, like Overview",
+    overview: "Overview",
     emptyTitle: "Quiet for now",
     emptyDescription:
       "Events appear after actions in the warehouse, accounting, and work orders.",
@@ -3268,6 +3301,11 @@ export const userCopyEn = {
     noRowsYet: "No rows yet",
     previewDropHint:
       "Add photos or Excel — recognized engines will appear here automatically.",
+    readyNoRowsHint:
+      "Files uploaded but not parsed yet. Tap Retry parse, or go back and start a new session.",
+    retryParse: "Retry parse",
+    processFailed: "Could not start parsing",
+    backToList: "Back to imports",
     colBrand: "Brand",
     colCode: "Code",
     colSerial: "Serial",
@@ -3452,6 +3490,8 @@ export const userCopyEn = {
       leaveTitle: "Leave organization",
       leaveDescription: (name: string) =>
         `You will lose access to “${name}”. Team data will remain.`,
+      leaveOwnerDescription: (name: string) =>
+        `As the only owner of “${name}”, you cannot leave while keeping the company. Delete it below, or transfer ownership to another member first.`,
       leaveAction: "Leave",
       deleteTitle: "Delete organization",
       deleteDescription:
@@ -3460,6 +3500,10 @@ export const userCopyEn = {
       leaveConfirmTitle: "Leave organization?",
       leaveConfirmBody: (name: string) =>
         `You will lose access to ${name}. Organization data stays with the team.`,
+      leaveOwnerConfirmBody: (name: string) =>
+        `If you are the only owner of ${name}, leaving is blocked. Use Delete organization, or promote another member to owner first.`,
+      soleOwnerLeaveHint:
+        "You are the only owner. Delete the organization below, or transfer ownership to another member first.",
       cancel: "Cancel",
       deleteConfirmTitle: "Delete organization forever?",
       deleteConfirmBody: (name: string) =>
@@ -3782,6 +3826,17 @@ export const userCopyEn = {
         modeQuick: "Quick",
         modeTrackedAria: "With warehouse tracking",
         modeQuickAria: "Without warehouse tracking",
+        names: {
+          gearboxes: "Transmissions",
+          turbos: "Turbos",
+          reducers: "Differentials",
+          transfer_cases: "Transfer cases",
+          body: "Body",
+          optics: "Lighting",
+          interior: "Interior",
+          suspension: "Suspension",
+          electrical: "Electrical",
+        },
       },
       warranty: {
         customHint: "On each deal",

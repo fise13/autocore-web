@@ -179,7 +179,13 @@ export function CreateInventoryItemScreen() {
               gap: rhythm.inline,
             }}
           >
-            <IconButton accessibilityLabel="Back" variant="ghost" onPress={handleClose}>
+            <IconButton
+              accessibilityLabel="Back"
+              variant="ghost"
+              size="sm"
+              systemImage="chevron.left"
+              onPress={handleClose}
+            >
               <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={1.85} />
             </IconButton>
             <View style={{ flex: 1, gap: 2 }}>
@@ -197,6 +203,7 @@ export function CreateInventoryItemScreen() {
         footer={
           <StickyActionBar>
             <Button
+              native={false}
               size="xl"
               style={{ flex: 1 }}
               onPress={() => void handleSubmit()}

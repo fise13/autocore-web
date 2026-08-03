@@ -32,8 +32,18 @@ export function useProductModuleEnabled(moduleId: ProductModuleId): boolean {
 
 export function useCompanyModuleEnabled(module: CompanyModuleKey): boolean {
   const productId = MODULE_KEY_TO_PRODUCT[module];
-  if (productId) {
-    return useProductModuleEnabled(productId);
+  // Same hooks every render — never call hooks behind a branch.
+  const storeMap = useModulesConfigStore((state) => state.enabled);
+  const companyConfig = useAuthStore((s) => s.companyConfig);
+
+  if (!productId) {
+    if (!companyConfig) return true;
+    return companyConfig.modules[module] !== false;
   }
-  return useModuleEnabled(module);
+
+  if (storeMap[productId] === false) return false;
+  const definition = MODULE_DEFINITIONS[productId];
+  if (!definition.companyModuleKey) return true;
+  if (!companyConfig) return true;
+  return companyConfig.modules[definition.companyModuleKey] !== false;
 }

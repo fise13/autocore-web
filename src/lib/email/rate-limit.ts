@@ -10,7 +10,7 @@ export class EmailRateLimitError extends Error {
   retryAfterSec: number;
 
   constructor(retryAfterSec: number) {
-    super(`Подождите ${retryAfterSec} сек. перед повторной отправкой`);
+    super(`Please wait ${retryAfterSec}s before requesting another code`);
     this.name = "EmailRateLimitError";
     this.retryAfterSec = retryAfterSec;
   }

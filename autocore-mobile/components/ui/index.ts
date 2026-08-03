@@ -17,7 +17,7 @@ export {
   CardFooter,
   CardAction,
 } from './card';
-export { Surface } from './surface';
+export { Surface, type SurfaceVariant } from './surface';
 export { Screen, ScreenScroll, StackScreen } from './screen';
 export { ProductScreenShell } from './product-screen-shell';
 export { ScreenGate } from './screen-gate';
@@ -28,6 +28,24 @@ export { SectionHeader } from './section-header';
 export { MetaRow } from './meta-row';
 export { ListGroup } from './list-group';
 export { ListRow } from './list-row';
+export {
+  CollectionList,
+  CollectionRow,
+  CollectionSwitchRow,
+  ListSection,
+  SwipeableRow,
+  type CollectionRowProps,
+  type CollectionSwitchRowProps,
+} from './collection';
+export {
+  ContentState,
+  ListSkeleton,
+  DetailSkeleton,
+  FormSkeleton,
+  type ContentStateKind,
+} from './content-state';
+export { Sheet, type SheetDetent } from './sheet';
+export { Menu } from './menu';
 export { SettingsSectionCard, SettingsInset } from './settings-section-card';
 export { SettingsLinkRow } from './settings-link-row';
 export { StatCard } from './stat-card';
@@ -67,6 +85,16 @@ export { TopBar } from './top-bar';
 export { BottomBar } from './bottom-bar';
 export { FloatingButton } from './floating-button';
 export { ContextMenu } from './context-menu';
+export {
+  IosLiftMenu,
+  type IosLiftMenuItem,
+  type IosLiftMenuAnchor,
+} from './ios-lift-menu';
+export {
+  NativeContextMenu,
+  presentNativeMenu,
+  type NativeContextMenuAction,
+} from './native-context-menu';
 export { Sidebar } from './sidebar';
 export { Modal } from './modal';
 export { DatePicker } from './date-picker';

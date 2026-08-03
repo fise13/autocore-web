@@ -159,9 +159,13 @@ export function CompanyOnboardingStep() {
               <Label htmlFor="companyName">{userCopy.company.companyNameLabel}</Label>
               <Input
                 id="companyName"
+                name="autocore-new-company-name"
                 value={companyName}
                 onChange={(event) => setCompanyName(event.target.value)}
                 placeholder={userCopy.company.companyNamePlaceholder}
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
                 required
               />
             </div>

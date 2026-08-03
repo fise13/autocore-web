@@ -196,15 +196,15 @@ export function AcPayrollList({
         </Text>
         <Text variant="caption" color="muted" style={{ fontSize: 12, lineHeight: 17 }}>
           {canEdit
-            ? 'Payouts for completed work orders. Tap a status to mark it paid.'
-            : 'Payouts for completed work orders.'}
+            ? 'Completed work-order labor. Tap status to mark paid.'
+            : 'Completed work-order labor.'}
         </Text>
       </View>
 
       {rows.length === 0 ? (
         <View style={{ padding: 20 }}>
           <Text variant="caption" color="muted" style={{ textAlign: 'center', fontSize: 13, lineHeight: 18 }}>
-            No payroll entries yet. They'll appear once a work order with labor and assigned staff is completed.
+            No payroll yet. Entries appear when a work order with labor and assigned staff is completed.
           </Text>
         </View>
       ) : (

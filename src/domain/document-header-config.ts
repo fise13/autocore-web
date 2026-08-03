@@ -155,7 +155,7 @@ export function resolveHeaderDisplayName(input: {
 }): string {
   const short = input.shortName?.trim();
   if (short) return short;
-  return input.companyName.trim() || "Компания";
+  return input.companyName.trim() || "Company";
 }
 
 export function resolveHeaderBrandAccent(primaryColor?: string): string {

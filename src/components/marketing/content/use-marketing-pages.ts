@@ -67,7 +67,7 @@ export function useMarketingPages() {
           forWhom: string;
         }>,
         relatedLinks: {
-          missionControl: t("modules.relatedLinks.missionControl"),
+          overview: t("modules.relatedLinks.overview"),
           warehouse: t("modules.relatedLinks.warehouse"),
           accounting: t("modules.relatedLinks.accounting"),
           workOrders: t("modules.relatedLinks.workOrders"),

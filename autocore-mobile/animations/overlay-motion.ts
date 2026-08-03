@@ -2,12 +2,8 @@
  * Overlay motion — one vocabulary for every surface that appears above the app:
  * dropdowns, context menus, dialogs, sheets, toasts.
  *
- * The feel is Apple/Linear: surfaces come in on a spring that settles without
- * visible bounce, and leave on a short curve — leaving is never as interesting
- * as arriving, so exits are ~40% of the enter duration.
- *
- * These are Reanimated custom entering/exiting builders; every function body is
- * a worklet and runs on the UI thread.
+ * Bound to DL v3 springs: settle (menus/dialogs), sheet (travel), press unused here.
+ * Exits stay short timing — leaving is never as interesting as arriving.
  */
 import { withSpring, withTiming, Easing } from 'react-native-reanimated';
 import type {
@@ -16,12 +12,12 @@ import type {
   ExitAnimationsValues,
 } from 'react-native-reanimated';
 
-/** Settles in ~260ms with no perceptible overshoot. */
-const SURFACE_SPRING = { damping: 26, stiffness: 320, mass: 0.7 } as const;
-/** Slightly softer — used where the surface travels a longer distance. */
-const TRAVEL_SPRING = { damping: 30, stiffness: 260, mass: 0.85 } as const;
+import { tokens } from '@/theme/tokens';
 
-const ENTER_FADE = { duration: 170, easing: Easing.bezier(0.22, 1, 0.36, 1) } as const;
+const SETTLE = tokens.motion.springs.settle;
+const SHEET = tokens.motion.springs.sheet;
+
+const ENTER_FADE = { duration: tokens.motion.duration.fast, easing: Easing.bezier(0.22, 1, 0.36, 1) } as const;
 const EXIT_FADE = { duration: 120, easing: Easing.bezier(0.4, 0, 1, 1) } as const;
 
 /** Backdrop: fades only, never scales — it must not read as a moving object. */
@@ -43,7 +39,7 @@ export const backdropOut: EntryExitAnimationFunction = () => {
 
 /**
  * Anchored surfaces (dropdown menus, context menus): a small scale-up from the
- * anchor's scale, so the menu reads as growing out of the control it belongs to.
+ * anchor so the menu reads as growing out of the control it belongs to.
  */
 export const popoverIn: EntryExitAnimationFunction = () => {
   'worklet';
@@ -52,8 +48,8 @@ export const popoverIn: EntryExitAnimationFunction = () => {
     animations: {
       opacity: withTiming(1, ENTER_FADE),
       transform: [
-        { scale: withSpring(1, SURFACE_SPRING) },
-        { translateY: withSpring(0, SURFACE_SPRING) },
+        { scale: withSpring(1, SETTLE) },
+        { translateY: withSpring(0, SETTLE) },
       ],
     },
   };
@@ -80,7 +76,7 @@ export const dialogIn: EntryExitAnimationFunction = () => {
     initialValues: { opacity: 0, transform: [{ scale: 0.92 }] },
     animations: {
       opacity: withTiming(1, ENTER_FADE),
-      transform: [{ scale: withSpring(1, SURFACE_SPRING) }],
+      transform: [{ scale: withSpring(1, SETTLE) }],
     },
   };
 };
@@ -96,12 +92,12 @@ export const dialogOut: EntryExitAnimationFunction = () => {
   };
 };
 
-/** Bottom sheets: travel their own height, so they get the softer spring. */
+/** Bottom sheets: travel their own height on the sheet spring. */
 export const sheetIn: EntryExitAnimationFunction = ((targetValues: EntryAnimationsValues) => {
   'worklet';
   return {
     initialValues: { opacity: 1, transform: [{ translateY: targetValues.targetHeight }] },
-    animations: { transform: [{ translateY: withSpring(0, TRAVEL_SPRING) }] },
+    animations: { transform: [{ translateY: withSpring(0, SHEET) }] },
   };
 }) as EntryExitAnimationFunction;
 
@@ -112,7 +108,12 @@ export const sheetOut: EntryExitAnimationFunction = ((values: ExitAnimationsValu
     animations: {
       opacity: withTiming(0, { duration: 200, easing: Easing.bezier(0.4, 0, 1, 1) }),
       transform: [
-        { translateY: withTiming(values.currentHeight, { duration: 220, easing: Easing.bezier(0.4, 0, 1, 1) }) },
+        {
+          translateY: withTiming(values.currentHeight, {
+            duration: 220,
+            easing: Easing.bezier(0.4, 0, 1, 1),
+          }),
+        },
       ],
     },
   };
@@ -126,8 +127,8 @@ export const toastIn: EntryExitAnimationFunction = () => {
     animations: {
       opacity: withTiming(1, ENTER_FADE),
       transform: [
-        { translateY: withSpring(0, TRAVEL_SPRING) },
-        { scale: withSpring(1, TRAVEL_SPRING) },
+        { translateY: withSpring(0, SETTLE) },
+        { scale: withSpring(1, SETTLE) },
       ],
     },
   };

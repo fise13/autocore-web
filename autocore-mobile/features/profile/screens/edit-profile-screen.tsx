@@ -1,27 +1,29 @@
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   EmailAuthProvider,
   reauthenticateWithCredential,
   updatePassword,
 } from 'firebase/auth';
 
-import { ArrowLeftIcon, ImagesIcon } from '@/assets/icons';
+import { ImagesIcon } from '@/assets/icons';
 import { UserAvatar } from '@/components/account/user-avatar';
-import { Button, IconButton, Input, Text } from '@/components/ui';
+import {
+  Button,
+  Input,
+  ListSection,
+  StackScreen,
+  Text,
+} from '@/components/ui';
 import { useAuth } from '@/authentication/auth-provider';
 import { useTheme, useUserPhotoUrl } from '@/hooks';
-import { goBackOrReplace } from '@/lib/navigation/stack-back';
 import { uploadUserAvatar } from '@/services/api/account';
 import { getFirebaseAuth } from '@/services/firebase';
 import { updateUserAccountProfile } from '@/services/firebase/profile';
 import { mapAuthError } from '@/utils/auth-error';
 import { haptics } from '@/theme';
-
-import { profileLayout } from '../layout';
+import { tokens } from '@/theme/tokens';
 
 function isEmailProvider(providerIds: string[]): boolean {
   return providerIds.includes('password') || providerIds.length === 0;
@@ -29,8 +31,6 @@ function isEmailProvider(providerIds: string[]): boolean {
 
 export function EditProfileScreen() {
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
   const { firebaseUser, profile, refreshProfile, sendPasswordResetForEmail } = useAuth();
   const photoURL = useUserPhotoUrl();
 
@@ -68,11 +68,9 @@ export function EditProfileScreen() {
 
     if (pick.canceled || !pick.assets[0]?.uri) return;
 
-    const asset = pick.assets[0];
-
     try {
       setUploadingPhoto(true);
-      await uploadUserAvatar(asset.uri);
+      await uploadUserAvatar(pick.assets[0].uri);
       await refreshProfile();
       haptics.success();
       setStatus('Profile photo updated.');
@@ -88,14 +86,13 @@ export function EditProfileScreen() {
     setError(null);
     setStatus(null);
     try {
-      if (!firebaseUser) {
-        throw new Error('Authentication required');
-      }
+      if (!firebaseUser) throw new Error('Authentication required');
       await updateUserAccountProfile(firebaseUser, {
         name: displayName.trim() || null,
         phone: phone.trim() || null,
       });
       await refreshProfile();
+      haptics.success();
       setStatus('Profile saved.');
     } catch (saveError) {
       setError(mapAuthError(saveError));
@@ -125,6 +122,7 @@ export function EditProfileScreen() {
       await updatePassword(user, newPassword);
       setCurrentPassword('');
       setNewPassword('');
+      haptics.success();
       setStatus('Password updated.');
     } catch (passwordError) {
       setError(mapAuthError(passwordError));
@@ -149,116 +147,88 @@ export function EditProfileScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View
-        style={{
-          paddingTop: insets.top + 6,
-          paddingHorizontal: profileLayout.pad,
-          paddingBottom: 12,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 8,
-        }}
-      >
-        <IconButton accessibilityLabel="Back" variant="ghost" size="sm" onPress={() => goBackOrReplace(router)}>
-          <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
-        </IconButton>
-        <Text variant="heading" style={{ fontSize: 20, fontWeight: '700' }}>
-          Edit Profile
-        </Text>
+    <StackScreen title="Edit Profile" subtitle="Name, photo, and password">
+      <View style={{ alignItems: 'center', gap: tokens.space.stack, paddingVertical: tokens.space.stack }}>
+        <View style={{ position: 'relative' }}>
+          <UserAvatar
+            photoURL={photoURL}
+            displayName={displayName || profile?.displayName}
+            email={profile?.email ?? firebaseUser?.email ?? ''}
+            seed={profile?.id ?? firebaseUser?.uid}
+            size="2xl"
+          />
+          {uploadingPhoto ? (
+            <View
+              style={{
+                ...StyleSheet.absoluteFill,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 999,
+                backgroundColor: 'rgba(0,0,0,0.35)',
+              }}
+            >
+              <ActivityIndicator color="#fff" />
+            </View>
+          ) : null}
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => void pickAndUploadAvatar()}
+          disabled={uploadingPhoto}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            paddingHorizontal: 14,
+            paddingVertical: 8,
+            borderRadius: tokens.radius.full,
+            backgroundColor: colors.card,
+            opacity: uploadingPhoto ? 0.6 : 1,
+          }}
+        >
+          <ImagesIcon size="sm" color={colors.foreground} strokeWidth={1.75} />
+          <Text variant="caption" style={{ fontWeight: '600' }}>
+            Change photo
+          </Text>
+        </Pressable>
       </View>
 
-      <View style={{ paddingHorizontal: profileLayout.pad, gap: 16 }}>
-        <View style={{ alignItems: 'center', gap: 12, paddingVertical: 8 }}>
-          <View style={{ position: 'relative' }}>
-            <UserAvatar
-              photoURL={photoURL}
-              displayName={displayName || profile?.displayName}
-              email={profile?.email ?? firebaseUser?.email ?? ''}
-              seed={profile?.id ?? firebaseUser?.uid}
-              size="2xl"
+      <ListSection title="Profile" footer="Your photo syncs across devices through your account.">
+        <View style={{ padding: tokens.space.stack + 2, gap: tokens.space.stack }}>
+          <View style={{ gap: tokens.space.inline }}>
+            <Text variant="footnote" color="muted">
+              Full name
+            </Text>
+            <Input
+              value={displayName}
+              onChangeText={setDisplayName}
+              autoCapitalize="words"
+              placeholder="First Last"
             />
-            {uploadingPhoto ? (
-              <View
-                style={{
-                  ...StyleSheet.absoluteFill,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: 999,
-                  backgroundColor: 'rgba(0,0,0,0.35)',
-                }}
-              >
-                <ActivityIndicator color="#fff" />
-              </View>
-            ) : null}
           </View>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => void pickAndUploadAvatar()}
-            disabled={uploadingPhoto}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-              paddingHorizontal: 14,
-              paddingVertical: 8,
-              borderRadius: 999,
-              borderWidth: 1,
-              borderColor: colors.border,
-              backgroundColor: colors.secondary,
-              opacity: uploadingPhoto ? 0.6 : 1,
-            }}
-          >
-            <ImagesIcon size="sm" color={colors.foreground} strokeWidth={2} />
-            <Text variant="caption" style={{ fontWeight: '600' }}>
-              Change Photo
+          <View style={{ gap: tokens.space.inline }}>
+            <Text variant="footnote" color="muted">
+              Phone
             </Text>
-          </Pressable>
-          <Text variant="caption" color="muted" style={{ textAlign: 'center', lineHeight: 18 }}>
-            Your photo syncs across devices through your account.
-          </Text>
-        </View>
-
-        <View style={{ gap: 8 }}>
-          <Text variant="caption" color="muted">
-            Full Name
-          </Text>
-          <Input value={displayName} onChangeText={setDisplayName} autoCapitalize="words" placeholder="First Last" />
-        </View>
-
-        <View style={{ gap: 8 }}>
-          <Text variant="caption" color="muted">
-            Phone
-          </Text>
-          <Input value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+1 …" />
-        </View>
-
-        <View style={{ gap: 8 }}>
-          <Text variant="caption" color="muted">
-            Email
-          </Text>
-          <Input value={profile?.email ?? firebaseUser?.email ?? ''} editable={false} />
-        </View>
-
-        <Button loading={saving} onPress={saveProfile}>
-          Save Profile
-        </Button>
-
-        {emailProvider ? (
-          <View
-            style={{
-              gap: 12,
-              marginTop: 8,
-              padding: 16,
-              borderRadius: profileLayout.cardRadius,
-              borderWidth: profileLayout.hairline,
-              borderColor: colors.border,
-              backgroundColor: colors.card,
-            }}
-          >
-            <Text variant="body" style={{ fontWeight: '600' }}>
-              Password
+            <Input
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              placeholder="+1 …"
+            />
+          </View>
+          <View style={{ gap: tokens.space.inline }}>
+            <Text variant="footnote" color="muted">
+              Email
             </Text>
+            <Input value={profile?.email ?? firebaseUser?.email ?? ''} editable={false} />
+          </View>
+        </View>
+      </ListSection>
+
+      {emailProvider ? (
+        <ListSection title="Password" footer="Use a strong password you do not reuse elsewhere.">
+          <View style={{ padding: tokens.space.stack + 2, gap: tokens.space.stack }}>
             <Input
               value={currentPassword}
               onChangeText={setCurrentPassword}
@@ -273,26 +243,50 @@ export function EditProfileScreen() {
               placeholder="New password"
               autoCapitalize="none"
             />
-            <Button variant="secondary" loading={saving} onPress={changePassword}>
-              Change Password
+            <Button variant="secondary" loading={saving} onPress={() => void changePassword()}>
+              Change password
             </Button>
-            <Button variant="link" onPress={resetPassword}>
-              Send Reset Link
+            <Button variant="link" onPress={() => void resetPassword()}>
+              Send reset link
             </Button>
           </View>
-        ) : null}
+        </ListSection>
+      ) : null}
 
-        {status ? (
-          <Text variant="caption" style={{ color: colors.success }}>
-            {status}
-          </Text>
-        ) : null}
-        {error ? (
-          <Text variant="caption" style={{ color: colors.destructive }}>
-            {error}
-          </Text>
-        ) : null}
+      {status ? (
+        <Text
+          variant="caption"
+          style={{
+            color: colors.success,
+            marginHorizontal: tokens.space.screenX,
+            marginBottom: tokens.space.stack,
+          }}
+        >
+          {status}
+        </Text>
+      ) : null}
+      {error ? (
+        <Text
+          variant="caption"
+          style={{
+            color: colors.destructive,
+            marginHorizontal: tokens.space.screenX,
+            marginBottom: tokens.space.stack,
+          }}
+        >
+          {error}
+        </Text>
+      ) : null}
+
+      <View style={{ marginHorizontal: tokens.space.screenX, marginBottom: tokens.space.section }}>
+        <Button
+          native={false}
+          loading={saving}
+          onPress={() => void saveProfile()}
+        >
+          Save changes
+        </Button>
       </View>
-    </View>
+    </StackScreen>
   );
 }

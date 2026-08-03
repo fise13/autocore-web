@@ -8,8 +8,14 @@ const SETTINGS_ROUTES: Record<SettingsRouteId, Href> = {
   modules: '/(tabs)/profile/modules',
   company: '/(tabs)/profile/company',
   team: '/(tabs)/profile/team',
-  accounting: '/(tabs)/profile/finance',
-  finance: '/(tabs)/profile/finance',
+  accounting: {
+    pathname: '/(tabs)/profile/finance',
+    params: { returnTo: 'hub' },
+  } as Href,
+  finance: {
+    pathname: '/(tabs)/profile/finance',
+    params: { returnTo: 'hub' },
+  } as Href,
   appearance: '/(tabs)/profile/appearance',
   notifications: '/(tabs)/profile/notifications',
   advanced: '/(tabs)/profile/advanced',

@@ -316,9 +316,13 @@ export function CreateCompanyDialog({
             <Label htmlFor="company-switcher-new-company">{userCopy.company.companyNameLabel}</Label>
             <Input
               id="company-switcher-new-company"
+              name="autocore-new-company-name"
               value={companyName}
               onChange={(event) => setCompanyName(event.target.value)}
               placeholder={userCopy.company.companyNamePlaceholder}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
               autoFocus
             />
           </div>

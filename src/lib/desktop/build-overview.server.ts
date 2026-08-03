@@ -16,8 +16,8 @@ import {
   buildIncomeExpenseSeries,
   buildWorkOrdersDailySeries,
   type DashboardStat,
-} from "@/lib/mission-control/compute-dashboard-charts";
-import { computeOverviewMetrics } from "@/lib/mission-control/compute-overview-metrics";
+} from "@/lib/overview/compute-dashboard-charts";
+import { computeOverviewMetrics } from "@/lib/overview/compute-overview-metrics";
 import { listMotorDocuments } from "@/lib/desktop/fetch-motor.server";
 
 function toDate(value: unknown): Date | null {
@@ -61,7 +61,7 @@ function mapInventoryItem(id: string, data: Record<string, unknown>): InventoryI
     name: String(data.name ?? ""),
     barcodes: [],
     unit: String(data.unit ?? "pcs"),
-    currency: String(data.currency ?? "KZT"),
+    currency: String(data.currency ?? "USD"),
     brandName: typeof data.brandName === "string" ? data.brandName : String(data.brand ?? ""),
     status: (String(data.status ?? "active") as InventoryItem["status"]) || "active",
     totalOnHand,
@@ -99,7 +99,7 @@ export type DesktopOverviewPayload = {
 };
 
 function formatMoneyKzt(value: number): string {
-  return `${value.toLocaleString("en-US")} ₸`;
+  return `$${value.toLocaleString("en-US")}`;
 }
 
 export async function buildDesktopOverview(

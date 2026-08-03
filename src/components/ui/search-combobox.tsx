@@ -24,6 +24,24 @@ type SearchComboboxProps = {
   maxResults?: number;
 };
 
+type ComboboxItem = {
+  value: string;
+  label: string;
+  description?: string;
+  keywords?: string;
+};
+
+function toComboboxItem(option: SearchOption): ComboboxItem | null {
+  const value = option.value?.trim() ?? "";
+  if (!value) return null;
+  return {
+    value,
+    label: (option.label || option.value).trim() || value,
+    description: option.description,
+    keywords: option.keywords,
+  };
+}
+
 export function SearchCombobox({
   value,
   onValueChange,
@@ -37,20 +55,34 @@ export function SearchCombobox({
   maxResults = 50,
 }: SearchComboboxProps) {
   const items = React.useMemo(() => {
-    const mapped = options.map((option) => ({
-      value: option.value,
-      label: option.label || option.value,
-      description: option.description,
-      keywords: option.keywords,
-    }));
-    const base = emptyOption ? [emptyOption, ...mapped] : mapped;
+    const mapped: ComboboxItem[] = [];
+    const seen = new Set<string>();
+
+    const push = (option: SearchOption | undefined) => {
+      if (!option) return;
+      const item = toComboboxItem(option);
+      if (!item) return;
+      const key = item.value.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      mapped.push(item);
+    };
+
+    push(emptyOption);
+    for (const option of options) push(option);
+
+    // Pre-filter by the current input so Base UI never mounts thousands of rows
+    // (opening an unscoped client/SKU list was crashing the tab).
+    const filtered = filterSearchOptions(mapped, value, maxResults);
+
     const trimmed = value.trim();
-    if (!trimmed) return base;
+    if (!trimmed) return filtered;
+
+    const hasExact = filtered.some((item) => item.value.toLowerCase() === trimmed.toLowerCase());
+    if (hasExact) return filtered;
 
     // Keep free-typed values in the item list so Base UI treats them as a real
     // selection and does not clear the input when the popup closes.
-    const hasExact = base.some((item) => item.value.toLowerCase() === trimmed.toLowerCase());
-    if (hasExact) return base;
     return [
       {
         value: trimmed,
@@ -58,14 +90,15 @@ export function SearchCombobox({
         description: userCopy.searchCombobox.customOption,
         keywords: trimmed,
       },
-      ...base,
-    ];
-  }, [emptyOption, options, value]);
+      ...filtered,
+    ].slice(0, maxResults);
+  }, [emptyOption, maxResults, options, value]);
 
-  const selectedItem = React.useMemo(
-    () => items.find((item) => item.value.toLowerCase() === value.trim().toLowerCase()) ?? null,
-    [items, value],
-  );
+  const selectedItem = React.useMemo(() => {
+    const trimmed = value.trim().toLowerCase();
+    if (!trimmed) return null;
+    return items.find((item) => item.value.toLowerCase() === trimmed) ?? null;
+  }, [items, value]);
 
   return (
     <Combobox.Root
@@ -74,9 +107,13 @@ export function SearchCombobox({
       inputValue={value}
       disabled={disabled}
       autoHighlight
-      itemToStringLabel={(item) => item.label}
-      isItemEqualToValue={(a, b) => a.value === b.value}
-      filter={(item, query) => matchComboboxItem(item, query)}
+      limit={maxResults}
+      // Filtering is applied when building `items` so the DOM stays bounded.
+      filter={null}
+      itemToStringLabel={(item) => item?.label ?? ""}
+      isItemEqualToValue={(a, b) =>
+        Boolean(a && b && a.value.toLowerCase() === b.value.toLowerCase())
+      }
       onInputValueChange={(next, details) => {
         // Base UI syncs input → selected label on popup close. When nothing is selected
         // yet (race before creatable item commits), that wipe uses `input-clear`.
@@ -85,12 +122,17 @@ export function SearchCombobox({
           details.cancel();
           return;
         }
+        if (next === value) return;
         onValueChange(next);
       }}
       onValueChange={(next) => {
         // Free-typed values briefly deselect while the controlled value catches up.
         // Never wipe the input on null — parent state already holds the typed text.
         if (!next) return;
+        if (next.value === value) {
+          onOptionSelect?.(next.value);
+          return;
+        }
         onValueChange(next.value);
         onOptionSelect?.(next.value);
       }}
@@ -128,33 +170,31 @@ export function SearchCombobox({
           <Combobox.Popup className="max-h-72 w-[var(--anchor-width)] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10">
             <Combobox.Empty className="px-3 py-4 text-sm text-muted-foreground">{emptyMessage}</Combobox.Empty>
             <Combobox.List className="max-h-72 overflow-y-auto p-1 outline-none">
-              {(item: SearchOption) => (
-                <Combobox.Item
-                  key={item.value || "__empty__"}
-                  value={item}
-                  className="group relative flex cursor-default select-none items-start gap-2 rounded-sm px-2 py-2 text-sm outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
-                >
-                  <Combobox.ItemIndicator className="mt-0.5 flex size-4 shrink-0 items-center justify-center">
-                    <CheckIcon className="size-3.5" />
-                  </Combobox.ItemIndicator>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate">{item.label}</span>
-                    {item.description ? (
-                      <span className="block truncate text-xs text-muted-foreground group-data-highlighted:text-accent-foreground/80">
-                        {item.description}
-                      </span>
-                    ) : null}
-                  </span>
-                </Combobox.Item>
-              )}
+              {(item: ComboboxItem) =>
+                item ? (
+                  <Combobox.Item
+                    key={item.value}
+                    value={item}
+                    className="group relative flex cursor-default select-none items-start gap-2 rounded-sm px-2 py-2 text-sm outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
+                  >
+                    <Combobox.ItemIndicator className="mt-0.5 flex size-4 shrink-0 items-center justify-center">
+                      <CheckIcon className="size-3.5" />
+                    </Combobox.ItemIndicator>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate">{item.label}</span>
+                      {item.description ? (
+                        <span className="block truncate text-xs text-muted-foreground group-data-highlighted:text-accent-foreground/80">
+                          {item.description}
+                        </span>
+                      ) : null}
+                    </span>
+                  </Combobox.Item>
+                ) : null
+              }
             </Combobox.List>
           </Combobox.Popup>
         </Combobox.Positioner>
       </Combobox.Portal>
     </Combobox.Root>
   );
-}
-
-function matchComboboxItem(item: SearchOption, query: string): boolean {
-  return filterSearchOptions([item], query, 1).length > 0;
 }

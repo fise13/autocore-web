@@ -54,7 +54,7 @@ export function pathToBarbaNamespace(
   if (context === "marketing" && isMarketingNavPath(pathname)) {
     return `marketing-${marketingSegment(pathname)}`;
   }
-  if (pathname === "/") return "app-mission-control";
+  if (pathname === "/") return "app-overview";
   return `app-${pathname.slice(1).replace(/\//g, "-")}`;
 }
 

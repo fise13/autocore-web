@@ -1,16 +1,24 @@
-/** Base radius from globals.css: 0.625rem = 10px */
-export const baseRadius = 10;
+/**
+ * Legacy radius ladder — thin re-exports of tokens.radius (DL v3).
+ * Prefer `tokens.radius` in new code. Keys map onto the canonical ladder
+ * (control 10 · group 12 · sheet 16 · modal 20) — no xl:14 drift.
+ */
+import { tokens } from './tokens';
+
+export const baseRadius = tokens.radius.control;
 
 export const radius = {
-  none: 0,
-  sm: Math.round(baseRadius * 0.6), // 6
-  md: Math.round(baseRadius * 0.8), // 8
-  lg: baseRadius, // 10
-  xl: Math.round(baseRadius * 1.4), // 14
-  '2xl': Math.round(baseRadius * 1.8), // 18
-  '3xl': Math.round(baseRadius * 2.2), // 22
-  '4xl': Math.round(baseRadius * 2.6), // 26
-  full: 9999,
+  none: tokens.radius.none,
+  /** Nested / chip interiors */
+  sm: 8,
+  md: tokens.radius.control,
+  lg: tokens.radius.control,
+  /** Was 14 — collapsed to group 12 */
+  xl: tokens.radius.group,
+  '2xl': tokens.radius.sheet,
+  '3xl': tokens.radius.modal,
+  '4xl': tokens.radius.modal,
+  full: tokens.radius.full,
 } as const;
 
 export type RadiusKey = keyof typeof radius;

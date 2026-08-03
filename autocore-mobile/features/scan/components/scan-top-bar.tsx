@@ -1,7 +1,8 @@
-import { Pressable, View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ArrowLeftIcon, FlashlightIcon } from '@/assets/icons';
+import { IconButton } from '@/components/ui';
 import { haptics } from '@/theme';
 
 import { scanLayout } from '../layout';
@@ -13,43 +14,7 @@ type ScanTopBarProps = {
   onBackPress?: () => void;
 };
 
-function CircleControl({
-  accessibilityLabel,
-  active,
-  onPress,
-  children,
-}: {
-  accessibilityLabel: string;
-  active?: boolean;
-  onPress: () => void;
-  children: React.ReactNode;
-}) {
-  const chrome = useScanChromeColors();
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ selected: active }}
-      onPress={onPress}
-      hitSlop={6}
-      style={{
-        width: scanLayout.controlSize,
-        height: scanLayout.controlSize,
-        borderRadius: scanLayout.controlRadius,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: active ? chrome.controlActiveBg : chrome.controlIdleBg,
-        borderWidth: 1,
-        borderColor: active ? chrome.controlActiveBorder : chrome.controlIdleBorder,
-      }}
-    >
-      {children}
-    </Pressable>
-  );
-}
-
-/** Top chrome: optional back, torch on the right — brand colors. */
+/** Top chrome: optional back, torch on the right — shared Button/IconButton language. */
 export function ScanTopBar({ torchOn, onToggleTorch, onBackPress }: ScanTopBarProps) {
   const chrome = useScanChromeColors();
   const insets = useSafeAreaInsets();
@@ -71,33 +36,58 @@ export function ScanTopBar({ torchOn, onToggleTorch, onBackPress }: ScanTopBarPr
       }}
     >
       {onBackPress ? (
-        <CircleControl
+        <IconButton
+          size="lg"
+          variant={Platform.OS === 'ios' ? 'ghost' : 'secondary'}
+          systemImage="chevron.left"
           accessibilityLabel="Back"
           onPress={() => {
             haptics.light();
             onBackPress();
           }}
+          style={
+            Platform.OS === 'ios'
+              ? undefined
+              : {
+                  backgroundColor: chrome.controlIdleBg,
+                  borderWidth: 1,
+                  borderColor: chrome.controlIdleBorder,
+                  borderRadius: scanLayout.controlRadius,
+                }
+          }
         >
           <ArrowLeftIcon size="sm" color={chrome.controlIcon} strokeWidth={2} />
-        </CircleControl>
+        </IconButton>
       ) : (
         <View style={{ width: scanLayout.controlSize }} />
       )}
 
-      <CircleControl
+      <IconButton
+        size="lg"
+        variant={torchOn ? 'default' : Platform.OS === 'ios' ? 'ghost' : 'secondary'}
+        systemImage={torchOn ? 'flashlight.on.fill' : 'flashlight.off.fill'}
         accessibilityLabel="Flashlight"
-        active={torchOn}
         onPress={() => {
           haptics.selection();
           onToggleTorch();
         }}
+        style={
+          Platform.OS === 'ios'
+            ? undefined
+            : {
+                backgroundColor: torchOn ? chrome.controlActiveBg : chrome.controlIdleBg,
+                borderWidth: 1,
+                borderColor: torchOn ? chrome.controlActiveBorder : chrome.controlIdleBorder,
+                borderRadius: scanLayout.controlRadius,
+              }
+        }
       >
         <FlashlightIcon
           size="sm"
           color={torchOn ? chrome.controlIconActive : chrome.controlIcon}
           strokeWidth={1.85}
         />
-      </CircleControl>
+      </IconButton>
     </View>
   );
 }

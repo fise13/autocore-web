@@ -62,7 +62,7 @@ export const demoAccountingSnapshot: AccountingSnapshot = {
     {
       id: 'unpaid',
       title: '3 unpaid invoices',
-      subtitle: 'Totaling 890,000 ₸',
+      subtitle: 'Totaling 890,000 $',
       tone: 'warning',
       action: 'operations',
     },
@@ -76,14 +76,14 @@ export const demoAccountingSnapshot: AccountingSnapshot = {
     {
       id: 'salary',
       title: 'Payroll due tomorrow',
-      subtitle: '12 employees · 2,160,000 ₸',
+      subtitle: '12 employees · 2,160,000 $',
       tone: 'warning',
       action: 'payroll',
     },
     {
       id: 'supplier',
       title: 'Supplier payment due',
-      subtitle: 'Japan Motors Ltd. · 480,000 ₸',
+      subtitle: 'Japan Motors Ltd. · 480,000 $',
       tone: 'neutral',
       action: 'expenses',
     },

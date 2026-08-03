@@ -12,6 +12,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { featureRule, type GatedFeature } from '@/lib/subscriptions/feature-gate';
 import type { PlanId } from '@/lib/subscriptions/types';
 import { describeTrialOffer } from '@/lib/subscriptions/trial-policy';
+// TEMPORARY: see lib/subscriptions/paywall-bypass.ts
+import { setPaywallBypassed } from '@/lib/subscriptions/paywall-bypass';
 import { haptics, radius, rhythm, spacing } from '@/theme';
 
 import { paywallTimeline } from './animation/paywall-motion';
@@ -309,6 +311,18 @@ export function PaywallScreen({
                 Sign out
               </Button>
             ) : null}
+
+            {/* TEMPORARY: paywall escape hatch — remove together with
+                lib/subscriptions/paywall-bypass.ts before launch. */}
+            <Button
+              variant="ghost"
+              onPress={() => {
+                haptics.light();
+                setPaywallBypassed(true);
+              }}
+            >
+              Continue without a subscription
+            </Button>
           </View>
         ) : null}
       </ScrollView>

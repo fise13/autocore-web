@@ -84,8 +84,8 @@ export function PurchaseCta({ flow, label, disclosure, disabled, onPress }: Purc
   return (
     <Animated.View style={[enterStyle, { gap: spacing[2.5] }]}>
       <Button
+        native={false}
         size="xl"
-        shape="pill"
         loading={isBusy}
         disabled={disabled}
         onPress={onPress}

@@ -18,7 +18,9 @@ type ScanStatusLineProps = {
 };
 
 export function scanStatusCopy(props: ScanStatusLineProps): string {
-  if (props.ocrBusy) return 'Recognizing…';
+  if (props.ocrBusy) {
+    return props.mode === 'document' ? 'Uploading…' : 'Recognizing…';
+  }
   if (props.relocateHint) return props.relocateHint;
   if (props.orderHint) return props.orderHint;
   if (props.phase === 'resolving') return 'Hold steady';
@@ -35,7 +37,7 @@ export function scanStatusCopy(props: ScanStatusLineProps): string {
     case 'vin':
       return 'Point at the VIN plate';
     case 'document':
-      return 'Fill the frame, then tap Capture';
+      return 'Fill the frame, then tap the shutter';
     default:
       return 'Ready';
   }

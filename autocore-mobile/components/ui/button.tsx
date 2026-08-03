@@ -1,10 +1,4 @@
 import { forwardRef, memo, useMemo, type ReactNode } from 'react';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
 import {
   Pressable,
   ActivityIndicator,
@@ -15,7 +9,7 @@ import {
 } from 'react-native';
 
 import { useDesignLanguage } from '@/hooks';
-import { autocoreEase, duration, haptics, spring } from '@/theme';
+import { haptics } from '@/theme';
 import { Text } from './text';
 
 export type ButtonVariant = 'default' | 'outline' | 'secondary' | 'ghost' | 'destructive' | 'link';
@@ -35,6 +29,13 @@ type ButtonProps = Omit<PressableProps, 'style'> & {
   haptic?: boolean;
   /** Shrink-wrap width (chips / inline actions). Default stretches in column layouts. */
   inline?: boolean;
+  /**
+   * Legacy opt-in for SwiftUI Host — ignored.
+   * Host blanks sibling RN content and freezes taps; always use Pressable.
+   */
+  native?: boolean;
+  /** Legacy SF Symbol hint for the removed Host path — ignored. */
+  systemImage?: string;
 };
 
 function getTextLabel(children: ReactNode): string | null {
@@ -65,6 +66,8 @@ export const Button = memo(
       style,
       haptic = true,
       inline = false,
+      native: _native,
+      systemImage: _systemImage,
       onPressIn,
       onPressOut,
       onPress,
@@ -143,11 +146,6 @@ export const Button = memo(
     const resolvedTextColor = usesDisabledSurface ? dl.colors.mutedForeground : textColor;
     const textLabel = getTextLabel(children);
 
-    // Every button settles on a spring rather than only dimming — the same
-    // press feel as the sign-in screen.
-    const pressScale = useSharedValue(1);
-    const pressStyle = useAnimatedStyle(() => ({ transform: [{ scale: pressScale.value }] }));
-
     return (
       <Pressable
         ref={ref}
@@ -155,24 +153,15 @@ export const Button = memo(
         accessibilityRole="button"
         onPressIn={(e) => {
           if (haptic) haptics.press();
-          if (!isLink) {
-            pressScale.value = withTiming(0.975, {
-              duration: duration.fast,
-              easing: autocoreEase,
-            });
-          }
           onPressIn?.(e);
         }}
-        onPressOut={(e) => {
-          pressScale.value = withSpring(1, spring.snappy);
-          onPressOut?.(e);
-        }}
+        onPressOut={onPressOut}
         onPress={onPress}
         style={inline ? { alignSelf: 'flex-start' } : undefined}
         {...props}
       >
         {({ pressed }) => (
-          <Animated.View
+          <View
             style={[
               {
                 flexDirection: 'row',
@@ -194,7 +183,6 @@ export const Button = memo(
                 ...(inline ? { alignSelf: 'flex-start' } : null),
               },
               style,
-              pressStyle,
             ]}
           >
             {loading ? (
@@ -226,7 +214,7 @@ export const Button = memo(
                 ) : null}
               </>
             )}
-          </Animated.View>
+          </View>
         )}
       </Pressable>
     );

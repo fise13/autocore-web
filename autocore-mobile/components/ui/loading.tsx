@@ -13,7 +13,7 @@ type LoadingProps = {
   showAppName?: boolean;
 };
 
-/** Branded loader with animated logo, or legacy minimal spinner. */
+/** Login-matched loader (wordmark + soft wash), or legacy minimal spinner. */
 export function Loading({
   message,
   fullScreen = false,

@@ -105,7 +105,7 @@ function resolveUrlFromEnv(primary: string | undefined, fallback: string): strin
   return normalizeSiteOrigin(fallback);
 }
 
-/** Application host — Mission Control, warehouse, login (app.myautocore.com). */
+/** Application host — Overview, warehouse, login (app.myautocore.com). */
 export function getAppUrl(): string {
   return resolveUrlFromEnv(process.env.NEXT_PUBLIC_APP_URL, DEFAULT_APP_ORIGIN);
 }

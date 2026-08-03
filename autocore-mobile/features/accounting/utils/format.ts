@@ -1,9 +1,10 @@
 import { formatPrice } from '@/store/money-format-store';
 
+/** Formats a USD amount for accounting surfaces. */
 export function formatKzt(value: number, compact = false): string {
   const rounded = Math.round(value);
   if (compact && rounded >= 1_000_000) {
-    return `${(rounded / 1_000_000).toFixed(1).replace('.0', '')}M ₸`;
+    return `$${(rounded / 1_000_000).toFixed(1).replace('.0', '')}M`;
   }
   return formatPrice(value);
 }

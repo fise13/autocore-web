@@ -14,7 +14,7 @@ The production web application and API routes run on Vercel. Firebase remains th
 
 ## Core modules
 
-- Mission Control: operational overview, alerts, activity, and search.
+- Overview: operational overview, alerts, activity, and search.
 - Warehouse: stock balances, locations, receipts, issues, and relocations.
 - Motors: serialized engine inventory, sales, returns, and warranty workflows.
 - Work orders: customers, vehicles, labor, parts, statuses, and documents.

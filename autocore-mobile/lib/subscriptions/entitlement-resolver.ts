@@ -6,6 +6,7 @@
  * grace-period rules testable without a store connection or an emulator.
  */
 import type { CompanySubscription } from '@/types/billing';
+import { dateMs } from '@/lib/firestore-timestamp';
 
 import { highestPlan, planForSku, PLANS } from './catalog';
 import { isCacheTrustworthy, type CachedEntitlement } from './entitlement-cache';
@@ -97,7 +98,8 @@ function fromSubscription(
   const tier = tierForPlanId(planId);
   const isTrial = subscription.status === 'trialing';
 
-  const graceEnd = subscription.gracePeriodEnd?.getTime() ?? null;
+  const graceEndMs = dateMs(subscription.gracePeriodEnd, Number.NaN);
+  const graceEnd = Number.isFinite(graceEndMs) ? graceEndMs : null;
   const inGracePeriod =
     subscription.status === 'past_due' || (graceEnd !== null && graceEnd > now);
 
@@ -218,7 +220,9 @@ export function entitlementsEqual(a: Entitlement, b: Entitlement): boolean {
     a.provider === b.provider &&
     a.managedExternally === b.managedExternally &&
     a.source === b.source &&
-    (a.trialEndsAt?.getTime() ?? null) === (b.trialEndsAt?.getTime() ?? null) &&
-    (a.renewsAt?.getTime() ?? null) === (b.renewsAt?.getTime() ?? null)
+    (a.trialEndsAt == null ? null : dateMs(a.trialEndsAt)) ===
+      (b.trialEndsAt == null ? null : dateMs(b.trialEndsAt)) &&
+    (a.renewsAt == null ? null : dateMs(a.renewsAt)) ===
+      (b.renewsAt == null ? null : dateMs(b.renewsAt))
   );
 }

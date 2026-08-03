@@ -53,6 +53,22 @@ function motorGridBaseColumns(): GridColumnDefinition[] {
       modelField: "notes",
     },
     {
+      id: "quality",
+      title: columns.quality,
+      width: MOTOR_GRID_COLUMN_WIDTHS.quality,
+      editable: true,
+      modelField: "quality",
+    },
+    {
+      id: "photo",
+      title: columns.photo,
+      width: MOTOR_GRID_COLUMN_WIDTHS.photo,
+      editable: false,
+      align: "center",
+      modelField: "photoUrls",
+      cellKind: "photo",
+    },
+    {
       id: "quantity",
       title: columns.quantity,
       width: MOTOR_GRID_COLUMN_WIDTHS.quantity,

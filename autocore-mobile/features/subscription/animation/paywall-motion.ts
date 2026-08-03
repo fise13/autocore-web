@@ -12,6 +12,8 @@
  */
 import { Easing } from 'react-native-reanimated';
 
+import { tokens } from '@/theme/tokens';
+
 /** iOS-native deceleration. Matches `autocoreEase` but stated locally. */
 export const paywallEase = Easing.bezier(0.22, 1, 0.36, 1);
 
@@ -24,10 +26,10 @@ export const paywallDuration = {
 } as const;
 
 export const paywallSpring = {
-  /** Plan card selection + success mark. */
-  pop: { damping: 15, stiffness: 220, mass: 0.7 },
+  /** Plan card selection + success mark — settle, no bounce (DL v3). */
+  pop: tokens.motion.springs.settle,
   /** Press feedback. */
-  press: { damping: 20, stiffness: 340, mass: 0.5 },
+  press: tokens.motion.springs.press,
 } as const;
 
 /** Entrance choreography, in milliseconds from mount. */

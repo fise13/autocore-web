@@ -17,7 +17,7 @@
 
 - [ ] Work orders list updates when web creates/edits an order
 - [ ] Inventory search returns Firestore catalog items
-- [ ] Mission Control overview reflects open orders count
+- [ ] Overview overview reflects open orders count
 
 ## Mobile API
 

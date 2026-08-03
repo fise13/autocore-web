@@ -5,6 +5,8 @@ export type GridColumnId =
   | "serialCode"
   | "configuration"
   | "notes"
+  | "quality"
+  | "photo"
   | "quantity"
   | "transmission"
   | "warehouseLocation"
@@ -33,9 +35,11 @@ export type GridColumnDefinition = {
   width: number;
   editable: boolean;
   align?: "left" | "center";
-  modelField?: "serialCode" | "configuration" | "notes" | "quantity" | "transmission" | "arrivalDate" | "soldDate" | string;
+  modelField?: "serialCode" | "configuration" | "notes" | "quality" | "photoUrls" | "imageUrls" | "quantity" | "transmission" | "arrivalDate" | "soldDate" | string;
   /** When set, the cell editor opens the Domain autocomplete for this category. */
   domainCategory?: import("@/lib/domain/types").DomainCategory;
+  /** Special cell renderers; photo cells never open the text editor overlay. */
+  cellKind?: "text" | "photo";
 };
 
 export function makeSingleCellRange(cell: GridCellAddress): GridRange {

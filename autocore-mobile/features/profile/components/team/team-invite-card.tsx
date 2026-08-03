@@ -65,20 +65,25 @@ export const TeamInviteRow = memo(function TeamInviteRow({
 
         {canManage ? (
           <TeamInlineActions>
-            <Button variant="secondary" size="sm" onPress={() => onShareCode(invite.code)}>
+            <Button native={false} variant="secondary" size="sm" onPress={() => onShareCode(invite.code)}>
               Code
             </Button>
             {invite.token ? (
-              <Button variant="secondary" size="sm" onPress={() => onShareLink(buildJoinUrl(invite.token!))}>
+              <Button
+                native={false}
+                variant="secondary"
+                size="sm"
+                onPress={() => onShareLink(buildJoinUrl(invite.token!))}
+              >
                 Link
               </Button>
             ) : null}
             {onResend && invite.email ? (
-              <Button variant="secondary" size="sm" onPress={onResend}>
+              <Button native={false} variant="secondary" size="sm" onPress={onResend}>
                 Resend
               </Button>
             ) : null}
-            <Button variant="ghost" size="sm" onPress={onDelete}>
+            <Button native={false} variant="ghost" size="sm" onPress={onDelete}>
               Cancel
             </Button>
           </TeamInlineActions>

@@ -1,9 +1,9 @@
 import type { CompanyAppConfig } from '@/types/company-config';
 
 export const SETUP_WIZARD_CATEGORY_PRESETS: CompanyAppConfig['specificCategories'] = [
-  { id: 'gearboxes', name: 'Transmission', mode: 'tracked', groupId: 'aggregates', subcategoryId: 'gearboxes' },
+  { id: 'gearboxes', name: 'Transmissions', mode: 'tracked', groupId: 'aggregates', subcategoryId: 'gearboxes' },
   { id: 'body', name: 'Body', mode: 'quick', groupId: 'parts', subcategoryId: 'body' },
-  { id: 'optics', name: 'Lights', mode: 'quick', groupId: 'parts', subcategoryId: 'optics' },
+  { id: 'optics', name: 'Lighting', mode: 'quick', groupId: 'parts', subcategoryId: 'optics' },
   { id: 'interior', name: 'Interior', mode: 'quick', groupId: 'parts', subcategoryId: 'interior' },
   { id: 'suspension', name: 'Suspension', mode: 'quick', groupId: 'parts', subcategoryId: 'suspension' },
   {

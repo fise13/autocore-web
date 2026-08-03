@@ -262,19 +262,19 @@ export function useDemoChrome() {
     [t],
   );
 
-  const missionControl = useMemo(
+  const overview = useMemo(
     () => ({
-      revenue: t("missionControl.revenue"),
-      orders: t("missionControl.orders"),
-      warehouse: t("missionControl.warehouse"),
-      online: t("missionControl.online"),
-      alerts: t("missionControl.alerts"),
-      incomeExpense: t("missionControl.incomeExpense"),
-      ops7days: t("missionControl.ops7days"),
-      activity: t("missionControl.activity"),
-      opsEvents: t("missionControl.opsEvents"),
-      income: t("missionControl.income"),
-      expense: t("missionControl.expense"),
+      revenue: t("overview.revenue"),
+      orders: t("overview.orders"),
+      warehouse: t("overview.warehouse"),
+      online: t("overview.online"),
+      alerts: t("overview.alerts"),
+      incomeExpense: t("overview.incomeExpense"),
+      ops7days: t("overview.ops7days"),
+      activity: t("overview.activity"),
+      opsEvents: t("overview.opsEvents"),
+      income: t("overview.income"),
+      expense: t("overview.expense"),
     }),
     [t],
   );
@@ -691,7 +691,7 @@ export function useDemoChrome() {
     common,
     operational,
     sync,
-    missionControl,
+    overview,
     scan,
     analytics,
     vehicle,

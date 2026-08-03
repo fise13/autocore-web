@@ -20,13 +20,13 @@ export type TabSpec = {
 /**
  * The tab bar, in order. Fixed on purpose: this is the app's control centre,
  * and a bar people can rearrange is a bar they have to re-learn. Anything not
- * here is reached from Mission or Settings.
+ * here is reached from Overview or Settings.
  */
 export const TAB_SPECS: TabSpec[] = [
   {
     route: 'index',
-    navId: 'mission',
-    label: 'Mission',
+    navId: 'overview',
+    label: 'Overview',
     sf: { default: 'square.grid.2x2', selected: 'square.grid.2x2.fill' },
   },
   {

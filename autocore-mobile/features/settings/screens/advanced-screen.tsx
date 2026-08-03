@@ -1,42 +1,59 @@
-import { View } from 'react-native';
+import { CollectionRow, ListSection } from '@/components/ui';
+import { useGuardedRouter } from '@/hooks/use-guarded-router';
+import { haptics } from '@/theme';
 
-import { Button, Text, toast } from '@/components/ui';
-import { haptics, rhythm } from '@/theme';
-
-import { ProfileMetaCard, ProfileMetaRow } from '@/features/profile/components/profile-meta-card';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
+import { settingsRouteHref } from '../navigation';
 
 export function AdvancedScreen() {
-  const notifyComingSoon = (feature: string) => {
-    haptics.selection();
-    toast({ title: `${feature} coming soon`, description: 'This feature will be available in a future update.' });
-  };
+  const router = useGuardedRouter();
 
   return (
     <ProfileScreenShell title="Advanced" subtitle="Export, sync, and data cleanup">
-      <ProfileMetaCard title="Export">
-        <ProfileMetaRow label="Formats" value="Excel · CSV · JSON" />
-        <View style={{ paddingTop: rhythm.inline }}>
-          <Button variant="secondary" onPress={() => notifyComingSoon('Export')}>
-            Export data
-          </Button>
-        </View>
-      </ProfileMetaCard>
+      <ListSection
+        title="Data"
+        footer="Clear local caches without affecting cloud data."
+      >
+        <CollectionRow
+          title="Cache"
+          subtitle="Offline data and performance"
+          onPress={() => {
+            haptics.selection();
+            router.push(settingsRouteHref('cache'));
+          }}
+        />
+        {__DEV__ ? (
+          <CollectionRow
+            title="Diagnostics"
+            subtitle="Developer tools"
+            onPress={() => {
+              haptics.selection();
+              router.push(settingsRouteHref('diagnostics'));
+            }}
+          />
+        ) : null}
+      </ListSection>
 
-      <ProfileMetaCard title="Desktop connection">
-        <ProfileMetaRow label="Status" value="Not connected" />
-        <Text variant="caption" color="muted" style={{ lineHeight: 18, marginTop: rhythm.inline }}>
-          AutoCore Desktop doesn't sync with the mobile app yet. Use the web version for full
-          control over your company's data.
-        </Text>
-      </ProfileMetaCard>
+      <ListSection
+        title="Export"
+        footer="Full export formats are available in the AutoCore web app."
+      >
+        <CollectionRow title="Formats" value="Excel · CSV · JSON" showChevron={false} />
+      </ListSection>
 
-      <ProfileMetaCard title="Data cleanup" tone="danger">
-        <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-          Removing company modules is only available in the AutoCore web version. This protects
-          against accidental data loss on mobile devices.
-        </Text>
-      </ProfileMetaCard>
+      <ListSection
+        title="Desktop"
+        footer="AutoCore Desktop doesn't sync with mobile yet. Use the web version for full company control."
+      >
+        <CollectionRow title="Connection" value="Not connected" showChevron={false} />
+      </ListSection>
+
+      <ListSection
+        title="Cleanup"
+        footer="Removing company modules is only available on the web, to protect against accidental data loss."
+      >
+        <CollectionRow title="Module cleanup" value="Web only" showChevron={false} />
+      </ListSection>
     </ProfileScreenShell>
   );
 }

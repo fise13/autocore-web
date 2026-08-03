@@ -3,7 +3,7 @@
 import { useId, useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
-import { McStatusDonut, McWeekBars } from "@/components/mission-control/animation";
+import { McStatusDonut, McWeekBars } from "@/components/overview/animation";
 import {
   type ChartConfig,
   ChartContainer,
@@ -14,7 +14,7 @@ import {
   McPanel,
   McPanelBody,
   McPanelHeader,
-} from "@/components/mission-control/dashboard/dashboard-panel";
+} from "@/components/overview/dashboard/dashboard-panel";
 import {
   Select,
   SelectContent,

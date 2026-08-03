@@ -13,8 +13,8 @@ import { AuthGate } from '@/authentication/auth-gate';
 import { AuthProvider } from '@/authentication/auth-provider';
 import { InAppBannerProvider } from '@/components/notifications';
 import { RootNavigator } from '@/components/navigation/root-navigator';
-import { ThemeProvider } from '@/hooks';
-import { ToastProvider } from '@/components/ui';
+import { ThemeProvider } from '@/hooks/use-theme';
+import { ToastProvider } from '@/components/ui/toast';
 import { markStartup } from '@/lib/performance/startup-tracer';
 import { queryClient } from '@/lib/query-client';
 import {
@@ -25,7 +25,7 @@ import {
 import { ensureAsyncStorageMigrated } from '@/lib/storage/migrate-async-storage';
 import { warmSessionCacheFromDisk } from '@/lib/startup/warm-session-cache';
 
-export { ErrorBoundary } from 'expo-router';
+export { ErrorBoundary } from '@/components/error-boundary-screen';
 
 markStartup('js_bundle_eval');
 void ensureAsyncStorageMigrated();

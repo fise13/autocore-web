@@ -15,7 +15,7 @@ import { formatUsd } from "@/lib/marketing/landing-demo-snapshot";
 import { cn } from "@/lib/utils";
 
 /**
- * Real accounting UI (OverviewCards + OperationsTable) — not Mission Control.
+ * Real accounting UI (OverviewCards + OperationsTable) — not Overview.
  */
 export function ProductFinanceSurface({ className }: { className?: string }) {
   const chrome = useDemoChrome();

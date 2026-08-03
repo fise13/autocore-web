@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Text as RNText, type TextProps as RNTextProps, type TextStyle } from 'react-native';
 
-import { useDesignLanguage } from '@/hooks';
+import { useDesignLanguage } from '@/hooks/use-design-language';
 import type { TypographyVariant } from '@/theme';
 
 type TextProps = RNTextProps & {
@@ -18,11 +18,16 @@ const colorMap = {
   inherit: null,
 } as const;
 
+/**
+ * Autocore Text — Dynamic Type applied once by React Native.
+ * Do not manually multiply fontSize by fontScale (that double-scales).
+ */
 export const Text = memo(function Text({
   variant = 'body',
   color = 'primary',
   style,
   maxFontSizeMultiplier = 1.35,
+  allowFontScaling = true,
   ...props
 }: TextProps) {
   const dl = useDesignLanguage();
@@ -30,23 +35,18 @@ export const Text = memo(function Text({
   const colorKey = colorMap[color];
   const themeColor = colorKey ? dl.colors[colorKey as keyof typeof dl.colors] : undefined;
 
-  const scaledStyle: TextStyle = {
-    fontSize: dl.scaledSize(variantStyle.fontSize ?? 14),
-    lineHeight: dl.scaledSize(variantStyle.lineHeight ?? 20),
-  };
-
   return (
     <RNText
+      allowFontScaling={allowFontScaling}
+      maxFontSizeMultiplier={maxFontSizeMultiplier}
       style={[
         {
           fontFamily: dl.typeFamily.sans,
           color: themeColor ?? dl.colors.foreground,
         },
         variantStyle,
-        scaledStyle,
         style,
       ]}
-      maxFontSizeMultiplier={maxFontSizeMultiplier}
       {...props}
     />
   );

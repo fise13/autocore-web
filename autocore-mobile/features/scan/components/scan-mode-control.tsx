@@ -23,8 +23,7 @@ const MODES: Array<{ id: ScanCaptureMode; label: string }> = [
 const PADDING = 3;
 const HEIGHT = 36;
 
-/** Mode strip — brand primary thumb. */
-export function ScanModeControl({ mode, onChange }: ScanModeControlProps) {
+function RnSegmentedScanMode({ mode, onChange }: ScanModeControlProps) {
   const chrome = useScanChromeColors();
   const reducedMotion = useReducedMotion();
   const [trackWidth, setTrackWidth] = useState(0);
@@ -120,4 +119,9 @@ export function ScanModeControl({ mode, onChange }: ScanModeControlProps) {
       })}
     </View>
   );
+}
+
+/** Mode strip — RN only. `@expo/ui` SegmentedControl Host froze sibling taps. */
+export function ScanModeControl({ mode, onChange }: ScanModeControlProps) {
+  return <RnSegmentedScanMode mode={mode} onChange={onChange} />;
 }

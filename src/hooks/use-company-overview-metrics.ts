@@ -9,7 +9,7 @@ import { useEmployeesRealtime } from "@/hooks/use-employees-realtime";
 import { useMotorsRealtime } from "@/hooks/use-motors-realtime";
 import { useOperationsRealtime } from "@/hooks/use-operations-realtime";
 import { can, canViewEmployees } from "@/lib/auth/permissions";
-import { computeOverviewMetrics } from "@/lib/mission-control/compute-overview-metrics";
+import { computeOverviewMetrics } from "@/lib/overview/compute-overview-metrics";
 import { createMotorRepository } from "@/infrastructure/firestore/motor-repository";
 import { createFinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
 

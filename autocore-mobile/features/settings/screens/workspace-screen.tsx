@@ -1,13 +1,11 @@
-import { useState } from 'react';
-
 import { useAuth } from '@/authentication/auth-provider';
 import { useGuardedRouter } from '@/hooks/use-guarded-router';
 import { useSession, useActiveCompanyName } from '@/hooks';
 import { useEntitlement } from '@/hooks/use-entitlement';
 import { switchActiveCompany } from '@/services/firestore/company-membership-service';
 import { NotificationService } from '@/services/notifications';
+import { presentOrganizationSwitcher } from '@/features/organization/present-organization-switcher';
 import { haptics } from '@/theme';
-import { CompanySwitcherSheet } from '@/features/organization/components/company-switcher-sheet';
 
 import { settingsRouteHref } from '../navigation';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
@@ -21,7 +19,6 @@ export function WorkspaceScreen() {
   const { profile, companyId } = useSession();
   const { companyName, isLoading: isCompanyNameLoading } = useActiveCompanyName();
   const { entitlement } = useEntitlement();
-  const [switcherOpen, setSwitcherOpen] = useState(false);
 
   const canSwitchOrg = memberships.length > 1;
 
@@ -32,7 +29,20 @@ export function WorkspaceScreen() {
         role={profile?.role ?? 'employee'}
         isOwner={profile?.isCompanyOwner === true}
         isLoading={isCompanyNameLoading}
-        onPress={canSwitchOrg ? () => setSwitcherOpen(true) : undefined}
+        onPress={
+          canSwitchOrg
+            ? () => {
+                haptics.selection();
+                presentOrganizationSwitcher({
+                  memberships,
+                  activeCompanyId: companyId,
+                  userId: firebaseUser?.uid,
+                  refreshProfile,
+                  router,
+                });
+              }
+            : undefined
+        }
         showSwitcherHint={canSwitchOrg}
       />
 
@@ -54,7 +64,6 @@ export function WorkspaceScreen() {
           haptics.selection();
         }}
       />
-      <CompanySwitcherSheet open={switcherOpen} onClose={() => setSwitcherOpen(false)} />
     </ProfileScreenShell>
   );
 }

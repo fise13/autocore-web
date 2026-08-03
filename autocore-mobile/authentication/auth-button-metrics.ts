@@ -13,3 +13,5 @@ export const AUTH_HERO_BUTTON_HEIGHT = 58;
 export const AUTH_HERO_BUTTON_ICON_SIZE = 21;
 export const AUTH_HERO_BUTTON_FONT_SIZE = 17;
 export const AUTH_HERO_BUTTON_LINE_HEIGHT = 22;
+/** Equal stack gap between hero controls (8pt system). */
+export const AUTH_HERO_STACK_GAP = 16;

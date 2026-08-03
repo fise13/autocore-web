@@ -9,7 +9,7 @@ import {
   PackageIcon,
   UserRoundIcon,
 } from '@/assets/icons';
-import { Loading, SectionHeader, Surface, Text } from '@/components/ui';
+import { ListSkeleton, SectionHeader, Surface, Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { haptics, rhythm } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
@@ -69,7 +69,7 @@ export function SearchIdle({
   if (isBootstrapping && !hasData) {
     return (
       <View style={{ paddingHorizontal: searchLayout.pad, paddingTop: 24 }}>
-        <Loading message="Loading catalog…" />
+        <ListSkeleton rows={6} />
       </View>
     );
   }

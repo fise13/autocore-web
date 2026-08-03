@@ -1,36 +1,24 @@
 /**
- * Unified screen rhythm — every tab and stack screen shares these values.
- * Feature `layout.ts` files must alias this object (no local overrides).
+ * Unified screen rhythm — thin aliases of tokens (DL v3).
+ * Feature layout files must alias this object (no local spacing overrides).
  */
-import { radius } from './radius';
-import { spacing } from './spacing';
-import { spring, duration } from './animations';
+import { tokens } from './tokens';
 
 /** Unified screen rhythm — do not confuse with breakpoints `screen` dimensions */
 export const rhythm = {
-  /** Horizontal content inset */
-  pad: spacing[5],
-  /** Vertical gap between major sections */
-  section: spacing[6],
-  /** Gap inside cards / stacks */
-  stack: spacing[3],
-  /** Row / chip gaps */
-  inline: spacing[2],
-  /** Tight meta gaps */
-  tight: spacing[1.5],
-  /** Micro gaps (icon + label) */
-  micro: spacing[1],
+  pad: tokens.space.screenX,
+  section: tokens.space.section,
+  stack: tokens.space.stack,
+  inline: tokens.space.inline,
+  tight: tokens.space[1.5],
+  micro: tokens.space.micro,
 
-  hairline: 1,
+  hairline: tokens.control.hairline,
 
-  /** Primary surface radius — web `rounded-xl` (~14px) */
-  cardRadius: radius.xl,
-  /** Nested / compact surfaces */
-  radius: radius.xl,
-  /** Sheets, floating panels, tab pill */
-  panelRadius: radius['3xl'],
-  /** Hero / balance blocks */
-  heroRadius: radius['2xl'],
+  cardRadius: tokens.radius.group,
+  radius: tokens.radius.group,
+  panelRadius: tokens.radius.sheet,
+  heroRadius: tokens.radius.sheet,
 
   logo: 36,
   logoSm: 32,
@@ -38,6 +26,7 @@ export const rhythm = {
   iconBox: 32,
   iconTile: 28,
 
+  /** Prefer typography.title1 / footnote / sectionLabel — kept for existing layout math */
   pageTitle: 28,
   pageTitleLineHeight: 34,
   pageSubtitle: 13,
@@ -50,34 +39,31 @@ export const rhythm = {
   value: 14,
   valueStrong: 15,
 
-  rowMinHeight: 48,
+  rowMinHeight: tokens.control.heightLg,
   actionTile: 80,
-  searchHeight: 48,
+  searchHeight: tokens.control.heightLg,
   chipHeight: 36,
   filterHeight: 34,
 
-  headerTop: spacing[2],
-  headerBottom: spacing[3],
+  headerTop: tokens.space[2],
+  headerBottom: tokens.space[3],
 
-  /** Extra scroll padding above floating tab bar (use with useFloatingTabBarInset) */
-  tabBarBreathing: spacing[2],
+  tabBarBreathing: tokens.space[2],
 
-  cardPadX: spacing[3.5],
-  cardPadY: spacing[3],
+  cardPadX: tokens.space[3.5],
+  cardPadY: tokens.space[3],
 } as const;
 
 /**
- * Shared motion — hubs may opt into light enter via ProductScreenShell /
- * useFadeIn. List churn stays quiet (`enabled: false` for useScreenEnter).
+ * Shared motion — hubs stay quiet. Springs bind to the 5-spring DL table.
  */
 export const screenMotion = {
-  /** Master switch for list / screen-enter animations */
   enabled: false,
-  duration: duration.instant,
+  duration: tokens.motion.duration.instant,
   translateY: 0,
   stagger: 0,
-  spring: spring.gentle,
-  press: spring.snappy,
+  spring: tokens.motion.springs.settle,
+  press: tokens.motion.springs.press,
 } as const;
 
 export type ScreenTokens = typeof rhythm;

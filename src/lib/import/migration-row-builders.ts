@@ -153,7 +153,7 @@ export function buildInventoryInputFromMigrationRow(
     unit: "pcs",
     purchasePrice: parsePrice(enriched.price),
     sellPrice: parsePrice(enriched.price),
-    currency: enriched.currency?.trim() || "KZT",
+    currency: enriched.currency?.trim() || "USD",
     notes: notes || undefined,
     actorUserId,
     type: recordType === "consumable" ? "consumable" : "generic",

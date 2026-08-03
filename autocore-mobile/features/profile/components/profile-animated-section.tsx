@@ -1,10 +1,16 @@
-import type { ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { useEffect, useState, type ReactNode } from 'react';
+import { LayoutChangeEvent, Pressable, View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { Text } from '@/components/ui';
-import { useTheme } from '@/hooks';
+import { useMotion, useTheme } from '@/hooks';
 import { haptics } from '@/theme';
-import { radius } from '@/theme/radius';
+import { tokens } from '@/theme/tokens';
 
 type ProfileSegmentedControlProps<T extends string> = {
   value: T;
@@ -13,23 +19,76 @@ type ProfileSegmentedControlProps<T extends string> = {
   delay?: number;
 };
 
+/**
+ * Theme / Team segmented control — sliding pill via Reanimated timing (no bounce).
+ */
 export function ProfileSegmentedControl<T extends string>({
   value,
   onChange,
   options,
 }: ProfileSegmentedControlProps<T>) {
   const { colors } = useTheme();
+  const motion = useMotion();
+  const [trackWidth, setTrackWidth] = useState(0);
+  const index = Math.max(
+    0,
+    options.findIndex((option) => option.value === value),
+  );
+  const count = Math.max(options.length, 1);
+  const pad = 4;
+  const gap = 4;
+  const segmentWidth =
+    trackWidth > 0 ? (trackWidth - pad * 2 - gap * (count - 1)) / count : 0;
+
+  const translateX = useSharedValue(pad);
+
+  useEffect(() => {
+    if (segmentWidth <= 0) return;
+    const next = pad + index * (segmentWidth + gap);
+    translateX.value = motion.reduced
+      ? next
+      : withTiming(next, {
+          duration: motion.duration.normal,
+          easing: Easing.out(Easing.cubic),
+        });
+  }, [index, motion.duration.normal, motion.reduced, segmentWidth, translateX]);
+
+  const pillStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+    width: segmentWidth,
+    opacity: segmentWidth > 0 ? 1 : 0,
+  }));
+
+  const onTrackLayout = (event: LayoutChangeEvent) => {
+    setTrackWidth(event.nativeEvent.layout.width);
+  };
 
   return (
     <View
+      onLayout={onTrackLayout}
       style={{
         flexDirection: 'row',
-        borderRadius: radius['3xl'],
+        borderRadius: tokens.radius.full,
         backgroundColor: colors.surfaceElevated,
-        padding: 4,
-        gap: 4,
+        padding: pad,
+        gap,
+        position: 'relative',
       }}
     >
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          {
+            position: 'absolute',
+            top: pad,
+            bottom: pad,
+            left: 0,
+            borderRadius: tokens.radius.full,
+            backgroundColor: colors.card,
+          },
+          pillStyle,
+        ]}
+      />
       {options.map((option) => {
         const active = value === option.value;
         return (
@@ -43,18 +102,19 @@ export function ProfileSegmentedControl<T extends string>({
             }}
             style={{
               flex: 1,
-              minHeight: 40,
-              borderRadius: radius['2xl'],
+              minHeight: 36,
+              borderRadius: tokens.radius.full,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: active ? colors.card : 'transparent',
+              zIndex: 1,
             }}
           >
             <Text
-              variant="caption"
+              variant="footnote"
               style={{
                 fontWeight: active ? '600' : '500',
                 fontSize: 13,
+                letterSpacing: -0.1,
                 color: active ? colors.foreground : colors.mutedForeground,
               }}
             >

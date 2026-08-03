@@ -11,7 +11,7 @@ import {
 } from 'firebase/firestore';
 
 import { normalizeCompanyId } from '@/lib/company-id';
-import { toDateFromFirestore } from '@/lib/firestore-timestamp';
+import { dateMs, toDateFromFirestore } from '@/lib/firestore-timestamp';
 import { notifyFirestoreSnapshotError } from '@/lib/firestore/snapshot-errors';
 import { getFirebaseDb } from '@/services/firebase';
 import type { MotorEntity, MotorFilters } from '@/types/motor';
@@ -83,14 +83,14 @@ function dedupeMotors(motors: MotorEntity[]): MotorEntity[] {
       byIdentity.set(key, motor);
       continue;
     }
-    const existingUpdated = existing.updatedAt?.getTime() ?? existing.createdAt?.getTime() ?? 0;
-    const nextUpdated = motor.updatedAt?.getTime() ?? motor.createdAt?.getTime() ?? 0;
+    const existingUpdated = dateMs(existing.updatedAt, dateMs(existing.createdAt));
+    const nextUpdated = dateMs(motor.updatedAt, dateMs(motor.createdAt));
     if (nextUpdated >= existingUpdated) byIdentity.set(key, motor);
   }
 
   return Array.from(byIdentity.values()).sort((left, right) => {
-    const leftTime = left.updatedAt?.getTime() ?? left.createdAt?.getTime() ?? 0;
-    const rightTime = right.updatedAt?.getTime() ?? right.createdAt?.getTime() ?? 0;
+    const leftTime = dateMs(left.updatedAt, dateMs(left.createdAt));
+    const rightTime = dateMs(right.updatedAt, dateMs(right.createdAt));
     return rightTime - leftTime;
   });
 }
@@ -181,7 +181,14 @@ export function createMotorRepository() {
     ) {
       const companyId = normalizeCompanyId(filters.companyId);
       const merged = new Map<string, MotorEntity>();
-      const sourceReady = { group: false, user: false };
+      /**
+       * Available-stock listeners must NOT open users/{uid}/motors.
+       * That path is an unbounded sold archive and can freeze the JS thread for
+       * seconds on snapshot delivery; company collectionGroup already has live stock.
+       */
+      const skipUserArchive =
+        filters.availability === 'available' && !filters.soldOnly && Boolean(companyId);
+      const sourceReady = { group: false, user: skipUserArchive };
 
       const emit = () => {
         if (!sourceReady.group || !sourceReady.user) return;
@@ -221,8 +228,15 @@ export function createMotorRepository() {
         },
       );
 
+      if (skipUserArchive) {
+        return () => {
+          unsubGroup();
+        };
+      }
+
+      const userQuery = query(collection(db, 'users', filters.uid, 'motors'), limit(500));
       const unsubUser = onSnapshot(
-        collection(db, 'users', filters.uid, 'motors'),
+        userQuery,
         (snapshot) => {
           ingest('user', snapshot.docs);
           sourceReady.user = true;

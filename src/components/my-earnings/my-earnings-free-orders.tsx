@@ -7,7 +7,7 @@ import {
   McPanel,
   McPanelBody,
   McPanelHeader,
-} from "@/components/mission-control/dashboard/dashboard-panel";
+} from "@/components/overview/dashboard/dashboard-panel";
 import { WorkOrder } from "@/domain/work-order";
 import { userCopy } from "@/lib/user-copy";
 

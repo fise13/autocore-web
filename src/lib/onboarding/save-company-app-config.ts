@@ -21,7 +21,7 @@ async function saveCompanyAppConfigViaApi(
 ): Promise<CompanyAppConfig> {
   const user = getFirebaseAuth().currentUser;
   if (!user) {
-    throw new Error("Нет активной сессии");
+    throw new Error("No active session");
   }
 
   const token = await user.getIdToken();
@@ -40,7 +40,7 @@ async function saveCompanyAppConfigViaApi(
   } | null;
 
   if (!response.ok) {
-    const error = new Error(payload?.error ?? "Не удалось сохранить настройки") as Error & {
+    const error = new Error(payload?.error ?? "Could not save settings") as Error & {
       status?: number;
     };
     error.status = response.status;

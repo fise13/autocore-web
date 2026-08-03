@@ -9,6 +9,6 @@ export const iconSizes = {
   xl: layout.iconSize.xl,
 } as const;
 
-export const defaultIconStrokeWidth = 2;
+export const defaultIconStrokeWidth = 1.5;
 
 export type IconSize = keyof typeof iconSizes;

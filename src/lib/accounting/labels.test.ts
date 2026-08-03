@@ -33,10 +33,18 @@ describe("accounting category labels", () => {
 
   it("keeps custom categories as-is", () => {
     setActiveUserCopyLocale("ru");
-    assert.equal(operationCategoryLabel("реклама"), "реклама");
+    assert.equal(operationCategoryLabel("канцтовары"), "канцтовары");
 
     setActiveUserCopyLocale("en");
-    assert.equal(operationCategoryLabel("advertising"), "advertising");
+    assert.equal(operationCategoryLabel("office supplies"), "office supplies");
+  });
+
+  it("translates suggestion category keys", () => {
+    setActiveUserCopyLocale("en");
+    assert.equal(operationCategoryLabel("advertising"), "Advertising");
+
+    setActiveUserCopyLocale("ru");
+    assert.equal(operationCategoryLabel("advertising"), "Реклама");
   });
 
   it("resolves labels from either locale back to canonical keys", () => {

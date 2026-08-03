@@ -20,6 +20,18 @@ export const userCopyRu = {
     warehouseSaving: "Синхронизация со складом…",
   },
 
+  gridPhotos: {
+    addPhoto: "Добавить фото",
+    changePhoto: "Изменить фото",
+    takePhoto: "Сделать фото",
+    chooseFile: "Выбрать файл",
+    remove: "Удалить",
+    uploading: "Загрузка…",
+    uploadFailed: "Не удалось загрузить фото",
+    attachAria: "Прикрепить фото",
+    saveRowFirst: "Сначала сохраните строку, затем прикрепите фото",
+  },
+
   auth: {
     signIn: "Войти",
     signUp: "Зарегистрироваться",
@@ -144,6 +156,13 @@ export const userCopyRu = {
     verifyLogout: "Выйти",
     verifySendFailed: "Не удалось отправить код.",
     waitToken: "Подождите",
+    journeySteps: {
+      verifyEmail: "Подтверждение email",
+      profileName: "Ваш профиль",
+      company: "Команда и доступ",
+      setupWizard: "Настройка пространства",
+      businessImport: "Шаг 5 · Перенос данных",
+    },
   },
 
   company: {
@@ -357,7 +376,7 @@ export const userCopyRu = {
     sidebarBlocks: {
       navigation: {
         label: "Разделы",
-        description: "Центр управления, моторы, склад…",
+        description: "Обзор, моторы, склад…",
       },
       context: {
         label: "Действия раздела",
@@ -585,21 +604,20 @@ export const userCopyRu = {
     company: "Компания",
     displayCurrency: {
       title: "Валюта отображения",
-      description:
-        "Суммы в бухгалтерии и на дашборде хранятся в тенге и пересчитываются по актуальному курсу при показе в рублях или долларах.",
+      description: "Суммы в финансах, на дашборде и в документах отображаются в долларах США (USD).",
       loadingRates: "Загрузка курсов…",
       saved: "Валюта отображения сохранена",
       saveError: "Не удалось сохранить валюту",
-      fromBase: (amount: string) => `из ${amount} ₸`,
+      fromBase: (amount: string) => `из ${amount}`,
       exampleTitle: "Пример с текущей настройкой",
       ratePrefix: "Курс:",
       fallbackRate: "Используется резервный курс — обновление с сервера недоступно.",
-      kztLabel: "Тенге",
-      kztDescription: "Казахстан · ₸",
-      rubLabel: "Рубли",
-      rubDescription: "Россия · ₽",
+      kztLabel: "Доллары",
+      kztDescription: "США · $",
+      rubLabel: "Доллары",
+      rubDescription: "США · $",
       usdLabel: "Доллары",
-      usdDescription: "Международные расчёты · $",
+      usdDescription: "США · $",
     },
     appConfigUi: {
       noUser: "Нет пользователя",
@@ -993,6 +1011,9 @@ export const userCopyRu = {
         supplier: "Поставщик",
         barcode: "Штрихкод",
         location: "Место",
+        notes: "Заметки",
+        quality: "Качество",
+        photo: "Фото",
         minStock: "Мин. запас",
         updated: "Обновлено",
       },
@@ -1443,6 +1464,16 @@ export const userCopyRu = {
       payroll: "Зарплата",
       motor_import: "Закупка моторов",
       warehouse_import: "Закупка на склад",
+      advertising: "Реклама",
+      transport: "Транспорт",
+      food: "Еда",
+      purchase: "Закупка",
+      logistics: "Логистика",
+      other: "Прочее",
+    },
+    categorySuggestions: {
+      salaryFor: (employee: string) => `зарплата ${employee}`,
+      advanceFor: (employee: string) => `аванс ${employee}`,
     },
     sellFinancial: {
       cancel: "Отмена",
@@ -1546,6 +1577,8 @@ export const userCopyRu = {
         serial: "Номер двигателя",
         configuration: "Комплектация",
         notes: "Особые отметки",
+        quality: "Качество",
+        photo: "Фото",
         quantity: "Кол-во",
         transmission: "Коробка",
         location: "Место",
@@ -2083,8 +2116,8 @@ export const userCopyRu = {
       pricingFixed: "Фикс. сумма → зарплата",
       pricingHourly: "Почасовая → зарплата",
       normHours: "Нормо-часы",
-      ratePerHour: "Ставка, ₸/час",
-      laborAmount: "Сумма работы, ₸",
+      ratePerHour: "Ставка, $/час",
+      laborAmount: "Сумма работы, $",
       assignee: "Исполнитель",
       assigneePlaceholder: "Сотрудник или ФИО",
       assigneeEmpty: "Сотрудник не найден — можно ввести имя вручную",
@@ -2101,7 +2134,7 @@ export const userCopyRu = {
       namePlaceholder: "Название",
       nameEmpty: "Можно ввести название вручную",
       quantityAria: "Количество",
-      pricePlaceholder: "Цена, ₸",
+      pricePlaceholder: "Цена, $",
       priceAria: "Цена",
       partHint:
         "Нет на складе — введите название и цену вручную. Со склада подставятся артикул и цена продажи.",
@@ -2121,7 +2154,7 @@ export const userCopyRu = {
       selectEllipsis: "Выберите…",
       itemName: "Название",
       itemNamePlaceholder: "Генератор Toyota 1NZ",
-      priceTenge: "Цена, ₸",
+      priceUsd: "Цена, $",
       warranty: "Гарантия",
       noWarranty: "Без гарантии",
       catalogEmpty: "Позиции каталога не добавлены",
@@ -2524,7 +2557,7 @@ export const userCopyRu = {
     },
   },
 
-  missionControl: {
+  overview: {
     employee: {
       greetingMorning: "Доброе утро",
       greetingDay: "Добрый день",
@@ -2878,10 +2911,10 @@ export const userCopyRu = {
     noPlate: "Без номера",
     orderNumber: (number: string | number) => `Наряд №${number}`,
     rateSuffix: (label: string) => ` · ставка ${label}`,
-    hourlyRate: (rate: string | number) => `${rate} ₸/ч`,
+    hourlyRate: (rate: string | number) => `$${rate}/ч`,
     paidOrdersHint: (count: number) =>
       count === 1 ? `по ${count} наряду` : `по ${count} нарядам`,
-    pendingSuffix: " ₸ к выплате",
+    pendingSuffix: " к выплате",
     shiftUpdateFailed: "Не удалось обновить смену",
     noAccessTitle: "Нет доступа",
     emptyStates: {
@@ -3223,8 +3256,8 @@ export const userCopyRu = {
     proRightsDescription:
       "Журнал активности доступен на тарифе Pro для ролей с доступом к команде.",
     feedTitle: "Лента событий",
-    feedDescription: "Компактный вид, как в центре управления",
-    missionControl: "Центр управления",
+    feedDescription: "Компактный вид, как в обзоре",
+    overview: "Обзор",
     emptyTitle: "Пока тихо",
     emptyDescription:
       "События появятся после действий в складе, бухгалтерии и заказ-нарядах.",
@@ -3277,6 +3310,11 @@ export const userCopyRu = {
     noRowsYet: "Строк пока нет",
     previewDropHint:
       "Добавьте фото или Excel — распознанные двигатели появятся здесь автоматически.",
+    readyNoRowsHint:
+      "Файлы загружены, но ещё не разобраны. Нажмите «Повторить разбор» или вернитесь к списку.",
+    retryParse: "Повторить разбор",
+    processFailed: "Не удалось запустить разбор",
+    backToList: "К списку импортов",
     colBrand: "Бренд",
     colCode: "Код",
     colSerial: "Серийный",
@@ -3461,6 +3499,8 @@ export const userCopyRu = {
       leaveTitle: "Покинуть организацию",
       leaveDescription: (name: string) =>
         `Вы потеряете доступ к «${name}». Данные команды сохранятся.`,
+      leaveOwnerDescription: (name: string) =>
+        `Как единственный владелец «${name}», вы не можете выйти, сохранив компанию. Удалите её ниже или сначала передайте владение другому участнику.`,
       leaveAction: "Покинуть",
       deleteTitle: "Удалить организацию",
       deleteDescription:
@@ -3469,6 +3509,10 @@ export const userCopyRu = {
       leaveConfirmTitle: "Покинуть организацию?",
       leaveConfirmBody: (name: string) =>
         `Вы потеряете доступ к ${name}. Данные организации останутся у команды.`,
+      leaveOwnerConfirmBody: (name: string) =>
+        `Если вы единственный владелец ${name}, выход заблокирован. Удалите организацию или сначала назначьте другого владельца.`,
+      soleOwnerLeaveHint:
+        "Вы единственный владелец. Удалите организацию ниже или сначала передайте владение другому участнику.",
       cancel: "Отмена",
       deleteConfirmTitle: "Удалить организацию навсегда?",
       deleteConfirmBody: (name: string) =>
@@ -3791,6 +3835,17 @@ export const userCopyRu = {
         modeQuick: "Быстро",
         modeTrackedAria: "С учётом склада",
         modeQuickAria: "Без учёта склада",
+        names: {
+          gearboxes: "КПП",
+          turbos: "Турбины",
+          reducers: "Редукторы",
+          transfer_cases: "Раздатки",
+          body: "Кузовщина",
+          optics: "Оптика",
+          interior: "Салон",
+          suspension: "Подвеска",
+          electrical: "Электрика",
+        },
       },
       warranty: {
         customHint: "На каждой сделке",

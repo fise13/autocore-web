@@ -1,8 +1,7 @@
-import { Pressable, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
+import { View } from 'react-native';
 
-import { ScanSearchIcon } from '@/assets/icons';
-import { Text } from '@/components/ui';
+import { Button, Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { scanContextStore, type ScanOrderResult } from '@/services/scan';
 import { haptics } from '@/theme';
@@ -22,15 +21,17 @@ export function ScanLauncherButton({
   compact,
   onScanResult,
 }: ScanLauncherButtonProps) {
-  const { colors } = useTheme();
   const router = useRouter();
   const isOrderFlow = onScanResult != null;
   const buttonLabel = label ?? (isOrderFlow ? 'Scan Part' : 'Scan');
 
   return (
-    <Pressable
-      accessibilityRole="button"
+    <Button
+      native={false}
+      variant="secondary"
+      size={compact ? 'sm' : 'default'}
       accessibilityLabel={buttonLabel}
+      inline
       onPress={() => {
         haptics.light();
         scanContextStore.begin({
@@ -39,28 +40,11 @@ export function ScanLauncherButton({
           orderLabel,
           onComplete: onScanResult,
         });
-        router.push(
-          (isOrderFlow ? '/(tabs)/orders/scan' : '/(tabs)/scan') as Href,
-        );
-      }}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        minHeight: compact ? 40 : 44,
-        paddingHorizontal: compact ? 12 : 14,
-        borderRadius: 12,
-        backgroundColor: `${colors.primary}14`,
-        borderWidth: 1,
-        borderColor: `${colors.primary}30`,
+        router.push((isOrderFlow ? '/(tabs)/orders/scan' : '/(tabs)/scan') as Href);
       }}
     >
-      <ScanSearchIcon size="sm" color={colors.primary} strokeWidth={1.85} />
-      <Text variant="caption" style={{ fontWeight: '700', color: colors.primary }}>
-        {buttonLabel}
-      </Text>
-    </Pressable>
+      {buttonLabel}
+    </Button>
   );
 }
 

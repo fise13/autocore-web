@@ -23,7 +23,9 @@ export function assertWorkOrderStatusTransition(
   next: WorkOrderStatus,
 ) {
   if (!canTransitionWorkOrderStatus(current, next)) {
-    throw new Error(`Недопустимый переход заказ-наряда: ${current} → ${next}`);
+    throw new Error(
+      `Invalid work order transition: ${current} → ${next}. Allowed from ${current}: ${(ALLOWED_TRANSITIONS[current] ?? []).join(", ") || "none"}.`,
+    );
   }
 }
 

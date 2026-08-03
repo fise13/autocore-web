@@ -21,20 +21,11 @@ export function SettingsSectionTitle({ title, subtitle, tone = 'default' }: Sett
 
   return (
     <View style={{ paddingHorizontal: settingsLayout.pad, gap: 4 }}>
-      <Text
-        variant="caption"
-        style={{
-          fontSize: 12,
-          fontWeight: '600',
-          letterSpacing: 0.4,
-          textTransform: 'uppercase',
-          color: titleColor,
-        }}
-      >
+      <Text variant="sectionLabel" style={{ color: titleColor }}>
         {title}
       </Text>
       {subtitle ? (
-        <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
+        <Text variant="footnote" color="muted">
           {subtitle}
         </Text>
       ) : null}

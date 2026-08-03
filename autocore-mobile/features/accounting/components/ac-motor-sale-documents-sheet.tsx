@@ -283,6 +283,7 @@ function DocGroup({
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
         <ActionIconButton
           icon={Share2Icon}
+          systemImage="square.and.arrow.up"
           accessibilityLabel={`Share: ${title}`}
           loading={busy === shareAction}
           disabled={disabled || (busy !== null && busy !== shareAction)}
@@ -290,6 +291,7 @@ function DocGroup({
         />
         <ActionIconButton
           icon={PrinterIcon}
+          systemImage="printer"
           accessibilityLabel={`Print: ${title}`}
           loading={busy === printAction}
           disabled={disabled || (busy !== null && busy !== printAction)}

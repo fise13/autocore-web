@@ -31,7 +31,7 @@ The main systems are:
 ## Approved product decisions
 
 - Use `Engine` in customer-facing UI and `Motor` only for contextual warehouse/internal serialized-unit language.
-- Keep `Mission Control` untranslated as a product name.
+- Keep `Overview` untranslated as a product name.
 - Use `Storage Location` as the generic interface concept while preserving location codes exactly.
 - Use a company-level document language and freeze it on every generated artifact.
 - Preserve Russian for existing users and companies during migration.

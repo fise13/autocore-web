@@ -1,4 +1,4 @@
-import { PaywallScreen } from '@/features/subscription';
+import { PaywallScreen } from '@/features/subscription/paywall-screen';
 
 import { useAuth } from './auth-provider';
 

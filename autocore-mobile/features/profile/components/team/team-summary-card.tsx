@@ -11,6 +11,7 @@ type TeamSummaryCardProps = {
   activeEmployees: number;
   totalEmployees: number;
   pendingInvites: number;
+  namedOnly?: number;
 };
 
 function SummaryMetric({
@@ -72,9 +73,10 @@ export function TeamSummaryCard({
   activeEmployees,
   totalEmployees,
   pendingInvites,
+  namedOnly = 0,
 }: TeamSummaryCardProps) {
   return (
-    <SettingsSectionCard title="Team overview" description="Employees and invites in one place">
+    <SettingsSectionCard title="Overview" description="Accounts, names, and invites">
       <View
         style={{
           flexDirection: 'row',
@@ -85,17 +87,16 @@ export function TeamSummaryCard({
       >
         <SummaryMetric
           icon={UsersIcon}
-          label="Employees"
+          label="Active"
           value={`${activeEmployees}`}
-          hint={`${totalEmployees} on the team`}
+          hint={
+            namedOnly > 0
+              ? `${totalEmployees} accounts · ${namedOnly} names`
+              : `${totalEmployees} accounts`
+          }
           tone="primary"
         />
-        <SummaryMetric
-          icon={MailIcon}
-          label="Invites"
-          value={`${pendingInvites}`}
-          hint="pending"
-        />
+        <SummaryMetric icon={MailIcon} label="Invites" value={`${pendingInvites}`} hint="Pending" />
       </View>
     </SettingsSectionCard>
   );

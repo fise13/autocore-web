@@ -471,12 +471,23 @@ function useAuthActionsController(): AuthActions {
       await finalizeSession();
     } catch (error) {
       console.warn('Profile bootstrap deferred:', error);
-      useAuthStore.getState().setHydration({
-        profile: buildFallbackProfile(user),
-        companyConfig: null,
-        memberships: [],
-        activeCompanyName: null,
-      });
+      // Merge — never wipe established memberships/companyId. Clearing them
+      // re-armed SessionBootstrapGate and froze every RN press for ~1s while
+      // NativeTabs stayed tappable.
+      const current = {
+        profile: useAuthStore.getState().profile,
+        companyConfig: useAuthStore.getState().companyConfig,
+        memberships: useAuthStore.getState().memberships,
+        activeCompanyName: useAuthStore.getState().activeCompanyName,
+      };
+      useAuthStore.getState().setHydration(
+        mergeSessionHydration(current, {
+          profile: buildFallbackProfile(user),
+          companyConfig: null,
+          memberships: current.memberships.length > 0 ? current.memberships : [],
+          activeCompanyName: current.activeCompanyName,
+        }),
+      );
       useAuthStore.getState().setError(mapAuthError(error));
       if (requireFull) {
         await enrichSessionBlocking().catch(() => undefined);

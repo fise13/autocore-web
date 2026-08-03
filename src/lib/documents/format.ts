@@ -12,16 +12,13 @@ function documentIntlLocale(): string {
 }
 
 /**
- * Currency stays KZT (Kazakhstani Tenge) regardless of `DOCUMENT_LOCALE_LOCK`.
- * The lock changes *language and number formatting*, not the meaning of a
- * stored amount — a work order's `unitPrice` is a real KZT figure entered by
- * the business. Relabeling it USD without a conversion would misstate real
- * transaction values. Confirm explicitly before changing this.
+ * Documents format money as USD regardless of `DOCUMENT_LOCALE_LOCK`.
+ * The lock changes language and number formatting only.
  */
 export function formatDocumentMoney(value: number): string {
-  return new Intl.NumberFormat(documentIntlLocale(), {
+  return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "KZT",
+    currency: "USD",
     maximumFractionDigits: 0,
   }).format(value);
 }

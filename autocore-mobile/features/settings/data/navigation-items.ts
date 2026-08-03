@@ -26,9 +26,9 @@ export type NavItemDefinition = {
 };
 
 export const NAV_ITEM_DEFINITIONS: Record<NavItemId, NavItemDefinition> = {
-  mission: {
-    id: 'mission',
-    title: 'Mission',
+  overview: {
+    id: 'overview',
+    title: 'Overview',
     description: 'Business overview and key metrics',
     icon: LayoutGridIcon,
     route: '/(tabs)',
@@ -119,7 +119,7 @@ export const DEFAULT_NAV_ORDER: NavItemId[] = [
   'scan',
   'accounting',
   'profile',
-  'mission',
+  'overview',
   'warehouse',
   'sales',
   'documents',
@@ -128,7 +128,7 @@ export const DEFAULT_NAV_ORDER: NavItemId[] = [
 ];
 
 export const DEFAULT_NAV_ENABLED: Record<NavItemId, boolean> = {
-  mission: true,
+  overview: true,
   search: true,
   scan: true,
   orders: true,

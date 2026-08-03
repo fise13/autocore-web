@@ -2,10 +2,10 @@
  * Autocore Design Language — single source of truth.
  * All components must reference this file (directly or via hooks).
  */
-import type { ColorScheme } from './colors';
+import type { ColorScheme, SemanticColors } from './colors';
 import { getColors } from './colors';
 import { withAlpha } from './color-utils';
-import { radius, baseRadius } from './radius';
+import { baseRadius } from './radius';
 import { spacing, screenPadding, minTouchTarget, headerHeight } from './spacing';
 import { typography, fontFamily, fontWeight } from './typography';
 import { semanticOpacity } from './opacity';
@@ -19,17 +19,18 @@ import {
   spring,
   staggerDelay,
 } from './animations';
+import { tokens } from './tokens';
 
-/** Corner — continuous rounded (Apple-style superellipse approximation via large radii) */
+/** Corner — Apple-adjacent DL v3 scale */
 export const cornerStyle = {
   continuous: true,
-  default: radius.lg,
-  card: radius['2xl'],
-  sheet: radius['3xl'],
-  modal: radius['2xl'],
-  chip: radius.full,
-  control: radius.lg,
-  sm: radius.sm,
+  default: tokens.radius.control,
+  card: tokens.radius.group,
+  sheet: tokens.radius.sheet,
+  modal: tokens.radius.modal,
+  chip: tokens.radius.full,
+  control: tokens.radius.control,
+  sm: 8,
   base: baseRadius,
 } as const;
 
@@ -75,29 +76,29 @@ export const toolbarHeight = headerHeight;
 export const tabBarHeight = navigationHeight;
 export const bottomBarHeight = 56;
 
-/** Interactive targets — Apple HIG minimum 44pt */
+/** Interactive targets — Apple HIG minimum 44pt (visual may be smaller + hitSlop). */
 export const touchTarget = {
-  minimum: minTouchTarget,
-  comfortable: 44,
-  large: 48,
-  icon: 32,
-  iconSm: 28,
-  iconLg: 36,
+  minimum: tokens.control.hitTarget,
+  comfortable: tokens.control.hitTarget,
+  large: tokens.control.heightLg,
+  icon: tokens.control.heightSm,
+  iconSm: tokens.control.heightXs,
+  iconLg: tokens.control.heightMd,
 } as const;
 
 export const buttonHeight = {
-  xs: 24,
-  sm: touchTarget.iconSm,
-  default: touchTarget.icon,
-  lg: 40,
-  xl: 40,
+  xs: tokens.control.heightXs,
+  sm: tokens.control.heightSm,
+  default: tokens.control.heightMd,
+  lg: tokens.control.heightLg,
+  xl: tokens.control.heightXl,
 } as const;
 
-/** Icon system defaults */
+/** Icon system defaults — thin outline for Claude/Linear quiet chrome */
 export const iconWeight = {
-  stroke: 2,
-  strokeBold: 2.5,
-  strokeLight: 1.75,
+  stroke: 1.5,
+  strokeBold: 2,
+  strokeLight: 1.35,
 } as const;
 
 /** Motion defaults — iOS-like feel */
@@ -109,7 +110,7 @@ export const animationSpeed = {
   slow: duration.slow,
 } as const;
 
-export const defaultSpring = spring.default;
+export const defaultSpring = spring.settle;
 export const defaultDuration = duration.normal;
 export const defaultEasing = autocoreEase;
 export const defaultEaseOut = smoothEase;
@@ -136,27 +137,31 @@ export const sheetTransition = {
   backdropDuration: duration.fast,
 } as const;
 
-/** Elevation & spacing rhythm */
-export function defaultShadow(scheme: ColorScheme) {
-  return getShadows(scheme).sm;
+/** Elevation — cards stay flat; floating/modal use shadows (DL v3). */
+export function defaultShadow(_scheme: ColorScheme) {
+  return getShadows(_scheme).none;
+}
+
+export function floatingShadow(scheme: ColorScheme) {
+  return getShadows(scheme).elevated;
 }
 
 export const defaultRadius = cornerStyle.default;
 export const defaultPadding = screenPadding.horizontal;
 export const defaultGap = spacing[4];
 
-/** Layout rhythm */
+/** Layout rhythm — aliases of tokens.space (DL v3). */
 export const layoutRhythm = {
   screenPadding,
   contentMaxWidth,
   sidebar: sidebarWidth,
-  cardPadding: spacing[4],
-  cardPaddingSm: spacing[3],
-  cardGap: spacing[3],
-  sectionGap: spacing[6],
-  listGap: spacing[2.5],
-  inlineGap: spacing[2],
-  stackGap: spacing[3],
+  cardPadding: tokens.space[4],
+  cardPaddingSm: tokens.space[3],
+  cardGap: tokens.space.stack,
+  sectionGap: tokens.space.section,
+  listGap: tokens.space[2.5],
+  inlineGap: tokens.space.inline,
+  stackGap: tokens.space.stack,
 } as const;
 
 /** Typography reference */
@@ -172,8 +177,8 @@ export const typeWeight = fontWeight;
  * alpha-blended version dropped to 2.45:1 for success in the light theme.
  * `solid`/`onSolid` are the filled-button counterpart of the same tone.
  */
-export function toneStyles(scheme: ColorScheme) {
-  const c = getColors(scheme);
+export function toneStyles(schemeOrColors: ColorScheme | SemanticColors) {
+  const c = typeof schemeOrColors === 'string' ? getColors(schemeOrColors) : schemeOrColors;
   return {
     primary: {
       bg: c.primarySubtle,
@@ -221,6 +226,63 @@ export function toneStyles(scheme: ColorScheme) {
 }
 
 export type ToneName = keyof ReturnType<typeof toneStyles>;
+
+/**
+ * iOS native controls — Autocore API → `@expo/ui` SwiftUI modifiers.
+ * Android keeps RN Pressable with HIG-like sizes (not Compose in this wave).
+ */
+export const iosControls = {
+  /** Glass is off — product chrome stays Claude-static (bordered / plain). */
+  glassMinOsMajor: 26,
+  styles: {
+    default: {
+      preferred: 'borderedProminent' as const,
+      fallback: 'borderedProminent' as const,
+      use: 'Primary CTAs — solid, quiet, no liquid glass',
+    },
+    outline: {
+      preferred: 'bordered' as const,
+      fallback: 'bordered' as const,
+      use: 'Secondary actions next to a primary',
+    },
+    secondary: {
+      preferred: 'bordered' as const,
+      fallback: 'bordered' as const,
+      use: 'Quiet filled / bordered secondary',
+    },
+    ghost: {
+      preferred: 'plain' as const,
+      fallback: 'plain' as const,
+      use: 'Toolbar and inline icon-adjacent actions',
+    },
+    link: {
+      preferred: 'borderless' as const,
+      fallback: 'borderless' as const,
+      use: 'Text-only navigation links',
+    },
+    destructive: {
+      preferred: 'bordered' as const,
+      fallback: 'bordered' as const,
+      role: 'destructive' as const,
+      use: 'Delete / irreversible confirms',
+    },
+  },
+  sizes: {
+    xs: 'mini' as const,
+    sm: 'small' as const,
+    default: 'regular' as const,
+    lg: 'large' as const,
+    xl: 'extraLarge' as const,
+    icon: 'circle + regular' as const,
+  },
+  shapes: {
+    pill: 'capsule' as const,
+    default: 'roundedRectangle' as const,
+    icon: 'circle' as const,
+  },
+  whenGlass:
+    'Do not use glass / glassProminent in product UI. Prefer borderedProminent / bordered / plain (Claude-static). Form CTAs: Button native={false}. Toolbar icons may stay native plain.',
+} as const;
 
 /** Z-index reference */
 export const layering = zIndex;

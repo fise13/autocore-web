@@ -1,35 +1,36 @@
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 
+function run(fn: () => Promise<unknown>): void {
+  if (Platform.OS === 'web') return;
+  // Never block the press handler / JS frame on the haptic bridge.
+  queueMicrotask(() => {
+    void fn();
+  });
+}
+
 /** Haptic feedback presets — native iOS/Android interactions */
 export const haptics = {
   light: () => {
-    if (Platform.OS === 'web') return;
-    return Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    run(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
   },
   medium: () => {
-    if (Platform.OS === 'web') return;
-    return Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    run(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium));
   },
   heavy: () => {
-    if (Platform.OS === 'web') return;
-    return Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    run(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy));
   },
   selection: () => {
-    if (Platform.OS === 'web') return;
-    return Haptics.selectionAsync();
+    run(() => Haptics.selectionAsync());
   },
   success: () => {
-    if (Platform.OS === 'web') return;
-    return Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    run(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
   },
   warning: () => {
-    if (Platform.OS === 'web') return;
-    return Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    run(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning));
   },
   error: () => {
-    if (Platform.OS === 'web') return;
-    return Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    run(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error));
   },
   /** Button press — subtle tactile feedback */
   press: () => haptics.light(),

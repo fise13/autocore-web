@@ -76,7 +76,7 @@ export const PERMISSION_GROUPS: Record<
 };
 
 export const ACCOUNTING_DEMO = {
-  currency: { code: 'KZT', name: 'Kazakhstani Tenge', symbol: '₸' },
+  currency: { code: 'USD', name: 'US Dollar', symbol: '$' },
   defaultTax: { rate: '12%', label: 'VAT', inclusive: false },
   financialYear: { start: 'January 1', end: 'December 31', current: '2026' },
   expenseCategories: ['Rent', 'Payroll', 'Parts', 'Logistics', 'Marketing', 'Utilities'],
@@ -84,8 +84,8 @@ export const ACCOUNTING_DEMO = {
   salaryTracking: { enabled: true, employees: 12, lastPayroll: 'June 28, 2026' },
   payroll: { cycle: 'Monthly', nextRun: 'July 28, 2026', method: 'Bank transfer' },
   suppliers: [
-    { name: 'MotorParts KZ', balance: '₸ 1,240,000', status: 'Active' },
-    { name: 'Asia Auto Supply', balance: '₸ 380,500', status: 'Active' },
+    { name: 'MotorParts KZ', balance: '$ 1,240,000', status: 'Active' },
+    { name: 'Asia Auto Supply', balance: '$ 380,500', status: 'Active' },
     { name: 'EuroGear GmbH', balance: '€ 12,400', status: 'Pending' },
   ],
   exportFormats: ['1C', 'Excel', 'PDF', 'CSV'],

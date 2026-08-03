@@ -28,6 +28,7 @@ import { GoogleSignInButton } from './google-sign-in-button';
 import { InviteFormNotice } from './invite-form-notice';
 import { useAuth } from './auth-provider';
 import { AuthHeroShell } from './auth-hero-shell';
+import { AuthSocialCluster } from './auth-social-cluster';
 
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
@@ -66,6 +67,7 @@ export function LoginScreen() {
   const [stepDirection, setStepDirection] = useState<1 | -1>(1);
   const [inviteFlowActive, setInviteFlowActive] = useState(false);
   const [inviteCompanyName, setInviteCompanyName] = useState<string | null>(null);
+  const [emailFocused, setEmailFocused] = useState(false);
   const inviteBootstrapRef = useRef(false);
 
   const oauthConfigured = isGoogleOAuthConfigured();
@@ -378,12 +380,12 @@ export function LoginScreen() {
     <Text
       variant="caption"
       color="muted"
-      style={{ fontSize: 13, lineHeight: 19, textAlign: 'center' }}
+      style={{ fontSize: 11, lineHeight: 15, textAlign: 'center', letterSpacing: -0.05 }}
     >
       By continuing, you agree to the{' '}
       <Text
         variant="caption"
-        style={{ fontSize: 13, lineHeight: 19, textDecorationLine: 'underline' }}
+        style={{ fontSize: 11, lineHeight: 15, textDecorationLine: 'underline' }}
         onPress={() => void Linking.openURL('https://myautocore.com/legal/terms')}
       >
         Terms of Use
@@ -391,7 +393,7 @@ export function LoginScreen() {
       and{' '}
       <Text
         variant="caption"
-        style={{ fontSize: 13, lineHeight: 19, textDecorationLine: 'underline' }}
+        style={{ fontSize: 11, lineHeight: 15, textDecorationLine: 'underline' }}
         onPress={() => void Linking.openURL('https://myautocore.com/legal/privacy')}
       >
         Privacy Policy
@@ -400,10 +402,16 @@ export function LoginScreen() {
     </Text>
   );
 
-  /** Landing step — animated hero with the OAuth pills and email entry. */
+  /** Landing step — Google / Apple yield on email keyboard focus (car + mark stay). */
   if (!emailStep && !inviteBootstrapping) {
+    const showSocial = showGoogleSignIn || showAppleSignIn;
+
     return (
-      <AuthHeroShell tagline="Run your workshop from anywhere" footer={legalFooter}>
+      <AuthHeroShell
+        tagline={"Run your workshop\nfrom anywhere."}
+        footer={legalFooter}
+        compact={emailFocused}
+      >
         {!isFirebaseReady && __DEV__ ? (
           <Alert
             variant="warning"
@@ -420,32 +428,40 @@ export function LoginScreen() {
           />
         ) : null}
 
-        {showGoogleSignIn ? (
-          <GoogleSignInButton
-            hero
-            disabled={submitDisabled}
-            loading={oauthLoading === 'google'}
-            onStart={() => {
-              clearError();
-              setError(null);
-            }}
-            onSuccess={runGoogleSignIn}
-            onError={onGoogleError}
-          />
-        ) : null}
+        {showSocial ? (
+          <AuthSocialCluster collapsed={emailFocused}>
+            {showGoogleSignIn ? (
+              <GoogleSignInButton
+                hero
+                disabled={submitDisabled}
+                loading={oauthLoading === 'google'}
+                onStart={() => {
+                  clearError();
+                  setError(null);
+                }}
+                onSuccess={runGoogleSignIn}
+                onError={onGoogleError}
+              />
+            ) : null}
 
-        {showAppleSignIn ? (
-          <AppleSignInButton
-            hero
-            disabled={submitDisabled}
-            loading={oauthLoading === 'apple'}
-            onPress={onApplePress}
-          />
+            {showAppleSignIn ? (
+              <AppleSignInButton
+                hero
+                disabled={submitDisabled}
+                loading={oauthLoading === 'apple'}
+                onPress={onApplePress}
+              />
+            ) : null}
+          </AuthSocialCluster>
         ) : null}
 
         <AuthEmailPill
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(value) => {
+            setEmail(value);
+            if (emailAttempted) setEmailAttempted(false);
+          }}
+          onFocusChange={setEmailFocused}
           onSubmit={() => void onEmailContinue()}
           canSubmit={isValidEmail(email)}
           loading={isDetecting}

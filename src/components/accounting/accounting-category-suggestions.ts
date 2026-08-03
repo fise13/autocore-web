@@ -1,6 +1,7 @@
 import { AccountingPreferences } from "@/hooks/use-accounting-preferences";
 
 import { operationCategoryLabel } from "@/lib/accounting/labels";
+import { userCopy } from "@/lib/user-copy";
 
 import { ACCOUNTING_CATEGORY_SUGGESTIONS } from "./accounting-categories";
 
@@ -23,8 +24,8 @@ export function buildAccountingCategorySuggestions(
     add(specific);
   }
   for (const employee of accounting.employees) {
-    add(`зарплата ${employee}`);
-    add(`аванс ${employee}`);
+    add(userCopy.accounting.categorySuggestions.salaryFor(employee));
+    add(userCopy.accounting.categorySuggestions.advanceFor(employee));
   }
 
   for (const fallback of ACCOUNTING_CATEGORY_SUGGESTIONS) {
@@ -38,8 +39,6 @@ export function filterAccountingCategorySuggestions(prefix: string, suggestions:
   const query = prefix.trim().toLowerCase();
   if (!query) return suggestions;
   return suggestions.filter(
-    (item) =>
-      item.toLowerCase().includes(query) ||
-      operationCategoryLabel(item).toLowerCase().includes(query),
+    (item) => item.toLowerCase().includes(query) || operationCategoryLabel(item).toLowerCase().includes(query),
   );
 }

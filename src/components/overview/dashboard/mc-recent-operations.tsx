@@ -1,0 +1,101 @@
+"use client";
+
+import Link from "next/link";
+import { ArrowRightIcon } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  McPanel,
+  McPanelBody,
+  McPanelHeader,
+} from "@/components/overview/dashboard/dashboard-panel";
+import { operationTypeLabel } from "@/lib/accounting/labels";
+import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
+import { cn } from "@/lib/utils";
+import { FinancialOperation } from "@/domain/financial-operation";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
+import { Skeleton } from "@/components/ui/skeleton";
+
+type McRecentOperationsProps = {
+  operations: FinancialOperation[];
+  isLoading: boolean;
+  className?: string;
+};
+
+export function McRecentOperations({ operations, isLoading, className }: McRecentOperationsProps) {
+  const { formatMoney } = useAppDisplayCurrency();
+  const copy = userCopy.overview.dashboard.recentOps;
+  const dateLocale = getActiveUserCopyLocale() === "en" ? "en-US" : "ru-RU";
+  const recent = [...operations]
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, 4);
+
+  if (isLoading) {
+    return (
+      <McPanel className={cn("gap-0 shadow-none md:col-span-2 dark:ring-0", className)}>
+        <McPanelHeader title={copy.title} bordered />
+        <McPanelBody className="space-y-2 p-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} className="h-14 w-full rounded-lg" />
+          ))}
+        </McPanelBody>
+      </McPanel>
+    );
+  }
+
+  return (
+    <McPanel className={cn("gap-0 shadow-none md:col-span-2 dark:ring-0", className)}>
+      <McPanelHeader title={copy.title} description={copy.description} bordered />
+      <McPanelBody className="p-0">
+        {recent.length === 0 ? (
+          <p className="px-6 py-10 text-center text-sm text-muted-foreground">{copy.empty}</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="pl-6">{copy.type}</TableHead>
+                <TableHead className="hidden sm:table-cell">{copy.date}</TableHead>
+                <TableHead className="text-right">{copy.amount}</TableHead>
+                <TableHead className="pr-6 text-right">{copy.status}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {recent.map((operation) => (
+                <TableRow className="h-14 hover:bg-transparent" key={operation.id}>
+                  <TableCell className="max-w-36 truncate pl-6 font-medium">
+                    {operationTypeLabel(operation.type)}
+                  </TableCell>
+                  <TableCell className="hidden text-muted-foreground text-sm tabular-nums sm:table-cell">
+                    {operation.createdAt.toLocaleDateString(dateLocale, {
+                      day: "2-digit",
+                      month: "2-digit",
+                    })}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{formatMoney(operation.amount)}</TableCell>
+                  <TableCell className="pr-6 text-right">
+                    <Badge variant="secondary">{copy.posted}</Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+        <div className="flex justify-center border-t py-3">
+          <Button size="sm" variant="ghost" render={<Link href="/accounting" />} nativeButton={false}>
+            {copy.viewAll}
+            <ArrowRightIcon aria-hidden data-icon="inline-end" />
+          </Button>
+        </div>
+      </McPanelBody>
+    </McPanel>
+  );
+}

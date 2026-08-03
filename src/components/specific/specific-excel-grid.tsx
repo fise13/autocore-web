@@ -9,6 +9,7 @@ import { withSpecificLocationColumn, SPECIFIC_LOCATION_COLUMN_KEY } from "@/lib/
 import { resolveSpecificRecordLocationLabel } from "@/lib/warehouse/resolve-item-location-label";
 import { GridEditorOverlay } from "@/components/grid/grid-editor-overlay";
 import { GridFillHandle } from "@/components/grid/grid-fill-handle";
+import { GridPhotoCell, GridPhotoCellDisabledHint } from "@/components/grid/grid-photo-cell";
 import {
   GridContextMenu,
   GridContextMenuItem,
@@ -60,6 +61,11 @@ import {
   specificCellFrame,
   specificSchemaColumnAt,
 } from "@/lib/specific/specific-grid-layout";
+import {
+  parseSpecificPhotoUrls,
+  serializeSpecificPhotoUrls,
+  SPECIFIC_PHOTO_URLS_KEY,
+} from "@/lib/specific/specific-photo-quality";
 import {
   buildRowPayloadFromSchema,
   resolveCategoryColumnSchema,
@@ -1354,6 +1360,33 @@ export function SpecificExcelGrid({
                                 {sold ? userCopy.specificSheets.grid.unsell : userCopy.specificSheets.grid.sell}
                               </button>
                             ) : null
+                          ) : column.cellKind === "photo" ? (
+                            row.rowKind === "saved" && canEdit ? (
+                              <GridPhotoCell
+                                urls={parseSpecificPhotoUrls(row.data[SPECIFIC_PHOTO_URLS_KEY])}
+                                companyId={companyId}
+                                entityKind="specific"
+                                entityId={row.id}
+                                onChange={(urls) => {
+                                  markDirty(row.rowId);
+                                  setRows((current) =>
+                                    current.map((entry) =>
+                                      entry.rowId === row.rowId
+                                        ? {
+                                            ...entry,
+                                            data: {
+                                              ...entry.data,
+                                              [SPECIFIC_PHOTO_URLS_KEY]: serializeSpecificPhotoUrls(urls),
+                                            },
+                                          }
+                                        : entry,
+                                    ),
+                                  );
+                                }}
+                              />
+                            ) : (
+                              <GridPhotoCellDisabledHint />
+                            )
                           ) : (
                             <span className="truncate">{displayValue}</span>
                           )}

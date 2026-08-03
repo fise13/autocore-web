@@ -1,6 +1,10 @@
 import { Platform, type TextStyle } from 'react-native';
 
-/** System UI fonts — no custom font files required, correct metrics on iOS/Android. */
+/**
+ * Typography — Claude/Notion quiet sans (DL v3).
+ * iOS uses SF Pro via System; Android uses the platform sans.
+ * Optical tracking is tighter on display sizes, slightly open on captions.
+ */
 export const fontFamily = {
   sans: Platform.select({ ios: 'System', android: 'sans-serif', default: 'System' }) ?? 'System',
   mono: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }) ?? 'monospace',
@@ -15,135 +19,149 @@ export const fontWeight = {
   extrabold: '800' as const,
 };
 
-export const lineHeight = {
-  tight: 1.15,
-  snug: 1.25,
-  normal: 1.45,
-  relaxed: 1.55,
-  loose: 1.65,
+const tracking = {
+  tighter: -0.45,
+  tight: -0.28,
+  snug: -0.18,
+  normal: -0.08,
+  open: 0.12,
+  wide: 0.28,
 } as const;
 
-export const letterSpacing = {
-  tighter: -0.02,
-  tight: -0.01,
-  normal: 0,
-  wide: 0.04,
-  wider: 0.08,
-  widest: 0.14,
+const largeTitle = {
+  fontSize: 34,
+  fontWeight: fontWeight.bold,
+  lineHeight: 41,
+  letterSpacing: tracking.tighter,
 } as const;
 
-/** Typography scale — mirrors Autocore web (Geist Sans) */
+const title1 = {
+  fontSize: 28,
+  fontWeight: fontWeight.bold,
+  lineHeight: 34,
+  letterSpacing: tracking.tighter,
+} as const;
+
+const title2 = {
+  fontSize: 22,
+  fontWeight: fontWeight.semibold,
+  lineHeight: 28,
+  letterSpacing: tracking.tight,
+} as const;
+
+const title3 = {
+  fontSize: 20,
+  fontWeight: fontWeight.semibold,
+  lineHeight: 25,
+  letterSpacing: tracking.tight,
+} as const;
+
+const headline = {
+  fontSize: 17,
+  fontWeight: fontWeight.semibold,
+  lineHeight: 22,
+  letterSpacing: tracking.snug,
+} as const;
+
+const body = {
+  fontSize: 17,
+  fontWeight: fontWeight.regular,
+  lineHeight: 22,
+  letterSpacing: tracking.snug,
+} as const;
+
+const callout = {
+  fontSize: 16,
+  fontWeight: fontWeight.regular,
+  lineHeight: 21,
+  letterSpacing: tracking.snug,
+} as const;
+
+const subheadline = {
+  fontSize: 15,
+  fontWeight: fontWeight.regular,
+  lineHeight: 20,
+  letterSpacing: tracking.normal,
+} as const;
+
+const footnote = {
+  fontSize: 13,
+  fontWeight: fontWeight.regular,
+  lineHeight: 18,
+  letterSpacing: tracking.normal,
+} as const;
+
+const caption1 = {
+  fontSize: 12,
+  fontWeight: fontWeight.regular,
+  lineHeight: 16,
+  letterSpacing: tracking.open,
+} as const;
+
+const caption2 = {
+  fontSize: 11,
+  fontWeight: fontWeight.regular,
+  lineHeight: 13,
+  letterSpacing: tracking.open,
+} as const;
+
+const metric = {
+  fontSize: 28,
+  fontWeight: fontWeight.semibold,
+  lineHeight: 34,
+  letterSpacing: tracking.tight,
+  fontVariant: ['tabular-nums'] as TextStyle['fontVariant'],
+} as const;
+
+/** Section labels — sentence case, quiet (Claude settings). Never uppercase. */
+const sectionLabel = {
+  fontSize: 13,
+  fontWeight: fontWeight.medium,
+  lineHeight: 18,
+  letterSpacing: tracking.normal,
+} as const;
+
+/**
+ * Typography scale — HIG semantic names are canonical.
+ * Legacy aliases resolve onto the same objects (no second scale).
+ */
 export const typography = {
-  display: {
-    fontSize: 36,
-    fontWeight: fontWeight.semibold,
-    lineHeight: 40,
-    letterSpacing: letterSpacing.tight,
-  },
-  heading: {
-    fontSize: 18,
-    fontWeight: fontWeight.medium,
-    lineHeight: 24,
-    letterSpacing: letterSpacing.tight,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: fontWeight.semibold,
-    lineHeight: 30,
-    letterSpacing: letterSpacing.tight,
-  },
-  /**
-   * Tab screen large title — the presence of the login screen carried into the
-   * app. Use this instead of overriding `pageTitle`'s size inline.
-   */
-  displayTitle: {
-    fontSize: 34,
-    fontWeight: fontWeight.bold,
-    lineHeight: 41,
-    letterSpacing: letterSpacing.tighter,
-  },
-  /** Tab / stack page titles — Mission Control, Orders, Profile, Search, Accounting */
-  pageTitle: {
-    fontSize: 28,
-    fontWeight: fontWeight.bold,
-    lineHeight: 34,
-    letterSpacing: letterSpacing.tighter,
-  },
-  pageSubtitle: {
-    fontSize: 13,
-    fontWeight: fontWeight.regular,
-    lineHeight: 18,
-    letterSpacing: letterSpacing.normal,
-  },
-  body: {
-    fontSize: 14,
-    fontWeight: fontWeight.regular,
-    lineHeight: 20,
-    letterSpacing: letterSpacing.normal,
-  },
-  bodyStrong: {
-    fontSize: 14,
-    fontWeight: fontWeight.semibold,
-    lineHeight: 20,
-    letterSpacing: letterSpacing.normal,
-  },
-  meta: {
-    fontSize: 11,
-    fontWeight: fontWeight.regular,
-    lineHeight: 14,
-    letterSpacing: letterSpacing.normal,
-  },
-  bodyLarge: {
-    fontSize: 16,
-    fontWeight: fontWeight.regular,
-    lineHeight: 24,
-    letterSpacing: letterSpacing.normal,
-  },
-  caption: {
-    fontSize: 12,
-    fontWeight: fontWeight.regular,
-    lineHeight: 16,
-    letterSpacing: letterSpacing.normal,
-  },
-  label: {
-    fontSize: 11,
-    fontWeight: fontWeight.medium,
-    lineHeight: 14,
-    letterSpacing: letterSpacing.wider,
-    textTransform: 'uppercase' as const,
-  },
-  small: {
-    fontSize: 13,
-    fontWeight: fontWeight.regular,
-    lineHeight: 18,
-    letterSpacing: letterSpacing.normal,
-  },
-  button: {
-    fontSize: 14,
-    fontWeight: fontWeight.medium,
-    lineHeight: 20,
-    letterSpacing: letterSpacing.normal,
-  },
+  largeTitle,
+  title1,
+  title2,
+  title3,
+  headline,
+  body,
+  callout,
+  subheadline,
+  footnote,
+  caption1,
+  caption2,
+  metric,
+  sectionLabel,
+
+  // —— Legacy aliases → semantic (do not invent new sizes) ——
+  display: largeTitle,
+  displayTitle: largeTitle,
+  pageTitle: title1,
+  title: title2,
+  heading: headline,
+  pageSubtitle: subheadline,
+  bodyStrong: headline,
+  bodyLarge: body,
+  meta: caption1,
+  caption: caption1,
+  /** @deprecated Prefer sectionLabel — sentence case, no uppercase stamp */
+  label: sectionLabel,
+  small: footnote,
+  button: headline,
   buttonSmall: {
-    fontSize: 12,
-    fontWeight: fontWeight.medium,
-    lineHeight: 16,
-    letterSpacing: letterSpacing.normal,
-  },
-  kpi: {
-    fontSize: 24,
+    fontSize: 15,
     fontWeight: fontWeight.semibold,
-    lineHeight: 30,
-    letterSpacing: letterSpacing.tight,
-    fontVariant: ['tabular-nums'] as TextStyle['fontVariant'],
+    lineHeight: 20,
+    letterSpacing: tracking.normal,
   },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: fontWeight.semibold,
-    lineHeight: 14,
-    letterSpacing: letterSpacing.wider,
-    textTransform: 'uppercase' as const,
-  },
+  kpi: metric,
 } as const;
 
 export type TypographyVariant = keyof typeof typography;

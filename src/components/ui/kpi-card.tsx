@@ -10,6 +10,7 @@ type KpiCardTone = "default" | "primary" | "warning" | "destructive";
 type KpiCardProps = {
   label: string;
   value: number;
+  prefix?: string;
   suffix?: string;
   hint?: string;
   icon?: LucideIcon;
@@ -41,6 +42,7 @@ function formatValue(value: number): string {
 export function KpiCard({
   label,
   value,
+  prefix = "",
   suffix = "",
   hint,
   icon: Icon,
@@ -77,6 +79,7 @@ export function KpiCard({
       </div>
 
       <p className={cn("text-2xl font-semibold tracking-tight tabular-nums", valueToneClass[tone])}>
+        {prefix ? <span className="text-lg font-medium">{prefix}</span> : null}
         {formatValue(value)}
         {suffix ? <span className="text-lg font-medium">{suffix}</span> : null}
       </p>

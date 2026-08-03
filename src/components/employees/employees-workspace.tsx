@@ -178,7 +178,9 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
       companyId,
       (next) => setInvites(next),
       (nextError) => {
-        setError(mapEmployeeError(nextError));
+        // Invites are secondary UI — don't block the employees table with a red banner
+        // (missing index / rules lag often surfaces as permission-denied here).
+        console.warn("[employees] invites subscription failed:", nextError);
         setInvites([]);
       },
     );

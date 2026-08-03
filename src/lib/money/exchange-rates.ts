@@ -1,28 +1,15 @@
 import { AppDisplayCurrency } from "@/lib/money/display-currency";
 
 /**
- * Amounts in Firestore and operations are stored in USD (US market).
- *
- * The rate-fetch API (`/api/money/exchange-rates`, backed by
- * open.er-api.com/v6/latest/USD) is inherently USD-pivot already — `kztPerUsd`
- * and `rubPerUsd` mean "how many KZT/RUB equal 1 USD" regardless of which
- * currency the *app* treats as its base, so switching the base only changes
- * `convertFromBaseCurrency`'s direction, not the rate values themselves.
- *
- * Was `"KZT"`; financial-operation records have no per-record currency field
- * (`src/domain/financial-operation.ts`), so whatever a user types into an
- * amount field is implicitly denominated in this base currency — KZT amounts
- * entered by existing companies are unaffected (still summed/read as before),
- * but a new company's amounts are now correctly read as USD instead of
- * silently being divided by ~450 when displayed.
+ * Amounts in Firestore and operations are stored in USD.
+ * Display is USD-only — exchange helpers are identity no-ops kept for call-site compatibility.
  */
 export const APP_MONEY_BASE_CURRENCY = "USD" as const;
 
 export type ExchangeRates = {
   base: typeof APP_MONEY_BASE_CURRENCY;
-  /** How many KZT equal 1 USD. */
+  /** Retained for API payload compatibility; unused for display. */
   kztPerUsd: number;
-  /** How many RUB equal 1 USD. */
   rubPerUsd: number;
   fetchedAt: string;
   source: "live" | "fallback";
@@ -30,8 +17,8 @@ export type ExchangeRates = {
 
 export const FALLBACK_EXCHANGE_RATES: ExchangeRates = {
   base: "USD",
-  kztPerUsd: 450,
-  rubPerUsd: 92,
+  kztPerUsd: 1,
+  rubPerUsd: 1,
   fetchedAt: new Date(0).toISOString(),
   source: "fallback",
 };
@@ -45,15 +32,15 @@ function assertPositiveRate(value: unknown, field: string): number {
 }
 
 export function buildExchangeRatesFromUsdPivot(input: {
-  kztPerUsd: unknown;
-  rubPerUsd: unknown;
+  kztPerUsd?: unknown;
+  rubPerUsd?: unknown;
   fetchedAt?: string;
   source?: ExchangeRates["source"];
 }): ExchangeRates {
   return {
     base: "USD",
-    kztPerUsd: assertPositiveRate(input.kztPerUsd, "KZT"),
-    rubPerUsd: assertPositiveRate(input.rubPerUsd, "RUB"),
+    kztPerUsd: input.kztPerUsd != null ? assertPositiveRate(input.kztPerUsd, "KZT") : 1,
+    rubPerUsd: input.rubPerUsd != null ? assertPositiveRate(input.rubPerUsd, "RUB") : 1,
     fetchedAt: input.fetchedAt ?? new Date().toISOString(),
     source: input.source ?? "live",
   };
@@ -61,19 +48,16 @@ export function buildExchangeRatesFromUsdPivot(input: {
 
 export function convertFromBaseCurrency(
   amountInUsd: number,
-  target: AppDisplayCurrency,
-  rates: ExchangeRates = FALLBACK_EXCHANGE_RATES,
+  _target: AppDisplayCurrency = "USD",
+  _rates: ExchangeRates = FALLBACK_EXCHANGE_RATES,
 ): number {
   if (!Number.isFinite(amountInUsd)) return 0;
-  if (target === "USD") return amountInUsd;
-  if (target === "KZT") return amountInUsd * rates.kztPerUsd;
-  return amountInUsd * rates.rubPerUsd;
+  return amountInUsd;
 }
 
-export function formatExchangeRateHint(currency: AppDisplayCurrency, rates: ExchangeRates): string | null {
-  if (currency === "USD") return null;
-  if (currency === "KZT") {
-    return `1 USD ≈ ${Math.round(rates.kztPerUsd).toLocaleString("en-US")} ₸`;
-  }
-  return `1 USD ≈ ${Math.round(rates.rubPerUsd).toLocaleString("en-US")} ₽`;
+export function formatExchangeRateHint(
+  _currency: AppDisplayCurrency,
+  _rates: ExchangeRates,
+): string | null {
+  return null;
 }

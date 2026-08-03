@@ -1,5 +1,5 @@
 import {
-  canAccessMissionControl,
+  canAccessOverview,
   canAccessMyEarnings,
   canManageEmployees,
   canManageSettings,
@@ -12,7 +12,7 @@ import type { UserEntity } from '@/types/user';
 import type { NavItemId } from '@/features/settings/types';
 
 const NAV_TO_TAB: Partial<Record<NavItemId, MobileTabId>> = {
-  mission: 'index',
+  overview: 'index',
   search: 'search',
   scan: 'scan',
   orders: 'orders',
@@ -42,7 +42,7 @@ export function isMobileNavItemAllowed(
 }
 
 export {
-  canAccessMissionControl,
+  canAccessOverview,
   canAccessMyEarnings,
   canManageEmployees,
   canManageSettings,

@@ -1,19 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { View } from 'react-native';
 import type React from 'react';
 
 import { useAuth } from '@/authentication/auth-provider';
 import { useGuardedRouter } from '@/hooks/use-guarded-router';
 import { useReleaseStackNavigationOnFocus } from '@/hooks/use-release-stack-navigation';
-import { ListGroup, ListRow, ProductScreenShell, ScreenScroll, SectionHeader } from '@/components/ui';
-import { useDeleteAccount, useProfileHubData } from '@/hooks';
+import { CollectionRow, ListSection, ProductScreenShell, ScreenScroll } from '@/components/ui';
+import { useDeleteAccount, useProfileHubData, useSession } from '@/hooks';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
-import { haptics, layout, rhythm } from '@/theme';
+import { presentOrganizationSwitcher } from '@/features/organization/present-organization-switcher';
+import { haptics } from '@/theme';
+import { tokens } from '@/theme/tokens';
 import { SETTINGS_HUB_SECTIONS } from '@/features/settings/data/settings-sections';
 import type { SettingsHubRouteId } from '@/features/settings/types';
 import { CoinsIcon, StoreIcon } from '@/assets/icons';
-
-import { CompanySwitcherSheet } from '@/features/organization/components/company-switcher-sheet';
 
 import { DeleteAccountDialog } from './components/delete-account-dialog';
 import { ProfileHeader } from './components/profile-header';
@@ -26,17 +26,26 @@ type ProfileHubRow = {
   icon: React.ComponentType<{ size?: 'sm' | 'md' | 'lg'; color?: string; strokeWidth?: number }>;
 };
 
-const SECTION_GAP = layout.sectionGap;
-
 export function ProfileScreen() {
   const router = useGuardedRouter();
   useReleaseStackNavigationOnFocus();
-  const { signOut, memberships } = useAuth();
+  const { signOut, memberships, refreshProfile, firebaseUser } = useAuth();
+  const { companyId } = useSession();
   const data = useProfileHubData();
   const rbac = useRbacPolicy();
   const deleteAccount = useDeleteAccount();
-  const [switcherOpen, setSwitcherOpen] = useState(false);
   const canSwitchOrg = memberships.length > 1;
+
+  const openOrganizationSwitcher = () => {
+    haptics.selection();
+    presentOrganizationSwitcher({
+      memberships,
+      activeCompanyId: companyId,
+      userId: firebaseUser?.uid,
+      refreshProfile,
+      router,
+    });
+  };
 
   const sections = useMemo(() => {
     const next: Array<{ id: string; label: string; rows: ProfileHubRow[] }> = SETTINGS_HUB_SECTIONS.map(
@@ -91,83 +100,69 @@ export function ProfileScreen() {
   };
 
   return (
-    <ProductScreenShell brandWash animateEnter={false}>
-      <ScreenScroll tabBarInset contentStyle={{ gap: SECTION_GAP }}>
+    <ProductScreenShell brandWash={false} animateEnter={false}>
+      <ScreenScroll
+        tabBarInset
+        contentStyle={{ paddingTop: tokens.space.micro, paddingBottom: tokens.space.stack }}
+      >
         <ProfileHeader />
         <ProfileHeroCard user={data.user} />
 
-        {sections.map((section) => (
-          <View key={section.id} style={{ gap: rhythm.micro }}>
-            <SectionHeader title={section.label} label inset />
-            <View>
-              <ListGroup>
-                {/* Same card, same row grammar as its neighbours — it is a
-                    navigation row, not a separate kind of thing. */}
-                {section.id === 'company' && canSwitchOrg ? (
-                  <ListRow
-                    title="Switch organization"
-                    subtitle={data.user.company || 'Organization'}
-                    icon={StoreIcon}
-                    onPress={() => {
-                      haptics.selection();
-                      setSwitcherOpen(true);
-                    }}
-                  />
-                ) : null}
-                {section.rows.map((row) => (
-                  <ListRow
-                    key={row.id}
-                    title={row.title}
-                    icon={row.icon}
-                    value={row.id === 'my-earnings' ? undefined : data.rowValues[row.id as SettingsHubRouteId]}
-                    onPress={() => openRow(row)}
-                  />
-                ))}
-              </ListGroup>
-            </View>
-          </View>
-        ))}
+        <View style={{ height: tokens.space.stack }} />
 
-        {canSwitchOrg && !sections.some((section) => section.id === 'company') ? (
-          <View style={{ gap: rhythm.micro }}>
-            <SectionHeader title="Company" label inset />
-            <ListGroup>
-              <ListRow
+        {sections.map((section) => (
+          <ListSection key={section.id} title={section.label}>
+            {section.id === 'company' && canSwitchOrg ? (
+              <CollectionRow
                 title="Switch organization"
                 subtitle={data.user.company || 'Organization'}
                 icon={StoreIcon}
-                onPress={() => {
-                  haptics.selection();
-                  setSwitcherOpen(true);
-                }}
+                onPress={openOrganizationSwitcher}
               />
-            </ListGroup>
-          </View>
-        ) : null}
-
-        <View style={{ gap: rhythm.micro }}>
-          <SectionHeader title="Danger Zone" label inset />
-          <ListGroup>
-            {data.dangerZone.map((item) => (
-              <ListRow
-                key={item.id}
-                title={item.title}
-                tone="danger"
-                showChevron={false}
-                onPress={() => {
-                  if (item.id === 'sign-out') {
-                    haptics.warning();
-                    void signOut();
-                    return;
-                  }
-                  if (item.id === 'delete-account') {
-                    deleteAccount.requestDelete();
-                  }
-                }}
+            ) : null}
+            {section.rows.map((row) => (
+              <CollectionRow
+                key={row.id}
+                title={row.title}
+                icon={row.icon}
+                value={row.id === 'my-earnings' ? undefined : data.rowValues[row.id as SettingsHubRouteId]}
+                onPress={() => openRow(row)}
               />
             ))}
-          </ListGroup>
-        </View>
+          </ListSection>
+        ))}
+
+        {canSwitchOrg && !sections.some((section) => section.id === 'company') ? (
+          <ListSection title="Company">
+            <CollectionRow
+              title="Switch organization"
+              subtitle={data.user.company || 'Organization'}
+              icon={StoreIcon}
+              onPress={openOrganizationSwitcher}
+            />
+          </ListSection>
+        ) : null}
+
+        <ListSection title="Session">
+          {data.dangerZone.map((item) => (
+            <CollectionRow
+              key={item.id}
+              title={item.title}
+              tone="danger"
+              showChevron={false}
+              onPress={() => {
+                if (item.id === 'sign-out') {
+                  haptics.warning();
+                  void signOut();
+                  return;
+                }
+                if (item.id === 'delete-account') {
+                  deleteAccount.requestDelete();
+                }
+              }}
+            />
+          ))}
+        </ListSection>
 
         {deleteAccount.passwordOpen ? (
           <DeleteAccountDialog
@@ -181,9 +176,6 @@ export function ProfileScreen() {
           />
         ) : null}
       </ScreenScroll>
-      {switcherOpen ? (
-        <CompanySwitcherSheet open={switcherOpen} onClose={() => setSwitcherOpen(false)} />
-      ) : null}
     </ProductScreenShell>
   );
 }

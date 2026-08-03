@@ -8,7 +8,7 @@ import {
   computeMyEarningsSummary,
   filterPayrollTransactions,
 } from "@/lib/my-earnings/compute-my-earnings";
-import { computeEmployeeDashboard } from "@/lib/mission-control/compute-employee-dashboard";
+import { computeEmployeeDashboard } from "@/lib/overview/compute-employee-dashboard";
 
 function payroll(
   overrides: Partial<PayrollTransaction> & Pick<PayrollTransaction, "id" | "amount" | "status">,

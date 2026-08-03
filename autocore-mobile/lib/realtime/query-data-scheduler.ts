@@ -9,16 +9,18 @@ type PendingApply = {
 const pendingByKey = new Map<string, PendingApply>();
 let drainTimer: ReturnType<typeof setTimeout> | null = null;
 let draining = false;
-let shellRevealed = false;
 let lastCatalogApplyAt = 0;
 let seenCatalogApply = false;
+
+/** Arrays above this always apply off the snapshot/press frame. */
+const DEFER_ARRAY_MIN = 20;
 
 function keyOf(queryKey: readonly unknown[]): string {
   return queryKey.map(String).join('|');
 }
 
-function isLargeCatalog(data: unknown): boolean {
-  return Array.isArray(data) && data.length > 80;
+function shouldDeferApply(data: unknown): boolean {
+  return Array.isArray(data) && data.length >= DEFER_ARRAY_MIN;
 }
 
 function noteCatalogApply(): void {
@@ -63,11 +65,10 @@ function drainOne(): void {
   drainTimer = setTimeout(() => {
     drainTimer = null;
     drainOne();
-  }, 24);
+  }, 32);
 }
 
 export function setShellRevealed(revealed: boolean): void {
-  shellRevealed = revealed;
   if (!revealed) {
     seenCatalogApply = false;
     lastCatalogApplyAt = 0;
@@ -98,7 +99,7 @@ export function scheduleQueryDataApply(
   queryKey: readonly unknown[],
   data: unknown,
 ): void {
-  if (!shellRevealed || !isLargeCatalog(data)) {
+  if (!shouldDeferApply(data)) {
     pendingByKey.delete(keyOf(queryKey));
     applyNow(queryClient, queryKey, data);
     return;
@@ -108,18 +109,10 @@ export function scheduleQueryDataApply(
   scheduleDrain();
 }
 
+/** Drain pending applies one-by-one — never dump the whole catalog on one frame. */
 export function flushScheduledQueryDataApplies(): void {
-  if (drainTimer) {
-    clearTimeout(drainTimer);
-    drainTimer = null;
-  }
-  draining = false;
-
-  const batch = [...pendingByKey.values()];
-  pendingByKey.clear();
-  for (const job of batch) {
-    applyNow(job.queryClient, job.queryKey, job.data);
-  }
+  if (pendingByKey.size === 0) return;
+  scheduleDrain();
 }
 
 export function clearScheduledQueryDataApplies(): void {

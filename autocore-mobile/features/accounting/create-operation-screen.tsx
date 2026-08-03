@@ -1,11 +1,10 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 
-import { ArrowLeftIcon } from '@/assets/icons';
-import { Button, IconButton, KeyboardFormShell, StickyActionBar, Text, toast } from '@/components/ui';
+import { Button, KeyboardFormShell, Text, toast } from '@/components/ui';
 import { useAppDisplayCurrency, useSession, useTheme } from '@/hooks';
+import { useAccountingPreferences } from '@/hooks/use-accounting-preferences';
 import { appendAdvanceMarker } from '@/lib/accounting/advances';
 import {
   ACCOUNTING_CATEGORY_SUGGESTIONS,
@@ -19,7 +18,7 @@ import {
 import { APP_MONEY_BASE_CURRENCY, convertToBaseCurrency } from '@/lib/money/exchange-rates';
 import { appDisplayCurrencyAffix, formatAppMoney } from '@/lib/money/display-currency';
 import { createFinancialOperation } from '@/services/accounting/create-financial-operation';
-import { haptics, spacing } from '@/theme';
+import { haptics, tokens } from '@/theme';
 import type { CreatableOperationType } from '@/lib/accounting/labels';
 import type { OperationAccount, PaymentMethod } from '@/types/financial-operation';
 
@@ -29,8 +28,60 @@ import { CoCommentField } from './components/co-comment-field';
 import { CoCard, CoSection } from './components/co-section';
 import { CoToggleRow } from './components/co-toggle-row';
 import { CoTypeSelector } from './components/co-type-selector';
-import { ac } from './layout';
 import type { NewOperationPreset } from './navigation';
+
+/** Nav-bar text control — primary tint, 44pt hit, no ghost chrome. */
+function SheetNavButton({
+  label,
+  onPress,
+  disabled,
+  loading,
+  emphasis = false,
+}: {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  loading?: boolean;
+  emphasis?: boolean;
+}) {
+  const { colors } = useTheme();
+  const muted = Boolean(disabled) || Boolean(loading);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: muted, busy: Boolean(loading) }}
+      disabled={muted}
+      hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+      onPress={onPress}
+      style={{
+        minHeight: tokens.control.hitTarget,
+        minWidth: tokens.control.hitTarget,
+        paddingHorizontal: tokens.space.inline,
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: muted ? tokens.opacity.disabled : 1,
+      }}
+    >
+      {loading ? (
+        <ActivityIndicator size="small" color={colors.primary} />
+      ) : (
+        <Text
+          variant="body"
+          style={{
+            fontSize: 17,
+            lineHeight: 22,
+            fontWeight: emphasis ? '600' : '400',
+            color: colors.primary,
+          }}
+        >
+          {label}
+        </Text>
+      )}
+    </Pressable>
+  );
+}
 
 function parseAmountInput(value: string): number {
   const normalized = value.replace(/\s/g, '').replace(',', '.');
@@ -53,17 +104,35 @@ function readPreset(params: Record<string, string | string[] | undefined>): NewO
   };
 }
 
-const CATEGORY_SUGGESTIONS = ACCOUNTING_CATEGORY_SUGGESTIONS.map((item) =>
+const BUILTIN_CATEGORY_SUGGESTIONS = ACCOUNTING_CATEGORY_SUGGESTIONS.map((item) =>
   operationCategoryLabel(item),
 );
 
+/**
+ * Compose a ledger entry as a native form sheet over Accounting (NativeTabs).
+ * Cancel / Create live in the system header — the sheet itself is the chrome.
+ */
 export function CreateOperationScreen() {
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const { profile, can } = useSession();
   const rawParams = useLocalSearchParams<Record<string, string>>();
   const preset = useMemo(() => readPreset(rawParams), [rawParams]);
+  const { employees, specifics } = useAccountingPreferences(profile?.id);
+
+  const categorySuggestions = useMemo(() => {
+    const seen = new Set<string>();
+    const next: string[] = [];
+    for (const item of [...employees, ...specifics, ...BUILTIN_CATEGORY_SUGGESTIONS]) {
+      const label = item.trim();
+      if (!label) continue;
+      const key = label.toLocaleLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      next.push(label);
+    }
+    return next;
+  }, [employees, specifics]);
 
   const [type, setType] = useState<CreatableOperationType>(preset.type ?? 'expense');
   const [amount, setAmount] = useState('');
@@ -80,8 +149,6 @@ export function CreateOperationScreen() {
   const canEdit = can('accounting_edit');
   const direction = operationDirection(type);
 
-  // Amounts are entered in the currency the rest of the app displays, and
-  // converted back to the ledger's base currency before they are stored.
   const { currency, rates } = useAppDisplayCurrency();
   const affix = appDisplayCurrencyAffix(currency);
   const currencyMark = affix.suffix.trim() || affix.prefix.trim();
@@ -94,7 +161,12 @@ export function CreateOperationScreen() {
       ? null
       : `Recorded as ${formatAppMoney(baseAmount, APP_MONEY_BASE_CURRENCY)}`;
 
-  async function onSubmit() {
+  const dismiss = useCallback(() => {
+    haptics.selection();
+    router.back();
+  }, [router]);
+
+  const onSubmit = useCallback(async () => {
     if (!profile?.id || !profile.companyId) return;
 
     if (!amountValid) {
@@ -132,7 +204,39 @@ export function CreateOperationScreen() {
     } finally {
       setSubmitting(false);
     }
-  }
+  }, [
+    account,
+    amountValid,
+    baseAmount,
+    categoryInput,
+    comment,
+    markAsAdvance,
+    paymentMethod,
+    profile?.companyId,
+    profile?.id,
+    router,
+    type,
+  ]);
+
+  const canSubmit = canEdit && amountValid && !submitting;
+
+  const headerLeft = useCallback(
+    () => <SheetNavButton label="Cancel" onPress={dismiss} />,
+    [dismiss],
+  );
+
+  const headerRight = useCallback(
+    () => (
+      <SheetNavButton
+        label="Add"
+        emphasis
+        disabled={!canSubmit}
+        loading={submitting}
+        onPress={() => void onSubmit()}
+      />
+    ),
+    [canSubmit, onSubmit, submitting],
+  );
 
   if (!canEdit) {
     return (
@@ -142,14 +246,21 @@ export function CreateOperationScreen() {
           backgroundColor: colors.background,
           alignItems: 'center',
           justifyContent: 'center',
-          padding: spacing[6],
+          padding: tokens.space.section,
         }}
       >
+        <Stack.Screen
+          options={{
+            title: 'New Operation',
+            headerLeft,
+            headerRight: () => null,
+          }}
+        />
         <Text variant="body" color="muted" style={{ textAlign: 'center' }}>
           You don't have permission to create operations
         </Text>
-        <Button variant="outline" onPress={() => router.back()} style={{ marginTop: spacing[4] }}>
-          Back
+        <Button variant="outline" native={false} onPress={dismiss} style={{ marginTop: tokens.space.stack }}>
+          Close
         </Button>
       </View>
     );
@@ -158,65 +269,35 @@ export function CreateOperationScreen() {
   return (
     <KeyboardFormShell
       backgroundColor={colors.background}
+      contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={{
-        paddingHorizontal: ac.pad,
-        paddingTop: spacing[1],
-        paddingBottom: spacing[5],
-        gap: spacing[4],
+        paddingHorizontal: tokens.space.screenX,
+        paddingTop: tokens.space.stack,
+        paddingBottom: tokens.space.section,
+        gap: tokens.space.stack + 2,
       }}
-      header={
-        <View
-          style={{
-            paddingTop: insets.top + spacing[1],
-            paddingHorizontal: spacing[2],
-            paddingBottom: spacing[1],
-          }}
-        >
-          <IconButton
-            accessibilityLabel="Back"
-            variant="ghost"
-            size="sm"
-            onPress={() => router.back()}
-          >
-            <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
-          </IconButton>
-        </View>
-      }
-      footer={
-        <StickyActionBar>
-          <Button
-            size="xl"
-            loading={submitting}
-            disabled={!amountValid || submitting}
-            onPress={() => void onSubmit()}
-            style={{ flex: 1 }}
-          >
-            Create Operation
-          </Button>
-        </StickyActionBar>
-      }
     >
-      <View style={{ gap: spacing[1.5], paddingHorizontal: spacing[1] }}>
-        <Text
-          variant="pageTitle"
-          style={{ fontSize: 30, lineHeight: 36, fontWeight: '700', letterSpacing: -0.8 }}
-        >
-          New Operation
-        </Text>
-        <Text variant="body" color="muted" style={{ fontSize: 14, lineHeight: 19 }}>
-          Money moving in or out of the company ledger.
-        </Text>
-      </View>
+      <Stack.Screen
+        options={{
+          title: 'New Operation',
+          headerTintColor: colors.primary,
+          headerTitleStyle: { color: colors.foreground },
+          headerStyle: { backgroundColor: colors.background },
+          headerBlurEffect: isDark ? 'systemChromeMaterialDark' : 'systemChromeMaterialLight',
+          headerLeft,
+          headerRight,
+        }}
+      />
 
-      <CoSection title="Transaction">
-        <CoCard style={{ gap: spacing[4] }}>
+      <CoSection title="Type">
+        <CoCard style={{ gap: tokens.space.stack }}>
           <CoTypeSelector
             accessibilityLabel="Operation type"
             segments={creatableTypeOptions()}
             value={type}
             onValueChange={(next) => setType(next as CreatableOperationType)}
           />
-          <View style={{ gap: spacing[2] }}>
+          <View style={{ gap: tokens.space.inline }}>
             <CoAmountField
               value={amount}
               onChangeText={setAmount}
@@ -224,7 +305,7 @@ export function CreateOperationScreen() {
               direction={direction}
             />
             {baseAmountHint ? (
-              <Text variant="caption" color="muted" style={{ fontSize: 13 }}>
+              <Text variant="caption1" color="muted">
                 {baseAmountHint}
               </Text>
             ) : null}
@@ -233,9 +314,9 @@ export function CreateOperationScreen() {
       </CoSection>
 
       <CoSection title="Accounts">
-        <CoCard style={{ gap: spacing[3] }}>
-          <View style={{ gap: spacing[1.5] }}>
-            <Text variant="caption" color="muted" style={{ fontSize: 13, fontWeight: '600' }}>
+        <CoCard style={{ gap: tokens.space.stack }}>
+          <View style={{ gap: tokens.space.inline }}>
+            <Text variant="caption1" color="muted" style={{ fontWeight: '600' }}>
               Account
             </Text>
             <CoTypeSelector
@@ -246,8 +327,8 @@ export function CreateOperationScreen() {
             />
           </View>
 
-          <View style={{ gap: spacing[1.5] }}>
-            <Text variant="caption" color="muted" style={{ fontSize: 13, fontWeight: '600' }}>
+          <View style={{ gap: tokens.space.inline }}>
+            <Text variant="caption1" color="muted" style={{ fontWeight: '600' }}>
               Payment method
             </Text>
             <CoTypeSelector
@@ -265,8 +346,8 @@ export function CreateOperationScreen() {
           <CoCategoryField
             value={categoryInput}
             onValueChange={setCategoryInput}
-            suggestions={CATEGORY_SUGGESTIONS}
-            bleed={spacing[4]}
+            suggestions={categorySuggestions}
+            bleed={tokens.space.stack + 2}
           />
         </CoCard>
       </CoSection>
@@ -281,7 +362,7 @@ export function CreateOperationScreen() {
         <CoCard bare>
           <CoToggleRow
             label="Mark as advance"
-            helper="Counts this operation against an employee advance instead of a regular payout."
+            helper="Counts against an employee advance instead of a regular payout."
             value={markAsAdvance}
             onValueChange={setMarkAsAdvance}
           />
@@ -289,7 +370,7 @@ export function CreateOperationScreen() {
       </CoSection>
 
       {error ? (
-        <Text variant="caption" color="destructive" style={{ paddingHorizontal: spacing[1] }}>
+        <Text variant="caption1" color="destructive">
           {error}
         </Text>
       ) : null}

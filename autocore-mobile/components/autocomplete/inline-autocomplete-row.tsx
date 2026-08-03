@@ -7,8 +7,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Text } from '@/components/ui';
-import { useTheme } from '@/hooks';
+import { Text } from '@/components/ui/text';
+import { useTheme } from '@/hooks/use-theme';
 import { AUTOCOMPLETE_ROW_HEIGHT } from '@/lib/autocomplete/constants';
 import { formatAutocompleteOption } from '@/lib/autocomplete/format-option';
 import type { AutocompleteOption } from '@/lib/autocomplete/types';

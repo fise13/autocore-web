@@ -27,11 +27,11 @@ export function space(key: SpacingKey): number {
   return spacing[key];
 }
 
-/** Common layout paddings — matches `theme/screen.ts` rhythm */
+/** Common layout paddings — matches `theme/screen.ts` rhythm / DL v2 */
 export const screenPadding = {
-  horizontal: spacing[5],
+  horizontal: spacing[4],
   vertical: spacing[3],
-  safeHorizontal: spacing[5],
+  safeHorizontal: spacing[4],
 } as const;
 
 /** Minimum touch target — Apple HIG 44pt */

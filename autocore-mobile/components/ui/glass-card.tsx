@@ -1,57 +1,41 @@
 import { View, type ViewProps } from 'react-native';
-import { BlurView } from 'expo-blur';
-import { Platform } from 'react-native';
 
 import { useTheme } from '@/hooks';
-import { radius, spacing } from '@/theme';
+import { tokens } from '@/theme/tokens';
 
 type GlassCardProps = ViewProps & {
+  /** @deprecated Ignored — DL v2 kills decorative glass in product UI. */
   intensity?: number;
   padding?: number;
 };
 
-/** Mirrors .mc-glass-panel from globals.css */
-export function GlassCard({ children, intensity = 40, padding = spacing[4], style, ...props }: GlassCardProps) {
-  const { colors, shadows, isDark } = useTheme();
-
-  if (Platform.OS === 'web') {
-    return (
-      <View
-        style={[
-          {
-            backgroundColor: colors.glass,
-            borderRadius: radius['2xl'],
-            borderWidth: 1,
-            borderColor: colors.borderMuted,
-            padding,
-            ...shadows.sm,
-          },
-          style,
-        ]}
-        {...props}
-      >
-        {children}
-      </View>
-    );
-  }
+/**
+ * Quiet elevated surface — formerly blur glass.
+ * Prefer Surface variant="elevated" or ListSection for new work.
+ */
+export function GlassCard({
+  children,
+  padding = tokens.space.stack + 4,
+  style,
+  ...props
+}: GlassCardProps) {
+  const { colors } = useTheme();
 
   return (
-    <BlurView
-      intensity={intensity}
-      tint={isDark ? 'dark' : 'light'}
+    <View
       style={[
         {
-          borderRadius: radius['2xl'],
-          borderWidth: 1,
-          borderColor: colors.borderMuted,
-          overflow: 'hidden',
-          ...shadows.sm,
+          backgroundColor: colors.card,
+          borderRadius: tokens.radius.group,
+          borderWidth: tokens.control.hairline,
+          borderColor: colors.border,
+          padding,
         },
         style,
       ]}
       {...props}
     >
-      <View style={{ padding }}>{children}</View>
-    </BlurView>
+      {children}
+    </View>
   );
 }

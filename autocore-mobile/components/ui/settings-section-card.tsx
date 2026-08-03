@@ -2,8 +2,8 @@ import type { ComponentType, ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useTheme } from '@/hooks';
-import { rhythm } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
+import { tokens } from '@/theme/tokens';
 
 import { Text } from './text';
 
@@ -18,8 +18,7 @@ type SettingsSectionCardProps = {
 };
 
 /**
- * Web-style settings section: one card per section, header once, rows inside.
- * Stripe / Efferd / AutoCore web preferences pattern.
+ * Domain settings island — same surface language as ListSection for Team / Earnings.
  */
 export function SettingsSectionCard({
   title,
@@ -31,50 +30,58 @@ export function SettingsSectionCard({
 }: SettingsSectionCardProps) {
   const { colors } = useTheme();
   const isDanger = tone === 'danger';
+  const side = inset ? tokens.space.screenX : 0;
 
   return (
-    <View
-      style={[
-        styles.card,
-        {
-          marginHorizontal: inset ? rhythm.pad : 0,
-          borderRadius: rhythm.cardRadius,
-          borderColor: isDanger ? toneBackground(colors.destructive, 0.22) : colors.border,
-          backgroundColor: isDanger ? toneBackground(colors.destructive, 0.06) : colors.card,
-        },
-      ]}
-    >
+    <View style={{ marginBottom: inset ? tokens.space.section : 0 }}>
       {title ? (
-        <View style={styles.header}>
-          <View style={styles.headerTitleRow}>
+        <View
+          style={{
+            marginHorizontal: side + tokens.space.stack,
+            marginBottom: tokens.space.inline + 2,
+            gap: 2,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             {Icon ? (
               <Icon
                 size="sm"
-                color={isDanger ? colors.destructive : colors.primary}
-                strokeWidth={1.85}
+                color={isDanger ? colors.destructive : colors.mutedForeground}
+                strokeWidth={1.6}
               />
             ) : null}
             <Text
-              variant="body"
-              style={[
-                styles.headerTitle,
-                { color: isDanger ? colors.destructive : colors.foreground },
-              ]}
+              variant="footnote"
+              style={{
+                fontSize: 13,
+                lineHeight: 18,
+                fontWeight: '500',
+                letterSpacing: -0.08,
+                color: isDanger ? colors.destructive : colors.mutedForeground,
+              }}
             >
               {title}
             </Text>
           </View>
           {description ? (
-            <Text
-              variant="caption"
-              style={[styles.headerDescription, { color: colors.mutedForeground }]}
-            >
+            <Text variant="caption1" color="muted">
               {description}
             </Text>
           ) : null}
         </View>
       ) : null}
-      <View style={styles.body}>{children}</View>
+      <View
+        style={{
+          marginHorizontal: side,
+          borderRadius: tokens.radius.sheet,
+          overflow: 'hidden',
+          backgroundColor: isDanger
+            ? toneBackground(colors.destructive, 0.06)
+            : colors.card,
+        }}
+      >
+        {children}
+      </View>
     </View>
   );
 }
@@ -94,12 +101,11 @@ export function SettingsInset({ children, embedded = false }: SettingsInsetProps
       style={[
         styles.inset,
         {
-          marginHorizontal: embedded ? rhythm.cardPadX : rhythm.pad,
-          marginBottom: embedded ? rhythm.cardPadX : 0,
-          borderRadius: rhythm.cardRadius,
-          borderColor: colors.border,
-          backgroundColor: toneBackground(colors.foreground, 0.04),
-          padding: rhythm.cardPadX,
+          marginHorizontal: embedded ? tokens.space.stack + 2 : tokens.space.screenX,
+          marginBottom: embedded ? tokens.space.stack + 2 : 0,
+          borderRadius: tokens.radius.sheet,
+          backgroundColor: colors.card,
+          padding: tokens.space.stack + 2,
         },
       ]}
     >
@@ -109,35 +115,7 @@ export function SettingsInset({ children, embedded = false }: SettingsInsetProps
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden',
-  },
-  header: {
-    paddingHorizontal: rhythm.cardPadX,
-    paddingTop: 12,
-    paddingBottom: 8,
-    gap: 2,
-  },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    lineHeight: 18,
-  },
-  headerDescription: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  body: {
-    paddingBottom: 2,
-  },
   inset: {
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: rhythm.stack,
+    gap: tokens.space.stack,
   },
 });

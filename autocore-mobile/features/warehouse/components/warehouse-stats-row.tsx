@@ -4,7 +4,7 @@ import Animated from 'react-native-reanimated';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { toneBackground } from '@/theme/color-utils';
-import { McAnimatedCounter, useMcEnter } from '@/features/mission-control/animation';
+import { McAnimatedCounter, useMcEnter } from '@/features/overview/animation';
 import { useSearchEnter } from '@/features/search/animation';
 
 import { whTimeline } from '../animation/timeline';

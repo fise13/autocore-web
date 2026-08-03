@@ -9,6 +9,7 @@
  */
 import { clearNamespace, getJson, setJson } from '@/lib/storage/kv';
 import { ensureAsyncStorageMigrated } from '@/lib/storage/migrate-async-storage';
+import { dateMs } from '@/lib/firestore-timestamp';
 import type {
   BillingInterval,
   BillingPlan,
@@ -178,7 +179,7 @@ export function isCacheTrustworthy(cached: CachedEntitlement, now = Date.now()):
   const periodEnd = subscription.gracePeriodEnd ?? subscription.currentPeriodEnd;
   if (!periodEnd) return true; // Open-ended (enterprise contract) — bounded by cache age alone.
 
-  return now <= periodEnd.getTime() + GRACE_DAYS * DAY_MS;
+  return now <= dateMs(periodEnd) + GRACE_DAYS * DAY_MS;
 }
 
 export async function clearEntitlementCaches(): Promise<void> {

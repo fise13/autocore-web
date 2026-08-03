@@ -48,6 +48,7 @@ import { ScanTopBar } from './components/scan-top-bar';
 import { useScanExperience } from './hooks/use-scan-experience';
 import { useScanChromeColors } from './lib/scan-chrome-colors';
 import { relocatePendingStore } from './lib/relocate-pending-store';
+import { uploadScanDocument } from './lib/upload-scan-document';
 import { findVinInText, normalizeVin } from './lib/vin';
 import { scanLayout, type ScanCaptureMode } from './layout';
 import type { RecentScan, ScanCandidate } from './types';
@@ -67,12 +68,24 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
 
   const cameraRef = useRef<ScanCameraHandle>(null);
   const recentSheetRef = useRef<BottomSheetModal>(null);
+  /** True while ImagePicker / another system UI owns the screen — skip camera teardown. */
+  const overlayBusyRef = useRef(false);
+  const blurTeardownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [torchOn, setTorchOn] = useState(false);
   const [captureMode, setCaptureMode] = useState<ScanCaptureMode>('auto');
+  const captureModeRef = useRef<ScanCaptureMode>('auto');
   const [recentScans, setRecentScans] = useState<RecentScan[]>([]);
   const [moveTarget, setMoveTarget] = useState<ScanMoveTarget | null>(null);
   const [relocatePending, setRelocatePending] = useState(() => relocatePendingStore.get());
+  /** Keep CameraView warm across brief blurs (picker, sheet focus glitches). */
+  const [cameraMounted, setCameraMounted] = useState(isFocused);
+
+  const [documentBatchId, setDocumentBatchId] = useState<string | null>(null);
+
+  useEffect(() => {
+    captureModeRef.current = captureMode;
+  }, [captureMode]);
 
   const experience = useScanExperience();
   const {
@@ -121,8 +134,14 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
 
   useFocusEffect(
     useCallback(() => {
+      if (blurTeardownRef.current) {
+        clearTimeout(blurTeardownRef.current);
+        blurTeardownRef.current = null;
+      }
+
       tabNavigationGuard.release();
       scanNavigationGuard.release();
+      setCameraMounted(true);
       service.resume();
 
       const recentTimer = setTimeout(() => {
@@ -131,11 +150,21 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
 
       return () => {
         clearTimeout(recentTimer);
-        dismissAllSheets();
-        recentSheetRef.current?.dismiss();
-        addToOrderFlow.pickerRef.current?.dismiss();
-        setMoveTarget(null);
+        service.pause();
         setTorchOn(false);
+
+        // ImagePicker / system sheets briefly blur this screen. Immediate
+        // dismissAllSheets + CameraView unmount made modals vanish and then
+        // hitch hard on remount when focus returned.
+        blurTeardownRef.current = setTimeout(() => {
+          blurTeardownRef.current = null;
+          if (overlayBusyRef.current) return;
+          dismissAllSheets();
+          recentSheetRef.current?.dismiss();
+          addToOrderFlow.pickerRef.current?.dismiss();
+          setMoveTarget(null);
+          setCameraMounted(false);
+        }, 650);
       };
     }, [addToOrderFlow.pickerRef, dismissAllSheets, refreshRecentScans, service]),
   );
@@ -231,6 +260,46 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
     [onSheetClosed, service, setOcrBusy],
   );
 
+  const runDocumentImport = useCallback(
+    async (uris: string[]) => {
+      if (uris.length === 0) return;
+      setOcrBusy(true);
+      service.pause();
+      let batchId = documentBatchId ?? undefined;
+      let uploaded = 0;
+      try {
+        for (let i = 0; i < uris.length; i += 1) {
+          const uri = uris[i];
+          if (!uri) continue;
+          const result = await uploadScanDocument(uri, { batchId });
+          if (result.batchId) {
+            batchId = result.batchId;
+            setDocumentBatchId(result.batchId);
+          }
+          uploaded += 1;
+        }
+        haptics.success();
+        void refreshRecentScans();
+        toast({
+          title: uploaded === 1 ? 'Document uploaded' : `${uploaded} documents uploaded`,
+          description: 'Parsing continues in the background.',
+          variant: 'success',
+        });
+      } catch (error) {
+        haptics.warning();
+        toast({
+          title: uploaded > 0 ? 'Some uploads failed' : 'Upload failed',
+          description: error instanceof Error ? error.message : undefined,
+          variant: 'destructive',
+        });
+      } finally {
+        setOcrBusy(false);
+        service.resume();
+      }
+    },
+    [documentBatchId, refreshRecentScans, service, setOcrBusy],
+  );
+
   const preferDocumentOcr = captureMode === 'document';
 
   const handleOpenPhotos = useCallback(async () => {
@@ -244,13 +313,28 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
       void Linking.openSettings();
       return;
     }
-    const pick = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-    });
-    if (pick.canceled || !pick.assets[0]?.uri) return;
-    await runOcrOnUri(pick.assets[0].uri, preferDocumentOcr);
-  }, [preferDocumentOcr, runOcrOnUri]);
+    overlayBusyRef.current = true;
+    let pick: ImagePicker.ImagePickerResult;
+    try {
+      pick = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: preferDocumentOcr ? 0.9 : 0.8,
+        allowsMultipleSelection: preferDocumentOcr,
+        selectionLimit: preferDocumentOcr ? 12 : 1,
+      });
+    } finally {
+      overlayBusyRef.current = false;
+    }
+    if (pick.canceled || !pick.assets?.length) return;
+    const uris = pick.assets.map((asset) => asset.uri).filter(Boolean);
+    if (uris.length === 0) return;
+
+    if (preferDocumentOcr) {
+      await runDocumentImport(uris);
+      return;
+    }
+    await runOcrOnUri(uris[0]!, false);
+  }, [preferDocumentOcr, runDocumentImport, runOcrOnUri]);
 
   const handleCapture = useCallback(async () => {
     if (ocrBusy) return;
@@ -263,13 +347,18 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
       });
       return;
     }
-    await runOcrOnUri(uri, preferDocumentOcr);
-  }, [ocrBusy, preferDocumentOcr, runOcrOnUri]);
+    if (captureModeRef.current === 'document') {
+      await runDocumentImport([uri]);
+      return;
+    }
+    await runOcrOnUri(uri, false);
+  }, [ocrBusy, runDocumentImport, runOcrOnUri]);
 
   const handleLiveDetection = useCallback(
     (detection: ScanDetection) => {
-      if (captureMode === 'document') return;
-      if (captureMode === 'vin') {
+      const mode = captureModeRef.current;
+      if (mode === 'document') return;
+      if (mode === 'vin') {
         const vin = normalizeVin(detection.payload) ?? findVinInText(detection.payload);
         if (!vin) return;
         onDetection({ ...detection, payload: vin });
@@ -277,13 +366,14 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
       }
       onDetection(detection);
     },
-    [captureMode, onDetection],
+    [onDetection],
   );
 
   const handleLiveDetections = useCallback(
     (detections: ScanDetection[]) => {
-      if (captureMode === 'document') return;
-      if (captureMode === 'vin') {
+      const mode = captureModeRef.current;
+      if (mode === 'document') return;
+      if (mode === 'vin') {
         const vins = detections.flatMap((detection) => {
           const vin = normalizeVin(detection.payload) ?? findVinInText(detection.payload);
           return vin ? [{ ...detection, payload: vin }] : [];
@@ -298,14 +388,27 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
       }
       onDetections(detections);
     },
-    [captureMode, onDetection, onDetections],
+    [onDetection, onDetections],
   );
 
   const showShutter = captureMode === 'document' || captureMode === 'vin';
 
+  const setMode = useCallback((mode: ScanCaptureMode) => {
+    setCaptureMode(mode);
+  }, []);
+
   const replayPayload = useCallback(
     (payload: string) => {
       recentSheetRef.current?.dismiss();
+      if (payload.startsWith('document:')) {
+        toast({
+          title: 'Document already uploaded',
+          description: 'Switch to Document mode to capture another page.',
+          variant: 'default',
+        });
+        setCaptureMode('document');
+        return;
+      }
       setTimeout(() => void service.commitPayload(payload, 'camera'), 220);
     },
     [service],
@@ -355,8 +458,11 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
         <ScanCamera
           ref={cameraRef}
           torch={torchOn && isFocused}
-          active={isFocused && !ocrBusy}
-          scanEnabled={isFocused && scanEnabled && !ocrBusy && captureMode !== 'document'}
+          mounted={cameraMounted}
+          // Keep the native session warm during OCR/upload — flipping this
+          // re-arms the barcode pipeline and feels like a hard hitch.
+          sessionActive={cameraMounted}
+          scanEnabled={isFocused && scanEnabled && !ocrBusy}
           captureMode={captureMode}
           onDetection={handleLiveDetection}
           onDetections={handleLiveDetections}
@@ -375,7 +481,7 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
           >
             <ActivityIndicator color={chrome.ocrLabel} />
             <Text variant="caption" style={[styles.ocrLabel, { color: chrome.ocrLabel }]}>
-              Recognizing…
+              {captureMode === 'document' ? 'Uploading…' : 'Recognizing…'}
             </Text>
           </View>
         ) : null}
@@ -424,40 +530,27 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
       <View
         style={[styles.footer, { paddingBottom: footerBottom, backgroundColor: chrome.stage }]}
       >
-        <ScanModeControl mode={captureMode} onChange={setCaptureMode} />
-        {showShutter ? (
+        <ScanModeControl mode={captureMode} onChange={setMode} />
+        <View
+          pointerEvents={showShutter ? 'auto' : 'none'}
+          style={{ opacity: showShutter ? 1 : 0, height: showShutter ? undefined : 0, overflow: 'hidden' }}
+        >
           <ScanShutterButton
-            disabled={ocrBusy || !isFocused}
+            disabled={ocrBusy || !isFocused || !showShutter}
             onPress={() => void handleCapture()}
             accessibilityLabel={
               captureMode === 'vin' ? 'Capture VIN plate' : 'Capture document'
             }
           />
-        ) : null}
-        {!isOrderContext ? (
-          <ScanToolbar
-            onPhotos={() => void handleOpenPhotos()}
-            onSearch={() => navigateToSearch()}
-            onRecents={() => {
-              void refreshRecentScans();
-              recentSheetRef.current?.present();
-            }}
-            onImportDocument={() => {
-              haptics.selection();
-              router.push('/import' as Href);
-            }}
-          />
-        ) : (
-          <ScanToolbar
-            compact
-            onPhotos={() => void handleOpenPhotos()}
-            onSearch={() => navigateToSearch()}
-            onRecents={() => {
-              void refreshRecentScans();
-              recentSheetRef.current?.present();
-            }}
-          />
-        )}
+        </View>
+        <ScanToolbar
+          onPhotos={() => void handleOpenPhotos()}
+          onSearch={() => navigateToSearch()}
+          onRecents={() => {
+            void refreshRecentScans();
+            recentSheetRef.current?.present();
+          }}
+        />
       </View>
 
       <ScanProductSheet

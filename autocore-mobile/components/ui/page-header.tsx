@@ -91,7 +91,7 @@ export function PageHeader({
         {logo ? (
           <Image
             source={logo}
-            style={{ width: rhythm.logo, height: rhythm.logo }}
+            style={{ width: rhythm.logo, height: rhythm.logo, tintColor: titleColor }}
             contentFit="contain"
             cachePolicy="memory-disk"
             accessibilityLabel="AutoCore"

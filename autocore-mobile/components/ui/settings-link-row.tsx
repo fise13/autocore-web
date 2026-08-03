@@ -3,7 +3,6 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ChevronRightIcon } from '@/assets/icons';
 import { useTheme } from '@/hooks';
-import { stackNavigationGuard } from '@/lib/navigation/stack-navigation-guard';
 import { haptics, rhythm } from '@/theme';
 
 import { Text } from './text';
@@ -50,7 +49,7 @@ export const SettingsLinkRow = memo(function SettingsLinkRow({
         accessibilityLabel={meta ? `${title}, ${meta}` : title}
         disabled={!interactive}
         onPress={() => {
-          if (!onPress || stackNavigationGuard.isLocked) return;
+          if (!onPress) return;
           haptics.selection();
           onPress();
         }}

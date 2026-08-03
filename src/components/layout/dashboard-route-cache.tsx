@@ -18,9 +18,9 @@ import { cn } from "@/lib/utils";
 const lazyPanel = (loader: () => Promise<{ default: React.ComponentType }>) =>
   dynamic(loader, { ssr: false, loading: () => null });
 
-const MissionControlShell = lazyPanel(() =>
-  import("@/components/mission-control/mission-control-shell").then((m) => ({
-    default: m.MissionControlShell,
+const OverviewShell = lazyPanel(() =>
+  import("@/components/overview/overview-shell").then((m) => ({
+    default: m.OverviewShell,
   })),
 );
 const WorkOrdersWorkspace = lazyPanel(() =>
@@ -94,7 +94,7 @@ export function resolveRouteCacheKey(pathname: string): string | null {
 function renderCachedRoute(cacheKey: string): ReactNode {
   switch (cacheKey) {
     case "/":
-      return <MissionControlShell />;
+      return <OverviewShell />;
     case "/work-orders":
       return <WorkOrdersWorkspace />;
     case "/accounting":

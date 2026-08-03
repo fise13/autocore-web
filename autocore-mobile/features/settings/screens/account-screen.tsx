@@ -2,22 +2,15 @@ import { View } from 'react-native';
 
 import { UserAvatar } from '@/components/account/user-avatar';
 import { useGuardedRouter } from '@/hooks/use-guarded-router';
-import {
-  Button,
-  SettingsInset,
-  SettingsLinkRow,
-  SettingsSectionCard,
-  Text,
-} from '@/components/ui';
+import { Button, CollectionRow, ListSection, Text } from '@/components/ui';
 import { useAuth } from '@/authentication/auth-provider';
 import { useDeleteAccount, useSession } from '@/hooks';
 import { useUserPhotoUrl } from '@/hooks/use-user-photo';
 import { themePreferenceLabel, useTheme } from '@/hooks/use-theme';
-import { rhythm } from '@/theme';
+import { tokens } from '@/theme/tokens';
 
 import { settingsRouteHref } from '../navigation';
 import { DeleteAccountDialog } from '@/features/profile/components/delete-account-dialog';
-import { ProfileMetaRow } from '@/features/profile/components/profile-meta-card';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -49,73 +42,93 @@ export function AccountScreen() {
 
   return (
     <ProfileScreenShell title="Account" subtitle="Profile, sign-in, and security">
-      <SettingsInset>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: rhythm.stack }}>
-          <UserAvatar
-            displayName={profile?.displayName ?? 'User'}
-            photoURL={photoURL}
-            seed={profile?.id}
-            size="lg"
-          />
-          <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
-            <Text variant="body" style={{ fontSize: 16, fontWeight: '600' }} numberOfLines={1}>
-              {profile?.displayName?.trim() || 'User'}
-            </Text>
-            <Text variant="caption" color="muted" numberOfLines={1}>
-              {profile?.email ?? firebaseUser?.email ?? '—'}
-            </Text>
-          </View>
+      <View
+        style={{
+          marginHorizontal: tokens.space.screenX,
+          marginBottom: tokens.space.section,
+          paddingHorizontal: tokens.space.stack + 2,
+          paddingVertical: tokens.space.stack,
+          borderRadius: tokens.radius.full,
+          backgroundColor: colors.card,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: tokens.space.stack,
+        }}
+      >
+        <UserAvatar
+          displayName={profile?.displayName ?? 'User'}
+          photoURL={photoURL}
+          seed={profile?.id}
+          size="md"
+        />
+        <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+          <Text variant="body" style={{ fontSize: 16, fontWeight: '600' }} numberOfLines={1}>
+            {profile?.displayName?.trim() || 'User'}
+          </Text>
+          <Text variant="caption" color="muted" numberOfLines={1}>
+            {profile?.email ?? firebaseUser?.email ?? '—'}
+          </Text>
         </View>
-      </SettingsInset>
+      </View>
 
-      <SettingsSectionCard title="General" description="Profile details">
-        <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
-          <ProfileMetaRow label="Name" value={profile?.displayName?.trim() || '—'} />
-          <ProfileMetaRow label="Email" value={profile?.email ?? firebaseUser?.email ?? '—'} />
-          <ProfileMetaRow label="Sign-in method" value={resolveProvider(providerIds)} />
-          <ProfileMetaRow label="Role" value={ROLE_LABELS[profile?.role ?? 'employee'] ?? 'Employee'} />
-        </View>
-      </SettingsSectionCard>
+      <ListSection title="General">
+        <CollectionRow title="Name" value={profile?.displayName?.trim() || '—'} showChevron={false} />
+        <CollectionRow
+          title="Email"
+          value={profile?.email ?? firebaseUser?.email ?? '—'}
+          showChevron={false}
+        />
+        <CollectionRow title="Sign-in" value={resolveProvider(providerIds)} showChevron={false} />
+        <CollectionRow
+          title="Role"
+          value={ROLE_LABELS[profile?.role ?? 'employee'] ?? 'Employee'}
+          showChevron={false}
+        />
+      </ListSection>
 
-      <SettingsSectionCard title="Settings" description="Profile and interface">
-        <SettingsLinkRow
+      <ListSection title="Settings">
+        <CollectionRow
           title="Edit profile"
-          value="Name, phone, photo"
+          subtitle="Name, phone, photo"
           onPress={() => router.push(settingsRouteHref('edit-profile'))}
         />
-        <SettingsLinkRow
+        <CollectionRow
           title="Theme"
           value={themePreferenceLabel(preference)}
-          bordered
           onPress={() => router.push(settingsRouteHref('appearance'))}
         />
-      </SettingsSectionCard>
+      </ListSection>
 
-      <SettingsSectionCard title="Password">
-        <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX }}>
-          <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-            {emailProvider
-              ? 'You can change your password from Edit Profile.'
-              : `Signed in via ${resolveProvider(providerIds)}. No app password is used.`}
-          </Text>
-        </View>
-      </SettingsSectionCard>
+      <ListSection
+        title="Password"
+        footer={
+          emailProvider
+            ? 'Change your password from Edit Profile.'
+            : `Signed in via ${resolveProvider(providerIds)}. No app password is used.`
+        }
+      >
+        {emailProvider ? (
+          <CollectionRow
+            title="Manage password"
+            onPress={() => router.push(settingsRouteHref('edit-profile'))}
+          />
+        ) : (
+          <CollectionRow title="Social sign-in" value={resolveProvider(providerIds)} showChevron={false} />
+        )}
+      </ListSection>
 
-      <SettingsSectionCard title="Desktop connection">
-        <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
-          <ProfileMetaRow label="Status" value="Not connected" />
-          <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-            Syncing with AutoCore Desktop is coming in a future update. For now, all data is
-            available in the cloud and on the web app.
-          </Text>
-        </View>
-      </SettingsSectionCard>
+      <ListSection
+        title="Desktop"
+        footer="Syncing with AutoCore Desktop is coming later. Data stays in the cloud and web app."
+      >
+        <CollectionRow title="Connection" value="Not connected" showChevron={false} />
+      </ListSection>
 
-      <SettingsSectionCard title="Danger zone" tone="danger" description="Deletion is permanent">
-        <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
-          <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
-            Your profile and access to AutoCore will be deleted. Company data will remain with other members.
-          </Text>
+      <ListSection
+        title="Danger zone"
+        footer="Your profile and access will be deleted. Company data stays with other members."
+      >
+        <View style={{ padding: tokens.space.stack + 2 }}>
           <Button
             onPress={deleteAccount.requestDelete}
             disabled={deleteAccount.loading}
@@ -125,7 +138,7 @@ export function AccountScreen() {
             Delete account
           </Button>
         </View>
-      </SettingsSectionCard>
+      </ListSection>
 
       <DeleteAccountDialog
         open={deleteAccount.passwordOpen}

@@ -31,6 +31,7 @@ import {
   HelpCircle,
   Images,
   LayoutGrid,
+  ListFilter,
   LifeBuoy,
   Loader2,
   Lock,
@@ -78,6 +79,7 @@ export const SearchIcon = createIcon(Search, 'SearchIcon');
 export const ScanSearchIcon = createIcon(ScanSearch, 'ScanSearchIcon');
 export const ScanLineIcon = createIcon(ScanLine, 'ScanLineIcon');
 export const PlusIcon = createIcon(Plus, 'PlusIcon');
+export const FilterIcon = createIcon(ListFilter, 'FilterIcon');
 export const ArrowRightIcon = createIcon(ArrowRight, 'ArrowRightIcon');
 export const ArrowLeftIcon = createIcon(ArrowLeft, 'ArrowLeftIcon');
 export const ArrowUpRightIcon = createIcon(ArrowUpRight, 'ArrowUpRightIcon');

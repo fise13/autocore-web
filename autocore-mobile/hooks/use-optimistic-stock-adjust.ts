@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { toast } from '@/components/ui';
+import { toast } from '@/components/ui/toast';
 import { useMobileStockAdjust } from '@/hooks/use-mobile-stock-adjust';
 import { haptics } from '@/theme';
 import type { InventoryItem } from '@/types/inventory';

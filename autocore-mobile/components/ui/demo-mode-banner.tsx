@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 
-import { Text } from '@/components/ui';
-import { useTheme } from '@/hooks';
+import { Text } from '@/components/ui/text';
+import { useTheme } from '@/hooks/use-theme';
 import { layout, rhythm } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
 

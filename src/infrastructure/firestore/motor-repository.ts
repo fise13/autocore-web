@@ -87,6 +87,10 @@ function mapMotor(docId: string, data: Record<string, unknown>): MotorEntity | n
     serialCode,
     configuration: String(data.configuration ?? ""),
     notes: String(data.notes ?? ""),
+    quality: typeof data.quality === "string" ? data.quality : "",
+    photoUrls: Array.isArray(data.photoUrls)
+      ? data.photoUrls.map(String).filter(Boolean)
+      : [],
     quantity: Number(data.quantity ?? 1),
     transmission: String(data.transmission ?? ""),
     arrivalDate: toDate(data.arrivalDate),
@@ -223,6 +227,8 @@ export function createMotorRepository() {
       serialCode: input.serialCode.trim(),
       configuration: input.configuration ?? "",
       notes: input.notes ?? "",
+      quality: input.quality ?? "",
+      photoUrls: Array.isArray(input.photoUrls) ? input.photoUrls : [],
       quantity: input.quantity ?? 1,
       transmission: input.transmission ?? "",
       soldDate: input.soldDate ?? null,
@@ -418,6 +424,8 @@ export function createMotorRepository() {
             serialCode: payload.serialCode,
             configuration: payload.configuration ?? "",
             notes: payload.notes ?? "",
+            quality: payload.quality ?? "",
+            photoUrls: Array.isArray(payload.photoUrls) ? payload.photoUrls : [],
             quantity: payload.quantity ?? 1,
             transmission: payload.transmission ?? "",
             brandName: payload.brandName ?? "",

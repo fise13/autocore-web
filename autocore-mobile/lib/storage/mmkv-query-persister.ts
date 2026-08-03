@@ -1,5 +1,6 @@
 import type { PersistedClient, Persister } from '@tanstack/react-query-persist-client';
 
+import { reviveDatesDeep } from '@/lib/firestore-timestamp';
 import { getJson, getString, remove, setJson, setString } from '@/lib/storage/kv';
 
 const RQ_CACHE_KEY = 'autocore-mobile:react-query:v1';
@@ -45,7 +46,10 @@ export const mmkvQueryPersister: Persister = {
     setJson(RQ_CACHE_KEY, client);
   },
   restoreClient: async () => {
-    return getJson<PersistedClient>(RQ_CACHE_KEY) ?? undefined;
+    const client = getJson<PersistedClient>(RQ_CACHE_KEY);
+    // JSON round-trip turns Date into ISO strings; revive before React Query
+    // hydrates screens or `value.getTime()` throws in release.
+    return client ? reviveDatesDeep(client) : undefined;
   },
   removeClient: async () => {
     remove(RQ_CACHE_KEY);

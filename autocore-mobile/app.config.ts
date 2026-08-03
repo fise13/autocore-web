@@ -34,11 +34,9 @@ const plugins: ExpoConfig['plugins'] = [
   [
     'expo-splash-screen',
     {
-      image: './assets/branding/login-logo.png',
-      resizeMode: 'contain',
+      // Solid boot only — no red mark flash. React AuthBrandMark is monochrome.
       backgroundColor: '#ffffff',
       dark: {
-        image: './assets/branding/login-logo.png',
         backgroundColor: '#0d0e12',
       },
     },

@@ -9,7 +9,7 @@ import { autocoreEase, duration, spacing } from '@/theme';
 type CoAmountFieldProps = {
   value: string;
   onChangeText: (value: string) => void;
-  /** Currency mark shown inside the field, e.g. `₸`. */
+  /** Currency mark shown inside the field, e.g. `$`. */
   currency: string;
   /** Drives the sign glyph and its tone. */
   direction: 'in' | 'out';

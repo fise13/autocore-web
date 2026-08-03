@@ -759,6 +759,26 @@ service cloud.firestore {
           && request.auth.uid != employeeId;
       }
 
+      match /directory/{personId} {
+        allow read: if canViewEmployees(companyId);
+        allow create: if canManageEmployees(companyId)
+          && request.resource.data.companyId == companyId
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 120
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.status in ['named', 'invited'];
+        allow update: if canManageEmployees(companyId)
+          && resource.data.companyId == companyId
+          && request.resource.data.companyId == companyId
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 120
+          && request.resource.data.status in ['named', 'invited'];
+        allow delete: if canManageEmployees(companyId)
+          && resource.data.companyId == companyId;
+      }
+
       match /roles/{roleId} {
         allow read: if isOwnerOfCompany(companyId)
           || canViewEmployees(companyId)

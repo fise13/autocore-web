@@ -232,16 +232,6 @@ export function AccountingScreen() {
     onMotorSaleSelect: handleMotorSaleSelect,
   };
 
-  if (!enabled || !profile?.companyId) {
-    return (
-      <ScreenPlaceholder
-        icon={BarChart3Icon}
-        title="No workspace"
-        description="Select a company to view finances and accounting metrics."
-      />
-    );
-  }
-
   if (!canView) {
     return (
       <ScreenPlaceholder
@@ -252,7 +242,7 @@ export function AccountingScreen() {
     );
   }
 
-  if (isBootstrapping && isEmpty) {
+  if (!profile?.companyId || isBootstrapping) {
     return (
       <Screen>
         <AcAccountingSkeleton />

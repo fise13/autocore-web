@@ -1,6 +1,7 @@
 import {
   MOTOR_GRID_BASE_HEADER_HEIGHT,
   MOTOR_GRID_BASE_ROW_HEIGHT,
+  MOTOR_GRID_COLUMN_WIDTHS,
   scaleMotorGridDimension,
 } from "@/lib/motor-grid-layout";
 import { GridCellAddress, GridColumnDefinition } from "@/lib/grid/grid-types";
@@ -10,7 +11,9 @@ export const WAREHOUSE_GRID_EMPTY_ROWS_EXPAND = 120;
 export const WAREHOUSE_GRID_EMPTY_ROWS_THRESHOLD = 48;
 
 /** Read-only aggregate / audit columns in the service inventory grid. */
-export const WAREHOUSE_READ_ONLY_COLUMNS = new Set([5, 6, 13]);
+export const WAREHOUSE_READ_ONLY_COLUMNS = new Set([5, 6, 16]);
+/** Photo column — interactive cell, not text-editable. */
+export const WAREHOUSE_PHOTO_COLUMN = 14;
 
 function warehouseGridBaseColumns(): GridColumnDefinition[] {
   const columns = userCopy.warehouse.grid.columns;
@@ -83,6 +86,29 @@ function warehouseGridBaseColumns(): GridColumnDefinition[] {
       modelField: "warehouseLocation",
     },
     {
+      id: "col-15",
+      title: columns.notes,
+      width: 160,
+      editable: true,
+      modelField: "notes",
+    },
+    {
+      id: "col-17",
+      title: columns.quality,
+      width: 100,
+      editable: true,
+      modelField: "quality",
+    },
+    {
+      id: "photo",
+      title: columns.photo,
+      width: MOTOR_GRID_COLUMN_WIDTHS.photo,
+      editable: false,
+      align: "center",
+      modelField: "imageUrls",
+      cellKind: "photo",
+    },
+    {
       id: "col-14",
       title: columns.minStock,
       width: 92,
@@ -137,11 +163,11 @@ export function warehouseCellFrame(layout: WarehouseGridLayoutMetrics, cell: Gri
 }
 
 export const WAREHOUSE_EDITABLE_COL_START = 1;
-export const WAREHOUSE_EDITABLE_COL_END = 12;
-export const WAREHOUSE_ACTION_COLUMN = 14;
+export const WAREHOUSE_EDITABLE_COL_END = 15;
+export const WAREHOUSE_ACTION_COLUMN = 17;
 
 export function isWarehouseReadOnlyColumn(column: number): boolean {
-  return WAREHOUSE_READ_ONLY_COLUMNS.has(column);
+  return WAREHOUSE_READ_ONLY_COLUMNS.has(column) || column === WAREHOUSE_PHOTO_COLUMN;
 }
 
 export function isWarehouseEditableColumn(column: number): boolean {

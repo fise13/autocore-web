@@ -14,7 +14,7 @@ export async function createCompanyAsAdmin(
   const db = getAdminFirestore();
   const trimmedName = name.trim();
   if (!trimmedName) {
-    throw new Error("Укажите название компании");
+    throw new Error("Enter a company name");
   }
 
   const userSnap = await db.collection("users").doc(ownerId).get();

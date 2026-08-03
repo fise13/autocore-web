@@ -7,7 +7,7 @@ import {
   McPanel,
   McPanelBody,
   McPanelHeader,
-} from "@/components/mission-control/dashboard/dashboard-panel";
+} from "@/components/overview/dashboard/dashboard-panel";
 import { Button } from "@/components/ui/button";
 import { createEmployeeRbacRepository } from "@/infrastructure/firestore/employee-rbac-repository";
 import { userCopy } from "@/lib/user-copy";

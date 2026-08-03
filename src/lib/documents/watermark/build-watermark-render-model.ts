@@ -39,7 +39,7 @@ export function buildWatermarkRenderModel(input: {
 }): DocumentWatermarkRenderModel | null {
   if (!isWatermarkActive(input.config)) return null;
 
-  const companyName = input.companyName.trim() || "Компания";
+  const companyName = input.companyName.trim() || "Company";
   const hasLogo = Boolean(input.logoDataUri?.trim());
 
   if (input.config.type === "logo" && !hasLogo) return null;

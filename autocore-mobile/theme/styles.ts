@@ -7,7 +7,6 @@ import type { ColorScheme, SemanticColors } from './colors';
 import {
   borderStyle,
   cornerStyle,
-  defaultShadow,
   layoutRhythm,
   touchTarget,
   toneStyles,
@@ -59,13 +58,13 @@ export function createInputTextStyle({ colors }: ThemeSlice, options?: { large?:
 
 export function createCardStyle(theme: ThemeSlice, size: 'default' | 'sm' = 'default'): ViewStyle {
   const padding = size === 'sm' ? layoutRhythm.cardPaddingSm : layoutRhythm.cardPadding;
+  /** DL v3: fill + hairline — never hairline and shadow together on cards. */
   return {
     backgroundColor: theme.colors.card,
     borderRadius: cornerStyle.card,
     padding,
     gap: layoutRhythm.cardGap,
     ...ringBorder(theme.scheme),
-    ...defaultShadow(theme.scheme),
   };
 }
 

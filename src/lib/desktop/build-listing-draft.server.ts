@@ -54,7 +54,7 @@ export async function buildListingDraft(params: {
     title,
     description,
     price,
-    currency: "KZT",
+    currency: "USD",
     photoUrls,
     categoryHint: params.platform === "kolesa" ? "auto.car" : undefined,
   };

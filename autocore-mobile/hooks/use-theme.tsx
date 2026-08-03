@@ -77,11 +77,12 @@ export function ThemeProvider({ children, forcedScheme }: ThemeProviderProps) {
       preference,
       setPreference,
       colors,
-      gradients: getGradients(scheme),
-      elevation: getElevation(scheme),
+      // Derive chrome from accent-resolved colors so primary tones/gradients match.
+      gradients: getGradients(colors),
+      elevation: getElevation(colors),
       shadows: getShadows(scheme),
       ring: ringBorder(scheme),
-      tones: toneStyles(scheme),
+      tones: toneStyles(colors),
       isDark: scheme === 'dark',
     };
   }, [accentColor, preference, scheme, setPreference]);

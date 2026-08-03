@@ -375,7 +375,7 @@ export function buildAttentionItems(
         pendingPayroll.length === 1
           ? '1 payroll entry'
           : `${pendingPayroll.length} payroll entries`,
-      subtitle: `${pendingPayrollTotal.toLocaleString('ru-RU')} ₸ awaiting payout`,
+      subtitle: `$${pendingPayrollTotal.toLocaleString('en-US')} awaiting payout`,
       tone: 'warning',
       action: 'payroll',
     });
@@ -395,7 +395,7 @@ export function buildAttentionItems(
     items.push({
       id: 'negative-balance',
       title: 'Negative balance',
-      subtitle: `${totalBalance.toLocaleString('ru-RU')} ₸ across accounts`,
+      subtitle: `$${totalBalance.toLocaleString('en-US')} across accounts`,
       tone: 'danger',
       action: 'cashbox',
     });
@@ -405,7 +405,7 @@ export function buildAttentionItems(
     items.push({
       id: 'today-expenses',
       title: 'Expenses today',
-      subtitle: `${todayExpenses.toLocaleString('ru-RU')} ₸`,
+      subtitle: `$${todayExpenses.toLocaleString('en-US')}`,
       tone: 'neutral',
       action: 'expenses',
     });

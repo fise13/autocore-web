@@ -139,7 +139,7 @@ export const WarehouseItemRow = memo(function WarehouseItemRow({
 
           {typeof item.sellPrice === 'number' && item.sellPrice > 0 ? (
             <Text variant="caption" color="muted" style={{ fontVariant: ['tabular-nums'] }}>
-              {item.sellPrice.toLocaleString('ru-RU')} ₸
+              {`$${item.sellPrice.toLocaleString('en-US')}`}
             </Text>
           ) : null}
         </View>

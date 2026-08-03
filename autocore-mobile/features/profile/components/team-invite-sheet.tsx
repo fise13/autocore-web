@@ -5,7 +5,7 @@ import {
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { MailIcon } from '@/assets/icons';
+import { CopyIcon, ExternalLinkIcon, MailIcon, Share2Icon } from '@/assets/icons';
 import { Button, Input, Text } from '@/components/ui';
 import { useModalBottomSheet, useTheme } from '@/hooks';
 import {
@@ -22,8 +22,13 @@ import type { UserRole } from '@/types/user';
 
 import { profileLayout } from '../layout';
 
+export type TeamInvitePresentOptions = {
+  personName?: string;
+  directoryPersonId?: string;
+};
+
 export type TeamInviteSheetRef = {
-  present: () => void;
+  present: (options?: TeamInvitePresentOptions) => void;
   dismiss: () => void;
 };
 
@@ -32,6 +37,7 @@ type TeamInviteSheetProps = {
   userId: string;
   onShareCode: (code: string) => void;
   onShareLink: (url: string) => void;
+  onInviteCreated?: (inviteId: string, directoryPersonId?: string) => void;
 };
 
 const TTL_OPTIONS = [
@@ -41,7 +47,7 @@ const TTL_OPTIONS = [
 ] as const;
 
 export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetProps>(
-  function TeamInviteSheet({ companyId, userId, onShareCode, onShareLink }, ref) {
+  function TeamInviteSheet({ companyId, userId, onShareCode, onShareLink, onInviteCreated }, ref) {
     const { colors } = useTheme();
     const sheet = useModalBottomSheet();
     const sheetRef = useRef<BottomSheetModal>(null);
@@ -54,6 +60,8 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [joinUrl, setJoinUrl] = useState<string | null>(null);
     const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+    const [personName, setPersonName] = useState<string | null>(null);
+    const directoryPersonIdRef = useRef<string | undefined>(undefined);
 
     const resetForm = useCallback(() => {
       setEmail('');
@@ -63,17 +71,28 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
       setSuccessMessage(null);
       setJoinUrl(null);
       setGeneratedCode(null);
+      setPersonName(null);
+      directoryPersonIdRef.current = undefined;
     }, []);
 
     useImperativeHandle(ref, () => ({
-      present: () => {
+      present: (options) => {
         resetForm();
+        if (options?.personName?.trim()) {
+          setPersonName(options.personName.trim());
+        }
+        directoryPersonIdRef.current = options?.directoryPersonId;
         sheetRef.current?.present();
       },
       dismiss: () => sheetRef.current?.dismiss(),
     }));
 
     const renderBackdrop = sheet.renderBackdrop;
+
+    const notifyInviteCreated = (inviteId?: string) => {
+      if (!inviteId) return;
+      onInviteCreated?.(inviteId, directoryPersonIdRef.current);
+    };
 
     async function handleSendEmail() {
       setBusy(true);
@@ -89,9 +108,15 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
           ttlHours,
         });
 
+        notifyInviteCreated(result.inviteId);
+
         if (result.kind === 'sent') {
           haptics.success();
-          setSuccessMessage(`Invite sent to ${result.email}`);
+          setSuccessMessage(
+            personName
+              ? `Invite for ${personName} sent to ${result.email}`
+              : `Invite sent to ${result.email}`,
+          );
           setJoinUrl(result.joinUrl ?? null);
           setEmail('');
           void NotificationService.syncInbox();
@@ -121,6 +146,7 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
           ttlHours,
         });
         setGeneratedCode(invite.code);
+        notifyInviteCreated(invite.id);
         void NotificationService.syncInbox();
         haptics.success();
       } catch (nextError) {
@@ -149,16 +175,16 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
         >
           <View style={{ gap: 4 }}>
             <Text variant="heading" style={{ fontSize: 22, fontWeight: '700', letterSpacing: -0.4 }}>
-              Invite a team member
+              {personName ? `Invite ${personName}` : 'Invite'}
             </Text>
             <Text variant="caption" color="muted" style={{ fontSize: 13, lineHeight: 18 }}>
-              Send an email invite or generate a code to share manually.
+              Email a link or share a code.
             </Text>
           </View>
 
           <Input
-            label="Employee email"
-            helperText="The employee will get an email with a link to join the team."
+            label="Email"
+            helperText="They’ll get a link to join."
             value={email}
             onChangeText={setEmail}
             placeholder="colleague@company.com"
@@ -167,8 +193,15 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
             autoCorrect={false}
             leftIcon={<MailIcon size="sm" color={colors.mutedForeground} strokeWidth={1.9} />}
           />
-          <Button loading={busy} disabled={!email.trim()} onPress={() => void handleSendEmail()}>
-            Send by email
+          <Button
+            native={false}
+            size="lg"
+            loading={busy}
+            disabled={!email.trim()}
+            leftIcon={<MailIcon size="sm" color={colors.primaryForeground} strokeWidth={1.5} />}
+            onPress={() => void handleSendEmail()}
+          >
+            Send email
           </Button>
 
           {successMessage ? (
@@ -186,7 +219,13 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
                 {successMessage}
               </Text>
               {joinUrl ? (
-                <Button variant="secondary" size="sm" onPress={() => onShareLink(joinUrl)}>
+                <Button
+                  native={false}
+                  variant="secondary"
+                  size="sm"
+                  leftIcon={<ExternalLinkIcon size="sm" color={colors.foreground} strokeWidth={1.5} />}
+                  onPress={() => onShareLink(joinUrl)}
+                >
                   Share link
                 </Button>
               ) : null}
@@ -200,8 +239,8 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
           ) : null}
 
           <View style={{ gap: 10 }}>
-            <Text variant="caption" color="muted" style={{ fontSize: 11, fontWeight: '600' }}>
-              NEW EMPLOYEE ROLE
+            <Text variant="footnote" color="muted" style={{ fontWeight: '500', letterSpacing: -0.08 }}>
+              Role
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {INVITE_ROLES.map((role) => {
@@ -240,8 +279,8 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
           </View>
 
           <View style={{ gap: 8 }}>
-            <Text variant="caption" color="muted" style={{ fontSize: 11, fontWeight: '600' }}>
-              EXPIRATION
+            <Text variant="footnote" color="muted" style={{ fontWeight: '500', letterSpacing: -0.08 }}>
+              Expires
             </Text>
             <View
               style={{
@@ -283,8 +322,8 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
-            <Text variant="caption" color="muted" style={{ fontSize: 11, fontWeight: '600' }}>
-              OR CODE
+            <Text variant="footnote" color="muted" style={{ fontWeight: '500', letterSpacing: -0.08 }}>
+              Or code
             </Text>
             <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
           </View>
@@ -302,18 +341,34 @@ export const TeamInviteSheet = forwardRef<TeamInviteSheetRef, TeamInviteSheetPro
               }}
             >
               <Text variant="caption" color="muted">
-                Code for the "{formatRole(inviteRole)}" role
+                {formatRole(inviteRole)} code
               </Text>
-              <Text variant="heading" style={{ fontSize: 32, fontWeight: '800', letterSpacing: 4, fontVariant: ['tabular-nums'] }}>
+              <Text
+                variant="heading"
+                style={{ fontSize: 32, fontWeight: '800', letterSpacing: 4, fontVariant: ['tabular-nums'] }}
+              >
                 {generatedCode}
               </Text>
-              <Button variant="secondary" size="sm" onPress={() => onShareCode(generatedCode)}>
+              <Button
+                native={false}
+                variant="secondary"
+                size="sm"
+                leftIcon={<Share2Icon size="sm" color={colors.foreground} strokeWidth={1.5} />}
+                onPress={() => onShareCode(generatedCode)}
+              >
                 Share code
               </Button>
             </View>
           ) : (
-            <Button variant="outline" loading={busy} onPress={() => void handleCreateCode()}>
-              Generate invite code
+            <Button
+              native={false}
+              variant="secondary"
+              size="lg"
+              loading={busy}
+              leftIcon={<CopyIcon size="sm" color={colors.foreground} strokeWidth={1.5} />}
+              onPress={() => void handleCreateCode()}
+            >
+              Create code
             </Button>
           )}
         </BottomSheetScrollView>

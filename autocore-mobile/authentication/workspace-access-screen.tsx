@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/authentication/auth-provider';
 import { Button, Text } from '@/components/ui';
-import { CompanySwitcherSheet } from '@/features/organization/components/company-switcher-sheet';
+import { presentOrganizationSwitcher } from '@/features/organization/present-organization-switcher';
 import { useTheme } from '@/hooks';
 import { getWorkspaceAccessCopy } from '@/lib/workspace-access';
 import { useAuthStore } from '@/store/auth-store';
@@ -17,9 +17,8 @@ import { toneBackground } from '@/theme/color-utils';
 export function WorkspaceAccessScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
-  const { signOut, refreshProfile, memberships } = useAuth();
+  const { signOut, refreshProfile, memberships, firebaseUser } = useAuth();
   const workspaceBlock = useAuthStore((s) => s.workspaceBlock);
-  const [switcherOpen, setSwitcherOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const copy = useMemo(
@@ -121,7 +120,23 @@ export function WorkspaceAccessScreen() {
             </Button>
           ) : null}
           {canSwitchCompany ? (
-            <Button onPress={() => setSwitcherOpen(true)}>Switch company</Button>
+            <Button
+              onPress={() => {
+                const activeCompanyId =
+                  workspaceBlock?.kind === 'removed' || workspaceBlock?.kind === 'deactivated'
+                    ? workspaceBlock.companyId
+                    : null;
+                presentOrganizationSwitcher({
+                  memberships,
+                  activeCompanyId,
+                  userId: firebaseUser?.uid,
+                  refreshProfile,
+                  router,
+                });
+              }}
+            >
+              Switch organization
+            </Button>
           ) : null}
           <Button
             variant={isNoCompany || canSwitchCompany ? 'secondary' : 'default'}
@@ -138,7 +153,6 @@ export function WorkspaceAccessScreen() {
         </View>
       </View>
 
-      <CompanySwitcherSheet open={switcherOpen} onClose={() => setSwitcherOpen(false)} />
     </SafeAreaView>
   );
 }

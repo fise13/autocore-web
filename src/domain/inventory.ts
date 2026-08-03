@@ -33,6 +33,8 @@ export type InventoryItem = {
   primaryLocationId?: string;
   primaryLocationCode?: string;
   notes?: string;
+  /** Free-text condition / grade for parts rows. */
+  quality?: string;
 
   categoryId?: string;
   categoryPath?: string[];
@@ -80,6 +82,7 @@ export type UpsertInventoryItemInput = {
   primaryLocationId?: string;
   primaryLocationCode?: string;
   notes?: string;
+  quality?: string;
   categoryId?: string;
   categoryPath?: string[];
   inventoryGroup?: InventoryGroupId;

@@ -44,6 +44,13 @@ const LOADING_SNAPSHOT: EntitlementSnapshot = {
   error: null,
 };
 
+/**
+ * Cache can paint immediately, but AuthGate must not decide paywall vs app
+ * until Firestore (or StoreKit error path) has spoken — otherwise a stale
+ * free cache flashes the paywall for 1–2s before Pro arrives.
+ */
+const REMOTE_SETTLE_FAILSAFE_MS = 2_500;
+
 type RegistryEntry = {
   companyId: string;
   unsubscribe: () => void;
@@ -53,6 +60,7 @@ type RegistryEntry = {
   ready: boolean;
   error: string | null;
   snapshot: EntitlementSnapshot;
+  settleTimer: ReturnType<typeof setTimeout> | null;
 };
 
 const registry = new Map<string, RegistryEntry>();
@@ -66,6 +74,17 @@ let localSubscriptions: LocalActiveSubscription[] = [];
 
 function notify(): void {
   for (const listener of listeners) listener();
+}
+
+function clearSettleTimer(entry: RegistryEntry): void {
+  if (!entry.settleTimer) return;
+  clearTimeout(entry.settleTimer);
+  entry.settleTimer = null;
+}
+
+function markRemoteSettled(entry: RegistryEntry): void {
+  clearSettleTimer(entry);
+  entry.ready = true;
 }
 
 /** Recompute an entry's snapshot; returns true when it actually changed. */
@@ -134,15 +153,22 @@ export function acquireEntitlement(companyId: string): () => void {
       ready: false,
       error: null,
       snapshot: LOADING_SNAPSHOT,
+      settleTimer: null,
     };
 
-    // Paint from cache on the first frame — no spinner for a returning user.
-    if (created.cached !== undefined) {
-      created.ready = true;
-    }
+    // Resolve from cache for paint, but keep isLoading until remote settles.
     recompute(created);
 
     registry.set(companyId, created);
+
+    created.settleTimer = setTimeout(() => {
+      const current = registry.get(companyId);
+      if (!current || current.remote !== undefined) return;
+      // Network hung — fail open on cache / FREE rather than soft-lock splash.
+      current.remote = current.cached?.subscription ?? null;
+      markRemoteSettled(current);
+      if (recompute(current)) notify();
+    }, REMOTE_SETTLE_FAILSAFE_MS);
 
     created.unsubscribe = subscribeCompanySubscription(
       companyId,
@@ -150,8 +176,8 @@ export function acquireEntitlement(companyId: string): () => void {
         const current = registry.get(companyId);
         if (!current) return;
         current.remote = next;
-        current.ready = true;
         current.error = null;
+        markRemoteSettled(current);
         writeEntitlementCache(companyId, next);
         current.cached = { subscription: next, cachedAt: Date.now() };
         if (recompute(current)) notify();
@@ -161,8 +187,12 @@ export function acquireEntitlement(companyId: string): () => void {
         if (!current) return;
         // Offline or permission-denied: fall through to cache / StoreKit rather
         // than blocking the UI on a listener that may never arrive.
-        current.ready = true;
         current.error = error.message;
+        // Treat as settled with remote=null so isLoading clears.
+        if (current.remote === undefined) {
+          current.remote = current.cached?.subscription ?? null;
+        }
+        markRemoteSettled(current);
         if (recompute(current)) notify();
       },
     );
@@ -178,6 +208,7 @@ export function acquireEntitlement(companyId: string): () => void {
     if (!current) return;
     current.subscribers -= 1;
     if (current.subscribers <= 0) {
+      clearSettleTimer(current);
       current.unsubscribe();
       registry.delete(companyId);
     }
@@ -205,7 +236,10 @@ export function peekEntitlement(companyId: string | null | undefined): Entitleme
 
 /** Sign-out teardown — entitlement must never survive into another session. */
 export function clearEntitlementRegistry(): void {
-  for (const entry of registry.values()) entry.unsubscribe();
+  for (const entry of registry.values()) {
+    clearSettleTimer(entry);
+    entry.unsubscribe();
+  }
   registry.clear();
   localSubscriptions = [];
   notify();

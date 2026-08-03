@@ -132,6 +132,94 @@ export async function removeMemberFromCompanyAsAdmin(params: {
   return { nextCompanyId };
 }
 
+/** Current company owner hands ownership to another active employee, then can leave. */
+export async function transferOwnershipAsOwner(params: {
+  actorUserId: string;
+  companyId: string;
+  newOwnerUserId: string;
+}): Promise<void> {
+  const companyId = normalizeCompanyId(params.companyId);
+  const newOwnerUserId = params.newOwnerUserId.trim();
+  if (!companyId || !newOwnerUserId) {
+    throw new OrgError("permission_denied", 400);
+  }
+  if (newOwnerUserId === params.actorUserId) {
+    throw new OrgError("permission_denied", 400);
+  }
+
+  const db = getAdminFirestore();
+  const companyRef = db.collection(COMPANIES).doc(companyId);
+  const companySnap = await companyRef.get();
+  if (!companySnap.exists) throw new OrgError("org_not_found", 404);
+
+  const ownerId = String(companySnap.data()?.ownerId ?? "");
+  if (ownerId !== params.actorUserId) {
+    throw new OrgError("permission_denied", 403);
+  }
+
+  const newOwnerRef = companyRef.collection("employees").doc(newOwnerUserId);
+  const actorRef = companyRef.collection("employees").doc(params.actorUserId);
+  const [newOwnerSnap, actorSnap] = await Promise.all([newOwnerRef.get(), actorRef.get()]);
+  if (!newOwnerSnap.exists || newOwnerSnap.data()?.isActive === false) {
+    throw new OrgError("not_a_member", 404);
+  }
+  if (!actorSnap.exists) throw new OrgError("not_a_member", 404);
+
+  const companyName = String(companySnap.data()?.name ?? "").trim() || companyId;
+  const batch = db.batch();
+  batch.update(companyRef, {
+    ownerId: newOwnerUserId,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  batch.set(
+    newOwnerRef,
+    { role: "owner", permissions: [], updatedAt: FieldValue.serverTimestamp() },
+    { merge: true },
+  );
+  batch.set(
+    actorRef,
+    { role: "admin", updatedAt: FieldValue.serverTimestamp() },
+    { merge: true },
+  );
+  batch.set(
+    db.collection("users").doc(newOwnerUserId).collection("memberships").doc(companyId),
+    { companyId, name: companyName, role: "owner", updatedAt: FieldValue.serverTimestamp() },
+    { merge: true },
+  );
+  batch.set(
+    db.collection("users").doc(params.actorUserId).collection("memberships").doc(companyId),
+    { companyId, name: companyName, role: "admin", updatedAt: FieldValue.serverTimestamp() },
+    { merge: true },
+  );
+
+  const newOwnerUserSnap = await db.collection("users").doc(newOwnerUserId).get();
+  const newOwnerActiveCompany = String(newOwnerUserSnap.data()?.companyId ?? "").trim();
+  if (!newOwnerActiveCompany || newOwnerActiveCompany === "default") {
+    batch.set(
+      db.collection("users").doc(newOwnerUserId),
+      { companyId, role: "owner", permissions: [], isActive: true },
+      { merge: true },
+    );
+  } else {
+    batch.set(db.collection("users").doc(newOwnerUserId), { role: "owner" }, { merge: true });
+  }
+
+  const actorUserSnap = await db.collection("users").doc(params.actorUserId).get();
+  const actorActiveCompany = String(actorUserSnap.data()?.companyId ?? "").trim();
+  if (actorActiveCompany === companyId) {
+    batch.set(db.collection("users").doc(params.actorUserId), { role: "admin" }, { merge: true });
+  }
+
+  await batch.commit();
+
+  await appendEmployeeActivityLog(companyId, {
+    action: "employee.ownership_transferred",
+    actor: params.actorUserId,
+    target: `employee:${newOwnerUserId}`,
+    targetId: newOwnerUserId,
+  });
+}
+
 export async function setMemberActiveAsAdmin(params: {
   actorUserId: string;
   companyId: string;

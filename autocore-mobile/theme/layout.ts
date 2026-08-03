@@ -2,6 +2,7 @@ import { spacing, screenPadding, headerHeight, minTouchTarget } from './spacing'
 import { radius } from './radius';
 import { sidebarWidth, contentMaxWidth } from './breakpoints';
 import { rhythm } from './screen';
+import { tokens } from './tokens';
 
 /**
  * Screen primitive contract — feature `layout.ts` files must alias these
@@ -30,8 +31,8 @@ export const layout = {
   rhythm,
   iconSize: {
     xs: 12,
-    sm: 14,
-    md: 16,
+    sm: 16,
+    md: 18,
     lg: 20,
     xl: 24,
   },
@@ -58,28 +59,28 @@ export const layout = {
     borderRadius: radius.lg,
   },
   button: {
-    height: 32,
-    heightSm: 28,
-    heightLg: 40,
-    heightXl: 40,
-    iconSize: 32,
-    borderRadius: radius.lg,
+    height: tokens.control.heightMd,
+    heightSm: tokens.control.heightSm,
+    heightLg: tokens.control.heightLg,
+    heightXl: tokens.control.heightXl,
+    iconSize: tokens.control.heightSm,
+    borderRadius: tokens.radius.control,
   },
   sidebar: sidebarWidth,
   contentMaxWidth,
   bottomSheet: {
     handleHeight: 4,
     handleWidth: 36,
-    borderRadius: radius['2xl'],
+    borderRadius: tokens.radius.sheet,
   },
   segmentedControl: {
     height: 36,
-    borderRadius: radius.lg,
+    borderRadius: tokens.radius.control,
   },
   chip: {
-    height: 20,
+    height: 28,
     paddingHorizontal: spacing[2],
-    borderRadius: radius.full,
+    borderRadius: tokens.radius.full,
   },
   badge: {
     height: 20,

@@ -1,5 +1,5 @@
-import { MissionControlShell } from "@/components/mission-control/mission-control-shell";
+import { OverviewShell } from "@/components/overview/overview-shell";
 
-export default function MissionControlPage() {
-  return <MissionControlShell />;
+export default function OverviewPage() {
+  return <OverviewShell />;
 }

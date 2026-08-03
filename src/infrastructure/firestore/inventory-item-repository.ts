@@ -64,6 +64,7 @@ function mapItem(id: string, data: Record<string, unknown>): InventoryItem {
     primaryLocationCode:
       typeof data.primaryLocationCode === "string" ? data.primaryLocationCode : undefined,
     notes: typeof data.notes === "string" ? data.notes : undefined,
+    quality: typeof data.quality === "string" ? data.quality : undefined,
     categoryId: typeof data.categoryId === "string" ? data.categoryId : undefined,
     categoryPath,
     inventoryGroup,
@@ -72,7 +73,7 @@ function mapItem(id: string, data: Record<string, unknown>): InventoryItem {
     purchasePrice: data.purchasePrice == null ? undefined : Number(data.purchasePrice),
     averageCost: Number.isFinite(averageCost) ? averageCost : undefined,
     sellPrice: data.sellPrice == null ? undefined : Number(data.sellPrice),
-    currency: typeof data.currency === "string" ? data.currency : "KZT",
+    currency: typeof data.currency === "string" ? data.currency : "USD",
     totalOnHand,
     totalReserved: Number(data.totalReserved ?? 0),
     totalAvailable: Number(data.totalAvailable ?? totalOnHand),
@@ -133,7 +134,7 @@ function buildItemPayload(input: UpsertInventoryItemInput, options?: { isUpdate?
     name: input.name.trim(),
     barcodes,
     unit: input.unit?.trim() || "pcs",
-    currency: input.currency ?? "KZT",
+    currency: input.currency ?? "USD",
     status: input.status ?? "active",
     searchTokens: buildInventorySearchTokens({
       ...input,
@@ -149,12 +150,14 @@ function buildItemPayload(input: UpsertInventoryItemInput, options?: { isUpdate?
   if (input.localId != null) payload.localId = input.localId;
   if (input.actorUserId) payload.updatedByUserId = input.actorUserId;
   if (input.imageUrls) payload.imageUrls = input.imageUrls;
+  else if (clearOnUpdate && input.imageUrls !== undefined) payload.imageUrls = deleteField();
   if (input.documentIds) payload.documentIds = input.documentIds;
 
   const description = optionalTextField(input.description, clearOnUpdate);
   const brandId = optionalTextField(input.brandId, clearOnUpdate);
   const categoryId = optionalTextField(input.categoryId, clearOnUpdate);
   const notes = optionalTextField(input.notes, clearOnUpdate);
+  const quality = optionalTextField(input.quality, clearOnUpdate);
   const categoryPath = optionalStringArrayField(input.categoryPath, clearOnUpdate);
 
   if (description !== undefined) payload.description = description;
@@ -172,6 +175,7 @@ function buildItemPayload(input: UpsertInventoryItemInput, options?: { isUpdate?
     payload.primaryLocationId = deleteField();
   }
   if (notes !== undefined) payload.notes = notes;
+  if (quality !== undefined) payload.quality = quality;
   if (categoryId !== undefined) payload.categoryId = categoryId;
   if (categoryPath !== undefined) payload.categoryPath = categoryPath;
   if (input.inventoryGroup) payload.inventoryGroup = input.inventoryGroup;

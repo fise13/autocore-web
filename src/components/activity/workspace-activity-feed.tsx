@@ -13,7 +13,7 @@ import {
 
 import { ActivityLogEntry } from "@/domain/rbac";
 import { EmptyState } from "@/components/ui/empty-state";
-import { resolveActivityLabel } from "@/lib/mission-control/activity-labels";
+import { resolveActivityLabel } from "@/lib/overview/activity-labels";
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
 

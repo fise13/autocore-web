@@ -7,7 +7,7 @@ const steps = [
   "Marketing / - brand AutoCore visible; CTAs Попробовать демо + Скачать",
   "Demo CTA → app demo/login",
   "Subpages /product /modules /pricing /security /contact /download load",
-  "Login → Mission Control /",
+  "Login → Overview /",
   "Navigate /motors then /warehouse then /motors (cache feel)",
   "Reduce motion: marketing + auth stay static",
 ];

@@ -85,6 +85,8 @@ export const upsertMotorSchema = z.object({
   serialCode: z.string().min(1),
   configuration: z.string().default(""),
   notes: z.string().default(""),
+  quality: z.string().default(""),
+  photoUrls: z.array(z.string().min(1)).default([]),
   quantity: z.number().int().positive().default(1),
   transmission: z.string().default(""),
   arrivalDate: z.date().nullable().optional(),
@@ -119,6 +121,7 @@ export const upsertInventoryItemSchema = z.object({
   primaryLocationId: z.string().trim().optional(),
   primaryLocationCode: z.string().trim().optional(),
   notes: z.string().trim().optional(),
+  quality: z.string().trim().optional(),
   categoryId: z.string().trim().optional(),
   categoryPath: z.array(z.string().trim()).optional(),
   inventoryGroup: z.enum(["aggregates", "parts", "consumables"]).optional(),
@@ -131,6 +134,7 @@ export const upsertInventoryItemSchema = z.object({
   status: inventoryItemStatusSchema.default("active"),
   lowStockThreshold: z.number().nonnegative().optional(),
   reorderPoint: z.number().nonnegative().optional(),
+  imageUrls: z.array(z.string().min(1)).optional(),
   actorUserId: z.string().trim().optional(),
 });
 

@@ -13,11 +13,13 @@ export type SendEmployeeInviteResult =
   | {
       kind: 'sent';
       email: string;
+      inviteId?: string;
       joinUrl?: string;
     }
   | {
       kind: 'manual_link';
       message: string;
+      inviteId?: string;
       joinUrl: string;
     };
 
@@ -41,6 +43,7 @@ export async function sendEmployeeInviteEmail(input: {
     return {
       kind: 'sent',
       email: data.email ?? email,
+      inviteId: data.inviteId,
       joinUrl: data.joinUrl,
     };
   }
@@ -48,7 +51,8 @@ export async function sendEmployeeInviteEmail(input: {
   if (status === 503 && data.joinUrl) {
     return {
       kind: 'manual_link',
-      message: 'Email service is not configured — send the link to the employee manually.',
+      message: 'Email isn’t set up — share the link yourself.',
+      inviteId: data.inviteId,
       joinUrl: data.joinUrl,
     };
   }

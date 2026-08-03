@@ -1,15 +1,20 @@
 import { Stack, useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
-import { type ReactNode, useMemo, useState } from 'react';
-import { Keyboard, Pressable, ScrollView, View } from 'react-native';
-import Animated from 'react-native-reanimated';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import {
+  ActionSheetIOS,
+  Keyboard,
+  Platform,
+  Pressable,
+  ScrollView,
+  View,
+} from 'react-native';
 import {
   CheckCircle2Icon,
-  ClipboardListIcon,
   ClockIcon,
   PhoneIcon,
 } from '@/assets/icons';
-import { Button, Text, toast } from '@/components/ui';
+import { Button, IconButton, Text, toast } from '@/components/ui';
+import { presentNativeMenu } from '@/components/ui/native-context-menu';
 import { ScreenActionFooter } from '@/components/navigation/screen-action-footer';
 import {
   useTheme,
@@ -17,8 +22,9 @@ import {
   useEmployeesRealtime,
   useWorkOrdersRealtime,
   useInventoryCatalog,
+  useFloatingTabBarInset,
 } from '@/hooks';
-import { SCREEN_ACTION_FOOTER_HEIGHT } from '@/lib/navigation/floating-tab-bar-inset';
+import { getScreenActionScrollInset } from '@/lib/navigation/floating-tab-bar-inset';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import {
   canMechanicClaimWorkOrder,
@@ -27,7 +33,7 @@ import {
   DEFAULT_MAX_ACTIVE_WORK_ORDERS,
 } from '@autocore/rbac';
 import { resolveInventoryShelf } from '@/lib/inventory/resolve-shelf';
-import { haptics } from '@/theme';
+import { haptics, tokens } from '@/theme';
 import { formatPrice } from '@/features/search/lib/format';
 import { laborLineLabel } from '@/lib/work-order/composer-utils';
 import { laborLineTotal } from '@/lib/work-order/labor-pricing';
@@ -36,10 +42,6 @@ import { transitionWorkOrder, claimWorkOrder } from '@/services/api/work-orders'
 import type { WorkOrderStatus } from '@/types/work-order';
 import { openPhone } from '@/utils/open-phone';
 
-import {
-  useOrderDetailContentEnter,
-  useOrderDetailHeroEnter,
-} from './animation/use-order-detail-enter';
 import { OrderClaimSection } from './components/order-claim-section';
 import { OrderStatusBadge } from './components/order-status-badge';
 import { OrderDocumentsSection } from './components/order-documents-section';
@@ -59,51 +61,76 @@ const FOOTER_ACTION_HEIGHT = 52;
 const FOOTER_BUTTON_STYLE = {
   width: '100%',
   minHeight: FOOTER_ACTION_HEIGHT,
-  borderRadius: 16,
 } as const;
+
+/** Compact labels so the primary CTA fits beside Call (+ More). */
+function footerStatusLabel(status: WorkOrderStatus): string {
+  switch (status) {
+    case 'confirmed':
+      return 'Confirm';
+    case 'in_progress':
+      return 'Start';
+    case 'waiting_parts':
+      return 'Parts wait';
+    case 'completed':
+      return 'Complete';
+    case 'delivered':
+      return 'Deliver';
+    default:
+      return STATUS_LABELS[status];
+  }
+}
 
 /**
  * `Button` applies the caller's `style` to its inner view, so `flex` on it does
  * nothing — the stretching has to happen on a wrapper.
  */
 function FooterAction({ children, grow = 1 }: { children: ReactNode; grow?: number }) {
-  return <View style={{ flex: grow }}>{children}</View>;
+  return <View style={{ flex: grow, minWidth: 0 }}>{children}</View>;
 }
 
 function FooterCallButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <IconButton
+      accessibilityLabel={label}
+      variant="secondary"
+      size="lg"
+      // Never pass systemImage here — SwiftUI Host inside form/page sheets blanks RN content.
+      onPress={onPress}
+      style={{
+        width: FOOTER_ACTION_HEIGHT,
+        height: FOOTER_ACTION_HEIGHT,
+        borderRadius: FOOTER_ACTION_HEIGHT / 2,
+        alignSelf: 'center',
+      }}
+    >
+      <PhoneIcon size="md" strokeWidth={1.75} />
+    </IconButton>
+  );
+}
+
+function HeaderTextButton({ label, onPress }: { label: string; onPress: () => void }) {
   const { colors } = useTheme();
-  const [pressed, setPressed] = useState(false);
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={[
-        {
-          width: FOOTER_ACTION_HEIGHT,
-          height: FOOTER_ACTION_HEIGHT,
-          borderRadius: FOOTER_ACTION_HEIGHT / 2,
-          // The footer sits on `background`; `secondary` is too close to it to
-          // read as a button, so the circle takes the card surface.
-          alignSelf: 'center',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: colors.card,
-          borderWidth: wo.rule,
-          borderColor: colors.border,
-        },
-        pressed ? { backgroundColor: colors.muted } : null,
-      ]}
-      onPressIn={() => setPressed(true)}
-      onPressOut={() => setPressed(false)}
+      hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
       onPress={onPress}
+      style={{
+        minHeight: tokens.control.hitTarget,
+        minWidth: tokens.control.hitTarget,
+        paddingHorizontal: tokens.space.inline,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
     >
-      <SymbolView
-        name="phone.fill"
-        size={22}
-        weight="semibold"
-        tintColor={colors.foreground}
-        fallback={<PhoneIcon size="md" color={colors.foreground} strokeWidth={2} />}
-      />
+      <Text
+        variant="body"
+        style={{ fontSize: 17, lineHeight: 22, fontWeight: '400', color: colors.primary }}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -129,6 +156,7 @@ function RuledSection({ title, children }: { title?: string; children: ReactNode
 export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
   const { colors, isDark } = useTheme();
   const router = useRouter();
+  const { safeBottom } = useFloatingTabBarInset();
   const { companyId, can, uid, profile } = useSession();
   const { items: inventoryItems } = useInventoryCatalog(companyId);
   const inventoryById = useMemo(
@@ -145,9 +173,6 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
   const domainOrder = domainOrders.find((entry) => entry.id === orderId);
   const [transitioning, setTransitioning] = useState(false);
   const [claiming, setClaiming] = useState(false);
-
-  const heroStyle = useOrderDetailHeroEnter(40);
-  const contentStyle = useOrderDetailContentEnter(140);
 
   const claimEligibility = useMemo(() => {
     if (!domainOrder || !uid || !profile) return null;
@@ -200,9 +225,11 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
       });
     } catch (error) {
       haptics.warning();
+      const raw = error instanceof Error ? error.message : 'Failed to update status';
+      const isInvalid = /cannot move|недопустим|invalid transition/i.test(raw);
       toast({
-        title: 'Failed to update status',
-        description: error instanceof Error ? error.message : undefined,
+        title: isInvalid ? 'Status change not allowed' : 'Failed to update status',
+        description: raw,
         variant: 'destructive',
       });
     } finally {
@@ -211,7 +238,9 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
   };
 
   const availableTransitions = domainOrder ? nextStatuses(domainOrder.status) : [];
-  const primaryTransition = availableTransitions[0];
+  const statusActions = availableTransitions.filter((status) => status !== 'cancelled');
+  const primaryStatus = statusActions[0];
+  const secondaryStatuses = statusActions.slice(1);
   const canClaimBase =
     Boolean(domainOrder && uid) && canMechanicClaimWorkOrder(domainOrder!, uid!);
   const canClaim = canClaimBase && claimEligibility?.ok === true;
@@ -286,10 +315,43 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
       price: line.unitPrice,
     })) ?? [];
 
-  const openEdit = () => {
+  const openEdit = useCallback(() => {
     haptics.selection();
     navigateOrderEdit(router, orderId);
-  };
+  }, [orderId, router]);
+
+  const openSecondaryStatuses = useCallback(() => {
+    if (secondaryStatuses.length === 0) return;
+    haptics.selection();
+    const actions = secondaryStatuses.map((status) => ({
+      id: status,
+      title: STATUS_LABELS[status],
+    }));
+    if (Platform.OS === 'ios') {
+      const labels = [...actions.map((a) => a.title), 'Cancel'];
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: labels,
+          cancelButtonIndex: labels.length - 1,
+        },
+        (selected) => {
+          if (selected == null || selected === labels.length - 1) return;
+          const next = secondaryStatuses[selected];
+          if (next) void setDomainStatus(next);
+        },
+      );
+      return;
+    }
+    presentNativeMenu({
+      actions,
+      onPressAction: (id) => void setDomainStatus(id as WorkOrderStatus),
+    });
+  }, [secondaryStatuses]);
+
+  const headerRight = useCallback(() => {
+    if (!canEditOrder) return null;
+    return <HeaderTextButton label="Edit" onPress={openEdit} />;
+  }, [canEditOrder, openEdit]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -298,31 +360,12 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
         options={{
           headerShown: true,
           title: formatWorkOrderLabel(order.number),
-          headerTransparent: true,
-          headerBlurEffect: isDark ? 'systemChromeMaterialDark' : 'systemChromeMaterialLight',
+          headerTransparent: false,
+          headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.primary,
           headerTitleStyle: { color: colors.foreground },
           headerShadowVisible: false,
-          headerRight: canEditOrder
-            ? () => (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Edit work order"
-                  hitSlop={10}
-                  onPress={openEdit}
-                >
-                  <SymbolView
-                    name="square.and.pencil"
-                    size={21}
-                    weight="semibold"
-                    tintColor={colors.primary}
-                    fallback={
-                      <ClipboardListIcon size="sm" color={colors.primary} strokeWidth={1.85} />
-                    }
-                  />
-                </Pressable>
-              )
-            : undefined,
+          headerRight,
         }}
       />
 
@@ -331,25 +374,20 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          // The native tab bar contributes its own content inset, so this only
-          // has to clear the sticky action footer.
-          paddingBottom: SCREEN_ACTION_FOOTER_HEIGHT + wo.sectionGap,
+          paddingBottom: getScreenActionScrollInset(safeBottom),
           gap: 0,
         }}
         onScrollBeginDrag={Keyboard.dismiss}
       >
-        <Animated.View
-          style={[
-            {
-              marginHorizontal: wo.pad,
-              marginTop: wo.stackGap,
-              ...woFlatCard(colors, { isDark }),
-              paddingHorizontal: wo.cardPadX,
-              paddingVertical: wo.cardPadY,
-              gap: 14,
-            },
-            heroStyle,
-          ]}
+        <View
+          style={{
+            marginHorizontal: wo.pad,
+            marginTop: wo.stackGap,
+            ...woFlatCard(colors, { isDark }),
+            paddingHorizontal: wo.cardPadX,
+            paddingVertical: wo.cardPadY,
+            gap: 14,
+          }}
         >
           <View style={{ gap: 8 }}>
             {/* Status moved out of the custom header into the hero when the nav
@@ -403,10 +441,10 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
           </View>
 
           <OrderWorkflowProgress status={order.status} />
-        </Animated.View>
+        </View>
 
         {canClaimBase ? (
-          <Animated.View style={[{ marginTop: wo.sectionGap }, contentStyle]}>
+          <View style={{ marginTop: wo.sectionGap }}>
             <RuledSection title="Claim">
               <OrderClaimSection
                 orderNumber={order.number}
@@ -416,10 +454,10 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
                 onClaim={() => void handleClaim()}
               />
             </RuledSection>
-          </Animated.View>
+          </View>
         ) : null}
 
-        <Animated.View style={[{ marginTop: wo.sectionGap, gap: wo.sectionGap }, contentStyle]}>
+        <View style={{ marginTop: wo.sectionGap, gap: wo.sectionGap }}>
           <RuledSection title="Contents">
             <OrderLinesList
               laborLines={laborLines}
@@ -428,38 +466,6 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
               motorLines={motorLines}
             />
           </RuledSection>
-
-          {availableTransitions.length > 1 ? (
-            <RuledSection title="Workflow">
-              <View style={{ gap: 6 }}>
-                {availableTransitions.slice(1).map((status) => (
-                  <Pressable
-                    key={status}
-                    accessibilityRole="button"
-                    disabled={transitioning}
-                    onPress={() => void setDomainStatus(status)}
-                    style={{
-                      minHeight: wo.touch,
-                      borderRadius: wo.radiusSm,
-                      borderWidth: wo.rule,
-                      borderColor: colors.border,
-                      backgroundColor: colors.secondary,
-                      paddingHorizontal: 12,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 10,
-                      opacity: transitioning ? 0.55 : 1,
-                    }}
-                  >
-                    <ClockIcon size="sm" color={colors.mutedForeground} strokeWidth={1.85} />
-                    <Text variant="caption" style={{ fontWeight: '600' }}>
-                      {STATUS_LABELS[status]}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </RuledSection>
-          ) : null}
 
           {domainOrder && can('work_orders_view') ? (
             <RuledSection title="Documents">
@@ -507,10 +513,10 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
               <Text variant="body">{order.partsNote}</Text>
             </RuledSection>
           ) : null}
-        </Animated.View>
+        </View>
       </ScrollView>
 
-      <ScreenActionFooter absolute>
+      <ScreenActionFooter absolute aboveTabBar={false}>
         {order.phone ? (
           <FooterCallButton
             label={`Call ${order.customer}`}
@@ -521,35 +527,52 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
           />
         ) : null}
 
-        {canEditOrder ? (
-          <FooterAction>
-            <Button variant="secondary" onPress={openEdit} style={FOOTER_BUTTON_STYLE}>
-              Edit
+        {primaryStatus ? (
+          <FooterAction grow={2}>
+            <Button
+              native={false}
+              variant="default"
+              loading={transitioning}
+              disabled={transitioning}
+              onPress={() => void setDomainStatus(primaryStatus)}
+              style={FOOTER_BUTTON_STYLE}
+            >
+              {footerStatusLabel(primaryStatus)}
             </Button>
           </FooterAction>
         ) : null}
 
-        {primaryTransition ? (
-          // The transition is the one thing worth doing here, so it takes the
-          // filled treatment and twice the width of any secondary beside it.
-          <FooterAction grow={canEditOrder ? 2 : 1}>
+        {secondaryStatuses.length > 0 ? (
+          <FooterAction grow={0}>
             <Button
-              variant="default"
-              loading={transitioning}
+              native={false}
+              variant="secondary"
               disabled={transitioning}
-              onPress={() => void setDomainStatus(primaryTransition)}
-              style={FOOTER_BUTTON_STYLE}
+              onPress={openSecondaryStatuses}
+              style={{
+                ...FOOTER_BUTTON_STYLE,
+                width: undefined,
+                paddingHorizontal: tokens.space.stack + 4,
+                minWidth: FOOTER_ACTION_HEIGHT,
+              }}
             >
-              {STATUS_LABELS[primaryTransition]}
+              More
             </Button>
           </FooterAction>
-        ) : canEditOrder ? null : (
+        ) : null}
+
+        {!canEditOrder && !primaryStatus ? (
           <FooterAction>
-            <Button variant="secondary" onPress={() => router.back()} style={FOOTER_BUTTON_STYLE}>
+            <Button
+              native={false}
+              variant="secondary"
+              onPress={() => router.back()}
+              style={FOOTER_BUTTON_STYLE}
+            >
               Done
             </Button>
           </FooterAction>
-        )}
+        ) : null}
       </ScreenActionFooter>
     </View>
   );

@@ -1,12 +1,10 @@
 import type { ComponentType } from 'react';
 import { forwardRef } from 'react';
 import { Pressable, type PressableProps, type ViewStyle } from 'react-native';
-import Animated from 'react-native-reanimated';
 
 import { Loader2Icon } from '@/assets/icons';
 import type { IconProps } from '@/assets/icons/create-icon';
 import { useTheme } from '@/hooks';
-import { usePressAnimation } from '@/animations';
 import { haptics, radius } from '@/theme';
 
 export type ActionIconButtonVariant =
@@ -26,6 +24,10 @@ export type ActionIconButtonProps = Omit<PressableProps, 'children' | 'style'> &
   size?: ActionIconButtonSize;
   loading?: boolean;
   style?: ViewStyle;
+  /** Legacy SF Symbol hint for the removed Host path — ignored. */
+  systemImage?: string;
+  /** Legacy Host opt-in — ignored. */
+  native?: boolean;
 };
 
 const SIZES: Record<ActionIconButtonSize, number> = {
@@ -55,12 +57,13 @@ export const ActionIconButton = forwardRef<
     style,
     onPress,
     accessibilityLabel,
+    systemImage: _systemImage,
+    native: _native,
     ...props
   },
   ref,
 ) {
   const { colors } = useTheme();
-  const { style: pressStyle, onPressIn, onPressOut } = usePressAnimation();
 
   const dimension = SIZES[size];
   const iconSize = ICON_SIZES[size];
@@ -106,40 +109,36 @@ export const ActionIconButton = forwardRef<
   })();
 
   return (
-    <Animated.View style={pressStyle}>
-      <Pressable
-        ref={ref}
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
-        accessibilityState={{ disabled: isDisabled, busy: loading }}
-        disabled={isDisabled}
-        onPress={(event) => {
-          if (isDisabled) return;
-          haptics.light();
-          onPress?.(event);
-        }}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        style={[
-          {
-            width: dimension,
-            height: dimension,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: radius.md,
-            opacity: isDisabled ? 0.45 : 1,
-          },
-          variantStyle,
-          style,
-        ]}
-        {...props}
-      >
-        {loading ? (
-          <Loader2Icon size={iconSize} color={iconColor} strokeWidth={2} />
-        ) : (
-          <Icon size={iconSize} color={iconColor} strokeWidth={2} />
-        )}
-      </Pressable>
-    </Animated.View>
+    <Pressable
+      ref={ref}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
+      disabled={isDisabled}
+      onPress={(event) => {
+        if (isDisabled) return;
+        haptics.light();
+        onPress?.(event);
+      }}
+      style={({ pressed }) => [
+        {
+          width: dimension,
+          height: dimension,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: radius.md,
+          opacity: isDisabled ? 0.45 : pressed ? 0.72 : 1,
+        },
+        variantStyle,
+        style,
+      ]}
+      {...props}
+    >
+      {loading ? (
+        <Loader2Icon size={iconSize} color={iconColor} strokeWidth={2} />
+      ) : (
+        <Icon size={iconSize} color={iconColor} strokeWidth={2} />
+      )}
+    </Pressable>
   );
 });

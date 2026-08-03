@@ -10,6 +10,7 @@ import { assignAssetLocation } from "@/application/use-cases/warehouse/assign-as
 import { resolveItemLocationLabel } from "@/lib/warehouse/resolve-item-location-label";
 import { GridEditorOverlay } from "@/components/grid/grid-editor-overlay";
 import { GridFillHandle } from "@/components/grid/grid-fill-handle";
+import { GridPhotoCell, GridPhotoCellDisabledHint } from "@/components/grid/grid-photo-cell";
 import {
   GridContextMenu,
   GridContextMenuItem,
@@ -191,6 +192,9 @@ function applyCellValue(
       break;
     case "notes":
       next.notes = value;
+      break;
+    case "quality":
+      next.quality = value;
       break;
     case "quantity": {
       const parsed = Number(value);
@@ -652,6 +656,8 @@ export function MotorsExcelGrid({
                 serialCode: emptyRow.serialCode.trim(),
                 configuration: emptyRow.configuration,
                 notes: emptyRow.notes,
+                quality: emptyRow.quality ?? "",
+                photoUrls: emptyRow.photoUrls ?? [],
                 quantity: emptyRow.quantity,
                 transmission: emptyRow.transmission,
                 arrivalDate: emptyRow.arrivalDate ?? new Date(),
@@ -691,6 +697,8 @@ export function MotorsExcelGrid({
           baseline.serialCode !== row.serialCode ||
           baseline.configuration !== row.configuration ||
           baseline.notes !== row.notes ||
+          (baseline.quality ?? "") !== (row.quality ?? "") ||
+          JSON.stringify(baseline.photoUrls ?? []) !== JSON.stringify(row.photoUrls ?? []) ||
           baseline.quantity !== row.quantity ||
           baseline.transmission !== row.transmission ||
           (baseline.brandName ?? "") !== (row.brandName ?? "") ||
@@ -715,6 +723,8 @@ export function MotorsExcelGrid({
               serialCode: row.serialCode.trim(),
               configuration: row.configuration,
               notes: row.notes,
+              quality: row.quality ?? "",
+              photoUrls: row.photoUrls ?? [],
               quantity: row.quantity,
               transmission: row.transmission,
               arrivalDate: row.arrivalDate,
@@ -1356,6 +1366,25 @@ export function MotorsExcelGrid({
                                 {row.soldDate ? userCopy.motors.grid.return : userCopy.motors.grid.sell}
                               </button>
                             ) : null
+                          ) : column.cellKind === "photo" ? (
+                            row.rowKind === "saved" && canEdit ? (
+                              <GridPhotoCell
+                                urls={row.photoUrls ?? []}
+                                companyId={companyId}
+                                entityKind="motor"
+                                entityId={row.id}
+                                onChange={(urls) => {
+                                  markDirty(row.rowId);
+                                  setRows((current) =>
+                                    current.map((entry) =>
+                                      entry.rowId === row.rowId ? { ...entry, photoUrls: urls } : entry,
+                                    ),
+                                  );
+                                }}
+                              />
+                            ) : (
+                              <GridPhotoCellDisabledHint />
+                            )
                           ) : (
                             <span className="truncate">{displayValue}</span>
                           )}

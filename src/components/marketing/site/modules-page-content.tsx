@@ -34,7 +34,7 @@ const MODULE_SCROLL_OFFSET = 112;
 gsap.registerPlugin(ScrollTrigger);
 
 const ICONS: Record<string, LucideIcon> = {
-  "mission-control": Radar,
+  "overview": Radar,
   warehouse: Warehouse,
   "work-orders": Wrench,
   accounting: Banknote,
@@ -53,7 +53,7 @@ export function ModulesPageContent() {
   const relatedByModule = useMemo<Record<string, { label: string; href: SiteNavLinkHref }[]>>(() => {
     const links = copy.relatedLinks;
     return {
-      "mission-control": [
+      "overview": [
         { label: links.warehouse, href: { pathname: "/modules", hash: "warehouse" } },
         { label: links.accounting, href: { pathname: "/modules", hash: "accounting" } },
       ],
@@ -66,7 +66,7 @@ export function ModulesPageContent() {
         { label: links.documents, href: { pathname: "/", hash: "documents" } },
       ],
       accounting: [
-        { label: links.missionControl, href: { pathname: "/modules", hash: "mission-control" } },
+        { label: links.overview, href: { pathname: "/modules", hash: "overview" } },
         { label: links.security, href: "/security" },
       ],
       inventory: [

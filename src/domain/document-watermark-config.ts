@@ -20,18 +20,25 @@ export type DocumentWatermarkConfig = {
   blend: DocumentWatermarkBlend;
 };
 
-export const WATERMARK_TYPE_LABELS_RU: Record<DocumentWatermarkType, string> = {
-  none: "Без фона",
-  logo: "Водяной знак",
-  brand_mark: "Бренд-марк",
-  pattern: "Повторяющийся узор",
+/** English defaults; settings UI prefers `userCopy.settings.watermark`. */
+export const WATERMARK_TYPE_LABELS: Record<DocumentWatermarkType, string> = {
+  none: "No background",
+  logo: "Watermark",
+  brand_mark: "Brand mark",
+  pattern: "Repeating pattern",
 };
 
-export const WATERMARK_POSITION_LABELS_RU: Record<DocumentWatermarkPosition, string> = {
-  center: "По центру",
-  "center-left": "Центр-слева",
-  "center-right": "Центр-справа",
+/** @deprecated Prefer WATERMARK_TYPE_LABELS or userCopy.settings.watermark.types */
+export const WATERMARK_TYPE_LABELS_RU = WATERMARK_TYPE_LABELS;
+
+export const WATERMARK_POSITION_LABELS: Record<DocumentWatermarkPosition, string> = {
+  center: "Center",
+  "center-left": "Center-left",
+  "center-right": "Center-right",
 };
+
+/** @deprecated Prefer WATERMARK_POSITION_LABELS or userCopy.settings.watermark.positions */
+export const WATERMARK_POSITION_LABELS_RU = WATERMARK_POSITION_LABELS;
 
 export function defaultWatermarkForTheme(theme: DocumentTheme): DocumentWatermarkConfig {
   if (theme === "racing") {

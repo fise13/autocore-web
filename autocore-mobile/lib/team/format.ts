@@ -136,10 +136,10 @@ export const ASSIGNABLE_ROLES: UserRole[] = [
 export const ALL_PERMISSIONS = [...PERMISSIONS] as Permission[];
 
 export const INVITE_ROLE_HINTS: Partial<Record<UserRole, string>> = {
-  mechanic: 'Work orders, clients, vehicles',
-  diagnostician: 'Work orders and diagnostics',
-  manager: 'Management and reports',
-  accountant: 'Accounting',
-  employee: 'Basic view access',
+  mechanic: 'Orders, clients, vehicles',
+  diagnostician: 'Orders and diagnostics',
+  manager: 'Ops and reports',
+  accountant: 'Finance',
+  employee: 'Basic access',
   admin: 'Full access',
 };

@@ -61,7 +61,13 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
               <Text variant="title">{title}</Text>
               {description ? <Text variant="body" color="muted">{description}</Text> : null}
             </View>
-            <IconButton size="sm" onPress={() => onOpenChange(false)}>
+            <IconButton
+              size="sm"
+              variant="ghost"
+              systemImage="xmark"
+              accessibilityLabel="Close"
+              onPress={() => onOpenChange(false)}
+            >
               <XIcon size="sm" color={colors.mutedForeground} />
             </IconButton>
           </View>

@@ -44,12 +44,12 @@ export function canAccessMyEarnings(user: UserEntity | null | undefined): boolea
   return hasPermission(user, 'payroll_view_own');
 }
 
-export function isEmployeeMissionControlUser(user: UserEntity | null | undefined): boolean {
+export function isEmployeeOverviewUser(user: UserEntity | null | undefined): boolean {
   if (!user) return false;
   return getDataScope(user, 'work_orders') === 'assigned_work_orders';
 }
 
-export function canAccessMissionControl(user: UserEntity | null | undefined): boolean {
+export function canAccessOverview(user: UserEntity | null | undefined): boolean {
   if (!user) return false;
   const allowlist = roleNavAllowlist(user.role);
   if (allowlist) return allowlist.includes('home');
@@ -70,7 +70,7 @@ export function isWebNavAllowed(
   const allowlist = roleNavAllowlist(user.role);
   if (allowlist && !allowlist.includes(navId)) return false;
 
-  if (navId === 'home') return canAccessMissionControl(user);
+  if (navId === 'home') return canAccessOverview(user);
   if (navId === 'my_earnings') return canAccessMyEarnings(user);
   if (navId === 'work_orders') return hasPermission(user, 'work_orders_view');
   if (navId === 'accounting') return hasPermission(user, 'accounting_view');
@@ -91,7 +91,7 @@ export function isMobileTabAllowed(
 
   if (tabId === 'my-earnings') return canAccessMyEarnings(user);
 
-  if (tabId === 'index') return canAccessMissionControl(user);
+  if (tabId === 'index') return canAccessOverview(user);
 
   const permission = MOBILE_TAB_PERMISSION[tabId];
   if (!permission) return true;
@@ -127,7 +127,7 @@ export function canManageSettings(user: UserEntity | null | undefined): boolean 
 
 export function defaultMobileTab(user: UserEntity | null | undefined): MobileTabId {
   if (!user) return 'profile';
-  if (canAccessMissionControl(user)) return 'index';
+  if (canAccessOverview(user)) return 'index';
   if (hasPermission(user, 'work_orders_view')) return 'orders';
   if (canAccessMyEarnings(user)) return 'my-earnings';
   if (hasPermission(user, 'accounting_view')) return 'accounting';

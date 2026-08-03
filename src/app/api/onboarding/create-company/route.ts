@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const name = typeof body.name === "string" ? body.name.trim() : "";
 
     if (!name) {
-      return NextResponse.json({ error: "Укажите название компании" }, { status: 400 });
+      return NextResponse.json({ error: "Enter a company name" }, { status: 400 });
     }
 
     const companyId = await createCompanyAsAdmin(access.uid, name);
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[onboarding/create-company]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось создать компанию" },
+      { error: error instanceof Error ? error.message : "Could not create company" },
       { status: 500 },
     );
   }

@@ -1,16 +1,15 @@
 import { Pressable, View } from 'react-native';
 
 import { CheckIcon } from '@/assets/icons';
-import { SettingsSectionCard, Text } from '@/components/ui';
+import { CollectionSwitchRow, ListSection, Text } from '@/components/ui';
 import { themePreferenceLabel, useTheme, type ThemePreference } from '@/hooks/use-theme';
-import { rhythm } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
+import { tokens } from '@/theme/tokens';
 
 import { ProfileSegmentedControl } from '@/features/profile/components/profile-animated-section';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
 import { ACCENT_COLORS, useAppearanceSettingsStore } from '../store/appearance-settings-store';
 import type { AccentColorId } from '../types';
-import { SettingsToggleRow } from '../components/settings-toggle-row';
 
 const THEME_OPTIONS: ThemePreference[] = ['system', 'light', 'dark'];
 
@@ -25,8 +24,8 @@ export function AppearanceSettingsScreen() {
 
   return (
     <ProfileScreenShell title="Theme" subtitle="Light, dark, and accent color">
-      <SettingsSectionCard title="Theme" description="System theme follows your device settings">
-        <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
+      <ListSection title="Theme" footer="System follows your device settings.">
+        <View style={{ padding: tokens.space.stack + 2 }}>
           <ProfileSegmentedControl
             value={preference}
             onChange={setPreference}
@@ -36,13 +35,12 @@ export function AppearanceSettingsScreen() {
             }))}
           />
         </View>
-      </SettingsSectionCard>
+      </ListSection>
 
-      <SettingsSectionCard title="Accent color">
+      <ListSection title="Accent color">
         <View
           style={{
-            paddingHorizontal: rhythm.cardPadX,
-            paddingBottom: rhythm.cardPadX,
+            padding: tokens.space.stack + 2,
             flexDirection: 'row',
             flexWrap: 'wrap',
             gap: 10,
@@ -63,8 +61,8 @@ export function AppearanceSettingsScreen() {
                   minWidth: 64,
                   minHeight: 44,
                   padding: 8,
-                  borderRadius: rhythm.radius,
-                  borderWidth: 1,
+                  borderRadius: tokens.radius.group,
+                  borderWidth: tokens.control.hairline,
                   borderColor: active ? toneBackground(colors.primary, 0.35) : colors.border,
                   backgroundColor: active ? toneBackground(colors.primary, 0.08) : 'transparent',
                 }}
@@ -94,24 +92,22 @@ export function AppearanceSettingsScreen() {
             );
           })}
         </View>
-      </SettingsSectionCard>
+      </ListSection>
 
-      <SettingsSectionCard title="Interface">
-        <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: 4 }}>
-          <SettingsToggleRow
-            label="Animations"
-            subtitle="Motion and enter transitions"
-            value={animationsEnabled}
-            onValueChange={setAnimationsEnabled}
-          />
-          <SettingsToggleRow
-            label="Large text"
-            subtitle="Increase text size across the app"
-            value={largeText}
-            onValueChange={setLargeText}
-          />
-        </View>
-      </SettingsSectionCard>
+      <ListSection title="Interface">
+        <CollectionSwitchRow
+          title="Animations"
+          subtitle="Motion and enter transitions"
+          value={animationsEnabled}
+          onValueChange={setAnimationsEnabled}
+        />
+        <CollectionSwitchRow
+          title="Large text"
+          subtitle="Increase text size across the app"
+          value={largeText}
+          onValueChange={setLargeText}
+        />
+      </ListSection>
     </ProfileScreenShell>
   );
 }

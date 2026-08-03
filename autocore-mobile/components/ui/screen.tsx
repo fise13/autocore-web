@@ -2,10 +2,8 @@ import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, View, type ScrollViewProps, type StyleProp, type ViewStyle } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated from 'react-native-reanimated';
 
 import { ArrowLeftIcon } from '@/assets/icons';
-import { useScreenEnter } from '@/animations';
 import { useFloatingTabBarInset, useReleaseStackNavigationOnFocus, useTheme } from '@/hooks';
 import { goBackOrReplace, PROFILE_SETTINGS_HUB_HREF } from '@/lib/navigation/stack-back';
 import { rhythm, spacing } from '@/theme';
@@ -100,8 +98,6 @@ export function StackScreen({
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const headerEnter = useScreenEnter({ delay: 0, translateY: 8, duration: 280 });
-  const bodyEnter = useScreenEnter({ delay: 60, translateY: 12, duration: 320 });
   useReleaseStackNavigationOnFocus();
 
   const handleBack = () => {
@@ -114,18 +110,15 @@ export function StackScreen({
 
   return (
     <Screen>
-      <Animated.View
-        style={[
-          {
-            paddingTop: insets.top + rhythm.headerTop,
-            paddingHorizontal: rhythm.pad,
-            paddingBottom: rhythm.headerBottom,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: rhythm.inline,
-          },
-          headerEnter,
-        ]}
+      <View
+        style={{
+          paddingTop: insets.top + rhythm.headerTop,
+          paddingHorizontal: rhythm.pad,
+          paddingBottom: rhythm.headerBottom,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: rhythm.inline,
+        }}
       >
         <IconButton
           accessibilityLabel="Back"
@@ -152,10 +145,10 @@ export function StackScreen({
           ) : null}
         </View>
         {headerAction}
-      </Animated.View>
+      </View>
 
       <ScreenScroll tabBarInset refreshControl={refreshControl}>
-        <Animated.View style={[{ gap }, bodyEnter]}>{children}</Animated.View>
+        <View style={{ gap }}>{children}</View>
       </ScreenScroll>
     </Screen>
   );

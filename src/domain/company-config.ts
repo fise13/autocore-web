@@ -36,15 +36,25 @@ export const DEFAULT_COMPANY_MODULES: Record<CompanyModuleKey, boolean> = {
   specifics: true,
 };
 
+/** Canonical English names (US market). Locale-specific labels come from userCopy. */
 export const SETUP_WIZARD_CATEGORY_PRESETS: CompanySpecificCategoryConfig[] = [
-  { id: "gearboxes", name: "КПП", mode: "tracked", groupId: "aggregates", subcategoryId: "gearboxes" },
-  { id: "body", name: "Кузовщина", mode: "quick", groupId: "parts", subcategoryId: "body" },
-  { id: "optics", name: "Оптика", mode: "quick", groupId: "parts", subcategoryId: "optics" },
-  { id: "interior", name: "Салон", mode: "quick", groupId: "parts", subcategoryId: "interior" },
-  { id: "suspension", name: "Подвеска", mode: "quick", groupId: "parts", subcategoryId: "suspension" },
+  { id: "gearboxes", name: "Transmissions", mode: "tracked", groupId: "aggregates", subcategoryId: "gearboxes" },
+  { id: "turbos", name: "Turbos", mode: "tracked", groupId: "aggregates", subcategoryId: "turbos" },
+  { id: "reducers", name: "Differentials", mode: "tracked", groupId: "aggregates", subcategoryId: "reducers" },
+  {
+    id: "transfer_cases",
+    name: "Transfer cases",
+    mode: "tracked",
+    groupId: "aggregates",
+    subcategoryId: "transfer_cases",
+  },
+  { id: "body", name: "Body", mode: "quick", groupId: "parts", subcategoryId: "body" },
+  { id: "optics", name: "Lighting", mode: "quick", groupId: "parts", subcategoryId: "optics" },
+  { id: "interior", name: "Interior", mode: "quick", groupId: "parts", subcategoryId: "interior" },
+  { id: "suspension", name: "Suspension", mode: "quick", groupId: "parts", subcategoryId: "suspension" },
   {
     id: "electrical",
-    name: "Электрика",
+    name: "Electrical",
     mode: "quick",
     groupId: "parts",
     subcategoryId: "electrical",
@@ -58,7 +68,7 @@ export function defaultCompanyAppConfig(): CompanyAppConfig {
     modules: { ...DEFAULT_COMPANY_MODULES },
     specificCategories: SETUP_WIZARD_CATEGORY_PRESETS.filter((item) =>
       ["gearboxes", "body", "optics", "electrical"].includes(item.id),
-    ),
+    ).map((item) => ({ ...item })),
     defaultWarrantyTemplate: "contract_engine",
     taxonomyVersion: 2,
     knowledge: defaultKnowledgeFlags(),

@@ -3,7 +3,7 @@ import { enUS } from "date-fns/locale";
 
 import { ActivityLogEntry } from "@/domain/rbac";
 import { ActivityModule, ActivitySeverity } from "@/domain/activity-log";
-import { moduleLabel, resolveActivityLabel } from "@/lib/mission-control/activity-labels";
+import { moduleLabel, resolveActivityLabel } from "@/lib/overview/activity-labels";
 import { formatWorkOrderActivityName } from "@/lib/work-order/work-order-display";
 
 export type ActivityJournalModuleFilter = ActivityModule | "all";

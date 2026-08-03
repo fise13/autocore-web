@@ -10,8 +10,8 @@ import { rhythm } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
 import { radius } from '@/theme/radius';
 import { useMoneyFormatStore } from '@/store/money-format-store';
-import { McAnimatedCounter, useMcEnter } from '@/features/mission-control/animation';
-import { mcType } from '@/features/mission-control/layout';
+import { McAnimatedCounter, useMcEnter } from '@/features/overview/animation';
+import { mcType } from '@/features/overview/layout';
 import type { BalanceSnapshot } from '@/lib/accounting/calculate-cash-balance';
 
 import { acTimeline } from '../animation/timeline';
@@ -36,7 +36,6 @@ function AccountTile({ tile, index }: { tile: TileDef; index: number }) {
   const tileStyle = useMcEnter({
     delay: acTimeline.summaryBase + index * acTimeline.summaryStagger,
     translateY: 6,
-    fade: true,
   });
 
   return (

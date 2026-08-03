@@ -34,6 +34,7 @@ type DangerActionRowProps = {
   actionLabel: string;
   onAction: () => void;
   tone?: "default" | "destructive";
+  disabled?: boolean;
 };
 
 function DangerActionRow({
@@ -43,6 +44,7 @@ function DangerActionRow({
   actionLabel,
   onAction,
   tone = "default",
+  disabled = false,
 }: DangerActionRowProps) {
   const destructive = tone === "destructive";
 
@@ -75,6 +77,7 @@ function DangerActionRow({
         type="button"
         size="sm"
         variant={destructive ? "destructive" : "outline"}
+        disabled={disabled}
         className={cn(
           "mt-0.5 shrink-0",
           destructive &&
@@ -88,6 +91,12 @@ function DangerActionRow({
   );
 }
 
+type LeaveApiError = {
+  error?: string;
+  code?: string;
+  title?: string;
+};
+
 export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZoneProps) {
   const router = useRouter();
   const { refreshProfile } = useAuth();
@@ -96,6 +105,7 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
   const [confirmName, setConfirmName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [soleOwnerBlocked, setSoleOwnerBlocked] = useState(false);
 
   async function authFetch(path: string, body: Record<string, unknown>) {
     const token = await getFirebaseAuth().currentUser?.getIdToken();
@@ -108,16 +118,29 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
       },
       body: JSON.stringify(body),
     });
-    const payload = await response.json();
+    const payload = (await response.json()) as LeaveApiError;
     if (!response.ok) {
-      throw new Error(payload.error ?? userCopy.organization.danger.actionFailed);
+      const err = new Error(payload.error ?? userCopy.organization.danger.actionFailed) as Error & {
+        code?: string;
+      };
+      err.code = typeof payload.code === "string" ? payload.code : undefined;
+      throw err;
     }
     return payload;
+  }
+
+  function openDeleteFromLeave() {
+    setLeaveOpen(false);
+    setSoleOwnerBlocked(false);
+    setError(null);
+    setConfirmName("");
+    setDeleteOpen(true);
   }
 
   async function handleLeave() {
     setBusy(true);
     setError(null);
+    setSoleOwnerBlocked(false);
     try {
       await authFetch("/api/org/leave", { companyId });
       setLeaveOpen(false);
@@ -125,7 +148,13 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
       router.refresh();
       router.replace("/");
     } catch (e) {
-      setError(e instanceof Error ? e.message : userCopy.organization.danger.errorGeneric);
+      const code = e instanceof Error && "code" in e ? String((e as Error & { code?: string }).code ?? "") : "";
+      if (code === "sole_owner_cannot_leave" || code === "owner_cannot_leave") {
+        setSoleOwnerBlocked(true);
+        setError(userCopy.organization.danger.soleOwnerLeaveHint);
+      } else {
+        setError(e instanceof Error ? e.message : userCopy.organization.danger.errorGeneric);
+      }
     } finally {
       setBusy(false);
     }
@@ -162,10 +191,15 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
         <DangerActionRow
           icon={<LogOut className="size-4" />}
           title={userCopy.organization.danger.leaveTitle}
-          description={userCopy.organization.danger.leaveDescription(companyName)}
+          description={
+            isOwner
+              ? userCopy.organization.danger.leaveOwnerDescription(companyName)
+              : userCopy.organization.danger.leaveDescription(companyName)
+          }
           actionLabel={userCopy.organization.danger.leaveAction}
           onAction={() => {
             setError(null);
+            setSoleOwnerBlocked(false);
             setLeaveOpen(true);
           }}
         />
@@ -178,6 +212,7 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
             tone="destructive"
             onAction={() => {
               setError(null);
+              setSoleOwnerBlocked(false);
               setConfirmName("");
               setDeleteOpen(true);
             }}
@@ -190,7 +225,9 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
           <DialogHeader>
             <DialogTitle>{userCopy.organization.danger.leaveConfirmTitle}</DialogTitle>
             <DialogDescription>
-              {userCopy.organization.danger.leaveConfirmBody(companyName)}
+              {isOwner
+                ? userCopy.organization.danger.leaveOwnerConfirmBody(companyName)
+                : userCopy.organization.danger.leaveConfirmBody(companyName)}
             </DialogDescription>
           </DialogHeader>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -198,13 +235,22 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
             <Button variant="ghost" onClick={() => setLeaveOpen(false)}>
               {userCopy.organization.danger.cancel}
             </Button>
-            <Button
-              className="bg-destructive text-white hover:bg-destructive/90"
-              onClick={() => void handleLeave()}
-              disabled={busy}
-            >
-              {busy ? <Loader2 className="size-4 animate-spin" /> : userCopy.organization.danger.leaveAction}
-            </Button>
+            {soleOwnerBlocked && isOwner ? (
+              <Button
+                className="bg-destructive text-white hover:bg-destructive/90"
+                onClick={openDeleteFromLeave}
+              >
+                {userCopy.organization.danger.deleteAction}
+              </Button>
+            ) : (
+              <Button
+                className="bg-destructive text-white hover:bg-destructive/90"
+                onClick={() => void handleLeave()}
+                disabled={busy}
+              >
+                {busy ? <Loader2 className="size-4 animate-spin" /> : userCopy.organization.danger.leaveAction}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

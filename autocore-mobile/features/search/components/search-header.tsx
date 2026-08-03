@@ -1,14 +1,11 @@
 import Reanimated from 'react-native-reanimated';
-import { Pressable } from 'react-native';
 
 import { SettingsIcon } from '@/assets/icons';
-import { PageHeader } from '@/components/ui';
+import { IconButton, PageHeader } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { haptics, rhythm } from '@/theme';
-import { toneBackground } from '@/theme/color-utils';
+import { haptics } from '@/theme';
 
 import { searchTimeline, useSearchEnter } from '../animation';
-import { searchLayout } from '../layout';
 
 type SearchHeaderProps = {
   onSettingsPress?: () => void;
@@ -24,24 +21,18 @@ export function SearchHeader({ onSettingsPress }: SearchHeaderProps) {
         title="Search"
         subtitle="Quick access to inventory, motors, and orders"
         trailing={
-          <Pressable
-            accessibilityRole="button"
+          <IconButton
             accessibilityLabel="Settings"
+            variant="ghost"
+            size="sm"
+            systemImage="gearshape"
             onPress={() => {
               haptics.light();
               onSettingsPress?.();
             }}
-            style={{
-              width: rhythm.iconBox + rhythm.micro,
-              height: rhythm.iconBox + rhythm.micro,
-              borderRadius: searchLayout.radius,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: toneBackground(colors.foreground, 0.05),
-            }}
           >
-            <SettingsIcon size="sm" color={colors.mutedForeground} strokeWidth={1.75} />
-          </Pressable>
+            <SettingsIcon size="sm" color={colors.mutedForeground} strokeWidth={1.5} />
+          </IconButton>
         }
       />
     </Reanimated.View>

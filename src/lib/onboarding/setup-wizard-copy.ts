@@ -58,9 +58,17 @@ export const SETUP_WIZARD_CATEGORY_GROUPS = [
   { id: "consumables", label: "Consumables", ids: [] },
 ] as const satisfies readonly SetupWizardCategoryGroup[];
 
+export function getSetupWizardCategoryPresets(): CompanySpecificCategoryConfig[] {
+  const names = setupCopy().categories.names;
+  return SETUP_WIZARD_CATEGORY_PRESETS.map((item) => ({
+    ...item,
+    name: names[item.id as SetupWizardCategoryId] ?? item.name,
+  }));
+}
+
 export function categoriesInGroup(group: SetupWizardCategoryGroup): CompanySpecificCategoryConfig[] {
   const ids = new Set<string>(group.ids);
-  return SETUP_WIZARD_CATEGORY_PRESETS.filter((item) => ids.has(item.id));
+  return getSetupWizardCategoryPresets().filter((item) => ids.has(item.id));
 }
 
 export type SetupWizardCategoryPreset = Pick<
@@ -193,7 +201,7 @@ export function modulesForPreset(preset: BusinessPresetId): Record<CompanyModule
 
 export function categoriesForPreset(preset: BusinessPresetId): CompanySpecificCategoryConfig[] {
   const byId = (ids: readonly SetupWizardCategoryId[]) =>
-    SETUP_WIZARD_CATEGORY_PRESETS.filter((item) =>
+    getSetupWizardCategoryPresets().filter((item) =>
       (ids as readonly string[]).includes(item.id),
     );
 

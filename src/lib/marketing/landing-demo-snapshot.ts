@@ -381,7 +381,7 @@ export const landingDemoWorkOrders = [
 
 const openOrders = landingDemoWorkOrders.filter((o) => o.status !== "delivered").length;
 
-export const landingDemoMissionControl = {
+export const landingDemoOverview = {
   companyName: "AutoCore Service",
   spacesLabel: "1 workspace",
   revenueToday: 513_000,
@@ -424,7 +424,7 @@ export function formatKzt(value: number): string {
   }).format(value);
 }
 
-/** Formats a demo amount as USD, e.g. `$1,234` — used across marketing/mission-control demo surfaces. */
+/** Formats a demo amount as USD, e.g. `$1,234` — used across marketing/overview demo surfaces. */
 export function formatUsd(value: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",

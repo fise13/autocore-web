@@ -29,10 +29,10 @@ export const productHelpSectionsRu: ProductHelpSection[] = [
         keywords: ["меню", "сайдбар", "настроить", "порядок"],
       },
       {
-        id: "mission-control",
-        q: "Что такое Mission Control?",
+        id: "overview",
+        q: "Что такое Overview?",
         a: "Это главный дашборд AutoCore: сводка по складу, нарядам и команде. Отсюда удобно начинать рабочий день и переходить в нужный модуль.",
-        keywords: ["дашборд", "главная", "сводка", "mission control"],
+        keywords: ["дашборд", "главная", "сводка", "overview"],
         href: "/",
         hrefLabel: "Открыть дашборд",
       },

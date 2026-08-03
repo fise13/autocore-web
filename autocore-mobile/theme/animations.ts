@@ -1,5 +1,7 @@
 import { Easing } from 'react-native-reanimated';
 
+import { tokens } from './tokens';
+
 /** Autocore easing — cubic-bezier(0.22, 1, 0.36, 1) from globals.css */
 export const autocoreEase = Easing.bezier(0.22, 1, 0.36, 1);
 
@@ -19,14 +21,25 @@ export const duration = {
   sidebar: 650,
 } as const;
 
+/**
+ * DL v3 spring table — five critically damped springs.
+ * `snappy` / `gentle` / `default` are deprecated aliases (press / settle).
+ */
 export const spring = {
-  default: { damping: 32, stiffness: 380, mass: 0.85 },
-  snappy: { damping: 28, stiffness: 420, mass: 0.75 },
-  gentle: { damping: 36, stiffness: 300, mass: 1 },
-  sheet: { damping: 40, stiffness: 350, mass: 0.9 },
+  press: tokens.motion.springs.press,
+  settle: tokens.motion.springs.settle,
+  sheet: tokens.motion.springs.sheet,
+  list: tokens.motion.springs.list,
+  nav: tokens.motion.springs.nav,
+  /** @deprecated Use settle */
+  default: tokens.motion.springs.settle,
+  /** @deprecated Use press */
+  snappy: tokens.motion.springs.press,
+  /** @deprecated Use settle */
+  gentle: tokens.motion.springs.settle,
 } as const;
 
-/** Stagger delay calculator — mirrors motionStagger from web */
+/** Stagger delay — prefer not using for list remounts (DL v3). */
 export function staggerDelay(index: number, baseMs = 55): number {
   return index * baseMs;
 }

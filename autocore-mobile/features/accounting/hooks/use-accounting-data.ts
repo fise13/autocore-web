@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 
 import { useCompanyModuleEnabled } from '@/hooks/use-module-enabled';
-import { useOperationsRealtime } from '@/hooks/use-operations-realtime';
-import { usePayrollTransactionsRealtime } from '@/hooks/use-payroll-transactions-realtime';
+import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import { useSession } from '@/hooks/use-session';
+import { useSessionQueryData } from '@/hooks/use-session-query-data';
 import { calculateCashBalance } from '@/lib/accounting/calculate-cash-balance';
 import { computeAccountingSnapshot } from '@/lib/accounting/compute-accounting-snapshot';
+import { isRealtimeReady } from '@/lib/realtime/subscription-registry';
 import type { FinancialOperation } from '@/types/financial-operation';
 import type { PayrollTransaction } from '@/types/payroll-transaction';
 
@@ -28,33 +29,36 @@ export type UseAccountingDataResult = {
 };
 
 /**
- * Live accounting only — never silently fill demo balances.
- * Companies without data show empty state, not fake numbers.
+ * Live accounting mirrored from SessionRealtimeHead keepAlive catalogs.
+ * Never opens its own Firestore listeners (avoids racing the heavy delay and
+ * focus flicker that previously blanked charts / showed "No workspace").
  */
 export function useAccountingData(): UseAccountingDataResult {
-  const { companyId, can } = useSession();
+  const { companyId, uid, can } = useSession();
+  const rbac = useRbacPolicy();
   const accountingEnabled = useCompanyModuleEnabled('accounting');
   const canView = can('accounting_view') && accountingEnabled;
-
-  const {
-    operations,
-    isBootstrapping: operationsLoading,
-    errorMessage: operationsError,
-    enabled: operationsEnabled,
-  } = useOperationsRealtime(companyId);
-
-  const {
-    payroll,
-    isBootstrapping: payrollLoading,
-    errorMessage: payrollError,
-    enabled: payrollEnabled,
-  } = usePayrollTransactionsRealtime(companyId);
-
-  const isDemo = false;
-  const isBootstrapping = Boolean(companyId) && (operationsLoading || payrollLoading);
-  const isEmpty = !isBootstrapping && operations.length === 0 && payroll.length === 0;
-  const errorMessage = operationsError ?? payrollError;
   const canEdit = can('accounting_edit');
+  const sessionReady = Boolean(companyId) && accountingEnabled;
+
+  const operations = useSessionQueryData<FinancialOperation[]>(
+    ['realtime', 'financial-operations', companyId],
+    sessionReady,
+    [],
+  );
+  const payroll = useSessionQueryData<PayrollTransaction[]>(
+    ['realtime', 'payroll-transactions', companyId, rbac.scopes.payroll, uid],
+    sessionReady,
+    [],
+  );
+
+  const opsReady =
+    Boolean(companyId) &&
+    isRealtimeReady(['realtime', 'financial-operations', companyId]);
+  const isDemo = false;
+  const isBootstrapping = sessionReady && !opsReady && operations.length === 0;
+  const isEmpty = opsReady && operations.length === 0 && payroll.length === 0;
+  const errorMessage = null;
 
   const balanceSnapshot = useMemo<BalanceSnapshot>(() => {
     if (!companyId) return { cashbox: 0, kaspi: 0, total: 0 };
@@ -76,7 +80,7 @@ export function useAccountingData(): UseAccountingDataResult {
     isEmpty,
     isDemo,
     errorMessage,
-    enabled: operationsEnabled && payrollEnabled,
+    enabled: sessionReady,
     canView,
     canEdit,
   };

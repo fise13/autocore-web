@@ -54,7 +54,7 @@ export function KeynoteDesktopUi({ snapshot }: KeynoteDesktopUiProps) {
       <div className="keynote-desktop-main">
         <header className="keynote-desktop-toolbar">
           <div>
-            <p className="keynote-desktop-toolbar-title">Mission Control</p>
+            <p className="keynote-desktop-toolbar-title">Overview</p>
             <p className="keynote-desktop-toolbar-meta">{chrome.sync.warehouseLiveSync}</p>
           </div>
           <span

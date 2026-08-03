@@ -172,7 +172,13 @@ export const AcTransferSheet = forwardRef<AcTransferSheetRef, AcTransferSheetPro
             </Text>
           ) : null}
 
-          <Button loading={submitting} disabled={disabled || submitting} onPress={() => void onSubmit()}>
+          <Button
+            native={false}
+            size="lg"
+            loading={submitting}
+            disabled={disabled || submitting}
+            onPress={() => void onSubmit()}
+          >
             Transfer
           </Button>
         </BottomSheetScrollView>

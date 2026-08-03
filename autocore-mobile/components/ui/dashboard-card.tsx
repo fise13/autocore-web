@@ -6,7 +6,7 @@ import { useCardLift } from '@/animations';
 import { radius, spacing } from '@/theme';
 import { Text } from './text';
 
-/** Mission control module card — mirrors .mc-module-card */
+/** Overview module card — mirrors .mc-module-card */
 type DashboardCardProps = ViewProps & {
   title?: string;
   description?: string;

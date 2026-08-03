@@ -35,7 +35,7 @@ Until those are fixed, motion and glass tab bars read as **costume**, not craft.
 | Verify email | `(auth)/journey/verify-email` | Gate | **Critical gaps** |
 | Profile name | `(auth)/journey/profile-name` | Gate | Medium (redundant with signup) |
 | Company / invite | `(auth)/journey/company` | Gate | **Critical gaps** |
-| Mission Control | `(tabs)/index` | Home | Medium UI, **High trust issues** |
+| Overview | `(tabs)/index` | Home | Medium UI, **High trust issues** |
 | Search | `(tabs)/search` | Global find | Medium idle, **Critical dead ends** |
 | Scan | `(tabs)/scan` | Barcode / OCR | High |
 | Orders list | `(tabs)/orders` | Work orders | Medium |
@@ -64,9 +64,9 @@ Until those are fixed, motion and glass tab bars read as **costume**, not craft.
 
 ## Critical issues
 
-### C1 — Mission Control avatar is hardcoded to another person
+### C1 — Overview avatar is hardcoded to another person
 
-**Problem:** Home header renders `Avatar name="Виктор К."` regardless of the signed-in user (`features/mission-control/components/mc-header.tsx`).
+**Problem:** Home header renders `Avatar name="Виктор К."` regardless of the signed-in user (`features/overview/components/mc-header.tsx`).
 
 **Why it hurts UX:** Instant identity failure. Users assume the app is a demo, a bug, or someone else’s account. Apple-grade products never show the wrong person in the chrome.
 
@@ -124,11 +124,11 @@ Until those are fixed, motion and glass tab bars read as **costume**, not craft.
 
 ---
 
-### C6 — Mission Control “Продажа” and “Новый наряд” are broken shortcuts
+### C6 — Overview “Продажа” and “Новый наряд” are broken shortcuts
 
-**Problem:** Quick action “Продажа” has no `route`. “Новый наряд” routes to `/(tabs)/orders` (list), not `/(tabs)/orders/new` (`use-mission-control-data.ts`).
+**Problem:** Quick action “Продажа” has no `route`. “Новый наряд” routes to `/(tabs)/orders` (list), not `/(tabs)/orders/new` (`use-overview-data.ts`).
 
-**Why it hurts UX:** Home shortcuts exist to save taps. Extra taps and dead tiles make Mission Control decorative.
+**Why it hurts UX:** Home shortcuts exist to save taps. Extra taps and dead tiles make Overview decorative.
 
 **Priority:** Critical  
 **Best solution:** Route new order to composer; implement sale flow (scan-to-sell or dedicated sheet) or remove the tile until ready. Never ship primary tiles without destinations.  
@@ -144,7 +144,7 @@ Until those are fixed, motion and glass tab bars read as **costume**, not craft.
 - Workspace storage/sync uses `WORKSPACE_DEMO`.
 - Account / Advanced show `DESKTOP_DEMO` (device, version, sync) as live facts.
 - Scan falls back to `mock-scan-registry` in `__DEV__`.
-- Mock files remain for profile, orders, mission control.
+- Mock files remain for profile, orders, overview.
 
 **Why it hurts UX:** Operators make decisions on fake balances, storage, and desktop link status. Demo mode must be unmistakable (Linear/Stripe: watermark, banner, disabled writes).
 
@@ -161,7 +161,7 @@ Until those are fixed, motion and glass tab bars read as **costume**, not craft.
 - Appearance: accent color, animations, compact mode, and large text write Zustand only — **never consumed** by theme/UI (`appearance-settings-screen.tsx` + `appearance-settings-store.ts`). Theme preference alone works.
 - Notifications (settings variant): business-event and email toggles bind to `DEMO_BUSINESS_PREFS` with `onValueChange={() => {}}` (`notifications-settings-screen.tsx`).
 - Advanced: export, cache clear, and danger deletes confirm / haptic only — no API (`advanced-screen.tsx`).
-- Mission Control activity title action “См. все” is `onAction={() => {}}` (`mc-activity-feed.tsx`). Accounting invoices “Все” is the same pattern.
+- Overview activity title action “См. все” is `onAction={() => {}}` (`mc-activity-feed.tsx`). Accounting invoices “Все” is the same pattern.
 
 **Why it hurts UX:** Highest-trust surfaces (identity prefs, notifications, data destruction) must never lie. Apple/Linear rule: no control without effect.
 
@@ -171,9 +171,9 @@ Until those are fixed, motion and glass tab bars read as **costume**, not craft.
 
 ---
 
-### C9 — Misleading Mission Control KPI (“Закрыто” / `salesToday`)
+### C9 — Misleading Overview KPI (“Закрыто” / `salesToday`)
 
-**Problem:** Metric labeled like period revenue uses **all** completed/delivered order totals, not calendar-day sales (`use-mission-control-data.ts`). Sparklines are synthesized.
+**Problem:** Metric labeled like period revenue uses **all** completed/delivered order totals, not calendar-day sales (`use-overview-data.ts`). Sparklines are synthesized.
 
 **Why it hurts UX:** Operators trust home KPIs for cash decisions. Wrong numbers destroy product credibility faster than missing charts.
 
@@ -235,7 +235,7 @@ Until those are fixed, motion and glass tab bars read as **costume**, not craft.
 
 ### H5 — Loading patterns are inconsistent
 
-**Problem:** Orders overlays `Loading` on a still-visible list shell. Accounting swaps to full skeleton. Search shows inline loading only when groups are empty. Profile notifications shows “Загрузка…” text. Mission Control has no loading/skeleton for metrics.
+**Problem:** Orders overlays `Loading` on a still-visible list shell. Accounting swaps to full skeleton. Search shows inline loading only when groups are empty. Profile notifications shows “Загрузка…” text. Overview has no loading/skeleton for metrics.
 
 **Why it hurts UX:** Users cannot form a mental model of “the app is working.” Skeleton → content is Linear’s standard; spinner-on-content feels older and jankier.
 
@@ -292,7 +292,7 @@ Plus widespread hardcoded `gap: 10`, `padding: 14`, `fontSize: 11/13/15` outside
 
 ### H9 — Activity feed and attention items are non-interactive
 
-**Problem:** Mission Control activity rows and attention banner items do not navigate to orders/inventory.
+**Problem:** Overview activity rows and attention banner items do not navigate to orders/inventory.
 
 **Why it hurts UX:** Dashboard without drill-down is a poster. Linear/Apple Health always deep-link.
 
@@ -400,9 +400,9 @@ Plus widespread hardcoded `gap: 10`, `padding: 14`, `fontSize: 11/13/15` outside
 
 ---
 
-### M4 — Header language mix (Mission Control)
+### M4 — Header language mix (Overview)
 
-**Problem:** Home title is English “Mission Control” while the rest of the app is Russian.
+**Problem:** Home title is English “Overview” while the rest of the app is Russian.
 
 **Why it hurts UX:** Brand can be English, but mixed chrome feels unfinished. Pick one system.
 
@@ -412,7 +412,7 @@ Plus widespread hardcoded `gap: 10`, `padding: 14`, `fontSize: 11/13/15` outside
 
 ---
 
-### M5 — Fake sparklines / trends on Mission Control
+### M5 — Fake sparklines / trends on Overview
 
 **Problem:** Overview trends are synthesized (`salesToday * 0.7…`, flat arrays), not historical series.
 
@@ -604,7 +604,7 @@ Plus widespread hardcoded `gap: 10`, `padding: 14`, `fontSize: 11/13/15` outside
 ### Poor information hierarchy
 
 - Profile: too many peer sections
-- Mission Control metrics: “Закрыто” / “Наряды” / “Открытые” / “Склад” labels are vague; trends are decorative
+- Overview metrics: “Закрыто” / “Наряды” / “Открытые” / “Склад” labels are vague; trends are decorative
 - Orders header is huge (34pt) while MC is restrained (20pt) — no shared page-title role
 - Accounting is dense but structured; orders list prioritizes chrome over list density
 
@@ -639,7 +639,7 @@ Plus widespread hardcoded `gap: 10`, `padding: 14`, `fontSize: 11/13/15` outside
 | Search no results | Good custom, not shared |
 | Orders | Weak text only |
 | Search/Orders no company | Weak text only |
-| Mission Control no activity | Implicit empty (section may look broken) |
+| Overview no activity | Implicit empty (section may look broken) |
 | Profile | N/A |
 
 ### Onboarding issues
@@ -691,14 +691,14 @@ The job is not to redesign from zero. It is to **make every control tell the tru
 
 ### Sprint 0 — Trust (ship blockers)
 
-1. Real user avatar on Mission Control  
+1. Real user avatar on Overview  
 2. Search result navigation  
 3. Honest swipe / detail actions (or remove)  
 4. Email verify reload loop + journey sign-out  
 5. Hide or implement Sale / Create company / Payment  
 6. Remove or implement placebo settings (appearance extras, notification business prefs, advanced danger)  
 7. Strip `DESKTOP_DEMO` / `WORKSPACE_DEMO` from live-looking rows  
-8. Fix or rename Mission Control revenue KPI; kill dead “См. все”  
+8. Fix or rename Overview revenue KPI; kill dead “См. все”  
 
 ### Sprint 1 — IA & empty/loading
 

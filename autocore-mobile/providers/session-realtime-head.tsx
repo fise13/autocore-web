@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
 import { useAuthStore } from '@/store/auth-store';
@@ -14,26 +14,32 @@ import { useVehiclesRealtime } from '@/hooks/use-vehicles-realtime';
 import { useWarehousesRealtime } from '@/hooks/use-warehouses-realtime';
 import { useWorkOrdersRealtime } from '@/hooks/use-work-orders-realtime';
 import { isProductionCompanyId, normalizeCompanyId } from '@/lib/company-id';
-import { preloadSessionSnapshots } from '@/lib/realtime/preload-session-snapshots';
+import {
+  preloadSessionSnapshots,
+  preloadSessionSnapshotsChunked,
+} from '@/lib/realtime/preload-session-snapshots';
 import { clearRealtimeSubscriptions, reconnectRealtimeSubscriptions } from '@/lib/realtime/subscription-registry';
 import { hydrateSearchIdleCache } from '@/lib/search/search-idle-cache';
 import { usePresenceHeartbeat } from '@/hooks/use-presence-heartbeat';
 
 const KEEP = { keepAlive: true } as const;
 const RECONNECT_MIN_BACKGROUND_MS = 90_000;
+/**
+ * Delay heavy catalog listeners so first Firestore onSnapshot map+apply storms
+ * do not freeze RN presses after first paint (NativeTabs stay live; JS dies).
+ */
+const HEAVY_LISTENERS_DELAY_MS = 2_500;
 
 /**
  * Headless session listener host. Renders nothing so Firestore snapshots
  * never re-render the navigation tree.
- *
- * All keepAlive listeners start immediately while SessionBootstrapGate
- * covers the UI — no artificial delay that leaves a dead-touch gap after reveal.
  */
 export function SessionRealtimeHead() {
   const profile = useAuthStore((s) => s.profile);
   const firebaseUser = useAuthStore((s) => s.firebaseUser);
   const status = useAuthStore((s) => s.status);
   const rbac = useRbacPolicy();
+  const [heavyEnabled, setHeavyEnabled] = useState(false);
 
   const companyId = normalizeCompanyId(profile?.companyId);
   const uid = firebaseUser?.uid ?? null;
@@ -45,29 +51,53 @@ export function SessionRealtimeHead() {
   const prevCompanyIdRef = useRef<string | null>(null);
 
   const workOrdersCompanyId = active && rbac.shouldSubscribe('workOrders') ? companyId : null;
-  const inventoryCompanyId = active && rbac.shouldSubscribe('inventory') ? companyId : null;
-  const accountingCompanyId = active && rbac.shouldSubscribe('accounting') ? companyId : null;
-  const payrollCompanyId = active && rbac.shouldSubscribe('payroll') ? companyId : null;
+  const inventoryCompanyId =
+    active && heavyEnabled && rbac.shouldSubscribe('inventory') ? companyId : null;
+  const accountingCompanyId =
+    active && heavyEnabled && rbac.shouldSubscribe('accounting') ? companyId : null;
+  const payrollCompanyId =
+    active && heavyEnabled && rbac.shouldSubscribe('payroll') ? companyId : null;
   const clientsCompanyId = active && rbac.shouldSubscribe('clients') ? companyId : null;
-  const vehiclesCompanyId = active && rbac.shouldSubscribe('vehicles') ? companyId : null;
-  const motorsCompanyId = active && rbac.shouldSubscribe('motors') ? companyId : null;
+  const vehiclesCompanyId =
+    active && heavyEnabled && rbac.shouldSubscribe('vehicles') ? companyId : null;
+  const motorsCompanyId =
+    active && heavyEnabled && rbac.shouldSubscribe('motors') ? companyId : null;
   const employeesCompanyId = active && rbac.shouldSubscribe('employees') ? companyId : null;
 
   usePresenceHeartbeat(companyId, uid, active);
 
   useEffect(() => {
+    if (!active) {
+      setHeavyEnabled(false);
+      return;
+    }
+    const heavyTimer = setTimeout(() => {
+      setHeavyEnabled(true);
+    }, HEAVY_LISTENERS_DELAY_MS);
+    return () => {
+      clearTimeout(heavyTimer);
+    };
+  }, [active]);
+
+  useEffect(() => {
     if (!active || !companyId) return;
-    hydrateSearchIdleCache();
     preloadSessionSnapshots(companyId, uid);
+    preloadSessionSnapshotsChunked(companyId, uid);
+    setTimeout(() => {
+      hydrateSearchIdleCache();
+    }, 0);
   }, [active, companyId, uid]);
 
   useEffect(() => {
     const prev = prevCompanyIdRef.current;
-    prevCompanyIdRef.current = companyId || null;
-    if (!prev) return;
-    if (!companyId || prev !== companyId) {
+    const next = companyId || null;
+    // Only wipe when switching between two real companies. A brief null flicker
+    // during hydration must not clear MMKV snapshots / RQ catalogs (Overview
+    // charts and Finance would go empty until the next full snapshot storm).
+    if (prev && next && prev !== next) {
       clearRealtimeSubscriptions();
     }
+    prevCompanyIdRef.current = next;
   }, [companyId]);
 
   useEffect(() => {
@@ -102,6 +132,7 @@ export function SessionRealtimeHead() {
     };
   }, [active]);
 
+  // Light — needed for shell chrome / WO list. Start immediately.
   useCompanyAppConfig(active ? companyId : null, KEEP);
   useWorkOrdersRealtime(workOrdersCompanyId, {
     ...KEEP,
@@ -110,6 +141,8 @@ export function SessionRealtimeHead() {
   });
   useClientsRealtime(clientsCompanyId, KEEP);
   useEmployeesRealtime(employeesCompanyId, Boolean(employeesCompanyId), KEEP);
+
+  // Heavy catalogs — delayed so onSnapshot map storms do not eat the first taps.
   useInventoryCatalog(inventoryCompanyId, KEEP);
   useOperationsRealtime(accountingCompanyId, KEEP);
   usePayrollTransactionsRealtime(payrollCompanyId, {

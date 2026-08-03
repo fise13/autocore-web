@@ -46,7 +46,7 @@ English is the source language. This glossary is normative for interface copy, t
 | VIN | VIN | Never translate or alter. |
 | SKU | SKU | Never translate or alter. |
 | Accounting | Финансы | Product module name. Do not alternate with `Бухгалтерия`. |
-| Mission Control | Mission Control | Protected product name. Never translate. |
+| Overview | Overview | Protected product name. Never translate. |
 | Stocktake | Инвентаризация | Physical inventory count, not the inventory catalog. |
 | Transmission | КПП | Domain abbreviation is accepted in Russian. |
 | Transfer Case | Раздатка | Never translate as a generic transfer. |
@@ -121,7 +121,7 @@ Do not introduce:
 - generic `Полка` or `Ячейка` for `Storage Location`;
 - `Перевод` for stock movement;
 - `Перемещение` for a payment transfer;
-- translated variants of `Mission Control`;
+- translated variants of `Overview`;
 - translated VIN, SKU, codes, identifiers, or user data.
 
 ## Translator notes

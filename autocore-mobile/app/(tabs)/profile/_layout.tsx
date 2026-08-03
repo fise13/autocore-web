@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 
 export default function ProfileLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false, freezeOnBlur: true }}>
+    <Stack screenOptions={{ headerShown: false, freezeOnBlur: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="account" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="workspace" options={{ animation: 'slide_from_right' }} />

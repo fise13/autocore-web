@@ -2,7 +2,7 @@
 
 import { ClipboardList, PackageOpen, TrendingUp, Wallet } from "lucide-react";
 
-import { McAnimatedValue } from "@/components/mission-control/animation";
+import { McAnimatedValue } from "@/components/overview/animation";
 import { KpiCard } from "@/components/ui/kpi-card";
 import type { MyEarningsSummary } from "@/lib/my-earnings/compute-my-earnings";
 import { userCopy } from "@/lib/user-copy";
@@ -17,7 +17,7 @@ export function MyEarningsKpiRow({ summary }: MyEarningsKpiRowProps) {
       <KpiCard
         label={userCopy.myEarnings.kpi.avgPerOrder}
         value={summary.avgPerOrder}
-        suffix=" ₸"
+        prefix="$"
         icon={TrendingUp}
         tone="primary"
         variant="dashboard"

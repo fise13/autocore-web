@@ -20,8 +20,8 @@
           "label": "All modules",
           "description": "Warehouse, work orders, accounting, team"
         },
-        "missionControl": {
-          "label": "Mission Control",
+        "overview": {
+          "label": "Overview",
           "description": "The owner's dashboard every morning"
         },
         "warehouse": {
@@ -226,7 +226,7 @@
     "finance": {
       "kicker": "Finance · demo company",
       "title": "Operations already in the till",
-      "balance": "Balance {amount} ₸",
+      "balance": "Balance {amount}",
       "overview": "Overview",
       "operations": "Operations",
       "workOrders": "Work orders"
@@ -324,7 +324,7 @@
       "employeesDetail": "12 on the team"
     },
     "sync": {
-      "titleWarehouse": "Mission Control · Warehouse",
+      "titleWarehouse": "Overview · Warehouse",
       "masterDesk": "Shop-floor workstation",
       "onHand": "On hand",
       "reserves": "Reserves",
@@ -337,7 +337,7 @@
       "warehouseLiveSync": "Warehouse · live sync",
       "newReserveIphone": "New reserve from iPhone"
     },
-    "missionControl": {
+    "overview": {
       "revenue": "Revenue",
       "orders": "Work orders",
       "warehouse": "Warehouse",
@@ -942,7 +942,7 @@
     },
     "outcome": {
       "title": "Mornings without calling the warehouse.",
-      "subtitle": "Mission Control shows everything that needs attention before the first customer call.",
+      "subtitle": "Overview shows everything that needs attention before the first customer call.",
       "cta": "See the product"
     },
     "loop": {
@@ -1024,7 +1024,7 @@
         "Engines",
         "Documents",
         "Mobile",
-        "Mission Control"
+        "Overview"
       ],
       "risk": "14 days free · no card required · no extra fees for modules",
       "trial": "Open the demo",
@@ -1040,8 +1040,8 @@
       "title": "$39 versus an hour of evening reconciliations.",
       "subtitle": "Conservative math: minutes a day on reconciliations and the occasional lost sale. No \"+300%\" fairy tale.",
       "minutesLabel": "Minutes spent reconciling per day",
-      "rateLabel": "Hourly rate, ₸",
-      "lostLabel": "Lost sales / month, ₸",
+      "rateLabel": "Hourly rate, $",
+      "lostLabel": "Lost sales / month, $",
       "resultLabel": "Estimated cost of chaos / month",
       "vsLabel": "Subscription",
       "disclaimer": "This is an estimate. The exact numbers are yours — check them on the demo.",
@@ -1401,7 +1401,7 @@
     "product": {
       "meta": {
         "title": "Product overview",
-        "description": "Automotive parts inventory management for dismantlers, salvage yards, and repair shops. Mission Control, warehouse, work orders, and accounting in one loop."
+        "description": "Automotive parts inventory management for dismantlers, salvage yards, and repair shops. Overview, warehouse, work orders, and accounting in one loop."
       },
       "hero": {
         "title": "Automotive parts inventory management for recyclers",
@@ -1409,7 +1409,7 @@
       },
       "pillars": [
         {
-          "title": "Mission Control",
+          "title": "Overview",
           "body": "A morning overview: revenue, stock, open work orders, who's online, and the activity log."
         },
         {
@@ -1472,7 +1472,7 @@
           {
             "title": "Owners and directors",
             "pain": "Five reports from five different places. No visibility into where the margin is leaking.",
-            "promise": "Mission Control: the truth every morning, in one minute."
+            "promise": "Overview: the truth every morning, in one minute."
           },
           {
             "title": "Warehouse staff and accountants",
@@ -1487,7 +1487,7 @@
         "items": [
           {
             "name": "Web",
-            "detail": "Full Mission Control and every module in the browser, for the office and admins."
+            "detail": "Full Overview and every module in the browser, for the office and admins."
           },
           {
             "name": "Desktop",
@@ -1503,9 +1503,9 @@
     "modules": {
       "meta": {
         "title": "Used engine & warehouse modules",
-        "description": "Used engine inventory software, parts warehouse, work orders, accounting, Mission Control, and team roles — one loop for salvage yards."
+        "description": "Used engine inventory software, parts warehouse, work orders, accounting, Overview, and team roles — one loop for salvage yards."
       },
-      "intro": "Every module is part of one inventory loop. The warehouse feeds work orders, work orders feed accounting, and Mission Control shows stock, orders, and analytics.",
+      "intro": "Every module is part of one inventory loop. The warehouse feeds work orders, work orders feed accounting, and Overview shows stock, orders, and analytics.",
       "capabilitiesTitle": "Capabilities",
       "forWhomLabel": "Who it's for",
       "stats": [
@@ -1524,8 +1524,8 @@
       ],
       "items": [
         {
-          "id": "mission-control",
-          "title": "Mission Control",
+          "id": "overview",
+          "title": "Overview",
           "tagline": "Command dashboard",
           "description": "Your entry point every morning. KPIs, alerts, the activity log, and who's online: not a report for the sake of a report, but a control panel.",
           "capabilities": [
@@ -1570,7 +1570,7 @@
           "capabilities": [
             "Transactions, advance payments, daily revenue",
             "Linked to work orders and the warehouse",
-            "Metrics in Mission Control",
+            "Metrics in Overview",
             "Separated permissions: accounting ≠ warehouse"
           ],
           "forWhom": "Accountant, financial controller"
@@ -1596,14 +1596,14 @@
           "capabilities": [
             "Per-module permissions: warehouse, accounting, settings",
             "Invitations and roles",
-            "Online status in Mission Control",
+            "Online status in Overview",
             "Audit trail for permission changes"
           ],
           "forWhom": "HR admin, owner, IT"
         }
       ],
       "relatedLinks": {
-        "missionControl": "Mission Control",
+        "overview": "Overview",
         "warehouse": "Warehouse",
         "accounting": "Accounting",
         "workOrders": "Work Orders",
@@ -1615,7 +1615,7 @@
       "relatedSections": {
         "product": {
           "label": "Product overview",
-          "hint": "Mission Control and processes"
+          "hint": "Overview and processes"
         },
         "pricing": {
           "label": "Pricing",
@@ -1671,7 +1671,7 @@
           "Desktop",
           "Cloud Sync",
           "AI Import",
-          "Mission Control",
+          "Overview",
           "Analytics"
         ]
       },
@@ -1734,7 +1734,7 @@
         },
         {
           "title": "Activity log",
-          "body": "Every meaningful change is recorded with the employee, role, and timestamp. Managers see the full picture in Mission Control, no exports needed."
+          "body": "Every meaningful change is recorded with the employee, role, and timestamp. Managers see the full picture in Overview, no exports needed."
         },
         {
           "title": "Company isolation",
@@ -2413,7 +2413,7 @@
       },
       "product": {
         "title": "Automotive Parts Inventory Management Software | AutoCore",
-        "description": "See how automotive parts inventory management works in AutoCore: Mission Control, warehouse stock, used auto parts sales, work orders, documents, and live sync across desktop and phone.",
+        "description": "See how automotive parts inventory management works in AutoCore: Overview, warehouse stock, used auto parts sales, work orders, documents, and live sync across desktop and phone.",
         "ogTitle": "How AutoCore inventory management works for auto recyclers"
       },
       "modules": {

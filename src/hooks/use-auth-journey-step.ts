@@ -13,6 +13,8 @@ import {
   hasWizardCompleted,
 } from "@/lib/performance/session-flags";
 
+import { userCopy } from "@/lib/user-copy";
+
 export type AuthJourneyStep =
   | "loading"
   | "verify-email"
@@ -28,11 +30,21 @@ export type AuthJourneyStepMeta = {
 };
 
 export const AUTH_JOURNEY_STEP_LABELS: Record<Exclude<AuthJourneyStep, "loading" | "app">, string> = {
-  "verify-email": "Подтверждение email",
-  "profile-name": "Ваш профиль",
-  company: "Команда и доступ",
-  "setup-wizard": "Настройка пространства",
-  "business-import": "Шаг 5 · Перенос данных",
+  get "verify-email"() {
+    return userCopy.auth.journeySteps.verifyEmail;
+  },
+  get "profile-name"() {
+    return userCopy.auth.journeySteps.profileName;
+  },
+  get company() {
+    return userCopy.auth.journeySteps.company;
+  },
+  get "setup-wizard"() {
+    return userCopy.auth.journeySteps.setupWizard;
+  },
+  get "business-import"() {
+    return userCopy.auth.journeySteps.businessImport;
+  },
 };
 
 export function useAuthJourneyStep(

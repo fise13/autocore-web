@@ -52,8 +52,8 @@ export function useScanChromeColors() {
       ocrScrim: colors.overlay,
       ocrLabel: cameraInk,
 
-      shutterRing: colors.card,
-      shutterFill: colors.primary,
+      shutterRing: cameraInk,
+      shutterFill: '#ffffff',
 
       cameraScrim,
       permissionTitle: colors.foreground,

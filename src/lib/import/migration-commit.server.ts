@@ -125,7 +125,7 @@ async function createInventoryItemAdmin(
     name: parsed.name.trim(),
     barcodes: parsed.barcodes ?? [],
     unit: parsed.unit ?? "pcs",
-    currency: parsed.currency ?? "KZT",
+    currency: parsed.currency ?? "USD",
     status: parsed.status ?? "active",
     inventoryGroup: normalized.inventoryGroup ?? parsed.inventoryGroup ?? "consumables",
     searchTokens,

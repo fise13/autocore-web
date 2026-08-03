@@ -1,7 +1,4 @@
-import { useState } from 'react';
-import { View } from 'react-native';
-
-import { Text } from '@/components/ui';
+import { CollectionRow, ListSection, Surface, Text } from '@/components/ui';
 import { useGuardedRouter } from '@/hooks/use-guarded-router';
 import { useAuth } from '@/authentication/auth-provider';
 import {
@@ -16,16 +13,13 @@ import { useEntitlement } from '@/hooks/use-entitlement';
 import { planLabel } from '@/lib/subscriptions/format';
 import { resolveActiveCompanyName } from '@/lib/resolve-active-company-name';
 import type { CompanyModuleKey } from '@/types/company-config';
-import { rhythm } from '@/theme';
+import { presentOrganizationSwitcher } from '@/features/organization/present-organization-switcher';
+import { haptics } from '@/theme';
+import { tokens } from '@/theme/tokens';
 import { appDisplayCurrencyOption } from '@/lib/money/display-currency';
 
 import { settingsRouteHref } from '../navigation';
-import { settingsLayout } from '../layout';
-import { SettingsGroup, SettingsSectionTitle } from '../components/settings-section';
-import { SettingsRow } from '../components/settings-row';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
-import { CompanySwitcherSheet } from '@/features/organization/components/company-switcher-sheet';
-import { OrganizationSwitchButton } from '@/features/organization/components/organization-switch-button';
 import { OrgDangerZone } from '@/features/organization/components/org-danger-zone';
 import { profileRouteHref } from '@/features/profile/navigation';
 
@@ -40,7 +34,7 @@ const MODULE_LABELS: Record<CompanyModuleKey, string> = {
 export function CompanySettingsScreen() {
   const { colors } = useTheme();
   const router = useGuardedRouter();
-  const { memberships, refreshProfile } = useAuth();
+  const { memberships, refreshProfile, firebaseUser } = useAuth();
   const { profile, companyId } = useSession();
   const { name, isLoading } = useCompanyProfile(companyId);
   const { config } = useCompanyAppConfig(companyId);
@@ -48,7 +42,6 @@ export function CompanySettingsScreen() {
   const { employees } = useEmployeesRealtime(companyId, isPro);
   const { currency } = useAppDisplayCurrency();
   const activeCount = employees.filter((entry) => entry.isActive).length;
-  const [switcherOpen, setSwitcherOpen] = useState(false);
 
   const displayName = isLoading ? '…' : resolveActiveCompanyName(companyId, name, []);
   const currentPlanLabel = planLabel(entitlement);
@@ -69,79 +62,63 @@ export function CompanySettingsScreen() {
         ? enabledModules.join(' · ')
         : `${enabledModules.length} active`;
 
-  const identityMeta = `${currentPlanLabel} · ${activeCount} active`;
-
   return (
     <ProfileScreenShell title="Company" subtitle="Organization profile">
-      <View style={{ gap: rhythm.section }}>
-        <View style={{ paddingHorizontal: settingsLayout.pad, gap: 6, paddingTop: 4 }}>
-          <Text
-            variant="heading"
-            style={{
-              fontSize: 28,
-              fontWeight: '700',
-              letterSpacing: -0.55,
-              lineHeight: 34,
-              color: colors.foreground,
+      <Surface
+        variant="inset"
+        style={{
+          marginBottom: tokens.space.section,
+          borderRadius: tokens.radius.group,
+        }}
+      >
+        <Text variant="title3" numberOfLines={2} style={{ color: colors.foreground }}>
+          {displayName}
+        </Text>
+        <Text variant="footnote" color="muted">
+          {currentPlanLabel} · {activeCount} active
+        </Text>
+      </Surface>
+
+      {memberships.length > 1 ? (
+        <ListSection title="Organizations">
+          <CollectionRow
+            title="Switch organization"
+            subtitle={displayName}
+            onPress={() => {
+              haptics.selection();
+              presentOrganizationSwitcher({
+                memberships,
+                activeCompanyId: companyId,
+                userId: firebaseUser?.uid,
+                refreshProfile,
+                router,
+              });
             }}
-            numberOfLines={2}
-          >
-            {displayName}
-          </Text>
-          <Text
-            variant="caption"
-            style={{
-              fontSize: 14,
-              lineHeight: 20,
-              color: colors.mutedForeground,
-            }}
-          >
-            {identityMeta}
-          </Text>
-        </View>
+          />
+        </ListSection>
+      ) : null}
 
-        {memberships.length > 1 ? (
-          <View style={{ gap: rhythm.stack }}>
-            <SettingsSectionTitle title="Organizations" />
-            <SettingsGroup>
-              <OrganizationSwitchButton
-                companyName={displayName}
-                onPress={() => setSwitcherOpen(true)}
-              />
-            </SettingsGroup>
-          </View>
-        ) : null}
-
-        <View style={{ gap: rhythm.stack }}>
-          <SettingsSectionTitle title="Workspace" />
-          <SettingsGroup>
-            <SettingsRow
-              label="Modules"
-              value={modulesValue}
-              onPress={() => router.push(settingsRouteHref('modules'))}
-            />
-            {profile?.isCompanyOwner ? (
-              <SettingsRow
-                label="Team & Roles"
-                onPress={() => router.push(settingsRouteHref('team'))}
-              />
-            ) : null}
-            <SettingsRow
-              label="Display currency"
-              value={currencyLabel}
-              onPress={() => router.push(profileRouteHref('currency'))}
-            />
-          </SettingsGroup>
-        </View>
-
-        <OrgDangerZone
-          companyName={name ?? 'Company'}
-          isOwner={profile?.isCompanyOwner === true}
-          onChanged={() => void refreshProfile()}
+      <ListSection title="Workspace">
+        <CollectionRow
+          title="Modules"
+          value={modulesValue}
+          onPress={() => router.push(settingsRouteHref('modules'))}
         />
-      </View>
+        {profile?.isCompanyOwner ? (
+          <CollectionRow title="Team" onPress={() => router.push(settingsRouteHref('team'))} />
+        ) : null}
+        <CollectionRow
+          title="Display currency"
+          value={currencyLabel}
+          onPress={() => router.push(profileRouteHref('currency'))}
+        />
+      </ListSection>
 
-      <CompanySwitcherSheet open={switcherOpen} onClose={() => setSwitcherOpen(false)} />
+      <OrgDangerZone
+        companyName={name ?? 'Company'}
+        isOwner={profile?.isCompanyOwner === true}
+        onChanged={() => void refreshProfile()}
+      />
     </ProfileScreenShell>
   );
 }

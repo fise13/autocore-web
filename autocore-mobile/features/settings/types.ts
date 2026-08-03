@@ -1,7 +1,5 @@
 import type { ComponentType } from 'react';
 
-import type { IconName } from '@/assets/icons';
-
 export type SettingsRouteId =
   | 'account'
   | 'workspace'
@@ -28,7 +26,7 @@ export type SettingsHubRouteId = SettingsRouteId;
 export type SettingsHubSectionId = SettingsRouteId;
 
 export type NavItemId =
-  | 'mission'
+  | 'overview'
   | 'search'
   | 'scan'
   | 'orders'
@@ -77,7 +75,7 @@ export type SettingsRowModel = {
   label: string;
   value?: string;
   subtitle?: string;
-  icon?: IconName;
+  icon?: string;
 };
 
 export type PermissionGroupId =

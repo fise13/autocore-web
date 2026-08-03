@@ -114,7 +114,7 @@ export async function seedDemoWorkspaceData(ownerUid: string): Promise<void> {
       purchasePrice: item.purchasePrice,
       averageCost: item.purchasePrice,
       sellPrice: item.sellPrice,
-      currency: "KZT",
+      currency: "USD",
       totalOnHand: item.totalOnHand,
       totalReserved: 0,
       totalAvailable: item.totalOnHand,

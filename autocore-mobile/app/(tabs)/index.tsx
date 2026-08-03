@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
 import { markStartup, logStartupTable } from '@/lib/performance/startup-tracer';
-import { MissionControlScreen } from '@/features/mission-control';
+import { OverviewScreen } from '@/features/overview';
 
 export default function HomeRoute() {
   useEffect(() => {
@@ -9,5 +9,5 @@ export default function HomeRoute() {
     logStartupTable();
   }, []);
 
-  return <MissionControlScreen />;
+  return <OverviewScreen />;
 }

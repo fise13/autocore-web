@@ -6,7 +6,7 @@ export type ListingDraft = {
   title: string;
   description: string;
   price: number;
-  currency: "KZT";
+  currency: "USD";
   photoUrls: string[];
   categoryHint?: string;
 };

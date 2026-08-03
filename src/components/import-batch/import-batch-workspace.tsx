@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getAuth } from "firebase/auth";
 import {
   ArrowLeft,
   Check,
   FileUp,
   Loader2,
+  RefreshCw,
   Smartphone,
   Trash2,
 } from "lucide-react";
@@ -27,6 +28,7 @@ import {
 import { getFirebaseApp } from "@/infrastructure/firebase/client";
 import { uploadImportBatchFileClient } from "@/lib/import-batch/fetch-import-batches.client";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { resetDissolveVeil } from "@/lib/motion/dissolve-transition";
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
 
@@ -42,15 +44,52 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
   const { files } = useImportBatchFilesRealtime(batchId);
   const { rows } = useImportBatchRowsRealtime(batchId);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const kickAttemptedRef = useRef<string | null>(null);
   const [phoneOpen, setPhoneOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Clear any stuck fullscreen transition veil that blocks clicks on this page.
+  useEffect(() => {
+    resetDissolveVeil();
+  }, [batchId]);
 
   async function authHeader(): Promise<string> {
     const token = await getAuth(getFirebaseApp()).currentUser?.getIdToken();
     if (!token) throw new Error(userCopy.importBatch.signIn);
     return `Bearer ${token}`;
   }
+
+  async function kickProcessing() {
+    if (!companyId) return;
+    const response = await fetch("/api/import-batches/process", {
+      method: "POST",
+      headers: {
+        Authorization: await authHeader(),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ companyId, batchId }),
+    });
+    if (!response.ok) {
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
+      throw new Error(body?.error || userCopy.importBatch.processFailed);
+    }
+  }
+
+  // Files stuck at "ready" with no rows → re-kick AI/spreadsheet processing once.
+  useEffect(() => {
+    if (!companyId || !batch) return;
+    const readyIds = files.filter((file) => file.status === "ready").map((file) => file.id);
+    if (readyIds.length === 0) return;
+    if (batch.aiStatus === "processing") return;
+    const kickKey = `${batchId}:${readyIds.sort().join(",")}`;
+    if (kickAttemptedRef.current === kickKey) return;
+    kickAttemptedRef.current = kickKey;
+    void kickProcessing().catch((err) => {
+      setError(err instanceof Error ? err.message : userCopy.importBatch.processFailed);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- kick once per ready-file set
+  }, [batch, batchId, companyId, files]);
 
   async function patchRow(rowId: string, patch: Partial<ImportSuggestedRow>) {
     const response = await fetch(`/api/import-batches/${batchId}/rows/${rowId}`, {
@@ -119,6 +158,7 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
       for (const file of Array.from(fileList)) {
         await uploadImportBatchFileClient({ batchId, file });
       }
+      kickAttemptedRef.current = null;
     } catch (err) {
       setError(err instanceof Error ? err.message : userCopy.importBatch.uploadFailed);
     } finally {
@@ -136,6 +176,24 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function retryProcessing() {
+    setBusy(true);
+    setError(null);
+    kickAttemptedRef.current = null;
+    try {
+      await kickProcessing();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : userCopy.importBatch.processFailed);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function goBack() {
+    resetDissolveVeil();
+    router.push("/imports");
   }
 
   if (batchLoading && !batch) {
@@ -159,30 +217,34 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
   }
 
   const selectedCount = rows.filter((r) => r.selected).length;
+  const readyFiles = files.filter((file) => file.status === "ready").length;
   const canCommit =
     selectedCount > 0 &&
     batch.status !== "completed" &&
     batch.status !== "applying" &&
     batch.status !== "expired" &&
     batch.status !== "cancelled";
+  const showStuckReady =
+    readyFiles > 0 && rows.length === 0 && batch.aiStatus !== "processing";
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="relative z-0 flex h-full min-h-0 flex-col">
       <header className="flex flex-wrap items-center gap-3 border-b px-4 py-3 md:px-6">
-        <Link
-          href="/imports"
+        <button
+          type="button"
+          onClick={goBack}
           aria-label={userCopy.importBatch.backAria}
           className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
         >
           <ArrowLeft className="size-4" />
-        </Link>
+        </button>
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-lg font-semibold tracking-tight">
             {batch.title || userCopy.importBatch.motorsFallback}
           </h1>
           <p className="text-xs text-muted-foreground">
             {userCopy.importBatch.filesRowsSelected(batch.counts.files, batch.counts.rows, selectedCount)}
-            {batch.aiStatus === "processing" ? "{userCopy.importBatch.aiWorking}" : null}
+            {batch.aiStatus === "processing" ? userCopy.importBatch.aiWorking : null}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -269,10 +331,34 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
           <div className="mb-3 flex items-center justify-between gap-2">
             <p className="text-sm font-medium">{userCopy.importBatch.previewRows}</p>
             <div className="flex gap-2">
-              <Button type="button" variant="ghost" size="sm" disabled={busy || rows.length === 0} onClick={() => void selectAll(true)}>
+              {showStuckReady || rows.length === 0 ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => void retryProcessing()}
+                >
+                  {busy ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+                  {userCopy.importBatch.retryParse}
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={busy || rows.length === 0}
+                onClick={() => void selectAll(true)}
+              >
                 {userCopy.importBatch.selectAll}
               </Button>
-              <Button type="button" variant="ghost" size="sm" disabled={busy || rows.length === 0} onClick={() => void selectAll(false)}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={busy || rows.length === 0}
+                onClick={() => void selectAll(false)}
+              >
                 {userCopy.importBatch.clearSelection}
               </Button>
             </div>
@@ -289,8 +375,13 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
                 <>
                   <p className="text-sm font-medium">{userCopy.importBatch.noRowsYet}</p>
                   <p className="max-w-sm text-sm text-muted-foreground">
-                    {userCopy.importBatch.previewDropHint}
+                    {showStuckReady
+                      ? userCopy.importBatch.readyNoRowsHint
+                      : userCopy.importBatch.previewDropHint}
                   </p>
+                  <Button type="button" variant="outline" size="sm" className="mt-2" onClick={goBack}>
+                    {userCopy.importBatch.backToList}
+                  </Button>
                 </>
               )}
             </div>

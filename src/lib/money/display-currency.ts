@@ -1,4 +1,4 @@
-export const APP_DISPLAY_CURRENCIES = ["KZT", "RUB", "USD"] as const;
+export const APP_DISPLAY_CURRENCIES = ["USD"] as const;
 
 export type AppDisplayCurrency = (typeof APP_DISPLAY_CURRENCIES)[number];
 
@@ -20,26 +20,10 @@ export const APP_DISPLAY_CURRENCY_OPTIONS: AppDisplayCurrencyOption[] = [
     currency: "USD",
     example: "$1,000",
   },
-  {
-    id: "KZT",
-    label: "Tenge",
-    description: "Kazakhstan · ₸",
-    locale: "ru-KZ",
-    currency: "KZT",
-    example: "100,000 ₸",
-  },
-  {
-    id: "RUB",
-    label: "Rubles",
-    description: "Russia · ₽",
-    locale: "ru-RU",
-    currency: "RUB",
-    example: "100,000 ₽",
-  },
 ];
 
-export function normalizeAppDisplayCurrency(value: unknown): AppDisplayCurrency {
-  if (value === "RUB" || value === "USD" || value === "KZT") return value;
+/** Always USD — legacy KZT/RUB preference values are coerced. */
+export function normalizeAppDisplayCurrency(_value?: unknown): AppDisplayCurrency {
   return "USD";
 }
 
@@ -49,13 +33,14 @@ export function appDisplayCurrencyOption(currency: AppDisplayCurrency): AppDispl
 
 export function formatAppMoney(value: number, currency: AppDisplayCurrency = "USD"): string {
   const option = appDisplayCurrencyOption(currency);
-  const fractionDigits = currency === "USD" && Math.abs(value) < 1000 ? 2 : 0;
+  const safe = Number.isFinite(value) ? value : 0;
+  const fractionDigits = Math.abs(safe) < 1000 ? 2 : 0;
   return new Intl.NumberFormat(option.locale, {
     style: "currency",
     currency: option.currency,
     maximumFractionDigits: fractionDigits,
     minimumFractionDigits: fractionDigits,
-  }).format(value);
+  }).format(safe);
 }
 
 export function formatAppMoneyExample(
@@ -76,13 +61,7 @@ export function formatMarketingUsd(value: number): string {
   }).format(rounded);
 }
 
-/** @deprecated Marketing site uses USD — prefer {@link formatMarketingUsd}. */
+/** @deprecated Prefer {@link formatMarketingUsd}. */
 export function formatMarketingKzt(value: number): string {
-  const rounded = Math.round(value);
-  return new Intl.NumberFormat("ru-KZ", {
-    style: "currency",
-    currency: "KZT",
-    maximumFractionDigits: 0,
-    minimumFractionDigits: 0,
-  }).format(rounded);
+  return formatMarketingUsd(value);
 }

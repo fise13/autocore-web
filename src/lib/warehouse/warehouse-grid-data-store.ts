@@ -32,6 +32,9 @@ export type WarehouseDraftFields = {
   supplierName: string;
   barcode: string;
   warehouseLocation: string;
+  notes: string;
+  quality: string;
+  imageUrls: string[];
   lowStockThreshold: string;
   status: InventoryItemStatus;
   type: InventoryItemType;
@@ -49,6 +52,9 @@ export function createEmptyDraft(): WarehouseDraftFields {
     supplierName: "",
     barcode: "",
     warehouseLocation: "",
+    notes: "",
+    quality: "",
+    imageUrls: [],
     lowStockThreshold: "",
     status: "active",
     type: "consumable",
@@ -175,11 +181,26 @@ export function applyWarehouseDraftField(
   value: string,
 ): WarehouseGridRow {
   if (row.rowKind !== "empty") return row;
+  if (field === "imageUrls") return row;
   return {
     ...row,
     draft: {
       ...row.draft,
       [field]: field === "status" ? parseInventoryStatus(value) : value,
+    },
+  };
+}
+
+export function applyWarehouseDraftImageUrls(
+  row: WarehouseGridRow,
+  urls: string[],
+): WarehouseGridRow {
+  if (row.rowKind !== "empty") return row;
+  return {
+    ...row,
+    draft: {
+      ...row.draft,
+      imageUrls: urls,
     },
   };
 }
@@ -205,9 +226,11 @@ export function draftFieldForColumn(column: number): keyof WarehouseDraftFields 
     case 11:
       return "warehouseLocation";
     case 12:
+      return "notes";
+    case 13:
+      return "quality";
+    case 15:
       return "lowStockThreshold";
-    case 14:
-      return "status";
     default:
       return null;
   }
@@ -237,6 +260,8 @@ export function parseDraftToUpsert(row: WarehouseGridRow, companyId: string, act
       supplierName: row.supplierName,
       warehouseLocation: row.warehouseLocation,
       notes: row.notes,
+      quality: row.quality,
+      imageUrls: row.imageUrls,
       categoryPath: row.categoryPath,
       inventoryGroup: row.inventoryGroup,
       subcategoryId: row.subcategoryId,
@@ -259,6 +284,9 @@ export function parseDraftToUpsert(row: WarehouseGridRow, companyId: string, act
     brandName: row.draft.brandName.trim() || undefined,
     supplierName: row.draft.supplierName.trim() || undefined,
     warehouseLocation: row.draft.warehouseLocation.trim() || undefined,
+    notes: row.draft.notes.trim() || undefined,
+    quality: row.draft.quality.trim() || undefined,
+    imageUrls: row.draft.imageUrls.length ? row.draft.imageUrls : undefined,
     unit: row.draft.unit.trim() || "pcs",
     purchasePrice: parseOptionalNumber(row.draft.purchasePrice),
     sellPrice: parseOptionalNumber(row.draft.sellPrice),
@@ -289,6 +317,9 @@ export function savedRowMetadataChanged(
     (baseline.supplierName ?? "") !== (row.supplierName ?? "") ||
     (baseline.barcodes[0] ?? "") !== (row.barcodes[0] ?? "") ||
     (baseline.warehouseLocation ?? "") !== (row.warehouseLocation ?? "") ||
+    (baseline.notes ?? "") !== (row.notes ?? "") ||
+    (baseline.quality ?? "") !== (row.quality ?? "") ||
+    JSON.stringify(baseline.imageUrls ?? []) !== JSON.stringify(row.imageUrls ?? []) ||
     baseline.lowStockThreshold !== row.lowStockThreshold ||
     baseline.status !== row.status
   );
@@ -332,7 +363,7 @@ export function buildSavedRowFromCreate(
     purchasePrice,
     averageCost: purchasePrice,
     sellPrice,
-    currency: "KZT",
+    currency: "USD",
     totalOnHand: onHand,
     totalReserved: 0,
     totalAvailable: onHand,

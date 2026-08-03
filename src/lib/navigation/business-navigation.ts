@@ -14,7 +14,7 @@ import {
 
 import type { UserEntity } from "@/domain/user";
 import {
-  canAccessMissionControl,
+  canAccessOverview,
   canAccessMyEarnings,
   canAccessMotorsArea,
   isNavAllowed,
@@ -79,7 +79,7 @@ export function buildBusinessNavTree(user: UserEntity | null | undefined): {
   workspace: { id: "dashboard"; label: string; href: string; icon: LucideIcon } | null;
   business: BusinessNavItem[];
 } {
-  const workspace = canAccessMissionControl(user)
+  const workspace = canAccessOverview(user)
     ? {
         id: "dashboard" as const,
         label: businessNavCopy.workspace.dashboard,

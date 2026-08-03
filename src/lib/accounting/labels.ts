@@ -16,6 +16,12 @@ const CATEGORY_KEYS = [
   "payroll",
   "motor_import",
   "warehouse_import",
+  "advertising",
+  "transport",
+  "food",
+  "purchase",
+  "logistics",
+  "other",
 ] as const;
 
 type CategoryKey = (typeof CATEGORY_KEYS)[number];
@@ -86,6 +92,24 @@ export const OPERATION_CATEGORY_LABELS: Record<string, string> = {
   },
   get warehouse_import() {
     return userCopy.accounting.categories.warehouse_import;
+  },
+  get advertising() {
+    return userCopy.accounting.categories.advertising;
+  },
+  get transport() {
+    return userCopy.accounting.categories.transport;
+  },
+  get food() {
+    return userCopy.accounting.categories.food;
+  },
+  get purchase() {
+    return userCopy.accounting.categories.purchase;
+  },
+  get logistics() {
+    return userCopy.accounting.categories.logistics;
+  },
+  get other() {
+    return userCopy.accounting.categories.other;
   },
 };
 

@@ -2,7 +2,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { Keyboard, RefreshControl, TextInput, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 
-import { Loading, Screen, ScreenScroll, Text, toast } from '@/components/ui';
+import { ListSkeleton, Screen, ScreenScroll, Text, toast } from '@/components/ui';
 import { OrderPickerSheet } from '@/features/orders/components/order-picker-sheet';
 import { useAddToOrderFlow } from '@/features/orders/hooks/use-add-to-order-flow';
 import type { SearchEmptyActionId } from '@/features/search/components/search-empty-state';
@@ -296,7 +296,7 @@ export function SearchScreen() {
           {hasQuery || showPresetList ? (
             showInitialLoading ? (
               <View style={{ paddingHorizontal: searchLayout.pad, paddingTop: rhythm.section }}>
-                <Loading message="Searching…" />
+                <ListSkeleton rows={6} />
               </View>
             ) : (
               <SearchResults

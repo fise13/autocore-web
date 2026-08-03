@@ -43,6 +43,7 @@ type AuthEmailPillProps = {
   loading?: boolean;
   disabled?: boolean;
   placeholder?: string;
+  onFocusChange?: (focused: boolean) => void;
 };
 
 /** Email entry styled as a pill to sit under the hero OAuth buttons. */
@@ -54,12 +55,18 @@ export function AuthEmailPill({
   loading = false,
   disabled = false,
   placeholder = 'Personal or work email',
+  onFocusChange,
 }: AuthEmailPillProps) {
   const { colors, isDark } = useTheme();
   const [focused, setFocused] = useState(false);
   const press = usePressAnimation(0.9);
 
   const showAction = canSubmit || loading;
+
+  const setFocus = (next: boolean) => {
+    setFocused(next);
+    onFocusChange?.(next);
+  };
 
   return (
     <View
@@ -80,8 +87,8 @@ export function AuthEmailPill({
       <TextInput
         value={value}
         onChangeText={onChangeText}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
+        onFocus={() => setFocus(true)}
+        onBlur={() => setFocus(false)}
         editable={!disabled && !loading}
         placeholder={placeholder}
         placeholderTextColor={colors.mutedForeground}

@@ -26,6 +26,7 @@ import {
   toneStyles,
   layering,
   staggerDelay,
+  iosControls,
 } from './design-language';
 import { fontFamily } from './typography';
 import { getShadows } from './shadow';
@@ -73,6 +74,7 @@ export type DesignLanguageContext = {
   ring: ReturnType<typeof ringBorder>;
   layering: typeof layering;
   staggerDelay: typeof staggerDelay;
+  iosControls: typeof iosControls;
   styles: typeof styles;
   motion: {
     reduced: boolean;
@@ -115,12 +117,13 @@ export function designLanguageFromScheme(
     layout: layoutRhythm,
     type: typeScale,
     typeFamily: fontFamily,
-    tones: toneStyles(scheme),
+    tones: toneStyles(colors),
     shadows: getShadows(scheme),
-    gradients: getGradients(scheme),
+    gradients: getGradients(colors),
     ring: ringBorder(scheme),
     layering,
     staggerDelay,
+    iosControls,
     styles,
     motion: {
       reduced: a11y.reducedMotion,

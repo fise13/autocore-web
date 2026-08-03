@@ -1,14 +1,16 @@
 import { Pressable, StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown, FadeOutUp, LinearTransition } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOutUp, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BellIcon, XIcon } from '@/assets/icons';
 import { Text } from '@/components/ui/text';
-import { useTheme } from '@/hooks';
-import { haptics, radius, spacing, zIndex } from '@/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { haptics, radius, spacing, tokens, zIndex } from '@/theme';
 import { useNotificationStore } from '@/stores/notification-store';
 
-const layoutTransition = LinearTransition.springify().damping(24).stiffness(280);
+const layoutTransition = LinearTransition.springify()
+  .damping(tokens.motion.springs.settle.damping)
+  .stiffness(tokens.motion.springs.settle.stiffness);
 
 export function InAppBannerProvider() {
   const { colors, shadows } = useTheme();
@@ -42,7 +44,7 @@ export function InAppBannerProvider() {
           <Animated.View
             key={banner.id}
             layout={layoutTransition}
-            entering={FadeInDown.springify().damping(22).stiffness(300)}
+            entering={FadeIn.duration(tokens.motion.duration.fast)}
             exiting={FadeOutUp.duration(160)}
           >
             <Pressable

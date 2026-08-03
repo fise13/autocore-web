@@ -27,10 +27,9 @@ export function parseYear(value: string): number | null {
 }
 
 const CURRENCY_TOKENS: Array<{ code: string; patterns: RegExp }> = [
-  { code: "RUB", patterns: /(₽|руб|rub|р\.)/i },
   { code: "USD", patterns: /(\$|usd|долл)/i },
+  { code: "RUB", patterns: /(₽|руб|rub|р\.)/i },
   { code: "EUR", patterns: /(€|eur|евро)/i },
-  { code: "KZT", patterns: /(₸|kzt|тенге|тг)/i },
   { code: "UAH", patterns: /(₴|uah|грн)/i },
   { code: "JPY", patterns: /(¥|jpy|иен)/i },
   { code: "CNY", patterns: /(cny|юан|rmb)/i },

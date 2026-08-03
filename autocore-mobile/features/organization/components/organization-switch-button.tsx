@@ -1,20 +1,18 @@
-import { SettingsRow } from '@/features/settings/components/settings-row';
+import { CollectionRow } from '@/components/ui';
+import { StoreIcon } from '@/assets/icons';
 
 type OrganizationSwitchButtonProps = {
   companyName: string;
   onPress: () => void;
 };
 
-/**
- * Switch-organization row for SettingsGroup.
- * Kept for reuse outside Company (e.g. profile hub) — no Surface wrapper.
- */
+/** Switch-organization row for ListSection islands. */
 export function OrganizationSwitchButton({ companyName, onPress }: OrganizationSwitchButtonProps) {
   return (
-    <SettingsRow
-      label="Switch organization"
+    <CollectionRow
+      title="Switch organization"
       subtitle={companyName}
-      icon="store"
+      icon={StoreIcon}
       onPress={onPress}
     />
   );

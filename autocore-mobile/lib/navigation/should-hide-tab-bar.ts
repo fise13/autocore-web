@@ -3,8 +3,8 @@
  * Nested-stack detection is still used so tapping the active tab can pop to root.
  */
 
-/** Stack screens presented as modals above the tab bar. */
-const TAB_BAR_VISIBLE_NESTED_ROUTES = new Set(['new', '[id]/edit']);
+/** Stack screens presented as form sheets / modals above the tab content. */
+const TAB_BAR_VISIBLE_NESTED_ROUTES = new Set(['new', '[id]/edit', '[id]/index', '[id]']);
 
 type TabNavRoute = {
   key?: string;

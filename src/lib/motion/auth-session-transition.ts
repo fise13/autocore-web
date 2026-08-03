@@ -75,7 +75,10 @@ export async function playAuthSessionEnter(kind: AuthSessionKind): Promise<void>
       return;
     }
 
-    if (!peekAuthSessionTransition()) return;
+    if (!peekAuthSessionTransition()) {
+      resetDissolveVeil();
+      return;
+    }
 
     if (kind === "sign-in" && consumeAuthJourneyHandoff()) {
       await waitForTransitionTarget("[data-auth-journey-shell]", 2400);

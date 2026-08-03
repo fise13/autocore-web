@@ -56,7 +56,7 @@ import {
   severityFilterLabel,
   type ActivityJournalFilters,
 } from "@/lib/activity/activity-journal-utils";
-import { moduleLabel, resolveActivityLabel } from "@/lib/mission-control/activity-labels";
+import { moduleLabel, resolveActivityLabel } from "@/lib/overview/activity-labels";
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
 

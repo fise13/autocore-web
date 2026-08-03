@@ -7,9 +7,9 @@ import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { haptics } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
-import { McPressable, useMcEnter, useMcNavigatePress } from '@/features/mission-control/animation';
-import { McSectionTitle } from '@/features/mission-control/components/mc-primitives';
-import { mcType } from '@/features/mission-control/layout';
+import { McPressable, useMcEnter, useMcNavigatePress } from '@/features/overview/animation';
+import { McSectionTitle } from '@/features/overview/components/mc-primitives';
+import { mcType } from '@/features/overview/layout';
 import { radius } from '@/theme/radius';
 
 import { acTimeline } from '../animation/timeline';
@@ -39,13 +39,13 @@ const AttentionCard = memo(function AttentionCard({
   const { colors } = useTheme();
   const accent = toneColor(item.tone, colors);
   const delay = acTimeline.attentionItem + index * 50;
-  const enterStyle = useMcEnter({ delay, translateY: 8, fade: true, duration: 300 });
+  const enterStyle = useMcEnter({ delay, translateY: 8, duration: 300 });
 
   const navigate = useCallback(() => {
     onItemPress?.(item.action);
   }, [item.action, onItemPress]);
 
-  const { exitStyle, press } = useMcNavigatePress(navigate);
+  const { press } = useMcNavigatePress(navigate);
 
   const handlePress = useCallback(() => {
     haptics.light();
@@ -53,7 +53,7 @@ const AttentionCard = memo(function AttentionCard({
   }, [press]);
 
   return (
-    <Reanimated.View style={[enterStyle, exitStyle]}>
+    <Reanimated.View style={enterStyle}>
       <McPressable
         accessibilityRole="button"
         accessibilityLabel={`${item.title}. ${item.subtitle}`}
@@ -96,7 +96,7 @@ const AttentionCard = memo(function AttentionCard({
 });
 
 export function AcAttention({ items, onItemPress }: AcAttentionProps) {
-  const titleStyle = useMcEnter({ delay: acTimeline.attention, translateY: 4, fade: true });
+  const titleStyle = useMcEnter({ delay: acTimeline.attention, translateY: 4 });
 
   if (items.length === 0) return null;
 

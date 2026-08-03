@@ -24,7 +24,7 @@ const WORKFLOW_TIMING: Record<string, { intervalMs: number; initialIndex: number
 };
 
 /** Demo numbers for the ROI calculator — not UI copy, kept local. */
-const ROI_DEFAULTS = { minutes: 45, rate: 5000, lost: 80000 };
+const ROI_DEFAULTS = { minutes: 45, rate: 45, lost: 2000 };
 
 /**
  * Locale-aware landing page copy. Mirrors the historical `landingContent` shape so

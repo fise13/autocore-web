@@ -1,5 +1,5 @@
 import { type RefObject, useRef } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { TextInput, View } from 'react-native';
 import Reanimated from 'react-native-reanimated';
 import {
   interpolateColor,
@@ -10,6 +10,7 @@ import {
 import { useRouter } from 'expo-router';
 
 import { ScanSearchIcon, SearchIcon, XIcon } from '@/assets/icons';
+import { IconButton } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/hooks';
 import { haptics } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
@@ -43,7 +44,6 @@ export function SearchBar({
   const focused = useSharedValue(0);
   const enterStyle = useSearchEnter({ delay: searchTimeline.searchBar, translateY: 6, scaleFrom: 0.99, duration: 240 });
   const focusedBorderColor = toneBackground(colors.primary, 0.26);
-  const clearButtonColor = toneBackground(colors.foreground, 0.05);
   const scanButtonColor = toneBackground(colors.primary, 0.1);
 
   const shellStyle = useAnimatedStyle(() => ({
@@ -108,47 +108,37 @@ export function SearchBar({
         />
 
         {value.length > 0 ? (
-          <Pressable
-            accessibilityRole="button"
+          <IconButton
             accessibilityLabel="Clear"
+            variant="ghost"
+            size="xs"
+            systemImage="xmark.circle.fill"
             onPress={() => {
               haptics.selection();
               onChangeText('');
               inputRef.current?.focus();
             }}
-            hitSlop={8}
-            style={{
-              width: 28,
-              height: 28,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: 14,
-              backgroundColor: clearButtonColor,
-            }}
           >
             <XIcon size="sm" color={colors.mutedForeground} strokeWidth={2} />
-          </Pressable>
+          </IconButton>
         ) : null}
 
-        <Pressable
-          accessibilityRole="button"
+        <IconButton
           accessibilityLabel="Scan code"
+          variant="ghost"
+          size="sm"
+          systemImage="barcode.viewfinder"
           onPress={() => {
             haptics.light();
             router.navigate('/(tabs)/scan');
           }}
-          hitSlop={4}
           style={{
-            width: 40,
-            height: 40,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: 14,
             backgroundColor: scanButtonColor,
+            borderRadius: 14,
           }}
         >
           <ScanSearchIcon size="sm" color={colors.primary} strokeWidth={2} />
-        </Pressable>
+        </IconButton>
       </Reanimated.View>
     </Reanimated.View>
   );

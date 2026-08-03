@@ -1,10 +1,17 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { InteractionManager, Linking, StyleSheet, View } from 'react-native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 
-import { Text } from '@/components/ui';
+import { Button, Text } from '@/components/ui';
 import { usePreferredMacroLens } from '@/hooks/use-preferred-macro-lens';
-import { useTheme } from '@/hooks';
 import { scanPayloadKey } from '@/lib/scan/normalize-scan-payload';
 import type { ScanDetection } from '@/services/scan';
 
@@ -17,7 +24,10 @@ export type ScanCameraHandle = {
 
 type ScanCameraProps = {
   torch: boolean;
-  active: boolean;
+  /** Mount CameraView while the Scan tab is focused. Unmount only on tab leave. */
+  mounted: boolean;
+  /** Pause the camera session (OCR) without tearing down the preview layer. */
+  sessionActive: boolean;
   scanEnabled: boolean;
   captureMode: ScanCaptureMode;
   onDetection: (detection: ScanDetection) => void;
@@ -36,9 +46,8 @@ const PRODUCT_TYPES = [
   'codabar',
 ] as const;
 
-const VIN_TYPES = ['pdf417', 'code39', 'code128', 'qr', 'datamatrix'] as const;
-
-const AUTO_TYPES = [
+/** Broadest set kept mounted in all modes; JS filters by mode / scanEnabled. */
+const STABLE_BARCODE_TYPES = [
   ...PRODUCT_TYPES,
   'qr',
   'pdf417',
@@ -46,14 +55,21 @@ const AUTO_TYPES = [
   'datamatrix',
 ] as const;
 
+const STABLE_BARCODE_SETTINGS = {
+  barcodeTypes: [...STABLE_BARCODE_TYPES] as Array<(typeof STABLE_BARCODE_TYPES)[number]>,
+};
+
+const AUTO_TYPE_SET = new Set<string>(STABLE_BARCODE_TYPES);
+const VIN_TYPE_SET = new Set<string>(['pdf417', 'code39', 'code128', 'qr', 'datamatrix']);
+
 const CONTROL_CHARS = /[\x00-\x1F\x7F]/g;
 const EMIT_COOLDOWN_MS = 60;
 const MULTI_WINDOW_MS = 220;
 
-function barcodeTypesForMode(mode: ScanCaptureMode): readonly string[] {
-  if (mode === 'vin') return VIN_TYPES;
-  if (mode === 'document') return [];
-  return AUTO_TYPES;
+function modeAllowsSymbology(mode: ScanCaptureMode, symbology: string): boolean {
+  if (mode === 'document') return false;
+  if (mode === 'vin') return VIN_TYPE_SET.has(symbology);
+  return AUTO_TYPE_SET.has(symbology);
 }
 
 function toDetection(result: BarcodeScanningResult): ScanDetection | null {
@@ -71,14 +87,14 @@ function toDetection(result: BarcodeScanningResult): ScanDetection | null {
 }
 
 export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function ScanCamera(
-  { torch, active, scanEnabled, captureMode, onDetection, onDetections },
+  { torch, mounted, sessionActive, scanEnabled, captureMode, onDetection, onDetections },
   ref,
 ) {
-  const { colors } = useTheme();
   const chrome = useScanChromeColors();
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const scanEnabledRef = useRef(scanEnabled);
+  const captureModeRef = useRef(captureMode);
   const onDetectionRef = useRef(onDetection);
   const onDetectionsRef = useRef(onDetections);
   const lastEmitRef = useRef<{ key: string; at: number } | null>(null);
@@ -87,17 +103,25 @@ export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function
     byKey: Map<string, ScanDetection>;
     timer: ReturnType<typeof setTimeout> | null;
   } | null>(null);
+
+  /**
+   * Defer native barcode wiring until after the first paint + interactions.
+   * Attaching the scanner on the same frame as CameraView mount stalls preview open.
+   */
+  const [barcodeArmed, setBarcodeArmed] = useState(false);
+
   const { selectedLens, onAvailableLensesChanged, refreshLenses } = usePreferredMacroLens(
     cameraRef,
-    active,
+    mounted,
   );
-
-  const barcodeTypes = barcodeTypesForMode(captureMode);
-  const liveScan = scanEnabled && barcodeTypes.length > 0;
 
   useEffect(() => {
     scanEnabledRef.current = scanEnabled;
   }, [scanEnabled]);
+
+  useEffect(() => {
+    captureModeRef.current = captureMode;
+  }, [captureMode]);
 
   useEffect(() => {
     onDetectionRef.current = onDetection;
@@ -113,6 +137,21 @@ export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function
       batchRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (!mounted || !sessionActive) {
+      setBarcodeArmed(false);
+      return;
+    }
+    let cancelled = false;
+    const handle = InteractionManager.runAfterInteractions(() => {
+      if (!cancelled) setBarcodeArmed(true);
+    });
+    return () => {
+      cancelled = true;
+      handle.cancel?.();
+    };
+  }, [mounted, sessionActive]);
 
   useImperativeHandle(ref, () => ({
     async takePicture() {
@@ -130,11 +169,11 @@ export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function
   }));
 
   useEffect(() => {
-    if (!active) return;
+    if (!mounted) return;
     if (!permission?.granted && permission?.canAskAgain) {
       void requestPermission();
     }
-  }, [active, permission, requestPermission]);
+  }, [mounted, permission, requestPermission]);
 
   const flushBatch = useCallback(() => {
     const batch = batchRef.current;
@@ -152,6 +191,7 @@ export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function
   const handleBarcode = useCallback(
     (result: BarcodeScanningResult) => {
       if (!scanEnabledRef.current) return;
+      if (!modeAllowsSymbology(captureModeRef.current, result.type)) return;
 
       const detection = toDetection(result);
       if (!detection) return;
@@ -163,8 +203,6 @@ export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function
       lastEmitRef.current = { key, at: now };
 
       let batch = batchRef.current;
-      // First unique code in a window: start a short coalesce window so a second
-      // distinct code can upgrade to the picker — but emit immediately if alone.
       if (!batch || now - batch.startedAt > MULTI_WINDOW_MS) {
         if (batch?.timer) clearTimeout(batch.timer);
         batch = {
@@ -173,7 +211,6 @@ export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function
           timer: null,
         };
         batchRef.current = batch;
-        // Prefer fast single-code path: flush on next tick, not after 220ms.
         batch.timer = setTimeout(flushBatch, 48);
         return;
       }
@@ -181,7 +218,6 @@ export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function
       const wasSingle = batch.byKey.size <= 1;
       batch.byKey.set(key, detection);
 
-      // Second distinct code arrived — wait the full window to collect, then picker.
       if (wasSingle && batch.byKey.size > 1 && batch.timer) {
         clearTimeout(batch.timer);
         const elapsed = now - batch.startedAt;
@@ -196,6 +232,16 @@ export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function
     if (batchRef.current?.timer) clearTimeout(batchRef.current.timer);
     batchRef.current = null;
   }, [scanEnabled]);
+
+  // Stable settings object identity — never swap empty settings for document mode.
+  const barcodeScannerSettings = useMemo(() => STABLE_BARCODE_SETTINGS, []);
+
+  /**
+   * Keep the native barcode callback mounted across Auto/VIN/Document so mode
+   * switches don't rebuild ExpoCamera's scanner pipeline (main mode-switch lag).
+   * Document / paused modes filter out in JS via refs.
+   */
+  const liveScan = barcodeArmed && sessionActive && mounted;
 
   if (!permission) {
     return <View style={[styles.fill, { backgroundColor: chrome.viewport }]} />;
@@ -217,34 +263,21 @@ export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function
           Camera access is needed to scan.
         </Text>
         {permission.canAskAgain ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => void requestPermission()}
-            style={{
-              paddingHorizontal: 18,
-              paddingVertical: 10,
-              borderRadius: 12,
-              backgroundColor: colors.primary,
-            }}
-          >
-            <Text variant="caption" style={{ color: colors.primaryForeground, fontWeight: '600' }}>
-              Allow
-            </Text>
-          </Pressable>
+          <Button onPress={() => void requestPermission()} inline>
+            Allow
+          </Button>
         ) : (
-          <Pressable accessibilityRole="button" onPress={() => void Linking.openSettings()}>
-            <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>
-              Open Settings
-            </Text>
-          </Pressable>
+          <Button variant="link" onPress={() => void Linking.openSettings()} inline>
+            Open Settings
+          </Button>
         )}
       </View>
     );
   }
 
-  // CRITICAL: unmount CameraView when leaving the tab.
+  // CRITICAL: unmount CameraView only when leaving the Scan tab.
   // A living native camera layer steals touches from the tab bar and other screens.
-  if (!active) {
+  if (!mounted) {
     return <View style={[styles.fill, { backgroundColor: chrome.viewport }]} />;
   }
 
@@ -253,21 +286,13 @@ export const ScanCamera = forwardRef<ScanCameraHandle, ScanCameraProps>(function
       ref={cameraRef}
       style={styles.fill}
       facing="back"
-      enableTorch={torch}
+      enableTorch={torch && sessionActive}
       // "off" = continuous autofocus (required for auto-macro switching).
       autofocus="off"
       selectedLens={selectedLens}
       onAvailableLensesChanged={onAvailableLensesChanged}
-      active
-      barcodeScannerSettings={
-        barcodeTypes.length > 0
-          ? {
-              barcodeTypes: [...barcodeTypes] as Array<
-                (typeof AUTO_TYPES)[number]
-              >,
-            }
-          : undefined
-      }
+      active={sessionActive}
+      barcodeScannerSettings={barcodeScannerSettings}
       onBarcodeScanned={liveScan ? handleBarcode : undefined}
       onCameraReady={refreshLenses}
     />

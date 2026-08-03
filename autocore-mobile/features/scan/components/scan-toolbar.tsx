@@ -1,6 +1,6 @@
 import { Pressable, View } from 'react-native';
 
-import { ClockIcon, FileTextIcon, ImagesIcon, SearchIcon } from '@/assets/icons';
+import { ClockIcon, ImagesIcon, SearchIcon } from '@/assets/icons';
 import { Text } from '@/components/ui';
 import { haptics } from '@/theme';
 
@@ -11,8 +11,6 @@ type ScanToolbarProps = {
   onPhotos: () => void;
   onSearch: () => void;
   onRecents: () => void;
-  onImportDocument?: () => void;
-  compact?: boolean;
 };
 
 function Tool({
@@ -40,7 +38,7 @@ function Tool({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 6,
-        minWidth: 64,
+        minWidth: 72,
         paddingVertical: 4,
       }}
     >
@@ -70,14 +68,8 @@ function Tool({
   );
 }
 
-/** Action row under the mode control — theme surfaces. */
-export function ScanToolbar({
-  onPhotos,
-  onSearch,
-  onRecents,
-  onImportDocument,
-  compact = false,
-}: ScanToolbarProps) {
+/** Action row under the mode control — Photos / Search / Recents. */
+export function ScanToolbar({ onPhotos, onSearch, onRecents }: ScanToolbarProps) {
   const chrome = useScanChromeColors();
 
   return (
@@ -99,11 +91,6 @@ export function ScanToolbar({
       <Tool label="Recents" accessibilityLabel="Recent scans" onPress={onRecents}>
         <ClockIcon size="sm" color={chrome.toolIcon} strokeWidth={1.75} />
       </Tool>
-      {!compact && onImportDocument ? (
-        <Tool label="Import" accessibilityLabel="Import document" onPress={onImportDocument}>
-          <FileTextIcon size="sm" color={chrome.toolIcon} strokeWidth={1.75} />
-        </Tool>
-      ) : null}
     </View>
   );
 }

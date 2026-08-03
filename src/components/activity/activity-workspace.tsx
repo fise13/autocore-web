@@ -21,7 +21,7 @@ import {
   UsersIcon,
 } from "lucide-react";
 import { formatEventCountLabel } from "@/lib/activity/activity-journal-utils";
-import { enrichActivityLogs } from "@/lib/mission-control/enrich-activity-logs";
+import { enrichActivityLogs } from "@/lib/overview/enrich-activity-logs";
 import { canViewEmployees } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { userCopy } from "@/lib/user-copy";

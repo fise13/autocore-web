@@ -17,7 +17,8 @@ export function toDateFromFirestore(value: unknown): Date | undefined {
   return undefined;
 }
 
-const DATE_FIELD_RE = /(?:At|Date|Time|timestamp)$/i;
+/** Matches createdAt, soldDate, gracePeriodEnd, currentPeriodEnd, etc. */
+const DATE_FIELD_RE = /(?:At|Date|Time|timestamp|PeriodEnd|EndsAt)$/i;
 
 function shouldReviveDateField(key?: string): boolean {
   return Boolean(key && DATE_FIELD_RE.test(key));
@@ -38,7 +39,9 @@ export function coerceToDate(value: unknown): Date | undefined {
   }
 
   if (typeof value === 'number' && Number.isFinite(value)) {
-    const parsed = new Date(value);
+    // Prefer ms; treat small values as seconds (Firestore-style).
+    const ms = value < 1_000_000_000_000 ? value * 1000 : value;
+    const parsed = new Date(ms);
     return Number.isNaN(parsed.getTime()) ? undefined : parsed;
   }
 
@@ -51,6 +54,15 @@ export function coerceToDate(value: unknown): Date | undefined {
   }
 
   return undefined;
+}
+
+/**
+ * Safe epoch millis. Never call `.getTime()` on a field typed as `Date` —
+ * after MMKV / JSON restore it is often an ISO string or Timestamp, and
+ * `value?.getTime()` throws `TypeError: undefined is not a function`.
+ */
+export function dateMs(value: unknown, fallback = 0): number {
+  return coerceToDate(value)?.getTime() ?? fallback;
 }
 
 /** Restore Date instances after JSON round-trip through MMKV / AsyncStorage. */

@@ -155,11 +155,11 @@ export function DashboardTopBar() {
   const isMotorRoute = pathname === "/motors" || pathname === "/sold";
   const isWarehouseRoute = pathname === "/warehouse";
   const isSoldRoute = pathname === "/sold";
-  const isMissionControlRoute = pathname === "/";
+  const isOverviewRoute = pathname === "/";
   const collectionContext = parseCollectionFromSearchParams(searchParams, pathname);
 
   const topBarTitle = useMemo(() => {
-    if (isMissionControlRoute) return businessNavCopy.workspace.dashboard;
+    if (isOverviewRoute) return businessNavCopy.workspace.dashboard;
 
     if (isSpecificView && selectedSpecificCategory) {
       return selectedSpecificCategory.name;
@@ -192,7 +192,7 @@ export function DashboardTopBar() {
   }, [
     collectionContext.collection,
     collectionContext.filter,
-    isMissionControlRoute,
+    isOverviewRoute,
     isMotorsRoute,
     isSoldRoute,
     isSpecificView,
@@ -266,10 +266,10 @@ export function DashboardTopBar() {
     <header
       className={cn(
         "relative z-30 flex h-14 shrink-0 items-center gap-3 border-b px-4 md:px-6",
-        isMissionControlRoute
+        isOverviewRoute
           ? "border-border bg-background"
           : "border-sidebar-border bg-sidebar px-4 md:px-5",
-        !workspace && !isMissionControlRoute && "bg-sidebar/95 perf-backdrop-blur",
+        !workspace && !isOverviewRoute && "bg-sidebar/95 perf-backdrop-blur",
       )}
     >
       <div className="flex min-w-0 shrink-0 items-center gap-2">

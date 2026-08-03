@@ -66,7 +66,7 @@ export function laborLineLabel(line: WorkOrderLaborLine, employees: CompanyEmplo
 export function formatMoney(value: number): string {
   return new Intl.NumberFormat('ru-KZ', {
     style: 'currency',
-    currency: 'KZT',
+    currency: 'USD',
     maximumFractionDigits: 0,
   }).format(value);
 }

@@ -50,8 +50,8 @@ export function ScanFrameOverlay({
   const frameH = useSharedValue(height);
 
   useEffect(() => {
-    frameW.value = withSpring(width, scanSpring.detect);
-    frameH.value = withSpring(height, scanSpring.detect);
+    frameW.value = withTiming(width, { duration: 160, easing: autocoreEase });
+    frameH.value = withTiming(height, { duration: 160, easing: autocoreEase });
   }, [frameH, frameW, height, width]);
 
   useEffect(() => {

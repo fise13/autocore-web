@@ -32,6 +32,7 @@ import type { SpecificCategoryEntity } from "@/infrastructure/firestore/specific
 import { groupIdForCollection } from "@/lib/navigation/inventory-collections";
 import type { InventoryCollectionId } from "@/lib/navigation/inventory-collections";
 import { specificCategoriesForCollection } from "@/lib/navigation/specific-categories-for-collection";
+import { categoryDisplayName } from "@/lib/inventory/category-display-name";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
@@ -208,11 +209,12 @@ export function SpecificCategoriesSidebarGroup({
             visibleCategories.map((category) => {
               const active = selectedCategoryId === category.id;
               const showActions = canManage && onRenameCategory && onDeleteCategory && !collapsed && !isEditing;
+              const label = categoryDisplayName(category);
               return (
                 <SidebarMenuItem key={category.id} className="group/menu-item">
                   <SidebarMenuButton
                     isActive={active}
-                    tooltip={category.name}
+                    tooltip={label}
                     onClick={() => onSelectCategory(active ? null : category.id)}
                     className={cn(
                       showActions && "pr-8",
@@ -221,14 +223,14 @@ export function SpecificCategoriesSidebarGroup({
                   >
                     <FileText className="size-4 shrink-0 opacity-80" />
                     <span data-sidebar-hide-collapsed className="min-w-0 flex-1 truncate">
-                      {category.name}
+                      {label}
                     </span>
                   </SidebarMenuButton>
                   {showActions ? (
                     <DropdownMenu>
                       <DropdownMenuTrigger
                         render={
-                          <SidebarMenuAction showOnHover title={userCopy.specificSheets.actionsFor(category.name)} />
+                          <SidebarMenuAction showOnHover title={userCopy.specificSheets.actionsFor(label)} />
                         }
                       >
                         <MoreHorizontal className="size-3.5" />

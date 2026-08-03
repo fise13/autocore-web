@@ -23,7 +23,7 @@ import { DemoSessionBanner } from "@/components/demo/demo-session-banner";
 import { useDemoExitReset } from "@/hooks/use-demo-exit-reset";
 import { BarcodeScanProvider } from "@/components/barcode/barcode-scan-provider";
 import { DomainDictionaryPersistence } from "@/components/domain/domain-dictionary-persistence";
-import { CommandPaletteProvider } from "@/components/mission-control/command-palette/command-palette-provider";
+import { CommandPaletteProvider } from "@/components/overview/command-palette/command-palette-provider";
 import { DashboardRouteCache } from "@/components/layout/dashboard-route-cache";
 import { ResizableSidebar } from "@/components/layout/resizable-sidebar";
 import { SidebarEditBlur } from "@/components/layout/sidebar-edit-blur";

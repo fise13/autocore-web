@@ -7,22 +7,29 @@ type CameraWithLenses = CameraView & {
   getAvailableLenses?: () => Promise<string[]>;
 };
 
+/** Survives tab unmount so the next Scan open doesn't wait on lens discovery. */
+let cachedPreferredLens: string | undefined;
+
 /**
  * Picks the iPhone virtual multi-camera lens (Triple / Dual Wide) so the system
  * can auto-switch into macro for close-up barcodes and documents.
+ *
+ * Lens preference is cached across tab leaves — clearing it forced a cold
+ * `selectedLens` apply on every Scan open and stuttered the preview.
  */
 export function usePreferredMacroLens(
   cameraRef: RefObject<CameraView | null>,
-  active: boolean,
+  mounted: boolean,
 ) {
-  const [selectedLens, setSelectedLens] = useState<string | undefined>(undefined);
+  const [selectedLens, setSelectedLens] = useState<string | undefined>(
+    () => cachedPreferredLens,
+  );
 
   const applyLenses = useCallback((lenses: readonly string[]) => {
     const preferred = preferIphoneMacroLens(lenses);
-    setSelectedLens((current) => {
-      if (!preferred) return current;
-      return current === preferred ? current : preferred;
-    });
+    if (!preferred) return;
+    cachedPreferredLens = preferred;
+    setSelectedLens((current) => (current === preferred ? current : preferred));
   }, []);
 
   const onAvailableLensesChanged = useCallback(
@@ -44,10 +51,13 @@ export function usePreferredMacroLens(
   }, [applyLenses, cameraRef]);
 
   useEffect(() => {
-    if (!active) {
-      setSelectedLens(undefined);
+    if (!mounted) return;
+    if (cachedPreferredLens) {
+      setSelectedLens((current) =>
+        current === cachedPreferredLens ? current : cachedPreferredLens,
+      );
     }
-  }, [active]);
+  }, [mounted]);
 
   return {
     selectedLens,

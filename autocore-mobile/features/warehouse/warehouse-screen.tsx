@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppState, RefreshControl, View } from 'react-native';
 
 import { BoxIcon } from '@/assets/icons';
-import { EmptyState, FlashList, Screen, SearchInput, Text, toast } from '@/components/ui';
+import { EmptyState, FlashList, ListSkeleton, Screen, SearchInput, Text, toast } from '@/components/ui';
 import { OrderPickerSheet } from '@/features/orders/components/order-picker-sheet';
 import { useAddToOrderFlow } from '@/features/orders/hooks/use-add-to-order-flow';
 import { openSearchResult } from '@/features/search/lib/open-result';
@@ -11,11 +11,13 @@ import { mapInventoryItemToSearchResult, inventoryMatchesQuery } from '@/lib/sea
 import { isWarehouseLowStock } from '@/lib/inventory/is-low-stock';
 import {
   useCompanyModuleEnabled,
-  useInventoryCatalog,
   useOptimisticStockAdjust,
   useRealtimeReconnect,
   useSession,
 } from '@/hooks';
+import { useSessionQueryData } from '@/hooks/use-session-query-data';
+import { isRealtimeReady } from '@/lib/realtime/subscription-registry';
+import { normalizeInventoryItem } from '@/services/firestore/inventory-item-repository';
 import type { InventoryItem } from '@/types/inventory';
 
 import { WarehouseFilterBar, type WarehouseFilter } from './components/warehouse-filter-bar';
@@ -32,7 +34,22 @@ export function WarehouseScreen() {
   const warehouseEnabled = useCompanyModuleEnabled('warehouse');
   const canView = can('inventory_view') && warehouseEnabled;
   const canEdit = can('inventory_edit') && warehouseEnabled;
-  const { items, isBootstrapping, errorMessage } = useInventoryCatalog(companyId, { keepAlive: true });
+  // Mirror SessionRealtimeHead — do not open a second inventory listener here.
+  const inventoryRaw = useSessionQueryData<InventoryItem[]>(
+    ['realtime', 'inventory-items', companyId],
+    Boolean(companyId) && canView,
+    [],
+  );
+  const items = useMemo(
+    () => inventoryRaw.map(normalizeInventoryItem),
+    [inventoryRaw],
+  );
+  const isBootstrapping =
+    Boolean(companyId) &&
+    canView &&
+    items.length === 0 &&
+    !isRealtimeReady(['realtime', 'inventory-items', companyId]);
+  const errorMessage: string | null = null;
   const addToOrderFlow = useAddToOrderFlow();
   const { getDisplayAvailable, adjust, flush } = useOptimisticStockAdjust(companyId);
   const reconnectRealtime = useRealtimeReconnect();
@@ -153,18 +170,6 @@ export function WarehouseScreen() {
     [canEdit, getDisplayAvailable, handleAdjustStock, handleItemPress],
   );
 
-  if (!companyId) {
-    return (
-      <Screen>
-        <EmptyState
-          icon={BoxIcon}
-          title="No workspace"
-          description="Select a company to view warehouse and stock."
-        />
-      </Screen>
-    );
-  }
-
   if (!canView) {
     return (
       <Screen>
@@ -173,6 +178,14 @@ export function WarehouseScreen() {
           title="No access"
           description="Your role doesn't have permission to view the warehouse."
         />
+      </Screen>
+    );
+  }
+
+  if (!companyId || isBootstrapping) {
+    return (
+      <Screen>
+        <ListSkeleton rows={8} />
       </Screen>
     );
   }
@@ -207,9 +220,9 @@ export function WarehouseScreen() {
               </Text>
             ) : null}
             {isBootstrapping && filteredItems.length === 0 ? (
-              <Text variant="caption" color="muted" style={{ paddingHorizontal: wh.pad }}>
-                Loading warehouse…
-              </Text>
+              <View style={{ paddingHorizontal: wh.pad, paddingTop: 8 }}>
+                <ListSkeleton rows={5} />
+              </View>
             ) : null}
           </View>
         }

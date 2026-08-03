@@ -1,4 +1,4 @@
-import { SettingsSectionCard } from '@/components/ui';
+import { ListSection } from '@/components/ui';
 
 import { ModulesEditorList } from '../components/modules-editor-list';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
@@ -10,12 +10,12 @@ export function ModulesScreen() {
 
   return (
     <ProfileScreenShell title="Modules" subtitle="Only the sections you need">
-      <SettingsSectionCard
+      <ListSection
         title="Product modules"
-        description="Disabled modules are hidden from the menu and navigation"
+        footer="Disabled modules are hidden from the menu and navigation."
       >
         <ModulesEditorList enabled={enabled} onToggle={toggleModule} />
-      </SettingsSectionCard>
+      </ListSection>
     </ProfileScreenShell>
   );
 }

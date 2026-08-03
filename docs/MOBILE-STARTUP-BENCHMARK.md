@@ -29,7 +29,7 @@ Profile → Settings → Diagnostics shows startup marks in milliseconds:
 | `snapshots_preloaded` | Realtime snapshots seeded into memory |
 | `auth_ready` | Auth gate ready (no blocking hydrate) |
 | `splash_hidden` | Native splash hidden |
-| `tabs_interactive` | Home tab (Mission Control) mounted |
+| `tabs_interactive` | Home tab (Overview) mounted |
 
 In `__DEV__`, marks also print as `console.table` when tabs become interactive.
 
@@ -43,7 +43,7 @@ Run # | Scenario | splash_hidden | tabs_interactive | MC data visible | Notes
 ...
 ```
 
-**MC data visible**: Mission Control shows non-zero metrics or activity from cache (not empty placeholders).
+**MC data visible**: Overview shows non-zero metrics or activity from cache (not empty placeholders).
 
 ## Targets (after Phase 2)
 

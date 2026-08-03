@@ -512,7 +512,7 @@
   }
 }
 
-/* Mission Control — graphite command center */
+/* Overview — graphite command center */
 .mc-theme {
   --mc-surface-0: color-mix(in oklab, var(--background) 92%, var(--foreground) 8%);
   --mc-surface-1: color-mix(in oklab, var(--card) 88%, var(--foreground) 12%);

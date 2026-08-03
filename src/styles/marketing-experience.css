@@ -1296,7 +1296,7 @@
   }
 }
 
-/* Legacy MC panel tokens kept for Mission Control surface elsewhere */
+/* Legacy MC panel tokens kept for Overview surface elsewhere */
 .exp-outcome-mc {
   display: flex;
   flex-direction: column;
@@ -1421,7 +1421,7 @@
   flex-direction: column;
 }
 
-/* Real product app shell — sidebar + Mission Control */
+/* Real product app shell — sidebar + Overview */
 .exp-product-app {
   display: grid;
   grid-template-columns: 14rem minmax(0, 1fr);

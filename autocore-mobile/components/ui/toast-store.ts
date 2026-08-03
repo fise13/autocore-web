@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import type { ToastVariant } from './toast';
+export type ToastVariant = 'default' | 'success' | 'destructive' | 'warning';
 
 export type ToastAction = {
   label: string;

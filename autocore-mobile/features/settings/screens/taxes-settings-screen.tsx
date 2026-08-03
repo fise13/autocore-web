@@ -1,17 +1,21 @@
-import { ProfileMetaCard, ProfileMetaRow } from '@/features/profile/components/profile-meta-card';
+import { CollectionRow, ListSection } from '@/components/ui';
+
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
 
 export function TaxesSettingsScreen() {
   return (
     <ProfileScreenShell title="Taxes" subtitle="Rates and tax rules">
-      <ProfileMetaCard title="VAT">
-        <ProfileMetaRow label="Rate" value="12%" />
-        <ProfileMetaRow label="Mode" value="Standard" />
-      </ProfileMetaCard>
+      <ListSection
+        title="VAT"
+        footer="Tax rates are managed in company finance settings on the web. Nothing is configured on this device."
+      >
+        <CollectionRow title="Rate" value="Not set" showChevron={false} />
+        <CollectionRow title="Mode" value="Not set" showChevron={false} />
+      </ListSection>
 
-      <ProfileMetaCard title="Source">
-        <ProfileMetaRow label="Settings" value="Company · Finance" />
-      </ProfileMetaCard>
+      <ListSection title="Source">
+        <CollectionRow title="Managed in" value="Company · Finance (web)" showChevron={false} />
+      </ListSection>
     </ProfileScreenShell>
   );
 }

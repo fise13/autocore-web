@@ -7,8 +7,9 @@ import { useTheme } from '@/hooks/use-theme';
 import { layout, rhythm, spacing } from '@/theme';
 
 /**
- * Shared layout for BottomSheetModal overlays that should sit like stack modals
- * (new order / new operation): full height to the screen bottom, tab bar floats on top.
+ * Shared layout for Gorhom BottomSheetModal overlays.
+ * Compose flows that belong to a tab (e.g. new operation) prefer the native
+ * `formSheet` stack presentation instead — see `formSheetScreenOptions`.
  */
 export function useModalBottomSheet(options?: { backdropOpacity?: number }) {
   const { colors } = useTheme();
@@ -37,8 +38,8 @@ export function useModalBottomSheet(options?: { backdropOpacity?: number }) {
   const backgroundStyle = useMemo(
     () => ({
       backgroundColor: colors.card,
-      borderTopLeftRadius: layout.bottomSheet.borderRadius,
-      borderTopRightRadius: layout.bottomSheet.borderRadius,
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
     }),
     [colors.card],
   );

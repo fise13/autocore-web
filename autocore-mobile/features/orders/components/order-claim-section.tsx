@@ -32,7 +32,12 @@ export function OrderClaimSection({
           ? 'Unassigned — claim it to put it on your board.'
           : `${unassignedCount} unassigned labor lines. Claim to start.`}
       </Text>
-      <Button onPress={onClaim} loading={claiming} disabled={claiming || Boolean(blockedReason)}>
+      <Button
+        native={false}
+        onPress={onClaim}
+        loading={claiming}
+        disabled={claiming || Boolean(blockedReason)}
+      >
         Claim work order
       </Button>
       {blockedReason ? (

@@ -16,6 +16,7 @@ import {
 } from "@/lib/specific/specific-header-mapping";
 import { resolveCategoryColumnSchema } from "@/lib/specific/specific-category-schema";
 import { filterSpecificRecords } from "@/lib/specific/specific-table";
+import { categoryDisplayName } from "@/lib/inventory/category-display-name";
 import { userCopy } from "@/lib/user-copy";
 import {
   createSpecificCategoryRepository,
@@ -69,7 +70,9 @@ export function SoldSpecificsWorkspace() {
     }
 
     return [...groups.values()].sort((left, right) =>
-      left.category.name.localeCompare(right.category.name, "ru"),
+      categoryDisplayName(left.category).localeCompare(categoryDisplayName(right.category), undefined, {
+        sensitivity: "base",
+      }),
     );
   }, [categories, records, workspace.search]);
 
@@ -110,7 +113,7 @@ export function SoldSpecificsWorkspace() {
               <FileText className="size-4" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold tracking-tight">{category.name}</h2>
+              <h2 className="text-sm font-semibold tracking-tight">{categoryDisplayName(category)}</h2>
               <p className="text-xs text-muted-foreground">{userCopy.specificSheets.soldCount(categoryRecords.length)}</p>
             </div>
           </div>

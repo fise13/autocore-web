@@ -51,15 +51,15 @@ export function ProductScreenShell({
   title,
   subtitle,
   brandWash = false,
-  animateEnter = true,
+  animateEnter = false,
   trailing,
   style,
   contentStyle,
 }: ProductScreenShellProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const heading = useFadeIn(animateEnter ? 40 : 0);
-  const body = useFadeIn(animateEnter ? 120 : 0);
+  const heading = useFadeIn(animateEnter ? 40 : -1);
+  const body = useFadeIn(animateEnter ? 120 : -1);
 
   return (
     <Screen style={style}>
@@ -118,7 +118,11 @@ export function ProductScreenShell({
           </Animated.View>
         ) : null}
 
-        <Animated.View style={[{ flex: 1 }, body.style]}>{children}</Animated.View>
+        {animateEnter ? (
+          <Animated.View style={[{ flex: 1 }, body.style]}>{children}</Animated.View>
+        ) : (
+          <View style={{ flex: 1 }}>{children}</View>
+        )}
       </View>
     </Screen>
   );

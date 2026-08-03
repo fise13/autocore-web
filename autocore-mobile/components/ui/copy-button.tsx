@@ -6,7 +6,6 @@ import * as Clipboard from 'expo-clipboard';
 import { CheckIcon, CopyIcon } from '@/assets/icons';
 import { useTheme } from '@/hooks';
 import { useControlledState } from '@/hooks/use-controlled-state';
-import { usePressAnimation } from '@/animations';
 import { haptics } from '@/theme';
 import { radius } from '@/theme';
 
@@ -66,7 +65,6 @@ export const CopyButton = forwardRef<React.ComponentRef<typeof Pressable>, CopyB
     ref,
   ) {
     const { colors } = useTheme();
-    const { style: pressStyle, onPressIn, onPressOut } = usePressAnimation();
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const [isCopied, setIsCopied] = useControlledState({
@@ -147,39 +145,35 @@ export const CopyButton = forwardRef<React.ComponentRef<typeof Pressable>, CopyB
     );
 
     return (
-      <Animated.View style={pressStyle}>
-        <Pressable
-          ref={ref}
-          accessibilityRole="button"
-          accessibilityLabel={isCopied ? 'Copied' : accessibilityLabel}
-          accessibilityState={{ disabled: disabled ?? false }}
-          disabled={disabled}
-          onPress={(e) => void handleCopy(e)}
-          onPressIn={onPressIn}
-          onPressOut={onPressOut}
-          style={[
-            {
-              width: dimension,
-              height: dimension,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: radius.md,
-              opacity: disabled ? 0.5 : 1,
-            },
-            variantStyle,
-            style,
-          ]}
-          {...props}
-        >
-          <Animated.View key={isCopied ? 'check' : 'copy'} entering={ZoomIn.duration(250)} exiting={ZoomOut.duration(200)}>
-            {isCopied ? (
-              <CheckIcon size={iconSize} color={iconColor} strokeWidth={2} />
-            ) : (
-              <CopyIcon size={iconSize} color={iconColor} strokeWidth={2} />
-            )}
-          </Animated.View>
-        </Pressable>
-      </Animated.View>
+      <Pressable
+        ref={ref}
+        accessibilityRole="button"
+        accessibilityLabel={isCopied ? 'Copied' : accessibilityLabel}
+        accessibilityState={{ disabled: disabled ?? false }}
+        disabled={disabled}
+        onPress={(e) => void handleCopy(e)}
+        style={({ pressed }) => [
+          {
+            width: dimension,
+            height: dimension,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: radius.md,
+            opacity: disabled ? 0.5 : pressed ? 0.72 : 1,
+          },
+          variantStyle,
+          style,
+        ]}
+        {...props}
+      >
+        <Animated.View key={isCopied ? 'check' : 'copy'} entering={ZoomIn.duration(250)} exiting={ZoomOut.duration(200)}>
+          {isCopied ? (
+            <CheckIcon size={iconSize} color={iconColor} strokeWidth={2} />
+          ) : (
+            <CopyIcon size={iconSize} color={iconColor} strokeWidth={2} />
+          )}
+        </Animated.View>
+      </Pressable>
     );
   },
 );

@@ -14,7 +14,7 @@
 | Локальные данные | SQLite per user (мотors, specific, accounting) | Нет локальной БД, только Firestore |
 | Склад | Простая таблица + legacy Firestore schema | Excel-grid + movement ledger + расширенная schema |
 | Undo | Системное меню + `NSUndoManager` + `AppViewModel.undoManager` | `GridCommandBus` + глобальный Cmd+Z в workspace |
-| Mission Control | ❌ | ✅ Главная страница `/` |
+| Overview | ❌ | ✅ Главная страница `/` |
 | Billing / Stripe | ❌ | ✅ Pro-подписка, paywall |
 | macOS menu bar shortcuts | ✅ Полный набор в `AutoCoreApp.swift` | ⚠️ Частично (toolbar + window listeners) |
 
@@ -109,7 +109,7 @@ else { appViewModel.undoManager.undo() }
 
 | Route | UI |
 |-------|-----|
-| `/` | **Mission Control** (нет на macOS) |
+| `/` | **Overview** (нет на macOS) |
 | `/motors` | Motors Excel grid (React) |
 | `/sold` | Sold motors grid |
 | `/specific/[categoryId]` | Specific Excel grid |
@@ -263,9 +263,9 @@ status, stockValue, type (consumable/oil/filter/…)
 | Employees UI | `MacCompanyMembersView` (settings sheet) | `/employees` full workspace |
 | Invites | `MacInviteManagementView` | employees workspace |
 | Roles | `MacRolesManagementView` | `/roles` |
-| Activity log | Firestore `companies/{id}/activityLogs` | ✅ Mission Control timeline |
+| Activity log | Firestore `companies/{id}/activityLogs` | ✅ Overview timeline |
 | Stripe / Pro | ❌ | ✅ `billing-gate-provider`, paywall on import/export |
-| Mission Control metrics | ❌ | ✅ overview modules |
+| Overview metrics | ❌ | ✅ overview modules |
 
 ---
 
@@ -307,7 +307,7 @@ account · company · accounting · sync · dataCleanup · macOnly
 
 ## 12. Только Web
 
-- Mission Control dashboard (`/`)
+- Overview dashboard (`/`)
 - Warehouse Excel grid + movement workflows
 - Work order consumption use case (`consume-for-work-order.ts`) — schema ready, UI pending
 - Multi-warehouse, transfers, barcode scan panel
@@ -350,7 +350,7 @@ Web добавил composite indexes для `inventoryItems`, `inventoryMovement
 ### P2 — Platform
 
 1. `UserConfigOnboarding` на web (если нужен parity).
-2. Mission Control виджет/ summary на macOS sidebar.
+2. Overview виджет/ summary на macOS sidebar.
 3. Единый документ keyboard shortcuts (`docs/KEYBOARD.md`).
 
 ---

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 
-import { SETUP_WIZARD_CATEGORY_PRESETS } from "@/domain/company-config";
+import { getSetupWizardCategoryPresets } from "@/lib/onboarding/setup-wizard-copy";
 import { createWorkOrderUseCase } from "@/application/use-cases/work-orders/create-work-order";
 import { updateWorkOrderUseCase } from "@/application/use-cases/work-orders/update-work-order";
 import { quickCreateClientUseCase } from "@/application/use-cases/work-orders/quick-create-client";
@@ -181,7 +181,7 @@ export function WorkOrdersWorkspace() {
       (item) => item.mode === "quick",
     );
     if (fromConfig.length > 0) return fromConfig;
-    return SETUP_WIZARD_CATEGORY_PRESETS.filter((item) => item.mode === "quick");
+    return getSetupWizardCategoryPresets().filter((item) => item.mode === "quick");
   }, [companyAppConfig]);
 
   const [isCreating, setIsCreating] = useState(false);

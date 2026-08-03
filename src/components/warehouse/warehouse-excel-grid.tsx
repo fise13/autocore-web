@@ -7,6 +7,7 @@ import { syncWarehouseGridRowUseCase } from "@/application/use-cases/warehouse/s
 import { DomainDictionaryContext } from "@/components/domain/domain-dictionary-provider";
 import { GridEditorOverlay } from "@/components/grid/grid-editor-overlay";
 import { GridFillHandle } from "@/components/grid/grid-fill-handle";
+import { GridPhotoCell, GridPhotoCellDisabledHint } from "@/components/grid/grid-photo-cell";
 import {
   GridContextMenu,
   GridContextMenuItem,
@@ -42,6 +43,7 @@ import { filterColumnSuggestions, resolveGridColumnAutocomplete } from "@/lib/gr
 import { gridPalette } from "@/lib/grid/grid-palette";
 import {
   applyWarehouseDraftField,
+  applyWarehouseDraftImageUrls,
   buildSavedRowFromCreate,
   buildWarehouseGridRows,
   createEmptyWarehouseRow,
@@ -71,6 +73,7 @@ import {
   WAREHOUSE_EDITABLE_COL_START,
   WAREHOUSE_GRID_EMPTY_ROWS_EXPAND,
   WAREHOUSE_GRID_EMPTY_ROWS_THRESHOLD,
+  WAREHOUSE_PHOTO_COLUMN,
   WAREHOUSE_READ_ONLY_COLUMNS,
   warehouseCellFrame,
 } from "@/lib/warehouse/warehouse-grid-layout-engine";
@@ -121,7 +124,7 @@ type ContextMenuState = {
   selected: InventoryItem[];
 };
 
-const NAVIGABLE_COLUMNS = [1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13, 14];
+const NAVIGABLE_COLUMNS = [1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 
 function isEditableColumn(column: number): boolean {
   return isWarehouseEditableColumn(column);
@@ -171,8 +174,14 @@ function valueAtCell(row: WarehouseGridRow, column: number): string {
       case 11:
         return resolveItemLocationLabel(row);
       case 12:
-        return formatOptionalGridNumber(row.lowStockThreshold);
+        return row.notes ?? "";
       case 13:
+        return row.quality ?? "";
+      case 14:
+        return "";
+      case 15:
+        return formatOptionalGridNumber(row.lowStockThreshold);
+      case 16:
         return formatWarehouseUpdatedAt(row.updatedAt);
       default:
         return "";
@@ -198,6 +207,12 @@ function valueAtCell(row: WarehouseGridRow, column: number): string {
     case 11:
       return row.draft.warehouseLocation;
     case 12:
+      return row.draft.notes;
+    case 13:
+      return row.draft.quality;
+    case 14:
+      return "";
+    case 15:
       return formatDraftGridNumber(row.draft.lowStockThreshold);
     default:
       return "";
@@ -241,6 +256,12 @@ function applyCellValue(row: WarehouseGridRow, column: number, value: string): W
         next.warehouseLocation = value;
         break;
       case 12:
+        next.notes = value;
+        break;
+      case 13:
+        next.quality = value;
+        break;
+      case 15:
         next.lowStockThreshold = parseGridNumber(value);
         break;
       default:
@@ -268,6 +289,10 @@ function applyCellValue(row: WarehouseGridRow, column: number, value: string): W
     case 11:
       return applyWarehouseDraftField(row, "warehouseLocation", value);
     case 12:
+      return applyWarehouseDraftField(row, "notes", value);
+    case 13:
+      return applyWarehouseDraftField(row, "quality", value);
+    case 15:
       return applyWarehouseDraftField(row, "lowStockThreshold", value);
     default:
       return row;
@@ -1463,7 +1488,7 @@ export function WarehouseExcelGrid({
                               "bg-primary/12 ring-2 ring-inset ring-primary/40",
                             lowStock && (colIdx === 5 || colIdx === 7) && "text-amber-700 dark:text-amber-300",
                             colIdx === 6 && !outOfStock && "text-muted-foreground",
-                            colIdx === 15 && "text-muted-foreground text-[11px]",
+                            colIdx === 16 && "text-muted-foreground text-[11px]",
                           )}
                           style={{
                             left: cell.x,
@@ -1548,6 +1573,44 @@ export function WarehouseExcelGrid({
                                 {userCopy.warehouse.excelGrid.sell}
                               </button>
                             ) : null
+                          ) : colIdx === WAREHOUSE_PHOTO_COLUMN ? (
+                            row.rowKind === "saved" && canEdit ? (
+                              <GridPhotoCell
+                                urls={row.imageUrls ?? []}
+                                companyId={companyId}
+                                entityKind="warehouse"
+                                entityId={row.id}
+                                onChange={(urls) => {
+                                  markDirty(row.rowId);
+                                  setRows((current) =>
+                                    current.map((entry) =>
+                                      entry.rowId === row.rowId && entry.rowKind === "saved"
+                                        ? { ...entry, imageUrls: urls }
+                                        : entry,
+                                    ),
+                                  );
+                                }}
+                              />
+                            ) : row.rowKind === "empty" && canEdit && hasWarehouseDraftContent(row) ? (
+                              <GridPhotoCell
+                                urls={row.draft.imageUrls}
+                                companyId={companyId}
+                                entityKind="warehouse"
+                                entityId={row.rowId}
+                                onChange={(urls) => {
+                                  markDirty(row.rowId);
+                                  setRows((current) =>
+                                    current.map((entry) =>
+                                      entry.rowId === row.rowId
+                                        ? applyWarehouseDraftImageUrls(entry, urls)
+                                        : entry,
+                                    ),
+                                  );
+                                }}
+                              />
+                            ) : (
+                              <GridPhotoCellDisabledHint />
+                            )
                           ) : (
                             <span className="truncate">{displayValue}</span>
                           )}

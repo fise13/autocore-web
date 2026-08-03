@@ -16,8 +16,12 @@ import { autocoreEase } from '@/theme/motion';
 
 const AnimatedLine = Animated.createAnimatedComponent(Line);
 
+/** Intrinsic drawing size — displayed ~20% larger for a stronger focal point. */
 export const HERO_WIDTH = 300;
 export const HERO_HEIGHT = 200;
+const HERO_DISPLAY_SCALE = 1.2;
+export const HERO_DISPLAY_WIDTH = Math.round(HERO_WIDTH * HERO_DISPLAY_SCALE);
+export const HERO_DISPLAY_HEIGHT = Math.round(HERO_HEIGHT * HERO_DISPLAY_SCALE);
 
 const CAR_WIDTH = 224;
 const CAR_HEIGHT = 112;
@@ -188,8 +192,20 @@ export function AuthHeroCar() {
       accessible
       accessibilityRole="image"
       accessibilityLabel="AutoCore"
-      style={{ width: HERO_WIDTH, height: HERO_HEIGHT }}
+      style={{
+        width: HERO_DISPLAY_WIDTH,
+        height: HERO_DISPLAY_HEIGHT,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
     >
+      <View
+        style={{
+          width: HERO_WIDTH,
+          height: HERO_HEIGHT,
+          transform: [{ scale: HERO_DISPLAY_SCALE }],
+        }}
+      >
       {/* Road — dashes slide to sell the motion without moving the car. */}
       <Svg
         width={HERO_WIDTH}
@@ -304,6 +320,7 @@ export function AuthHeroCar() {
           delay={820}
         />
       </Animated.View>
+      </View>
     </View>
   );
 }

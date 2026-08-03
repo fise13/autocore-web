@@ -1,4 +1,4 @@
-export const APP_DISPLAY_CURRENCIES = ['KZT', 'RUB', 'USD'] as const;
+export const APP_DISPLAY_CURRENCIES = ['USD'] as const;
 
 export type AppDisplayCurrency = (typeof APP_DISPLAY_CURRENCIES)[number];
 
@@ -20,26 +20,10 @@ export const APP_DISPLAY_CURRENCY_OPTIONS: AppDisplayCurrencyOption[] = [
     currency: 'USD',
     example: '$1,000',
   },
-  {
-    id: 'KZT',
-    label: 'Tenge',
-    description: 'Kazakhstan · ₸',
-    locale: 'ru-KZ',
-    currency: 'KZT',
-    example: '100,000 ₸',
-  },
-  {
-    id: 'RUB',
-    label: 'Rubles',
-    description: 'Russia · ₽',
-    locale: 'ru-RU',
-    currency: 'RUB',
-    example: '100,000 ₽',
-  },
 ];
 
-export function normalizeAppDisplayCurrency(value: unknown): AppDisplayCurrency {
-  if (value === 'RUB' || value === 'USD' || value === 'KZT') return value;
+/** Always USD — legacy KZT/RUB preference values are coerced. */
+export function normalizeAppDisplayCurrency(_value?: unknown): AppDisplayCurrency {
   return 'USD';
 }
 
@@ -47,16 +31,14 @@ export function appDisplayCurrencyOption(currency: AppDisplayCurrency): AppDispl
   return APP_DISPLAY_CURRENCY_OPTIONS.find((item) => item.id === currency) ?? APP_DISPLAY_CURRENCY_OPTIONS[0];
 }
 
-export function appDisplayCurrencyAffix(currency: AppDisplayCurrency): { prefix: string; suffix: string } {
-  if (currency === 'USD') return { prefix: '$', suffix: '' };
-  if (currency === 'RUB') return { prefix: '', suffix: ' ₽' };
-  return { prefix: '', suffix: ' ₸' };
+export function appDisplayCurrencyAffix(_currency?: AppDisplayCurrency): { prefix: string; suffix: string } {
+  return { prefix: '$', suffix: '' };
 }
 
-export function formatAppMoney(value: number, currency: AppDisplayCurrency = 'KZT'): string {
-  const option = appDisplayCurrencyOption(currency);
+export function formatAppMoney(value: number, _currency: AppDisplayCurrency = 'USD'): string {
+  const option = appDisplayCurrencyOption('USD');
   const safe = Number.isFinite(value) ? value : 0;
-  const fractionDigits = currency === 'USD' && Math.abs(safe) < 1000 ? 2 : 0;
+  const fractionDigits = Math.abs(safe) < 1000 ? 2 : 0;
   return new Intl.NumberFormat(option.locale, {
     style: 'currency',
     currency: option.currency,
