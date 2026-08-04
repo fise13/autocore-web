@@ -69,6 +69,7 @@ import {
 import {
   buildRowPayloadFromSchema,
   resolveCategoryColumnSchema,
+  schemaToHeaderMapping,
 } from "@/lib/specific/specific-category-schema";
 import {
   isSpecificRecordSold,
@@ -188,8 +189,12 @@ export function SpecificExcelGrid({
 
   const scopedRecords = useMemo(() => {
     const searched = filterSpecificRecords(records, search ?? "");
-    return filterSpecificRecordsByAvailability(searched, effectiveAvailability);
-  }, [effectiveAvailability, records, search]);
+    return filterSpecificRecordsByAvailability(
+      searched,
+      effectiveAvailability,
+      schemaToHeaderMapping(columnSchemaProp ?? resolveCategoryColumnSchema(category, records)),
+    );
+  }, [category, columnSchemaProp, effectiveAvailability, records, search]);
 
   const columnSchema = useMemo(
     () => withSpecificLocationColumn(columnSchemaProp ?? resolveCategoryColumnSchema(category, scopedRecords)),
@@ -278,23 +283,25 @@ export function SpecificExcelGrid({
     const hasSearch = Boolean(search?.trim());
     const mapped = rows.map((row, sourceIndex) => ({ sourceIndex, row }));
     const filtered = mapped.filter(({ row }) => {
+      if (row.rowKind === "saved") {
+        const sold = isSpecificRecordSold(row, headerMapping);
+        if (effectiveAvailability === "sold" && !sold) return false;
+        if (effectiveAvailability === "available" && sold) return false;
+        if (soldOnly && !sold) return false;
+        if (hasSearch && !visibleRecordIds.has(row.id)) return false;
+        return true;
+      }
       if (soldOnly || compactEmptyRows) {
-        if (row.rowKind === "saved") {
-          if (soldOnly && !isSpecificRecordSold(row, headerMapping)) return false;
-          if (hasSearch && row.rowKind === "saved" && !visibleRecordIds.has(row.id)) return false;
-          return true;
-        }
         return dirtyRowIdSet.has(row.rowId);
       }
       if (!hasSearch) return true;
-      if (row.rowKind === "empty") return true;
-      if (dirtyRowIdSet.has(row.rowId)) return true;
-      return row.rowKind === "saved" && visibleRecordIds.has(row.id);
+      return dirtyRowIdSet.has(row.rowId);
     });
     return filtered;
   }, [
     compactEmptyRows,
     dirtyRowIdSet,
+    effectiveAvailability,
     headerMapping,
     rows,
     search,
@@ -709,19 +716,6 @@ export function SpecificExcelGrid({
     registerSyncHandler(syncNow);
     return () => registerSyncHandler(null);
   }, [isActive, registerSyncHandler, syncNow]);
-
-  useEffect(() => {
-    if (!isActive) return;
-    if (!canEdit || !companyId) return;
-    if (dirtyRowsRef.current.size === 0 && pendingDeleteIdsRef.current.size === 0) return;
-    if (editor) return;
-
-    const timer = window.setTimeout(() => {
-      void pushToCloud();
-    }, 1200);
-
-    return () => window.clearTimeout(timer);
-  }, [canEdit, companyId, dirtyVersion, editor, isActive, pushToCloud]);
 
   useEffect(() => {
     function stopSelectionDrag() {

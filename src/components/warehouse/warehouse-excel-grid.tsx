@@ -869,19 +869,6 @@ export function WarehouseExcelGrid({
     return () => registerCloudPushHandler(null);
   }, [isActive, pushToCloud, registerCloudPushHandler]);
 
-  useEffect(() => {
-    if (!isActive) return;
-    if (!canEdit || !companyId) return;
-    if (dirtyRowsRef.current.size === 0 && pendingArchiveIdsRef.current.size === 0) return;
-    if (isInteractionLocked) return;
-
-    const timer = window.setTimeout(() => {
-      void pushToCloud();
-    }, 1200);
-
-    return () => window.clearTimeout(timer);
-  }, [canEdit, companyId, dirtyVersion, isActive, isInteractionLocked, pushToCloud]);
-
   useGridPersistenceAdapter({
     key: companyId
       ? { companyId, kind: "warehouse_grid", id: activeWarehouseId ?? "default" }

@@ -13,11 +13,11 @@ import { WorkOrderStatus } from "@/domain/work-order";
 import { emitKnowledgeEvent } from "@/lib/knowledge/knowledge-api.client";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useWorkspace } from "@/components/layout/workspace-context";
-import { DraftRecoveryDialog } from "@/components/persistence/draft-recovery-dialog";
 import { LastSavedHint } from "@/components/persistence/last-saved-hint";
 import { usePersistedDocument } from "@/components/persistence/use-persisted-document";
 import { useToast } from "@/components/ui/toast-provider";
-import type { PersistenceDraftRecord, PersistenceSyncHandler } from "@/lib/persistence";
+import type { PersistenceDraftRecord } from "@/lib/persistence";
+import { useRecoverableDrafts } from "@/hooks/use-recoverable-drafts";
 import { InventoryItem } from "@/domain/inventory";
 import {
   ComposerFormState,
@@ -745,33 +745,23 @@ export function WorkOrdersWorkspace() {
         }
       : null;
 
-  const composerSync = useCallback<PersistenceSyncHandler>(
-    async ({ snapshot }) => {
-      const formState = snapshot as ComposerFormState;
-      const result = await persistComposer({
-        formState,
-        closeAfter: false,
-        silent: true,
-      });
-      if (!result.ok) {
-        if (result.error === "incomplete") {
-          // Keep local draft; not an error for autosave.
-          return { ok: true };
-        }
-        return { ok: false, error: result.error };
-      }
-      return { ok: true, baseRevision: result.orderId };
-    },
-    [persistComposer],
-  );
-
   usePersistedDocument({
     key: composerPersistenceKey,
     value: form,
     label: form.clientName.trim() || userCopy.workOrders.errors.orderFallback,
-    sync: composerSync,
+    // Local draft only — cloud save is ⌘S / Ctrl+S via registerSyncHandler.
+    sync: null,
     enabled: Boolean(composerPersistenceKey),
   });
+
+  const activeComposerDraftId = isCreating ? editingOrderId ?? composerSessionId : null;
+  const { drafts: unfinishedDrafts, discard: discardUnfinishedDraft, refresh: refreshUnfinishedDrafts } =
+    useRecoverableDrafts({
+      companyId,
+      kind: "work_order_composer",
+      excludeId: activeComposerDraftId,
+      enabled: Boolean(companyId && canEdit),
+    });
 
   const restoreComposerDraft = useCallback(async (draft: PersistenceDraftRecord) => {
     const snapshot = draft.snapshot as ComposerFormState;
@@ -787,7 +777,15 @@ export function WorkOrdersWorkspace() {
     setComposerStep(1);
     setIsCreating(true);
     setError(null);
-  }, []);
+    void refreshUnfinishedDrafts();
+  }, [refreshUnfinishedDrafts]);
+
+  const handleDiscardUnfinishedDraft = useCallback(
+    async (draft: PersistenceDraftRecord) => {
+      await discardUnfinishedDraft(draft);
+    },
+    [discardUnfinishedDraft],
+  );
 
   useEffect(() => {
     if (!canEdit || !isCreating) {
@@ -847,13 +845,6 @@ export function WorkOrdersWorkspace() {
 
   return (
     <div className={shellClassName}>
-      {companyId ? (
-        <DraftRecoveryDialog
-          companyId={companyId}
-          kind="work_order_composer"
-          onRestore={restoreComposerDraft}
-        />
-      ) : null}
       <AnimatePresence mode="wait" initial={false}>
         {section === "clients" ? (
           <motion.div
@@ -911,10 +902,14 @@ export function WorkOrdersWorkspace() {
                 employees={employees}
                 displayIndex={workOrderDisplayIndex}
                 payrollByOrderId={payrollByOrderId}
+                unfinishedDrafts={unfinishedDrafts}
+                activeDraftId={activeComposerDraftId}
                 onSearchChange={setListSearch}
                 onFilterChange={setListFilter}
                 onSelectOrder={selectOrder}
                 onStartCreate={startCreate}
+                onRestoreDraft={(draft) => void restoreComposerDraft(draft)}
+                onDiscardDraft={(draft) => void handleDiscardUnfinishedDraft(draft)}
               />
 
               <main className="relative min-w-0 flex-1 overflow-hidden bg-background">
@@ -992,7 +987,6 @@ export function WorkOrdersWorkspace() {
                             motorLines: current.motorLines.filter((_, itemIndex) => itemIndex !== index),
                           }))
                         }
-                        onSave={saveDraft}
                         onCancel={resetComposer}
                       />
                       {composerPersistenceKey ? (

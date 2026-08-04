@@ -100,6 +100,9 @@ export function canAccessPath(
   if (pathname === "/motors" || pathname.startsWith("/specific/")) {
     return canAccessMotorsArea(user);
   }
+  if (pathname.startsWith("/media/")) {
+    return can(user, "inventory_view");
+  }
   if (pathname === "/sold") {
     return isNavAllowed(user, "sold");
   }

@@ -15,7 +15,7 @@ export const userCopyEn = {
     saveLocal: "Save (⌘S)",
     saved: "Saved",
     saving: "Saving…",
-    pending: "Unsaved changes · ⌘S",
+    pending: "Unsaved changes · ⌘S / Ctrl+S",
     pendingLocked: "Local changes · sync after closing the menu",
     warehouseSaving: "Syncing with warehouse…",
   },
@@ -40,6 +40,13 @@ export const userCopyEn = {
     galleryCount: (total: number, current: number) => `${current} of ${total}`,
     prev: "Previous",
     next: "Next",
+    back: "Back",
+    download: "Download",
+    downloadAll: "Download all",
+    downloadFailed: "Could not download media",
+    viewerLoading: "Loading media…",
+    viewerInvalid: "Invalid media link",
+    viewerLoadFailed: "Could not load media",
   },
 
   auth: {
@@ -992,7 +999,7 @@ export const userCopyEn = {
     dirtyCount: (count: number) =>
       count === 1 ? "1 change" : `${count} changes`,
     unsyncedTitle: "Unsynced edits in the table",
-    unsyncedDescription: "Press ⌘S or wait for autosave",
+    unsyncedDescription: "Press ⌘S / Ctrl+S to save",
     locationAssigned: "Location assigned",
     updatedPositions: (count: number) => `Updated positions: ${count}`,
     exportColumns: {
@@ -3630,6 +3637,10 @@ export const userCopyEn = {
     draftTitle: "We found an unsaved draft",
     draftLabeled: (label: string, when: string) => `“${label}” — ${when}`,
     draftUntitled: (when: string) => `Changes from ${when}`,
+    unfinishedSection: "Unfinished",
+    unfinishedEmpty: "No unfinished drafts",
+    unfinishedHint: "Local drafts — restore or delete",
+    openDraft: "Continue",
     diffsTitle: "Differences from the server version",
     hideCompare: "Hide comparison",
     compare: "Compare with server",

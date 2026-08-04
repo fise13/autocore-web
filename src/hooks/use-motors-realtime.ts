@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
 import { MotorEntity } from "@/domain/motor";
@@ -44,7 +44,7 @@ export function useMotorsRealtime(
     staleTime: Infinity,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
-    placeholderData: (previous) => previous ?? [],
+    placeholderData: keepPreviousData,
   });
 
   useEffect(() => {

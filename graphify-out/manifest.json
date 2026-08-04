@@ -4315,8 +4315,8 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1785775338.202122,
-    "ast_hash": "d413a1b9f5bb0db295cb41b7a8a340b3",
+    "mtime": 1785833502.1839442,
+    "ast_hash": "0487756e3e2462c5076434c8c58f20c8",
     "semantic_hash": ""
   },
   "packages/avatars/package.json": {
@@ -6610,8 +6610,8 @@
     "semantic_hash": ""
   },
   "src/components/layout/dashboard-shell.tsx": {
-    "mtime": 1785775338.2166145,
-    "ast_hash": "b1080f5c369736fc11d79f4839fbce6d",
+    "mtime": 1785833461.6232874,
+    "ast_hash": "f37e96125f9f69c182a6b7efd5b0c26f",
     "semantic_hash": ""
   },
   "src/components/layout/dashboard-top-bar-motion.ts": {
@@ -6620,8 +6620,8 @@
     "semantic_hash": ""
   },
   "src/components/layout/dashboard-top-bar.tsx": {
-    "mtime": 1785775338.2168422,
-    "ast_hash": "24dde99d32dcf9b62c17dfe60df56437",
+    "mtime": 1785833801.5429306,
+    "ast_hash": "e83add569d42fa7714dd328470e93c30",
     "semantic_hash": ""
   },
   "src/components/layout/enterprise-animated-panel.tsx": {
@@ -6730,8 +6730,8 @@
     "semantic_hash": ""
   },
   "src/components/layout/workspace-context.tsx": {
-    "mtime": 1784905144.3704357,
-    "ast_hash": "0a28a38e3cb7522299e1c79a34f9fbdb",
+    "mtime": 1785832908.9100482,
+    "ast_hash": "4ed039472b74ecacb9841c5087a8f4f6",
     "semantic_hash": ""
   },
   "src/components/layout/workspace-search-field.tsx": {
@@ -6745,8 +6745,8 @@
     "semantic_hash": ""
   },
   "src/components/layout/workspace-status-bar.tsx": {
-    "mtime": 1784905144.406291,
-    "ast_hash": "1d5e169fbdbd9303ffa7e381af0b764d",
+    "mtime": 1785832901.8233142,
+    "ast_hash": "63e45d21385f5af8dae65a56b140d76c",
     "semantic_hash": ""
   },
   "src/components/layout/workspace-toolbar.tsx": {
@@ -7580,8 +7580,8 @@
     "semantic_hash": ""
   },
   "src/components/motors/motors-excel-grid.tsx": {
-    "mtime": 1785775338.2237606,
-    "ast_hash": "df062b857ebb9ce54ef179f68023068c",
+    "mtime": 1785833793.4413419,
+    "ast_hash": "ebb8dedad0db920b58fc94713ee66208",
     "semantic_hash": ""
   },
   "src/components/motors/motors-grid-skeleton.tsx": {
@@ -8110,8 +8110,8 @@
     "semantic_hash": ""
   },
   "src/components/specific/specific-excel-grid.tsx": {
-    "mtime": 1785775338.2417128,
-    "ast_hash": "185221676ef9c9cabb493b08b3cc5acb",
+    "mtime": 1785833858.5778637,
+    "ast_hash": "1913d3f91c98eadd8fa8153fecd20de3",
     "semantic_hash": ""
   },
   "src/components/specific/specific-records-workspace.tsx": {
@@ -9015,8 +9015,8 @@
     "semantic_hash": ""
   },
   "src/hooks/use-motors-realtime.ts": {
-    "mtime": 1782139215.4381187,
-    "ast_hash": "6c1e081ebe1866f69f467e0f308283ba",
+    "mtime": 1785833773.2516136,
+    "ast_hash": "7431956bb9ba4213529d25574961166e",
     "semantic_hash": ""
   },
   "src/hooks/use-my-earnings-data.ts": {
@@ -9375,8 +9375,8 @@
     "semantic_hash": ""
   },
   "src/infrastructure/firestore/motor-repository.ts": {
-    "mtime": 1785775338.2522635,
-    "ast_hash": "0bd72c6c63f02291267f43139af1911c",
+    "mtime": 1785833773.931574,
+    "ast_hash": "e1cfec29628751988738127fcb04fdf5",
     "semantic_hash": ""
   },
   "src/infrastructure/firestore/motor-sync-meta-repository.ts": {
@@ -9540,8 +9540,8 @@
     "semantic_hash": ""
   },
   "src/lib/auth/app-access.ts": {
-    "mtime": 1785775338.255754,
-    "ast_hash": "d67b578a6cab81483116be27b986bfc3",
+    "mtime": 1785833430.4616997,
+    "ast_hash": "31bb9403210f1cf8e9ad51a4d7fb56fd",
     "semantic_hash": ""
   },
   "src/lib/auth/apple-auth-log.ts": {
@@ -9730,8 +9730,8 @@
     "semantic_hash": ""
   },
   "src/lib/barba/barba-navigation.ts": {
-    "mtime": 1785775338.257184,
-    "ast_hash": "23918f6cfaf125488132e08a67f2e17c",
+    "mtime": 1785833430.4685097,
+    "ast_hash": "72aaa18d7e6e3133ec6e1dc5da65f35f",
     "semantic_hash": ""
   },
   "src/lib/barba/barba-runtime.ts": {
@@ -11580,8 +11580,8 @@
     "semantic_hash": ""
   },
   "src/lib/site-urls.ts": {
-    "mtime": 1785775338.275835,
-    "ast_hash": "201cb80235e4e73e4399d9ffebb5c4fb",
+    "mtime": 1785833427.53279,
+    "ast_hash": "22249feea8f821553c699e1c39f95ce1",
     "semantic_hash": ""
   },
   "src/lib/specific/specific-category-schema.test.ts": {
@@ -11595,8 +11595,8 @@
     "semantic_hash": ""
   },
   "src/lib/specific/specific-grid-data-store.ts": {
-    "mtime": 1785775338.2761006,
-    "ast_hash": "ec21e1068e237052e3931a4a26af395e",
+    "mtime": 1785833802.031059,
+    "ast_hash": "d5a43898ec0686b048e59cfb0951bc68",
     "semantic_hash": ""
   },
   "src/lib/specific/specific-grid-layout.ts": {
@@ -11655,8 +11655,8 @@
     "semantic_hash": ""
   },
   "src/lib/user-copy.en.ts": {
-    "mtime": 1785777495.8968887,
-    "ast_hash": "db6eda1da28676f293fa2dff1cd82fc5",
+    "mtime": 1785833425.5500484,
+    "ast_hash": "0ebdbc77aefe31b95ad574c50079a182",
     "semantic_hash": ""
   },
   "src/lib/user-copy.locale-labels.ts": {
@@ -11665,8 +11665,8 @@
     "semantic_hash": ""
   },
   "src/lib/user-copy.ru.ts": {
-    "mtime": 1785777500.6238317,
-    "ast_hash": "e245c3858062024a07ba9cf9252ff71a",
+    "mtime": 1785833427.2431185,
+    "ast_hash": "5d8163b651468fe07b7efc6a1ccf90d7",
     "semantic_hash": ""
   },
   "src/lib/user-copy.ts": {
@@ -12785,13 +12785,13 @@
     "semantic_hash": ""
   },
   "src/app/api/inventory/row-photo/route.ts": {
-    "mtime": 1785775338.2084599,
-    "ast_hash": "b0b00d765b899436f2ec9f1a57d3c162",
+    "mtime": 1785833070.5199025,
+    "ast_hash": "2f10eba978e2164319b9bf7144be0268",
     "semantic_hash": ""
   },
   "src/components/grid/grid-photo-cell.tsx": {
-    "mtime": 1785776113.828343,
-    "ast_hash": "96c1fadb4f570564f06f7f0dc6d9beac",
+    "mtime": 1785833421.9524775,
+    "ast_hash": "32643a0e7944ee382a3822f14fd98d6b",
     "semantic_hash": ""
   },
   "src/lib/auth/verify-inventory-edit-access.server.ts": {
@@ -12805,8 +12805,8 @@
     "semantic_hash": ""
   },
   "src/lib/grid/upload-grid-row-photo.ts": {
-    "mtime": 1785775856.1854484,
-    "ast_hash": "c4d0e92785fc31fefe1cecfc37393c5d",
+    "mtime": 1785833052.6939313,
+    "ast_hash": "716f51738ea4feb8e2cdd482fa8155f9",
     "semantic_hash": ""
   },
   "src/lib/grid/upload-row-photo-utils.ts": {
@@ -12835,13 +12835,43 @@
     "semantic_hash": ""
   },
   "src/components/grid/grid-media-gallery.tsx": {
-    "mtime": 1785775898.423229,
-    "ast_hash": "edc1e215ceda1ebebaf68615508a2572",
+    "mtime": 1785833466.5217066,
+    "ast_hash": "7175090c58f91430bc092c06f9b4a8eb",
     "semantic_hash": ""
   },
   "src/lib/auth/company-owner.ts": {
     "mtime": 1785777183.2287297,
     "ast_hash": "ee125b604f24125e24480fb2df139ed3",
+    "semantic_hash": ""
+  },
+  "firebase/storage.cors.json": {
+    "mtime": 1785833111.4006085,
+    "ast_hash": "d36ab4181eeef23a81f6db5f399b3cff",
+    "semantic_hash": ""
+  },
+  "src/app/(dashboard)/media/[entityKind]/[entityId]/page.tsx": {
+    "mtime": 1785833388.8481188,
+    "ast_hash": "0c117c1756527abe38c19b7652ed047d",
+    "semantic_hash": ""
+  },
+  "src/app/api/inventory/row-photo/file/route.ts": {
+    "mtime": 1785833299.6050053,
+    "ast_hash": "3b6c4fe582d608ea49f4a18bdf26ae75",
+    "semantic_hash": ""
+  },
+  "src/components/grid/row-media-viewer.tsx": {
+    "mtime": 1785833497.0966907,
+    "ast_hash": "3a642552fb519fd2ff3fe5c7089f8981",
+    "semantic_hash": ""
+  },
+  "src/lib/grid/row-media-viewer.test.ts": {
+    "mtime": 1785833497.4674838,
+    "ast_hash": "63102203ec277a45a1dad0e901d26045",
+    "semantic_hash": ""
+  },
+  "src/lib/grid/row-media-viewer.ts": {
+    "mtime": 1785833299.6049879,
+    "ast_hash": "21e7539daff03763af651a76dbda9421",
     "semantic_hash": ""
   }
 }

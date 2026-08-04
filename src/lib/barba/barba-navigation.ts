@@ -11,6 +11,7 @@ const DASHBOARD_ANIMATED_PREFIXES = [
   "/settings",
   "/work-orders",
   "/specific",
+  "/media",
   "/quotes",
   "/documents",
   "/team",

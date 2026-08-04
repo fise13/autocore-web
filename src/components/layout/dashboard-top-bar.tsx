@@ -57,7 +57,13 @@ function TopBarPageLabel({ title }: { title: string }) {
 const availabilityOptionValues: MotorAvailability[] = ["all", "available", "sold"];
 
 function isWorkspaceRoute(pathname: string): boolean {
-  return pathname === "/motors" || pathname === "/sold" || pathname === "/warehouse";
+  return (
+    pathname === "/motors" ||
+    pathname === "/sold" ||
+    pathname === "/warehouse" ||
+    pathname === "/specific" ||
+    pathname.startsWith("/specific/")
+  );
 }
 
 function topBarLeftKey(mode: SidebarMode, pageTitle: string): string {
@@ -150,7 +156,9 @@ export function DashboardTopBar() {
   const [excelError, setExcelError] = useState<string | null>(null);
   const sidebarMode = resolveSidebarMode(pathname);
   const workspace = isWorkspaceRoute(pathname);
-  const isSpecificView = pathname === "/motors" && Boolean(selectedSpecificCategoryId);
+  const isSpecificView =
+    pathname.startsWith("/specific/") ||
+    (pathname === "/motors" && Boolean(selectedSpecificCategoryId));
   const isMotorsRoute = pathname === "/motors";
   const isMotorRoute = pathname === "/motors" || pathname === "/sold";
   const isWarehouseRoute = pathname === "/warehouse";
@@ -187,6 +195,7 @@ export function DashboardTopBar() {
     if (pathname.startsWith("/my-earnings")) return businessNavCopy.business.myEarnings;
     if (pathname.startsWith("/settings")) return userCopy.layout.settings;
     if (pathname.startsWith("/help")) return userCopy.layout.help;
+    if (pathname.startsWith("/media/")) return userCopy.gridPhotos.galleryTitle;
 
     return userCopy.appName;
   }, [
@@ -202,7 +211,9 @@ export function DashboardTopBar() {
     sidebarMode,
   ]);
 
-  const showAvailabilityFilter = (pathname === "/motors" || isSpecificView) && !isSoldRoute;
+  const showAvailabilityFilter =
+    (pathname === "/motors" || pathname.startsWith("/specific/") || isSpecificView) &&
+    !isSoldRoute;
   const showExcelIo = (isMotorRoute || isWarehouseRoute) && !isSpecificView;
   const canViewMotors = canAccessMotorsArea(profile);
   const canEdit = can(profile, "inventory_edit");

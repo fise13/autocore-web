@@ -15,7 +15,7 @@ export const userCopyRu = {
     saveLocal: "Сохранить (⌘S)",
     saved: "Сохранено",
     saving: "Сохранение…",
-    pending: "Есть изменения · ⌘S",
+    pending: "Есть изменения · ⌘S / Ctrl+S",
     pendingLocked: "Локальные изменения · синхронизация после закрытия меню",
     warehouseSaving: "Синхронизация со складом…",
   },
@@ -40,6 +40,13 @@ export const userCopyRu = {
     galleryCount: (total: number, current: number) => `${current} из ${total}`,
     prev: "Назад",
     next: "Далее",
+    back: "Назад",
+    download: "Скачать",
+    downloadAll: "Скачать все",
+    downloadFailed: "Не удалось скачать медиа",
+    viewerLoading: "Загрузка медиа…",
+    viewerInvalid: "Некорректная ссылка на медиа",
+    viewerLoadFailed: "Не удалось загрузить медиа",
   },
 
   auth: {
@@ -995,7 +1002,7 @@ export const userCopyRu = {
       return `${count} изменений`;
     },
     unsyncedTitle: "Есть несинхронизированные правки в таблице",
-    unsyncedDescription: "Нажмите ⌘S или дождитесь автосохранения",
+    unsyncedDescription: "Нажмите ⌘S / Ctrl+S, чтобы сохранить",
     locationAssigned: "Место назначено",
     updatedPositions: (count: number) => `Обновлено позиций: ${count}`,
     exportColumns: {
@@ -3640,6 +3647,10 @@ export const userCopyRu = {
     draftTitle: "Мы нашли несохранённый черновик",
     draftLabeled: (label: string, when: string) => `«${label}» — ${when}`,
     draftUntitled: (when: string) => `Изменения от ${when}`,
+    unfinishedSection: "Недоделанные",
+    unfinishedEmpty: "Нет недоделанных черновиков",
+    unfinishedHint: "Локальные черновики — продолжить или удалить",
+    openDraft: "Продолжить",
     diffsTitle: "Отличия от серверной версии",
     hideCompare: "Скрыть сравнение",
     compare: "Сравнить с сервером",

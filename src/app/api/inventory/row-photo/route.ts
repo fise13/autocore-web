@@ -11,7 +11,8 @@ import {
 } from "@/lib/grid/upload-row-photo.server";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+/** Photos can be several MB; keep headroom for Admin Storage upload. */
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   try {

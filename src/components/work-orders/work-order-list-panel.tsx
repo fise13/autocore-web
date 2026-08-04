@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
-import { Plus, Search, UserRound } from "lucide-react";
+import { FilePenLine, Plus, Search, Trash2, UserRound } from "lucide-react";
 
 import { WorkOrder } from "@/domain/work-order";
 import { CompanyEmployee } from "@/domain/rbac";
@@ -15,8 +15,9 @@ import {
   workOrdersNavSpring,
   workOrdersSectionTransition,
 } from "@/components/work-orders/work-orders-motion";
+import type { PersistenceDraftRecord } from "@/lib/persistence";
 import { cn } from "@/lib/utils";
-import { userCopy } from "@/lib/user-copy";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 import { formatWorkOrderLabel, workOrderAssigneeSummary } from "@/lib/work-order/work-order-display";
 import { STATUS_LABELS, statusBadgeVariant } from "@/components/work-orders/work-order-copy";
 import { isOpenStatus, money } from "@/components/work-orders/work-order-utils";
@@ -33,13 +34,23 @@ type WorkOrderListPanelProps = {
   employees: CompanyEmployee[];
   displayIndex: Map<string, number>;
   payrollByOrderId: Map<string, PayrollTransaction[]>;
+  /** Local unfinished composer drafts (shown only after leaving a WO mid-edit). */
+  unfinishedDrafts?: PersistenceDraftRecord[];
+  activeDraftId?: string | null;
   onSearchChange: (value: string) => void;
   onFilterChange: (value: OrderListFilter) => void;
   onSelectOrder: (orderId: string) => void;
   onStartCreate: () => void;
+  onRestoreDraft?: (draft: PersistenceDraftRecord) => void;
+  onDiscardDraft?: (draft: PersistenceDraftRecord) => void;
 };
 
 const FILTER_VALUES: OrderListFilter[] = ["all", "open", "done"];
+
+function formatDraftWhen(updatedAt: number): string {
+  const locale = getActiveUserCopyLocale() === "ru" ? "ru-RU" : "en-US";
+  return new Date(updatedAt).toLocaleString(locale);
+}
 
 export function WorkOrderListPanel({
   orders,
@@ -51,17 +62,31 @@ export function WorkOrderListPanel({
   employees,
   displayIndex,
   payrollByOrderId,
+  unfinishedDrafts = [],
+  activeDraftId = null,
   onSearchChange,
   onFilterChange,
   onSelectOrder,
   onStartCreate,
+  onRestoreDraft,
+  onDiscardDraft,
 }: WorkOrderListPanelProps) {
   const filterOptions = FILTER_VALUES.map((value) => ({
     value,
     label: userCopy.workOrders.filters[value],
   }));
+  const copy = userCopy.persistence;
 
   const query = search.trim().toLowerCase();
+
+  const visibleDrafts = unfinishedDrafts.filter((draft) => {
+    if (activeDraftId && draft.id === activeDraftId) return false;
+    if (!query) return true;
+    const when = formatDraftWhen(draft.updatedAt);
+    const haystack = [draft.label, when].filter(Boolean).join(" ").toLowerCase();
+    return haystack.includes(query);
+  });
+
   const filtered = orders.filter((order) => {
     if (filter === "open" && !isOpenStatus(order.status)) return false;
     if (filter === "done" && isOpenStatus(order.status)) return false;
@@ -88,11 +113,7 @@ export function WorkOrderListPanel({
     <aside className="flex h-full w-[300px] shrink-0 flex-col border-r bg-muted/20">
       <div className="space-y-3 border-b bg-card/80 p-3 backdrop-blur-sm">
         {canEdit ? (
-          <Button
-            type="button"
-            className="w-full justify-center gap-2"
-            onClick={onStartCreate}
-          >
+          <Button type="button" className="w-full justify-center gap-2" onClick={onStartCreate}>
             <Plus className="size-4" />
             {userCopy.workOrders.newOrder}
           </Button>
@@ -136,8 +157,60 @@ export function WorkOrderListPanel({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
+        {visibleDrafts.length > 0 ? (
+          <div className="mb-3 space-y-1.5">
+            <p className="px-1.5 pt-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+              {copy.unfinishedSection}
+            </p>
+            <ul className="space-y-1.5">
+              {visibleDrafts.map((draft) => {
+                const when = formatDraftWhen(draft.updatedAt);
+                const title = draft.label?.trim()
+                  ? copy.draftLabeled(draft.label.trim(), when)
+                  : copy.draftUntitled(when);
+                return (
+                  <li key={draft.key}>
+                    <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2.5">
+                      <button
+                        type="button"
+                        className="w-full text-left"
+                        onClick={() => onRestoreDraft?.(draft)}
+                      >
+                        <div className="flex items-start gap-2">
+                          <FilePenLine className="mt-0.5 size-3.5 shrink-0 text-amber-700 dark:text-amber-400" />
+                          <p className="line-clamp-2 min-w-0 flex-1 text-sm font-medium">{title}</p>
+                        </div>
+                      </button>
+                      <div className="mt-2 flex items-center justify-end gap-1.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-muted-foreground"
+                          onClick={() => onDiscardDraft?.(draft)}
+                        >
+                          <Trash2 className="size-3" />
+                          {copy.discard}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-7 px-2.5 text-xs"
+                          onClick={() => onRestoreDraft?.(draft)}
+                        >
+                          {copy.openDraft}
+                        </Button>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
+
         {isCreating ? (
-          <div className="mb-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm animate-autocore-fade-in-up motion-reduce:animate-none">
+          <div className="mb-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
             <p className="font-medium text-primary">{userCopy.workOrders.newOrderShort}</p>
             <p className="text-xs text-muted-foreground">{userCopy.workOrders.fillFormHint}</p>
           </div>
@@ -153,7 +226,9 @@ export function WorkOrderListPanel({
               transition={workOrdersSectionTransition}
               className="px-2 py-8 text-center text-sm text-muted-foreground"
             >
-              {orders.length === 0 ? userCopy.workOrders.emptyTitle : userCopy.workOrders.nothingFound}
+              {orders.length === 0 && visibleDrafts.length === 0
+                ? userCopy.workOrders.emptyTitle
+                : userCopy.workOrders.nothingFound}
             </motion.p>
           ) : (
             <motion.ul
@@ -188,7 +263,9 @@ export function WorkOrderListPanel({
                           <p className="line-clamp-1 text-sm font-semibold">
                             {formatWorkOrderLabel(order, displayIndex)}
                           </p>
-                          <p className="line-clamp-1 ps-px text-xs text-muted-foreground">{order.clientName || "—"}</p>
+                          <p className="line-clamp-1 ps-px text-xs text-muted-foreground">
+                            {order.clientName || "—"}
+                          </p>
                           {assignees ? (
                             <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground/80">
                               <UserRound className="mr-1 inline size-3 -translate-y-px" />
@@ -204,7 +281,9 @@ export function WorkOrderListPanel({
                         <span className="line-clamp-1 min-w-0 flex-1 text-muted-foreground">
                           {order.licensePlate || order.vin || order.vehicleLabel || "—"}
                         </span>
-                        <span className="shrink-0 font-medium tabular-nums">{money(order.pricing.grandTotal)}</span>
+                        <span className="shrink-0 font-medium tabular-nums">
+                          {money(order.pricing.grandTotal)}
+                        </span>
                       </div>
                     </button>
                   </motion.li>

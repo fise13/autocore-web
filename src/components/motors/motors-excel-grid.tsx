@@ -54,6 +54,7 @@ import {
 import { GridCellAddress, GridColumnDefinition, GridRange, isCellInsideRange } from "@/lib/grid/grid-types";
 import { formatMotorDate, parseMotorDateInput } from "@/lib/motor-dates";
 import {
+  MOTOR_GRID_EMPTY_ROWS_BASE,
   MOTOR_GRID_EMPTY_ROWS_EXPAND,
   MOTOR_GRID_EMPTY_ROWS_THRESHOLD,
 } from "@/lib/motor-grid-layout";
@@ -277,7 +278,14 @@ function reconcileRowsWithRemote(
     return !nextSaved.some((saved) => saved.serialCode.trim().toLowerCase() === serial);
   });
 
-  const targetCount = Math.max(currentRows.length, nextSaved.length + dirtyDraftRows.length);
+  const previousSavedCount = currentSavedById.size;
+  const savedDelta = nextSaved.length - previousSavedCount;
+  // Shrink when filtered/remote set loses saved rows; keep grown empty tail otherwise.
+  const targetCount = Math.max(
+    nextSaved.length + dirtyDraftRows.length,
+    currentRows.length + Math.min(0, savedDelta),
+    MOTOR_GRID_EMPTY_ROWS_BASE,
+  );
   const nextRows: MotorGridRow[] = [...nextSaved, ...dirtyDraftRows];
   while (nextRows.length < targetCount) {
     nextRows.push(createEmptyRow(companyId, defaults));
@@ -404,11 +412,6 @@ export function MotorsExcelGrid({
   useEffect(() => {
     const companyChanged = companyIdRef.current !== companyId;
     companyIdRef.current = companyId;
-
-    if (motors.length === 0 && motorsRef.current.length > 0 && !companyChanged) {
-      return;
-    }
-
     motorsRef.current = motors;
     setRows((current) =>
       reconcileRowsWithRemote(current, motors, companyId, dirtyRowsRef.current, rowDefaults),
@@ -822,18 +825,6 @@ export function MotorsExcelGrid({
     registerCloudPushHandler(pushToCloud);
     return () => registerCloudPushHandler(null);
   }, [isActive, pushToCloud, registerCloudPushHandler]);
-
-  useEffect(() => {
-    if (!isActive) return;
-    if (!canEdit || !companyId) return;
-    if (dirtyRowsRef.current.size === 0) return;
-
-    const timer = window.setTimeout(() => {
-      void pushToCloud();
-    }, 1200);
-
-    return () => window.clearTimeout(timer);
-  }, [canEdit, companyId, dirtyVersion, isActive, pushToCloud]);
 
   useEffect(() => {
     function stopSelectionDrag() {

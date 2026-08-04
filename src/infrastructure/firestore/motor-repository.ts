@@ -156,6 +156,10 @@ function dedupeMotors(motors: MotorEntity[]): MotorEntity[] {
   });
 }
 
+function isMotorSold(motor: Pick<MotorEntity, "soldDate" | "status">): boolean {
+  return Boolean(motor.soldDate) || motor.status === "sold";
+}
+
 function applyMotorFilters(motors: MotorEntity[], filters: MotorFilters): MotorEntity[] {
   let mapped = motors;
 
@@ -164,11 +168,11 @@ function applyMotorFilters(motors: MotorEntity[], filters: MotorFilters): MotorE
   }
 
   if (filters.soldOnly) {
-    mapped = mapped.filter((item) => Boolean(item.soldDate));
+    mapped = mapped.filter((item) => isMotorSold(item));
   } else if (filters.availability === "available") {
-    mapped = mapped.filter((item) => !item.soldDate);
+    mapped = mapped.filter((item) => !isMotorSold(item));
   } else if (filters.availability === "sold") {
-    mapped = mapped.filter((item) => Boolean(item.soldDate));
+    mapped = mapped.filter((item) => isMotorSold(item));
   }
 
   if (filters.brandName?.trim()) {

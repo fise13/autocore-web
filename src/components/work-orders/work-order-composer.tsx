@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { modShortcutLabel } from "@/lib/grid/grid-keyboard-shortcuts";
 import { cn } from "@/lib/utils";
 import { EMPLOYEE_ROLE_LABELS } from "@/lib/work-order/work-order-display";
 import {
@@ -134,7 +135,6 @@ type WorkOrderComposerProps = {
   onRemovePart: (index: number) => void;
   onRemovePartById: (lineId: string) => void;
   onRemoveMotor: (index: number) => void;
-  onSave: () => void;
   onCancel: () => void;
 };
 
@@ -203,7 +203,6 @@ export function WorkOrderComposer({
   onRemovePart,
   onRemovePartById,
   onRemoveMotor,
-  onSave,
   onCancel,
 }: WorkOrderComposerProps) {
   const wo = userCopy.workOrders;
@@ -1217,10 +1216,20 @@ export function WorkOrderComposer({
               <ArrowRight className="size-4" />
             </Button>
           ) : (
-            <Button type="button" disabled={!canEdit || saving || !step1Valid} onClick={onSave}>
-              <Save className="size-4" />
-              {saving ? c.saving : c.saveDraft}
-            </Button>
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm",
+                  canEdit && step1Valid
+                    ? "border-primary/30 bg-primary/5 text-primary"
+                    : "border-border text-muted-foreground opacity-60",
+                )}
+                title={`${c.saveDraft} (${modShortcutLabel("S")})`}
+              >
+                <Save className="size-4" />
+                {saving ? c.saving : `${c.saveDraft} (${modShortcutLabel("S")})`}
+              </span>
+            </div>
           )}
         </div>
       </footer>

@@ -1,9 +1,10 @@
 "use client";
 
 import { Camera, Eye, Film, ImagePlus, Trash2, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
-import { GridMediaGallery, GridMediaThumb } from "@/components/grid/grid-media-gallery";
+import { GridMediaThumb } from "@/components/grid/grid-media-gallery";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +12,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  buildRowMediaViewerHref,
+  stashRowMediaViewerPayload,
+} from "@/lib/grid/row-media-viewer";
 import {
   assertRowMediaCount,
   MAX_ROW_MEDIA_ITEMS,
@@ -26,6 +31,8 @@ type GridPhotoCellProps = {
   entityKind: RowPhotoEntityKind;
   /** Stable id used for Storage path; draft rows may use rowId until saved. */
   entityId: string;
+  /** Optional label shown on the media viewer page. */
+  title?: string;
   disabled?: boolean;
   onChange: (urls: string[]) => void;
   className?: string;
@@ -36,19 +43,34 @@ export function GridPhotoCell({
   companyId,
   entityKind,
   entityId,
+  title,
   disabled,
   onChange,
   className,
 }: GridPhotoCellProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [galleryOpen, setGalleryOpen] = useState(false);
   const copy = userCopy.gridPhotos;
   const primary = urls[0] ?? null;
+
+  function openViewer(index = 0) {
+    if (urls.length === 0 || !entityId.trim()) return;
+    stashRowMediaViewerPayload({
+      urls,
+      entityKind,
+      entityId,
+      title,
+      returnTo: pathname || undefined,
+    });
+    setMenuOpen(false);
+    router.push(buildRowMediaViewerHref({ entityKind, entityId, index }));
+  }
 
   /** Open the native picker while still inside the user gesture.
    *  Base UI closes the menu first by default, which cancels input.click(). */
@@ -153,13 +175,7 @@ export function GridPhotoCell({
             </div>
           ) : null}
           {urls.length > 0 ? (
-            <DropdownMenuItem
-              disabled={uploading}
-              onClick={() => {
-                setMenuOpen(false);
-                setGalleryOpen(true);
-              }}
-            >
+            <DropdownMenuItem disabled={uploading} onClick={() => openViewer(0)}>
               <Eye className="size-4" />
               {copy.viewAll}
             </DropdownMenuItem>
@@ -216,21 +232,11 @@ export function GridPhotoCell({
         <button
           type="button"
           className="rounded border border-border/70 bg-background/80 px-1 py-0.5 text-[10px] font-medium text-foreground/80 hover:bg-muted"
-          onClick={() => setGalleryOpen(true)}
+          onClick={() => openViewer(0)}
           title={copy.viewAll}
         >
           {copy.view}
         </button>
-      ) : null}
-
-      {galleryOpen ? (
-        <GridMediaGallery
-          open
-          onOpenChange={setGalleryOpen}
-          urls={urls}
-          canEdit={!disabled}
-          onChange={onChange}
-        />
       ) : null}
     </div>
   );

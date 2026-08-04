@@ -219,7 +219,13 @@ export function reconcileSpecificRowsWithRemote(
     return !emptyRowConflictsWithSaved(row, saved);
   });
 
-  const targetCount = Math.max(currentRows.length, saved.length + dirtyDraftRows.length, 40);
+  const previousSavedCount = currentSavedById.size;
+  const savedDelta = saved.length - previousSavedCount;
+  const targetCount = Math.max(
+    saved.length + dirtyDraftRows.length,
+    currentRows.length + Math.min(0, savedDelta),
+    40,
+  );
   const nextRows: SpecificGridRow[] = [...saved, ...dirtyDraftRows];
   for (const row of preservedEmptyRows) {
     if (nextRows.length >= targetCount) break;

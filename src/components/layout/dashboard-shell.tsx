@@ -107,8 +107,11 @@ function DashboardShellInner({ children }: DashboardShellProps) {
 
   const isMotorRoute = pathname === "/motors" || pathname === "/sold";
   const isWarehouseRoute = pathname === "/warehouse";
+  const isSpecificRoute = pathname === "/specific" || pathname.startsWith("/specific/");
+  const isMediaRoute = pathname.startsWith("/media/");
   const isImportRoute = pathname === "/imports" || pathname.startsWith("/imports/");
-  const isGridCountRoute = isMotorRoute || isWarehouseRoute || isImportRoute;
+  const isGridCountRoute = isMotorRoute || isWarehouseRoute || isSpecificRoute || isImportRoute;
+  const isFullBleedWorkspace = isGridCountRoute || isMediaRoute;
   const isSoldRoute = pathname === "/sold";
   const needsSidebarCatalog = (isMotorRoute || isSoldRoute) && canSubscribe && canViewMotors;
 
@@ -349,7 +352,7 @@ function DashboardShellInner({ children }: DashboardShellProps) {
                 data-barba="container"
                 data-barba-namespace={barbaNamespace}
                 className={
-                  isGridCountRoute
+                  isFullBleedWorkspace
                     ? "relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden"
                     : "relative z-0 min-h-0 flex-1 overflow-y-auto p-4 md:p-6"
                 }
@@ -359,12 +362,12 @@ function DashboardShellInner({ children }: DashboardShellProps) {
                 </div>
               </main>
 
-              {isWarehouseRoute || isGridCountRoute ? (
+              {isGridCountRoute ? (
                 <div className="flex items-center gap-2 border-t border-sidebar-border bg-sidebar px-2">
                   <div className="min-w-0 flex-1">
                     <WorkspaceStatusBar
-                      compact={!isGridCountRoute}
-                      showSave={isWarehouseRoute}
+                      compact={isImportRoute}
+                      showSave={!isImportRoute}
                     />
                   </div>
                   {isWarehouseRoute ? (

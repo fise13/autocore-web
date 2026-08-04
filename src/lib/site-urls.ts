@@ -215,6 +215,7 @@ export const APP_ROUTE_PREFIXES = [
   "/roles",
   "/settings",
   "/specific",
+  "/media",
   "/help",
   "/changelog",
   "/status",

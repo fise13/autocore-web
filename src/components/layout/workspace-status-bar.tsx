@@ -2,12 +2,13 @@
 
 import { usePersistenceOptional } from "@/components/persistence/persistence-provider";
 import { useWorkspace } from "@/components/layout/workspace-context";
+import { modShortcutLabel } from "@/lib/grid/grid-keyboard-shortcuts";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 type WorkspaceStatusBarProps = {
   compact?: boolean;
-  /** Manual save + save status — warehouse grid only. */
+  /** Manual save status + ⌘S / Ctrl+S hint (save itself is keyboard-only). */
   showSave?: boolean;
 };
 
@@ -15,8 +16,7 @@ export function WorkspaceStatusBar({
   compact = false,
   showSave = false,
 }: WorkspaceStatusBarProps) {
-  const { shownCount, totalCount, saveStatus, saveError, gridInteractionLocked, triggerSync } =
-    useWorkspace();
+  const { shownCount, totalCount, saveStatus, saveError, gridInteractionLocked } = useWorkspace();
   const persistence = usePersistenceOptional();
 
   const hasUnsaved =
@@ -26,17 +26,6 @@ export function WorkspaceStatusBar({
   const isSaving = saveStatus === "saving" || persistence?.uiStatus === "saving";
   const isError = saveStatus === "error" || persistence?.uiStatus === "error";
   const isOffline = persistence?.uiStatus === "offline";
-
-  const handleSaveClick = () => {
-    void (async () => {
-      if (persistence?.hasUnsavedChanges()) {
-        await persistence.flushAll("manual");
-      }
-      await triggerSync();
-    })().catch((error) => {
-      console.error("Save failed:", error);
-    });
-  };
 
   const persistenceText =
     persistence?.uiStatus === "offline"
@@ -88,14 +77,15 @@ export function WorkspaceStatusBar({
           >
             {saveStatusText}
           </span>
-          <button
-            type="button"
-            onClick={handleSaveClick}
-            disabled={(!hasUnsaved && !isError) || isSaving || gridInteractionLocked}
-            className="text-primary transition hover:text-primary/80 disabled:pointer-events-none disabled:opacity-40"
+          <span
+            className={cn(
+              "tabular-nums",
+              hasUnsaved || isError ? "text-primary" : "text-muted-foreground/70",
+            )}
+            title={`${userCopy.sync.syncNow} (${modShortcutLabel("S")})`}
           >
-            {userCopy.sync.saveLocal}
-          </button>
+            {userCopy.sync.syncNow} ({modShortcutLabel("S")})
+          </span>
         </>
       ) : null}
     </footer>
