@@ -1,13 +1,15 @@
 import { memo, useEffect, useMemo, useState } from 'react';
-import { Dimensions, Keyboard, StyleSheet, View } from 'react-native';
-import { OverKeyboardView } from 'react-native-keyboard-controller';
+import { Keyboard, Platform, StyleSheet, View } from 'react-native';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import { FullWindowOverlay } from 'react-native-screens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { InlineAutocomplete } from '@/components/autocomplete/inline-autocomplete';
 import {
-  AUTOCOMPLETE_ROW_HEIGHT,
-  AUTOCOMPLETE_VISIBLE_ROWS,
-} from '@/lib/autocomplete/constants';
+  InlineAutocomplete,
+  InlineAutocompleteEmpty,
+} from '@/components/autocomplete/inline-autocomplete';
 import type { AutocompleteSession } from '@/lib/autocomplete/types';
+import { tokens } from '@/theme';
 
 type AutocompleteOverlayProps = {
   session: AutocompleteSession | null;
@@ -16,88 +18,141 @@ type AutocompleteOverlayProps = {
   onInteractionStart?: () => void;
 };
 
-/** Distance between the field and its suggestion panel. */
-const ANCHOR_GAP = 6;
-const EDGE_INSET = 8;
+type DockPanelProps = {
+  session: AutocompleteSession;
+  loading: boolean;
+  suggestions: AutocompleteSession['suggestions'];
+  onSelect: (index: number) => void;
+  onInteractionStart?: () => void;
+  paddingBottom: number;
+};
+
+function DockPanel({
+  session,
+  loading,
+  suggestions,
+  onSelect,
+  onInteractionStart,
+  paddingBottom,
+}: DockPanelProps) {
+  return (
+    <View
+      onTouchStart={onInteractionStart}
+      pointerEvents="box-none"
+      style={{
+        paddingHorizontal: tokens.space.screenX,
+        paddingBottom,
+      }}
+    >
+      {/* auto — only the panel itself captures presses */}
+      <View pointerEvents="auto">
+        <InlineAutocomplete
+          items={suggestions}
+          query={session.query}
+          highlightedIndex={session.highlightedIndex}
+          visible
+          loading={loading}
+          variant="keyboardDock"
+          emptyState={<InlineAutocompleteEmpty />}
+          onSelect={onSelect}
+        />
+      </View>
+    </View>
+  );
+}
 
 /**
- * Hosts the suggestion panel directly under the focused field — the same
- * anchored behaviour as the web autocomplete, instead of a bar parked at the
- * bottom of the screen. Flips above the field when the keyboard would cover it.
+ * Keyboard-docked suggestions.
+ *
+ * iOS: FullWindowOverlay so the dock paints above formSheet/pageSheet, with
+ * box-none pass-through so the form stays tappable.
+ * Android: KeyboardStickyView in the normal hierarchy (no form-sheet window).
  */
 export const AutocompleteOverlay = memo(function AutocompleteOverlay({
   session,
+  chromeBottomInset = 0,
   onSelect,
   onInteractionStart,
 }: AutocompleteOverlayProps) {
+  const insets = useSafeAreaInsets();
   const suggestions = session?.visible ? session.suggestions : [];
-  const show = Boolean(session?.visible && suggestions.length > 0);
-  const [keyboardTop, setKeyboardTop] = useState<number | null>(null);
+  const loading = session?.status === 'loading';
+  const show = Boolean(session?.visible && session);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
     const onShow = Keyboard.addListener('keyboardDidShow', (event) => {
-      setKeyboardTop(event.endCoordinates.screenY);
+      setKeyboardHeight(event.endCoordinates.height);
     });
-    const onHide = Keyboard.addListener('keyboardDidHide', () => setKeyboardTop(null));
+    const onHide = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
     return () => {
       onShow.remove();
       onHide.remove();
     };
   }, []);
 
-  const placement = useMemo(() => {
-    const anchor = session?.anchor;
-    if (!anchor) return null;
+  const bottomPad = useMemo(() => {
+    if (keyboardHeight > 0) {
+      return keyboardHeight + Math.max(chromeBottomInset, tokens.space.micro);
+    }
+    return Math.max(insets.bottom, tokens.space.inline) + chromeBottomInset;
+  }, [chromeBottomInset, insets.bottom, keyboardHeight]);
 
-    const window = Dimensions.get('window');
-    const rows = Math.min(suggestions.length, AUTOCOMPLETE_VISIBLE_ROWS);
-    const panelHeight = Math.max(rows, 1) * AUTOCOMPLETE_ROW_HEIGHT;
-    const floor = keyboardTop ?? window.height;
+  if (!show || !session) return null;
 
-    const below = anchor.y + anchor.height + ANCHOR_GAP;
-    const spaceBelow = floor - below - EDGE_INSET;
-    const spaceAbove = anchor.y - ANCHOR_GAP - EDGE_INSET;
-
-    // Prefer hanging below the field; flip only when it genuinely doesn't fit.
-    const flip =
-      spaceBelow < Math.min(panelHeight, AUTOCOMPLETE_ROW_HEIGHT * 2) && spaceAbove > spaceBelow;
-    const maxHeight = Math.max(AUTOCOMPLETE_ROW_HEIGHT, flip ? spaceAbove : spaceBelow);
-
-    return {
-      left: Math.max(EDGE_INSET, anchor.x),
-      width: Math.min(anchor.width, window.width - EDGE_INSET * 2),
-      top: flip
-        ? Math.max(EDGE_INSET, anchor.y - ANCHOR_GAP - Math.min(panelHeight, maxHeight))
-        : below,
-      maxHeight,
-    };
-  }, [keyboardTop, session?.anchor, suggestions.length]);
-
-  return (
-    <OverKeyboardView visible={show}>
-      {show && session && placement ? (
+  if (Platform.OS === 'ios') {
+    return (
+      <FullWindowOverlay unstable_accessibilityContainerViewIsModal={false}>
         <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
           <View
-            onTouchStart={onInteractionStart}
             pointerEvents="box-none"
             style={{
               position: 'absolute',
-              top: placement.top,
-              left: placement.left,
-              width: placement.width,
-              maxHeight: placement.maxHeight,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              // Keep the host only as tall as the dock + keyboard band so we
+              // don't rely solely on hit-testing quirks of a full-screen layer.
+              paddingBottom: 0,
             }}
           >
-            <InlineAutocomplete
-              items={suggestions}
-              query={session.query}
-              highlightedIndex={session.highlightedIndex}
-              visible={show}
+            <DockPanel
+              session={session}
+              loading={loading}
+              suggestions={suggestions}
               onSelect={onSelect}
+              onInteractionStart={onInteractionStart}
+              paddingBottom={bottomPad}
             />
           </View>
         </View>
-      ) : null}
-    </OverKeyboardView>
+      </FullWindowOverlay>
+    );
+  }
+
+  return (
+    <KeyboardStickyView
+      enabled
+      offset={{ closed: 0, opened: 0 }}
+      pointerEvents="box-none"
+      style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 100,
+      }}
+    >
+      <DockPanel
+        session={session}
+        loading={loading}
+        suggestions={suggestions}
+        onSelect={onSelect}
+        onInteractionStart={onInteractionStart}
+        paddingBottom={Math.max(chromeBottomInset, tokens.space.micro)}
+      />
+    </KeyboardStickyView>
   );
 });

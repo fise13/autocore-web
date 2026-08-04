@@ -28,6 +28,7 @@ import { GoogleSignInButton } from './google-sign-in-button';
 import { InviteFormNotice } from './invite-form-notice';
 import { useAuth } from './auth-provider';
 import { AuthHeroShell } from './auth-hero-shell';
+import { useAuthPressSpring } from './auth-motion';
 import { AuthSocialCluster } from './auth-social-cluster';
 
 function isValidEmail(value: string): boolean {
@@ -74,6 +75,7 @@ export function LoginScreen() {
   const showGoogleSignIn = oauthConfigured && (Platform.OS !== 'ios' || appleAvailable);
   const showAppleSignIn = Platform.OS === 'ios' && appleAvailable && oauthConfigured;
   const reducedMotion = useReducedMotion();
+  const primaryPress = useAuthPressSpring(0.975);
   const isSignUp = emailMode === 'signup';
   const displayError = error ?? authError;
   const inviteTokenParam = params.invite?.trim() ?? '';
@@ -368,13 +370,13 @@ export function LoginScreen() {
   const entering = reducedMotion
     ? undefined
     : stepDirection === 1
-      ? FadeInRight.duration(220)
-      : FadeInLeft.duration(220);
+      ? FadeInRight.duration(duration.normal)
+      : FadeInLeft.duration(duration.normal);
   const exiting = reducedMotion
     ? undefined
     : stepDirection === 1
-      ? FadeOutLeft.duration(180)
-      : FadeOutRight.duration(180);
+      ? FadeOutLeft.duration(duration.fast)
+      : FadeOutRight.duration(duration.fast);
 
   const legalFooter = (
     <Text
@@ -655,22 +657,26 @@ export function LoginScreen() {
                 ) : null}
               </FormStack>
 
-              <Button
-                size="xl"
-                shape="pill"
-                loading={isSubmitting}
-                disabled={submitDisabled}
-                onPress={onSubmit}
-                style={{ width: '100%', minHeight: AUTH_HERO_BUTTON_HEIGHT }}
-              >
-                {isSubmitting
-                  ? isSignUp
-                    ? 'Creating account…'
-                    : 'Signing in…'
-                  : isSignUp
-                    ? 'Create account'
-                    : 'Sign in'}
-              </Button>
+              <Animated.View style={primaryPress.style}>
+                <Button
+                  size="xl"
+                  shape="pill"
+                  loading={isSubmitting}
+                  disabled={submitDisabled}
+                  onPressIn={primaryPress.onPressIn}
+                  onPressOut={primaryPress.onPressOut}
+                  onPress={onSubmit}
+                  style={{ width: '100%', minHeight: AUTH_HERO_BUTTON_HEIGHT }}
+                >
+                  {isSubmitting
+                    ? isSignUp
+                      ? 'Creating account…'
+                      : 'Signing in…'
+                    : isSignUp
+                      ? 'Create account'
+                      : 'Sign in'}
+                </Button>
+              </Animated.View>
 
               {!isSignUp ? (
                 <>

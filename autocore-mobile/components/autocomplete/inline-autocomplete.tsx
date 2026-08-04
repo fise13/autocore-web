@@ -12,12 +12,13 @@ import { Text } from '@/components/ui/text';
 import { useReducedMotion } from '@/hooks/use-accessibility';
 import { useTheme } from '@/hooks/use-theme';
 import {
+  AUTOCOMPLETE_APPEAR_MS,
   AUTOCOMPLETE_PANEL_RADIUS,
   AUTOCOMPLETE_ROW_HEIGHT,
   AUTOCOMPLETE_VISIBLE_ROWS,
 } from '@/lib/autocomplete/constants';
 import type { AutocompleteOption } from '@/lib/autocomplete/types';
-import { autocoreEase, duration } from '@/theme';
+import { autocoreEase } from '@/theme';
 
 import { InlineAutocompleteRow } from './inline-autocomplete-row';
 
@@ -39,9 +40,11 @@ export type InlineAutocompleteProps = {
   highlightedIndex?: number;
   onHighlightChange?: (index: number) => void;
   visible?: boolean;
+  /** keyboardDock — sits above the keyboard; field — legacy under-input. */
+  variant?: 'keyboardDock' | 'field';
 };
 
-/** Apple-quality suggestion panel — floats above the keyboard, not a dropdown. */
+/** Compact suggestion panel — keyboard-docked by default (QuickType / Music search). */
 export const InlineAutocomplete = memo(function InlineAutocomplete({
   items,
   query,
@@ -51,15 +54,17 @@ export const InlineAutocomplete = memo(function InlineAutocomplete({
   emptyState,
   highlightedIndex = 0,
   visible = true,
+  variant = 'keyboardDock',
 }: InlineAutocompleteProps) {
   const { colors, isDark } = useTheme();
   const reducedMotion = useReducedMotion();
   const scrollRef = useRef<ScrollView>(null);
   const appear = useSharedValue(visible ? 1 : 0);
+  const docked = variant === 'keyboardDock';
 
   useEffect(() => {
     appear.value = withTiming(visible ? 1 : 0, {
-      duration: reducedMotion ? 1 : duration.fast,
+      duration: reducedMotion ? 1 : AUTOCOMPLETE_APPEAR_MS,
       easing: autocoreEase,
     });
   }, [appear, reducedMotion, visible]);
@@ -73,15 +78,19 @@ export const InlineAutocomplete = memo(function InlineAutocomplete({
     });
   }, [highlightedIndex, items.length, visible]);
 
-  /** Ceiling only — the panel is free to be shorter than this. */
-  const panelMaxHeight = AUTOCOMPLETE_VISIBLE_ROWS * AUTOCOMPLETE_ROW_HEIGHT;
+  const rowCount =
+    loading && items.length === 0
+      ? 1
+      : !loading && items.length === 0 && emptyState
+        ? 1
+        : Math.min(items.length, AUTOCOMPLETE_VISIBLE_ROWS);
+  const panelHeight = Math.max(rowCount, 1) * AUTOCOMPLETE_ROW_HEIGHT;
 
   const fadeStyle = useAnimatedStyle(() => ({
     opacity: appear.value,
-    transform: [
-      { translateY: (1 - appear.value) * -8 },
-      { scaleY: 0.96 + appear.value * 0.04 },
-    ],
+    transform: docked
+      ? [{ translateY: (1 - appear.value) * 8 }]
+      : [{ scale: 0.98 + appear.value * 0.02 }],
   }));
 
   if (!visible) return null;
@@ -90,7 +99,12 @@ export const InlineAutocomplete = memo(function InlineAutocomplete({
   if (!loading && items.length === 0 && !emptyState) return null;
 
   const body = (
-    <View style={{ maxHeight: panelMaxHeight }}>
+    <View
+      style={{
+        height: panelHeight,
+        maxHeight: AUTOCOMPLETE_VISIBLE_ROWS * AUTOCOMPLETE_ROW_HEIGHT,
+      }}
+    >
       {loading && items.length === 0 ? (
         <View
           style={{
@@ -99,10 +113,19 @@ export const InlineAutocomplete = memo(function InlineAutocomplete({
             justifyContent: 'center',
           }}
         >
-          <ActivityIndicator color={colors.primary} />
+          <ActivityIndicator size="small" color={colors.primary} />
         </View>
       ) : showEmpty ? (
-        <View style={{ paddingHorizontal: 14, paddingVertical: 16 }}>{emptyState}</View>
+        <View
+          style={{
+            height: AUTOCOMPLETE_ROW_HEIGHT,
+            paddingHorizontal: 14,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {emptyState}
+        </View>
       ) : (
         <ScrollView
           ref={scrollRef}
@@ -111,24 +134,24 @@ export const InlineAutocomplete = memo(function InlineAutocomplete({
           showsVerticalScrollIndicator={items.length > AUTOCOMPLETE_VISIBLE_ROWS}
         >
           {items.map((item, index) =>
-            renderItem
-              ? renderItem({
-                  item,
-                  index,
-                  highlighted: index === highlightedIndex,
-                  query,
-                  onPress: () => onSelect(index),
-                })
-              : (
-                  <InlineAutocompleteRow
-                    key={`${item.value}-${index}`}
-                    option={item}
-                    query={query}
-                    highlighted={index === highlightedIndex}
-                    isLast={index === items.length - 1}
-                    onPress={() => onSelect(index)}
-                  />
-                ),
+            renderItem ? (
+              renderItem({
+                item,
+                index,
+                highlighted: index === highlightedIndex,
+                query,
+                onPress: () => onSelect(index),
+              })
+            ) : (
+              <InlineAutocompleteRow
+                key={`${item.value}-${index}`}
+                option={item}
+                query={query}
+                highlighted={index === highlightedIndex}
+                isLast={index === items.length - 1}
+                onPress={() => onSelect(index)}
+              />
+            ),
           )}
         </ScrollView>
       )}
@@ -136,20 +159,31 @@ export const InlineAutocomplete = memo(function InlineAutocomplete({
   );
 
   const shadow = Platform.select({
-    ios: {
-      shadowColor: '#000',
-      shadowOpacity: isDark ? 0.5 : 0.16,
-      shadowRadius: 20,
-      shadowOffset: { width: 0, height: 10 },
-    },
-    android: { elevation: 8 },
+    ios: docked
+      ? {
+          shadowColor: '#000',
+          shadowOpacity: isDark ? 0.4 : 0.12,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: -4 },
+        }
+      : {
+          shadowColor: '#000',
+          shadowOpacity: isDark ? 0.35 : 0.1,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: 4 },
+        },
+    android: { elevation: docked ? 6 : 4 },
     default: {},
   });
 
-  const entering = reducedMotion ? undefined : FadeIn.duration(duration.fast).easing(autocoreEase);
+  const entering = reducedMotion
+    ? undefined
+    : FadeIn.duration(AUTOCOMPLETE_APPEAR_MS).easing(autocoreEase);
   const exiting = reducedMotion
     ? undefined
-    : FadeOut.duration(duration.instant).easing(autocoreEase);
+    : FadeOut.duration(100).easing(autocoreEase);
+
+  const surface = isDark ? 'rgba(28, 28, 30, 0.94)' : 'rgba(255, 255, 255, 0.96)';
 
   return (
     <Animated.View
@@ -168,11 +202,9 @@ export const InlineAutocomplete = memo(function InlineAutocomplete({
     >
       {Platform.OS === 'ios' ? (
         <BlurView
-          intensity={isDark ? 42 : 72}
+          intensity={isDark ? 52 : 70}
           tint={isDark ? 'dark' : 'light'}
-          style={{
-            backgroundColor: isDark ? 'rgba(28, 28, 30, 0.86)' : 'rgba(255, 255, 255, 0.9)',
-          }}
+          style={{ backgroundColor: surface }}
         >
           {body}
         </BlurView>
@@ -186,7 +218,7 @@ export const InlineAutocomplete = memo(function InlineAutocomplete({
 /** Lightweight empty copy for callers that want a default. */
 export function InlineAutocompleteEmpty({ message = 'No matches' }: { message?: string }) {
   return (
-    <Text variant="caption" color="muted" style={{ textAlign: 'center' }}>
+    <Text variant="caption" color="muted" style={{ textAlign: 'center', fontSize: 13 }}>
       {message}
     </Text>
   );

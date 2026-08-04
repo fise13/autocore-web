@@ -24,6 +24,7 @@ import {
   Coins,
   Copy,
   Download,
+  Ellipsis,
   ExternalLink,
   FileStack,
   FileText,
@@ -91,6 +92,7 @@ export const GripVerticalIcon = createIcon(GripVertical, 'GripVerticalIcon');
 export const CheckIcon = createIcon(Check, 'CheckIcon');
 export const CopyIcon = createIcon(Copy, 'CopyIcon');
 export const CheckCircle2Icon = createIcon(CheckCircle2, 'CheckCircle2Icon');
+export const EllipsisIcon = createIcon(Ellipsis, 'EllipsisIcon');
 export const XIcon = createIcon(X, 'XIcon');
 export const Loader2Icon = createIcon(Loader2, 'Loader2Icon');
 export const BellIcon = createIcon(Bell, 'BellIcon');

@@ -17,11 +17,20 @@ export type AutocompleteOption = {
   meta?: AutocompleteOptionMeta;
 };
 
+/** High-level entity types for WO / shared forms. */
+export type AutocompleteType =
+  | 'customer'
+  | 'vehicle'
+  | 'engine'
+  | 'supplier'
+  | 'employee';
+
 export type AutocompleteSourceId =
   | 'engineCode'
   | 'manufacturer'
   | 'customer'
   | 'supplier'
+  | 'employee'
   | 'warehouse'
   | 'category'
   | 'previousValue'
@@ -47,6 +56,8 @@ export type AutocompleteAnchor = {
   height: number;
 };
 
+export type AutocompleteSessionStatus = 'idle' | 'loading' | 'ready';
+
 export type AutocompleteSession = {
   inputId: string;
   anchor?: AutocompleteAnchor;
@@ -55,6 +66,7 @@ export type AutocompleteSession = {
   suggestions: AutocompleteOption[];
   highlightedIndex: number;
   visible: boolean;
+  status: AutocompleteSessionStatus;
   replaceMode: AutocompleteReplaceMode;
   matchMode: 'prefix' | 'flexible';
   onChange: (value: string) => void;

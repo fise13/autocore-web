@@ -16,11 +16,13 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { hideNativeSplashOnce } from '@/lib/splash';
+import { tokens } from '@/theme/tokens';
 
 import {
   AuthBrandMark,
@@ -53,25 +55,25 @@ const SIGNATURE_BOTTOM_GAP = 36;
 const ENTER_LOCKUP_MS = 880;
 const ENTER_SIGNATURE_MS = 720;
 const ENTER_SIGNATURE_DELAY = 200;
+const ENTER_SCALE_DELAY = 40;
 
 const EXIT_DISSOLVE_MS = 480;
+const REDUCED_EXIT_MS = 180;
 
 /** Claude-paced rise: lockup travels, then crossfades into login mark. */
-const EXIT_RISE_MS = 1180;
-const EXIT_RISE_BG_DELAY = 320;
-const EXIT_RISE_BG_MS = 900;
+const EXIT_RISE_SETTLE_MS = 920;
+const EXIT_RISE_BG_DELAY = 240;
+const EXIT_RISE_BG_MS = 800;
 const EXIT_RISE_SIGNATURE_MS = 360;
-const EXIT_RISE_LOCKUP_FADE_MS = 320;
-const EXIT_RISE_LOCKUP_FADE_DELAY = EXIT_RISE_MS - EXIT_RISE_LOCKUP_FADE_MS;
+const EXIT_RISE_LOCKUP_FADE_MS = 280;
+const EXIT_RISE_LOCKUP_FADE_DELAY = 700;
 
 /** Total rise exit ceiling (bg delay + fade, lockup travel). */
 export const SPLASH_RISE_EXIT_MS =
-  Math.max(EXIT_RISE_MS, EXIT_RISE_BG_DELAY + EXIT_RISE_BG_MS) + 80;
+  Math.max(EXIT_RISE_SETTLE_MS, EXIT_RISE_BG_DELAY + EXIT_RISE_BG_MS) + 80;
 
 const enterEase = Easing.bezier(0.22, 1, 0.36, 1);
 const exitEase = Easing.bezier(0.4, 0, 0.2, 1);
-/** Soft decelerate — lockup settles into the header. */
-const riseEase = Easing.bezier(0.33, 1, 0.32, 1);
 
 export type SplashExitMode = 'dissolve' | 'rise';
 
@@ -122,7 +124,7 @@ export function AuthSplashSurface({
   const bgOpacity = useSharedValue(1);
   const lockupOpacity = useSharedValue(appear ? 0 : 1);
   const lockupY = useSharedValue(0);
-  const lockupScale = useSharedValue(1);
+  const lockupScale = useSharedValue(appear ? 0.96 : 1);
   const signatureOpacity = useSharedValue(appear ? 0 : 1);
 
   const reducedRef = useRef(false);
@@ -149,7 +151,7 @@ export function AuthSplashSurface({
     };
   }, []);
 
-  // Enter — soft fade (opacity only).
+  // Enter — soft fade with a quiet scale settle.
   useEffect(() => {
     if (exiting) return;
 
@@ -168,17 +170,25 @@ export function AuthSplashSurface({
       if (cancelled) return;
       bgOpacity.value = 1;
       lockupY.value = 0;
-      lockupScale.value = 1;
       if (reduced) {
+        lockupScale.value = 1;
         lockupOpacity.value = 1;
         signatureOpacity.value = 1;
         return;
       }
 
+      lockupScale.value = 0.96;
       lockupOpacity.value = 0;
       signatureOpacity.value = 0;
 
       lockupOpacity.value = withTiming(1, { duration: ENTER_LOCKUP_MS, easing: enterEase });
+      lockupScale.value = withDelay(
+        ENTER_SCALE_DELAY,
+        withSpring(1, {
+          ...tokens.motion.springs.settle,
+          overshootClamping: true,
+        }),
+      );
       signatureOpacity.value = withDelay(
         ENTER_SIGNATURE_DELAY,
         withTiming(1, { duration: ENTER_SIGNATURE_MS, easing: enterEase }),
@@ -217,18 +227,35 @@ export function AuthSplashSurface({
       finishExit();
     };
 
-    if (reducedRef.current) {
-      done();
-      return () => {
-        cancelled = true;
-      };
-    }
-
     cancelAnimation(bgOpacity);
     cancelAnimation(lockupOpacity);
     cancelAnimation(lockupY);
     cancelAnimation(lockupScale);
     cancelAnimation(signatureOpacity);
+
+    if (reducedRef.current) {
+      bgOpacity.value = withTiming(
+        0,
+        { duration: REDUCED_EXIT_MS, easing: exitEase },
+        (finished) => {
+          if (finished) runOnJS(done)();
+        },
+      );
+      lockupOpacity.value = withTiming(0, {
+        duration: REDUCED_EXIT_MS,
+        easing: exitEase,
+      });
+      signatureOpacity.value = withTiming(0, {
+        duration: Math.round(REDUCED_EXIT_MS * 0.75),
+        easing: exitEase,
+      });
+      return () => {
+        cancelled = true;
+        cancelAnimation(bgOpacity);
+        cancelAnimation(lockupOpacity);
+        cancelAnimation(signatureOpacity);
+      };
+    }
 
     const mode = exitModeRef.current;
 
@@ -246,11 +273,15 @@ export function AuthSplashSurface({
         easing: exitEase,
       });
 
-      // 2) Lockup rises + scales into the login brand slot.
-      lockupY.value = withTiming(riseY, { duration: EXIT_RISE_MS, easing: riseEase });
-      lockupScale.value = withTiming(SPLASH_TO_LOGIN_SCALE, {
-        duration: EXIT_RISE_MS,
-        easing: riseEase,
+      // 2) Lockup rises + scales into the login brand slot with a firm,
+      // critically-damped landing rather than a purely cinematic timing curve.
+      lockupY.value = withSpring(riseY, {
+        ...tokens.motion.springs.nav,
+        overshootClamping: true,
+      });
+      lockupScale.value = withSpring(SPLASH_TO_LOGIN_SCALE, {
+        ...tokens.motion.springs.nav,
+        overshootClamping: true,
       });
 
       // 3) Stage fades after the rise has started (login paints underneath).

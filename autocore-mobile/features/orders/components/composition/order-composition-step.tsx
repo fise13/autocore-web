@@ -82,7 +82,7 @@ export function OrderCompositionStep({
   }));
 
   return (
-    <View style={{ gap: 14 }}>
+    <View style={{ gap: wo.sectionGap }}>
       <ComposerTabBar tabs={tabs} activeTab={tab} onTabChange={onTabChange} />
 
       {composition.error ? (
@@ -93,8 +93,11 @@ export function OrderCompositionStep({
 
       <ComposerTabPanel tab={tab} direction={direction}>
         {tab === 'labor' ? (
-          <View style={{ gap: 14 }}>
-            <CompositionAddCard title="Add labor">
+          <View style={{ gap: wo.stackGap }}>
+            <CompositionAddCard
+              title="Add labor"
+              description="Hours or a fixed amount — assignee can be anyone on your team"
+            >
               <CompositionField label="Description" required>
                 <Input
                   placeholder="Engine replacement"
@@ -142,6 +145,7 @@ export function OrderCompositionStep({
                     <AutocompleteInput
                       placeholder="Employee or full name"
                       value={composition.laborDraft.assigneeName}
+                      type="employee"
                       fieldKey="assignee"
                       onValueChange={(value) =>
                         composition.patchLaborDraft({ assigneeName: value, assigneeId: '' })
@@ -180,7 +184,7 @@ export function OrderCompositionStep({
         ) : null}
 
         {tab === 'parts' ? (
-          <View style={{ gap: 14 }}>
+          <View style={{ gap: wo.stackGap }}>
             <CompositionAddCard
               title="Add part"
               description="From inventory or one-off — the price flows into the invoice and accounting"
@@ -256,14 +260,14 @@ export function OrderCompositionStep({
         ) : null}
 
         {tab === 'motors' && motorsEnabled ? (
-          <View style={{ gap: 14 }}>
+          <View style={{ gap: wo.stackGap }}>
             <CompositionAddCard title="Add motor">
               <CompositionField label="Motor serial">
                 <AutocompleteInput
                   placeholder="Motor serial · Tab ↹"
                   value={composition.motorSerial}
+                  type="engine"
                   fieldKey="motorSerial"
-                  source="engineCode"
                   onValueChange={composition.setMotorSerial}
                   options={composerOptions.motorSerialOptions}
                   matchMode="flexible"
@@ -313,7 +317,7 @@ export function OrderCompositionStep({
         ) : null}
 
         {tab === 'specific' && specificsEnabled && composition.quickSpecificCategories.length > 0 ? (
-          <View style={{ gap: 14 }}>
+          <View style={{ gap: wo.stackGap }}>
             <CompositionAddCard
               title="Quick line item"
               description="Alternator, starter, body parts — not tracked in inventory"

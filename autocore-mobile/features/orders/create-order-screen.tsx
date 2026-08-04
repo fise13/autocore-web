@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import {
@@ -38,18 +38,22 @@ import {
 } from './lib/composition-mappers';
 import type { ScanOrderResult } from '@/services/scan';
 import { useComposerTabState } from './animation/use-composer-tab-state';
+import {
+  FormListRow,
+  FormListSplitRow,
+  GroupedList,
+  GroupedSection,
+} from './components/create-order/grouped-form';
+import {
+  WizardStepHeader,
+  WizardStepTrail,
+} from './components/create-order/wizard-chrome';
 import { OrderCompositionStep } from './components/composition/order-composition-step';
 import { useOrderCompositionForm } from './hooks/use-order-composition-form';
 import {
   resolveInventoryUnitPrice,
   useWorkOrderComposerOptions,
 } from './hooks/use-work-order-composer-options';
-
-const STEPS = [
-  { id: 1, label: 'Client' },
-  { id: 2, label: 'Lines' },
-  { id: 3, label: 'Review' },
-] as const;
 
 /** Nav-bar text control — primary tint, 44pt hit, no custom chrome. */
 function SheetNavButton({
@@ -101,116 +105,6 @@ function SheetNavButton({
         </Text>
       )}
     </Pressable>
-  );
-}
-
-/** Quiet section title over a fill-only island (DL v3 — no icon header bars). */
-function FormSection({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <View style={{ gap: tokens.space.inline }}>
-      <Text variant="sectionLabel" color="muted" style={{ paddingHorizontal: tokens.space.micro }}>
-        {title}
-      </Text>
-      {children}
-    </View>
-  );
-}
-
-function FormCard({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
-  const { colors } = useTheme();
-  return (
-    <View
-      style={[
-        {
-          backgroundColor: colors.card,
-          borderRadius: tokens.radius.group,
-          overflow: 'hidden',
-          padding: tokens.space.stack + 2,
-          gap: tokens.space.stack,
-        },
-        style,
-      ]}
-    >
-      {children}
-    </View>
-  );
-}
-
-function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
-  return (
-    <View style={{ gap: tokens.space.micro + 2 }}>
-      <Text variant="caption1" color="muted" style={{ fontWeight: '600' }}>
-        {label}
-        {required ? ' *' : ''}
-      </Text>
-      {children}
-    </View>
-  );
-}
-
-/** Sentence-case step trail — tappable back, no web wizard chrome. */
-function StepTrail({
-  step,
-  onSelect,
-}: {
-  step: number;
-  onSelect: (step: number) => void;
-}) {
-  const { colors } = useTheme();
-
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexWrap: 'wrap',
-        gap: tokens.space.micro,
-        paddingVertical: tokens.space.micro,
-      }}
-    >
-      {STEPS.map((item, index) => {
-        const active = step === item.id;
-        const done = step > item.id;
-        const canJump = item.id < step;
-
-        return (
-          <View key={item.id} style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.space.micro }}>
-            {index > 0 ? (
-              <Text variant="caption1" color="muted" style={{ opacity: 0.55 }}>
-                ·
-              </Text>
-            ) : null}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={item.label}
-              accessibilityState={{ selected: active, disabled: !canJump && !active }}
-              disabled={!canJump}
-              hitSlop={8}
-              onPress={() => {
-                if (!canJump) return;
-                haptics.selection();
-                onSelect(item.id);
-              }}
-            >
-              <Text
-                variant="subheadline"
-                style={{
-                  fontWeight: active ? '600' : '500',
-                  color: active
-                    ? colors.foreground
-                    : done
-                      ? colors.primary
-                      : colors.mutedForeground,
-                }}
-              >
-                {item.label}
-              </Text>
-            </Pressable>
-          </View>
-        );
-      })}
-    </View>
   );
 }
 
@@ -574,17 +468,28 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
     }
   };
 
+  const linkedHint =
+    clientId.trim().length > 0
+      ? 'Linked customer'
+      : vehicleId.trim().length > 0
+        ? 'Linked vehicle'
+        : undefined;
+
   const renderStep = () => {
     if (step === 1) {
       return (
-        <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={{ gap: tokens.space.stack + 2 }}>
-          <FormSection title="Client">
-            <FormCard>
-              <Field label="Name" required>
+        <Animated.View
+          entering={FadeIn.duration(220)}
+          exiting={FadeOut.duration(160)}
+          style={{ gap: tokens.space.section }}
+        >
+          <GroupedSection title="Customer">
+            <GroupedList>
+              <FormListRow label="Name" required>
                 <AutocompleteInput
                   placeholder="John Smith"
                   value={clientName}
-                  source="customer"
+                  type="customer"
                   context={{ field: 'name' }}
                   onValueChange={(value) => {
                     setClientName(value);
@@ -596,12 +501,12 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
                     if (client) selectClient(client.id);
                   }}
                 />
-              </Field>
-              <Field label="Phone" required>
+              </FormListRow>
+              <FormListRow label="Phone" required last hint={linkedHint}>
                 <AutocompleteInput
                   placeholder="+1 555 234 5678"
                   value={clientPhone}
-                  source="customer"
+                  type="customer"
                   context={{ field: 'phone' }}
                   onValueChange={(value) => {
                     setClientPhone(value);
@@ -615,59 +520,57 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
                     if (client) selectClient(client.id);
                   }}
                 />
-              </Field>
-            </FormCard>
-          </FormSection>
+              </FormListRow>
+            </GroupedList>
+          </GroupedSection>
 
-          <FormSection title="Vehicle">
-            <FormCard>
-              <View style={{ flexDirection: 'row', gap: tokens.space.stack }}>
-                <View style={{ flex: 1 }}>
-                  <Field label="Make">
-                    <AutocompleteInput
-                      placeholder="BMW"
-                      value={vehicleMake}
-                      source="manufacturer"
-                      context={{ field: 'make' }}
-                      onValueChange={(value) => {
-                        detachVehicleLink();
-                        const previousMake = vehicleMake.trim();
-                        const nextMake = value.trim();
-                        setVehicleMake(value);
-                        if (!nextMake) {
-                          if (vehicleModel.trim()) setVehicleModel('');
-                          return;
-                        }
-                        if (previousMake.toLowerCase() === nextMake.toLowerCase()) return;
-                        const known = composerOptions.vehicleMakeOptionsList.some(
-                          (option) => option.value.toLowerCase() === nextMake.toLowerCase(),
-                        );
-                        if (known && vehicleModel.trim()) setVehicleModel('');
-                      }}
-                    />
-                  </Field>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Field label="Model">
-                    <AutocompleteInput
-                      placeholder={vehicleMake.trim() ? '320d F30' : 'Select make first'}
-                      value={vehicleModel}
-                      source="manufacturer"
-                      context={{ field: 'model', make: vehicleMake }}
-                      onValueChange={(value) => {
-                        detachVehicleLink();
-                        setVehicleModel(value);
-                      }}
-                      editable={Boolean(vehicleMake.trim())}
-                    />
-                  </Field>
-                </View>
-              </View>
-              <Field label="License plate">
+          <GroupedSection title="Vehicle">
+            <GroupedList>
+              <FormListSplitRow
+                leftLabel="Make"
+                rightLabel="Model"
+                left={
+                  <AutocompleteInput
+                    placeholder="BMW"
+                    value={vehicleMake}
+                    type="vehicle"
+                    context={{ field: 'make' }}
+                    onValueChange={(value) => {
+                      detachVehicleLink();
+                      const previousMake = vehicleMake.trim();
+                      const nextMake = value.trim();
+                      setVehicleMake(value);
+                      if (!nextMake) {
+                        if (vehicleModel.trim()) setVehicleModel('');
+                        return;
+                      }
+                      if (previousMake.toLowerCase() === nextMake.toLowerCase()) return;
+                      const known = composerOptions.vehicleMakeOptionsList.some(
+                        (option) => option.value.toLowerCase() === nextMake.toLowerCase(),
+                      );
+                      if (known && vehicleModel.trim()) setVehicleModel('');
+                    }}
+                  />
+                }
+                right={
+                  <AutocompleteInput
+                    placeholder={vehicleMake.trim() ? '320d F30' : 'Make first'}
+                    value={vehicleModel}
+                    type="vehicle"
+                    context={{ field: 'model', make: vehicleMake }}
+                    onValueChange={(value) => {
+                      detachVehicleLink();
+                      setVehicleModel(value);
+                    }}
+                    editable={Boolean(vehicleMake.trim())}
+                  />
+                }
+              />
+              <FormListRow label="License plate">
                 <AutocompleteInput
                   placeholder="ABC 1234"
                   value={licensePlate}
-                  source="previousValue"
+                  type="vehicle"
                   fieldKey="licensePlate"
                   onValueChange={(value) => {
                     detachVehicleLink();
@@ -683,12 +586,12 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
                     if (vehicle) selectVehicle(vehicle.id);
                   }}
                 />
-              </Field>
-              <Field label="VIN">
+              </FormListRow>
+              <FormListRow label="VIN">
                 <AutocompleteInput
                   placeholder="WBA3B1C50EK123456"
                   value={vin}
-                  source="previousValue"
+                  type="vehicle"
                   fieldKey="vin"
                   onValueChange={(value) => {
                     detachVehicleLink();
@@ -704,20 +607,25 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
                     if (vehicle) selectVehicle(vehicle.id);
                   }}
                 />
-              </Field>
-              <Field label="Mileage, mi">
-                <Input placeholder="142,000" value={mileage} onChangeText={setMileage} keyboardType="number-pad" />
-              </Field>
-              <Field label="Comment">
+              </FormListRow>
+              <FormListRow label="Mileage, mi">
+                <Input
+                  placeholder="142,000"
+                  value={mileage}
+                  onChangeText={setMileage}
+                  keyboardType="number-pad"
+                />
+              </FormListRow>
+              <FormListRow label="Comment" last>
                 <Input
                   placeholder="Knocking noise on cold start…"
                   value={comment}
                   onChangeText={setComment}
                   multiline
                 />
-              </Field>
-            </FormCard>
-          </FormSection>
+              </FormListRow>
+            </GroupedList>
+          </GroupedSection>
         </Animated.View>
       );
     }
@@ -774,9 +682,13 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
     }
 
     return (
-      <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={{ gap: tokens.space.stack + 2 }}>
-        <FormSection title="Summary">
-          <FormCard style={{ gap: 0, paddingVertical: tokens.space.micro }}>
+      <Animated.View
+        entering={FadeIn.duration(220)}
+        exiting={FadeOut.duration(160)}
+        style={{ gap: tokens.space.section }}
+      >
+        <GroupedSection title="Summary">
+          <GroupedList>
             <SummaryRow label="Client" value={clientName || '—'} />
             <SummaryRow label="Phone" value={clientPhone || '—'} />
             <SummaryRow label="Vehicle" value={vehicleLabel} />
@@ -785,21 +697,38 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
             <SummaryRow label="Parts" value={String(composition.regularPartLines.length)} />
             <SummaryRow label="Catalog" value={String(composition.specificPartLines.length)} />
             <SummaryRow label="Motors" value={String(composition.motorLines.length)} last />
-          </FormCard>
-        </FormSection>
+          </GroupedList>
+        </GroupedSection>
 
-        <FormSection title="Total">
-          <FormCard>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <Text variant="body" color="muted">
+        <GroupedSection title="Total">
+          <GroupedList>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'baseline',
+                paddingHorizontal: tokens.space.stack + 2,
+                paddingVertical: tokens.space.stack + 4,
+                minHeight: 64,
+              }}
+            >
+              <Text variant="body" color="muted" style={{ fontSize: 17 }}>
                 Grand total
               </Text>
-              <Text variant="metric" style={{ fontVariant: ['tabular-nums'] }}>
+              <Text
+                variant="metric"
+                style={{
+                  fontSize: 28,
+                  fontWeight: '700',
+                  letterSpacing: -0.6,
+                  fontVariant: ['tabular-nums'],
+                }}
+              >
                 {formatPrice(grandTotal)}
               </Text>
             </View>
-          </FormCard>
-        </FormSection>
+          </GroupedList>
+        </GroupedSection>
       </Animated.View>
     );
   };
@@ -841,11 +770,12 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
   const stackHeader = (
     <Stack.Screen
       options={{
-        title: screenTitle,
+        title: '',
         headerShown: true,
         headerTintColor: colors.primary,
         headerTitleStyle: { color: colors.foreground },
         headerStyle: { backgroundColor: colors.background },
+        headerShadowVisible: false,
         headerBlurEffect: isDark ? 'systemChromeMaterialDark' : 'systemChromeMaterialLight',
         headerLeft,
         headerRight,
@@ -896,13 +826,14 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
       contentContainerStyle={{
         paddingHorizontal: tokens.space.screenX,
         paddingTop: tokens.space.stack,
-        paddingBottom: tokens.space.section,
-        gap: tokens.space.stack + 2,
+        paddingBottom: tokens.space.section + 24,
+        gap: tokens.space.section,
       }}
     >
       {stackHeader}
 
-      <StepTrail step={step} onSelect={setStep} />
+      <WizardStepHeader title={screenTitle} step={step} />
+      <WizardStepTrail step={step} onSelect={setStep} />
       {renderStep()}
     </KeyboardFormShell>
   );
@@ -915,16 +846,29 @@ function SummaryRow({ label, value, last }: { label: string; value: string; last
       style={{
         flexDirection: 'row',
         justifyContent: 'space-between',
+        alignItems: 'center',
         gap: tokens.space.stack,
-        paddingVertical: tokens.space.stack,
+        paddingHorizontal: tokens.space.stack + 2,
+        paddingVertical: 14,
+        minHeight: tokens.control.hitTarget,
         borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth,
         borderBottomColor: colors.border,
       }}
     >
-      <Text variant="body" color="muted">
+      <Text variant="body" color="muted" style={{ fontSize: 16 }}>
         {label}
       </Text>
-      <Text variant="body" style={{ fontWeight: '600', flex: 1, textAlign: 'right' }}>
+      <Text
+        variant="body"
+        style={{
+          fontWeight: '500',
+          flex: 1,
+          textAlign: 'right',
+          fontSize: 16,
+          letterSpacing: -0.2,
+        }}
+        numberOfLines={2}
+      >
         {value}
       </Text>
     </View>

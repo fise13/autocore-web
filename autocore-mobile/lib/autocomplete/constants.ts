@@ -1,7 +1,9 @@
-export const AUTOCOMPLETE_MAX_SUGGESTIONS = 8;
-export const AUTOCOMPLETE_ROW_HEIGHT = 58;
-export const AUTOCOMPLETE_DEBOUNCE_MS = 90;
+export const AUTOCOMPLETE_MAX_SUGGESTIONS = 5;
+export const AUTOCOMPLETE_ROW_HEIGHT = 44;
+export const AUTOCOMPLETE_DEBOUNCE_MS = 250;
 export const AUTOCOMPLETE_BLUR_DISMISS_MS = 250;
-export const AUTOCOMPLETE_PANEL_RADIUS = 16;
+export const AUTOCOMPLETE_PANEL_RADIUS = 12;
 export const AUTOCOMPLETE_PANEL_INSET = 12;
 export const AUTOCOMPLETE_VISIBLE_ROWS = 5;
+/** Appear animation: fade + scale 0.98 → 1.0 */
+export const AUTOCOMPLETE_APPEAR_MS = 170;

@@ -58,7 +58,7 @@ import {
   MOTOR_GRID_EMPTY_ROWS_EXPAND,
   MOTOR_GRID_EMPTY_ROWS_THRESHOLD,
 } from "@/lib/motor-grid-layout";
-import { MotorRepository, isMotorRowEmpty } from "@/infrastructure/firestore/motor-repository";
+import { MotorRepository } from "@/infrastructure/firestore/motor-repository";
 import { BrandEntity, CatalogRepository, EngineEntity } from "@/infrastructure/firestore/catalog-repository";
 import { resolveGridColumnAutocomplete, pickColumnAutocompleteMatch, filterColumnSuggestions } from "@/lib/grid/grid-column-autocomplete";
 import { gridPalette } from "@/lib/grid/grid-palette";
@@ -245,49 +245,59 @@ function reconcileRowsWithRemote(
   dirtyRowIds: Set<string>,
   defaults?: MotorRowDefaults,
 ): MotorGridRow[] {
-  const currentSavedById = new Map(
-    currentRows
-      .filter((row): row is MotorGridRow & { rowKind: "saved" } => row.rowKind === "saved")
-      .map((row) => [row.id, row]),
-  );
-
-  const seenIds = new Set<string>();
-  const nextSaved: MotorGridRow[] = [];
+  const incomingById = new Map<string, MotorEntity>();
+  const uniqueIncoming: MotorEntity[] = [];
   for (const motor of incomingMotors) {
-    if (seenIds.has(motor.id)) continue;
-    seenIds.add(motor.id);
-    const rowId = `saved-${motor.id}`;
-    if (dirtyRowIds.has(rowId)) {
-      const preserved = currentSavedById.get(motor.id);
-      if (preserved) {
-        nextSaved.push(preserved);
-        continue;
-      }
-    }
-    nextSaved.push({
-      ...motor,
-      rowKind: "saved",
-      rowId,
-    });
+    if (incomingById.has(motor.id)) continue;
+    incomingById.set(motor.id, motor);
+    uniqueIncoming.push(motor);
   }
 
-  const dirtyDraftRows = currentRows.filter((row) => {
-    if (row.rowKind !== "empty" || !dirtyRowIds.has(row.rowId)) return false;
+  const claimedIds = new Set<string>();
+  const nextRows = currentRows.map<MotorGridRow>((row) => {
+    if (row.rowKind === "saved") {
+      const incoming = incomingById.get(row.id);
+      if (!incoming) return createEmptyRow(companyId, defaults);
+      claimedIds.add(incoming.id);
+      return dirtyRowIds.has(row.rowId)
+        ? row
+        : { ...incoming, rowKind: "saved", rowId: `saved-${incoming.id}` };
+    }
+
+    if (!dirtyRowIds.has(row.rowId)) return row;
     const serial = row.serialCode.trim().toLowerCase();
-    if (!serial) return true;
-    return !nextSaved.some((saved) => saved.serialCode.trim().toLowerCase() === serial);
+    if (!serial) return row;
+    const created = uniqueIncoming.find(
+      (motor) =>
+        !claimedIds.has(motor.id) &&
+        motor.serialCode.trim().toLowerCase() === serial,
+    );
+    if (!created) return row;
+    claimedIds.add(created.id);
+    return { ...created, rowKind: "saved", rowId: `saved-${created.id}` };
   });
 
-  const previousSavedCount = currentSavedById.size;
-  const savedDelta = nextSaved.length - previousSavedCount;
-  // Shrink when filtered/remote set loses saved rows; keep grown empty tail otherwise.
-  const targetCount = Math.max(
-    nextSaved.length + dirtyDraftRows.length,
-    currentRows.length + Math.min(0, savedDelta),
-    MOTOR_GRID_EMPTY_ROWS_BASE,
-  );
-  const nextRows: MotorGridRow[] = [...nextSaved, ...dirtyDraftRows];
-  while (nextRows.length < targetCount) {
+  // Keep existing visual row positions stable. New remote rows occupy the first
+  // unused blank slot instead of forcing every saved row to the top.
+  for (const motor of uniqueIncoming) {
+    if (claimedIds.has(motor.id)) continue;
+    const emptyIndex = nextRows.findIndex(
+      (row) => row.rowKind === "empty" && !dirtyRowIds.has(row.rowId),
+    );
+    const savedRow: MotorGridRow = {
+      ...motor,
+      rowKind: "saved",
+      rowId: `saved-${motor.id}`,
+    };
+    if (emptyIndex >= 0) {
+      nextRows[emptyIndex] = savedRow;
+    } else {
+      nextRows.push(savedRow);
+    }
+    claimedIds.add(motor.id);
+  }
+
+  while (nextRows.length < MOTOR_GRID_EMPTY_ROWS_BASE) {
     nextRows.push(createEmptyRow(companyId, defaults));
   }
   return nextRows;
@@ -393,6 +403,10 @@ export function MotorsExcelGrid({
   }, [brands, engines]);
 
   const [rows, setRows] = useState<MotorGridRow[]>(() => buildGridRows(motors, companyId, undefined, rowDefaults));
+  const rowsRef = useRef(rows);
+  useEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
   const [selection, setSelection] = useState<GridSelectionState>(initialSelection);
   const selectionRef = useRef(selection);
   useEffect(() => {
@@ -413,9 +427,17 @@ export function MotorsExcelGrid({
     const companyChanged = companyIdRef.current !== companyId;
     companyIdRef.current = companyId;
     motorsRef.current = motors;
-    setRows((current) =>
-      reconcileRowsWithRemote(current, motors, companyId, dirtyRowsRef.current, rowDefaults),
-    );
+    setRows((current) => {
+      const next = reconcileRowsWithRemote(
+        current,
+        motors,
+        companyId,
+        dirtyRowsRef.current,
+        rowDefaults,
+      );
+      rowsRef.current = next;
+      return next;
+    });
   }, [companyId, motors, rowDefaults]);
 
   useEffect(() => {
@@ -549,7 +571,7 @@ export function MotorsExcelGrid({
   }, [scheduleDirtyStatus]);
 
   const setCell = useCallback((cell: GridCellAddress, newValue: string, options?: { trackUndo?: boolean; markDirty?: boolean }) => {
-    setRows((current) => {
+    const applyToRows = (current: MotorGridRow[]) => {
       const row = current[cell.row];
       if (!row || !isEditableColumn(cell.column, layoutColumns)) return current;
       const oldValue = valueAtCell(row, cell.column, layoutColumns);
@@ -573,7 +595,12 @@ export function MotorsExcelGrid({
         markDirty(updatedRow.rowId);
       }
       return next;
-    });
+    };
+
+    const nextRows = applyToRows(rowsRef.current);
+    if (nextRows === rowsRef.current) return;
+    rowsRef.current = nextRows;
+    setRows(nextRows);
   }, [layoutColumns, markDirty]);
 
   const applyMutation = useCallback((mutation: GridMutation, reverse: boolean) => {
@@ -626,9 +653,11 @@ export function MotorsExcelGrid({
     setSaveError(null);
 
     try {
-      const snapshotRows = rows;
+      // rowsRef is updated synchronously by setCell/flushEditor — never use stale React state here.
+      const snapshotRows = rowsRef.current;
       const baselineById = new Map(motorsRef.current.map((motor) => [motor.id, motor]));
       const dirtyRowIds = [...dirtyRowsRef.current];
+      const resolvedDirtyIds = new Set<string>();
       const createTasks: Array<() => Promise<{ rowId: string; motorId: string; row: MotorGridRow } | null>> = [];
       const parallelTasks: Array<Promise<void>> = [];
       const catalogRows: MotorGridRow[] = [];
@@ -639,7 +668,10 @@ export function MotorsExcelGrid({
         const row = snapshotRows.find((item) => item.rowId === rowId);
         if (!row) continue;
         if (row.rowKind === "empty") {
-          if (!hasSaveableContent(row)) continue;
+          if (!hasSaveableContent(row)) {
+            resolvedDirtyIds.add(rowId);
+            continue;
+          }
           const emptyRow = row as MotorGridRow & { rowKind: "empty" };
           catalogRows.push(emptyRow);
           createTasks.push(async () => {
@@ -676,7 +708,9 @@ export function MotorsExcelGrid({
           });
           continue;
         }
-        if (isMotorRowEmpty(row)) {
+        // Match create/keep rules — brand/engine-only rows must not be soft-deleted.
+        if (!hasSaveableContent(row)) {
+          resolvedDirtyIds.add(rowId);
           parallelTasks.push(
             softDeleteMotorUseCase(repository, uid, row.id, {
               companyId,
@@ -708,8 +742,12 @@ export function MotorsExcelGrid({
           (baseline.engineCode ?? "") !== (row.engineCode ?? "") ||
           resolveItemLocationLabel(baseline) !== resolveItemLocationLabel(row) ||
           (baseline.arrivalDate?.getTime() ?? 0) !== (row.arrivalDate?.getTime() ?? 0);
-        if (!changed) continue;
+        if (!changed) {
+          resolvedDirtyIds.add(rowId);
+          continue;
+        }
         catalogRows.push(row);
+        resolvedDirtyIds.add(rowId);
         parallelTasks.push(
           (async () => {
             const locationText = resolveItemLocationLabel(row);
@@ -743,14 +781,12 @@ export function MotorsExcelGrid({
       }
 
       const rowReplacements = new Map<string, MotorGridRow>();
-      let createdCount = 0;
       for (const createTask of createTasks) {
         const outcome = await createTask();
         if (!outcome) continue;
         if (outcome.row.rowKind !== "empty") continue;
         const emptyRow = outcome.row as MotorGridRow & { rowKind: "empty" };
-        createdCount += 1;
-        dirtyRowsRef.current.delete(outcome.rowId);
+        resolvedDirtyIds.add(outcome.rowId);
         rowReplacements.set(outcome.rowId, buildSavedMotorRowFromCreate(emptyRow, outcome.motorId, companyId));
       }
       await Promise.all(parallelTasks);
@@ -769,14 +805,20 @@ export function MotorsExcelGrid({
       }
 
       if (rowReplacements.size > 0) {
-        setRows((current) =>
-          current.map((currentRow) => rowReplacements.get(currentRow.rowId) ?? currentRow),
+        const nextRows = rowsRef.current.map(
+          (currentRow) => rowReplacements.get(currentRow.rowId) ?? currentRow,
         );
+        rowsRef.current = nextRows;
+        setRows(nextRows);
       }
 
-      const pushedRowIds = [...dirtyRowsRef.current].map((rowId) => rowReplacements.get(rowId)?.rowId ?? rowId);
-      dirtyRowsRef.current.clear();
-      localSaveAckRef.current.clear();
+      const pushedRowIds = [...resolvedDirtyIds].map(
+        (rowId) => rowReplacements.get(rowId)?.rowId ?? rowId,
+      );
+      for (const rowId of resolvedDirtyIds) {
+        dirtyRowsRef.current.delete(rowId);
+        localSaveAckRef.current.delete(rowId);
+      }
       setDirtyVersion((current) => current + 1);
       setSaveStatus("saved");
       if (pushedRowIds.length > 0) {
@@ -790,7 +832,7 @@ export function MotorsExcelGrid({
       setSaveError(message);
       throw new Error(message);
     }
-  }, [brands, canEdit, catalogRepository, companyId, engines, flushEditor, repository, rows, setSaveError, setSaveStatus, uid]);
+  }, [brands, canEdit, catalogRepository, companyId, engines, flushEditor, repository, setSaveError, setSaveStatus, uid]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -1014,28 +1056,28 @@ export function MotorsExcelGrid({
     (label: string, writes: Array<{ row: number; column: number; value: string }>) => {
       if (!canEdit || writes.length === 0) return;
       const mutations: GridMutation[] = [];
-      setRows((current) => {
-        const next = [...current];
-        for (const write of writes) {
-          if (!isEditableColumn(write.column, layoutColumns)) continue;
-          const rowRef = next[write.row];
-          if (!rowRef) continue;
-          const oldValue = valueAtCell(rowRef, write.column, layoutColumns);
-          if (oldValue === write.value) continue;
-          next[write.row] = applyCellValue(rowRef, write.column, write.value, layoutColumns);
-          localSaveAckRef.current.delete(next[write.row].rowId);
-          dirtyRowsRef.current.add(next[write.row].rowId);
-          mutations.push({
-            address: { row: write.row, column: write.column },
-            oldValue,
-            newValue: write.value,
-          });
-        }
-        if (mutations.length > 0) {
-          scheduleDirtyStatus();
-        }
-        return next;
-      });
+      const current = rowsRef.current;
+      const next = [...current];
+      for (const write of writes) {
+        if (!isEditableColumn(write.column, layoutColumns)) continue;
+        const rowRef = next[write.row];
+        if (!rowRef) continue;
+        const oldValue = valueAtCell(rowRef, write.column, layoutColumns);
+        if (oldValue === write.value) continue;
+        next[write.row] = applyCellValue(rowRef, write.column, write.value, layoutColumns);
+        localSaveAckRef.current.delete(next[write.row].rowId);
+        dirtyRowsRef.current.add(next[write.row].rowId);
+        mutations.push({
+          address: { row: write.row, column: write.column },
+          oldValue,
+          newValue: write.value,
+        });
+      }
+      if (mutations.length > 0) {
+        scheduleDirtyStatus();
+        rowsRef.current = next;
+        setRows(next);
+      }
       commandBusRef.current.commit(label, mutations);
     },
     [canEdit, layoutColumns, scheduleDirtyStatus],

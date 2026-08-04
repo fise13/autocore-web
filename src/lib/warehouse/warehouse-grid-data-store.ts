@@ -142,34 +142,55 @@ export function reconcileWarehouseRowsWithRemote(
   incomingItems: InventoryItem[],
   dirtyRowIds: Set<string>,
 ): WarehouseGridRow[] {
-  const currentSavedById = new Map(
-    currentRows
-      .filter((row): row is WarehouseGridRow & { rowKind: "saved" } => row.rowKind === "saved")
-      .map((row) => [row.id, row]),
-  );
-
-  const saved: WarehouseGridRow[] = [];
-  const seenItemIds = new Set<string>();
+  const incomingById = new Map<string, InventoryItem>();
+  const uniqueIncoming: InventoryItem[] = [];
   for (const item of incomingItems) {
-    if (seenItemIds.has(item.id)) continue;
-    seenItemIds.add(item.id);
-    const rowId = `saved-${item.id}`;
-    if (dirtyRowIds.has(rowId)) {
-      const preserved = currentSavedById.get(item.id);
-      if (preserved) {
-        saved.push(preserved);
-        continue;
-      }
-    }
-    saved.push({ ...item, rowKind: "saved", rowId });
+    if (incomingById.has(item.id)) continue;
+    incomingById.set(item.id, item);
+    uniqueIncoming.push(item);
   }
 
-  const dirtyDraftRows = currentRows.filter(
-    (row) => row.rowKind === "empty" && dirtyRowIds.has(row.rowId),
-  );
-  const targetCount = Math.max(currentRows.length, saved.length + dirtyDraftRows.length, 30);
-  const nextRows: WarehouseGridRow[] = [...saved, ...dirtyDraftRows];
-  while (nextRows.length < targetCount) {
+  const claimedIds = new Set<string>();
+  const nextRows = currentRows.map<WarehouseGridRow>((row) => {
+    if (row.rowKind === "saved") {
+      const incoming = incomingById.get(row.id);
+      if (!incoming) return createEmptyWarehouseRow();
+      claimedIds.add(incoming.id);
+      return dirtyRowIds.has(row.rowId)
+        ? row
+        : { ...incoming, rowKind: "saved", rowId: `saved-${incoming.id}` };
+    }
+
+    if (!dirtyRowIds.has(row.rowId)) return row;
+    const sku = row.draft.sku.trim().toLowerCase();
+    if (!sku) return row;
+    const created = uniqueIncoming.find(
+      (item) => !claimedIds.has(item.id) && item.sku.trim().toLowerCase() === sku,
+    );
+    if (!created) return row;
+    claimedIds.add(created.id);
+    return { ...created, rowKind: "saved", rowId: `saved-${created.id}` };
+  });
+
+  for (const item of uniqueIncoming) {
+    if (claimedIds.has(item.id)) continue;
+    const emptyIndex = nextRows.findIndex(
+      (row) => row.rowKind === "empty" && !dirtyRowIds.has(row.rowId),
+    );
+    const savedRow: WarehouseGridRow = {
+      ...item,
+      rowKind: "saved",
+      rowId: `saved-${item.id}`,
+    };
+    if (emptyIndex >= 0) {
+      nextRows[emptyIndex] = savedRow;
+    } else {
+      nextRows.push(savedRow);
+    }
+    claimedIds.add(item.id);
+  }
+
+  while (nextRows.length < 30) {
     nextRows.push(createEmptyWarehouseRow());
   }
   return nextRows;

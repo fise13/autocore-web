@@ -2,10 +2,18 @@ import { useCallback, useId, useMemo } from 'react';
 import type { TextInputProps } from 'react-native';
 
 import { useAutocompleteContext } from '@/providers/autocomplete-provider';
-import type { AutocompleteConfig, AutocompleteOption } from '@/lib/autocomplete/types';
+import { resolveAutocompleteType } from '@/lib/autocomplete/resolve-type';
+import type {
+  AutocompleteConfig,
+  AutocompleteOption,
+  AutocompleteSourceId,
+  AutocompleteType,
+} from '@/lib/autocomplete/types';
 import { getNativeInputProps } from '@/lib/autocomplete/native-input-props';
 
-type UseAutocompleteArgs = AutocompleteConfig & {
+type UseAutocompleteArgs = Omit<AutocompleteConfig, 'source'> & {
+  type?: AutocompleteType;
+  source?: AutocompleteSourceId;
   value: string;
   onValueChange: (value: string) => void;
   onOptionSelect?: (value: string) => void;
@@ -15,16 +23,47 @@ type UseAutocompleteArgs = AutocompleteConfig & {
 };
 
 export function useAutocomplete({
+  type,
+  source: sourceProp,
   value,
   onValueChange,
   onOptionSelect,
   options,
   replaceMode = 'full',
   matchMode = 'flexible',
-  ...config
+  fieldKey: fieldKeyProp,
+  context,
+  debounceMs,
+  minQueryLength,
 }: UseAutocompleteArgs) {
   const inputId = useId();
   const ctx = useAutocompleteContext();
+
+  const resolved = useMemo(
+    () => resolveAutocompleteType(type, sourceProp, context, fieldKeyProp),
+    [context, fieldKeyProp, sourceProp, type],
+  );
+
+  const config = useMemo<AutocompleteConfig>(
+    () => ({
+      source: resolved.source,
+      fieldKey: resolved.fieldKey,
+      context,
+      debounceMs,
+      minQueryLength,
+      replaceMode,
+      matchMode,
+    }),
+    [
+      context,
+      debounceMs,
+      matchMode,
+      minQueryLength,
+      replaceMode,
+      resolved.fieldKey,
+      resolved.source,
+    ],
+  );
 
   const nativeProps = useMemo(
     () => getNativeInputProps(config.source, config.context),
@@ -100,6 +139,7 @@ export function useAutocomplete({
   return {
     inputId,
     setAnchor,
+    isActive: ctx.activeInputId === inputId,
     inputProps: {
       ...nativeProps,
       onFocus,
@@ -108,7 +148,6 @@ export function useAutocomplete({
       onSubmitEditing,
       onKeyPress,
     } satisfies Partial<TextInputProps>,
-    isActive: ctx.activeInputId === inputId,
   };
 }
 

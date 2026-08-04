@@ -5,11 +5,11 @@ import Animated, {
   interpolate,
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 
 import { useReducedMotion } from '@/hooks';
-import { autocoreEase, duration } from '@/theme';
+import { spring } from '@/theme';
 
 import { AUTH_HERO_STACK_GAP } from './auth-button-metrics';
 
@@ -35,9 +35,9 @@ export function AuthSocialCluster({ collapsed, children, style }: AuthSocialClus
       progress.value = collapsed ? 0 : 1;
       return;
     }
-    progress.value = withTiming(collapsed ? 0 : 1, {
-      duration: collapsed ? duration.medium : duration.slow,
-      easing: autocoreEase,
+    progress.value = withSpring(collapsed ? 0 : 1, {
+      ...spring.settle,
+      overshootClamping: true,
     });
   }, [collapsed, progress, reducedMotion]);
 

@@ -170,68 +170,66 @@ export function buildSavedSpecificRowFromUpsert(
   };
 }
 
-function emptyRowConflictsWithSaved(
-  row: SpecificGridRow & { rowKind: "empty" },
-  saved: SpecificGridRow[],
-): boolean {
-  return saved.some(
-    (savedRow) => savedRow.rowKind === "saved" && savedRow.rowIndex === row.rowIndex,
-  );
-}
-
 export function reconcileSpecificRowsWithRemote(
   currentRows: SpecificGridRow[],
   incomingRecords: SpecificRecordEntity[],
   dirtyRowIds: Set<string>,
 ): SpecificGridRow[] {
-  const currentSavedById = new Map(
-    currentRows
-      .filter((row): row is SpecificGridRow & { rowKind: "saved" } => row.rowKind === "saved")
-      .map((row) => [row.id, row]),
-  );
-
-  const saved: SpecificGridRow[] = [];
-  const seenRecordIds = new Set<string>();
+  const incomingById = new Map<string, SpecificRecordEntity>();
+  const uniqueIncoming: SpecificRecordEntity[] = [];
   for (const record of incomingRecords) {
-    if (seenRecordIds.has(record.id)) continue;
-    seenRecordIds.add(record.id);
-    const rowId = `saved-${record.id}`;
-    if (dirtyRowIds.has(rowId)) {
-      const preserved = currentSavedById.get(record.id);
-      if (preserved) {
-        saved.push(preserved);
-        continue;
-      }
+    if (incomingById.has(record.id)) continue;
+    incomingById.set(record.id, record);
+    uniqueIncoming.push(record);
+  }
+
+  const claimedIds = new Set<string>();
+  const nextRows = currentRows.map<SpecificGridRow>((row) => {
+    if (row.rowKind === "saved") {
+      const incoming = incomingById.get(row.id);
+      if (!incoming) return createEmptySpecificRow(row.rowIndex);
+      claimedIds.add(incoming.id);
+      return dirtyRowIds.has(row.rowId)
+        ? row
+        : { ...incoming, rowKind: "saved", rowId: `saved-${incoming.id}` };
     }
-    saved.push({
+
+    if (!dirtyRowIds.has(row.rowId)) return row;
+    const created = uniqueIncoming.find(
+      (record) => !claimedIds.has(record.id) && record.rowIndex === row.rowIndex,
+    );
+    if (!created) return row;
+    claimedIds.add(created.id);
+    return { ...created, rowKind: "saved", rowId: `saved-${created.id}` };
+  });
+
+  for (const record of uniqueIncoming) {
+    if (claimedIds.has(record.id)) continue;
+    let emptyIndex = nextRows.findIndex(
+      (row) =>
+        row.rowKind === "empty" &&
+        !dirtyRowIds.has(row.rowId) &&
+        row.rowIndex === record.rowIndex,
+    );
+    if (emptyIndex < 0) {
+      emptyIndex = nextRows.findIndex(
+        (row) => row.rowKind === "empty" && !dirtyRowIds.has(row.rowId),
+      );
+    }
+    const savedRow: SpecificGridRow = {
       ...record,
       rowKind: "saved",
-      rowId,
-    });
+      rowId: `saved-${record.id}`,
+    };
+    if (emptyIndex >= 0) {
+      nextRows[emptyIndex] = savedRow;
+    } else {
+      nextRows.push(savedRow);
+    }
+    claimedIds.add(record.id);
   }
 
-  const dirtyDraftRows = currentRows.filter((row) => {
-    if (row.rowKind !== "empty" || !dirtyRowIds.has(row.rowId)) return false;
-    return !emptyRowConflictsWithSaved(row, saved);
-  });
-  const preservedEmptyRows = currentRows.filter((row) => {
-    if (row.rowKind !== "empty" || dirtyRowIds.has(row.rowId)) return false;
-    return !emptyRowConflictsWithSaved(row, saved);
-  });
-
-  const previousSavedCount = currentSavedById.size;
-  const savedDelta = saved.length - previousSavedCount;
-  const targetCount = Math.max(
-    saved.length + dirtyDraftRows.length,
-    currentRows.length + Math.min(0, savedDelta),
-    40,
-  );
-  const nextRows: SpecificGridRow[] = [...saved, ...dirtyDraftRows];
-  for (const row of preservedEmptyRows) {
-    if (nextRows.length >= targetCount) break;
-    nextRows.push(row);
-  }
-  while (nextRows.length < targetCount) {
+  while (nextRows.length < 40) {
     const maxRowIndex = nextRows.reduce((acc, row) => Math.max(acc, row.rowIndex), 0);
     nextRows.push(createEmptySpecificRow(maxRowIndex + 1));
   }

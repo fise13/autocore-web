@@ -1,12 +1,12 @@
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import { usePressAnimation } from '@/animations';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { haptics, radius } from '@/theme';
 
 import { AppleIcon, GoogleIcon } from './auth-brand-icons';
+import { useAuthPressSpring } from './auth-motion';
 import {
   AUTH_BUTTON_FONT_SIZE,
   AUTH_BUTTON_HEIGHT,
@@ -41,7 +41,7 @@ export function AuthOAuthButton({
   const { scheme } = useTheme();
   const theme = getOAuthButtonTheme(provider, scheme);
   const isGoogle = provider === 'google';
-  const press = usePressAnimation(0.97);
+  const press = useAuthPressSpring(0.975);
 
   const height = hero ? AUTH_HERO_BUTTON_HEIGHT : AUTH_BUTTON_HEIGHT;
   const iconSize = hero ? AUTH_HERO_BUTTON_ICON_SIZE : AUTH_BUTTON_ICON_SIZE;

@@ -1,22 +1,24 @@
 import { useEffect, useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { Pressable, TextInput } from 'react-native';
 import Animated, {
   Easing,
-  FadeIn,
   FadeOut,
+  ZoomIn,
+  interpolateColor,
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
 
 import { ArrowRightIcon, Loader2Icon } from '@/assets/icons';
-import { usePressAnimation } from '@/animations';
 import { useTheme } from '@/hooks';
-import { haptics, radius } from '@/theme';
+import { duration, haptics, radius } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
 
 import { AUTH_HERO_BUTTON_HEIGHT } from './auth-button-metrics';
+import { useAuthPressSpring } from './auth-motion';
 
 function PillSpinner({ color }: { color: string }) {
   const rotation = useSharedValue(0);
@@ -59,9 +61,24 @@ export function AuthEmailPill({
 }: AuthEmailPillProps) {
   const { colors, isDark } = useTheme();
   const [focused, setFocused] = useState(false);
-  const press = usePressAnimation(0.9);
+  const press = useAuthPressSpring(0.9);
+  const focusProgress = useDerivedValue(
+    () =>
+      withTiming(focused ? 1 : 0, {
+        duration: duration.fast,
+      }),
+    [focused],
+  );
 
   const showAction = canSubmit || loading;
+
+  const focusStyle = useAnimatedStyle(() => ({
+    borderColor: interpolateColor(
+      focusProgress.value,
+      [0, 1],
+      [colors.border, colors.ring],
+    ),
+  }));
 
   const setFocus = (next: boolean) => {
     setFocused(next);
@@ -69,20 +86,22 @@ export function AuthEmailPill({
   };
 
   return (
-    <View
-      style={{
-        width: '100%',
-        height: AUTH_HERO_BUTTON_HEIGHT,
-        borderRadius: radius.full,
-        borderWidth: 1,
-        borderColor: focused ? colors.ring : colors.border,
-        backgroundColor: toneBackground(colors.foreground, isDark ? 0.06 : 0.035),
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingLeft: 24,
-        paddingRight: 8,
-        opacity: disabled ? 0.55 : 1,
-      }}
+    <Animated.View
+      style={[
+        {
+          width: '100%',
+          height: AUTH_HERO_BUTTON_HEIGHT,
+          borderRadius: radius.full,
+          borderWidth: 1,
+          backgroundColor: toneBackground(colors.foreground, isDark ? 0.06 : 0.035),
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingLeft: 24,
+          paddingRight: 8,
+          opacity: disabled ? 0.55 : 1,
+        },
+        focusStyle,
+      ]}
     >
       <TextInput
         value={value}
@@ -109,7 +128,10 @@ export function AuthEmailPill({
       />
 
       {showAction ? (
-        <Animated.View entering={FadeIn.duration(160)} exiting={FadeOut.duration(120)}>
+        <Animated.View
+          entering={ZoomIn.duration(duration.fast)}
+          exiting={FadeOut.duration(duration.instant)}
+        >
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Continue with email"
@@ -143,6 +165,6 @@ export function AuthEmailPill({
           </Pressable>
         </Animated.View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }

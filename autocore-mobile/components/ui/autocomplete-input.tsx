@@ -1,14 +1,21 @@
-import { memo, useCallback, useRef } from 'react';
-import { View, type LayoutChangeEvent, type TextInputProps, type View as RNView } from 'react-native';
+import { memo, useCallback } from 'react';
+import type { TextInputProps } from 'react-native';
 
 import { InputField } from '@/components/ui/input/input-field';
 import { useAutocomplete } from '@/hooks/use-autocomplete';
-import type { AutocompleteConfig, AutocompleteOption, AutocompleteSourceId } from '@/lib/autocomplete/types';
+import type {
+  AutocompleteConfig,
+  AutocompleteOption,
+  AutocompleteSourceId,
+  AutocompleteType,
+} from '@/lib/autocomplete/types';
 
 type AutocompleteInputProps = Omit<TextInputProps, 'value' | 'onChangeText' | 'style'> & {
   value: string;
   onValueChange: (value: string) => void;
-  /** Registry source. When omitted, `options` override is used. */
+  /** High-level entity type — preferred for WO / shared forms. */
+  type?: AutocompleteType;
+  /** Registry source. Used when `type` is omitted; `type` wins when both are set. */
   source?: AutocompleteSourceId;
   fieldKey?: string;
   context?: Record<string, string>;
@@ -21,10 +28,15 @@ type AutocompleteInputProps = Omit<TextInputProps, 'value' | 'onChangeText' | 's
   invalid?: boolean;
 };
 
+/**
+ * Text field wired to the shared autocomplete session.
+ * Suggestions render in the keyboard-docked overlay — not under this input.
+ */
 export const AutocompleteInput = memo(function AutocompleteInput({
   value,
   onValueChange,
-  source = 'previousValue',
+  type,
+  source,
   fieldKey,
   context,
   options,
@@ -40,8 +52,8 @@ export const AutocompleteInput = memo(function AutocompleteInput({
   onKeyPress,
   ...props
 }: AutocompleteInputProps) {
-  const anchorRef = useRef<RNView>(null);
-  const { inputProps, setAnchor } = useAutocomplete({
+  const { inputProps } = useAutocomplete({
+    type,
     source,
     fieldKey,
     context,
@@ -55,28 +67,12 @@ export const AutocompleteInput = memo(function AutocompleteInput({
     minQueryLength,
   });
 
-  const measureAnchor = useCallback(() => {
-    anchorRef.current?.measureInWindow((x, y, width, height) => {
-      if (width <= 0 || height <= 0) return;
-      setAnchor({ x, y, width, height });
-    });
-  }, [setAnchor]);
-
   const handleFocus = useCallback<NonNullable<TextInputProps['onFocus']>>(
     (event) => {
       inputProps.onFocus?.(event);
-      // Register happens on focus, so measure right after it to seat the panel.
-      requestAnimationFrame(measureAnchor);
       onFocus?.(event);
     },
-    [inputProps, measureAnchor, onFocus],
-  );
-
-  const handleLayout = useCallback(
-    (_event: LayoutChangeEvent) => {
-      measureAnchor();
-    },
-    [measureAnchor],
+    [inputProps, onFocus],
   );
 
   const handleBlur = useCallback<NonNullable<TextInputProps['onBlur']>>(
@@ -104,18 +100,16 @@ export const AutocompleteInput = memo(function AutocompleteInput({
   );
 
   return (
-    <View ref={anchorRef} collapsable={false} onLayout={handleLayout}>
-      <InputField
-        {...props}
-        {...inputProps}
-        value={value}
-        invalid={invalid}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        onSubmitEditing={handleSubmit}
-        onKeyPress={handleKeyPress}
-        returnKeyType={props.returnKeyType ?? 'done'}
-      />
-    </View>
+    <InputField
+      {...props}
+      {...inputProps}
+      value={value}
+      invalid={invalid}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      onSubmitEditing={handleSubmit}
+      onKeyPress={handleKeyPress}
+      returnKeyType={props.returnKeyType ?? 'done'}
+    />
   );
 });

@@ -4,13 +4,12 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 
 import { Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/hooks';
-import { haptics } from '@/theme';
+import { haptics, tokens } from '@/theme';
 
 import { ordersSpring } from '../animation/orders-timeline';
 import type { ComposerTab } from '../animation/use-composer-tab-state';
-import { wo } from '../theme/wo-visual';
 
-const SEGMENT_INSET = 2;
+const SEGMENT_INSET = 3;
 
 type TabIcon = ComponentType<{ size?: 'sm' | 'md' | 'lg'; color?: string; strokeWidth?: number }>;
 
@@ -27,7 +26,7 @@ type ComposerTabBarProps = {
   onTabChange: (tab: ComposerTab) => void;
 };
 
-/** Icon-only industrial toolbar for composition tabs. */
+/** iOS / Music segmented control — label + optional count. */
 export function ComposerTabBar({ tabs, activeTab, onTabChange }: ComposerTabBarProps) {
   const { colors } = useTheme();
   const reduced = useReducedMotion();
@@ -74,9 +73,7 @@ export function ComposerTabBar({ tabs, activeTab, onTabChange }: ComposerTabBarP
       onLayout={onTrackLayout}
       style={{
         flexDirection: 'row',
-        borderRadius: wo.radiusSm,
-        borderWidth: wo.rule,
-        borderColor: colors.border,
+        borderRadius: tokens.radius.full,
         backgroundColor: colors.secondary,
         padding: SEGMENT_INSET,
         position: 'relative',
@@ -91,10 +88,12 @@ export function ComposerTabBar({ tabs, activeTab, onTabChange }: ComposerTabBarP
               top: SEGMENT_INSET,
               bottom: SEGMENT_INSET,
               left: 0,
-              borderRadius: wo.radiusSm - 1,
+              borderRadius: tokens.radius.full,
               backgroundColor: colors.card,
-              borderWidth: wo.rule,
-              borderColor: colors.border,
+              shadowColor: '#000',
+              shadowOpacity: 0.08,
+              shadowRadius: 4,
+              shadowOffset: { width: 0, height: 1 },
             },
             pillStyle,
           ]}
@@ -102,8 +101,8 @@ export function ComposerTabBar({ tabs, activeTab, onTabChange }: ComposerTabBarP
       ) : null}
 
       {tabs.map((item) => {
-        const Icon = item.icon;
         const selected = activeTab === item.id;
+        const count = item.badge && item.badge > 0 ? item.badge : null;
 
         return (
           <Pressable
@@ -118,42 +117,26 @@ export function ComposerTabBar({ tabs, activeTab, onTabChange }: ComposerTabBarP
             }}
             style={{
               flex: 1,
-              minHeight: wo.touch,
+              minHeight: 36,
               alignItems: 'center',
               justifyContent: 'center',
               zIndex: 1,
+              paddingHorizontal: 4,
             }}
           >
-            <View style={{ position: 'relative' }}>
-              <Icon
-                size="sm"
-                color={selected ? colors.foreground : colors.mutedForeground}
-                strokeWidth={selected ? 2 : 1.75}
-              />
-              {item.badge && item.badge > 0 ? (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: -6,
-                    right: -10,
-                    minWidth: 16,
-                    height: 16,
-                    borderRadius: 2,
-                    paddingHorizontal: 4,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: colors.foreground,
-                  }}
-                >
-                  <Text
-                    variant="caption"
-                    style={{ fontSize: 9, fontWeight: '700', color: colors.background, lineHeight: 12 }}
-                  >
-                    {item.badge}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
+            <Text
+              variant="subheadline"
+              numberOfLines={1}
+              style={{
+                fontSize: 13,
+                fontWeight: selected ? '600' : '500',
+                color: selected ? colors.foreground : colors.mutedForeground,
+                letterSpacing: -0.08,
+              }}
+            >
+              {item.label}
+              {count != null ? ` · ${count}` : ''}
+            </Text>
           </Pressable>
         );
       })}

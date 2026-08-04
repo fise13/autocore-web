@@ -1,5 +1,5 @@
-import { CollectionRow } from '@/components/ui';
 import { StoreIcon } from '@/assets/icons';
+import { CollectionRow } from '@/components/ui';
 
 type OrganizationSwitchButtonProps = {
   companyName: string;

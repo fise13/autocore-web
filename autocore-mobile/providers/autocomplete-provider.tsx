@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { Keyboard } from 'react-native';
+import { Keyboard, View } from 'react-native';
 
 import { AutocompleteOverlay } from '@/components/autocomplete/autocomplete-overlay';
 import { getAutocompleteDataSnapshot } from '@/lib/autocomplete/autocomplete-data-store';
@@ -50,6 +50,10 @@ const AutocompleteContext = createContext<AutocompleteContextValue | null>(null)
 
 const SEARCH_CACHE_LIMIT = 48;
 
+function shouldShowPanel(query: string) {
+  return query.trim().length > 0;
+}
+
 export function AutocompleteProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AutocompleteSession | null>(null);
   const [chromeBottomInset, setChromeBottomInset] = useState(0);
@@ -70,6 +74,21 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
 
   const runSearch = useCallback(
     (next: AutocompleteSession) => {
+      const minLen = next.config.minQueryLength ?? 0;
+      const trimmed = next.query.trim();
+      if (trimmed.length < minLen) {
+        const updated: AutocompleteSession = {
+          ...next,
+          suggestions: [],
+          status: 'ready',
+          visible: false,
+          highlightedIndex: 0,
+        };
+        sessionRef.current = updated;
+        setSession(updated);
+        return;
+      }
+
       const key = cacheKey(next.query, next.config, next.customOptions);
       let suggestions = searchCacheRef.current.get(key);
       if (!suggestions) {
@@ -85,7 +104,8 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
       const updated: AutocompleteSession = {
         ...next,
         suggestions,
-        visible: suggestions.length > 0,
+        status: 'ready',
+        visible: shouldShowPanel(next.query),
         highlightedIndex: Math.min(
           next.highlightedIndex,
           Math.max(0, suggestions.length - 1),
@@ -146,6 +166,7 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
       suggestions: [],
       highlightedIndex: 0,
       visible: false,
+      status: 'idle',
       replaceMode: args.replaceMode,
       matchMode: args.matchMode,
       onChange: args.onChange,
@@ -175,16 +196,21 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
 
       if (debounceRef.current) clearTimeout(debounceRef.current);
 
-      // Immediate clear when empty; debounce typing for corpus search.
+      // Immediate clear when empty.
       if (!query.trim()) {
-        runSearch(next);
+        runSearch({ ...next, status: 'ready' });
         return;
       }
 
-      // Optimistic hide-while-typing only updates query; search runs debounced.
-      setSession((live) =>
-        live && live.inputId === inputId ? { ...live, query, highlightedIndex: 0 } : live,
-      );
+      // Show loading panel while debounced search runs.
+      const loading: AutocompleteSession = {
+        ...next,
+        status: 'loading',
+        visible: true,
+        highlightedIndex: 0,
+      };
+      sessionRef.current = loading;
+      setSession(loading);
 
       debounceRef.current = setTimeout(() => {
         const live = sessionRef.current;
@@ -297,17 +323,20 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
 
   return (
     <AutocompleteContext.Provider value={value}>
-      {children}
-      <AutocompleteOverlay
-        session={session}
-        chromeBottomInset={chromeBottomInset}
-        onInteractionStart={cancelBlurDismiss}
-        onSelect={(index) => {
-          const current = sessionRef.current;
-          if (!current) return;
-          commitSuggestion(current.inputId, index);
-        }}
-      />
+      {/* Host View gives KeyboardStickyView a full-screen absolute parent. */}
+      <View style={{ flex: 1 }}>
+        {children}
+        <AutocompleteOverlay
+          session={session}
+          chromeBottomInset={chromeBottomInset}
+          onInteractionStart={cancelBlurDismiss}
+          onSelect={(index) => {
+            const current = sessionRef.current;
+            if (!current) return;
+            commitSuggestion(current.inputId, index);
+          }}
+        />
+      </View>
     </AutocompleteContext.Provider>
   );
 }

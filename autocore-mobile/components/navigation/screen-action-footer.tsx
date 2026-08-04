@@ -17,6 +17,11 @@ type ScreenActionFooterProps = {
    * the oversized footer pad sits on top of the software keyboard.
    */
   aboveTabBar?: boolean;
+  /**
+   * `default` — filled bar + top border (StickyActionBar language).
+   * `plain` — transparent, hairline or no border — tab-continuation strips.
+   */
+  chrome?: 'default' | 'plain';
   style?: StyleProp<ViewStyle>;
 };
 
@@ -25,12 +30,14 @@ export function ScreenActionFooter({
   horizontalPadding = spacing[5],
   absolute = false,
   aboveTabBar = true,
+  chrome = 'default',
   style,
 }: ScreenActionFooterProps) {
   const { colors } = useTheme();
   const { footerBottom, safeBottom } = useFloatingTabBarInset();
   const updateChromeInset = useRegisterAutocompleteChromeInset();
   const bottomInset = aboveTabBar ? footerBottom : safeBottom;
+  const isPlain = chrome === 'plain';
 
   const handleLayout = (event: LayoutChangeEvent) => {
     updateChromeInset(event.nativeEvent.layout.height);
@@ -42,14 +49,14 @@ export function ScreenActionFooter({
       style={[
         {
           paddingHorizontal: horizontalPadding,
-          paddingTop: spacing[3.5],
+          paddingTop: isPlain ? spacing[1] : spacing[3.5],
           // Absolute footers still reserve the inset so their background runs
           // all the way to the screen edge — otherwise content scrolls through
           // the gap between the footer and the tab bar.
           paddingBottom: bottomInset,
-          borderTopWidth: 1,
+          borderTopWidth: isPlain ? 0 : 1,
           borderTopColor: colors.border,
-          backgroundColor: colors.background,
+          backgroundColor: isPlain ? 'transparent' : colors.background,
           flexDirection: 'row',
           gap: spacing[2.5],
         },

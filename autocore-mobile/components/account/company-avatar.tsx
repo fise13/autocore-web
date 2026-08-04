@@ -8,11 +8,27 @@ import {
 } from '@autocore/avatars';
 import { layout } from '@/theme';
 
-type CompanyAvatarSize = 'sm' | 'md';
+type CompanyAvatarSize = 'sm' | 'md' | 'lg' | 'xl';
 
 const sizeMap: Record<CompanyAvatarSize, number> = {
   sm: layout.avatar.sm,
   md: layout.avatar.md,
+  lg: layout.avatar.lg,
+  xl: layout.avatar.xl,
+};
+
+const fontMap: Record<CompanyAvatarSize, number> = {
+  sm: 10,
+  md: 12,
+  lg: 15,
+  xl: 18,
+};
+
+const radiusMap: Record<CompanyAvatarSize, number> = {
+  sm: 8,
+  md: 10,
+  lg: 12,
+  xl: 14,
 };
 
 type CompanyAvatarProps = {
@@ -25,7 +41,8 @@ type CompanyAvatarProps = {
 export function CompanyAvatar({ companyId, name, size = 'md' }: CompanyAvatarProps) {
   const dimension = sizeMap[size];
   const { colors, locations } = companyAvatarGradientColors(companyId);
-  const fontSize = size === 'sm' ? 10 : 12;
+  const fontSize = fontMap[size];
+  const borderRadius = radiusMap[size];
   const gradientColors =
     colors.length >= 2
       ? (colors as [string, string, ...string[]])
@@ -36,7 +53,7 @@ export function CompanyAvatar({ companyId, name, size = 'md' }: CompanyAvatarPro
       style={{
         width: dimension,
         height: dimension,
-        borderRadius: 8,
+        borderRadius,
         overflow: 'hidden',
       }}
     >

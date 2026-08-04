@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
-import { wo } from '../../theme/wo-visual';
+import { tokens } from '@/theme';
 
 export function CompositionField({
   label,
@@ -16,15 +16,24 @@ export function CompositionField({
   hint?: string;
   children: ReactNode;
 }) {
+  const { colors } = useTheme();
+
   return (
     <View style={{ gap: 6, flex: 1 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <Text variant="caption" color="muted" style={{ fontSize: 12, fontWeight: '500' }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
+        }}
+      >
+        <Text variant="caption1" color="muted" style={{ fontSize: 13, fontWeight: '500' }}>
           {label}
-          {required ? ' *' : ''}
+          {required ? <Text style={{ color: colors.destructive }}> *</Text> : null}
         </Text>
         {hint ? (
-          <Text variant="caption" color="muted" style={{ fontSize: 10 }}>
+          <Text variant="caption" color="muted" style={{ fontSize: 11 }}>
             {hint}
           </Text>
         ) : null}
@@ -34,6 +43,7 @@ export function CompositionField({
   );
 }
 
+/** Inset composer group — Music “+” card without dashed noise. */
 export function CompositionAddCard({
   title,
   description,
@@ -50,20 +60,25 @@ export function CompositionAddCard({
   return (
     <View
       style={{
-        borderRadius: wo.radius,
-        borderWidth: 1,
-        borderStyle: 'dashed',
-        borderColor: colors.border,
-        padding: 16,
-        gap: 12,
+        borderRadius: tokens.radius.sheet,
+        backgroundColor: colors.card,
+        padding: tokens.space.stack + 2,
+        gap: tokens.space.stack,
       }}
     >
       <View style={{ gap: 4 }}>
-        <Text variant="bodyStrong" style={{ fontSize: 14, fontWeight: '600' }}>
+        <Text
+          variant="body"
+          style={{ fontSize: 17, fontWeight: '600', letterSpacing: -0.3 }}
+        >
           {title}
         </Text>
         {description ? (
-          <Text variant="caption" color="muted" style={{ fontSize: 12, lineHeight: 16 }}>
+          <Text
+            variant="caption"
+            color="muted"
+            style={{ fontSize: 13, lineHeight: 18, letterSpacing: -0.08 }}
+          >
             {description}
           </Text>
         ) : null}
@@ -87,7 +102,11 @@ export function CompositionLineList({
 
   if (items.length === 0) {
     return (
-      <Text variant="caption" color="muted" style={{ textAlign: 'center', paddingVertical: 20, fontSize: 13 }}>
+      <Text
+        variant="caption"
+        color="muted"
+        style={{ textAlign: 'center', paddingVertical: 24, fontSize: 14 }}
+      >
         {empty}
       </Text>
     );
@@ -96,9 +115,8 @@ export function CompositionLineList({
   return (
     <View
       style={{
-        borderRadius: wo.radius,
-        borderWidth: wo.rule,
-        borderColor: colors.border,
+        borderRadius: tokens.radius.sheet,
+        backgroundColor: colors.card,
         overflow: 'hidden',
       }}
     >
@@ -108,22 +126,51 @@ export function CompositionLineList({
             style={{
               flexDirection: 'row',
               alignItems: 'center',
-              gap: 10,
-              paddingHorizontal: 14,
-              paddingVertical: 12,
+              gap: 12,
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+              minHeight: tokens.control.hitTarget,
             }}
           >
-            <Text variant="body" style={{ flex: 1, fontSize: 13, lineHeight: 18 }}>
+            <Text
+              variant="body"
+              style={{ flex: 1, fontSize: 15, lineHeight: 20, letterSpacing: -0.2 }}
+              numberOfLines={2}
+            >
               {item.label}
             </Text>
-            <Pressable accessibilityRole="button" onPress={() => onRemove(item.id)} hitSlop={8}>
-              <Text variant="caption" style={{ fontSize: 12, fontWeight: '600', color: colors.destructive }}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${item.label}`}
+              onPress={() => onRemove(item.id)}
+              hitSlop={10}
+              style={{
+                minHeight: tokens.control.hitTarget,
+                minWidth: tokens.control.hitTarget,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text
+                variant="caption"
+                style={{
+                  fontSize: 15,
+                  fontWeight: '500',
+                  color: colors.destructive,
+                }}
+              >
                 Remove
               </Text>
             </Pressable>
           </View>
           {index < items.length - 1 ? (
-            <View style={{ height: wo.rule, backgroundColor: colors.border, marginLeft: 14 }} />
+            <View
+              style={{
+                height: StyleSheet.hairlineWidth,
+                backgroundColor: colors.border,
+                marginLeft: 16,
+              }}
+            />
           ) : null}
         </View>
       ))}

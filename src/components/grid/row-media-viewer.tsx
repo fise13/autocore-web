@@ -3,7 +3,7 @@
 import { ArrowLeft, ChevronLeft, ChevronRight, Download, Film, Loader2 } from "lucide-react";
 import { doc, getDoc } from "firebase/firestore";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { GridMediaThumb } from "@/components/grid/grid-media-gallery";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -164,11 +164,6 @@ export function RowMediaViewer() {
   const current = urls[index] ?? null;
   const isVideo = current ? isVideoMediaUrl(current) : false;
 
-  const title = useMemo(() => {
-    if (payload?.title?.trim()) return payload.title.trim();
-    return copy.galleryTitle;
-  }, [copy.galleryTitle, payload?.title]);
-
   const go = useCallback(
     (delta: number) => {
       if (urls.length === 0) return;
@@ -234,16 +229,13 @@ export function RowMediaViewer() {
           <ArrowLeft className="size-4" />
           {copy.back}
         </Button>
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-sm font-medium text-foreground">{title}</h1>
-          <p className="truncate text-xs text-muted-foreground">
-            {loading
-              ? copy.viewerLoading
-              : urls.length === 0
-                ? copy.galleryEmpty
-                : copy.galleryCount(urls.length, index + 1)}
-          </p>
-        </div>
+        <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+          {loading
+            ? copy.viewerLoading
+            : urls.length === 0
+              ? copy.galleryEmpty
+              : copy.galleryCount(urls.length, index + 1)}
+        </p>
         <div className="flex shrink-0 items-center gap-1.5">
           <Button
             type="button"
@@ -256,17 +248,19 @@ export function RowMediaViewer() {
             {busy === "one" ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
             <span className="hidden sm:inline">{copy.download}</span>
           </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            disabled={urls.length === 0 || busy !== null}
-            onClick={() => void handleDownloadAll()}
-            className="gap-1.5"
-          >
-            {busy === "all" ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-            <span className="hidden sm:inline">{copy.downloadAll}</span>
-          </Button>
+          {urls.length > 1 ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={busy !== null}
+              onClick={() => void handleDownloadAll()}
+              className="gap-1.5"
+            >
+              {busy === "all" ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+              <span className="hidden sm:inline">{copy.downloadAll}</span>
+            </Button>
+          ) : null}
         </div>
       </header>
 
@@ -290,7 +284,7 @@ export function RowMediaViewer() {
             />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
-            <img key={current} src={current} alt="" className="max-h-full max-w-full object-contain" />
+            <img key={current} src={current} alt={payload?.title?.trim() || copy.galleryTitle} className="max-h-full max-w-full object-contain" />
           )
         ) : (
           <div className="flex flex-col items-center gap-2 px-6 text-center text-white/60">
@@ -325,7 +319,7 @@ export function RowMediaViewer() {
         ) : null}
       </div>
 
-      {urls.length > 0 ? (
+      {urls.length > 1 ? (
         <div className="flex shrink-0 gap-2 overflow-x-auto border-t border-border/70 bg-background px-3 py-3 sm:px-4">
           {urls.map((url, thumbIndex) => (
             <button

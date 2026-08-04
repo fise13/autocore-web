@@ -29,6 +29,12 @@ const BASE: Record<AutocompleteSourceId, NativeProps> = {
     spellCheck: false,
     importantForAutofill: 'yes',
   },
+  employee: {
+    autoComplete: 'off',
+    autoCorrect: false,
+    spellCheck: false,
+    autoCapitalize: 'words',
+  },
   supplier: {
     autoComplete: 'off',
     autoCorrect: false,

@@ -210,6 +210,10 @@ export function SpecificExcelGrid({
   const actionColumn = layout.actionColumn;
 
   const [rows, setRows] = useState<SpecificGridRow[]>(() => buildSpecificGridRows(scopedRecords));
+  const rowsRef = useRef(rows);
+  useEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
   const [dirtyVersion, setDirtyVersion] = useState(0);
   const [dirtyRowIdSet, setDirtyRowIdSet] = useState<Set<string>>(() => new Set());
 
@@ -421,7 +425,7 @@ export function SpecificExcelGrid({
 
   const setCell = useCallback(
     (cell: GridCellAddress, newValue: string, options?: { trackUndo?: boolean; markDirty?: boolean }) => {
-      setRows((current) => {
+      const applyToRows = (current: SpecificGridRow[]) => {
         const row = current[cell.row];
         if (!row || !isEditableColumn(cell.column)) return current;
         const oldValue = valueAtCell(row, cell.column);
@@ -436,7 +440,12 @@ export function SpecificExcelGrid({
           markDirty(updatedRow.rowId);
         }
         return next;
-      });
+      };
+
+      const nextRows = applyToRows(rowsRef.current);
+      if (nextRows === rowsRef.current) return;
+      rowsRef.current = nextRows;
+      setRows(nextRows);
     },
     [applyCellValue, isEditableColumn, markDirty, valueAtCell],
   );
@@ -557,23 +566,26 @@ export function SpecificExcelGrid({
           dirtyRowsRef.current.delete(`saved-${recordId}`);
         }
         pendingDeleteIdsRef.current.clear();
-        setRows((current) =>
-          current.filter(
-            (row) => row.rowKind !== "saved" || !pendingDeletes.includes(row.id),
-          ),
+        const nextRows = rowsRef.current.filter(
+          (row) => row.rowKind !== "saved" || !pendingDeletes.includes(row.id),
         );
+        rowsRef.current = nextRows;
+        setRows(nextRows);
       }
 
-      const snapshotRows = rows;
+      // rowsRef is updated synchronously by setCell/flushEditor — never use stale React state here.
+      const snapshotRows = rowsRef.current;
       const baselineById = new Map(recordsRef.current.map((record) => [record.id, record]));
       const rowReplacements = new Map<string, SpecificGridRow>();
       const dirtyRowIds = [...dirtyRowsRef.current];
+      const resolvedDirtyIds = new Set<string>();
 
       for (const rowId of dirtyRowIds) {
         const row = snapshotRows.find((item) => item.rowId === rowId);
         if (!row) continue;
         if (row.rowKind === "saved" && pendingDeletes.includes(row.id)) continue;
         if (row.rowKind === "empty" && !hasSpecificRowContent(row, headerMapping, columnSchema)) {
+          resolvedDirtyIds.add(rowId);
           continue;
         }
 
@@ -583,7 +595,10 @@ export function SpecificExcelGrid({
             !baseline ||
             JSON.stringify(buildRowPayloadFromSchema(row.data, columnSchema)) !==
               JSON.stringify(buildRowPayloadFromSchema(baseline.data, columnSchema));
-          if (!changed) continue;
+          if (!changed) {
+            resolvedDirtyIds.add(rowId);
+            continue;
+          }
         }
 
         await (async () => {
@@ -620,6 +635,7 @@ export function SpecificExcelGrid({
           );
         })();
 
+        resolvedDirtyIds.add(rowId);
         if (row.rowKind === "empty") {
           const recordId = scopedRecordDocumentId(companyId, category.localId, row.rowIndex);
           rowReplacements.set(
@@ -632,20 +648,25 @@ export function SpecificExcelGrid({
               category.localId,
             ),
           );
-          dirtyRowsRef.current.delete(rowId);
         }
       }
 
       if (rowReplacements.size > 0) {
-        setRows((current) =>
-          current.map((currentRow) => rowReplacements.get(currentRow.rowId) ?? currentRow),
+        const nextRows = rowsRef.current.map(
+          (currentRow) => rowReplacements.get(currentRow.rowId) ?? currentRow,
         );
+        rowsRef.current = nextRows;
+        setRows(nextRows);
       }
 
-      const pushedRowIds = dirtyRowIds.map((rowId) => rowReplacements.get(rowId)?.rowId ?? rowId);
-      dirtyRowsRef.current.clear();
-      localSaveAckRef.current.clear();
-      setDirtyRowIdSet(new Set());
+      const pushedRowIds = [...resolvedDirtyIds].map(
+        (rowId) => rowReplacements.get(rowId)?.rowId ?? rowId,
+      );
+      for (const rowId of resolvedDirtyIds) {
+        dirtyRowsRef.current.delete(rowId);
+        localSaveAckRef.current.delete(rowId);
+      }
+      setDirtyRowIdSet(new Set(dirtyRowsRef.current));
       setDirtyVersion((current) => current + 1);
       setSaveStatus("saved");
       if (pushedRowIds.length > 0 || pendingDeletes.length > 0) {
@@ -667,7 +688,6 @@ export function SpecificExcelGrid({
     flushEditor,
     headerMapping,
     repository,
-    rows,
     setSaveError,
     setSaveStatus,
   ]);

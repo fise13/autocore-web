@@ -475,12 +475,32 @@ export function generateWebLocalId(existingMotors: MotorEntity[]): number {
 }
 
 export function isMotorRowEmpty(
-  motor: Pick<MotorEntity, "serialCode" | "configuration" | "notes" | "transmission">,
+  motor: Pick<
+    MotorEntity,
+    | "serialCode"
+    | "configuration"
+    | "notes"
+    | "transmission"
+    | "brandName"
+    | "engineCode"
+    | "quality"
+    | "photoUrls"
+    | "quantity"
+    | "warehouseLocation"
+    | "primaryLocationCode"
+  >,
 ) {
   return (
     !motor.serialCode.trim() &&
     !motor.configuration.trim() &&
     !motor.notes.trim() &&
-    !motor.transmission.trim()
+    !motor.transmission.trim() &&
+    !(motor.brandName ?? "").trim() &&
+    !(motor.engineCode ?? "").trim() &&
+    !(motor.quality ?? "").trim() &&
+    (motor.photoUrls?.length ?? 0) === 0 &&
+    (motor.quantity ?? 1) <= 1 &&
+    !motor.warehouseLocation?.trim() &&
+    !motor.primaryLocationCode?.trim()
   );
 }

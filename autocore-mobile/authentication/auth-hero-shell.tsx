@@ -3,17 +3,22 @@ import { Platform, Pressable, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import Animated from 'react-native-reanimated';
+import Animated, {
+  interpolate,
+  useAnimatedStyle,
+  useDerivedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
 import { Text } from '@/components/ui';
-import { useFadeIn } from '@/animations';
-import { useTheme } from '@/hooks';
-import { spacing } from '@/theme';
+import { useReducedMotion, useTheme } from '@/hooks';
+import { spacing, spring } from '@/theme';
 import { toneBackground } from '@/theme/color-utils';
 
 import { AUTH_HERO_BRAND_PAD_TOP, AuthBrandMark } from './auth-brand-mark';
 import { AUTH_HERO_STACK_GAP } from './auth-button-metrics';
 import { AuthHeroCar } from './auth-hero-car';
+import { useAuthEnter } from './auth-motion';
 import { takeLoginRiseHandoff } from './splash-handoff';
 
 /** Brand → illustration / form title. */
@@ -77,18 +82,47 @@ export function AuthHeroShell({
   backDisabled = false,
 }: AuthHeroShellProps) {
   const { colors } = useTheme();
+  const reducedMotion = useReducedMotion();
   const isForm = variant === 'form';
   // Cold-start rise: mark is already under the splash lockup — no second enter.
   const fromRiseHandoff = useRef(takeLoginRiseHandoff()).current;
-  const brand = useFadeIn(fromRiseHandoff ? -1 : 0);
-  // Rise exit ~1.2s — content settles in as the lockup finishes traveling.
-  const heading = useFadeIn(isForm ? 120 : fromRiseHandoff ? 520 : 520);
-  const actions = useFadeIn(isForm ? 200 : fromRiseHandoff ? 640 : 660);
-  const legal = useFadeIn(isForm ? 280 : fromRiseHandoff ? 760 : 800);
+  const brand = useAuthEnter(fromRiseHandoff ? -1 : 0);
+  // Content becomes readable beneath the lockup while it is still travelling.
+  const heading = useAuthEnter(isForm ? 120 : fromRiseHandoff ? 320 : 260);
+  const actions = useAuthEnter(isForm ? 200 : fromRiseHandoff ? 470 : 420);
+  const legal = useAuthEnter(isForm ? 280 : fromRiseHandoff ? 610 : 560);
+  const compactProgress = useDerivedValue(
+    () =>
+      reducedMotion
+        ? compact
+          ? 1
+          : 0
+        : withSpring(compact ? 1 : 0, {
+            ...spring.settle,
+            overshootClamping: true,
+          }),
+    [compact, reducedMotion],
+  );
 
-  const brandToHero = compact ? spacing[3] : BRAND_TO_HERO;
-  const heroToHeadline = compact ? spacing[2] : HERO_TO_HEADLINE;
-  const headlineToActions = compact ? spacing[4] : HEADLINE_TO_ACTIONS;
+  const heroSpacingStyle = useAnimatedStyle(() => ({
+    paddingTop: interpolate(
+      compactProgress.value,
+      [0, 1],
+      [BRAND_TO_HERO, spacing[3]],
+    ),
+  }));
+  const headlineSpacingStyle = useAnimatedStyle(() => ({
+    paddingTop: interpolate(
+      compactProgress.value,
+      [0, 1],
+      [HERO_TO_HEADLINE, spacing[2]],
+    ),
+    paddingBottom: interpolate(
+      compactProgress.value,
+      [0, 1],
+      [HEADLINE_TO_ACTIONS, spacing[4]],
+    ),
+  }));
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -167,16 +201,15 @@ export function AuthHeroShell({
                 ) : null}
               </Animated.View>
             ) : (
-              <View style={{ paddingTop: brandToHero, alignItems: 'center' }}>
-                <AuthHeroCar />
+              <Animated.View style={[{ alignItems: 'center' }, heroSpacingStyle]}>
+                <AuthHeroCar enterDelayMs={fromRiseHandoff ? 680 : 80} />
                 <Animated.View
                   style={[
                     {
-                      paddingTop: heroToHeadline,
-                      paddingBottom: headlineToActions,
                       width: '100%',
                       alignItems: 'center',
                     },
+                    headlineSpacingStyle,
                     heading.style,
                   ]}
                 >
@@ -195,7 +228,7 @@ export function AuthHeroShell({
                     {tagline}
                   </Text>
                 </Animated.View>
-              </View>
+              </Animated.View>
             )}
 
             <Animated.View style={[{ gap: AUTH_HERO_STACK_GAP, width: '100%' }, actions.style]}>

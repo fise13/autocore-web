@@ -1,20 +1,24 @@
 import { Stack, useRouter } from 'expo-router';
-import { type ReactNode, useCallback, useMemo, useState } from 'react';
 import {
-  ActionSheetIOS,
-  Keyboard,
-  Platform,
-  Pressable,
-  ScrollView,
-  View,
-} from 'react-native';
+  type ComponentType,
+  type ReactNode,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { Keyboard, Pressable, ScrollView, View } from 'react-native';
 import {
   CheckCircle2Icon,
+  CheckIcon,
   ClockIcon,
+  EllipsisIcon,
+  PackageIcon,
   PhoneIcon,
+  WrenchIcon,
 } from '@/assets/icons';
-import { Button, IconButton, Text, toast } from '@/components/ui';
-import { presentNativeMenu } from '@/components/ui/native-context-menu';
+import type { IconProps } from '@/assets/icons/create-icon';
+import { Button, Text, toast } from '@/components/ui';
 import { ScreenActionFooter } from '@/components/navigation/screen-action-footer';
 import {
   useTheme,
@@ -22,9 +26,7 @@ import {
   useEmployeesRealtime,
   useWorkOrdersRealtime,
   useInventoryCatalog,
-  useFloatingTabBarInset,
 } from '@/hooks';
-import { getScreenActionScrollInset } from '@/lib/navigation/floating-tab-bar-inset';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import {
   canMechanicClaimWorkOrder,
@@ -33,7 +35,7 @@ import {
   DEFAULT_MAX_ACTIVE_WORK_ORDERS,
 } from '@autocore/rbac';
 import { resolveInventoryShelf } from '@/lib/inventory/resolve-shelf';
-import { haptics, tokens } from '@/theme';
+import { haptics, spacing, tokens } from '@/theme';
 import { formatPrice } from '@/features/search/lib/format';
 import { laborLineLabel } from '@/lib/work-order/composer-utils';
 import { laborLineTotal } from '@/lib/work-order/labor-pricing';
@@ -42,7 +44,18 @@ import { transitionWorkOrder, claimWorkOrder } from '@/services/api/work-orders'
 import type { WorkOrderStatus } from '@/types/work-order';
 import { openPhone } from '@/utils/open-phone';
 
+import {
+  ORDER_DETAIL_ACTION_TAB_HEIGHT,
+  ORDER_DETAIL_ACTION_TAB_MARGIN_BOTTOM,
+  ORDER_DETAIL_ACTION_TAB_MARGIN_X,
+  OrderDetailActionStrip,
+  OrderDetailActionTab,
+} from './components/order-detail-action-tab';
 import { OrderClaimSection } from './components/order-claim-section';
+import {
+  OrderStatusMoreSheet,
+  type OrderStatusMoreSheetRef,
+} from './components/order-status-more-sheet';
 import { OrderStatusBadge } from './components/order-status-badge';
 import { OrderDocumentsSection } from './components/order-documents-section';
 import { OrderLinesList } from './components/order-lines-list';
@@ -54,14 +67,6 @@ import { wo, woFlatCard, woRuledSection, woType } from './theme/wo-visual';
 type OrderDetailScreenProps = {
   orderId: string;
 };
-
-/** Every footer control shares this height so the circle and the pill line up. */
-const FOOTER_ACTION_HEIGHT = 52;
-
-const FOOTER_BUTTON_STYLE = {
-  width: '100%',
-  minHeight: FOOTER_ACTION_HEIGHT,
-} as const;
 
 /** Compact labels so the primary CTA fits beside Call (+ More). */
 function footerStatusLabel(status: WorkOrderStatus): string {
@@ -81,32 +86,21 @@ function footerStatusLabel(status: WorkOrderStatus): string {
   }
 }
 
-/**
- * `Button` applies the caller's `style` to its inner view, so `flex` on it does
- * nothing — the stretching has to happen on a wrapper.
- */
-function FooterAction({ children, grow = 1 }: { children: ReactNode; grow?: number }) {
-  return <View style={{ flex: grow, minWidth: 0 }}>{children}</View>;
-}
-
-function FooterCallButton({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <IconButton
-      accessibilityLabel={label}
-      variant="secondary"
-      size="lg"
-      // Never pass systemImage here — SwiftUI Host inside form/page sheets blanks RN content.
-      onPress={onPress}
-      style={{
-        width: FOOTER_ACTION_HEIGHT,
-        height: FOOTER_ACTION_HEIGHT,
-        borderRadius: FOOTER_ACTION_HEIGHT / 2,
-        alignSelf: 'center',
-      }}
-    >
-      <PhoneIcon size="md" strokeWidth={1.75} />
-    </IconButton>
-  );
+function footerStatusIcon(status: WorkOrderStatus): ComponentType<IconProps> {
+  switch (status) {
+    case 'confirmed':
+      return CheckIcon;
+    case 'in_progress':
+      return WrenchIcon;
+    case 'waiting_parts':
+      return PackageIcon;
+    case 'completed':
+      return CheckCircle2Icon;
+    case 'delivered':
+      return CheckIcon;
+    default:
+      return CheckIcon;
+  }
 }
 
 function HeaderTextButton({ label, onPress }: { label: string; onPress: () => void }) {
@@ -156,7 +150,6 @@ function RuledSection({ title, children }: { title?: string; children: ReactNode
 export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
   const { colors, isDark } = useTheme();
   const router = useRouter();
-  const { safeBottom } = useFloatingTabBarInset();
   const { companyId, can, uid, profile } = useSession();
   const { items: inventoryItems } = useInventoryCatalog(companyId);
   const inventoryById = useMemo(
@@ -173,6 +166,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
   const domainOrder = domainOrders.find((entry) => entry.id === orderId);
   const [transitioning, setTransitioning] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const moreSheetRef = useRef<OrderStatusMoreSheetRef>(null);
 
   const claimEligibility = useMemo(() => {
     if (!domainOrder || !uid || !profile) return null;
@@ -323,30 +317,8 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
   const openSecondaryStatuses = useCallback(() => {
     if (secondaryStatuses.length === 0) return;
     haptics.selection();
-    const actions = secondaryStatuses.map((status) => ({
-      id: status,
-      title: STATUS_LABELS[status],
-    }));
-    if (Platform.OS === 'ios') {
-      const labels = [...actions.map((a) => a.title), 'Cancel'];
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: labels,
-          cancelButtonIndex: labels.length - 1,
-        },
-        (selected) => {
-          if (selected == null || selected === labels.length - 1) return;
-          const next = secondaryStatuses[selected];
-          if (next) void setDomainStatus(next);
-        },
-      );
-      return;
-    }
-    presentNativeMenu({
-      actions,
-      onPressAction: (id) => void setDomainStatus(id as WorkOrderStatus),
-    });
-  }, [secondaryStatuses]);
+    moreSheetRef.current?.present();
+  }, [secondaryStatuses.length]);
 
   const headerRight = useCallback(() => {
     if (!canEditOrder) return null;
@@ -374,7 +346,11 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingBottom: getScreenActionScrollInset(safeBottom),
+          // Capsule sits on the NativeTabs plane (pageSheet — no extra safeBottom).
+          paddingBottom:
+            ORDER_DETAIL_ACTION_TAB_HEIGHT +
+            ORDER_DETAIL_ACTION_TAB_MARGIN_BOTTOM +
+            spacing[3],
           gap: 0,
         }}
         onScrollBeginDrag={Keyboard.dismiss}
@@ -516,64 +492,73 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
         </View>
       </ScrollView>
 
-      <ScreenActionFooter absolute aboveTabBar={false}>
-        {order.phone ? (
-          <FooterCallButton
-            label={`Call ${order.customer}`}
-            onPress={() => {
-              haptics.selection();
-              void openPhone(order.phone);
-            }}
-          />
-        ) : null}
+      <ScreenActionFooter
+        absolute
+        aboveTabBar={false}
+        chrome="plain"
+        horizontalPadding={ORDER_DETAIL_ACTION_TAB_MARGIN_X}
+        style={{
+          // PageSheet already clears the home indicator; full safeBottom
+          // double-pads and lifts the strip above the tab plane.
+          paddingTop: 0,
+          paddingBottom: ORDER_DETAIL_ACTION_TAB_MARGIN_BOTTOM,
+        }}
+      >
+        <OrderDetailActionStrip>
+          {order.phone ? (
+            <OrderDetailActionTab
+              contentKey="call"
+              label="Call"
+              icon={PhoneIcon}
+              accessibilityLabel={`Call ${order.customer}`}
+              onPress={() => {
+                void openPhone(order.phone);
+              }}
+            />
+          ) : null}
 
-        {primaryStatus ? (
-          <FooterAction grow={2}>
-            <Button
-              native={false}
-              variant="default"
+          {primaryStatus ? (
+            <OrderDetailActionTab
+              contentKey={primaryStatus}
+              label={footerStatusLabel(primaryStatus)}
+              icon={footerStatusIcon(primaryStatus)}
+              active
               loading={transitioning}
               disabled={transitioning}
               onPress={() => void setDomainStatus(primaryStatus)}
-              style={FOOTER_BUTTON_STYLE}
-            >
-              {footerStatusLabel(primaryStatus)}
-            </Button>
-          </FooterAction>
-        ) : null}
+            />
+          ) : null}
 
-        {secondaryStatuses.length > 0 ? (
-          <FooterAction grow={0}>
-            <Button
-              native={false}
-              variant="secondary"
+          {secondaryStatuses.length > 0 ? (
+            <OrderDetailActionTab
+              contentKey="more"
+              label="More"
+              icon={EllipsisIcon}
               disabled={transitioning}
               onPress={openSecondaryStatuses}
-              style={{
-                ...FOOTER_BUTTON_STYLE,
-                width: undefined,
-                paddingHorizontal: tokens.space.stack + 4,
-                minWidth: FOOTER_ACTION_HEIGHT,
-              }}
-            >
-              More
-            </Button>
-          </FooterAction>
-        ) : null}
+            />
+          ) : null}
 
-        {!canEditOrder && !primaryStatus ? (
-          <FooterAction>
-            <Button
-              native={false}
-              variant="secondary"
+          {!canEditOrder && !primaryStatus ? (
+            <OrderDetailActionTab
+              contentKey="done"
+              label="Done"
+              icon={CheckIcon}
               onPress={() => router.back()}
-              style={FOOTER_BUTTON_STYLE}
-            >
-              Done
-            </Button>
-          </FooterAction>
-        ) : null}
+            />
+          ) : null}
+        </OrderDetailActionStrip>
       </ScreenActionFooter>
+
+      {secondaryStatuses.length > 0 ? (
+        <OrderStatusMoreSheet
+          ref={moreSheetRef}
+          statuses={secondaryStatuses}
+          statusIcon={footerStatusIcon}
+          busy={transitioning}
+          onSelect={(status) => void setDomainStatus(status)}
+        />
+      ) : null}
     </View>
   );
 }

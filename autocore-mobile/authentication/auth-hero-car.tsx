@@ -139,7 +139,7 @@ function Wheel({ x, y, color, accent, reduced, delay }: WheelProps) {
  * The car holds the centre, the road slides underneath, wheels keep turning.
  * Everything freezes into a clean static drawing when reduced motion is on.
  */
-export function AuthHeroCar() {
+export function AuthHeroCar({ enterDelayMs = 0 }: { enterDelayMs?: number }) {
   const { colors } = useTheme();
   const reduced = useReducedMotion();
 
@@ -156,15 +156,21 @@ export function AuthHeroCar() {
     }
 
     drive.value = 0;
-    drive.value = withTiming(1, { duration: 820, easing: autocoreEase });
+    drive.value = withDelay(
+      enterDelayMs,
+      withTiming(1, { duration: 820, easing: autocoreEase }),
+    );
 
     bob.value = withDelay(
-      820,
+      enterDelayMs + 820,
       withRepeat(withTiming(1, { duration: 620, easing: Easing.inOut(Easing.quad) }), -1, true),
     );
 
-    road.value = withRepeat(withTiming(1, { duration: 620, easing: Easing.linear }), -1, false);
-  }, [bob, drive, road, reduced]);
+    road.value = withDelay(
+      enterDelayMs,
+      withRepeat(withTiming(1, { duration: 620, easing: Easing.linear }), -1, false),
+    );
+  }, [bob, drive, enterDelayMs, road, reduced]);
 
   const carStyle = useAnimatedStyle(() => ({
     opacity: drive.value,
@@ -309,7 +315,7 @@ export function AuthHeroCar() {
           color={stroke}
           accent={accent}
           reduced={reduced}
-          delay={820}
+          delay={enterDelayMs + 820}
         />
         <Wheel
           x={FRONT_WHEEL.x}
@@ -317,7 +323,7 @@ export function AuthHeroCar() {
           color={stroke}
           accent={accent}
           reduced={reduced}
-          delay={820}
+          delay={enterDelayMs + 820}
         />
       </Animated.View>
       </View>

@@ -117,6 +117,25 @@ function searchCustomers(query: string, data: AutocompleteDataSnapshot, context?
   );
 }
 
+function searchEmployees(data: AutocompleteDataSnapshot): AutocompleteOption[] {
+  const options: AutocompleteOption[] = [];
+  for (const employee of data.employees) {
+    const name = employee.fullName?.trim() || employee.email?.trim() || '';
+    if (!name) continue;
+    const role = String(employee.role ?? '');
+    options.push({
+      value: name,
+      label: role ? `${name} · ${role}` : name,
+      keywords: [employee.email, role].filter(Boolean).join(' '),
+      meta: {
+        title: name,
+        generation: role || undefined,
+      },
+    });
+  }
+  return uniqueAutocompleteOptions(options);
+}
+
 function searchSuppliers(query: string, data: AutocompleteDataSnapshot, companyId: string | null): AutocompleteOption[] {
   const counterparties = new Set<string>();
   for (const label of data.operationCategories) {
@@ -243,6 +262,9 @@ export function searchAutocomplete(
       break;
     case 'customer':
       base = searchCustomers(query, data, config.context);
+      break;
+    case 'employee':
+      base = searchEmployees(data);
       break;
     case 'supplier':
       base = searchSuppliers(query, data, data.companyId);
