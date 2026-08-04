@@ -24,6 +24,7 @@ type TeamEmployeeCardProps = {
   canManage: boolean;
   profile: UserEntity | null;
   openWorkOrders?: number;
+  companyOwnerId?: string | null;
   onOpenPermissions: (employee: CompanyEmployee) => void;
   onToggleActive: (employee: CompanyEmployee) => void;
   onRemove: (employee: CompanyEmployee) => void;
@@ -36,6 +37,7 @@ export const TeamEmployeeCard = memo(function TeamEmployeeCard({
   canManage,
   profile,
   openWorkOrders = 0,
+  companyOwnerId = null,
   onOpenPermissions,
   onToggleActive,
   onRemove,
@@ -43,7 +45,10 @@ export const TeamEmployeeCard = memo(function TeamEmployeeCard({
 }: TeamEmployeeCardProps) {
   const { colors } = useTheme();
   const name = employeeDisplayName(employee, profile ?? undefined);
-  const showActions = canManage && !isSelf && employee.role !== 'owner';
+  const isOwnerMember =
+    employee.role === 'owner' ||
+    Boolean(companyOwnerId && employee.uid === companyOwnerId);
+  const showActions = canManage && !isSelf && !isOwnerMember;
 
   return (
     <View style={{ paddingHorizontal: rhythm.cardPadX, paddingVertical: 12, gap: rhythm.stack }}>

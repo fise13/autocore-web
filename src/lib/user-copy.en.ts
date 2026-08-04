@@ -21,15 +21,25 @@ export const userCopyEn = {
   },
 
   gridPhotos: {
-    addPhoto: "Add photo",
-    changePhoto: "Change photo",
+    addPhoto: "Add media",
+    changePhoto: "Manage media",
     takePhoto: "Take photo",
     chooseFile: "Choose file",
+    chooseFiles: "Choose photos / files",
+    chooseVideo: "Add video",
     remove: "Remove",
     uploading: "Uploading…",
-    uploadFailed: "Could not upload photo",
-    attachAria: "Attach photo",
-    saveRowFirst: "Save the row before attaching photos",
+    uploadProgress: (done: number, total: number) => `Uploading ${done}/${total}…`,
+    uploadFailed: "Could not upload media",
+    attachAria: "Attach photos or video",
+    saveRowFirst: "Save the row before attaching media",
+    view: "View",
+    viewAll: "View all",
+    galleryTitle: "Photos & video",
+    galleryEmpty: "No media yet",
+    galleryCount: (total: number, current: number) => `${current} of ${total}`,
+    prev: "Previous",
+    next: "Next",
   },
 
   auth: {
@@ -862,6 +872,8 @@ export const userCopyEn = {
     permissionsExtra: (count: number) => `+${count} extra`,
     errorInsufficientPermissions:
       "Insufficient permissions. Refresh the page — if it persists, Firebase rules may not have updated yet.",
+    errorOwnerRoleLocked: "The company owner’s role can’t be changed.",
+    errorOwnerProtected: "The company owner can’t be disabled or removed from the team.",
     errorGeneric: "Could not complete the action",
     errorResend: "Could not resend",
     errorCancel: "Could not cancel",
@@ -956,6 +968,8 @@ export const userCopyEn = {
       disableAccess: "Disable access",
       enableAccess: "Enable access",
       removeFromTeam: "Remove from team",
+      ownerProtectedHint:
+        "Owner access can’t be disabled or removed here. Transfer ownership or delete the organization in Settings → Danger zone.",
       extraPermissions: "Extra permissions",
       permissionsByRole: (count: number) => `By role (${count})`,
       permissionsByRoleExtra: (count: number) => `By role +${count}`,

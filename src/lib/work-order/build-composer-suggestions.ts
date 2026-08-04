@@ -7,7 +7,7 @@ import type { SearchOption } from "@/lib/search/filter-options";
 import { EMPLOYEE_ROLE_LABELS } from "@/lib/work-order/work-order-display";
 import { readComposerFieldValues } from "@/lib/work-order/composer-field-memory";
 
-function uniqueOptions(options: DatalistOption[]): DatalistOption[] {
+function uniqueOptions(options: DatalistOption[], limit = 120): DatalistOption[] {
   const seen = new Set<string>();
   const result: DatalistOption[] = [];
 
@@ -18,6 +18,7 @@ function uniqueOptions(options: DatalistOption[]): DatalistOption[] {
     if (seen.has(key)) continue;
     seen.add(key);
     result.push({ ...option, value });
+    if (result.length >= limit) break;
   }
 
   return result;

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Copy, Trash2 } from "lucide-react";
 
 import { canManageEmployees, canViewEmployees } from "@/lib/auth/permissions";
+import { isImmutableCompanyOwner } from "@/lib/auth/company-owner";
 import { useAuth } from "@/components/providers/auth-provider";
 import { ProFeatureGate } from "@/components/billing/pro-feature-gate";
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
@@ -14,9 +15,10 @@ import { normalizeCompanyId } from "@/lib/company-id";
 import { buildInviteUrl, normalizeInviteStatus, type InviteStatus } from "@autocore/org";
 import { CompanyEmployee, InviteDocument } from "@/domain/rbac";
 import { PERMISSIONS, Permission, ROLE_PERMISSIONS, USER_ROLES, UserRole } from "@/domain/user";
-import { getFirebaseAuth } from "@/infrastructure/firebase/client";
+import { getFirebaseAuth, getFirestoreDb } from "@/infrastructure/firebase/client";
 import { createEmployeeRbacRepository } from "@/infrastructure/firestore/employee-rbac-repository";
 import { createInviteRepository } from "@/infrastructure/firestore/invite-repository";
+import { doc, getDoc } from "firebase/firestore";
 import { WorkspaceSection } from "@/components/layout/workspace-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -101,6 +103,17 @@ function mapEmployeeError(error: unknown): string {
   if (message.includes("Missing or insufficient permissions")) {
     return userCopy.employees.errorInsufficientPermissions;
   }
+  if (message.includes("OWNER_ROLE_LOCKED")) {
+    return userCopy.employees.errorOwnerRoleLocked;
+  }
+  if (
+    message.includes("OWNER_PROTECTED") ||
+    message.includes("sole_owner_cannot_leave") ||
+    message.includes("owner_cannot_leave") ||
+    message.includes("without an owner")
+  ) {
+    return userCopy.employees.errorOwnerProtected;
+  }
   return message || userCopy.employees.errorGeneric;
 }
 
@@ -145,12 +158,29 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
   const [busy, setBusy] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState<Set<Permission>>(new Set());
   const [inviteStatusFilter, setInviteStatusFilter] = useState<InviteStatus | "all">("all");
+  const [companyOwnerId, setCompanyOwnerId] = useState<string | null>(null);
   const memberId = searchParams.get("member");
 
   const canView = canViewEmployees(profile);
   const canManage = canManageEmployees(profile);
   const { requirePro, isPro } = useBillingGate();
   const subscriptionsEnabled = Boolean(companyId && canView);
+
+  useEffect(() => {
+    if (!companyId) {
+      setCompanyOwnerId(null);
+      return;
+    }
+    let cancelled = false;
+    void getDoc(doc(getFirestoreDb(), "companies", companyId)).then((snap) => {
+      if (cancelled) return;
+      const ownerId = String(snap.data()?.ownerId ?? "").trim();
+      setCompanyOwnerId(ownerId || null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [companyId]);
 
   useEffect(() => {
     if (!subscriptionsEnabled) return;
@@ -396,6 +426,10 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
 
   async function updateRole(employee: CompanyEmployee, role: UserRole) {
     if (!profile || !companyId || employee.uid === profile.id) return;
+    if (isImmutableCompanyOwner({ role: employee.role, uid: employee.uid, companyOwnerId })) {
+      setError(userCopy.employees.errorOwnerRoleLocked);
+      return;
+    }
     setError(null);
     try {
       await employeeRepository.setEmployeeRole(companyId, profile.id, employee.uid, role);
@@ -406,6 +440,10 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
 
   async function toggleActive(employee: CompanyEmployee) {
     if (!profile || !companyId || employee.uid === profile.id) return;
+    if (isImmutableCompanyOwner({ role: employee.role, uid: employee.uid, companyOwnerId })) {
+      setError(userCopy.employees.errorOwnerProtected);
+      return;
+    }
     setError(null);
     try {
       await employeeRepository.setEmployeeActive(companyId, profile.id, employee.uid, !employee.isActive);
@@ -416,6 +454,10 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
 
   async function removeEmployee(employee: CompanyEmployee) {
     if (!profile || !companyId || employee.uid === profile.id) return;
+    if (isImmutableCompanyOwner({ role: employee.role, uid: employee.uid, companyOwnerId })) {
+      setError(userCopy.employees.errorOwnerProtected);
+      return;
+    }
     setError(null);
     try {
       await employeeRepository.removeEmployee(companyId, profile.id, employee.uid);
@@ -505,6 +547,11 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
               <TableBody>
                 {(subscriptionsEnabled ? employees : []).map((employee) => {
                   const isSelf = employee.uid === profile?.id;
+                  const isOwnerMember = isImmutableCompanyOwner({
+                    role: employee.role,
+                    uid: employee.uid,
+                    companyOwnerId,
+                  });
                   return (
                     <TableRow
                       key={employee.id}
@@ -519,7 +566,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                       </TableCell>
                       <TableCell>{employee.email}</TableCell>
                       <TableCell onClick={(event) => event.stopPropagation()}>
-                        {canManage && !isSelf && employee.role !== "owner" ? (
+                        {canManage && !isSelf && !isOwnerMember ? (
                           <Select
                             value={employee.role}
                             onValueChange={(value) => updateRole(employee, value as UserRole)}
@@ -573,7 +620,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                           <Button
                             variant="outline"
                             size="sm"
-                            disabled={!canManage || isSelf}
+                            disabled={!canManage || isSelf || isOwnerMember}
                             onClick={() => toggleActive(employee)}
                           >
                             {employee.isActive ? userCopy.employees.disable : userCopy.employees.enable}
@@ -581,7 +628,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                           <Button
                             variant="destructive"
                             size="sm"
-                            disabled={!canManage || isSelf}
+                            disabled={!canManage || isSelf || isOwnerMember}
                             onClick={() => removeEmployee(employee)}
                           >
                             {userCopy.employees.remove}
@@ -833,6 +880,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
             : null
         }
         open={profileEmployee != null}
+        companyOwnerId={companyOwnerId}
         onOpenChange={(open) => {
           if (!open) {
             setProfileEmployee(null);

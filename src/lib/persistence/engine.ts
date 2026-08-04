@@ -133,6 +133,7 @@ export class PersistenceEngine {
   unregister(key: PersistenceKey) {
     const keyStr = persistenceKeyString(key);
     this.scheduler.cancel(keyStr);
+    if (!this.docs.has(keyStr)) return;
     this.docs.delete(keyStr);
     this.emit();
   }

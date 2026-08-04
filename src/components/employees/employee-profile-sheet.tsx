@@ -34,6 +34,7 @@ import {
 import { CompanyEmployee } from "@/domain/rbac";
 import { ROLE_PERMISSIONS, USER_ROLES, UserRole } from "@/domain/user";
 import { createEmployeeRbacRepository } from "@/infrastructure/firestore/employee-rbac-repository";
+import { isImmutableCompanyOwner } from "@/lib/auth/company-owner";
 import { canManageEmployees } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { formatRole, getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
@@ -73,6 +74,8 @@ type EmployeeProfileSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assignmentCount?: number;
+  /** companies/{id}.ownerId — locks role even if employee.role was drifted off `owner`. */
+  companyOwnerId?: string | null;
   onOpenPermissions?: (employee: CompanyEmployee) => void;
 };
 
@@ -103,6 +106,7 @@ export function EmployeeProfileSheet({
   open,
   onOpenChange,
   assignmentCount,
+  companyOwnerId = null,
   onOpenPermissions,
 }: EmployeeProfileSheetProps) {
   const { profile } = useAuth();
@@ -128,6 +132,13 @@ export function EmployeeProfileSheet({
   const member = activeEmployee;
 
   const isSelf = member.uid === profile?.id;
+  const isOwnerMember = isImmutableCompanyOwner({
+    role: member.role,
+    uid: member.uid,
+    companyOwnerId,
+  });
+  const canEditRole = canManage && !isSelf && !isOwnerMember;
+  const canManageMembership = canManage && !isSelf && !isOwnerMember;
   const now = Date.now();
   const lastActive = member.lastActiveAt?.getTime() ?? 0;
   const online =
@@ -159,14 +170,28 @@ export function EmployeeProfileSheet({
     try {
       await action();
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : userCopy.employees.profileSheet.actionFailed);
+      const raw = nextError instanceof Error ? nextError.message : String(nextError);
+      let message: string = userCopy.employees.profileSheet.actionFailed;
+      if (raw.includes("OWNER_ROLE_LOCKED")) {
+        message = userCopy.employees.errorOwnerRoleLocked;
+      } else if (
+        raw.includes("OWNER_PROTECTED") ||
+        raw.includes("sole_owner_cannot_leave") ||
+        raw.includes("owner_cannot_leave") ||
+        raw.includes("without an owner")
+      ) {
+        message = userCopy.employees.errorOwnerProtected;
+      } else if (nextError instanceof Error && nextError.message.trim()) {
+        message = nextError.message;
+      }
+      setError(message);
     } finally {
       setBusy(false);
     }
   }
 
   async function handleRoleChange(role: UserRole) {
-    if (!profile || !companyId || isSelf || member.role === "owner") return;
+    if (!profile || !companyId || !canEditRole) return;
     setDraftRole(role);
     await runAction(() =>
       employeeRepository.setEmployeeRole(companyId, profile.id, member.uid, role),
@@ -174,7 +199,7 @@ export function EmployeeProfileSheet({
   }
 
   async function handleToggleActive() {
-    if (!profile || !companyId || isSelf) return;
+    if (!profile || !companyId || !canManageMembership) return;
     await runAction(() =>
       employeeRepository.setEmployeeActive(
         companyId,
@@ -186,7 +211,7 @@ export function EmployeeProfileSheet({
   }
 
   async function handleRemove() {
-    if (!profile || !companyId || isSelf) return;
+    if (!profile || !companyId || !canManageMembership) return;
     await runAction(async () => {
       await employeeRepository.removeEmployee(companyId, profile.id, member.uid);
       onOpenChange(false);
@@ -254,7 +279,7 @@ export function EmployeeProfileSheet({
           >
           <div className="overflow-hidden rounded-xl border border-border/70 bg-card">
             <ProfileRow label={sheet.role}>
-              {canManage && !isSelf && member.role !== "owner" ? (
+              {canEditRole ? (
                 <Select
                   value={draftRole}
                   onValueChange={(value) => void handleRoleChange(value as UserRole)}
@@ -277,7 +302,7 @@ export function EmployeeProfileSheet({
             </ProfileRow>
 
             <ProfileRow label={sheet.status}>
-              {canManage && !isSelf ? (
+              {canManageMembership ? (
                 <Button
                   type="button"
                   variant="ghost"
@@ -347,13 +372,19 @@ export function EmployeeProfileSheet({
             ) : null}
           </div>
 
+          {isOwnerMember && canManage && !isSelf ? (
+            <p className="mt-4 rounded-lg border border-border/70 bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+              {sheet.ownerProtectedHint}
+            </p>
+          ) : null}
+
           {error ? (
             <p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               {error}
             </p>
           ) : null}
 
-          {canManage && !isSelf ? (
+          {canManageMembership ? (
             <div className="mt-6 space-y-2">
               <Button
                 type="button"

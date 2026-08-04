@@ -101,6 +101,10 @@ export function TeamScreen() {
   const { profile, companyId, uid } = useSession();
   const { isPro } = useCompanySubscription(companyId);
   const { employees, isLoading, error: employeesError } = useEmployeesRealtime(companyId, isPro);
+  const companyOwnerId = useMemo(() => {
+    const byRole = employees.find((entry) => entry.role === 'owner');
+    return byRole?.uid ?? null;
+  }, [employees]);
   const canView = canViewEmployees(profile);
   const canManage = canManageEmployees(profile);
   const { people: directoryPeople, isLoading: directoryLoading } = useCompanyDirectory(
@@ -306,6 +310,7 @@ export function TeamScreen() {
                 isSelf={employee.uid === uid}
                 canManage={canManage}
                 profile={profile}
+                companyOwnerId={companyOwnerId}
                 openWorkOrders={assignmentCounts.get(employee.uid) ?? 0}
                 onOpenPermissions={openPermissions}
                 onToggleActive={(entry) => {

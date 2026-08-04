@@ -13,6 +13,7 @@ import {
 
 import { Permission, ROLE_PERMISSIONS, UserRole } from "@/domain/user";
 import { CompanyEmployee, RoleDefinition } from "@/domain/rbac";
+import { assertAssignableEmployeeRole } from "@/lib/auth/company-owner";
 import { toDateFromFirestore } from "@/lib/firestore-timestamp";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 import { createActivityLogRepository } from "@/infrastructure/firestore/activity-log-repository";
@@ -216,7 +217,24 @@ export function createEmployeeRbacRepository() {
       employeeId: string,
       role: UserRole,
     ): Promise<void> {
-      await updateDoc(doc(db, "companies", companyId, "employees", employeeId), {
+      if (role === "owner") {
+        throw new Error("OWNER_ROLE_LOCKED");
+      }
+      assertAssignableEmployeeRole(role);
+
+      const employeeRef = doc(db, "companies", companyId, "employees", employeeId);
+      const companyRef = doc(db, "companies", companyId);
+      const [employeeSnap, companySnap] = await Promise.all([
+        getDoc(employeeRef),
+        getDoc(companyRef),
+      ]);
+      const currentRole = String(employeeSnap.data()?.role ?? "");
+      const ownerId = String(companySnap.data()?.ownerId ?? "").trim();
+      if (currentRole === "owner" || (ownerId && ownerId === employeeId)) {
+        throw new Error("OWNER_ROLE_LOCKED");
+      }
+
+      await updateDoc(employeeRef, {
         role,
         updatedAt: serverTimestamp(),
       });

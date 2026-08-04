@@ -27,10 +27,17 @@ export function usePersistedDocument(input: {
   const lastPatchedRef = useRef<string>("");
   const bootstrappedKeyRef = useRef<string>("");
 
+  const register = persistence?.register;
+  const unregister = persistence?.unregister;
+  const setSyncHandler = persistence?.setSyncHandler;
+  const patch = persistence?.patch;
+  const flush = persistence?.flush;
+  const markClean = persistence?.markClean;
+
   useEffect(() => {
-    if (!enabled || !persistence || !input.key) return;
+    if (!enabled || !register || !unregister || !input.key) return;
     const key = input.key;
-    persistence.register({
+    register({
       key,
       snapshot: input.value,
       baseRevision: input.baseRevision ?? null,
@@ -38,22 +45,22 @@ export function usePersistedDocument(input: {
       sync: syncRef.current ? (args) => syncRef.current!(args) : null,
     });
     return () => {
-      persistence.unregister(key);
+      unregister(key);
     };
     // Register once per key identity; sync updates via setSyncHandler.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- key string identity
-  }, [enabled, input.key?.companyId, input.key?.kind, input.key?.id, persistence]);
+  }, [enabled, input.key?.companyId, input.key?.kind, input.key?.id, register, unregister]);
 
   useEffect(() => {
-    if (!enabled || !persistence || !input.key) return;
-    persistence.setSyncHandler(
+    if (!enabled || !setSyncHandler || !input.key) return;
+    setSyncHandler(
       input.key,
       syncRef.current ? (args) => syncRef.current!(args) : null,
     );
-  }, [enabled, input.key, input.sync, persistence]);
+  }, [enabled, input.key, input.sync, setSyncHandler]);
 
   useEffect(() => {
-    if (!enabled || !persistence || !input.key) return;
+    if (!enabled || !patch || !input.key) return;
     if (input.skipEmpty && (input.value == null || input.value === "")) return;
 
     const keyId = `${input.key.companyId}:${input.key.kind}:${input.key.id}`;
@@ -71,7 +78,7 @@ export function usePersistedDocument(input: {
     if (serialized === lastPatchedRef.current) return;
     lastPatchedRef.current = serialized;
 
-    void persistence.patch({
+    void patch({
       key: input.key,
       snapshot: input.value,
       label: input.label,
@@ -84,13 +91,13 @@ export function usePersistedDocument(input: {
     input.patchOnEnable,
     input.skipEmpty,
     input.value,
-    persistence,
+    patch,
   ]);
 
   return {
     flush: (reason: "blur" | "manual" | "route" = "manual") =>
-      input.key && persistence ? persistence.flush(input.key, reason) : Promise.resolve(),
+      input.key && flush ? flush(input.key, reason) : Promise.resolve(),
     markClean: (baseRevision?: string | null) =>
-      input.key && persistence ? persistence.markClean(input.key, baseRevision) : Promise.resolve(),
+      input.key && markClean ? markClean(input.key, baseRevision) : Promise.resolve(),
   };
 }

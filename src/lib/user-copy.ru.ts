@@ -21,15 +21,25 @@ export const userCopyRu = {
   },
 
   gridPhotos: {
-    addPhoto: "Добавить фото",
-    changePhoto: "Изменить фото",
+    addPhoto: "Добавить медиа",
+    changePhoto: "Медиа",
     takePhoto: "Сделать фото",
     chooseFile: "Выбрать файл",
+    chooseFiles: "Выбрать фото / файлы",
+    chooseVideo: "Добавить видео",
     remove: "Удалить",
     uploading: "Загрузка…",
-    uploadFailed: "Не удалось загрузить фото",
-    attachAria: "Прикрепить фото",
-    saveRowFirst: "Сначала сохраните строку, затем прикрепите фото",
+    uploadProgress: (done: number, total: number) => `Загрузка ${done}/${total}…`,
+    uploadFailed: "Не удалось загрузить медиа",
+    attachAria: "Прикрепить фото или видео",
+    saveRowFirst: "Сначала сохраните строку, затем прикрепите медиа",
+    view: "Смотреть",
+    viewAll: "Смотреть все",
+    galleryTitle: "Фото и видео",
+    galleryEmpty: "Пока нет медиа",
+    galleryCount: (total: number, current: number) => `${current} из ${total}`,
+    prev: "Назад",
+    next: "Далее",
   },
 
   auth: {
@@ -860,6 +870,8 @@ export const userCopyRu = {
     permissionsExtra: (count: number) => `+${count} доп.`,
     errorInsufficientPermissions:
       "Недостаточно прав. Обновите страницу — если ошибка повторится, правила Firebase ещё не обновились.",
+    errorOwnerRoleLocked: "Роль владельца компании нельзя изменить.",
+    errorOwnerProtected: "Владельца компании нельзя отключить или удалить из команды.",
     errorGeneric: "Не удалось выполнить действие",
     errorResend: "Не удалось отправить повторно",
     errorCancel: "Не удалось отменить",
@@ -954,6 +966,8 @@ export const userCopyRu = {
       disableAccess: "Отключить доступ",
       enableAccess: "Включить доступ",
       removeFromTeam: "Удалить из команды",
+      ownerProtectedHint:
+        "Владельца нельзя отключить или удалить здесь. Передайте владение или удалите организацию в Настройки → Опасная зона.",
       extraPermissions: "Дополнительные права",
       permissionsByRole: (count: number) => `По роли (${count})`,
       permissionsByRoleExtra: (count: number) => `По роли +${count}`,

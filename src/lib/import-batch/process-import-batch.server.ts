@@ -127,7 +127,7 @@ async function processVisionFile(params: {
   if (!readAiTransport()) {
     await updateImportBatchFileAdmin(params.batchId, params.fileId, {
       status: "failed",
-      error: "OpenRouter не настроен (OPENROUTER_API_KEY)",
+      error: "AI не настроен (Firebase openrouterProxy / OPENROUTER_API_KEY в Functions)",
     });
     return 0;
   }

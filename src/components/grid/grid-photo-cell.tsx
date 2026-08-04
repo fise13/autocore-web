@@ -1,8 +1,9 @@
 "use client";
 
-import { Camera, ImagePlus, Trash2, X } from "lucide-react";
+import { Camera, Eye, Film, ImagePlus, Trash2, X } from "lucide-react";
 import { useRef, useState } from "react";
 
+import { GridMediaGallery, GridMediaThumb } from "@/components/grid/grid-media-gallery";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,8 +11,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { RowPhotoEntityKind } from "@/lib/grid/upload-row-photo-utils";
-import { uploadGridRowPhoto } from "@/lib/grid/upload-grid-row-photo";
+import {
+  assertRowMediaCount,
+  MAX_ROW_MEDIA_ITEMS,
+  type RowPhotoEntityKind,
+} from "@/lib/grid/upload-row-photo-utils";
+import { uploadGridRowPhotos } from "@/lib/grid/upload-grid-row-photo";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
@@ -37,28 +42,46 @@ export function GridPhotoCell({
 }: GridPhotoCellProps) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const copy = userCopy.gridPhotos;
   const primary = urls[0] ?? null;
 
+  /** Open the native picker while still inside the user gesture.
+   *  Base UI closes the menu first by default, which cancels input.click(). */
+  function openPicker(input: HTMLInputElement | null) {
+    if (!input || disabled || uploading) return;
+    input.click();
+    setMenuOpen(false);
+  }
+
   async function handleFiles(fileList: FileList | null) {
-    const file = fileList?.[0];
-    if (!file || disabled || !entityId.trim()) return;
+    const files = fileList ? [...fileList] : [];
+    if (files.length === 0 || disabled || !entityId.trim()) return;
+
     setUploading(true);
     setError(null);
+    setProgress(null);
     try {
-      const url = await uploadGridRowPhoto({
+      assertRowMediaCount(urls.length, files.length);
+      const uploaded = await uploadGridRowPhotos({
         companyId,
         entityKind,
         entityId,
-        file,
+        files,
+        onProgress: (done, total) => {
+          setProgress(copy.uploadProgress(done, total));
+        },
       });
-      onChange([...urls, url]);
+      onChange([...urls, ...uploaded]);
     } catch (err) {
       setError(err instanceof Error ? err.message : copy.uploadFailed);
     } finally {
       setUploading(false);
+      setProgress(null);
       if (cameraInputRef.current) cameraInputRef.current.value = "";
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
@@ -71,14 +94,14 @@ export function GridPhotoCell({
 
   return (
     <div
-      className={cn("flex h-full w-full items-center justify-center", className)}
+      className={cn("flex h-full w-full items-center justify-center gap-1", className)}
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
     >
       <input
         ref={cameraInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/*"
         capture="environment"
         className="hidden"
         disabled={disabled || uploading}
@@ -87,13 +110,14 @@ export function GridPhotoCell({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/*"
+        multiple
         className="hidden"
         disabled={disabled || uploading}
         onChange={(event) => void handleFiles(event.target.files)}
       />
 
-      <DropdownMenu>
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger
           disabled={disabled}
           render={
@@ -110,8 +134,7 @@ export function GridPhotoCell({
           }
         >
           {primary ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={primary} alt="" className="size-full object-cover" />
+            <GridMediaThumb url={primary} />
           ) : (
             <ImagePlus className="size-3.5" />
           )}
@@ -121,26 +144,49 @@ export function GridPhotoCell({
             </span>
           ) : null}
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="min-w-40">
+        <DropdownMenuContent align="start" className="min-w-44">
           {primary ? (
             <div className="mb-1 overflow-hidden rounded-md border border-border/60">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={primary} alt="" className="h-24 w-full object-cover" />
+              <div className="relative h-24 w-full">
+                <GridMediaThumb url={primary} />
+              </div>
             </div>
           ) : null}
+          {urls.length > 0 ? (
+            <DropdownMenuItem
+              disabled={uploading}
+              onClick={() => {
+                setMenuOpen(false);
+                setGalleryOpen(true);
+              }}
+            >
+              <Eye className="size-4" />
+              {copy.viewAll}
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem
-            disabled={uploading || disabled}
-            onClick={() => cameraInputRef.current?.click()}
+            closeOnClick={false}
+            disabled={uploading || disabled || urls.length >= MAX_ROW_MEDIA_ITEMS}
+            onClick={() => openPicker(cameraInputRef.current)}
           >
             <Camera className="size-4" />
             {copy.takePhoto}
           </DropdownMenuItem>
           <DropdownMenuItem
-            disabled={uploading || disabled}
-            onClick={() => fileInputRef.current?.click()}
+            closeOnClick={false}
+            disabled={uploading || disabled || urls.length >= MAX_ROW_MEDIA_ITEMS}
+            onClick={() => openPicker(fileInputRef.current)}
           >
             <ImagePlus className="size-4" />
-            {copy.chooseFile}
+            {copy.chooseFiles}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            closeOnClick={false}
+            disabled={uploading || disabled || urls.length >= MAX_ROW_MEDIA_ITEMS}
+            onClick={() => openPicker(fileInputRef.current)}
+          >
+            <Film className="size-4" />
+            {copy.chooseVideo}
           </DropdownMenuItem>
           {primary ? (
             <>
@@ -159,10 +205,33 @@ export function GridPhotoCell({
             <p className="px-2 py-1.5 text-xs text-destructive">{error}</p>
           ) : null}
           {uploading ? (
-            <p className="px-2 py-1.5 text-xs text-muted-foreground">{copy.uploading}</p>
+            <p className="px-2 py-1.5 text-xs text-muted-foreground">
+              {progress ?? copy.uploading}
+            </p>
           ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {urls.length > 0 ? (
+        <button
+          type="button"
+          className="rounded border border-border/70 bg-background/80 px-1 py-0.5 text-[10px] font-medium text-foreground/80 hover:bg-muted"
+          onClick={() => setGalleryOpen(true)}
+          title={copy.viewAll}
+        >
+          {copy.view}
+        </button>
+      ) : null}
+
+      {galleryOpen ? (
+        <GridMediaGallery
+          open
+          onOpenChange={setGalleryOpen}
+          urls={urls}
+          canEdit={!disabled}
+          onChange={onChange}
+        />
+      ) : null}
     </div>
   );
 }

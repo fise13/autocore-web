@@ -8,8 +8,10 @@ import {
 } from "@/infrastructure/openrouter/ai-profiles";
 import { parseAiJsonContent } from "@/infrastructure/openrouter/parse-ai-json";
 
-const DEFAULT_MODEL = "google/gemini-2.0-flash-001";
+const DEFAULT_MODEL = "google/gemini-2.5-flash";
 const ABSOLUTE_MAX_TOKENS = 8192;
+const AI_PROXY_REGION = "europe-west1";
+const AI_PROXY_FUNCTION = "openrouterProxy";
 
 export type OpenRouterMessage =
   | { role: "system" | "user" | "assistant"; content: string }
@@ -47,18 +49,47 @@ export function readOpenRouterApiKey(): string | null {
 /**
  * How this runtime reaches OpenRouter.
  *
- * In production the API key lives only in Firebase, and Vercel talks to the
- * `openrouterProxy` function with a shared secret instead. A direct key is the
- * local-development path — handy for offline work, never required in deploy.
+ * Production path: Firebase `openrouterProxy` only. The OpenRouter key never
+ * leaves Functions env. Auth is either optional `AI_PROXY_SECRET` or a Google
+ * ID token from the Firebase Admin service account (already on Vercel/local).
+ * Direct `OPENROUTER_API_KEY` is a local fallback when the proxy URL cannot be
+ * resolved.
  */
 export type AiTransport =
   | { kind: "direct"; apiKey: string }
-  | { kind: "proxy"; url: string; secret: string };
+  | { kind: "proxy"; url: string; secret: string | null };
+
+function firebaseProjectId(): string | null {
+  const id =
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim() ||
+    process.env.GCLOUD_PROJECT?.trim() ||
+    process.env.FIREBASE_PROJECT_ID?.trim() ||
+    null;
+  return id || null;
+}
+
+/** Default Cloud Function URL for the AI proxy — no Vercel-specific AI env needed. */
+export function resolveAiProxyUrl(): string | null {
+  const explicit = process.env.AI_PROXY_URL?.trim();
+  if (explicit) return explicit;
+  const projectId = firebaseProjectId();
+  if (!projectId) return null;
+  return `https://${AI_PROXY_REGION}-${projectId}.cloudfunctions.net/${AI_PROXY_FUNCTION}`;
+}
+
+function canUseFirebaseServiceAccount(): boolean {
+  return Boolean(
+    process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim() ||
+      process.env.FIREBASE_SERVICE_ACCOUNT_PATH?.trim(),
+  );
+}
 
 export function readAiTransport(): AiTransport | null {
-  const url = process.env.AI_PROXY_URL?.trim();
-  const secret = process.env.AI_PROXY_SECRET?.trim();
-  if (url && secret) return { kind: "proxy", url, secret };
+  const url = resolveAiProxyUrl();
+  const secret = process.env.AI_PROXY_SECRET?.trim() || null;
+  if (url && (secret || canUseFirebaseServiceAccount())) {
+    return { kind: "proxy", url, secret };
+  }
 
   const apiKey = readOpenRouterApiKey();
   return apiKey ? { kind: "direct", apiKey } : null;
@@ -111,6 +142,34 @@ function mapOpenRouterError(status: number, text: string, maxTokens: number): Er
   return new Error(text || `OpenRouter error ${status}`);
 }
 
+async function resolveProxyAuthHeaders(
+  transport: Extract<AiTransport, { kind: "proxy" }>,
+  title: string,
+): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { "x-ai-title": title };
+  if (transport.secret) {
+    headers["x-ai-proxy-key"] = transport.secret;
+    return headers;
+  }
+
+  const { GoogleAuth } = await import("google-auth-library");
+  const { parseServiceAccount } = await import("@/infrastructure/firebase/resolve-service-account");
+  const credentials = parseServiceAccount() as {
+    client_email: string;
+    private_key: string;
+  };
+  const auth = new GoogleAuth({ credentials });
+  const client = await auth.getIdTokenClient(transport.url);
+  const requestHeaders = await client.getRequestHeaders(transport.url);
+  const authorization =
+    requestHeaders.get("Authorization") || requestHeaders.get("authorization");
+  if (!authorization) {
+    throw new Error("Не удалось получить Google ID token для Firebase AI proxy");
+  }
+  headers.Authorization = authorization;
+  return headers;
+}
+
 async function callOpenRouterOnce<T>(
   messages: OpenRouterMessage[],
   schema: { parse: (value: unknown) => T },
@@ -133,7 +192,7 @@ async function callOpenRouterOnce<T>(
     transport.kind === "proxy" ? transport.url : "https://openrouter.ai/api/v1/chat/completions";
   const authHeaders: Record<string, string> =
     transport.kind === "proxy"
-      ? { "x-ai-proxy-key": transport.secret, "x-ai-title": params.title }
+      ? await resolveProxyAuthHeaders(transport, params.title)
       : {
           Authorization: `Bearer ${transport.apiKey}`,
           "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "https://app.myautocore.com",
@@ -199,6 +258,9 @@ async function callOpenRouterOnce<T>(
   }
 }
 
+const AI_NOT_CONFIGURED =
+  "AI не настроен. OpenRouter ключ задаётся только в Firebase Functions (OPENROUTER_API_KEY). Убедитесь, что openrouterProxy задеплоен и на сервере есть Firebase Admin credentials.";
+
 /**
  * JSON chat completion with profile budgets, timeout, and auto-retry on parse failures.
  */
@@ -209,9 +271,7 @@ export async function callOpenRouterJson<T>(
 ): Promise<T> {
   const transport = readAiTransport();
   if (!transport) {
-    throw new Error(
-      "OpenRouter не настроен. Задайте AI_PROXY_URL и AI_PROXY_SECRET (или OPENROUTER_API_KEY локально).",
-    );
+    throw new Error(AI_NOT_CONFIGURED);
   }
 
   const profileId = options?.profile ?? "default";

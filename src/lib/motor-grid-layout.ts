@@ -7,7 +7,7 @@ export const MOTOR_GRID_COLUMN_WIDTHS = {
   configuration: 188,
   notes: 228,
   quality: 100,
-  photo: 72,
+  photo: 108,
   quantity: 72,
   transmission: 124,
   warehouseLocation: 140,

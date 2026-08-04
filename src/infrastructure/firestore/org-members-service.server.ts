@@ -236,9 +236,16 @@ export async function setMemberActiveAsAdmin(params: {
   }
 
   const db = getAdminFirestore();
-  const employeeRef = db.collection(COMPANIES).doc(companyId).collection("employees").doc(targetUserId);
-  const employeeSnap = await employeeRef.get();
+  const companyRef = db.collection(COMPANIES).doc(companyId);
+  const employeeRef = companyRef.collection("employees").doc(targetUserId);
+  const [companySnap, employeeSnap] = await Promise.all([companyRef.get(), employeeRef.get()]);
   if (!employeeSnap.exists) throw new OrgError("not_a_member", 404);
+
+  const ownerId = String(companySnap.data()?.ownerId ?? "");
+  const employeeRole = String(employeeSnap.data()?.role ?? "");
+  if (!params.isActive && (employeeRole === "owner" || ownerId === targetUserId)) {
+    throw new OrgError("sole_owner_cannot_leave", 409);
+  }
 
   const companyName = await getCompanyName(companyId);
   const targetName = String(employeeSnap.data()?.fullName ?? employeeSnap.data()?.email ?? "Сотрудник");

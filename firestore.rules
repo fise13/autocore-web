@@ -311,6 +311,17 @@ service cloud.firestore {
       return isSignedIn() && companyOwner(companyId) == request.auth.uid;
     }
 
+    // Role reassignment must never demote / retarget the company owner.
+    // Permission and active-flag updates keep the role unchanged and still pass.
+    function employeeRoleChangeAllowed(companyId, employeeId) {
+      return request.resource.data.role == resource.data.role
+        || (
+          resource.data.role != 'owner'
+          && request.resource.data.role != 'owner'
+          && companyOwner(companyId) != employeeId
+        );
+    }
+
     // Owner onboarding: create/update own employee doc for a company you own.
     function isSelfOwnedCompanyOwnerOnboarding(companyId) {
       return isSignedIn()
@@ -600,7 +611,8 @@ service cloud.firestore {
         && hasPermission(resource.data.companyId, 'employee_manage')
         && isOwnerOrAdmin()
         && request.resource.data.companyId == resource.data.companyId
-        && isValidMemberRole(request.resource.data.role);
+        && isValidMemberRole(request.resource.data.role)
+        && employeeRoleChangeAllowed(resource.data.companyId, userId);
       allow delete: if isSignedIn() && request.auth.uid == userId;
 
       // Any user inside the same company can read member profiles.
@@ -735,7 +747,8 @@ service cloud.firestore {
           && request.resource.data.uid == resource.data.uid
           && isValidMemberRole(request.resource.data.role)
           && request.resource.data.isActive is bool
-          && request.auth.uid != employeeId;
+          && request.auth.uid != employeeId
+          && employeeRoleChangeAllowed(companyId, employeeId);
         allow update: if isSignedIn()
           && request.auth.uid == employeeId
           && resource.data.companyId == companyId

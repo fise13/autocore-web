@@ -54,9 +54,11 @@ export async function extractDocumentImportJob(params: {
   if (!readAiTransport()) {
     await updateDocumentImportJobAdmin(job.id, {
       aiStatus: "failed",
-      error: "OpenRouter не настроен (OPENROUTER_API_KEY)",
+      error: "AI не настроен (Firebase openrouterProxy / OPENROUTER_API_KEY в Functions)",
     });
-    throw new Error("OpenRouter не настроен. Задайте OPENROUTER_API_KEY.");
+    throw new Error(
+      "AI не настроен. OpenRouter ключ задаётся только в Firebase Functions (OPENROUTER_API_KEY).",
+    );
   }
 
   await updateDocumentImportJobAdmin(job.id, { aiStatus: "processing", error: null });

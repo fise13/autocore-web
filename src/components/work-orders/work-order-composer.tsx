@@ -231,7 +231,7 @@ export function WorkOrderComposer({
 
   const clientNameOptions = useMemo<SearchOption[]>(
     () =>
-      clients.map((client) => ({
+      clients.slice(0, 120).map((client) => ({
         value: client.fullName,
         label: client.fullName,
         description: client.phone || undefined,
@@ -241,7 +241,7 @@ export function WorkOrderComposer({
   );
   const clientPhoneOptions = useMemo<SearchOption[]>(
     () =>
-      clients.map((client) => ({
+      clients.slice(0, 120).map((client) => ({
         value: client.phone,
         label: client.phone,
         description: client.fullName || undefined,
@@ -272,13 +272,17 @@ export function WorkOrderComposer({
     return buildVehicleModelOptions(form.vehicleMake, clientModels);
   }, [form.vehicleMake, vehicles]);
   const licensePlateOptions = useMemo(
-    () => toSearchOptions(buildPlateOptions(
-      companyId,
-      vehiclesInContext(clientVehicles, form, "licensePlate")
-        .map((vehicle) => vehicle.licensePlate)
-        .filter(Boolean),
-    )),
-    [clientVehicles, companyId, form],
+    () =>
+      toSearchOptions(
+        buildPlateOptions(
+          companyId,
+          vehiclesInContext(clientVehicles, form, "licensePlate")
+            .map((vehicle) => vehicle.licensePlate)
+            .filter(Boolean),
+        ),
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only vehicle-matching fields
+    [clientVehicles, companyId, form.clientId, form.vehicleMake, form.vehicleModel, form.vin],
   );
   const vinOptions = useMemo(
     () =>
@@ -290,7 +294,15 @@ export function WorkOrderComposer({
             .filter(Boolean) as string[],
         ),
       ),
-    [clientVehicles, companyId, form],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only vehicle-matching fields
+    [
+      clientVehicles,
+      companyId,
+      form.clientId,
+      form.vehicleMake,
+      form.vehicleModel,
+      form.licensePlate,
+    ],
   );
 
   function detachVehicleLink() {

@@ -28,6 +28,13 @@ export function useGridPersistenceAdapter(input: {
   const getSnapshotRef = useRef(input.getSnapshot);
   getSnapshotRef.current = input.getSnapshot;
 
+  // Stable action refs — never depend on the whole context object (it changes on every emit).
+  const register = persistence?.register;
+  const unregister = persistence?.unregister;
+  const patch = persistence?.patch;
+  const markClean = persistence?.markClean;
+  const flush = persistence?.flush;
+
   const sync: PersistenceSyncHandler = async () => {
     try {
       await pushRef.current();
@@ -41,34 +48,38 @@ export function useGridPersistenceAdapter(input: {
   };
 
   useEffect(() => {
-    if (!enabled || !persistence || !input.key) return;
+    if (!enabled || !register || !unregister || !input.key) return;
     const key = input.key;
-    persistence.register({
+    register({
       key,
       snapshot: getSnapshotRef.current(),
       label: input.label,
       sync,
     });
-    return () => persistence.unregister(key);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- stable key fields
-  }, [enabled, input.key?.companyId, input.key?.kind, input.key?.id, input.label, persistence]);
+    return () => unregister(key);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- stable key fields + stable actions
+  }, [enabled, input.key?.companyId, input.key?.kind, input.key?.id, input.label, register, unregister]);
 
   useEffect(() => {
-    if (!enabled || !persistence || !input.key) return;
+    if (!enabled || !patch || !markClean || !input.key) return;
     if (input.dirtyVersion <= 0) return;
 
-    const snapshot = getSnapshotRef.current() as { dirtyRowIds?: string[]; pendingArchiveIds?: string[]; pendingDeleteIds?: string[] };
+    const snapshot = getSnapshotRef.current() as {
+      dirtyRowIds?: string[];
+      pendingArchiveIds?: string[];
+      pendingDeleteIds?: string[];
+    };
     const dirtyCount =
       (snapshot.dirtyRowIds?.length ?? 0) +
       (snapshot.pendingArchiveIds?.length ?? 0) +
       (snapshot.pendingDeleteIds?.length ?? 0);
 
     if (dirtyCount === 0) {
-      void persistence.markClean(input.key);
+      void markClean(input.key);
       return;
     }
 
-    void persistence.patch({
+    void patch({
       key: input.key,
       snapshot,
       label: input.label,
@@ -80,14 +91,14 @@ export function useGridPersistenceAdapter(input: {
     input.key,
     input.label,
     input.scheduleInEngine,
-    persistence,
+    markClean,
+    patch,
   ]);
 
   // Flush when panel/grid unmounts or becomes inactive is handled by caller;
   // also flush on blur of window via provider lifecycle.
 
   return {
-    flush: () =>
-      input.key && persistence ? persistence.flush(input.key, "manual") : Promise.resolve(),
+    flush: () => (input.key && flush ? flush(input.key, "manual") : Promise.resolve()),
   };
 }

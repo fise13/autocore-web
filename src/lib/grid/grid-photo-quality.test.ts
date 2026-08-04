@@ -22,6 +22,12 @@ import {
   SPECIFIC_QUALITY_KEY,
 } from "@/lib/specific/specific-photo-quality";
 import { buildSpecificHeaderMapping } from "@/lib/specific/specific-header-mapping";
+import {
+  assertRowMediaCount,
+  assertRowPhotoUpload,
+  isVideoMediaUrl,
+  MAX_ROW_MEDIA_ITEMS,
+} from "@/lib/grid/upload-row-photo-utils";
 
 describe("grid photo and quality columns", () => {
   it("motors layout includes quality and photo columns", () => {
@@ -84,5 +90,22 @@ describe("grid photo and quality columns", () => {
       },
     };
     assert.deepEqual(parseSpecificPhotoUrls(row.data[SPECIFIC_PHOTO_URLS_KEY]), urls);
+  });
+
+  it("accepts videos and detects video URLs", () => {
+    const video = assertRowPhotoUpload({
+      size: 12 * 1024 * 1024,
+      type: "video/mp4",
+      name: "clip.mp4",
+    });
+    assert.equal(video.kind, "video");
+    assert.equal(video.extension, "mp4");
+    assert.equal(isVideoMediaUrl("https://cdn.example.com/a/clip.mp4?alt=media"), true);
+    assert.equal(isVideoMediaUrl("https://cdn.example.com/a/shot.jpg"), false);
+  });
+
+  it("caps media count per row", () => {
+    assert.doesNotThrow(() => assertRowMediaCount(MAX_ROW_MEDIA_ITEMS - 2, 2));
+    assert.throws(() => assertRowMediaCount(MAX_ROW_MEDIA_ITEMS - 1, 2));
   });
 });

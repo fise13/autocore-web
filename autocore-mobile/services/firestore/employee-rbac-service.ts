@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   onSnapshot,
   orderBy,
   query,
@@ -56,11 +57,27 @@ export async function setEmployeeRole(
   employeeId: string,
   role: UserRole,
 ): Promise<void> {
-  await updateDoc(doc(getFirebaseDb(), 'companies', companyId, 'employees', employeeId), {
+  if (role === 'owner') {
+    throw new Error('OWNER_ROLE_LOCKED');
+  }
+
+  const db = getFirebaseDb();
+  const employeeRef = doc(db, 'companies', companyId, 'employees', employeeId);
+  const [employeeSnap, companySnap] = await Promise.all([
+    getDoc(employeeRef),
+    getDoc(doc(db, 'companies', companyId)),
+  ]);
+  const currentRole = String(employeeSnap.data()?.role ?? '');
+  const ownerId = String(companySnap.data()?.ownerId ?? '').trim();
+  if (currentRole === 'owner' || (ownerId && ownerId === employeeId)) {
+    throw new Error('OWNER_ROLE_LOCKED');
+  }
+
+  await updateDoc(employeeRef, {
     role,
     updatedAt: serverTimestamp(),
   });
-  await updateDoc(doc(getFirebaseDb(), 'users', employeeId), { role });
+  await updateDoc(doc(db, 'users', employeeId), { role });
 }
 
 export async function setEmployeeActive(

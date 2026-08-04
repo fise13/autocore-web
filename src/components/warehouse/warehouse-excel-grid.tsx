@@ -387,6 +387,8 @@ export function WarehouseExcelGrid({
   const pendingSelectionDragRef = useRef<{
     clientX: number;
     clientY: number;
+    pointerId: number;
+    target: HTMLElement;
   } | null>(null);
   const isDraggingFillRef = useRef(false);
   const fillSourceRef = useRef<GridRange | null>(null);
@@ -950,10 +952,14 @@ export function WarehouseExcelGrid({
     function onPointerMove(event: PointerEvent) {
       lastDragPointerRef.current = { x: event.clientX, y: event.clientY };
       if (pendingSelectionDragRef.current && !isDraggingSelectionRef.current) {
-        const dx = Math.abs(event.clientX - pendingSelectionDragRef.current.clientX);
-        const dy = Math.abs(event.clientY - pendingSelectionDragRef.current.clientY);
+        const pending = pendingSelectionDragRef.current;
+        const dx = Math.abs(event.clientX - pending.clientX);
+        const dy = Math.abs(event.clientY - pending.clientY);
         if (dx > 4 || dy > 4) {
           isDraggingSelectionRef.current = true;
+          if (!pending.target.hasPointerCapture(pending.pointerId)) {
+            pending.target.setPointerCapture(pending.pointerId);
+          }
         }
       }
       applyDragAtPointer(event.clientX, event.clientY);
@@ -1512,7 +1518,6 @@ export function WarehouseExcelGrid({
                           onPointerDown={(event) => {
                             if (isInteractiveGridTarget(event.target)) return;
                             event.preventDefault();
-                            event.stopPropagation();
                             gridRef.current?.focus();
                             if (colIdx === 0) {
                               setSelection(
@@ -1535,8 +1540,9 @@ export function WarehouseExcelGrid({
                               pendingSelectionDragRef.current = {
                                 clientX: event.clientX,
                                 clientY: event.clientY,
+                                pointerId: event.pointerId,
+                                target: event.currentTarget,
                               };
-                              event.currentTarget.setPointerCapture(event.pointerId);
                             }
                             if (event.detail === 2 && isEditableColumn(colIdx)) {
                               beginEdit({ row: rowIdx, column: colIdx });

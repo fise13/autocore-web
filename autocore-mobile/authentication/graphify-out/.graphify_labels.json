@@ -1,0 +1,11 @@
+{
+  "0": "auth-provider.tsx",
+  "1": "auth-oauth-button.tsx",
+  "2": "login-screen.tsx",
+  "3": "auth-splash-surface.tsx",
+  "4": "auth-hero-shell.tsx",
+  "5": "auth-gate.tsx",
+  "6": "auth-shell.tsx",
+  "7": "auth-boot-loading.tsx",
+  "8": "auth-divider.tsx"
+}

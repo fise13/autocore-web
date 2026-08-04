@@ -31,6 +31,10 @@ type ComboboxItem = {
   keywords?: string;
 };
 
+/** Never scan more than this many raw options before filtering — large inventory/client
+ *  lists were OOMing the tab when every composer field rebuilt its item list. */
+const SOURCE_SCAN_CAP = 200;
+
 function toComboboxItem(option: SearchOption): ComboboxItem | null {
   const value = option.value?.trim() ?? "";
   if (!value) return null;
@@ -40,6 +44,58 @@ function toComboboxItem(option: SearchOption): ComboboxItem | null {
     description: option.description,
     keywords: option.keywords,
   };
+}
+
+function buildItems(
+  options: SearchOption[],
+  value: string,
+  maxResults: number,
+  emptyOption?: SearchOption,
+): ComboboxItem[] {
+  const mapped: ComboboxItem[] = [];
+  const seen = new Set<string>();
+
+  const push = (option: SearchOption | undefined) => {
+    if (!option) return;
+    const item = toComboboxItem(option);
+    if (!item) return;
+    const key = item.value.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    mapped.push(item);
+  };
+
+  push(emptyOption);
+
+  // Prefer matches for the current query when the source list is huge; otherwise
+  // take a stable prefix so opening an empty field stays cheap.
+  const query = value.trim();
+  const source = query
+    ? filterSearchOptions(options, query, SOURCE_SCAN_CAP)
+    : options.length > SOURCE_SCAN_CAP
+      ? options.slice(0, SOURCE_SCAN_CAP)
+      : options;
+
+  for (const option of source) push(option);
+
+  const filtered = filterSearchOptions(mapped, value, maxResults);
+  const trimmed = value.trim();
+  if (!trimmed) return filtered;
+
+  const hasExact = filtered.some((item) => item.value.toLowerCase() === trimmed.toLowerCase());
+  if (hasExact) return filtered;
+
+  // Keep free-typed values in the item list so Base UI treats them as a real
+  // selection and does not clear the input when the popup closes.
+  return [
+    {
+      value: trimmed,
+      label: trimmed,
+      description: userCopy.searchCombobox.customOption,
+      keywords: trimmed,
+    },
+    ...filtered,
+  ].slice(0, maxResults);
 }
 
 export function SearchCombobox({
@@ -52,47 +108,26 @@ export function SearchCombobox({
   emptyMessage = userCopy.searchCombobox.empty,
   disabled = false,
   className,
-  maxResults = 50,
+  maxResults = 40,
 }: SearchComboboxProps) {
+  const [open, setOpen] = React.useState(false);
+
+  // While closed, only keep the current value as an item so Base UI has a real
+  // selection object — never mount a large list until the popup opens.
   const items = React.useMemo(() => {
-    const mapped: ComboboxItem[] = [];
-    const seen = new Set<string>();
-
-    const push = (option: SearchOption | undefined) => {
-      if (!option) return;
-      const item = toComboboxItem(option);
-      if (!item) return;
-      const key = item.value.toLowerCase();
-      if (seen.has(key)) return;
-      seen.add(key);
-      mapped.push(item);
-    };
-
-    push(emptyOption);
-    for (const option of options) push(option);
-
-    // Pre-filter by the current input so Base UI never mounts thousands of rows
-    // (opening an unscoped client/SKU list was crashing the tab).
-    const filtered = filterSearchOptions(mapped, value, maxResults);
-
-    const trimmed = value.trim();
-    if (!trimmed) return filtered;
-
-    const hasExact = filtered.some((item) => item.value.toLowerCase() === trimmed.toLowerCase());
-    if (hasExact) return filtered;
-
-    // Keep free-typed values in the item list so Base UI treats them as a real
-    // selection and does not clear the input when the popup closes.
-    return [
-      {
-        value: trimmed,
-        label: trimmed,
-        description: userCopy.searchCombobox.customOption,
-        keywords: trimmed,
-      },
-      ...filtered,
-    ].slice(0, maxResults);
-  }, [emptyOption, maxResults, options, value]);
+    if (!open) {
+      const trimmed = value.trim();
+      if (!trimmed) return [] as ComboboxItem[];
+      return [
+        {
+          value: trimmed,
+          label: trimmed,
+          keywords: trimmed,
+        },
+      ];
+    }
+    return buildItems(options, value, maxResults, emptyOption);
+  }, [emptyOption, maxResults, open, options, value]);
 
   const selectedItem = React.useMemo(() => {
     const trimmed = value.trim().toLowerCase();
@@ -103,13 +138,19 @@ export function SearchCombobox({
   return (
     <Combobox.Root
       items={items}
+      filteredItems={items}
       value={selectedItem}
       inputValue={value}
+      open={open}
+      onOpenChange={setOpen}
       disabled={disabled}
       autoHighlight
       limit={maxResults}
-      // Filtering is applied when building `items` so the DOM stays bounded.
+      // External filtering — Base UI must not re-filter or the DOM grows again.
       filter={null}
+      // Scroll-lock + pointer-block fought the WO motion layout and made the
+      // tab feel like a hard crash on low-memory machines.
+      modal={false}
       itemToStringLabel={(item) => item?.label ?? ""}
       isItemEqualToValue={(a, b) =>
         Boolean(a && b && a.value.toLowerCase() === b.value.toLowerCase())
@@ -165,36 +206,40 @@ export function SearchCombobox({
         </div>
       </Combobox.InputGroup>
 
-      <Combobox.Portal>
-        <Combobox.Positioner sideOffset={4} className="z-50">
-          <Combobox.Popup className="max-h-72 w-[var(--anchor-width)] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10">
-            <Combobox.Empty className="px-3 py-4 text-sm text-muted-foreground">{emptyMessage}</Combobox.Empty>
-            <Combobox.List className="max-h-72 overflow-y-auto p-1 outline-none">
-              {(item: ComboboxItem) =>
-                item ? (
-                  <Combobox.Item
-                    key={item.value}
-                    value={item}
-                    className="group relative flex cursor-default select-none items-start gap-2 rounded-sm px-2 py-2 text-sm outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
-                  >
-                    <Combobox.ItemIndicator className="mt-0.5 flex size-4 shrink-0 items-center justify-center">
-                      <CheckIcon className="size-3.5" />
-                    </Combobox.ItemIndicator>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate">{item.label}</span>
-                      {item.description ? (
-                        <span className="block truncate text-xs text-muted-foreground group-data-highlighted:text-accent-foreground/80">
-                          {item.description}
-                        </span>
-                      ) : null}
-                    </span>
-                  </Combobox.Item>
-                ) : null
-              }
-            </Combobox.List>
-          </Combobox.Popup>
-        </Combobox.Positioner>
-      </Combobox.Portal>
+      {open ? (
+        <Combobox.Portal>
+          <Combobox.Positioner sideOffset={4} className="z-50">
+            <Combobox.Popup className="max-h-72 w-[var(--anchor-width)] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10">
+              <Combobox.Empty className="px-3 py-4 text-sm text-muted-foreground">
+                {emptyMessage}
+              </Combobox.Empty>
+              <Combobox.List className="max-h-72 overflow-y-auto p-1 outline-none">
+                {(item: ComboboxItem) =>
+                  item ? (
+                    <Combobox.Item
+                      key={item.value}
+                      value={item}
+                      className="group relative flex cursor-default select-none items-start gap-2 rounded-sm px-2 py-2 text-sm outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
+                    >
+                      <Combobox.ItemIndicator className="mt-0.5 flex size-4 shrink-0 items-center justify-center">
+                        <CheckIcon className="size-3.5" />
+                      </Combobox.ItemIndicator>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate">{item.label}</span>
+                        {item.description ? (
+                          <span className="block truncate text-xs text-muted-foreground group-data-highlighted:text-accent-foreground/80">
+                            {item.description}
+                          </span>
+                        ) : null}
+                      </span>
+                    </Combobox.Item>
+                  ) : null
+                }
+              </Combobox.List>
+            </Combobox.Popup>
+          </Combobox.Positioner>
+        </Combobox.Portal>
+      ) : null}
     </Combobox.Root>
   );
 }

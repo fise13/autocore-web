@@ -79,6 +79,44 @@ export function PersistenceProvider({ children }: { children: ReactNode }) {
     [engine],
   );
 
+  // Action methods must stay referentially stable across snapshot emits.
+  // Otherwise grid/document adapters re-run register→unregister loops
+  // (Maximum update depth exceeded via engine.emit).
+  const patch = useCallback(
+    (input: {
+      key: PersistenceKey;
+      snapshot: unknown;
+      label?: string;
+      schedule?: boolean;
+    }) => engine.patch(input),
+    [engine],
+  );
+  const flush = useCallback(
+    (key: PersistenceKey, reason?: PersistenceFlushReason) => engine.flush(key, reason),
+    [engine],
+  );
+  const register = useCallback(
+    (input: {
+      key: PersistenceKey;
+      snapshot?: unknown;
+      baseRevision?: string | null;
+      label?: string;
+      sync?: PersistenceSyncHandler | null;
+    }) => engine.register(input),
+    [engine],
+  );
+  const unregister = useCallback((key: PersistenceKey) => engine.unregister(key), [engine]);
+  const setSyncHandler = useCallback(
+    (key: PersistenceKey, sync: PersistenceSyncHandler | null) => engine.setSyncHandler(key, sync),
+    [engine],
+  );
+  const markClean = useCallback(
+    (key: PersistenceKey, baseRevision?: string | null) => engine.markClean(key, baseRevision),
+    [engine],
+  );
+  const discardDraft = useCallback((key: PersistenceKey) => engine.discardDraft(key), [engine]);
+  const hasUnsavedChanges = useCallback(() => engine.hasUnsavedChanges(), [engine]);
+
   // Save before close / refresh / tab hide
   useEffect(() => {
     function onVisibility() {
@@ -137,18 +175,31 @@ export function PersistenceProvider({ children }: { children: ReactNode }) {
       engine,
       snapshot,
       uiStatus: snapshot.uiStatus,
-      patch: (input) => engine.patch(input),
-      flush: (key, reason) => engine.flush(key, reason),
+      patch,
+      flush,
       flushAll,
-      register: (input) => engine.register(input),
-      unregister: (key) => engine.unregister(key),
-      setSyncHandler: (key, sync) => engine.setSyncHandler(key, sync),
-      markClean: (key, baseRevision) => engine.markClean(key, baseRevision),
-      discardDraft: (key) => engine.discardDraft(key),
-      hasUnsavedChanges: () => engine.hasUnsavedChanges(),
+      register,
+      unregister,
+      setSyncHandler,
+      markClean,
+      discardDraft,
+      hasUnsavedChanges,
       recovery,
     }),
-    [engine, flushAll, recovery, snapshot],
+    [
+      discardDraft,
+      engine,
+      flush,
+      flushAll,
+      hasUnsavedChanges,
+      markClean,
+      patch,
+      recovery,
+      register,
+      setSyncHandler,
+      snapshot,
+      unregister,
+    ],
   );
 
   return <PersistenceContext.Provider value={value}>{children}</PersistenceContext.Provider>;

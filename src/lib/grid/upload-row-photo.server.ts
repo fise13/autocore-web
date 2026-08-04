@@ -11,7 +11,13 @@ import {
   type RowPhotoEntityKind,
 } from "@/lib/grid/upload-row-photo-utils";
 
-export { assertRowPhotoUpload, isRowPhotoEntityKind } from "@/lib/grid/upload-row-photo-utils";
+export {
+  assertRowPhotoUpload,
+  isRowPhotoEntityKind,
+  isVideoContentType,
+  isVideoMediaUrl,
+  MAX_ROW_MEDIA_ITEMS,
+} from "@/lib/grid/upload-row-photo-utils";
 
 export async function uploadRowPhotoAdmin(input: {
   companyId: string;
@@ -53,6 +59,91 @@ export async function uploadRowPhotoAdmin(input: {
   return {
     url: buildFirebaseStorageDownloadUrl(bucket.name, storagePath, downloadToken),
     storagePath,
+  };
+}
+
+/** Direct-to-Storage upload for large photos/videos (avoids Vercel body limits). */
+export async function prepareRowMediaUpload(input: {
+  companyId: string;
+  entityKind: RowPhotoEntityKind;
+  entityId: string;
+  contentType: string;
+  extension: string;
+}): Promise<{ uploadUrl: string; storagePath: string; url: string; downloadToken: string }> {
+  const companyId = normalizeCompanyId(input.companyId);
+  const entityId = input.entityId.trim();
+  if (!companyId || !entityId) {
+    throw new Error("companyId and entityId are required");
+  }
+
+  const fileId = randomUUID();
+  const downloadToken = randomUUID();
+  const storagePath = buildRowPhotoStoragePath(
+    companyId,
+    input.entityKind,
+    entityId,
+    fileId,
+    input.extension,
+  );
+  const bucket = await resolveAdminStorageBucket();
+  const file = bucket.file(storagePath);
+
+  // Seed metadata so Firebase download URLs work after the client PUT.
+  await file.save(Buffer.alloc(0), {
+    contentType: input.contentType,
+    metadata: {
+      cacheControl: "public, max-age=31536000, immutable",
+      metadata: {
+        firebaseStorageDownloadTokens: downloadToken,
+      },
+    },
+    resumable: false,
+  });
+
+  const [uploadUrl] = await file.getSignedUrl({
+    version: "v4",
+    action: "write",
+    expires: Date.now() + 15 * 60 * 1000,
+    contentType: input.contentType,
+  });
+
+  return {
+    uploadUrl,
+    storagePath,
+    downloadToken,
+    url: buildFirebaseStorageDownloadUrl(bucket.name, storagePath, downloadToken),
+  };
+}
+
+export async function finalizeRowMediaUpload(input: {
+  companyId: string;
+  storagePath: string;
+  downloadToken: string;
+  contentType: string;
+}): Promise<{ url: string }> {
+  const companyId = normalizeCompanyId(input.companyId);
+  const storagePath = input.storagePath.trim();
+  if (!companyId || !storagePath.startsWith(`companies/${companyId}/row-photos/`)) {
+    throw new Error("Invalid storage path");
+  }
+
+  const bucket = await resolveAdminStorageBucket();
+  const file = bucket.file(storagePath);
+  const [exists] = await file.exists();
+  if (!exists) {
+    throw new Error("Upload not found");
+  }
+
+  await file.setMetadata({
+    contentType: input.contentType,
+    cacheControl: "public, max-age=31536000, immutable",
+    metadata: {
+      firebaseStorageDownloadTokens: input.downloadToken,
+    },
+  });
+
+  return {
+    url: buildFirebaseStorageDownloadUrl(bucket.name, storagePath, input.downloadToken),
   };
 }
 
