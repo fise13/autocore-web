@@ -6620,8 +6620,8 @@
     "semantic_hash": ""
   },
   "src/components/layout/dashboard-top-bar.tsx": {
-    "mtime": 1785833464.2305295,
-    "ast_hash": "c09cf8ad67aa9cad5677f715b2a9d85a",
+    "mtime": 1785833801.5429306,
+    "ast_hash": "e83add569d42fa7714dd328470e93c30",
     "semantic_hash": ""
   },
   "src/components/layout/enterprise-animated-panel.tsx": {
@@ -7580,8 +7580,8 @@
     "semantic_hash": ""
   },
   "src/components/motors/motors-excel-grid.tsx": {
-    "mtime": 1785775338.2237606,
-    "ast_hash": "df062b857ebb9ce54ef179f68023068c",
+    "mtime": 1785833793.4413419,
+    "ast_hash": "ebb8dedad0db920b58fc94713ee66208",
     "semantic_hash": ""
   },
   "src/components/motors/motors-grid-skeleton.tsx": {
@@ -8110,8 +8110,8 @@
     "semantic_hash": ""
   },
   "src/components/specific/specific-excel-grid.tsx": {
-    "mtime": 1785775338.2417128,
-    "ast_hash": "185221676ef9c9cabb493b08b3cc5acb",
+    "mtime": 1785833858.5778637,
+    "ast_hash": "1913d3f91c98eadd8fa8153fecd20de3",
     "semantic_hash": ""
   },
   "src/components/specific/specific-records-workspace.tsx": {
@@ -9015,8 +9015,8 @@
     "semantic_hash": ""
   },
   "src/hooks/use-motors-realtime.ts": {
-    "mtime": 1782139215.4381187,
-    "ast_hash": "6c1e081ebe1866f69f467e0f308283ba",
+    "mtime": 1785833773.2516136,
+    "ast_hash": "7431956bb9ba4213529d25574961166e",
     "semantic_hash": ""
   },
   "src/hooks/use-my-earnings-data.ts": {
@@ -9375,8 +9375,8 @@
     "semantic_hash": ""
   },
   "src/infrastructure/firestore/motor-repository.ts": {
-    "mtime": 1785775338.2522635,
-    "ast_hash": "0bd72c6c63f02291267f43139af1911c",
+    "mtime": 1785833773.931574,
+    "ast_hash": "e1cfec29628751988738127fcb04fdf5",
     "semantic_hash": ""
   },
   "src/infrastructure/firestore/motor-sync-meta-repository.ts": {
@@ -11595,8 +11595,8 @@
     "semantic_hash": ""
   },
   "src/lib/specific/specific-grid-data-store.ts": {
-    "mtime": 1785775338.2761006,
-    "ast_hash": "ec21e1068e237052e3931a4a26af395e",
+    "mtime": 1785833802.031059,
+    "ast_hash": "d5a43898ec0686b048e59cfb0951bc68",
     "semantic_hash": ""
   },
   "src/lib/specific/specific-grid-layout.ts": {

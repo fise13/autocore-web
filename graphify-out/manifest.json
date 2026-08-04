@@ -6745,8 +6745,8 @@
     "semantic_hash": ""
   },
   "src/components/layout/workspace-status-bar.tsx": {
-    "mtime": 1785832901.8233142,
-    "ast_hash": "63e45d21385f5af8dae65a56b140d76c",
+    "mtime": 1785834466.352598,
+    "ast_hash": "039bec51228d361c85bfb468381e0329",
     "semantic_hash": ""
   },
   "src/components/layout/workspace-toolbar.tsx": {
@@ -7580,8 +7580,8 @@
     "semantic_hash": ""
   },
   "src/components/motors/motors-excel-grid.tsx": {
-    "mtime": 1785833793.4413419,
-    "ast_hash": "ebb8dedad0db920b58fc94713ee66208",
+    "mtime": 1785834446.3200161,
+    "ast_hash": "f6725cef53e571d05c1d114005dc8454",
     "semantic_hash": ""
   },
   "src/components/motors/motors-grid-skeleton.tsx": {
@@ -7900,8 +7900,8 @@
     "semantic_hash": ""
   },
   "src/components/persistence/draft-recovery-dialog.tsx": {
-    "mtime": 1785401280.9681447,
-    "ast_hash": "4949093ac94d00038cc79ed41ad38126",
+    "mtime": 1785834260.4296067,
+    "ast_hash": "7fcc813043b0ca985e32d0a1717a3fac",
     "semantic_hash": ""
   },
   "src/components/persistence/last-saved-hint.tsx": {
@@ -8110,8 +8110,8 @@
     "semantic_hash": ""
   },
   "src/components/specific/specific-excel-grid.tsx": {
-    "mtime": 1785833858.5778637,
-    "ast_hash": "1913d3f91c98eadd8fa8153fecd20de3",
+    "mtime": 1785834448.2608173,
+    "ast_hash": "a1661a84fc2adcdc068361212bf4ada7",
     "semantic_hash": ""
   },
   "src/components/specific/specific-records-workspace.tsx": {
@@ -8445,8 +8445,8 @@
     "semantic_hash": ""
   },
   "src/components/warehouse/warehouse-excel-grid.tsx": {
-    "mtime": 1785776160.805143,
-    "ast_hash": "1ae72612e68ee3cf06848cb4dabb975b",
+    "mtime": 1785834447.2627034,
+    "ast_hash": "ba8d23a05913bfcc20e8604a2f070e77",
     "semantic_hash": ""
   },
   "src/components/warehouse/warehouse-import-dialog.tsx": {
@@ -8510,8 +8510,8 @@
     "semantic_hash": ""
   },
   "src/components/work-orders/work-order-composer.tsx": {
-    "mtime": 1785776958.6571717,
-    "ast_hash": "404e2c5e662097f7048588cd43007764",
+    "mtime": 1785834463.5925992,
+    "ast_hash": "cb0a09cb89773af62da034333b67d108",
     "semantic_hash": ""
   },
   "src/components/work-orders/work-order-copy.ts": {
@@ -8535,8 +8535,8 @@
     "semantic_hash": ""
   },
   "src/components/work-orders/work-order-list-panel.tsx": {
-    "mtime": 1785413299.7564564,
-    "ast_hash": "a79c76ed71d296c2ba7670af237a1080",
+    "mtime": 1785834300.086781,
+    "ast_hash": "621bd7482650837d55be4e5ebe2872e8",
     "semantic_hash": ""
   },
   "src/components/work-orders/work-order-utils.ts": {
@@ -8570,8 +8570,8 @@
     "semantic_hash": ""
   },
   "src/components/work-orders/work-orders-workspace.tsx": {
-    "mtime": 1785775338.244857,
-    "ast_hash": "848f3977153404455a000480dad05679",
+    "mtime": 1785834456.280896,
+    "ast_hash": "07b149d31a712f0eccf9a393299767fb",
     "semantic_hash": ""
   },
   "src/domain/activity-log.ts": {
@@ -11655,8 +11655,8 @@
     "semantic_hash": ""
   },
   "src/lib/user-copy.en.ts": {
-    "mtime": 1785833425.5500484,
-    "ast_hash": "0ebdbc77aefe31b95ad574c50079a182",
+    "mtime": 1785834478.0777683,
+    "ast_hash": "59dad5bb9a5430f5dc9660fd08adeec1",
     "semantic_hash": ""
   },
   "src/lib/user-copy.locale-labels.ts": {
@@ -11665,8 +11665,8 @@
     "semantic_hash": ""
   },
   "src/lib/user-copy.ru.ts": {
-    "mtime": 1785833427.2431185,
-    "ast_hash": "5d8163b651468fe07b7efc6a1ccf90d7",
+    "mtime": 1785834478.29835,
+    "ast_hash": "1087d580ab124cadd71c1cd3fb4673ab",
     "semantic_hash": ""
   },
   "src/lib/user-copy.ts": {
@@ -12872,6 +12872,11 @@
   "src/lib/grid/row-media-viewer.ts": {
     "mtime": 1785833299.6049879,
     "ast_hash": "21e7539daff03763af651a76dbda9421",
+    "semantic_hash": ""
+  },
+  "src/hooks/use-recoverable-drafts.ts": {
+    "mtime": 1785834131.8599288,
+    "ast_hash": "0fb64d6ef800b722f24ee5544e3d4c52",
     "semantic_hash": ""
   }
 }
