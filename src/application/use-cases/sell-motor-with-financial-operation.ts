@@ -1,6 +1,6 @@
 import { createSaleOperationUseCase } from "@/application/use-cases/create-sale-operation";
 import { PaymentMethod, OperationAccount } from "@/domain/financial-operation";
-import { MotorEntity } from "@/domain/motor";
+import { isMotorAvailableForSale, MotorEntity } from "@/domain/motor";
 import { MotorRepository } from "@/infrastructure/firestore/motor-repository";
 import { FinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
 import { MOTOR_SALE_CATEGORY } from "@/lib/accounting/categories";
@@ -21,6 +21,10 @@ export async function sellMotorWithFinancialOperationUseCase(
     relatedClientId?: string | null;
   },
 ): Promise<string | null> {
+  if (!isMotorAvailableForSale(params.motor)) {
+    throw new Error("Engine intake must be verified before this motor can be sold");
+  }
+
   const relatedMotorID = params.motor.localId ?? Number(params.motor.id);
   const soldDate = new Date();
   const arrivalDate = params.motor.arrivalDate ?? soldDate;

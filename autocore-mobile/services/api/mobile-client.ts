@@ -23,19 +23,23 @@ export class MobileApiError extends Error {
   }
 }
 
+function looksLikeHtmlBody(text: string): boolean {
+  const trimmed = text.trim();
+  return (
+    /^<!DOCTYPE/i.test(trimmed) ||
+    /^<html[\s>]/i.test(trimmed) ||
+    trimmed.includes('self.__next_f.push') ||
+    trimmed.includes('/_next/static/')
+  );
+}
+
 /** Never surface Next.js HTML / RSC flight payloads in toasts or UI. */
 function humanizeApiErrorBody(text: string, status: number): string {
   const trimmed = text.trim();
   if (!trimmed) return `HTTP ${status}`;
 
-  const looksLikeHtml =
-    /^<!DOCTYPE/i.test(trimmed) ||
-    /^<html[\s>]/i.test(trimmed) ||
-    trimmed.includes('self.__next_f.push') ||
-    trimmed.includes('/_next/static/');
-
-  if (looksLikeHtml) {
-    if (status === 404) {
+  if (looksLikeHtmlBody(trimmed)) {
+    if (status === 404 || status === 200) {
       return 'API not found on the server. The web app needs to be deployed.';
     }
     if (status >= 500) {
@@ -48,6 +52,16 @@ function humanizeApiErrorBody(text: string, status: number): string {
     return `${trimmed.slice(0, 277)}…`;
   }
   return trimmed;
+}
+
+function assertJsonApiResponse(text: string, status: number): void {
+  if (!text || !looksLikeHtmlBody(text)) return;
+  // Production SPA catch-alls often return HTML with HTTP 200 for missing
+  // `/api/*` routes. Treat that as a terminal client error, not offline retry.
+  throw new MobileApiError(
+    humanizeApiErrorBody(text, status),
+    status === 200 ? 404 : status,
+  );
 }
 
 function parseJsonPayload(text: string): { error?: string; message?: string } | null {
@@ -96,6 +110,7 @@ export async function mobileFetch<T>(
     }
 
     const text = await response.text();
+    assertJsonApiResponse(text, response.status);
     const payload = parseJsonPayload(text);
 
     if (!response.ok) {
@@ -111,7 +126,7 @@ export async function mobileFetch<T>(
     try {
       return JSON.parse(text) as T;
     } catch {
-      throw new MobileApiError(humanizeApiErrorBody(text, response.status), response.status);
+      throw new MobileApiError(humanizeApiErrorBody(text, response.status), 502);
     }
   };
 

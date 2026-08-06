@@ -10,6 +10,8 @@ export type BrandEntity = {
   localId: number;
   name: string;
   companyId: string;
+  /** Created via sidebar "+" — keep even when no motors reference it yet. */
+  manual?: boolean;
 };
 
 export type EngineEntity = {
@@ -61,6 +63,7 @@ export function createCatalogRepository() {
                 localId: readNumber(data.localId ?? data.id),
                 name: String(data.name ?? ""),
                 companyId: String(data.companyId ?? companyId),
+                manual: data.manual === true,
               };
             })
             .filter((item) => item.name.trim().length > 0)
@@ -103,7 +106,12 @@ export function createCatalogRepository() {
       );
     },
 
-    async upsertBrand(companyId: string, name: string, existingBrands: BrandEntity[]): Promise<BrandEntity> {
+    async upsertBrand(
+      companyId: string,
+      name: string,
+      existingBrands: BrandEntity[],
+      options?: { manual?: boolean },
+    ): Promise<BrandEntity> {
       const normalizedCompanyId = normalizeCompanyId(companyId);
       const normalizedName = name.trim();
       if (!normalizedName) {
@@ -117,12 +125,14 @@ export function createCatalogRepository() {
 
       const localId = nextLocalId(existingBrands);
       const docId = `${normalizedCompanyId}_brand_${localId}`;
+      const manual = options?.manual === true;
       await setDoc(
         doc(db, "brands", docId),
         {
           companyId: normalizedCompanyId,
           localId,
           name: normalizedName,
+          ...(manual ? { manual: true } : {}),
           updatedAt: serverTimestamp(),
         },
         { merge: true },
@@ -133,6 +143,7 @@ export function createCatalogRepository() {
         localId,
         name: normalizedName,
         companyId: normalizedCompanyId,
+        ...(manual ? { manual: true } : {}),
       };
     },
 

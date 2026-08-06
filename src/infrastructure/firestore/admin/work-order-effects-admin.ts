@@ -96,16 +96,29 @@ export async function updateMotorById(
   motorId: string,
   patch: Record<string, unknown>,
 ) {
+  const assertIntakeReleased = (data: FirebaseFirestore.DocumentData) => {
+    const nextStatus = typeof patch.status === "string" ? patch.status : null;
+    if (
+      nextStatus &&
+      ["available", "reserved", "installed", "sold"].includes(nextStatus) &&
+      data.intakeJobId &&
+      data.intakeStatus !== "verified"
+    ) {
+      throw new Error("Engine intake must be verified before inventory allocation");
+    }
+  };
   const db = getAdminFirestore();
   const ref = db.collection("users").doc(actorUserId).collection("motors").doc(motorId);
   const snap = await ref.get();
   if (!snap.exists) {
     const legacy = await db.collection("motors").doc(motorId).get();
     if (legacy.exists) {
+      assertIntakeReleased(legacy.data() ?? {});
       await legacy.ref.update({ ...patch, updatedAt: FieldValue.serverTimestamp() });
     }
     return;
   }
+  assertIntakeReleased(snap.data() ?? {});
   await ref.update({ ...patch, updatedAt: FieldValue.serverTimestamp() });
 }
 

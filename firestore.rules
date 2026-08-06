@@ -195,6 +195,9 @@ service cloud.firestore {
             'inventory_export',
             'inventory_import',
             'warehouse_manage',
+            'engine_intake_view',
+            'engine_intake_execute',
+            'engine_intake_verify',
             'work_orders_view',
             'work_orders_edit',
             'clients_manage',
@@ -213,6 +216,9 @@ service cloud.firestore {
             'inventory_edit',
             'inventory_export',
             'inventory_import',
+            'engine_intake_view',
+            'engine_intake_execute',
+            'engine_intake_verify',
             'work_orders_view',
             'work_orders_edit',
             'clients_manage',
@@ -237,11 +243,19 @@ service cloud.firestore {
         )
         || (
           role == 'employee'
-          && permission in ['inventory_view', 'accounting_view', 'work_orders_view']
+          && permission in [
+            'inventory_view',
+            'engine_intake_view',
+            'engine_intake_execute',
+            'accounting_view',
+            'work_orders_view'
+          ]
         )
         || (
           role == 'mechanic'
           && permission in [
+            'engine_intake_view',
+            'engine_intake_execute',
             'work_orders_view',
             'work_orders_edit',
             'clients_manage',
@@ -644,6 +658,12 @@ service cloud.firestore {
           && request.auth.uid == userId
           && request.resource.data.companyId != null
           && motorLocalIdValid(request.resource.data)
+          // Intake-linked records are server-owned. Normal web-created motors
+          // also use negative local ids, so the id sign cannot be an authority boundary.
+          && (
+            !('intakeJobId' in request.resource.data)
+            || request.resource.data.intakeJobId == null
+          )
           && (
             canWriteMotorMirror(request.resource.data.companyId)
             || request.resource.data.companyId == userCompanyId()
@@ -651,6 +671,29 @@ service cloud.firestore {
         allow update: if isSignedIn()
           && request.auth.uid == userId
           && request.resource.data.companyId != null
+          && (
+            !('intakeJobId' in resource.data)
+            || !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+              'status',
+              'intakeStatus',
+              'intakeJobId',
+              'readyForSaleAt',
+              'verifiedByUserId',
+            ])
+            || (
+              resource.data.intakeStatus == 'verified'
+              && request.resource.data.intakeStatus == resource.data.intakeStatus
+              && request.resource.data.intakeJobId == resource.data.intakeJobId
+              && request.resource.data.readyForSaleAt == resource.data.readyForSaleAt
+              && request.resource.data.verifiedByUserId == resource.data.verifiedByUserId
+              && request.resource.data.status in [
+                'available',
+                'reserved',
+                'installed',
+                'sold',
+              ]
+            )
+          )
           && (
             canWriteMotorMirror(request.resource.data.companyId)
             || request.resource.data.companyId == userCompanyId()
@@ -833,6 +876,56 @@ service cloud.firestore {
           && request.resource.data.actor == request.auth.uid
           && request.resource.data.timestamp is timestamp;
         allow update, delete: if false;
+      }
+
+      // Engine Intake is mutated only through authenticated server commands.
+      // Clients receive company-scoped live snapshots but cannot bypass state,
+      // claim, idempotency, or verification invariants with direct writes.
+      // Read rules intentionally omit resource.data.companyId so list queries
+      // under companies/{companyId}/... (orderBy/limit without a where filter)
+      // remain security-rules compatible — the path already scopes the tenant.
+      match /engineIntakeJobs/{jobId} {
+        allow read: if hasPermission(companyId, 'engine_intake_view');
+        allow create, update, delete: if false;
+
+        match /sessions/{sessionId} {
+          allow read: if hasPermission(companyId, 'engine_intake_view');
+          allow write: if false;
+        }
+
+        match /photos/{photoId} {
+          allow read: if hasPermission(companyId, 'engine_intake_view');
+          allow write: if false;
+        }
+
+        match /photoReviews/{reviewId} {
+          allow read: if hasPermission(companyId, 'engine_intake_view');
+          allow write: if false;
+        }
+
+        match /aiInspections/{inspectionId} {
+          allow read: if hasPermission(companyId, 'engine_intake_view');
+          allow write: if false;
+        }
+
+        match /reworkRequests/{requestId} {
+          allow read: if hasPermission(companyId, 'engine_intake_view');
+          allow write: if false;
+        }
+
+        match /events/{eventId} {
+          allow read: if hasPermission(companyId, 'engine_intake_view');
+          allow write: if false;
+        }
+      }
+
+      match /engineIntakePhotoPackages/{packageId} {
+        allow read: if hasPermission(companyId, 'engine_intake_view');
+        allow write: if false;
+      }
+
+      match /engineIntakeCommandReceipts/{receiptId} {
+        allow read, write: if false;
       }
 
       match /billing/{docId} {
@@ -1064,7 +1157,10 @@ service cloud.firestore {
       allow read: if hasPermission(resource.data.companyId, 'inventory_view');
       allow create: if hasPermission(request.resource.data.companyId, 'inventory_edit');
       allow update: if hasPermission(request.resource.data.companyId, 'inventory_edit');
-      allow delete: if hasPermission(resource.data.companyId, 'inventory_delete');
+      // Catalog engines are created via inventory_edit (Excel typing / sidebar).
+      // Hard-delete must match — inventory_delete alone blocked Managers who can clear Excel cells.
+      allow delete: if hasPermission(resource.data.companyId, 'inventory_edit')
+        || hasPermission(resource.data.companyId, 'inventory_delete');
     }
 
     match /motors/{motorId} {
@@ -1078,7 +1174,9 @@ service cloud.firestore {
       allow read: if hasPermission(resource.data.companyId, 'inventory_view');
       allow create: if hasPermission(request.resource.data.companyId, 'inventory_edit');
       allow update: if hasPermission(request.resource.data.companyId, 'inventory_edit');
-      allow delete: if hasPermission(resource.data.companyId, 'inventory_delete');
+      // Same as engines: sidebar/Excel catalog lifecycle uses inventory_edit.
+      allow delete: if hasPermission(resource.data.companyId, 'inventory_edit')
+        || hasPermission(resource.data.companyId, 'inventory_delete');
     }
 
     match /inventoryItems/{itemId} {

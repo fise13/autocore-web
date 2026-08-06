@@ -4,7 +4,7 @@ import { ClientEntity } from "@/domain/client";
 import { CompanyEntity } from "@/domain/company";
 import { companyBrandingFromRecord } from "@/domain/company-branding";
 import { CompanyEmployee } from "@/domain/rbac";
-import { MotorEntity } from "@/domain/motor";
+import { MOTOR_STATUSES, type MotorEntity } from "@/domain/motor";
 import { VehicleEntity } from "@/domain/vehicle";
 import { WorkOrder, WorkOrderStatus } from "@/domain/work-order";
 import { Permission, UserEntity, UserRole } from "@/domain/user";
@@ -158,6 +158,10 @@ export function mapAdminMotor(docId: string, data: Record<string, unknown>): Mot
   const serialCode = String(data.serialCode ?? "").trim();
   const localId = Number(data.localId ?? docId);
   if (!serialCode && !Number.isFinite(localId)) return null;
+  const rawStatus = typeof data.status === "string" ? data.status : "";
+  const status = MOTOR_STATUSES.includes(rawStatus as (typeof MOTOR_STATUSES)[number])
+    ? (rawStatus as MotorEntity["status"])
+    : "available";
 
   return {
     id: String(localId || docId),
@@ -182,7 +186,12 @@ export function mapAdminMotor(docId: string, data: Record<string, unknown>): Mot
       typeof data.primaryLocationId === "string" ? data.primaryLocationId : undefined,
     primaryLocationCode:
       typeof data.primaryLocationCode === "string" ? data.primaryLocationCode : undefined,
-    status: (typeof data.status === "string" ? data.status : "available") as MotorEntity["status"],
+    status,
+    intakeJobId: typeof data.intakeJobId === "string" ? data.intakeJobId : null,
+    intakeStatus: typeof data.intakeStatus === "string" ? data.intakeStatus : null,
+    readyForSaleAt: adminToDate(data.readyForSaleAt) ?? null,
+    verifiedByUserId:
+      typeof data.verifiedByUserId === "string" ? data.verifiedByUserId : null,
     reservedForWorkOrderId:
       typeof data.reservedForWorkOrderId === "string" ? data.reservedForWorkOrderId : null,
     installedOnVehicleId:

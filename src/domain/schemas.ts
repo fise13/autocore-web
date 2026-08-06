@@ -98,6 +98,8 @@ export const upsertMotorSchema = z.object({
   primaryLocationId: z.string().trim().optional(),
   primaryLocationCode: z.string().trim().optional(),
   status: z.enum(MOTOR_STATUSES).optional(),
+  intakeJobId: z.string().trim().nullable().optional(),
+  intakeStatus: z.string().trim().nullable().optional(),
   reservedForWorkOrderId: z.string().nullable().optional(),
   installedOnVehicleId: z.string().nullable().optional(),
 });

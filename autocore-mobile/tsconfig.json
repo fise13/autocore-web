@@ -35,6 +35,12 @@
       "@autocore/design-tokens/*": [
         "../packages/design-tokens/src/*"
       ],
+      "@autocore/engine-intake": [
+        "../packages/engine-intake/src"
+      ],
+      "@autocore/engine-intake/*": [
+        "../packages/engine-intake/src/*"
+      ],
       "@autocore/avatars/*": [
         "../packages/avatars/src/*"
       ]

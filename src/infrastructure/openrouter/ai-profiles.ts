@@ -2,6 +2,7 @@ export type AiProfileId =
   | "scanOcr"
   | "scanDisambiguate"
   | "importVision"
+  | "engineIntakeVision"
   | "documentPolish"
   | "default";
 
@@ -47,6 +48,14 @@ export const AI_PROFILES: Record<AiProfileId, AiProfile> = {
     retryMaxTokens: 4096,
     temperature: 0,
     timeoutMs: 90_000,
+  },
+  engineIntakeVision: {
+    title: "AutoCore Engine Intake",
+    modelEnv: ["ENGINE_INTAKE_AI_MODEL", "SCAN_AI_MODEL", "OPENROUTER_MODEL"],
+    maxTokens: 1536,
+    retryMaxTokens: 2048,
+    temperature: 0,
+    timeoutMs: 45_000,
   },
   documentPolish: {
     title: "AutoCore Documents",

@@ -7,13 +7,19 @@ import {
   doc,
   onSnapshot,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
   where,
 } from "firebase/firestore";
 
-import { MotorEntity, UpsertMotorInput } from "@/domain/motor";
+import {
+  MOTOR_STATUSES,
+  isMotorAvailableForSale,
+  type MotorEntity,
+  type UpsertMotorInput,
+} from "@/domain/motor";
 import { upsertMotorSchema } from "@/domain/schemas";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { notifyFirestoreSnapshotError } from "@/lib/firestore/snapshot-errors";
@@ -75,7 +81,11 @@ function mapMotor(docId: string, data: Record<string, unknown>): MotorEntity | n
   const serialCode = String(data.serialCode ?? "").trim();
   const soldDate = toDate(data.soldDate) ?? toDate(data.sold_date);
   const rawStatus = typeof data.status === "string" ? data.status : "";
-  const status = rawStatus || (soldDate ? "sold" : "available");
+  const status = MOTOR_STATUSES.includes(rawStatus as (typeof MOTOR_STATUSES)[number])
+    ? (rawStatus as MotorEntity["status"])
+    : soldDate
+      ? "sold"
+      : "available";
 
   if (!serialCode && !localId) return null;
 
@@ -106,7 +116,12 @@ function mapMotor(docId: string, data: Record<string, unknown>): MotorEntity | n
       typeof data.primaryLocationId === "string" ? data.primaryLocationId : undefined,
     primaryLocationCode:
       typeof data.primaryLocationCode === "string" ? data.primaryLocationCode : undefined,
-    status: status as MotorEntity["status"],
+    status,
+    intakeJobId: typeof data.intakeJobId === "string" ? data.intakeJobId : null,
+    intakeStatus: typeof data.intakeStatus === "string" ? data.intakeStatus : null,
+    readyForSaleAt: toDate(data.readyForSaleAt),
+    verifiedByUserId:
+      typeof data.verifiedByUserId === "string" ? data.verifiedByUserId : null,
     reservedForWorkOrderId:
       typeof data.reservedForWorkOrderId === "string" ? data.reservedForWorkOrderId : null,
     installedOnVehicleId:
@@ -170,7 +185,7 @@ function applyMotorFilters(motors: MotorEntity[], filters: MotorFilters): MotorE
   if (filters.soldOnly) {
     mapped = mapped.filter((item) => isMotorSold(item));
   } else if (filters.availability === "available") {
-    mapped = mapped.filter((item) => !isMotorSold(item));
+    mapped = mapped.filter(isMotorAvailableForSale);
   } else if (filters.availability === "sold") {
     mapped = mapped.filter((item) => isMotorSold(item));
   }
@@ -389,10 +404,21 @@ export function createMotorRepository() {
     },
 
     async sell(uid: string, motorId: string, soldDate: Date = new Date(), companyId?: string) {
-      await updateDoc(motorDocRef(uid, motorId), {
-        soldDate,
-        status: "sold",
-        updatedAt: serverTimestamp(),
+      const ref = motorDocRef(uid, motorId);
+      await runTransaction(getFirestoreDb(), async (transaction) => {
+        const snapshot = await transaction.get(ref);
+        if (!snapshot.exists()) {
+          throw new Error("Motor was not found");
+        }
+        const motor = mapMotor(snapshot.id, snapshot.data());
+        if (!motor || !isMotorAvailableForSale(motor)) {
+          throw new Error("Engine intake must be verified before this motor can be sold");
+        }
+        transaction.update(ref, {
+          soldDate,
+          status: "sold",
+          updatedAt: serverTimestamp(),
+        });
       });
       if (companyId) {
         await appendActivitySafely(activity, normalizeCompanyId(companyId), {

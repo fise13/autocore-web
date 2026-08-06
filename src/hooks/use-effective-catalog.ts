@@ -34,14 +34,22 @@ export function useEffectiveCatalog(
     [motorsQuery.data, normalizedCompanyId],
   );
 
+  const motorsLoaded = Boolean(options?.loadMotorsForCatalog);
+
   const catalog = useMemo(
     () =>
       mergeCatalogSources(
         { brands: firestoreCatalog.brands, engines: firestoreCatalog.engines },
         derivedCatalog,
+        { motorsLoaded },
       ),
-    [firestoreCatalog.brands, firestoreCatalog.engines, derivedCatalog],
+    [firestoreCatalog.brands, firestoreCatalog.engines, derivedCatalog, motorsLoaded],
   );
 
-  return catalog;
+  return {
+    brands: catalog.brands,
+    engines: catalog.engines,
+    firestoreBrands: firestoreCatalog.brands,
+    firestoreEngines: firestoreCatalog.engines,
+  };
 }

@@ -33,6 +33,7 @@ export function marketingRobotsDisallowPaths(): string[] {
     "/auth/",
     "/warehouse",
     "/motors",
+    "/engine-intake",
     "/sold",
     "/specific",
     "/work-orders",

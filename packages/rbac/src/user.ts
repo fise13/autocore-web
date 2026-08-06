@@ -17,6 +17,9 @@ export const PERMISSIONS = [
   'inventory_export',
   'inventory_import',
   'warehouse_manage',
+  'engine_intake_view',
+  'engine_intake_execute',
+  'engine_intake_verify',
   'work_orders_view',
   'work_orders_edit',
   'clients_manage',
@@ -44,6 +47,9 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'inventory_export',
     'inventory_import',
     'warehouse_manage',
+    'engine_intake_view',
+    'engine_intake_execute',
+    'engine_intake_verify',
     'work_orders_view',
     'work_orders_edit',
     'clients_manage',
@@ -59,6 +65,9 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'inventory_edit',
     'inventory_export',
     'inventory_import',
+    'engine_intake_view',
+    'engine_intake_execute',
+    'engine_intake_verify',
     'work_orders_view',
     'work_orders_edit',
     'clients_manage',
@@ -78,6 +87,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'import_data',
   ],
   mechanic: [
+    'engine_intake_view',
+    'engine_intake_execute',
     'work_orders_view',
     'work_orders_edit',
     'clients_manage',
@@ -85,7 +96,13 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'payroll_view_own',
   ],
   diagnostician: ['work_orders_view', 'work_orders_edit', 'vehicles_manage'],
-  employee: ['inventory_view', 'accounting_view', 'work_orders_view'],
+  employee: [
+    'inventory_view',
+    'engine_intake_view',
+    'engine_intake_execute',
+    'accounting_view',
+    'work_orders_view',
+  ],
 };
 
 export type UserEntity = {

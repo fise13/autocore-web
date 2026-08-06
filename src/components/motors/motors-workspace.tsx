@@ -12,6 +12,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { LayoutGrid, X } from "lucide-react";
 
 import { sellMotorWithFinancialOperationUseCase } from "@/application/use-cases/sell-motor-with-financial-operation";
+import { pruneUnusedMotorCatalogUseCase } from "@/application/use-cases/motors/prune-unused-motor-catalog";
 import { quickCreateClientUseCase } from "@/application/use-cases/work-orders/quick-create-client";
 import { enqueueMotorSoldEffects } from "@/lib/motors/enqueue-motor-sold-effects";
 import { emitKnowledgeEvent } from "@/lib/knowledge/knowledge-api.client";
@@ -127,7 +128,12 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
   );
   const pinnedFilter = isPinnedFilterId(collectionContext.filter) ? collectionContext.filter : null;
 
-  const { brands, engines } = useEffectiveCatalog(catalogRepository, motorRepository, uid, companyId, {
+  const { brands, engines, firestoreBrands, firestoreEngines } = useEffectiveCatalog(
+    catalogRepository,
+    motorRepository,
+    uid,
+    companyId,
+    {
     loadMotorsForCatalog: true,
   });
 
@@ -248,6 +254,30 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
     availability: "all",
     includeDeleted: preferences.importExport.includeDeleted,
   });
+
+  // Drop orphan catalog brands (typed then cleared) so sidebar matches Excel.
+  useEffect(() => {
+    if (!canEdit || !companyId) return;
+    if (allMotorsQuery.isBootstrapping) return;
+    if (firestoreBrands.length === 0 && firestoreEngines.length === 0) return;
+    const motors = allMotorsQuery.data ?? [];
+    const hasMotorBrands = motors.some((motor) => (motor.brandName ?? "").trim().length > 0);
+    if (!hasMotorBrands) return;
+    void pruneUnusedMotorCatalogUseCase(catalogRepository, {
+      motors,
+      brands: firestoreBrands,
+      engines: firestoreEngines,
+    }).catch(() => {
+      // Best-effort; Excel save also prunes.
+    });
+  }, [
+    allMotorsQuery.data,
+    allMotorsQuery.isBootstrapping,
+    canEdit,
+    companyId,
+    firestoreBrands,
+    firestoreEngines,
+  ]);
 
   const rowData = useMemo(() => {
     const base = motorsQuery.data ?? [];
@@ -649,6 +679,9 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
                     >
                       <MotorsExcelGrid
                         motors={rowData}
+                        catalogMotors={allMotorsQuery.data ?? []}
+                        catalogBrands={firestoreBrands}
+                        catalogEngines={firestoreEngines}
                         companyId={companyId}
                         uid={uid}
                         canEdit={canEdit}

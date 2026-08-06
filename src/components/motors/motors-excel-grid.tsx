@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { createMotorUseCase } from "@/application/use-cases/create-motor";
+import { pruneUnusedMotorCatalogUseCase } from "@/application/use-cases/motors/prune-unused-motor-catalog";
 import { syncMotorCatalogUseCase } from "@/application/use-cases/motors/sync-motor-catalog";
 import { softDeleteMotorUseCase } from "@/application/use-cases/soft-delete-motor";
 import { upsertMotorUseCase } from "@/application/use-cases/upsert-motor";
@@ -20,7 +21,7 @@ import { usePanelActive } from "@/components/layout/panel-active-context";
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { GridZoomControl } from "@/components/motors/grid-zoom-control";
 import { MotorDocumentsDialog, MotorHistoryDialog } from "@/components/motors/motor-documents-dialog";
-import { MotorEntity } from "@/domain/motor";
+import { isMotorAvailableForSale, type MotorEntity } from "@/domain/motor";
 import {
   buildGridRows,
   buildSavedMotorRowFromCreate,
@@ -67,6 +68,11 @@ import { cn } from "@/lib/utils";
 
 type MotorsExcelGridProps = {
   motors: MotorEntity[];
+  /** All company motors (unfiltered) — used to prune orphan catalog brands after save. */
+  catalogMotors?: MotorEntity[];
+  /** Raw Firestore catalog (not motors-merged) for pruning orphans. */
+  catalogBrands?: BrandEntity[];
+  catalogEngines?: EngineEntity[];
   companyId: string;
   uid: string;
   canEdit: boolean;
@@ -305,6 +311,9 @@ function reconcileRowsWithRemote(
 
 export function MotorsExcelGrid({
   motors,
+  catalogMotors,
+  catalogBrands,
+  catalogEngines,
   companyId,
   uid,
   canEdit,
@@ -357,6 +366,9 @@ export function MotorsExcelGrid({
   const bodyRef = useRef<HTMLDivElement>(null);
   const commandBusRef = useRef(new GridCommandBus());
   const motorsRef = useRef(motors);
+  const catalogMotorsRef = useRef(catalogMotors ?? motors);
+  const catalogBrandsRef = useRef(catalogBrands ?? brands);
+  const catalogEnginesRef = useRef(catalogEngines ?? engines);
   const companyIdRef = useRef(companyId);
   const dirtyRowsRef = useRef<Set<string>>(new Set());
   const localSaveAckRef = useRef<Set<string>>(new Set());
@@ -427,6 +439,9 @@ export function MotorsExcelGrid({
     const companyChanged = companyIdRef.current !== companyId;
     companyIdRef.current = companyId;
     motorsRef.current = motors;
+    catalogMotorsRef.current = catalogMotors ?? motors;
+    catalogBrandsRef.current = catalogBrands ?? brands;
+    catalogEnginesRef.current = catalogEngines ?? engines;
     setRows((current) => {
       const next = reconcileRowsWithRemote(
         current,
@@ -438,7 +453,7 @@ export function MotorsExcelGrid({
       rowsRef.current = next;
       return next;
     });
-  }, [companyId, motors, rowDefaults]);
+  }, [catalogBrands, catalogEngines, catalogMotors, companyId, motors, rowDefaults, brands, engines]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -661,8 +676,11 @@ export function MotorsExcelGrid({
       const createTasks: Array<() => Promise<{ rowId: string; motorId: string; row: MotorGridRow } | null>> = [];
       const parallelTasks: Array<Promise<void>> = [];
       const catalogRows: MotorGridRow[] = [];
-      let workingBrands = brands;
-      let workingEngines = engines;
+      const softDeletedIds = new Set<string>();
+      let workingBrands =
+        catalogBrandsRef.current.length > 0 ? catalogBrandsRef.current : brands;
+      let workingEngines =
+        catalogEnginesRef.current.length > 0 ? catalogEnginesRef.current : engines;
 
       for (const rowId of dirtyRowIds) {
         const row = snapshotRows.find((item) => item.rowId === rowId);
@@ -711,6 +729,7 @@ export function MotorsExcelGrid({
         // Match create/keep rules — brand/engine-only rows must not be soft-deleted.
         if (!hasSaveableContent(row)) {
           resolvedDirtyIds.add(rowId);
+          softDeletedIds.add(row.id);
           parallelTasks.push(
             softDeleteMotorUseCase(repository, uid, row.id, {
               companyId,
@@ -802,6 +821,26 @@ export function MotorsExcelGrid({
         });
         workingBrands = synced.brands;
         workingEngines = synced.engines;
+      }
+
+      if (catalogRepository) {
+        const remoteMotors = catalogMotorsRef.current.filter(
+          (motor) => !softDeletedIds.has(motor.id),
+        );
+        const gridRefs = snapshotRows
+          .filter((row) => {
+            if (!hasSaveableContent(row)) return false;
+            if (row.rowKind === "saved" && softDeletedIds.has(row.id)) return false;
+            return true;
+          })
+          .map((row) => ({ brandName: row.brandName, engineCode: row.engineCode }));
+        const pruned = await pruneUnusedMotorCatalogUseCase(catalogRepository, {
+          motors: [...remoteMotors, ...gridRefs],
+          brands: workingBrands,
+          engines: workingEngines,
+        });
+        workingBrands = pruned.brands;
+        workingEngines = pruned.engines;
       }
 
       if (rowReplacements.size > 0) {
@@ -1380,7 +1419,11 @@ export function MotorsExcelGrid({
                           }}
                         >
                           {column.id === "action" ? (
-                            row.rowKind === "saved" && row.serialCode.trim() && canEdit && (!soldOnly || row.soldDate) ? (
+                            row.rowKind === "saved" &&
+                            row.serialCode.trim() &&
+                            canEdit &&
+                            (row.soldDate || isMotorAvailableForSale(row)) &&
+                            (!soldOnly || row.soldDate) ? (
                               <button
                                 type="button"
                                 className={cn(
@@ -1601,9 +1644,11 @@ export function MotorsExcelGrid({
             <>
               <GridContextMenuSeparator />
               <GridContextMenuItem
-                disabled={contextMenu.selected.every((item) => item.soldDate)}
+                disabled={contextMenu.selected.every(
+                  (item) => item.soldDate || !isMotorAvailableForSale(item),
+                )}
                 onClick={() => {
-                  const targets = contextMenu.selected.filter((item) => !item.soldDate);
+                  const targets = contextMenu.selected.filter(isMotorAvailableForSale);
                   if (targets.length === 0) return;
                   if (targets.length === 1) onSell(targets[0]!);
                   else if (onBatchSell) onBatchSell(targets);
@@ -1611,7 +1656,9 @@ export function MotorsExcelGrid({
                   closeContextMenu();
                 }}
               >
-                {userCopy.motors.contextMenu.sell(contextMenu.selected.filter((item) => !item.soldDate).length)}
+                {userCopy.motors.contextMenu.sell(
+                  contextMenu.selected.filter(isMotorAvailableForSale).length,
+                )}
               </GridContextMenuItem>
               <GridContextMenuItem
                 disabled={contextMenu.selected.every((item) => !item.soldDate)}

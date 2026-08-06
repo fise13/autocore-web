@@ -65,4 +65,4 @@ export const TAB_ROUTE_ORDER: string[] = TAB_SPECS.filter((spec) => spec.navId !
  * pushing, never by a tab. They keep the bar at five without being hidden,
  * since a hidden native tab cannot be navigated to at all.
  */
-export const ROOT_APP_ROUTES = new Set(['search', 'warehouse', 'import']);
+export const ROOT_APP_ROUTES = new Set(['search', 'warehouse', 'import', 'intake']);

@@ -3,6 +3,7 @@ import { resolveMarketingPathFromClean } from "@/lib/seo/marketing-paths";
 /** Routes inside the authenticated dashboard that use Barba transitions. */
 const DASHBOARD_ANIMATED_PREFIXES = [
   "/motors",
+  "/engine-intake",
   "/sold",
   "/warehouse",
   "/accounting",

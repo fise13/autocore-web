@@ -1,6 +1,38 @@
-export const MOTOR_STATUSES = ["available", "reserved", "installed", "sold"] as const;
+export const MOTOR_STATUSES = [
+  "draft",
+  "intake_in_progress",
+  "awaiting_verification",
+  "quarantine",
+  "rejected",
+  "available",
+  "reserved",
+  "installed",
+  "sold",
+] as const;
 
 export type MotorStatus = (typeof MOTOR_STATUSES)[number];
+
+export const MOTOR_INTAKE_STATUSES = [
+  "draft",
+  "intake_in_progress",
+  "awaiting_verification",
+  "quarantine",
+  "rejected",
+] as const satisfies readonly MotorStatus[];
+
+export function isMotorInIntake(
+  motor: Pick<MotorEntity, "status">,
+): boolean {
+  return MOTOR_INTAKE_STATUSES.includes(
+    motor.status as (typeof MOTOR_INTAKE_STATUSES)[number],
+  );
+}
+
+export function isMotorAvailableForSale(
+  motor: Pick<MotorEntity, "status" | "soldDate">,
+): boolean {
+  return !motor.soldDate && (!motor.status || motor.status === "available");
+}
 
 export type MotorHistoryEntry = {
   id: string;
@@ -37,6 +69,10 @@ export type MotorEntity = {
   primaryLocationId?: string;
   primaryLocationCode?: string;
   status?: MotorStatus;
+  intakeJobId?: string | null;
+  intakeStatus?: string | null;
+  readyForSaleAt?: Date | null;
+  verifiedByUserId?: string | null;
   reservedForWorkOrderId?: string | null;
   installedOnVehicleId?: string | null;
   installedWorkOrderId?: string | null;
@@ -64,6 +100,8 @@ export type UpsertMotorInput = {
   primaryLocationId?: string;
   primaryLocationCode?: string;
   status?: MotorStatus;
+  intakeJobId?: string | null;
+  intakeStatus?: string | null;
   reservedForWorkOrderId?: string | null;
   installedOnVehicleId?: string | null;
   installedWorkOrderId?: string | null;

@@ -14,7 +14,7 @@ import { normalizeCompanyId } from '@/lib/company-id';
 import { dateMs, toDateFromFirestore } from '@/lib/firestore-timestamp';
 import { notifyFirestoreSnapshotError } from '@/lib/firestore/snapshot-errors';
 import { getFirebaseDb } from '@/services/firebase';
-import type { MotorEntity, MotorFilters } from '@/types/motor';
+import { MOTOR_STATUSES, type MotorEntity, type MotorFilters } from '@/types/motor';
 
 function readNumber(value: unknown): number {
   if (typeof value === 'number') return value;
@@ -37,7 +37,11 @@ function mapMotor(docId: string, data: Record<string, unknown>): MotorEntity | n
   const serialCode = String(data.serialCode ?? '').trim();
   const soldDate = toDateFromFirestore(data.soldDate) ?? toDateFromFirestore(data.sold_date);
   const rawStatus = typeof data.status === 'string' ? data.status : '';
-  const status = rawStatus || (soldDate ? 'sold' : 'available');
+  const status = MOTOR_STATUSES.includes(rawStatus as (typeof MOTOR_STATUSES)[number])
+    ? (rawStatus as MotorEntity['status'])
+    : soldDate
+      ? 'sold'
+      : 'available';
 
   if (!serialCode && !localId) return null;
 
@@ -64,7 +68,9 @@ function mapMotor(docId: string, data: Record<string, unknown>): MotorEntity | n
       typeof data.primaryLocationId === 'string' ? data.primaryLocationId : undefined,
     primaryLocationCode:
       typeof data.primaryLocationCode === 'string' ? data.primaryLocationCode : undefined,
-    status: status as MotorEntity['status'],
+    status,
+    intakeJobId: typeof data.intakeJobId === 'string' ? data.intakeJobId : null,
+    intakeStatus: typeof data.intakeStatus === 'string' ? data.intakeStatus : null,
     reservedForWorkOrderId:
       typeof data.reservedForWorkOrderId === 'string' ? data.reservedForWorkOrderId : null,
     installedOnVehicleId:
@@ -104,7 +110,9 @@ function applyMotorFilters(motors: MotorEntity[], filters: MotorFilters): MotorE
   if (filters.soldOnly) {
     mapped = mapped.filter((item) => Boolean(item.soldDate));
   } else if (filters.availability === 'available') {
-    mapped = mapped.filter((item) => !item.soldDate);
+    mapped = mapped.filter(
+      (item) => !item.soldDate && (!item.status || item.status === 'available'),
+    );
   } else if (filters.availability === 'sold') {
     mapped = mapped.filter((item) => Boolean(item.soldDate));
   }
@@ -144,6 +152,9 @@ export function createMotorRepository() {
      * Uses merge so company-scoped motors from collectionGroup still resolve.
      */
     async sell(uid: string, motor: MotorEntity, soldDate: Date = new Date()): Promise<string> {
+      if (motor.status && motor.status !== 'available') {
+        throw new Error('Engine intake must be verified before this motor can be sold');
+      }
       const motorId = String(motor.localId ?? motor.id);
       const localId = motor.localId ?? Number(motorId);
       const companyId = normalizeCompanyId(motor.companyId);

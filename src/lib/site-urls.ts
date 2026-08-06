@@ -209,6 +209,7 @@ export const APP_ROUTE_PREFIXES = [
   "/activity",
   "/render",
   "/motors",
+  "/engine-intake",
   "/sold",
   "/accounting",
   "/employees",

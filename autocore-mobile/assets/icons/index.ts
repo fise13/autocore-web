@@ -10,6 +10,7 @@ import {
   BarChart3,
   Bell,
   Box,
+  Camera,
   Car,
   Check,
   CheckCircle2,
@@ -113,6 +114,7 @@ export const TagIcon = createIcon(Tag, 'TagIcon');
 export const ClockIcon = createIcon(Clock, 'ClockIcon');
 export const CloudIcon = createIcon(Cloud, 'CloudIcon');
 export const ImagesIcon = createIcon(Images, 'ImagesIcon');
+export const CameraIcon = createIcon(Camera, 'CameraIcon');
 
 // Analytics
 export const TrendingUpIcon = createIcon(TrendingUp, 'TrendingUpIcon');

@@ -8,5 +8,7 @@ export async function createBrandUseCase(
     existingBrands: BrandEntity[];
   },
 ): Promise<BrandEntity> {
-  return catalogRepository.upsertBrand(params.companyId, params.name, params.existingBrands);
+  return catalogRepository.upsertBrand(params.companyId, params.name, params.existingBrands, {
+    manual: true,
+  });
 }

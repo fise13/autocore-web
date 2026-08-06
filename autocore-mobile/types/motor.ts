@@ -1,4 +1,14 @@
-export const MOTOR_STATUSES = ['available', 'reserved', 'installed', 'sold'] as const;
+export const MOTOR_STATUSES = [
+  'draft',
+  'intake_in_progress',
+  'awaiting_verification',
+  'quarantine',
+  'rejected',
+  'available',
+  'reserved',
+  'installed',
+  'sold',
+] as const;
 
 export type MotorStatus = (typeof MOTOR_STATUSES)[number];
 
@@ -23,6 +33,8 @@ export type MotorEntity = {
   primaryLocationId?: string;
   primaryLocationCode?: string;
   status?: MotorStatus;
+  intakeJobId?: string | null;
+  intakeStatus?: string | null;
   reservedForWorkOrderId?: string | null;
   installedOnVehicleId?: string | null;
 };

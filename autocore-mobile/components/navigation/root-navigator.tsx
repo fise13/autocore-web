@@ -18,6 +18,7 @@ const RootStack = memo(function RootStack() {
       <Stack.Screen name="search" options={{ ...drillIn, headerShown: false }} />
       <Stack.Screen name="warehouse" options={{ ...drillIn, headerShown: false }} />
       <Stack.Screen name="import" options={{ ...drillIn, headerShown: false }} />
+      <Stack.Screen name="intake" options={{ ...drillIn, headerShown: false }} />
       <Stack.Screen name="invite" options={{ animation: 'fade' }} />
       <Stack.Screen name="join" options={{ animation: 'fade' }} />
       <Stack.Screen

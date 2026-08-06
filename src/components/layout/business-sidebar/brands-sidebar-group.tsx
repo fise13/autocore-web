@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Minus, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { createBrandUseCase } from "@/application/use-cases/create-brand";
@@ -34,16 +36,20 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useToast } from "@/components/ui/toast-provider";
 import { useCatalogRealtime } from "@/hooks/use-catalog-realtime";
 import { useMotorsRealtime } from "@/hooks/use-motors-realtime";
-import type { BrandEntity } from "@/infrastructure/firestore/catalog-repository";
+import type { BrandEntity, EngineEntity } from "@/infrastructure/firestore/catalog-repository";
 import { createCatalogRepository } from "@/infrastructure/firestore/catalog-repository";
 import { createMotorRepository } from "@/infrastructure/firestore/motor-repository";
 import { can } from "@/lib/auth/permissions";
-import { businessNavCopy } from "@/lib/navigation/business-nav-copy";
-import { buildBrandHref } from "@/lib/navigation/inventory-collections";
-import type { InventoryCollectionId } from "@/lib/navigation/inventory-collections";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { businessNavCopy } from "@/lib/navigation/business-nav-copy";
+import {
+  buildBrandHref,
+  buildCollectionHref,
+  type InventoryCollectionId,
+} from "@/lib/navigation/inventory-collections";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
@@ -53,7 +59,6 @@ const motorRepository = createMotorRepository();
 type DialogMode =
   | { kind: "create" }
   | { kind: "rename"; brand: BrandEntity }
-  | { kind: "delete"; brand: BrandEntity }
   | null;
 
 type BrandsSidebarGroupProps = {
@@ -79,6 +84,9 @@ export function BrandsSidebarGroup({
   isEditing = false,
   onHide,
 }: BrandsSidebarGroupProps) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { profile } = useAuth();
   const companyId = normalizeCompanyId(profile?.companyId);
   const uid = profile?.id ?? "";
@@ -91,15 +99,61 @@ export function BrandsSidebarGroup({
     enabled: Boolean(uid && companyId),
   });
 
+  const brandsKey = useMemo(
+    () => ["catalog", "brands", companyId] as const,
+    [companyId],
+  );
+  const enginesKey = useMemo(
+    () => ["catalog", "engines", companyId] as const,
+    [companyId],
+  );
+
   const [dialog, setDialog] = useState<DialogMode>(null);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Excel-style: vanish immediately, persist in background. */
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(() => new Set());
+  const [exitingIds, setExitingIds] = useState<Set<string>>(() => new Set());
 
   const sortedBrands = useMemo(
-    () => [...brands].sort((left, right) => left.name.localeCompare(right.name, "ru")),
-    [brands],
+    () =>
+      [...brands]
+        .filter((brand) => !pendingDeleteIds.has(brand.id))
+        .sort((left, right) => left.name.localeCompare(right.name, "ru")),
+    [brands, pendingDeleteIds],
   );
+
+  // Drop pending markers once realtime confirms the brand is gone.
+  useEffect(() => {
+    setPendingDeleteIds((current) => {
+      if (current.size === 0) return current;
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of current) {
+        if (brands.some((brand) => brand.id === id)) {
+          next.add(id);
+        } else {
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+  }, [brands]);
+
+  const displayBrands = useMemo(() => {
+    const exiting = brands.filter(
+      (brand) => exitingIds.has(brand.id) && !pendingDeleteIds.has(brand.id),
+    );
+    // Exiting rows stay mounted briefly so the collapse can play.
+    const byId = new Map(sortedBrands.map((brand) => [brand.id, brand]));
+    for (const brand of exiting) {
+      if (!byId.has(brand.id)) byId.set(brand.id, brand);
+    }
+    return Array.from(byId.values()).sort((left, right) =>
+      left.name.localeCompare(right.name, "ru"),
+    );
+  }, [brands, exitingIds, pendingDeleteIds, sortedBrands]);
 
   function openCreate() {
     setError(null);
@@ -114,25 +168,131 @@ export function BrandsSidebarGroup({
     setDialog({ kind: "rename", brand });
   }
 
-  function openDelete(brand: BrandEntity) {
-    if (!canManage) return;
-    setError(null);
-    setName("");
-    setDialog({ kind: "delete", brand });
-  }
-
   function closeDialog() {
     setDialog(null);
     setError(null);
     setName("");
   }
 
+  const applyOptimisticDelete = useCallback(
+    (brand: BrandEntity) => {
+      queryClient.setQueryData<BrandEntity[]>(brandsKey, (current) =>
+        (current ?? []).filter((entry) => entry.id !== brand.id),
+      );
+      queryClient.setQueryData<EngineEntity[]>(enginesKey, (current) =>
+        (current ?? []).filter((entry) => entry.brandLocalId !== brand.localId),
+      );
+    },
+    [brandsKey, enginesKey, queryClient],
+  );
+
+  const restoreOptimisticDelete = useCallback(
+    (brand: BrandEntity, brandEngines: EngineEntity[]) => {
+      queryClient.setQueryData<BrandEntity[]>(brandsKey, (current) => {
+        const list = current ?? [];
+        if (list.some((entry) => entry.id === brand.id)) return list;
+        return [...list, brand].sort((left, right) =>
+          left.name.localeCompare(right.name, "ru"),
+        );
+      });
+      if (brandEngines.length === 0) return;
+      queryClient.setQueryData<EngineEntity[]>(enginesKey, (current) => {
+        const list = current ?? [];
+        const missing = brandEngines.filter(
+          (engine) => !list.some((entry) => entry.id === engine.id),
+        );
+        if (missing.length === 0) return list;
+        return [...list, ...missing];
+      });
+    },
+    [brandsKey, enginesKey, queryClient],
+  );
+
+  const handleDelete = useCallback(
+    (brand: BrandEntity) => {
+      if (!canManage || !companyId || !uid || pendingDeleteIds.has(brand.id) || exitingIds.has(brand.id)) {
+        return;
+      }
+
+      const brandEngines = engines.filter(
+        (engine) => engine.brandLocalId === brand.localId,
+      );
+      const motors = motorsQuery.data ?? [];
+
+      // Match Excel Clear: collapse + hide immediately, persist in background.
+      setExitingIds((current) => new Set(current).add(brand.id));
+      setPendingDeleteIds((current) => new Set(current).add(brand.id));
+      applyOptimisticDelete(brand);
+
+      window.setTimeout(() => {
+        setExitingIds((current) => {
+          const next = new Set(current);
+          next.delete(brand.id);
+          return next;
+        });
+      }, 180);
+
+      if (activeBrandLocalId === brand.localId) {
+        router.replace(
+          soldRoute ? "/sold" : buildCollectionHref({ collection: activeCollection }),
+        );
+      }
+
+      void deleteBrandUseCase(catalogRepository, motorRepository, {
+        uid,
+        brand,
+        engines,
+        motors,
+      }).catch((submitError: unknown) => {
+        setPendingDeleteIds((current) => {
+          const next = new Set(current);
+          next.delete(brand.id);
+          return next;
+        });
+        setExitingIds((current) => {
+          const next = new Set(current);
+          next.delete(brand.id);
+          return next;
+        });
+        restoreOptimisticDelete(brand, brandEngines);
+        const message =
+          submitError instanceof Error ? submitError.message : undefined;
+        const permissionDenied =
+          typeof message === "string" &&
+          /permission|insufficient|Missing or insufficient/i.test(message);
+        toast({
+          title: userCopy.brands.deleteFailed,
+          description: permissionDenied
+            ? userCopy.migration.errors.permissionDenied
+            : message,
+          variant: "error",
+        });
+      });
+    },
+    [
+      activeBrandLocalId,
+      activeCollection,
+      applyOptimisticDelete,
+      canManage,
+      companyId,
+      engines,
+      exitingIds,
+      motorsQuery.data,
+      pendingDeleteIds,
+      restoreOptimisticDelete,
+      router,
+      soldRoute,
+      toast,
+      uid,
+    ],
+  );
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!dialog || !companyId) return;
 
     const trimmed = name.trim();
-    if (dialog.kind !== "delete" && !trimmed) return;
+    if (!trimmed) return;
 
     setBusy(true);
     setError(null);
@@ -151,32 +311,10 @@ export function BrandsSidebarGroup({
           existingBrands: brands,
           motors: motorsQuery.data ?? [],
         });
-      } else if (dialog.kind === "delete") {
-        await deleteBrandUseCase(catalogRepository, {
-          brand: dialog.brand,
-          engines,
-        });
       }
       closeDialog();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : userCopy.brands.saveFailed);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function confirmDelete() {
-    if (!dialog || dialog.kind !== "delete" || !companyId) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await deleteBrandUseCase(catalogRepository, {
-        brand: dialog.brand,
-        engines,
-      });
-      closeDialog();
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : userCopy.brands.deleteFailed);
     } finally {
       setBusy(false);
     }
@@ -215,7 +353,7 @@ export function BrandsSidebarGroup({
         ) : null}
 
         <SidebarMenu>
-          {sortedBrands.length === 0 ? (
+          {displayBrands.length === 0 ? (
             <SidebarMenuItem>
               <div className="rounded-lg border border-dashed border-sidebar-border/70 px-3 py-3 text-center">
                 <p className="text-xs text-muted-foreground">{businessNavCopy.empty.brands}</p>
@@ -231,7 +369,7 @@ export function BrandsSidebarGroup({
               </div>
             </SidebarMenuItem>
           ) : (
-            sortedBrands.map((brand) => {
+            displayBrands.map((brand) => {
               const href = buildBrandHref({
                 brandLocalId: brand.localId,
                 sold: soldRoute,
@@ -239,11 +377,19 @@ export function BrandsSidebarGroup({
               });
               const brandCount = brandCounts?.get(brand.localId) ?? 0;
               const isActive = activeBrandLocalId === brand.localId;
-
               const showActions = canManage && !isEditing;
+              const isExiting = exitingIds.has(brand.id);
 
               return (
-                <SidebarMenuItem key={brand.id} className="group/menu-item">
+                <SidebarMenuItem
+                  key={brand.id}
+                  className={cn(
+                    "group/menu-item overflow-hidden transition-[opacity,transform,max-height] duration-200 ease-out",
+                    isExiting
+                      ? "pointer-events-none max-h-0 opacity-0 -translate-y-0.5"
+                      : "max-h-12 opacity-100",
+                  )}
+                >
                   <SidebarMenuButton
                     isActive={isActive}
                     tooltip={brand.name}
@@ -268,7 +414,10 @@ export function BrandsSidebarGroup({
                     <DropdownMenu>
                       <DropdownMenuTrigger
                         render={
-                          <SidebarMenuAction showOnHover title={userCopy.brands.actionsFor(brand.name)} />
+                          <SidebarMenuAction
+                            showOnHover
+                            title={userCopy.brands.actionsFor(brand.name)}
+                          />
                         }
                       >
                         <MoreHorizontal />
@@ -281,7 +430,7 @@ export function BrandsSidebarGroup({
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="gap-2 text-destructive focus:text-destructive"
-                          onClick={() => openDelete(brand)}
+                          onClick={() => handleDelete(brand)}
                         >
                           <Trash2 className="size-4" />
                           {userCopy.brands.deleteAction}
@@ -296,7 +445,10 @@ export function BrandsSidebarGroup({
         </SidebarMenu>
       </SidebarGroup>
 
-      <Dialog open={dialog?.kind === "create" || dialog?.kind === "rename"} onOpenChange={(open) => !open && closeDialog()}>
+      <Dialog
+        open={dialog?.kind === "create" || dialog?.kind === "rename"}
+        onOpenChange={(open) => !open && closeDialog()}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
@@ -331,38 +483,6 @@ export function BrandsSidebarGroup({
               </Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={dialog?.kind === "delete"} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{userCopy.brands.deleteTitle}</DialogTitle>
-            <DialogDescription>
-              {dialog?.kind === "delete" ? (
-                <>
-                  {userCopy.brands.deleteHint}
-                  {dialog.brand.name ? (
-                    <span className="mt-2 block font-medium text-foreground">{dialog.brand.name}</span>
-                  ) : null}
-                </>
-              ) : null}
-            </DialogDescription>
-          </DialogHeader>
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={closeDialog} disabled={busy}>
-              {userCopy.brands.cancel}
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={busy}
-              onClick={() => void confirmDelete()}
-            >
-              {userCopy.brands.deleteAction}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

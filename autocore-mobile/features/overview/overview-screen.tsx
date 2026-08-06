@@ -4,6 +4,7 @@ import { RefreshControl, View } from 'react-native';
 import { ProductScreenShell, ScreenGate, ScreenScroll } from '@/components/ui';
 import { useOverviewData, useRealtimeReconnect } from '@/hooks';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
+import { EngineIntakeLaunch } from '@/features/engine-intake/components/engine-intake-launch';
 
 import { McActivityFeed } from './components/mc-activity-feed';
 import { McFeaturedInsight } from './components/mc-featured-insight';
@@ -19,6 +20,7 @@ function OverviewBody() {
     <>
       <McHeader />
       <View style={{ paddingHorizontal: mc.pad, gap: mc.section, paddingBottom: mc.section }}>
+        <EngineIntakeLaunch />
         <McRevenueCard revenue={data.revenue} />
         <McStatTiles tiles={data.statTiles} />
         <McFeaturedInsight insight={data.featuredInsight} />
