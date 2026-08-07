@@ -1,6 +1,10 @@
 import "server-only";
 
-import { INTAKE_PHOTO_CATEGORIES, deriveEngineIntakeProgress } from "@autocore/engine-intake";
+import {
+  INTAKE_PHOTO_CATEGORIES,
+  deriveEngineIntakeProgress,
+  type IntakePhotoCategory,
+} from "@autocore/engine-intake";
 import { FieldValue } from "firebase-admin/firestore";
 import { z } from "zod";
 
@@ -10,6 +14,11 @@ import {
   resolveOpenRouterModel,
 } from "@/infrastructure/openrouter/chat-completions.server";
 
+function asIntakePhotoCategory(value: unknown): IntakePhotoCategory {
+  return INTAKE_PHOTO_CATEGORIES.includes(value as IntakePhotoCategory)
+    ? (value as IntakePhotoCategory)
+    : "other";
+}
 const aiFlagCode = z.enum([
   "blur",
   "underexposed",
@@ -174,12 +183,11 @@ export async function inspectEngineIntakePhoto(input: {
         updatedAt: FieldValue.serverTimestamp(),
       });
       const photosSnapshot = await transaction.get(jobRef.collection("photos"));
-      const nextCategory =
+      const nextCategory = asIntakePhotoCategory(
         result.suggestedCategory && photo.category === "other"
           ? result.suggestedCategory
-          : typeof photo.category === "string"
-            ? photo.category
-            : "other";
+          : photo.category,
+      );
       const expectedIdentity = freshJobSnapshot.data()?.expectedIdentity as
         | { serialCode?: string }
         | undefined;
@@ -200,9 +208,7 @@ export async function inspectEngineIntakePhoto(input: {
             category:
               doc.id === input.photoId
                 ? nextCategory
-                : typeof data.category === "string"
-                  ? data.category
-                  : "other",
+                : asIntakePhotoCategory(data.category),
           };
         }),
         { serialConfirmed: Boolean(expectedIdentity?.serialCode?.trim()) },
