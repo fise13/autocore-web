@@ -11,7 +11,12 @@ import {
   Smartphone,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import type { EngineIntakeJob, EngineIntakeJobState } from "@autocore/engine-intake";
+import {
+  engineIntakeCompletionPercent,
+  warehouseLifecycleLabel,
+  type EngineIntakeJob,
+  type EngineIntakeJobState,
+} from "@autocore/engine-intake";
 
 import { EngineIntakeCreateDialog } from "@/components/engine-intake/engine-intake-create-dialog";
 import { EngineIntakeDetail } from "@/components/engine-intake/engine-intake-detail";
@@ -68,15 +73,23 @@ const FILTER_STATES: Record<QueueFilter, EngineIntakeJobState[]> = {
 
 function jobTitle(job: EngineIntakeJob): string {
   return (
-    job.expectedIdentity.engineCode ||
     job.expectedIdentity.serialCode ||
+    job.expectedIdentity.engineCode ||
     job.sourceReference ||
-    "Unidentified engine"
+    "Unnamed engine"
   );
 }
 
 function stateLabel(state: EngineIntakeJobState): string {
-  return state.replaceAll("_", " ").replace(/\b\w/g, (value) => value.toUpperCase());
+  return warehouseLifecycleLabel(state);
+}
+
+function identityLine(job: EngineIntakeJob): string {
+  const brand = job.expectedIdentity.brandName?.trim();
+  const code = job.expectedIdentity.engineCode?.trim();
+  if (brand && code) return `${brand} · ${code}`;
+  if (brand || code) return brand || code || "";
+  return "AI identity pending";
 }
 
 function stateVariant(state: EngineIntakeJobState) {
@@ -141,9 +154,9 @@ export function EngineIntakeWorkspace() {
             <EmptyMedia variant="icon">
               <ShieldCheck />
             </EmptyMedia>
-            <EmptyTitle>Engine intake is not available</EmptyTitle>
+            <EmptyTitle>Warehouse is not available</EmptyTitle>
             <EmptyDescription>
-              Select a company with engine intake access or ask an administrator for permission.
+              Select a company with Warehouse access or ask an administrator for permission.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -157,10 +170,10 @@ export function EngineIntakeWorkspace() {
         <div className="flex min-w-0 flex-col gap-1">
           <div className="flex items-center gap-2">
             <Camera className="text-primary" />
-            <h1 className="font-heading text-xl font-semibold tracking-tight">Engine intake</h1>
+            <h1 className="font-heading text-xl font-semibold tracking-tight">Warehouse</h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            Desktop planning, live field evidence, and sale verification in one queue.
+            Engines being documented. Release to Motors Grid only when Ready — never mix with sellable stock.
           </p>
         </div>
         {canVerify ? (
@@ -175,7 +188,7 @@ export function EngineIntakeWorkspace() {
       {error ? (
         <Alert variant="destructive" className="mx-5 mt-4 w-auto">
           <AlertTriangle />
-          <AlertTitle>Engine intake stream unavailable</AlertTitle>
+          <AlertTitle>Warehouse stream unavailable</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
@@ -190,8 +203,8 @@ export function EngineIntakeWorkspace() {
               <InputGroupInput
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search engine, worker, location"
-                aria-label="Search engine intake jobs"
+                placeholder="Search serial, AI identity, worker"
+                aria-label="Search Warehouse engines"
               />
             </InputGroup>
             <Select
@@ -203,10 +216,10 @@ export function EngineIntakeWorkspace() {
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectItem value="active">Active field queue</SelectItem>
-                  <SelectItem value="verification">Awaiting verification</SelectItem>
-                  <SelectItem value="complete">Completed and stopped</SelectItem>
-                  <SelectItem value="all">All intake jobs</SelectItem>
+                  <SelectItem value="active">Documenting</SelectItem>
+                  <SelectItem value="verification">Ready / in review</SelectItem>
+                  <SelectItem value="complete">Released / closed</SelectItem>
+                  <SelectItem value="all">All Warehouse engines</SelectItem>
                 </SelectGroup>
               </SelectContent>
             </Select>
@@ -220,9 +233,9 @@ export function EngineIntakeWorkspace() {
                   <EmptyMedia variant="icon">
                     <Camera />
                   </EmptyMedia>
-                  <EmptyTitle>No matching intake jobs</EmptyTitle>
+                  <EmptyTitle>No matching Warehouse engines</EmptyTitle>
                   <EmptyDescription>
-                    Change the queue filter or create a job for the next physical engine.
+                    Change the filter or create a serial draft for the next engine on the floor.
                   </EmptyDescription>
                 </EmptyHeader>
                 {canVerify ? (
@@ -240,12 +253,11 @@ export function EngineIntakeWorkspace() {
               <div className="flex flex-col p-2">
                 {visibleJobs.map((job) => {
                   const active = job.id === selectedJob?.id;
-                  const completion =
-                    job.progress.requiredCount > 0
-                      ? Math.round(
-                          (job.progress.satisfiedCount / job.progress.requiredCount) * 100,
-                        )
-                      : 100;
+                  const completion = engineIntakeCompletionPercent(job.progress);
+                  const missing =
+                    job.progress.missingFacets?.slice(0, 2).join(", ") ||
+                    job.progress.coverageWhisper ||
+                    null;
                   return (
                     <button
                       key={job.id}
@@ -258,16 +270,16 @@ export function EngineIntakeWorkspace() {
                     >
                       <div className="flex w-full items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold">{jobTitle(job)}</p>
+                          <p className="truncate font-mono text-sm font-semibold tracking-wide">
+                            {jobTitle(job)}
+                          </p>
                           <p
                             className={cn(
                               "truncate text-xs",
                               active ? "text-primary-on-subtle/75" : "text-muted-foreground",
                             )}
                           >
-                            {job.assignment.claimedByName ||
-                              job.assignment.assigneeName ||
-                              "Unassigned field queue"}
+                            {identityLine(job)}
                           </p>
                         </div>
                         <Badge variant={stateVariant(job.state)}>{stateLabel(job.state)}</Badge>
@@ -281,12 +293,16 @@ export function EngineIntakeWorkspace() {
                       >
                         <span className="flex items-center gap-1">
                           {job.assignment.activeSessionId ? <Smartphone /> : <Clock3 />}
-                          {job.progress.capturedCount}/{job.progress.requiredCount} photos
+                          {completion}% · {job.progress.capturedCount} photos
                         </span>
-                        <span>
+                        <span className="truncate">
                           {job.progress.syncQueueDepth > 0
                             ? `${job.progress.syncQueueDepth} syncing`
-                            : job.location?.code || "No location"}
+                            : missing
+                              ? `Missing ${missing}`
+                              : job.assignment.claimedByName ||
+                                job.assignment.assigneeName ||
+                                "Warehouse"}
                         </span>
                       </div>
                     </button>

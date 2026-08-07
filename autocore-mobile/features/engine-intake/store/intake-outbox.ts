@@ -84,7 +84,45 @@ function publish(): void {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Sync failed';
+  const raw = error instanceof Error ? error.message : 'Sync failed';
+  return humanizeIntakeOutboxError(raw);
+}
+
+/** Short, actionable copy for camera / Warehouse sync failures. */
+export function humanizeIntakeOutboxError(message: string | null | undefined): string {
+  if (!message?.trim()) return 'Could not sync. Try again.';
+  const normalized = message.trim();
+  const lower = normalized.toLowerCase();
+
+  if (
+    lower.includes('web app needs to be deployed') ||
+    lower.includes('api not found') ||
+    lower.includes('returned html instead of json')
+  ) {
+    return 'Upload API is missing on the server. Deploy the web app, then retry.';
+  }
+  if (lower.includes('network') || lower.includes('failed to fetch') || lower.includes('offline')) {
+    return 'No connection. Photos stay on this phone until you are online.';
+  }
+  if (lower.includes('authorization') || lower.includes('unauthor') || lower.includes('401')) {
+    return 'Sign-in expired. Open the app again, then retry.';
+  }
+  if (lower.includes('permission') || lower.includes('403')) {
+    return 'Your role cannot upload intake photos.';
+  }
+  if (lower.includes('local photo is missing') || lower.includes('retake')) {
+    return 'That photo file is gone. Shoot it again.';
+  }
+  if (lower.includes('empty')) {
+    return 'That photo was empty. Shoot it again.';
+  }
+  if (lower.includes('http 5') || lower.includes('server error')) {
+    return 'Server error. Photos stay on this phone — retry in a moment.';
+  }
+  if (normalized.length > 160) {
+    return `${normalized.slice(0, 157)}…`;
+  }
+  return normalized;
 }
 
 function isTerminalError(error: unknown): boolean {

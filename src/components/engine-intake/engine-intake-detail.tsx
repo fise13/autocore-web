@@ -19,6 +19,10 @@ import {
   Unlink,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  engineIntakeCompletionPercent,
+  isEngineIntakeSessionStale,
+} from "@autocore/engine-intake";
 import type {
   EngineIntakeCommand,
   EngineIntakeJob,
@@ -28,7 +32,6 @@ import type {
   IntakePhoto,
   PhotoRequirement,
 } from "@autocore/engine-intake";
-import { isEngineIntakeSessionStale } from "@autocore/engine-intake";
 
 import type { CompanyEmployee } from "@/domain/rbac";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -143,20 +146,16 @@ export function EngineIntakeDetail({
   const [serialCode, setSerialCode] = useState(job.expectedIdentity.serialCode);
   const [engineCode, setEngineCode] = useState(job.expectedIdentity.engineCode);
   const [brandName, setBrandName] = useState(job.expectedIdentity.brandName);
-  const completion =
-    job.progress.requiredCount > 0
-      ? Math.round((job.progress.satisfiedCount / job.progress.requiredCount) * 100)
-      : 100;
+  const completion = engineIntakeCompletionPercent(job.progress);
   const activeClaimStale =
     Boolean(job.assignment.activeSessionId) &&
     isEngineIntakeSessionStale(job.assignment.lastHeartbeatAt);
   const canApprove =
     job.state === "awaiting_verification" &&
-    job.progress.missingRequirementIds.length === 0 &&
+    job.progress.capturedCount >= 1 &&
     job.progress.rejectedPhotoIds.length === 0 &&
-    job.progress.syncQueueDepth === 0 &&
-    Boolean(job.location) &&
-    Boolean(serialCode.trim() || engineCode.trim());
+    Boolean(serialCode.trim());
+  const releaseNeedsOverride = job.progress.coveragePercent < 85;
 
   const run = async (command: EngineIntakeCommand, success: string) => {
     setBusy(command.type);
@@ -235,22 +234,31 @@ export function EngineIntakeDetail({
     let command: EngineIntakeCommand;
     let message: string;
     if (dialog.kind === "approve") {
+      if (releaseNeedsOverride && !reviewNote.trim() && !aiOverrideReason.trim()) {
+        toast.error("Add an override note — coverage is below Ready (~85%)");
+        return;
+      }
       command = managedCommand({
         type: "approve_job",
         payload: {
           jobId: job.id,
-          note: reviewNote,
+          note: reviewNote.trim() || (releaseNeedsOverride ? "" : "Coverage ready"),
           identity: {
             serialCode: serialCode.trim(),
             engineCode: engineCode.trim(),
             brandName: brandName.trim(),
           },
-          ...(job.blockingAiFlags.length > 0
-            ? { aiOverrideReason: aiOverrideReason.trim() }
+          ...(job.blockingAiFlags.length > 0 || releaseNeedsOverride
+            ? {
+                aiOverrideReason:
+                  aiOverrideReason.trim() ||
+                  reviewNote.trim() ||
+                  "Manager override for release",
+              }
             : {}),
         },
       });
-      message = "Engine verified and released for sale";
+      message = "Released to Motors Grid";
     } else if (dialog.kind === "rework") {
       command = managedCommand({
         type: "request_rework",
@@ -437,20 +445,29 @@ export function EngineIntakeDetail({
             <div className="flex items-end justify-between gap-4">
               <div className="flex flex-col gap-1">
                 <h3 id="intake-progress-title" className="font-heading text-base font-semibold">
-                  Field progress
+                  Documentation coverage
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Photos appear here as the worker captures and uploads them.
+                  Coverage is view diversity — not photo count. AI classifies free captures after upload.
                 </p>
               </div>
               <span className="text-sm tabular-nums text-muted-foreground">
-                {job.progress.uploadedCount}/{job.progress.requiredCount} uploaded
+                {completion}% · {job.progress.capturedCount} photos
               </span>
             </div>
             <Progress value={completion}>
-              <ProgressLabel>Required evidence</ProgressLabel>
+              <ProgressLabel>Coverage</ProgressLabel>
               <ProgressValue />
             </Progress>
+            {job.progress.missingFacets?.length ? (
+              <div className="flex flex-wrap gap-2">
+                {job.progress.missingFacets.slice(0, 6).map((facet) => (
+                  <Badge key={facet} variant="secondary">
+                    Missing {facet.replaceAll("_", " ")}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {job.requirements
                 .filter((requirement) => requirement.required)
@@ -702,7 +719,7 @@ export function EngineIntakeDetail({
                   disabled={!canApprove}
                 >
                   <Check data-icon="inline-start" />
-                  Approve for sale
+                  Release to Motors Grid
                 </Button>
                 <div className="grid grid-cols-2 gap-2">
                   <Button
@@ -849,7 +866,7 @@ export function EngineIntakeDetail({
           <DialogHeader>
             <DialogTitle>
               {dialog?.kind === "approve"
-                ? "Release engine for sale"
+                ? "Release to Motors Grid"
                 : dialog?.kind === "rework"
                   ? `Request ${dialog.requirement.label} retake`
                   : dialog?.kind === "quarantine"
@@ -858,15 +875,17 @@ export function EngineIntakeDetail({
                       ? "Reject engine"
                       : dialog?.kind === "identity"
                         ? "Edit expected identity"
-                        : "Cancel intake job"}
+                        : "Cancel Warehouse draft"}
             </DialogTitle>
             <DialogDescription>
               {dialog?.kind === "approve"
-                ? "This is the final verification gate. Confirm the sale identity."
+                ? releaseNeedsOverride
+                  ? `Coverage is ${job.progress.coveragePercent}% (Ready ~85%). Add a manager override note to release anyway.`
+                  : "Documentation looks Ready. Confirm serial identity and release into Motors Grid as sellable inventory."
                 : dialog?.kind === "rework"
-                  ? "The worker receives this exact gap instead of repeating the full package."
+                  ? "Ask the worker for more photos — still suggestions, not a rigid checklist."
                   : dialog?.kind === "identity"
-                    ? "Changing identity invalidates the worker confirmation and is recorded in the timeline."
+                    ? "Changing identity is recorded in the timeline."
                     : "Record a clear operational reason in the immutable timeline."}
             </DialogDescription>
           </DialogHeader>
@@ -941,6 +960,10 @@ export function EngineIntakeDetail({
               disabled={
                 busy !== null ||
                 (dialog?.kind === "approve" && !canApprove) ||
+                (dialog?.kind === "approve" &&
+                  releaseNeedsOverride &&
+                  !reviewNote.trim() &&
+                  !aiOverrideReason.trim()) ||
                 (dialog?.kind === "approve" &&
                   job.blockingAiFlags.length > 0 &&
                   !aiOverrideReason.trim()) ||

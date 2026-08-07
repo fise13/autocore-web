@@ -16,6 +16,7 @@ import type {
   IntakeEvent,
   IntakePhoto,
 } from "@autocore/engine-intake";
+import { normalizeEngineIntakeProgress } from "@autocore/engine-intake";
 
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 
@@ -60,6 +61,7 @@ function mapJob(snapshot: QueryDocumentSnapshot<DocumentData>): EngineIntakeJob 
     ...data,
     id: snapshot.id,
     assignment: mapAssignment(data.assignment),
+    progress: normalizeEngineIntakeProgress(data.progress, data.requirements),
     identityConfirmation: confirmation
       ? {
           ...confirmation,

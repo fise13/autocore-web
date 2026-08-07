@@ -1,9 +1,16 @@
+import {
+  canFinishWarehouseCapture,
+  canReleaseWarehouseToMotors,
+  deriveDocumentationCoverage,
+  SUGGESTED_READY_COVERAGE_PERCENT,
+} from "./coverage";
 import type {
   EngineIntakeJob,
   EngineIntakeJobState,
   EngineIntakeProgress,
   EngineIntakeSessionState,
   IntakePhoto,
+  IntakePhotoCategory,
   PhotoRequirement,
 } from "./types";
 
@@ -69,7 +76,9 @@ export function assertEngineIntakeSessionTransition(
 type ProgressPhoto = Pick<
   IntakePhoto,
   "id" | "deletedAt" | "syncState" | "url" | "reviewDecision" | "requirementId"
->;
+> & {
+  category?: IntakePhotoCategory | null;
+};
 
 function activePhotos(photos: readonly ProgressPhoto[]): ProgressPhoto[] {
   return photos.filter((photo) => photo.deletedAt == null);
@@ -78,6 +87,7 @@ function activePhotos(photos: readonly ProgressPhoto[]): ProgressPhoto[] {
 export function deriveEngineIntakeProgress(
   requirements: readonly PhotoRequirement[],
   photos: readonly ProgressPhoto[],
+  options: { serialConfirmed?: boolean } = {},
 ): EngineIntakeProgress {
   const currentPhotos = activePhotos(photos);
   const uploaded = currentPhotos.filter((photo) => photo.syncState === "synced" && photo.url);
@@ -103,6 +113,15 @@ export function deriveEngineIntakeProgress(
   }
 
   const required = requirements.filter((requirement) => requirement.required);
+  const coverage = deriveDocumentationCoverage(
+    currentPhotos.map((photo) => ({
+      category: photo.category ?? "other",
+      reviewDecision: photo.reviewDecision,
+      deletedAt: photo.deletedAt,
+    })),
+    { serialConfirmed: options.serialConfirmed },
+  );
+
   return {
     requiredCount: required.length,
     satisfiedCount: required.filter((requirement) =>
@@ -119,6 +138,9 @@ export function deriveEngineIntakeProgress(
     syncQueueDepth: currentPhotos.filter(
       (photo) => photo.syncState !== "synced" && photo.syncState !== "failed",
     ).length,
+    coveragePercent: coverage.percent,
+    missingFacets: coverage.missingFacets,
+    coverageWhisper: coverage.whisper,
   };
 }
 
@@ -131,10 +153,17 @@ export function fieldRequirementsSatisfied(
       .filter((requirement) => requirement.required && requirement.strictness === "field")
       .map((requirement) => requirement.id),
   );
+  if (fieldRequirementIds.size === 0) {
+    return progress.capturedCount >= 1;
+  }
   return !progress.missingRequirementIds.some((id) => fieldRequirementIds.has(id));
 }
 
 export function verificationRequirementsSatisfied(progress: EngineIntakeProgress): boolean {
+  // Capture-first: verification checklist is empty by default; coverage + photos gate release.
+  if (progress.requiredCount === 0) {
+    return progress.capturedCount >= 1 && progress.rejectedPhotoIds.length === 0;
+  }
   return progress.missingRequirementIds.length === 0 && progress.rejectedPhotoIds.length === 0;
 }
 
@@ -148,21 +177,79 @@ export function isEngineIntakeSessionStale(
   return !Number.isFinite(heartbeatMs) || now - heartbeatMs > staleAfterMs;
 }
 
-export function canReleaseEngineForSale(
-  job: Pick<EngineIntakeJob, "state" | "location" | "progress">,
+/** Worker Finish: serial + ≥1 photo. Low coverage may warn but does not hard-block with override. */
+export function canFinishFieldDocumentation(
+  job: Pick<EngineIntakeJob, "expectedIdentity" | "progress">,
+  overrideReason?: string | null,
 ): boolean {
-  return (
-    job.state === "awaiting_verification" &&
-    job.location != null &&
-    verificationRequirementsSatisfied(job.progress)
-  );
+  if (
+    !canFinishWarehouseCapture({
+      serialCode: job.expectedIdentity.serialCode,
+      photoCount: job.progress.capturedCount,
+    })
+  ) {
+    return false;
+  }
+  if (job.progress.coveragePercent >= SUGGESTED_READY_COVERAGE_PERCENT) return true;
+  if (job.progress.capturedCount >= 1) {
+    // Soft threshold: finish allowed; overrideReason documents thin docs.
+    return true;
+  }
+  return Boolean(overrideReason?.trim());
+}
+
+export function canReleaseEngineForSale(
+  job: Pick<EngineIntakeJob, "state" | "location" | "progress" | "expectedIdentity">,
+  overrideReason?: string | null,
+): boolean {
+  return canReleaseWarehouseToMotors({
+    state: job.state,
+    serialCode: job.expectedIdentity.serialCode,
+    photoCount: job.progress.capturedCount,
+    coveragePercent: job.progress.coveragePercent,
+    overrideReason,
+  });
 }
 
 export function engineIntakeCompletionPercent(
-  progress: Pick<EngineIntakeProgress, "requiredCount" | "satisfiedCount">,
+  progress: Pick<
+    EngineIntakeProgress,
+    "requiredCount" | "satisfiedCount" | "coveragePercent" | "capturedCount"
+  >,
 ): number {
-  if (progress.requiredCount <= 0) return 100;
+  if (typeof progress.coveragePercent === "number" && progress.capturedCount > 0) {
+    return progress.coveragePercent;
+  }
+  if (progress.requiredCount <= 0) {
+    return progress.capturedCount > 0 ? Math.min(100, progress.capturedCount * 12) : 0;
+  }
   return Math.round(
     Math.min(1, Math.max(0, progress.satisfiedCount / progress.requiredCount)) * 100,
   );
+}
+
+/** Warehouse lifecycle label for desktop bay / mobile list. */
+export function warehouseLifecycleLabel(
+  state: EngineIntakeJobState,
+): "Draft" | "Documenting" | "Ready" | "In review" | "Released" | "Needs attention" | "Closed" {
+  switch (state) {
+    case "open":
+      return "Draft";
+    case "in_session":
+    case "paused":
+      return "Documenting";
+    case "awaiting_verification":
+      return "Ready";
+    case "rework":
+    case "quarantine":
+      return "Needs attention";
+    case "verified":
+      return "Released";
+    case "closed":
+    case "cancelled":
+    case "rejected":
+      return "Closed";
+    default:
+      return "Documenting";
+  }
 }

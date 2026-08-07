@@ -39,7 +39,7 @@ const SOURCE_OPTIONS: Array<{ value: EngineIntakeSource; label: string }> = [
   { value: "dismantle", label: "Vehicle dismantle" },
   { value: "purchase", label: "Purchased engine" },
   { value: "transfer", label: "Warehouse transfer" },
-  { value: "ad_hoc", label: "Unplanned arrival" },
+  { value: "ad_hoc", label: "Yard arrival" },
 ];
 
 export function EngineIntakeCreateDialog({
@@ -53,31 +53,24 @@ export function EngineIntakeCreateDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [source, setSource] = useState<EngineIntakeSource>("dismantle");
-  const [sourceReference, setSourceReference] = useState("");
-  const [engineCode, setEngineCode] = useState("");
+  const [source, setSource] = useState<EngineIntakeSource>("ad_hoc");
   const [serialCode, setSerialCode] = useState("");
-  const [brandName, setBrandName] = useState("");
-  const [donorVin, setDonorVin] = useState("");
-  const [configuration, setConfiguration] = useState("");
   const [priority, setPriority] = useState<EngineIntakePriority>("normal");
-  const [dueAt, setDueAt] = useState("");
   const [assigneeUid, setAssigneeUid] = useState("unassigned");
 
   const reset = () => {
-    setSource("dismantle");
-    setSourceReference("");
-    setEngineCode("");
+    setSource("ad_hoc");
     setSerialCode("");
-    setBrandName("");
-    setDonorVin("");
-    setConfiguration("");
     setPriority("normal");
-    setDueAt("");
     setAssigneeUid("unassigned");
   };
 
   const createJob = async () => {
+    const serial = serialCode.trim().toUpperCase();
+    if (!serial) {
+      toast.error("Serial number is required");
+      return;
+    }
     const assignee =
       assigneeUid === "unassigned"
         ? null
@@ -89,15 +82,9 @@ export function EngineIntakeCreateDialog({
       clientAt: new Date().toISOString(),
       payload: {
         source,
-        sourceReference: sourceReference.trim(),
         priority,
-        ...(dueAt ? { dueAt: new Date(dueAt).toISOString() } : {}),
         expectedIdentity: {
-          engineCode: engineCode.trim(),
-          serialCode: serialCode.trim(),
-          brandName: brandName.trim(),
-          donorVin: donorVin.trim(),
-          configuration: configuration.trim(),
+          serialCode: serial,
         },
         assigneeUid: assignee?.uid ?? null,
         assigneeName: assignee?.fullName ?? null,
@@ -110,171 +97,115 @@ export function EngineIntakeCreateDialog({
       setOpen(false);
       reset();
       onCreated(result.jobId);
-      toast.success("Engine intake job created");
+      toast.success("Warehouse draft created");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not create intake job");
+      toast.error(error instanceof Error ? error.message : "Could not create Warehouse engine");
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) reset();
+      }}
+    >
       <DialogTrigger render={<Button />}>
-        <Plus data-icon="inline-start" />
-        New intake job
+        <Plus className="size-4" />
+        New engine
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Create engine intake job</DialogTitle>
+          <DialogTitle>New Warehouse engine</DialogTitle>
           <DialogDescription>
-            Define the expected engine and assign the physical intake work.
+            Serial only. Brand, model, and photo roles come from AI after capture.
           </DialogDescription>
         </DialogHeader>
-
         <FieldGroup>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field>
-              <FieldLabel>Source</FieldLabel>
-              <Select
-                value={source}
-                onValueChange={(value) => {
-                  if (value) setSource(value as EngineIntakeSource);
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {SOURCE_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field>
-              <FieldLabel>Reference</FieldLabel>
-              <Input
-                value={sourceReference}
-                onChange={(event) => setSourceReference(event.target.value)}
-                placeholder="Vehicle, supplier, or transfer"
-              />
-            </Field>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Field>
-              <FieldLabel>Brand</FieldLabel>
-              <Input
-                value={brandName}
-                onChange={(event) => setBrandName(event.target.value)}
-                placeholder="Toyota"
-              />
-            </Field>
-            <Field>
-              <FieldLabel>Engine code</FieldLabel>
-              <Input
-                value={engineCode}
-                onChange={(event) => setEngineCode(event.target.value)}
-                placeholder="2ZR-FE"
-              />
-            </Field>
-            <Field>
-              <FieldLabel>Serial number</FieldLabel>
-              <Input
-                value={serialCode}
-                onChange={(event) => setSerialCode(event.target.value)}
-                placeholder="If known"
-              />
-            </Field>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field>
-              <FieldLabel>Donor VIN</FieldLabel>
-              <Input
-                value={donorVin}
-                onChange={(event) => setDonorVin(event.target.value)}
-                placeholder="If known"
-              />
-            </Field>
-            <Field>
-              <FieldLabel>Configuration</FieldLabel>
-              <Input
-                value={configuration}
-                onChange={(event) => setConfiguration(event.target.value)}
-                placeholder="Accessories or variant"
-              />
-            </Field>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field>
-              <FieldLabel>Priority</FieldLabel>
-              <Select
-                value={priority}
-                onValueChange={(value) =>
-                  setPriority((value as EngineIntakePriority | null) ?? "normal")
-                }
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="normal">Normal</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field>
-              <FieldLabel>Due by</FieldLabel>
-              <Input
-                type="datetime-local"
-                value={dueAt}
-                onChange={(event) => setDueAt(event.target.value)}
-              />
-            </Field>
-          </div>
-
           <Field>
-            <FieldLabel>Field worker</FieldLabel>
+            <FieldLabel htmlFor="intake-serial">Serial</FieldLabel>
+            <Input
+              id="intake-serial"
+              autoFocus
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              value={serialCode}
+              onChange={(event) => setSerialCode(event.target.value.toUpperCase())}
+              placeholder="UF398539"
+              className="font-mono text-lg tracking-wide"
+            />
+          </Field>
+          <Field>
+            <FieldLabel>Source</FieldLabel>
             <Select
-              value={assigneeUid}
-              onValueChange={(value) => setAssigneeUid(value ?? "unassigned")}
+              value={source}
+              onValueChange={(value) => setSource(value as EngineIntakeSource)}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectItem value="unassigned">Unassigned field queue</SelectItem>
-                  {employees
-                    .filter((employee) => employee.isActive)
-                    .map((employee) => (
-                      <SelectItem key={employee.uid} value={employee.uid}>
-                        {employee.fullName || employee.email}
-                      </SelectItem>
-                    ))}
+                  {SOURCE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel>Priority</FieldLabel>
+            <Select
+              value={priority}
+              onValueChange={(value) => setPriority(value as EngineIntakePriority)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="urgent">Urgent</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel>Assignee</FieldLabel>
+            <Select
+              value={assigneeUid}
+              onValueChange={(value) => setAssigneeUid(value ?? "unassigned")}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {employees.map((employee) => (
+                    <SelectItem key={employee.uid} value={employee.uid}>
+                      {employee.fullName}
+                    </SelectItem>
+                  ))}
                 </SelectGroup>
               </SelectContent>
             </Select>
           </Field>
         </FieldGroup>
-
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>
             Cancel
           </Button>
-          <Button onClick={() => void createJob()} disabled={busy}>
-            {busy ? <LoaderCircle data-icon="inline-start" className="animate-spin" /> : null}
-            Create job
+          <Button onClick={() => void createJob()} disabled={busy || !serialCode.trim()}>
+            {busy ? <LoaderCircle className="size-4 animate-spin" /> : null}
+            Create draft
           </Button>
         </DialogFooter>
       </DialogContent>

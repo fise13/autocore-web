@@ -45,11 +45,17 @@ export type EngineIntakeSessionMode = (typeof ENGINE_INTAKE_SESSION_MODES)[numbe
 
 export const INTAKE_PHOTO_CATEGORIES = [
   "serial_plate",
+  "overview",
   "overview_front",
   "overview_rear",
   "overview_left",
   "overview_right",
   "overview_top",
+  "valve_cover",
+  "oil_pan",
+  "turbo",
+  "intake",
+  "exhaust",
   "damage",
   "harness",
   "mounts",
@@ -126,6 +132,10 @@ export type EngineIntakeProgress = {
   missingRequirementIds: string[];
   rejectedPhotoIds: string[];
   syncQueueDepth: number;
+  /** Facet-based documentation quality (0–100). Not photo count. */
+  coveragePercent: number;
+  missingFacets: string[];
+  coverageWhisper: string | null;
 };
 
 export type EngineIntakeVerificationDecision =

@@ -1,12 +1,21 @@
 import { useDeferredValue, useEffect, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import {
+  Modal,
+  Pressable,
+  TextInput,
+  View,
+} from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import type {
   EngineIntakeCommand,
   EngineIntakeJob,
   EngineIntakeJobState,
 } from '@autocore/engine-intake';
-import { isEngineIntakeSessionStale } from '@autocore/engine-intake';
+import {
+  engineIntakeCompletionPercent,
+  isEngineIntakeSessionStale,
+  warehouseLifecycleLabel,
+} from '@autocore/engine-intake';
 
 import {
   AlertTriangleIcon,
@@ -23,6 +32,7 @@ import { useEngineIntakeJobs } from './hooks/use-engine-intake-data';
 import {
   drainIntakeOutbox,
   enqueueIntakeCommand,
+  humanizeIntakeOutboxError,
   retryIntakeOutboxItem,
   sendOrQueueIntakeCommand,
   useEngineIntakeOutbox,
@@ -42,27 +52,11 @@ const ACTIVE_STATES = new Set<EngineIntakeJobState>([
 
 function jobTitle(job: EngineIntakeJob): string {
   return (
-    job.expectedIdentity.engineCode ||
     job.expectedIdentity.serialCode ||
+    job.expectedIdentity.engineCode ||
     job.sourceReference ||
-    'Unidentified engine'
+    'Unnamed engine'
   );
-}
-
-function stateLabel(state: EngineIntakeJobState): string {
-  const labels: Record<EngineIntakeJobState, string> = {
-    open: 'Ready',
-    in_session: 'In progress',
-    paused: 'Paused',
-    awaiting_verification: 'Verification',
-    rework: 'Retake requested',
-    verified: 'Verified',
-    quarantine: 'Quarantine',
-    rejected: 'Rejected',
-    closed: 'Closed',
-    cancelled: 'Cancelled',
-  };
-  return labels[state];
 }
 
 function isPermissionError(message: string | null | undefined): boolean {
@@ -100,6 +94,8 @@ export function EngineIntakeJobsScreen() {
   const [starting, setStarting] = useState(false);
   const [claimClock, setClaimClock] = useState(() => Date.now());
   const [deviceId] = useState(getEngineIntakeDeviceId);
+  const [serialModalOpen, setSerialModalOpen] = useState(false);
+  const [serialDraft, setSerialDraft] = useState('');
 
   useEffect(() => {
     const timer = setInterval(() => setClaimClock(Date.now()), 30_000);
@@ -110,8 +106,8 @@ export function EngineIntakeJobsScreen() {
     return (
       <ScreenGate
         variant="no-permission"
-        title="Engine intake"
-        description="Your role cannot open engine intake."
+        title="Warehouse"
+        description="Your role cannot open Warehouse documentation."
       />
     );
   }
@@ -166,7 +162,7 @@ export function EngineIntakeJobsScreen() {
       if (!claimed?.sessionId) {
         toast({
           title: 'Claim saved for sync',
-          description: 'Open the job after the server confirms the exclusive claim.',
+          description: 'Open the engine after the server confirms the exclusive claim.',
           variant: 'warning',
         });
         return;
@@ -176,7 +172,7 @@ export function EngineIntakeJobsScreen() {
     } catch (claimError) {
       haptics.error();
       toast({
-        title: 'Job could not be claimed',
+        title: 'Engine could not be opened',
         description: claimError instanceof Error ? claimError.message : undefined,
         variant: 'destructive',
       });
@@ -185,8 +181,13 @@ export function EngineIntakeJobsScreen() {
     }
   };
 
-  const startUnplanned = async () => {
+  const startWithSerial = async (serialRaw: string) => {
     if (!companyId || !uid || !can('engine_intake_execute')) return;
+    const serialCode = serialRaw.trim().toUpperCase();
+    if (!serialCode) {
+      toast({ title: 'Serial is required', variant: 'warning' });
+      return;
+    }
     const jobId = engineIntakeId('job');
     const sessionId = engineIntakeId('session');
     const createCommand: EngineIntakeCommand = {
@@ -199,6 +200,7 @@ export function EngineIntakeJobsScreen() {
         jobId,
         source: 'ad_hoc',
         priority: 'normal',
+        expectedIdentity: { serialCode },
         assigneeUid: uid,
         assigneeName: profile?.displayName ?? null,
       },
@@ -206,6 +208,8 @@ export function EngineIntakeJobsScreen() {
     const claimCommand = createClaimCommand(jobId, sessionId);
 
     setStarting(true);
+    setSerialModalOpen(false);
+    setSerialDraft('');
     try {
       const created = await sendOrQueueIntakeCommand(companyId, createCommand);
       if (created) {
@@ -213,7 +217,7 @@ export function EngineIntakeJobsScreen() {
         if (!claimed?.sessionId) {
           toast({
             title: 'Engine created; claim is waiting to sync',
-            description: 'Open it from the queue after the exclusive claim is confirmed.',
+            description: 'Open it from Warehouse after the exclusive claim is confirmed.',
             variant: 'warning',
           });
           return;
@@ -223,15 +227,15 @@ export function EngineIntakeJobsScreen() {
       } else {
         enqueueIntakeCommand(companyId, claimCommand);
         toast({
-          title: 'Unplanned engine saved on this phone',
-          description: 'It will appear in the queue after the server creates and claims it.',
+          title: 'Saved on this phone',
+          description: 'It will appear in Warehouse after the server creates and claims it.',
           variant: 'warning',
         });
       }
     } catch (startError) {
       haptics.error();
       toast({
-        title: 'Intake could not start',
+        title: 'Engine could not start',
         description: startError instanceof Error ? startError.message : undefined,
         variant: 'destructive',
       });
@@ -240,33 +244,104 @@ export function EngineIntakeJobsScreen() {
     }
   };
 
-  const outboxIssue =
+  const rawOutboxIssue =
     [...outbox.commands, ...outbox.photos]
       .filter((item) => item.companyId === companyId && item.lastError)
       .map((item) => item.lastError)
       .find(Boolean) ?? null;
+  const outboxIssue = rawOutboxIssue ? humanizeIntakeOutboxError(rawOutboxIssue) : null;
   const outboxNeedsDeploy =
     typeof outboxIssue === 'string' &&
-    outboxIssue.toLowerCase().includes('web app needs to be deployed');
+    (outboxIssue.toLowerCase().includes('deploy the web app') ||
+      outboxIssue.toLowerCase().includes('upload api is missing'));
 
   return (
     <StackScreen
-      title="Engine intake"
-      subtitle={`${visibleJobs.length} jobs ready for field work`}
+      title="Warehouse"
+      subtitle={`${visibleJobs.length} engine${visibleJobs.length === 1 ? '' : 's'} documenting`}
       backFallbackHref="/(tabs)"
       headerAction={
         can('engine_intake_execute') ? (
           <Button
             size="icon-sm"
-            accessibilityLabel="Start unplanned engine"
+            accessibilityLabel="New engine"
             loading={starting}
-            onPress={() => void startUnplanned()}
+            onPress={() => {
+              setSerialDraft('');
+              setSerialModalOpen(true);
+            }}
           >
             <PlusIcon size={20} color={colors.primaryForeground} />
           </Button>
         ) : null
       }
     >
+      <Modal
+        visible={serialModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSerialModalOpen(false)}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.45)',
+            justifyContent: 'center',
+            paddingHorizontal: spacing[5],
+          }}
+          onPress={() => setSerialModalOpen(false)}
+        >
+          <Pressable
+            onPress={(event) => event.stopPropagation()}
+            style={{
+              borderRadius: tokens.radius.group,
+              backgroundColor: colors.surface,
+              padding: spacing[5],
+              gap: spacing[4],
+            }}
+          >
+            <Text variant="heading" style={{ color: colors.foreground }}>
+              Engine serial
+            </Text>
+            <Text variant="caption" style={{ color: colors.mutedForeground }}>
+              The only field you need. Type the plate, then photograph freely.
+            </Text>
+            <TextInput
+              autoFocus
+              autoCapitalize="characters"
+              autoCorrect={false}
+              spellCheck={false}
+              value={serialDraft}
+              onChangeText={setSerialDraft}
+              placeholder="UF398539"
+              placeholderTextColor={colors.mutedForeground}
+              style={{
+                minHeight: minTouchTarget + spacing[2],
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: tokens.radius.control,
+                paddingHorizontal: spacing[4],
+                fontSize: 28,
+                fontWeight: '700',
+                color: colors.foreground,
+                letterSpacing: 1,
+              }}
+              onSubmitEditing={() => void startWithSerial(serialDraft)}
+            />
+            <Button
+              size="xl"
+              loading={starting}
+              onPress={() => void startWithSerial(serialDraft)}
+            >
+              Open camera
+            </Button>
+            <Button variant="ghost" onPress={() => setSerialModalOpen(false)}>
+              Cancel
+            </Button>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {outbox.pendingCount > 0 || outbox.failedCount > 0 ? (
         <Pressable
           accessibilityRole="button"
@@ -311,11 +386,11 @@ export function EngineIntakeJobsScreen() {
               }}
             >
               {outboxNeedsDeploy
-                ? 'Web API not deployed — intake sync is blocked'
+                ? 'Web API not deployed — sync is blocked'
                 : outbox.failedCount > 0
                   ? `${outbox.failedCount} items need attention`
                   : outbox.syncing
-                    ? 'Syncing intake work'
+                    ? 'Syncing Warehouse work'
                     : `${outbox.pendingCount} items waiting to sync`}
             </Text>
             {outboxIssue ? (
@@ -351,25 +426,28 @@ export function EngineIntakeJobsScreen() {
           state={isPermissionError(error) ? 'empty' : 'error'}
           emptyIcon={isPermissionError(error) ? CameraIcon : undefined}
           emptyTitle={
-            isPermissionError(error) ? 'No assigned engines yet' : undefined
+            isPermissionError(error) ? 'No engines documenting yet' : undefined
           }
           emptyDescription={
             isPermissionError(error)
               ? outbox.pendingCount > 0
-                ? `${outbox.pendingCount} local items are waiting to sync. Start an unplanned engine or wait for the queue to reconnect.`
-                : 'Assigned and unplanned intake work will appear here.'
+                ? `${outbox.pendingCount} local items are waiting to sync. Start a new engine or wait for the queue.`
+                : 'New engines you photograph will appear here.'
               : undefined
           }
-          emptyActionLabel={
-            can('engine_intake_execute') ? 'Start unplanned engine' : undefined
-          }
+          emptyActionLabel={can('engine_intake_execute') ? 'New engine' : undefined}
           onEmptyAction={
-            can('engine_intake_execute') ? () => void startUnplanned() : undefined
+            can('engine_intake_execute')
+              ? () => {
+                  setSerialDraft('');
+                  setSerialModalOpen(true);
+                }
+              : undefined
           }
-          errorTitle="Jobs unavailable"
+          errorTitle="Warehouse unavailable"
           errorDescription={
             isPermissionError(error)
-              ? 'Live job list could not be loaded. You can still start an unplanned engine.'
+              ? 'Live list could not be loaded. You can still start a new engine.'
               : error
           }
           onRetry={
@@ -387,13 +465,16 @@ export function EngineIntakeJobsScreen() {
         <ContentState
           state="empty"
           emptyIcon={CameraIcon}
-          emptyTitle="No assigned engines"
-          emptyDescription="Assigned and unplanned intake work will appear here."
-          emptyActionLabel={
-            can('engine_intake_execute') ? 'Start unplanned engine' : undefined
-          }
+          emptyTitle="Put an engine in the phone"
+          emptyDescription="Enter the serial, then photograph freely. Autocore builds Warehouse inventory."
+          emptyActionLabel={can('engine_intake_execute') ? 'New engine' : undefined}
           onEmptyAction={
-            can('engine_intake_execute') ? () => void startUnplanned() : undefined
+            can('engine_intake_execute')
+              ? () => {
+                  setSerialDraft('');
+                  setSerialModalOpen(true);
+                }
+              : undefined
           }
         >
           {null}
@@ -422,6 +503,7 @@ export function EngineIntakeJobsScreen() {
               Boolean(job.assignment.claimedByUid) &&
               job.assignment.claimedByUid !== uid &&
               !claimStale;
+            const coverage = engineIntakeCompletionPercent(job.progress);
             return (
               <Pressable
                 key={job.id}
@@ -452,7 +534,7 @@ export function EngineIntakeJobsScreen() {
                       <Text variant="caption" style={{ color: colors.mutedForeground }}>
                         {claimedByAnother
                           ? `Claimed by ${job.assignment.claimedByName ?? 'another worker'}`
-                          : `${stateLabel(job.state)} · ${job.progress.capturedCount}/${job.progress.requiredCount} photos`}
+                          : `${warehouseLifecycleLabel(job.state)} · ${coverage}% · ${job.progress.capturedCount} photos`}
                       </Text>
                     </View>
                     {!claimedByAnother ? (
@@ -470,11 +552,13 @@ export function EngineIntakeJobsScreen() {
         <View style={{ paddingHorizontal: spacing[4] }}>
           <Button
             size="xl"
-            variant="outline"
             loading={starting}
-            onPress={() => void startUnplanned()}
+            onPress={() => {
+              setSerialDraft('');
+              setSerialModalOpen(true);
+            }}
           >
-            Start unplanned engine
+            New engine
           </Button>
         </View>
       ) : null}

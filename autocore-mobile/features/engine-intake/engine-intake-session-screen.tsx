@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   AppState,
   Pressable,
@@ -8,11 +9,10 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import {
-  DEFAULT_ENGINE_INTAKE_REQUIREMENTS,
+  SUGGESTED_READY_COVERAGE_PERCENT,
   emptyEngineIntakeProgress,
+  engineIntakeCompletionPercent,
   type EngineIntakeCommand,
-  type IntakePhotoCategory,
-  type PhotoRequirement,
 } from '@autocore/engine-intake';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -21,9 +21,6 @@ import {
   CheckCircle2Icon,
   CloudIcon,
   FlashlightIcon,
-  ImagesIcon,
-  MapPinIcon,
-  XIcon,
 } from '@/assets/icons';
 import { Button, ScreenGate, Text, toast } from '@/components/ui';
 import { useSession, useTheme } from '@/hooks';
@@ -43,56 +40,13 @@ import {
 import {
   drainIntakeOutbox,
   enqueueIntakeCommand,
+  humanizeIntakeOutboxError,
   retryIntakeOutboxItem,
   saveIntakePhotoLocally,
   sendOrQueueIntakeCommand,
   useEngineIntakeOutbox,
 } from './store/intake-outbox';
 import { engineIntakeId, getEngineIntakeDeviceId } from './lib/device';
-
-type ScannedLocation = {
-  locationId: string;
-  code: string;
-  warehouseId?: string;
-};
-
-function parseLocationPayload(raw: string): ScannedLocation | null {
-  const value = raw.trim();
-  if (!value) return null;
-  try {
-    const parsed = JSON.parse(value) as {
-      type?: string;
-      locationId?: string;
-      id?: string;
-      code?: string;
-      warehouseId?: string;
-    };
-    const locationId = parsed.locationId?.trim() || parsed.id?.trim();
-    const code = parsed.code?.trim();
-    if (
-      locationId &&
-      code &&
-      (!parsed.type || parsed.type === 'warehouse_location' || parsed.type === 'autocore.location')
-    ) {
-      return {
-        locationId,
-        code,
-        ...(parsed.warehouseId?.trim() ? { warehouseId: parsed.warehouseId.trim() } : {}),
-      };
-    }
-  } catch {
-    // Try compact physical-label format below.
-  }
-  const parts = value.split('|').map((part) => part.trim());
-  if (parts[0] === 'autocore-location' && parts[1] && parts[2]) {
-    return {
-      locationId: parts[1],
-      code: parts[2],
-      ...(parts[3] ? { warehouseId: parts[3] } : {}),
-    };
-  }
-  return null;
-}
 
 function makeWorkerCommand(command: {
   type: EngineIntakeCommand['type'];
@@ -120,25 +74,19 @@ export function EngineIntakeSessionScreen() {
   const [flashOpacity] = useState(() => new Animated.Value(0));
   const [progressMotion] = useState(() => new Animated.Value(1));
   const [torch, setTorch] = useState(false);
-  const [scanLocation, setScanLocation] = useState(false);
   const [capturing, setCapturing] = useState(false);
-  const [localLocation, setLocalLocation] = useState<ScannedLocation | null>(null);
-  const [extraCategory, setExtraCategory] = useState<IntakePhotoCategory | null>(null);
   const [completedLocal, setCompletedLocal] = useState(false);
-  const [locallyConfirmedRevision, setLocallyConfirmedRevision] = useState<number | null>(null);
   const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
   const { jobs, loading: jobsLoading } = useEngineIntakeJobs(companyId);
   const job = jobs.find((item) => item.id === jobId);
   const detail = useEngineIntakeJobDetail(companyId, jobId || null);
   const activeSession = detail.sessions.find((session) => session.id === sessionId) ?? null;
   const outbox = useEngineIntakeOutbox(companyId);
-  const requirements: readonly PhotoRequirement[] =
-    job?.requirements?.length ? job.requirements : DEFAULT_ENGINE_INTAKE_REQUIREMENTS;
-  const serverProgress = job?.progress ?? emptyEngineIntakeProgress(requirements);
+  const serverProgress = job?.progress ?? emptyEngineIntakeProgress();
   const localPhotos = outbox.photos.filter(
     (photo) => photo.companyId === companyId && photo.jobId === jobId,
   );
-  const activeLocalPhotos = localPhotos.filter((photo) => photo.state !== 'failed');
+  const pendingLocalPhotos = localPhotos.filter((photo) => photo.state !== 'failed');
   const failedPhotos = localPhotos.filter((photo) => photo.state === 'failed');
   const hasQueuedFieldCompletion = outbox.commands.some(
     (item) =>
@@ -148,62 +96,42 @@ export function EngineIntakeSessionScreen() {
       item.command.payload.sessionId === sessionId,
   );
   const completionPending = completedLocal || hasQueuedFieldCompletion;
-  const activeReworkRequest =
-    detail.reworkRequests.find((request) => request.id === job?.activeReworkRequestId) ?? null;
-  const resolvedReworkRequirementIds = new Set(
-    activeReworkRequest?.resolvedRequirementIds ?? [],
+  // Failed uploads still count — they are on this phone.
+  const photoCount = serverProgress.capturedCount + localPhotos.length;
+  const unsyncedCount = pendingLocalPhotos.length + failedPhotos.length;
+  const coveragePercent = Math.max(
+    serverProgress.coveragePercent,
+    Math.min(100, photoCount * 12),
   );
-  const unresolvedReworkRequirementIds = new Set(
-    (activeReworkRequest?.gaps ?? [])
-      .map((gap) => gap.requirementId)
+  const syncError =
+    failedPhotos.map((photo) => photo.lastError).find(Boolean) ??
+    outbox.commands
       .filter(
-        (requirementId) =>
-          !resolvedReworkRequirementIds.has(requirementId) &&
-          !localPhotos.some((photo) => photo.requirementId === requirementId),
-      ),
-  );
-  const countFor = (requirementId: string): number =>
-    Number(serverProgress.requirementCounts?.[requirementId] ?? 0) +
-    activeLocalPhotos.filter((photo) => photo.requirementId === requirementId).length;
-  const missingRequirements = requirements.filter(
-    (requirement) =>
-      (requirement.required && countFor(requirement.id) < requirement.minCount) ||
-      unresolvedReworkRequirementIds.has(requirement.id),
-  );
-  const fieldMissingRequirements = missingRequirements.filter(
-    (requirement) =>
-      requirement.strictness === 'field' ||
-      unresolvedReworkRequirementIds.has(requirement.id),
-  );
-  const currentRequirement = extraCategory
-    ? requirements.find((requirement) => requirement.category === extraCategory) ?? null
-    : missingRequirements[0] ?? null;
-  const requiredCount = requirements.filter((requirement) => requirement.required).length;
-  const satisfiedCount = requiredCount - missingRequirements.length;
-  const effectiveLocation =
-    localLocation ??
-    (job?.location
-      ? {
-          locationId: job.location.locationId,
-          code: job.location.code,
-          ...(job.location.warehouseId ? { warehouseId: job.location.warehouseId } : {}),
-        }
-      : null);
-  const jobOutboxCount =
-    outbox.commands.filter(
-      (item) =>
-        item.companyId === companyId &&
-        'jobId' in item.command.payload &&
-        item.command.payload.jobId === jobId,
-    ).length + localPhotos.length;
+        (item) =>
+          item.companyId === companyId &&
+          item.state === 'failed' &&
+          'jobId' in item.command.payload &&
+          item.command.payload.jobId === jobId,
+      )
+      .map((item) => item.lastError)
+      .find(Boolean) ??
+    null;
+  const syncErrorText = humanizeIntakeOutboxError(syncError);
+  const whisper =
+    failedPhotos.length > 0
+      ? null
+      : (serverProgress.coverageWhisper ??
+        (photoCount === 0 ? 'Walk around the engine and shoot freely' : null));
+  const jobOutboxCount = unsyncedCount;
   const isServerComplete =
     job?.state === 'awaiting_verification' ||
     job?.state === 'verified' ||
     job?.state === 'quarantine' ||
     job?.state === 'rejected';
-  const identityConfirmed =
-    job?.identityConfirmation?.sessionId === sessionId ||
-    (job != null && locallyConfirmedRevision === job.revision);
+  const serial =
+    job?.expectedIdentity.serialCode ||
+    job?.expectedIdentity.engineCode ||
+    'Engine';
 
   useEffect(() => {
     let previous = AppState.currentState;
@@ -281,11 +209,13 @@ export function EngineIntakeSessionScreen() {
       return;
     }
     const heartbeat = () => {
-      const command = makeWorkerCommand({
-        type: 'heartbeat_session',
-        payload: { jobId, sessionId },
-      });
-      void sendOrQueueIntakeCommand(companyId, command);
+      void sendOrQueueIntakeCommand(
+        companyId,
+        makeWorkerCommand({
+          type: 'heartbeat_session',
+          payload: { jobId, sessionId },
+        }),
+      );
     };
     heartbeat();
     const timer = setInterval(heartbeat, 25_000);
@@ -310,7 +240,7 @@ export function EngineIntakeSessionScreen() {
       activeSession.state === 'cancelled';
     if (!claimLost) return;
     toast({
-      title: job.state === 'cancelled' ? 'Intake job was cancelled' : 'Session claim was released',
+      title: job.state === 'cancelled' ? 'Engine cancelled' : 'Session claim was released',
       description: 'Your saved photos remain in the sync queue.',
       variant: 'warning',
     });
@@ -332,14 +262,14 @@ export function EngineIntakeSessionScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [progressMotion, satisfiedCount]);
+  }, [progressMotion, coveragePercent, photoCount]);
 
   if (!can('engine_intake_execute')) {
     return (
       <ScreenGate
         variant="no-permission"
-        title="Engine intake"
-        description="Your role cannot perform engine intake."
+        title="Warehouse"
+        description="Your role cannot document engines."
       />
     );
   }
@@ -358,8 +288,8 @@ export function EngineIntakeSessionScreen() {
     return (
       <ScreenGate
         variant="custom"
-        title="Opening intake session"
-        description="Waiting for the server-confirmed job and exclusive claim."
+        title="Opening camera"
+        description="Waiting for the Warehouse draft and exclusive claim."
       />
     );
   }
@@ -372,157 +302,13 @@ export function EngineIntakeSessionScreen() {
       <ScreenGate
         variant="custom"
         title="Session claim unavailable"
-        description="Return to the intake queue and claim this engine again."
+        description="Return to Warehouse and open this engine again."
       />
     );
   }
 
-  const confirmPhysicalEngine = async () => {
-    try {
-      const result = await sendOrQueueIntakeCommand(
-        companyId,
-        makeWorkerCommand({
-          type: 'confirm_identity',
-          payload: { jobId, sessionId },
-        }),
-      );
-      setLocallyConfirmedRevision(job.revision);
-      haptics.success();
-      if (result) return;
-      toast({
-        title: 'Identity confirmation saved on this phone',
-        description: 'Photos will sync after the confirmation command.',
-        variant: 'warning',
-      });
-    } catch (error) {
-      haptics.error();
-      toast({
-        title: 'Identity could not be confirmed',
-        description: error instanceof Error ? error.message : undefined,
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const reportPhysicalMismatch = async () => {
-    try {
-      await sendOrQueueIntakeCommand(
-        companyId,
-        makeWorkerCommand({
-          type: 'report_identity_mismatch',
-          payload: {
-            jobId,
-            sessionId,
-            reason: 'Physical engine does not match the expected job identity',
-          },
-        }),
-      );
-      haptics.warning();
-      router.replace('/intake' as Href);
-    } catch (error) {
-      haptics.error();
-      toast({
-        title: 'Mismatch report could not be saved',
-        description: error instanceof Error ? error.message : undefined,
-        variant: 'destructive',
-      });
-    }
-  };
-
-  if (!identityConfirmed) {
-    const expectedIdentity = [
-      job.expectedIdentity.brandName,
-      job.expectedIdentity.engineCode,
-      job.expectedIdentity.serialCode,
-    ]
-      .filter(Boolean)
-      .join(' · ');
-    return (
-      <View
-        style={{
-          flex: 1,
-          paddingTop: insets.top + spacing[8],
-          paddingBottom: insets.bottom + spacing[6],
-          paddingHorizontal: spacing[6],
-          justifyContent: 'space-between',
-          backgroundColor: colors.background,
-        }}
-      >
-        <View style={{ gap: spacing[4] }}>
-          <Text variant="displayTitle" style={{ color: colors.foreground }}>
-            Confirm the physical engine
-          </Text>
-          <Text variant="body" style={{ color: colors.mutedForeground }}>
-            {expectedIdentity || job.sourceReference || 'Unidentified engine job'}
-          </Text>
-          <Text variant="caption" style={{ color: colors.mutedForeground }}>
-            Check the temporary tag, serial plate, or donor reference before documenting this
-            engine.
-          </Text>
-          {activeReworkRequest ? (
-            <View style={{ padding: spacing[4], backgroundColor: colors.warningSubtle }}>
-              <Text variant="body" style={{ color: colors.warningOnSubtle, fontWeight: '700' }}>
-                Rework: {activeReworkRequest.note}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-        <View style={{ gap: spacing[3] }}>
-          <Button size="xl" onPress={() => void confirmPhysicalEngine()}>
-            This is the engine
-          </Button>
-          <Button
-            size="xl"
-            variant="outline"
-            onPress={() => void reportPhysicalMismatch()}
-          >
-            Wrong engine or job
-          </Button>
-        </View>
-      </View>
-    );
-  }
-
-  const setLocation = async (location: ScannedLocation, isStaging = false) => {
-    setLocalLocation(location);
-    setScanLocation(false);
-    haptics.success();
-    const command = makeWorkerCommand({
-      type: 'set_location',
-      payload: {
-        jobId,
-        sessionId,
-        locationId: location.locationId,
-        code: location.code,
-        ...(location.warehouseId ? { warehouseId: location.warehouseId } : {}),
-        isStaging,
-      },
-    });
-    try {
-      await sendOrQueueIntakeCommand(companyId, command);
-    } catch (error) {
-      setLocalLocation(null);
-      haptics.error();
-      toast({
-        title: 'Location could not be set',
-        description: error instanceof Error ? error.message : undefined,
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleLocationCode = (value: string) => {
-    const location = parseLocationPayload(value);
-    if (!location) {
-      haptics.warning();
-      toast({ title: 'This is not an AutoCore location label', variant: 'warning' });
-      return;
-    }
-    void setLocation(location);
-  };
-
   const takePhoto = async () => {
-    if (!currentRequirement || capturing) return;
+    if (capturing) return;
     setCapturing(true);
     try {
       const captured = await cameraRef.current?.takePicture();
@@ -536,11 +322,10 @@ export function EngineIntakeSessionScreen() {
         jobId,
         sessionId,
         deviceId: getEngineIntakeDeviceId(),
-        requirementId: currentRequirement.id,
-        category: currentRequirement.category,
+        requirementId: null,
+        category: 'other',
         sourceUri: captured.uri,
       });
-      setExtraCategory(null);
       haptics.success();
       flashOpacity.setValue(0.82);
       Animated.timing(flashOpacity, {
@@ -563,25 +348,29 @@ export function EngineIntakeSessionScreen() {
 
   const pauseAndLeave = async () => {
     if (!completionPending && !isServerComplete) {
-      const command = makeWorkerCommand({
-        type: 'pause_session',
-        payload: { jobId, sessionId, reason: 'Worker left the camera session' },
-      });
-      await sendOrQueueIntakeCommand(companyId, command).catch(() => null);
+      await sendOrQueueIntakeCommand(
+        companyId,
+        makeWorkerCommand({
+          type: 'pause_session',
+          payload: { jobId, sessionId, reason: 'Worker left the camera session' },
+        }),
+      ).catch(() => null);
     }
     router.replace('/intake' as Href);
   };
 
-  const finishFieldWork = async () => {
-    if (fieldMissingRequirements.length > 0 || !effectiveLocation || failedPhotos.length > 0) {
-      return;
-    }
+  const finishCapture = async (overrideReason?: string) => {
+    if (photoCount < 1) return;
     const command = makeWorkerCommand({
       type: 'field_complete',
-      payload: { jobId, sessionId },
+      payload: {
+        jobId,
+        sessionId,
+        ...(overrideReason ? { overrideReason } : {}),
+      },
     });
     try {
-      if (jobOutboxCount > 0) {
+      if (jobOutboxCount > 0 || failedPhotos.length > 0) {
         enqueueIntakeCommand(companyId, command);
         void drainIntakeOutbox(companyId);
       } else {
@@ -592,11 +381,51 @@ export function EngineIntakeSessionScreen() {
     } catch (error) {
       haptics.error();
       toast({
-        title: 'Field work could not be completed',
-        description: error instanceof Error ? error.message : undefined,
+        title: 'Could not finish',
+        description: humanizeIntakeOutboxError(
+          error instanceof Error ? error.message : undefined,
+        ),
         variant: 'destructive',
       });
     }
+  };
+
+  const requestFinish = () => {
+    if (photoCount < 1) {
+      toast({ title: 'Take at least one photo', variant: 'warning' });
+      return;
+    }
+    if (failedPhotos.length > 0) {
+      Alert.alert(
+        'Photos not synced yet',
+        `${syncErrorText}\n\nFinish anyway? They stay on this phone and will upload when sync works.`,
+        [
+          { text: 'Keep shooting', style: 'cancel' },
+          {
+            text: 'Finish anyway',
+            onPress: () =>
+              void finishCapture('Finished with unsynced photos still on device'),
+          },
+        ],
+      );
+      return;
+    }
+    if (coveragePercent < SUGGESTED_READY_COVERAGE_PERCENT) {
+      Alert.alert(
+        'Documentation is thin',
+        'Finish anyway? The engine stays in Warehouse — not for sale yet.',
+        [
+          { text: 'Keep shooting', style: 'cancel' },
+          {
+            text: 'Finish anyway',
+            style: 'destructive',
+            onPress: () => void finishCapture('Worker finished with thin documentation'),
+          },
+        ],
+      );
+      return;
+    }
+    void finishCapture();
   };
 
   if (completionPending || isServerComplete) {
@@ -620,39 +449,31 @@ export function EngineIntakeSessionScreen() {
           )}
           <View style={{ gap: spacing[2], alignItems: 'center' }}>
             <Text variant="displayTitle" style={{ color: colors.foreground, textAlign: 'center' }}>
-              {synced ? 'Ready for verification' : 'Saved on this phone'}
+              {synced ? 'In Warehouse' : 'Saved on this phone'}
             </Text>
             <Text variant="body" style={{ color: colors.mutedForeground, textAlign: 'center' }}>
               {synced
-                ? 'The office can verify the engine and release it for sale.'
-                : `${jobOutboxCount || 1} items will sync automatically when the connection returns.`}
+                ? 'Managers can release this engine to Motors Grid when documentation looks Ready.'
+                : `${jobOutboxCount || 1} items will sync when the connection returns.`}
             </Text>
           </View>
         </View>
         <Button size="xl" onPress={() => router.replace('/intake' as Href)}>
-          Back to intake jobs
+          Back to Warehouse
         </Button>
       </View>
     );
   }
 
-  const instruction = scanLocation
-    ? 'Point at a warehouse location label'
-    : activeReworkRequest?.gaps.find(
-          (gap) => gap.requirementId === currentRequirement?.id,
-        )?.reason ??
-      currentRequirement?.guidance ??
-      'Required photos complete';
+  const displayCoverage = engineIntakeCompletionPercent({
+    ...serverProgress,
+    coveragePercent,
+    capturedCount: photoCount,
+  });
 
   return (
     <View style={{ flex: 1, backgroundColor: chrome.background }}>
-      <IntakeCamera
-        ref={cameraRef}
-        active={appState === 'active'}
-        torch={torch}
-        scanLocation={scanLocation}
-        onLocationCode={handleLocationCode}
-      />
+      <IntakeCamera ref={cameraRef} active={appState === 'active'} torch={torch} />
       <Animated.View
         pointerEvents="none"
         style={{
@@ -684,7 +505,7 @@ export function EngineIntakeSessionScreen() {
         >
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Pause intake"
+            accessibilityLabel="Pause capture"
             onPress={() => void pauseAndLeave()}
             style={{
               width: minTouchTarget,
@@ -700,16 +521,31 @@ export function EngineIntakeSessionScreen() {
           <Animated.View
             style={{
               minHeight: minTouchTarget,
+              minWidth: minTouchTarget + spacing[6],
+              maxWidth: 180,
               paddingHorizontal: spacing[4],
               justifyContent: 'center',
-              borderRadius: tokens.radius.control,
-              backgroundColor: chrome.overlay,
+              alignItems: 'center',
+              borderRadius: tokens.radius.full,
+              backgroundColor:
+                failedPhotos.length > 0 ? chrome.dangerSubtle : chrome.overlay,
               transform: [{ scale: progressMotion }],
             }}
           >
-            <Text variant="caption" style={{ color: chrome.foreground, fontWeight: '800' }}>
-              {satisfiedCount}/{requiredCount}
-              {jobOutboxCount > 0 ? ` · ${jobOutboxCount} syncing` : ''}
+            <Text
+              variant="caption"
+              numberOfLines={1}
+              style={{
+                color:
+                  failedPhotos.length > 0 ? chrome.dangerOnSubtle : chrome.foreground,
+                fontWeight: '800',
+              }}
+            >
+              {failedPhotos.length > 0
+                ? `${failedPhotos.length} failed`
+                : unsyncedCount > 0
+                  ? `${displayCoverage}% · ${unsyncedCount} syncing`
+                  : `${displayCoverage}%`}
             </Text>
           </Animated.View>
           <Pressable
@@ -739,10 +575,7 @@ export function EngineIntakeSessionScreen() {
           numberOfLines={1}
           style={{ color: chrome.foreground, textAlign: 'center', fontWeight: '800' }}
         >
-          {job.expectedIdentity.engineCode ||
-            job.expectedIdentity.serialCode ||
-            job.sourceReference ||
-            'Unidentified engine'}
+          {serial}
         </Text>
         <View
           style={{
@@ -754,12 +587,21 @@ export function EngineIntakeSessionScreen() {
         >
           <View
             style={{
-              width: `${requiredCount ? (satisfiedCount / requiredCount) * 100 : 100}%`,
+              width: `${displayCoverage}%`,
               height: '100%',
               backgroundColor: chrome.primary,
             }}
           />
         </View>
+        {whisper ? (
+          <Text
+            variant="caption"
+            numberOfLines={1}
+            style={{ color: chrome.mutedForeground, textAlign: 'center' }}
+          >
+            {whisper}
+          </Text>
+        ) : null}
       </View>
 
       <View
@@ -777,26 +619,56 @@ export function EngineIntakeSessionScreen() {
       >
         <View style={{ gap: spacing[1], alignItems: 'center' }}>
           <Text variant="heading" style={{ color: chrome.foreground, textAlign: 'center' }}>
-            {scanLocation
-              ? 'Scan location'
-              : currentRequirement?.label ?? 'Photo package complete'}
+            Capture freely
           </Text>
           <Text variant="caption" style={{ color: chrome.mutedForeground, textAlign: 'center' }}>
-            {instruction}
+            {photoCount} photo{photoCount === 1 ? '' : 's'}
+            {failedPhotos.length > 0
+              ? ` · ${failedPhotos.length} not uploaded`
+              : unsyncedCount > 0
+                ? ` · ${unsyncedCount} syncing`
+                : ' · AI understands later'}
           </Text>
         </View>
 
         {failedPhotos.length > 0 ? (
-          <Button
-            variant="outline"
-            onPress={() => {
-              for (const photo of failedPhotos) retryIntakeOutboxItem(photo.id);
-              void drainIntakeOutbox(companyId);
+          <View
+            style={{
+              gap: spacing[3],
+              padding: spacing[3],
+              borderRadius: tokens.radius.control,
+              backgroundColor: chrome.dangerSubtle,
             }}
           >
-            Retry {failedPhotos.length} failed photo
-            {failedPhotos.length === 1 ? '' : 's'}
-          </Button>
+            <Text
+              variant="caption"
+              style={{ color: chrome.dangerOnSubtle, fontWeight: '700', textAlign: 'center' }}
+            >
+              Could not upload {failedPhotos.length} photo
+              {failedPhotos.length === 1 ? '' : 's'}
+            </Text>
+            <Text
+              variant="caption"
+              style={{ color: chrome.dangerOnSubtle, textAlign: 'center' }}
+            >
+              {syncErrorText}
+            </Text>
+            <Text
+              variant="caption"
+              style={{ color: chrome.dangerOnSubtle, textAlign: 'center' }}
+            >
+              Saved on this phone — you can keep shooting or finish anyway.
+            </Text>
+            <Button
+              variant="outline"
+              onPress={() => {
+                for (const photo of failedPhotos) retryIntakeOutboxItem(photo.id);
+                void drainIntakeOutbox(companyId);
+              }}
+            >
+              Retry upload
+            </Button>
+          </View>
         ) : null}
 
         <View
@@ -804,115 +676,39 @@ export function EngineIntakeSessionScreen() {
             minHeight: 80,
             flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'space-between',
+            justifyContent: 'center',
           }}
         >
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={scanLocation ? 'Cancel location scan' : 'Scan engine location'}
-            onPress={() => {
-              setScanLocation((value) => !value);
-              setExtraCategory(null);
-              haptics.toggle();
-            }}
+            accessibilityLabel="Capture photo"
+            disabled={capturing}
+            onPress={() => void takePhoto()}
             style={{
-              width: 54,
-              height: 54,
+              width: 84,
+              height: 84,
+              borderRadius: tokens.radius.full,
+              borderWidth: 5,
+              borderColor: chrome.foreground,
               alignItems: 'center',
               justifyContent: 'center',
-              borderRadius: tokens.radius.control,
-              backgroundColor: scanLocation ? chrome.primary : chrome.surfaceElevated,
+              opacity: capturing ? 0.55 : 1,
             }}
           >
-            {scanLocation ? (
-              <XIcon size={24} color={chrome.primaryForeground} />
-            ) : (
-              <MapPinIcon size={24} color={chrome.foreground} />
-            )}
-          </Pressable>
-
-          {!scanLocation && currentRequirement ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Capture ${currentRequirement.label}`}
-              disabled={capturing}
-              onPress={() => void takePhoto()}
+            <View
               style={{
-                width: 78,
-                height: 78,
+                width: 62,
+                height: 62,
                 borderRadius: tokens.radius.full,
-                borderWidth: 5,
-                borderColor: chrome.foreground,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: capturing ? 0.55 : 1,
+                backgroundColor: chrome.foreground,
               }}
-            >
-              <View
-                style={{
-                  width: 58,
-                  height: 58,
-                  borderRadius: tokens.radius.full,
-                  backgroundColor: chrome.foreground,
-                }}
-              />
-            </Pressable>
-          ) : (
-            <View style={{ width: 78, height: 78 }} />
-          )}
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Add damage photo"
-            disabled={scanLocation}
-            onPress={() => {
-              setExtraCategory('damage');
-              haptics.selection();
-            }}
-            style={{
-              width: 54,
-              height: 54,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: tokens.radius.control,
-              backgroundColor:
-                extraCategory === 'damage' ? chrome.primary : chrome.surfaceElevated,
-              opacity: scanLocation ? 0.45 : 1,
-            }}
-          >
-            <ImagesIcon
-              size={24}
-              color={
-                extraCategory === 'damage' ? chrome.primaryForeground : chrome.foreground
-              }
             />
           </Pressable>
         </View>
 
-        {scanLocation ? (
-          <Button
-            variant="outline"
-            onPress={() =>
-              void setLocation(
-                {
-                  locationId: 'engine-intake-staging',
-                  code: 'STAGE-INTAKE',
-                },
-                true,
-              )
-            }
-          >
-            Use staging area
-          </Button>
-        ) : fieldMissingRequirements.length === 0 ? (
-          <Button
-            size="xl"
-            disabled={!effectiveLocation || failedPhotos.length > 0}
-            onPress={() => void finishFieldWork()}
-          >
-            {effectiveLocation ? `Finish at ${effectiveLocation.code}` : 'Scan location to finish'}
-          </Button>
-        ) : null}
+        <Button size="xl" disabled={photoCount < 1} onPress={requestFinish}>
+          Finish
+        </Button>
       </View>
     </View>
   );

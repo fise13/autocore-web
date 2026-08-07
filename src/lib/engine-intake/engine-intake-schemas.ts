@@ -49,7 +49,15 @@ const engineIntakeCommandSchema = z.discriminatedUnion("type", [
           source: z.enum(ENGINE_INTAKE_SOURCES),
           sourceReference: shortText.optional(),
           priority: z.enum(ENGINE_INTAKE_PRIORITIES).optional(),
-          expectedIdentity: identity.optional(),
+          expectedIdentity: z
+            .object({
+              serialCode: z.string().trim().min(1).max(240),
+              brandName: shortText.optional(),
+              engineCode: shortText.optional(),
+              donorVin: z.string().trim().max(32).optional(),
+              configuration: z.string().trim().max(500).optional(),
+            })
+            .strict(),
           assigneeUid: optionalIdentifier,
           assigneeName: shortText.nullish(),
           photoPackageTemplateId: optionalIdentifier,

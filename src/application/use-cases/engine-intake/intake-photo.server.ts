@@ -5,8 +5,10 @@ import { createHash } from "node:crypto";
 import {
   deriveEngineIntakeProgress,
   type EngineIntakeAssignment,
+  type EngineIntakeIdentity,
   type EngineIntakeProgress,
   type FinalizeIntakePhotoRequest,
+  type IntakePhotoCategory,
   type PhotoRequirement,
   type PrepareIntakePhotoRequest,
   type PrepareIntakePhotoResponse,
@@ -29,6 +31,7 @@ type PhotoJobDocument = {
   requirements: PhotoRequirement[];
   progress: EngineIntakeProgress;
   assignment: EngineIntakeAssignment;
+  expectedIdentity?: EngineIntakeIdentity;
   identityConfirmation: Record<string, unknown> | null;
   activeReworkRequestId: string | null;
 };
@@ -96,6 +99,7 @@ function progressPhoto(
   url: string | null;
   reviewDecision: "accepted" | "rejected" | "retake_requested" | null;
   requirementId: string | null;
+  category: IntakePhotoCategory;
 } {
   const syncState = ["dirty", "queued", "syncing", "synced", "failed"].includes(
     String(data.syncState),
@@ -123,6 +127,9 @@ function progressPhoto(
     reviewDecision: decision,
     requirementId:
       typeof data.requirementId === "string" ? data.requirementId : null,
+    category: (typeof data.category === "string"
+      ? data.category
+      : "other") as IntakePhotoCategory,
   };
 }
 
@@ -195,6 +202,11 @@ export async function prepareIntakePhoto(
     const previousProgress = deriveEngineIntakeProgress(
       job.requirements ?? [],
       storedPhotos,
+      {
+        serialConfirmed: Boolean(
+          (job.expectedIdentity as { serialCode?: string } | undefined)?.serialCode?.trim(),
+        ),
+      },
     );
     const reworkRef = job.activeReworkRequestId
       ? jobRef.collection("reworkRequests").doc(job.activeReworkRequestId)
@@ -234,17 +246,26 @@ export async function prepareIntakePhoto(
     const projectedPhotos = storedPhotos.map((photo) =>
       replacedPhotoIds.has(photo.id) ? { ...photo, deletedAt: "replaced" } : photo,
     );
-    let nextProgress = deriveEngineIntakeProgress(job.requirements ?? [], [
-      ...projectedPhotos,
+    let nextProgress = deriveEngineIntakeProgress(
+      job.requirements ?? [],
+      [
+        ...projectedPhotos,
+        {
+          id: photoId,
+          deletedAt: null,
+          syncState: "queued",
+          url: null,
+          reviewDecision: null,
+          requirementId: input.requirementId,
+          category: input.category as IntakePhotoCategory,
+        },
+      ],
       {
-        id: photoId,
-        deletedAt: null,
-        syncState: "queued",
-        url: null,
-        reviewDecision: null,
-        requirementId: input.requirementId,
+        serialConfirmed: Boolean(
+          (job.expectedIdentity as { serialCode?: string } | undefined)?.serialCode?.trim(),
+        ),
       },
-    ]);
+    );
     if (reworkRef && reworkSnapshot?.exists) {
       const unresolvedReworkRequirementIds = reworkGaps
         .map((gap) => gap.requirementId)
@@ -507,6 +528,11 @@ export async function finalizeIntakePhoto(
             })
           : progressPhoto(candidate.id, data);
       }),
+      {
+        serialConfirmed: Boolean(
+          (freshJob.expectedIdentity as { serialCode?: string } | undefined)?.serialCode?.trim(),
+        ),
+      },
     );
 
     transaction.update(photoRef, {

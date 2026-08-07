@@ -1,6 +1,6 @@
 import "server-only";
 
-import { INTAKE_PHOTO_CATEGORIES } from "@autocore/engine-intake";
+import { INTAKE_PHOTO_CATEGORIES, deriveEngineIntakeProgress } from "@autocore/engine-intake";
 import { FieldValue } from "firebase-admin/firestore";
 import { z } from "zod";
 
@@ -173,8 +173,65 @@ export async function inspectEngineIntakePhoto(input: {
           : {}),
         updatedAt: FieldValue.serverTimestamp(),
       });
+      const photosSnapshot = await transaction.get(jobRef.collection("photos"));
+      const nextCategory =
+        result.suggestedCategory && photo.category === "other"
+          ? result.suggestedCategory
+          : typeof photo.category === "string"
+            ? photo.category
+            : "other";
+      const expectedIdentity = freshJobSnapshot.data()?.expectedIdentity as
+        | { serialCode?: string }
+        | undefined;
+      const coverageProgress = deriveEngineIntakeProgress(
+        Array.isArray(freshJobSnapshot.data()?.requirements)
+          ? (freshJobSnapshot.data()?.requirements as never[])
+          : [],
+        photosSnapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            deletedAt: data.deletedAt ?? null,
+            syncState: data.syncState ?? "queued",
+            url: typeof data.url === "string" ? data.url : null,
+            reviewDecision: data.reviewDecision ?? null,
+            requirementId:
+              typeof data.requirementId === "string" ? data.requirementId : null,
+            category:
+              doc.id === input.photoId
+                ? nextCategory
+                : typeof data.category === "string"
+                  ? data.category
+                  : "other",
+          };
+        }),
+        { serialConfirmed: Boolean(expectedIdentity?.serialCode?.trim()) },
+      );
       transaction.update(jobRef, {
         blockingAiFlags: nextBlockingFlags,
+        progress: {
+          ...(freshJobSnapshot.data()?.progress as Record<string, unknown> | undefined),
+          coveragePercent: coverageProgress.coveragePercent,
+          missingFacets: coverageProgress.missingFacets,
+          coverageWhisper: coverageProgress.coverageWhisper,
+          capturedCount: coverageProgress.capturedCount,
+          uploadedCount: coverageProgress.uploadedCount,
+        },
+        ...(result.suggestedIdentity?.brandName || result.suggestedIdentity?.engineCode
+          ? {
+              expectedIdentity: {
+                ...(typeof freshJobSnapshot.data()?.expectedIdentity === "object"
+                  ? freshJobSnapshot.data()?.expectedIdentity
+                  : {}),
+                ...(result.suggestedIdentity.brandName
+                  ? { brandName: result.suggestedIdentity.brandName }
+                  : {}),
+                ...(result.suggestedIdentity.engineCode
+                  ? { engineCode: result.suggestedIdentity.engineCode }
+                  : {}),
+              },
+            }
+          : {}),
         updatedAt: FieldValue.serverTimestamp(),
       });
       transaction.set(

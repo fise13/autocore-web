@@ -3,18 +3,22 @@ import test from "node:test";
 
 import {
   DEFAULT_ENGINE_INTAKE_REQUIREMENTS,
+  canFinishFieldDocumentation,
   canReleaseEngineForSale,
   canTransitionEngineIntakeJob,
+  deriveDocumentationCoverage,
   deriveEngineIntakeProgress,
   emptyEngineIntakeProgress,
   fieldRequirementsSatisfied,
   verificationRequirementsSatisfied,
+  warehouseLifecycleLabel,
   type IntakePhoto,
 } from "./index";
 
 function photo(
   id: string,
-  requirementId: string,
+  requirementId: string | null,
+  category: IntakePhoto["category"] = "other",
   syncState: IntakePhoto["syncState"] = "synced",
 ): IntakePhoto {
   return {
@@ -24,7 +28,7 @@ function photo(
     engineId: "engine",
     sessionId: "session",
     requirementId,
-    category: "other",
+    category,
     categorySource: "worker",
     localUri: null,
     storagePath: `path/${id}`,
@@ -49,46 +53,107 @@ test("job state machine blocks releasing an open job directly", () => {
   assert.equal(canTransitionEngineIntakeJob("awaiting_verification", "verified"), true);
 });
 
-test("photo progress is requirement based rather than count based", () => {
-  const photos = DEFAULT_ENGINE_INTAKE_REQUIREMENTS.filter((item) => item.required).map(
-    (item, index) => photo(`photo-${index}`, item.id),
+test("capture-first package has no required checklist items", () => {
+  assert.equal(
+    DEFAULT_ENGINE_INTAKE_REQUIREMENTS.every((item) => !item.required),
+    true,
   );
-  const progress = deriveEngineIntakeProgress(DEFAULT_ENGINE_INTAKE_REQUIREMENTS, photos);
+});
 
-  assert.equal(progress.requiredCount, 5);
-  assert.equal(progress.satisfiedCount, 5);
+test("coverage rises with diverse views, not duplicate angles", () => {
+  const diverse = deriveDocumentationCoverage(
+    [
+      { category: "serial_plate" },
+      { category: "overview_left" },
+      { category: "overview_right" },
+      { category: "overview_front" },
+      { category: "overview_rear" },
+      { category: "valve_cover" },
+      { category: "oil_pan" },
+    ],
+    { serialConfirmed: true },
+  );
+  const duplicates = deriveDocumentationCoverage(
+    [
+      { category: "overview_left" },
+      { category: "overview_left" },
+      { category: "overview_left" },
+      { category: "overview_left" },
+      { category: "overview_left" },
+      { category: "overview_left" },
+      { category: "overview_left" },
+    ],
+    { serialConfirmed: true },
+  );
+
+  assert.ok(diverse.percent > duplicates.percent);
+  assert.ok(diverse.percent >= 85);
+  assert.ok(duplicates.percent < 50);
+});
+
+test("progress is coverage based when checklist is empty", () => {
+  const photos = [
+    photo("a", null, "serial_plate"),
+    photo("b", null, "overview_left"),
+    photo("c", null, "overview_right"),
+  ];
+  const progress = deriveEngineIntakeProgress(DEFAULT_ENGINE_INTAKE_REQUIREMENTS, photos, {
+    serialConfirmed: true,
+  });
+
+  assert.equal(progress.requiredCount, 0);
+  assert.equal(progress.capturedCount, 3);
   assert.deepEqual(progress.missingRequirementIds, []);
+  assert.ok(progress.coveragePercent > 0);
   assert.equal(verificationRequirementsSatisfied(progress), true);
-});
-
-test("field completion can be softer than verification", () => {
-  const progress = deriveEngineIntakeProgress(
-    DEFAULT_ENGINE_INTAKE_REQUIREMENTS,
-    [photo("serial", "serial-plate")],
-  );
-
   assert.equal(fieldRequirementsSatisfied(DEFAULT_ENGINE_INTAKE_REQUIREMENTS, progress), true);
-  assert.equal(verificationRequirementsSatisfied(progress), false);
 });
 
-test("sale release requires verification state, location, and complete evidence", () => {
-  const completeProgress = {
-    ...emptyEngineIntakeProgress(DEFAULT_ENGINE_INTAKE_REQUIREMENTS),
-    satisfiedCount: 5,
-    missingRequirementIds: [],
+test("worker can finish with serial and one photo even if coverage is thin", () => {
+  const progress = {
+    ...emptyEngineIntakeProgress(),
+    capturedCount: 1,
+    coveragePercent: 20,
+  };
+  assert.equal(
+    canFinishFieldDocumentation({
+      expectedIdentity: {
+        serialCode: "UF398539",
+        brandName: "",
+        engineCode: "",
+        donorVin: "",
+        configuration: "",
+      },
+      progress,
+    }),
+    true,
+  );
+});
+
+test("sale release requires verification state, serial, photos, and coverage or override", () => {
+  const thinProgress = {
+    ...emptyEngineIntakeProgress(),
+    capturedCount: 2,
+    coveragePercent: 40,
+  };
+  const readyProgress = {
+    ...emptyEngineIntakeProgress(),
+    capturedCount: 6,
+    coveragePercent: 90,
   };
 
   assert.equal(
     canReleaseEngineForSale({
       state: "awaiting_verification",
-      location: {
-        locationId: "rack-a1",
-        code: "A-01",
-        isStaging: false,
-        setByUid: "worker",
-        setAt: new Date().toISOString(),
+      location: null,
+      expectedIdentity: {
+        serialCode: "UF398539",
+        brandName: "",
+        engineCode: "",
+        donorVin: "",
+        configuration: "",
       },
-      progress: completeProgress,
+      progress: readyProgress,
     }),
     true,
   );
@@ -97,8 +162,41 @@ test("sale release requires verification state, location, and complete evidence"
     canReleaseEngineForSale({
       state: "awaiting_verification",
       location: null,
-      progress: completeProgress,
+      expectedIdentity: {
+        serialCode: "UF398539",
+        brandName: "",
+        engineCode: "",
+        donorVin: "",
+        configuration: "",
+      },
+      progress: thinProgress,
     }),
     false,
   );
+
+  assert.equal(
+    canReleaseEngineForSale(
+      {
+        state: "awaiting_verification",
+        location: null,
+        expectedIdentity: {
+          serialCode: "UF398539",
+          brandName: "",
+          engineCode: "",
+          donorVin: "",
+          configuration: "",
+        },
+        progress: thinProgress,
+      },
+      "Manager override — enough for sale",
+    ),
+    true,
+  );
+});
+
+test("warehouse lifecycle maps job states for the bay", () => {
+  assert.equal(warehouseLifecycleLabel("open"), "Draft");
+  assert.equal(warehouseLifecycleLabel("in_session"), "Documenting");
+  assert.equal(warehouseLifecycleLabel("awaiting_verification"), "Ready");
+  assert.equal(warehouseLifecycleLabel("verified"), "Released");
 });

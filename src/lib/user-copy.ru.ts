@@ -351,7 +351,7 @@ export const userCopyRu = {
     },
     business: {
       inventory: "Склад",
-      engineIntake: "Приёмка двигателей",
+      engineIntake: "Склад двигателей",
       sales: "Продажи",
       workOrders: "Заказ-наряды",
       accounting: "Финансы",
@@ -385,7 +385,7 @@ export const userCopyRu = {
     sidebarNav: {
       home: "Дашборд",
       motors: "Двигатели",
-      engine_intake: "Приёмка двигателей",
+      engine_intake: "Склад двигателей",
       sold: "Продажи",
       work_orders: "Заказ-наряды",
       my_earnings: "Мои начисления",

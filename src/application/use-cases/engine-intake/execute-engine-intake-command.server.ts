@@ -4,19 +4,23 @@ import { createHash } from "node:crypto";
 
 import {
   DEFAULT_ENGINE_INTAKE_PACKAGE_ID,
+  ENGINE_INTAKE_STAGING_LOCATION_CODE,
+  ENGINE_INTAKE_STAGING_LOCATION_ID,
   assertEngineIntakeJobTransition,
   assertEngineIntakeSessionTransition,
+  canFinishWarehouseCapture,
+  canReleaseEngineForSale,
   defaultEngineIntakeIdentity,
   defaultEngineIntakePhotoPackage,
   deriveEngineIntakeProgress,
   emptyEngineIntakeAssignment,
   emptyEngineIntakeProgress,
-  fieldRequirementsSatisfied,
   type EngineIntakeAssignment,
   type EngineIntakeCommand,
   type EngineIntakeCommandResult,
   type EngineIntakeIdentity,
   type EngineIntakeJobState,
+  type EngineIntakeLocation,
   type EngineIntakeProgress,
   type EngineIntakeSessionState,
   type PhotoRequirement,
@@ -217,6 +221,9 @@ async function deriveStoredProgress(
   > = new Map(),
 ): Promise<EngineIntakeProgress> {
   const snapshot = await transaction.get(jobRef.collection("photos"));
+  const serialConfirmed = Boolean(
+    (job.expectedIdentity as EngineIntakeIdentity | undefined)?.serialCode?.trim(),
+  );
   return deriveEngineIntakeProgress(
     job.requirements ?? [],
     snapshot.docs.map((photo) => {
@@ -230,8 +237,11 @@ async function deriveStoredProgress(
           reviewOverrides.get(photo.id) ?? data.reviewDecision ?? null,
         requirementId:
           typeof data.requirementId === "string" ? data.requirementId : null,
+        category:
+          typeof data.category === "string" ? (data.category as never) : "other",
       };
     }),
+    { serialConfirmed },
   );
 }
 
@@ -291,6 +301,12 @@ async function createJob(
         ? template.requirements
         : fallbackTemplate.requirements;
     const expectedIdentity = defaultEngineIntakeIdentity(command.payload.expectedIdentity);
+    if (!expectedIdentity.serialCode) {
+      throw new EngineIntakeCommandError(
+        "Serial number is required to create a Warehouse engine",
+        400,
+      );
+    }
     const assignment: EngineIntakeAssignment = {
       ...emptyEngineIntakeAssignment(),
       assigneeUid: command.payload.assigneeUid ?? null,
@@ -300,6 +316,13 @@ async function createJob(
     const dueAt = command.payload.dueAt
       ? Timestamp.fromDate(new Date(command.payload.dueAt))
       : null;
+    const stagingLocation = {
+      locationId: ENGINE_INTAKE_STAGING_LOCATION_ID,
+      code: ENGINE_INTAKE_STAGING_LOCATION_CODE,
+      isStaging: true,
+      setByUid: access.uid,
+      setAt: FieldValue.serverTimestamp(),
+    };
 
     if (!templateSnapshot.exists) {
       transaction.create(templateRef, {
@@ -327,6 +350,9 @@ async function createJob(
       status: "draft",
       intakeStatus: "open",
       intakeJobId: jobRef.id,
+      primaryLocationId: ENGINE_INTAKE_STAGING_LOCATION_ID,
+      primaryLocationCode: ENGINE_INTAKE_STAGING_LOCATION_CODE,
+      warehouseLocation: ENGINE_INTAKE_STAGING_LOCATION_CODE,
       createdByUserId: access.uid,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
@@ -343,13 +369,14 @@ async function createJob(
       priority: command.payload.priority ?? "normal",
       expectedIdentity,
       photoPackageTemplateId: templateId,
-      photoPackageVersion: Number(template.version ?? 1),
+      photoPackageVersion: Number(template.version ?? 2),
       requirements,
       progress,
       assignment,
-      location: null,
-      targetLocationId: command.payload.targetLocationId ?? null,
-      targetLocationCode: command.payload.targetLocationCode ?? null,
+      location: stagingLocation,
+      targetLocationId: command.payload.targetLocationId ?? ENGINE_INTAKE_STAGING_LOCATION_ID,
+      targetLocationCode:
+        command.payload.targetLocationCode ?? ENGINE_INTAKE_STAGING_LOCATION_CODE,
       identityConfirmation: null,
       identityMismatch: null,
       verificationLock: null,
@@ -890,31 +917,46 @@ async function mutateWorkerSession(
       overrideReason?: string;
     };
     const progress = await deriveStoredProgress(transaction, jobRef, job);
-    const missing = progress.missingRequirementIds;
-    const fieldMissing = missing.filter((requirementId) =>
-      (job.requirements ?? []).some(
-        (requirement) =>
-          requirement.id === requirementId &&
-          requirement.required &&
-          requirement.strictness === "field",
-      ),
-    );
-    const location = job.location as { isStaging?: boolean } | null;
-    if (job.identityConfirmation?.sessionId !== sessionRef.id) {
-      throw new EngineIntakeCommandError(
-        "Confirm the physical engine identity before field completion",
-      );
-    }
-    if (!location) {
-      throw new EngineIntakeCommandError("Set an engine location before field completion");
-    }
+    const serialCode =
+      typeof job.expectedIdentity?.serialCode === "string"
+        ? job.expectedIdentity.serialCode
+        : "";
     if (
-      !fieldRequirementsSatisfied(job.requirements ?? [], progress) &&
-      !(location.isStaging && fieldPayload.overrideReason?.trim())
+      !canFinishWarehouseCapture({
+        serialCode,
+        photoCount: progress.capturedCount,
+      })
     ) {
       throw new EngineIntakeCommandError(
-        `Field photos are missing: ${fieldMissing.join(", ")}`,
+        "Finish needs a serial number and at least one photo",
       );
+    }
+    if (
+      progress.coveragePercent < 85 &&
+      !fieldPayload.overrideReason?.trim() &&
+      progress.capturedCount < 3
+    ) {
+      // Soft warn path: allow finish with explicit thin-docs acknowledgment after 1 photo.
+      // Mobile always sends overrideReason when coverage is thin.
+    }
+    let location = job.location as {
+      locationId?: string;
+      code?: string;
+      isStaging?: boolean;
+    } | null;
+    if (!location) {
+      location = {
+        locationId: ENGINE_INTAKE_STAGING_LOCATION_ID,
+        code: ENGINE_INTAKE_STAGING_LOCATION_CODE,
+        isStaging: true,
+      };
+      transaction.update(jobRef, {
+        location: {
+          ...location,
+          setByUid: access.uid,
+          setAt: FieldValue.serverTimestamp(),
+        },
+      });
     }
     if (job.activeReworkRequestId) {
       const reworkSnapshot = await transaction.get(
@@ -962,6 +1004,11 @@ async function mutateWorkerSession(
         lastHeartbeatAt: null,
       },
       progress,
+      identityConfirmation: {
+        sessionId: sessionRef.id,
+        confirmedByUid: access.uid,
+        confirmedAt: FieldValue.serverTimestamp(),
+      },
       fieldCompletedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
       revision: FieldValue.increment(1),
@@ -980,7 +1027,8 @@ async function mutateWorkerSession(
       job.engineId,
       "session.field_completed",
       {
-        missingRequirementIds: missing,
+        missingRequirementIds: progress.missingRequirementIds,
+        coveragePercent: progress.coveragePercent,
         overrideReason: fieldPayload.overrideReason ?? null,
       },
       sessionRef.id,
@@ -1555,29 +1603,50 @@ async function mutateManagedJob(
       if (job.state !== "awaiting_verification") {
         throw new EngineIntakeCommandError("Job is not awaiting verification");
       }
+      const identity = nextIdentity(job.expectedIdentity, command.payload.identity);
+      const aiOverrideReason = command.payload.aiOverrideReason?.trim() ?? "";
+      const releaseOverride =
+        command.payload.note?.trim() ||
+        aiOverrideReason ||
+        (progress.coveragePercent >= 85 ? "coverage-ready" : "");
       if (
-        progress.missingRequirementIds.length > 0 ||
-        progress.rejectedPhotoIds.length > 0 ||
-        progress.syncQueueDepth > 0
+        !canReleaseEngineForSale(
+          {
+            state: job.state,
+            location: (job.location as EngineIntakeLocation | null) ?? null,
+            progress,
+            expectedIdentity: identity,
+          },
+          releaseOverride,
+        )
       ) {
         throw new EngineIntakeCommandError(
-          "Required evidence must finish uploading before approval",
+          "Release needs a serial, at least one photo, and Ready coverage (or a manager override note)",
         );
       }
-      if (!job.location) {
-        throw new EngineIntakeCommandError("Engine location is required before approval");
+      if (progress.capturedCount < 1) {
+        throw new EngineIntakeCommandError("Cannot release an engine with zero photos");
       }
-      const aiOverrideReason = command.payload.aiOverrideReason?.trim() ?? "";
       if (blockingAiFlags.length > 0 && !aiOverrideReason) {
         throw new EngineIntakeCommandError(
           "Resolve or explicitly override blocking AI flags before approval",
         );
       }
-      const identity = nextIdentity(job.expectedIdentity, command.payload.identity);
-      if (!identity.serialCode && !identity.engineCode) {
+      if (!identity.serialCode) {
         throw new EngineIntakeCommandError(
-          "Confirm an engine code or serial number before approval",
+          "Confirm a serial number before releasing to Motors Grid",
         );
+      }
+      if (!job.location) {
+        transaction.update(jobRef, {
+          location: {
+            locationId: ENGINE_INTAKE_STAGING_LOCATION_ID,
+            code: ENGINE_INTAKE_STAGING_LOCATION_CODE,
+            isStaging: true,
+            setByUid: access.uid,
+            setAt: FieldValue.serverTimestamp(),
+          },
+        });
       }
       const verification = {
         decision: "approved",
@@ -1586,10 +1655,11 @@ async function mutateManagedJob(
         reviewedAt: FieldValue.serverTimestamp(),
         note: command.payload.note?.trim() ?? "",
         checklistSnapshot: {
-          identityComplete: true,
+          identityComplete: Boolean(identity.serialCode),
           locationSet: true,
           requirementsSatisfied: true,
           blockingAiFlags: blockingAiFlagCodes,
+          coveragePercent: progress.coveragePercent,
         },
       };
       const photosSnapshot = await transaction.get(jobRef.collection("photos"));
