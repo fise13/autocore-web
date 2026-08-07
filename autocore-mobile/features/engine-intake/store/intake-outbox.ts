@@ -110,6 +110,12 @@ export function humanizeIntakeOutboxError(message: string | null | undefined): s
   if (lower.includes('permission') || lower.includes('403')) {
     return 'Your role cannot upload intake photos.';
   }
+  if (
+    lower.includes('confirm the physical engine identity') ||
+    lower.includes('identity before taking photos')
+  ) {
+    return 'Outdated server check blocked upload. Redeploy web, then retry.';
+  }
   if (lower.includes('local photo is missing') || lower.includes('retake')) {
     return 'That photo file is gone. Shoot it again.';
   }

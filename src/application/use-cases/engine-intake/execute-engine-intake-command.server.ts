@@ -563,7 +563,14 @@ async function claimJob(
     transaction.update(jobRef, {
       state: "in_session",
       assignment: nextAssignment,
-      identityConfirmation: null,
+      // Capture-first: accepting/claiming an engine with a serial is enough —
+      // no separate "confirm physical identity" step before free photos.
+      identityConfirmation: {
+        sessionId: newSessionRef.id,
+        confirmedByUid: access.uid,
+        confirmedAt: FieldValue.serverTimestamp(),
+      },
+      identityMismatch: null,
       updatedAt: FieldValue.serverTimestamp(),
       revision: FieldValue.increment(1),
     });

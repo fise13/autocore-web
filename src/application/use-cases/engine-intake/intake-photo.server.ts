@@ -70,11 +70,8 @@ function assertActivePhotoSession(
   if (job.state !== "in_session") {
     throw new EngineIntakeCommandError("Job is not in an active intake session");
   }
-  if (job.identityConfirmation?.sessionId !== sessionId) {
-    throw new EngineIntakeCommandError(
-      "Confirm the physical engine identity before taking photos",
-    );
-  }
+  // Capture-first: serial is committed at create; free photos do not need a
+  // separate physical-identity confirm gate.
 }
 
 function requirementFor(
