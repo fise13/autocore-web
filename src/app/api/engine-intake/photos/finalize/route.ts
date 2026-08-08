@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { ZodError } from "zod";
 
 import {
   EngineIntakeCommandError,
 } from "@/application/use-cases/engine-intake/execute-engine-intake-command.server";
 import { finalizeIntakePhoto } from "@/application/use-cases/engine-intake/intake-photo.server";
+import { inspectEngineIntakePhoto } from "@/application/use-cases/engine-intake/inspect-intake-photo.server";
 import {
   EngineIntakeAccessError,
   verifyEngineIntakeAccess,
@@ -12,13 +13,24 @@ import {
 import { parseFinalizeIntakePhotoRequest } from "@/lib/engine-intake/engine-intake-schemas";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
     const input = parseFinalizeIntakePhotoRequest(await request.json());
     const access = await verifyEngineIntakeAccess(request, "execute");
     const result = await finalizeIntakePhoto(access, input);
+    // Desktop AI matching is primary; mobile upload still queues a background pass.
+    after(async () => {
+      await inspectEngineIntakePhoto({
+        companyId: access.companyId,
+        jobId: input.jobId,
+        photoId: input.photoId,
+        actorUid: access.uid,
+      }).catch((error) => {
+        console.error("[engine-intake/photo-ai]", error);
+      });
+    });
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof ZodError) {

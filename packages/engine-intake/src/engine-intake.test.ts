@@ -54,18 +54,15 @@ test("job state machine blocks releasing an open job directly", () => {
   assert.equal(canTransitionEngineIntakeJob("awaiting_verification", "verified"), true);
 });
 
-test("seed checklist starts with serial + condition photos only", () => {
+test("seed checklist starts with serial + exterior sale gates", () => {
   const checklist = seedDocumentationChecklist({ serialConfirmed: true });
   assert.equal(
     checklist.items.find((item) => item.id === "serial_visible")?.state,
     "completed",
   );
-  assert.equal(checklist.items.length, 2);
-  assert.equal(
-    checklist.items.find((item) => item.id === "overall_engine")?.state,
-    "missing",
-  );
-  assert.ok(checklistWhisper(checklist)?.includes("Condition photos"));
+  assert.equal(checklist.understandingState, "pending");
+  assert.ok(checklist.summary.missingCount > 0);
+  assert.ok(checklistWhisper(checklist)?.startsWith("Missing:"));
 });
 
 test("normalizeDocumentationChecklist seeds missing or empty payloads", () => {
@@ -81,23 +78,68 @@ test("normalizeDocumentationChecklist seeds missing or empty payloads", () => {
   assert.equal(kept.summary.missingCount, seeded.summary.missingCount);
 });
 
-test("condition photos + serial make sale checklist ready", () => {
+test("checklist ticks diverse views without farming duplicates", () => {
+  const checklist = reconcileDocumentationChecklist({
+    previous: seedDocumentationChecklist({ serialConfirmed: true }),
+    photos: [
+      { id: "1", category: "serial_plate" },
+      { id: "2", category: "overview_left" },
+      { id: "3", category: "overview_right" },
+      { id: "4", category: "overview_front" },
+      { id: "5", category: "overview_rear" },
+      { id: "6", category: "valve_cover" },
+      { id: "7", category: "oil_pan" },
+    ],
+    hints: { serialConfirmed: true, hasTurbo: false },
+  });
+
+  assert.equal(checklist.summary.saleGateMissingCount, 0);
+  assert.equal(checklist.summary.ready, true);
+  assert.equal(
+    checklist.items.find((item) => item.id === "turbo")?.state,
+    "not_applicable",
+  );
+});
+
+test("free-capture other photos do not farm overall engine without AI", () => {
   const checklist = reconcileDocumentationChecklist({
     previous: seedDocumentationChecklist({ serialConfirmed: true }),
     photos: [
       { id: "1", category: "other" },
       { id: "2", category: "other" },
+      { id: "3", category: "other" },
+    ],
+    hints: { serialConfirmed: true },
+  });
+
+  assert.equal(
+    checklist.items.find((item) => item.id === "overall_engine")?.state,
+    "missing",
+  );
+  assert.equal(
+    checklist.items.find((item) => item.id === "left_side")?.state,
+    "missing",
+  );
+  assert.ok(checklist.summary.missingCount > 0);
+});
+
+test("AI checklist hits assign specific angles from free-capture photos", () => {
+  const checklist = reconcileDocumentationChecklist({
+    previous: seedDocumentationChecklist({ serialConfirmed: true }),
+    photos: [
+      { id: "1", category: "other", checklistHits: ["overall_engine"], hitConfidence: 0.8 },
+      { id: "2", category: "other", checklistHits: ["valve_cover"], hitConfidence: 0.82 },
+      { id: "3", category: "other", checklistHits: ["left_side"], hitConfidence: 0.8 },
+      { id: "4", category: "other", checklistHits: ["right_side"], hitConfidence: 0.8 },
+      { id: "5", category: "other", checklistHits: ["front"], hitConfidence: 0.8 },
+      { id: "6", category: "other", checklistHits: ["rear"], hitConfidence: 0.8 },
+      { id: "7", category: "other", checklistHits: ["oil_pan_external"], hitConfidence: 0.8 },
     ],
     hints: { serialConfirmed: true },
   });
 
   assert.equal(checklist.summary.saleGateMissingCount, 0);
   assert.equal(checklist.summary.ready, true);
-  assert.equal(
-    checklist.items.find((item) => item.id === "overall_engine")?.state,
-    "completed",
-  );
-  assert.equal(checklist.items.find((item) => item.id === "left_side"), undefined);
 });
 
 test("oil pan removed unlocks internals items", () => {
@@ -117,18 +159,18 @@ test("oil pan removed unlocks internals items", () => {
   assert.ok(checklist.items.some((item) => item.id === "crankshaft_visible"));
 });
 
-test("progress is ready once serial and any photos exist", () => {
+test("progress derives checklist whisper when sale gates remain", () => {
   const photos = [
     photo("a", null, "serial_plate"),
-    photo("b", null, "other"),
+    photo("b", null, "overview_left"),
   ];
   const progress = deriveEngineIntakeProgress(DEFAULT_ENGINE_INTAKE_REQUIREMENTS, photos, {
     serialConfirmed: true,
   });
 
   assert.equal(progress.requiredCount, 0);
-  assert.equal(progress.documentationChecklist.summary.ready, true);
-  assert.equal(progress.documentationChecklist.summary.whisper, null);
+  assert.ok(progress.documentationChecklist.summary.whisper);
+  assert.ok(progress.coverageWhisper);
 });
 
 test("worker can finish with serial and one photo", () => {
@@ -154,7 +196,15 @@ test("worker can finish with serial and one photo", () => {
 test("sale release uses checklist readiness or override", () => {
   const readyChecklist = reconcileDocumentationChecklist({
     previous: seedDocumentationChecklist({ serialConfirmed: true }),
-    photos: [{ id: "1", category: "other" }],
+    photos: [
+      { id: "1", category: "serial_plate" },
+      { id: "2", category: "overview_left" },
+      { id: "3", category: "overview_right" },
+      { id: "4", category: "overview_front" },
+      { id: "5", category: "overview_rear" },
+      { id: "6", category: "valve_cover" },
+      { id: "7", category: "oil_pan" },
+    ],
     hints: { serialConfirmed: true },
   });
   const thinChecklist = seedDocumentationChecklist({ serialConfirmed: true });
@@ -170,7 +220,7 @@ test("sale release uses checklist readiness or override", () => {
         donorVin: "",
         configuration: "",
       },
-      progress: { ...emptyEngineIntakeProgress(), capturedCount: 1 },
+      progress: { ...emptyEngineIntakeProgress(), capturedCount: 7 },
       documentationChecklist: readyChecklist,
     }),
     true,

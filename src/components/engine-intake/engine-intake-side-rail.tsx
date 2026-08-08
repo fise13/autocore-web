@@ -14,6 +14,7 @@ import {
   formatIntakeDate,
   formatIntakeEventLabel,
   formatIntakeState,
+  jobChecklistStatusLabel,
 } from "@/components/engine-intake/engine-intake-format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -87,12 +88,7 @@ export function EngineIntakeSideRail({
     : job.assignment.assigneeName?.trim() ||
       (assigneeUid ? "Assigned worker" : "Unassigned queue");
 
-  const checklistStatus = summary.ready
-    ? "Ready to release"
-    : summary.whisper ??
-      `${summary.saleGateMissingCount} sale item${
-        summary.saleGateMissingCount === 1 ? "" : "s"
-      } open`;
+  const checklistStatus = jobChecklistStatusLabel(job);
 
   const timeline = events.slice(0, 16);
 
@@ -288,9 +284,10 @@ export function EngineIntakeSideRail({
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate text-xs font-medium">
-                    {inspection.suggestedCategory
-                      ? formatIntakeState(inspection.suggestedCategory)
-                      : "Photo inspection"}
+                    {inspection.photoLabel ||
+                      (inspection.suggestedCategory
+                        ? formatIntakeState(inspection.suggestedCategory)
+                        : "Photo inspection")}
                   </span>
                   <Badge
                     variant={

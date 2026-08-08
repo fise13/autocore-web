@@ -34,13 +34,24 @@ import {
   engineIntakeCommandId,
   sendEngineIntakeCommand,
 } from "@/lib/engine-intake/engine-intake-api.client";
+import { userCopy } from "@/lib/user-copy";
 
-const SOURCE_OPTIONS: Array<{ value: EngineIntakeSource; label: string }> = [
-  { value: "dismantle", label: "Vehicle dismantle" },
-  { value: "purchase", label: "Purchased engine" },
-  { value: "transfer", label: "Warehouse transfer" },
-  { value: "ad_hoc", label: "Yard arrival" },
+const SOURCE_VALUES: EngineIntakeSource[] = [
+  "dismantle",
+  "purchase",
+  "transfer",
+  "ad_hoc",
 ];
+
+const PRIORITY_VALUES: EngineIntakePriority[] = ["normal", "high", "urgent"];
+
+function sourceLabel(source: EngineIntakeSource): string {
+  return userCopy.engineIntake.create.sources[source];
+}
+
+function priorityLabel(priority: EngineIntakePriority): string {
+  return userCopy.engineIntake.create.priorities[priority];
+}
 
 export function EngineIntakeCreateDialog({
   companyId,
@@ -51,12 +62,19 @@ export function EngineIntakeCreateDialog({
   employees: CompanyEmployee[];
   onCreated: (jobId: string) => void;
 }) {
+  const copy = userCopy.engineIntake.create;
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [source, setSource] = useState<EngineIntakeSource>("ad_hoc");
   const [serialCode, setSerialCode] = useState("");
   const [priority, setPriority] = useState<EngineIntakePriority>("normal");
   const [assigneeUid, setAssigneeUid] = useState("unassigned");
+
+  const assigneeLabel =
+    assigneeUid === "unassigned"
+      ? copy.unassigned
+      : employees.find((employee) => employee.uid === assigneeUid)?.fullName ??
+        copy.unassigned;
 
   const reset = () => {
     setSource("ad_hoc");
@@ -68,7 +86,7 @@ export function EngineIntakeCreateDialog({
   const createJob = async () => {
     const serial = serialCode.trim().toUpperCase();
     if (!serial) {
-      toast.error("Serial number is required");
+      toast.error(copy.serialRequired);
       return;
     }
     const assignee =
@@ -97,9 +115,9 @@ export function EngineIntakeCreateDialog({
       setOpen(false);
       reset();
       onCreated(result.jobId);
-      toast.success("Engine intake draft created");
+      toast.success(copy.created);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not create engine");
+      toast.error(error instanceof Error ? error.message : copy.createFailed);
     } finally {
       setBusy(false);
     }
@@ -115,19 +133,16 @@ export function EngineIntakeCreateDialog({
     >
       <DialogTrigger render={<Button size="sm" />}>
         <Plus className="size-4" />
-        New engine
+        {copy.trigger}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New engine</DialogTitle>
-          <DialogDescription>
-            Creates an Engine intake draft — not Motors Grid. Brand and photo roles come from AI
-            after capture.
-          </DialogDescription>
+          <DialogTitle>{copy.title}</DialogTitle>
+          <DialogDescription>{copy.description}</DialogDescription>
         </DialogHeader>
         <FieldGroup>
           <Field>
-            <FieldLabel htmlFor="intake-serial">Serial</FieldLabel>
+            <FieldLabel htmlFor="intake-serial">{copy.serial}</FieldLabel>
             <Input
               id="intake-serial"
               autoFocus
@@ -142,19 +157,19 @@ export function EngineIntakeCreateDialog({
           </Field>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Field>
-              <FieldLabel>Source</FieldLabel>
+              <FieldLabel>{copy.source}</FieldLabel>
               <Select
                 value={source}
                 onValueChange={(value) => setSource(value as EngineIntakeSource)}
               >
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className="w-full">
+                  <SelectValue>{sourceLabel(source)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {SOURCE_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
+                    {SOURCE_VALUES.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {sourceLabel(value)}
                       </SelectItem>
                     ))}
                   </SelectGroup>
@@ -162,35 +177,37 @@ export function EngineIntakeCreateDialog({
               </Select>
             </Field>
             <Field>
-              <FieldLabel>Priority</FieldLabel>
+              <FieldLabel>{copy.priority}</FieldLabel>
               <Select
                 value={priority}
                 onValueChange={(value) => setPriority(value as EngineIntakePriority)}
               >
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className="w-full">
+                  <SelectValue>{priorityLabel(priority)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="normal">Normal</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
+                    {PRIORITY_VALUES.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {priorityLabel(value)}
+                      </SelectItem>
+                    ))}
                   </SelectGroup>
                 </SelectContent>
               </Select>
             </Field>
             <Field>
-              <FieldLabel>Assignee</FieldLabel>
+              <FieldLabel>{copy.assignee}</FieldLabel>
               <Select
                 value={assigneeUid}
                 onValueChange={(value) => setAssigneeUid(value ?? "unassigned")}
               >
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className="w-full">
+                  <SelectValue>{assigneeLabel}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    <SelectItem value="unassigned">{copy.unassigned}</SelectItem>
                     {employees.map((employee) => (
                       <SelectItem key={employee.uid} value={employee.uid}>
                         {employee.fullName}
@@ -204,11 +221,11 @@ export function EngineIntakeCreateDialog({
         </FieldGroup>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>
-            Cancel
+            {copy.cancel}
           </Button>
           <Button onClick={() => void createJob()} disabled={busy || !serialCode.trim()}>
             {busy ? <LoaderCircle className="size-4 animate-spin" /> : null}
-            Create draft
+            {copy.submit}
           </Button>
         </DialogFooter>
       </DialogContent>

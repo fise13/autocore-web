@@ -16,6 +16,7 @@ import type { EngineIntakeJob, EngineIntakeJobState } from "@autocore/engine-int
 import { EngineIntakeCreateDialog } from "@/components/engine-intake/engine-intake-create-dialog";
 import { EngineIntakeDetail } from "@/components/engine-intake/engine-intake-detail";
 import {
+  jobChecklistStatusLabel,
   jobIdentityLine,
   jobLifecycleLabel,
   jobSerial,
@@ -106,9 +107,6 @@ function BayCard({
         summary.uncertainCount > 0 ? ` · ${summary.uncertainCount} uncertain` : ""
       }`
     : `${job.progress.capturedCount} photos`;
-  const understanding =
-    checklist?.understandingState === "understanding" ||
-    checklist?.understandingState === "pending";
 
   return (
     <button
@@ -178,13 +176,7 @@ function BayCard({
           )}
           {summaryLine}
         </span>
-        <span className="shrink-0 tabular-nums">
-          {job.progress.syncQueueDepth > 0
-            ? `${job.progress.syncQueueDepth} syncing`
-            : understanding
-              ? "Understanding…"
-              : `${job.progress.capturedCount} photos`}
-        </span>
+        <span className="shrink-0 tabular-nums">{jobChecklistStatusLabel(job)}</span>
       </div>
     </button>
   );
@@ -262,7 +254,7 @@ export function EngineIntakeWorkspace() {
             <h1 className="font-heading text-lg font-semibold tracking-tight">Engine intake</h1>
           </div>
           <p className="truncate text-xs text-muted-foreground">
-            Document engines with condition photos. Release to Motors Grid when serial and photos look good.
+            Document engines on mobile. Match photos with AI here, then edit anything before release.
           </p>
         </div>
         {canVerify ? (

@@ -306,6 +306,10 @@ export type IntakeAiInspectionResult = {
   state: "queued" | "processing" | "completed" | "failed";
   suggestedCategory: IntakePhotoCategory | null;
   suggestedIdentity: Partial<EngineIntakeIdentity>;
+  /** Optional free-text caption of what the model saw. */
+  photoLabel?: string | null;
+  checklistHits?: string[];
+  hitConfidence?: number | null;
   flags: IntakeAiFlag[];
   listingReadinessScore: number | null;
   createdAt: IntakeTimestamp;
@@ -335,6 +339,10 @@ export type IntakePhoto = {
   syncState: IntakeSyncState;
   reviewDecision: IntakePhotoReviewDecision | null;
   aiInspectionState: "none" | "queued" | "processing" | "completed" | "failed";
+  /** Short AI/manager label of what the photo shows, e.g. "Valve cover top". */
+  aiLabel?: string | null;
+  checklistHits?: string[];
+  hitConfidence?: number | null;
   deletedAt: IntakeTimestamp;
 };
 

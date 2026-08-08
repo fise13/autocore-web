@@ -1,0 +1,90 @@
+import { Pressable, View } from 'react-native';
+
+import { AlertTriangleIcon, ChevronRightIcon, CloudIcon } from '@/assets/icons';
+import { Text } from '@/components/ui';
+import { useTheme } from '@/hooks';
+import { minTouchTarget, spacing, tokens } from '@/theme';
+
+export type IntakeOutboxBannerProps = {
+  pendingCount: number;
+  failedCount: number;
+  syncing: boolean;
+  issue: string | null;
+  needsDeploy: boolean;
+  onPress: () => void;
+};
+
+export function IntakeOutboxBanner({
+  pendingCount,
+  failedCount,
+  syncing,
+  issue,
+  needsDeploy,
+  onPress,
+}: IntakeOutboxBannerProps) {
+  const { colors } = useTheme();
+
+  if (pendingCount <= 0 && failedCount <= 0) return null;
+
+  const alert = failedCount > 0 || needsDeploy;
+  const title = needsDeploy
+    ? 'Web API not deployed — sync is blocked'
+    : failedCount > 0
+      ? `${failedCount} items need attention`
+      : syncing
+        ? 'Syncing Warehouse work'
+        : `${pendingCount} items waiting to sync`;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={alert ? 'Retry Warehouse sync' : 'Warehouse sync status'}
+      onPress={onPress}
+      style={{
+        minHeight: minTouchTarget,
+        marginHorizontal: spacing[4],
+        marginBottom: spacing[2],
+        paddingHorizontal: spacing[3],
+        paddingVertical: spacing[3],
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing[3],
+        borderRadius: tokens.radius.group,
+        backgroundColor: alert ? colors.dangerSubtle : colors.primarySubtle,
+      }}
+    >
+      {alert ? (
+        <AlertTriangleIcon size={20} color={colors.dangerOnSubtle} />
+      ) : (
+        <CloudIcon size={20} color={colors.primaryOnSubtle} />
+      )}
+      <View style={{ flex: 1 }}>
+        <Text
+          variant="caption"
+          style={{
+            color: alert ? colors.dangerOnSubtle : colors.primaryOnSubtle,
+            fontWeight: '700',
+          }}
+        >
+          {title}
+        </Text>
+        {issue ? (
+          <Text
+            variant="caption"
+            numberOfLines={2}
+            style={{
+              color: alert ? colors.dangerOnSubtle : colors.primaryOnSubtle,
+              marginTop: 2,
+            }}
+          >
+            {issue}
+          </Text>
+        ) : null}
+      </View>
+      <ChevronRightIcon
+        size={18}
+        color={alert ? colors.dangerOnSubtle : colors.primaryOnSubtle}
+      />
+    </Pressable>
+  );
+}

@@ -112,16 +112,15 @@ type ItemDef = {
 };
 
 const ITEM_DEFS: readonly ItemDef[] = [
-  // Photo-first intake: field workers only need a serial + any condition photos.
-  // Angle/AI checklist items stay available for evidence mapping but are not seeded.
+  // Mobile captures freely; desktop AI (+ manager overrides) map photos to these gates.
   { id: "serial_visible", label: "Engine serial visible", group: "identity", saleGate: true, seed: true },
-  { id: "overall_engine", label: "Condition photos", group: "exterior", saleGate: true, seed: true },
-  { id: "valve_cover", label: "Valve cover", group: "exterior", saleGate: false, seed: false },
-  { id: "oil_pan_external", label: "Oil pan (external)", group: "bottom", saleGate: false, seed: false },
-  { id: "left_side", label: "Left side", group: "exterior", saleGate: false, seed: false },
-  { id: "right_side", label: "Right side", group: "exterior", saleGate: false, seed: false },
-  { id: "front", label: "Front", group: "exterior", saleGate: false, seed: false },
-  { id: "rear", label: "Rear", group: "exterior", saleGate: false, seed: false },
+  { id: "overall_engine", label: "Overall engine", group: "exterior", saleGate: true, seed: true },
+  { id: "valve_cover", label: "Valve cover", group: "exterior", saleGate: true, seed: true },
+  { id: "oil_pan_external", label: "Oil pan (external)", group: "bottom", saleGate: true, seed: true },
+  { id: "left_side", label: "Left side", group: "exterior", saleGate: true, seed: true },
+  { id: "right_side", label: "Right side", group: "exterior", saleGate: true, seed: true },
+  { id: "front", label: "Front", group: "exterior", saleGate: true, seed: true },
+  { id: "rear", label: "Rear", group: "exterior", saleGate: true, seed: true },
   { id: "turbo", label: "Turbo", group: "special", saleGate: false, seed: false },
   { id: "oil_pan_removed", label: "Oil pan removed", group: "bottom", saleGate: false, seed: false },
   { id: "crankshaft_visible", label: "Crankshaft visible", group: "internals", saleGate: false, seed: false },
@@ -153,10 +152,8 @@ const CATEGORY_TO_ITEMS: Partial<
   turbo: ["turbo"],
   intake: ["turbo"],
   exhaust: ["turbo"],
-  // Capture-first: workers shoot freely with category `other` until AI labels
-  // the angle. Count free photos as overall coverage so the bay is not stuck
-  // on "Missing: Overall engine" while AI is queued or unavailable.
-  other: ["overall_engine"],
+  // Free-capture `other` must NOT auto-complete checklist items — desktop AI
+  // assigns angles. Otherwise every phone photo farms "Overall engine".
 };
 
 const CYLINDER_IDS: DocumentationChecklistItemId[] = [
@@ -236,7 +233,7 @@ export function seedDocumentationChecklist(
     items,
     summary: summarizeDocumentationChecklist(items),
     updatedAt: null,
-    understandingState: options.serialConfirmed ? "understanding" : "pending",
+    understandingState: "pending",
   };
 }
 

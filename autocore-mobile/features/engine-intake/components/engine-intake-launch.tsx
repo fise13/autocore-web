@@ -1,17 +1,34 @@
 import { Pressable, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 
-import { CameraIcon } from '@/assets/icons';
+import { CameraIcon, ChevronRightIcon } from '@/assets/icons';
 import { Text } from '@/components/ui';
+import { useEngineIntakeJobs } from '@/features/engine-intake/hooks/use-engine-intake-data';
 import { useSession, useTheme } from '@/hooks';
 import { haptics, minTouchTarget, spacing, tokens } from '@/theme';
 
-export function EngineIntakeLaunch() {
+/**
+ * Overview launch card — opens Engine intake bay.
+ * Mirrors bay language: serial → free photos → Warehouse.
+ */
+export function IntakeLaunchCard() {
   const router = useRouter();
-  const { can } = useSession();
+  const { can, companyId, uid } = useSession();
   const { colors } = useTheme();
+  const { jobs } = useEngineIntakeJobs(
+    can('engine_intake_view') ? companyId : null,
+  );
 
   if (!can('engine_intake_view')) return null;
+
+  const activeCount = jobs.filter((job) => {
+    if (!['open', 'in_session', 'paused', 'rework'].includes(job.state)) return false;
+    return (
+      job.assignment.assigneeUid === uid ||
+      job.assignment.claimedByUid === uid ||
+      (!job.assignment.assigneeUid && (job.state === 'open' || job.state === 'rework'))
+    );
+  }).length;
 
   return (
     <Pressable
@@ -25,30 +42,67 @@ export function EngineIntakeLaunch() {
       {({ pressed }) => (
         <View
           style={{
-            minHeight: minTouchTarget + spacing[6],
+            minHeight: minTouchTarget + spacing[8],
             flexDirection: 'row',
             alignItems: 'center',
             gap: spacing[4],
             paddingHorizontal: spacing[4],
             paddingVertical: spacing[4],
             borderRadius: tokens.radius.group,
-            backgroundColor: colors.primarySubtle,
+            backgroundColor: pressed ? colors.primary : colors.primarySubtle,
             borderWidth: 1,
-            borderColor: colors.primaryBorder,
-            opacity: pressed ? 0.82 : 1,
+            borderColor: pressed ? colors.primary : colors.primaryBorder,
           }}
         >
-          <CameraIcon size={24} color={colors.primaryOnSubtle} />
+          <View
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: tokens.radius.control,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: pressed ? colors.primaryForeground : colors.primary,
+            }}
+          >
+            <CameraIcon
+              size={22}
+              color={pressed ? colors.primary : colors.primaryForeground}
+            />
+          </View>
           <View style={{ flex: 1, gap: spacing[1] }}>
-            <Text variant="heading" style={{ color: colors.primaryOnSubtle }}>
+            <Text
+              variant="heading"
+              style={{
+                color: pressed ? colors.primaryForeground : colors.primaryOnSubtle,
+                fontWeight: '800',
+              }}
+            >
               Engine intake
             </Text>
-            <Text variant="caption" style={{ color: colors.mutedForeground }}>
-              Serial, free photos, sync — then managers release to Motors
+            <Text
+              variant="caption"
+              style={{
+                color: pressed ? colors.primaryForeground : colors.mutedForeground,
+                fontWeight: '500',
+              }}
+            >
+              Photograph engine condition
+              {activeCount > 0
+                ? ` · ${activeCount} active`
+                : ''}
             </Text>
           </View>
+          <ChevronRightIcon
+            size={20}
+            color={pressed ? colors.primaryForeground : colors.primaryOnSubtle}
+          />
         </View>
       )}
     </Pressable>
   );
+}
+
+/** @deprecated Prefer IntakeLaunchCard — kept for overview import stability. */
+export function EngineIntakeLaunch() {
+  return <IntakeLaunchCard />;
 }

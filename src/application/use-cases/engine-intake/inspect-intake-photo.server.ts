@@ -83,12 +83,24 @@ const inspectionSchema = z
       .passthrough()
       .optional()
       .default({}),
+    brandConfidence: z.number().min(0).max(1).nullable().optional().default(null),
+    engineCodeConfidence: z.number().min(0).max(1).nullable().optional().default(null),
+    serialConfidence: z.number().min(0).max(1).nullable().optional().default(null),
     checklistHits: z
       .array(z.union([z.string(), z.number()]))
       .max(24)
       .optional()
       .default([])
       .transform((value) => sanitizeChecklistHits(value)),
+    photoLabel: z
+      .string()
+      .max(80)
+      .optional()
+      .nullable()
+      .transform((value) => {
+        const trimmed = typeof value === "string" ? value.trim() : "";
+        return trimmed || null;
+      }),
     hitConfidence: z.number().min(0).max(1).nullable().optional().default(null),
     hasTurbo: z.boolean().nullable().optional().default(null),
     oilPanRemoved: z.boolean().nullable().optional().default(null),
@@ -222,6 +234,105 @@ async function reconcileJobChecklist(input: {
   return nextChecklist;
 }
 
+function resolveAiChecklistHits(input: {
+  checklistHits: DocumentationChecklistItemId[];
+  suggestedCategory: IntakePhotoCategory | null;
+  workerCategory: unknown;
+}): DocumentationChecklistItemId[] {
+  if (input.checklistHits.length > 0) return input.checklistHits;
+  // Prefer AI category — never fall back to free-capture `other`, which used to
+  // farm every phone photo onto overall_engine.
+  if (input.suggestedCategory && input.suggestedCategory !== "other") {
+    return [...checklistHitsForCategory(input.suggestedCategory)];
+  }
+  const worker = asIntakePhotoCategory(input.workerCategory);
+  if (worker !== "other") return [...checklistHitsForCategory(worker)];
+  return [];
+}
+
+const CATEGORY_GUIDE = [
+  "Pick the single best suggestedCategory for THIS photo:",
+  "- serial_plate / temporary_tag → stamped serial or hanging tag close-up",
+  "- overview / overview_front / overview_rear / overview_left / overview_right → whole-engine exterior from that angle",
+  "- overview_top / valve_cover → top of engine / valve cover / cams from above",
+  "- oil_pan → underside / oil pan exterior",
+  "- turbo / intake / exhaust → turbocharger or related plumbing",
+  "- damage / harness / mounts / accessories → use those categories when that is the subject",
+  "- If borescope/endoscope into a cylinder bore → category other + checklistHits cylinder_N (and oil_pan_removed / crankshaft_visible / connecting_rods when shown)",
+  "- overall_engine checklist hit only when the frame shows most of the assembled engine block from outside",
+  "Never mark every photo as overall_engine. Prefer specific sides/top/bottom/internals when visible.",
+  "checklistHits: 1–4 item ids that this photo actually supports. Use only known ids.",
+  "photoLabel: short human caption of what is in frame (e.g. 'Left side block', 'Valve cover', 'Cylinder 3 bore'). Required.",
+  "Identity from the photo when readable:",
+  "- suggestedIdentity.brandName: manufacturer cast/printed on the engine (Toyota, Hyundai, BMW, …)",
+  "- suggestedIdentity.engineCode: family/code cast on block or cover (2AZ-FE, G4FC, N47, …)",
+  "- suggestedIdentity.serialCode: only if a stamped serial is clearly readable",
+  "- brandConfidence / engineCodeConfidence / serialConfidence: 0–1 for each field you fill",
+  "- Only fill identity fields you can actually read or confidently recognize from casting marks — never invent",
+  "hitConfidence: 0.55–0.95 grounded in what you see.",
+  "oilPanRemoved=true only if the pan is off and internals are visible. hasTurbo=true/false when you can tell.",
+].join("\n");
+
+/** Apply AI identity only when confidence is high enough and the field is still empty. */
+const IDENTITY_APPLY_MIN_CONFIDENCE = 0.7;
+
+function normalizeIdentityToken(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim().replace(/\s+/g, " ");
+  return trimmed || null;
+}
+
+function resolveIdentityPatch(input: {
+  current: { serialCode?: string; brandName?: string; engineCode?: string } | undefined;
+  suggested: {
+    serialCode?: string;
+    brandName?: string;
+    engineCode?: string;
+  };
+  brandConfidence: number | null;
+  engineCodeConfidence: number | null;
+  serialConfidence: number | null;
+}): {
+  patch: Record<string, string>;
+  applied: Array<"brandName" | "engineCode" | "serialCode">;
+} {
+  const patch: Record<string, string> = {};
+  const applied: Array<"brandName" | "engineCode" | "serialCode"> = [];
+  const current = input.current ?? {};
+
+  const brand = normalizeIdentityToken(input.suggested.brandName);
+  if (
+    brand &&
+    !current.brandName?.trim() &&
+    (input.brandConfidence ?? 0) >= IDENTITY_APPLY_MIN_CONFIDENCE
+  ) {
+    patch.brandName = brand;
+    applied.push("brandName");
+  }
+
+  const engineCode = normalizeIdentityToken(input.suggested.engineCode);
+  if (
+    engineCode &&
+    !current.engineCode?.trim() &&
+    (input.engineCodeConfidence ?? 0) >= IDENTITY_APPLY_MIN_CONFIDENCE
+  ) {
+    patch.engineCode = engineCode.toUpperCase();
+    applied.push("engineCode");
+  }
+
+  const serial = normalizeIdentityToken(input.suggested.serialCode);
+  if (
+    serial &&
+    !current.serialCode?.trim() &&
+    (input.serialConfidence ?? 0) >= IDENTITY_APPLY_MIN_CONFIDENCE
+  ) {
+    patch.serialCode = serial.toUpperCase();
+    applied.push("serialCode");
+  }
+
+  return { patch, applied };
+}
+
 export async function inspectEngineIntakePhoto(input: {
   companyId: string;
   jobId: string;
@@ -263,23 +374,23 @@ export async function inspectEngineIntakePhoto(input: {
     { merge: true },
   );
 
-  // Capture-first: apply category→checklist mapping before waiting on vision so
-  // free `other` photos tick Overall engine even if OpenRouter is slow/down.
-  await reconcileJobChecklist({
-    jobRef,
-    companyId: input.companyId,
-    jobId: input.jobId,
-    photoId: input.photoId,
-    actorUid: input.actorUid,
-  }).catch((error) => {
-    console.error("[engine-intake/photo-ai] pre-reconcile", error);
-  });
-
   try {
     const identity =
       typeof job.expectedIdentity === "object" && job.expectedIdentity
         ? JSON.stringify(job.expectedIdentity)
         : "{}";
+    const openSaleGates = Array.isArray(
+      (job.documentationChecklist as DocumentationChecklist | undefined)?.items,
+    )
+      ? ((job.documentationChecklist as DocumentationChecklist).items ?? [])
+          .filter(
+            (item) =>
+              item.saleGate &&
+              (item.state === "missing" || item.state === "uncertain"),
+          )
+          .map((item) => item.id)
+          .slice(0, 12)
+      : [];
 
     let visionUrl = url;
     if (storagePath) {
@@ -296,7 +407,7 @@ export async function inspectEngineIntakePhoto(input: {
         {
           role: "system",
           content:
-            "You inspect automotive engine documentation photos for a dismantler. Return only grounded observations. Prefer dismantler checklist vocabulary (serial, sides, valve cover, oil pan, turbo, cylinders, crankshaft). Blocking flags are for unusable or clearly wrong evidence only.",
+            "You are AutoCore's engine-intake vision matcher for auto dismantlers. Classify each photo into the documentation checklist. Be specific: sides, top, bottom, serial, turbo, or internals. When brand marks or engine codes are visible, report them with confidence scores. Do not invent identity. Do not dump unrelated shots onto overall_engine. Return JSON only.",
         },
         {
           role: "user",
@@ -305,9 +416,14 @@ export async function inspectEngineIntakePhoto(input: {
               type: "text",
               text: [
                 `Expected identity: ${identity}`,
-                `Worker category hint: ${String(photo.category ?? "other")}`,
-                "Return suggestedCategory, suggestedIdentity, checklistHits (from known item ids), hitConfidence, hasTurbo, oilPanRemoved, cylinderCount, flags, listingReadinessScore.",
-                `Known checklist item ids: ${DOCUMENTATION_CHECKLIST_ITEM_IDS.join(", ")}`,
+                `Worker category hint (often "other"): ${String(photo.category ?? "other")}`,
+                openSaleGates.length > 0
+                  ? `Still open sale-gate items: ${openSaleGates.join(", ")}`
+                  : "No open sale-gate items listed.",
+                CATEGORY_GUIDE,
+                `Known suggestedCategory values: ${INTAKE_PHOTO_CATEGORIES.join(", ")}`,
+                `Known checklistHits ids: ${DOCUMENTATION_CHECKLIST_ITEM_IDS.join(", ")}`,
+                "Return: suggestedCategory, photoLabel, suggestedIdentity, brandConfidence, engineCodeConfidence, serialConfidence, checklistHits, hitConfidence, hasTurbo, oilPanRemoved, cylinderCount, flags, listingReadinessScore.",
               ].join("\n"),
             },
             { type: "image_url", image_url: { url: visionUrl } },
@@ -332,20 +448,19 @@ export async function inspectEngineIntakePhoto(input: {
         photoId: input.photoId,
       }));
 
-    const checklistHits: DocumentationChecklistItemId[] =
-      result.checklistHits.length > 0
-        ? result.checklistHits
-        : [
-            ...checklistHitsForCategory(
-              asIntakePhotoCategory(result.suggestedCategory ?? photo.category),
-            ),
-          ];
-    const hitConfidence = result.hitConfidence ?? 0.75;
+    const checklistHits = resolveAiChecklistHits({
+      checklistHits: result.checklistHits,
+      suggestedCategory: result.suggestedCategory,
+      workerCategory: photo.category,
+    });
+    const hitConfidence =
+      result.hitConfidence ?? (checklistHits.length > 0 ? 0.78 : 0.4);
     const nextCategory = asIntakePhotoCategory(
-      result.suggestedCategory && photo.category === "other"
-        ? result.suggestedCategory
-        : photo.category,
+      result.suggestedCategory ?? photo.category,
     );
+    const aiLabel =
+      result.photoLabel ||
+      (nextCategory !== "other" ? nextCategory.replaceAll("_", " ") : null);
 
     await db.runTransaction(async (transaction) => {
       const freshJobSnapshot = await transaction.get(jobRef);
@@ -358,6 +473,21 @@ export async function inspectEngineIntakePhoto(input: {
         ...currentBlockingFlags.filter((flag) => flag.photoId !== input.photoId),
         ...blockingFlags,
       ];
+      const currentIdentity =
+        typeof freshJob.expectedIdentity === "object" && freshJob.expectedIdentity
+          ? (freshJob.expectedIdentity as {
+              serialCode?: string;
+              brandName?: string;
+              engineCode?: string;
+            })
+          : undefined;
+      const identityResolved = resolveIdentityPatch({
+        current: currentIdentity,
+        suggested: result.suggestedIdentity ?? {},
+        brandConfidence: result.brandConfidence,
+        engineCodeConfidence: result.engineCodeConfidence,
+        serialConfidence: result.serialConfidence,
+      });
       transaction.set(
         inspectionRef,
         {
@@ -368,8 +498,13 @@ export async function inspectEngineIntakePhoto(input: {
           model,
           modelVersion: model,
           state: "completed",
-          suggestedCategory: result.suggestedCategory,
+          suggestedCategory: result.suggestedCategory ?? nextCategory,
+          photoLabel: aiLabel,
           suggestedIdentity: result.suggestedIdentity,
+          brandConfidence: result.brandConfidence,
+          engineCodeConfidence: result.engineCodeConfidence,
+          serialConfidence: result.serialConfidence,
+          identityApplied: identityResolved.applied,
           checklistHits,
           hitConfidence: result.hitConfidence,
           hasTurbo: result.hasTurbo,
@@ -385,16 +520,20 @@ export async function inspectEngineIntakePhoto(input: {
         aiInspectionState: "completed",
         checklistHits,
         hitConfidence,
-        ...(result.suggestedCategory && photo.category === "other"
-          ? {
-              category: result.suggestedCategory,
-              categorySource: "ai",
-            }
-          : {}),
+        category: nextCategory,
+        categorySource: result.suggestedCategory
+          ? "ai"
+          : typeof photo.categorySource === "string"
+            ? photo.categorySource
+            : "system",
+        aiLabel,
         updatedAt: FieldValue.serverTimestamp(),
       });
       const photosSnapshot = await transaction.get(jobRef.collection("photos"));
-      const expectedIdentity = freshJob.expectedIdentity;
+      const expectedIdentity = {
+        ...(currentIdentity ?? {}),
+        ...identityResolved.patch,
+      };
       const previousChecklist = freshJob.documentationChecklist ?? null;
       const derived = deriveEngineIntakeProgress(
         Array.isArray(freshJob.requirements) ? (freshJob.requirements as never[]) : [],
@@ -423,18 +562,13 @@ export async function inspectEngineIntakePhoto(input: {
               ? "ready"
               : "understanding",
         },
-        ...(result.suggestedIdentity?.brandName || result.suggestedIdentity?.engineCode
+        ...(identityResolved.applied.length > 0
           ? {
               expectedIdentity: {
                 ...(typeof freshJob.expectedIdentity === "object"
                   ? freshJob.expectedIdentity
                   : {}),
-                ...(result.suggestedIdentity.brandName
-                  ? { brandName: result.suggestedIdentity.brandName }
-                  : {}),
-                ...(result.suggestedIdentity.engineCode
-                  ? { engineCode: result.suggestedIdentity.engineCode }
-                  : {}),
+                ...identityResolved.patch,
               },
             }
           : {}),
@@ -460,6 +594,9 @@ export async function inspectEngineIntakePhoto(input: {
             flagCodes: result.flags.map((flag) => flag.code),
             listingReadinessScore: result.listingReadinessScore,
             whisper: documentationChecklist.summary.whisper,
+            identityApplied: identityResolved.applied,
+            brandName: identityResolved.patch.brandName ?? null,
+            engineCode: identityResolved.patch.engineCode ?? null,
           },
           clientAt: FieldValue.serverTimestamp(),
           serverAt: FieldValue.serverTimestamp(),
@@ -484,9 +621,9 @@ export async function inspectEngineIntakePhoto(input: {
       photoRef.set(
         {
           aiInspectionState: "failed",
-          // Ensure free-capture photos still contribute overall coverage when AI dies.
-          checklistHits: checklistHitsForCategory(asIntakePhotoCategory(photo.category)),
-          hitConfidence: 0.7,
+          // Clear weak free-capture farming; manager can rematch or override.
+          checklistHits: [],
+          hitConfidence: null,
           updatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true },
@@ -499,10 +636,8 @@ export async function inspectEngineIntakePhoto(input: {
         actorUid: input.actorUid,
         patch: {
           category: asIntakePhotoCategory(photo.category),
-          checklistHits: [
-            ...checklistHitsForCategory(asIntakePhotoCategory(photo.category)),
-          ],
-          hitConfidence: 0.7,
+          checklistHits: [],
+          hitConfidence: 0,
         },
       }).catch((reconcileError) => {
         console.error("[engine-intake/photo-ai] failure reconcile", reconcileError);

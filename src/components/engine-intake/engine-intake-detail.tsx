@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import {
   ExternalLink,
@@ -23,6 +23,7 @@ import {
   type IntakeAiInspectionResult,
   type IntakeEvent,
   type IntakePhoto,
+  type IntakePhotoCategory,
   type PhotoRequirement,
 } from "@autocore/engine-intake";
 
@@ -30,7 +31,13 @@ import type { CompanyEmployee } from "@/domain/rbac";
 import { EngineIntakeChecklistPane } from "@/components/engine-intake/engine-intake-checklist-pane";
 import { EngineIntakeDetailHeader } from "@/components/engine-intake/engine-intake-detail-header";
 import { EngineIntakeEvidencePane } from "@/components/engine-intake/engine-intake-evidence-pane";
-import { formatIntakeDate, formatIntakeState } from "@/components/engine-intake/engine-intake-format";
+import {
+  formatIntakeDate,
+  formatIntakeState,
+  INTAKE_PHOTO_CATEGORY_OPTIONS,
+  intakePhotoCategoryLabel,
+  intakePhotoDisplayLabel,
+} from "@/components/engine-intake/engine-intake-format";
 import { EngineIntakeSideRail } from "@/components/engine-intake/engine-intake-side-rail";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -45,12 +52,23 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   engineIntakeCommandId,
+  matchEngineIntakePhotos,
   sendEngineIntakeCommand,
+  setEngineIntakePhotoCategory,
 } from "@/lib/engine-intake/engine-intake-api.client";
+import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 type ReviewDialog =
@@ -96,12 +114,14 @@ export function EngineIntakeDetail({
   const checklist = job.documentationChecklist;
   const summary = checklist.summary;
   const [busy, setBusy] = useState<string | null>(null);
+  const [matching, setMatching] = useState(false);
   const [dialog, setDialog] = useState<ReviewDialog>(null);
   const [reviewNote, setReviewNote] = useState("");
   const [aiOverrideReason, setAiOverrideReason] = useState("");
   const [serialCode, setSerialCode] = useState(job.expectedIdentity.serialCode);
   const [engineCode, setEngineCode] = useState(job.expectedIdentity.engineCode);
   const [brandName, setBrandName] = useState(job.expectedIdentity.brandName);
+  const autoMatchedJobs = useRef(new Set<string>());
   const [selectedItemId, setSelectedItemId] = useState<string | null>(
     () =>
       checklist.items.find(
@@ -148,6 +168,80 @@ export function EngineIntakeDetail({
     () => checklist.items.filter((item) => item.state === "not_applicable"),
     [checklist.items],
   );
+
+  const unmatchedPhotoCount = useMemo(
+    () =>
+      photos.filter((photo) => {
+        if (photo.deletedAt || photo.syncState !== "synced" || !photo.url) return false;
+        const state = photo.aiInspectionState ?? "queued";
+        if (state === "queued" || state === "failed") return true;
+        const category = photo.category ?? "other";
+        const hits = photo.checklistHits ?? [];
+        if (category === "other" && hits.length === 0) return true;
+        if (
+          category === "other" &&
+          hits.length > 0 &&
+          hits.every((hit) => hit === "overall_engine")
+        ) {
+          return true;
+        }
+        return false;
+      }).length,
+    [photos],
+  );
+
+  const runMatch = async (force = false) => {
+    if (!canVerify) return;
+    setMatching(true);
+    setBusy("ai_match");
+    try {
+      const result = await matchEngineIntakePhotos(companyId, job.id, { force });
+      if (result.queued === 0) {
+        toast.message(force ? "No photos to rematch" : "Photos already matched");
+      } else if (result.failed > 0 && result.matched === 0) {
+        toast.error("AI could not match photos — try Rematch again");
+      } else {
+        toast.success(
+          `Matched ${result.matched} of ${result.queued} photo${result.queued === 1 ? "" : "s"}`,
+        );
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "AI match failed");
+    } finally {
+      setMatching(false);
+      setBusy(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!canVerify) return;
+    if (photos.length === 0) return;
+    if (unmatchedPhotoCount === 0) return;
+    if (autoMatchedJobs.current.has(job.id)) return;
+    autoMatchedJobs.current.add(job.id);
+    void runMatch(false);
+    // Auto-queue once per job open when unmatched synced photos exist.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional one-shot per job.id
+  }, [canVerify, job.id, photos.length, unmatchedPhotoCount]);
+
+  const setPhotoCategory = async (photo: IntakePhoto, category: IntakePhotoCategory) => {
+    setBusy(`category:${photo.id}`);
+    try {
+      await setEngineIntakePhotoCategory(companyId, {
+        jobId: job.id,
+        photoId: photo.id,
+        category,
+        aiLabel: intakePhotoCategoryLabel(category),
+      });
+      toast.success(userCopy.engineIntake.categorySaved);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : userCopy.engineIntake.categoryFailed,
+      );
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const run = async (command: EngineIntakeCommand, success: string) => {
     setBusy(command.type);
@@ -392,14 +486,35 @@ export function EngineIntakeDetail({
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <Tabs defaultValue="checklist" className="flex min-h-0 flex-1 flex-col gap-0">
             <div className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-2">
-              <p className="text-xs text-muted-foreground">
+              <p className="min-w-0 truncate text-xs text-muted-foreground">
                 {summary.whisper ??
-                  (summary.ready ? "Sale checklist ready" : "Inspect documentation")}
+                  (summary.ready
+                    ? "Sale checklist ready — override any item if needed"
+                    : "AI matches photos here · edit any item yourself")}
               </p>
-              <TabsList variant="line">
-                <TabsTrigger value="checklist">Checklist</TabsTrigger>
-                <TabsTrigger value="photos">All photos</TabsTrigger>
-              </TabsList>
+              <div className="flex shrink-0 items-center gap-2">
+                {canVerify ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy !== null || matching || photos.length === 0}
+                    onClick={() => void runMatch(unmatchedPhotoCount === 0)}
+                  >
+                    {matching ? (
+                      <LoaderCircle data-icon="inline-start" className="animate-spin" />
+                    ) : (
+                      <Sparkles data-icon="inline-start" />
+                    )}
+                    {unmatchedPhotoCount > 0
+                      ? `Match ${unmatchedPhotoCount} photos`
+                      : "Rematch with AI"}
+                  </Button>
+                ) : null}
+                <TabsList variant="line">
+                  <TabsTrigger value="checklist">Checklist</TabsTrigger>
+                  <TabsTrigger value="photos">All photos</TabsTrigger>
+                </TabsList>
+              </div>
             </div>
 
             <TabsContent
@@ -431,7 +546,7 @@ export function EngineIntakeDetail({
               className="mt-0 min-h-0 flex-1 overflow-y-auto p-4 data-[hidden]:hidden"
             >
               <p className="mb-3 text-xs text-muted-foreground">
-                Audit gallery — checklist evidence is the primary inspection path.
+                AI labels each photo. Change the label anytime — checklist updates from it.
               </p>
               {photos.length > 0 ? (
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -440,6 +555,7 @@ export function EngineIntakeDetail({
                       (item) => item.id === photo.requirementId,
                     );
                     const inspection = latestInspectionForPhoto(inspections, photo.id);
+                    const displayLabel = intakePhotoDisplayLabel(photo);
                     return (
                       <article
                         key={photo.id}
@@ -457,7 +573,7 @@ export function EngineIntakeDetail({
                           {photo.url ? (
                             <Image
                               src={photo.url}
-                              alt={requirement?.label ?? formatIntakeState(photo.category)}
+                              alt={displayLabel}
                               fill
                               unoptimized
                               sizes="(max-width: 1280px) 50vw, 33vw"
@@ -471,15 +587,27 @@ export function EngineIntakeDetail({
                           {photo.url ? (
                             <ExternalLink className="absolute right-2 top-2 rounded-md bg-background/85 p-1 text-foreground opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100" />
                           ) : null}
+                          <div className="absolute bottom-2 left-2 right-2">
+                            <Badge
+                              variant={
+                                photo.category === "other" ? "secondary" : "info"
+                              }
+                              className="max-w-full truncate"
+                            >
+                              {displayLabel}
+                            </Badge>
+                          </div>
                         </a>
                         <div className="flex flex-col gap-2 p-3">
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-medium">
-                                {requirement?.label ?? formatIntakeState(photo.category)}
-                              </p>
+                              <p className="truncate text-sm font-medium">{displayLabel}</p>
                               <p className="text-xs text-muted-foreground">
-                                {formatIntakeDate(photo.capturedAt)}
+                                {photo.categorySource === "ai"
+                                  ? "Labeled by AI"
+                                  : photo.category === "other"
+                                    ? userCopy.engineIntake.photoLabelUnset
+                                    : formatIntakeDate(photo.capturedAt)}
                               </p>
                             </div>
                             <Badge
@@ -494,6 +622,42 @@ export function EngineIntakeDetail({
                               {formatIntakeState(photo.syncState)}
                             </Badge>
                           </div>
+                          {canVerify ? (
+                            <div className="flex flex-col gap-1">
+                              <p className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+                                {userCopy.engineIntake.setCategory}
+                              </p>
+                              <Select
+                                value={photo.category}
+                                onValueChange={(value) => {
+                                  if (!value) return;
+                                  void setPhotoCategory(
+                                    photo,
+                                    value as IntakePhotoCategory,
+                                  );
+                                }}
+                              >
+                                <SelectTrigger
+                                  size="sm"
+                                  className="w-full"
+                                  disabled={busy !== null}
+                                >
+                                  <SelectValue>
+                                    {intakePhotoCategoryLabel(photo.category)}
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectGroup>
+                                    {INTAKE_PHOTO_CATEGORY_OPTIONS.map((category) => (
+                                      <SelectItem key={category} value={category}>
+                                        {intakePhotoCategoryLabel(category)}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectGroup>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          ) : null}
                           {inspection?.flags?.length ? (
                             <div className="flex flex-wrap gap-1">
                               {inspection.flags.map((flag) => (

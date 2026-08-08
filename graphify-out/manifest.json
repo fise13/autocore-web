@@ -11655,8 +11655,8 @@
     "semantic_hash": ""
   },
   "src/lib/user-copy.en.ts": {
-    "mtime": 1786167703.0273385,
-    "ast_hash": "eac618d0a9141a1427495f98240b888a",
+    "mtime": 1786170021.9199386,
+    "ast_hash": "8bd9b3abfef9fbd05d968a86feb0b0b6",
     "semantic_hash": ""
   },
   "src/lib/user-copy.locale-labels.ts": {
@@ -11665,8 +11665,8 @@
     "semantic_hash": ""
   },
   "src/lib/user-copy.ru.ts": {
-    "mtime": 1786057982.8559248,
-    "ast_hash": "9361d099ac21d2baab33a420f7bcf7ca",
+    "mtime": 1786170025.2768881,
+    "ast_hash": "93c3b1f28982b8890311d9ecac76b70c",
     "semantic_hash": ""
   },
   "src/lib/user-copy.ts": {
@@ -12945,8 +12945,8 @@
     "semantic_hash": ""
   },
   "autocore-mobile/features/engine-intake/components/engine-intake-launch.tsx": {
-    "mtime": 1786167717.7571294,
-    "ast_hash": "7d7b21aafe538b949565dd34fe303fed",
+    "mtime": 1786170572.032852,
+    "ast_hash": "1bf85c39a5712c1e38e67d6fd1ce4ea9",
     "semantic_hash": ""
   },
   "autocore-mobile/features/engine-intake/components/intake-camera.tsx": {
@@ -12955,13 +12955,13 @@
     "semantic_hash": ""
   },
   "autocore-mobile/features/engine-intake/engine-intake-jobs-screen.tsx": {
-    "mtime": 1786168909.2930644,
-    "ast_hash": "dc7cedbd3626cb4bebef759111a74fee",
+    "mtime": 1786170742.1199412,
+    "ast_hash": "d591d985dd9c54b747d1bac6d390ff19",
     "semantic_hash": ""
   },
   "autocore-mobile/features/engine-intake/engine-intake-session-screen.tsx": {
-    "mtime": 1786168907.9778652,
-    "ast_hash": "91e92949bffbe9ef9b64d8f38af5a6d8",
+    "mtime": 1786170640.562903,
+    "ast_hash": "2dd1eae0f37f99d87e2ed8fb541b1410",
     "semantic_hash": ""
   },
   "autocore-mobile/features/engine-intake/hooks/use-engine-intake-data.ts": {
@@ -13000,8 +13000,8 @@
     "semantic_hash": ""
   },
   "packages/engine-intake/src/engine-intake.test.ts": {
-    "mtime": 1786168925.4239545,
-    "ast_hash": "057d189af58fa88d1984837e5185f2e1",
+    "mtime": 1786169895.8945327,
+    "ast_hash": "c8628a7ae12e39d5dce56feaf38f0eb1",
     "semantic_hash": ""
   },
   "packages/engine-intake/src/index.ts": {
@@ -13015,8 +13015,8 @@
     "semantic_hash": ""
   },
   "packages/engine-intake/src/types.ts": {
-    "mtime": 1786121844.2311344,
-    "ast_hash": "f29a01ad667382256002f0b776c0e0a9",
+    "mtime": 1786170019.1350954,
+    "ast_hash": "434cccd15ae7e5408f7a65094412bb2c",
     "semantic_hash": ""
   },
   "src/app/(dashboard)/engine-intake/page.tsx": {
@@ -13030,8 +13030,8 @@
     "semantic_hash": ""
   },
   "src/app/api/engine-intake/photos/finalize/route.ts": {
-    "mtime": 1786168895.7919247,
-    "ast_hash": "883c2cc52e9fbb099e51adf4ac1ce3f5",
+    "mtime": 1786169461.051913,
+    "ast_hash": "e6c5f1376784d837ef6295f3bc687c6b",
     "semantic_hash": ""
   },
   "src/app/api/engine-intake/photos/prepare/route.ts": {
@@ -13045,28 +13045,28 @@
     "semantic_hash": ""
   },
   "src/application/use-cases/engine-intake/inspect-intake-photo.server.ts": {
-    "mtime": 1786168350.2100472,
-    "ast_hash": "25407388ccd8726ed03258db2a3f0e97",
+    "mtime": 1786170259.122626,
+    "ast_hash": "f771b56f2ec08921d99d7cebeb7a55ed",
     "semantic_hash": ""
   },
   "src/application/use-cases/engine-intake/intake-photo.server.ts": {
-    "mtime": 1786168380.0446517,
-    "ast_hash": "2e408d7a829cfa50daaee1b9ccf26b74",
+    "mtime": 1786170091.5240378,
+    "ast_hash": "6a43e6386547d6fddef74562bb14eb76",
     "semantic_hash": ""
   },
   "src/components/engine-intake/engine-intake-create-dialog.tsx": {
-    "mtime": 1786167726.1869972,
-    "ast_hash": "4946402a3269fb32dcc8ee7821020b4d",
+    "mtime": 1786169684.0319,
+    "ast_hash": "536b7f1aa710f920ff907b8c01f8cb9c",
     "semantic_hash": ""
   },
   "src/components/engine-intake/engine-intake-detail.tsx": {
-    "mtime": 1786123195.7237782,
-    "ast_hash": "9889adfa104aa3c8101a0290b221ec1b",
+    "mtime": 1786170133.215566,
+    "ast_hash": "e4078341389c8bbc2547f470a764dde8",
     "semantic_hash": ""
   },
   "src/components/engine-intake/engine-intake-workspace.tsx": {
-    "mtime": 1786168925.7949991,
-    "ast_hash": "5a8c52b3c8e4fa3020973a71bec4b8a7",
+    "mtime": 1786169496.9788053,
+    "ast_hash": "d6b3d5ee9adddfe5a9ef0b6792bed2e4",
     "semantic_hash": ""
   },
   "src/components/ui/field.tsx": {
@@ -13095,8 +13095,8 @@
     "semantic_hash": ""
   },
   "src/lib/engine-intake/engine-intake-api.client.ts": {
-    "mtime": 1786029699.4658582,
-    "ast_hash": "b72a1f31c0c1a77254dabbd93a9ad6d6",
+    "mtime": 1786170097.5290234,
+    "ast_hash": "d533c25f4296f8ceed14439adc74d34d",
     "semantic_hash": ""
   },
   "src/lib/engine-intake/engine-intake-schemas.ts": {
@@ -13120,8 +13120,8 @@
     "semantic_hash": ""
   },
   "packages/engine-intake/src/checklist.ts": {
-    "mtime": 1786168893.1618843,
-    "ast_hash": "5f2ae89ee41e1c8b802d9e1bd617c4f2",
+    "mtime": 1786169819.3498313,
+    "ast_hash": "bbb3b658dd115d82aa85d2d48e6d6c1c",
     "semantic_hash": ""
   },
   "src/components/engine-intake/engine-intake-checklist-pane.tsx": {
@@ -13130,8 +13130,8 @@
     "semantic_hash": ""
   },
   "src/components/engine-intake/engine-intake-detail-header.tsx": {
-    "mtime": 1786123112.4731746,
-    "ast_hash": "b24d5c70fbc2b1824fede4a249d57872",
+    "mtime": 1786169717.1958306,
+    "ast_hash": "676cdabd1c0e22ee51c78213d241c36f",
     "semantic_hash": ""
   },
   "src/components/engine-intake/engine-intake-evidence-pane.tsx": {
@@ -13140,13 +13140,58 @@
     "semantic_hash": ""
   },
   "src/components/engine-intake/engine-intake-format.ts": {
-    "mtime": 1786123449.7780497,
-    "ast_hash": "4e58bbd0caff71f90dced38ffe15ab25",
+    "mtime": 1786170259.4205248,
+    "ast_hash": "d96087842c70a9735a42fdcacca7c961",
     "semantic_hash": ""
   },
   "src/components/engine-intake/engine-intake-side-rail.tsx": {
-    "mtime": 1786123458.0978358,
-    "ast_hash": "63b40cb817e332d476a0cc007fe32815",
+    "mtime": 1786170139.6516418,
+    "ast_hash": "5d3fba163f43ee9c1e1a4ad501c36515",
+    "semantic_hash": ""
+  },
+  "src/app/api/engine-intake/ai/match/route.ts": {
+    "mtime": 1786169891.6049042,
+    "ast_hash": "ca90e7be5232a59e06ae7feb31faa288",
+    "semantic_hash": ""
+  },
+  "src/app/api/engine-intake/photos/category/route.ts": {
+    "mtime": 1786170097.1550207,
+    "ast_hash": "30fa1232b36464ff7e6444a6bf246cbb",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/features/engine-intake/components/intake-capture-chrome.tsx": {
+    "mtime": 1786170542.403007,
+    "ast_hash": "ee063efd59f7438d1e336523e72963ec",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/features/engine-intake/components/intake-capture-dock.tsx": {
+    "mtime": 1786170566.6369455,
+    "ast_hash": "ac1ea132e2c2d4bf733343662b37ca5f",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/features/engine-intake/components/intake-create-serial-sheet.tsx": {
+    "mtime": 1786170542.3384438,
+    "ast_hash": "6239d880ca7f471db4241326f8fc4d71",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/features/engine-intake/components/intake-job-row.tsx": {
+    "mtime": 1786170562.2804482,
+    "ast_hash": "36287ba8279e30961d0a369e3a795f3f",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/features/engine-intake/components/intake-outbox-banner.tsx": {
+    "mtime": 1786170536.250324,
+    "ast_hash": "ef88b1a7ceb55a32cc14ed692a0a329d",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/features/engine-intake/components/intake-session-done.tsx": {
+    "mtime": 1786170571.5854044,
+    "ast_hash": "488abdfa95c346268d43f605da48a650",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/features/engine-intake/components/intake-launch-card.tsx": {
+    "mtime": 1786170757.0222588,
+    "ast_hash": "be0304910b2252250e568d44e54eaf43",
     "semantic_hash": ""
   }
 }

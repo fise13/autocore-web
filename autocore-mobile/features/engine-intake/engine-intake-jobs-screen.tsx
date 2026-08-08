@@ -1,34 +1,33 @@
-import { useDeferredValue, useEffect, useState } from 'react';
-import {
-  Keyboard,
-  Modal,
-  Pressable,
-  StyleSheet,
-  TextInput,
-  View,
-} from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import type {
   EngineIntakeCommand,
   EngineIntakeJob,
   EngineIntakeJobState,
 } from '@autocore/engine-intake';
-import {
-  isEngineIntakeSessionStale,
-  warehouseLifecycleLabel,
-} from '@autocore/engine-intake';
+import { isEngineIntakeSessionStale } from '@autocore/engine-intake';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ArrowLeftIcon, CameraIcon, PlusIcon } from '@/assets/icons';
 import {
-  AlertTriangleIcon,
-  CameraIcon,
-  ChevronRightIcon,
-  CloudIcon,
-  PlusIcon,
-} from '@/assets/icons';
-import { Button, ContentState, ScreenGate, StackScreen, Text, toast } from '@/components/ui';
-import { useSession, useTheme } from '@/hooks';
-import { haptics, minTouchTarget, spacing, tokens } from '@/theme';
+  Button,
+  ContentState,
+  FlashList,
+  IconButton,
+  Screen,
+  ScreenGate,
+  SegmentedControl,
+  Text,
+  toast,
+} from '@/components/ui';
+import { useFloatingTabBarInset, useSession, useTheme } from '@/hooks';
+import { goBackOrReplace } from '@/lib/navigation/stack-back';
+import { haptics, rhythm, spacing } from '@/theme';
 
+import { IntakeCreateSerialSheet, type IntakeCreateSerialSheetRef } from './components/intake-create-serial-sheet';
+import { IntakeJobRow } from './components/intake-job-row';
+import { IntakeOutboxBanner } from './components/intake-outbox-banner';
 import { useEngineIntakeJobs } from './hooks/use-engine-intake-data';
 import {
   drainIntakeOutbox,
@@ -50,14 +49,7 @@ const ACTIVE_STATES = new Set<EngineIntakeJobState>([
   'rework',
 ]);
 
-function jobTitle(job: EngineIntakeJob): string {
-  return (
-    job.expectedIdentity.serialCode ||
-    job.expectedIdentity.engineCode ||
-    job.sourceReference ||
-    'Unnamed engine'
-  );
-}
+type BayFilter = 'active' | 'ready' | 'all';
 
 function isPermissionError(message: string | null | undefined): boolean {
   if (!message) return false;
@@ -84,171 +76,233 @@ function createClaimCommand(jobId: string, sessionId: string): EngineIntakeComma
   };
 }
 
+function isWorkerScoped(
+  job: EngineIntakeJob,
+  uid: string | null | undefined,
+  deviceId: string,
+): boolean {
+  if (job.state === 'paused') {
+    return Boolean(
+      job.assignment.activeSessionId &&
+        job.assignment.claimedByUid === uid &&
+        job.assignment.claimDeviceId === deviceId,
+    );
+  }
+  if (ACTIVE_STATES.has(job.state)) {
+    return (
+      job.assignment.assigneeUid === uid ||
+      job.assignment.claimedByUid === uid ||
+      (!job.assignment.assigneeUid && (job.state === 'open' || job.state === 'rework'))
+    );
+  }
+  if (job.state === 'awaiting_verification') {
+    return job.assignment.assigneeUid === uid || job.assignment.claimedByUid === uid;
+  }
+  return false;
+}
+
+function sortJobs(left: EngineIntakeJob, right: EngineIntakeJob): number {
+  const rank = { urgent: 0, high: 1, normal: 2 } as const;
+  return rank[left.priority] - rank[right.priority];
+}
+
 export function EngineIntakeJobsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { scrollBottom } = useFloatingTabBarInset();
   const { companyId, uid, profile, can } = useSession();
   const { colors } = useTheme();
   const { jobs, loading, error } = useEngineIntakeJobs(companyId);
-  const deferredJobs = useDeferredValue(jobs);
   const outbox = useEngineIntakeOutbox(companyId);
+  const createSheetRef = useRef<IntakeCreateSerialSheetRef>(null);
   const [starting, setStarting] = useState(false);
   const [claimClock, setClaimClock] = useState(() => Date.now());
   const [deviceId] = useState(getEngineIntakeDeviceId);
-  const [serialModalOpen, setSerialModalOpen] = useState(false);
-  const [serialDraft, setSerialDraft] = useState('');
+  const [filter, setFilter] = useState<BayFilter>('active');
 
   useEffect(() => {
     const timer = setInterval(() => setClaimClock(Date.now()), 30_000);
     return () => clearInterval(timer);
   }, []);
 
-  if (!can('engine_intake_view')) {
-    return (
-      <ScreenGate
-        variant="no-permission"
-        title="Engine intake"
-        description="Your role cannot open Engine intake documentation."
-      />
-    );
-  }
+  const scopedJobs = useMemo(() => {
+    return jobs
+      .filter((job) => isWorkerScoped(job, uid, deviceId))
+      .sort(sortJobs);
+  }, [deviceId, jobs, uid]);
 
-  const visibleJobs = deferredJobs
-    .filter((job) => {
-      if (!ACTIVE_STATES.has(job.state)) return false;
-      if (job.state === 'paused') {
-        return Boolean(
-          job.assignment.activeSessionId &&
-            job.assignment.claimedByUid === uid &&
-            job.assignment.claimDeviceId === deviceId,
-        );
+  const activeJobs = useMemo(
+    () => scopedJobs.filter((job) => ACTIVE_STATES.has(job.state)),
+    [scopedJobs],
+  );
+  const readyJobs = useMemo(
+    () => scopedJobs.filter((job) => job.state === 'awaiting_verification'),
+    [scopedJobs],
+  );
+  const visibleJobs =
+    filter === 'active' ? activeJobs : filter === 'ready' ? readyJobs : scopedJobs;
+
+  const openCreateSheet = useCallback(() => {
+    createSheetRef.current?.present();
+  }, []);
+
+  const openSession = useCallback(
+    (jobId: string, sessionId: string) => {
+      router.push(
+        {
+          pathname: '/intake/[jobId]',
+          params: { jobId, sessionId },
+        } as unknown as Href,
+      );
+    },
+    [router],
+  );
+
+  const claimAndOpen = useCallback(
+    async (job: EngineIntakeJob) => {
+      if (!companyId || !uid || !can('engine_intake_execute')) return;
+      if (
+        job.assignment.activeSessionId &&
+        job.assignment.claimedByUid === uid &&
+        job.assignment.claimDeviceId === deviceId
+      ) {
+        openSession(job.id, job.assignment.activeSessionId);
+        return;
       }
-      return (
-        job.assignment.assigneeUid === uid ||
-        job.assignment.claimedByUid === uid ||
-        (!job.assignment.assigneeUid && (job.state === 'open' || job.state === 'rework'))
-      );
-    })
-    .sort((left, right) => {
-      const rank = { urgent: 0, high: 1, normal: 2 } as const;
-      return rank[left.priority] - rank[right.priority];
-    });
-
-  const openSession = (jobId: string, sessionId: string) => {
-    router.push(
-      {
-        pathname: '/intake/[jobId]',
-        params: { jobId, sessionId },
-      } as unknown as Href,
-    );
-  };
-
-  const claimAndOpen = async (job: EngineIntakeJob) => {
-    if (!companyId || !uid || !can('engine_intake_execute')) return;
-    if (
-      job.assignment.activeSessionId &&
-      job.assignment.claimedByUid === uid &&
-      job.assignment.claimDeviceId === deviceId
-    ) {
-      openSession(job.id, job.assignment.activeSessionId);
-      return;
-    }
-    const sessionId = engineIntakeId('session');
-    setStarting(true);
-    try {
-      const claimed = await sendOrQueueIntakeCommand(
-        companyId,
-        createClaimCommand(job.id, sessionId),
-      );
-      if (!claimed?.sessionId) {
+      if (job.state === 'awaiting_verification') {
         toast({
-          title: 'Claim saved for sync',
-          description: 'Open the engine after the server confirms the exclusive claim.',
-          variant: 'warning',
+          title: 'Already in Warehouse',
+          description: 'This engine is waiting for review. Start a new engine to capture more.',
+          variant: 'default',
         });
         return;
       }
-      haptics.success();
-      openSession(job.id, claimed.sessionId);
-    } catch (claimError) {
-      haptics.error();
-      toast({
-        title: 'Engine could not be opened',
-        description: claimError instanceof Error ? claimError.message : undefined,
-        variant: 'destructive',
-      });
-    } finally {
-      setStarting(false);
-    }
-  };
-
-  const startWithSerial = async (serialRaw: string) => {
-    if (!companyId || !uid || !can('engine_intake_execute')) return;
-    const serialCode = serialRaw.trim().toUpperCase();
-    if (!serialCode) {
-      toast({ title: 'Serial is required', variant: 'warning' });
-      return;
-    }
-    Keyboard.dismiss();
-    const jobId = engineIntakeId('job');
-    const sessionId = engineIntakeId('session');
-    const createCommand: EngineIntakeCommand = {
-      type: 'create_job',
-      idempotencyKey: engineIntakeId('create'),
-      client: 'mobile',
-      clientAt: new Date().toISOString(),
-      deviceId: getEngineIntakeDeviceId(),
-      payload: {
-        jobId,
-        source: 'ad_hoc',
-        priority: 'normal',
-        expectedIdentity: { serialCode },
-        assigneeUid: uid,
-        assigneeName: profile?.displayName ?? null,
-      },
-    };
-    const claimCommand = createClaimCommand(jobId, sessionId);
-
-    setStarting(true);
-    try {
-      const created = await sendOrQueueIntakeCommand(companyId, createCommand);
-      if (!created) {
+      const sessionId = engineIntakeId('session');
+      setStarting(true);
+      try {
+        const claimed = await sendOrQueueIntakeCommand(
+          companyId,
+          createClaimCommand(job.id, sessionId),
+        );
+        if (!claimed?.sessionId) {
+          toast({
+            title: 'Claim saved for sync',
+            description: 'Open the engine after the server confirms the exclusive claim.',
+            variant: 'warning',
+          });
+          return;
+        }
+        haptics.success();
+        openSession(job.id, claimed.sessionId);
+      } catch (claimError) {
+        haptics.error();
         toast({
-          title: 'Cannot open camera yet',
-          description:
-            'Engine draft could not reach the server. Fix sync (banner above), then try again.',
+          title: 'Engine could not be opened',
+          description: claimError instanceof Error ? claimError.message : undefined,
           variant: 'destructive',
         });
+      } finally {
+        setStarting(false);
+      }
+    },
+    [can, companyId, deviceId, openSession, uid],
+  );
+
+  const startWithSerial = useCallback(
+    async (serialCode: string) => {
+      if (!companyId || !uid || !can('engine_intake_execute')) return;
+      if (!serialCode.trim()) {
+        toast({ title: 'Serial is required', variant: 'warning' });
         return;
       }
-      const claimed = await sendOrQueueIntakeCommand(companyId, claimCommand);
-      if (!claimed?.sessionId) {
+      const jobId = engineIntakeId('job');
+      const sessionId = engineIntakeId('session');
+      const createCommand: EngineIntakeCommand = {
+        type: 'create_job',
+        idempotencyKey: engineIntakeId('create'),
+        client: 'mobile',
+        clientAt: new Date().toISOString(),
+        deviceId: getEngineIntakeDeviceId(),
+        payload: {
+          jobId,
+          source: 'ad_hoc',
+          priority: 'normal',
+          expectedIdentity: { serialCode },
+          assigneeUid: uid,
+          assigneeName: profile?.displayName ?? null,
+        },
+      };
+      const claimCommand = createClaimCommand(jobId, sessionId);
+
+      setStarting(true);
+      try {
+        const created = await sendOrQueueIntakeCommand(companyId, createCommand);
+        if (!created) {
+          toast({
+            title: 'Cannot open camera yet',
+            description:
+              'Engine draft could not reach the server. Fix sync (banner above), then try again.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        const claimed = await sendOrQueueIntakeCommand(companyId, claimCommand);
+        if (!claimed?.sessionId) {
+          toast({
+            title: 'Engine created — claim failed',
+            description: 'Open it from the Warehouse list after sync completes.',
+            variant: 'warning',
+          });
+          createSheetRef.current?.dismiss();
+          return;
+        }
+        createSheetRef.current?.dismiss();
+        haptics.success();
+        openSession(created.jobId || jobId, claimed.sessionId);
+      } catch (startError) {
+        haptics.error();
         toast({
-          title: 'Engine created — claim failed',
-          description: 'Open it from the Warehouse list after sync completes.',
-          variant: 'warning',
+          title: 'Engine could not start',
+          description:
+            startError instanceof Error
+              ? humanizeIntakeOutboxError(startError.message)
+              : undefined,
+          variant: 'destructive',
         });
-        setSerialModalOpen(false);
-        setSerialDraft('');
-        return;
+      } finally {
+        setStarting(false);
       }
-      setSerialModalOpen(false);
-      setSerialDraft('');
-      haptics.success();
-      openSession(created.jobId || jobId, claimed.sessionId);
-    } catch (startError) {
-      haptics.error();
-      toast({
-        title: 'Engine could not start',
-        description:
-          startError instanceof Error
-            ? humanizeIntakeOutboxError(startError.message)
-            : undefined,
-        variant: 'destructive',
-      });
-    } finally {
-      setStarting(false);
+    },
+    [can, companyId, openSession, profile?.displayName, uid],
+  );
+
+  const retryOutbox = useCallback(() => {
+    if (!companyId) return;
+    for (const item of [...outbox.commands, ...outbox.photos]) {
+      if (item.companyId === companyId && item.state === 'failed') {
+        retryIntakeOutboxItem(item.id);
+      }
     }
-  };
+    void drainIntakeOutbox(companyId);
+  }, [companyId, outbox.commands, outbox.photos]);
+
+  const jobHasPendingSync = useCallback(
+    (jobId: string) =>
+      outbox.photos.some(
+        (photo) =>
+          photo.companyId === companyId &&
+          photo.jobId === jobId &&
+          (photo.state === 'pending' || photo.state === 'syncing'),
+      ) ||
+      outbox.commands.some(
+        (item) =>
+          item.companyId === companyId &&
+          (item.state === 'pending' || item.state === 'syncing') &&
+          'jobId' in item.command.payload &&
+          item.command.payload.jobId === jobId,
+      ),
+    [companyId, outbox.commands, outbox.photos],
+  );
 
   const rawOutboxIssue =
     [...outbox.commands, ...outbox.photos]
@@ -261,179 +315,49 @@ export function EngineIntakeJobsScreen() {
     (outboxIssue.toLowerCase().includes('deploy the web app') ||
       outboxIssue.toLowerCase().includes('upload api is missing'));
 
-  return (
-    <StackScreen
-      title="Engine intake"
-      subtitle={`${visibleJobs.length} engine${visibleJobs.length === 1 ? '' : 's'} documenting`}
-      backFallbackHref="/(tabs)"
-      headerAction={
-        can('engine_intake_execute') ? (
-          <Button
-            size="icon-sm"
-            accessibilityLabel="New engine"
-            loading={starting}
-            onPress={() => {
-              setSerialDraft('');
-              setSerialModalOpen(true);
-            }}
-          >
-            <PlusIcon size={20} color={colors.primaryForeground} />
-          </Button>
-        ) : null
-      }
-    >
-      <Modal
-        visible={serialModalOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          if (!starting) setSerialModalOpen(false);
-        }}
-      >
-        <View style={styles.modalRoot} pointerEvents="box-none">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Dismiss"
-            disabled={starting}
-            onPress={() => {
-              Keyboard.dismiss();
-              setSerialModalOpen(false);
-            }}
-            style={[StyleSheet.absoluteFill, styles.modalBackdrop]}
-          />
-          <View style={[styles.modalCard, { backgroundColor: colors.surface }]}>
-            <Text variant="heading" style={{ color: colors.foreground }}>
-              Engine serial
-            </Text>
-            <Text variant="caption" style={{ color: colors.mutedForeground }}>
-              The only field you need. Type the plate, then photograph freely.
-            </Text>
-            <TextInput
-              autoFocus
-              autoCapitalize="characters"
-              autoCorrect={false}
-              spellCheck={false}
-              editable={!starting}
-              value={serialDraft}
-              onChangeText={setSerialDraft}
-              placeholder="UF398539"
-              placeholderTextColor={colors.mutedForeground}
-              returnKeyType="go"
-              blurOnSubmit
-              style={{
-                minHeight: minTouchTarget + spacing[2],
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: tokens.radius.control,
-                paddingHorizontal: spacing[4],
-                fontSize: 28,
-                fontWeight: '700',
-                color: colors.foreground,
-                letterSpacing: 1,
-              }}
-              onSubmitEditing={() => void startWithSerial(serialDraft)}
-            />
-            <Button
-              size="xl"
-              loading={starting}
-              disabled={starting || !serialDraft.trim()}
-              onPress={() => void startWithSerial(serialDraft)}
-            >
-              Open camera
-            </Button>
-            <Button
-              variant="ghost"
-              disabled={starting}
-              onPress={() => {
-                Keyboard.dismiss();
-                setSerialModalOpen(false);
-              }}
-            >
-              Cancel
-            </Button>
-          </View>
-        </View>
-      </Modal>
+  if (!can('engine_intake_view')) {
+    return (
+      <ScreenGate
+        variant="no-permission"
+        title="Engine intake"
+        description="Your role cannot open Engine intake documentation."
+      />
+    );
+  }
 
-      {outbox.pendingCount > 0 || outbox.failedCount > 0 ? (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => {
-            if (!companyId) return;
-            for (const item of [...outbox.commands, ...outbox.photos]) {
-              if (item.companyId === companyId && item.state === 'failed') {
-                retryIntakeOutboxItem(item.id);
-              }
-            }
-            void drainIntakeOutbox(companyId);
-          }}
-          style={{
-            minHeight: minTouchTarget,
-            marginHorizontal: spacing[4],
-            paddingHorizontal: spacing[3],
-            paddingVertical: spacing[3],
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: spacing[3],
-            borderRadius: tokens.radius.group,
-            backgroundColor:
-              outbox.failedCount > 0 || outboxNeedsDeploy
-                ? colors.dangerSubtle
-                : colors.primarySubtle,
-          }}
-        >
-          {outbox.failedCount > 0 || outboxNeedsDeploy ? (
-            <AlertTriangleIcon size={20} color={colors.dangerOnSubtle} />
-          ) : (
-            <CloudIcon size={20} color={colors.primaryOnSubtle} />
-          )}
-          <View style={{ flex: 1 }}>
-            <Text
-              variant="caption"
-              style={{
-                color:
-                  outbox.failedCount > 0 || outboxNeedsDeploy
-                    ? colors.dangerOnSubtle
-                    : colors.primaryOnSubtle,
-                fontWeight: '700',
-              }}
-            >
-              {outboxNeedsDeploy
-                ? 'Web API not deployed — sync is blocked'
-                : outbox.failedCount > 0
-                  ? `${outbox.failedCount} items need attention`
-                  : outbox.syncing
-                    ? 'Syncing Warehouse work'
-                    : `${outbox.pendingCount} items waiting to sync`}
-            </Text>
-            {outboxIssue ? (
-              <Text
-                variant="caption"
-                style={{
-                  color:
-                    outbox.failedCount > 0 || outboxNeedsDeploy
-                      ? colors.dangerOnSubtle
-                      : colors.primaryOnSubtle,
-                  marginTop: 2,
-                }}
-                numberOfLines={2}
-              >
-                {outboxIssue}
-              </Text>
-            ) : null}
-          </View>
-          <ChevronRightIcon
-            size={18}
-            color={
-              outbox.failedCount > 0 || outboxNeedsDeploy
-                ? colors.dangerOnSubtle
-                : colors.primaryOnSubtle
-            }
-          />
-        </Pressable>
-      ) : null}
+  const subtitle =
+    filter === 'ready'
+      ? `${readyJobs.length} ready for review`
+      : filter === 'all'
+        ? `${scopedJobs.length} in Warehouse`
+        : `${activeJobs.length} documenting`;
+
+  const listHeader = (
+    <View style={{ gap: spacing[2], paddingBottom: spacing[2] }}>
+      <View style={{ paddingHorizontal: spacing[4] }}>
+        <SegmentedControl
+          accessibilityLabel="Engine intake filter"
+          value={filter}
+          onValueChange={(value) => setFilter(value as BayFilter)}
+          segments={[
+            { value: 'active', label: `Active ${activeJobs.length}` },
+            { value: 'ready', label: `Ready ${readyJobs.length}` },
+            { value: 'all', label: `All ${scopedJobs.length}` },
+          ]}
+        />
+      </View>
+
+      <IntakeOutboxBanner
+        pendingCount={outbox.pendingCount}
+        failedCount={outbox.failedCount}
+        syncing={outbox.syncing}
+        issue={outboxIssue}
+        needsDeploy={outboxNeedsDeploy}
+        onPress={retryOutbox}
+      />
 
       {loading ? <ContentState state="loading">{null}</ContentState> : null}
+
       {!loading && error && visibleJobs.length === 0 ? (
         <ContentState
           state={isPermissionError(error) ? 'empty' : 'error'}
@@ -449,14 +373,7 @@ export function EngineIntakeJobsScreen() {
               : undefined
           }
           emptyActionLabel={can('engine_intake_execute') ? 'New engine' : undefined}
-          onEmptyAction={
-            can('engine_intake_execute')
-              ? () => {
-                  setSerialDraft('');
-                  setSerialModalOpen(true);
-                }
-              : undefined
-          }
+          onEmptyAction={can('engine_intake_execute') ? openCreateSheet : undefined}
           errorTitle="Warehouse unavailable"
           errorDescription={
             isPermissionError(error)
@@ -474,128 +391,128 @@ export function EngineIntakeJobsScreen() {
           {null}
         </ContentState>
       ) : null}
+
       {!loading && !error && visibleJobs.length === 0 ? (
         <ContentState
           state="empty"
           emptyIcon={CameraIcon}
-          emptyTitle="Put an engine in the phone"
-          emptyDescription="Enter the serial, then photograph freely. Autocore builds Warehouse inventory."
-          emptyActionLabel={can('engine_intake_execute') ? 'New engine' : undefined}
+          emptyTitle={
+            filter === 'ready' ? 'Nothing ready yet' : 'Put an engine in the phone'
+          }
+          emptyDescription={
+            filter === 'ready'
+              ? 'Finished engines waiting for Warehouse review show up here.'
+              : 'Enter the serial, then photograph freely. Autocore builds Warehouse inventory.'
+          }
+          emptyActionLabel={
+            can('engine_intake_execute') && filter !== 'ready' ? 'New engine' : undefined
+          }
           onEmptyAction={
-            can('engine_intake_execute')
-              ? () => {
-                  setSerialDraft('');
-                  setSerialModalOpen(true);
-                }
-              : undefined
+            can('engine_intake_execute') && filter !== 'ready' ? openCreateSheet : undefined
           }
         >
           {null}
         </ContentState>
       ) : null}
+    </View>
+  );
 
-      {visibleJobs.length > 0 ? (
-        <View
-          style={{
-            marginHorizontal: spacing[4],
-            overflow: 'hidden',
-            borderRadius: tokens.radius.group,
-            backgroundColor: colors.surface,
-            borderWidth: 1,
-            borderColor: colors.borderMuted,
-          }}
+  return (
+    <Screen>
+      <IntakeCreateSerialSheet
+        ref={createSheetRef}
+        loading={starting}
+        onSubmit={startWithSerial}
+      />
+
+      <View
+        style={{
+          paddingTop: insets.top + rhythm.headerTop,
+          paddingHorizontal: rhythm.pad,
+          paddingBottom: rhythm.headerBottom,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: rhythm.inline,
+        }}
+      >
+        <IconButton
+          accessibilityLabel="Back"
+          variant="ghost"
+          size="sm"
+          onPress={() => goBackOrReplace(router, '/(tabs)' as Href)}
         >
-          {visibleJobs.map((job, index) => {
+          <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
+        </IconButton>
+        <View style={{ flex: 1, gap: 1 }}>
+          <Text
+            variant="heading"
+            style={{ fontSize: 17, fontWeight: '600', lineHeight: 22, color: colors.foreground }}
+          >
+            Engine intake
+          </Text>
+          <Text
+            variant="caption"
+            style={{ fontSize: 12, lineHeight: 16, color: colors.mutedForeground }}
+          >
+            {subtitle}
+          </Text>
+        </View>
+        {can('engine_intake_execute') ? (
+          <Button
+            size="icon-sm"
+            accessibilityLabel="New engine"
+            loading={starting}
+            onPress={openCreateSheet}
+          >
+            <PlusIcon size={20} color={colors.primaryForeground} />
+          </Button>
+        ) : null}
+      </View>
+
+      <View style={{ flex: 1 }}>
+        <FlashList
+          data={visibleJobs}
+          keyExtractor={(item) => item.id}
+          ListHeaderComponent={listHeader}
+          ListFooterComponent={
+            can('engine_intake_execute') && visibleJobs.length > 0 ? (
+              <View style={{ paddingHorizontal: spacing[4], paddingTop: spacing[2] }}>
+                <Button size="xl" loading={starting} onPress={openCreateSheet}>
+                  New engine
+                </Button>
+              </View>
+            ) : null
+          }
+          contentContainerStyle={{
+            paddingBottom: scrollBottom + rhythm.tabBarBreathing + spacing[4],
+            paddingTop: spacing[1],
+          }}
+          renderItem={({ item, index }) => {
             const claimExpired =
-              !job.assignment.claimExpiresAt ||
-              Date.parse(job.assignment.claimExpiresAt) <= claimClock;
+              !item.assignment.claimExpiresAt ||
+              Date.parse(item.assignment.claimExpiresAt) <= claimClock;
             const claimStale =
               claimExpired ||
-              isEngineIntakeSessionStale(job.assignment.lastHeartbeatAt, claimClock);
+              isEngineIntakeSessionStale(item.assignment.lastHeartbeatAt, claimClock);
             const claimedByAnother =
-              Boolean(job.assignment.claimedByUid) &&
-              job.assignment.claimedByUid !== uid &&
-              !claimStale;
-            const photoLine =
-              job.progress.capturedCount > 0
-                ? `${job.progress.capturedCount} photo${job.progress.capturedCount === 1 ? '' : 's'}`
-                : 'No photos yet';
+              Boolean(item.assignment.claimedByUid) &&
+              item.assignment.claimedByUid !== uid &&
+              !claimStale &&
+              ACTIVE_STATES.has(item.state);
             return (
-              <Pressable
-                key={job.id}
-                accessibilityRole="button"
-                disabled={claimedByAnother || starting}
-                onPress={() => void claimAndOpen(job)}
-              >
-                {({ pressed }) => (
-                  <View
-                    style={{
-                      minHeight: 76,
-                      paddingHorizontal: spacing[4],
-                      paddingVertical: spacing[3],
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: spacing[3],
-                      borderTopWidth: index === 0 ? 0 : 1,
-                      borderTopColor: colors.borderMuted,
-                      backgroundColor: pressed ? colors.surfaceSecondary : colors.surface,
-                      opacity: claimedByAnother ? 0.55 : 1,
-                    }}
-                  >
-                    <CameraIcon size={22} color={colors.primary} />
-                    <View style={{ flex: 1, gap: spacing[1] }}>
-                      <Text variant="body" style={{ color: colors.foreground, fontWeight: '700' }}>
-                        {jobTitle(job)}
-                      </Text>
-                      <Text variant="caption" style={{ color: colors.mutedForeground }}>
-                        {claimedByAnother
-                          ? `Claimed by ${job.assignment.claimedByName ?? 'another worker'}`
-                          : `${warehouseLifecycleLabel(job.state)} · ${photoLine}`}
-                      </Text>
-                    </View>
-                    {!claimedByAnother ? (
-                      <ChevronRightIcon size={20} color={colors.mutedForeground} />
-                    ) : null}
-                  </View>
-                )}
-              </Pressable>
+              <IntakeJobRow
+                job={item}
+                index={index}
+                claimedByAnother={claimedByAnother}
+                claimedByName={item.assignment.claimedByName}
+                syncPending={jobHasPendingSync(item.id)}
+                disabled={starting}
+                onPress={() => void claimAndOpen(item)}
+              />
             );
-          })}
-        </View>
-      ) : null}
-
-      {can('engine_intake_execute') && visibleJobs.length > 0 ? (
-        <View style={{ paddingHorizontal: spacing[4] }}>
-          <Button
-            size="xl"
-            loading={starting}
-            onPress={() => {
-              setSerialDraft('');
-              setSerialModalOpen(true);
-            }}
-          >
-            New engine
-          </Button>
-        </View>
-      ) : null}
-    </StackScreen>
+          }}
+        />
+      </View>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  modalRoot: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: spacing[5],
-  },
-  modalBackdrop: {
-    backgroundColor: 'rgba(0,0,0,0.45)',
-  },
-  modalCard: {
-    zIndex: 1,
-    borderRadius: tokens.radius.group,
-    padding: spacing[5],
-    gap: spacing[4],
-  },
-});
-

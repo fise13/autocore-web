@@ -3,7 +3,10 @@ import {
   type DocumentationChecklistItemState,
   type EngineIntakeJob,
   type EngineIntakeJobState,
+  type IntakePhotoCategory,
 } from "@autocore/engine-intake";
+
+import { userCopy } from "@/lib/user-copy";
 
 export function formatIntakeState(state: string): string {
   return state
@@ -29,6 +32,8 @@ const INTAKE_EVENT_LABELS: Record<string, string> = {
   "job.field_completed": "Field documentation finished",
   "job.reassigned": "Reassigned",
   "job.identity_updated": "Identity updated",
+  "ai.inspection_completed": "AI labeled photo",
+  "ai.identity_filled": "AI filled brand / engine code",
   "job.approved": "Released to Motors Grid",
   "job.quarantined": "Moved to quarantine",
   "job.rejected": "Rejected",
@@ -71,8 +76,65 @@ export function jobIdentityLine(job: EngineIntakeJob): string {
   const code = job.expectedIdentity.engineCode?.trim();
   if (brand && code) return `${brand} · ${code}`;
   if (brand || code) return brand || code || "";
-  return "Understanding…";
+  return "No brand / engine code yet";
 }
+
+export function jobChecklistStatusLabel(job: EngineIntakeJob): string {
+  const checklist = job.documentationChecklist;
+  if (job.progress.syncQueueDepth > 0) {
+    return `${job.progress.syncQueueDepth} syncing`;
+  }
+  if (!checklist) {
+    return job.progress.capturedCount > 0
+      ? `${job.progress.capturedCount} photos`
+      : "Awaiting photos";
+  }
+  if (checklist.summary.ready) return "Ready to release";
+  if (job.progress.capturedCount === 0) return "Awaiting photos";
+  if (checklist.understandingState === "pending") return "Awaiting photos";
+  if (checklist.summary.uncertainCount > 0) {
+    return `${checklist.summary.uncertainCount} need a glance`;
+  }
+  if (checklist.summary.saleGateMissingCount > 0) {
+    return `${checklist.summary.saleGateMissingCount} still open`;
+  }
+  return `${job.progress.capturedCount} photos`;
+}
+
+export function intakePhotoCategoryLabel(category: string): string {
+  const labels = userCopy.engineIntake.photoCategories as Record<string, string>;
+  return labels[category] ?? formatIntakeState(category);
+}
+
+export function intakePhotoDisplayLabel(photo: {
+  category: string;
+  aiLabel?: string | null;
+}): string {
+  const custom = photo.aiLabel?.trim();
+  if (custom) return custom;
+  return intakePhotoCategoryLabel(photo.category);
+}
+
+export const INTAKE_PHOTO_CATEGORY_OPTIONS: IntakePhotoCategory[] = [
+  "serial_plate",
+  "overview",
+  "overview_front",
+  "overview_rear",
+  "overview_left",
+  "overview_right",
+  "overview_top",
+  "valve_cover",
+  "oil_pan",
+  "turbo",
+  "intake",
+  "exhaust",
+  "damage",
+  "harness",
+  "mounts",
+  "accessories",
+  "temporary_tag",
+  "other",
+];
 
 export function jobLifecycleLabel(state: EngineIntakeJobState): string {
   return warehouseLifecycleLabel(state);

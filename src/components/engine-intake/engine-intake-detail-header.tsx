@@ -7,6 +7,7 @@ import { warehouseLifecycleLabel } from "@autocore/engine-intake";
 import {
   formatIntakeDate,
   formatIntakeState,
+  jobChecklistStatusLabel,
   jobIdentityLine,
   jobSerial,
   jobStateBadgeVariant,
@@ -20,6 +21,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { userCopy } from "@/lib/user-copy";
+import type { EngineIntakePriority, EngineIntakeSource } from "@autocore/engine-intake";
+
+function intakeSourceLabel(source: EngineIntakeSource | string): string {
+  const known = userCopy.engineIntake.create.sources;
+  if (source in known) return known[source as EngineIntakeSource];
+  return formatIntakeState(source);
+}
+
+function intakePriorityLabel(priority: EngineIntakePriority | string): string {
+  const known = userCopy.engineIntake.create.priorities;
+  if (priority in known) return known[priority as EngineIntakePriority];
+  return formatIntakeState(priority);
+}
 
 export function EngineIntakeDetailHeader({
   job,
@@ -63,7 +78,7 @@ export function EngineIntakeDetailHeader({
             {warehouseLifecycleLabel(job.state)}
           </Badge>
           {job.priority !== "normal" ? (
-            <Badge variant="warning">{formatIntakeState(job.priority)}</Badge>
+            <Badge variant="warning">{intakePriorityLabel(job.priority)}</Badge>
           ) : null}
           {activeClaimStale ? <Badge variant="destructive">Session stale</Badge> : null}
           {job.verificationLock ? (
@@ -80,13 +95,12 @@ export function EngineIntakeDetailHeader({
             {summary.uncertainCount > 0 ? ` · ${summary.uncertainCount} uncertain` : ""}
             {" · "}
             {job.progress.capturedCount} photos
-            {job.documentationChecklist.understandingState === "understanding"
-              ? " · Understanding…"
-              : ""}
+            {" · "}
+            {jobChecklistStatusLabel(job)}
           </span>
         </p>
         <p className="mt-0.5 text-[11px] text-muted-foreground/70">
-          {job.sourceReference || formatIntakeState(job.source)} · Created{" "}
+          {job.sourceReference || intakeSourceLabel(job.source)} · Created{" "}
           {formatIntakeDate(job.createdAt)}
         </p>
       </div>

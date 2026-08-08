@@ -3,6 +3,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 
 import {
+  checklistHitsForCategory,
   deriveEngineIntakeProgress,
   type DocumentationChecklist,
   type EngineIntakeAssignment,
@@ -665,4 +666,84 @@ export async function finalizeIntakePhoto(
   });
 
   return { photoId: input.photoId, url: finalized.url, aiInspectionId };
+}
+
+export async function setIntakePhotoCategory(
+  access: VerifiedEngineIntakeAccess,
+  input: {
+    jobId: string;
+    photoId: string;
+    category: IntakePhotoCategory;
+    aiLabel?: string | null;
+  },
+): Promise<{ photoId: string; category: IntakePhotoCategory }> {
+  const db = getAdminFirestore();
+  const jobRef = db
+    .collection("companies")
+    .doc(access.companyId)
+    .collection("engineIntakeJobs")
+    .doc(input.jobId);
+  const photoRef = jobRef.collection("photos").doc(input.photoId);
+  const [jobSnapshot, photoSnapshot] = await Promise.all([jobRef.get(), photoRef.get()]);
+  if (!jobSnapshot.exists || !photoSnapshot.exists) {
+    throw new EngineIntakeCommandError("Intake photo was not found", 404);
+  }
+
+  const label = input.aiLabel?.trim() || null;
+  const hits = [...checklistHitsForCategory(input.category)];
+  const hitConfidence = hits.length > 0 ? 0.9 : 0;
+
+  await db.runTransaction(async (transaction) => {
+    const [freshJobSnapshot, photosSnapshot] = await Promise.all([
+      transaction.get(jobRef),
+      transaction.get(jobRef.collection("photos")),
+    ]);
+    if (!freshJobSnapshot.exists) {
+      throw new EngineIntakeCommandError("Intake job was not found", 404);
+    }
+    const freshJob = freshJobSnapshot.data() as PhotoJobDocument;
+    transaction.update(photoRef, {
+      category: input.category,
+      categorySource: "system",
+      aiLabel: label,
+      checklistHits: hits,
+      hitConfidence,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    const derived = deriveEngineIntakeProgress(
+      freshJob.requirements ?? [],
+      photosSnapshot.docs.map((candidate) => {
+        const data = candidate.data() as Record<string, unknown>;
+        return candidate.id === input.photoId
+          ? progressPhoto(candidate.id, {
+              ...data,
+              category: input.category,
+              checklistHits: hits,
+              hitConfidence,
+            })
+          : progressPhoto(candidate.id, data);
+      }),
+      {
+        serialConfirmed: Boolean(
+          (freshJob.expectedIdentity as { serialCode?: string } | undefined)?.serialCode?.trim(),
+        ),
+        previousChecklist: freshJob.documentationChecklist ?? null,
+      },
+    );
+    const { progress, documentationChecklist } = splitDerivedProgress(derived);
+    transaction.update(jobRef, {
+      progress,
+      documentationChecklist: {
+        ...documentationChecklist,
+        understandingState:
+          documentationChecklist.summary.saleGateMissingCount === 0
+            ? "ready"
+            : "understanding",
+      },
+      updatedAt: FieldValue.serverTimestamp(),
+      revision: FieldValue.increment(1),
+    });
+  });
+
+  return { photoId: input.photoId, category: input.category };
 }

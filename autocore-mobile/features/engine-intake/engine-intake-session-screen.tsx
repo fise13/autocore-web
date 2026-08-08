@@ -4,7 +4,6 @@ import {
   Animated,
   AppState,
   Linking,
-  Pressable,
   View,
   type AppStateStatus,
 } from 'react-native';
@@ -16,24 +15,14 @@ import {
 } from '@autocore/engine-intake';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import {
-  ArrowLeftIcon,
-  CheckCircle2Icon,
-  CloudIcon,
-  FlashlightIcon,
-  ImagesIcon,
-} from '@/assets/icons';
-import { Button, ScreenGate, Text, toast } from '@/components/ui';
-import { useSession, useTheme } from '@/hooks';
-import {
-  getColors,
-  haptics,
-  minTouchTarget,
-  spacing,
-  tokens,
-} from '@/theme';
+import { ScreenGate, toast } from '@/components/ui';
+import { useSession } from '@/hooks';
+import { getColors, haptics } from '@/theme';
 
 import { IntakeCamera, type IntakeCameraHandle } from './components/intake-camera';
+import { IntakeCaptureChrome } from './components/intake-capture-chrome';
+import { IntakeCaptureDock } from './components/intake-capture-dock';
+import { IntakeSessionDone } from './components/intake-session-done';
 import {
   useEngineIntakeJobDetail,
   useEngineIntakeJobs,
@@ -69,11 +58,9 @@ export function EngineIntakeSessionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { companyId, uid, can } = useSession();
-  const { colors } = useTheme();
   const chrome = getColors('dark');
   const cameraRef = useRef<IntakeCameraHandle>(null);
   const [flashOpacity] = useState(() => new Animated.Value(0));
-  const [progressMotion] = useState(() => new Animated.Value(1));
   const [torch, setTorch] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [completedLocal, setCompletedLocal] = useState(false);
@@ -97,7 +84,6 @@ export function EngineIntakeSessionScreen() {
       item.command.payload.sessionId === sessionId,
   );
   const completionPending = completedLocal || hasQueuedFieldCompletion;
-  // Failed uploads still count — they are on this phone.
   const photoCount = serverProgress.capturedCount + localPhotos.length;
   const unsyncedCount = pendingLocalPhotos.length + failedPhotos.length;
   const syncError =
@@ -244,23 +230,6 @@ export function EngineIntakeSessionScreen() {
     });
     router.replace('/intake' as Href);
   }, [activeSession, job, router, sessionId, uid]);
-
-  useEffect(() => {
-    Animated.sequence([
-      Animated.timing(progressMotion, {
-        toValue: 1.04,
-        duration: 120,
-        useNativeDriver: true,
-      }),
-      Animated.spring(progressMotion, {
-        toValue: 1,
-        damping: 14,
-        stiffness: 220,
-        mass: 0.7,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [progressMotion, photoCount, unsyncedCount]);
 
   if (!can('engine_intake_execute')) {
     return (
@@ -473,39 +442,14 @@ export function EngineIntakeSessionScreen() {
   };
 
   if (completionPending || isServerComplete) {
-    const synced = isServerComplete;
     return (
-      <View
-        style={{
-          flex: 1,
-          paddingTop: insets.top + spacing[10],
-          paddingBottom: insets.bottom + spacing[6],
-          paddingHorizontal: spacing[6],
-          justifyContent: 'space-between',
-          backgroundColor: colors.background,
-        }}
-      >
-        <View style={{ gap: spacing[5], alignItems: 'center' }}>
-          {synced ? (
-            <CheckCircle2Icon size={56} color={colors.success} />
-          ) : (
-            <CloudIcon size={56} color={colors.primary} />
-          )}
-          <View style={{ gap: spacing[2], alignItems: 'center' }}>
-            <Text variant="displayTitle" style={{ color: colors.foreground, textAlign: 'center' }}>
-              {synced ? 'In Warehouse' : 'Saved on this phone'}
-            </Text>
-            <Text variant="body" style={{ color: colors.mutedForeground, textAlign: 'center' }}>
-              {synced
-                ? 'Condition photos are in Warehouse for the team to review.'
-                : `${jobOutboxCount || 1} items will sync when the connection returns.`}
-            </Text>
-          </View>
-        </View>
-        <Button size="xl" onPress={() => router.replace('/intake' as Href)}>
-          Back to Warehouse
-        </Button>
-      </View>
+      <IntakeSessionDone
+        synced={isServerComplete}
+        pendingCount={jobOutboxCount}
+        topInset={insets.top}
+        bottomInset={insets.bottom}
+        onBack={() => router.replace('/intake' as Href)}
+      />
     );
   }
 
@@ -531,234 +475,36 @@ export function EngineIntakeSessionScreen() {
         }}
       />
 
-      <View
-        pointerEvents="box-none"
-        style={{
-          position: 'absolute',
-          top: 0,
-          right: 0,
-          left: 0,
-          paddingTop: insets.top + spacing[2],
-          paddingHorizontal: spacing[4],
-          gap: spacing[3],
+      <IntakeCaptureChrome
+        chrome={chrome}
+        topInset={insets.top}
+        serial={serial}
+        statusPill={statusPill}
+        failed={failedPhotos.length > 0}
+        guidance={guidance}
+        photoCount={photoCount}
+        unsyncedCount={unsyncedCount}
+        torch={torch}
+        onBack={() => void pauseAndLeave()}
+        onToggleTorch={() => setTorch((value) => !value)}
+      />
+
+      <IntakeCaptureDock
+        chrome={chrome}
+        bottomInset={insets.bottom}
+        photoCount={photoCount}
+        unsyncedCount={unsyncedCount}
+        failedCount={failedPhotos.length}
+        syncErrorText={syncErrorText}
+        capturing={capturing}
+        onPickGallery={() => void pickFromGallery()}
+        onShutter={() => void takePhoto()}
+        onFinish={requestFinish}
+        onRetryUpload={() => {
+          for (const photo of failedPhotos) retryIntakeOutboxItem(photo.id);
+          void drainIntakeOutbox(companyId);
         }}
-      >
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Pause capture"
-            onPress={() => void pauseAndLeave()}
-            style={{
-              width: minTouchTarget,
-              height: minTouchTarget,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: tokens.radius.control,
-              backgroundColor: chrome.overlay,
-            }}
-          >
-            <ArrowLeftIcon size={24} color={chrome.foreground} />
-          </Pressable>
-          <Animated.View
-            style={{
-              minHeight: minTouchTarget,
-              minWidth: minTouchTarget + spacing[6],
-              maxWidth: 200,
-              paddingHorizontal: spacing[4],
-              justifyContent: 'center',
-              alignItems: 'center',
-              borderRadius: tokens.radius.full,
-              backgroundColor:
-                failedPhotos.length > 0 ? chrome.dangerSubtle : chrome.overlay,
-              transform: [{ scale: progressMotion }],
-            }}
-          >
-            <Text
-              variant="caption"
-              numberOfLines={1}
-              style={{
-                color:
-                  failedPhotos.length > 0 ? chrome.dangerOnSubtle : chrome.foreground,
-                fontWeight: '800',
-              }}
-            >
-              {statusPill}
-            </Text>
-          </Animated.View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={torch ? 'Turn flashlight off' : 'Turn flashlight on'}
-            onPress={() => {
-              setTorch((value) => !value);
-              haptics.toggle();
-            }}
-            style={{
-              width: minTouchTarget,
-              height: minTouchTarget,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: tokens.radius.control,
-              backgroundColor: torch ? chrome.primary : chrome.overlay,
-            }}
-          >
-            <FlashlightIcon
-              size={22}
-              color={torch ? chrome.primaryForeground : chrome.foreground}
-            />
-          </Pressable>
-        </View>
-        <Text
-          variant="caption"
-          numberOfLines={1}
-          style={{ color: chrome.foreground, textAlign: 'center', fontWeight: '800' }}
-        >
-          {serial}
-        </Text>
-        {guidance ? (
-          <Text
-            variant="caption"
-            numberOfLines={2}
-            style={{ color: chrome.mutedForeground, textAlign: 'center' }}
-          >
-            {guidance}
-          </Text>
-        ) : null}
-      </View>
-
-      <View
-        style={{
-          position: 'absolute',
-          right: 0,
-          bottom: 0,
-          left: 0,
-          paddingHorizontal: spacing[5],
-          paddingBottom: insets.bottom + spacing[5],
-          paddingTop: spacing[6],
-          gap: spacing[4],
-          backgroundColor: chrome.overlay,
-        }}
-      >
-        <View style={{ gap: spacing[1], alignItems: 'center' }}>
-          <Text variant="heading" style={{ color: chrome.foreground, textAlign: 'center' }}>
-            Engine condition
-          </Text>
-          <Text variant="caption" style={{ color: chrome.mutedForeground, textAlign: 'center' }}>
-            {photoCount} photo{photoCount === 1 ? '' : 's'}
-            {failedPhotos.length > 0
-              ? ` · ${failedPhotos.length} not uploaded`
-              : unsyncedCount > 0
-                ? ` · ${unsyncedCount} syncing`
-                : ' · Camera or Photos'}
-          </Text>
-        </View>
-
-        {failedPhotos.length > 0 ? (
-          <View
-            style={{
-              gap: spacing[3],
-              padding: spacing[3],
-              borderRadius: tokens.radius.control,
-              backgroundColor: chrome.dangerSubtle,
-            }}
-          >
-            <Text
-              variant="caption"
-              style={{ color: chrome.dangerOnSubtle, fontWeight: '700', textAlign: 'center' }}
-            >
-              Could not upload {failedPhotos.length} photo
-              {failedPhotos.length === 1 ? '' : 's'}
-            </Text>
-            <Text
-              variant="caption"
-              style={{ color: chrome.dangerOnSubtle, textAlign: 'center' }}
-            >
-              {syncErrorText}
-            </Text>
-            <Text
-              variant="caption"
-              style={{ color: chrome.dangerOnSubtle, textAlign: 'center' }}
-            >
-              Saved on this phone — you can keep shooting or finish anyway.
-            </Text>
-            <Button
-              variant="outline"
-              onPress={() => {
-                for (const photo of failedPhotos) retryIntakeOutboxItem(photo.id);
-                void drainIntakeOutbox(companyId);
-              }}
-            >
-              Retry upload
-            </Button>
-          </View>
-        ) : null}
-
-        <View
-          style={{
-            minHeight: 88,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingHorizontal: spacing[2],
-          }}
-        >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Add photos from library"
-            disabled={capturing}
-            onPress={() => void pickFromGallery()}
-            style={{
-              width: minTouchTarget + spacing[2],
-              height: minTouchTarget + spacing[2],
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: tokens.radius.control,
-              backgroundColor: chrome.overlay,
-              opacity: capturing ? 0.55 : 1,
-            }}
-          >
-            <ImagesIcon size={24} color={chrome.foreground} />
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Capture photo"
-            disabled={capturing}
-            onPress={() => void takePhoto()}
-            style={{
-              width: 84,
-              height: 84,
-              borderRadius: tokens.radius.full,
-              borderWidth: 5,
-              borderColor: chrome.foreground,
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: capturing ? 0.55 : 1,
-            }}
-          >
-            <View
-              style={{
-                width: 62,
-                height: 62,
-                borderRadius: tokens.radius.full,
-                backgroundColor: chrome.foreground,
-              }}
-            />
-          </Pressable>
-
-          {/* Balance the gallery control so the shutter stays centered. */}
-          <View style={{ width: minTouchTarget + spacing[2] }} />
-        </View>
-
-        <Button size="xl" disabled={photoCount < 1} onPress={requestFinish}>
-          Finish
-        </Button>
-      </View>
+      />
     </View>
   );
 }
