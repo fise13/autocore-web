@@ -42,9 +42,15 @@ export const DOCUMENTATION_FACET_LABELS: Record<DocumentationFacet, string> = {
   condition: "damage detail",
 };
 
-export const SUGGESTED_READY_COVERAGE_PERCENT = 85;
+import {
+  canReleaseWithChecklist,
+  type DocumentationChecklist,
+} from "./checklist";
+
 export const ENGINE_INTAKE_STAGING_LOCATION_ID = "engine-intake-staging";
 export const ENGINE_INTAKE_STAGING_LOCATION_CODE = "WAREHOUSE";
+/** @deprecated Prefer checklist readiness. */
+export const SUGGESTED_READY_COVERAGE_PERCENT = 85;
 
 const CATEGORY_FACETS: Record<IntakePhotoCategory, readonly DocumentationFacet[]> = {
   serial_plate: ["identity"],
@@ -152,9 +158,20 @@ export function canReleaseWarehouseToMotors(input: {
   serialCode: string;
   photoCount: number;
   coveragePercent: number;
+  checklist?: DocumentationChecklist | null;
   overrideReason?: string | null;
   hardBlocked?: boolean;
 }): boolean {
+  if (input.checklist) {
+    return canReleaseWithChecklist({
+      state: input.state,
+      serialCode: input.serialCode,
+      photoCount: input.photoCount,
+      checklist: input.checklist,
+      overrideReason: input.overrideReason,
+      hardBlocked: input.hardBlocked,
+    });
+  }
   if (input.state !== "awaiting_verification") return false;
   if (!input.serialCode.trim()) return false;
   if (input.photoCount < 1) return false;

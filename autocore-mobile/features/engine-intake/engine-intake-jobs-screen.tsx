@@ -1,7 +1,9 @@
 import { useDeferredValue, useEffect, useState } from 'react';
 import {
+  Keyboard,
   Modal,
   Pressable,
+  StyleSheet,
   TextInput,
   View,
 } from 'react-native';
@@ -12,7 +14,6 @@ import type {
   EngineIntakeJobState,
 } from '@autocore/engine-intake';
 import {
-  engineIntakeCompletionPercent,
   isEngineIntakeSessionStale,
   warehouseLifecycleLabel,
 } from '@autocore/engine-intake';
@@ -31,7 +32,6 @@ import { haptics, minTouchTarget, spacing, tokens } from '@/theme';
 import { useEngineIntakeJobs } from './hooks/use-engine-intake-data';
 import {
   drainIntakeOutbox,
-  enqueueIntakeCommand,
   humanizeIntakeOutboxError,
   retryIntakeOutboxItem,
   sendOrQueueIntakeCommand,
@@ -106,8 +106,8 @@ export function EngineIntakeJobsScreen() {
     return (
       <ScreenGate
         variant="no-permission"
-        title="Warehouse"
-        description="Your role cannot open Warehouse documentation."
+        title="Engine intake"
+        description="Your role cannot open Engine intake documentation."
       />
     );
   }
@@ -188,6 +188,7 @@ export function EngineIntakeJobsScreen() {
       toast({ title: 'Serial is required', variant: 'warning' });
       return;
     }
+    Keyboard.dismiss();
     const jobId = engineIntakeId('job');
     const sessionId = engineIntakeId('session');
     const createCommand: EngineIntakeCommand = {
@@ -208,35 +209,40 @@ export function EngineIntakeJobsScreen() {
     const claimCommand = createClaimCommand(jobId, sessionId);
 
     setStarting(true);
-    setSerialModalOpen(false);
-    setSerialDraft('');
     try {
       const created = await sendOrQueueIntakeCommand(companyId, createCommand);
-      if (created) {
-        const claimed = await sendOrQueueIntakeCommand(companyId, claimCommand);
-        if (!claimed?.sessionId) {
-          toast({
-            title: 'Engine created; claim is waiting to sync',
-            description: 'Open it from Warehouse after the exclusive claim is confirmed.',
-            variant: 'warning',
-          });
-          return;
-        }
-        haptics.success();
-        openSession(created.jobId, claimed.sessionId);
-      } else {
-        enqueueIntakeCommand(companyId, claimCommand);
+      if (!created) {
         toast({
-          title: 'Saved on this phone',
-          description: 'It will appear in Warehouse after the server creates and claims it.',
+          title: 'Cannot open camera yet',
+          description:
+            'Engine draft could not reach the server. Fix sync (banner above), then try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      const claimed = await sendOrQueueIntakeCommand(companyId, claimCommand);
+      if (!claimed?.sessionId) {
+        toast({
+          title: 'Engine created — claim failed',
+          description: 'Open it from the Warehouse list after sync completes.',
           variant: 'warning',
         });
+        setSerialModalOpen(false);
+        setSerialDraft('');
+        return;
       }
+      setSerialModalOpen(false);
+      setSerialDraft('');
+      haptics.success();
+      openSession(created.jobId || jobId, claimed.sessionId);
     } catch (startError) {
       haptics.error();
       toast({
         title: 'Engine could not start',
-        description: startError instanceof Error ? startError.message : undefined,
+        description:
+          startError instanceof Error
+            ? humanizeIntakeOutboxError(startError.message)
+            : undefined,
         variant: 'destructive',
       });
     } finally {
@@ -257,7 +263,7 @@ export function EngineIntakeJobsScreen() {
 
   return (
     <StackScreen
-      title="Warehouse"
+      title="Engine intake"
       subtitle={`${visibleJobs.length} engine${visibleJobs.length === 1 ? '' : 's'} documenting`}
       backFallbackHref="/(tabs)"
       headerAction={
@@ -280,26 +286,22 @@ export function EngineIntakeJobsScreen() {
         visible={serialModalOpen}
         transparent
         animationType="fade"
-        onRequestClose={() => setSerialModalOpen(false)}
+        onRequestClose={() => {
+          if (!starting) setSerialModalOpen(false);
+        }}
       >
-        <Pressable
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.45)',
-            justifyContent: 'center',
-            paddingHorizontal: spacing[5],
-          }}
-          onPress={() => setSerialModalOpen(false)}
-        >
+        <View style={styles.modalRoot} pointerEvents="box-none">
           <Pressable
-            onPress={(event) => event.stopPropagation()}
-            style={{
-              borderRadius: tokens.radius.group,
-              backgroundColor: colors.surface,
-              padding: spacing[5],
-              gap: spacing[4],
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss"
+            disabled={starting}
+            onPress={() => {
+              Keyboard.dismiss();
+              setSerialModalOpen(false);
             }}
-          >
+            style={[StyleSheet.absoluteFill, styles.modalBackdrop]}
+          />
+          <View style={[styles.modalCard, { backgroundColor: colors.surface }]}>
             <Text variant="heading" style={{ color: colors.foreground }}>
               Engine serial
             </Text>
@@ -311,10 +313,13 @@ export function EngineIntakeJobsScreen() {
               autoCapitalize="characters"
               autoCorrect={false}
               spellCheck={false}
+              editable={!starting}
               value={serialDraft}
               onChangeText={setSerialDraft}
               placeholder="UF398539"
               placeholderTextColor={colors.mutedForeground}
+              returnKeyType="go"
+              blurOnSubmit
               style={{
                 minHeight: minTouchTarget + spacing[2],
                 borderWidth: 1,
@@ -331,15 +336,23 @@ export function EngineIntakeJobsScreen() {
             <Button
               size="xl"
               loading={starting}
+              disabled={starting || !serialDraft.trim()}
               onPress={() => void startWithSerial(serialDraft)}
             >
               Open camera
             </Button>
-            <Button variant="ghost" onPress={() => setSerialModalOpen(false)}>
+            <Button
+              variant="ghost"
+              disabled={starting}
+              onPress={() => {
+                Keyboard.dismiss();
+                setSerialModalOpen(false);
+              }}
+            >
               Cancel
             </Button>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
       {outbox.pendingCount > 0 || outbox.failedCount > 0 ? (
@@ -503,7 +516,13 @@ export function EngineIntakeJobsScreen() {
               Boolean(job.assignment.claimedByUid) &&
               job.assignment.claimedByUid !== uid &&
               !claimStale;
-            const coverage = engineIntakeCompletionPercent(job.progress);
+            const checklistSummary = job.documentationChecklist?.summary;
+            const checklistLine = checklistSummary
+              ? checklistSummary.ready
+                ? 'Checklist ready'
+                : checklistSummary.whisper ??
+                  `${checklistSummary.missingCount} missing`
+              : `${job.progress.capturedCount} photos`;
             return (
               <Pressable
                 key={job.id}
@@ -534,7 +553,7 @@ export function EngineIntakeJobsScreen() {
                       <Text variant="caption" style={{ color: colors.mutedForeground }}>
                         {claimedByAnother
                           ? `Claimed by ${job.assignment.claimedByName ?? 'another worker'}`
-                          : `${warehouseLifecycleLabel(job.state)} · ${coverage}% · ${job.progress.capturedCount} photos`}
+                          : `${warehouseLifecycleLabel(job.state)} · ${checklistLine} · ${job.progress.capturedCount} photos`}
                       </Text>
                     </View>
                     {!claimedByAnother ? (
@@ -565,3 +584,21 @@ export function EngineIntakeJobsScreen() {
     </StackScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  modalRoot: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: spacing[5],
+  },
+  modalBackdrop: {
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  modalCard: {
+    zIndex: 1,
+    borderRadius: tokens.radius.group,
+    padding: spacing[5],
+    gap: spacing[4],
+  },
+});
+

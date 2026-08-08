@@ -3,15 +3,15 @@ import {
   Alert,
   Animated,
   AppState,
+  Linking,
   Pressable,
   View,
   type AppStateStatus,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import {
-  SUGGESTED_READY_COVERAGE_PERCENT,
   emptyEngineIntakeProgress,
-  engineIntakeCompletionPercent,
   type EngineIntakeCommand,
 } from '@autocore/engine-intake';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,6 +21,7 @@ import {
   CheckCircle2Icon,
   CloudIcon,
   FlashlightIcon,
+  ImagesIcon,
 } from '@/assets/icons';
 import { Button, ScreenGate, Text, toast } from '@/components/ui';
 import { useSession, useTheme } from '@/hooks';
@@ -99,10 +100,6 @@ export function EngineIntakeSessionScreen() {
   // Failed uploads still count — they are on this phone.
   const photoCount = serverProgress.capturedCount + localPhotos.length;
   const unsyncedCount = pendingLocalPhotos.length + failedPhotos.length;
-  const coveragePercent = Math.max(
-    serverProgress.coveragePercent,
-    Math.min(100, photoCount * 12),
-  );
   const syncError =
     failedPhotos.map((photo) => photo.lastError).find(Boolean) ??
     outbox.commands
@@ -120,8 +117,12 @@ export function EngineIntakeSessionScreen() {
   const whisper =
     failedPhotos.length > 0
       ? null
-      : (serverProgress.coverageWhisper ??
+      : (job?.documentationChecklist?.summary.whisper ??
+        job?.progress.coverageWhisper ??
         (photoCount === 0 ? 'Walk around the engine and shoot freely' : null));
+  const saleGateMissing =
+    job?.documentationChecklist?.summary.saleGateMissingCount ?? 0;
+  const checklistReady = Boolean(job?.documentationChecklist?.summary.ready);
   const jobOutboxCount = unsyncedCount;
   const isServerComplete =
     job?.state === 'awaiting_verification' ||
@@ -262,13 +263,13 @@ export function EngineIntakeSessionScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [progressMotion, coveragePercent, photoCount]);
+  }, [progressMotion, photoCount, saleGateMissing]);
 
   if (!can('engine_intake_execute')) {
     return (
       <ScreenGate
         variant="no-permission"
-        title="Warehouse"
+        title="Engine intake"
         description="Your role cannot document engines."
       />
     );
@@ -289,7 +290,7 @@ export function EngineIntakeSessionScreen() {
       <ScreenGate
         variant="custom"
         title="Opening camera"
-        description="Waiting for the Warehouse draft and exclusive claim."
+        description="Waiting for the Engine intake draft and exclusive claim."
       />
     );
   }
@@ -302,10 +303,42 @@ export function EngineIntakeSessionScreen() {
       <ScreenGate
         variant="custom"
         title="Session claim unavailable"
-        description="Return to Warehouse and open this engine again."
+        description="Return to Engine intake and open this engine again."
       />
     );
   }
+
+  const ingestPhotoUris = (uris: string[]) => {
+    let saved = 0;
+    for (const uri of uris) {
+      try {
+        saveIntakePhotoLocally({
+          companyId,
+          jobId,
+          sessionId,
+          deviceId: getEngineIntakeDeviceId(),
+          requirementId: null,
+          category: 'other',
+          sourceUri: uri,
+        });
+        saved += 1;
+      } catch {
+        // Skip assets that disappeared between pick and copy.
+      }
+    }
+    if (saved === 0) {
+      throw new Error('Selected photos could not be saved');
+    }
+    haptics.success();
+    flashOpacity.setValue(0.55);
+    Animated.timing(flashOpacity, {
+      toValue: 0,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+    void drainIntakeOutbox(companyId);
+    return saved;
+  };
 
   const takePhoto = async () => {
     if (capturing) return;
@@ -317,27 +350,56 @@ export function EngineIntakeSessionScreen() {
         toast({ title: 'Camera did not capture a photo', variant: 'warning' });
         return;
       }
-      saveIntakePhotoLocally({
-        companyId,
-        jobId,
-        sessionId,
-        deviceId: getEngineIntakeDeviceId(),
-        requirementId: null,
-        category: 'other',
-        sourceUri: captured.uri,
-      });
-      haptics.success();
-      flashOpacity.setValue(0.82);
-      Animated.timing(flashOpacity, {
-        toValue: 0,
-        duration: 260,
-        useNativeDriver: true,
-      }).start();
-      void drainIntakeOutbox(companyId);
+      ingestPhotoUris([captured.uri]);
     } catch (error) {
       haptics.error();
       toast({
         title: 'Photo could not be saved',
+        description: error instanceof Error ? error.message : undefined,
+        variant: 'destructive',
+      });
+    } finally {
+      setCapturing(false);
+    }
+  };
+
+  const pickFromGallery = async () => {
+    if (capturing) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      toast({
+        title: 'No photo access',
+        description: 'Allow Photos access in Settings to add engine photos from the library.',
+        variant: 'warning',
+      });
+      void Linking.openSettings();
+      return;
+    }
+
+    setCapturing(true);
+    try {
+      const pick = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.9,
+        allowsMultipleSelection: true,
+        selectionLimit: 24,
+        orderedSelection: true,
+      });
+      if (pick.canceled || !pick.assets?.length) return;
+      const uris = pick.assets.map((asset) => asset.uri).filter(Boolean);
+      if (uris.length === 0) return;
+      const saved = ingestPhotoUris(uris);
+      if (saved < uris.length) {
+        toast({
+          title: `${saved} of ${uris.length} photos added`,
+          description: 'Some library files could not be copied. Try those again.',
+          variant: 'warning',
+        });
+      }
+    } catch (error) {
+      haptics.error();
+      toast({
+        title: 'Could not add from Photos',
         description: error instanceof Error ? error.message : undefined,
         variant: 'destructive',
       });
@@ -410,16 +472,21 @@ export function EngineIntakeSessionScreen() {
       );
       return;
     }
-    if (coveragePercent < SUGGESTED_READY_COVERAGE_PERCENT) {
+    if (saleGateMissing > 0 && !checklistReady) {
       Alert.alert(
-        'Documentation is thin',
-        'Finish anyway? The engine stays in Warehouse — not for sale yet.',
+        'Checklist still open',
+        `${whisper ?? 'Sale documentation items are still missing.'}\n\nFinish anyway? The engine stays in Warehouse — not for sale yet.`,
         [
           { text: 'Keep shooting', style: 'cancel' },
           {
             text: 'Finish anyway',
             style: 'destructive',
-            onPress: () => void finishCapture('Worker finished with thin documentation'),
+            onPress: () =>
+              void finishCapture(
+                whisper
+                  ? `Worker finished with open checklist: ${whisper}`
+                  : 'Worker finished with open sale checklist',
+              ),
           },
         ],
       );
@@ -465,11 +532,18 @@ export function EngineIntakeSessionScreen() {
     );
   }
 
-  const displayCoverage = engineIntakeCompletionPercent({
-    ...serverProgress,
-    coveragePercent,
-    capturedCount: photoCount,
-  });
+  const statusPill =
+    failedPhotos.length > 0
+      ? `${failedPhotos.length} failed`
+      : saleGateMissing > 0
+        ? unsyncedCount > 0
+          ? `${saleGateMissing} missing · ${unsyncedCount} syncing`
+          : `${saleGateMissing} missing`
+        : unsyncedCount > 0
+          ? `Checklist ready · ${unsyncedCount} syncing`
+          : checklistReady
+            ? 'Checklist ready'
+            : `${photoCount} photos`;
 
   return (
     <View style={{ flex: 1, backgroundColor: chrome.background }}>
@@ -522,7 +596,7 @@ export function EngineIntakeSessionScreen() {
             style={{
               minHeight: minTouchTarget,
               minWidth: minTouchTarget + spacing[6],
-              maxWidth: 180,
+              maxWidth: 200,
               paddingHorizontal: spacing[4],
               justifyContent: 'center',
               alignItems: 'center',
@@ -541,11 +615,7 @@ export function EngineIntakeSessionScreen() {
                 fontWeight: '800',
               }}
             >
-              {failedPhotos.length > 0
-                ? `${failedPhotos.length} failed`
-                : unsyncedCount > 0
-                  ? `${displayCoverage}% · ${unsyncedCount} syncing`
-                  : `${displayCoverage}%`}
+              {statusPill}
             </Text>
           </Animated.View>
           <Pressable
@@ -577,26 +647,10 @@ export function EngineIntakeSessionScreen() {
         >
           {serial}
         </Text>
-        <View
-          style={{
-            height: 4,
-            overflow: 'hidden',
-            borderRadius: tokens.radius.full,
-            backgroundColor: chrome.border,
-          }}
-        >
-          <View
-            style={{
-              width: `${displayCoverage}%`,
-              height: '100%',
-              backgroundColor: chrome.primary,
-            }}
-          />
-        </View>
         {whisper ? (
           <Text
             variant="caption"
-            numberOfLines={1}
+            numberOfLines={2}
             style={{ color: chrome.mutedForeground, textAlign: 'center' }}
           >
             {whisper}
@@ -627,7 +681,7 @@ export function EngineIntakeSessionScreen() {
               ? ` · ${failedPhotos.length} not uploaded`
               : unsyncedCount > 0
                 ? ` · ${unsyncedCount} syncing`
-                : ' · AI understands later'}
+                : ' · Camera or Photos'}
           </Text>
         </View>
 
@@ -673,12 +727,31 @@ export function EngineIntakeSessionScreen() {
 
         <View
           style={{
-            minHeight: 80,
+            minHeight: 88,
             flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: spacing[2],
           }}
         >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add photos from library"
+            disabled={capturing}
+            onPress={() => void pickFromGallery()}
+            style={{
+              width: minTouchTarget + spacing[2],
+              height: minTouchTarget + spacing[2],
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: tokens.radius.control,
+              backgroundColor: chrome.overlay,
+              opacity: capturing ? 0.55 : 1,
+            }}
+          >
+            <ImagesIcon size={24} color={chrome.foreground} />
+          </Pressable>
+
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Capture photo"
@@ -704,6 +777,9 @@ export function EngineIntakeSessionScreen() {
               }}
             />
           </Pressable>
+
+          {/* Balance the gallery control so the shutter stays centered. */}
+          <View style={{ width: minTouchTarget + spacing[2] }} />
         </View>
 
         <Button size="xl" disabled={photoCount < 1} onPress={requestFinish}>

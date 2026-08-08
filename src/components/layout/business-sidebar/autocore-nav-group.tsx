@@ -79,6 +79,11 @@ function EditRemoveButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+/** Prefer path+title so inventory (`motors`) never collides with Documents. */
+function navItemKey(item: AutocoreNavItem): string {
+  return [item.navId, item.path, item.title].filter(Boolean).join(":");
+}
+
 function NavCollapsibleItem({
   item,
   collapsed = false,
@@ -135,7 +140,7 @@ function NavCollapsibleItem({
           >
             {item.subItems.map((subItem) => (
               <DropdownMenuItem
-                key={subItem.title}
+                key={navItemKey(subItem)}
                 className={cn(
                   "cursor-pointer gap-2.5 rounded-lg px-2 py-2",
                   subItem.isActive && "bg-accent text-accent-foreground",
@@ -233,7 +238,7 @@ function NavCollapsibleItem({
         <SidebarMenuSub>
           {item.subItems.map((subItem, index) => (
             <SidebarMenuSubItem
-              key={subItem.title}
+              key={navItemKey(subItem)}
               className={cn(isEditing && "relative animate-sidebar-jiggle pl-3")}
               style={isEditing ? { animationDelay: `${(jiggleDelay + index) * 0.04}s` } : undefined}
             >
@@ -295,7 +300,7 @@ export function AutocoreNavGroup({
       <SidebarMenu className={cn(collapsed && "gap-1")}>
         {items.map((item, index) => (
           <NavCollapsibleItem
-            key={item.title}
+            key={navItemKey(item)}
             item={item}
             collapsed={collapsed}
             onNavigate={onNavigate}

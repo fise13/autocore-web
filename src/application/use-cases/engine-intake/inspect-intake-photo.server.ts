@@ -1,11 +1,19 @@
 import "server-only";
 
 import {
+  DOCUMENTATION_CHECKLIST_ITEM_IDS,
   INTAKE_PHOTO_CATEGORIES,
+  checklistHitsForCategory,
   deriveEngineIntakeProgress,
+  type DocumentationChecklist,
+  type DocumentationChecklistItemId,
   type IntakePhotoCategory,
 } from "@autocore/engine-intake";
-import { FieldValue } from "firebase-admin/firestore";
+import {
+  FieldValue,
+  type DocumentReference,
+  type QuerySnapshot,
+} from "firebase-admin/firestore";
 import { z } from "zod";
 
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
@@ -13,12 +21,30 @@ import {
   callOpenRouterJson,
   resolveOpenRouterModel,
 } from "@/infrastructure/openrouter/chat-completions.server";
+import { prepareVisionImageDataUrl } from "@/infrastructure/openrouter/prepare-vision-image.server";
+import { downloadIntakePhotoBuffer } from "@/lib/engine-intake/intake-photo-storage.server";
 
 function asIntakePhotoCategory(value: unknown): IntakePhotoCategory {
   return INTAKE_PHOTO_CATEGORIES.includes(value as IntakePhotoCategory)
     ? (value as IntakePhotoCategory)
     : "other";
 }
+
+const CHECKLIST_ITEM_ID_SET = new Set<string>(DOCUMENTATION_CHECKLIST_ITEM_IDS);
+
+function sanitizeChecklistHits(value: unknown): DocumentationChecklistItemId[] {
+  if (!Array.isArray(value)) return [];
+  const out: DocumentationChecklistItemId[] = [];
+  for (const entry of value) {
+    if (typeof entry !== "string") continue;
+    if (!CHECKLIST_ITEM_ID_SET.has(entry)) continue;
+    if (out.includes(entry as DocumentationChecklistItemId)) continue;
+    out.push(entry as DocumentationChecklistItemId);
+    if (out.length >= 12) break;
+  }
+  return out;
+}
+
 const aiFlagCode = z.enum([
   "blur",
   "underexposed",
@@ -36,7 +62,16 @@ const aiFlagCode = z.enum([
 
 const inspectionSchema = z
   .object({
-    suggestedCategory: z.enum(INTAKE_PHOTO_CATEGORIES).nullable(),
+    suggestedCategory: z
+      .union([z.enum(INTAKE_PHOTO_CATEGORIES), z.string(), z.null()])
+      .optional()
+      .nullable()
+      .transform((value) => {
+        if (value == null) return null;
+        return INTAKE_PHOTO_CATEGORIES.includes(value as IntakePhotoCategory)
+          ? (value as IntakePhotoCategory)
+          : null;
+      }),
     suggestedIdentity: z
       .object({
         serialCode: z.string().max(240).optional(),
@@ -45,22 +80,147 @@ const inspectionSchema = z
         donorVin: z.string().max(32).optional(),
         configuration: z.string().max(500).optional(),
       })
-      .strict(),
+      .passthrough()
+      .optional()
+      .default({}),
+    checklistHits: z
+      .array(z.union([z.string(), z.number()]))
+      .max(24)
+      .optional()
+      .default([])
+      .transform((value) => sanitizeChecklistHits(value)),
+    hitConfidence: z.number().min(0).max(1).nullable().optional().default(null),
+    hasTurbo: z.boolean().nullable().optional().default(null),
+    oilPanRemoved: z.boolean().nullable().optional().default(null),
+    cylinderCount: z.number().int().min(3).max(8).nullable().optional().default(null),
     flags: z
       .array(
         z
           .object({
-            code: aiFlagCode,
-            severity: z.enum(["info", "warning", "blocking"]),
-            confidence: z.number().min(0).max(1),
-            message: z.string().min(1).max(400),
+            code: z.union([aiFlagCode, z.string()]).transform((code) =>
+              aiFlagCode.safeParse(code).success ? code : "irrelevant",
+            ),
+            severity: z
+              .enum(["info", "warning", "blocking"])
+              .catch("warning"),
+            confidence: z.number().min(0).max(1).catch(0.5),
+            message: z.string().min(1).max(400).catch("Quality issue"),
           })
-          .strict(),
+          .passthrough(),
       )
-      .max(20),
-    listingReadinessScore: z.number().min(0).max(100).nullable(),
+      .max(20)
+      .optional()
+      .default([]),
+    listingReadinessScore: z.number().min(0).max(100).nullable().optional().default(null),
   })
-  .strict();
+  .passthrough();
+
+type PhotoJobDocument = {
+  engineId?: string;
+  expectedIdentity?: { serialCode?: string };
+  requirements?: unknown[];
+  documentationChecklist?: DocumentationChecklist | null;
+  blockingAiFlags?: Array<{ photoId?: string }>;
+};
+
+function progressPhotosFromSnapshot(
+  photosSnapshot: QuerySnapshot,
+  patch?: {
+    photoId: string;
+    category: IntakePhotoCategory;
+    checklistHits: DocumentationChecklistItemId[];
+    hitConfidence: number;
+  },
+) {
+  return photosSnapshot.docs.map((doc) => {
+    const data = doc.data();
+    const isPatched = patch && doc.id === patch.photoId;
+    return {
+      id: doc.id,
+      deletedAt: data.deletedAt ?? null,
+      syncState: data.syncState ?? "queued",
+      url: typeof data.url === "string" ? data.url : null,
+      reviewDecision: data.reviewDecision ?? null,
+      requirementId: typeof data.requirementId === "string" ? data.requirementId : null,
+      category: isPatched ? patch.category : asIntakePhotoCategory(data.category),
+      checklistHits: isPatched
+        ? patch.checklistHits
+        : Array.isArray(data.checklistHits)
+          ? sanitizeChecklistHits(data.checklistHits)
+          : undefined,
+      hitConfidence: isPatched
+        ? patch.hitConfidence
+        : typeof data.hitConfidence === "number"
+          ? data.hitConfidence
+          : undefined,
+    };
+  });
+}
+
+async function reconcileJobChecklist(input: {
+  jobRef: DocumentReference;
+  companyId: string;
+  jobId: string;
+  photoId: string;
+  actorUid: string;
+  patch?: {
+    category: IntakePhotoCategory;
+    checklistHits: DocumentationChecklistItemId[];
+    hitConfidence: number;
+  };
+  hints?: {
+    hasTurbo?: boolean | null;
+    cylinderCount?: number | null;
+    oilPanRemoved?: boolean | null;
+  };
+}): Promise<DocumentationChecklist | null> {
+  const db = getAdminFirestore();
+  let nextChecklist: DocumentationChecklist | null = null;
+  await db.runTransaction(async (transaction) => {
+    const [freshJobSnapshot, photosSnapshot] = await Promise.all([
+      transaction.get(input.jobRef),
+      transaction.get(input.jobRef.collection("photos")),
+    ]);
+    if (!freshJobSnapshot.exists) return;
+    const freshJob = freshJobSnapshot.data() as PhotoJobDocument;
+    const expectedIdentity = freshJob.expectedIdentity;
+    const derived = deriveEngineIntakeProgress(
+      Array.isArray(freshJob.requirements) ? (freshJob.requirements as never[]) : [],
+      progressPhotosFromSnapshot(
+        photosSnapshot,
+        input.patch
+          ? {
+              photoId: input.photoId,
+              category: input.patch.category,
+              checklistHits: input.patch.checklistHits,
+              hitConfidence: input.patch.hitConfidence,
+            }
+          : undefined,
+      ),
+      {
+        serialConfirmed: Boolean(expectedIdentity?.serialCode?.trim()),
+        previousChecklist: freshJob.documentationChecklist ?? null,
+        hasTurbo: input.hints?.hasTurbo,
+        cylinderCount: input.hints?.cylinderCount,
+        oilPanRemoved: input.hints?.oilPanRemoved,
+      },
+    );
+    const { documentationChecklist, ...progressOnly } = derived;
+    nextChecklist = documentationChecklist;
+    transaction.update(input.jobRef, {
+      progress: progressOnly,
+      documentationChecklist: {
+        ...documentationChecklist,
+        understandingState:
+          documentationChecklist.summary.saleGateMissingCount === 0
+            ? "ready"
+            : "understanding",
+      },
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+  return nextChecklist;
+}
 
 export async function inspectEngineIntakePhoto(input: {
   companyId: string;
@@ -81,8 +241,9 @@ export async function inspectEngineIntakePhoto(input: {
 
   const job = jobSnapshot.data() as Record<string, unknown>;
   const photo = photoSnapshot.data() as Record<string, unknown>;
+  const storagePath = typeof photo.storagePath === "string" ? photo.storagePath : "";
   const url = typeof photo.url === "string" ? photo.url : "";
-  if (!url) return;
+  if (!storagePath && !url) return;
 
   const model = resolveOpenRouterModel(undefined, "engineIntakeVision");
   await inspectionRef.set(
@@ -102,17 +263,40 @@ export async function inspectEngineIntakePhoto(input: {
     { merge: true },
   );
 
+  // Capture-first: apply category→checklist mapping before waiting on vision so
+  // free `other` photos tick Overall engine even if OpenRouter is slow/down.
+  await reconcileJobChecklist({
+    jobRef,
+    companyId: input.companyId,
+    jobId: input.jobId,
+    photoId: input.photoId,
+    actorUid: input.actorUid,
+  }).catch((error) => {
+    console.error("[engine-intake/photo-ai] pre-reconcile", error);
+  });
+
   try {
     const identity =
       typeof job.expectedIdentity === "object" && job.expectedIdentity
         ? JSON.stringify(job.expectedIdentity)
         : "{}";
+
+    let visionUrl = url;
+    if (storagePath) {
+      const downloaded = await downloadIntakePhotoBuffer(storagePath);
+      const prepared = await prepareVisionImageDataUrl(
+        downloaded.buffer,
+        downloaded.contentType,
+      );
+      visionUrl = prepared.dataUrl;
+    }
+
     const result = await callOpenRouterJson(
       [
         {
           role: "system",
           content:
-            "You inspect automotive engine intake evidence. Return only grounded observations. Treat damage and identity as hypotheses, never certainty. A blocking flag is reserved for unusable or clearly wrong evidence.",
+            "You inspect automotive engine documentation photos for a dismantler. Return only grounded observations. Prefer dismantler checklist vocabulary (serial, sides, valve cover, oil pan, turbo, cylinders, crankshaft). Blocking flags are for unusable or clearly wrong evidence only.",
         },
         {
           role: "user",
@@ -121,12 +305,12 @@ export async function inspectEngineIntakePhoto(input: {
               type: "text",
               text: [
                 `Expected identity: ${identity}`,
-                `Worker category: ${String(photo.category ?? "other")}`,
-                "Inspect image quality, category, visible identity text, obvious damage or missing components, relevance, and marketplace usefulness.",
-                "Return suggestedCategory, suggestedIdentity, flags, and listingReadinessScore.",
+                `Worker category hint: ${String(photo.category ?? "other")}`,
+                "Return suggestedCategory, suggestedIdentity, checklistHits (from known item ids), hitConfidence, hasTurbo, oilPanRemoved, cylinderCount, flags, listingReadinessScore.",
+                `Known checklist item ids: ${DOCUMENTATION_CHECKLIST_ITEM_IDS.join(", ")}`,
               ].join("\n"),
             },
-            { type: "image_url", image_url: { url } },
+            { type: "image_url", image_url: { url: visionUrl } },
           ],
         },
       ],
@@ -140,15 +324,35 @@ export async function inspectEngineIntakePhoto(input: {
 
     const blockingFlags = result.flags
       .filter((flag) => flag.severity === "blocking")
-      .map((flag) => ({ ...flag, photoId: input.photoId }));
+      .map((flag) => ({
+        code: flag.code,
+        severity: flag.severity,
+        confidence: flag.confidence,
+        message: flag.message,
+        photoId: input.photoId,
+      }));
+
+    const checklistHits: DocumentationChecklistItemId[] =
+      result.checklistHits.length > 0
+        ? result.checklistHits
+        : [
+            ...checklistHitsForCategory(
+              asIntakePhotoCategory(result.suggestedCategory ?? photo.category),
+            ),
+          ];
+    const hitConfidence = result.hitConfidence ?? 0.75;
+    const nextCategory = asIntakePhotoCategory(
+      result.suggestedCategory && photo.category === "other"
+        ? result.suggestedCategory
+        : photo.category,
+    );
 
     await db.runTransaction(async (transaction) => {
       const freshJobSnapshot = await transaction.get(jobRef);
       if (!freshJobSnapshot.exists) return;
-      const currentBlockingFlags = Array.isArray(
-        freshJobSnapshot.data()?.blockingAiFlags,
-      )
-        ? (freshJobSnapshot.data()?.blockingAiFlags as Array<{ photoId?: string }>)
+      const freshJob = freshJobSnapshot.data() as PhotoJobDocument;
+      const currentBlockingFlags = Array.isArray(freshJob.blockingAiFlags)
+        ? freshJob.blockingAiFlags
         : [];
       const nextBlockingFlags = [
         ...currentBlockingFlags.filter((flag) => flag.photoId !== input.photoId),
@@ -166,6 +370,11 @@ export async function inspectEngineIntakePhoto(input: {
           state: "completed",
           suggestedCategory: result.suggestedCategory,
           suggestedIdentity: result.suggestedIdentity,
+          checklistHits,
+          hitConfidence: result.hitConfidence,
+          hasTurbo: result.hasTurbo,
+          oilPanRemoved: result.oilPanRemoved,
+          cylinderCount: result.cylinderCount,
           flags: result.flags,
           listingReadinessScore: result.listingReadinessScore,
           completedAt: FieldValue.serverTimestamp(),
@@ -174,6 +383,8 @@ export async function inspectEngineIntakePhoto(input: {
       );
       transaction.update(photoRef, {
         aiInspectionState: "completed",
+        checklistHits,
+        hitConfidence,
         ...(result.suggestedCategory && photo.category === "other"
           ? {
               category: result.suggestedCategory,
@@ -183,51 +394,40 @@ export async function inspectEngineIntakePhoto(input: {
         updatedAt: FieldValue.serverTimestamp(),
       });
       const photosSnapshot = await transaction.get(jobRef.collection("photos"));
-      const nextCategory = asIntakePhotoCategory(
-        result.suggestedCategory && photo.category === "other"
-          ? result.suggestedCategory
-          : photo.category,
-      );
-      const expectedIdentity = freshJobSnapshot.data()?.expectedIdentity as
-        | { serialCode?: string }
-        | undefined;
-      const coverageProgress = deriveEngineIntakeProgress(
-        Array.isArray(freshJobSnapshot.data()?.requirements)
-          ? (freshJobSnapshot.data()?.requirements as never[])
-          : [],
-        photosSnapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            deletedAt: data.deletedAt ?? null,
-            syncState: data.syncState ?? "queued",
-            url: typeof data.url === "string" ? data.url : null,
-            reviewDecision: data.reviewDecision ?? null,
-            requirementId:
-              typeof data.requirementId === "string" ? data.requirementId : null,
-            category:
-              doc.id === input.photoId
-                ? nextCategory
-                : asIntakePhotoCategory(data.category),
-          };
+      const expectedIdentity = freshJob.expectedIdentity;
+      const previousChecklist = freshJob.documentationChecklist ?? null;
+      const derived = deriveEngineIntakeProgress(
+        Array.isArray(freshJob.requirements) ? (freshJob.requirements as never[]) : [],
+        progressPhotosFromSnapshot(photosSnapshot, {
+          photoId: input.photoId,
+          category: nextCategory,
+          checklistHits,
+          hitConfidence,
         }),
-        { serialConfirmed: Boolean(expectedIdentity?.serialCode?.trim()) },
+        {
+          serialConfirmed: Boolean(expectedIdentity?.serialCode?.trim()),
+          previousChecklist,
+          hasTurbo: result.hasTurbo,
+          cylinderCount: result.cylinderCount,
+          oilPanRemoved: result.oilPanRemoved,
+        },
       );
+      const { documentationChecklist, ...progressOnly } = derived;
       transaction.update(jobRef, {
         blockingAiFlags: nextBlockingFlags,
-        progress: {
-          ...(freshJobSnapshot.data()?.progress as Record<string, unknown> | undefined),
-          coveragePercent: coverageProgress.coveragePercent,
-          missingFacets: coverageProgress.missingFacets,
-          coverageWhisper: coverageProgress.coverageWhisper,
-          capturedCount: coverageProgress.capturedCount,
-          uploadedCount: coverageProgress.uploadedCount,
+        progress: progressOnly,
+        documentationChecklist: {
+          ...documentationChecklist,
+          understandingState:
+            documentationChecklist.summary.saleGateMissingCount === 0
+              ? "ready"
+              : "understanding",
         },
         ...(result.suggestedIdentity?.brandName || result.suggestedIdentity?.engineCode
           ? {
               expectedIdentity: {
-                ...(typeof freshJobSnapshot.data()?.expectedIdentity === "object"
-                  ? freshJobSnapshot.data()?.expectedIdentity
+                ...(typeof freshJob.expectedIdentity === "object"
+                  ? freshJob.expectedIdentity
                   : {}),
                 ...(result.suggestedIdentity.brandName
                   ? { brandName: result.suggestedIdentity.brandName }
@@ -256,8 +456,10 @@ export async function inspectEngineIntakePhoto(input: {
           payload: {
             photoId: input.photoId,
             suggestedCategory: result.suggestedCategory,
+            checklistHits,
             flagCodes: result.flags.map((flag) => flag.code),
             listingReadinessScore: result.listingReadinessScore,
+            whisper: documentationChecklist.summary.whisper,
           },
           clientAt: FieldValue.serverTimestamp(),
           serverAt: FieldValue.serverTimestamp(),
@@ -267,11 +469,14 @@ export async function inspectEngineIntakePhoto(input: {
       );
     });
   } catch (error) {
+    const message =
+      error instanceof Error ? error.message.slice(0, 500) : "AI inspection failed";
+    console.error("[engine-intake/photo-ai]", input.photoId, message);
     await Promise.all([
       inspectionRef.set(
         {
           state: "failed",
-          error: error instanceof Error ? error.message.slice(0, 500) : "AI inspection failed",
+          error: message,
           completedAt: FieldValue.serverTimestamp(),
         },
         { merge: true },
@@ -279,10 +484,29 @@ export async function inspectEngineIntakePhoto(input: {
       photoRef.set(
         {
           aiInspectionState: "failed",
+          // Ensure free-capture photos still contribute overall coverage when AI dies.
+          checklistHits: checklistHitsForCategory(asIntakePhotoCategory(photo.category)),
+          hitConfidence: 0.7,
           updatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true },
       ),
+      reconcileJobChecklist({
+        jobRef,
+        companyId: input.companyId,
+        jobId: input.jobId,
+        photoId: input.photoId,
+        actorUid: input.actorUid,
+        patch: {
+          category: asIntakePhotoCategory(photo.category),
+          checklistHits: [
+            ...checklistHitsForCategory(asIntakePhotoCategory(photo.category)),
+          ],
+          hitConfidence: 0.7,
+        },
+      }).catch((reconcileError) => {
+        console.error("[engine-intake/photo-ai] failure reconcile", reconcileError);
+      }),
     ]);
   }
 }

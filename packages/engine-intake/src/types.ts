@@ -132,7 +132,9 @@ export type EngineIntakeProgress = {
   missingRequirementIds: string[];
   rejectedPhotoIds: string[];
   syncQueueDepth: number;
-  /** Facet-based documentation quality (0–100). Not photo count. */
+  /**
+   * @deprecated Product truth is documentationChecklist — kept for legacy clients.
+   */
   coveragePercent: number;
   missingFacets: string[];
   coverageWhisper: string | null;
@@ -214,6 +216,8 @@ export type EngineIntakeJob = {
   photoPackageVersion: number;
   requirements: PhotoRequirement[];
   progress: EngineIntakeProgress;
+  /** AI-built dismantler checklist — product truth for documentation completeness. */
+  documentationChecklist: import("./checklist").DocumentationChecklist;
   assignment: EngineIntakeAssignment;
   location: EngineIntakeLocation | null;
   identityConfirmation: EngineIntakeIdentityConfirmation | null;
@@ -509,6 +513,18 @@ export type EngineIntakeCommand = (
         note?: string;
         identity?: Partial<EngineIntakeIdentity>;
         aiOverrideReason?: string;
+      };
+    }
+  | {
+      type: "override_checklist_item";
+      idempotencyKey: string;
+      client: IntakeClient;
+      deviceId?: string;
+      payload: {
+        jobId: string;
+        itemId: string;
+        state: "completed" | "missing" | "uncertain" | "not_applicable";
+        rationale?: string;
       };
     }
   | {

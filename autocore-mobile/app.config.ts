@@ -54,7 +54,8 @@ const plugins: ExpoConfig['plugins'] = [
   [
     'expo-image-picker',
     {
-      photosPermission: 'AutoCore uses photos to import codes from your gallery.',
+      photosPermission:
+        'AutoCore uses your photo library to import scan codes and add engine documentation photos.',
     },
   ],
   'expo-sharing',

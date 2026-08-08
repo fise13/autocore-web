@@ -100,6 +100,7 @@ export function buildAutocoreNavGroups({
       );
       businessNavItems.push({
         title: item.label,
+        path: item.href,
         icon: createElement(item.icon),
         isActive: isBusinessNavActive(item, pathname, activeCollection),
         badge: inventoryTotal > 0 ? inventoryTotal : undefined,
@@ -115,6 +116,16 @@ export function buildAutocoreNavGroups({
               ? counts.inventoryByCollection[child.id]
               : undefined,
         })),
+      });
+      continue;
+    }
+
+    if (item.id === "documents") {
+      businessNavItems.push({
+        title: item.label,
+        path: item.href,
+        icon: createElement(item.icon),
+        isActive: isBusinessNavActive(item, pathname, activeCollection),
       });
       continue;
     }

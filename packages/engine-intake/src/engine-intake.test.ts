@@ -6,11 +6,12 @@ import {
   canFinishFieldDocumentation,
   canReleaseEngineForSale,
   canTransitionEngineIntakeJob,
-  deriveDocumentationCoverage,
+  checklistWhisper,
   deriveEngineIntakeProgress,
   emptyEngineIntakeProgress,
-  fieldRequirementsSatisfied,
-  verificationRequirementsSatisfied,
+  normalizeDocumentationChecklist,
+  reconcileDocumentationChecklist,
+  seedDocumentationChecklist,
   warehouseLifecycleLabel,
   type IntakePhoto,
 } from "./index";
@@ -53,67 +54,109 @@ test("job state machine blocks releasing an open job directly", () => {
   assert.equal(canTransitionEngineIntakeJob("awaiting_verification", "verified"), true);
 });
 
-test("capture-first package has no required checklist items", () => {
+test("seed checklist starts with serial + exterior sale gates", () => {
+  const checklist = seedDocumentationChecklist({ serialConfirmed: true });
   assert.equal(
-    DEFAULT_ENGINE_INTAKE_REQUIREMENTS.every((item) => !item.required),
-    true,
+    checklist.items.find((item) => item.id === "serial_visible")?.state,
+    "completed",
+  );
+  assert.ok(checklist.summary.missingCount > 0);
+  assert.ok(checklistWhisper(checklist)?.startsWith("Missing:"));
+});
+
+test("normalizeDocumentationChecklist seeds missing or empty payloads", () => {
+  const seeded = normalizeDocumentationChecklist(null, { serialConfirmed: true });
+  assert.ok(seeded.items.length > 0);
+  assert.equal(
+    seeded.items.find((item) => item.id === "serial_visible")?.state,
+    "completed",
+  );
+
+  const kept = normalizeDocumentationChecklist(seeded);
+  assert.equal(kept.items.length, seeded.items.length);
+  assert.equal(kept.summary.missingCount, seeded.summary.missingCount);
+});
+
+test("checklist ticks diverse views without farming duplicates", () => {
+  const checklist = reconcileDocumentationChecklist({
+    previous: seedDocumentationChecklist({ serialConfirmed: true }),
+    photos: [
+      { id: "1", category: "serial_plate" },
+      { id: "2", category: "overview_left" },
+      { id: "3", category: "overview_right" },
+      { id: "4", category: "overview_front" },
+      { id: "5", category: "overview_rear" },
+      { id: "6", category: "valve_cover" },
+      { id: "7", category: "oil_pan" },
+    ],
+    hints: { serialConfirmed: true, hasTurbo: false },
+  });
+
+  assert.equal(checklist.summary.saleGateMissingCount, 0);
+  assert.equal(checklist.summary.ready, true);
+  assert.equal(
+    checklist.items.find((item) => item.id === "turbo")?.state,
+    "not_applicable",
   );
 });
 
-test("coverage rises with diverse views, not duplicate angles", () => {
-  const diverse = deriveDocumentationCoverage(
-    [
-      { category: "serial_plate" },
-      { category: "overview_left" },
-      { category: "overview_right" },
-      { category: "overview_front" },
-      { category: "overview_rear" },
-      { category: "valve_cover" },
-      { category: "oil_pan" },
+test("free-capture other photos tick overall engine without farming sides", () => {
+  const checklist = reconcileDocumentationChecklist({
+    previous: seedDocumentationChecklist({ serialConfirmed: true }),
+    photos: [
+      { id: "1", category: "other" },
+      { id: "2", category: "other" },
+      { id: "3", category: "other" },
     ],
-    { serialConfirmed: true },
-  );
-  const duplicates = deriveDocumentationCoverage(
-    [
-      { category: "overview_left" },
-      { category: "overview_left" },
-      { category: "overview_left" },
-      { category: "overview_left" },
-      { category: "overview_left" },
-      { category: "overview_left" },
-      { category: "overview_left" },
-    ],
-    { serialConfirmed: true },
-  );
+    hints: { serialConfirmed: true },
+  });
 
-  assert.ok(diverse.percent > duplicates.percent);
-  assert.ok(diverse.percent >= 85);
-  assert.ok(duplicates.percent < 50);
+  assert.equal(
+    checklist.items.find((item) => item.id === "overall_engine")?.state,
+    "completed",
+  );
+  assert.equal(
+    checklist.items.find((item) => item.id === "left_side")?.state,
+    "missing",
+  );
+  assert.ok(checklist.summary.whisper?.includes("Valve cover") || checklist.summary.missingCount > 0);
 });
 
-test("progress is coverage based when checklist is empty", () => {
+test("oil pan removed unlocks internals items", () => {
+  const checklist = reconcileDocumentationChecklist({
+    previous: seedDocumentationChecklist({ serialConfirmed: true }),
+    photos: [
+      { id: "a", category: "oil_pan", checklistHits: ["oil_pan_removed", "crankshaft_visible"] },
+      { id: "b", category: "other", checklistHits: ["connecting_rods"] },
+    ],
+    hints: { serialConfirmed: true, oilPanRemoved: true },
+  });
+
+  assert.equal(
+    checklist.items.find((item) => item.id === "oil_pan_removed")?.state,
+    "completed",
+  );
+  assert.ok(checklist.items.some((item) => item.id === "crankshaft_visible"));
+});
+
+test("progress derives checklist whisper instead of percent as product truth", () => {
   const photos = [
     photo("a", null, "serial_plate"),
     photo("b", null, "overview_left"),
-    photo("c", null, "overview_right"),
   ];
   const progress = deriveEngineIntakeProgress(DEFAULT_ENGINE_INTAKE_REQUIREMENTS, photos, {
     serialConfirmed: true,
   });
 
   assert.equal(progress.requiredCount, 0);
-  assert.equal(progress.capturedCount, 3);
-  assert.deepEqual(progress.missingRequirementIds, []);
-  assert.ok(progress.coveragePercent > 0);
-  assert.equal(verificationRequirementsSatisfied(progress), true);
-  assert.equal(fieldRequirementsSatisfied(DEFAULT_ENGINE_INTAKE_REQUIREMENTS, progress), true);
+  assert.ok(progress.documentationChecklist.summary.whisper);
+  assert.ok(progress.coverageWhisper);
 });
 
-test("worker can finish with serial and one photo even if coverage is thin", () => {
+test("worker can finish with serial and one photo", () => {
   const progress = {
     ...emptyEngineIntakeProgress(),
     capturedCount: 1,
-    coveragePercent: 20,
   };
   assert.equal(
     canFinishFieldDocumentation({
@@ -130,17 +173,21 @@ test("worker can finish with serial and one photo even if coverage is thin", () 
   );
 });
 
-test("sale release requires verification state, serial, photos, and coverage or override", () => {
-  const thinProgress = {
-    ...emptyEngineIntakeProgress(),
-    capturedCount: 2,
-    coveragePercent: 40,
-  };
-  const readyProgress = {
-    ...emptyEngineIntakeProgress(),
-    capturedCount: 6,
-    coveragePercent: 90,
-  };
+test("sale release uses checklist readiness or override", () => {
+  const readyChecklist = reconcileDocumentationChecklist({
+    previous: seedDocumentationChecklist({ serialConfirmed: true }),
+    photos: [
+      { id: "1", category: "serial_plate" },
+      { id: "2", category: "overview_left" },
+      { id: "3", category: "overview_right" },
+      { id: "4", category: "overview_front" },
+      { id: "5", category: "overview_rear" },
+      { id: "6", category: "valve_cover" },
+      { id: "7", category: "oil_pan" },
+    ],
+    hints: { serialConfirmed: true },
+  });
+  const thinChecklist = seedDocumentationChecklist({ serialConfirmed: true });
 
   assert.equal(
     canReleaseEngineForSale({
@@ -153,7 +200,8 @@ test("sale release requires verification state, serial, photos, and coverage or 
         donorVin: "",
         configuration: "",
       },
-      progress: readyProgress,
+      progress: { ...emptyEngineIntakeProgress(), capturedCount: 7 },
+      documentationChecklist: readyChecklist,
     }),
     true,
   );
@@ -169,7 +217,8 @@ test("sale release requires verification state, serial, photos, and coverage or 
         donorVin: "",
         configuration: "",
       },
-      progress: thinProgress,
+      progress: { ...emptyEngineIntakeProgress(), capturedCount: 2 },
+      documentationChecklist: thinChecklist,
     }),
     false,
   );
@@ -186,9 +235,10 @@ test("sale release requires verification state, serial, photos, and coverage or 
           donorVin: "",
           configuration: "",
         },
-        progress: thinProgress,
+        progress: { ...emptyEngineIntakeProgress(), capturedCount: 2 },
+        documentationChecklist: thinChecklist,
       },
-      "Manager override — enough for sale",
+      "Manager override",
     ),
     true,
   );

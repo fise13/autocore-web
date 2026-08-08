@@ -270,6 +270,20 @@ const engineIntakeCommandSchema = z.discriminatedUnion("type", [
   z
     .object({
       ...commandBase,
+      type: z.literal("override_checklist_item"),
+      payload: z
+        .object({
+          ...jobCommandBase,
+          itemId: identifier,
+          state: z.enum(["completed", "missing", "uncertain", "not_applicable"]),
+          rationale: note.optional(),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...commandBase,
       type: z.enum(["quarantine_job", "reject_job"]),
       payload: z
         .object({

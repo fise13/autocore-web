@@ -182,6 +182,7 @@ export function DashboardTopBar() {
 
     if (isWarehouseRoute) return businessNavCopy.inventoryCollection.consumables;
     if (isSoldRoute) return businessNavCopy.business.sales;
+    if (pathname.startsWith("/engine-intake")) return businessNavCopy.business.engineIntake;
 
     const sectionByMode: Partial<Record<SidebarMode, string>> = {
       work_orders: businessNavCopy.business.workOrders,

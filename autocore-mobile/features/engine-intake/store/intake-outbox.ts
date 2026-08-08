@@ -270,17 +270,18 @@ async function uploadPhoto(item: IntakeOutboxPhoto): Promise<PrepareIntakePhotoR
     sizeBytes,
     capturedAt: item.capturedAt,
   });
-  if (prepared.alreadyUploaded) {
-    return prepared;
+  if (!prepared.alreadyUploaded) {
+    const upload = await fetch(prepared.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': prepared.contentType },
+      body: file,
+    });
+    if (!upload.ok) {
+      throw new Error(`Photo upload failed (HTTP ${upload.status})`);
+    }
   }
-  const upload = await fetch(prepared.uploadUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': prepared.contentType },
-    body: file,
-  });
-  if (!upload.ok) {
-    throw new Error(`Photo upload failed (HTTP ${upload.status})`);
-  }
+  // Always finalize — even for already-uploaded photos — so the server can
+  // refresh the checklist and retry AI inspection after deploy/rule changes.
   await finalizeEngineIntakePhoto({
     jobId: item.jobId,
     sessionId: item.sessionId,

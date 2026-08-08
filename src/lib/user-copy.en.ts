@@ -353,7 +353,7 @@ export const userCopyEn = {
     },
     business: {
       inventory: "Warehouse",
-      engineIntake: "Warehouse",
+      engineIntake: "Engine intake",
       sales: "Sales",
       workOrders: "Work orders",
       accounting: "Finance",
@@ -387,7 +387,7 @@ export const userCopyEn = {
     sidebarNav: {
       home: "Dashboard",
       motors: "Engines",
-      engine_intake: "Warehouse",
+      engine_intake: "Engine intake",
       sold: "Sales",
       work_orders: "Work orders",
       my_earnings: "My earnings",
@@ -397,7 +397,7 @@ export const userCopyEn = {
     sidebarBlocks: {
       navigation: {
         label: "Sections",
-        description: "Overview, motors, warehouse…",
+        description: "Overview, motors, engine intake…",
       },
       context: {
         label: "Section actions",

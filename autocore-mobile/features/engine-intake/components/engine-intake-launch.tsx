@@ -41,7 +41,7 @@ export function EngineIntakeLaunch() {
           <CameraIcon size={24} color={colors.primaryOnSubtle} />
           <View style={{ flex: 1, gap: spacing[1] }}>
             <Text variant="heading" style={{ color: colors.primaryOnSubtle }}>
-              Warehouse
+              Engine intake
             </Text>
             <Text variant="caption" style={{ color: colors.mutedForeground }}>
               Serial, free photos, sync — then managers release to Motors

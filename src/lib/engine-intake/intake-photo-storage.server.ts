@@ -140,3 +140,29 @@ export async function finalizeIntakePhotoUpload(input: {
     sizeBytes,
   };
 }
+
+/** Read an uploaded intake photo for server-side vision (Admin SDK, not a public URL). */
+export async function downloadIntakePhotoBuffer(storagePath: string): Promise<{
+  buffer: Buffer;
+  contentType: string;
+}> {
+  const path = storagePath.trim();
+  if (!path.startsWith("companies/") || !path.includes("/engine-intake/")) {
+    throw new Error("Invalid intake photo storage path");
+  }
+  const bucket = await resolveAdminStorageBucket();
+  const file = bucket.file(path);
+  const [exists] = await file.exists();
+  if (!exists) {
+    throw new Error("Intake photo was not found in storage");
+  }
+  const [buffer] = await file.download();
+  if (!buffer.length) {
+    throw new Error("Intake photo is empty");
+  }
+  const [metadata] = await file.getMetadata();
+  return {
+    buffer,
+    contentType: String(metadata.contentType || "image/jpeg"),
+  };
+}

@@ -97,9 +97,9 @@ export function EngineIntakeCreateDialog({
       setOpen(false);
       reset();
       onCreated(result.jobId);
-      toast.success("Warehouse draft created");
+      toast.success("Engine intake draft created");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not create Warehouse engine");
+      toast.error(error instanceof Error ? error.message : "Could not create engine");
     } finally {
       setBusy(false);
     }
@@ -113,15 +113,16 @@ export function EngineIntakeCreateDialog({
         if (!next) reset();
       }}
     >
-      <DialogTrigger render={<Button />}>
+      <DialogTrigger render={<Button size="sm" />}>
         <Plus className="size-4" />
         New engine
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New Warehouse engine</DialogTitle>
+          <DialogTitle>New engine</DialogTitle>
           <DialogDescription>
-            Serial only. Brand, model, and photo roles come from AI after capture.
+            Creates an Engine intake draft — not Motors Grid. Brand and photo roles come from AI
+            after capture.
           </DialogDescription>
         </DialogHeader>
         <FieldGroup>
@@ -136,68 +137,70 @@ export function EngineIntakeCreateDialog({
               value={serialCode}
               onChange={(event) => setSerialCode(event.target.value.toUpperCase())}
               placeholder="UF398539"
-              className="font-mono text-lg tracking-wide"
+              className="h-12 font-mono text-xl tracking-[0.12em]"
             />
           </Field>
-          <Field>
-            <FieldLabel>Source</FieldLabel>
-            <Select
-              value={source}
-              onValueChange={(value) => setSource(value as EngineIntakeSource)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {SOURCE_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field>
-            <FieldLabel>Priority</FieldLabel>
-            <Select
-              value={priority}
-              onValueChange={(value) => setPriority(value as EngineIntakePriority)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="normal">Normal</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="urgent">Urgent</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field>
-            <FieldLabel>Assignee</FieldLabel>
-            <Select
-              value={assigneeUid}
-              onValueChange={(value) => setAssigneeUid(value ?? "unassigned")}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {employees.map((employee) => (
-                    <SelectItem key={employee.uid} value={employee.uid}>
-                      {employee.fullName}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Field>
+              <FieldLabel>Source</FieldLabel>
+              <Select
+                value={source}
+                onValueChange={(value) => setSource(value as EngineIntakeSource)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {SOURCE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field>
+              <FieldLabel>Priority</FieldLabel>
+              <Select
+                value={priority}
+                onValueChange={(value) => setPriority(value as EngineIntakePriority)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="normal">Normal</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field>
+              <FieldLabel>Assignee</FieldLabel>
+              <Select
+                value={assigneeUid}
+                onValueChange={(value) => setAssigneeUid(value ?? "unassigned")}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {employees.map((employee) => (
+                      <SelectItem key={employee.uid} value={employee.uid}>
+                        {employee.fullName}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
         </FieldGroup>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>

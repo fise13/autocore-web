@@ -1,7 +1,15 @@
 import {
+  canReleaseWithChecklist,
+  checklistWhisper,
+  reconcileDocumentationChecklist,
+  seedDocumentationChecklist,
+  type DocumentationChecklist,
+} from "./checklist";
+import {
   canFinishWarehouseCapture,
-  canReleaseWarehouseToMotors,
   deriveDocumentationCoverage,
+  ENGINE_INTAKE_STAGING_LOCATION_CODE,
+  ENGINE_INTAKE_STAGING_LOCATION_ID,
   SUGGESTED_READY_COVERAGE_PERCENT,
 } from "./coverage";
 import type {
@@ -13,6 +21,12 @@ import type {
   IntakePhotoCategory,
   PhotoRequirement,
 } from "./types";
+
+export {
+  ENGINE_INTAKE_STAGING_LOCATION_CODE,
+  ENGINE_INTAKE_STAGING_LOCATION_ID,
+  SUGGESTED_READY_COVERAGE_PERCENT,
+};
 
 const JOB_TRANSITIONS: Record<EngineIntakeJobState, readonly EngineIntakeJobState[]> = {
   open: ["in_session", "paused", "cancelled"],
@@ -78,6 +92,8 @@ type ProgressPhoto = Pick<
   "id" | "deletedAt" | "syncState" | "url" | "reviewDecision" | "requirementId"
 > & {
   category?: IntakePhotoCategory | null;
+  checklistHits?: DocumentationChecklist["items"][number]["id"][];
+  hitConfidence?: number;
 };
 
 function activePhotos(photos: readonly ProgressPhoto[]): ProgressPhoto[] {
@@ -87,8 +103,14 @@ function activePhotos(photos: readonly ProgressPhoto[]): ProgressPhoto[] {
 export function deriveEngineIntakeProgress(
   requirements: readonly PhotoRequirement[],
   photos: readonly ProgressPhoto[],
-  options: { serialConfirmed?: boolean } = {},
-): EngineIntakeProgress {
+  options: {
+    serialConfirmed?: boolean;
+    previousChecklist?: DocumentationChecklist | null;
+    cylinderCount?: number | null;
+    hasTurbo?: boolean | null;
+    oilPanRemoved?: boolean | null;
+  } = {},
+): EngineIntakeProgress & { documentationChecklist: DocumentationChecklist } {
   const currentPhotos = activePhotos(photos);
   const uploaded = currentPhotos.filter((photo) => photo.syncState === "synced" && photo.url);
   const accepted = currentPhotos.filter((photo) => photo.reviewDecision === "accepted");
@@ -122,6 +144,28 @@ export function deriveEngineIntakeProgress(
     { serialConfirmed: options.serialConfirmed },
   );
 
+  const documentationChecklist = reconcileDocumentationChecklist({
+    previous:
+      options.previousChecklist ??
+      seedDocumentationChecklist({
+        serialConfirmed: options.serialConfirmed,
+      }),
+    photos: currentPhotos.map((photo) => ({
+      id: photo.id,
+      category: photo.category ?? "other",
+      reviewDecision: photo.reviewDecision,
+      deletedAt: photo.deletedAt,
+      checklistHits: photo.checklistHits,
+      hitConfidence: photo.hitConfidence,
+    })),
+    hints: {
+      serialConfirmed: options.serialConfirmed,
+      cylinderCount: options.cylinderCount,
+      hasTurbo: options.hasTurbo,
+      oilPanRemoved: options.oilPanRemoved,
+    },
+  });
+
   return {
     requiredCount: required.length,
     satisfiedCount: required.filter((requirement) =>
@@ -139,8 +183,11 @@ export function deriveEngineIntakeProgress(
       (photo) => photo.syncState !== "synced" && photo.syncState !== "failed",
     ).length,
     coveragePercent: coverage.percent,
-    missingFacets: coverage.missingFacets,
-    coverageWhisper: coverage.whisper,
+    missingFacets: documentationChecklist.items
+      .filter((item) => item.state === "missing")
+      .map((item) => item.id),
+    coverageWhisper: checklistWhisper(documentationChecklist),
+    documentationChecklist,
   };
 }
 
@@ -160,7 +207,6 @@ export function fieldRequirementsSatisfied(
 }
 
 export function verificationRequirementsSatisfied(progress: EngineIntakeProgress): boolean {
-  // Capture-first: verification checklist is empty by default; coverage + photos gate release.
   if (progress.requiredCount === 0) {
     return progress.capturedCount >= 1 && progress.rejectedPhotoIds.length === 0;
   }
@@ -177,46 +223,44 @@ export function isEngineIntakeSessionStale(
   return !Number.isFinite(heartbeatMs) || now - heartbeatMs > staleAfterMs;
 }
 
-/** Worker Finish: serial + ≥1 photo. Low coverage may warn but does not hard-block with override. */
 export function canFinishFieldDocumentation(
   job: Pick<EngineIntakeJob, "expectedIdentity" | "progress">,
-  overrideReason?: string | null,
 ): boolean {
-  if (
-    !canFinishWarehouseCapture({
-      serialCode: job.expectedIdentity.serialCode,
-      photoCount: job.progress.capturedCount,
-    })
-  ) {
-    return false;
-  }
-  if (job.progress.coveragePercent >= SUGGESTED_READY_COVERAGE_PERCENT) return true;
-  if (job.progress.capturedCount >= 1) {
-    // Soft threshold: finish allowed; overrideReason documents thin docs.
-    return true;
-  }
-  return Boolean(overrideReason?.trim());
+  return canFinishWarehouseCapture({
+    serialCode: job.expectedIdentity.serialCode,
+    photoCount: job.progress.capturedCount,
+  });
 }
 
 export function canReleaseEngineForSale(
-  job: Pick<EngineIntakeJob, "state" | "location" | "progress" | "expectedIdentity">,
+  job: Pick<
+    EngineIntakeJob,
+    "state" | "location" | "progress" | "expectedIdentity" | "documentationChecklist"
+  >,
   overrideReason?: string | null,
 ): boolean {
-  return canReleaseWarehouseToMotors({
+  return canReleaseWithChecklist({
     state: job.state,
     serialCode: job.expectedIdentity.serialCode,
     photoCount: job.progress.capturedCount,
-    coveragePercent: job.progress.coveragePercent,
+    checklist: job.documentationChecklist,
     overrideReason,
   });
 }
 
+/** Legacy Progress bars: completed / active items ratio from checklist when provided. */
 export function engineIntakeCompletionPercent(
   progress: Pick<
     EngineIntakeProgress,
     "requiredCount" | "satisfiedCount" | "coveragePercent" | "capturedCount"
   >,
+  checklist?: DocumentationChecklist | null,
 ): number {
+  if (checklist) {
+    const active = checklist.items.filter((item) => item.state !== "not_applicable");
+    if (active.length === 0) return 0;
+    return Math.round((checklist.summary.completedCount / active.length) * 100);
+  }
   if (typeof progress.coveragePercent === "number" && progress.capturedCount > 0) {
     return progress.coveragePercent;
   }
@@ -228,7 +272,6 @@ export function engineIntakeCompletionPercent(
   );
 }
 
-/** Warehouse lifecycle label for desktop bay / mobile list. */
 export function warehouseLifecycleLabel(
   state: EngineIntakeJobState,
 ): "Draft" | "Documenting" | "Ready" | "In review" | "Released" | "Needs attention" | "Closed" {

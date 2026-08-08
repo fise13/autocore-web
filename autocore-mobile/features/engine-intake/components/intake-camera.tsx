@@ -74,7 +74,7 @@ export const IntakeCamera = forwardRef<IntakeCameraHandle, IntakeCameraProps>(
             Camera access needed
           </Text>
           <Text variant="body" style={{ color: chrome.mutedForeground, textAlign: 'center' }}>
-            Warehouse capture needs the camera to photograph engines.
+            Engine intake needs the camera to photograph engines. You can also add photos from the library.
           </Text>
           <Button
             onPress={() => {

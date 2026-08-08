@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 
 import {
   deriveEngineIntakeProgress,
+  type DocumentationChecklist,
   type EngineIntakeAssignment,
   type EngineIntakeIdentity,
   type EngineIntakeProgress,
@@ -30,11 +31,19 @@ type PhotoJobDocument = {
   state: string;
   requirements: PhotoRequirement[];
   progress: EngineIntakeProgress;
+  documentationChecklist?: DocumentationChecklist | null;
   assignment: EngineIntakeAssignment;
   expectedIdentity?: EngineIntakeIdentity;
   identityConfirmation: Record<string, unknown> | null;
   activeReworkRequestId: string | null;
 };
+
+function splitDerivedProgress(
+  derived: EngineIntakeProgress & { documentationChecklist: DocumentationChecklist },
+) {
+  const { documentationChecklist, ...progress } = derived;
+  return { progress, documentationChecklist };
+}
 
 function photoIdFor(idempotencyKey: string): string {
   return createHash("sha256").update(idempotencyKey).digest("hex").slice(0, 40);
@@ -97,6 +106,8 @@ function progressPhoto(
   reviewDecision: "accepted" | "rejected" | "retake_requested" | null;
   requirementId: string | null;
   category: IntakePhotoCategory;
+  checklistHits?: DocumentationChecklist["items"][number]["id"][];
+  hitConfidence?: number;
 } {
   const syncState = ["dirty", "queued", "syncing", "synced", "failed"].includes(
     String(data.syncState),
@@ -127,6 +138,11 @@ function progressPhoto(
     category: (typeof data.category === "string"
       ? data.category
       : "other") as IntakePhotoCategory,
+    checklistHits: Array.isArray(data.checklistHits)
+      ? (data.checklistHits as DocumentationChecklist["items"][number]["id"][])
+      : undefined,
+    hitConfidence:
+      typeof data.hitConfidence === "number" ? data.hitConfidence : undefined,
   };
 }
 
@@ -243,7 +259,7 @@ export async function prepareIntakePhoto(
     const projectedPhotos = storedPhotos.map((photo) =>
       replacedPhotoIds.has(photo.id) ? { ...photo, deletedAt: "replaced" } : photo,
     );
-    let nextProgress = deriveEngineIntakeProgress(
+    let derived = deriveEngineIntakeProgress(
       job.requirements ?? [],
       [
         ...projectedPhotos,
@@ -261,6 +277,7 @@ export async function prepareIntakePhoto(
         serialConfirmed: Boolean(
           (job.expectedIdentity as { serialCode?: string } | undefined)?.serialCode?.trim(),
         ),
+        previousChecklist: job.documentationChecklist ?? null,
       },
     );
     if (reworkRef && reworkSnapshot?.exists) {
@@ -270,16 +287,17 @@ export async function prepareIntakePhoto(
           (requirementId): requirementId is string =>
             Boolean(requirementId) && !resolvedRequirementIds.has(requirementId!),
         );
-      nextProgress = {
-        ...nextProgress,
+      derived = {
+        ...derived,
         missingRequirementIds: Array.from(
           new Set([
-            ...nextProgress.missingRequirementIds,
+            ...derived.missingRequirementIds,
             ...unresolvedReworkRequirementIds,
           ]),
         ),
       };
     }
+    const { progress: nextProgress, documentationChecklist } = splitDerivedProgress(derived);
 
     transaction.create(photoRef, {
       companyId: access.companyId,
@@ -310,6 +328,7 @@ export async function prepareIntakePhoto(
     });
     transaction.update(jobRef, {
       progress: nextProgress,
+      documentationChecklist,
       updatedAt: FieldValue.serverTimestamp(),
       revision: FieldValue.increment(1),
     });
@@ -459,6 +478,54 @@ export async function finalizeIntakePhoto(
     throw new EngineIntakeCommandError("Photo belongs to another worker", 403);
   }
   if (photo.url && photo.syncState === "synced") {
+    // Refresh checklist mapping for already-synced photos (capture-first rules)
+    // and allow the finalize route's after() hook to retry AI inspection.
+    try {
+      await db.runTransaction(async (transaction) => {
+        const [freshJobSnapshot, photosSnapshot] = await Promise.all([
+          transaction.get(jobRef),
+          transaction.get(jobRef.collection("photos")),
+        ]);
+        if (!freshJobSnapshot.exists) return;
+        const freshJob = freshJobSnapshot.data() as PhotoJobDocument;
+        const derived = deriveEngineIntakeProgress(
+          freshJob.requirements ?? [],
+          photosSnapshot.docs.map((candidate) =>
+            progressPhoto(candidate.id, candidate.data() as Record<string, unknown>),
+          ),
+          {
+            serialConfirmed: Boolean(
+              (freshJob.expectedIdentity as { serialCode?: string } | undefined)?.serialCode?.trim(),
+            ),
+            previousChecklist: freshJob.documentationChecklist ?? null,
+          },
+        );
+        const { progress, documentationChecklist } = splitDerivedProgress(derived);
+        transaction.update(jobRef, {
+          progress,
+          documentationChecklist: {
+            ...documentationChecklist,
+            understandingState:
+              documentationChecklist.summary.saleGateMissingCount === 0
+                ? "ready"
+                : "understanding",
+          },
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        if (
+          photo.aiInspectionState === "failed" ||
+          photo.aiInspectionState === "queued" ||
+          !photo.aiInspectionState
+        ) {
+          transaction.update(photoRef, {
+            aiInspectionState: "queued",
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+      });
+    } catch (error) {
+      console.error("[engine-intake/finalize] checklist refresh", error);
+    }
     return {
       photoId: input.photoId,
       url: String(photo.url),
@@ -512,7 +579,7 @@ export async function finalizeIntakePhoto(
       );
     }
     const freshJob = freshJobSnapshot.data() as PhotoJobDocument;
-    const progress = deriveEngineIntakeProgress(
+    const derived = deriveEngineIntakeProgress(
       freshJob.requirements ?? [],
       photosSnapshot.docs.map((candidate) => {
         const data = candidate.data() as Record<string, unknown>;
@@ -529,8 +596,10 @@ export async function finalizeIntakePhoto(
         serialConfirmed: Boolean(
           (freshJob.expectedIdentity as { serialCode?: string } | undefined)?.serialCode?.trim(),
         ),
+        previousChecklist: freshJob.documentationChecklist ?? null,
       },
     );
+    const { progress, documentationChecklist } = splitDerivedProgress(derived);
 
     transaction.update(photoRef, {
       storagePath: input.storagePath,
@@ -546,6 +615,7 @@ export async function finalizeIntakePhoto(
     });
     transaction.update(jobRef, {
       progress,
+      documentationChecklist,
       updatedAt: FieldValue.serverTimestamp(),
       revision: FieldValue.increment(1),
     });

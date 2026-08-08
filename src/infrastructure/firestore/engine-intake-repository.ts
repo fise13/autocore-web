@@ -16,7 +16,10 @@ import type {
   IntakeEvent,
   IntakePhoto,
 } from "@autocore/engine-intake";
-import { normalizeEngineIntakeProgress } from "@autocore/engine-intake";
+import {
+  normalizeDocumentationChecklist,
+  normalizeEngineIntakeProgress,
+} from "@autocore/engine-intake";
 
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 
@@ -57,11 +60,15 @@ function mapJob(snapshot: QueryDocumentSnapshot<DocumentData>): EngineIntakeJob 
   const confirmation = (data.identityConfirmation ?? null) as Record<string, unknown> | null;
   const mismatch = (data.identityMismatch ?? null) as Record<string, unknown> | null;
   const verificationLock = (data.verificationLock ?? null) as Record<string, unknown> | null;
+  const identity = (data.expectedIdentity ?? {}) as Record<string, unknown>;
   return {
     ...data,
     id: snapshot.id,
     assignment: mapAssignment(data.assignment),
     progress: normalizeEngineIntakeProgress(data.progress, data.requirements),
+    documentationChecklist: normalizeDocumentationChecklist(data.documentationChecklist, {
+      serialConfirmed: typeof identity.serialCode === "string" && identity.serialCode.trim().length > 0,
+    }),
     identityConfirmation: confirmation
       ? {
           ...confirmation,

@@ -15,6 +15,11 @@ import {
   deriveEngineIntakeProgress,
   emptyEngineIntakeAssignment,
   emptyEngineIntakeProgress,
+  overrideChecklistItem,
+  seedDocumentationChecklist,
+  type DocumentationChecklist,
+  type DocumentationChecklistItemId,
+  type DocumentationChecklistItemState,
   type EngineIntakeAssignment,
   type EngineIntakeCommand,
   type EngineIntakeCommandResult,
@@ -50,6 +55,7 @@ type JobDocument = {
   expectedIdentity: EngineIntakeIdentity;
   requirements: PhotoRequirement[];
   progress: EngineIntakeProgress;
+  documentationChecklist?: DocumentationChecklist | null;
   assignment: EngineIntakeAssignment;
   location: Record<string, unknown> | null;
   identityConfirmation: Record<string, unknown> | null;
@@ -219,7 +225,7 @@ async function deriveStoredProgress(
     string,
     "accepted" | "rejected" | "retake_requested"
   > = new Map(),
-): Promise<EngineIntakeProgress> {
+): Promise<EngineIntakeProgress & { documentationChecklist: DocumentationChecklist }> {
   const snapshot = await transaction.get(jobRef.collection("photos"));
   const serialConfirmed = Boolean(
     (job.expectedIdentity as EngineIntakeIdentity | undefined)?.serialCode?.trim(),
@@ -239,10 +245,28 @@ async function deriveStoredProgress(
           typeof data.requirementId === "string" ? data.requirementId : null,
         category:
           typeof data.category === "string" ? (data.category as never) : "other",
+        checklistHits: Array.isArray(data.checklistHits)
+          ? (data.checklistHits as never[])
+          : undefined,
+        hitConfidence:
+          typeof data.hitConfidence === "number" ? data.hitConfidence : undefined,
       };
     }),
-    { serialConfirmed },
+    {
+      serialConfirmed,
+      previousChecklist: job.documentationChecklist ?? null,
+    },
   );
+}
+
+function splitProgressResult(
+  result: EngineIntakeProgress & { documentationChecklist: DocumentationChecklist },
+): {
+  progress: EngineIntakeProgress;
+  documentationChecklist: DocumentationChecklist;
+} {
+  const { documentationChecklist, ...progress } = result;
+  return { progress, documentationChecklist };
 }
 
 function engineRef(db: Firestore, job: JobDocument): DocumentReference {
@@ -313,6 +337,9 @@ async function createJob(
       assigneeName: command.payload.assigneeName ?? null,
     };
     const progress = emptyEngineIntakeProgress(requirements);
+    const documentationChecklist = seedDocumentationChecklist({
+      serialConfirmed: Boolean(expectedIdentity.serialCode),
+    });
     const dueAt = command.payload.dueAt
       ? Timestamp.fromDate(new Date(command.payload.dueAt))
       : null;
@@ -372,6 +399,7 @@ async function createJob(
       photoPackageVersion: Number(template.version ?? 2),
       requirements,
       progress,
+      documentationChecklist,
       assignment,
       location: stagingLocation,
       targetLocationId: command.payload.targetLocationId ?? ENGINE_INTAKE_STAGING_LOCATION_ID,
@@ -705,6 +733,8 @@ async function mutateWorkerSession(
     if (command.type === "resume_session") {
       assertEngineIntakeSessionTransition(session.state, "active");
       assertEngineIntakeJobTransition(job.state, "in_session");
+      const derived = await deriveStoredProgress(transaction, jobRef, job);
+      const { progress, documentationChecklist } = splitProgressResult(derived);
       transaction.update(sessionRef, {
         state: "active",
         pausedAt: null,
@@ -713,6 +743,14 @@ async function mutateWorkerSession(
       });
       transaction.update(jobRef, {
         state: "in_session",
+        progress,
+        documentationChecklist: {
+          ...documentationChecklist,
+          understandingState:
+            documentationChecklist.summary.saleGateMissingCount === 0
+              ? "ready"
+              : "understanding",
+        },
         "assignment.claimExpiresAt": claimExpiresAt,
         "assignment.lastHeartbeatAt": FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
@@ -923,7 +961,8 @@ async function mutateWorkerSession(
       sessionId: string;
       overrideReason?: string;
     };
-    const progress = await deriveStoredProgress(transaction, jobRef, job);
+    const derived = await deriveStoredProgress(transaction, jobRef, job);
+    const { progress, documentationChecklist } = splitProgressResult(derived);
     const serialCode =
       typeof job.expectedIdentity?.serialCode === "string"
         ? job.expectedIdentity.serialCode
@@ -939,12 +978,11 @@ async function mutateWorkerSession(
       );
     }
     if (
-      progress.coveragePercent < 85 &&
+      documentationChecklist.summary.saleGateMissingCount > 0 &&
       !fieldPayload.overrideReason?.trim() &&
       progress.capturedCount < 3
     ) {
-      // Soft warn path: allow finish with explicit thin-docs acknowledgment after 1 photo.
-      // Mobile always sends overrideReason when coverage is thin.
+      // Soft warn: mobile sends overrideReason when saleGate items remain.
     }
     let location = job.location as {
       locationId?: string;
@@ -1011,6 +1049,7 @@ async function mutateWorkerSession(
         lastHeartbeatAt: null,
       },
       progress,
+      documentationChecklist,
       identityConfirmation: {
         sessionId: sessionRef.id,
         confirmedByUid: access.uid,
@@ -1035,7 +1074,8 @@ async function mutateWorkerSession(
       "session.field_completed",
       {
         missingRequirementIds: progress.missingRequirementIds,
-        coveragePercent: progress.coveragePercent,
+        saleGateMissingCount: documentationChecklist.summary.saleGateMissingCount,
+        whisper: documentationChecklist.summary.whisper,
         overrideReason: fieldPayload.overrideReason ?? null,
       },
       sessionRef.id,
@@ -1480,13 +1520,55 @@ async function mutateManagedJob(
         "Another verifier is already reviewing this engine",
       );
     }
-    const progress = await deriveStoredProgress(transaction, jobRef, job);
+    const derived = await deriveStoredProgress(transaction, jobRef, job);
+    const { progress, documentationChecklist: derivedChecklist } =
+      splitProgressResult(derived);
     const blockingAiFlags = Array.isArray(job.blockingAiFlags)
       ? job.blockingAiFlags
       : [];
     const blockingAiFlagCodes = blockingAiFlags.map(
       (flag) => `${flag.photoId}:${flag.code}`,
     );
+
+    if (command.type === "override_checklist_item") {
+      const itemId = command.payload.itemId as DocumentationChecklistItemId;
+      const nextState = command.payload.state as DocumentationChecklistItemState;
+      const current = job.documentationChecklist ?? derivedChecklist;
+      const next = overrideChecklistItem(
+        current,
+        itemId,
+        nextState,
+        command.payload.rationale?.trim() ?? "Manager override",
+      );
+      transaction.update(jobRef, {
+        documentationChecklist: next,
+        progress: {
+          ...progress,
+          coverageWhisper: next.summary.whisper,
+          missingFacets: next.items
+            .filter((item) => item.state === "missing")
+            .map((item) => item.id),
+        },
+        updatedAt: FieldValue.serverTimestamp(),
+        revision: FieldValue.increment(1),
+      });
+      writeEvent(
+        transaction,
+        jobRef,
+        receiptRef.id,
+        access,
+        command,
+        job.engineId,
+        "checklist.item_overridden",
+        {
+          itemId,
+          state: nextState,
+          rationale: command.payload.rationale ?? null,
+        },
+      );
+      writeReceipt(transaction, receiptRef, access, command, result);
+      return result;
+    }
 
     if (command.type === "request_rework") {
       if (!["awaiting_verification", "quarantine"].includes(job.state)) {
@@ -1611,11 +1693,13 @@ async function mutateManagedJob(
         throw new EngineIntakeCommandError("Job is not awaiting verification");
       }
       const identity = nextIdentity(job.expectedIdentity, command.payload.identity);
+      const checklist =
+        job.documentationChecklist ?? derivedChecklist;
       const aiOverrideReason = command.payload.aiOverrideReason?.trim() ?? "";
       const releaseOverride =
         command.payload.note?.trim() ||
         aiOverrideReason ||
-        (progress.coveragePercent >= 85 ? "coverage-ready" : "");
+        (checklist.summary.ready ? "checklist-ready" : "");
       if (
         !canReleaseEngineForSale(
           {
@@ -1623,12 +1707,13 @@ async function mutateManagedJob(
             location: (job.location as EngineIntakeLocation | null) ?? null,
             progress,
             expectedIdentity: identity,
+            documentationChecklist: checklist,
           },
           releaseOverride,
         )
       ) {
         throw new EngineIntakeCommandError(
-          "Release needs a serial, at least one photo, and Ready coverage (or a manager override note)",
+          "Release needs a serial, photos, and completed sale checklist (or a manager override note)",
         );
       }
       if (progress.capturedCount < 1) {
@@ -1666,7 +1751,8 @@ async function mutateManagedJob(
           locationSet: true,
           requirementsSatisfied: true,
           blockingAiFlags: blockingAiFlagCodes,
-          coveragePercent: progress.coveragePercent,
+          saleGateMissingCount: checklist.summary.saleGateMissingCount,
+          completedCount: checklist.summary.completedCount,
         },
       };
       const photosSnapshot = await transaction.get(jobRef.collection("photos"));
