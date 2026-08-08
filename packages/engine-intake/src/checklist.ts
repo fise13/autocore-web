@@ -112,16 +112,18 @@ type ItemDef = {
 };
 
 const ITEM_DEFS: readonly ItemDef[] = [
+  // Photo-first intake: field workers only need a serial + any condition photos.
+  // Angle/AI checklist items stay available for evidence mapping but are not seeded.
   { id: "serial_visible", label: "Engine serial visible", group: "identity", saleGate: true, seed: true },
-  { id: "overall_engine", label: "Overall engine", group: "exterior", saleGate: true, seed: true },
-  { id: "valve_cover", label: "Valve cover", group: "exterior", saleGate: true, seed: true },
-  { id: "oil_pan_external", label: "Oil pan (external)", group: "bottom", saleGate: true, seed: true },
-  { id: "left_side", label: "Left side", group: "exterior", saleGate: true, seed: true },
-  { id: "right_side", label: "Right side", group: "exterior", saleGate: true, seed: true },
-  { id: "front", label: "Front", group: "exterior", saleGate: true, seed: true },
-  { id: "rear", label: "Rear", group: "exterior", saleGate: true, seed: true },
+  { id: "overall_engine", label: "Condition photos", group: "exterior", saleGate: true, seed: true },
+  { id: "valve_cover", label: "Valve cover", group: "exterior", saleGate: false, seed: false },
+  { id: "oil_pan_external", label: "Oil pan (external)", group: "bottom", saleGate: false, seed: false },
+  { id: "left_side", label: "Left side", group: "exterior", saleGate: false, seed: false },
+  { id: "right_side", label: "Right side", group: "exterior", saleGate: false, seed: false },
+  { id: "front", label: "Front", group: "exterior", saleGate: false, seed: false },
+  { id: "rear", label: "Rear", group: "exterior", saleGate: false, seed: false },
   { id: "turbo", label: "Turbo", group: "special", saleGate: false, seed: false },
-  { id: "oil_pan_removed", label: "Oil pan removed", group: "bottom", saleGate: false, seed: true },
+  { id: "oil_pan_removed", label: "Oil pan removed", group: "bottom", saleGate: false, seed: false },
   { id: "crankshaft_visible", label: "Crankshaft visible", group: "internals", saleGate: false, seed: false },
   { id: "connecting_rods", label: "Connecting rods documented", group: "internals", saleGate: false, seed: false },
   { id: "cylinder_1", label: "Cylinder 1", group: "per_cylinder", saleGate: false, seed: false },

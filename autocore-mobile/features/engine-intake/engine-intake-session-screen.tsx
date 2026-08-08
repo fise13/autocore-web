@@ -114,15 +114,12 @@ export function EngineIntakeSessionScreen() {
       .find(Boolean) ??
     null;
   const syncErrorText = humanizeIntakeOutboxError(syncError);
-  const whisper =
-    failedPhotos.length > 0
-      ? null
-      : (job?.documentationChecklist?.summary.whisper ??
-        job?.progress.coverageWhisper ??
-        (photoCount === 0 ? 'Walk around the engine and shoot freely' : null));
-  const saleGateMissing =
-    job?.documentationChecklist?.summary.saleGateMissingCount ?? 0;
-  const checklistReady = Boolean(job?.documentationChecklist?.summary.ready);
+  const guidance =
+    photoCount === 0
+      ? 'Shoot the engine condition from a few angles'
+      : unsyncedCount > 0
+        ? 'Photos stay on this phone until they sync'
+        : null;
   const jobOutboxCount = unsyncedCount;
   const isServerComplete =
     job?.state === 'awaiting_verification' ||
@@ -263,7 +260,7 @@ export function EngineIntakeSessionScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [progressMotion, photoCount, saleGateMissing]);
+  }, [progressMotion, photoCount, unsyncedCount]);
 
   if (!can('engine_intake_execute')) {
     return (
@@ -472,26 +469,6 @@ export function EngineIntakeSessionScreen() {
       );
       return;
     }
-    if (saleGateMissing > 0 && !checklistReady) {
-      Alert.alert(
-        'Checklist still open',
-        `${whisper ?? 'Sale documentation items are still missing.'}\n\nFinish anyway? The engine stays in Warehouse — not for sale yet.`,
-        [
-          { text: 'Keep shooting', style: 'cancel' },
-          {
-            text: 'Finish anyway',
-            style: 'destructive',
-            onPress: () =>
-              void finishCapture(
-                whisper
-                  ? `Worker finished with open checklist: ${whisper}`
-                  : 'Worker finished with open sale checklist',
-              ),
-          },
-        ],
-      );
-      return;
-    }
     void finishCapture();
   };
 
@@ -520,7 +497,7 @@ export function EngineIntakeSessionScreen() {
             </Text>
             <Text variant="body" style={{ color: colors.mutedForeground, textAlign: 'center' }}>
               {synced
-                ? 'Managers can release this engine to Motors Grid when documentation looks Ready.'
+                ? 'Condition photos are in Warehouse for the team to review.'
                 : `${jobOutboxCount || 1} items will sync when the connection returns.`}
             </Text>
           </View>
@@ -535,15 +512,11 @@ export function EngineIntakeSessionScreen() {
   const statusPill =
     failedPhotos.length > 0
       ? `${failedPhotos.length} failed`
-      : saleGateMissing > 0
-        ? unsyncedCount > 0
-          ? `${saleGateMissing} missing · ${unsyncedCount} syncing`
-          : `${saleGateMissing} missing`
-        : unsyncedCount > 0
-          ? `Checklist ready · ${unsyncedCount} syncing`
-          : checklistReady
-            ? 'Checklist ready'
-            : `${photoCount} photos`;
+      : unsyncedCount > 0
+        ? `${photoCount} photos · ${unsyncedCount} syncing`
+        : photoCount > 0
+          ? `${photoCount} photos`
+          : 'Ready to shoot';
 
   return (
     <View style={{ flex: 1, backgroundColor: chrome.background }}>
@@ -647,13 +620,13 @@ export function EngineIntakeSessionScreen() {
         >
           {serial}
         </Text>
-        {whisper ? (
+        {guidance ? (
           <Text
             variant="caption"
             numberOfLines={2}
             style={{ color: chrome.mutedForeground, textAlign: 'center' }}
           >
-            {whisper}
+            {guidance}
           </Text>
         ) : null}
       </View>
@@ -673,7 +646,7 @@ export function EngineIntakeSessionScreen() {
       >
         <View style={{ gap: spacing[1], alignItems: 'center' }}>
           <Text variant="heading" style={{ color: chrome.foreground, textAlign: 'center' }}>
-            Capture freely
+            Engine condition
           </Text>
           <Text variant="caption" style={{ color: chrome.mutedForeground, textAlign: 'center' }}>
             {photoCount} photo{photoCount === 1 ? '' : 's'}

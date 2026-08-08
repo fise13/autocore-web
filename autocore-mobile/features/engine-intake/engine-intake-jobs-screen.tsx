@@ -516,13 +516,10 @@ export function EngineIntakeJobsScreen() {
               Boolean(job.assignment.claimedByUid) &&
               job.assignment.claimedByUid !== uid &&
               !claimStale;
-            const checklistSummary = job.documentationChecklist?.summary;
-            const checklistLine = checklistSummary
-              ? checklistSummary.ready
-                ? 'Checklist ready'
-                : checklistSummary.whisper ??
-                  `${checklistSummary.missingCount} missing`
-              : `${job.progress.capturedCount} photos`;
+            const photoLine =
+              job.progress.capturedCount > 0
+                ? `${job.progress.capturedCount} photo${job.progress.capturedCount === 1 ? '' : 's'}`
+                : 'No photos yet';
             return (
               <Pressable
                 key={job.id}
@@ -553,7 +550,7 @@ export function EngineIntakeJobsScreen() {
                       <Text variant="caption" style={{ color: colors.mutedForeground }}>
                         {claimedByAnother
                           ? `Claimed by ${job.assignment.claimedByName ?? 'another worker'}`
-                          : `${warehouseLifecycleLabel(job.state)} · ${checklistLine} · ${job.progress.capturedCount} photos`}
+                          : `${warehouseLifecycleLabel(job.state)} · ${photoLine}`}
                       </Text>
                     </View>
                     {!claimedByAnother ? (

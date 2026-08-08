@@ -262,7 +262,7 @@ export function EngineIntakeWorkspace() {
             <h1 className="font-heading text-lg font-semibold tracking-tight">Engine intake</h1>
           </div>
           <p className="truncate text-xs text-muted-foreground">
-            Document engines here. Release to Motors Grid only when checklist is ready.
+            Document engines with condition photos. Release to Motors Grid when serial and photos look good.
           </p>
         </div>
         {canVerify ? (

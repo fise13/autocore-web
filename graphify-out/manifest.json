@@ -12955,13 +12955,13 @@
     "semantic_hash": ""
   },
   "autocore-mobile/features/engine-intake/engine-intake-jobs-screen.tsx": {
-    "mtime": 1786167710.1113813,
-    "ast_hash": "ec44df592f453d087f284306c4946b5d",
+    "mtime": 1786168909.2930644,
+    "ast_hash": "dc7cedbd3626cb4bebef759111a74fee",
     "semantic_hash": ""
   },
   "autocore-mobile/features/engine-intake/engine-intake-session-screen.tsx": {
-    "mtime": 1786167892.9696534,
-    "ast_hash": "fafb97ec0d1c6a187e097276e4a35dfa",
+    "mtime": 1786168907.9778652,
+    "ast_hash": "91e92949bffbe9ef9b64d8f38af5a6d8",
     "semantic_hash": ""
   },
   "autocore-mobile/features/engine-intake/hooks/use-engine-intake-data.ts": {
@@ -12980,8 +12980,8 @@
     "semantic_hash": ""
   },
   "autocore-mobile/features/engine-intake/store/intake-outbox.ts": {
-    "mtime": 1786168408.9004269,
-    "ast_hash": "7c75fb7388477d0e47fda72c70cdc970",
+    "mtime": 1786168926.4798927,
+    "ast_hash": "c0656268f6b18fa2d860590e5d776472",
     "semantic_hash": ""
   },
   "autocore-mobile/services/firestore/engine-intake-repository.ts": {
@@ -13000,8 +13000,8 @@
     "semantic_hash": ""
   },
   "packages/engine-intake/src/engine-intake.test.ts": {
-    "mtime": 1786168354.6472785,
-    "ast_hash": "75254425be66ac7e07e32fed41c72f5c",
+    "mtime": 1786168925.4239545,
+    "ast_hash": "057d189af58fa88d1984837e5185f2e1",
     "semantic_hash": ""
   },
   "packages/engine-intake/src/index.ts": {
@@ -13025,13 +13025,13 @@
     "semantic_hash": ""
   },
   "src/app/api/engine-intake/commands/route.ts": {
-    "mtime": 1786168422.7389057,
-    "ast_hash": "672a07867858eb7d39d3fe5d0c907134",
+    "mtime": 1786168899.192924,
+    "ast_hash": "60e8c656f33d47cad141259e7264a845",
     "semantic_hash": ""
   },
   "src/app/api/engine-intake/photos/finalize/route.ts": {
-    "mtime": 1786029044.2893271,
-    "ast_hash": "05492f825a6abda2da7c60ee060d46d4",
+    "mtime": 1786168895.7919247,
+    "ast_hash": "883c2cc52e9fbb099e51adf4ac1ce3f5",
     "semantic_hash": ""
   },
   "src/app/api/engine-intake/photos/prepare/route.ts": {
@@ -13065,8 +13065,8 @@
     "semantic_hash": ""
   },
   "src/components/engine-intake/engine-intake-workspace.tsx": {
-    "mtime": 1786167722.369677,
-    "ast_hash": "bac58b4b292f03b00e62c9e39105cace",
+    "mtime": 1786168925.7949991,
+    "ast_hash": "5a8c52b3c8e4fa3020973a71bec4b8a7",
     "semantic_hash": ""
   },
   "src/components/ui/field.tsx": {
@@ -13120,8 +13120,8 @@
     "semantic_hash": ""
   },
   "packages/engine-intake/src/checklist.ts": {
-    "mtime": 1786168316.7417622,
-    "ast_hash": "2a482acc61d6bdf2537144b32fab0522",
+    "mtime": 1786168893.1618843,
+    "ast_hash": "5f2ae89ee41e1c8b802d9e1bd617c4f2",
     "semantic_hash": ""
   },
   "src/components/engine-intake/engine-intake-checklist-pane.tsx": {

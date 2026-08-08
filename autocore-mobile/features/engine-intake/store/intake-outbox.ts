@@ -281,7 +281,7 @@ async function uploadPhoto(item: IntakeOutboxPhoto): Promise<PrepareIntakePhotoR
     }
   }
   // Always finalize — even for already-uploaded photos — so the server can
-  // refresh the checklist and retry AI inspection after deploy/rule changes.
+  // refresh progress after deploy/rule changes.
   await finalizeEngineIntakePhoto({
     jobId: item.jobId,
     sessionId: item.sessionId,
