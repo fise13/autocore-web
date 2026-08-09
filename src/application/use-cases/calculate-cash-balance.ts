@@ -1,4 +1,5 @@
 import { FinancialOperation } from "@/domain/financial-operation";
+import { accumulateOperationBalance } from "@/lib/accounting/mixed-payment";
 
 export type BalanceSnapshot = {
   cashbox: number;
@@ -6,30 +7,16 @@ export type BalanceSnapshot = {
   total: number;
 };
 
-const outgoingTypes = new Set(["expense", "refund"]);
-const incomingTypes = new Set(["income", "sale"]);
-
 export function calculateCashBalanceUseCase(operations: FinancialOperation[]): BalanceSnapshot {
-  let cashbox = 0;
-  let kaspi = 0;
+  const balances = { cashbox: 0, kaspi: 0 };
 
   for (const operation of operations) {
-    const sign = outgoingTypes.has(operation.type)
-      ? -1
-      : incomingTypes.has(operation.type)
-        ? 1
-        : 0;
-
-    if (operation.account === "cashbox") {
-      cashbox += operation.amount * sign;
-    } else if (operation.account === "kaspi") {
-      kaspi += operation.amount * sign;
-    }
+    accumulateOperationBalance(operation, balances);
   }
 
   return {
-    cashbox,
-    kaspi,
-    total: cashbox + kaspi,
+    cashbox: balances.cashbox,
+    kaspi: balances.kaspi,
+    total: balances.cashbox + balances.kaspi,
   };
 }

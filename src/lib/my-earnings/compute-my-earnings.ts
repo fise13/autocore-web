@@ -1,6 +1,6 @@
 import { subDays, startOfDay, startOfMonth } from "date-fns";
 import { format } from "date-fns";
-import { enUS } from "date-fns/locale";
+import { enUS, ru } from "date-fns/locale";
 
 import { PayrollTransaction, PayrollTransactionStatus } from "@/domain/payroll-transaction";
 import { WorkOrder } from "@/domain/work-order";
@@ -10,6 +10,7 @@ import {
   isAssignedToWorkOrder,
   isClaimableWorkOrder,
 } from "@autocore/rbac";
+import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 
 export type WeekBar = {
   label: string;
@@ -44,12 +45,14 @@ export type MyEarningsSummary = {
   statusBreakdown: StatusBreakdownSlice[];
 };
 
-const WEEKDAY_SHORT_RU = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"] as const;
-
 const CLOSED_STATUSES = new Set(["completed", "delivered"]);
 
+function dateFnsLocale() {
+  return getActiveUserCopyLocale() === "en" ? enUS : ru;
+}
+
 function weekDayShortLabel(date: Date): string {
-  return WEEKDAY_SHORT_RU[date.getDay()] ?? "";
+  return userCopy.weekdayShort[date.getDay()] ?? "";
 }
 
 function payrollEffectiveDate(row: PayrollTransaction): Date {
@@ -176,9 +179,10 @@ export function computeMyEarningsSummary(input: {
   const earningsMonthSeries: EarningsDayRow[] = Array.from({ length: 30 }, (_, index) => {
     const day = subDays(today, 29 - index);
     const key = day.toDateString();
+    const locale = dateFnsLocale();
     return {
-      day: format(day, "EEE", { locale: enUS }),
-      label: format(day, "d MMM", { locale: enUS }),
+      day: format(day, "EEE", { locale }),
+      label: format(day, "d MMM", { locale }),
       amount: earningsByDay.get(key) ?? 0,
     };
   });

@@ -16,6 +16,7 @@ import {
   operationCategoryLabel,
   operationTypeLabel,
 } from '@/lib/accounting/labels';
+import { mixedCashPortion, mixedTransferPortion } from '@/lib/accounting/mixed-payment';
 import { haptics, rhythm } from '@/theme';
 import type { FinancialOperation, OperationType } from '@/types/financial-operation';
 import { McSectionTitle } from '@/features/overview/components/mc-primitives';
@@ -24,6 +25,16 @@ import { mcType } from '@/features/overview/layout';
 import { ac } from '../layout';
 import { formatKzt } from '../utils/format';
 import { formatTimestamp } from '@/lib/firestore-timestamp';
+
+function operationAccountDetail(operation: FinancialOperation): string {
+  const cash = mixedCashPortion(operation);
+  const transfer = mixedTransferPortion(operation);
+  if (cash != null && transfer != null) {
+    return `Cash ${formatKzt(cash)} · Card ${formatKzt(transfer)}`;
+  }
+  if (operation.paymentMethod === 'mixed') return 'Mixed';
+  return operationAccountLabel(operation.account);
+}
 
 type AcOperationsListProps = {
   title: string;
@@ -131,7 +142,7 @@ const OperationRow = memo(function OperationRow({
           </Text>
         </View>
         <Text variant="meta" color="muted" numberOfLines={2} style={mcType.rowMeta}>
-          {[detail, workOrderLabel, operationAccountLabel(operation.account)]
+          {[detail, workOrderLabel, operationAccountDetail(operation)]
             .filter(Boolean)
             .join(' · ')}
           <Text variant="meta" color="muted" style={{ fontVariant: ['tabular-nums'] }}>

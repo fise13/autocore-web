@@ -22,6 +22,7 @@ export async function issueStockSaleUseCase(
     amount: number;
     account: OperationAccount;
     paymentMethod: PaymentMethod;
+    cashReceived?: number | null;
     comment?: string;
     actorUserId: string;
   },
@@ -59,6 +60,7 @@ export async function issueStockSaleUseCase(
     amount: params.amount,
     account: params.account,
     paymentMethod: params.paymentMethod,
+    cashReceived: params.cashReceived ?? null,
     comment: params.comment ?? `Продажа: ${item.name}`,
     createdByUserId: params.actorUserId,
     relatedInventoryItemId: params.itemId,

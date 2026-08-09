@@ -16,6 +16,7 @@ export async function sellMotorWithFinancialOperationUseCase(
     amount: number;
     account: OperationAccount;
     paymentMethod: PaymentMethod;
+    cashReceived?: number | null;
     comment?: string;
     relatedWarrantyId?: string | null;
     relatedClientId?: string | null;
@@ -59,6 +60,7 @@ export async function sellMotorWithFinancialOperationUseCase(
     amount: params.amount,
     account: params.account,
     paymentMethod: params.paymentMethod,
+    cashReceived: params.cashReceived ?? null,
     relatedMotorID: Number.isFinite(relatedMotorID) ? relatedMotorID : null,
     relatedMotorId: params.motor.id,
     relatedWarrantyId: params.relatedWarrantyId ?? null,

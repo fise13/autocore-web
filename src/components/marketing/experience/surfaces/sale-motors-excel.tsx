@@ -104,7 +104,18 @@ function buildSaleLayout(
     xOffsets.push(cursor);
     cursor += column.width;
   }
-  return { columns, rowHeight, headerHeight, totalWidth: cursor, xOffsets };
+  return {
+    columns,
+    rowHeight,
+    headerHeight,
+    totalWidth: cursor,
+    xOffsets,
+    density: {
+      band: containerWidth >= 2100 ? "ultrawide" : containerWidth >= 1650 ? "wide" : "cozy",
+      scale: compact ? 0.92 : 1,
+      maxAbsorbPx: Number.POSITIVE_INFINITY,
+    },
+  };
 }
 
 type SaleMotorsExcelProps = {

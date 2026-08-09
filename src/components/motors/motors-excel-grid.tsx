@@ -35,6 +35,7 @@ import {
 import { useExcelGridInteraction } from "@/hooks/use-excel-grid-interaction";
 import { buildFillOperations, resolveFillDragTarget } from "@/lib/grid/grid-fill-engine";
 import { buildGridLayoutMetrics, cellFrame } from "@/lib/grid/grid-layout-engine";
+import { gridHeaderFontSizePx } from "@/lib/grid/grid-density";
 import { GridMutation, GridCommandBus } from "@/lib/grid/grid-command-bus";
 import { deleteShortcutLabel, modShortcutLabel } from "@/lib/grid/grid-keyboard-shortcuts";
 import { resolvePointerCellClamped } from "@/lib/grid/pointer-to-cell";
@@ -344,12 +345,14 @@ export function MotorsExcelGrid({
   } = useWorkspace();
 
   const hideBrandColumn = Boolean(defaultBrandName?.trim());
+  const [scroll, setScroll] = useState({ top: 0, left: 0, width: 0, height: 0 });
   const layout = useMemo(
     () =>
       buildGridLayoutMetrics(gridZoom, {
         hiddenColumnIds: hideBrandColumn ? ["brandName"] : [],
+        containerWidth: scroll.width,
       }),
-    [gridZoom, hideBrandColumn],
+    [gridZoom, hideBrandColumn, scroll.width],
   );
   const layoutColumns = layout.columns;
   const gridBounds = useMemo(() => motorGridColumnBounds(layoutColumns), [layoutColumns]);
@@ -427,7 +430,6 @@ export function MotorsExcelGrid({
   const [editor, setEditor] = useState<EditorState | null>(null);
   const editorRef = useRef<EditorState | null>(null);
   editorRef.current = editor;
-  const [scroll, setScroll] = useState({ top: 0, left: 0, width: 0, height: 0 });
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [fillPreview, setFillPreview] = useState<GridRange | null>(null);
   const [dirtyVersion, setDirtyVersion] = useState(0);
@@ -1225,7 +1227,7 @@ export function MotorsExcelGrid({
         onKeyDown={handleKeyDown}
       >
         <div
-          className="absolute inset-0 overflow-auto bg-card excel-grid-scroll"
+          className="absolute inset-0 overflow-auto bg-background excel-grid-scroll"
           ref={bodyRef}
           onScroll={(event) => {
             const target = event.currentTarget;
@@ -1284,11 +1286,13 @@ export function MotorsExcelGrid({
           }}
         >
           <div
-            className="relative antialiased"
+            className="relative antialiased bg-card shadow-[1px_0_0_0_var(--border)]"
+            data-grid-canvas
+            data-grid-density={layout.density.band}
             style={{
               width: layout.totalWidth,
               height: layout.headerHeight + rows.length * layout.rowHeight,
-              fontSize: `${Math.max(12, Math.round(13 * gridZoom))}px`,
+              fontSize: `${Math.max(12, Math.round(13 * gridZoom * layout.density.scale))}px`,
             }}
           >
             <div
@@ -1302,13 +1306,14 @@ export function MotorsExcelGrid({
                     key={column.id}
                     type="button"
                     className={cn(
-                      "absolute top-0 flex border-r px-2.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground",
+                      "absolute top-0 flex border-r px-2.5 font-semibold uppercase tracking-[0.06em] text-muted-foreground",
                       column.align === "center" ? "items-center justify-center" : "items-center justify-start",
                     )}
                     style={{
                       left: layout.xOffsets[colIdx],
                       width: column.width,
                       height: layout.headerHeight,
+                      fontSize: `${gridHeaderFontSizePx(gridZoom, layout.density.scale)}px`,
                     }}
                     onClick={() => {
                       if (!isEditableColumn(colIdx, layoutColumns)) return;

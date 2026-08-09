@@ -2,6 +2,9 @@ export const userCopyEn = {
   appName: "AutoCore",
   defaultCompanyName: "AutoCore",
 
+  /** `Date#getDay()` order: Sunday → Saturday */
+  weekdayShort: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const,
+
   sync: {
     online: "Connected",
     offline: "Offline",
@@ -1393,7 +1396,15 @@ export const userCopyEn = {
       save: "Save",
       saving: "Saving…",
       invalidAmount: "Enter a valid amount",
+      invalidMixedSplit: "Split the amount between cash and card — both parts must be greater than zero.",
       createFailed: "Could not create operation",
+      mixedTitle: "Payment split",
+      mixedHint: "Cash goes to Cashbox, card/transfer goes to Card.",
+      mixedCash: "Cash",
+      mixedTransfer: "Card / transfer",
+      mixedSplitEvenly: "Split evenly",
+      mixedRemaining: (amount: string) => `Remaining: ${amount}`,
+      mixedBalanced: "Split covers the full amount",
     },
     overview: {
       totalBalance: "Total balance",
@@ -1471,6 +1482,8 @@ export const userCopyEn = {
       transfer: "Transfer",
       mixed: "Mixed",
     },
+    mixedAccount: (cash: string, transfer: string) => `Cash ${cash} · Card ${transfer}`,
+    mixedAccountShort: "Mixed",
     categories: {
       motor_sale: "Motor sale",
       work_order: "Work order income",

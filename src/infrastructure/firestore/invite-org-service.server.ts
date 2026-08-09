@@ -8,10 +8,7 @@ import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { generateInviteToken } from "@/lib/invites/invite-token";
 import { getResend, getSupportFrom, isResendConfigured } from "@/lib/email/resend-client";
-import {
-  buildInviteEmailHtml,
-  buildInviteEmailSubject,
-} from "@/lib/email/templates/invite-email";
+import { buildInviteEmail } from "@/lib/email/templates/invite-email";
 import { getPublicAppUrl } from "@/lib/site-urls";
 import { emitEmployeeJoinedByInviteNotifications, emitEmployeeInvitedNotification } from "@/lib/notifications/team-events.server";
 import {
@@ -554,17 +551,21 @@ export async function resendInviteAsAdmin(params: {
   });
 
   if (isResendConfigured()) {
+    const message = buildInviteEmail({
+      joinUrl,
+      companyName,
+      role: normalizeRole(String(data.role ?? "employee")),
+      expiresAt,
+      recipientEmail: email,
+    });
+
     const resend = getResend();
     await resend.emails.send({
       from: getSupportFrom(),
       to: email,
-      subject: buildInviteEmailSubject(companyName),
-      html: buildInviteEmailHtml({
-        joinUrl,
-        companyName,
-        role: normalizeRole(String(data.role ?? "employee")),
-        expiresAt,
-      }),
+      subject: message.subject,
+      html: message.html,
+      text: message.text,
     });
   }
 

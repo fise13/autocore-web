@@ -447,6 +447,7 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
           amount: payload.amount,
           account: payload.account,
           paymentMethod: payload.paymentMethod,
+          cashReceived: payload.cashReceived ?? null,
           comment: saleComment,
           relatedWarrantyId: effects.warrantyId ?? null,
           relatedClientId: client.id,

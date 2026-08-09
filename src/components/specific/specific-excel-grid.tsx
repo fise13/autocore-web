@@ -25,6 +25,7 @@ import { deleteShortcutLabel, modShortcutLabel } from "@/lib/grid/grid-keyboard-
 import { resolvePointerCellClamped } from "@/lib/grid/pointer-to-cell";
 import { useGridScrollWhileDrag } from "@/lib/grid/grid-scroll-while-drag";
 import { useGridScrollIntoView } from "@/lib/grid/scroll-into-view";
+import { gridHeaderFontSizePx } from "@/lib/grid/grid-density";
 import { handleGridRedo, handleGridUndo } from "@/lib/grid/grid-undo-redo";
 import {
   allRanges,
@@ -201,9 +202,10 @@ export function SpecificExcelGrid({
     [category, columnSchemaProp, scopedRecords],
   );
 
+  const [scroll, setScroll] = useState({ top: 0, left: 0, width: 0, height: 0 });
   const layout = useMemo(
-    () => buildSpecificMotorGridLayout(columnSchema, gridZoom),
-    [columnSchema, gridZoom],
+    () => buildSpecificMotorGridLayout(columnSchema, gridZoom, { containerWidth: scroll.width }),
+    [columnSchema, gridZoom, scroll.width],
   );
   const headerMapping = layout.mapping;
   const editableColEnd = layout.dataColumnCount;
@@ -271,7 +273,6 @@ export function SpecificExcelGrid({
   const [editor, setEditor] = useState<EditorState | null>(null);
   const editorRef = useRef<EditorState | null>(null);
   editorRef.current = editor;
-  const [scroll, setScroll] = useState({ top: 0, left: 0, width: 0, height: 0 });
   const [fillPreview, setFillPreview] = useState<GridRange | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [activeActionLabel, setActiveActionLabel] = useState<string | null>(null);
@@ -1171,7 +1172,7 @@ export function SpecificExcelGrid({
         onKeyDown={handleKeyDown}
       >
         <div
-          className="absolute inset-0 overflow-auto bg-card excel-grid-scroll"
+          className="absolute inset-0 overflow-auto bg-background excel-grid-scroll"
           ref={bodyRef}
           onScroll={(event) => {
             const target = event.currentTarget;
@@ -1210,11 +1211,13 @@ export function SpecificExcelGrid({
           }}
         >
           <div
-            className="relative"
+            className="relative bg-card shadow-[1px_0_0_0_var(--border)]"
+            data-grid-canvas
+            data-grid-density={layout.density.band}
             style={{
               width: layout.totalWidth,
               height: layout.headerHeight + displayRows.length * layout.rowHeight,
-              fontSize: `${Math.max(11, Math.round(13 * gridZoom))}px`,
+              fontSize: `${Math.max(11, Math.round(13 * gridZoom * layout.density.scale))}px`,
             }}
           >
             <div
@@ -1228,7 +1231,7 @@ export function SpecificExcelGrid({
                     key={column.id}
                     type="button"
                     className={cn(
-                      "absolute top-0 flex border-r px-2 text-[11px] font-semibold tracking-[0.01em] text-muted-foreground",
+                      "absolute top-0 flex border-r px-2 font-semibold tracking-[0.01em] text-muted-foreground",
                       column.align === "center"
                         ? "items-center justify-center"
                         : "items-center justify-start",
@@ -1238,6 +1241,7 @@ export function SpecificExcelGrid({
                       left: layout.xOffsets[colIdx],
                       width: column.width,
                       height: layout.headerHeight,
+                      fontSize: `${gridHeaderFontSizePx(gridZoom, layout.density.scale)}px`,
                     }}
                     onClick={() => {
                       if (!isEditableColumn(colIdx)) return;

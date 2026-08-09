@@ -1,5 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { Button, KeyboardFormShell, Text, toast } from '@/components/ui';
@@ -15,6 +15,12 @@ import {
   paymentMethodOptions,
   resolveOperationCategoryValue,
 } from '@/lib/accounting/labels';
+import {
+  accountForPaymentMethod,
+  buildMixedPaymentFields,
+  defaultMixedSplit,
+  isValidMixedSplit,
+} from '@/lib/accounting/mixed-payment';
 import { APP_MONEY_BASE_CURRENCY, convertToBaseCurrency } from '@/lib/money/exchange-rates';
 import { appDisplayCurrencyAffix, formatAppMoney } from '@/lib/money/display-currency';
 import { createFinancialOperation } from '@/services/accounting/create-financial-operation';
@@ -25,6 +31,7 @@ import type { OperationAccount, PaymentMethod } from '@/types/financial-operatio
 import { CoAmountField } from './components/co-amount-field';
 import { CoCategoryField } from './components/co-category-field';
 import { CoCommentField } from './components/co-comment-field';
+import { CoMixedSplit } from './components/co-mixed-split';
 import { CoCard, CoSection } from './components/co-section';
 import { CoToggleRow } from './components/co-toggle-row';
 import { CoTypeSelector } from './components/co-type-selector';
@@ -138,6 +145,7 @@ export function CreateOperationScreen() {
   const [amount, setAmount] = useState('');
   const [account, setAccount] = useState<OperationAccount>(preset.account ?? 'cashbox');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(preset.paymentMethod ?? 'cash');
+  const [mixedCashPortion, setMixedCashPortion] = useState(0);
   const [categoryInput, setCategoryInput] = useState(
     preset.category ? operationCategoryLabel(preset.category) : '',
   );
@@ -148,6 +156,7 @@ export function CreateOperationScreen() {
 
   const canEdit = can('accounting_edit');
   const direction = operationDirection(type);
+  const isMixed = paymentMethod === 'mixed';
 
   const { currency, rates } = useAppDisplayCurrency();
   const affix = appDisplayCurrencyAffix(currency);
@@ -160,6 +169,24 @@ export function CreateOperationScreen() {
     currency === APP_MONEY_BASE_CURRENCY || !amountValid
       ? null
       : `Recorded as ${formatAppMoney(baseAmount, APP_MONEY_BASE_CURRENCY)}`;
+  const mixedValid = !isMixed || isValidMixedSplit(baseAmount, mixedCashPortion);
+
+  function selectPaymentMethod(next: PaymentMethod) {
+    setPaymentMethod(next);
+    if (next === 'mixed') {
+      const split = defaultMixedSplit(amountValid ? baseAmount : 0);
+      setMixedCashPortion(split.cash);
+      setAccount(accountForPaymentMethod(next, account, split));
+      return;
+    }
+    setAccount(accountForPaymentMethod(next, account));
+  }
+
+  useEffect(() => {
+    if (!isMixed || !amountValid) return;
+    if (mixedCashPortion > 0 && mixedCashPortion < baseAmount) return;
+    setMixedCashPortion(defaultMixedSplit(baseAmount).cash);
+  }, [amountValid, baseAmount, isMixed, mixedCashPortion]);
 
   const dismiss = useCallback(() => {
     haptics.selection();
@@ -171,6 +198,10 @@ export function CreateOperationScreen() {
 
     if (!amountValid) {
       setError('Enter a valid amount');
+      return;
+    }
+    if (isMixed && !isValidMixedSplit(baseAmount, mixedCashPortion)) {
+      setError('Split the amount between cash and card — both parts must be greater than zero.');
       return;
     }
 
@@ -186,11 +217,19 @@ export function CreateOperationScreen() {
             comment: comment.trim(),
           };
 
+      const payment = buildMixedPaymentFields(
+        paymentMethod,
+        account,
+        baseAmount,
+        mixedCashPortion,
+      );
+
       await createFinancialOperation(profile.companyId, profile.id, {
         type,
         amount: baseAmount,
-        account,
-        paymentMethod,
+        account: payment.account,
+        paymentMethod: payment.paymentMethod,
+        cashReceived: payment.cashReceived,
         category: normalized.category || null,
         comment: normalized.comment || null,
       });
@@ -210,7 +249,9 @@ export function CreateOperationScreen() {
     baseAmount,
     categoryInput,
     comment,
+    isMixed,
     markAsAdvance,
+    mixedCashPortion,
     paymentMethod,
     profile?.companyId,
     profile?.id,
@@ -218,7 +259,7 @@ export function CreateOperationScreen() {
     type,
   ]);
 
-  const canSubmit = canEdit && amountValid && !submitting;
+  const canSubmit = canEdit && amountValid && mixedValid && !submitting;
 
   const headerLeft = useCallback(
     () => <SheetNavButton label="Cancel" onPress={dismiss} />,
@@ -315,17 +356,19 @@ export function CreateOperationScreen() {
 
       <CoSection title="Accounts">
         <CoCard style={{ gap: tokens.space.stack }}>
-          <View style={{ gap: tokens.space.inline }}>
-            <Text variant="caption1" color="muted" style={{ fontWeight: '600' }}>
-              Account
-            </Text>
-            <CoTypeSelector
-              accessibilityLabel="Account"
-              segments={accountOptions()}
-              value={account}
-              onValueChange={(next) => setAccount(next as OperationAccount)}
-            />
-          </View>
+          {!isMixed ? (
+            <View style={{ gap: tokens.space.inline }}>
+              <Text variant="caption1" color="muted" style={{ fontWeight: '600' }}>
+                Account
+              </Text>
+              <CoTypeSelector
+                accessibilityLabel="Account"
+                segments={accountOptions()}
+                value={account}
+                onValueChange={(next) => setAccount(next as OperationAccount)}
+              />
+            </View>
+          ) : null}
 
           <View style={{ gap: tokens.space.inline }}>
             <Text variant="caption1" color="muted" style={{ fontWeight: '600' }}>
@@ -335,9 +378,19 @@ export function CreateOperationScreen() {
               accessibilityLabel="Payment method"
               segments={paymentMethodOptions()}
               value={paymentMethod}
-              onValueChange={(next) => setPaymentMethod(next as PaymentMethod)}
+              onValueChange={(next) => selectPaymentMethod(next as PaymentMethod)}
             />
           </View>
+
+          {isMixed ? (
+            <CoMixedSplit
+              total={amountValid ? baseAmount : 0}
+              cashPortion={mixedCashPortion}
+              onCashPortionChange={setMixedCashPortion}
+              currencyMark={currencyMark || '$'}
+              direction={direction}
+            />
+          ) : null}
         </CoCard>
       </CoSection>
 

@@ -15,6 +15,7 @@ import {
   operationCategoryLabel,
   operationTypeLabel,
 } from "@/lib/accounting/labels";
+import { mixedCashPortion, mixedTransferPortion } from "@/lib/accounting/mixed-payment";
 import { MOTOR_SALE_CATEGORY } from "@/lib/accounting/categories";
 import { isAdvanceOperation } from "@/lib/accounting/advances";
 import { cn } from "@/lib/utils";
@@ -126,8 +127,20 @@ function resolveTypeLabel(type: string, labels: OperationsTableLabels): string {
   return labels.typeBadge?.[type] ?? operationTypeLabel(type);
 }
 
-function resolveAccountLabel(account: string, labels: OperationsTableLabels): string {
-  return labels.accountLabels?.[account] ?? operationAccountLabel(account);
+function resolveAccountLabel(
+  operation: FinancialOperation,
+  labels: OperationsTableLabels,
+  formatMoney: (value: number) => string,
+): string {
+  const cash = mixedCashPortion(operation);
+  const transfer = mixedTransferPortion(operation);
+  if (cash != null && transfer != null) {
+    return userCopy.accounting.mixedAccount(formatMoney(cash), formatMoney(transfer));
+  }
+  if (operation.paymentMethod === "mixed") {
+    return userCopy.accounting.mixedAccountShort;
+  }
+  return labels.accountLabels?.[operation.account] ?? operationAccountLabel(operation.account);
 }
 
 function resolveCategoryLabel(category: string | null | undefined, labels: OperationsTableLabels): string {
@@ -217,7 +230,7 @@ export function OperationsTable({
                     </span>
                   ) : null}
                 </TableCell>
-                <TableCell>{resolveAccountLabel(operation.account, labels)}</TableCell>
+                <TableCell>{resolveAccountLabel(operation, labels, formatMoney)}</TableCell>
                 <TableCell>
                   <span className={cn(motorSale && "font-medium text-primary")}>
                     {resolveCategoryLabel(operation.category, labels)}

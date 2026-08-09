@@ -29,7 +29,14 @@ import { KnowledgeSuggestionChips } from "@/components/knowledge/knowledge-sugge
 import { MotorEntity } from "@/domain/motor";
 import type { KnowledgeSuggestion } from "@/domain/knowledge/types";
 import { OperationAccount, PaymentMethod } from "@/domain/financial-operation";
+import {
+  accountForPaymentMethod,
+  buildMixedPaymentFields,
+  defaultMixedSplit,
+  isValidMixedSplit,
+} from "@/lib/accounting/mixed-payment";
 import { useClientsRealtime } from "@/hooks/use-clients-realtime";
+import { MixedPaymentSplit } from "@/components/accounting/mixed-payment-split";
 import { useCompanyBranding } from "@/hooks/use-company-branding";
 import { useKnowledgeSuggestions } from "@/hooks/use-knowledge-suggestions";
 import { createClientRepository } from "@/infrastructure/firestore/client-repository";
@@ -207,6 +214,7 @@ function SellMotorDialogForm({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
     initialValues?.paymentMethod ?? "cash",
   );
+  const [mixedCashPortion, setMixedCashPortion] = useState(0);
   const [comment, setComment] = useState(
     initialValues?.comment ??
       (mode === "sell"
@@ -253,6 +261,7 @@ function SellMotorDialogForm({
     );
     setAccount(initialValues?.account ?? "cashbox");
     setPaymentMethod(initialValues?.paymentMethod ?? "cash");
+    setMixedCashPortion(0);
     setComment(
       initialValues?.comment ??
         (mode === "sell"
@@ -280,11 +289,33 @@ function SellMotorDialogForm({
   const parsedAmount = useMemo(() => parseGroupedNumber(amount), [amount]);
   const parsedDays = Number(warrantyDays);
   const parsedKm = Number(warrantyKm);
+  const isMixed = paymentMethod === "mixed";
+
+  function selectPaymentMethod(next: PaymentMethod) {
+    setPaymentMethod(next);
+    if (next === "mixed") {
+      const split = defaultMixedSplit(parsedAmount > 0 ? parsedAmount : 0);
+      setMixedCashPortion(split.cash);
+      setAccount(accountForPaymentMethod(next, account, split));
+      return;
+    }
+    setAccount(accountForPaymentMethod(next, account));
+  }
+
+  useEffect(() => {
+    if (!isMixed || !(parsedAmount > 0)) return;
+    if (mixedCashPortion > 0 && mixedCashPortion < parsedAmount) return;
+    setMixedCashPortion(defaultMixedSplit(parsedAmount).cash);
+  }, [isMixed, mixedCashPortion, parsedAmount]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       setError(labels.errors.amount);
+      return;
+    }
+    if (isMixed && !isValidMixedSplit(parsedAmount, mixedCashPortion)) {
+      setError(userCopy.accounting.newOperation.invalidMixedSplit);
       return;
     }
 
@@ -325,10 +356,18 @@ function SellMotorDialogForm({
           ? formatWarrantyDurationLabel(parsedDays, parsedKm)
           : undefined);
 
+      const payment = buildMixedPaymentFields(
+        paymentMethod,
+        account,
+        parsedAmount,
+        mixedCashPortion,
+      );
+
       await onConfirm({
         amount: parsedAmount,
-        account,
-        paymentMethod,
+        account: payment.account,
+        paymentMethod: payment.paymentMethod,
+        cashReceived: payment.cashReceived,
         comment: comment.trim(),
         ...(mode === "sell"
           ? {
@@ -428,25 +467,27 @@ function SellMotorDialogForm({
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1">
-            <Label>{labels.account}</Label>
-            <Select value={account} onValueChange={(value) => setAccount(value as OperationAccount)}>
-              <SelectTrigger>
-                <SelectValue>
-                  {account === "kaspi" ? labels.kaspi : labels.cashbox}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cashbox">{labels.cashbox}</SelectItem>
-                <SelectItem value="kaspi">{labels.kaspi}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
+          {!isMixed ? (
+            <div className="space-y-1">
+              <Label>{labels.account}</Label>
+              <Select value={account} onValueChange={(value) => setAccount(value as OperationAccount)}>
+                <SelectTrigger>
+                  <SelectValue>
+                    {account === "kaspi" ? labels.kaspi : labels.cashbox}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cashbox">{labels.cashbox}</SelectItem>
+                  <SelectItem value="kaspi">{labels.kaspi}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+          <div className={isMixed ? "space-y-1 sm:col-span-2" : "space-y-1"}>
             <Label>{labels.payment}</Label>
             <Select
               value={paymentMethod}
-              onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
+              onValueChange={(value) => selectPaymentMethod(value as PaymentMethod)}
             >
               <SelectTrigger>
                 <SelectValue>
@@ -465,6 +506,14 @@ function SellMotorDialogForm({
             </Select>
           </div>
         </div>
+
+        {isMixed ? (
+          <MixedPaymentSplit
+            total={parsedAmount > 0 ? parsedAmount : 0}
+            cashPortion={mixedCashPortion}
+            onCashPortionChange={setMixedCashPortion}
+          />
+        ) : null}
 
         {usesCustomWarranty ? (
           <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3">

@@ -25,6 +25,7 @@ import { deleteShortcutLabel, modShortcutLabel } from "@/lib/grid/grid-keyboard-
 import { resolvePointerCellClamped } from "@/lib/grid/pointer-to-cell";
 import { useGridScrollWhileDrag } from "@/lib/grid/grid-scroll-while-drag";
 import { useGridScrollIntoView } from "@/lib/grid/scroll-into-view";
+import { gridHeaderFontSizePx } from "@/lib/grid/grid-density";
 import { handleGridRedo, handleGridUndo } from "@/lib/grid/grid-undo-redo";
 import {
   allRanges,
@@ -371,7 +372,11 @@ export function WarehouseExcelGrid({
 
   const dictionaryContext = useContext(DomainDictionaryContext);
 
-  const layout = useMemo(() => buildWarehouseGridLayoutMetrics(gridZoom), [gridZoom]);
+  const [scroll, setScroll] = useState({ top: 0, left: 0, width: 0, height: 0 });
+  const layout = useMemo(
+    () => buildWarehouseGridLayoutMetrics(gridZoom, { containerWidth: scroll.width }),
+    [gridZoom, scroll.width],
+  );
 
   const gridRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -412,7 +417,6 @@ export function WarehouseExcelGrid({
   const [editor, setEditor] = useState<EditorState | null>(null);
   const editorRef = useRef<EditorState | null>(null);
   editorRef.current = editor;
-  const [scroll, setScroll] = useState({ top: 0, left: 0, width: 0, height: 0 });
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [fillPreview, setFillPreview] = useState<GridRange | null>(null);
   const [dirtyVersion, setDirtyVersion] = useState(0);
@@ -1366,7 +1370,7 @@ export function WarehouseExcelGrid({
         onKeyDown={handleKeyDown}
       >
         <div
-          className="absolute inset-0 overflow-auto bg-card excel-grid-scroll"
+          className="absolute inset-0 overflow-auto bg-background excel-grid-scroll"
           ref={bodyRef}
           onScroll={(event) => {
             const target = event.currentTarget;
@@ -1398,11 +1402,13 @@ export function WarehouseExcelGrid({
           }}
         >
           <div
-            className="relative"
+            className="relative bg-card shadow-[1px_0_0_0_var(--border)]"
+            data-grid-canvas
+            data-grid-density={layout.density.band}
             style={{
               width: layout.totalWidth,
               height: layout.headerHeight + rows.length * layout.rowHeight,
-              fontSize: `${Math.max(11, Math.round(13 * gridZoom))}px`,
+              fontSize: `${Math.max(11, Math.round(13 * gridZoom * layout.density.scale))}px`,
             }}
           >
             <div
@@ -1416,13 +1422,14 @@ export function WarehouseExcelGrid({
                     key={column.id}
                     type="button"
                     className={cn(
-                      "absolute top-0 flex border-r px-2 text-[11px] font-semibold tracking-[0.01em] text-muted-foreground",
+                      "absolute top-0 flex border-r px-2 font-semibold tracking-[0.01em] text-muted-foreground",
                       column.align === "center" ? "items-center justify-center" : "items-center justify-start",
                     )}
                     style={{
                       left: layout.xOffsets[colIdx],
                       width: column.width,
                       height: layout.headerHeight,
+                      fontSize: `${gridHeaderFontSizePx(gridZoom, layout.density.scale)}px`,
                     }}
                     onClick={() => {
                       if (!isEditableColumn(colIdx)) return;

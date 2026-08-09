@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { EmailRateLimitError, reserveVerificationEmailSlot } from "@/lib/email/rate-limit";
 import { getNoreplyFrom, getResend, isResendConfigured } from "@/lib/email/resend-client";
-import {
-  buildVerificationCodeEmailHtml,
-  VERIFICATION_EMAIL_SUBJECT,
-} from "@/lib/email/templates/verification-code-email";
+import { buildVerificationCodeEmail } from "@/lib/email/templates/verification-code-email";
 import {
   generateVerificationCode,
   storeVerificationCode,
@@ -46,15 +43,19 @@ export async function POST(request: NextRequest) {
     const code = generateVerificationCode();
     await storeVerificationCode(access.uid, code);
 
+    const message = buildVerificationCodeEmail({
+      code,
+      userName: userRecord.displayName,
+      recipientEmail: userRecord.email,
+    });
+
     const resend = getResend();
     await resend.emails.send({
       from: getNoreplyFrom(),
       to: userRecord.email,
-      subject: VERIFICATION_EMAIL_SUBJECT,
-      html: buildVerificationCodeEmailHtml({
-        code,
-        userName: userRecord.displayName,
-      }),
+      subject: message.subject,
+      html: message.html,
+      text: message.text,
     });
 
     return NextResponse.json({ ok: true });

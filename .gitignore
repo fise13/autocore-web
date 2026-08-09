@@ -72,6 +72,9 @@ next-env.d.ts
 # apple oauth forensic artifacts
 scripts/.apple-auth-code.json
 
+# rendered email previews (npm run email:preview)
+/.email-preview/
+
 # tauri desktop
 /src-tauri/target/
 /src-tauri/gen/

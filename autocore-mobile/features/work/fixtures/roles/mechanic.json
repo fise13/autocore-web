@@ -1,0 +1,219 @@
+{
+  "role": "mechanic",
+  "summaryEmphasis": [
+    "myQueue",
+    "activeJob",
+    "claimable"
+  ],
+  "permissions": {
+    "work_orders_view": true,
+    "work_orders_edit": true,
+    "engine_intake_view": true,
+    "engine_intake_execute": true,
+    "engine_intake_verify": false,
+    "inventory_view": true,
+    "accounting_view": false
+  },
+  "coachTips": [
+    {
+      "id": "tip_mechanic_0",
+      "title": "mechanic tip 1",
+      "body": "Operational guidance #1 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #1 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #1 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_1",
+      "title": "mechanic tip 2",
+      "body": "Operational guidance #2 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #2 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #2 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_2",
+      "title": "mechanic tip 3",
+      "body": "Operational guidance #3 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #3 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #3 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_3",
+      "title": "mechanic tip 4",
+      "body": "Operational guidance #4 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #4 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #4 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_4",
+      "title": "mechanic tip 5",
+      "body": "Operational guidance #5 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #5 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #5 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_5",
+      "title": "mechanic tip 6",
+      "body": "Operational guidance #6 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #6 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #6 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_6",
+      "title": "mechanic tip 7",
+      "body": "Operational guidance #7 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #7 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #7 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_7",
+      "title": "mechanic tip 8",
+      "body": "Operational guidance #8 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #8 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #8 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_8",
+      "title": "mechanic tip 9",
+      "body": "Operational guidance #9 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #9 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #9 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_9",
+      "title": "mechanic tip 10",
+      "body": "Operational guidance #10 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #10 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #10 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_10",
+      "title": "mechanic tip 11",
+      "body": "Operational guidance #11 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #11 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #11 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_11",
+      "title": "mechanic tip 12",
+      "body": "Operational guidance #12 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #12 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #12 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_12",
+      "title": "mechanic tip 13",
+      "body": "Operational guidance #13 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #13 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #13 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_13",
+      "title": "mechanic tip 14",
+      "body": "Operational guidance #14 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #14 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #14 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_14",
+      "title": "mechanic tip 15",
+      "body": "Operational guidance #15 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #15 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #15 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_15",
+      "title": "mechanic tip 16",
+      "body": "Operational guidance #16 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #16 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #16 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_16",
+      "title": "mechanic tip 17",
+      "body": "Operational guidance #17 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #17 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #17 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_17",
+      "title": "mechanic tip 18",
+      "body": "Operational guidance #18 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #18 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #18 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_18",
+      "title": "mechanic tip 19",
+      "body": "Operational guidance #19 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #19 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #19 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_19",
+      "title": "mechanic tip 20",
+      "body": "Operational guidance #20 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #20 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #20 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_20",
+      "title": "mechanic tip 21",
+      "body": "Operational guidance #21 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #21 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #21 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_21",
+      "title": "mechanic tip 22",
+      "body": "Operational guidance #22 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #22 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #22 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_22",
+      "title": "mechanic tip 23",
+      "body": "Operational guidance #23 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #23 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #23 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_23",
+      "title": "mechanic tip 24",
+      "body": "Operational guidance #24 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #24 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #24 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_24",
+      "title": "mechanic tip 25",
+      "body": "Operational guidance #25 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #25 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #25 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_25",
+      "title": "mechanic tip 26",
+      "body": "Operational guidance #26 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #26 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #26 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_26",
+      "title": "mechanic tip 27",
+      "body": "Operational guidance #27 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #27 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #27 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_27",
+      "title": "mechanic tip 28",
+      "body": "Operational guidance #28 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #28 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #28 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_28",
+      "title": "mechanic tip 29",
+      "body": "Operational guidance #29 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #29 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #29 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_29",
+      "title": "mechanic tip 30",
+      "body": "Operational guidance #30 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #30 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #30 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_30",
+      "title": "mechanic tip 31",
+      "body": "Operational guidance #31 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #31 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #31 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_31",
+      "title": "mechanic tip 32",
+      "body": "Operational guidance #32 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #32 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #32 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_32",
+      "title": "mechanic tip 33",
+      "body": "Operational guidance #33 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #33 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #33 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_33",
+      "title": "mechanic tip 34",
+      "body": "Operational guidance #34 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #34 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #34 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_34",
+      "title": "mechanic tip 35",
+      "body": "Operational guidance #35 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #35 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #35 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_35",
+      "title": "mechanic tip 36",
+      "body": "Operational guidance #36 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #36 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #36 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_36",
+      "title": "mechanic tip 37",
+      "body": "Operational guidance #37 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #37 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #37 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_37",
+      "title": "mechanic tip 38",
+      "body": "Operational guidance #38 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #38 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #38 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_38",
+      "title": "mechanic tip 39",
+      "body": "Operational guidance #39 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #39 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #39 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_mechanic_39",
+      "title": "mechanic tip 40",
+      "body": "Operational guidance #40 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #40 for mechanic in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #40 for mechanic in the Work OS. Use rings and queues to keep the bay moving. "
+    }
+  ]
+}

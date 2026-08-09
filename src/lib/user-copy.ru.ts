@@ -2,6 +2,9 @@ export const userCopyRu = {
   appName: "AutoCore",
   defaultCompanyName: "AutoCore",
 
+  /** `Date#getDay()` order: Sunday → Saturday */
+  weekdayShort: ["вс", "пн", "вт", "ср", "чт", "пт", "сб"] as const,
+
   sync: {
     online: "Подключено",
     offline: "Офлайн",
@@ -1401,7 +1404,15 @@ export const userCopyRu = {
       save: "Сохранить",
       saving: "Сохраняем...",
       invalidAmount: "Введите корректную сумму",
+      invalidMixedSplit: "Разделите сумму между наличными и картой — обе части должны быть больше нуля.",
       createFailed: "Не удалось создать операцию",
+      mixedTitle: "Разбивка оплаты",
+      mixedHint: "Наличные идут в кассу, перевод/карта — на счёт «Карта».",
+      mixedCash: "Наличные",
+      mixedTransfer: "Карта / перевод",
+      mixedSplitEvenly: "Пополам",
+      mixedRemaining: (amount: string) => `Осталось: ${amount}`,
+      mixedBalanced: "Сумма разбита полностью",
     },
     overview: {
       totalBalance: "Общий баланс",
@@ -1479,6 +1490,8 @@ export const userCopyRu = {
       transfer: "Безнал",
       mixed: "Смешанная",
     },
+    mixedAccount: (cash: string, transfer: string) => `Нал. ${cash} · Карта ${transfer}`,
+    mixedAccountShort: "Смешанная",
     categories: {
       motor_sale: "Продажа мотора",
       work_order: "Доход заказ-наряда",

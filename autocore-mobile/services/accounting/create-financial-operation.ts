@@ -3,7 +3,7 @@ import type { CreateFinancialOperationInput, OperationType } from '@/types/finan
 
 type CreatePayload = Pick<
   CreateFinancialOperationInput,
-  'type' | 'amount' | 'account' | 'paymentMethod' | 'category' | 'comment'
+  'type' | 'amount' | 'account' | 'paymentMethod' | 'cashReceived' | 'category' | 'comment'
 >;
 
 function assertValidPayload(payload: CreatePayload): void {
@@ -26,6 +26,7 @@ export async function createFinancialOperation(
     amount: payload.amount,
     account: payload.account,
     paymentMethod: payload.paymentMethod,
+    cashReceived: payload.cashReceived ?? null,
     category: payload.category ?? null,
     comment: payload.comment ?? null,
   });

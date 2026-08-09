@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { afterEach, describe, it } from "node:test";
 
 import { PayrollTransaction } from "@/domain/payroll-transaction";
 import { WorkOrder } from "@/domain/work-order";
@@ -9,6 +9,13 @@ import {
   filterPayrollTransactions,
 } from "@/lib/my-earnings/compute-my-earnings";
 import { computeEmployeeDashboard } from "@/lib/overview/compute-employee-dashboard";
+import { getActiveUserCopyLocale, setActiveUserCopyLocale } from "@/lib/user-copy";
+
+const initialLocale = getActiveUserCopyLocale();
+
+afterEach(() => {
+  setActiveUserCopyLocale(initialLocale);
+});
 
 function payroll(
   overrides: Partial<PayrollTransaction> & Pick<PayrollTransaction, "id" | "amount" | "status">,
@@ -114,5 +121,16 @@ describe("buildWeekBarsFromMap", () => {
     const bars = buildWeekBarsFromMap(map, new Date("2026-07-07T12:00:00"), 7);
     assert.equal(bars.length, 7);
     assert.equal(bars.at(-1)?.value, 3);
+  });
+
+  it("uses active locale for weekday labels", () => {
+    const end = new Date("2026-07-07T12:00:00"); // Tuesday
+    setActiveUserCopyLocale("en");
+    const enBars = buildWeekBarsFromMap(new Map(), end, 7);
+    assert.equal(enBars.at(-1)?.label, "Tue");
+
+    setActiveUserCopyLocale("ru");
+    const ruBars = buildWeekBarsFromMap(new Map(), end, 7);
+    assert.equal(ruBars.at(-1)?.label, "вт");
   });
 });

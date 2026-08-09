@@ -1,0 +1,219 @@
+{
+  "role": "diagnostician",
+  "summaryEmphasis": [
+    "bay",
+    "verify",
+    "kpis"
+  ],
+  "permissions": {
+    "work_orders_view": true,
+    "work_orders_edit": true,
+    "engine_intake_view": true,
+    "engine_intake_execute": false,
+    "engine_intake_verify": false,
+    "inventory_view": true,
+    "accounting_view": false
+  },
+  "coachTips": [
+    {
+      "id": "tip_diagnostician_0",
+      "title": "diagnostician tip 1",
+      "body": "Operational guidance #1 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #1 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #1 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_1",
+      "title": "diagnostician tip 2",
+      "body": "Operational guidance #2 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #2 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #2 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_2",
+      "title": "diagnostician tip 3",
+      "body": "Operational guidance #3 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #3 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #3 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_3",
+      "title": "diagnostician tip 4",
+      "body": "Operational guidance #4 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #4 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #4 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_4",
+      "title": "diagnostician tip 5",
+      "body": "Operational guidance #5 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #5 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #5 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_5",
+      "title": "diagnostician tip 6",
+      "body": "Operational guidance #6 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #6 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #6 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_6",
+      "title": "diagnostician tip 7",
+      "body": "Operational guidance #7 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #7 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #7 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_7",
+      "title": "diagnostician tip 8",
+      "body": "Operational guidance #8 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #8 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #8 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_8",
+      "title": "diagnostician tip 9",
+      "body": "Operational guidance #9 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #9 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #9 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_9",
+      "title": "diagnostician tip 10",
+      "body": "Operational guidance #10 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #10 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #10 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_10",
+      "title": "diagnostician tip 11",
+      "body": "Operational guidance #11 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #11 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #11 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_11",
+      "title": "diagnostician tip 12",
+      "body": "Operational guidance #12 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #12 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #12 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_12",
+      "title": "diagnostician tip 13",
+      "body": "Operational guidance #13 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #13 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #13 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_13",
+      "title": "diagnostician tip 14",
+      "body": "Operational guidance #14 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #14 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #14 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_14",
+      "title": "diagnostician tip 15",
+      "body": "Operational guidance #15 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #15 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #15 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_15",
+      "title": "diagnostician tip 16",
+      "body": "Operational guidance #16 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #16 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #16 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_16",
+      "title": "diagnostician tip 17",
+      "body": "Operational guidance #17 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #17 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #17 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_17",
+      "title": "diagnostician tip 18",
+      "body": "Operational guidance #18 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #18 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #18 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_18",
+      "title": "diagnostician tip 19",
+      "body": "Operational guidance #19 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #19 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #19 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_19",
+      "title": "diagnostician tip 20",
+      "body": "Operational guidance #20 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #20 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #20 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_20",
+      "title": "diagnostician tip 21",
+      "body": "Operational guidance #21 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #21 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #21 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_21",
+      "title": "diagnostician tip 22",
+      "body": "Operational guidance #22 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #22 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #22 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_22",
+      "title": "diagnostician tip 23",
+      "body": "Operational guidance #23 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #23 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #23 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_23",
+      "title": "diagnostician tip 24",
+      "body": "Operational guidance #24 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #24 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #24 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_24",
+      "title": "diagnostician tip 25",
+      "body": "Operational guidance #25 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #25 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #25 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_25",
+      "title": "diagnostician tip 26",
+      "body": "Operational guidance #26 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #26 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #26 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_26",
+      "title": "diagnostician tip 27",
+      "body": "Operational guidance #27 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #27 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #27 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_27",
+      "title": "diagnostician tip 28",
+      "body": "Operational guidance #28 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #28 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #28 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_28",
+      "title": "diagnostician tip 29",
+      "body": "Operational guidance #29 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #29 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #29 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_29",
+      "title": "diagnostician tip 30",
+      "body": "Operational guidance #30 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #30 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #30 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_30",
+      "title": "diagnostician tip 31",
+      "body": "Operational guidance #31 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #31 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #31 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_31",
+      "title": "diagnostician tip 32",
+      "body": "Operational guidance #32 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #32 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #32 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_32",
+      "title": "diagnostician tip 33",
+      "body": "Operational guidance #33 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #33 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #33 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_33",
+      "title": "diagnostician tip 34",
+      "body": "Operational guidance #34 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #34 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #34 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_34",
+      "title": "diagnostician tip 35",
+      "body": "Operational guidance #35 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #35 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #35 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_35",
+      "title": "diagnostician tip 36",
+      "body": "Operational guidance #36 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #36 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #36 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_36",
+      "title": "diagnostician tip 37",
+      "body": "Operational guidance #37 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #37 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #37 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_37",
+      "title": "diagnostician tip 38",
+      "body": "Operational guidance #38 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #38 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #38 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_38",
+      "title": "diagnostician tip 39",
+      "body": "Operational guidance #39 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #39 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #39 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    },
+    {
+      "id": "tip_diagnostician_39",
+      "title": "diagnostician tip 40",
+      "body": "Operational guidance #40 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #40 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. Operational guidance #40 for diagnostician in the Work OS. Use rings and queues to keep the bay moving. "
+    }
+  ]
+}

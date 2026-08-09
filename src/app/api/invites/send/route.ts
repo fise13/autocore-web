@@ -5,10 +5,7 @@ import { UserRole, USER_ROLES } from "@/domain/user";
 import { createInviteAsAdmin } from "@/infrastructure/firestore/invite-org-service.server";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { getResend, getSupportFrom, isResendConfigured } from "@/lib/email/resend-client";
-import {
-  buildInviteEmailHtml,
-  buildInviteEmailSubject,
-} from "@/lib/email/templates/invite-email";
+import { buildInviteEmail } from "@/lib/email/templates/invite-email";
 import { AccountAccessError, verifyAccountAccess } from "@/lib/auth/verify-account-access";
 import { verifyCompanyManager } from "@/lib/auth/verify-company-manager.server";
 
@@ -65,17 +62,21 @@ export async function POST(request: NextRequest) {
     }
 
     const expiresAt = new Date(Date.now() + ttlHours * 3600 * 1000);
+    const message = buildInviteEmail({
+      joinUrl: created.joinUrl,
+      companyName,
+      role,
+      expiresAt,
+      recipientEmail: email,
+    });
+
     const resend = getResend();
     await resend.emails.send({
       from: getSupportFrom(),
       to: email,
-      subject: buildInviteEmailSubject(companyName),
-      html: buildInviteEmailHtml({
-        joinUrl: created.joinUrl,
-        companyName,
-        role,
-        expiresAt,
-      }),
+      subject: message.subject,
+      html: message.html,
+      text: message.text,
     });
 
     return NextResponse.json({

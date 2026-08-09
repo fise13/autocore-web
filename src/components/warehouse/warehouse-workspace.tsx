@@ -532,6 +532,7 @@ export function WarehouseWorkspace() {
               amount: payload.amount,
               account: payload.account,
               paymentMethod: payload.paymentMethod,
+              cashReceived: payload.cashReceived ?? null,
               comment: payload.comment,
               actorUserId,
             },

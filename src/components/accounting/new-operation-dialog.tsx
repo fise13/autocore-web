@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { ACCOUNTING_CATEGORY_SUGGESTIONS } from "@/components/accounting/accounting-categories";
 import { filterAccountingCategorySuggestions } from "@/components/accounting/accounting-category-suggestions";
+import { MixedPaymentSplit } from "@/components/accounting/mixed-payment-split";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -36,6 +37,12 @@ import {
   resolveOperationCategoryValue,
 } from "@/lib/accounting/labels";
 import { appendAdvanceMarker } from "@/lib/accounting/advances";
+import {
+  accountForPaymentMethod,
+  buildMixedPaymentFields,
+  defaultMixedSplit,
+  isValidMixedSplit,
+} from "@/lib/accounting/mixed-payment";
 import { formatGroupedNumber } from "@/lib/money/format-number";
 import {
   OPERATION_ACCOUNTS,
@@ -52,6 +59,7 @@ type NewOperationDialogProps = {
     amount: number;
     account: OperationAccount;
     paymentMethod: PaymentMethod;
+    cashReceived?: number | null;
     category?: string | null;
     comment?: string | null;
   }) => Promise<void>;
@@ -87,6 +95,7 @@ export function NewOperationDialog({
   const [amount, setAmount] = useState(formatGroupedNumber(0));
   const [account, setAccount] = useState<OperationAccount>("cashbox");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [mixedCashPortion, setMixedCashPortion] = useState(0);
   const [categoryInput, setCategoryInput] = useState("");
   const [comment, setComment] = useState("");
   const [markAsAdvance, setMarkAsAdvance] = useState(false);
@@ -96,11 +105,33 @@ export function NewOperationDialog({
     () => filterAccountingCategorySuggestions(categoryInput, categorySuggestions).slice(0, 12),
     [categoryInput, categorySuggestions],
   );
+  const isMixed = paymentMethod === "mixed";
+
+  function selectPaymentMethod(next: PaymentMethod) {
+    setPaymentMethod(next);
+    if (next === "mixed") {
+      const split = defaultMixedSplit(parsedAmount > 0 ? parsedAmount : 0);
+      setMixedCashPortion(split.cash);
+      setAccount(accountForPaymentMethod(next, account, split));
+      return;
+    }
+    setAccount(accountForPaymentMethod(next, account));
+  }
+
+  useEffect(() => {
+    if (!isMixed || !(parsedAmount > 0)) return;
+    if (mixedCashPortion > 0 && mixedCashPortion < parsedAmount) return;
+    setMixedCashPortion(defaultMixedSplit(parsedAmount).cash);
+  }, [isMixed, mixedCashPortion, parsedAmount]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       setError(userCopy.accounting.newOperation.invalidAmount);
+      return;
+    }
+    if (isMixed && !isValidMixedSplit(parsedAmount, mixedCashPortion)) {
+      setError(userCopy.accounting.newOperation.invalidMixedSplit);
       return;
     }
 
@@ -114,11 +145,19 @@ export function NewOperationDialog({
             comment: comment.trim(),
           };
 
+      const payment = buildMixedPaymentFields(
+        paymentMethod,
+        account,
+        parsedAmount,
+        mixedCashPortion,
+      );
+
       await onCreate({
         type,
         amount: parsedAmount,
-        account,
-        paymentMethod,
+        account: payment.account,
+        paymentMethod: payment.paymentMethod,
+        cashReceived: payment.cashReceived,
         category: normalized.category || null,
         comment: normalized.comment || null,
       });
@@ -130,6 +169,7 @@ export function NewOperationDialog({
       setType("expense");
       setPaymentMethod("cash");
       setAccount("cashbox");
+      setMixedCashPortion(0);
     } catch (e) {
       setError(e instanceof Error ? e.message : userCopy.accounting.newOperation.createFailed);
     } finally {
@@ -175,27 +215,29 @@ export function NewOperationDialog({
               />
             </div>
 
-            <div className="space-y-1">
-              <Label>{userCopy.accounting.newOperation.account}</Label>
-              <Select value={account} onValueChange={(value) => setAccount(value as OperationAccount)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue>{operationAccountLabel(account)}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {OPERATION_ACCOUNTS.map((item) => (
-                    <SelectItem key={item} value={item}>
-                      {operationAccountLabel(item)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!isMixed ? (
+              <div className="space-y-1">
+                <Label>{userCopy.accounting.newOperation.account}</Label>
+                <Select value={account} onValueChange={(value) => setAccount(value as OperationAccount)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue>{operationAccountLabel(account)}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {OPERATION_ACCOUNTS.map((item) => (
+                      <SelectItem key={item} value={item}>
+                        {operationAccountLabel(item)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
 
-            <div className="space-y-1">
+            <div className={cnMixedPaymentClass(isMixed)}>
               <Label>{userCopy.accounting.newOperation.payment}</Label>
               <Select
                 value={paymentMethod}
-                onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
+                onValueChange={(value) => selectPaymentMethod(value as PaymentMethod)}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue>{paymentMethodLabel(paymentMethod)}</SelectValue>
@@ -210,6 +252,14 @@ export function NewOperationDialog({
               </Select>
             </div>
           </div>
+
+          {isMixed ? (
+            <MixedPaymentSplit
+              total={parsedAmount > 0 ? parsedAmount : 0}
+              cashPortion={mixedCashPortion}
+              onCashPortionChange={setMixedCashPortion}
+            />
+          ) : null}
 
           <div className="space-y-1">
             <Label>{userCopy.accounting.newOperation.category}</Label>
@@ -267,4 +317,8 @@ export function NewOperationDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function cnMixedPaymentClass(isMixed: boolean): string {
+  return isMixed ? "space-y-1 sm:col-span-2" : "space-y-1";
 }

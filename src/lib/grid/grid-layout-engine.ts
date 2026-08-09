@@ -1,14 +1,21 @@
 import {
   MOTOR_GRID_BASE_HEADER_HEIGHT,
   MOTOR_GRID_BASE_ROW_HEIGHT,
+  MOTOR_GRID_COLUMN_FIT,
   MOTOR_GRID_COLUMN_WIDTHS,
   scaleMotorGridDimension,
 } from "@/lib/motor-grid-layout";
+import {
+  applyDensityToColumns,
+  type GridDensityProfile,
+} from "@/lib/grid/grid-density";
 import { GridCellAddress, GridColumnDefinition, GridColumnId } from "@/lib/grid/grid-types";
 import { userCopy } from "@/lib/user-copy";
 
 export type BuildGridLayoutOptions = {
   hiddenColumnIds?: GridColumnId[];
+  /** Scrollport width; drives density band + capped leftover absorb. */
+  containerWidth?: number;
 };
 
 function motorGridBaseColumns(): GridColumnDefinition[] {
@@ -117,6 +124,7 @@ export type GridLayoutMetrics = {
   headerHeight: number;
   totalWidth: number;
   xOffsets: number[];
+  density: GridDensityProfile;
 };
 
 export function buildGridLayoutMetrics(
@@ -124,21 +132,32 @@ export function buildGridLayoutMetrics(
   options?: BuildGridLayoutOptions,
 ): GridLayoutMetrics {
   const hidden = new Set(options?.hiddenColumnIds ?? []);
-  const columns = motorGridBaseColumns()
-    .filter((column) => !hidden.has(column.id))
-    .map((column) => ({
-      ...column,
-      width: scaleMotorGridDimension(column.width, zoom),
-    }));
-  const rowHeight = scaleMotorGridDimension(MOTOR_GRID_BASE_ROW_HEIGHT, zoom);
-  const headerHeight = scaleMotorGridDimension(MOTOR_GRID_BASE_HEADER_HEIGHT, zoom);
-  const xOffsets: number[] = [];
-  let cursor = 0;
-  for (const column of columns) {
-    xOffsets.push(cursor);
-    cursor += column.width;
-  }
-  return { columns, rowHeight, headerHeight, totalWidth: cursor, xOffsets };
+  const baseColumns = motorGridBaseColumns().filter((column) => !hidden.has(column.id));
+  const fitted = applyDensityToColumns({
+    columns: baseColumns.map((column) => ({
+      width: column.width,
+      fit: MOTOR_GRID_COLUMN_FIT[column.id as keyof typeof MOTOR_GRID_COLUMN_FIT],
+    })),
+    zoom,
+    containerWidth: options?.containerWidth,
+    scaleDimension: scaleMotorGridDimension,
+    baseRowHeight: MOTOR_GRID_BASE_ROW_HEIGHT,
+    baseHeaderHeight: MOTOR_GRID_BASE_HEADER_HEIGHT,
+  });
+
+  const columns = baseColumns.map((column, index) => ({
+    ...column,
+    width: fitted.widths[index] ?? column.width,
+  }));
+
+  return {
+    columns,
+    rowHeight: fitted.rowHeight,
+    headerHeight: fitted.headerHeight,
+    totalWidth: fitted.totalWidth,
+    xOffsets: fitted.xOffsets,
+    density: fitted.density,
+  };
 }
 
 export function cellFrame(layout: GridLayoutMetrics, cell: GridCellAddress): {

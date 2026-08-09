@@ -8,10 +8,7 @@ import {
   markPasswordResetEmailSent,
 } from "@/lib/email/rate-limit";
 import { getNoreplyFrom, getResend, isResendConfigured } from "@/lib/email/resend-client";
-import {
-  buildPasswordResetEmailHtml,
-  PASSWORD_RESET_EMAIL_SUBJECT,
-} from "@/lib/email/templates/password-reset-email";
+import { buildPasswordResetEmail } from "@/lib/email/templates/password-reset-email";
 import { getAdminAuth } from "@/infrastructure/firebase/admin";
 
 export const runtime = "nodejs";
@@ -48,15 +45,19 @@ export async function POST(request: NextRequest) {
         buildActionCodeSettings(),
       );
       const resetUrl = rewriteFirebaseActionLink(firebaseResetUrl);
+      const message = buildPasswordResetEmail({
+        resetUrl,
+        userName: userRecord.displayName,
+        recipientEmail: email,
+      });
+
       const resend = getResend();
       await resend.emails.send({
         from: getNoreplyFrom(),
         to: email,
-        subject: PASSWORD_RESET_EMAIL_SUBJECT,
-        html: buildPasswordResetEmailHtml({
-          resetUrl,
-          userName: userRecord.displayName,
-        }),
+        subject: message.subject,
+        html: message.html,
+        text: message.text,
       });
 
       await markPasswordResetEmailSent(email);

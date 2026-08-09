@@ -1,45 +1,67 @@
 import "server-only";
 
-import { buildEmailLayout } from "@/lib/email/templates/layout";
+import { featureStrip, paragraph, strong } from "@/lib/email/templates/blocks";
+import { buildEmailLayout, buildEmailText, type EmailMessage } from "@/lib/email/templates/layout";
 
 export type VerificationEmailParams = {
   verifyUrl: string;
   userName?: string | null;
+  recipientEmail?: string | null;
 };
 
-export function buildVerificationEmailHtml(params: VerificationEmailParams): string {
-  const greeting = params.userName?.trim()
-    ? `Здравствуйте, ${params.userName.trim()}!`
-    : "Здравствуйте!";
+export const WORKSPACE_MODULES = [
+  "Motors",
+  "Warehouse",
+  "Work orders",
+  "Accounting",
+] as const;
 
-  const bodyHtml = `
-    <p style="margin:0 0 16px;color:#11131a !important;">${greeting}</p>
-    <p style="margin:0 0 20px;color:#11131a !important;">
-      Остался один шаг — подтвердите email, чтобы открыть рабочее пространство AutoCore.
-    </p>
-    <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 20px;width:100%;">
-      <tr>
-        <td style="padding:14px 16px;border-radius:12px;background:#f5f8fd;border:1px solid #e8ecf2;">
-          <p style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#5c6370 !important;">После подтверждения</p>
-          <p style="margin:0;font-size:14px;line-height:1.6;color:#11131a !important;">
-            Моторы · Склад · Заказ-наряды · Бухгалтерия
-          </p>
-        </td>
-      </tr>
-    </table>
-    <p style="margin:0;font-size:13px;line-height:1.55;color:#5c6370 !important;">
-      Ссылка действует ограниченное время. Если вы не регистрировались в AutoCore, просто проигнорируйте это письмо.
-    </p>`;
-
-  return buildEmailLayout({
-    previewText: "Подтвердите email для доступа к AutoCore",
-    eyebrow: "Подтверждение аккаунта",
-    title: "Подтвердите email",
-    bodyHtml,
-    ctaLabel: "Подтвердить email",
-    ctaUrl: params.verifyUrl,
-    footerNote: "После подтверждения вернитесь в приложение и нажмите «Я подтвердил email».",
-  });
+function greeting(userName?: string | null): string {
+  const name = userName?.trim();
+  return name ? `Hi ${name},` : "Hi,";
 }
 
-export const VERIFICATION_EMAIL_SUBJECT = "Подтвердите email — AutoCore";
+export function buildVerificationEmail(params: VerificationEmailParams): EmailMessage {
+  const bodyHtml = [
+    paragraph(`${strong(greeting(params.userName))} one step left — confirm your email address to open your AutoCore workspace.`),
+    featureStrip({ label: "Unlocked after confirming", items: WORKSPACE_MODULES }),
+    paragraph(
+      "The link works once and expires after a short while. If it has already expired, request a new one from the app.",
+      { tone: "muted", marginBottom: 0 },
+    ),
+  ].join("");
+
+  return {
+    subject: "Confirm your email — AutoCore",
+    html: buildEmailLayout({
+      previewText: "Confirm your email address to open your AutoCore workspace.",
+      eyebrow: "Account setup",
+      title: "Confirm your email address",
+      bodyHtml,
+      cta: {
+        label: "Confirm email address",
+        url: params.verifyUrl,
+      },
+      footerNote:
+        "If you didn't create an AutoCore account, you can safely ignore this message — the address stays unconfirmed.",
+      recipientEmail: params.recipientEmail,
+    }),
+    text: buildEmailText({
+      title: "Confirm your email address",
+      lines: [
+        greeting(params.userName),
+        "",
+        "One step left — confirm your email address to open your AutoCore workspace.",
+        "",
+        `Unlocked after confirming: ${WORKSPACE_MODULES.join(", ")}.`,
+        "",
+        "The link works once and expires after a short while. If it has already expired, request a new one from the app.",
+      ],
+      cta: { label: "Confirm email address", url: params.verifyUrl },
+      footerNote:
+        "If you didn't create an AutoCore account, you can safely ignore this message — the address stays unconfirmed.",
+    }),
+  };
+}
+
+export const VERIFICATION_EMAIL_SUBJECT = "Confirm your email — AutoCore";

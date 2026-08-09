@@ -1,58 +1,67 @@
 import "server-only";
 
-import { buildEmailLayout } from "@/lib/email/templates/layout";
+import { codePanel, noticePanel, paragraph, strong } from "@/lib/email/templates/blocks";
+import { buildEmailLayout, buildEmailText, type EmailMessage } from "@/lib/email/templates/layout";
 import { VERIFICATION_CODE_TTL_MINUTES } from "@/lib/email/verification-code.server";
 
 export type VerificationCodeEmailParams = {
   code: string;
   userName?: string | null;
+  /** Shown in the footer so a wrong-address delivery is obvious. */
+  recipientEmail?: string | null;
 };
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+const NEVER_SHARE_NOTE =
+  "AutoCore will never ask you for this code by phone, chat or email. If someone does, it is not us.";
+
+function greeting(userName?: string | null): string {
+  const name = userName?.trim();
+  return name ? `Hi ${name},` : "Hi,";
 }
 
-export function buildVerificationCodeEmailHtml(params: VerificationCodeEmailParams): string {
-  const greeting = params.userName?.trim()
-    ? `Здравствуйте, ${escapeHtml(params.userName.trim())}!`
-    : "Здравствуйте!";
-  const code = escapeHtml(params.code);
+export function buildVerificationCodeEmail(params: VerificationCodeEmailParams): EmailMessage {
+  const expiry = `This code expires in ${VERIFICATION_CODE_TTL_MINUTES} minutes.`;
 
-  const bodyHtml = `
-    <p style="margin:0 0 16px;color:#11131a !important;">${greeting}</p>
-    <p style="margin:0 0 24px;color:#11131a !important;">
-      Введите код ниже в AutoCore, чтобы подтвердить email и открыть рабочее пространство.
-    </p>
-    <table role="presentation" cellspacing="0" cellpadding="0" width="100%" style="margin:0 0 24px;">
-      <tr>
-        <td align="center" style="padding:24px 16px;border-radius:16px;background:#f5f8fd;border:1px solid #e8ecf2;">
-          <p style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5c6370 !important;">
-            Код подтверждения
-          </p>
-          <p style="margin:0;font-size:40px;line-height:1;font-weight:800;letter-spacing:0.28em;color:#11131a !important;font-family:'SF Mono',SFMono-Regular,Menlo,Monaco,Consolas,monospace;">
-            ${code}
-          </p>
-        </td>
-      </tr>
-    </table>
-    <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#11131a !important;">
-      Моторы · Склад · Заказ-наряды · Бухгалтерия
-    </p>
-    <p style="margin:0;font-size:13px;line-height:1.55;color:#5c6370 !important;">
-      Код действует ${VERIFICATION_CODE_TTL_MINUTES} минут. Если вы не регистрировались в AutoCore, просто проигнорируйте это письмо.
-    </p>`;
+  const bodyHtml = [
+    paragraph(`${strong(greeting(params.userName))} enter the code below in AutoCore to confirm your email address and open your workspace.`),
+    codePanel({
+      code: params.code,
+      label: "Verification code",
+      caption: expiry,
+    }),
+    noticePanel({
+      heading: "Didn't request this?",
+      body: "Someone may have mistyped their email address. You can ignore this message — nothing changes until the code is entered, and no one can use it without access to this inbox.",
+    }),
+  ].join("");
 
-  return buildEmailLayout({
-    previewText: `Код подтверждения AutoCore: ${params.code}`,
-    eyebrow: "Подтверждение аккаунта",
-    title: "Код для подтверждения email",
-    bodyHtml,
-    footerNote: "Код вводится прямо в приложении — ссылку открывать не нужно.",
-  });
+  return {
+    subject: `${params.code} is your AutoCore verification code`,
+    html: buildEmailLayout({
+      previewText: `${params.code} — your AutoCore verification code. ${expiry}`,
+      eyebrow: "Account security",
+      title: "Confirm your email address",
+      bodyHtml,
+      footerNote: NEVER_SHARE_NOTE,
+      recipientEmail: params.recipientEmail,
+    }),
+    text: buildEmailText({
+      title: "Confirm your email address",
+      lines: [
+        greeting(params.userName),
+        "",
+        "Enter this code in AutoCore to confirm your email address and open your workspace.",
+        "",
+        `    ${params.code}`,
+        "",
+        expiry,
+        "",
+        "Didn't request this? Someone may have mistyped their email address. You can ignore this message — nothing changes until the code is entered.",
+      ],
+      footerNote: NEVER_SHARE_NOTE,
+    }),
+  };
 }
 
-export const VERIFICATION_EMAIL_SUBJECT = "Код подтверждения — AutoCore";
+/** Static fallback for callers that need a subject before the code is generated. */
+export const VERIFICATION_CODE_EMAIL_SUBJECT = "Your AutoCore verification code";

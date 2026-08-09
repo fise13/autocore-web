@@ -20,6 +20,7 @@ import {
   filterAdvanceOperations,
   type AdvanceDirection,
 } from "@/lib/accounting/advances";
+import { operationTouchesAccount } from "@/lib/accounting/mixed-payment";
 import { OperationsTable } from "@/components/accounting/operations-table";
 import { MotorSaleDocumentsSheet } from "@/components/accounting/motor-sale-documents-sheet";
 import { PayrollTable } from "@/components/accounting/payroll-table";
@@ -119,7 +120,10 @@ export function AccountingWorkspace() {
   const balance = useMemo(() => calculateCashBalanceUseCase(operations), [operations]);
 
   const expenseRows = useMemo(() => operations.filter((item) => item.type === "expense"), [operations]);
-  const cashboxRows = useMemo(() => operations.filter((item) => item.account === "cashbox"), [operations]);
+  const cashboxRows = useMemo(
+    () => operations.filter((item) => operationTouchesAccount(item, "cashbox")),
+    [operations],
+  );
   const workOrderRows = useMemo(
     () =>
       operations.filter(
@@ -179,7 +183,7 @@ export function AccountingWorkspace() {
   async function onCreateOperation(
     payload: Pick<
       CreateFinancialOperationInput,
-      "type" | "amount" | "account" | "paymentMethod" | "category" | "comment"
+      "type" | "amount" | "account" | "paymentMethod" | "cashReceived" | "category" | "comment"
     >,
   ) {
     if (!profile || !companyId) throw new Error(userCopy.accounting.companyNotFound);
@@ -189,6 +193,7 @@ export function AccountingWorkspace() {
       amount: payload.amount,
       paymentMethod: payload.paymentMethod,
       account: payload.account,
+      cashReceived: payload.cashReceived ?? null,
       category: payload.category,
       comment: payload.comment,
       createdByUserId: profile.id,

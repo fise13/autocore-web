@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
+import { MixedPaymentSplit } from "@/components/accounting/mixed-payment-split";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,6 +25,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { InventoryItem } from "@/domain/inventory";
 import { OperationAccount, PaymentMethod } from "@/domain/financial-operation";
 import { operationAccountLabel, paymentMethodLabel } from "@/lib/accounting/labels";
+import {
+  accountForPaymentMethod,
+  buildMixedPaymentFields,
+  defaultMixedSplit,
+  isValidMixedSplit,
+} from "@/lib/accounting/mixed-payment";
 import { formatGroupedNumber } from "@/lib/money/format-number";
 import { userCopy } from "@/lib/user-copy";
 
@@ -36,6 +43,7 @@ type WarehouseSaleDialogProps = {
     amount: number;
     account: OperationAccount;
     paymentMethod: PaymentMethod;
+    cashReceived?: number | null;
     comment: string;
   }) => Promise<void>;
 };
@@ -51,15 +59,35 @@ export function WarehouseSaleDialog({
   const [amount, setAmount] = useState("");
   const [account, setAccount] = useState<OperationAccount>("cashbox");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [mixedCashPortion, setMixedCashPortion] = useState(0);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const parsedAmount = useMemo(() => parseGroupedNumber(amount), [amount]);
+  const isMixed = paymentMethod === "mixed";
+
+  function selectPaymentMethod(next: PaymentMethod) {
+    setPaymentMethod(next);
+    if (next === "mixed") {
+      const split = defaultMixedSplit(parsedAmount > 0 ? parsedAmount : 0);
+      setMixedCashPortion(split.cash);
+      setAccount(accountForPaymentMethod(next, account, split));
+      return;
+    }
+    setAccount(accountForPaymentMethod(next, account));
+  }
+
+  useEffect(() => {
+    if (!isMixed || !(parsedAmount > 0)) return;
+    if (mixedCashPortion > 0 && mixedCashPortion < parsedAmount) return;
+    setMixedCashPortion(defaultMixedSplit(parsedAmount).cash);
+  }, [isMixed, mixedCashPortion, parsedAmount]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!item) return;
     const parsedQty = parseGroupedNumber(quantity);
-    const parsedAmount = parseGroupedNumber(amount);
     if (!Number.isFinite(parsedQty) || parsedQty <= 0) {
       setError(copy.invalidQty);
       return;
@@ -68,14 +96,25 @@ export function WarehouseSaleDialog({
       setError(copy.invalidAmount);
       return;
     }
+    if (isMixed && !isValidMixedSplit(parsedAmount, mixedCashPortion)) {
+      setError(userCopy.accounting.newOperation.invalidMixedSplit);
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
+      const payment = buildMixedPaymentFields(
+        paymentMethod,
+        account,
+        parsedAmount,
+        mixedCashPortion,
+      );
       await onConfirm({
         quantity: parsedQty,
         amount: parsedAmount,
-        account,
-        paymentMethod,
+        account: payment.account,
+        paymentMethod: payment.paymentMethod,
+        cashReceived: payment.cashReceived,
         comment: comment.trim() || copy.sale.defaultComment(item.name),
       });
       onOpenChange(false);
@@ -111,23 +150,25 @@ export function WarehouseSaleDialog({
               placeholder={item?.sellPrice ? formatGroupedNumber(item.sellPrice) : "0"}
             />
           </div>
-          <div className="grid gap-2">
-            <Label>{copy.sale.account}</Label>
-            <Select value={account} onValueChange={(value) => setAccount(value as OperationAccount)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cashbox">{operationAccountLabel("cashbox")}</SelectItem>
-                <SelectItem value="kaspi">{operationAccountLabel("kaspi")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {!isMixed ? (
+            <div className="grid gap-2">
+              <Label>{copy.sale.account}</Label>
+              <Select value={account} onValueChange={(value) => setAccount(value as OperationAccount)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cashbox">{operationAccountLabel("cashbox")}</SelectItem>
+                  <SelectItem value="kaspi">{operationAccountLabel("kaspi")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
           <div className="grid gap-2">
             <Label>{copy.sale.paymentMethod}</Label>
             <Select
               value={paymentMethod}
-              onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
+              onValueChange={(value) => selectPaymentMethod(value as PaymentMethod)}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -139,6 +180,13 @@ export function WarehouseSaleDialog({
               </SelectContent>
             </Select>
           </div>
+          {isMixed ? (
+            <MixedPaymentSplit
+              total={parsedAmount > 0 ? parsedAmount : 0}
+              cashPortion={mixedCashPortion}
+              onCashPortionChange={setMixedCashPortion}
+            />
+          ) : null}
           <div className="grid gap-2">
             <Label htmlFor="sale-comment">{copy.comment}</Label>
             <Textarea

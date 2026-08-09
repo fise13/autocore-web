@@ -4,6 +4,11 @@ import {
   MOTOR_GRID_COLUMN_WIDTHS,
   scaleMotorGridDimension,
 } from "@/lib/motor-grid-layout";
+import {
+  applyDensityToColumns,
+  type GridColumnFitHint,
+  type GridDensityProfile,
+} from "@/lib/grid/grid-density";
 import { GridCellAddress, GridColumnDefinition } from "@/lib/grid/grid-types";
 import { userCopy } from "@/lib/user-copy";
 
@@ -15,89 +20,123 @@ export const WAREHOUSE_READ_ONLY_COLUMNS = new Set([5, 6, 16]);
 /** Photo column — interactive cell, not text-editable. */
 export const WAREHOUSE_PHOTO_COLUMN = 14;
 
-function warehouseGridBaseColumns(): GridColumnDefinition[] {
+const FIXED = (width: number): GridColumnFitHint => ({ flex: 0, maxWidth: width });
+const NARROW = (width: number): GridColumnFitHint => ({
+  flex: 0.35,
+  maxWidth: Math.max(width, Math.round(width * 1.15)),
+});
+const TEXT = (width: number, max: number): GridColumnFitHint => ({
+  flex: 1.2,
+  maxWidth: Math.max(width, max),
+});
+
+function warehouseGridBaseColumns(): Array<GridColumnDefinition & { fit: GridColumnFitHint }> {
   const columns = userCopy.warehouse.grid.columns;
   return [
-    { id: "rowNumber", title: "#", width: 40, editable: false, align: "center" },
-    { id: "col-1", title: columns.sku, width: 120, editable: true, modelField: "sku" },
+    { id: "rowNumber", title: "#", width: 40, editable: false, align: "center", fit: FIXED(48) },
+    { id: "col-1", title: columns.sku, width: 112, editable: true, modelField: "sku", fit: TEXT(112, 148) },
     {
       id: "col-2",
       title: columns.name,
-      width: 220,
+      width: 188,
       editable: true,
       modelField: "name",
       domainCategory: "consumables",
+      fit: TEXT(188, 260),
     },
     {
       id: "col-4",
       title: columns.brand,
-      width: 110,
+      width: 104,
       editable: true,
       modelField: "brandName",
       domainCategory: "brands",
+      fit: TEXT(104, 140),
     },
     {
       id: "col-6",
       title: columns.onHand,
-      width: 92,
+      width: 80,
       editable: true,
       align: "center",
       modelField: "totalOnHand",
+      fit: FIXED(80),
     },
     {
       id: "col-7",
       title: columns.reserved,
-      width: 80,
+      width: 72,
       editable: false,
       align: "center",
       modelField: "totalReserved",
+      fit: FIXED(72),
     },
     {
       id: "col-8",
       title: columns.available,
-      width: 88,
+      width: 80,
       editable: false,
       align: "center",
       modelField: "totalAvailable",
+      fit: FIXED(80),
     },
     {
       id: "col-9",
       title: columns.purchase,
-      width: 96,
+      width: 88,
       editable: true,
       align: "center",
       modelField: "purchasePrice",
+      fit: NARROW(88),
     },
     {
       id: "col-10",
       title: columns.sale,
-      width: 96,
+      width: 88,
       editable: true,
       align: "center",
       modelField: "sellPrice",
+      fit: NARROW(88),
     },
-    { id: "col-11", title: columns.supplier, width: 130, editable: true, modelField: "supplierName" },
-    { id: "col-12", title: columns.barcode, width: 130, editable: true, modelField: "barcodes" },
+    {
+      id: "col-11",
+      title: columns.supplier,
+      width: 120,
+      editable: true,
+      modelField: "supplierName",
+      fit: TEXT(120, 168),
+    },
+    {
+      id: "col-12",
+      title: columns.barcode,
+      width: 120,
+      editable: true,
+      modelField: "barcodes",
+      fit: TEXT(120, 168),
+    },
     {
       id: "col-13",
       title: columns.location,
-      width: 110,
+      width: 104,
       editable: true,
       modelField: "warehouseLocation",
+      fit: TEXT(104, 140),
     },
     {
       id: "col-15",
       title: columns.notes,
-      width: 160,
+      width: 148,
       editable: true,
       modelField: "notes",
+      fit: TEXT(148, 220),
     },
     {
       id: "col-17",
       title: columns.quality,
-      width: 100,
+      width: 92,
       editable: true,
       modelField: "quality",
+      fit: NARROW(92),
     },
     {
       id: "photo",
@@ -107,24 +146,34 @@ function warehouseGridBaseColumns(): GridColumnDefinition[] {
       align: "center",
       modelField: "imageUrls",
       cellKind: "photo",
+      fit: FIXED(MOTOR_GRID_COLUMN_WIDTHS.photo),
     },
     {
       id: "col-14",
       title: columns.minStock,
-      width: 92,
+      width: 84,
       editable: true,
       align: "center",
       modelField: "lowStockThreshold",
+      fit: FIXED(84),
     },
     {
       id: "col-16",
       title: columns.updated,
-      width: 132,
+      width: 118,
       editable: false,
       align: "center",
       modelField: "updatedAt",
+      fit: NARROW(118),
     },
-    { id: "action", title: "", width: 110, editable: false, align: "center" },
+    {
+      id: "action",
+      title: "",
+      width: 104,
+      editable: false,
+      align: "center",
+      fit: FIXED(104),
+    },
   ];
 }
 
@@ -134,22 +183,40 @@ export type WarehouseGridLayoutMetrics = {
   headerHeight: number;
   totalWidth: number;
   xOffsets: number[];
+  density: GridDensityProfile;
 };
 
-export function buildWarehouseGridLayoutMetrics(zoom: number): WarehouseGridLayoutMetrics {
-  const columns = warehouseGridBaseColumns().map((column) => ({
+export type BuildWarehouseGridLayoutOptions = {
+  containerWidth?: number;
+};
+
+export function buildWarehouseGridLayoutMetrics(
+  zoom: number,
+  options?: BuildWarehouseGridLayoutOptions,
+): WarehouseGridLayoutMetrics {
+  const baseColumns = warehouseGridBaseColumns();
+  const fitted = applyDensityToColumns({
+    columns: baseColumns.map((column) => ({ width: column.width, fit: column.fit })),
+    zoom,
+    containerWidth: options?.containerWidth,
+    scaleDimension: scaleMotorGridDimension,
+    baseRowHeight: MOTOR_GRID_BASE_ROW_HEIGHT,
+    baseHeaderHeight: MOTOR_GRID_BASE_HEADER_HEIGHT,
+  });
+
+  const columns = baseColumns.map(({ fit: _fit, ...column }, index) => ({
     ...column,
-    width: scaleMotorGridDimension(column.width, zoom),
+    width: fitted.widths[index] ?? column.width,
   }));
-  const rowHeight = scaleMotorGridDimension(MOTOR_GRID_BASE_ROW_HEIGHT, zoom);
-  const headerHeight = scaleMotorGridDimension(MOTOR_GRID_BASE_HEADER_HEIGHT, zoom);
-  const xOffsets: number[] = [];
-  let cursor = 0;
-  for (const column of columns) {
-    xOffsets.push(cursor);
-    cursor += column.width;
-  }
-  return { columns, rowHeight, headerHeight, totalWidth: cursor, xOffsets };
+
+  return {
+    columns,
+    rowHeight: fitted.rowHeight,
+    headerHeight: fitted.headerHeight,
+    totalWidth: fitted.totalWidth,
+    xOffsets: fitted.xOffsets,
+    density: fitted.density,
+  };
 }
 
 export function warehouseCellFrame(layout: WarehouseGridLayoutMetrics, cell: GridCellAddress) {
