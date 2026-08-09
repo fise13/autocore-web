@@ -4,7 +4,7 @@ import type { ListRenderItemInfo } from '@shopify/flash-list';
 
 import { EmptyState, FlashList, Text } from '@/components/ui';
 import { ClipboardListIcon } from '@/assets/icons';
-import { useTheme } from '@/hooks';
+import { useFloatingTabBarInset, useTheme } from '@/hooks';
 import { tokens } from '@/theme/tokens';
 
 import { OrderRow } from './order-row';
@@ -68,6 +68,7 @@ export function OrdersMailList({
   isEmpty,
   onCreateEmpty,
 }: OrdersMailListProps) {
+  const { scrollBottom } = useFloatingTabBarInset();
   const rows = useMemo(() => buildOrderRows(orders), [orders]);
   const stickyHeaderIndices = useMemo(
     () =>
@@ -134,7 +135,10 @@ export function OrdersMailList({
       stickyHeaderIndices={stickyHeaderIndices}
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={{
-        paddingBottom: tokens.space.section + (editing && selectedIds.size > 0 ? 88 : 0),
+        // `automatic` only knows about the safe area — the floating glass bar is
+        // absolutely positioned, so the last work order has to be padded clear
+        // of it here or it never scrolls out from under the material.
+        paddingBottom: scrollBottom + (editing && selectedIds.size > 0 ? 88 : 0),
       }}
       onScrollBeginDrag={Keyboard.dismiss}
       keyboardDismissMode="on-drag"

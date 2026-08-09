@@ -1,11 +1,19 @@
+import type React from 'react';
 import { useMemo } from 'react';
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import type { SFSymbol } from 'sf-symbols-typescript';
+import { View } from 'react-native';
+import { Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AiGlassAction } from '@/components/navigation/ai-glass-action';
+import { AiGlassProgressProvider } from '@/components/navigation/ai-glass-progress';
+import {
+  LiquidGlassTabBar,
+  type LiquidGlassTabBarProps,
+} from '@/components/navigation/liquid-glass-tab-bar';
 import { TabTransitionProvider } from '@/components/navigation/tab-transition-context';
 import { useCompanyModuleEnabled } from '@/hooks/use-module-enabled';
-import { useTheme } from '@/hooks/use-theme';
 import { useSession } from '@/hooks/use-session';
+import { getAiActionOffset } from '@/lib/navigation/floating-tab-bar-inset';
 import { isNavItemVisible } from '@/lib/navigation/nav-item-availability';
 import { TAB_SPECS } from '@/lib/navigation/tab-specs';
 
@@ -15,9 +23,23 @@ import { TAB_SPECS } from '@/lib/navigation/tab-specs';
  * The set and its order are product decisions, not user settings — a control
  * centre people can rearrange is one they have to re-learn. Only permissions
  * and disabled company modules can take a tab away.
+ *
+ * The bar is drawn by us rather than by UIKit: a system tab bar cannot be given
+ * the 76pt shell, the 16pt side margins or a capsule that travels between slots
+ * as one object. Routing is untouched — the same route files, the same names,
+ * the same `tabPress` semantics; only the chrome changed.
  */
+const TAB_SCREEN_OPTIONS = {
+  headerShown: false,
+  freezeOnBlur: true,
+} as const;
+
+function renderTabBar(props: LiquidGlassTabBarProps) {
+  return <LiquidGlassTabBar {...props} />;
+}
+
 export default function TabLayout() {
-  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { profile } = useSession();
   const workOrders = useCompanyModuleEnabled('workOrders');
   const warehouse = useCompanyModuleEnabled('warehouse');
@@ -34,26 +56,32 @@ export default function TabLayout() {
   }, [accounting, profile, warehouse, workOrders]);
 
   return (
-    // `useNavigateTab` still reads this context from deep links across the app;
-    // the native bar animates its own transitions.
+    // `useNavigateTab` still reads this context from deep links across the app.
     <TabTransitionProvider>
-      <NativeTabs
-        tintColor={colors.primary}
-        minimizeBehavior="never"
-        labelStyle={{ fontSize: 10, fontWeight: '600' }}
-      >
-        {TAB_SPECS.map((spec) => (
-          <NativeTabs.Trigger
-            key={spec.route}
-            name={spec.route}
-            hidden={hiddenByRoute.get(spec.route) ?? true}
-            role={spec.role}
+      <AiGlassProgressProvider>
+        <View style={{ flex: 1 }}>
+          <Tabs
+            screenOptions={TAB_SCREEN_OPTIONS}
+            tabBar={renderTabBar as React.ComponentProps<typeof Tabs>['tabBar']}
           >
-            <NativeTabs.Trigger.Icon sf={spec.sf} />
-            <NativeTabs.Trigger.Label>{spec.label}</NativeTabs.Trigger.Label>
-          </NativeTabs.Trigger>
-        ))}
-      </NativeTabs>
+            {TAB_SPECS.map((spec) => (
+              <Tabs.Screen
+                key={spec.route}
+                name={spec.route}
+                options={{
+                  title: spec.label,
+                  // A route the user cannot open stays unreachable; `scan` keeps
+                  // its route and every entry point, it just has no bar slot.
+                  href: hiddenByRoute.get(spec.route) ? null : undefined,
+                }}
+              />
+            ))}
+          </Tabs>
+
+          {/* Global AI action — a separate glass object beside the bar. */}
+          <AiGlassAction bottomOffset={getAiActionOffset(insets.bottom)} />
+        </View>
+      </AiGlassProgressProvider>
     </TabTransitionProvider>
   );
 }
