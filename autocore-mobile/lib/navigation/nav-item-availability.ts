@@ -1,4 +1,3 @@
-import { getNavItemHref } from '@/features/settings/lib/tab-bar-integration';
 import type { NavItemId } from '@/features/settings/types';
 import { isMobileNavItemAllowed } from '@/lib/rbac/navigation-policy';
 import type { UserEntity } from '@/types/user';
@@ -31,31 +30,34 @@ export function isNavItemVisible(
 
 const EXPO_TAB_HREFS: Record<string, string> = {
   index: '/(tabs)',
+  work: '/(tabs)/work',
+  action: '/(tabs)/action',
+  finance: '/(tabs)/accounting',
+  accounting: '/(tabs)/accounting',
   search: '/search',
   scan: '/(tabs)/scan',
   orders: '/(tabs)/orders',
-  accounting: '/(tabs)/accounting',
   profile: '/(tabs)/profile',
   'my-earnings': '/(tabs)/profile/my-earnings',
+  ai: '/(tabs)/ai',
 };
 
-export function resolveNavItemHref(id: NavItemId, expoName?: string): string | null {
+export function resolveNavItemHref(id: NavItemId | string, expoName?: string): string | null {
   if (expoName && EXPO_TAB_HREFS[expoName]) return EXPO_TAB_HREFS[expoName];
-  const custom = getNavItemHref(id);
-  return custom ? String(custom) : null;
+  if (id === 'overview' || id === 'home') return '/(tabs)';
+  if (id in EXPO_TAB_HREFS) return EXPO_TAB_HREFS[id];
+  return null;
 }
 
-/** First tab this user can actually open, in bar order. */
-export function resolveInitialTabHref(params: {
+/** First shell tab — always Home when signed in. */
+export function resolveInitialTabHref(_params?: {
   profile: UserEntity | null | undefined;
   modules: NavModuleFlags;
 }): string {
-  for (const spec of TAB_SPECS) {
-    if (spec.navId === null) continue;
-    if (!isNavItemVisible(spec.navId, params.profile, params.modules)) continue;
-    const href = resolveNavItemHref(spec.navId, spec.route);
-    if (href) return href;
-  }
+  return '/(tabs)';
+}
 
-  return '/(tabs)/profile';
+/** Shell tab visibility — dock slots stay stable. */
+export function isShellTabVisible(route: string): boolean {
+  return TAB_SPECS.some((spec) => spec.route === route);
 }

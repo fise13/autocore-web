@@ -9,7 +9,7 @@ import { haptics, minTouchTarget, spacing, tokens } from '@/theme';
 
 /**
  * Overview launch card — opens Engine intake bay.
- * Mirrors bay language: serial → free photos → Warehouse.
+ * Mirrors bay language: serial → free photos → async AI evidence → review.
  */
 export function IntakeLaunchCard() {
   const router = useRouter();

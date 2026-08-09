@@ -114,23 +114,22 @@ export function NotificationInboxScreen() {
   const showSkeleton = loading && filteredItems.length === 0 && !error;
   const showEmpty = !loading && filteredItems.length === 0 && !error;
 
+  const handleBack = useCallback(() => {
+    // Activity lives on the root stack — back() always slides off like Search.
+    // Cold deep-links with no history fall back to the encoded returnTo.
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace(backFallbackHref);
+  }, [backFallbackHref, router]);
+
   return (
     <ProfileScreenShell
       title="Activity"
       subtitle={subtitle}
       backFallbackHref={backFallbackHref}
-      onBack={() => {
-        // Same-stack opens (Settings → Activity): prefer pop.
-        // Cross-tab opens (Home/Orders/… → Activity): history can't restore the prior tab,
-        // so replace to the returnTo target encoded when the inbox was opened.
-        const sameStackReturn =
-          !returnTo || returnTo === 'hub' || returnTo === 'notifications';
-        if (sameStackReturn && router.canGoBack()) {
-          router.back();
-          return;
-        }
-        router.replace(backFallbackHref);
-      }}
+      onBack={handleBack}
       headerAction={
         unreadCount > 0 ? (
           <Animated.View entering={FadeIn.duration(duration.fast)} exiting={FadeOut.duration(duration.instant)}>

@@ -6,22 +6,23 @@ const ACCENT_PALETTE: Record<
   AccentColorId,
   { light: Pick<SemanticColors, 'primary' | 'primaryHover' | 'primaryPressed' | 'primarySubtle' | 'primaryOnSubtle' | 'primaryBorder'>; dark: Pick<SemanticColors, 'primary' | 'primaryHover' | 'primaryPressed' | 'primarySubtle' | 'primaryOnSubtle' | 'primaryBorder'> }
 > = {
+  /** Locked to `@autocore/design-tokens` primary — not Tailwind blue. */
   blue: {
     light: {
-      primary: '#2563eb',
-      primaryHover: '#1d4ed8',
-      primaryPressed: '#1e40af',
-      primarySubtle: '#dbeafe',
-      primaryOnSubtle: '#1d4ed8',
-      primaryBorder: '#bfdbfe',
+      primary: '#0a73f2',
+      primaryHover: '#0968db',
+      primaryPressed: '#085cc4',
+      primarySubtle: '#e2eefd',
+      primaryOnSubtle: '#0a5fc4',
+      primaryBorder: '#bad8fb',
     },
     dark: {
-      primary: '#60a5fa',
-      primaryHover: '#93c5fd',
-      primaryPressed: '#3b82f6',
-      primarySubtle: '#1e293b',
-      primaryOnSubtle: '#93c5fd',
-      primaryBorder: '#1e3a5f',
+      primary: '#4d96ff',
+      primaryHover: '#66b8ff',
+      primaryPressed: '#3390f0',
+      primarySubtle: '#202b3e',
+      primaryOnSubtle: '#4d96ff',
+      primaryBorder: '#2a436a',
     },
   },
   violet: {

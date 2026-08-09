@@ -1,10 +1,10 @@
-import { StaticTabScreen } from '@/components/navigation/animated-tab-screen';
+import { AnimatedTabScreen } from '@/components/navigation/animated-tab-screen';
 import { ProfileScreen } from '@/features/profile';
 
 export default function ProfileIndexRoute() {
   return (
-    <StaticTabScreen>
+    <AnimatedTabScreen tab="profile">
       <ProfileScreen />
-    </StaticTabScreen>
+    </AnimatedTabScreen>
   );
 }

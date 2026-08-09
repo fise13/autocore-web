@@ -2,22 +2,26 @@ import type { Href } from 'expo-router';
 
 export type NotificationInboxReturnTo =
   | 'overview'
+  | 'work'
+  | 'accounting'
   | 'search'
   | 'warehouse'
   | 'scan'
   | 'orders'
-  | 'accounting'
   | 'earnings'
   | 'notifications'
   | 'hub';
 
 const RETURN_HREFS = {
-  overview: '/(tabs)/index',
+  // Canonical Home — same as nav-item-availability / action fallback.
+  // `/(tabs)/index` is unmatched in Expo Router and lands on +not-found.
+  overview: '/(tabs)',
+  work: '/(tabs)/work',
+  accounting: '/(tabs)/accounting',
   search: '/search',
   warehouse: '/warehouse',
   scan: '/(tabs)/scan',
   orders: '/(tabs)/orders',
-  accounting: '/(tabs)/accounting',
   earnings: '/(tabs)/profile/my-earnings',
   notifications: '/(tabs)/profile/notifications',
   hub: '/(tabs)/profile',
@@ -25,9 +29,13 @@ const RETURN_HREFS = {
 
 const RETURN_TO_KEYS = new Set<string>(Object.keys(RETURN_HREFS));
 
+/** Profile-stack targets — back() is safe. Cross-tab targets must replace. */
+const SAME_STACK_RETURN = new Set<NotificationInboxReturnTo>(['hub', 'notifications', 'earnings']);
+
 export function notificationInboxHref(returnTo: NotificationInboxReturnTo): Href {
+  // Root stack (not profile tab) — push/pop slides over the active tab.
   return {
-    pathname: '/(tabs)/profile/inbox',
+    pathname: '/inbox',
     params: { returnTo },
   } as Href;
 }
@@ -39,15 +47,38 @@ export function resolveNotificationInboxReturnHref(
   if (key && RETURN_TO_KEYS.has(key)) {
     return RETURN_HREFS[key as NotificationInboxReturnTo] as Href;
   }
-  return RETURN_HREFS.hub as Href;
+  // Unknown / missing → Home, never Profile settings by accident.
+  return RETURN_HREFS.overview as Href;
+}
+
+export function isSameStackInboxReturn(
+  returnTo: string | string[] | undefined,
+): boolean {
+  const key = Array.isArray(returnTo) ? returnTo[0] : returnTo;
+  if (!key) return false;
+  return SAME_STACK_RETURN.has(key as NotificationInboxReturnTo);
 }
 
 /** Map the active tab (or profile sub-route) to an inbox back target. */
 export function resolveInboxReturnToFromTab(tabName: string | undefined): NotificationInboxReturnTo {
   switch (tabName) {
+    case undefined:
+    case '':
     case 'index':
     case 'overview':
     case 'mission':
+      // Expo often omits `index` from segments on Home — treat as overview.
+      return 'overview';
+    case 'work':
+      return 'work';
+    case 'accounting':
+    case 'finance':
+      return 'accounting';
+    case 'action':
+      // Action is a sheet, not a destination — return to Home.
+      return 'overview';
+    case 'ai':
+      // AI is no longer a dock tab — fall back to Home.
       return 'overview';
     case 'search':
       return 'search';
@@ -57,8 +88,6 @@ export function resolveInboxReturnToFromTab(tabName: string | undefined): Notifi
       return 'scan';
     case 'orders':
       return 'orders';
-    case 'accounting':
-      return 'accounting';
     case 'my-earnings':
     case 'earnings':
       return 'earnings';
@@ -68,22 +97,34 @@ export function resolveInboxReturnToFromTab(tabName: string | undefined): Notifi
     case 'hub':
       return 'hub';
     default:
-      return 'hub';
+      return 'overview';
   }
 }
 
 /**
  * Prefer the concrete screen under the profile stack (e.g. notifications settings)
  * when the bell is pressed from Settings; otherwise use the active tab.
+ *
+ * Important: Expo Router often reports Home as `(tabs)` without `index`.
+ * Never default that to Profile (`hub`) — that sent users to Settings on back.
  */
 export function resolveInboxReturnToFromSegments(
   segments: readonly string[],
 ): NotificationInboxReturnTo {
   const tabsIndex = segments.indexOf('(tabs)');
-  const tab = tabsIndex >= 0 ? segments[tabsIndex + 1] : undefined;
+  if (tabsIndex < 0) {
+    if (segments.includes('search')) return 'search';
+    if (segments.includes('warehouse')) return 'warehouse';
+    return 'overview';
+  }
+
+  const tab = segments[tabsIndex + 1];
 
   if (tab === 'profile') {
     if (segments.includes('notifications')) return 'notifications';
+    if (segments.includes('my-earnings')) return 'earnings';
+    // Already on inbox — keep hub so nested back stays in profile.
+    if (segments.includes('inbox')) return 'hub';
     return 'hub';
   }
 

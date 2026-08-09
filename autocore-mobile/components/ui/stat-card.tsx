@@ -38,12 +38,11 @@ export function StatCard({
   style,
   ...props
 }: StatCardProps) {
-  const { colors, ring, shadows } = useTheme();
+  const { colors, ring } = useTheme();
   const { style: liftStyle, onPressIn, onPressOut } = useCardLift();
   const toneConfig = toneColors[tone];
 
   const valueColor = colors[toneConfig.value as keyof typeof colors] ?? colors.textPrimary;
-  const iconBg = `${colors[toneConfig.icon as keyof typeof colors] ?? colors.muted}1A`;
   const iconColor = colors[toneConfig.icon as keyof typeof colors] ?? colors.mutedForeground;
 
   return (
@@ -60,7 +59,6 @@ export function StatCard({
             backgroundColor: colors.card,
             gap: spacing[2],
             ...ring,
-            ...shadows.xs,
           },
           style,
         ]}
@@ -75,8 +73,6 @@ export function StatCard({
               style={{
                 width: 32,
                 height: 32,
-                borderRadius: radius.lg,
-                backgroundColor: iconBg,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}

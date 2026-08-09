@@ -75,6 +75,20 @@ export type SemanticColors = {
   dangerOnSubtle: string;
   dangerBorder: string;
 
+  /** Calm AI state — cool teal, never neon. */
+  ai: string;
+  aiForeground: string;
+  aiSubtle: string;
+  aiOnSubtle: string;
+  aiBorder: string;
+
+  /** Offline / sync-degraded state. */
+  offline: string;
+  offlineForeground: string;
+  offlineSubtle: string;
+  offlineOnSubtle: string;
+  offlineBorder: string;
+
   chart1: string;
   chart2: string;
   chart3: string;
@@ -148,6 +162,18 @@ const light: SemanticColors = {
   dangerSubtle: '#fde7e7',
   dangerOnSubtle: '#c02626',
   dangerBorder: '#f9c7c7',
+
+  ai: '#0f766e',
+  aiForeground: '#ffffff',
+  aiSubtle: '#e0f2f1',
+  aiOnSubtle: '#0f5c56',
+  aiBorder: '#b2dfdb',
+
+  offline: '#5a606c',
+  offlineForeground: '#ffffff',
+  offlineSubtle: '#eef0f4',
+  offlineOnSubtle: '#3d424c',
+  offlineBorder: '#d5d8e0',
 
   chart1: '#0a73f2',
   chart2: '#26b34a',
@@ -223,6 +249,18 @@ const dark: SemanticColors = {
   dangerOnSubtle: '#ff6166',
   dangerBorder: '#633239',
 
+  ai: '#2dd4bf',
+  aiForeground: '#0d0e12',
+  aiSubtle: '#1a2e2c',
+  aiOnSubtle: '#2dd4bf',
+  aiBorder: '#2a4a46',
+
+  offline: '#9498a4',
+  offlineForeground: '#0d0e12',
+  offlineSubtle: '#22242e',
+  offlineOnSubtle: '#c4c7d0',
+  offlineBorder: '#3a3d48',
+
   chart1: '#4d96ff',
   chart2: '#40d168',
   chart3: '#ffc94d',
@@ -267,9 +305,13 @@ export const contrastContract: ReadonlyArray<{
   { name: 'success tone on subtle', foreground: 'successOnSubtle', background: 'successSubtle' },
   { name: 'warning tone on subtle', foreground: 'warningOnSubtle', background: 'warningSubtle' },
   { name: 'danger tone on subtle', foreground: 'dangerOnSubtle', background: 'dangerSubtle' },
+  { name: 'ai tone on subtle', foreground: 'aiOnSubtle', background: 'aiSubtle' },
+  { name: 'offline tone on subtle', foreground: 'offlineOnSubtle', background: 'offlineSubtle' },
   { name: 'success content on fill', foreground: 'successForeground', background: 'success' },
   { name: 'warning content on fill', foreground: 'warningForeground', background: 'warning' },
   { name: 'primary content on fill', foreground: 'primaryForeground', background: 'primary' },
   { name: 'danger content on fill', foreground: 'dangerForeground', background: 'danger' },
+  { name: 'ai content on fill', foreground: 'aiForeground', background: 'ai' },
+  { name: 'offline content on fill', foreground: 'offlineForeground', background: 'offline' },
   { name: 'sidebar text on sidebar', foreground: 'sidebarForeground', background: 'sidebar' },
 ];

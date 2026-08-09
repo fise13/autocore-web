@@ -19,7 +19,7 @@ export function SearchHeader({ onSettingsPress }: SearchHeaderProps) {
     <Reanimated.View style={enterStyle}>
       <PageHeader
         title="Search"
-        subtitle="Quick access to inventory, motors, and orders"
+        subtitle="Command search across engines, orders, serials, and more"
         trailing={
           <IconButton
             accessibilityLabel="Settings"

@@ -23,7 +23,7 @@ export function DashboardCard({
   style,
   ...props
 }: DashboardCardProps) {
-  const { colors, ring, shadows } = useTheme();
+  const { colors, ring } = useTheme();
   const { style: liftStyle, onPressIn, onPressOut } = useCardLift();
 
   return (
@@ -34,9 +34,7 @@ export function DashboardCard({
             borderRadius: radius['2xl'],
             backgroundColor: colors.card,
             overflow: 'hidden',
-            borderWidth: 1,
-            borderColor: colors.border,
-            ...shadows.xs,
+            ...ring,
           },
           style,
         ]}

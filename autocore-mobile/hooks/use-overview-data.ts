@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
 import {
+  ShoppingCartIcon,
   BoxIcon,
   ClipboardListIcon,
   PackageIcon,
@@ -21,6 +22,11 @@ import type {
 } from '@/features/overview/types';
 import { formatActivityTime } from '@/features/overview/utils/relative-time';
 import { resolveOverviewRevenue } from '@/features/overview/lib/revenue-from-operations';
+import {
+  averageOfPoints,
+  buildWeeklyClosedCounts,
+  insightChartIsUseful,
+} from '@/features/overview/lib/insight-chart';
 import { calculateCashBalance } from '@/lib/accounting/calculate-cash-balance';
 import { coerceToDate } from '@/lib/firestore-timestamp';
 import { isMotorStale, isWarehouseLowStock } from '@/lib/inventory/is-low-stock';
@@ -214,7 +220,7 @@ export function useOverviewData(): OverviewSnapshot {
         label: 'New orders',
         value: newOrdersWeek,
         format: 'integer',
-        icon: ClipboardListIcon,
+        icon: ShoppingCartIcon,
         route: '/(tabs)/orders',
       });
     }
@@ -222,7 +228,7 @@ export function useOverviewData(): OverviewSnapshot {
     if (rbac.scopes.inventory !== 'none') {
       statTiles.push({
         id: 'inventory',
-        label: 'In stock',
+        label: 'Parts in stock',
         value: items.length,
         format: 'grouped',
         icon: BoxIcon,
@@ -236,45 +242,82 @@ export function useOverviewData(): OverviewSnapshot {
     if (staleMotors > 0) {
       featuredInsight = {
         id: 'stale-motors',
+        category: 'Idle engines',
+        sf: 'engine.combustion',
         title: `${staleMotors} idle motors`,
-        detail: 'No movement in a while.',
-        cta: 'Review',
+        insight:
+          staleMotors === 1
+            ? '1 engine has had no movement in a while — review pricing or push it into an active listing.'
+            : `${staleMotors} engines have had no movement in a while — review pricing or push them into active listings.`,
+        cta: 'Review suggestions',
         tone: 'neutral',
         route: '/search',
         routeParams: { filter: 'motors', stale: '1' },
+        // Count alert — no time series available → no chart
+        chart: null,
       };
     } else if (lowStock > 0) {
       featuredInsight = {
         id: 'low-stock',
+        category: 'Stock',
+        sf: 'shippingbox',
         title: `${lowStock} low stock`,
-        detail: 'Near minimum levels.',
-        cta: 'Open',
+        insight:
+          lowStock === 1
+            ? '1 part is near minimum levels — restock before jobs stall waiting on parts.'
+            : `${lowStock} parts are near minimum levels — restock before jobs stall waiting on parts.`,
+        cta: 'Review stock',
         tone: 'warning',
         route: '/warehouse',
         routeParams: { lowStock: '1' },
+        chart: null,
       };
     } else if (openOrders.length > 0 && now.getHours() >= 18) {
       featuredInsight = {
         id: 'open-evening',
+        category: 'Open orders',
+        sf: 'wrench.and.screwdriver',
         title: `${openOrders.length} still open`,
-        detail: 'Update before end of day.',
-        cta: 'Orders',
+        insight:
+          openOrders.length === 1
+            ? '1 order is still open — update status before end of day so the floor stays accurate overnight.'
+            : `${openOrders.length} orders are still open — update status before end of day so the floor stays accurate overnight.`,
+        cta: 'Open orders',
         tone: 'neutral',
         route: '/(tabs)/orders',
+        chart: null,
       };
     } else if (weekRevenue > 0 && meta.total > 0) {
-      const closedShare = Math.round(
-        (domainOrders.filter((o) => ['completed', 'delivered'].includes(o.status)).length / meta.total) *
-          100,
-      );
+      const closedCount = domainOrders.filter((o) =>
+        ['completed', 'delivered'].includes(o.status),
+      ).length;
+      const closedShare = Math.round((closedCount / meta.total) * 100);
       if (closedShare >= 40 && closedShare < 100) {
+        const weeklyClosed = buildWeeklyClosedCounts(domainOrders, now, 6);
+        const avgClosed = averageOfPoints(weeklyClosed);
+        const latestClosed = weeklyClosed[weeklyClosed.length - 1]?.value ?? 0;
+        const chartCandidate = {
+          points: weeklyClosed,
+          baseline: avgClosed,
+          baselineLabel: 'Avg for 6 weeks',
+          currentLabel: `This week · ${latestClosed}`,
+        };
+        const chart = insightChartIsUseful(chartCandidate) ? chartCandidate : null;
+
         featuredInsight = {
           id: 'close-rate',
+          category: 'Close rate',
+          sf: 'chart.xyaxis.line',
           title: `${closedShare}% closed`,
-          detail: 'Work orders this period.',
-          cta: 'Orders',
+          insight: `Your close rate is ${closedShare}% this period — keep clearing waiting-parts jobs to push higher.`,
+          cta: 'View orders',
           tone: 'positive',
           route: '/(tabs)/orders',
+          compare: {
+            primary: { label: 'Closed', value: `${closedShare}%` },
+            secondary: { label: 'Open', value: `${Math.max(0, 100 - closedShare)}%` },
+          },
+          chart,
         };
       }
     }
@@ -282,7 +325,10 @@ export function useOverviewData(): OverviewSnapshot {
     if (openOrders.length > 0 && now.getHours() >= 18 && featuredInsight?.id !== 'open-evening') {
       insights.push({
         id: 'open-evening-secondary',
+        category: 'Open orders',
+        sf: 'wrench.and.screwdriver',
         title: 'Still open',
+        insight: `${openOrders.length} orders still need an update.`,
         detail: `${openOrders.length} orders`,
         tone: 'neutral',
         route: '/(tabs)/orders',

@@ -121,6 +121,15 @@ const sectionLabel = {
   letterSpacing: tracking.normal,
 } as const;
 
+/** Serials, VINs, location codes — monospace identifier. */
+const identifier = {
+  fontSize: 15,
+  fontWeight: fontWeight.medium,
+  lineHeight: 20,
+  letterSpacing: 0.4,
+  fontFamily: fontFamily.mono,
+} as const;
+
 /**
  * Typography scale — HIG semantic names are canonical.
  * Legacy aliases resolve onto the same objects (no second scale).
@@ -139,6 +148,7 @@ export const typography = {
   caption2,
   metric,
   sectionLabel,
+  identifier,
 
   // —— Legacy aliases → semantic (do not invent new sizes) ——
   display: largeTitle,

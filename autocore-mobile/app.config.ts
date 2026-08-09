@@ -66,6 +66,17 @@ const plugins: ExpoConfig['plugins'] = [
       color: '#0d0e12',
     },
   ],
+  [
+    'expo-widgets',
+    {
+      // Live Activities only — do not add widgets[] entries for createLiveActivity.
+      // Bundle ID must match the App ID already registered in Apple Developer
+      // (Xcode created com.wise.autocore.mobile.ExpoWidgetsTarget).
+      bundleIdentifier: 'com.wise.autocore.mobile.ExpoWidgetsTarget',
+      groupIdentifier: 'group.com.wise.autocore.mobile',
+      enablePushNotifications: false,
+    },
+  ],
 ];
 
 if (appleSignInEnabled) {
@@ -104,6 +115,8 @@ export default (): ExpoConfig => ({
       // Standard HTTPS/TLS only — no proprietary or non-exempt cryptography.
       // Declaring it here means App Store Connect stops asking on every build.
       ITSAppUsesNonExemptEncryption: false,
+      NSSupportsLiveActivities: true,
+      NSSupportsLiveActivitiesFrequentUpdates: true,
       NSUserNotificationsUsageDescription:
         'AutoCore sends notifications about work orders, warehouse activity, payments, and other events at your company.',
       ...(iosUrlScheme

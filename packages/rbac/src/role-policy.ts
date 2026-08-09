@@ -3,6 +3,10 @@ import { getDataScope } from './data-scopes';
 
 export type MobileTabId =
   | 'index'
+  | 'home'
+  | 'work'
+  | 'action'
+  | 'finance'
   | 'search'
   | 'scan'
   | 'orders'
@@ -31,7 +35,6 @@ const MOBILE_TAB_PERMISSION: Partial<Record<MobileTabId, Permission>> = {
   search: 'inventory_view',
   scan: 'inventory_view',
   orders: 'work_orders_view',
-  accounting: 'accounting_view',
 };
 
 function roleNavAllowlist(role: UserRole | undefined): readonly WebNavItemId[] | null {
@@ -89,9 +92,21 @@ export function isMobileTabAllowed(
 
   if (tabId === 'profile') return true;
 
+  // Stable shell tabs — content inside is module/role gated, not the tab itself.
+  if (
+    tabId === 'home' ||
+    tabId === 'work' ||
+    tabId === 'action' ||
+    tabId === 'finance' ||
+    tabId === 'accounting'
+  ) {
+    return true;
+  }
+
   if (tabId === 'my-earnings') return canAccessMyEarnings(user);
 
-  if (tabId === 'index') return canAccessOverview(user);
+  // Home is a stable shell tab; section content is role-gated inside the screen.
+  if (tabId === 'index') return true;
 
   const permission = MOBILE_TAB_PERMISSION[tabId];
   if (!permission) return true;
@@ -99,9 +114,6 @@ export function isMobileTabAllowed(
 
   if (tabId === 'orders') {
     return getDataScope(user, 'work_orders') !== 'none';
-  }
-  if (tabId === 'accounting') {
-    return getDataScope(user, 'accounting') !== 'none';
   }
   if (tabId === 'search' || tabId === 'scan') {
     return getDataScope(user, 'inventory') !== 'none';
@@ -127,10 +139,6 @@ export function canManageSettings(user: UserEntity | null | undefined): boolean 
 
 export function defaultMobileTab(user: UserEntity | null | undefined): MobileTabId {
   if (!user) return 'profile';
-  if (canAccessOverview(user)) return 'index';
-  if (hasPermission(user, 'work_orders_view')) return 'orders';
-  if (canAccessMyEarnings(user)) return 'my-earnings';
-  if (hasPermission(user, 'accounting_view')) return 'accounting';
-  if (hasPermission(user, 'inventory_view')) return 'search';
-  return 'profile';
+  // Shell always lands on Home; role shapes Home content, not the first tab.
+  return 'home';
 }

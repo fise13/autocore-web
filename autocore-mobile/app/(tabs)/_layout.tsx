@@ -1,59 +1,58 @@
-import { useMemo } from 'react';
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import type { SFSymbol } from 'sf-symbols-typescript';
+import { Tabs } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
 
+import { ActionSheetHost } from '@/components/navigation/action-sheet-host';
+import { AutocoreDock } from '@/components/navigation/autocore-dock';
 import { TabTransitionProvider } from '@/components/navigation/tab-transition-context';
-import { useCompanyModuleEnabled } from '@/hooks/use-module-enabled';
+import { OperationsLiveActivityHost } from '@/features/live-activity/operations-live-activity-host';
 import { useTheme } from '@/hooks/use-theme';
-import { useSession } from '@/hooks/use-session';
-import { isNavItemVisible } from '@/lib/navigation/nav-item-availability';
-import { TAB_SPECS } from '@/lib/navigation/tab-specs';
 
 /**
- * Fixed tab bar.
- *
- * The set and its order are product decisions, not user settings — a control
- * centre people can rearrange is one they have to re-learn. Only permissions
- * and disabled company modules can take a tab away.
+ * Autocore shell: stadium dock (Home · Work · Finance · Profile) + detached Action.
+ * ActionSheetHost is an absolute overlay (not Modal) so New always paints.
  */
 export default function TabLayout() {
   const { colors } = useTheme();
-  const { profile } = useSession();
-  const workOrders = useCompanyModuleEnabled('workOrders');
-  const warehouse = useCompanyModuleEnabled('warehouse');
-  const accounting = useCompanyModuleEnabled('accounting');
-
-  const hiddenByRoute = useMemo(() => {
-    const modules = { workOrders, warehouse, accounting };
-    return new Map(
-      TAB_SPECS.map((spec) => [
-        spec.route,
-        spec.navId === null || !isNavItemVisible(spec.navId, profile, modules),
-      ]),
-    );
-  }, [accounting, profile, warehouse, workOrders]);
 
   return (
-    // `useNavigateTab` still reads this context from deep links across the app;
-    // the native bar animates its own transitions.
     <TabTransitionProvider>
-      <NativeTabs
-        tintColor={colors.primary}
-        minimizeBehavior="never"
-        labelStyle={{ fontSize: 10, fontWeight: '600' }}
-      >
-        {TAB_SPECS.map((spec) => (
-          <NativeTabs.Trigger
-            key={spec.route}
-            name={spec.route}
-            hidden={hiddenByRoute.get(spec.route) ?? true}
-            role={spec.role}
-          >
-            <NativeTabs.Trigger.Icon sf={spec.sf} />
-            <NativeTabs.Trigger.Label>{spec.label}</NativeTabs.Trigger.Label>
-          </NativeTabs.Trigger>
-        ))}
-      </NativeTabs>
+      <View style={styles.shell}>
+        <Tabs
+          tabBar={(props) => <AutocoreDock {...props} />}
+          screenOptions={{
+            headerShown: false,
+            tabBarStyle: { position: 'absolute' },
+            sceneStyle: { backgroundColor: colors.background },
+            animation: 'none',
+          }}
+        >
+          <Tabs.Screen name="index" options={{ title: 'Home' }} />
+          <Tabs.Screen name="work" options={{ title: 'Work' }} />
+          <Tabs.Screen
+            name="action"
+            options={{ title: 'Action', tabBarLabel: 'Action' }}
+            listeners={{
+              tabPress: (e) => {
+                e.preventDefault();
+              },
+            }}
+          />
+          <Tabs.Screen name="accounting" options={{ title: 'Finance' }} />
+          <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+
+          <Tabs.Screen name="orders" options={{ href: null, title: 'Orders' }} />
+          <Tabs.Screen name="scan" options={{ href: null, title: 'Scan' }} />
+          <Tabs.Screen name="ai" options={{ href: null, title: 'AI' }} />
+        </Tabs>
+        <ActionSheetHost />
+        <OperationsLiveActivityHost />
+      </View>
     </TabTransitionProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  shell: {
+    flex: 1,
+  },
+});

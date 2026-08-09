@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 
-import { markStartup, logStartupTable } from '@/lib/performance/startup-tracer';
+import { AnimatedTabScreen } from '@/components/navigation/animated-tab-screen';
 import { OverviewScreen } from '@/features/overview';
+import { markStartup, logStartupTable } from '@/lib/performance/startup-tracer';
 
 export default function HomeRoute() {
   useEffect(() => {
@@ -9,5 +10,9 @@ export default function HomeRoute() {
     logStartupTable();
   }, []);
 
-  return <OverviewScreen />;
+  return (
+    <AnimatedTabScreen tab="index">
+      <OverviewScreen />
+    </AnimatedTabScreen>
+  );
 }

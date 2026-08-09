@@ -46,8 +46,29 @@ export type OverviewKpi = {
 
 export type InsightTone = 'neutral' | 'positive' | 'warning';
 
+/** Optional series — only attach when it answers the insight (never decorative). */
+export type OverviewInsightChart = {
+  points: Array<{ label: string; value: number }>;
+  /** Horizontal baseline (e.g. longer-window average). */
+  baseline?: number;
+  baselineLabel?: string;
+  currentLabel?: string;
+};
+
+export type OverviewInsightCompare = {
+  primary: { label: string; value: string };
+  secondary: { label: string; value: string };
+};
+
 export type OverviewInsight = {
   id: string;
+  /** Health-style category in the tinted header (e.g. "Close rate"). */
+  category: string;
+  /** SF symbol name for the header glyph. */
+  sf: string;
+  /** Narrative takeaway — primary Health copy under the header. */
+  insight: string;
+  /** @deprecated Prefer `insight` — kept for secondary notes list. */
   title: string;
   detail?: string;
   body?: string;
@@ -55,6 +76,10 @@ export type OverviewInsight = {
   tone: InsightTone;
   route?: '/(tabs)/orders' | '/search' | '/warehouse' | '/(tabs)/accounting';
   routeParams?: Record<string, string>;
+  /** Dual metrics (Today vs Average) — only with real values. */
+  compare?: OverviewInsightCompare | null;
+  /** Trend chart — omit when the insight is a count/alert without a series. */
+  chart?: OverviewInsightChart | null;
 };
 
 export type OverviewActivity = {

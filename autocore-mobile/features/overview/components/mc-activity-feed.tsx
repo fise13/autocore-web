@@ -167,7 +167,7 @@ export const McActivityFeed = memo(function McActivityFeed({ items }: McActivity
     <View>
       <Animated.View style={titleStyle}>
         <McSectionTitle
-          title="Recent"
+          title="Recent activity"
           actionLabel={canExpand ? (expanded ? 'Collapse' : 'All') : undefined}
           onAction={canExpand ? toggleExpand : undefined}
         />

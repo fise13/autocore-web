@@ -24,7 +24,7 @@ export default function NotFoundScreen() {
         <Text variant="body" color="muted">
           This route does not exist in Autocore Mobile.
         </Text>
-        <Link href="/" asChild>
+        <Link href="/(tabs)" asChild>
           <Button>Go home</Button>
         </Link>
       </View>

@@ -10,6 +10,7 @@ import {
   canAccessMyEarnings,
   isEmployeeOverviewUser,
   isMobileTabAllowed,
+  defaultMobileTab,
   hasPermission,
   ROLE_PERMISSIONS,
   type UserEntity,
@@ -109,6 +110,16 @@ describe('navigation policy', () => {
     assert.equal(isMobileTabAllowed(user('mechanic'), 'my-earnings'), true);
     assert.equal(canAccessMyEarnings(user('diagnostician')), false);
     assert.equal(canAccessMyEarnings(user('manager')), false);
+  });
+
+  it('shell tabs stay available and default landing is home', () => {
+    assert.equal(isMobileTabAllowed(user('mechanic'), 'home'), true);
+    assert.equal(isMobileTabAllowed(user('mechanic'), 'work'), true);
+    assert.equal(isMobileTabAllowed(user('mechanic'), 'action'), true);
+    assert.equal(isMobileTabAllowed(user('mechanic'), 'finance'), true);
+    assert.equal(isMobileTabAllowed(user('mechanic'), 'accounting'), true);
+    assert.equal(defaultMobileTab(user('mechanic')), 'home');
+    assert.equal(defaultMobileTab(user('accountant')), 'home');
   });
 
   it('employee overview user is assignee-scoped mechanic or diagnostician', () => {

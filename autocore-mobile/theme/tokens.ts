@@ -14,13 +14,15 @@ export const tokens = {
     group: 12,
     sheet: 16,
     modal: 20,
+    /** Floating dock shell — stadium pill (48h → radius 24). */
+    dock: 24,
     full: 9999,
   },
   space: {
     ...spacing,
-    screenX: spacing[4], // 16
+    screenX: spacing[5], // 20 — Health-like horizontal breathing
     screenY: spacing[3],
-    section: spacing[6], // 24
+    section: spacing[8], // 32 — section rhythm
     stack: spacing[3], // 12
     inline: spacing[2], // 8
     micro: spacing[1], // 4

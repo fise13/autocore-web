@@ -1,68 +1,76 @@
 import type { SFSymbol } from 'sf-symbols-typescript';
 
-import type { NavItemId } from '@/features/settings/types';
+import type { ShellTabId } from '@/lib/shell/types';
 
 export type TabSpec = {
   /** Expo route name under `app/(tabs)`. */
   route: string;
-  /**
-   * Nav item this tab represents, or `null` when the route exists but never
-   * belongs in the bar. Native tabs cannot add or remove triggers at runtime,
-   * so every route keeps a trigger and only `hidden` changes.
-   */
-  navId: NavItemId | null;
+  /** Stable shell identity — never grows with modules. */
+  shellId: ShellTabId;
   label: string;
   sf: { default: SFSymbol; selected: SFSymbol };
-  /** iOS 26 gives the search role its own placement, trailing the capsule. */
-  role?: 'search';
+  /**
+   * When true, pressing the tab opens the Action sheet instead of navigating
+   * (the route still exists as a lightweight placeholder).
+   */
+  isAction?: boolean;
 };
 
 /**
- * The tab bar, in order. Fixed on purpose: this is the app's control centre,
- * and a bar people can rearrange is a bar they have to re-learn. Anything not
- * here is reached from Overview or Settings.
+ * Autocore dock — Home · Work · Action · Finance · Profile.
+ * Modules change content inside these slots, never the bar itself.
  */
 export const TAB_SPECS: TabSpec[] = [
   {
     route: 'index',
-    navId: 'overview',
-    label: 'Overview',
-    sf: { default: 'square.grid.2x2', selected: 'square.grid.2x2.fill' },
+    shellId: 'home',
+    label: 'Home',
+    sf: { default: 'house', selected: 'house.fill' },
   },
   {
-    route: 'orders',
-    navId: 'orders',
-    label: 'Orders',
-    sf: { default: 'wrench.and.screwdriver', selected: 'wrench.and.screwdriver.fill' },
+    route: 'work',
+    shellId: 'work',
+    label: 'Work',
+    sf: { default: 'square.stack.3d.up', selected: 'square.stack.3d.up.fill' },
   },
   {
-    route: 'scan',
-    navId: 'scan',
-    label: 'Scan',
-    sf: { default: 'barcode.viewfinder', selected: 'barcode.viewfinder' },
+    route: 'action',
+    shellId: 'action',
+    label: 'Action',
+    sf: { default: 'plus', selected: 'plus' },
+    isAction: true,
   },
   {
     route: 'accounting',
-    navId: 'accounting',
+    shellId: 'finance',
     label: 'Finance',
     sf: { default: 'chart.bar', selected: 'chart.bar.fill' },
   },
   {
     route: 'profile',
-    navId: 'profile',
-    label: 'Settings',
+    shellId: 'profile',
+    label: 'Profile',
     sf: { default: 'person.crop.circle', selected: 'person.crop.circle.fill' },
   },
 ];
 
-/** Bar order for the tabs a given user can actually see. */
-export const TAB_ROUTE_ORDER: string[] = TAB_SPECS.filter((spec) => spec.navId !== null).map(
-  (spec) => spec.route,
-);
+/** Bar order for shell tabs. */
+export const TAB_ROUTE_ORDER: string[] = TAB_SPECS.map((spec) => spec.route);
+
+/**
+ * Legacy / drill-in routes that still live under `(tabs)` but are hidden from
+ * the dock. Reached from Work, Action, Search, or deep links.
+ */
+export const HIDDEN_TAB_ROUTES = new Set(['orders', 'scan', 'ai']);
 
 /**
  * App screens that live at the root instead of in the tab group — reached by
- * pushing, never by a tab. They keep the bar at five without being hidden,
- * since a hidden native tab cannot be navigated to at all.
+ * pushing, never by a tab.
  */
-export const ROOT_APP_ROUTES = new Set(['search', 'warehouse', 'import', 'intake']);
+export const ROOT_APP_ROUTES = new Set([
+  'search',
+  'warehouse',
+  'import',
+  'intake',
+  'objects',
+]);

@@ -16,6 +16,7 @@ import {
   useSession,
 } from '@/hooks';
 import { useSessionQueryData } from '@/hooks/use-session-query-data';
+import { useWorkspaceContextStore } from '@/lib/shell/workspace-context-store';
 import { isRealtimeReady } from '@/lib/realtime/subscription-registry';
 import { normalizeInventoryItem } from '@/services/firestore/inventory-item-repository';
 import type { InventoryItem } from '@/types/inventory';
@@ -30,6 +31,13 @@ export function WarehouseScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ lowStock?: string; q?: string }>();
   const { profile, can } = useSession();
+  const setWorkspaceContext = useWorkspaceContextStore((s) => s.setWorkspaceContext);
+
+  useFocusEffect(
+    useCallback(() => {
+      setWorkspaceContext('locations');
+    }, [setWorkspaceContext]),
+  );
   const companyId = profile?.companyId?.trim() || null;
   const warehouseEnabled = useCompanyModuleEnabled('warehouse');
   const canView = can('inventory_view') && warehouseEnabled;

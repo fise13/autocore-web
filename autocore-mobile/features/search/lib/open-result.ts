@@ -168,16 +168,9 @@ export async function openSearchResult(
   }
 
   if (item.kind === 'motor') {
-    showMotorActions(item, {
-      onSell: motorActions?.onSell ?? (() => undefined),
-      addToOrder: (motorId) => {
-        if (motorActions?.addToOrder) {
-          motorActions.addToOrder(motorId);
-          return;
-        }
-        addToOrder.addMotor(motorId, 'install');
-      },
-    });
+    // Canonical Engine object — sell / add-to-order remain available from the object.
+    router.push(`/objects/engine/${item.id}` as Href);
+    void motorActions;
     return;
   }
 

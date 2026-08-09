@@ -37,6 +37,7 @@ import {
   useEngineIntakeOutbox,
 } from './store/intake-outbox';
 import { engineIntakeId, getEngineIntakeDeviceId } from './lib/device';
+import { evidenceGuidance } from './lib/evidence-labels';
 
 function makeWorkerCommand(command: {
   type: EngineIntakeCommand['type'];
@@ -100,12 +101,15 @@ export function EngineIntakeSessionScreen() {
       .find(Boolean) ??
     null;
   const syncErrorText = humanizeIntakeOutboxError(syncError);
+  const evidenceHint = evidenceGuidance(serverProgress);
   const guidance =
     photoCount === 0
-      ? 'Shoot the engine condition from a few angles'
-      : unsyncedCount > 0
-        ? 'Photos stay on this phone until they sync'
-        : null;
+      ? 'Photograph naturally — AI organizes later'
+      : evidenceHint
+        ? evidenceHint
+        : unsyncedCount > 0
+          ? 'Photos stay on this phone until they sync'
+          : null;
   const jobOutboxCount = unsyncedCount;
   const isServerComplete =
     job?.state === 'awaiting_verification' ||

@@ -1,20 +1,35 @@
-import { rhythm, spacing, typography } from '@/theme';
-
-/** Overview — aliases unified rhythm (no local scale ownership). */
-export const mc = {
-  pad: rhythm.pad,
-  section: spacing[6],
-  stack: spacing[4],
-  hairline: rhythm.hairline,
-  radius: rhythm.radius,
-  cardRadius: rhythm.cardRadius,
-  row: rhythm.rowMinHeight,
-} as const;
+import { spacing, typography } from '@/theme';
+import { tokens } from '@/theme/tokens';
 
 /**
- * Typography aliases → DL v2 scale.
- * Prefer `<Text variant="…" />` in new MC components; keep mcType for gradual migration.
+ * Mission Control home — revenue hero, tiles, quick actions, AI, recent.
  */
+export const mc = {
+  pad: tokens.space.screenX, // 20
+  section: tokens.space.section, // 32
+  stack: spacing[4], // 16 — card internal stack
+  hairline: tokens.control.hairline,
+  /** Soft squircle for hero / tile cards */
+  radius: tokens.radius.modal, // 20
+  cardRadius: tokens.radius.modal,
+  row: tokens.control.heightLg,
+} as const;
+
+/** @deprecated Prefer `mc` — kept for Health-era home components still in tree. */
+export const home = {
+  pad: mc.pad,
+  section: mc.section,
+  stack: tokens.space.stack,
+  cardGap: tokens.space[2.5],
+  cardPad: tokens.space[4],
+  hairline: mc.hairline,
+  cardRadius: tokens.radius.sheet,
+  metricSize: 36,
+  metricLineHeight: 41,
+  sectionTitleSize: 28,
+  sectionTitleLineHeight: 34,
+} as const;
+
 export const mcType = {
   greeting: typography.title2,
   greetingMeta: typography.footnote,

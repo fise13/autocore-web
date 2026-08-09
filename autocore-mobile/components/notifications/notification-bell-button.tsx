@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 import Animated, {
@@ -10,7 +10,6 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { BellIcon } from '@/assets/icons';
-import { useNavigateTab } from '@/components/navigation/use-navigate-tab';
 import { Text } from '@/components/ui/text';
 import { useReducedMotion, useTheme } from '@/hooks';
 import {
@@ -30,13 +29,10 @@ type NotificationBellButtonProps = {
  */
 export function NotificationBellButton({ size = 'default' }: NotificationBellButtonProps) {
   const router = useRouter();
-  const navigateTab = useNavigateTab();
   const segments = useSegments();
   const { colors } = useTheme();
   const reducedMotion = useReducedMotion();
   const unreadCount = useNotificationStore((s) => s.unreadCount);
-  const onProfileTab = segments.some((segment) => segment === 'profile');
-  const returnTo = useMemo(() => resolveInboxReturnToFromSegments(segments), [segments]);
 
   const box = minTouchTarget;
   const iconSize = size === 'sm' ? 'sm' : 'md';
@@ -83,13 +79,10 @@ export function NotificationBellButton({ size = 'default' }: NotificationBellBut
 
   const openInbox = () => {
     haptics.light();
-    if (onProfileTab) {
-      openNotificationInbox(router, { returnTo });
-      return;
-    }
-    navigateTab({
-      pathname: '/(tabs)/profile/inbox',
-      params: { returnTo },
+    // Snapshot return target at press time — never let Expo omitting `index`
+    // (or an unknown tab) send the user to Profile settings on cold-link back.
+    openNotificationInbox(router, {
+      returnTo: resolveInboxReturnToFromSegments(segments),
     });
   };
 

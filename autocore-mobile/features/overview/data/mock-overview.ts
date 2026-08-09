@@ -18,9 +18,9 @@ export const mockOverviewSnapshot: OverviewSnapshot = {
     ],
   },
   revenue: {
-    label: 'Balance',
+    label: 'Revenue · This week',
     value: 5_100_000,
-    growthPercent: 96.6,
+    growthPercent: 18.2,
     todayNet: 500_000,
     todayIncome: 682_209,
     todayExpense: 182_209,
@@ -36,19 +36,28 @@ export const mockOverviewSnapshot: OverviewSnapshot = {
   },
   statTiles: [
     { id: 'orders', label: 'New orders', value: 24, format: 'integer', icon: ClipboardListIcon },
-    { id: 'stock', label: 'In stock', value: 1284, format: 'grouped', icon: BoxIcon },
+    { id: 'stock', label: 'Parts in stock', value: 1284, format: 'grouped', icon: BoxIcon },
   ],
   featuredInsight: {
     id: 'pricing',
-    title: '3 underpriced motors',
-    detail: 'Slow movers.',
-    cta: 'Review',
+    category: 'Pricing',
+    sf: 'sparkles',
+    title: '3 engines are priced below market',
+    insight:
+      '3 engines are priced below market. Increasing the BMW N57 listing by 12% could add meaningful margin based on current demand.',
+    body: 'Increasing the BMW N57 listing by 12% could add meaningful margin based on current demand.',
+    cta: 'Review suggestions',
     tone: 'neutral',
+    // Alert without a historical series → no chart
+    chart: null,
   },
   insights: [
     {
       id: 'pace',
+      category: 'Close rate',
+      sf: 'chart.xyaxis.line',
       title: '62% closed',
+      insight: '62% of work orders closed this period.',
       detail: 'Work orders this period',
       tone: 'positive',
     },

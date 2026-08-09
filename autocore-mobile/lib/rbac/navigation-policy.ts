@@ -11,8 +11,12 @@ import {
 import type { UserEntity } from '@/types/user';
 import type { NavItemId } from '@/features/settings/types';
 
-const NAV_TO_TAB: Partial<Record<NavItemId, MobileTabId>> = {
+const NAV_TO_TAB: Partial<Record<NavItemId | 'home' | 'work' | 'action' | 'finance', MobileTabId>> = {
   overview: 'index',
+  home: 'home',
+  work: 'work',
+  action: 'action',
+  finance: 'finance',
   search: 'search',
   scan: 'scan',
   orders: 'orders',
@@ -23,7 +27,7 @@ const NAV_TO_TAB: Partial<Record<NavItemId, MobileTabId>> = {
 
 export function isMobileNavItemAllowed(
   user: UserEntity | null | undefined,
-  navId: NavItemId,
+  navId: NavItemId | 'home' | 'work' | 'action' | 'finance',
 ): boolean {
   if (!user || user.isActive === false) return false;
 

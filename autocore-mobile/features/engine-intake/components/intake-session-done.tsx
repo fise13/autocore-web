@@ -52,21 +52,21 @@ export function IntakeSessionDone({
             variant="displayTitle"
             style={{ color: colors.foreground, textAlign: 'center', fontWeight: '800' }}
           >
-            {synced ? 'In Warehouse' : 'Saved on this phone'}
+            {synced ? 'Ready for review' : 'Saved on this phone'}
           </Text>
           <Text
             variant="body"
             style={{ color: colors.mutedForeground, textAlign: 'center', maxWidth: 320 }}
           >
             {synced
-              ? 'Condition photos are in Warehouse for the team to review.'
+              ? 'Field capture is complete. AI organizes photos; the team reviews when needed.'
               : `${Math.max(pendingCount, 1)} items will sync when the connection returns.`}
           </Text>
         </View>
       </Animated.View>
 
       <Button size="xl" onPress={onBack}>
-        Back to Warehouse
+        Back to intake
       </Button>
     </View>
   );

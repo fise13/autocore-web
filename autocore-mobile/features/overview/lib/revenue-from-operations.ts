@@ -107,7 +107,7 @@ export function resolveOverviewRevenue(input: {
     const hero = buildAccountingHeroMetrics(input.operations, now);
 
     return {
-      label: 'Balance',
+      label: 'Balance · This month',
       value: hero.balanceTotal,
       growthPercent: hero.growthPercent,
       weekBars: hero.weekBars,
@@ -119,7 +119,7 @@ export function resolveOverviewRevenue(input: {
   }
 
   return {
-    label: 'This week',
+    label: 'Revenue · This week',
     value: input.orderWeekRevenue,
     growthPercent: input.orderWeekGrowth,
     weekBars: input.orderWeekBars,

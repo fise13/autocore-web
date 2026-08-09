@@ -55,7 +55,7 @@ export const McRevenueCard = memo(function McRevenueCard({ revenue }: McRevenueC
         style={{
           backgroundColor: colors.card,
           borderRadius: radius['3xl'],
-          padding: rhythm.stack + 4,
+          padding: rhythm.stack + 6,
           gap: rhythm.stack,
         }}
       >
@@ -70,7 +70,7 @@ export const McRevenueCard = memo(function McRevenueCard({ revenue }: McRevenueC
                 alignItems: 'center',
                 gap: 4,
                 paddingHorizontal: 10,
-                paddingVertical: 4,
+                paddingVertical: 5,
                 borderRadius: radius.full,
                 backgroundColor: toneBackground(isPositive ? colors.success : colors.warning, 0.14),
               }}

@@ -1,5 +1,10 @@
-import { NotificationInboxScreen } from '@/features/notifications/notification-inbox-screen';
+import { Redirect, useLocalSearchParams } from 'expo-router';
 
-export default function InboxRoute() {
-  return <NotificationInboxScreen />;
+/**
+ * Legacy tab path — keep for deep links / old pushes, forward to root Activity
+ * so Home ↔ Activity gets a normal stack slide.
+ */
+export default function ProfileInboxRedirect() {
+  const params = useLocalSearchParams();
+  return <Redirect href={{ pathname: '/inbox', params }} />;
 }

@@ -53,11 +53,11 @@ export function resolveNotificationDeepLink(deepLink?: string | null): Href | nu
     return `/(tabs)/orders/${path.slice('orders/'.length)}` as Href;
   }
   if (path === 'orders') return '/(tabs)/orders' as Href;
+  if (path === 'profile/inbox' || path === 'inbox') {
+    return '/inbox' as Href;
+  }
   if (path.startsWith('profile/')) {
     return `/(tabs)/profile/${path.slice('profile/'.length)}` as Href;
-  }
-  if (path === 'profile/inbox' || path === 'inbox') {
-    return '/(tabs)/profile/inbox' as Href;
   }
   if (path === 'scan') return '/(tabs)/scan' as Href;
   if (path.startsWith('accounting')) return '/(tabs)/accounting' as Href;
@@ -82,7 +82,10 @@ export function resolveNotificationDeepLink(deepLink?: string | null): Href | nu
     return '/import' as Href;
   }
   if (path === 'sync/conflict') {
-    return '/(tabs)/profile/inbox' as Href;
+    return '/inbox' as Href;
+  }
+  if (path === 'intake' || path.startsWith('intake/') || path.startsWith('intake?')) {
+    return '/intake' as Href;
   }
 
   return '/(tabs)' as Href;

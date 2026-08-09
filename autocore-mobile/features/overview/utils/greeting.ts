@@ -10,6 +10,17 @@ export function resolveProfileHeadline(displayName: string | null | undefined): 
 }
 
 /**
+ * Mission Control eyebrow — time-of-day greeting above the company name.
+ */
+export function resolveTimeOfDayGreeting(date = new Date()): string {
+  const hour = date.getHours();
+  if (hour < 5) return 'Good night';
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+/**
  * Overview hero — just the first name.
  * Falls back to "Home" when the profile has no usable name.
  */

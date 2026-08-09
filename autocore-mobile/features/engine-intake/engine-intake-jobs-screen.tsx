@@ -171,8 +171,8 @@ export function EngineIntakeJobsScreen() {
       }
       if (job.state === 'awaiting_verification') {
         toast({
-          title: 'Already in Warehouse',
-          description: 'This engine is waiting for review. Start a new engine to capture more.',
+          title: 'Awaiting review',
+          description: 'This engine is waiting for verification. Start a new engine to capture more.',
           variant: 'default',
         });
         return;
@@ -329,7 +329,7 @@ export function EngineIntakeJobsScreen() {
     filter === 'ready'
       ? `${readyJobs.length} ready for review`
       : filter === 'all'
-        ? `${scopedJobs.length} in Warehouse`
+        ? `${scopedJobs.length} in intake`
         : `${activeJobs.length} documenting`;
 
   const listHeader = (
@@ -374,7 +374,7 @@ export function EngineIntakeJobsScreen() {
           }
           emptyActionLabel={can('engine_intake_execute') ? 'New engine' : undefined}
           onEmptyAction={can('engine_intake_execute') ? openCreateSheet : undefined}
-          errorTitle="Warehouse unavailable"
+          errorTitle="Intake unavailable"
           errorDescription={
             isPermissionError(error)
               ? 'Live list could not be loaded. You can still start a new engine.'
@@ -401,8 +401,8 @@ export function EngineIntakeJobsScreen() {
           }
           emptyDescription={
             filter === 'ready'
-              ? 'Finished engines waiting for Warehouse review show up here.'
-              : 'Enter the serial, then photograph freely. Autocore builds Warehouse inventory.'
+              ? 'Finished engines waiting for verification show up here.'
+              : 'Enter the serial, then photograph freely. AI organizes evidence later.'
           }
           emptyActionLabel={
             can('engine_intake_execute') && filter !== 'ready' ? 'New engine' : undefined

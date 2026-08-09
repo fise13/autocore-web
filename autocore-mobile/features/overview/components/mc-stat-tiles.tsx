@@ -60,7 +60,7 @@ const StatTile = memo(function StatTile({
           backgroundColor: colors.card,
           borderRadius: radius['3xl'],
           padding: rhythm.stack + 4,
-          minHeight: 132,
+          minHeight: 140,
           justifyContent: 'space-between',
         }}
       >
@@ -69,10 +69,10 @@ const StatTile = memo(function StatTile({
             style={{
               width: 36,
               height: 36,
-              borderRadius: radius.lg,
+              borderRadius: radius.full,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: toneBackground(colors.primary, 0.12),
+              backgroundColor: toneBackground(colors.primary, 0.14),
             }}
           >
             <Icon size="sm" color={colors.primary} strokeWidth={1.75} />

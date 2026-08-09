@@ -2,13 +2,17 @@ import { createContext, useCallback, useContext, useMemo, useRef, type ReactNode
 
 export const TAB_ORDER = [
   'index',
-  'search',
-  'warehouse',
-  'scan',
-  'orders',
-  'my-earnings',
+  'work',
+  'action',
   'accounting',
   'profile',
+  // Hidden drill-in routes still under (tabs)
+  'orders',
+  'ai',
+  'scan',
+  'search',
+  'warehouse',
+  'my-earnings',
 ] as const;
 export type TabRouteName = (typeof TAB_ORDER)[number];
 

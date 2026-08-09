@@ -1,0 +1,140 @@
+import type { AiUiBlock } from './ai-ui-blocks';
+
+/**
+ * Lightweight on-device intent router for v1.
+ * Maps operational phrases to native UI blocks; server AI session can replace this later.
+ */
+export async function interpretAiPrompt(prompt: string): Promise<AiUiBlock[]> {
+  const q = prompt.trim().toLowerCase();
+
+  if (/receive\s+engine|intake/.test(q)) {
+    const serialMatch = prompt.match(/\b([A-Z0-9]{5,})\b/i);
+    const serial = serialMatch?.[1]?.toUpperCase() ?? null;
+    return [
+      {
+        type: 'confirmation',
+        title: serial ? `Receive engine ${serial}` : 'Receive engine',
+        body: serial
+          ? `Start intake for serial ${serial}. Camera opens after you confirm.`
+          : 'Open engine intake to type a serial and begin photography.',
+        confirmLabel: 'Start intake',
+        href: '/intake',
+      },
+      {
+        type: 'action',
+        label: 'Open intake bay',
+        href: '/intake',
+        primary: true,
+      },
+    ];
+  }
+
+  if (/need(s)?\s+photo|missing\s+photo|oil\s+pan|no\s+oil/.test(q)) {
+    return [
+      {
+        type: 'text',
+        body: 'Engines missing evidence — open intake Ready / Active to continue photography.',
+      },
+      {
+        type: 'action',
+        label: 'Engines needing photos',
+        href: '/intake',
+        primary: true,
+      },
+      {
+        type: 'metric',
+        label: 'Open intake jobs',
+        value: '—',
+        delta: 'Check intake bay',
+      },
+    ];
+  }
+
+  if (/received\s+today|what\s+was\s+received|throughput/.test(q)) {
+    return [
+      {
+        type: 'metric',
+        label: 'Received today',
+        value: '—',
+        delta: 'Live counts load from intake once opened',
+      },
+      {
+        type: 'timeline',
+        title: 'Today',
+        items: [
+          { id: '1', title: 'Open intake for today’s activity', meta: 'Field complete → warehouse' },
+        ],
+      },
+      {
+        type: 'action',
+        label: 'Open intake',
+        href: '/intake',
+      },
+    ];
+  }
+
+  if (/ej\d+|warehouse|find\s+engine|search/.test(q)) {
+    const encoded = encodeURIComponent(prompt.trim());
+    return [
+      {
+        type: 'text',
+        body: `Search Autocore for “${prompt.trim()}”.`,
+      },
+      {
+        type: 'action',
+        label: 'Search now',
+        href: `/search?q=${encoded}`,
+        primary: true,
+      },
+    ];
+  }
+
+  if (/finance|revenue|ledger|accounting/.test(q)) {
+    return [
+      {
+        type: 'action',
+        label: 'Open finance',
+        href: '/(tabs)/accounting',
+        primary: true,
+      },
+      {
+        type: 'text',
+        body: 'Finance lives under Work when accounting is enabled for your company.',
+      },
+    ];
+  }
+
+  if (/order|work\s+order/.test(q)) {
+    return [
+      {
+        type: 'action',
+        label: 'Open orders',
+        href: '/(tabs)/orders',
+        primary: true,
+      },
+      {
+        type: 'action',
+        label: 'New order',
+        href: '/(tabs)/orders/new',
+      },
+    ];
+  }
+
+  return [
+    {
+      type: 'text',
+      body: 'Try: “Receive engine U398539”, “Show engines that still need photos”, or “What was received today?”',
+    },
+    {
+      type: 'action',
+      label: 'Search Autocore',
+      href: `/search?q=${encodeURIComponent(prompt.trim())}`,
+      primary: true,
+    },
+    {
+      type: 'action',
+      label: 'Open Work',
+      href: '/(tabs)/work',
+    },
+  ];
+}
