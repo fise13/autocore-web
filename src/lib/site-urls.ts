@@ -220,6 +220,7 @@ export const APP_ROUTE_PREFIXES = [
   "/help",
   "/changelog",
   "/status",
+  "/ai",
 ] as const;
 
 export function isAppRoute(pathname: string): boolean {

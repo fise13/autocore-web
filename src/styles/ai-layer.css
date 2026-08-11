@@ -1,0 +1,298 @@
+/*
+ * AutoCore intelligent layer — motion primitives.
+ *
+ * Everything here is transform/opacity only so the compositor owns it: no
+ * continuous JS animation loop drives the glyph, only `data-state` swaps.
+ * Colour comes from the shared `--ai` tone tokens (packages/design-tokens);
+ * nothing in this file declares a colour value.
+ */
+
+:root {
+  /* Premium ease-out used across the AI layer (matches the app's motion curve). */
+  --ai-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ai-ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --ai-button-duration: 180ms;
+  --ai-surface-duration: 300ms;
+}
+
+/* ── Glyph ────────────────────────────────────────────────────────────── */
+
+.ai-glyph {
+  display: block;
+  overflow: visible;
+  color: inherit;
+}
+
+.ai-glyph__ring,
+.ai-glyph__core,
+.ai-glyph__pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+.ai-glyph__ring {
+  opacity: 0.5;
+  transition:
+    opacity var(--ai-button-duration) var(--ai-ease),
+    transform 260ms var(--ai-ease);
+}
+
+.ai-glyph__core {
+  transform: rotate(45deg);
+  transition:
+    transform 260ms var(--ai-ease),
+    opacity var(--ai-button-duration) var(--ai-ease);
+}
+
+.ai-glyph__pulse {
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity 160ms var(--ai-ease),
+    transform 220ms var(--ai-ease);
+}
+
+/* Idle — barely perceptible breathing. Nothing loops fast enough to read as
+   a spinner; the intent is "alive", not "loading". */
+@keyframes ai-glyph-breathe {
+  0%,
+  100% {
+    transform: rotate(45deg) scale(1);
+  }
+  50% {
+    transform: rotate(45deg) scale(0.9);
+  }
+}
+
+@keyframes ai-glyph-ring-drift {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(9deg);
+  }
+}
+
+.ai-glyph[data-state="idle"] .ai-glyph__core {
+  animation: ai-glyph-breathe 4.6s var(--ai-ease-inout) infinite;
+}
+
+.ai-glyph[data-state="idle"] .ai-glyph__ring {
+  animation: ai-glyph-ring-drift 9.2s var(--ai-ease-inout) infinite;
+}
+
+/* Hover — a small step up in activity, no layout change. */
+.ai-glyph[data-state="hover"] .ai-glyph__ring {
+  opacity: 0.85;
+  transform: rotate(16deg);
+}
+
+.ai-glyph[data-state="hover"] .ai-glyph__core {
+  transform: rotate(57deg) scale(1.06);
+}
+
+/* Active — the click moment: the core snaps square-on and the ring opens up. */
+.ai-glyph[data-state="active"] .ai-glyph__ring {
+  opacity: 1;
+  transform: rotate(48deg) scale(1.08);
+}
+
+.ai-glyph[data-state="active"] .ai-glyph__core {
+  transform: rotate(90deg) scale(0.86);
+}
+
+.ai-glyph[data-state="active"] .ai-glyph__pulse {
+  opacity: 0.9;
+  transform: scale(1);
+}
+
+/* Thinking / working — continuous but smooth morphing. Working adds the
+   inner node so an executing tool step reads differently from plain latency. */
+@keyframes ai-glyph-think-ring {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ai-glyph-think-core {
+  0% {
+    transform: rotate(45deg) scale(1);
+  }
+  50% {
+    transform: rotate(135deg) scale(0.78);
+  }
+  100% {
+    transform: rotate(225deg) scale(1);
+  }
+}
+
+@keyframes ai-glyph-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+.ai-glyph[data-state="thinking"] .ai-glyph__ring,
+.ai-glyph[data-state="working"] .ai-glyph__ring {
+  opacity: 1;
+  animation: ai-glyph-think-ring 2.6s linear infinite;
+}
+
+.ai-glyph[data-state="thinking"] .ai-glyph__core,
+.ai-glyph[data-state="working"] .ai-glyph__core {
+  animation: ai-glyph-think-core 2.2s var(--ai-ease-inout) infinite;
+}
+
+.ai-glyph[data-state="working"] .ai-glyph__pulse {
+  animation: ai-glyph-pulse 1.1s var(--ai-ease-inout) infinite;
+}
+
+/* Success — one elegant expansion, then straight back to idle. */
+@keyframes ai-glyph-success-core {
+  0% {
+    transform: rotate(45deg) scale(1);
+  }
+  38% {
+    transform: rotate(45deg) scale(1.22);
+  }
+  100% {
+    transform: rotate(45deg) scale(1);
+  }
+}
+
+@keyframes ai-glyph-success-ring {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  40% {
+    opacity: 0.9;
+    transform: scale(1.14);
+  }
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+}
+
+.ai-glyph[data-state="success"] .ai-glyph__core {
+  animation: ai-glyph-success-core 420ms var(--ai-ease) 1;
+}
+
+.ai-glyph[data-state="success"] .ai-glyph__ring {
+  animation: ai-glyph-success-ring 420ms var(--ai-ease) 1;
+}
+
+/* Error — a small deformation, deliberately not a shake. */
+@keyframes ai-glyph-error-core {
+  0% {
+    transform: rotate(45deg) scale(1);
+  }
+  35% {
+    transform: rotate(38deg) scale(0.9, 1.08);
+  }
+  70% {
+    transform: rotate(49deg) scale(1.04, 0.96);
+  }
+  100% {
+    transform: rotate(45deg) scale(1);
+  }
+}
+
+.ai-glyph[data-state="error"] .ai-glyph__core {
+  animation: ai-glyph-error-core 520ms var(--ai-ease-inout) 1;
+}
+
+.ai-glyph[data-state="error"] .ai-glyph__ring {
+  opacity: 0.75;
+}
+
+/* ── Entry button ─────────────────────────────────────────────────────── */
+
+.ai-entry-button {
+  transition:
+    background-color var(--ai-button-duration) var(--ai-ease),
+    border-color var(--ai-button-duration) var(--ai-ease),
+    box-shadow var(--ai-button-duration) var(--ai-ease),
+    color var(--ai-button-duration) var(--ai-ease);
+}
+
+/* The button "expands" on click through this halo layer only — the button box
+   itself never scales, so the sidebar never reflows or jumps. */
+.ai-entry-button__halo {
+  opacity: 0;
+  transform: scale(0.98);
+  transition:
+    opacity 220ms var(--ai-ease),
+    transform 320ms var(--ai-ease);
+  will-change: transform, opacity;
+}
+
+.ai-entry-button:hover .ai-entry-button__halo,
+.ai-entry-button:focus-visible .ai-entry-button__halo {
+  opacity: 0.55;
+  transform: scale(1);
+}
+
+.ai-entry-button[data-state="active"] .ai-entry-button__halo,
+.ai-entry-button[data-state="thinking"] .ai-entry-button__halo,
+.ai-entry-button[data-state="working"] .ai-entry-button__halo {
+  opacity: 1;
+  transform: scale(1.02);
+}
+
+/* ── Workspace content reveal ─────────────────────────────────────────── */
+
+@keyframes ai-content-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.ai-rise {
+  animation: ai-content-rise 320ms var(--ai-ease) both;
+}
+
+.ai-rise-delay-1 {
+  animation-delay: 60ms;
+}
+
+.ai-rise-delay-2 {
+  animation-delay: 110ms;
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-glyph__ring,
+  .ai-glyph__core,
+  .ai-glyph__pulse,
+  .ai-entry-button,
+  .ai-entry-button__halo,
+  .ai-rise {
+    animation: none !important;
+    transition-duration: 1ms !important;
+  }
+
+  .ai-glyph[data-state="thinking"] .ai-glyph__pulse,
+  .ai-glyph[data-state="working"] .ai-glyph__pulse {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+}

@@ -42,7 +42,7 @@ export function EngineIntakeSideRail({
   job,
   sessions,
   events,
-  inspections,
+  inspections: _inspections,
   employees,
   canVerify,
   canApprove,
@@ -56,6 +56,7 @@ export function EngineIntakeSideRail({
   job: EngineIntakeJob;
   sessions: EngineIntakeSession[];
   events: IntakeEvent[];
+  /** Kept for call-site compatibility while AI matching is disabled. */
   inspections: IntakeAiInspectionResult[];
   employees: CompanyEmployee[];
   canVerify: boolean;
@@ -211,9 +212,6 @@ export function EngineIntakeSideRail({
           <TabsTrigger value="sessions" className="flex-1 text-xs">
             Sessions
           </TabsTrigger>
-          <TabsTrigger value="ai" className="flex-1 text-xs">
-            AI
-          </TabsTrigger>
         </TabsList>
         <TabsContent
           value="timeline"
@@ -270,43 +268,6 @@ export function EngineIntakeSideRail({
             ))
           ) : (
             <p className="py-3 text-center text-xs text-muted-foreground">No sessions</p>
-          )}
-        </TabsContent>
-        <TabsContent
-          value="ai"
-          className="mt-2 flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto data-[hidden]:hidden"
-        >
-          {inspections.length > 0 ? (
-            inspections.slice(0, 10).map((inspection) => (
-              <div
-                key={inspection.id}
-                className="flex flex-col gap-0.5 border-b py-1.5 last:border-0"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-xs font-medium">
-                    {inspection.photoLabel ||
-                      (inspection.suggestedCategory
-                        ? formatIntakeState(inspection.suggestedCategory)
-                        : "Photo inspection")}
-                  </span>
-                  <Badge
-                    variant={
-                      inspection.state === "completed"
-                        ? "success"
-                        : inspection.state === "failed"
-                          ? "destructive"
-                          : "info"
-                    }
-                  >
-                    {formatIntakeState(inspection.state)}
-                  </Badge>
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="py-3 text-center text-xs text-muted-foreground">
-              AI checks begin after upload
-            </p>
           )}
         </TabsContent>
       </Tabs>

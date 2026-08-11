@@ -368,3 +368,4 @@ export const claimMarketingCheckout = billingFunctions.https.onCall(async (data,
 export { onNotificationCreatedPush } from "./notification-push";
 export { onDocumentGenerationJobWrite } from "./document-job-worker";
 export { openrouterProxy } from "./openrouter-proxy";
+export { openrouterStreamProxy } from "./openrouter-stream-proxy";

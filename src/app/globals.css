@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 @import "../styles/design-tokens.css";
 @import "../styles/app-mobile.css";
+@import "../styles/ai-layer.css";
 @import "../styles/document-pdf-fonts.css";
 @import "../styles/document-pdf-template.css";
 @import "../styles/document-pdf-header.css";
@@ -72,6 +73,11 @@
   --color-danger-subtle: var(--danger-subtle);
   --color-danger-on-subtle: var(--danger-on-subtle);
   --color-danger-border: var(--danger-border);
+  --color-ai: var(--ai);
+  --color-ai-foreground: var(--ai-foreground);
+  --color-ai-subtle: var(--ai-subtle);
+  --color-ai-on-subtle: var(--ai-on-subtle);
+  --color-ai-border: var(--ai-border);
   --color-surface: var(--surface);
   --color-surface-secondary: var(--surface-secondary);
   --color-surface-elevated: var(--surface-elevated);

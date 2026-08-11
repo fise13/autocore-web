@@ -7,6 +7,10 @@ import {
   type AiProfileId,
 } from "@/infrastructure/openrouter/ai-profiles";
 import { parseAiJsonContent } from "@/infrastructure/openrouter/parse-ai-json";
+import { resolveProxyAuthHeaders } from "@/infrastructure/openrouter/proxy-auth.server";
+import type { AiTransport } from "@/infrastructure/openrouter/transport";
+
+export type { AiTransport };
 
 const DEFAULT_MODEL = "google/gemini-2.5-flash";
 const ABSOLUTE_MAX_TOKENS = 8192;
@@ -23,6 +27,11 @@ export type OpenRouterMessage =
 export type OpenRouterChatOptions = {
   /** Named budget/model/timeout profile. */
   profile?: AiProfileId;
+  /**
+   * `nvidia` — Core local probe: uses NVIDIA_OPENROUTER_API_KEY + NVIDIA_AI_MODEL
+   * only, never the Gemini OpenRouter key/model.
+   */
+  lane?: "default" | "nvidia";
   /** Product label for OpenRouter rankings (X-Title). */
   title?: string;
   /** Explicit model; otherwise profile env → OPENROUTER_MODEL → default. */
@@ -36,7 +45,17 @@ export type OpenRouterChatOptions = {
   timeoutMs?: number;
   /** Extra attempts after recoverable JSON/schema errors (default 1). */
   retries?: number;
+  /** Ask OpenRouter for reasoning tokens (when the model supports them). */
+  includeReasoning?: boolean;
 };
+
+export type OpenRouterJsonResult<T> = {
+  data: T;
+  /** Native thinking text from the model, if returned. */
+  reasoning: string | null;
+};
+
+const DEFAULT_NVIDIA_MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free";
 
 export function readOpenRouterApiKey(): string | null {
   const key =
@@ -46,18 +65,18 @@ export function readOpenRouterApiKey(): string | null {
   return key || null;
 }
 
-/**
- * How this runtime reaches OpenRouter.
- *
- * Production path: Firebase `openrouterProxy` only. The OpenRouter key never
- * leaves Functions env. Auth is either optional `AI_PROXY_SECRET` or a Google
- * ID token from the Firebase Admin service account (already on Vercel/local).
- * Direct `OPENROUTER_API_KEY` is a local fallback when the proxy URL cannot be
- * resolved.
- */
-export type AiTransport =
-  | { kind: "direct"; apiKey: string }
-  | { kind: "proxy"; url: string; secret: string | null };
+/** Separate OpenRouter key for Core NVIDIA local testing — keeps Gemini credits untouched. */
+export function readNvidiaOpenRouterApiKey(): string | null {
+  return process.env.NVIDIA_OPENROUTER_API_KEY?.trim() || null;
+}
+
+export function resolveNvidiaAiModel(explicit?: string): string {
+  return (
+    explicit?.trim() ||
+    process.env.NVIDIA_AI_MODEL?.trim() ||
+    DEFAULT_NVIDIA_MODEL
+  );
+}
 
 function firebaseProjectId(): string | null {
   const id =
@@ -85,13 +104,24 @@ function canUseFirebaseServiceAccount(): boolean {
 }
 
 export function readAiTransport(): AiTransport | null {
+  // Prefer direct whenever a key is present — production must not set this var.
+  const apiKey = readOpenRouterApiKey();
+  if (apiKey) {
+    return { kind: "direct", apiKey };
+  }
+
   const url = resolveAiProxyUrl();
   const secret = process.env.AI_PROXY_SECRET?.trim() || null;
   if (url && (secret || canUseFirebaseServiceAccount())) {
     return { kind: "proxy", url, secret };
   }
 
-  const apiKey = readOpenRouterApiKey();
+  return null;
+}
+
+/** Core-only local lane — never shares OPENROUTER_API_KEY with Gemini traffic. */
+export function readNvidiaAiTransport(): AiTransport | null {
+  const apiKey = readNvidiaOpenRouterApiKey();
   return apiKey ? { kind: "direct", apiKey } : null;
 }
 
@@ -142,32 +172,50 @@ function mapOpenRouterError(status: number, text: string, maxTokens: number): Er
   return new Error(text || `OpenRouter error ${status}`);
 }
 
-async function resolveProxyAuthHeaders(
-  transport: Extract<AiTransport, { kind: "proxy" }>,
-  title: string,
-): Promise<Record<string, string>> {
-  const headers: Record<string, string> = { "x-ai-title": title };
-  if (transport.secret) {
-    headers["x-ai-proxy-key"] = transport.secret;
-    return headers;
-  }
+function extractNativeReasoning(message: {
+  reasoning?: string | null;
+  reasoning_content?: string | null;
+  reasoning_details?: Array<{ type?: string; text?: string | null; summary?: string | string[] | null }>;
+} | undefined): string | null {
+  if (!message) return null;
 
-  const { GoogleAuth } = await import("google-auth-library");
-  const { parseServiceAccount } = await import("@/infrastructure/firebase/resolve-service-account");
-  const credentials = parseServiceAccount() as {
-    client_email: string;
-    private_key: string;
-  };
-  const auth = new GoogleAuth({ credentials });
-  const client = await auth.getIdTokenClient(transport.url);
-  const requestHeaders = await client.getRequestHeaders(transport.url);
-  const authorization =
-    requestHeaders.get("Authorization") || requestHeaders.get("authorization");
-  if (!authorization) {
-    throw new Error("Не удалось получить Google ID token для Firebase AI proxy");
+  const direct = message.reasoning?.trim() || message.reasoning_content?.trim();
+  if (direct) return direct;
+
+  const details = message.reasoning_details;
+  if (!Array.isArray(details) || details.length === 0) return null;
+
+  const parts: string[] = [];
+  for (const detail of details) {
+    if (typeof detail.text === "string" && detail.text.trim()) {
+      parts.push(detail.text.trim());
+      continue;
+    }
+    if (typeof detail.summary === "string" && detail.summary.trim()) {
+      parts.push(detail.summary.trim());
+      continue;
+    }
+    if (Array.isArray(detail.summary)) {
+      for (const line of detail.summary) {
+        if (typeof line === "string" && line.trim()) parts.push(line.trim());
+      }
+    }
   }
-  headers.Authorization = authorization;
-  return headers;
+  return parts.length ? parts.join("\n") : null;
+}
+
+/** Models often wrap chain-of-thought in tags before the JSON payload. */
+function extractTaggedReasoning(content: string): { reasoning: string | null; content: string } {
+  const match = content.match(
+    /<(?:think|thinking|reasoning)>\s*([\s\S]*?)\s*<\/(?:think|thinking|reasoning)>/i,
+  );
+  if (!match?.[1]?.trim()) {
+    return { reasoning: null, content };
+  }
+  return {
+    reasoning: match[1].trim(),
+    content: content.replace(match[0], "").trim(),
+  };
 }
 
 async function callOpenRouterOnce<T>(
@@ -180,8 +228,9 @@ async function callOpenRouterOnce<T>(
     temperature: number;
     maxTokens: number;
     timeoutMs: number;
+    includeReasoning: boolean;
   },
-): Promise<T> {
+): Promise<OpenRouterJsonResult<T>> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), params.timeoutMs);
 
@@ -199,6 +248,17 @@ async function callOpenRouterOnce<T>(
           "X-Title": params.title,
         };
 
+  const body: Record<string, unknown> = {
+    model: params.model,
+    temperature: params.temperature,
+    max_tokens: params.maxTokens,
+    response_format: { type: "json_object" },
+    messages,
+  };
+  if (params.includeReasoning) {
+    body.reasoning = { enabled: true, effort: "medium", exclude: false };
+  }
+
   let response: Response;
   try {
     response = await fetch(endpoint, {
@@ -208,13 +268,7 @@ async function callOpenRouterOnce<T>(
         ...authHeaders,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: params.model,
-        temperature: params.temperature,
-        max_tokens: params.maxTokens,
-        response_format: { type: "json_object" },
-        messages,
-      }),
+      body: JSON.stringify(body),
     });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
@@ -231,11 +285,26 @@ async function callOpenRouterOnce<T>(
   }
 
   const payload = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
+    choices?: Array<{
+      message?: {
+        content?: string;
+        reasoning?: string | null;
+        reasoning_content?: string | null;
+        reasoning_details?: Array<{
+          type?: string;
+          text?: string | null;
+          summary?: string | string[] | null;
+        }>;
+      };
+      finish_reason?: string;
+    }>;
   };
   const choice = payload.choices?.[0];
-  const content = choice?.message?.content;
-  if (!content) throw new Error("Пустой ответ AI");
+  const rawContent = choice?.message?.content;
+  if (!rawContent) throw new Error("Пустой ответ AI");
+
+  const tagged = extractTaggedReasoning(rawContent);
+  const content = tagged.content || rawContent;
 
   let parsed: unknown;
   try {
@@ -248,7 +317,13 @@ async function callOpenRouterOnce<T>(
   }
 
   try {
-    return schema.parse(parsed);
+    return {
+      data: schema.parse(parsed),
+      reasoning:
+        extractNativeReasoning(choice?.message) ||
+        tagged.reasoning ||
+        null,
+    };
   } catch (error) {
     const detail =
       error instanceof Error && error.message.trim()
@@ -259,28 +334,37 @@ async function callOpenRouterOnce<T>(
 }
 
 const AI_NOT_CONFIGURED =
-  "AI не настроен. OpenRouter ключ задаётся только в Firebase Functions (OPENROUTER_API_KEY). Убедитесь, что openrouterProxy задеплоен и на сервере есть Firebase Admin credentials.";
+  "AI не настроен. Для local: добавьте OPENROUTER_API_KEY в .env.local. В production ключ живёт в Firebase Functions (openrouterProxy).";
+
+const NVIDIA_AI_NOT_CONFIGURED =
+  "Core NVIDIA lane не настроен. Добавьте NVIDIA_OPENROUTER_API_KEY в .env.local (отдельный OpenRouter ключ — не OPENROUTER_API_KEY с Gemini).";
 
 /**
  * JSON chat completion with profile budgets, timeout, and auto-retry on parse failures.
+ * Returns parsed data plus optional native reasoning text.
  */
-export async function callOpenRouterJson<T>(
+export async function callOpenRouterJsonDetailed<T>(
   messages: OpenRouterMessage[],
   schema: { parse: (value: unknown) => T },
   options?: OpenRouterChatOptions,
-): Promise<T> {
-  const transport = readAiTransport();
+): Promise<OpenRouterJsonResult<T>> {
+  const lane = options?.lane ?? "default";
+  const transport = lane === "nvidia" ? readNvidiaAiTransport() : readAiTransport();
   if (!transport) {
-    throw new Error(AI_NOT_CONFIGURED);
+    throw new Error(lane === "nvidia" ? NVIDIA_AI_NOT_CONFIGURED : AI_NOT_CONFIGURED);
   }
 
   const profileId = options?.profile ?? "default";
   const profile = AI_PROFILES[profileId];
-  const model = resolveOpenRouterModel(options?.model, profileId);
+  const model =
+    lane === "nvidia"
+      ? resolveNvidiaAiModel(options?.model)
+      : resolveOpenRouterModel(options?.model, profileId);
   const title = options?.title?.trim() || profile.title;
   const temperature = options?.temperature ?? profile.temperature;
   const timeoutMs = options?.timeoutMs ?? profile.timeoutMs;
   const retries = Math.max(0, options?.retries ?? 1);
+  const includeReasoning = Boolean(options?.includeReasoning ?? lane === "nvidia");
 
   let maxTokens = resolveMaxTokens(options?.maxTokens, profile.maxTokens);
   const retryMaxTokens = resolveMaxTokens(
@@ -298,6 +382,7 @@ export async function callOpenRouterJson<T>(
         temperature,
         maxTokens,
         timeoutMs,
+        includeReasoning,
       });
     } catch (error) {
       lastError = error;
@@ -308,4 +393,14 @@ export async function callOpenRouterJson<T>(
   }
 
   throw lastError instanceof Error ? lastError : new Error("OpenRouter request failed");
+}
+
+/** Same as {@link callOpenRouterJsonDetailed} but returns only the parsed payload. */
+export async function callOpenRouterJson<T>(
+  messages: OpenRouterMessage[],
+  schema: { parse: (value: unknown) => T },
+  options?: OpenRouterChatOptions,
+): Promise<T> {
+  const result = await callOpenRouterJsonDetailed(messages, schema, options);
+  return result.data;
 }

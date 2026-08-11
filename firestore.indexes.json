@@ -240,6 +240,14 @@
         { "fieldPath": "companyId", "order": "ASCENDING" },
         { "fieldPath": "primaryLocationId", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "financialOperations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "companyId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

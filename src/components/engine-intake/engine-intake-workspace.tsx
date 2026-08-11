@@ -254,7 +254,7 @@ export function EngineIntakeWorkspace() {
             <h1 className="font-heading text-lg font-semibold tracking-tight">Engine intake</h1>
           </div>
           <p className="truncate text-xs text-muted-foreground">
-            Document engines on mobile. Match photos with AI here, then edit anything before release.
+            Document engines on mobile. Label photos here, then edit anything before release.
           </p>
         </div>
         {canVerify ? (

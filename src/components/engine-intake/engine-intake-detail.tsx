@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import {
   ExternalLink,
@@ -64,7 +64,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   engineIntakeCommandId,
-  matchEngineIntakePhotos,
   sendEngineIntakeCommand,
   setEngineIntakePhotoCategory,
 } from "@/lib/engine-intake/engine-intake-api.client";
@@ -114,14 +113,12 @@ export function EngineIntakeDetail({
   const checklist = job.documentationChecklist;
   const summary = checklist.summary;
   const [busy, setBusy] = useState<string | null>(null);
-  const [matching, setMatching] = useState(false);
   const [dialog, setDialog] = useState<ReviewDialog>(null);
   const [reviewNote, setReviewNote] = useState("");
   const [aiOverrideReason, setAiOverrideReason] = useState("");
   const [serialCode, setSerialCode] = useState(job.expectedIdentity.serialCode);
   const [engineCode, setEngineCode] = useState(job.expectedIdentity.engineCode);
   const [brandName, setBrandName] = useState(job.expectedIdentity.brandName);
-  const autoMatchedJobs = useRef(new Set<string>());
   const [selectedItemId, setSelectedItemId] = useState<string | null>(
     () =>
       checklist.items.find(
@@ -168,61 +165,6 @@ export function EngineIntakeDetail({
     () => checklist.items.filter((item) => item.state === "not_applicable"),
     [checklist.items],
   );
-
-  const unmatchedPhotoCount = useMemo(
-    () =>
-      photos.filter((photo) => {
-        if (photo.deletedAt || photo.syncState !== "synced" || !photo.url) return false;
-        const state = photo.aiInspectionState ?? "queued";
-        if (state === "queued" || state === "failed") return true;
-        const category = photo.category ?? "other";
-        const hits = photo.checklistHits ?? [];
-        if (category === "other" && hits.length === 0) return true;
-        if (
-          category === "other" &&
-          hits.length > 0 &&
-          hits.every((hit) => hit === "overall_engine")
-        ) {
-          return true;
-        }
-        return false;
-      }).length,
-    [photos],
-  );
-
-  const runMatch = async (force = false) => {
-    if (!canVerify) return;
-    setMatching(true);
-    setBusy("ai_match");
-    try {
-      const result = await matchEngineIntakePhotos(companyId, job.id, { force });
-      if (result.queued === 0) {
-        toast.message(force ? "No photos to rematch" : "Photos already matched");
-      } else if (result.failed > 0 && result.matched === 0) {
-        toast.error("AI could not match photos — try Rematch again");
-      } else {
-        toast.success(
-          `Matched ${result.matched} of ${result.queued} photo${result.queued === 1 ? "" : "s"}`,
-        );
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "AI match failed");
-    } finally {
-      setMatching(false);
-      setBusy(null);
-    }
-  };
-
-  useEffect(() => {
-    if (!canVerify) return;
-    if (photos.length === 0) return;
-    if (unmatchedPhotoCount === 0) return;
-    if (autoMatchedJobs.current.has(job.id)) return;
-    autoMatchedJobs.current.add(job.id);
-    void runMatch(false);
-    // Auto-queue once per job open when unmatched synced photos exist.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional one-shot per job.id
-  }, [canVerify, job.id, photos.length, unmatchedPhotoCount]);
 
   const setPhotoCategory = async (photo: IntakePhoto, category: IntakePhotoCategory) => {
     setBusy(`category:${photo.id}`);
@@ -490,31 +432,12 @@ export function EngineIntakeDetail({
                 {summary.whisper ??
                   (summary.ready
                     ? "Sale checklist ready — override any item if needed"
-                    : "AI matches photos here · edit any item yourself")}
+                    : "Label photos yourself · checklist updates from your labels")}
               </p>
-              <div className="flex shrink-0 items-center gap-2">
-                {canVerify ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={busy !== null || matching || photos.length === 0}
-                    onClick={() => void runMatch(unmatchedPhotoCount === 0)}
-                  >
-                    {matching ? (
-                      <LoaderCircle data-icon="inline-start" className="animate-spin" />
-                    ) : (
-                      <Sparkles data-icon="inline-start" />
-                    )}
-                    {unmatchedPhotoCount > 0
-                      ? `Match ${unmatchedPhotoCount} photos`
-                      : "Rematch with AI"}
-                  </Button>
-                ) : null}
-                <TabsList variant="line">
-                  <TabsTrigger value="checklist">Checklist</TabsTrigger>
-                  <TabsTrigger value="photos">All photos</TabsTrigger>
-                </TabsList>
-              </div>
+              <TabsList variant="line">
+                <TabsTrigger value="checklist">Checklist</TabsTrigger>
+                <TabsTrigger value="photos">All photos</TabsTrigger>
+              </TabsList>
             </div>
 
             <TabsContent
@@ -546,7 +469,7 @@ export function EngineIntakeDetail({
               className="mt-0 min-h-0 flex-1 overflow-y-auto p-4 data-[hidden]:hidden"
             >
               <p className="mb-3 text-xs text-muted-foreground">
-                AI labels each photo. Change the label anytime — checklist updates from it.
+                Label each photo yourself — the checklist updates from your labels.
               </p>
               {photos.length > 0 ? (
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -603,11 +526,9 @@ export function EngineIntakeDetail({
                             <div className="min-w-0">
                               <p className="truncate text-sm font-medium">{displayLabel}</p>
                               <p className="text-xs text-muted-foreground">
-                                {photo.categorySource === "ai"
-                                  ? "Labeled by AI"
-                                  : photo.category === "other"
-                                    ? userCopy.engineIntake.photoLabelUnset
-                                    : formatIntakeDate(photo.capturedAt)}
+                                {photo.category === "other"
+                                  ? userCopy.engineIntake.photoLabelUnset
+                                  : formatIntakeDate(photo.capturedAt)}
                               </p>
                             </div>
                             <Badge

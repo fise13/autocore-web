@@ -4,6 +4,7 @@ export type AiProfileId =
   | "importVision"
   | "engineIntakeVision"
   | "documentPolish"
+  | "assistant"
   | "default";
 
 export type AiProfile = {
@@ -64,6 +65,16 @@ export const AI_PROFILES: Record<AiProfileId, AiProfile> = {
     retryMaxTokens: 2048,
     temperature: 0.1,
     timeoutMs: 30_000,
+  },
+  assistant: {
+    title: "AutoCore Core",
+    // NVIDIA_AI_MODEL — local-only probe for free Nvidia OpenRouter models.
+    modelEnv: ["NVIDIA_AI_MODEL", "ASSISTANT_AI_MODEL", "OPENROUTER_MODEL", "DOCUMENT_AI_MODEL"],
+    // Headroom for `thinking` + structured blocks in one JSON reply.
+    maxTokens: 2200,
+    retryMaxTokens: 3200,
+    temperature: 0.2,
+    timeoutMs: 60_000,
   },
   default: {
     title: "AutoCore",

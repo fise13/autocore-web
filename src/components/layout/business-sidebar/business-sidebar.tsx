@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useMemo } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
+import { AutoCoreAIButton } from "@/components/ai/autocore-ai-button";
 import { AutocoreNavGroup } from "@/components/layout/business-sidebar/autocore-nav-group";
 import {
   buildAutocoreNavGroups,
@@ -257,7 +258,11 @@ function BusinessSidebarInner({
                   ) : null}
                 </div>
                 {!isEditing ? (
-                  <SidebarFooter collapsed={effectiveCollapsed} onNavigate={onNavigate} />
+                  <>
+                    {/* Own zone: below Brands/context, above What's new. */}
+                    <AutoCoreAIButton collapsed={effectiveCollapsed} />
+                    <SidebarFooter collapsed={effectiveCollapsed} onNavigate={onNavigate} />
+                  </>
                 ) : null}
               </div>
               {isEditing ? (

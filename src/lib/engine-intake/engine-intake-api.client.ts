@@ -37,46 +37,6 @@ export async function sendEngineIntakeCommand(
   return payload;
 }
 
-export async function matchEngineIntakePhotos(
-  companyId: string,
-  jobId: string,
-  options?: { force?: boolean },
-): Promise<{ ok: true; queued: number; matched: number; failed: number; photoIds: string[] }> {
-  const token = await getFirebaseAuth().currentUser?.getIdToken();
-  if (!token) throw new Error("Sign in to continue");
-
-  const response = await fetch("/api/engine-intake/ai/match", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      "X-Company-Id": companyId,
-    },
-    body: JSON.stringify({
-      jobId,
-      force: options?.force ?? false,
-    }),
-  });
-  const payload = (await response.json().catch(() => null)) as {
-    ok?: boolean;
-    queued?: number;
-    matched?: number;
-    failed?: number;
-    photoIds?: string[];
-    error?: string;
-  } | null;
-  if (!response.ok) {
-    throw new Error(payload?.error || `AI match failed (HTTP ${response.status})`);
-  }
-  return {
-    ok: true,
-    queued: payload?.queued ?? 0,
-    matched: payload?.matched ?? 0,
-    failed: payload?.failed ?? 0,
-    photoIds: payload?.photoIds ?? [],
-  };
-}
-
 export async function setEngineIntakePhotoCategory(
   companyId: string,
   input: {

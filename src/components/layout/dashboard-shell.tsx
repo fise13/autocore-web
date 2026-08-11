@@ -2,12 +2,14 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 import { useBarbaNavigation } from "@/hooks/use-barba-navigation";
 import { pathToBarbaNamespace, shouldAnimateDashboardNavigation } from "@/lib/barba/barba-navigation";
 
+import { AIProvider } from "@/components/ai/ai-provider";
+import { CoreChatSidebar } from "@/components/ai/core-chat-sidebar";
 import { createSpecificCategoryUseCase } from "@/application/use-cases/specific/create-specific-category";
 import { deleteSpecificCategoryUseCase } from "@/application/use-cases/specific/delete-specific-category";
 import { renameSpecificCategoryUseCase } from "@/application/use-cases/specific/rename-specific-category";
@@ -110,8 +112,9 @@ function DashboardShellInner({ children }: DashboardShellProps) {
   const isSpecificRoute = pathname === "/specific" || pathname.startsWith("/specific/");
   const isMediaRoute = pathname.startsWith("/media/");
   const isImportRoute = pathname === "/imports" || pathname.startsWith("/imports/");
+  const isAiRoute = pathname === "/ai" || pathname.startsWith("/ai/");
   const isGridCountRoute = isMotorRoute || isWarehouseRoute || isSpecificRoute || isImportRoute;
-  const isFullBleedWorkspace = isGridCountRoute || isMediaRoute;
+  const isFullBleedWorkspace = isGridCountRoute || isMediaRoute || isAiRoute;
   const isSoldRoute = pathname === "/sold";
   const needsSidebarCatalog = (isMotorRoute || isSoldRoute) && canSubscribe && canViewMotors;
 
@@ -291,7 +294,34 @@ function DashboardShellInner({ children }: DashboardShellProps) {
                 isEditing={isEditing}
                 onWidthChange={setWidth}
               >
-                <AppSidebar {...sidebarProps} collapsed={isEditing ? false : collapsed} />
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={isAiRoute ? "core-sidebar" : "app-sidebar"}
+                    className="h-full min-h-0"
+                    initial={
+                      reduceMotion
+                        ? false
+                        : { opacity: 0, x: sidebarOnRight ? 12 : -12 }
+                    }
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={
+                      reduceMotion
+                        ? undefined
+                        : { opacity: 0, x: sidebarOnRight ? 12 : -12 }
+                    }
+                    transition={
+                      reduceMotion
+                        ? { duration: 0 }
+                        : { duration: 0.22, ease: [0.32, 0.72, 0, 1] }
+                    }
+                  >
+                    {isAiRoute ? (
+                      <CoreChatSidebar collapsed={isEditing ? false : collapsed} />
+                    ) : (
+                      <AppSidebar {...sidebarProps} collapsed={isEditing ? false : collapsed} />
+                    )}
+                  </motion.div>
+                </AnimatePresence>
               </ResizableSidebar>
             </motion.div>
 
@@ -326,11 +356,29 @@ function DashboardShellInner({ children }: DashboardShellProps) {
                       : "-translate-x-full",
                 )}
               >
-                <AppSidebar
-                  {...sidebarProps}
-                  collapsed={false}
-                  onNavigate={() => setMobileSidebarOpen(false)}
-                />
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={isAiRoute ? "core-sidebar-mobile" : "app-sidebar-mobile"}
+                    className="h-full min-h-0"
+                    initial={reduceMotion ? false : { opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={reduceMotion ? undefined : { opacity: 0 }}
+                    transition={reduceMotion ? { duration: 0 } : { duration: 0.18 }}
+                  >
+                    {isAiRoute ? (
+                      <CoreChatSidebar
+                        collapsed={false}
+                        onNavigate={() => setMobileSidebarOpen(false)}
+                      />
+                    ) : (
+                      <AppSidebar
+                        {...sidebarProps}
+                        collapsed={false}
+                        onNavigate={() => setMobileSidebarOpen(false)}
+                      />
+                    )}
+                  </motion.div>
+                </AnimatePresence>
               </aside>
             </div>
 
@@ -339,13 +387,18 @@ function DashboardShellInner({ children }: DashboardShellProps) {
               transition={sidebarLayoutTransition}
               ref={barbaWrapperRef}
               data-barba="wrapper"
-              className="relative flex min-w-0 flex-1 flex-col"
+              className={cn(
+                "relative flex min-w-0 flex-1 flex-col",
+                isAiRoute && "bg-background",
+              )}
             >
               <SidebarEditBlur />
-              <DemoSessionBanner />
-              <div data-app-reveal>
-                <DashboardTopBar />
-              </div>
+              {!isAiRoute ? <DemoSessionBanner /> : null}
+              {!isAiRoute ? (
+                <div data-app-reveal>
+                  <DashboardTopBar />
+                </div>
+              ) : null}
 
               <main
                 ref={barbaContainerRef}
@@ -357,7 +410,12 @@ function DashboardShellInner({ children }: DashboardShellProps) {
                     : "relative z-0 min-h-0 flex-1 overflow-y-auto p-4 md:p-6"
                 }
               >
-                <div className="flex min-h-0 flex-1 flex-col dashboard-workspace-scroll">
+                <div
+                  className={cn(
+                    "flex min-h-0 flex-1 flex-col",
+                    !isAiRoute && "dashboard-workspace-scroll",
+                  )}
+                >
                   <DashboardRouteCache>{children}</DashboardRouteCache>
                 </div>
               </main>
@@ -394,7 +452,9 @@ export function DashboardShell({ children }: DashboardShellProps) {
               <DomainDictionaryPersistence>
                 <FirestoreListenerGuard />
                 <PresenceHeartbeatHead />
-                <DashboardShellInner>{children}</DashboardShellInner>
+                <AIProvider>
+                  <DashboardShellInner>{children}</DashboardShellInner>
+                </AIProvider>
               </DomainDictionaryPersistence>
             </BarcodeScanProvider>
           </PersistenceProvider>

@@ -112,7 +112,7 @@ type ItemDef = {
 };
 
 const ITEM_DEFS: readonly ItemDef[] = [
-  // Mobile captures freely; desktop AI (+ manager overrides) map photos to these gates.
+  // Mobile captures freely; desktop managers map photos to these gates manually.
   { id: "serial_visible", label: "Engine serial visible", group: "identity", saleGate: true, seed: true },
   { id: "overall_engine", label: "Overall engine", group: "exterior", saleGate: true, seed: true },
   { id: "valve_cover", label: "Valve cover", group: "exterior", saleGate: true, seed: true },
@@ -152,8 +152,8 @@ const CATEGORY_TO_ITEMS: Partial<
   turbo: ["turbo"],
   intake: ["turbo"],
   exhaust: ["turbo"],
-  // Free-capture `other` must NOT auto-complete checklist items — desktop AI
-  // assigns angles. Otherwise every phone photo farms "Overall engine".
+  // Free-capture `other` must NOT auto-complete checklist items — managers
+  // assign angles on desktop. Otherwise every phone photo farms "Overall engine".
 };
 
 const CYLINDER_IDS: DocumentationChecklistItemId[] = [

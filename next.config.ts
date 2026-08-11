@@ -46,6 +46,7 @@ const nextConfig: NextConfig = {
       "motion",
       "@tanstack/react-query",
       "next-intl",
+      "@ai-sdk/react",
     ],
   },
   compiler: {

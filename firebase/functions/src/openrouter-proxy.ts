@@ -1,5 +1,12 @@
-import { OAuth2Client } from "google-auth-library";
 import * as functions from "firebase-functions/v1";
+
+import {
+  OPENROUTER_URL,
+  REGION,
+  isAuthorized,
+  openRouterKey,
+  projectId,
+} from "./openrouter-auth";
 
 /**
  * OpenRouter lives behind Firebase so the API key exists in exactly one place.
@@ -8,6 +15,9 @@ import * as functions from "firebase-functions/v1";
  * `x-ai-proxy-key` (optional shared secret) or a Google ID token for this
  * function URL minted by the project's Firebase Admin service account. Deployed
  * in `europe-west1` because Vercel functions are pinned to `fra1`.
+ *
+ * This gen-1 function BUFFERS the whole upstream body, so it cannot stream.
+ * Core uses `openrouterStreamProxy` (gen-2) when `CORE_STREAM_PROXY_URL` is set.
  */
 const aiFunctions = functions.region("europe-west1").runWith({
   // AI completions are slow and mostly spent waiting on the network, so the
@@ -16,35 +26,7 @@ const aiFunctions = functions.region("europe-west1").runWith({
   memory: "256MB",
 });
 
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const REGION = "europe-west1";
 const FUNCTION_NAME = "openrouterProxy";
-
-function proxySecret(): string | null {
-  return process.env.AI_PROXY_SECRET?.trim() || null;
-}
-
-function openRouterKey(): string | null {
-  return (
-    process.env.OPENROUTER_API_KEY?.trim() ||
-    process.env.OPEN_ROUTER_API_KEY?.trim() ||
-    null
-  );
-}
-
-function projectId(): string {
-  const fromEnv =
-    process.env.GCLOUD_PROJECT?.trim() || process.env.GCP_PROJECT?.trim() || "";
-  if (fromEnv) return fromEnv;
-
-  const raw = process.env.FIREBASE_CONFIG?.trim();
-  if (!raw) return "";
-  try {
-    return (JSON.parse(raw) as { projectId?: string }).projectId?.trim() || "";
-  } catch {
-    return "";
-  }
-}
 
 function expectedAudience(project: string): string {
   return (
@@ -53,53 +35,18 @@ function expectedAudience(project: string): string {
   );
 }
 
-function isProjectServiceAccount(email: string, project: string): boolean {
-  if (!email || !project) return false;
-  if (!email.endsWith(".iam.gserviceaccount.com") && !email.endsWith("@appspot.gserviceaccount.com")) {
-    return false;
-  }
-  return email.includes(project);
-}
-
-async function isAuthorized(request: functions.Request): Promise<boolean> {
-  const secret = proxySecret();
-  const presented = request.get("x-ai-proxy-key");
-  // Length check first so the comparison below cannot leak length via timing.
-  if (secret && presented && presented.length === secret.length && presented === secret) {
-    return true;
-  }
-
-  const authHeader = request.get("authorization") || "";
-  const match = /^Bearer\s+(\S+)$/i.exec(authHeader);
-  if (!match) return false;
-
-  const project = projectId();
-  if (!project) {
-    console.error("[openrouterProxy] project id is not available for ID token verify");
-    return false;
-  }
-
-  try {
-    const client = new OAuth2Client();
-    const ticket = await client.verifyIdToken({
-      idToken: match[1],
-      audience: expectedAudience(project),
-    });
-    const email = ticket.getPayload()?.email?.trim() || "";
-    return isProjectServiceAccount(email, project);
-  } catch (error) {
-    console.warn("[openrouterProxy] ID token verify failed", error);
-    return false;
-  }
-}
-
 export const openrouterProxy = aiFunctions.https.onRequest(async (request, response) => {
   if (request.method !== "POST") {
     response.status(405).json({ error: "Method not allowed" });
     return;
   }
 
-  if (!(await isAuthorized(request))) {
+  const authorized = await isAuthorized({
+    getHeader: (name) => request.get(name) ?? undefined,
+    audiences: [expectedAudience(projectId())],
+    label: FUNCTION_NAME,
+  });
+  if (!authorized) {
     response.status(401).json({ error: "Unauthorized" });
     return;
   }

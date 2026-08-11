@@ -479,8 +479,7 @@ export async function finalizeIntakePhoto(
     throw new EngineIntakeCommandError("Photo belongs to another worker", 403);
   }
   if (photo.url && photo.syncState === "synced") {
-    // Refresh checklist mapping for already-synced photos (capture-first rules)
-    // and allow the finalize route's after() hook to retry AI inspection.
+    // Refresh checklist mapping for already-synced photos (capture-first rules).
     try {
       await db.runTransaction(async (transaction) => {
         const [freshJobSnapshot, photosSnapshot] = await Promise.all([
@@ -513,16 +512,6 @@ export async function finalizeIntakePhoto(
           },
           updatedAt: FieldValue.serverTimestamp(),
         });
-        if (
-          photo.aiInspectionState === "failed" ||
-          photo.aiInspectionState === "queued" ||
-          !photo.aiInspectionState
-        ) {
-          transaction.update(photoRef, {
-            aiInspectionState: "queued",
-            updatedAt: FieldValue.serverTimestamp(),
-          });
-        }
       });
     } catch (error) {
       console.error("[engine-intake/finalize] checklist refresh", error);
@@ -611,7 +600,7 @@ export async function finalizeIntakePhoto(
       height: input.height ?? null,
       uploadedAt: FieldValue.serverTimestamp(),
       syncState: "synced",
-      aiInspectionState: "queued",
+      aiInspectionState: "none",
       updatedAt: FieldValue.serverTimestamp(),
     });
     transaction.update(jobRef, {
@@ -629,21 +618,6 @@ export async function finalizeIntakePhoto(
         updatedAt: FieldValue.serverTimestamp(),
       });
     }
-    transaction.set(jobRef.collection("aiInspections").doc(aiInspectionId), {
-      companyId: access.companyId,
-      jobId: input.jobId,
-      engineId: freshJob.engineId,
-      photoId: input.photoId,
-      model: "",
-      modelVersion: "",
-      state: "queued",
-      suggestedCategory: null,
-      suggestedIdentity: {},
-      flags: [],
-      listingReadinessScore: null,
-      createdAt: FieldValue.serverTimestamp(),
-      completedAt: null,
-    });
     transaction.create(jobRef.collection("events").doc(`${input.photoId}-uploaded`), {
       companyId: access.companyId,
       jobId: input.jobId,
