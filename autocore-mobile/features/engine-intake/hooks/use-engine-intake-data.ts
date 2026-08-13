@@ -93,7 +93,7 @@ export function useEngineIntakeJobs(companyId: string | null) {
     : companyId
       ? (getJson<EngineIntakeJob[]>(jobsCacheKey(companyId)) ?? [])
       : [];
-  const jobs = mergeIntakeJobs(serverJobs, overlay.jobs);
+  const jobs = mergeIntakeJobs(serverJobs, overlay.jobs, overlay.cancelledJobIds);
   return {
     companyId,
     jobs,

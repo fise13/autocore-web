@@ -4,12 +4,13 @@ import NetInfo from '@react-native-community/netinfo';
 
 import {
   drainIntakeOutbox,
+  dropIdempotentPhotoConflicts,
   getIntakeOutboxSnapshot,
   purgeUnrecoverableIntakeOutbox,
-  requeueIdempotentPhotoConflicts,
   subscribeIntakeOutbox,
 } from '@/features/engine-intake/store/intake-outbox';
 import { nextWakeUpAt } from '@/features/engine-intake/lib/sync-schedule';
+import { reconcileIntakeSyncLocalNotification } from '@/features/engine-intake/lib/intake-sync-notifications';
 import { useSession } from '@/hooks/use-session';
 import { syncBackgroundTaskRegistration } from '@/lib/offline/background-sync-task';
 
@@ -81,13 +82,17 @@ export function IntakeSyncHead() {
 
     // Launch: reconcile stale rows (done at module load), drop rows whose file
     // is gone, clear leftover 409s, then drain.
-    requeueIdempotentPhotoConflicts(companyId);
+    dropIdempotentPhotoConflicts(companyId);
     purgeUnrecoverableIntakeOutbox(companyId);
+    reconcileIntakeSyncLocalNotification(0);
     run();
     armRetryTimer();
     void syncBackgroundTaskRegistration();
 
-    const unsubscribeOutbox = subscribeIntakeOutbox(armRetryTimer);
+    const unsubscribeOutbox = subscribeIntakeOutbox(() => {
+      armRetryTimer();
+      void syncBackgroundTaskRegistration();
+    });
 
     const unsubscribeNetwork = NetInfo.addEventListener((network) => {
       if (!network.isConnected) return;
@@ -101,7 +106,7 @@ export function IntakeSyncHead() {
 
     const appState = AppState.addEventListener('change', (next) => {
       if (next === 'active') {
-        requeueIdempotentPhotoConflicts(companyId);
+        dropIdempotentPhotoConflicts(companyId);
         purgeUnrecoverableIntakeOutbox(companyId);
         run();
         armRetryTimer();
@@ -110,6 +115,7 @@ export function IntakeSyncHead() {
       // Leaving the app: start the drain so iOS can hand the PUT to a
       // background URLSession, then arm BGProcessingTask for after kill/reboot.
       if (next === 'background' || next === 'inactive') {
+        void syncBackgroundTaskRegistration();
         run();
       }
     });

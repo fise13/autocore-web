@@ -46,6 +46,7 @@ import {
   getEngineIntakeDeviceName,
 } from './lib/device';
 import { openEngineIntakeSession } from './lib/open-engine-intake';
+import { cancelIntakeJob } from './lib/cancel-intake-job';
 import {
   seedOptimisticIntakeClaim,
   seedOptimisticIntakeCreate,
@@ -360,21 +361,9 @@ export function EngineIntakeJobsScreen() {
           onPress: () => {
             void (async () => {
               try {
-                const command: EngineIntakeCommand = {
-                  type: 'cancel_job',
-                  idempotencyKey: engineIntakeId('cancel'),
-                  client: 'mobile',
-                  clientAt: new Date().toISOString(),
-                  deviceId: getEngineIntakeDeviceId(),
-                  payload: {
-                    jobId: job.id,
-                    reason: 'Cancelled from Engine intake list',
-                  },
-                };
-                await sendOrQueueIntakeCommand(companyId, command);
+                await cancelIntakeJob(companyId, job);
                 haptics.success();
                 toast({ title: 'Engine cancelled', variant: 'default' });
-                void drainIntakeOutbox(companyId);
               } catch (error) {
                 haptics.error();
                 toast({
@@ -427,7 +416,8 @@ export function EngineIntakeJobsScreen() {
         (photo) =>
           photo.companyId === companyId &&
           photo.jobId === jobId &&
-          (photo.state === 'pending' || photo.state === 'syncing'),
+          (photo.state === 'pending' || photo.state === 'syncing') &&
+          photo.errorInfo?.code !== 'CONFLICT',
       ) ||
       outbox.commands.some(
         (item) =>
@@ -441,7 +431,15 @@ export function EngineIntakeJobsScreen() {
 
   const rawOutboxIssue =
     [...outbox.commands, ...outbox.photos]
-      .filter((item) => item.companyId === companyId && item.lastError)
+      .filter((item) => {
+        if (item.companyId !== companyId || !item.lastError) return false;
+        if ('errorInfo' in item && item.errorInfo?.code === 'CONFLICT') return false;
+        const lower = item.lastError.toLowerCase();
+        if (lower.includes('already on the server') || lower.includes('already recorded')) {
+          return false;
+        }
+        return true;
+      })
       .map((item) => item.lastError)
       .find(Boolean) ?? null;
   const outboxIssue = rawOutboxIssue ? humanizeIntakeOutboxError(rawOutboxIssue) : null;

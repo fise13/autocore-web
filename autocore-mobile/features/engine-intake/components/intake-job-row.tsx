@@ -1,13 +1,12 @@
 import { useCallback } from 'react';
 import { Pressable, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { MenuView } from '@expo/ui/community/menu';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import type { EngineIntakeJob } from '@autocore/engine-intake';
 import { warehouseLifecycleLabel } from '@autocore/engine-intake';
 
 import { CameraIcon, ChevronRightIcon, CloudIcon } from '@/assets/icons';
-import { Badge, Text, toast, useListStaggerDelay } from '@/components/ui';
+import { Badge, presentNativeMenu, Text, toast, useListStaggerDelay } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/hooks';
 import { autocoreEase, duration, haptics, minTouchTarget, spacing, tokens } from '@/theme';
 
@@ -71,7 +70,8 @@ function canCancelJob(job: EngineIntakeJob): boolean {
     job.state === 'open' ||
     job.state === 'in_session' ||
     job.state === 'paused' ||
-    job.state === 'rework'
+    job.state === 'rework' ||
+    job.state === 'awaiting_verification'
   );
 }
 
@@ -231,75 +231,54 @@ export function IntakeJobRow({
     [copySerial, job, onCancel, onEdit, onPress],
   );
 
-  const actions = [
-    ...(!claimedByAnother
-      ? [
-          {
-            id: 'open',
-            title: openActionLabel(job),
-            image: 'camera.fill' as const,
-          },
-        ]
-      : []),
-    ...(canEdit && !claimedByAnother && canEditIdentity(job)
-      ? [
-          {
-            id: 'edit',
-            title: 'Edit',
-            image: 'pencil' as const,
-          },
-        ]
-      : []),
-    {
-      id: 'copy',
-      title: 'Copy serial',
-      image: 'doc.on.doc' as const,
-    },
-    ...(canEdit && !claimedByAnother && canCancelJob(job)
-      ? [
-          {
-            id: 'cancel',
-            title: 'Cancel engine',
-            image: 'trash' as const,
-            attributes: { destructive: true },
-          },
-        ]
-      : []),
-  ];
-
-  const row = (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled: claimedByAnother || disabled }}
-      disabled={claimedByAnother || disabled}
-      onPress={onPress}
-    >
-      {({ pressed }) => (
-        <IntakeJobRowBody
-          job={job}
-          claimedByAnother={claimedByAnother}
-          claimedByName={claimedByName}
-          syncPending={syncPending}
-          pressed={pressed}
-        />
-      )}
-    </Pressable>
-  );
+  const openMenu = useCallback(() => {
+    if (disabled) return;
+    presentNativeMenu({
+      title: jobSerial(job),
+      actions: [
+        ...(!claimedByAnother
+          ? [{ id: 'open', title: openActionLabel(job), systemImage: 'camera.fill' as const }]
+          : []),
+        ...(canEdit && !claimedByAnother && canEditIdentity(job)
+          ? [{ id: 'edit', title: 'Edit', systemImage: 'pencil' as const }]
+          : []),
+        { id: 'copy', title: 'Copy serial', systemImage: 'doc.on.doc' as const },
+        ...(canEdit && !claimedByAnother && canCancelJob(job)
+          ? [
+              {
+                id: 'cancel',
+                title: 'Cancel engine',
+                systemImage: 'trash' as const,
+                destructive: true,
+              },
+            ]
+          : []),
+      ],
+      onPressAction: handleAction,
+    });
+  }, [canEdit, claimedByAnother, disabled, handleAction, job]);
 
   return (
     <Animated.View entering={entering}>
-      {disabled || actions.length === 0 ? (
-        row
-      ) : (
-        <MenuView
-          title={jobSerial(job)}
-          actions={actions}
-          shouldOpenOnLongPress
-          onPressAction={({ nativeEvent }) => handleAction(nativeEvent.event)}
-        >
-          {row}
-        </MenuView>
-      )}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityHint="Hold for edit and cancel"
+        accessibilityState={{ disabled: claimedByAnother || disabled }}
+        disabled={claimedByAnother || disabled}
+        delayLongPress={350}
+        onPress={onPress}
+        onLongPress={openMenu}
+      >
+        {({ pressed }) => (
+          <IntakeJobRowBody
+            job={job}
+            claimedByAnother={claimedByAnother}
+            claimedByName={claimedByName}
+            syncPending={syncPending}
+            pressed={pressed}
+          />
+        )}
+      </Pressable>
     </Animated.View>
   );
 }

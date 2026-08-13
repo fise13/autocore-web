@@ -44,30 +44,15 @@ export const IntakeCamera = forwardRef<IntakeCameraHandle, IntakeCameraProps>(
     useImperativeHandle(ref, () => ({
       async takePicture() {
         if (!cameraRef.current || !active) return null;
-        // Never pass `fastMode: true` without `onPictureSaved` — the promise
-        // resolves with no uri ("Camera did not capture a photo").
-        const shoot = (skipProcessing: boolean) =>
-          cameraRef.current!.takePictureAsync({
-            quality: 0.82,
-            skipProcessing,
+        try {
+          const shot = await cameraRef.current.takePictureAsync({
+            quality: 0.7,
+            skipProcessing: true,
             shutterSound: false,
           });
-
-        try {
-          const fast = await shoot(true);
-          if (fast?.uri) {
+          if (shot?.uri) {
             readyRef.current = true;
-            return fast;
-          }
-        } catch {
-          // Fall through to the processed path.
-        }
-
-        try {
-          const processed = await shoot(false);
-          if (processed?.uri) {
-            readyRef.current = true;
-            return processed;
+            return shot;
           }
           return null;
         } catch {
@@ -117,6 +102,8 @@ export const IntakeCamera = forwardRef<IntakeCameraHandle, IntakeCameraProps>(
         ref={cameraRef}
         style={{ flex: 1 }}
         facing="back"
+        mode="picture"
+        animateShutter={false}
         enableTorch={torch}
         selectedLens={selectedLens}
         onAvailableLensesChanged={onAvailableLensesChanged}

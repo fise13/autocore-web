@@ -13,6 +13,7 @@ import {
 type OverlayState = {
   jobs: EngineIntakeJob[];
   sessions: Record<string, EngineIntakeSession[]>;
+  cancelledJobIds: string[];
 };
 
 const listeners = new Set<() => void>();
@@ -22,16 +23,24 @@ function storageKey(companyId: string): string {
   return `engine-intake:local-overlay:${companyId}`;
 }
 
-const EMPTY_OVERLAY: OverlayState = { jobs: [], sessions: {} };
+const EMPTY_OVERLAY: OverlayState = { jobs: [], sessions: {}, cancelledJobIds: [] };
 
 function emptyOverlay(): OverlayState {
   return EMPTY_OVERLAY;
 }
 
+function normalizeOverlay(value: OverlayState | null | undefined): OverlayState {
+  return {
+    jobs: value?.jobs ?? [],
+    sessions: value?.sessions ?? {},
+    cancelledJobIds: value?.cancelledJobIds ?? [],
+  };
+}
+
 function readOverlay(companyId: string): OverlayState {
   const cached = memory.get(companyId);
   if (cached) return cached;
-  const persisted = getJson<OverlayState>(storageKey(companyId)) ?? emptyOverlay();
+  const persisted = normalizeOverlay(getJson<OverlayState>(storageKey(companyId)));
   memory.set(companyId, persisted);
   return persisted;
 }
@@ -77,6 +86,7 @@ export function seedOptimisticIntakeCreate(input: {
       ...current.sessions,
       [job.id]: upsertSession(current.sessions[job.id] ?? [], session),
     },
+    cancelledJobIds: current.cancelledJobIds.filter((id) => id !== job.id),
   });
   return { job, session };
 }
@@ -108,8 +118,29 @@ export function seedOptimisticIntakeClaim(input: {
       ...current.sessions,
       [job.id]: upsertSession(current.sessions[job.id] ?? [], session),
     },
+    cancelledJobIds: current.cancelledJobIds.filter((id) => id !== job.id),
   });
   return { job, session };
+}
+
+export function markIntakeJobCancelled(companyId: string, jobId: string): void {
+  const current = readOverlay(companyId);
+  const { [jobId]: _dropped, ...sessions } = current.sessions;
+  writeOverlay(companyId, {
+    jobs: current.jobs.filter((job) => job.id !== jobId),
+    sessions,
+    cancelledJobIds: current.cancelledJobIds.includes(jobId)
+      ? current.cancelledJobIds
+      : [...current.cancelledJobIds, jobId],
+  });
+}
+
+export function restoreIntakeJobCancelled(companyId: string, jobId: string): void {
+  const current = readOverlay(companyId);
+  writeOverlay(companyId, {
+    ...current,
+    cancelledJobIds: current.cancelledJobIds.filter((id) => id !== jobId),
+  });
 }
 
 export function pruneIntakeOverlay(
@@ -119,7 +150,7 @@ export function pruneIntakeOverlay(
 ): void {
   const current = readOverlay(companyId);
   const serverJobIds = new Set(serverJobs.map((job) => job.id));
-  let jobs = current.jobs.filter((job) => !serverJobIds.has(job.id));
+  const jobs = current.jobs.filter((job) => !serverJobIds.has(job.id));
   const sessions = { ...current.sessions };
 
   if (serverSessions) {
@@ -134,18 +165,20 @@ export function pruneIntakeOverlay(
     }
   }
 
-  for (const jobId of Object.keys(sessions)) {
-    if (serverJobIds.has(jobId) && !jobs.some((job) => job.id === jobId) && !serverSessions) {
-      // Keep sessions for jobs the server already has — claim overlay may still
-      // be ahead of the sessions listener.
-      continue;
-    }
-  }
+  const cancelledJobIds = current.cancelledJobIds.filter((jobId) => {
+    const server = serverJobs.find((job) => job.id === jobId);
+    if (!server) return true;
+    return server.state !== 'cancelled' && server.state !== 'rejected';
+  });
 
-  if (jobs.length === current.jobs.length && Object.keys(sessions).length === Object.keys(current.sessions).length) {
+  if (
+    jobs.length === current.jobs.length &&
+    Object.keys(sessions).length === Object.keys(current.sessions).length &&
+    cancelledJobIds.length === current.cancelledJobIds.length
+  ) {
     return;
   }
-  writeOverlay(companyId, { jobs, sessions });
+  writeOverlay(companyId, { jobs, sessions, cancelledJobIds });
 }
 
 export function getIntakeOverlay(companyId: string | null): OverlayState {

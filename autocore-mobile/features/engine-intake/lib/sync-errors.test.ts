@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import {
   classifySyncError,
   describeSyncError,
+  isBenignCancelError,
   isIdempotentPhotoSuccess,
   isRetryableSyncError,
   mayDeleteLocalFile,
@@ -142,5 +143,13 @@ describe('mayDeleteLocalFile', () => {
   it('only clears a photo after confirmed success, or when it is already gone', () => {
     assert.equal(mayDeleteLocalFile('uploaded'), true);
     assert.equal(mayDeleteLocalFile('file-missing'), true);
+  });
+});
+
+describe('isBenignCancelError', () => {
+  it('treats a missing job as already cancelled', () => {
+    assert.equal(isBenignCancelError({ status: 404, message: 'Engine intake job was not found' }), true);
+    assert.equal(isBenignCancelError({ status: 409, message: 'already cancelled' }), true);
+    assert.equal(isBenignCancelError({ status: 403, message: 'Insufficient engine intake permissions' }), false);
   });
 });

@@ -101,6 +101,21 @@ export function isIdempotentPhotoSuccess(error: unknown): boolean {
   return classifySyncError(error) === 'CONFLICT';
 }
 
+/**
+ * Cancelling a job that the server never created (offline overlay) or already
+ * dropped is success — keep retrying it and the engine stays in the bay.
+ */
+export function isBenignCancelError(error: unknown): boolean {
+  const code = classifySyncError(error);
+  if (code === 'NOT_FOUND' || code === 'CONFLICT') return true;
+  const text = String((error as ErrorLike).message ?? '').toLowerCase();
+  return (
+    text.includes('was not found') ||
+    text.includes('already cancelled') ||
+    text.includes('cannot transition from cancelled')
+  );
+}
+
 export function syncErrorMessage(code: SyncErrorCode): string {
   return USER_MESSAGE[code];
 }

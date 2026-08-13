@@ -13,7 +13,7 @@ import { MobileApiError } from '@/services/api/mobile-client';
 import { getJson, setJson } from '@/lib/storage/kv';
 
 import { engineIntakeId } from '../lib/device';
-import { describeSyncError, isIdempotentPhotoSuccess, type SyncErrorInfo } from '../lib/sync-errors';
+import { describeSyncError, isBenignCancelError, isIdempotentPhotoSuccess, type SyncErrorInfo } from '../lib/sync-errors';
 import {
   isJobRunnable,
   reconcileOnLaunch,
@@ -142,16 +142,22 @@ function isNoiseCommand(command: EngineIntakeCommand): boolean {
   return command.type === 'heartbeat_session';
 }
 
+function isConflictPhoto(photo: IntakeOutboxPhoto): boolean {
+  if (photo.errorInfo?.code === 'CONFLICT') return true;
+  const message = `${photo.lastError ?? ''} ${photo.errorInfo?.message ?? ''}`.toLowerCase();
+  return message.includes('already on the server') || message.includes('already recorded');
+}
+
 function countPendingCommands(list: IntakeOutboxCommand[]): number {
   return list.filter((item) => item.state !== 'failed' && !isNoiseCommand(item.command)).length;
 }
 
 function countPhotoPending(list: IntakeOutboxPhoto[]): number {
-  return list.filter((item) => item.state !== 'failed').length;
+  return list.filter((item) => item.state !== 'failed' && !isConflictPhoto(item)).length;
 }
 
 function countPhotoFailed(list: IntakeOutboxPhoto[]): number {
-  return list.filter((item) => item.state === 'failed').length;
+  return list.filter((item) => item.state === 'failed' && !isConflictPhoto(item)).length;
 }
 
 function buildSnapshot(): IntakeOutboxSnapshot {
@@ -462,18 +468,11 @@ async function uploadPhoto(item: IntakeOutboxPhoto): Promise<PrepareIntakePhotoR
     await putPhotoBytes(file, prepared.uploadUrl, prepared.contentType);
   }
   try {
-    // Always finalize — even for already-uploaded photos — so the server can
-    // refresh progress after deploy/rule changes.
     await finalizePreparedPhoto(item, prepared, sizeBytes);
   } catch (error) {
     if (!isIdempotentPhotoSuccess(error)) throw error;
-    const again = await prepareEngineIntakePhoto(prepareRequest(item, contentType, sizeBytes));
-    if (again.alreadyUploaded) {
-      completeUploadedPhoto(item);
-      return again;
-    }
-    await putPhotoBytes(file, again.uploadUrl, again.contentType);
-    await finalizePreparedPhoto(item, again, sizeBytes);
+    completeUploadedPhoto(item);
+    return prepared;
   }
   completeUploadedPhoto(item);
   return prepared;
@@ -581,6 +580,11 @@ async function drain(companyId: string): Promise<void> {
           commands = commands.filter((candidate) => candidate.id !== item.id);
           publish();
         } catch (error) {
+          if (item.command.type === 'cancel_job' && isBenignCancelError(error)) {
+            commands = commands.filter((candidate) => candidate.id !== item.id);
+            publish();
+            continue;
+          }
           const info = describeSyncError(error);
           const offline = info.code === 'NETWORK_UNAVAILABLE';
           const transition = resolveFailureTransition({
@@ -626,6 +630,11 @@ async function drain(companyId: string): Promise<void> {
         noteSyncSuccess();
         publish();
       } catch (error) {
+        if (isIdempotentPhotoSuccess(error)) {
+          completeUploadedPhoto(item);
+          noteSyncSuccess();
+          continue;
+        }
         const info = describeSyncError(error);
         const offline = info.code === 'NETWORK_UNAVAILABLE';
         const transition = resolveFailureTransition({
@@ -689,23 +698,41 @@ export async function drainAllIntakeOutboxes(): Promise<void> {
 }
 
 /**
- * A 409 used to park the row as `failed` and show "1 failed" in the camera.
- * Those photos are already on the server — requeue so the next drain drops them.
+ * A 409 means the server already has this capture. Drop the row so the camera
+ * and bay never show "Sync failed" / "already on the server".
  */
+export function dropIdempotentPhotoConflicts(companyId?: string): number {
+  let removed = 0;
+  const nextPhotos: IntakeOutboxPhoto[] = [];
+  for (const photo of photos) {
+    if (companyId && photo.companyId !== companyId) {
+      nextPhotos.push(photo);
+      continue;
+    }
+    if (!isConflictPhoto(photo)) {
+      nextPhotos.push(photo);
+      continue;
+    }
+    try {
+      const file = new File(photo.localUri);
+      if (file.exists) file.delete();
+    } catch {
+      // best-effort cleanup
+    }
+    removed += 1;
+  }
+  if (removed > 0) {
+    photos = nextPhotos;
+    publish();
+  }
+  return removed;
+}
+
+dropIdempotentPhotoConflicts();
+
+/** @deprecated Use dropIdempotentPhotoConflicts — 409s are already on the server. */
 export function requeueIdempotentPhotoConflicts(companyId: string): void {
-  let touched = false;
-  photos = photos.map((photo) => {
-    if (photo.companyId !== companyId || photo.status !== 'failed') return photo;
-    if (photo.errorInfo?.code !== 'CONFLICT') return photo;
-    touched = true;
-    return {
-      ...photo,
-      status: 'queued' as SyncJobStatus,
-      nextRetryAt: null,
-      errorInfo: null,
-    };
-  });
-  if (touched) publish();
+  dropIdempotentPhotoConflicts(companyId);
 }
 
 export function retryIntakeOutboxItem(id: string): void {
@@ -724,6 +751,50 @@ export function removeIntakeOutboxItem(id: string): void {
   }
   commands = commands.filter((item) => item.id !== id);
   photos = photos.filter((item) => item.id !== id);
+  publish();
+}
+
+const DROP_ON_CANCEL = new Set<EngineIntakeCommand['type']>([
+  'heartbeat_session',
+  'pause_session',
+  'resume_session',
+  'cancel_session',
+  'field_complete',
+  'set_location',
+  'confirm_identity',
+  'report_identity_mismatch',
+]);
+
+function commandJobId(command: EngineIntakeCommand): string | undefined {
+  return 'jobId' in command.payload ? command.payload.jobId : undefined;
+}
+
+/** Photos and in-session commands for an engine the worker just cancelled. */
+export function discardIntakeWorkForCancelledJob(companyId: string, jobId: string): void {
+  let touched = false;
+  const keptPhotos: IntakeOutboxPhoto[] = [];
+  for (const photo of photos) {
+    if (photo.companyId === companyId && photo.jobId === jobId) {
+      try {
+        const file = new File(photo.localUri);
+        if (file.exists) file.delete();
+      } catch {
+        // best-effort
+      }
+      touched = true;
+      continue;
+    }
+    keptPhotos.push(photo);
+  }
+  const keptCommands = commands.filter((item) => {
+    if (item.companyId !== companyId || commandJobId(item.command) !== jobId) return true;
+    if (!DROP_ON_CANCEL.has(item.command.type)) return true;
+    touched = true;
+    return false;
+  });
+  if (!touched) return;
+  photos = keptPhotos;
+  commands = keptCommands;
   publish();
 }
 
@@ -862,6 +933,32 @@ function snapshotForCompany(
   };
 }
 
+/**
+ * `snapshotForCompany` filters into fresh arrays, so calling it straight from
+ * the hook body handed every consumer a brand-new object on every render — which
+ * silently defeated their `useMemo`s downstream. The store snapshot itself is
+ * identity-stable between publishes, so one entry keyed on it is enough.
+ */
+const derivedSnapshots = new Map<
+  string | null,
+  { state: IntakeOutboxSnapshot; value: IntakeOutboxSnapshot }
+>();
+
+function snapshotForCompanyCached(
+  state: IntakeOutboxSnapshot,
+  companyId: string | null,
+): IntakeOutboxSnapshot {
+  const cached = derivedSnapshots.get(companyId);
+  if (cached && cached.state === state) return cached.value;
+  // Keyed per company, not a single slot: callers legitimately pass `null` while
+  // a permission check is pending, and a one-entry cache would thrash between
+  // them and hand every consumer a fresh object again.
+  if (derivedSnapshots.size > 4) derivedSnapshots.clear();
+  const value = snapshotForCompany(state, companyId);
+  derivedSnapshots.set(companyId, { state, value });
+  return value;
+}
+
 export function useEngineIntakeOutbox(companyId: string | null): IntakeOutboxSnapshot {
   const state = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
@@ -873,7 +970,7 @@ export function useEngineIntakeOutbox(companyId: string | null): IntakeOutboxSna
     void drainIntakeOutbox(companyId);
   }, [companyId]);
 
-  return snapshotForCompany(state, companyId);
+  return snapshotForCompanyCached(state, companyId);
 }
 
 function queuedCommandResult(command: EngineIntakeCommand): EngineIntakeCommandResult {
@@ -893,6 +990,9 @@ export async function sendOrQueueIntakeCommand(
   try {
     return await sendEngineIntakeCommand(command);
   } catch (error) {
+    if (command.type === 'cancel_job' && isBenignCancelError(error)) {
+      return queuedCommandResult(command);
+    }
     if (isTerminalError(error)) throw error;
     enqueueIntakeCommand(companyId, command);
     return queuedCommandResult(command);

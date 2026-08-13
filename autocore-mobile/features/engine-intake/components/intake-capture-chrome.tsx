@@ -25,6 +25,7 @@ export type IntakeCaptureChromeProps = {
   torch: boolean;
   onBack: () => void;
   onToggleTorch: () => void;
+  onSerialLongPress?: () => void;
 };
 
 export function IntakeCaptureChrome({
@@ -39,6 +40,7 @@ export function IntakeCaptureChrome({
   torch,
   onBack,
   onToggleTorch,
+  onSerialLongPress,
 }: IntakeCaptureChromeProps) {
   const reducedMotion = useReducedMotion();
   const scale = useSharedValue(1);
@@ -146,19 +148,28 @@ export function IntakeCaptureChrome({
         </Pressable>
       </View>
 
-      <Text
-        variant="caption"
-        numberOfLines={1}
-        style={{
-          color: chrome.foreground,
-          textAlign: 'center',
-          fontWeight: '800',
-          letterSpacing: 0.6,
-          fontVariant: ['tabular-nums'],
-        }}
+      <Pressable
+        accessibilityRole="text"
+        accessibilityLabel={serial}
+        accessibilityHint={onSerialLongPress ? 'Hold to cancel this engine' : undefined}
+        delayLongPress={350}
+        onLongPress={onSerialLongPress}
+        disabled={!onSerialLongPress}
       >
-        {serial}
-      </Text>
+        <Text
+          variant="caption"
+          numberOfLines={1}
+          style={{
+            color: chrome.foreground,
+            textAlign: 'center',
+            fontWeight: '800',
+            letterSpacing: 0.6,
+            fontVariant: ['tabular-nums'],
+          }}
+        >
+          {serial}
+        </Text>
+      </Pressable>
 
       {guidance ? (
         <Text

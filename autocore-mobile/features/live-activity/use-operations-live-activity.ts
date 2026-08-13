@@ -1,26 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
-import NetInfo from '@react-native-community/netinfo';
+import { after } from 'expo-widgets';
 
 import { reconcileIntakeSyncLocalNotification } from '@/features/engine-intake/lib/intake-sync-notifications';
 import { useEngineIntakeOutbox } from '@/features/engine-intake/store/intake-outbox';
 import { useSession } from '@/hooks/use-session';
 
 import { ensureLiveActivityAppIconUri } from './ensure-live-activity-icon';
-import { OperationsLiveActivity } from './operations-live-activity';
 import {
+  buildCompletionProps,
   liveActivityContentKey,
   resolveDesiredLiveActivity,
   type DesiredLiveActivity,
-} from './resolve-desired-live-activity';
+  type LiveActivityProps,
+} from './lib/live-activity-model';
+import { OperationsLiveActivity } from './operations-live-activity';
+import { useIsOnline } from './use-is-online';
 
 const INTAKE_URL = 'autocoremobile://intake';
 /** Ignore brief NetInfo blips before starting a new island. */
 const START_DEBOUNCE_MS = 350;
+/** How long "N photos synced" stays up before the system removes it. */
+const COMPLETION_LINGER_MS = 6_000;
 /**
- * Presentation gate for ActivityKit. Enabled for intake outbox sync states.
- * Layout lives in the widget extension — ship a device Release rebuild
- * (`npm run ios:release`) after changing `operations-live-activity.tsx`.
+ * Presentation gate for ActivityKit. Layout lives in the widget extension —
+ * ship a device Release rebuild (`npm run ios:release`) after changing
+ * `operations-live-activity.tsx`.
  */
 const LIVE_ACTIVITY_PRESENTATION_ENABLED = true;
 
@@ -29,6 +34,27 @@ let cachedIconUri = '';
 async function endAllInstances(): Promise<void> {
   const active = OperationsLiveActivity.getInstances();
   await Promise.all(active.map((instance) => instance.end('immediate').catch(() => undefined)));
+}
+
+/**
+ * Ends on a success frame instead of vanishing.
+ *
+ * A Live Activity that disappears the instant the last upload lands reads as a
+ * crash — the person never sees the queue reach the end. Apple's own pattern is
+ * to render the finished state briefly and let the system dismiss it.
+ */
+async function endWithCompletion(props: LiveActivityProps): Promise<void> {
+  const instances = OperationsLiveActivity.getInstances();
+  if (instances.length === 0) return;
+  const dismissAt = new Date(Date.now() + COMPLETION_LINGER_MS);
+  await Promise.all(
+    instances.map((instance) =>
+      instance
+        .end(after(dismissAt), props)
+        // `after` needs the activity to still be alive; fall back to a hard end.
+        .catch(() => instance.end('immediate').catch(() => undefined)),
+    ),
+  );
 }
 
 async function applyDesired(desired: DesiredLiveActivity): Promise<void> {
@@ -41,17 +67,7 @@ async function applyDesired(desired: DesiredLiveActivity): Promise<void> {
     cachedIconUri = (await ensureLiveActivityAppIconUri()) ?? '';
   }
 
-  const props = {
-    mode: desired.mode,
-    title: desired.title,
-    detail: desired.detail,
-    count: desired.count,
-    done: desired.done,
-    total: desired.total,
-    progress: desired.progress,
-    progressLabel: desired.progressLabel,
-    iconUri: cachedIconUri,
-  };
+  const props: LiveActivityProps = { ...desired.props, iconUri: cachedIconUri };
 
   const instances = OperationsLiveActivity.getInstances();
   if (instances.length > 0) {
@@ -73,29 +89,46 @@ async function applyDesired(desired: DesiredLiveActivity): Promise<void> {
 
 /**
  * Drives the iOS Dynamic Island / Lock Screen Live Activity from intake outbox
- * state. Shows ONLY when there is actionable information (pending / failed).
- * Bare offline with an empty outbox stays idle.
+ * state.
  *
- * On mount we always clear ActivityKit leftovers — stale blank black pills from
- * prior builds otherwise stick on the Lock Screen / Island.
+ * The Live Activity is a *view*: every word and colour it shows comes from the
+ * same `resolveSyncSummary` the in-app banner reads, so the two can never tell
+ * different stories about the same queue. This hook only decides *when* to
+ * start, update and end — never what the state means.
  *
- * No-op on Android / web. Layout changes require a native rebuild (`expo-widgets`).
+ * It does not own retries. `IntakeSyncHead` does, and it keeps running when
+ * these screens unmount.
+ *
+ * On mount we always clear ActivityKit leftovers — stale blank pills from prior
+ * builds otherwise stick on the Lock Screen.
+ *
+ * No-op on Android / web. Layout changes require a native rebuild.
  */
 export function useOperationsLiveActivity() {
-  const [offline, setOffline] = useState(false);
-  const [clearedStale, setClearedStale] = useState(false);
+  const online = useIsOnline();
+  // Nothing to clear off Android / web, so start already-cleared there rather
+  // than bouncing through a synchronous setState inside the effect below.
+  const [clearedStale, setClearedStale] = useState(() => Platform.OS !== 'ios');
   const { companyId, can } = useSession();
   const intakeEnabled = Boolean(companyId) && can('engine_intake_view');
   const outbox = useEngineIntakeOutbox(intakeEnabled ? companyId : null);
   const lastKeyRef = useRef<string>('');
   const startTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const desiredRef = useRef<DesiredLiveActivity>({ kind: 'idle' });
+  /**
+   * High-water mark of photos confirmed in the wave being presented.
+   *
+   * The store resets `syncedCount` to zero the moment the queue empties, and
+   * that reset can land in the same React commit as the last success — so
+   * reading the live value at idle time would report zero. The peak can only
+   * ever under-report by the final photo, never invent one, which is the right
+   * way round: a discarded queue must not be announced as a successful sync.
+   */
+  const waveSyncedRef = useRef(0);
+  const wavePresentedRef = useRef(false);
 
   useEffect(() => {
-    if (Platform.OS !== 'ios') {
-      setClearedStale(true);
-      return;
-    }
+    if (Platform.OS !== 'ios') return;
 
     let cancelled = false;
     void endAllInstances()
@@ -111,45 +144,34 @@ export function useOperationsLiveActivity() {
     };
   }, []);
 
-  useEffect(() => {
-    if (Platform.OS !== 'ios') return;
-
-    const applyNet = (state: {
-      isConnected: boolean | null;
-      isInternetReachable: boolean | null | undefined;
-    }) => {
-      setOffline(!(state.isConnected && state.isInternetReachable !== false));
-    };
-
-    void NetInfo.fetch().then(applyNet);
-    const sub = NetInfo.addEventListener(applyNet);
-    return () => sub();
-  }, []);
-
   const desired = useMemo(
     () =>
       resolveDesiredLiveActivity({
         enabled: Platform.OS === 'ios' && intakeEnabled,
-        offline,
-        // Photo-only — banner may still show command noise via pendingCount.
-        pendingCount: outbox.photoPendingCount,
-        failedCount: outbox.photoFailedCount,
-        syncing: outbox.syncing,
-        syncedCount: outbox.syncedCount,
-        sessionTotal: outbox.sessionTotal,
+        online,
+        // Photo rows only — command heartbeats would inflate the denominator.
+        photos: outbox.photos,
+        completedInWave: outbox.syncedCount,
+        waveTotal: outbox.sessionTotal,
       }),
-    [
-      intakeEnabled,
-      offline,
-      outbox.photoFailedCount,
-      outbox.photoPendingCount,
-      outbox.sessionTotal,
-      outbox.syncedCount,
-      outbox.syncing,
-    ],
+    [intakeEnabled, online, outbox.photos, outbox.sessionTotal, outbox.syncedCount],
   );
 
-  desiredRef.current = desired;
+  /**
+   * Declared before the commit effect on purpose — effects run in order, so the
+   * peak is always current by the time the commit effect decides how to end.
+   */
+  useEffect(() => {
+    desiredRef.current = desired;
+    if (desired.kind === 'active' && !wavePresentedRef.current) {
+      // A new wave starts: forget the previous one rather than carrying it over.
+      wavePresentedRef.current = true;
+      waveSyncedRef.current = 0;
+    }
+    if (wavePresentedRef.current && outbox.syncedCount > waveSyncedRef.current) {
+      waveSyncedRef.current = outbox.syncedCount;
+    }
+  }, [desired, outbox.syncedCount]);
 
   useEffect(() => {
     if (Platform.OS !== 'ios') return;
@@ -177,9 +199,18 @@ export function useOperationsLiveActivity() {
 
     if (key === lastKeyRef.current) return;
 
-    // End immediately — never leave a stale island when outbox clears.
     if (desired.kind === 'idle') {
       clearStartTimer();
+      const synced = waveSyncedRef.current;
+      waveSyncedRef.current = 0;
+      wavePresentedRef.current = false;
+      // Only celebrate a wave that actually moved. Going idle because the user
+      // signed out, or discarded the queue, is not a success.
+      if (synced > 0) {
+        lastKeyRef.current = key;
+        void endWithCompletion(buildCompletionProps(synced, { iconUri: cachedIconUri }));
+        return;
+      }
       void commit(desired, key);
       return;
     }
@@ -208,6 +239,8 @@ export function useOperationsLiveActivity() {
     if (Platform.OS !== 'ios') return;
     if (intakeEnabled) return;
     lastKeyRef.current = 'idle';
+    waveSyncedRef.current = 0;
+    wavePresentedRef.current = false;
     void endAllInstances();
   }, [intakeEnabled]);
 

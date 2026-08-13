@@ -141,11 +141,20 @@ export function applyOptimisticClaim(
 export function mergeIntakeJobs(
   server: EngineIntakeJob[],
   local: EngineIntakeJob[],
+  cancelledJobIds: readonly string[] = [],
 ): EngineIntakeJob[] {
-  if (local.length === 0) return server;
-  const ids = new Set(server.map((job) => job.id));
-  const extras = local.filter((job) => !ids.has(job.id));
-  return extras.length === 0 ? server : [...extras, ...server];
+  const hidden = new Set(cancelledJobIds);
+  const visibleServer = hidden.size === 0
+    ? server
+    : server.filter((job) => !hidden.has(job.id) && job.state !== 'cancelled');
+  const extras = local.filter(
+    (job) =>
+      !visibleServer.some((item) => item.id === job.id) &&
+      !hidden.has(job.id) &&
+      job.state !== 'cancelled',
+  );
+  if (extras.length === 0) return visibleServer;
+  return [...extras, ...visibleServer];
 }
 
 export function mergeIntakeSessions(

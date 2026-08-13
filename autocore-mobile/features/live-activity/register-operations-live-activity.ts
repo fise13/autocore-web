@@ -2,15 +2,18 @@ import { Platform } from 'react-native';
 import { widgetsDirectory } from 'expo-widgets';
 
 /**
- * Side-effect import: ensures `createLiveActivity(...)` runs at bundle load so
- * the layout string is written into the App Group before any Activity starts.
- * Import this from the signed-in root layout — do not lazy-load it.
+ * Side-effect import: ensures `createLiveActivity(...)` / `createWidget(...)`
+ * run at bundle load so each layout string is written into the App Group before
+ * any Activity starts or WidgetKit asks for a timeline. Import this from the
+ * signed-in root layout — do not lazy-load it.
  */
 import { ensureLiveActivityAppIconUri } from './ensure-live-activity-icon';
 import {
   OPERATIONS_LIVE_ACTIVITY_LAYOUT_BUILD,
   OperationsLiveActivity,
 } from './operations-live-activity';
+import { AutoCoreSyncWidget } from './widgets/sync-widget';
+import { AutoCoreTodayWidget } from './widgets/today-widget';
 
 export function assertLiveActivityAppGroup(): void {
   if (Platform.OS !== 'ios') return;
@@ -22,7 +25,7 @@ export function assertLiveActivityAppGroup(): void {
   if (!widgetsDirectory) {
     console.error(
       '[live-activity] App Group unavailable (widgetsDirectory is null). ' +
-        'Dynamic Island will render blank. Enable App Group ' +
+        'Dynamic Island and widgets will render blank. Enable App Group ' +
         'group.com.wise.autocore.mobile for AutoCore + ExpoWidgetsTarget, then rebuild.',
     );
     return;
@@ -32,5 +35,7 @@ export function assertLiveActivityAppGroup(): void {
   });
 }
 
-// Touch the factory so Metro does not tree-shake the module.
+// Touch the factories so Metro does not tree-shake the modules.
 void OperationsLiveActivity;
+void AutoCoreSyncWidget;
+void AutoCoreTodayWidget;

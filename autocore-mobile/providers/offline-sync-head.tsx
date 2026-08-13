@@ -37,6 +37,9 @@ export function OfflineSyncHead() {
       }, NETWORK_DEBOUNCE_MS);
     });
     const appState = AppState.addEventListener('change', (next) => {
+      if (next === 'background' || next === 'inactive') {
+        void syncBackgroundTaskRegistration();
+      }
       if (next === 'active' || next === 'background' || next === 'inactive') run();
     });
 

@@ -59,8 +59,10 @@ function hasQueuedWork(): boolean {
 }
 
 /**
- * Keep a BGProcessingTask armed while the outbox has work. iOS decides when
- * it actually runs (power, network, usage). Unregister when the queue is empty.
+ * Keep a BGProcessingTask armed while the outbox has work. iOS/Android decide
+ * when it actually runs (power, network, usage). Unregister when the queue is
+ * empty. Nothing runs while the phone is powered off — after boot the system
+ * may relaunch this task; opening the app always drains immediately.
  */
 export async function syncBackgroundTaskRegistration(): Promise<void> {
   if (!TaskManager || !BackgroundTask) return;

@@ -27,6 +27,8 @@ import {
   useEngineIntakeJobDetail,
   useEngineIntakeJobs,
 } from './hooks/use-engine-intake-data';
+import { useIntakeOverlay } from './store/intake-local-overlay';
+import { useVolumeShutter } from './hooks/use-volume-shutter';
 import {
   drainIntakeOutbox,
   enqueueIntakeCommand,
@@ -37,6 +39,7 @@ import {
   useEngineIntakeOutbox,
 } from './store/intake-outbox';
 import { engineIntakeId, getEngineIntakeDeviceId } from './lib/device';
+import { cancelIntakeJob } from './lib/cancel-intake-job';
 import { evidenceGuidance } from './lib/evidence-labels';
 import { openEngineIntakeBay } from './lib/open-engine-intake';
 
@@ -67,6 +70,7 @@ export function EngineIntakeSessionScreen() {
   const [torch, setTorch] = useState(false);
   const capturing = useRef(false);
   const [capturingUi, setCapturingUi] = useState(false);
+  const takePhotoRef = useRef<() => void>(() => undefined);
   const [completedLocal, setCompletedLocal] = useState(false);
   const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
   /** Server photo count frozen when the camera session opens — never re-add live progress. */
@@ -75,7 +79,11 @@ export function EngineIntakeSessionScreen() {
   /** Photos added this visit (shutter / gallery) — authoritative UI count delta. */
   const [shotsAdded, setShotsAdded] = useState(0);
   const { jobs, loading: jobsLoading } = useEngineIntakeJobs(companyId);
-  const job = jobs.find((item) => item.id === jobId);
+  const overlay = useIntakeOverlay(companyId);
+  const listedJob = jobs.find((item) => item.id === jobId);
+  const jobHeld = useRef(listedJob);
+  if (listedJob) jobHeld.current = listedJob;
+  const job = listedJob ?? (overlay.cancelledJobIds.includes(jobId) ? jobHeld.current : undefined);
   const detail = useEngineIntakeJobDetail(companyId, jobId || null);
   const activeSession = detail.sessions.find((session) => session.id === sessionId) ?? null;
   const sessionState = activeSession?.state ?? 'active';
@@ -84,8 +92,16 @@ export function EngineIntakeSessionScreen() {
   const localPhotos = outbox.photos.filter(
     (photo) => photo.companyId === companyId && photo.jobId === jobId,
   );
-  const pendingLocalPhotos = localPhotos.filter((photo) => photo.state !== 'failed');
-  const failedPhotos = localPhotos.filter((photo) => photo.state === 'failed');
+  const pendingLocalPhotos = localPhotos.filter(
+    (photo) => photo.state !== 'failed' && photo.errorInfo?.code !== 'CONFLICT',
+  );
+  const failedPhotos = localPhotos.filter(
+    (photo) =>
+      photo.state === 'failed' &&
+      photo.errorInfo?.code !== 'CONFLICT' &&
+      !`${photo.lastError ?? ''}`.toLowerCase().includes('already on the server') &&
+      !`${photo.lastError ?? ''}`.toLowerCase().includes('already recorded'),
+  );
   const hasQueuedFieldCompletion = outbox.commands.some(
     (item) =>
       item.companyId === companyId &&
@@ -144,6 +160,10 @@ export function EngineIntakeSessionScreen() {
     job?.expectedIdentity.serialCode ||
     job?.expectedIdentity.engineCode ||
     'Engine';
+
+  useVolumeShutter(() => {
+    takePhotoRef.current();
+  }, appState === 'active' && !completionPending && !isServerComplete);
 
   useEffect(() => {
     let previous = AppState.currentState;
@@ -273,6 +293,13 @@ export function EngineIntakeSessionScreen() {
     openEngineIntakeBay(router);
   }, [activeSession, companyId, job, jobId, outbox.commands, router, sessionId, uid]);
 
+  useEffect(() => {
+    if (!jobId || !overlay.cancelledJobIds.includes(jobId)) return;
+    if (leftForClaimLossRef.current) return;
+    leftForClaimLossRef.current = true;
+    openEngineIntakeBay(router);
+  }, [jobId, overlay.cancelledJobIds, router]);
+
   if (!can('engine_intake_execute')) {
     return (
       <ScreenGate
@@ -394,6 +421,10 @@ export function EngineIntakeSessionScreen() {
     }
   };
 
+  takePhotoRef.current = () => {
+    void takePhoto();
+  };
+
   const pickFromGallery = async () => {
     if (capturing.current) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -452,6 +483,37 @@ export function EngineIntakeSessionScreen() {
       ).catch(() => null);
     }
     openEngineIntakeBay(router);
+  };
+
+  const requestCancelEngine = () => {
+    if (!companyId || !job || !can('engine_intake_execute')) return;
+    Alert.alert('Cancel engine?', `${serial} will leave the intake bay.`, [
+      { text: 'Keep shooting', style: 'cancel' },
+      {
+        text: 'Cancel engine',
+        style: 'destructive',
+        onPress: () => {
+          void (async () => {
+            try {
+              await cancelIntakeJob(companyId, job);
+              haptics.success();
+              toast({ title: 'Engine cancelled', variant: 'default' });
+              openEngineIntakeBay(router);
+            } catch (error) {
+              haptics.error();
+              toast({
+                title: 'Could not cancel',
+                description:
+                  error instanceof Error
+                    ? humanizeIntakeOutboxError(error.message)
+                    : undefined,
+                variant: 'destructive',
+              });
+            }
+          })();
+        },
+      },
+    ]);
   };
 
   const finishCapture = async (overrideReason?: string) => {
@@ -554,6 +616,11 @@ export function EngineIntakeSessionScreen() {
         torch={torch}
         onBack={() => void pauseAndLeave()}
         onToggleTorch={() => setTorch((value) => !value)}
+        onSerialLongPress={
+          !completionPending && !isServerComplete && can('engine_intake_execute')
+            ? requestCancelEngine
+            : undefined
+        }
       />
 
       <IntakeCaptureDock

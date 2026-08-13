@@ -71,12 +71,41 @@ const plugins: ExpoConfig['plugins'] = [
   [
     'expo-widgets',
     {
-      // Live Activities only — do not add widgets[] entries for createLiveActivity.
+      // `widgets[]` is for `createWidget` only — the Live Activity registers
+      // itself through `createLiveActivity` and must NOT be listed here.
       // Bundle ID must match the App ID already registered in Apple Developer
       // (Xcode created com.wise.autocore.mobile.ExpoWidgetsTarget).
       bundleIdentifier: 'com.wise.autocore.mobile.ExpoWidgetsTarget',
       groupIdentifier: 'group.com.wise.autocore.mobile',
       enablePushNotifications: false,
+      widgets: [
+        {
+          // `name` must match `createWidget('AutoCoreSync', …)` exactly.
+          name: 'AutoCoreSync',
+          displayName: 'Intake Sync',
+          description: 'Photos waiting to upload from engine intake.',
+          supportedFamilies: [
+            'accessoryCircular',
+            'accessoryRectangular',
+            'accessoryInline',
+            'systemSmall',
+          ],
+          contentMarginsDisabled: false,
+        },
+        {
+          name: 'AutoCoreToday',
+          displayName: 'Today at the shop',
+          description: 'Open work orders, stock waiting to be placed, engines on hand.',
+          supportedFamilies: [
+            'accessoryCircular',
+            'accessoryRectangular',
+            'accessoryInline',
+            'systemSmall',
+            'systemMedium',
+          ],
+          contentMarginsDisabled: false,
+        },
+      ],
     },
   ],
 ];

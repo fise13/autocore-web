@@ -4,42 +4,21 @@ import { ZodError } from "zod";
 import { executeEngineIntakeCommand, EngineIntakeCommandError } from "@/application/use-cases/engine-intake/execute-engine-intake-command.server";
 import {
   EngineIntakeAccessError,
-  type EngineIntakeCapability,
   verifyEngineIntakeAccess,
 } from "@/lib/auth/verify-engine-intake-access.server";
+import { capabilityForEngineIntakeCommand } from "@/lib/engine-intake/command-capability";
 import { parseEngineIntakeCommand } from "@/lib/engine-intake/engine-intake-schemas";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-function requiredCapability(
-  command: ReturnType<typeof parseEngineIntakeCommand>,
-): EngineIntakeCapability {
-  if (command.type === "create_job") {
-    return command.client === "mobile" && command.payload.source === "ad_hoc"
-      ? "execute"
-      : "verify";
-  }
-  if (
-    command.type === "claim_job" ||
-    command.type === "heartbeat_session" ||
-    command.type === "pause_session" ||
-    command.type === "resume_session" ||
-    command.type === "cancel_session" ||
-    command.type === "confirm_identity" ||
-    command.type === "report_identity_mismatch" ||
-    command.type === "set_location" ||
-    command.type === "field_complete"
-  ) {
-    return "execute";
-  }
-  return "verify";
-}
-
 export async function POST(request: Request) {
   try {
     const command = parseEngineIntakeCommand(await request.json());
-    const access = await verifyEngineIntakeAccess(request, requiredCapability(command));
+    const access = await verifyEngineIntakeAccess(
+      request,
+      capabilityForEngineIntakeCommand(command),
+    );
     const result = await executeEngineIntakeCommand(access, command);
     return NextResponse.json(result);
   } catch (error) {

@@ -73,4 +73,18 @@ describe('mergeIntakeJobs', () => {
     assert.equal(merged.length, 1);
     assert.equal(merged[0]?.assignment.activeSessionId, 'session_1');
   });
+
+  it('hides engines the worker just cancelled, even if the server snapshot is stale', () => {
+    const job = buildOptimisticIntakeJob({
+      companyId: 'acme',
+      jobId: 'job_1',
+      sessionId: 'session_1',
+      uid: 'user_1',
+      displayName: null,
+      deviceId: 'device_1',
+      identity: { serialCode: 'UF1', brandName: '', engineCode: '' },
+    });
+    const merged = mergeIntakeJobs([job], [], ['job_1']);
+    assert.equal(merged.some((item) => item.id === 'job_1'), false);
+  });
 });

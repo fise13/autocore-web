@@ -1410,8 +1410,8 @@
     "semantic_hash": ""
   },
   "features/engine-intake/components/intake-camera.tsx": {
-    "mtime": 1786550272.1569855,
-    "ast_hash": "d63f6c3f9c65b39812fc537e8f0547da",
+    "mtime": 1786630691.2127168,
+    "ast_hash": "370e1753ebf1f86a456b0ed1937e6ca5",
     "semantic_hash": ""
   },
   "features/engine-intake/components/intake-capture-chrome.tsx": {
@@ -1455,13 +1455,13 @@
     "semantic_hash": ""
   },
   "features/engine-intake/engine-intake-jobs-screen.tsx": {
-    "mtime": 1786628808.9479356,
-    "ast_hash": "81074c8ac974c2d00fca0c1236cfee8f",
+    "mtime": 1786630817.43569,
+    "ast_hash": "09ba1a2b16d0a4ead16f021be43d5d60",
     "semantic_hash": ""
   },
   "features/engine-intake/engine-intake-session-screen.tsx": {
-    "mtime": 1786628872.3568416,
-    "ast_hash": "f153d6162240c32f421b9086389d8568",
+    "mtime": 1786630818.2410042,
+    "ast_hash": "5a0881c81923c5c448aafc4df7518b07",
     "semantic_hash": ""
   },
   "features/engine-intake/hooks/use-engine-intake-data.ts": {
@@ -1485,8 +1485,8 @@
     "semantic_hash": ""
   },
   "features/engine-intake/store/intake-outbox.ts": {
-    "mtime": 1786629533.84944,
-    "ast_hash": "29c92974ff98a280e7d322ab864c199c",
+    "mtime": 1786630643.677351,
+    "ast_hash": "a88e622efa3d748f86b9a687ab5acc8d",
     "semantic_hash": ""
   },
   "features/inventory/create-inventory-item-screen.tsx": {
@@ -3940,8 +3940,8 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1786629335.1924884,
-    "ast_hash": "deadd289264f472848701b3524b4bbb4",
+    "mtime": 1786630825.103167,
+    "ast_hash": "36169faeafba6b902bb2fc6acf36cab1",
     "semantic_hash": ""
   },
   "plugins/with-disable-swiftuicore-autolink.js": {
@@ -5765,13 +5765,13 @@
     "semantic_hash": ""
   },
   "features/engine-intake/lib/sync-errors.test.ts": {
-    "mtime": 1786629331.06486,
-    "ast_hash": "51512027e2280a4787b7b2d0574ff75e",
+    "mtime": 1786629690.8019993,
+    "ast_hash": "56e283fd02e0510219ce7e5c797afb84",
     "semantic_hash": ""
   },
   "features/engine-intake/lib/sync-errors.ts": {
-    "mtime": 1786629328.2994258,
-    "ast_hash": "4afdb7f59fcbf1605441c9798c47c906",
+    "mtime": 1786629705.8703058,
+    "ast_hash": "a14c410baf30d223ea7f091e277837fa",
     "semantic_hash": ""
   },
   "features/engine-intake/lib/sync-schedule.test.ts": {
@@ -5795,8 +5795,8 @@
     "semantic_hash": ""
   },
   "providers/intake-sync-head.tsx": {
-    "mtime": 1786629447.9909832,
-    "ast_hash": "810e72cd3590bd3636e35de7d030762b",
+    "mtime": 1786631021.317867,
+    "ast_hash": "182edcbda8030f5113fc63a5d7707dd5",
     "semantic_hash": ""
   },
   "components/offline/offline-session-banner.tsx": {
@@ -5835,8 +5835,8 @@
     "semantic_hash": ""
   },
   "lib/offline/background-sync-task.ts": {
-    "mtime": 1786629580.8096354,
-    "ast_hash": "762f99e2dd4bf86042cb61aac69de8da",
+    "mtime": 1786629639.1197684,
+    "ast_hash": "b2aa8f433619287667219794f521b8df",
     "semantic_hash": ""
   },
   "lib/offline/drain-mutation-outbox.ts": {
@@ -5867,6 +5867,16 @@
   "providers/offline-sync-head.tsx": {
     "mtime": 1786629450.252079,
     "ast_hash": "c842cfc3a449007bb93b54f5c41d3f8c",
+    "semantic_hash": ""
+  },
+  "features/engine-intake/hooks/use-volume-shutter.ts": {
+    "mtime": 1786630973.049235,
+    "ast_hash": "bb86d7972de76a3f968f5c8798e3ad28",
+    "semantic_hash": ""
+  },
+  "scripts/patch-expo-camera-shutter.mjs": {
+    "mtime": 1786630735.6095703,
+    "ast_hash": "7625a95303a67effe97fe1a502370362",
     "semantic_hash": ""
   }
 }

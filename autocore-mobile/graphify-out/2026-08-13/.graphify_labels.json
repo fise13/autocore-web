@@ -238,9 +238,19 @@
   "236": "@autocore/avatars",
   "237": "expo-auth-session",
   "238": "offline-pill.tsx",
+  "239": "expo-background-task",
   "240": "expo-router",
+  "241": "expo-font",
+  "242": "expo-notifications",
   "243": "@react-native-community/netinfo",
   "244": "react-native-gesture-handler",
   "245": "@react-native-google-signin/google-signin",
-  "248": "NATIVE_TAB_BAR_HEIGHT"
+  "246": "expo-splash-screen",
+  "247": "expo-task-manager",
+  "248": "NATIVE_TAB_BAR_HEIGHT",
+  "249": "@gorhom/bottom-sheet",
+  "250": "react-dom",
+  "251": "react-native-iap",
+  "252": "react-native-safe-area-context",
+  "253": "tailwind-merge"
 }
