@@ -1,0 +1,49 @@
+{
+  "files": {
+    "code": [
+      "components/engine-intake-launch.tsx",
+      "components/intake-camera.tsx",
+      "components/intake-capture-chrome.tsx",
+      "components/intake-capture-dock.tsx",
+      "components/intake-create-serial-sheet.tsx",
+      "components/intake-evidence-checklist.tsx",
+      "components/intake-job-row.tsx",
+      "components/intake-launch-card.tsx",
+      "components/intake-outbox-banner.tsx",
+      "components/intake-session-done.tsx",
+      "engine-intake-jobs-screen.tsx",
+      "engine-intake-session-screen.tsx",
+      "hooks/use-engine-intake-data.ts",
+      "lib/device.ts",
+      "lib/evidence-labels.ts",
+      "services/engine-intake-api.ts",
+      "store/intake-outbox.ts"
+    ],
+    "document": [],
+    "paper": [],
+    "image": [],
+    "video": []
+  },
+  "total_files": 17,
+  "total_words": 10977,
+  "needs_graph": false,
+  "warning": "Corpus is ~10,977 words - fits in a single context window. You may not need a graph.",
+  "skipped_sensitive": [],
+  "graphifyignore_patterns": 70,
+  "scope": {
+    "requested_mode": "auto",
+    "resolved_mode": "committed",
+    "source": "default-auto",
+    "root": ".",
+    "git_root": "../../..",
+    "head": "77c52f6969566500eeb70293e85ba062db3dc538",
+    "candidate_count": 17,
+    "included_count": 17,
+    "excluded_untracked_count": 40,
+    "excluded_ignored_count": 0,
+    "excluded_sensitive_count": 0,
+    "missing_committed_count": 0,
+    "warnings": [],
+    "recommendation": "Use --scope all or graphify.yaml inputs.corpus for a knowledge-base folder."
+  }
+}

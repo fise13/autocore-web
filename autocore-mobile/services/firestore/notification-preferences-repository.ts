@@ -1,6 +1,7 @@
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 
 import { stripUndefinedDeep } from '@/lib/firestore/strip-undefined';
+import { listenDocument } from '@/lib/firestore/trusted-snapshot';
 import { mergeNotificationPreferences } from '@/lib/notifications/merge-preferences';
 import { updateNotificationPreferences } from '@/services/api/notification-api';
 import { MobileApiError } from '@/services/api/mobile-client';
@@ -26,7 +27,7 @@ export function subscribeNotificationPreferences(
   onData: (preferences: NotificationPreferences) => void,
   onError?: (error: Error) => void,
 ): () => void {
-  return onSnapshot(
+  return listenDocument(
     preferencesRef(uid),
     (snapshot) => {
       const partial = snapshot.exists()
@@ -34,7 +35,7 @@ export function subscribeNotificationPreferences(
         : null;
       onData(mergeNotificationPreferences(partial));
     },
-    (error) => onError?.(error),
+    onError,
   );
 }
 

@@ -59,6 +59,8 @@ const plugins: ExpoConfig['plugins'] = [
     },
   ],
   'expo-sharing',
+  'expo-task-manager',
+  'expo-background-task',
   [
     'expo-notifications',
     {
@@ -117,6 +119,8 @@ export default (): ExpoConfig => ({
       ITSAppUsesNonExemptEncryption: false,
       NSSupportsLiveActivities: true,
       NSSupportsLiveActivitiesFrequentUpdates: true,
+      UIBackgroundModes: ['remote-notification', 'processing', 'fetch'],
+      BGTaskSchedulerPermittedIdentifiers: ['com.expo.modules.backgroundtask.processing'],
       NSUserNotificationsUsageDescription:
         'AutoCore sends notifications about work orders, warehouse activity, payments, and other events at your company.',
       ...(iosUrlScheme

@@ -5,6 +5,7 @@ import {
   ClipboardListIcon,
   FileStackIcon,
   FileTextIcon,
+  LayoutGridIcon,
   PackageIcon,
   ReceiptIcon,
   ShoppingCartIcon,
@@ -40,6 +41,8 @@ export function iconForSearchKind(kind: SearchResultKind): ComponentType<SearchI
       return CarIcon;
     case 'gearbox':
       return PackageIcon;
+    case 'workspace':
+      return LayoutGridIcon;
     default:
       return ClipboardListIcon;
   }

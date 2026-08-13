@@ -24,15 +24,18 @@ npm run ios:provision
 
 Скрипт вызывает `xcodebuild -allowProvisioningUpdates` — Apple пересоздаст профиль с Push.
 
-## 3. Пересобрать
+## 3. Пересобрать (обязательно для Push + Dynamic Island)
 
 ```bash
+cd autocore-mobile
 npm run ios:release --device
 ```
 
-Открой приложение → разреши уведомления.
+- Soft reload **не** обновляет widget extension (Island) и APNs entitlements.
+- Нужен **физический iPhone** (симулятор не получает APNs / Live Activities как в проде).
+- Открой приложение → разреши уведомления.
 
-## 4. Проверка Firestore
+## 4. Проверка Firestore (device token)
 
 ```bash
 cd ..   # корень autocore-web
@@ -42,7 +45,7 @@ npx tsx scripts/debug-notifications.ts YOUR_EMAIL
 
 Ожидаем: `push devices: 1` с `ExponentPushToken[...]`.
 
-## 5. Expo / APNs (для доставки push)
+## 5. Expo / APNs (для доставки remote push)
 
 Проект EAS: `@fise13/autocore-mobile`  
 `projectId`: `f13cbd47-6bc7-4eb4-b4ad-12dc7175018a`
@@ -57,6 +60,27 @@ npx eas credentials -p ios
 ```
 
 Ключ создаётся в Apple Developer → **Keys** → **+** → **Apple Push Notifications service (APNs)**.
+
+## 6. Dynamic Island (intake sync) — проверка на устройстве
+
+Island читает intake outbox (`pendingCount` / `failedCount` / `syncing`). Presentation включена (`LIVE_ACTIVITY_PRESENTATION_ENABLED = true`).
+
+1. После `ios:release` открой Engine intake.
+2. Сфотографируй двигатель **офлайн** → Island: “Waiting offline” / “Pending sync”.
+3. Верни сеть → “Syncing”, затем Island гаснет когда outbox пуст.
+4. Спровоцируй failed upload → Island: “Sync failed”.
+5. Уведи приложение в фон с failed items → local notification “Sync failed” с deep link `autocoremobile://intake`.
+6. Очисти/почини outbox → local notification снимается, Island idle.
+
+**Важно:** intake sync **не** шлёт remote Expo push на каждый тик — UX sync = Island + local при failed в фоне. Remote push остаётся для work orders / team / system events.
+
+## 7. Если remote push всё ещё не приходит
+
+1. Settings → Notifications → AutoCore → разрешено.
+2. `debug-notifications.ts` показывает token.
+3. APNs key загружен в EAS (шаг 5).
+4. Deploy Firebase Function `onNotificationCreatedPush` (backup если Next.js dispatch упал).
+5. Не тестируй на симуляторе / Expo Go.
 
 ## Xcode (альтернатива CLI)
 

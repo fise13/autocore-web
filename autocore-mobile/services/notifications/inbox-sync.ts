@@ -1,4 +1,4 @@
-import { normalizeCompanyId, isProductionCompanyId } from '@/lib/company-id';
+import { isProductionCompanyId } from '@/lib/company-id';
 import { resolveSessionCompanyId } from '@/lib/session/merge-hydration';
 import {
   fetchNotificationInbox,
@@ -32,11 +32,9 @@ function resolveInboxContext(): { userId: string; companyId: string } {
     throw new MobileApiError('Authorization required', 401);
   }
 
-  const companyId =
-    resolveSessionCompanyId(auth.profile, auth.memberships) ??
-    normalizeCompanyId(auth.profile?.companyId);
+  const companyId = resolveSessionCompanyId(auth.profile, auth.memberships);
 
-  if (!isProductionCompanyId(companyId)) {
+  if (!companyId || !isProductionCompanyId(companyId)) {
     throw new MobileApiError('Join a company first', 403);
   }
 

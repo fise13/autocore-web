@@ -1,11 +1,11 @@
 import { useEffect, useSyncExternalStore } from 'react';
-import { AppState } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
-import { Directory, File, Paths } from 'expo-file-system';
+import { Directory, File, Paths, UploadType } from 'expo-file-system';
 import type {
   EngineIntakeCommand,
   EngineIntakeCommandResult,
   IntakePhotoCategory,
+  PrepareIntakePhotoRequest,
   PrepareIntakePhotoResponse,
 } from '@autocore/engine-intake';
 
@@ -13,19 +13,48 @@ import { MobileApiError } from '@/services/api/mobile-client';
 import { getJson, setJson } from '@/lib/storage/kv';
 
 import { engineIntakeId } from '../lib/device';
+import { describeSyncError, isIdempotentPhotoSuccess, type SyncErrorInfo } from '../lib/sync-errors';
+import {
+  isJobRunnable,
+  reconcileOnLaunch,
+  resolveFailureTransition,
+  type SyncJobStatus,
+} from '../lib/sync-schedule';
 import {
   finalizeEngineIntakePhoto,
   prepareEngineIntakePhoto,
   sendEngineIntakeCommand,
 } from '../services/engine-intake-api';
 
-const STORAGE_KEY = 'engine-intake:outbox:v1';
+const STORAGE_KEY = 'engine-intake:outbox:v2';
+const LEGACY_STORAGE_KEY = 'engine-intake:outbox:v1';
 
-export type IntakeOutboxCommand = {
+/**
+ * `state` is kept as a derived mirror of `status` so the camera, the bay list,
+ * the banner and the home dashboard keep reading the field they already read.
+ * `status` is the real one — it is what the scheduler and the Live Activity use.
+ */
+export function legacyState(status: SyncJobStatus): 'pending' | 'syncing' | 'failed' {
+  if (status === 'uploading') return 'syncing';
+  if (status === 'failed') return 'failed';
+  return 'pending';
+}
+
+type SyncJobFields = {
+  status: SyncJobStatus;
+  attemptCount: number;
+  nextRetryAt: string | null;
+  errorInfo: SyncErrorInfo | null;
+  updatedAt: string;
+};
+
+export type IntakeOutboxCommand = SyncJobFields & {
   id: string;
   companyId: string;
   command: EngineIntakeCommand;
+  /** @deprecated Mirror of `status` — read `status`. */
   state: 'pending' | 'syncing' | 'failed';
+  /** @deprecated Mirror of `attemptCount`. */
   attempts: number;
   lastError: string | null;
   createdAt: string;
@@ -41,11 +70,13 @@ export type IntakeOutboxPhoto = {
   category: IntakePhotoCategory;
   localUri: string;
   capturedAt: string;
+  /** @deprecated Mirror of `status` — read `status`. */
   state: 'pending' | 'syncing' | 'failed';
+  /** @deprecated Mirror of `attemptCount`. */
   attempts: number;
   lastError: string | null;
   createdAt: string;
-};
+} & SyncJobFields;
 
 type PersistedOutbox = {
   commands: IntakeOutboxCommand[];
@@ -56,36 +87,121 @@ export type IntakeOutboxSnapshot = PersistedOutbox & {
   pendingCount: number;
   failedCount: number;
   syncing: boolean;
+  /** Photos waiting to upload (pending + syncing) — Island progress source. */
+  photoPendingCount: number;
+  /** Photos that failed upload. */
+  photoFailedCount: number;
+  /** Photos successfully uploaded in the current sync wave. */
+  syncedCount: number;
+  /** Peak photo count for the current sync wave (synced + still pending). */
+  sessionTotal: number;
 };
 
-const initial = getJson<PersistedOutbox>(STORAGE_KEY) ?? { commands: [], photos: [] };
+type LegacyRow = { state?: 'pending' | 'syncing' | 'failed'; attempts?: number; lastError?: string | null };
+
+/** v1 rows only had `state`/`attempts`; give them the scheduler fields. */
+function upgradeRow<T extends LegacyRow>(row: T): T & SyncJobFields {
+  const existing = row as T & Partial<SyncJobFields>;
+  if (existing.status) return existing as T & SyncJobFields;
+  const status: SyncJobStatus =
+    row.state === 'failed' ? 'failed' : row.state === 'syncing' ? 'uploading' : 'queued';
+  return {
+    ...row,
+    status,
+    attemptCount: row.attempts ?? 0,
+    nextRetryAt: null,
+    errorInfo: null,
+    updatedAt: new Date().toISOString(),
+  } as T & SyncJobFields;
+}
+
+function loadPersisted(): PersistedOutbox {
+  const current = getJson<PersistedOutbox>(STORAGE_KEY);
+  const source = current ?? getJson<PersistedOutbox>(LEGACY_STORAGE_KEY) ?? { commands: [], photos: [] };
+  return {
+    // Launch reconcile: a row left `uploading` means the process died holding
+    // it. That is not a failure and the file is still on disk — requeue it.
+    commands: reconcileOnLaunch((source.commands ?? []).map(upgradeRow)),
+    photos: reconcileOnLaunch((source.photos ?? []).map(upgradeRow)),
+  };
+}
+
+const initial = loadPersisted();
 let commands = initial.commands ?? [];
 let photos = initial.photos ?? [];
 let syncing = false;
+/** Successful photo uploads since the current drain wave started. */
+let syncedCount = 0;
+/** Photo work size captured when the current drain wave began. */
+let sessionTotal = 0;
 let snapshot = buildSnapshot();
 const listeners = new Set<() => void>();
 let drainPromise: Promise<void> | null = null;
 
+function isNoiseCommand(command: EngineIntakeCommand): boolean {
+  return command.type === 'heartbeat_session';
+}
+
+function countPendingCommands(list: IntakeOutboxCommand[]): number {
+  return list.filter((item) => item.state !== 'failed' && !isNoiseCommand(item.command)).length;
+}
+
+function countPhotoPending(list: IntakeOutboxPhoto[]): number {
+  return list.filter((item) => item.state !== 'failed').length;
+}
+
+function countPhotoFailed(list: IntakeOutboxPhoto[]): number {
+  return list.filter((item) => item.state === 'failed').length;
+}
+
 function buildSnapshot(): IntakeOutboxSnapshot {
-  const all = [...commands, ...photos];
+  const photoPendingCount = countPhotoPending(photos);
+  const photoFailedCount = countPhotoFailed(photos);
+  const pendingCount = countPendingCommands(commands) + photoPendingCount;
+  const failedCount =
+    commands.filter((item) => item.state === 'failed' && !isNoiseCommand(item.command)).length +
+    photoFailedCount;
   return {
     commands,
     photos,
-    pendingCount: all.filter((item) => item.state !== 'failed').length,
-    failedCount: all.filter((item) => item.state === 'failed').length,
+    pendingCount,
+    failedCount,
     syncing,
+    photoPendingCount,
+    photoFailedCount,
+    syncedCount,
+    // Never fold failed leftovers into the wave total — that inflated Island to 18/18.
+    sessionTotal: Math.max(sessionTotal, syncedCount + photoPendingCount),
   };
 }
 
+function resetSyncSession(): void {
+  syncedCount = 0;
+  sessionTotal = 0;
+}
+
+function noteSyncSuccess(): void {
+  syncedCount += 1;
+}
+
+/** Keeps the deprecated `state`/`attempts` mirrors truthful. */
+function mirror<T extends SyncJobFields & { state: unknown; attempts: number; lastError: string | null }>(
+  row: T,
+): T {
+  const state = legacyState(row.status);
+  const lastError = row.errorInfo?.message ?? null;
+  if (row.state === state && row.attempts === row.attemptCount && row.lastError === lastError) {
+    return row;
+  }
+  return { ...row, state, attempts: row.attemptCount, lastError };
+}
+
 function publish(): void {
+  commands = commands.map(mirror);
+  photos = photos.map(mirror);
   setJson(STORAGE_KEY, { commands, photos });
   snapshot = buildSnapshot();
   for (const listener of listeners) listener();
-}
-
-function errorMessage(error: unknown): string {
-  const raw = error instanceof Error ? error.message : 'Sync failed';
-  return humanizeIntakeOutboxError(raw);
 }
 
 /** Short, actionable copy for camera / Warehouse sync failures. */
@@ -146,17 +262,21 @@ function commandFailureBlocksJob(command: EngineIntakeCommand): boolean {
 
 function updateCommand(
   id: string,
-  patch: Partial<Pick<IntakeOutboxCommand, 'state' | 'attempts' | 'lastError'>>,
+  patch: Partial<Pick<IntakeOutboxCommand, 'status' | 'attemptCount' | 'nextRetryAt' | 'errorInfo'>>,
 ): void {
-  commands = commands.map((item) => (item.id === id ? { ...item, ...patch } : item));
+  commands = commands.map((item) =>
+    item.id === id ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item,
+  );
   publish();
 }
 
 function updatePhoto(
   id: string,
-  patch: Partial<Pick<IntakeOutboxPhoto, 'state' | 'attempts' | 'lastError'>>,
+  patch: Partial<Pick<IntakeOutboxPhoto, 'status' | 'attemptCount' | 'nextRetryAt' | 'errorInfo'>>,
 ): void {
-  photos = photos.map((item) => (item.id === id ? { ...item, ...patch } : item));
+  photos = photos.map((item) =>
+    item.id === id ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item,
+  );
   publish();
 }
 
@@ -168,6 +288,10 @@ function subscribe(listener: () => void): () => void {
 function getSnapshot(): IntakeOutboxSnapshot {
   return snapshot;
 }
+
+/** Non-React access, for the headless sync head. */
+export const subscribeIntakeOutbox = subscribe;
+export const getIntakeOutboxSnapshot = getSnapshot;
 
 export function enqueueIntakeCommand(
   companyId: string,
@@ -197,6 +321,11 @@ export function enqueueIntakeCommand(
       attempts: 0,
       lastError: null,
       createdAt: new Date().toISOString(),
+      status: 'queued',
+      attemptCount: 0,
+      nextRetryAt: null,
+      errorInfo: null,
+      updatedAt: new Date().toISOString(),
     },
   ];
   publish();
@@ -242,10 +371,80 @@ export function saveIntakePhotoLocally(input: {
     attempts: 0,
     lastError: null,
     createdAt: new Date().toISOString(),
+    status: 'queued',
+    attemptCount: 0,
+    nextRetryAt: null,
+    errorInfo: null,
+    updatedAt: new Date().toISOString(),
   };
   photos = [...photos, item];
   publish();
   return item;
+}
+
+function prepareRequest(
+  item: IntakeOutboxPhoto,
+  contentType: string,
+  sizeBytes: number,
+): PrepareIntakePhotoRequest {
+  return {
+    jobId: item.jobId,
+    sessionId: item.sessionId,
+    idempotencyKey: item.id,
+    deviceId: item.deviceId,
+    requirementId: item.requirementId,
+    category: item.category,
+    fileName: `${item.id}.jpg`,
+    contentType,
+    sizeBytes,
+    capturedAt: item.capturedAt,
+  };
+}
+
+/** iOS background URLSession PUT — survives leaving the app. JS `fetch` does not. */
+async function putPhotoBytes(file: File, uploadUrl: string, contentType: string): Promise<void> {
+  const result = await file.upload(uploadUrl, {
+    httpMethod: 'PUT',
+    uploadType: UploadType.BINARY_CONTENT,
+    headers: { 'Content-Type': contentType },
+    mimeType: contentType,
+    sessionType: 'background',
+  });
+  if (result.status < 200 || result.status >= 300) {
+    throw new Error(`Photo upload failed (HTTP ${result.status})`);
+  }
+}
+
+async function finalizePreparedPhoto(
+  item: IntakeOutboxPhoto,
+  prepared: PrepareIntakePhotoResponse,
+  sizeBytes: number,
+): Promise<void> {
+  await finalizeEngineIntakePhoto({
+    jobId: item.jobId,
+    sessionId: item.sessionId,
+    photoId: prepared.photoId,
+    idempotencyKey: `${item.id}:finalize`,
+    deviceId: item.deviceId,
+    storagePath: prepared.storagePath,
+    downloadToken: prepared.downloadToken,
+    contentType: prepared.contentType,
+    sizeBytes,
+  });
+}
+
+function completeUploadedPhoto(item: IntakeOutboxPhoto): void {
+  // Drop the outbox row before yielding back to the JS event loop. Finalize
+  // already bumped server `capturedCount`; if the Firestore snapshot lands
+  // while this row is still present, the camera UI double-counts the shot.
+  photos = photos.filter((candidate) => candidate.id !== item.id);
+  try {
+    const file = new File(item.localUri);
+    if (file.exists) file.delete();
+  } catch {
+    // Best-effort local cleanup — upload already succeeded.
+  }
+  publish();
 }
 
 async function uploadPhoto(item: IntakeOutboxPhoto): Promise<PrepareIntakePhotoResponse> {
@@ -258,74 +457,105 @@ async function uploadPhoto(item: IntakeOutboxPhoto): Promise<PrepareIntakePhotoR
   if (!sizeBytes) {
     throw new MobileApiError('Captured photo is empty. Retake this angle.', 400);
   }
-  const prepared = await prepareEngineIntakePhoto({
-    jobId: item.jobId,
-    sessionId: item.sessionId,
-    idempotencyKey: item.id,
-    deviceId: item.deviceId,
-    requirementId: item.requirementId,
-    category: item.category,
-    fileName: `${item.id}.jpg`,
-    contentType,
-    sizeBytes,
-    capturedAt: item.capturedAt,
-  });
+  const prepared = await prepareEngineIntakePhoto(prepareRequest(item, contentType, sizeBytes));
   if (!prepared.alreadyUploaded) {
-    const upload = await fetch(prepared.uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': prepared.contentType },
-      body: file,
-    });
-    if (!upload.ok) {
-      throw new Error(`Photo upload failed (HTTP ${upload.status})`);
-    }
+    await putPhotoBytes(file, prepared.uploadUrl, prepared.contentType);
   }
-  // Always finalize — even for already-uploaded photos — so the server can
-  // refresh progress after deploy/rule changes.
-  await finalizeEngineIntakePhoto({
-    jobId: item.jobId,
-    sessionId: item.sessionId,
-    photoId: prepared.photoId,
-    idempotencyKey: `${item.id}:finalize`,
-    deviceId: item.deviceId,
-    storagePath: prepared.storagePath,
-    downloadToken: prepared.downloadToken,
-    contentType: prepared.contentType,
-    sizeBytes,
-  });
+  try {
+    // Always finalize — even for already-uploaded photos — so the server can
+    // refresh progress after deploy/rule changes.
+    await finalizePreparedPhoto(item, prepared, sizeBytes);
+  } catch (error) {
+    if (!isIdempotentPhotoSuccess(error)) throw error;
+    const again = await prepareEngineIntakePhoto(prepareRequest(item, contentType, sizeBytes));
+    if (again.alreadyUploaded) {
+      completeUploadedPhoto(item);
+      return again;
+    }
+    await putPhotoBytes(file, again.uploadUrl, again.contentType);
+    await finalizePreparedPhoto(item, again, sizeBytes);
+  }
+  completeUploadedPhoto(item);
   return prepared;
 }
 
 async function drain(companyId: string): Promise<void> {
   const network = await NetInfo.fetch();
-  if (!network.isConnected) return;
+  const online = Boolean(network.isConnected);
+  if (!online) {
+    // Offline is a pause, not a failure. Park everything runnable so the UI can
+    // say "waiting for connection" instead of inventing an error.
+    let touched = false;
+    commands = commands.map((item) => {
+      if (item.companyId !== companyId || item.status === 'failed' || item.status === 'waiting_for_network') return item;
+      touched = true;
+      return { ...item, status: 'waiting_for_network' as SyncJobStatus, nextRetryAt: null };
+    });
+    photos = photos.map((item) => {
+      if (item.companyId !== companyId || item.status === 'failed' || item.status === 'waiting_for_network') return item;
+      touched = true;
+      return { ...item, status: 'waiting_for_network' as SyncJobStatus, nextRetryAt: null };
+    });
+    if (touched) publish();
+    return;
+  }
+
+  const blockedJobIds = new Set<string>();
+  for (const item of commands) {
+    if (
+      item.companyId !== companyId ||
+      item.status !== 'failed' ||
+      !commandFailureBlocksJob(item.command)
+    ) {
+      continue;
+    }
+    if ('jobId' in item.command.payload && item.command.payload.jobId) {
+      blockedJobIds.add(item.command.payload.jobId);
+    }
+  }
+
+  const runnable = { online, now: new Date() };
+  const pendingCommands = commands
+    .filter((item) => item.companyId === companyId && isJobRunnable(item, runnable))
+    .map((item) => ({ kind: 'command' as const, item }));
+  const pendingPhotos = photos
+    .filter((item) => item.companyId === companyId && isJobRunnable(item, runnable))
+    .map((item) => ({ kind: 'photo' as const, item }));
+
+  // Heartbeats first — never let a long photo upload starve the claim and kick
+  // the worker out of the camera into a stacked `/intake` bay.
+  const heartbeats = pendingCommands
+    .filter((entry) => entry.item.command.type === 'heartbeat_session')
+    .sort((left, right) => left.item.createdAt.localeCompare(right.item.createdAt));
+  const otherCommands = pendingCommands
+    .filter((entry) => entry.item.command.type !== 'heartbeat_session')
+    .sort((left, right) => left.item.createdAt.localeCompare(right.item.createdAt));
+  const photoEntries = pendingPhotos.sort((left, right) =>
+    left.item.createdAt.localeCompare(right.item.createdAt),
+  );
+  const work = [...heartbeats, ...otherCommands, ...photoEntries];
+  const photoWorkCount = photoEntries.length;
+
+  if (work.length === 0) {
+    if (syncedCount > 0 || sessionTotal > 0) {
+      resetSyncSession();
+      publish();
+    }
+    return;
+  }
+
+  // Island progress tracks photos only — not heartbeats / old failed junk.
+  if (photoWorkCount > 0) {
+    if (!syncing || sessionTotal === 0) {
+      sessionTotal = photoWorkCount + syncedCount;
+    } else {
+      sessionTotal = Math.max(sessionTotal, photoWorkCount + syncedCount);
+    }
+  }
 
   syncing = true;
   publish();
   try {
-    const blockedJobIds = new Set<string>();
-    for (const item of commands) {
-      if (
-        item.companyId !== companyId ||
-        item.state !== 'failed' ||
-        !commandFailureBlocksJob(item.command)
-      ) {
-        continue;
-      }
-      if ('jobId' in item.command.payload && item.command.payload.jobId) {
-        blockedJobIds.add(item.command.payload.jobId);
-      }
-    }
-
-    const work = [
-      ...commands
-        .filter((item) => item.companyId === companyId && item.state !== 'failed')
-        .map((item) => ({ kind: 'command' as const, item })),
-      ...photos
-        .filter((item) => item.companyId === companyId && item.state !== 'failed')
-        .map((item) => ({ kind: 'photo' as const, item })),
-    ].sort((left, right) => left.item.createdAt.localeCompare(right.item.createdAt));
-
     for (const entry of work) {
       const jobId =
         entry.kind === 'photo'
@@ -333,25 +563,47 @@ async function drain(companyId: string): Promise<void> {
           : 'jobId' in entry.item.command.payload
             ? entry.item.command.payload.jobId
             : undefined;
-      if (jobId && blockedJobIds.has(jobId)) continue;
+      // Heartbeats must still run for a job even if a prior command failed.
+      const isHeartbeat =
+        entry.kind === 'command' && entry.item.command.type === 'heartbeat_session';
+      if (jobId && blockedJobIds.has(jobId) && !isHeartbeat) continue;
 
       if (entry.kind === 'command') {
         const item = entry.item;
         updateCommand(item.id, {
-          state: 'syncing',
-          attempts: item.attempts + 1,
-          lastError: null,
+          status: 'uploading',
+          attemptCount: item.attemptCount + 1,
+          nextRetryAt: null,
+          errorInfo: null,
         });
         try {
           await sendEngineIntakeCommand(item.command);
           commands = commands.filter((candidate) => candidate.id !== item.id);
           publish();
         } catch (error) {
-          const terminal = isTerminalError(error);
-          updateCommand(item.id, {
-            state: terminal ? 'failed' : 'pending',
-            lastError: errorMessage(error),
+          const info = describeSyncError(error);
+          const offline = info.code === 'NETWORK_UNAVAILABLE';
+          const transition = resolveFailureTransition({
+            attemptCount: item.attemptCount + 1,
+            retryable: info.retryable,
+            offline,
           });
+          const terminal = transition.status === 'failed';
+          updateCommand(item.id, {
+            status: transition.status,
+            attemptCount: transition.attemptCount,
+            nextRetryAt: transition.nextRetryAt,
+            errorInfo: info,
+          });
+          if (offline) return;
+          // Drop a dead heartbeat instead of blocking the rest of the wave.
+          if (isHeartbeat) {
+            if (terminal) {
+              commands = commands.filter((candidate) => candidate.id !== item.id);
+              publish();
+            }
+            continue;
+          }
           if (terminal && jobId && commandFailureBlocksJob(item.command)) {
             blockedJobIds.add(jobId);
             continue;
@@ -363,28 +615,45 @@ async function drain(companyId: string): Promise<void> {
 
       const item = entry.item;
       updatePhoto(item.id, {
-        state: 'syncing',
-        attempts: item.attempts + 1,
-        lastError: null,
+        status: 'uploading',
+        attemptCount: item.attemptCount + 1,
+        nextRetryAt: null,
+        errorInfo: null,
       });
       try {
         await uploadPhoto(item);
-        const file = new File(item.localUri);
-        if (file.exists) file.delete();
-        photos = photos.filter((candidate) => candidate.id !== item.id);
+        // uploadPhoto already removed the outbox row + local file.
+        noteSyncSuccess();
         publish();
       } catch (error) {
-        const terminal = isTerminalError(error);
-        updatePhoto(item.id, {
-          state: terminal ? 'failed' : 'pending',
-          lastError: errorMessage(error),
+        const info = describeSyncError(error);
+        const offline = info.code === 'NETWORK_UNAVAILABLE';
+        const transition = resolveFailureTransition({
+          attemptCount: item.attemptCount + 1,
+          retryable: info.retryable,
+          offline,
         });
-        if (terminal) continue;
-        return;
+        updatePhoto(item.id, {
+          status: transition.status,
+          attemptCount: transition.attemptCount,
+          nextRetryAt: transition.nextRetryAt,
+          errorInfo: info,
+        });
+        // Offline: stop the wave rather than marching the rest into the same wall.
+        if (offline) return;
+        // Non-terminal photo failure: keep going so later heartbeats / photos
+        // are not permanently stuck behind one bad file.
+        continue;
       }
     }
   } finally {
     syncing = false;
+    const photosStillMoving = photos.some(
+      (item) => item.companyId === companyId && item.status !== 'failed',
+    );
+    if (!photosStillMoving) {
+      resetSyncSession();
+    }
     publish();
   }
 }
@@ -397,13 +666,53 @@ export function drainIntakeOutbox(companyId: string): Promise<void> {
   return drainPromise;
 }
 
+export function hasPendingIntakeWork(): boolean {
+  return (
+    commands.some((item) => item.status !== 'failed' && item.status !== 'completed') ||
+    photos.some((item) => item.status !== 'failed' && item.status !== 'completed')
+  );
+}
+
+function intakeOutboxCompanyIds(): string[] {
+  const ids = new Set<string>();
+  for (const item of commands) ids.add(item.companyId);
+  for (const item of photos) ids.add(item.companyId);
+  return [...ids];
+}
+
+/** Drain every company in the outbox. Used by the iOS background task. */
+export async function drainAllIntakeOutboxes(): Promise<void> {
+  if (drainPromise) await drainPromise;
+  for (const companyId of intakeOutboxCompanyIds()) {
+    await drainIntakeOutbox(companyId);
+  }
+}
+
+/**
+ * A 409 used to park the row as `failed` and show "1 failed" in the camera.
+ * Those photos are already on the server — requeue so the next drain drops them.
+ */
+export function requeueIdempotentPhotoConflicts(companyId: string): void {
+  let touched = false;
+  photos = photos.map((photo) => {
+    if (photo.companyId !== companyId || photo.status !== 'failed') return photo;
+    if (photo.errorInfo?.code !== 'CONFLICT') return photo;
+    touched = true;
+    return {
+      ...photo,
+      status: 'queued' as SyncJobStatus,
+      nextRetryAt: null,
+      errorInfo: null,
+    };
+  });
+  if (touched) publish();
+}
+
 export function retryIntakeOutboxItem(id: string): void {
-  commands = commands.map((item) =>
-    item.id === id ? { ...item, state: 'pending', lastError: null } : item,
-  );
-  photos = photos.map((item) =>
-    item.id === id ? { ...item, state: 'pending', lastError: null } : item,
-  );
+  const requeue = <T extends SyncJobFields>(item: T): T =>
+    ({ ...item, status: 'queued' as SyncJobStatus, nextRetryAt: null, errorInfo: null });
+  commands = commands.map((item) => (item.id === id ? requeue(item) : item));
+  photos = photos.map((item) => (item.id === id ? requeue(item) : item));
   publish();
 }
 
@@ -418,25 +727,163 @@ export function removeIntakeOutboxItem(id: string): void {
   publish();
 }
 
+function photoFileMissing(item: IntakeOutboxPhoto): boolean {
+  try {
+    return !new File(item.localUri).exists;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Drop rows whose bytes are already gone from disk.
+ *
+ * This deliberately no longer deletes anything. It used to remove the local
+ * photo for any failure whose humanised message matched "permission",
+ * "unauthor" or /http 4\d\d/ — so an expired token destroyed the file. A
+ * failure never means the work should be thrown away; only a confirmed upload
+ * (in `uploadPhoto`) or an explicit user discard may clear a photo.
+ */
+export function purgeUnrecoverableIntakeOutbox(companyId: string): number {
+  let removed = 0;
+
+  const nextPhotos: IntakeOutboxPhoto[] = [];
+  for (const photo of photos) {
+    if (photo.companyId !== companyId) {
+      nextPhotos.push(photo);
+      continue;
+    }
+    if (photoFileMissing(photo)) {
+      // Nothing to preserve — the file is not on the device any more.
+      removed += 1;
+      continue;
+    }
+    nextPhotos.push(photo);
+  }
+
+  if (removed > 0) {
+    photos = nextPhotos;
+    publish();
+  }
+  return removed;
+}
+
+/** Discard every failed outbox item for a company (user chose to clear the banner). */
+export function clearFailedIntakeOutbox(companyId: string): number {
+  let removed = 0;
+  const nextPhotos: IntakeOutboxPhoto[] = [];
+  for (const photo of photos) {
+    if (photo.companyId === companyId && photo.status === 'failed') {
+      try {
+        const file = new File(photo.localUri);
+        if (file.exists) file.delete();
+      } catch {
+        // best-effort cleanup
+      }
+      removed += 1;
+      continue;
+    }
+    nextPhotos.push(photo);
+  }
+  const nextCommands = commands.filter((command) => {
+    if (command.companyId === companyId && command.status === 'failed') {
+      removed += 1;
+      return false;
+    }
+    return true;
+  });
+  if (removed > 0) {
+    photos = nextPhotos;
+    commands = nextCommands;
+    publish();
+  }
+  return removed;
+}
+
+/**
+ * Banner action: drop dead items, re-queue the rest, drain.
+ * Returns how many were discarded vs retried so UI can toast.
+ */
+export async function resolveFailedIntakeOutbox(companyId: string): Promise<{
+  discarded: number;
+  retried: number;
+}> {
+  const discarded = purgeUnrecoverableIntakeOutbox(companyId);
+  let retried = 0;
+  for (const item of [...commands, ...photos]) {
+    if (item.companyId === companyId && item.status === 'failed') {
+      retryIntakeOutboxItem(item.id);
+      retried += 1;
+    }
+  }
+  if (retried > 0) {
+    await drainIntakeOutbox(companyId);
+  }
+  // Anything still failed stays queued in the outbox with its file intact.
+  // Clearing here is what used to silently destroy photos after one bad retry.
+  return { discarded, retried };
+}
+
+function snapshotForCompany(
+  state: IntakeOutboxSnapshot,
+  companyId: string | null,
+): IntakeOutboxSnapshot {
+  if (!companyId) {
+    return {
+      commands: [],
+      photos: [],
+      pendingCount: 0,
+      failedCount: 0,
+      syncing: false,
+      photoPendingCount: 0,
+      photoFailedCount: 0,
+      syncedCount: 0,
+      sessionTotal: 0,
+    };
+  }
+  const companyCommands = state.commands.filter((item) => item.companyId === companyId);
+  const companyPhotos = state.photos.filter((item) => item.companyId === companyId);
+  const photoPendingCount = countPhotoPending(companyPhotos);
+  const photoFailedCount = countPhotoFailed(companyPhotos);
+  const pendingCount = countPendingCommands(companyCommands) + photoPendingCount;
+  const failedCount =
+    companyCommands.filter((item) => item.state === 'failed' && !isNoiseCommand(item.command))
+      .length + photoFailedCount;
+  return {
+    commands: companyCommands,
+    photos: companyPhotos,
+    pendingCount,
+    failedCount,
+    syncing: state.syncing,
+    photoPendingCount,
+    photoFailedCount,
+    syncedCount: state.syncedCount,
+    sessionTotal: Math.max(state.sessionTotal, state.syncedCount + photoPendingCount),
+  };
+}
+
 export function useEngineIntakeOutbox(companyId: string | null): IntakeOutboxSnapshot {
   const state = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
+  // No listeners here on purpose. `IntakeSyncHead` owns the network / app-state
+  // triggers and the retry timer for the whole session, so sync does not stop
+  // when this screen unmounts. A screen-local nudge on mount is still useful.
   useEffect(() => {
     if (!companyId) return;
     void drainIntakeOutbox(companyId);
-    const unsubscribe = NetInfo.addEventListener((network) => {
-      if (network.isConnected) void drainIntakeOutbox(companyId);
-    });
-    const appState = AppState.addEventListener('change', (next) => {
-      if (next === 'active') void drainIntakeOutbox(companyId);
-    });
-    return () => {
-      unsubscribe();
-      appState.remove();
-    };
   }, [companyId]);
 
-  return state;
+  return snapshotForCompany(state, companyId);
+}
+
+function queuedCommandResult(command: EngineIntakeCommand): EngineIntakeCommandResult {
+  const payload = command.payload as { jobId?: string; sessionId?: string };
+  return {
+    ok: true,
+    jobId: typeof payload.jobId === 'string' ? payload.jobId : '',
+    engineId: '',
+    sessionId: typeof payload.sessionId === 'string' ? payload.sessionId : undefined,
+  };
 }
 
 export async function sendOrQueueIntakeCommand(
@@ -448,6 +895,6 @@ export async function sendOrQueueIntakeCommand(
   } catch (error) {
     if (isTerminalError(error)) throw error;
     enqueueIntakeCommand(companyId, command);
-    return null;
+    return queuedCommandResult(command);
   }
 }

@@ -151,6 +151,11 @@ export async function openSearchResult(
   addToOrder: AddToOrderHandlers,
   motorActions?: MotorActionHandlers,
 ): Promise<void> {
+  if (item.kind === 'workspace') {
+    if (item.href) router.push(item.href as Href);
+    return;
+  }
+
   if (item.kind === 'order') {
     router.push(`/(tabs)/orders/${item.id}` as Href);
     return;

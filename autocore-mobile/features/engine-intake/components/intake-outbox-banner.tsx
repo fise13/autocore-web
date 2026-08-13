@@ -34,11 +34,13 @@ export function IntakeOutboxBanner({
       : syncing
         ? 'Syncing Warehouse work'
         : `${pendingCount} items waiting to sync`;
+  const actionHint = failedCount > 0 || needsDeploy ? 'Tap to clear or retry' : undefined;
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={alert ? 'Retry Warehouse sync' : 'Warehouse sync status'}
+      accessibilityLabel={alert ? 'Clear or retry Warehouse sync' : 'Warehouse sync status'}
+      accessibilityHint={actionHint}
       onPress={onPress}
       style={{
         minHeight: minTouchTarget,
@@ -68,18 +70,16 @@ export function IntakeOutboxBanner({
         >
           {title}
         </Text>
-        {issue ? (
-          <Text
-            variant="caption"
-            numberOfLines={2}
-            style={{
-              color: alert ? colors.dangerOnSubtle : colors.primaryOnSubtle,
-              marginTop: 2,
-            }}
-          >
-            {issue}
-          </Text>
-        ) : null}
+        <Text
+          variant="caption"
+          numberOfLines={2}
+          style={{
+            color: alert ? colors.dangerOnSubtle : colors.primaryOnSubtle,
+            marginTop: 2,
+          }}
+        >
+          {issue ?? actionHint}
+        </Text>
       </View>
       <ChevronRightIcon
         size={18}

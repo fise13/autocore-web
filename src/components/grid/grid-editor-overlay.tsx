@@ -311,7 +311,26 @@ export function GridEditorOverlay({
       if (target.selectionStart === value.length && target.selectionEnd === value.length) {
         event.preventDefault();
         onChange(value + autocompleteSuffix);
+        return;
       }
+    }
+
+    // Excel "Enter" / type-to-edit mode: arrows commit and move to the next cell.
+    // F2 / double-click (selectAll) keeps caret movement inside the text.
+    if (!selectAll && (event.key === "ArrowUp" || event.key === "ArrowDown" || event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+      if (suggestionsVisible && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+        return;
+      }
+      event.preventDefault();
+      const direction =
+        event.key === "ArrowUp"
+          ? "up"
+          : event.key === "ArrowDown"
+            ? "down"
+            : event.key === "ArrowLeft"
+              ? "left"
+              : "right";
+      onCommit(direction);
     }
   }
 

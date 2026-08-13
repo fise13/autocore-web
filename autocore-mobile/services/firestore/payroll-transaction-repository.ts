@@ -3,7 +3,6 @@ import {
   deleteField,
   doc,
   limit,
-  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
@@ -12,7 +11,7 @@ import {
 
 import { normalizeCompanyId } from '@/lib/company-id';
 import { toDateFromFirestore } from '@/lib/firestore-timestamp';
-import { notifyFirestoreSnapshotError } from '@/lib/firestore/snapshot-errors';
+import { listenQuery } from '@/lib/firestore/trusted-snapshot';
 import { getFirebaseDb } from '@/services/firebase';
 import type { PayrollTransaction, PayrollTransactionStatus } from '@/types/payroll-transaction';
 
@@ -54,13 +53,13 @@ export function createPayrollTransactionRepository() {
       }
 
       const q = query(payrollRef(companyId), orderBy('createdAt', 'desc'), limit(300));
-      return onSnapshot(
+      return listenQuery(
         q,
         (snapshot) =>
           onData(
             snapshot.docs.map((item) => mapPayrollTransaction(item.id, item.data() as Record<string, unknown>)),
           ),
-        (error) => notifyFirestoreSnapshotError(error, onError),
+        onError,
       );
     },
 

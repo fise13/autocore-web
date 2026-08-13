@@ -1,6 +1,7 @@
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 
+import { listenQuery } from '@/lib/firestore/trusted-snapshot';
 import { getFirebaseDb, isFirebaseConfigured } from '@/services/firebase';
 import type { UserRole } from '@/types/user';
 
@@ -24,7 +25,7 @@ export function useCompanyEmployees(companyId: string | null | undefined) {
 
     setIsLoading(true);
     const ref = collection(getFirebaseDb(), 'companies', companyId, 'employees');
-    return onSnapshot(
+    return listenQuery(
       ref,
       (snap) => {
         const rows = snap.docs.map((entry) => {
@@ -48,6 +49,7 @@ export function useCompanyEmployees(companyId: string | null | undefined) {
         setEmployees(rows);
         setIsLoading(false);
       },
+      () => setIsLoading(false),
       () => setIsLoading(false),
     );
   }, [companyId]);

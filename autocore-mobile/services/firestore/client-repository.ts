@@ -3,7 +3,6 @@ import {
   doc,
   getDoc,
   limit,
-  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
@@ -14,7 +13,7 @@ import {
 import { createClientSchema } from '@/domain/schemas';
 import { normalizeCompanyId } from '@/lib/company-id';
 import { toDateFromFirestore } from '@/lib/firestore-timestamp';
-import { notifyFirestoreSnapshotError } from '@/lib/firestore/snapshot-errors';
+import { listenQuery } from '@/lib/firestore/trusted-snapshot';
 import { getFirebaseDb } from '@/services/firebase';
 import type { ClientEntity, CreateClientInput, UpdateClientInput } from '@/types/client';
 
@@ -52,11 +51,11 @@ export function createClientRepository() {
       }
 
       const q = query(clientsRef(companyId), orderBy('updatedAt', 'desc'), limit(300));
-      return onSnapshot(
+      return listenQuery(
         q,
         (snapshot) =>
           onData(snapshot.docs.map((item) => mapClient(item.id, item.data() as Record<string, unknown>))),
-        (error) => notifyFirestoreSnapshotError(error, onError),
+        onError,
       );
     },
 

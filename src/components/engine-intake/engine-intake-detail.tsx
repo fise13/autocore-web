@@ -51,7 +51,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { DatalistInput } from "@/components/ui/datalist-input";
 import {
   Select,
   SelectContent,
@@ -67,6 +67,7 @@ import {
   sendEngineIntakeCommand,
   setEngineIntakePhotoCategory,
 } from "@/lib/engine-intake/engine-intake-api.client";
+import { useEngineIntakeIdentitySuggestions } from "@/hooks/use-engine-intake-identity-suggestions";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
@@ -119,6 +120,19 @@ export function EngineIntakeDetail({
   const [serialCode, setSerialCode] = useState(job.expectedIdentity.serialCode);
   const [engineCode, setEngineCode] = useState(job.expectedIdentity.engineCode);
   const [brandName, setBrandName] = useState(job.expectedIdentity.brandName);
+  const identitySuggestionsEnabled =
+    dialog?.kind === "approve" || dialog?.kind === "identity";
+  const {
+    brandOptions,
+    engineCodeOptionsForBrand,
+    serialOptions,
+    applyMotorIdentityFromSerial,
+    brandForEngineCode,
+  } = useEngineIntakeIdentitySuggestions(identitySuggestionsEnabled);
+  const engineCodeOptions = useMemo(
+    () => engineCodeOptionsForBrand(brandName),
+    [brandName, engineCodeOptionsForBrand],
+  );
   const [selectedItemId, setSelectedItemId] = useState<string | null>(
     () =>
       checklist.items.find(
@@ -689,22 +703,48 @@ export function EngineIntakeDetail({
             <FieldGroup>
               <Field>
                 <FieldLabel>Brand</FieldLabel>
-                <Input value={brandName} onChange={(event) => setBrandName(event.target.value)} />
+                <DatalistInput
+                  value={brandName}
+                  onValueChange={setBrandName}
+                  options={brandOptions}
+                  matchMode="flexible"
+                  cycleOnTab
+                  placeholder="Subaru"
+                />
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field>
                   <FieldLabel>Engine code</FieldLabel>
-                  <Input
+                  <DatalistInput
                     value={engineCode}
-                    onChange={(event) => setEngineCode(event.target.value)}
+                    onValueChange={setEngineCode}
+                    options={engineCodeOptions}
+                    matchMode="flexible"
+                    cycleOnTab
+                    placeholder="EJ251"
+                    onOptionCommit={(value) => {
+                      if (brandName.trim()) return;
+                      const inferred = brandForEngineCode(value);
+                      if (inferred) setBrandName(inferred);
+                    }}
                   />
                 </Field>
                 <Field>
                   <FieldLabel>Serial number</FieldLabel>
-                  <Input
+                  <DatalistInput
                     value={serialCode}
-                    onChange={(event) => setSerialCode(event.target.value)}
+                    onValueChange={setSerialCode}
+                    options={serialOptions}
+                    matchMode="flexible"
+                    cycleOnTab
                     className="font-mono"
+                    placeholder="B877550"
+                    onOptionCommit={(value) => {
+                      const matched = applyMotorIdentityFromSerial(value);
+                      if (!matched) return;
+                      if (matched.brandName) setBrandName(matched.brandName);
+                      if (matched.engineCode) setEngineCode(matched.engineCode);
+                    }}
                   />
                 </Field>
               </div>

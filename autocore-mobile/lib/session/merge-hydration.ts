@@ -1,4 +1,4 @@
-import { isProductionCompanyId, normalizeCompanyId } from '@/lib/company-id';
+import { isProductionCompanyId, preferCompanyId } from '@/lib/company-id';
 import type { CompanyAppConfig } from '@/types/company-config';
 import type { UserCompanyMembership } from '@/types/rbac';
 import type { UserEntity } from '@/types/user';
@@ -20,13 +20,10 @@ export function resolveSessionCompanyId(
   profile: UserEntity | null | undefined,
   memberships: UserCompanyMembership[],
 ): string | null {
-  const fromProfile = profile?.companyId?.trim();
-  if (isProductionCompanyId(fromProfile)) {
-    return normalizeCompanyId(fromProfile);
-  }
-
-  const fromMembership = memberships.find((entry) => isProductionCompanyId(entry.companyId));
-  return fromMembership ? normalizeCompanyId(fromMembership.companyId) : null;
+  return preferCompanyId(
+    profile?.companyId,
+    memberships.map((entry) => entry.companyId),
+  );
 }
 
 export function hasEstablishedWorkspace(payload: HydrationPayload): boolean {

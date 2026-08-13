@@ -52,7 +52,7 @@ export function specificCellValue(
     const colDef = schema[column - 1];
     if (colDef) return row.data[colDef.key] ?? "";
     const injected = injectedColumnKey(schema.length, column);
-    if (injected === SPECIFIC_PHOTO_URLS_KEY) return "";
+    if (injected === SPECIFIC_PHOTO_URLS_KEY) return row.data[SPECIFIC_PHOTO_URLS_KEY] ?? "";
     if (injected) return row.data[injected] ?? "";
     return "";
   }
@@ -79,7 +79,7 @@ export function applySpecificCellValue(
       return { ...row, data: nextData };
     }
     const injected = injectedColumnKey(schema.length, column);
-    if (!injected || injected === SPECIFIC_PHOTO_URLS_KEY) return row;
+    if (!injected) return row;
     const nextData = { ...row.data, [injected]: value };
     if (row.rowKind === "saved") return { ...row, data: nextData };
     return { ...row, data: nextData };

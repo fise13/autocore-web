@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 
 import { isProductionCompanyId, normalizeCompanyId } from '@/lib/company-id';
+import { listenDocument } from '@/lib/firestore/trusted-snapshot';
 import { resolveWorkspaceAccessBlock } from '@/lib/workspace-access';
 import { getFirebaseDb } from '@/services/firebase';
 import { useAuthStore } from '@/store/auth-store';
@@ -23,7 +24,7 @@ export function useWorkspaceAccessRealtime(enabled: boolean): void {
     const companyId = normalizeCompanyId(profile!.companyId!);
     const employeeRef = doc(getFirebaseDb(), 'companies', companyId, 'employees', firebaseUser.uid);
 
-    return onSnapshot(
+    return listenDocument(
       employeeRef,
       (snapshot) => {
         const workspaceBlock = resolveWorkspaceAccessBlock({

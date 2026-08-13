@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from 'react';
 
 import { useAuthStore } from '@/store/auth-store';
-import { normalizeCompanyId } from '@/lib/company-id';
 import { resolveSessionCompanyId } from '@/lib/session/merge-hydration';
 import { can } from '@/lib/permissions';
 import type { Permission } from '@/types/user';
@@ -11,7 +10,8 @@ export function useSession() {
   const companyConfig = useAuthStore((s) => s.companyConfig);
   const memberships = useAuthStore((s) => s.memberships);
   const firebaseUser = useAuthStore((s) => s.firebaseUser);
-  const companyId = resolveSessionCompanyId(profile, memberships) ?? normalizeCompanyId(profile?.companyId);
+  // Prefer memberships over sticky `default`; never invent a company via normalize.
+  const companyId = resolveSessionCompanyId(profile, memberships) ?? '';
   const uid = firebaseUser?.uid ?? null;
 
   const canPermission = useCallback(

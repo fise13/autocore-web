@@ -213,8 +213,21 @@ export function GridPhotoCell({
                 onClick={removePrimary}
               >
                 <Trash2 className="size-4" />
-                {copy.remove}
+                {urls.length > 1 ? copy.removePrimary : copy.remove}
               </DropdownMenuItem>
+              {urls.length > 1 ? (
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={uploading || disabled}
+                  onClick={() => {
+                    if (disabled) return;
+                    onChange([]);
+                  }}
+                >
+                  <Trash2 className="size-4" />
+                  {copy.removeAll}
+                </DropdownMenuItem>
+              ) : null}
             </>
           ) : null}
           {error ? (

@@ -1,8 +1,8 @@
-import { collection, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
+import { collection, limit, orderBy, query, where } from 'firebase/firestore';
 
 import { normalizeCompanyId } from '@/lib/company-id';
 import { toDateFromFirestore } from '@/lib/firestore-timestamp';
-import { notifyFirestoreSnapshotError } from '@/lib/firestore/snapshot-errors';
+import { listenQuery } from '@/lib/firestore/trusted-snapshot';
 import { getFirebaseDb } from '@/services/firebase';
 import type { DocumentGenerationJobRecord } from '@/types/work-order-document';
 
@@ -39,10 +39,10 @@ export const documentGenerationJobRepository = {
       limit(5),
     );
 
-    return onSnapshot(
+    return listenQuery(
       q,
       (snapshot) => onData(snapshot.docs.map((doc) => mapJob(doc.id, doc.data() as Record<string, unknown>))),
-      (error) => notifyFirestoreSnapshotError(error, onError),
+      onError,
     );
   },
 };

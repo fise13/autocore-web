@@ -2,6 +2,7 @@ import type { User } from 'firebase/auth';
 import { updateProfile } from 'firebase/auth';
 import {
   collection,
+  collectionGroup,
   deleteDoc,
   doc,
   getDoc,
@@ -13,7 +14,11 @@ import {
   where,
 } from 'firebase/firestore';
 
-import { DEFAULT_COMPANY_ID, normalizeCompanyId, isProductionCompanyId } from '@/lib/company-id';
+import {
+  DEFAULT_COMPANY_ID,
+  normalizeCompanyId,
+  preferCompanyId,
+} from '@/lib/company-id';
 import { readCompanyDisplayName } from '@/lib/company-display-name';
 import { resolveActiveCompanyName } from '@/lib/resolve-active-company-name';
 import type { WorkspaceAccessBlock } from '@/types/workspace-access';
@@ -207,11 +212,10 @@ function resolveCompanyIdFromMemberships(
   companyId: string | null | undefined,
   memberships: UserCompanyMembership[],
 ): string | null {
-  if (isProductionCompanyId(companyId)) {
-    return normalizeCompanyId(companyId);
-  }
-  const membership = memberships.find((entry) => isProductionCompanyId(entry.companyId));
-  return membership ? normalizeCompanyId(membership.companyId) : null;
+  return preferCompanyId(
+    companyId,
+    memberships.map((entry) => entry.companyId),
+  );
 }
 
 /** When users/{uid}.companyId is empty, resolve workspace from owned companies. */
@@ -234,6 +238,133 @@ export async function resolveOwnedCompanyId(uid: string): Promise<string | null>
     console.warn('Owned company resolve skipped:', error);
     return null;
   }
+}
+
+async function companyHasBusinessData(uid: string, companyId: string): Promise<boolean> {
+  const db = getFirebaseDb();
+  try {
+    const [ops, motors] = await Promise.all([
+      getDocs(
+        query(
+          collection(db, 'financialOperations'),
+          where('companyId', '==', companyId),
+          limit(1),
+        ),
+      ),
+      getDocs(
+        query(
+          collectionGroup(db, 'motors'),
+          where('companyId', '==', companyId),
+          limit(1),
+        ),
+      ).catch(() =>
+        getDocs(
+          query(collection(db, 'users', uid, 'motors'), where('companyId', '==', companyId), limit(1)),
+        ),
+      ),
+    ]);
+    return !ops.empty || !motors.empty;
+  } catch (error) {
+    console.warn('Company data probe skipped:', error);
+    return false;
+  }
+}
+
+/**
+ * If the resolved company has no business data, prefer another accessible
+ * company that does (undoes a prior bad heal that emptied finance/motors).
+ */
+async function recoverWorkspaceCompanyId(input: {
+  uid: string;
+  companyId: string;
+  memberships: UserCompanyMembership[];
+}): Promise<string> {
+  const current = normalizeCompanyId(input.companyId);
+  if (await companyHasBusinessData(input.uid, current)) {
+    return current;
+  }
+
+  const db = getFirebaseDb();
+  const candidates: string[] = [];
+  const push = (id: string | null | undefined) => {
+    const normalized = id?.trim() ? normalizeCompanyId(id) : null;
+    if (!normalized || normalized === current || candidates.includes(normalized)) return;
+    candidates.push(normalized);
+  };
+
+  push(DEFAULT_COMPANY_ID);
+  for (const entry of input.memberships) push(entry.companyId);
+  push(await resolveOwnedCompanyId(input.uid));
+
+  for (const candidate of candidates) {
+    try {
+      const [companySnap, employeeSnap] = await Promise.all([
+        getDoc(doc(db, 'companies', candidate)),
+        getDoc(doc(db, 'companies', candidate, 'employees', input.uid)),
+      ]);
+      const ownerId = companySnap.exists()
+        ? (companySnap.data() as CompanyDocShape | undefined)?.ownerId
+        : null;
+      const accessible = ownerId === input.uid || employeeSnap.exists();
+      if (!accessible) continue;
+      if (await companyHasBusinessData(input.uid, candidate)) {
+        return candidate;
+      }
+    } catch {
+      // try next candidate
+    }
+  }
+
+  return current;
+}
+
+type AccessibleCompany = {
+  companyId: string;
+  companySnapshot: Awaited<ReturnType<typeof getDoc>>;
+  employeeSnapshot: Awaited<ReturnType<typeof getDoc>>;
+  companyConfig: CompanyAppConfig | null;
+  isCompanyOwner: boolean;
+  employeeExists: boolean;
+};
+
+async function findAccessibleMembershipCompany(
+  uid: string,
+  memberships: UserCompanyMembership[],
+  skipCompanyId: string,
+): Promise<AccessibleCompany | null> {
+  const db = getFirebaseDb();
+  const seen = new Set<string>([normalizeCompanyId(skipCompanyId)]);
+  const candidates = [
+    ...memberships.map((entry) => normalizeCompanyId(entry.companyId)),
+    DEFAULT_COMPANY_ID,
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate || seen.has(candidate)) continue;
+    seen.add(candidate);
+    try {
+      const companySnapshot = await getDoc(doc(db, 'companies', candidate));
+      const employeeSnapshot = await getDoc(doc(db, 'companies', candidate, 'employees', uid));
+      const ownerId = companySnapshot.exists()
+        ? (companySnapshot.data() as CompanyDocShape | undefined)?.ownerId
+        : null;
+      const isCompanyOwner = ownerId === uid;
+      const employeeExists = employeeSnapshot.exists();
+      if (!employeeExists && !isCompanyOwner) continue;
+      const companyConfig = await loadCompanyAppConfig(candidate).catch(() => null);
+      return {
+        companyId: candidate,
+        companySnapshot,
+        employeeSnapshot,
+        companyConfig,
+        isCompanyOwner,
+        employeeExists,
+      };
+    } catch {
+      // try next
+    }
+  }
+  return null;
 }
 
 export async function hydrateEffectiveProfile(authUser: User): Promise<{
@@ -290,6 +421,15 @@ export async function hydrateEffectiveProfile(authUser: User): Promise<{
       };
     }
 
+    // Undo accidental steal from a prior build: if profile was pointed at an
+    // empty non-default company while `default` still holds the business data,
+    // snap back. Never demote an assigned profile that already has data.
+    companyId = await recoverWorkspaceCompanyId({
+      uid: authUser.uid,
+      companyId,
+      memberships,
+    });
+
     const companyRef = doc(db, 'companies', companyId);
     const employeeRef = doc(db, 'companies', companyId, 'employees', authUser.uid);
 
@@ -305,6 +445,37 @@ export async function hydrateEffectiveProfile(authUser: User): Promise<{
       ]);
     } catch (error) {
       console.warn('Company profile enrich partial:', error);
+    }
+
+    // If the chosen company is inaccessible, fall through memberships (incl. default).
+    let isCompanyOwner = companySnapshot?.exists()
+      ? (companySnapshot.data() as CompanyDocShape | undefined)?.ownerId === authUser.uid
+      : false;
+    let employeeExists = employeeSnapshot?.exists() === true;
+    if (!employeeExists && !isCompanyOwner) {
+      const recovered = await findAccessibleMembershipCompany(authUser.uid, memberships, companyId);
+      if (recovered) {
+        companyId = recovered.companyId;
+        companySnapshot = recovered.companySnapshot;
+        employeeSnapshot = recovered.employeeSnapshot;
+        companyConfig = recovered.companyConfig;
+        isCompanyOwner = recovered.isCompanyOwner;
+        employeeExists = recovered.employeeExists;
+      }
+    }
+
+    // Persist first assignment or recovery — never rewrite just to reshuffle memberships.
+    const profileCompany = baseProfile.companyId?.trim() ?? '';
+    if (companyId && companyId !== profileCompany) {
+      try {
+        await setDoc(
+          userRef,
+          { companyId, updatedAt: serverTimestamp() },
+          { merge: true },
+        );
+      } catch (error) {
+        console.warn('Company id heal skipped:', error);
+      }
     }
 
     const companyDoc = companySnapshot?.exists()
@@ -324,7 +495,7 @@ export async function hydrateEffectiveProfile(authUser: User): Promise<{
       ? readCompanyDisplayName(companyDoc, companyId)
       : memberships.find((entry) => normalizeCompanyId(entry.companyId) === companyId)?.name ?? null;
 
-    const isCompanyOwner = companyDoc?.ownerId === authUser.uid;
+    isCompanyOwner = companyDoc?.ownerId === authUser.uid;
     const workspaceBlock = resolveWorkspaceAccessBlock({
       companyId,
       companyName: activeCompanyName,

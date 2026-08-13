@@ -327,13 +327,15 @@ export const NotificationService = {
   },
 
   notifySync(event: SyncNotificationEvent): void {
-    const channels = resolveSyncChannels();
+    const channels = resolveSyncChannels(event.type);
     const store = getNotificationStore();
 
     if (event.type === 'synced') {
-      void import('@/components/ui/toast-store').then(({ toast }) => {
-        toast({ title: 'All changes synced', variant: 'success', duration: 3000 });
-      });
+      if (channels.toast) {
+        void import('@/components/ui/toast-store').then(({ toast }) => {
+          toast({ title: 'All changes synced', variant: 'success', duration: 3000 });
+        });
+      }
       return;
     }
 
@@ -346,6 +348,14 @@ export const NotificationService = {
           ? [{ label: 'Retry', onPress: event.retry }]
           : undefined,
       });
+      if (channels.local) {
+        void scheduleLocalNotification({
+          id: 'sync-failed',
+          title: 'Sync failed',
+          body: event.error ?? 'Could not sync',
+          data: { type: 'sync.failed' },
+        });
+      }
       this.notify({
         type: 'sync.failed',
         category: 'sync',
@@ -357,18 +367,27 @@ export const NotificationService = {
     }
 
     if (event.type === 'conflict') {
+      const deepLink = 'autocoremobile://sync/conflict';
       store.showBanner({
         title: 'Data conflict',
         message: 'Conflicting changes were found. Resolution required.',
         priority: 'critical',
-        deepLink: 'autocoremobile://sync/conflict',
+        deepLink,
         actions: [
           {
             label: 'Resolve',
-            onPress: () => void openNotificationDeepLink('autocoremobile://sync/conflict'),
+            onPress: () => void openNotificationDeepLink(deepLink),
           },
         ],
       });
+      if (channels.local) {
+        void scheduleLocalNotification({
+          id: 'sync-conflict',
+          title: 'Data conflict',
+          body: 'Conflicting changes were found. Resolution required.',
+          data: { deepLink, type: 'sync.conflict' },
+        });
+      }
     }
   },
 

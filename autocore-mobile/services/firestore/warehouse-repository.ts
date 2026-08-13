@@ -1,8 +1,8 @@
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 
 import { normalizeCompanyId } from '@/lib/company-id';
 import { toDateFromFirestore } from '@/lib/firestore-timestamp';
-import { notifyFirestoreSnapshotError } from '@/lib/firestore/snapshot-errors';
+import { listenQuery } from '@/lib/firestore/trusted-snapshot';
 import { getFirebaseDb } from '@/services/firebase';
 import type { WarehouseEntity } from '@/types/warehouse';
 
@@ -35,7 +35,7 @@ export const warehouseRepository = {
       where('companyId', '==', normalizeCompanyId(companyId)),
     );
 
-    return onSnapshot(
+    return listenQuery(
       q,
       (snapshot) => {
         const rows = snapshot.docs
@@ -43,7 +43,7 @@ export const warehouseRepository = {
           .sort((a, b) => Number(b.isDefault) - Number(a.isDefault));
         onData(rows);
       },
-      (error) => notifyFirestoreSnapshotError(error, onError),
+      onError,
     );
   },
 };

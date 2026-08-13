@@ -2,7 +2,6 @@ import {
   collection,
   doc,
   limit,
-  onSnapshot,
   orderBy,
   query,
   type DocumentData,
@@ -21,7 +20,7 @@ import {
   normalizeEngineIntakeProgress,
 } from '@autocore/engine-intake';
 
-import { notifyFirestoreSnapshotError } from '@/lib/firestore/snapshot-errors';
+import { listenQuery } from '@/lib/firestore/trusted-snapshot';
 import { getFirebaseDb } from '@/services/firebase';
 
 function timestampIso(value: unknown): string | null {
@@ -160,10 +159,10 @@ export function subscribeEngineIntakeJobs(
     orderBy('updatedAt', 'desc'),
     limit(150),
   );
-  return onSnapshot(
+  return listenQuery(
     jobsQuery,
     (snapshot) => onData(snapshot.docs.map(mapJob)),
-    (error) => notifyFirestoreSnapshotError(error, onError),
+    onError,
   );
 }
 
@@ -178,10 +177,10 @@ export function subscribeEngineIntakeSessions(
     orderBy('startedAt', 'desc'),
     limit(30),
   );
-  return onSnapshot(
+  return listenQuery(
     sessionsQuery,
     (snapshot) => onData(snapshot.docs.map(mapSession)),
-    (error) => notifyFirestoreSnapshotError(error, onError),
+    onError,
   );
 }
 
@@ -196,10 +195,10 @@ export function subscribeEngineIntakePhotos(
     orderBy('capturedAt', 'asc'),
     limit(200),
   );
-  return onSnapshot(
+  return listenQuery(
     photosQuery,
     (snapshot) => onData(snapshot.docs.map(mapPhoto)),
-    (error) => notifyFirestoreSnapshotError(error, onError),
+    onError,
   );
 }
 
@@ -214,10 +213,10 @@ export function subscribeEngineIntakeEvents(
     orderBy('serverAt', 'desc'),
     limit(100),
   );
-  return onSnapshot(
+  return listenQuery(
     eventsQuery,
     (snapshot) => onData(snapshot.docs.map(mapEvent)),
-    (error) => notifyFirestoreSnapshotError(error, onError),
+    onError,
   );
 }
 
@@ -239,10 +238,10 @@ export function subscribeEngineIntakeReworkRequests(
     orderBy('requestedAt', 'desc'),
     limit(20),
   );
-  return onSnapshot(
+  return listenQuery(
     requestsQuery,
     (snapshot) => onData(snapshot.docs.map(mapReworkRequest)),
-    (error) => notifyFirestoreSnapshotError(error, onError),
+    onError,
   );
 }
 

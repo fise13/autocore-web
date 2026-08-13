@@ -22,6 +22,7 @@ import {
   useRealtimeReconnect,
 } from '@/hooks';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
+import { useShellModel } from '@/lib/shell/use-shell-model';
 import { rememberSearchQuery } from '@/lib/search/recent-queries';
 import { isMotorStale, isWarehouseLowStock, motorMatchesSearchQuery } from '@/lib/inventory/is-low-stock';
 import { joinSearchFields, matchesSearchQuery } from '@/lib/search/match-query';
@@ -50,6 +51,7 @@ export function SearchScreen() {
   const params = useLocalSearchParams<{ q?: string; filter?: string; lowStock?: string; stale?: string }>();
   const { profile, can, uid } = useSession();
   const rbac = useRbacPolicy();
+  const { workGrouped } = useShellModel();
   const companyId = profile?.companyId?.trim() || null;
   const motorsEnabled = useCompanyModuleEnabled('motors');
   const [query, setQuery] = useState('');
@@ -137,6 +139,30 @@ export function SearchScreen() {
 
   const groups = useMemo<SearchResultGroup[]>(() => {
     const next: SearchResultGroup[] = [];
+
+    // Workspaces first: typing "receiving" should jump straight there rather
+    // than scrolling past every part whose name happens to contain it.
+    if (filter === 'all' && hasQuery) {
+      const items = workGrouped
+        .flatMap((group) =>
+          group.nodes.map((node) => ({ node, section: group.title })),
+        )
+        .filter(({ node, section }) =>
+          matchesSearchQuery(joinSearchFields(node.title, node.subtitle, section), deferredQuery),
+        )
+        .slice(0, 6)
+        .map(({ node, section }) => ({
+          id: `workspace:${node.id}`,
+          kind: 'workspace' as const,
+          title: node.title,
+          subtitle: node.subtitle,
+          meta: section,
+          href: node.href,
+        }));
+      if (items.length > 0) {
+        next.push({ id: 'workspaces', title: 'Workspaces', filter: 'workspaces', items });
+      }
+    }
 
     if ((filter === 'all' || filter === 'parts') && can('inventory_view')) {
       let partItems = inventoryResults;
@@ -242,6 +268,7 @@ export function SearchScreen() {
     orders,
     showPresetList,
     staleMotorsOnly,
+    workGrouped,
   ]);
 
   const isBootstrapping = inventoryLoading || clientsLoading || ordersLoading || motorsLoading;

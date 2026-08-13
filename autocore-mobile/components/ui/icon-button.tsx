@@ -1,4 +1,4 @@
-import { forwardRef } from 'react';
+import { forwardRef, useState } from 'react';
 import {
   Pressable,
   type PressableProps,
@@ -50,6 +50,7 @@ export const IconButton = forwardRef<React.ComponentRef<typeof Pressable>, IconB
     ref,
   ) {
     const { colors } = useTheme();
+    const [pressed, setPressed] = useState(false);
     const dimension = sizes[size];
     const hitSlop = Math.max(0, Math.ceil((minTouchTarget - dimension) / 2));
 
@@ -71,7 +72,11 @@ export const IconButton = forwardRef<React.ComponentRef<typeof Pressable>, IconB
         ref={ref}
         accessibilityRole="button"
         hitSlop={hitSlop}
-        style={({ pressed }) => [
+        // Static array, not `({ pressed }) => …`. The function form of
+        // `Pressable`'s `style` never reaches the view in this RN version —
+        // object and array returns are both dropped — which silently cost this
+        // button its size box, radius and background.
+        style={[
           {
             width: dimension,
             height: dimension,
@@ -84,10 +89,14 @@ export const IconButton = forwardRef<React.ComponentRef<typeof Pressable>, IconB
           style,
         ]}
         onPressIn={(e) => {
+          setPressed(true);
           if (haptic) haptics.press();
           onPressIn?.(e);
         }}
-        onPressOut={onPressOut}
+        onPressOut={(e) => {
+          setPressed(false);
+          onPressOut?.(e);
+        }}
         onPress={onPress}
         {...props}
       >

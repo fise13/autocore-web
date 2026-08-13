@@ -3,7 +3,6 @@ import {
   collection,
   deleteDoc,
   doc,
-  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
@@ -12,7 +11,7 @@ import {
 
 import { normalizeCompanyId } from '@/lib/company-id';
 import { dateMs, toDateFromFirestore } from '@/lib/firestore-timestamp';
-import { notifyFirestoreSnapshotError } from '@/lib/firestore/snapshot-errors';
+import { listenQuery } from '@/lib/firestore/trusted-snapshot';
 import { getFirebaseDb } from '@/services/firebase';
 import type { CreateFinancialOperationInput, FinancialOperation, OperationType } from '@/types/financial-operation';
 
@@ -104,7 +103,7 @@ export function createFinancialOperationRepository() {
         orderBy('createdAt', 'asc'),
       );
 
-      return onSnapshot(
+      return listenQuery(
         operationsQuery,
         (snapshot) => {
           let mapped = snapshot.docs
@@ -118,7 +117,7 @@ export function createFinancialOperationRepository() {
           mapped.sort((a, b) => dateMs(b.createdAt) - dateMs(a.createdAt));
           onData(mapped);
         },
-        (error) => notifyFirestoreSnapshotError(error, onError),
+        onError,
       );
     },
 

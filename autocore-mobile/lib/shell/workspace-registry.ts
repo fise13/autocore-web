@@ -23,6 +23,50 @@ const DOMAIN_TITLES: Record<WorkspaceDomainId, string> = {
   intake: 'Intake',
 };
 
+/**
+ * Default Work section order. Sections only render when a module + permission
+ * actually exposes a node inside them.
+ */
+const DEFAULT_DOMAIN_ORDER: WorkspaceDomainId[] = [
+  'intake',
+  'inventory',
+  'warehouse',
+  'sales',
+  'operations',
+  'finance',
+];
+
+/**
+ * Work is not the same screen for every seat. The catalog is identical; what
+ * changes is which domain the role reaches for first.
+ *
+ * - Floor roles start at the bay (intake) and their order queue.
+ * - Managers start at orders, then the bay.
+ * - Owners/admins/accountants start at the commercial picture.
+ */
+const ROLE_DOMAIN_ORDER: Partial<Record<UserRole, WorkspaceDomainId[]>> = {
+  mechanic: ['intake', 'sales', 'inventory', 'warehouse', 'operations', 'finance'],
+  diagnostician: ['intake', 'sales', 'inventory', 'warehouse', 'operations', 'finance'],
+  employee: ['intake', 'sales', 'warehouse', 'inventory', 'operations', 'finance'],
+  manager: ['sales', 'intake', 'inventory', 'warehouse', 'operations', 'finance'],
+  owner: ['sales', 'inventory', 'warehouse', 'intake', 'operations', 'finance'],
+  admin: ['sales', 'inventory', 'warehouse', 'intake', 'operations', 'finance'],
+  accountant: ['sales', 'inventory', 'warehouse', 'intake', 'operations', 'finance'],
+};
+
+export function workDomainOrder(role: UserRole | null | undefined): WorkspaceDomainId[] {
+  return (role && ROLE_DOMAIN_ORDER[role]) || DEFAULT_DOMAIN_ORDER;
+}
+
+/**
+ * `Operations` only earns a section header once it holds more than one module.
+ * A single utility reads as a tool, not as a domain.
+ */
+export function workDomainTitle(domain: WorkspaceDomainId, nodeCount: number): string {
+  if (domain === 'operations' && nodeCount <= 1) return 'Tools';
+  return DOMAIN_TITLES[domain];
+}
+
 /** Canonical Work tree catalog — filtered by modules + permissions at resolve time. */
 export const WORK_NODE_CATALOG: WorkNode[] = [
   {
@@ -40,7 +84,7 @@ export const WORK_NODE_CATALOG: WorkNode[] = [
     domain: 'inventory',
     title: 'Engines',
     subtitle: 'Serialized motors',
-    href: '/search?filter=motors',
+    href: '/objects/engines',
     sf: 'engine.combustion',
     modules: ['motors'],
     permissions: ['inventory_view'],
@@ -55,16 +99,7 @@ export const WORK_NODE_CATALOG: WorkNode[] = [
     modules: ['warehouse', 'specifics'],
     permissions: ['inventory_view'],
   },
-  {
-    id: 'locations',
-    domain: 'warehouse',
-    title: 'Locations',
-    subtitle: 'Bins and racks',
-    href: '/warehouse',
-    sf: 'square.grid.3x3',
-    modules: ['warehouse'],
-    permissions: ['inventory_view'],
-  },
+  // Receiving before Locations: receiving is physical work, locations are structure.
   {
     id: 'receiving',
     domain: 'warehouse',
@@ -72,6 +107,16 @@ export const WORK_NODE_CATALOG: WorkNode[] = [
     subtitle: 'Scan and place stock',
     href: '/(tabs)/scan',
     sf: 'barcode.viewfinder',
+    modules: ['warehouse'],
+    permissions: ['inventory_view'],
+  },
+  {
+    id: 'locations',
+    domain: 'warehouse',
+    title: 'Locations',
+    subtitle: 'Bins and racks',
+    href: '/warehouse/locations',
+    sf: 'square.grid.3x3',
     modules: ['warehouse'],
     permissions: ['inventory_view'],
   },
@@ -85,16 +130,7 @@ export const WORK_NODE_CATALOG: WorkNode[] = [
     modules: ['workOrders'],
     permissions: ['work_orders_view'],
   },
-  {
-    id: 'finance',
-    domain: 'finance',
-    title: 'Finance',
-    subtitle: 'Ledger and operations',
-    href: '/(tabs)/accounting',
-    sf: 'chart.bar',
-    modules: ['accounting'],
-    permissions: ['accounting_view'],
-  },
+  // Finance is a top-level surface of its own — it is deliberately not a Work node.
   {
     id: 'documents',
     domain: 'operations',
@@ -239,7 +275,6 @@ function canPermission(user: UserEntity | null | undefined, permissions?: string
 function canWorkNode(user: UserEntity | null | undefined, node: WorkNode): boolean {
   if (!canPermission(user, node.permissions)) return false;
   if (node.id === 'orders') return getDataScope(user, 'work_orders') !== 'none';
-  if (node.id === 'finance') return getDataScope(user, 'accounting') !== 'none';
   if (node.id === 'engines' || node.id === 'parts' || node.id === 'locations' || node.id === 'receiving') {
     return getDataScope(user, 'inventory') !== 'none';
   }
@@ -255,28 +290,26 @@ export function resolveWorkNodes(
   );
 }
 
-export function groupWorkNodes(nodes: WorkNode[]): ShellModel['workGrouped'] {
-  const order: WorkspaceDomainId[] = [
-    'intake',
-    'inventory',
-    'warehouse',
-    'sales',
-    'operations',
-    'finance',
-  ];
+export function groupWorkNodes(
+  nodes: WorkNode[],
+  role?: UserRole | null,
+): ShellModel['workGrouped'] {
   const map = new Map<WorkspaceDomainId, WorkNode[]>();
   for (const node of nodes) {
     const list = map.get(node.domain) ?? [];
     list.push(node);
     map.set(node.domain, list);
   }
-  return order
+  return workDomainOrder(role)
     .filter((domain) => (map.get(domain)?.length ?? 0) > 0)
-    .map((domain) => ({
-      domain,
-      title: DOMAIN_TITLES[domain],
-      nodes: map.get(domain) ?? [],
-    }));
+    .map((domain) => {
+      const domainNodes = map.get(domain) ?? [];
+      return {
+        domain,
+        title: workDomainTitle(domain, domainNodes.length),
+        nodes: domainNodes,
+      };
+    });
 }
 
 export function resolveActionItems(
@@ -366,7 +399,7 @@ export function resolveShellModel(params: {
   return {
     enabledModules,
     workNodes,
-    workGrouped: groupWorkNodes(workNodes),
+    workGrouped: groupWorkNodes(workNodes, params.user?.role),
     actionItems: resolveActionItems(enabledModules, params.user, workspaceContext),
     homeSections: resolveHomeSections(enabledModules, params.user),
     searchScopes: resolveSearchScopes(enabledModules),

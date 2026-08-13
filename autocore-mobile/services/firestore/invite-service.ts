@@ -1,13 +1,13 @@
 import {
   collection,
   limit,
-  onSnapshot,
   orderBy,
   query,
   where,
 } from 'firebase/firestore';
 
 import { toDateFromFirestore } from '@/lib/firestore-timestamp';
+import { listenQuery } from '@/lib/firestore/trusted-snapshot';
 import { mobilePost } from '@/services/api/mobile-client';
 import { getFirebaseDb } from '@/services/firebase';
 import type { InviteDocument } from '@/types/rbac';
@@ -67,7 +67,7 @@ export function subscribeCompanyInvites(
     limit(50),
   );
 
-  return onSnapshot(
+  return listenQuery(
     invitesQuery,
     (snapshot) => {
       const invites = snapshot.docs
@@ -75,7 +75,7 @@ export function subscribeCompanyInvites(
         .filter((entry): entry is InviteDocument => entry != null);
       onData(invites);
     },
-    (error) => onError?.(error),
+    onError,
   );
 }
 

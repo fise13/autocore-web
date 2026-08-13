@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { resolveAdminStorageBucket } from "@/infrastructure/firebase/resolve-storage-bucket";
 import {
+  InventoryEditAccessError,
+  verifyInventoryEditAccess,
+} from "@/lib/auth/verify-inventory-edit-access.server";
+import {
   InventoryViewAccessError,
   verifyInventoryViewAccess,
 } from "@/lib/auth/verify-inventory-view-access.server";
+import { deleteRowPhotosAdmin } from "@/lib/grid/upload-row-photo.server";
 import { filenameFromMediaUrl, storagePathFromFirebaseMediaUrl } from "@/lib/grid/row-media-viewer";
 
 export const runtime = "nodejs";
@@ -95,6 +100,44 @@ export async function GET(request: NextRequest) {
     console.error("[inventory/row-photo/file]", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to load media" },
+      { status: 500 },
+    );
+  }
+}
+
+/** Deletes row media objects from Storage (inventory edit). */
+export async function DELETE(request: NextRequest) {
+  try {
+    const access = await verifyInventoryEditAccess(request);
+    const body = (await request.json().catch(() => ({}))) as { urls?: unknown };
+    const urls = Array.isArray(body.urls)
+      ? body.urls.map((value) => String(value ?? "").trim()).filter(Boolean)
+      : [];
+    if (urls.length === 0) {
+      return NextResponse.json({ error: "urls are required" }, { status: 400 });
+    }
+
+    const storagePaths: string[] = [];
+    for (const mediaUrl of urls) {
+      const storagePath = storagePathFromFirebaseMediaUrl(mediaUrl);
+      if (!storagePath || !storagePath.startsWith(`companies/${access.companyId}/row-photos/`)) {
+        return NextResponse.json({ error: "Invalid media URL" }, { status: 403 });
+      }
+      storagePaths.push(storagePath);
+    }
+
+    const result = await deleteRowPhotosAdmin({
+      companyId: access.companyId,
+      storagePaths,
+    });
+    return NextResponse.json({ deleted: result.deleted });
+  } catch (error) {
+    if (error instanceof InventoryEditAccessError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    console.error("[inventory/row-photo/file DELETE]", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to delete media" },
       { status: 500 },
     );
   }

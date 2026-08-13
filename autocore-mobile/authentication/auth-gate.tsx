@@ -23,7 +23,11 @@ import { resolveSessionCompanyId } from '@/lib/session/merge-hydration';
 import { markStartup } from '@/lib/performance/startup-tracer';
 import { hideNativeSplashAndLogStartup } from '@/lib/splash';
 import { SessionBootstrapGate } from '@/providers/session-bootstrap-gate';
+import { FirestoreNetworkHead } from '@/providers/firestore-network-head';
+import { IntakeSyncHead } from '@/providers/intake-sync-head';
+import { OfflineSyncHead } from '@/providers/offline-sync-head';
 import { SessionRealtimeHead } from '@/providers/session-realtime-head';
+import { OfflineSessionBanner } from '@/components/offline/offline-session-banner';
 import { AutocompleteProvider } from '@/providers/autocomplete-provider';
 import { AutocompleteDataHead } from '@/providers/autocomplete-data-head';
 import { MoneyFormatSync } from '@/providers/money-format-sync';
@@ -55,10 +59,16 @@ const MemoAppTree = memo(function MemoAppTree({ children }: { children: React.Re
   return (
     <AutocompleteProvider>
       <SessionRealtimeHead />
+      <FirestoreNetworkHead />
+      <OfflineSyncHead />
+      <IntakeSyncHead />
       <AutocompleteDataHead />
       <MoneyFormatSync />
       <NotificationProvider enabled>
-        <SessionBootstrapGate>{children}</SessionBootstrapGate>
+        <SessionBootstrapGate>
+          {children}
+          <OfflineSessionBanner />
+        </SessionBootstrapGate>
       </NotificationProvider>
     </AutocompleteProvider>
   );
@@ -72,6 +82,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const memberships = useAuthStore((s) => s.memberships);
   const workspaceBlock = useAuthStore((s) => s.workspaceBlock);
 
+  const isOnline = useAuthStore((s) => s.isOnline);
   const isReady = status !== 'booting' && !isHydrating;
   const hasAccess = useAuthHasAccess();
   const isWorkspaceBlocked = Boolean(workspaceBlock);
@@ -88,11 +99,13 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     isPaywallBypassed,
   );
 
+  const billingSettled = !subscriptionLoading || !isOnline;
+
   const needsSubscription =
     Boolean(firebaseUser) &&
     journeyStep === 'app' &&
     hasAccess &&
-    !subscriptionLoading &&
+    billingSettled &&
     !isPro &&
     !paywallBypassed;
 
@@ -100,7 +113,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     Boolean(firebaseUser) &&
     journeyStep === 'app' &&
     hasAccess &&
-    !subscriptionLoading &&
+    billingSettled &&
     (isPro || paywallBypassed);
 
   /**
@@ -113,6 +126,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     hasAccess &&
     !isWorkspaceBlocked &&
     subscriptionLoading &&
+    isOnline &&
     !paywallBypassed;
 
   const holdingSplash =

@@ -9,6 +9,8 @@ import { useSyncExternalStore } from 'react';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import 'react-native-reanimated';
 
+import '@/lib/offline/background-sync-task';
+
 import { AuthGate } from '@/authentication/auth-gate';
 import { AuthProvider } from '@/authentication/auth-provider';
 import { InAppBannerProvider } from '@/components/notifications';

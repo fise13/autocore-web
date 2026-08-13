@@ -43,12 +43,33 @@ export const IntakeCamera = forwardRef<IntakeCameraHandle, IntakeCameraProps>(
 
     useImperativeHandle(ref, () => ({
       async takePicture() {
-        if (!cameraRef.current || !readyRef.current || !active) return null;
-        try {
-          return await cameraRef.current.takePictureAsync({
-            quality: 0.86,
-            skipProcessing: false,
+        if (!cameraRef.current || !active) return null;
+        // Never pass `fastMode: true` without `onPictureSaved` — the promise
+        // resolves with no uri ("Camera did not capture a photo").
+        const shoot = (skipProcessing: boolean) =>
+          cameraRef.current!.takePictureAsync({
+            quality: 0.82,
+            skipProcessing,
+            shutterSound: false,
           });
+
+        try {
+          const fast = await shoot(true);
+          if (fast?.uri) {
+            readyRef.current = true;
+            return fast;
+          }
+        } catch {
+          // Fall through to the processed path.
+        }
+
+        try {
+          const processed = await shoot(false);
+          if (processed?.uri) {
+            readyRef.current = true;
+            return processed;
+          }
+          return null;
         } catch {
           return null;
         }

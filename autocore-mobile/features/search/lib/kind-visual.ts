@@ -14,6 +14,9 @@ export function kindVisual(kind: SearchResultKind): KindVisual {
     case 'engine':
     case 'gearbox':
       return { iconColor: 'primary', bgOpacity: 0.14 };
+    case 'workspace':
+      // A jump target, not a record — accent reads as "go here".
+      return { iconColor: 'primary', bgOpacity: 0.1 };
     case 'order':
       return { iconColor: 'foreground', bgOpacity: 0.08 };
     case 'client':

@@ -14,8 +14,8 @@ export const tokens = {
     group: 12,
     sheet: 16,
     modal: 20,
-    /** Floating dock shell — stadium pill (48h → radius 24). */
-    dock: 24,
+    /** Floating dock shell — stadium pill (64h → radius 32). */
+    dock: 32,
     full: 9999,
   },
   space: {

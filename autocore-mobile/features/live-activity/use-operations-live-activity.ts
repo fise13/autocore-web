@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 
+import { reconcileIntakeSyncLocalNotification } from '@/features/engine-intake/lib/intake-sync-notifications';
 import { useEngineIntakeOutbox } from '@/features/engine-intake/store/intake-outbox';
 import { useSession } from '@/hooks/use-session';
 
+import { ensureLiveActivityAppIconUri } from './ensure-live-activity-icon';
 import { OperationsLiveActivity } from './operations-live-activity';
 import {
   liveActivityContentKey,
@@ -16,12 +18,13 @@ const INTAKE_URL = 'autocoremobile://intake';
 /** Ignore brief NetInfo blips before starting a new island. */
 const START_DEBOUNCE_MS = 350;
 /**
- * Presentation gate — blank black Lock Screen / Island pills ship when the
- * widget extension paints empty ActivityKit chrome. Keep **false** until a
- * native rebuild that includes `operations-live-activity.tsx` (HStack + tint)
- * is installed on device; then flip to true to restore the Island.
+ * Presentation gate for ActivityKit. Enabled for intake outbox sync states.
+ * Layout lives in the widget extension — ship a device Release rebuild
+ * (`npm run ios:release`) after changing `operations-live-activity.tsx`.
  */
-const LIVE_ACTIVITY_PRESENTATION_ENABLED = false;
+const LIVE_ACTIVITY_PRESENTATION_ENABLED = true;
+
+let cachedIconUri = '';
 
 async function endAllInstances(): Promise<void> {
   const active = OperationsLiveActivity.getInstances();
@@ -34,16 +37,26 @@ async function applyDesired(desired: DesiredLiveActivity): Promise<void> {
     return;
   }
 
+  if (!cachedIconUri) {
+    cachedIconUri = (await ensureLiveActivityAppIconUri()) ?? '';
+  }
+
   const props = {
     mode: desired.mode,
     title: desired.title,
     detail: desired.detail,
     count: desired.count,
+    done: desired.done,
+    total: desired.total,
+    progress: desired.progress,
+    progressLabel: desired.progressLabel,
+    iconUri: cachedIconUri,
   };
 
   const instances = OperationsLiveActivity.getInstances();
   if (instances.length > 0) {
     const [primary, ...extras] = instances;
+    // Never leave parallel Islands — extras become duplicate intake opens on tap.
     await Promise.all(extras.map((instance) => instance.end('immediate').catch(() => undefined)));
     try {
       await primary.update(props);
@@ -53,6 +66,8 @@ async function applyDesired(desired: DesiredLiveActivity): Promise<void> {
     }
   }
 
+  // Ensure a clean single instance before start (update path may have cleared it).
+  await endAllInstances();
   OperationsLiveActivity.start(props, INTAKE_URL);
 }
 
@@ -116,11 +131,22 @@ export function useOperationsLiveActivity() {
       resolveDesiredLiveActivity({
         enabled: Platform.OS === 'ios' && intakeEnabled,
         offline,
-        pendingCount: outbox.pendingCount,
-        failedCount: outbox.failedCount,
+        // Photo-only — banner may still show command noise via pendingCount.
+        pendingCount: outbox.photoPendingCount,
+        failedCount: outbox.photoFailedCount,
         syncing: outbox.syncing,
+        syncedCount: outbox.syncedCount,
+        sessionTotal: outbox.sessionTotal,
       }),
-    [intakeEnabled, offline, outbox.failedCount, outbox.pendingCount, outbox.syncing],
+    [
+      intakeEnabled,
+      offline,
+      outbox.photoFailedCount,
+      outbox.photoPendingCount,
+      outbox.sessionTotal,
+      outbox.syncedCount,
+      outbox.syncing,
+    ],
   );
 
   desiredRef.current = desired;
@@ -186,9 +212,15 @@ export function useOperationsLiveActivity() {
   }, [intakeEnabled]);
 
   useEffect(() => {
-    if (Platform.OS !== 'ios') return;
     const sub = AppState.addEventListener('change', (next) => {
-      if (next !== 'active') return;
+      if (next !== 'active') {
+        if (intakeEnabled) {
+          reconcileIntakeSyncLocalNotification(outbox.failedCount);
+        }
+        return;
+      }
+
+      if (Platform.OS !== 'ios') return;
       if (!clearedStale) return;
       const current = desiredRef.current;
       const key = liveActivityContentKey(current);
@@ -204,5 +236,14 @@ export function useOperationsLiveActivity() {
       });
     });
     return () => sub.remove();
-  }, [clearedStale]);
+  }, [clearedStale, intakeEnabled, outbox.failedCount]);
+
+  // Local OS notification for failed intake sync while backgrounded; clear when healthy.
+  useEffect(() => {
+    if (!intakeEnabled) {
+      reconcileIntakeSyncLocalNotification(0);
+      return;
+    }
+    reconcileIntakeSyncLocalNotification(outbox.failedCount);
+  }, [intakeEnabled, outbox.failedCount]);
 }

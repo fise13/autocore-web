@@ -107,6 +107,18 @@ export async function openNotificationDeepLink(deepLink?: string | null): Promis
   const href = resolveNotificationDeepLink(deepLink);
   if (href) {
     const { router } = await import('expo-router');
+    const path =
+      typeof deepLink === 'string' && deepLink.startsWith(SCHEME)
+        ? deepLink.slice(SCHEME.length)
+        : '';
+    // Intake bay / Live Activity taps must not stack duplicate `/intake` screens.
+    if (path === 'intake' || path.startsWith('intake/') || path.startsWith('intake?')) {
+      const { openEngineIntakeBay } = await import(
+        '@/features/engine-intake/lib/open-engine-intake'
+      );
+      openEngineIntakeBay(router);
+      return true;
+    }
     guardedPush(router, href);
     return true;
   }

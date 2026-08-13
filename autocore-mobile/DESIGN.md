@@ -13,7 +13,7 @@ References (philosophy only — never pixel-copy): Notion Mobile, Claude Mobile,
 6. **Content-first** — chrome yields to data and actions.
 7. **Native iOS feeling** — HIG touch targets, platform push, sheets with detents, Dynamic Type once.
 8. **Premium B2B** — quiet Autocore blue primary; workshop domain content stays distinctive.
-9. **Shell dock** — stadium pill **Home · Work · Finance · Profile** + detached circular **New (+)**. Modules never add dock tabs.
+9. **Shell dock** — liquid glass stadium **Home · Work · (+) · Finance · Settings** via real `UIGlassEffect` (`expo-glass-effect`). Modules never add dock tabs.
 10. **Dynamic Island** — real iOS Live Activities via `expo-widgets` (offline / intake sync). No in-app status pill.
 
 ## Auth vs product
@@ -138,40 +138,47 @@ Home layout: `features/overview/layout.ts` → `mc.pad` 20 · `mc.section` 32 ·
 
 ## Floating dock
 
-Quiet stadium pill + detached create orb (`components/navigation/autocore-dock.tsx`).
-Must feel like OS chrome, not a floating control panel.
-Pixel reference: 48h stadium · 72 item · 1px light rim (not hairline).
+`LiquidGlassTabBar` (`components/navigation/liquid-glass-tab-bar.tsx`) → Swift `UIGlassEffect` / `UIGlassContainerEffect` via `expo-glass-effect`.
+
+```text
+RN tabs → LiquidGlassTabBar → GlassContainer
+                              └─ GlassView (Home · Work · + · Finance · Settings)
+```
+
+One continuous `UIGlassEffect` stadium — left and right share the same glass surface. Center (+) is a solid white orb inside the bar for contrast. Pre-iOS 26 / Android falls back to the dense dark stadium fill.
 
 | Token | Value |
 | --- | --- |
-| Pill height | **48** |
-| Corner radius | **24** (stadium) |
-| Active item width | **72** |
-| Active capsule | **40**h / radius **20**, grey wash (not brand blue) |
-| Action orb | **48** glass circle (same material as pill) · monochrome **+** |
-| Gap pill → orb | **8** |
-| Horizontal inset | **16** |
-| Border (бортик) | **1px** `rgba(255,255,255,0.16)` dark · top rim highlight 3pt |
+| Pill | **356** × **64**, radius **32** |
+| Center action | **60** solid white orb inside the glass bar · **+** 28 stroke **2.5** |
+| Icons | **22** · Settings outline only |
+| Labels | **12** / **500** · active **600** · inactive opacity **0.55** |
+| Side margin | **18.5** |
+| Bottom | safe-area inset **+ 8** |
 
-Material: `BlurView` chrome material + charcoal fill + **1px rim** + top/bottom bevel on the **pill** and **Action orb**. Soft shadow on outer shells only. Icons/labels stay monochrome. Action orb opens the floating glass **New composer** (frosted field · brand send orb · quick-action pill) — not a system ActionSheet.
+Gate: `isLiquidGlassAvailable()` ∧ `isGlassEffectAPIAvailable()`. Never set parent opacity to `0` on glass views.
 
 ## Dynamic Island (iOS Live Activities)
 
 Real system Dynamic Island + Lock Screen via `expo-widgets` (`features/live-activity/`).
 
 **Shows only when there is actionable intake information** — never an empty “Offline” island.
-**Layout lives in the widget extension** — after changing `operations-live-activity.tsx`, run a native rebuild (`npm run ios:release --device`). Soft reload will not update the Lock Screen chrome.
+**Layout lives in the widget extension** — after changing `operations-live-activity.tsx`, run a native rebuild (`npm run ios:release`). Soft reload will not update the Lock Screen chrome. The `'widget'` function must be self-contained (no helpers outside it) — Babel serializes only that function into the App Group; outer helpers → blank black Island.
 
 | Priority | Condition | Behavior |
 | --- | --- | --- |
-| 1 | `failedCount > 0` | “Sync failed” · count · tap → `autocoremobile://intake` |
-| 2 | `pendingCount > 0` + offline | “Waiting offline” · queued count |
-| 3 | `pendingCount > 0` + online | “Syncing” / “Pending sync” · count |
+| 1 | `failedCount > 0` (no pending) | “Sync failed” · count · tap → `autocoremobile://intake` |
+| 2 | `pendingCount > 0` + offline | “Waiting offline” · queued · indeterminate ProgressView |
+| 3 | `pendingCount > 0` + online | “Syncing photos” · `done/total` · linear ProgressView |
 | 4 | Empty outbox (even if offline) | Activity ended immediately |
+
+Apple-like chrome (`apple-v5`): compact = framed app icon + monospaced count; expanded = 36pt icon · title/subtitle · metric · ProgressView; Lock Screen banner matches. App icon **must** use `resizable` + `frame` — bare `uiImage` stretches into a gray bar in the compact slot. Failed mode shows the failed count alone (not `0/N`).
 
 Policy: `resolveDesiredLiveActivity`. Host mounts once under `(tabs)`. On launch we clear any stale ActivityKit instances so blank black pills cannot linger.
 
-**Presentation is gated off** (`LIVE_ACTIVITY_PRESENTATION_ENABLED = false` in `use-operations-live-activity.ts`) until a native build with the tinted HStack layout is on device — otherwise ActivityKit shows an empty black pill. Flip to `true` after that rebuild.
+**Presentation is enabled** (`LIVE_ACTIVITY_PRESENTATION_ENABLED = true` in `use-operations-live-activity.ts`). Progress is **photo-only** (ignores heartbeats / failed leftovers). Compact leading uses the AutoCore app icon from App Group (`ensure-live-activity-icon.ts`). After changing the ActivityKit layout, rebuild on device (`npm run ios:release`) — soft reload will not update Island chrome.
+
+**Blank black Island:** the `'widget'` function must be fully self-contained — Babel only serializes that function into the App Group. Helpers defined outside the widget function are undefined at render time and produce EmptyView (black pill).
 
 ## Route categories
 

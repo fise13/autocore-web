@@ -1,7 +1,6 @@
 import {
   collection,
   limit,
-  onSnapshot,
   orderBy,
   query,
   where,
@@ -9,7 +8,7 @@ import {
 
 import { normalizeCompanyId } from '@/lib/company-id';
 import { toDateFromFirestore } from '@/lib/firestore-timestamp';
-import { notifyFirestoreSnapshotError } from '@/lib/firestore/snapshot-errors';
+import { listenQuery } from '@/lib/firestore/trusted-snapshot';
 import { getFirebaseDb } from '@/services/firebase';
 import type { InventoryItem, InventoryItemStatus, InventoryItemType } from '@/types/inventory';
 
@@ -94,7 +93,7 @@ export function createInventoryItemRepository() {
         limit(500),
       );
 
-      return onSnapshot(
+      return listenQuery(
         q,
         (snapshot) =>
           onData(
@@ -102,7 +101,7 @@ export function createInventoryItemRepository() {
               .map((item) => mapItem(item.id, item.data() as Record<string, unknown>))
               .filter((item) => item.status === 'active' || item.status === 'discontinued'),
           ),
-        (error) => notifyFirestoreSnapshotError(error, onError),
+        onError,
       );
     },
   };

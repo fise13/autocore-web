@@ -76,6 +76,7 @@ export function IosLiftMenu({
   const insets = useSafeAreaInsets();
   const [presented, setPresented] = useState(visible);
   const [dismissArmed, setDismissArmed] = useState(false);
+  const [pressedIndex, setPressedIndex] = useState<number | null>(null);
   const frozenAnchor = useRef<IosLiftMenuAnchor | null>(anchor);
   const progress = useSharedValue(visible ? 1 : 0);
   const menuProgress = useSharedValue(visible ? 1 : 0);
@@ -324,7 +325,12 @@ export function IosLiftMenu({
                   // Let the modal unmount before navigation / mutations.
                   requestAnimationFrame(() => item.onPress());
                 }}
-                style={({ pressed }) => ({
+                onPressIn={() => setPressedIndex(index)}
+                onPressOut={() => setPressedIndex(null)}
+                // Static object: `Pressable`'s function-form `style` is silently
+                // dropped by this RN version, which was collapsing every menu row
+                // into a stack (label above its own icon).
+                style={{
                   minHeight: 44,
                   paddingHorizontal: 16,
                   flexDirection: 'row',
@@ -332,10 +338,11 @@ export function IosLiftMenu({
                   justifyContent: 'space-between',
                   gap: 12,
                   opacity: muted ? tokens.opacity.disabled : 1,
-                  backgroundColor: pressed
-                    ? withAlpha(colors.foreground, isDark ? 0.14 : 0.07)
-                    : 'transparent',
-                })}
+                  backgroundColor:
+                    pressedIndex === index
+                      ? withAlpha(colors.foreground, isDark ? 0.14 : 0.07)
+                      : 'transparent',
+                }}
               >
                 <Text
                   variant="body"

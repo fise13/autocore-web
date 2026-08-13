@@ -2,13 +2,16 @@ import { Tabs } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { ActionSheetHost } from '@/components/navigation/action-sheet-host';
-import { AutocoreDock } from '@/components/navigation/autocore-dock';
+import { LiquidGlassTabBar } from '@/components/navigation/liquid-glass-tab-bar';
 import { TabTransitionProvider } from '@/components/navigation/tab-transition-context';
 import { OperationsLiveActivityHost } from '@/features/live-activity/operations-live-activity-host';
+import { assertLiveActivityAppGroup } from '@/features/live-activity/register-operations-live-activity';
 import { useTheme } from '@/hooks/use-theme';
 
+assertLiveActivityAppGroup();
+
 /**
- * Autocore shell: stadium dock (Home · Work · Finance · Profile) + detached Action.
+ * Autocore shell: LiquidGlassTabBar (UIGlassEffect) — Home · Work · (+) · Finance · Settings.
  * ActionSheetHost is an absolute overlay (not Modal) so New always paints.
  */
 export default function TabLayout() {
@@ -18,7 +21,7 @@ export default function TabLayout() {
     <TabTransitionProvider>
       <View style={styles.shell}>
         <Tabs
-          tabBar={(props) => <AutocoreDock {...props} />}
+          tabBar={(props) => <LiquidGlassTabBar {...props} />}
           screenOptions={{
             headerShown: false,
             tabBarStyle: { position: 'absolute' },

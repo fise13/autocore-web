@@ -1,0 +1,10 @@
+{
+  "0": "engine-intake-jobs-screen.tsx",
+  "1": "intake-outbox.ts",
+  "2": "use-engine-intake-data.ts",
+  "3": "publish",
+  "4": "evidence-labels.ts",
+  "6": "intake-job-row.tsx",
+  "9": "intake-camera.tsx",
+  "11": "intake-capture-dock.tsx"
+}

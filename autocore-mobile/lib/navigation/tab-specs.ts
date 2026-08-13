@@ -17,7 +17,7 @@ export type TabSpec = {
 };
 
 /**
- * Autocore dock — Home · Work · Action · Finance · Profile.
+ * Autocore dock — Home · Work · (+) · Finance · Settings.
  * Modules change content inside these slots, never the bar itself.
  */
 export const TAB_SPECS: TabSpec[] = [
@@ -49,8 +49,9 @@ export const TAB_SPECS: TabSpec[] = [
   {
     route: 'profile',
     shellId: 'profile',
-    label: 'Profile',
-    sf: { default: 'person.crop.circle', selected: 'person.crop.circle.fill' },
+    label: 'Settings',
+    // Outline only — filled gear reads too heavy next to quieter tab glyphs.
+    sf: { default: 'gearshape', selected: 'gearshape' },
   },
 ];
 

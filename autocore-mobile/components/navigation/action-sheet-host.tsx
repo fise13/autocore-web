@@ -140,8 +140,7 @@ export function ActionSheetHost() {
   const ink = isDark ? '#ffffff' : colors.foreground;
   const grabberInk = isDark ? 'rgba(235,235,245,0.6)' : 'rgba(60,60,67,0.45)';
 
-  const closedOffset =
-    Math.max(insets.bottom, DOCK_BOTTOM_GAP) + DOCK_VISUAL_HEIGHT + DOCK_BOTTOM_GAP;
+  const closedOffset = insets.bottom + DOCK_BOTTOM_GAP + DOCK_VISUAL_HEIGHT;
 
   const canSend = Boolean(prompt.trim()) && !busy;
 

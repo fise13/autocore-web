@@ -31,6 +31,8 @@ export const userCopyEn = {
     chooseFiles: "Choose photos / files",
     chooseVideo: "Add video",
     remove: "Remove",
+    removePrimary: "Remove first",
+    removeAll: "Remove all",
     uploading: "Uploading…",
     uploadProgress: (done: number, total: number) => `Uploading ${done}/${total}…`,
     uploadFailed: "Could not upload media",
@@ -50,6 +52,11 @@ export const userCopyEn = {
     viewerLoading: "Loading media…",
     viewerInvalid: "Invalid media link",
     viewerLoadFailed: "Could not load media",
+    confirmDeletePhotosTitle: "Delete photos?",
+    confirmDeletePhotosDescription: (count: number) =>
+      `Are you sure you want to delete ${count} ${count === 1 ? "photo" : "photos"}?`,
+    confirmDeletePhotosConfirm: "Delete",
+    confirmDeletePhotosCancel: "Cancel",
   },
 
   auth: {

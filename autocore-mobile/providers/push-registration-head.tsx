@@ -1,9 +1,13 @@
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
+import * as Notifications from 'expo-notifications';
 
 import { useNotificationPreferences } from '@/hooks/use-notification-preferences';
 import { useAuthStore } from '@/store/auth-store';
-import { ensurePushDeviceRegistered } from '@/services/notifications/push-channel';
+import {
+  ensurePushDeviceRegistered,
+  resetPushRegistrationState,
+} from '@/services/notifications/push-channel';
 
 /** Registers Expo push token as soon as the user is signed in (not gated on Pro/subscription). */
 export function PushRegistrationHead() {
@@ -21,10 +25,17 @@ export function PushRegistrationHead() {
     void ensurePushDeviceRegistered(pushEnabled, { promptIfUndetermined: true });
 
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
-        // Resumes only re-register an existing grant — never re-prompt.
+      if (state !== 'active') return;
+      // Returning from Settings: if still denied, drop memoized token so a later
+      // grant registers cleanly. If granted, ensurePush will mint/write the token
+      // when registeredToken is empty (e.g. after a prior failed write).
+      void Notifications.getPermissionsAsync().then(({ status }) => {
+        if (status !== 'granted') {
+          resetPushRegistrationState();
+          return;
+        }
         void ensurePushDeviceRegistered(pushEnabled);
-      }
+      });
     });
 
     return () => subscription.remove();

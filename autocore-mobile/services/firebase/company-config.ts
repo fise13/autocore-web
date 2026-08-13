@@ -1,8 +1,9 @@
-import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 
 import type { CompanyAppConfig } from '@/types/company-config';
 import { normalizeCompanyId } from '@/lib/company-id';
 
+import { listenDocument } from '@/lib/firestore/trusted-snapshot';
 import { getFirebaseDb } from './index';
 
 function companyAppConfigRef(companyId: string) {
@@ -40,13 +41,11 @@ export function subscribeCompanyAppConfig(
   onData: (config: CompanyAppConfig | null) => void,
   onError?: (error: Error) => void,
 ): () => void {
-  return onSnapshot(
+  return listenDocument(
     companyAppConfigRef(companyId),
     (snapshot) => {
       onData(snapshot.exists() ? (snapshot.data() as CompanyAppConfig) : null);
     },
-    (error) => {
-      onError?.(error);
-    },
+    onError,
   );
 }

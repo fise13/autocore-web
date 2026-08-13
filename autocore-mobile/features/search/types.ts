@@ -28,7 +28,9 @@ export type SearchResultKind =
   | 'sale'
   | 'order'
   | 'vehicle'
-  | 'accounting';
+  | 'accounting'
+  /** A Work workspace (Orders, Receiving, Locations…) — a jump, not a record. */
+  | 'workspace';
 
 export type SearchEngine = {
   id: string;
@@ -52,12 +54,14 @@ export type SearchResultItem = {
   vin?: string;
   /** Motor serial / inventory code for compact action-sheet titles. */
   serialCode?: string;
+  /** Navigation target — set for `workspace` results. */
+  href?: string;
 };
 
 export type SearchResultGroup = {
   id: string;
   title: string;
-  filter: SearchFilterId | 'vehicles';
+  filter: SearchFilterId | 'vehicles' | 'workspaces';
   items: SearchResultItem[];
 };
 

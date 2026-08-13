@@ -1,6 +1,7 @@
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 
+import { listenDocument } from '@/lib/firestore/trusted-snapshot';
 import { getFirebaseDb, isFirebaseConfigured } from '@/services/firebase';
 import { readCompanyDisplayName } from '@/lib/company-display-name';
 import { normalizeCompanyId } from '@/lib/company-id';
@@ -18,13 +19,14 @@ export function useCompanyProfile(companyId: string | null | undefined) {
 
     setIsLoading(true);
     const ref = doc(getFirebaseDb(), 'companies', companyId);
-    return onSnapshot(
+    return listenDocument(
       ref,
       (snap) => {
         const id = normalizeCompanyId(companyId);
         setName(snap.exists() ? readCompanyDisplayName(snap.data(), id) : null);
         setIsLoading(false);
       },
+      () => setIsLoading(false),
       () => setIsLoading(false),
     );
   }, [companyId]);

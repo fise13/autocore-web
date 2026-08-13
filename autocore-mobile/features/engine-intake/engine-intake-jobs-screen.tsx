@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import type {
   EngineIntakeCommand,
@@ -25,14 +25,18 @@ import { useFloatingTabBarInset, useSession, useTheme } from '@/hooks';
 import { goBackOrReplace } from '@/lib/navigation/stack-back';
 import { haptics, rhythm, spacing } from '@/theme';
 
-import { IntakeCreateSerialSheet, type IntakeCreateSerialSheetRef } from './components/intake-create-serial-sheet';
+import {
+  IntakeCreateSerialSheet,
+  type IntakeCreateIdentityDraft,
+  type IntakeCreateSerialSheetRef,
+} from './components/intake-create-serial-sheet';
 import { IntakeJobRow } from './components/intake-job-row';
 import { IntakeOutboxBanner } from './components/intake-outbox-banner';
 import { useEngineIntakeJobs } from './hooks/use-engine-intake-data';
 import {
   drainIntakeOutbox,
   humanizeIntakeOutboxError,
-  retryIntakeOutboxItem,
+  resolveFailedIntakeOutbox,
   sendOrQueueIntakeCommand,
   useEngineIntakeOutbox,
 } from './store/intake-outbox';
@@ -41,6 +45,11 @@ import {
   getEngineIntakeDeviceId,
   getEngineIntakeDeviceName,
 } from './lib/device';
+import { openEngineIntakeSession } from './lib/open-engine-intake';
+import {
+  seedOptimisticIntakeClaim,
+  seedOptimisticIntakeCreate,
+} from './store/intake-local-overlay';
 
 const ACTIVE_STATES = new Set<EngineIntakeJobState>([
   'open',
@@ -148,12 +157,7 @@ export function EngineIntakeJobsScreen() {
 
   const openSession = useCallback(
     (jobId: string, sessionId: string) => {
-      router.push(
-        {
-          pathname: '/intake/[jobId]',
-          params: { jobId, sessionId },
-        } as unknown as Href,
-      );
+      openEngineIntakeSession(router, jobId, sessionId);
     },
     [router],
   );
@@ -180,20 +184,18 @@ export function EngineIntakeJobsScreen() {
       const sessionId = engineIntakeId('session');
       setStarting(true);
       try {
-        const claimed = await sendOrQueueIntakeCommand(
+        seedOptimisticIntakeClaim({
           companyId,
-          createClaimCommand(job.id, sessionId),
-        );
-        if (!claimed?.sessionId) {
-          toast({
-            title: 'Claim saved for sync',
-            description: 'Open the engine after the server confirms the exclusive claim.',
-            variant: 'warning',
-          });
-          return;
-        }
+          job,
+          sessionId,
+          uid,
+          displayName: profile?.displayName ?? null,
+          deviceId,
+          deviceName: getEngineIntakeDeviceName(),
+        });
+        await sendOrQueueIntakeCommand(companyId, createClaimCommand(job.id, sessionId));
         haptics.success();
-        openSession(job.id, claimed.sessionId);
+        openSession(job.id, sessionId);
       } catch (claimError) {
         haptics.error();
         toast({
@@ -205,13 +207,14 @@ export function EngineIntakeJobsScreen() {
         setStarting(false);
       }
     },
-    [can, companyId, deviceId, openSession, uid],
+    [can, companyId, deviceId, openSession, profile?.displayName, uid],
   );
 
   const startWithSerial = useCallback(
-    async (serialCode: string) => {
+    async (identity: IntakeCreateIdentityDraft) => {
       if (!companyId || !uid || !can('engine_intake_execute')) return;
-      if (!serialCode.trim()) {
+      const serialCode = identity.serialCode.trim();
+      if (!serialCode) {
         toast({ title: 'Serial is required', variant: 'warning' });
         return;
       }
@@ -227,7 +230,11 @@ export function EngineIntakeJobsScreen() {
           jobId,
           source: 'ad_hoc',
           priority: 'normal',
-          expectedIdentity: { serialCode },
+          expectedIdentity: {
+            serialCode,
+            brandName: identity.brandName.trim(),
+            engineCode: identity.engineCode.trim(),
+          },
           assigneeUid: uid,
           assigneeName: profile?.displayName ?? null,
         },
@@ -236,29 +243,25 @@ export function EngineIntakeJobsScreen() {
 
       setStarting(true);
       try {
-        const created = await sendOrQueueIntakeCommand(companyId, createCommand);
-        if (!created) {
-          toast({
-            title: 'Cannot open camera yet',
-            description:
-              'Engine draft could not reach the server. Fix sync (banner above), then try again.',
-            variant: 'destructive',
-          });
-          return;
-        }
-        const claimed = await sendOrQueueIntakeCommand(companyId, claimCommand);
-        if (!claimed?.sessionId) {
-          toast({
-            title: 'Engine created — claim failed',
-            description: 'Open it from the Warehouse list after sync completes.',
-            variant: 'warning',
-          });
-          createSheetRef.current?.dismiss();
-          return;
-        }
+        seedOptimisticIntakeCreate({
+          companyId,
+          jobId,
+          sessionId,
+          uid,
+          displayName: profile?.displayName ?? null,
+          deviceId: getEngineIntakeDeviceId(),
+          deviceName: getEngineIntakeDeviceName(),
+          identity: {
+            serialCode,
+            brandName: identity.brandName.trim(),
+            engineCode: identity.engineCode.trim(),
+          },
+        });
+        await sendOrQueueIntakeCommand(companyId, createCommand);
+        await sendOrQueueIntakeCommand(companyId, claimCommand);
         createSheetRef.current?.dismiss();
         haptics.success();
-        openSession(created.jobId || jobId, claimed.sessionId);
+        openSession(jobId, sessionId);
       } catch (startError) {
         haptics.error();
         toast({
@@ -276,15 +279,147 @@ export function EngineIntakeJobsScreen() {
     [can, companyId, openSession, profile?.displayName, uid],
   );
 
+  const saveIdentityEdit = useCallback(
+    async (jobId: string, identity: IntakeCreateIdentityDraft) => {
+      if (!companyId || !can('engine_intake_execute')) return;
+      setStarting(true);
+      try {
+        const command: EngineIntakeCommand = {
+          type: 'update_identity',
+          idempotencyKey: engineIntakeId('identity'),
+          client: 'mobile',
+          clientAt: new Date().toISOString(),
+          deviceId: getEngineIntakeDeviceId(),
+          payload: {
+            jobId,
+            identity: {
+              serialCode: identity.serialCode.trim(),
+              brandName: identity.brandName.trim(),
+              engineCode: identity.engineCode.trim(),
+            },
+          },
+        };
+        await sendOrQueueIntakeCommand(companyId, command);
+        createSheetRef.current?.dismiss();
+        haptics.success();
+        toast({ title: 'Engine updated', variant: 'success' });
+        void drainIntakeOutbox(companyId);
+      } catch (error) {
+        haptics.error();
+        toast({
+          title: 'Could not update engine',
+          description:
+            error instanceof Error ? humanizeIntakeOutboxError(error.message) : undefined,
+          variant: 'destructive',
+        });
+      } finally {
+        setStarting(false);
+      }
+    },
+    [can, companyId],
+  );
+
+  const handleSheetSubmit = useCallback(
+    async (
+      identity: IntakeCreateIdentityDraft,
+      meta: { mode: 'create' } | { mode: 'edit'; jobId: string },
+    ) => {
+      if (meta.mode === 'edit') {
+        await saveIdentityEdit(meta.jobId, identity);
+        return;
+      }
+      await startWithSerial(identity);
+    },
+    [saveIdentityEdit, startWithSerial],
+  );
+
+  const openEditSheet = useCallback((job: EngineIntakeJob) => {
+    createSheetRef.current?.present({
+      mode: 'edit',
+      jobId: job.id,
+      identity: {
+        serialCode: job.expectedIdentity.serialCode || '',
+        brandName: job.expectedIdentity.brandName || '',
+        engineCode: job.expectedIdentity.engineCode || '',
+      },
+    });
+  }, []);
+
+  const cancelJob = useCallback(
+    (job: EngineIntakeJob) => {
+      if (!companyId || !can('engine_intake_execute')) return;
+      const serial =
+        job.expectedIdentity.serialCode ||
+        job.expectedIdentity.engineCode ||
+        'this engine';
+      Alert.alert('Cancel engine?', `${serial} will leave the intake bay.`, [
+        { text: 'Keep', style: 'cancel' },
+        {
+          text: 'Cancel engine',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              try {
+                const command: EngineIntakeCommand = {
+                  type: 'cancel_job',
+                  idempotencyKey: engineIntakeId('cancel'),
+                  client: 'mobile',
+                  clientAt: new Date().toISOString(),
+                  deviceId: getEngineIntakeDeviceId(),
+                  payload: {
+                    jobId: job.id,
+                    reason: 'Cancelled from Engine intake list',
+                  },
+                };
+                await sendOrQueueIntakeCommand(companyId, command);
+                haptics.success();
+                toast({ title: 'Engine cancelled', variant: 'default' });
+                void drainIntakeOutbox(companyId);
+              } catch (error) {
+                haptics.error();
+                toast({
+                  title: 'Could not cancel',
+                  description:
+                    error instanceof Error
+                      ? humanizeIntakeOutboxError(error.message)
+                      : undefined,
+                  variant: 'destructive',
+                });
+              }
+            })();
+          },
+        },
+      ]);
+    },
+    [can, companyId],
+  );
+
   const retryOutbox = useCallback(() => {
     if (!companyId) return;
-    for (const item of [...outbox.commands, ...outbox.photos]) {
-      if (item.companyId === companyId && item.state === 'failed') {
-        retryIntakeOutboxItem(item.id);
+    void (async () => {
+      const { discarded, retried } = await resolveFailedIntakeOutbox(companyId);
+      if (discarded > 0 && retried === 0) {
+        toast({
+          title: `Cleared ${discarded} dead sync item${discarded === 1 ? '' : 's'}`,
+          variant: 'default',
+        });
+        return;
       }
-    }
-    void drainIntakeOutbox(companyId);
-  }, [companyId, outbox.commands, outbox.photos]);
+      if (retried > 0 && discarded > 0) {
+        toast({
+          title: 'Sync cleaned up',
+          description: `Retried ${retried}, cleared ${discarded} that could not sync.`,
+          variant: 'default',
+        });
+        return;
+      }
+      if (retried > 0) {
+        toast({ title: 'Retrying sync…', variant: 'default' });
+        return;
+      }
+      toast({ title: 'Nothing left to sync', variant: 'default' });
+    })();
+  }, [companyId]);
 
   const jobHasPendingSync = useCallback(
     (jobId: string) =>
@@ -334,28 +469,6 @@ export function EngineIntakeJobsScreen() {
 
   const listHeader = (
     <View style={{ gap: spacing[2], paddingBottom: spacing[2] }}>
-      <View style={{ paddingHorizontal: spacing[4] }}>
-        <SegmentedControl
-          accessibilityLabel="Engine intake filter"
-          value={filter}
-          onValueChange={(value) => setFilter(value as BayFilter)}
-          segments={[
-            { value: 'active', label: `Active ${activeJobs.length}` },
-            { value: 'ready', label: `Ready ${readyJobs.length}` },
-            { value: 'all', label: `All ${scopedJobs.length}` },
-          ]}
-        />
-      </View>
-
-      <IntakeOutboxBanner
-        pendingCount={outbox.pendingCount}
-        failedCount={outbox.failedCount}
-        syncing={outbox.syncing}
-        issue={outboxIssue}
-        needsDeploy={outboxNeedsDeploy}
-        onPress={retryOutbox}
-      />
-
       {loading ? <ContentState state="loading">{null}</ContentState> : null}
 
       {!loading && error && visibleJobs.length === 0 ? (
@@ -402,7 +515,7 @@ export function EngineIntakeJobsScreen() {
           emptyDescription={
             filter === 'ready'
               ? 'Finished engines waiting for verification show up here.'
-              : 'Enter the serial, then photograph freely. AI organizes evidence later.'
+              : 'Enter the engine serial, then photograph freely. Review happens later.'
           }
           emptyActionLabel={
             can('engine_intake_execute') && filter !== 'ready' ? 'New engine' : undefined
@@ -419,12 +532,6 @@ export function EngineIntakeJobsScreen() {
 
   return (
     <Screen>
-      <IntakeCreateSerialSheet
-        ref={createSheetRef}
-        loading={starting}
-        onSubmit={startWithSerial}
-      />
-
       <View
         style={{
           paddingTop: insets.top + rhythm.headerTop,
@@ -470,6 +577,26 @@ export function EngineIntakeJobsScreen() {
       </View>
 
       <View style={{ flex: 1 }}>
+        <View style={{ paddingHorizontal: spacing[4], paddingBottom: spacing[2] }}>
+          <SegmentedControl
+            accessibilityLabel="Engine intake filter"
+            value={filter}
+            onValueChange={(value) => setFilter(value as BayFilter)}
+            segments={[
+              { value: 'active', label: `Active ${activeJobs.length}` },
+              { value: 'ready', label: `Ready ${readyJobs.length}` },
+              { value: 'all', label: `All ${scopedJobs.length}` },
+            ]}
+          />
+        </View>
+        <IntakeOutboxBanner
+          pendingCount={outbox.pendingCount}
+          failedCount={outbox.failedCount}
+          syncing={outbox.syncing}
+          issue={outboxIssue}
+          needsDeploy={outboxNeedsDeploy}
+          onPress={retryOutbox}
+        />
         <FlashList
           data={visibleJobs}
           keyExtractor={(item) => item.id}
@@ -507,12 +634,22 @@ export function EngineIntakeJobsScreen() {
                 claimedByName={item.assignment.claimedByName}
                 syncPending={jobHasPendingSync(item.id)}
                 disabled={starting}
+                canEdit={can('engine_intake_execute')}
                 onPress={() => void claimAndOpen(item)}
+                onEdit={openEditSheet}
+                onCancel={cancelJob}
               />
             );
           }}
         />
       </View>
+
+      {/* Last child so the absolute overlay paints above the list (no Modal). */}
+      <IntakeCreateSerialSheet
+        ref={createSheetRef}
+        loading={starting}
+        onSubmit={handleSheetSubmit}
+      />
     </Screen>
   );
 }

@@ -7,7 +7,7 @@ import {
   View,
   type AppStateStatus,
 } from 'react-native';
-import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import {
   emptyEngineIntakeProgress,
@@ -38,6 +38,7 @@ import {
 } from './store/intake-outbox';
 import { engineIntakeId, getEngineIntakeDeviceId } from './lib/device';
 import { evidenceGuidance } from './lib/evidence-labels';
+import { openEngineIntakeBay } from './lib/open-engine-intake';
 
 function makeWorkerCommand(command: {
   type: EngineIntakeCommand['type'];
@@ -61,15 +62,23 @@ export function EngineIntakeSessionScreen() {
   const { companyId, uid, can } = useSession();
   const chrome = getColors('dark');
   const cameraRef = useRef<IntakeCameraHandle>(null);
+  const leftForClaimLossRef = useRef(false);
   const [flashOpacity] = useState(() => new Animated.Value(0));
   const [torch, setTorch] = useState(false);
-  const [capturing, setCapturing] = useState(false);
+  const capturing = useRef(false);
+  const [capturingUi, setCapturingUi] = useState(false);
   const [completedLocal, setCompletedLocal] = useState(false);
   const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
+  /** Server photo count frozen when the camera session opens — never re-add live progress. */
+  const serverBaselineRef = useRef<number | null>(null);
+  const countSeededRef = useRef(false);
+  /** Photos added this visit (shutter / gallery) — authoritative UI count delta. */
+  const [shotsAdded, setShotsAdded] = useState(0);
   const { jobs, loading: jobsLoading } = useEngineIntakeJobs(companyId);
   const job = jobs.find((item) => item.id === jobId);
   const detail = useEngineIntakeJobDetail(companyId, jobId || null);
   const activeSession = detail.sessions.find((session) => session.id === sessionId) ?? null;
+  const sessionState = activeSession?.state ?? 'active';
   const outbox = useEngineIntakeOutbox(companyId);
   const serverProgress = job?.progress ?? emptyEngineIntakeProgress();
   const localPhotos = outbox.photos.filter(
@@ -85,7 +94,22 @@ export function EngineIntakeSessionScreen() {
       item.command.payload.sessionId === sessionId,
   );
   const completionPending = completedLocal || hasQueuedFieldCompletion;
-  const photoCount = serverProgress.capturedCount + localPhotos.length;
+
+  // Seed once: baseline = server count at open; include any already-queued local
+  // shots so reopen still looks right — do NOT keep adding live `capturedCount`
+  // (that double-counts while outbox rows are still uploading).
+  useEffect(() => {
+    if (countSeededRef.current || !job || !companyId || !jobId) return;
+    countSeededRef.current = true;
+    serverBaselineRef.current = serverProgress.capturedCount;
+    setShotsAdded(
+      outbox.photos.filter(
+        (photo) => photo.companyId === companyId && photo.jobId === jobId,
+      ).length,
+    );
+  }, [companyId, job, jobId, outbox.photos, serverProgress.capturedCount]);
+
+  const photoCount = (serverBaselineRef.current ?? 0) + shotsAdded;
   const unsyncedCount = pendingLocalPhotos.length + failedPhotos.length;
   const syncError =
     failedPhotos.map((photo) => photo.lastError).find(Boolean) ??
@@ -104,7 +128,7 @@ export function EngineIntakeSessionScreen() {
   const evidenceHint = evidenceGuidance(serverProgress);
   const guidance =
     photoCount === 0
-      ? 'Photograph naturally — AI organizes later'
+      ? 'Photograph the engine — capture freely'
       : evidenceHint
         ? evidenceHint
         : unsyncedCount > 0
@@ -133,7 +157,7 @@ export function EngineIntakeSessionScreen() {
         !isServerComplete &&
         previous === 'active' &&
         next !== 'active' &&
-        activeSession?.state === 'active'
+        sessionState === 'active'
       ) {
         void sendOrQueueIntakeCommand(
           companyId,
@@ -147,7 +171,7 @@ export function EngineIntakeSessionScreen() {
     });
     return () => subscription.remove();
   }, [
-    activeSession?.state,
+    sessionState,
     companyId,
     completionPending,
     isServerComplete,
@@ -163,7 +187,7 @@ export function EngineIntakeSessionScreen() {
       completionPending ||
       isServerComplete ||
       appState !== 'active' ||
-      activeSession?.state !== 'paused'
+      sessionState !== 'paused'
     ) {
       return;
     }
@@ -175,7 +199,7 @@ export function EngineIntakeSessionScreen() {
       }),
     );
   }, [
-    activeSession?.state,
+    sessionState,
     appState,
     companyId,
     completionPending,
@@ -192,7 +216,7 @@ export function EngineIntakeSessionScreen() {
       completionPending ||
       isServerComplete ||
       appState !== 'active' ||
-      activeSession?.state !== 'active'
+      sessionState !== 'active'
     ) {
       return;
     }
@@ -209,7 +233,7 @@ export function EngineIntakeSessionScreen() {
     const timer = setInterval(heartbeat, 25_000);
     return () => clearInterval(timer);
   }, [
-    activeSession?.state,
+    sessionState,
     appState,
     companyId,
     completionPending,
@@ -219,21 +243,35 @@ export function EngineIntakeSessionScreen() {
   ]);
 
   useEffect(() => {
-    if (!job || !activeSession) return;
+    if (!job) return;
+    const pendingLocalClaim = outbox.commands.some(
+      (item) =>
+        item.companyId === companyId &&
+        (item.command.type === 'claim_job' || item.command.type === 'create_job') &&
+        'jobId' in item.command.payload &&
+        item.command.payload.jobId === jobId,
+    );
+    const assignmentMatches =
+      job.assignment.activeSessionId === sessionId && job.assignment.claimedByUid === uid;
     const claimLost =
       job.state === 'cancelled' ||
-      job.assignment.activeSessionId !== sessionId ||
-      job.assignment.claimedByUid !== uid ||
-      activeSession.state === 'stale' ||
-      activeSession.state === 'cancelled';
-    if (!claimLost) return;
+      (!pendingLocalClaim && !assignmentMatches) ||
+      activeSession?.state === 'stale' ||
+      activeSession?.state === 'cancelled';
+    if (!claimLost) {
+      leftForClaimLossRef.current = false;
+      return;
+    }
+    // One leave per claim-loss — job snapshots must not re-open the bay repeatedly.
+    if (leftForClaimLossRef.current) return;
+    leftForClaimLossRef.current = true;
     toast({
       title: job.state === 'cancelled' ? 'Engine cancelled' : 'Session claim was released',
       description: 'Your saved photos remain in the sync queue.',
       variant: 'warning',
     });
-    router.replace('/intake' as Href);
-  }, [activeSession, job, router, sessionId, uid]);
+    openEngineIntakeBay(router);
+  }, [activeSession, companyId, job, jobId, outbox.commands, router, sessionId, uid]);
 
   if (!can('engine_intake_execute')) {
     return (
@@ -255,7 +293,7 @@ export function EngineIntakeSessionScreen() {
     );
   }
 
-  if (jobsLoading || !job || !activeSession) {
+  if (jobsLoading || !job) {
     return (
       <ScreenGate
         variant="custom"
@@ -269,13 +307,22 @@ export function EngineIntakeSessionScreen() {
     job.assignment.activeSessionId !== sessionId ||
     job.assignment.claimedByUid !== uid
   ) {
-    return (
-      <ScreenGate
-        variant="custom"
-        title="Session claim unavailable"
-        description="Return to Engine intake and open this engine again."
-      />
+    const pendingLocalClaim = outbox.commands.some(
+      (item) =>
+        item.companyId === companyId &&
+        (item.command.type === 'claim_job' || item.command.type === 'create_job') &&
+        'jobId' in item.command.payload &&
+        item.command.payload.jobId === jobId,
     );
+    if (!pendingLocalClaim) {
+      return (
+        <ScreenGate
+          variant="custom"
+          title="Session claim unavailable"
+          description="Return to Engine intake and open this engine again."
+        />
+      );
+    }
   }
 
   const ingestPhotoUris = (uris: string[]) => {
@@ -299,11 +346,12 @@ export function EngineIntakeSessionScreen() {
     if (saved === 0) {
       throw new Error('Selected photos could not be saved');
     }
+    setShotsAdded((count) => count + saved);
     haptics.success();
     flashOpacity.setValue(0.55);
     Animated.timing(flashOpacity, {
       toValue: 0,
-      duration: 220,
+      duration: 160,
       useNativeDriver: true,
     }).start();
     void drainIntakeOutbox(companyId);
@@ -311,30 +359,43 @@ export function EngineIntakeSessionScreen() {
   };
 
   const takePhoto = async () => {
-    if (capturing) return;
-    setCapturing(true);
+    if (capturing.current) return;
+    capturing.current = true;
+    setCapturingUi(true);
     try {
       const captured = await cameraRef.current?.takePicture();
+      // Unlock shutter immediately — file copy / upload must not block the next shot.
+      capturing.current = false;
+      setCapturingUi(false);
       if (!captured?.uri) {
         haptics.error();
         toast({ title: 'Camera did not capture a photo', variant: 'warning' });
         return;
       }
-      ingestPhotoUris([captured.uri]);
+      try {
+        ingestPhotoUris([captured.uri]);
+      } catch (error) {
+        haptics.error();
+        toast({
+          title: 'Photo could not be saved',
+          description: error instanceof Error ? error.message : undefined,
+          variant: 'destructive',
+        });
+      }
     } catch (error) {
+      capturing.current = false;
+      setCapturingUi(false);
       haptics.error();
       toast({
         title: 'Photo could not be saved',
         description: error instanceof Error ? error.message : undefined,
         variant: 'destructive',
       });
-    } finally {
-      setCapturing(false);
     }
   };
 
   const pickFromGallery = async () => {
-    if (capturing) return;
+    if (capturing.current) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       toast({
@@ -346,7 +407,8 @@ export function EngineIntakeSessionScreen() {
       return;
     }
 
-    setCapturing(true);
+    capturing.current = true;
+    setCapturingUi(true);
     try {
       const pick = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
@@ -374,7 +436,8 @@ export function EngineIntakeSessionScreen() {
         variant: 'destructive',
       });
     } finally {
-      setCapturing(false);
+      capturing.current = false;
+      setCapturingUi(false);
     }
   };
 
@@ -388,7 +451,7 @@ export function EngineIntakeSessionScreen() {
         }),
       ).catch(() => null);
     }
-    router.replace('/intake' as Href);
+    openEngineIntakeBay(router);
   };
 
   const finishCapture = async (overrideReason?: string) => {
@@ -452,7 +515,7 @@ export function EngineIntakeSessionScreen() {
         pendingCount={jobOutboxCount}
         topInset={insets.top}
         bottomInset={insets.bottom}
-        onBack={() => router.replace('/intake' as Href)}
+        onBack={() => openEngineIntakeBay(router)}
       />
     );
   }
@@ -500,7 +563,7 @@ export function EngineIntakeSessionScreen() {
         unsyncedCount={unsyncedCount}
         failedCount={failedPhotos.length}
         syncErrorText={syncErrorText}
-        capturing={capturing}
+        capturing={capturingUi}
         onPickGallery={() => void pickFromGallery()}
         onShutter={() => void takePhoto()}
         onFinish={requestFinish}

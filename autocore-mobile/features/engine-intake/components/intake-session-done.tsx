@@ -59,7 +59,7 @@ export function IntakeSessionDone({
             style={{ color: colors.mutedForeground, textAlign: 'center', maxWidth: 320 }}
           >
             {synced
-              ? 'Field capture is complete. AI organizes photos; the team reviews when needed.'
+              ? 'Field capture is complete. The team reviews photos when needed.'
               : `${Math.max(pendingCount, 1)} items will sync when the connection returns.`}
           </Text>
         </View>

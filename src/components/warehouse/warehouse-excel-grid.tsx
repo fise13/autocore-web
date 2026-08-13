@@ -43,6 +43,10 @@ import type { DomainCategory } from "@/lib/domain/types";
 import { filterColumnSuggestions, resolveGridColumnAutocomplete } from "@/lib/grid/grid-column-autocomplete";
 import { gridPalette } from "@/lib/grid/grid-palette";
 import {
+  parseGridPhotoUrls,
+  serializeGridPhotoUrls,
+} from "@/lib/grid/photo-urls";
+import {
   applyWarehouseDraftField,
   applyWarehouseDraftImageUrls,
   buildSavedRowFromCreate,
@@ -131,6 +135,10 @@ function isEditableColumn(column: number): boolean {
   return isWarehouseEditableColumn(column);
 }
 
+function isClearableColumn(column: number): boolean {
+  return isEditableColumn(column) || column === WAREHOUSE_PHOTO_COLUMN;
+}
+
 function parseGridNumber(value: string): number | undefined {
   if (!value.trim()) return undefined;
   const parsed = parseGroupedNumber(value);
@@ -179,7 +187,7 @@ function valueAtCell(row: WarehouseGridRow, column: number): string {
       case 13:
         return row.quality ?? "";
       case 14:
-        return "";
+        return serializeGridPhotoUrls(row.imageUrls);
       case 15:
         return formatOptionalGridNumber(row.lowStockThreshold);
       case 16:
@@ -212,7 +220,7 @@ function valueAtCell(row: WarehouseGridRow, column: number): string {
     case 13:
       return row.draft.quality;
     case 14:
-      return "";
+      return serializeGridPhotoUrls(row.draft.imageUrls);
     case 15:
       return formatDraftGridNumber(row.draft.lowStockThreshold);
     default:
@@ -262,6 +270,9 @@ function applyCellValue(row: WarehouseGridRow, column: number, value: string): W
       case 13:
         next.quality = value;
         break;
+      case 14:
+        next.imageUrls = parseGridPhotoUrls(value);
+        break;
       case 15:
         next.lowStockThreshold = parseGridNumber(value);
         break;
@@ -293,6 +304,8 @@ function applyCellValue(row: WarehouseGridRow, column: number, value: string): W
       return applyWarehouseDraftField(row, "notes", value);
     case 13:
       return applyWarehouseDraftField(row, "quality", value);
+    case 14:
+      return applyWarehouseDraftImageUrls(row, parseGridPhotoUrls(value));
     case 15:
       return applyWarehouseDraftField(row, "lowStockThreshold", value);
     default:
@@ -578,17 +591,17 @@ export function WarehouseExcelGrid({
     }
   }, [scheduleDirtyStatus]);
 
-  const setCell = useCallback((cell: GridCellAddress, newValue: string, options?: { trackUndo?: boolean; markDirty?: boolean }) => {
+  const setCell = useCallback((cell: GridCellAddress, newValue: string, options?: { trackUndo?: boolean; markDirty?: boolean; label?: string }) => {
     const applyToRows = (current: WarehouseGridRow[]) => {
       const row = current[cell.row];
-      if (!row || !isEditableColumn(cell.column)) return current;
+      if (!row || !isClearableColumn(cell.column)) return current;
       const oldValue = valueAtCell(row, cell.column);
       if (oldValue === newValue) return current;
       const next = [...current];
       const updatedRow = applyCellValue(row, cell.column, newValue);
       next[cell.row] = updatedRow;
       if (options?.trackUndo !== false) {
-        commandBusRef.current.commit("Edit Cell", [
+        commandBusRef.current.commit(options?.label ?? "Edit Cell", [
           { address: cell, oldValue, newValue },
         ]);
       }
@@ -1166,7 +1179,7 @@ export function WarehouseExcelGrid({
       setRows((current) => {
         const next = [...current];
         for (const write of writes) {
-          if (!isEditableColumn(write.column)) continue;
+          if (!isClearableColumn(write.column)) continue;
           const rowRef = next[write.row];
           if (!rowRef) continue;
           const oldValue = valueAtCell(rowRef, write.column);
@@ -1221,6 +1234,8 @@ export function WarehouseExcelGrid({
     clearSelection,
     fillDown,
     handleKeyDown,
+    handleKeyUp,
+    handleBlur,
   } = useExcelGridInteraction({
     canEdit,
     isEditing: Boolean(editor),
@@ -1234,6 +1249,7 @@ export function WarehouseExcelGrid({
     navigableColumns: NAVIGABLE_COLUMNS,
     valueAt,
     isEditableColumn,
+    isClearableColumn,
     mapClearColumn: resolveWarehouseClearColumn,
     applyCellWrites,
     ensureRowCapacity,
@@ -1368,6 +1384,8 @@ export function WarehouseExcelGrid({
         data-context-menu-scope="local"
         className="relative min-h-0 flex-1 overflow-hidden outline-none"
         onKeyDown={handleKeyDown}
+        onKeyUp={handleKeyUp}
+        onBlur={handleBlur}
       >
         <div
           className="absolute inset-0 overflow-auto bg-background excel-grid-scroll"
@@ -1581,13 +1599,18 @@ export function WarehouseExcelGrid({
                                 entityKind="warehouse"
                                 entityId={row.id}
                                 onChange={(urls) => {
-                                  markDirty(row.rowId);
-                                  setRows((current) =>
-                                    current.map((entry) =>
-                                      entry.rowId === row.rowId && entry.rowKind === "saved"
-                                        ? { ...entry, imageUrls: urls }
-                                        : entry,
-                                    ),
+                                  const oldValue = serializeGridPhotoUrls(row.imageUrls);
+                                  const newValue = serializeGridPhotoUrls(urls);
+                                  if (oldValue === newValue) return;
+                                  setCell(
+                                    { row: rowIdx, column: WAREHOUSE_PHOTO_COLUMN },
+                                    newValue,
+                                    {
+                                      label:
+                                        urls.length < (row.imageUrls?.length ?? 0)
+                                          ? "Remove Photos"
+                                          : "Edit Photos",
+                                    },
                                   );
                                 }}
                               />
@@ -1598,13 +1621,18 @@ export function WarehouseExcelGrid({
                                 entityKind="warehouse"
                                 entityId={row.rowId}
                                 onChange={(urls) => {
-                                  markDirty(row.rowId);
-                                  setRows((current) =>
-                                    current.map((entry) =>
-                                      entry.rowId === row.rowId
-                                        ? applyWarehouseDraftImageUrls(entry, urls)
-                                        : entry,
-                                    ),
+                                  const oldValue = serializeGridPhotoUrls(row.draft.imageUrls);
+                                  const newValue = serializeGridPhotoUrls(urls);
+                                  if (oldValue === newValue) return;
+                                  setCell(
+                                    { row: rowIdx, column: WAREHOUSE_PHOTO_COLUMN },
+                                    newValue,
+                                    {
+                                      label:
+                                        urls.length < row.draft.imageUrls.length
+                                          ? "Remove Photos"
+                                          : "Edit Photos",
+                                    },
                                   );
                                 }}
                               />

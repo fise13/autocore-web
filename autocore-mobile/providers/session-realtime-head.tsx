@@ -13,7 +13,8 @@ import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import { useVehiclesRealtime } from '@/hooks/use-vehicles-realtime';
 import { useWarehousesRealtime } from '@/hooks/use-warehouses-realtime';
 import { useWorkOrdersRealtime } from '@/hooks/use-work-orders-realtime';
-import { isProductionCompanyId, normalizeCompanyId } from '@/lib/company-id';
+import { isProductionCompanyId } from '@/lib/company-id';
+import { resolveSessionCompanyId } from '@/lib/session/merge-hydration';
 import {
   preloadSessionSnapshots,
   preloadSessionSnapshotsChunked,
@@ -36,17 +37,18 @@ const HEAVY_LISTENERS_DELAY_MS = 2_500;
  */
 export function SessionRealtimeHead() {
   const profile = useAuthStore((s) => s.profile);
+  const memberships = useAuthStore((s) => s.memberships);
   const firebaseUser = useAuthStore((s) => s.firebaseUser);
   const status = useAuthStore((s) => s.status);
   const rbac = useRbacPolicy();
   const [heavyEnabled, setHeavyEnabled] = useState(false);
 
-  const companyId = normalizeCompanyId(profile?.companyId);
+  const companyId = resolveSessionCompanyId(profile, memberships) ?? '';
   const uid = firebaseUser?.uid ?? null;
   const hasAccess =
     status === 'authenticated' &&
     rbac.isActive &&
-    isProductionCompanyId(profile?.companyId);
+    isProductionCompanyId(companyId);
   const active = Boolean(hasAccess && isProductionCompanyId(companyId));
   const prevCompanyIdRef = useRef<string | null>(null);
 

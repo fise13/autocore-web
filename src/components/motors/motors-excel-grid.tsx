@@ -21,6 +21,16 @@ import { usePanelActive } from "@/components/layout/panel-active-context";
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { GridZoomControl } from "@/components/motors/grid-zoom-control";
 import { MotorDocumentsDialog, MotorHistoryDialog } from "@/components/motors/motor-documents-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { isMotorAvailableForSale, type MotorEntity } from "@/domain/motor";
 import {
   buildGridRows,
@@ -32,6 +42,13 @@ import {
   MotorRowDefaults,
   rowFieldValueByModelField,
 } from "@/lib/grid/grid-data-store";
+import { deleteGridRowPhotos } from "@/lib/grid/delete-grid-row-photos";
+import { buildClearWrites } from "@/lib/grid/excel-clipboard";
+import { planPhotoClearOnClear } from "@/lib/grid/plan-photo-clear-on-clear";
+import {
+  parseGridPhotoUrls,
+  serializeGridPhotoUrls,
+} from "@/lib/grid/photo-urls";
 import { useExcelGridInteraction } from "@/hooks/use-excel-grid-interaction";
 import { buildFillOperations, resolveFillDragTarget } from "@/lib/grid/grid-fill-engine";
 import { buildGridLayoutMetrics, cellFrame } from "@/lib/grid/grid-layout-engine";
@@ -60,6 +77,10 @@ import {
   MOTOR_GRID_EMPTY_ROWS_EXPAND,
   MOTOR_GRID_EMPTY_ROWS_THRESHOLD,
 } from "@/lib/motor-grid-layout";
+import {
+  motorQualityBadgeVariant,
+  resolveMotorQualityTone,
+} from "@/lib/motors/motor-quality-tone";
 import { MotorRepository } from "@/infrastructure/firestore/motor-repository";
 import { BrandEntity, CatalogRepository, EngineEntity } from "@/infrastructure/firestore/catalog-repository";
 import { resolveGridColumnAutocomplete, pickColumnAutocompleteMatch, filterColumnSuggestions } from "@/lib/grid/grid-column-autocomplete";
@@ -105,6 +126,13 @@ type ContextMenuState = {
   y: number;
   cell: GridCellAddress;
   selected: MotorEntity[];
+};
+
+type PendingPhotoClear = {
+  photoCount: number;
+  rowIndexes: number[];
+  urls: string[];
+  performClear: () => void;
 };
 
 function motorGridCellClass(columnId: string): string {
@@ -165,6 +193,18 @@ function isEditableColumn(column: number, columns: GridColumnDefinition[]): bool
   return Boolean(def?.editable && def.modelField);
 }
 
+/** Photo cells accept Clear/Delete but never open the text editor. */
+function isClearableColumn(column: number, columns: GridColumnDefinition[]): boolean {
+  const def = columnAt(columns, column);
+  if (!def?.modelField) return false;
+  if (def.cellKind === "photo") return true;
+  return Boolean(def.editable);
+}
+
+function photoColumnIndex(columns: GridColumnDefinition[]): number {
+  return columns.findIndex((column) => column.cellKind === "photo");
+}
+
 function isDateColumn(column: number, columns: GridColumnDefinition[]): boolean {
   const id = columnIdAt(columns, column);
   return id === "arrivalDate" || id === "soldDate";
@@ -203,6 +243,9 @@ function applyCellValue(
       break;
     case "quality":
       next.quality = value;
+      break;
+    case "photoUrls":
+      next.photoUrls = parseGridPhotoUrls(value);
       break;
     case "quantity": {
       const parsed = Number(value);
@@ -375,6 +418,7 @@ export function MotorsExcelGrid({
   const companyIdRef = useRef(companyId);
   const dirtyRowsRef = useRef<Set<string>>(new Set());
   const localSaveAckRef = useRef<Set<string>>(new Set());
+  const pendingMediaDeletionRef = useRef<string[]>([]);
   const cmdADoubleTapRef = useRef(0);
   const isDraggingSelectionRef = useRef(false);
   const pendingSelectionDragRef = useRef<{
@@ -436,6 +480,7 @@ export function MotorsExcelGrid({
   const [saveFlashRows, setSaveFlashRows] = useState<Set<string>>(new Set());
   const [documentsMotor, setDocumentsMotor] = useState<MotorEntity | null>(null);
   const [historyMotor, setHistoryMotor] = useState<MotorEntity | null>(null);
+  const [pendingPhotoClear, setPendingPhotoClear] = useState<PendingPhotoClear | null>(null);
 
   useEffect(() => {
     const companyChanged = companyIdRef.current !== companyId;
@@ -587,10 +632,10 @@ export function MotorsExcelGrid({
     }
   }, [scheduleDirtyStatus]);
 
-  const setCell = useCallback((cell: GridCellAddress, newValue: string, options?: { trackUndo?: boolean; markDirty?: boolean }) => {
+  const setCell = useCallback((cell: GridCellAddress, newValue: string, options?: { trackUndo?: boolean; markDirty?: boolean; label?: string }) => {
     const applyToRows = (current: MotorGridRow[]) => {
       const row = current[cell.row];
-      if (!row || !isEditableColumn(cell.column, layoutColumns)) return current;
+      if (!row || !isClearableColumn(cell.column, layoutColumns)) return current;
       const oldValue = valueAtCell(row, cell.column, layoutColumns);
       if (oldValue === newValue) return current;
       const next = [...current];
@@ -604,7 +649,7 @@ export function MotorsExcelGrid({
       }
       next[cell.row] = updatedRow;
       if (options?.trackUndo !== false) {
-        commandBusRef.current.commit("Edit Cell", [
+        commandBusRef.current.commit(options?.label ?? "Edit Cell", [
           { address: cell, oldValue, newValue },
         ]);
       }
@@ -679,6 +724,7 @@ export function MotorsExcelGrid({
       const parallelTasks: Array<Promise<void>> = [];
       const catalogRows: MotorGridRow[] = [];
       const softDeletedIds = new Set<string>();
+      const mediaToDelete: string[] = [...pendingMediaDeletionRef.current];
       let workingBrands =
         catalogBrandsRef.current.length > 0 ? catalogBrandsRef.current : brands;
       let workingEngines =
@@ -730,6 +776,8 @@ export function MotorsExcelGrid({
         }
         // Match create/keep rules — brand/engine-only rows must not be soft-deleted.
         if (!hasSaveableContent(row)) {
+          const baseline = baselineById.get(row.id);
+          mediaToDelete.push(...(baseline?.photoUrls ?? row.photoUrls ?? []));
           resolvedDirtyIds.add(rowId);
           softDeletedIds.add(row.id);
           parallelTasks.push(
@@ -739,6 +787,8 @@ export function MotorsExcelGrid({
               serialCode: row.serialCode,
               configuration: row.configuration,
               notes: row.notes,
+              quality: row.quality ?? "",
+              photoUrls: [],
               quantity: row.quantity,
               transmission: row.transmission,
               arrivalDate: row.arrivalDate,
@@ -766,6 +816,10 @@ export function MotorsExcelGrid({
         if (!changed) {
           resolvedDirtyIds.add(rowId);
           continue;
+        }
+        const keptPhotos = new Set(row.photoUrls ?? []);
+        for (const url of baseline.photoUrls ?? []) {
+          if (!keptPhotos.has(url)) mediaToDelete.push(url);
         }
         catalogRows.push(row);
         resolvedDirtyIds.add(rowId);
@@ -811,6 +865,18 @@ export function MotorsExcelGrid({
         rowReplacements.set(outcome.rowId, buildSavedMotorRowFromCreate(emptyRow, outcome.motorId, companyId));
       }
       await Promise.all(parallelTasks);
+
+      const uniqueMediaToDelete = [...new Set(mediaToDelete.map((url) => url.trim()).filter(Boolean))];
+      if (uniqueMediaToDelete.length > 0) {
+        try {
+          await deleteGridRowPhotos(uniqueMediaToDelete);
+        } catch (error) {
+          console.error("[motors-excel-grid] media cleanup failed", error);
+        }
+        pendingMediaDeletionRef.current = pendingMediaDeletionRef.current.filter(
+          (url) => !uniqueMediaToDelete.includes(url),
+        );
+      }
 
       for (const row of catalogRows) {
         if (!catalogRepository) continue;
@@ -1100,7 +1166,7 @@ export function MotorsExcelGrid({
       const current = rowsRef.current;
       const next = [...current];
       for (const write of writes) {
-        if (!isEditableColumn(write.column, layoutColumns)) continue;
+        if (!isClearableColumn(write.column, layoutColumns)) continue;
         const rowRef = next[write.row];
         if (!rowRef) continue;
         const oldValue = valueAtCell(rowRef, write.column, layoutColumns);
@@ -1150,6 +1216,55 @@ export function MotorsExcelGrid({
     [layoutColumns, rows],
   );
 
+  const interceptClearSelection = useCallback(
+    (performClear: () => void) => {
+      const ranges = allRanges(selectionRef.current);
+      const plan = planPhotoClearOnClear({
+        ranges,
+        rows: rowsRef.current,
+        isEditableColumn: (column) => isEditableColumn(column, layoutColumns),
+        applyClearedValue: (row, column) => applyCellValue(row, column, "", layoutColumns),
+      });
+      if (plan.photoCount > 0) {
+        setPendingPhotoClear({
+          photoCount: plan.photoCount,
+          rowIndexes: plan.rowIndexes,
+          urls: plan.urls,
+          performClear,
+        });
+        return;
+      }
+      performClear();
+    },
+    [layoutColumns],
+  );
+
+  const confirmPendingPhotoClear = useCallback(() => {
+    const pending = pendingPhotoClear;
+    if (!pending) return;
+    setPendingPhotoClear(null);
+
+    const ranges = allRanges(selectionRef.current);
+    const writes = buildClearWrites({
+      ranges,
+      valueAt: (row, column) => valueAtCell(rowsRef.current[row], column, layoutColumns),
+      isEditableColumn: (column) => isClearableColumn(column, layoutColumns),
+    });
+    const photoCol = photoColumnIndex(layoutColumns);
+    if (photoCol >= 0) {
+      const seen = new Set(writes.map((write) => `${write.row}:${write.column}`));
+      for (const rowIndex of pending.rowIndexes) {
+        const row = rowsRef.current[rowIndex];
+        if (!row?.photoUrls?.length) continue;
+        const key = `${rowIndex}:${photoCol}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        writes.push({ row: rowIndex, column: photoCol, value: "" });
+      }
+    }
+    applyCellWrites("Clear", writes);
+  }, [applyCellWrites, layoutColumns, pendingPhotoClear]);
+
   const {
     copySelection,
     cutSelection,
@@ -1157,6 +1272,8 @@ export function MotorsExcelGrid({
     clearSelection,
     fillDown,
     handleKeyDown,
+    handleKeyUp,
+    handleBlur,
   } = useExcelGridInteraction({
     canEdit,
     isEditing: Boolean(editor),
@@ -1170,6 +1287,7 @@ export function MotorsExcelGrid({
     navigableColumns,
     valueAt,
     isEditableColumn: (column) => isEditableColumn(column, layoutColumns),
+    isClearableColumn: (column) => isClearableColumn(column, layoutColumns),
     applyCellWrites,
     ensureRowCapacity,
     beginEdit,
@@ -1177,6 +1295,7 @@ export function MotorsExcelGrid({
     performRedo,
     scrollByPage,
     cmdADoubleTapRef,
+    interceptClearSelection,
   });
 
   useEffect(() => {
@@ -1225,6 +1344,8 @@ export function MotorsExcelGrid({
         data-context-menu-scope="local"
         className="relative min-h-0 flex-1 overflow-hidden outline-none"
         onKeyDown={handleKeyDown}
+        onKeyUp={handleKeyUp}
+        onBlur={handleBlur}
       >
         <div
           className="absolute inset-0 overflow-auto bg-background excel-grid-scroll"
@@ -1357,6 +1478,8 @@ export function MotorsExcelGrid({
                             : column.id === "soldDate"
                               ? (row.soldDate ? formatMotorDate(row.soldDate) : "")
                               : valueAtCell(row, colIdx, layoutColumns);
+                      const qualityTone =
+                        column.id === "quality" ? resolveMotorQualityTone(displayValue) : null;
 
                       return (
                         <div
@@ -1455,17 +1578,33 @@ export function MotorsExcelGrid({
                                 entityKind="motor"
                                 entityId={row.id}
                                 onChange={(urls) => {
-                                  markDirty(row.rowId);
-                                  setRows((current) =>
-                                    current.map((entry) =>
-                                      entry.rowId === row.rowId ? { ...entry, photoUrls: urls } : entry,
-                                    ),
+                                  const photoCol = photoColumnIndex(layoutColumns);
+                                  if (photoCol < 0) return;
+                                  const oldValue = serializeGridPhotoUrls(row.photoUrls);
+                                  const newValue = serializeGridPhotoUrls(urls);
+                                  if (oldValue === newValue) return;
+                                  setCell(
+                                    { row: rowIdx, column: photoCol },
+                                    newValue,
+                                    {
+                                      label:
+                                        urls.length < (row.photoUrls?.length ?? 0)
+                                          ? "Remove Photos"
+                                          : "Edit Photos",
+                                    },
                                   );
                                 }}
                               />
                             ) : (
                               <GridPhotoCellDisabledHint />
                             )
+                          ) : qualityTone ? (
+                            <Badge
+                              variant={motorQualityBadgeVariant(qualityTone)}
+                              className="pointer-events-none h-5 min-w-5 justify-center px-1.5 font-semibold tabular-nums"
+                            >
+                              {displayValue.trim()}
+                            </Badge>
                           ) : (
                             <span className="truncate">{displayValue}</span>
                           )}
@@ -1729,6 +1868,32 @@ export function MotorsExcelGrid({
           if (!open) setDocumentsMotor(null);
         }}
       />
+
+      <Dialog
+        open={Boolean(pendingPhotoClear)}
+        onOpenChange={(open) => {
+          if (!open) setPendingPhotoClear(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{userCopy.gridPhotos.confirmDeletePhotosTitle}</DialogTitle>
+            <DialogDescription>
+              {userCopy.gridPhotos.confirmDeletePhotosDescription(
+                pendingPhotoClear?.photoCount ?? 0,
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setPendingPhotoClear(null)}>
+              {userCopy.gridPhotos.confirmDeletePhotosCancel}
+            </Button>
+            <Button type="button" variant="destructive" onClick={confirmPendingPhotoClear}>
+              {userCopy.gridPhotos.confirmDeletePhotosConfirm}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

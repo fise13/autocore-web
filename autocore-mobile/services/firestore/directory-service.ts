@@ -3,7 +3,6 @@ import {
   collection,
   deleteDoc,
   doc,
-  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
@@ -11,6 +10,7 @@ import {
 } from 'firebase/firestore';
 
 import { toDateFromFirestore } from '@/lib/firestore-timestamp';
+import { listenQuery } from '@/lib/firestore/trusted-snapshot';
 import { getFirebaseDb } from '@/services/firebase';
 import type { DirectoryPerson, DirectoryPersonStatus } from '@/types/rbac';
 
@@ -48,7 +48,7 @@ export function subscribeCompanyDirectory(
 ): () => void {
   const directoryQuery = query(directoryCollection(companyId), orderBy('createdAt', 'desc'));
 
-  return onSnapshot(
+  return listenQuery(
     directoryQuery,
     (snapshot) => {
       const people = snapshot.docs
@@ -58,7 +58,7 @@ export function subscribeCompanyDirectory(
         .filter((entry): entry is DirectoryPerson => entry != null);
       onData(people);
     },
-    (error) => onError?.(error),
+    onError,
   );
 }
 

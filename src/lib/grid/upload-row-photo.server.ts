@@ -150,3 +150,34 @@ export async function finalizeRowMediaUpload(input: {
 export function validateRowPhotoFile(file: { size: number; type: string; name?: string }) {
   return assertRowPhotoUpload(file);
 }
+
+/** Deletes row-photo objects; missing files are ignored. */
+export async function deleteRowPhotosAdmin(input: {
+  companyId: string;
+  storagePaths: string[];
+}): Promise<{ deleted: number }> {
+  const companyId = normalizeCompanyId(input.companyId);
+  const prefix = `companies/${companyId}/row-photos/`;
+  const unique = [
+    ...new Set(
+      input.storagePaths
+        .map((path) => path.trim())
+        .filter((path) => path.startsWith(prefix)),
+    ),
+  ];
+  if (unique.length === 0) return { deleted: 0 };
+
+  const bucket = await resolveAdminStorageBucket();
+  let deleted = 0;
+  await Promise.all(
+    unique.map(async (storagePath) => {
+      try {
+        await bucket.file(storagePath).delete({ ignoreNotFound: true });
+        deleted += 1;
+      } catch {
+        // Best-effort cleanup; Firestore already dropped the URL.
+      }
+    }),
+  );
+  return { deleted };
+}

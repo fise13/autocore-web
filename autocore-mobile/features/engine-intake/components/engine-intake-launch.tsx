@@ -1,15 +1,16 @@
 import { Pressable, View } from 'react-native';
-import { useRouter, type Href } from 'expo-router';
+import { useRouter } from 'expo-router';
 
 import { CameraIcon, ChevronRightIcon } from '@/assets/icons';
 import { Text } from '@/components/ui';
 import { useEngineIntakeJobs } from '@/features/engine-intake/hooks/use-engine-intake-data';
+import { openEngineIntakeBay } from '@/features/engine-intake/lib/open-engine-intake';
 import { useSession, useTheme } from '@/hooks';
 import { haptics, minTouchTarget, spacing, tokens } from '@/theme';
 
 /**
  * Overview launch card — opens Engine intake bay.
- * Mirrors bay language: serial → free photos → async AI evidence → review.
+ * Mirrors bay language: serial → free photos → review.
  */
 export function IntakeLaunchCard() {
   const router = useRouter();
@@ -36,7 +37,7 @@ export function IntakeLaunchCard() {
       accessibilityLabel="Open engine intake"
       onPress={() => {
         haptics.selection();
-        router.push('/intake' as Href);
+        openEngineIntakeBay(router);
       }}
     >
       {({ pressed }) => (

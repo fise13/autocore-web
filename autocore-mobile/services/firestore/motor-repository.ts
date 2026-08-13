@@ -3,7 +3,6 @@ import {
   collectionGroup,
   doc,
   limit,
-  onSnapshot,
   query,
   serverTimestamp,
   setDoc,
@@ -12,7 +11,7 @@ import {
 
 import { normalizeCompanyId } from '@/lib/company-id';
 import { dateMs, toDateFromFirestore } from '@/lib/firestore-timestamp';
-import { notifyFirestoreSnapshotError } from '@/lib/firestore/snapshot-errors';
+import { listenQuery } from '@/lib/firestore/trusted-snapshot';
 import { getFirebaseDb } from '@/services/firebase';
 import { MOTOR_STATUSES, type MotorEntity, type MotorFilters } from '@/types/motor';
 
@@ -68,6 +67,9 @@ function mapMotor(docId: string, data: Record<string, unknown>): MotorEntity | n
       typeof data.primaryLocationId === 'string' ? data.primaryLocationId : undefined,
     primaryLocationCode:
       typeof data.primaryLocationCode === 'string' ? data.primaryLocationCode : undefined,
+    photoUrls: Array.isArray(data.photoUrls)
+      ? data.photoUrls.map((url) => String(url).trim()).filter(Boolean)
+      : undefined,
     status,
     intakeJobId: typeof data.intakeJobId === 'string' ? data.intakeJobId : null,
     intakeStatus: typeof data.intakeStatus === 'string' ? data.intakeStatus : null,
@@ -225,7 +227,7 @@ export function createMotorRepository() {
         where('companyId', '==', companyId),
         limit(500),
       );
-      const unsubGroup = onSnapshot(
+      const unsubGroup = listenQuery(
         groupQuery,
         (snapshot) => {
           ingest('group', snapshot.docs);
@@ -235,7 +237,7 @@ export function createMotorRepository() {
         (error) => {
           sourceReady.group = true;
           emit();
-          notifyFirestoreSnapshotError(error, onError);
+          onError?.(error);
         },
       );
 
@@ -246,7 +248,7 @@ export function createMotorRepository() {
       }
 
       const userQuery = query(collection(db, 'users', filters.uid, 'motors'), limit(500));
-      const unsubUser = onSnapshot(
+      const unsubUser = listenQuery(
         userQuery,
         (snapshot) => {
           ingest('user', snapshot.docs);
@@ -256,7 +258,7 @@ export function createMotorRepository() {
         (error) => {
           sourceReady.user = true;
           emit();
-          notifyFirestoreSnapshotError(error, onError);
+          onError?.(error);
         },
       );
 

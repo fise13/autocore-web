@@ -1,7 +1,7 @@
 import { RefObject, useCallback, useEffect } from "react";
 
 import { GridCellAddress, GridRange } from "@/lib/grid/grid-types";
-import { GridSelectionState, primaryRange } from "@/lib/grid/selection-controller";
+import { GridSelectionState } from "@/lib/grid/selection-controller";
 
 export type GridCellFrame = {
   x: number;
@@ -84,8 +84,10 @@ export function useGridScrollIntoView({
   );
 
   useEffect(() => {
-    scrollToRange(primaryRange(selection));
-  }, [scrollToRange, selection]);
+    // Excel keeps the *active* cell (head) in view when extending a selection,
+    // not the top-left corner of the range.
+    scrollToCell(selection.head);
+  }, [scrollToCell, selection.head.column, selection.head.row]);
 
   return { scrollToCell, scrollToRange };
 }

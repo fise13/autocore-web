@@ -2,7 +2,6 @@ import {
   collection,
   doc,
   getDoc,
-  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
@@ -10,6 +9,7 @@ import {
 } from 'firebase/firestore';
 
 import { toDateFromFirestore } from '@/lib/firestore-timestamp';
+import { listenQuery } from '@/lib/firestore/trusted-snapshot';
 import { removeMemberFromCompany, setMemberActive as setMemberActiveViaApi } from '@/services/api/org-api';
 import { getFirebaseDb } from '@/services/firebase';
 import type { CompanyEmployee } from '@/types/rbac';
@@ -43,12 +43,12 @@ export function subscribeCompanyEmployees(
     orderBy('fullName'),
   );
 
-  return onSnapshot(
+  return listenQuery(
     employeesQuery,
     (snapshot) => {
       onData(snapshot.docs.map((entry) => mapEmployee(companyId, entry.id, entry.data() as Record<string, unknown>)));
     },
-    (error) => onError?.(error),
+    onError,
   );
 }
 

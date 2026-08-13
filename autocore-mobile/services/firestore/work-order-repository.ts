@@ -3,7 +3,6 @@ import {
   doc,
   getDoc,
   limit,
-  onSnapshot,
   orderBy,
   query,
   runTransaction,
@@ -15,7 +14,7 @@ import {
 import { createWorkOrderSchema } from '@/domain/schemas';
 import { normalizeCompanyId } from '@/lib/company-id';
 import { toDateFromFirestore } from '@/lib/firestore-timestamp';
-import { notifyFirestoreSnapshotError } from '@/lib/firestore/snapshot-errors';
+import { listenQuery } from '@/lib/firestore/trusted-snapshot';
 import { stripUndefinedDeep } from '@/lib/firestore/strip-undefined';
 import { getFirebaseDb } from '@/services/firebase';
 import type {
@@ -126,14 +125,14 @@ export function createWorkOrderRepository() {
       }
 
       const q = query(workOrdersRef(companyId), orderBy('updatedAt', 'desc'), limit(200));
-      return onSnapshot(
+      return listenQuery(
         q,
         (snapshot) => {
           onData(
             snapshot.docs.map((item) => mapWorkOrder(item.id, item.data() as Record<string, unknown>)),
           );
         },
-        (error) => notifyFirestoreSnapshotError(error, onError),
+        onError,
       );
     },
 

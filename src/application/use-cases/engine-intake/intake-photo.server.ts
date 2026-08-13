@@ -543,8 +543,15 @@ export async function finalizeIntakePhoto(
     downloadToken: input.downloadToken,
     contentType: validation.contentType,
   });
+  // Trust the object in Storage. RN `File.size` and GCS metadata can disagree
+  // after a background URLSession PUT or a retried upload; an empty/oversize
+  // object is already rejected inside `finalizeIntakePhotoUpload`.
   if (finalized.sizeBytes !== input.sizeBytes) {
-    throw new EngineIntakeCommandError("Uploaded photo size does not match the capture", 409);
+    console.warn("[engine-intake/finalize] size mismatch", {
+      stored: finalized.sizeBytes,
+      claimed: input.sizeBytes,
+      photoId: input.photoId,
+    });
   }
   const aiInspectionId = `${input.photoId}-latest`;
 

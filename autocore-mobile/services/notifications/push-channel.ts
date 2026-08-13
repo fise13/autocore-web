@@ -207,7 +207,12 @@ export async function ensurePushDeviceRegistered(
     promptIfUndetermined?: boolean;
   },
 ): Promise<void> {
-  if (!pushEnabled || !Device.isDevice) return;
+  if (!pushEnabled) return;
+
+  if (!Device.isDevice) {
+    logPushIssue('skip registration — physical device required (simulator/Expo Go cannot receive APNs/FCM)');
+    return;
+  }
 
   if (pushRegistrationPromise) {
     await pushRegistrationPromise;
@@ -223,12 +228,17 @@ export async function ensurePushDeviceRegistered(
 
     const { token, permission } = await setupPushToken({ requestPermission: shouldPrompt });
     if (permission !== 'granted') {
+      // Clear so a later grant (Settings → back to app) re-registers cleanly.
+      registeredToken = null;
       if (permission === 'denied') {
-        logPushIssue('notification permission denied');
+        logPushIssue('notification permission denied — enable in system Settings');
       }
       return;
     }
-    if (!token) return;
+    if (!token) {
+      logPushIssue('permission granted but Expo push token unavailable');
+      return;
+    }
     if (token === registeredToken) return;
 
     await registerPushDevice(token);
@@ -241,6 +251,8 @@ export async function ensurePushDeviceRegistered(
   try {
     await pushRegistrationPromise;
   } catch (error) {
+    // Allow retry on next AppState active / settings toggle.
+    registeredToken = null;
     logPushIssue('device registration failed', error);
   } finally {
     pushRegistrationPromise = null;
@@ -337,7 +349,16 @@ export async function scheduleLocalNotification(options: {
 }
 
 export async function cancelLocalNotification(id: string): Promise<void> {
-  await Notifications.cancelScheduledNotificationAsync(id);
+  try {
+    await Notifications.cancelScheduledNotificationAsync(id);
+  } catch {
+    // May already have fired (trigger: null).
+  }
+  try {
+    await Notifications.dismissNotificationAsync(id);
+  } catch {
+    // Already dismissed or never presented.
+  }
 }
 
 export type PushTapHandler = (data: Record<string, unknown> | undefined) => void;

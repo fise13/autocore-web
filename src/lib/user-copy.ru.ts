@@ -31,6 +31,8 @@ export const userCopyRu = {
     chooseFiles: "Выбрать фото / файлы",
     chooseVideo: "Добавить видео",
     remove: "Удалить",
+    removePrimary: "Удалить первое",
+    removeAll: "Удалить все",
     uploading: "Загрузка…",
     uploadProgress: (done: number, total: number) => `Загрузка ${done}/${total}…`,
     uploadFailed: "Не удалось загрузить медиа",
@@ -50,6 +52,11 @@ export const userCopyRu = {
     viewerLoading: "Загрузка медиа…",
     viewerInvalid: "Некорректная ссылка на медиа",
     viewerLoadFailed: "Не удалось загрузить медиа",
+    confirmDeletePhotosTitle: "Удалить фотографии?",
+    confirmDeletePhotosDescription: (count: number) =>
+      `Вы уверены, что хотите удалить фотографии (${count})?`,
+    confirmDeletePhotosConfirm: "Удалить",
+    confirmDeletePhotosCancel: "Отмена",
   },
 
   auth: {

@@ -76,8 +76,31 @@ function isServerCategoryEnabled(
   return prefs.categories[serverKey] ?? true;
 }
 
-/** Sync events never use push. */
-export function resolveSyncChannels(): DeliveryChannels {
+/**
+ * Sync events never use remote push (Dynamic Island owns sync UX).
+ * Failed sync may post a local OS notification when the app is backgrounded.
+ */
+export function resolveSyncChannels(
+  event: 'synced' | 'failed' | 'conflict' = 'synced',
+): DeliveryChannels {
+  if (event === 'failed') {
+    return {
+      push: false,
+      inApp: false,
+      activityFeed: false,
+      toast: false,
+      local: true,
+    };
+  }
+  if (event === 'conflict') {
+    return {
+      push: false,
+      inApp: true,
+      activityFeed: false,
+      toast: false,
+      local: true,
+    };
+  }
   return {
     push: false,
     inApp: false,

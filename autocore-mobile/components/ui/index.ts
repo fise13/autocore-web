@@ -19,6 +19,7 @@ export {
 } from './card';
 export { Surface, type SurfaceVariant } from './surface';
 export { Screen, ScreenScroll, StackScreen } from './screen';
+export { ScrollEdgeChrome, SCROLL_EDGE_BAR_HEIGHT } from './scroll-edge-chrome';
 export { ProductScreenShell } from './product-screen-shell';
 export { ScreenGate } from './screen-gate';
 export { KeyboardFormShell } from './keyboard-form-shell';
@@ -27,6 +28,15 @@ export { PageHeader } from './page-header';
 export { SectionHeader } from './section-header';
 export { MetaRow } from './meta-row';
 export { ListGroup } from './list-group';
+export {
+  CATALOG_CARD_RADIUS,
+  CatalogRow,
+  CatalogScreenHeader,
+  CatalogSectionHeader,
+  catalogRowPosition,
+  type CatalogRowPosition,
+  type CatalogRowProps,
+} from './catalog-list';
 export { ListRow } from './list-row';
 export {
   CollectionList,

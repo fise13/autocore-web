@@ -16,6 +16,15 @@ import {
   subscribeEngineIntakeSessions,
 } from '@/services/firestore/engine-intake-repository';
 
+import {
+  mergeIntakeJobs,
+  mergeIntakeSessions,
+} from '../lib/optimistic-intake-job';
+import {
+  pruneIntakeOverlay,
+  useIntakeOverlay,
+} from '../store/intake-local-overlay';
+
 function jobsCacheKey(companyId: string): string {
   return `engine-intake:jobs:${companyId}`;
 }
@@ -45,6 +54,7 @@ const EMPTY_JOB_DETAIL: Omit<JobDetailState, 'scope'> = {
 };
 
 export function useEngineIntakeJobs(companyId: string | null) {
+  const overlay = useIntakeOverlay(companyId);
   const [state, setState] = useState<JobsState>(() => {
     const jobs = companyId ? (getJson<EngineIntakeJob[]>(jobsCacheKey(companyId)) ?? []) : [];
     return {
@@ -60,6 +70,7 @@ export function useEngineIntakeJobs(companyId: string | null) {
     return subscribeEngineIntakeJobs(
       companyId,
       (next) => {
+        pruneIntakeOverlay(companyId, next);
         setState({ companyId, jobs: next, loading: false, error: null });
         setJson(jobsCacheKey(companyId), next);
       },
@@ -77,13 +88,17 @@ export function useEngineIntakeJobs(companyId: string | null) {
     );
   }, [companyId]);
 
-  if (state.companyId === companyId) return state;
-  const jobs = companyId ? (getJson<EngineIntakeJob[]>(jobsCacheKey(companyId)) ?? []) : [];
+  const serverJobs = state.companyId === companyId
+    ? state.jobs
+    : companyId
+      ? (getJson<EngineIntakeJob[]>(jobsCacheKey(companyId)) ?? [])
+      : [];
+  const jobs = mergeIntakeJobs(serverJobs, overlay.jobs);
   return {
     companyId,
     jobs,
-    loading: Boolean(companyId && jobs.length === 0),
-    error: null,
+    loading: Boolean(companyId && jobs.length === 0 && state.loading),
+    error: state.companyId === companyId ? state.error : null,
   };
 }
 
@@ -113,7 +128,10 @@ export function useEngineIntakeJobDetail(
     const unsubscribeSessions = subscribeEngineIntakeSessions(
       companyId,
       jobId,
-      (sessions) => update((current) => ({ ...current, sessions, error: null })),
+      (sessions) => {
+        pruneIntakeOverlay(companyId, [], { jobId, sessions });
+        update((current) => ({ ...current, sessions, error: null }));
+      },
       onError,
     );
     const unsubscribePhotos = subscribeEngineIntakePhotos(
@@ -143,5 +161,11 @@ export function useEngineIntakeJobDetail(
     };
   }, [companyId, jobId]);
 
-  return state.scope === scope ? state : { scope, ...EMPTY_JOB_DETAIL };
+  const overlay = useIntakeOverlay(companyId);
+  const base = state.scope === scope ? state : { scope, ...EMPTY_JOB_DETAIL };
+  const overlaySessions = jobId ? (overlay.sessions[jobId] ?? []) : [];
+  return {
+    ...base,
+    sessions: mergeIntakeSessions(base.sessions, overlaySessions),
+  };
 }

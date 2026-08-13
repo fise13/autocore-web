@@ -2,7 +2,6 @@ import {
   collection,
   doc,
   getDocs,
-  onSnapshot,
   query,
   updateDoc,
   where,
@@ -10,6 +9,7 @@ import {
 } from 'firebase/firestore';
 
 import { normalizeCompanyId } from '@/lib/company-id';
+import { listenQuery } from '@/lib/firestore/trusted-snapshot';
 import { getFirebaseDb } from '@/services/firebase';
 import type { NotificationInboxState, NotificationRecord } from '@/types/notifications';
 
@@ -101,14 +101,14 @@ export function subscribeInboxFromFirestore(params: {
     where('userId', '==', params.userId),
   );
 
-  return onSnapshot(
+  return listenQuery(
     inboxQuery,
     (snapshot) => {
       params.onData(
         mapCompanyInbox(snapshot.docs, params.companyId, params.state ?? 'active', limit),
       );
     },
-    (error) => params.onError?.(error),
+    params.onError,
   );
 }
 

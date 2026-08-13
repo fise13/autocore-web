@@ -216,3 +216,13 @@ export function isSpecificSchemaColumnEditable(
   const col = specificSchemaColumnAt(layout, column);
   return col != null && col.editable !== false;
 }
+
+/** Photo cells accept Clear/Delete but never open the text editor. */
+export function isSpecificSchemaColumnClearable(
+  layout: ReturnType<typeof buildSpecificMotorGridLayout>,
+  column: number,
+): boolean {
+  const def = layout.columns[column];
+  if (def?.cellKind === "photo") return true;
+  return isSpecificSchemaColumnEditable(layout, column);
+}

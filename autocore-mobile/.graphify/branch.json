@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "branchName": "main",
+  "worktreePath": "/Users/victor/Documents/autocore-web",
+  "upstream": "origin/main",
+  "mergeBase": "77c52f6969566500eeb70293e85ba062db3dc538",
+  "firstSeenHead": "77c52f6969566500eeb70293e85ba062db3dc538",
+  "lastSeenHead": "77c52f6969566500eeb70293e85ba062db3dc538",
+  "lastAnalyzedHead": "77c52f6969566500eeb70293e85ba062db3dc538",
+  "stale": false,
+  "staleReason": null,
+  "staleSince": null,
+  "lifecycleEvent": null,
+  "createdAt": "2026-08-11T15:59:55.321Z",
+  "updatedAt": "2026-08-11T15:59:55.321Z"
+}

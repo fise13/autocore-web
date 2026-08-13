@@ -4,6 +4,8 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type MutableRefObject,
   useCallback,
+  useEffect,
+  useRef,
 } from "react";
 
 import {
@@ -17,6 +19,10 @@ import {
   serializeRangesToTsv,
   writeClipboardText,
 } from "@/lib/grid/excel-clipboard";
+import {
+  createExcelKeyRepeatController,
+  isExcelArrowKey,
+} from "@/lib/grid/excel-key-repeat";
 import {
   boundingDataRange,
   findLastUsedCell,
@@ -61,6 +67,11 @@ export type UseExcelGridInteractionParams = {
   navigableColumns: number[];
   valueAt: (row: number, column: number) => string;
   isEditableColumn: (column: number) => boolean;
+  /**
+   * Columns Clear/Delete may wipe (defaults to isEditableColumn).
+   * Photo cells are clearable but not text-editable.
+   */
+  isClearableColumn?: (column: number) => boolean;
   mapClearColumn?: (column: number) => number | null;
   applyCellWrites: (label: string, writes: ExcelGridCellWrite[]) => void;
   ensureRowCapacity: (maxRowInclusive: number) => void;
@@ -71,6 +82,11 @@ export type UseExcelGridInteractionParams = {
   cmdADoubleTapRef: MutableRefObject<number>;
   /** Return true if the domain handled the key (e.g. warehouse L). */
   onDomainKeyDown?: (event: ReactKeyboardEvent<HTMLDivElement>) => boolean;
+  /**
+   * When set, wraps Clear/Cut-clear (e.g. confirm before deleting row photos).
+   * Call `performClear` to apply the default clear writes.
+   */
+  interceptClearSelection?: (performClear: () => void) => void;
 };
 
 export type ExcelGridInteraction = {
@@ -83,6 +99,8 @@ export type ExcelGridInteraction = {
   fillWithActive: () => void;
   collapseSelectionToActive: () => void;
   handleKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => Promise<void>;
+  handleKeyUp: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
+  handleBlur: () => void;
 };
 
 export function useExcelGridInteraction(
@@ -101,6 +119,7 @@ export function useExcelGridInteraction(
     navigableColumns,
     valueAt,
     isEditableColumn,
+    isClearableColumn,
     mapClearColumn,
     applyCellWrites,
     ensureRowCapacity,
@@ -110,12 +129,25 @@ export function useExcelGridInteraction(
     scrollByPage,
     cmdADoubleTapRef,
     onDomainKeyDown,
+    interceptClearSelection,
   } = params;
+
+  const canClearColumn = isClearableColumn ?? isEditableColumn;
 
   const isEmpty = useCallback(
     (row: number, column: number) => !valueAt(row, column).trim(),
     [valueAt],
   );
+
+  const keyRepeatRef = useRef(createExcelKeyRepeatController());
+  useEffect(() => {
+    const controller = keyRepeatRef.current;
+    return () => controller.clear();
+  }, []);
+
+  useEffect(() => {
+    if (isEditing) keyRepeatRef.current.clear();
+  }, [isEditing]);
 
   const copySelection = useCallback(async () => {
     const ranges = allRanges(selectionRef.current);
@@ -123,17 +155,25 @@ export function useExcelGridInteraction(
     await writeClipboardText(text);
   }, [selectionRef, valueAt]);
 
-  const clearSelection = useCallback(() => {
-    if (!canEdit) return;
+  const performClearSelection = useCallback(() => {
     const ranges = allRanges(selectionRef.current);
     const writes = buildClearWrites({
       ranges,
       valueAt,
-      isEditableColumn,
+      isEditableColumn: canClearColumn,
       mapClearColumn,
     });
     applyCellWrites("Clear", writes);
-  }, [applyCellWrites, canEdit, isEditableColumn, mapClearColumn, selectionRef, valueAt]);
+  }, [applyCellWrites, canClearColumn, mapClearColumn, selectionRef, valueAt]);
+
+  const clearSelection = useCallback(() => {
+    if (!canEdit) return;
+    if (interceptClearSelection) {
+      interceptClearSelection(performClearSelection);
+      return;
+    }
+    performClearSelection();
+  }, [canEdit, interceptClearSelection, performClearSelection]);
 
   const cutSelection = useCallback(async () => {
     if (!canEdit) return;
@@ -204,9 +244,17 @@ export function useExcelGridInteraction(
     (dRow: number, dCol: number, extend: boolean) => {
       setSelection((current) => {
         const head = current.head;
+        const nextRow = Math.max(0, head.row + dRow);
+        const nextColumn = Math.max(0, Math.min(columnCount - 1, head.column + dCol));
+        // Grow empty rows when arrowing past the bottom — Excel keeps going.
+        if (nextRow >= rowCount) {
+          ensureRowCapacity(nextRow);
+        } else if (dRow > 0 && nextRow >= rowCount - 2) {
+          ensureRowCapacity(nextRow + 2);
+        }
         const next: GridCellAddress = {
-          row: Math.max(0, Math.min(rowCount - 1, head.row + dRow)),
-          column: Math.max(0, Math.min(columnCount - 1, head.column + dCol)),
+          row: nextRow,
+          column: nextColumn,
         };
         if (extend) {
           return { ...current, head: next };
@@ -218,7 +266,61 @@ export function useExcelGridInteraction(
         };
       });
     },
-    [columnCount, rowCount, setSelection],
+    [columnCount, ensureRowCapacity, rowCount, setSelection],
+  );
+
+  const stepArrow = useCallback(
+    (key: "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight", shift: boolean, cmd: boolean) => {
+      if (cmd) {
+        const head = selectionRef.current.head;
+        let targetRow = head.row;
+        let targetColumn = head.column;
+        if (key === "ArrowLeft" || key === "ArrowRight") {
+          targetColumn = jumpColumnInRow({
+            row: head.row,
+            fromColumn: head.column,
+            direction: key === "ArrowRight" ? 1 : -1,
+            navigableColumns,
+            isEmpty,
+          });
+        } else {
+          targetRow = jumpRowInColumn({
+            column: head.column,
+            fromRow: head.row,
+            direction: key === "ArrowDown" ? 1 : -1,
+            rowCount,
+            isEmpty,
+          });
+          if (key === "ArrowDown" && targetRow >= rowCount - 1) {
+            ensureRowCapacity(targetRow + 4);
+          }
+        }
+        const target = { row: targetRow, column: targetColumn };
+        if (shift) {
+          setSelection((current) => ({
+            ...current,
+            head: target,
+            cmdRanges: [],
+          }));
+        } else {
+          setSelection({ anchor: target, head: target, cmdRanges: [] });
+        }
+        return;
+      }
+      if (key === "ArrowUp") moveSelectionBy(-1, 0, shift);
+      if (key === "ArrowDown") moveSelectionBy(1, 0, shift);
+      if (key === "ArrowLeft") moveSelectionBy(0, -1, shift);
+      if (key === "ArrowRight") moveSelectionBy(0, 1, shift);
+    },
+    [
+      ensureRowCapacity,
+      isEmpty,
+      moveSelectionBy,
+      navigableColumns,
+      rowCount,
+      selectionRef,
+      setSelection,
+    ],
   );
 
   const handleKeyDown = useCallback(
@@ -387,47 +489,22 @@ export function useExcelGridInteraction(
       }
       if (key === "ArrowUp" || key === "ArrowDown" || key === "ArrowLeft" || key === "ArrowRight") {
         event.preventDefault();
+        if (event.repeat) return;
+        // ⌘/Ctrl+Arrow jumps to the data edge once — no hold-repeat.
         if (cmd) {
-          const head = selection.head;
-          let targetRow = head.row;
-          let targetColumn = head.column;
-          if (key === "ArrowLeft" || key === "ArrowRight") {
-            targetColumn = jumpColumnInRow({
-              row: head.row,
-              fromColumn: head.column,
-              direction: key === "ArrowRight" ? 1 : -1,
-              navigableColumns,
-              isEmpty,
-            });
-          } else {
-            targetRow = jumpRowInColumn({
-              column: head.column,
-              fromRow: head.row,
-              direction: key === "ArrowDown" ? 1 : -1,
-              rowCount,
-              isEmpty,
-            });
-          }
-          const target = { row: targetRow, column: targetColumn };
-          if (shift) {
-            setSelection((current) => ({
-              ...current,
-              head: target,
-              cmdRanges: [],
-            }));
-          } else {
-            setSelection({ anchor: target, head: target, cmdRanges: [] });
-          }
+          stepArrow(key, shift, true);
           return;
         }
-        if (key === "ArrowUp") moveSelectionBy(-1, 0, shift);
-        if (key === "ArrowDown") moveSelectionBy(1, 0, shift);
-        if (key === "ArrowLeft") moveSelectionBy(0, -1, shift);
-        if (key === "ArrowRight") moveSelectionBy(0, 1, shift);
+        const arrow = key;
+        const shiftHeld = shift;
+        keyRepeatRef.current.onArrowKeyDown(arrow, () => {
+          stepArrow(arrow, shiftHeld, false);
+        });
         return;
       }
       if (!cmd && !event.altKey && !event.ctrlKey && key.length === 1 && canEdit) {
         event.preventDefault();
+        keyRepeatRef.current.clear();
         beginEdit(selection.head, key, false);
       }
     },
@@ -457,8 +534,19 @@ export function useExcelGridInteraction(
       scrollByPage,
       selection.head,
       setSelection,
+      stepArrow,
     ],
   );
+
+  const handleKeyUp = useCallback((event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (isExcelArrowKey(event.key)) {
+      keyRepeatRef.current.onArrowKeyUp(event.key);
+    }
+  }, []);
+
+  const handleBlur = useCallback(() => {
+    keyRepeatRef.current.clear();
+  }, []);
 
   return {
     copySelection,
@@ -470,6 +558,8 @@ export function useExcelGridInteraction(
     fillWithActive,
     collapseSelectionToActive,
     handleKeyDown,
+    handleKeyUp,
+    handleBlur,
   };
 }
 

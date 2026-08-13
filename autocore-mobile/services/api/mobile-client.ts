@@ -1,5 +1,7 @@
 import { getFirebaseAuth } from '@/services/firebase';
 import { getPublicApiBaseUrl } from '@/services/api/api-base-url';
+import { enqueueMutation, shouldQueueMutation } from '@/lib/offline/mutation-outbox';
+import { isNetworkError } from '@/lib/offline/network-error';
 import { resolveSessionCompanyId } from '@/lib/session/merge-hydration';
 import { useAuthStore } from '@/store/auth-store';
 
@@ -78,19 +80,57 @@ async function getBearerToken(forceRefresh = false): Promise<string> {
   if (!user) {
     throw new MobileApiError('Authorization required', 401);
   }
-  const token = await user.getIdToken(forceRefresh);
-  if (!token) {
-    throw new MobileApiError('Failed to get token', 401);
+  const online = useAuthStore.getState().isOnline;
+  try {
+    const token = await user.getIdToken(forceRefresh && online);
+    if (!token) {
+      throw new MobileApiError('Failed to get token', 401);
+    }
+    return token;
+  } catch (error) {
+    if (!online || isNetworkError(error)) {
+      throw new MobileApiError('No internet connection.', 0);
+    }
+    throw error;
   }
-  return token;
+}
+
+export type MobileFetchInit = RequestInit & {
+  retryOnUnauthorized?: boolean;
+  queueWhenOffline?: boolean;
+};
+
+function bodyAsString(body: BodyInit | null | undefined): string | undefined {
+  return typeof body === 'string' ? body : undefined;
+}
+
+function defaultQueueWhenOffline(path: string, method: string): boolean {
+  const verb = method.toUpperCase();
+  if (verb === 'GET' || verb === 'HEAD') return false;
+  if (path.includes('/engine-intake')) return false;
+  if (path.includes('/subscriptions')) return false;
+  if (path.includes('/invites')) return false;
+  if (path.includes('/org/')) return false;
+  if (path.includes('/scan/resolve')) return false;
+  if (path.includes('/scan/disambiguate')) return false;
+  if (path.includes('/scan/ocr')) return false;
+  if (path.includes('/auth')) return false;
+  return verb === 'POST' || verb === 'PATCH' || verb === 'PUT';
+}
+
+function queueAndResolve<T>(path: string, method: string, body: string | undefined): T {
+  enqueueMutation({ path, method, body });
+  return { ok: true, queued: true } as T;
 }
 
 export async function mobileFetch<T>(
   path: string,
-  init?: RequestInit & { retryOnUnauthorized?: boolean },
+  init?: MobileFetchInit,
 ): Promise<T> {
   const retryOnUnauthorized = init?.retryOnUnauthorized ?? true;
-  const { retryOnUnauthorized: _, ...requestInit } = init ?? {};
+  const { retryOnUnauthorized: _, queueWhenOffline: queueFlag, ...requestInit } = init ?? {};
+  const method = String(requestInit.method ?? 'GET');
+  const queueWhenOffline = queueFlag ?? defaultQueueWhenOffline(path, method);
 
   const execute = async (forceRefresh: boolean) => {
     const token = await getBearerToken(forceRefresh);
@@ -105,7 +145,12 @@ export async function mobileFetch<T>(
       },
     });
 
-    if (response.status === 401 && retryOnUnauthorized && !forceRefresh) {
+    if (
+      response.status === 401 &&
+      retryOnUnauthorized &&
+      !forceRefresh &&
+      useAuthStore.getState().isOnline
+    ) {
       return execute(true);
     }
 
@@ -130,7 +175,18 @@ export async function mobileFetch<T>(
     }
   };
 
-  return execute(false);
+  if (queueWhenOffline && !useAuthStore.getState().isOnline) {
+    return queueAndResolve<T>(path, method, bodyAsString(requestInit.body));
+  }
+
+  try {
+    return await execute(false);
+  } catch (error) {
+    if (queueWhenOffline && shouldQueueMutation(error, method)) {
+      return queueAndResolve<T>(path, method, bodyAsString(requestInit.body));
+    }
+    throw error;
+  }
 }
 
 export function mobileGet<T>(path: string): Promise<T> {

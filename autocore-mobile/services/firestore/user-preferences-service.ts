@@ -1,5 +1,6 @@
-import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
+import { listenDocument } from '@/lib/firestore/trusted-snapshot';
 import {
   normalizeAppDisplayCurrency,
   type AppDisplayCurrency,
@@ -77,13 +78,13 @@ export function subscribeUserDisplayCurrency(
   onData: (currency: AppDisplayCurrency) => void,
   onError?: (error: Error) => void,
 ): () => void {
-  return onSnapshot(
+  return listenDocument(
     userRef(uid),
     (snapshot) => {
       const data = snapshot.data() as Record<string, unknown> | undefined;
       onData(mapAccountingSettings(data).displayCurrency);
     },
-    (error) => onError?.(error),
+    onError,
   );
 }
 
@@ -101,13 +102,13 @@ export function subscribeAccountingSettings(
   onData: (settings: AccountingSettings) => void,
   onError?: (error: Error) => void,
 ): () => void {
-  return onSnapshot(
+  return listenDocument(
     userRef(uid),
     (snapshot) => {
       const data = snapshot.exists() ? (snapshot.data() as Record<string, unknown>) : null;
       onData(mapAccountingSettings(data));
     },
-    (error) => onError?.(error),
+    onError,
   );
 }
 

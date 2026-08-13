@@ -32,6 +32,8 @@ export type MotorEntity = {
   warehouseLocation?: string;
   primaryLocationId?: string;
   primaryLocationCode?: string;
+  /** Catalog photos — same `photoUrls` field the web motors grid writes. */
+  photoUrls?: string[];
   status?: MotorStatus;
   intakeJobId?: string | null;
   intakeStatus?: string | null;

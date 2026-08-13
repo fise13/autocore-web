@@ -3,7 +3,6 @@ import {
   doc,
   getDoc,
   limit,
-  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
@@ -15,7 +14,7 @@ import {
 import { createVehicleSchema } from '@/domain/schemas';
 import { normalizeCompanyId } from '@/lib/company-id';
 import { toDateFromFirestore } from '@/lib/firestore-timestamp';
-import { notifyFirestoreSnapshotError } from '@/lib/firestore/snapshot-errors';
+import { listenQuery } from '@/lib/firestore/trusted-snapshot';
 import { getFirebaseDb } from '@/services/firebase';
 import type { CreateVehicleInput, UpdateVehicleInput, VehicleEntity } from '@/types/vehicle';
 
@@ -56,11 +55,11 @@ export function createVehicleRepository() {
       }
 
       const q = query(vehiclesRef(companyId), orderBy('updatedAt', 'desc'), limit(300));
-      return onSnapshot(
+      return listenQuery(
         q,
         (snapshot) =>
           onData(snapshot.docs.map((item) => mapVehicle(item.id, item.data() as Record<string, unknown>))),
-        (error) => notifyFirestoreSnapshotError(error, onError),
+        onError,
       );
     },
 
@@ -81,11 +80,11 @@ export function createVehicleRepository() {
         orderBy('updatedAt', 'desc'),
         limit(50),
       );
-      return onSnapshot(
+      return listenQuery(
         q,
         (snapshot) =>
           onData(snapshot.docs.map((item) => mapVehicle(item.id, item.data() as Record<string, unknown>))),
-        (error) => notifyFirestoreSnapshotError(error, onError),
+        onError,
       );
     },
 

@@ -1,7 +1,8 @@
-import { doc, getDoc, onSnapshot, type Timestamp } from 'firebase/firestore';
+import { doc, getDoc, type Timestamp } from 'firebase/firestore';
 
 import { resolveProActive } from '@autocore/billing';
 import { toDateFromFirestore } from '@/lib/firestore-timestamp';
+import { listenDocument } from '@/lib/firestore/trusted-snapshot';
 import { getFirebaseDb } from '@/services/firebase';
 import {
   normalizeBillingPlan,
@@ -74,10 +75,10 @@ export function subscribeCompanySubscription(
   onData: (subscription: CompanySubscription | null) => void,
   onError?: (error: Error) => void,
 ): () => void {
-  return onSnapshot(
+  return listenDocument(
     companySubscriptionRef(companyId),
     (snap) => onData(snap.exists() ? mapSubscription(snap.data() as SubscriptionDoc) : null),
-    (error) => onError?.(error),
+    onError,
   );
 }
 

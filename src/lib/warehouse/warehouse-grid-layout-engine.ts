@@ -245,6 +245,7 @@ export function isWarehouseEditableColumn(column: number): boolean {
 /** Map read-only stock columns to the editable source column when clearing cells. */
 export function resolveWarehouseClearColumn(column: number): number | null {
   if (isWarehouseEditableColumn(column)) return column;
+  if (column === WAREHOUSE_PHOTO_COLUMN) return column;
   if (column === 5 || column === 6) return 4;
   return null;
 }

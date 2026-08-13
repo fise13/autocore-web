@@ -1,8 +1,8 @@
-import { collection, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
+import { collection, limit, orderBy, query, where } from 'firebase/firestore';
 
 import { normalizeCompanyId } from '@/lib/company-id';
 import { toDateFromFirestore } from '@/lib/firestore-timestamp';
-import { notifyFirestoreSnapshotError } from '@/lib/firestore/snapshot-errors';
+import { listenQuery } from '@/lib/firestore/trusted-snapshot';
 import { getFirebaseDb } from '@/services/firebase';
 import type { WorkOrderDocumentRecord } from '@/types/work-order-document';
 
@@ -47,11 +47,11 @@ export const workOrderDocumentRepository = {
       limit(20),
     );
 
-    return onSnapshot(
+    return listenQuery(
       q,
       (snapshot) =>
         onData(snapshot.docs.map((item) => mapWorkOrderDocument(item.id, item.data() as Record<string, unknown>))),
-      (error) => notifyFirestoreSnapshotError(error, onError),
+      onError,
     );
   },
 };

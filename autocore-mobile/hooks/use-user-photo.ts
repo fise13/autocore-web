@@ -1,7 +1,8 @@
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 
 import { useAuth } from '@/authentication/auth-provider';
+import { listenDocument } from '@/lib/firestore/trusted-snapshot';
 import { sanitizeUserPhotoUrl } from '@/lib/user-photo';
 import { getFirebaseDb, isFirebaseConfigured } from '@/services/firebase';
 
@@ -20,7 +21,7 @@ export function useUserPhotoUrl(): string | null {
     }
 
     const ref = doc(getFirebaseDb(), 'users', uid);
-    const unsubscribe = onSnapshot(
+    const unsubscribe = listenDocument(
       ref,
       (snap) => {
         const photoURL = snap.exists() ? String(snap.data()?.photoURL ?? '').trim() : '';
@@ -28,7 +29,6 @@ export function useUserPhotoUrl(): string | null {
       },
       (error) => {
         console.warn('User photo listener failed:', error);
-        setFirestorePhoto(null);
       },
     );
 

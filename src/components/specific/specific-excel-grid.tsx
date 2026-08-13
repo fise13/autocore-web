@@ -58,6 +58,7 @@ import {
 import { scopedRecordDocumentId } from "@/lib/specific/specific-sync-ids";
 import {
   buildSpecificMotorGridLayout,
+  isSpecificSchemaColumnClearable,
   isSpecificSchemaColumnEditable,
   specificCellFrame,
   specificSchemaColumnAt,
@@ -221,6 +222,11 @@ export function SpecificExcelGrid({
 
   const isEditableColumn = useCallback(
     (column: number) => isSpecificSchemaColumnEditable(layout, column),
+    [layout],
+  );
+
+  const isClearableColumn = useCallback(
+    (column: number) => isSpecificSchemaColumnClearable(layout, column),
     [layout],
   );
 
@@ -425,17 +431,17 @@ export function SpecificExcelGrid({
   }, []);
 
   const setCell = useCallback(
-    (cell: GridCellAddress, newValue: string, options?: { trackUndo?: boolean; markDirty?: boolean }) => {
+    (cell: GridCellAddress, newValue: string, options?: { trackUndo?: boolean; markDirty?: boolean; label?: string }) => {
       const applyToRows = (current: SpecificGridRow[]) => {
         const row = current[cell.row];
-        if (!row || !isEditableColumn(cell.column)) return current;
+        if (!row || !isClearableColumn(cell.column)) return current;
         const oldValue = valueAtCell(row, cell.column);
         if (oldValue === newValue) return current;
         const next = [...current];
         const updatedRow = applyCellValue(row, cell.column, newValue);
         next[cell.row] = updatedRow;
         if (options?.trackUndo !== false) {
-          commandBusRef.current.commit("Edit Cell", [{ address: cell, oldValue, newValue }]);
+          commandBusRef.current.commit(options?.label ?? "Edit Cell", [{ address: cell, oldValue, newValue }]);
         }
         if (options?.markDirty !== false) {
           markDirty(updatedRow.rowId);
@@ -448,7 +454,7 @@ export function SpecificExcelGrid({
       rowsRef.current = nextRows;
       setRows(nextRows);
     },
-    [applyCellValue, isEditableColumn, markDirty, valueAtCell],
+    [applyCellValue, isClearableColumn, markDirty, valueAtCell],
   );
 
   const applyMutation = useCallback(
@@ -931,7 +937,7 @@ export function SpecificExcelGrid({
       setRows((current) => {
         const next = [...current];
         for (const write of writes) {
-          if (!isEditableColumn(write.column)) continue;
+          if (!isClearableColumn(write.column)) continue;
           const rowRef = next[write.row];
           if (!rowRef) continue;
           const oldValue = valueAtCell(rowRef, write.column);
@@ -952,7 +958,7 @@ export function SpecificExcelGrid({
       });
       commandBusRef.current.commit(label, mutations);
     },
-    [applyCellValue, canEdit, isEditableColumn, scheduleDirtyStatus, valueAtCell],
+    [applyCellValue, canEdit, isClearableColumn, scheduleDirtyStatus, valueAtCell],
   );
   applyCellWritesRef.current = applyCellWrites;
 
@@ -987,6 +993,8 @@ export function SpecificExcelGrid({
     clearSelection,
     fillDown,
     handleKeyDown,
+    handleKeyUp,
+    handleBlur,
   } = useExcelGridInteraction({
     canEdit,
     isEditing: Boolean(editor),
@@ -1000,6 +1008,7 @@ export function SpecificExcelGrid({
     navigableColumns,
     valueAt,
     isEditableColumn,
+    isClearableColumn,
     applyCellWrites,
     ensureRowCapacity,
     beginEdit,
@@ -1170,6 +1179,8 @@ export function SpecificExcelGrid({
         data-context-menu-scope="local"
         className="relative min-h-0 flex-1 overflow-hidden outline-none"
         onKeyDown={handleKeyDown}
+        onKeyUp={handleKeyUp}
+        onBlur={handleBlur}
       >
         <div
           className="absolute inset-0 overflow-auto bg-background excel-grid-scroll"
@@ -1386,19 +1397,20 @@ export function SpecificExcelGrid({
                                 entityKind="specific"
                                 entityId={row.id}
                                 onChange={(urls) => {
-                                  markDirty(row.rowId);
-                                  setRows((current) =>
-                                    current.map((entry) =>
-                                      entry.rowId === row.rowId
-                                        ? {
-                                            ...entry,
-                                            data: {
-                                              ...entry.data,
-                                              [SPECIFIC_PHOTO_URLS_KEY]: serializeSpecificPhotoUrls(urls),
-                                            },
-                                          }
-                                        : entry,
-                                    ),
+                                  const photoCol = layout.photoColumn;
+                                  if (photoCol == null || photoCol < 0) return;
+                                  const oldValue = row.data[SPECIFIC_PHOTO_URLS_KEY] ?? "";
+                                  const newValue = serializeSpecificPhotoUrls(urls);
+                                  if (oldValue === newValue) return;
+                                  setCell(
+                                    { row: rowIdx, column: photoCol },
+                                    newValue,
+                                    {
+                                      label:
+                                        urls.length < parseSpecificPhotoUrls(oldValue).length
+                                          ? "Remove Photos"
+                                          : "Edit Photos",
+                                    },
                                   );
                                 }}
                               />
