@@ -13,10 +13,9 @@ import { nextWakeUpAt } from '@/features/engine-intake/lib/sync-schedule';
 import { reconcileIntakeSyncLocalNotification } from '@/features/engine-intake/lib/intake-sync-notifications';
 import { useSession } from '@/hooks/use-session';
 import { syncBackgroundTaskRegistration } from '@/lib/offline/background-sync-task';
-import { netInfoSaysOnline } from '@/lib/offline/netinfo-online';
 
 /** Ignore NetInfo flapping before committing to a drain. */
-const NETWORK_DEBOUNCE_MS = 600;
+const NETWORK_DEBOUNCE_MS = 200;
 /** Ceiling on a single armed timer — `setTimeout` is unreliable beyond minutes. */
 const MAX_TIMER_MS = 60_000;
 
@@ -95,8 +94,9 @@ export function IntakeSyncHead() {
       void syncBackgroundTaskRegistration();
     });
 
-    const unsubscribeNetwork = NetInfo.addEventListener((network) => {
-      if (!netInfoSaysOnline(network)) return;
+    const unsubscribeNetwork = NetInfo.addEventListener(() => {
+      // Nudge on any NetInfo event — "offline" readings are unreliable on iOS
+      // and must not suppress drain (claim reclaim + photo PUT).
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
         debounceRef.current = null;

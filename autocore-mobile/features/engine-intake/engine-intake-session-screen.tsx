@@ -97,7 +97,10 @@ export function EngineIntakeSessionScreen() {
     (photo) => photo.companyId === companyId && photo.jobId === jobId,
   );
   const pendingLocalPhotos = localPhotos.filter(
-    (photo) => photo.state !== 'failed' && photo.errorInfo?.code !== 'CONFLICT',
+    (photo) =>
+      photo.status !== 'completed' &&
+      photo.state !== 'failed' &&
+      photo.errorInfo?.code !== 'CONFLICT',
   );
   const failedPhotos = localPhotos.filter(
     (photo) =>
@@ -110,8 +113,7 @@ export function EngineIntakeSessionScreen() {
     (item) =>
       item.companyId === companyId &&
       item.command.type === 'field_complete' &&
-      item.command.payload.jobId === jobId &&
-      item.command.payload.sessionId === sessionId,
+      item.command.payload.jobId === jobId,
   );
   const completionPending = completedLocal || hasQueuedFieldCompletion;
 
@@ -128,6 +130,24 @@ export function EngineIntakeSessionScreen() {
       ).length,
     );
   }, [companyId, job, jobId, outbox.photos, serverProgress.capturedCount]);
+
+  // After local rows leave the outbox, lift the baseline to the server count so
+  // a remount / Done → bay → camera reopen cannot flash "0 photos".
+  useEffect(() => {
+    if (!countSeededRef.current || !companyId || !jobId) return;
+    const localLeft = outbox.photos.some(
+      (photo) =>
+        photo.companyId === companyId &&
+        photo.jobId === jobId &&
+        photo.status !== 'completed',
+    );
+    if (localLeft) return;
+    const serverCount = serverProgress.capturedCount;
+    if (serverCount > (serverBaselineRef.current ?? 0)) {
+      serverBaselineRef.current = serverCount;
+      setShotsAdded(0);
+    }
+  }, [companyId, jobId, outbox.photos, serverProgress.capturedCount]);
 
   const photoCount = (serverBaselineRef.current ?? 0) + shotsAdded;
   photoCountRef.current = photoCount;
@@ -447,7 +467,8 @@ export function EngineIntakeSessionScreen() {
     try {
       const pick = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        quality: 0.9,
+        // Match camera quality — smaller files sync much faster over cellular.
+        quality: 0.72,
         allowsMultipleSelection: true,
         selectionLimit: 24,
         orderedSelection: true,
@@ -509,23 +530,39 @@ export function EngineIntakeSessionScreen() {
 
   const finishCapture = async (overrideReason?: string) => {
     if (photoCount < 1) return;
+    // Prefer the live bay claim — reclaim can rewrite outbox sessionIds while
+    // the camera route still carries the original param. Always enqueue so
+    // drain can reclaim + retry; sendOrQueue treated 409 as terminal and
+    // dropped Finish after photos had already left the phone.
+    const liveSessionId =
+      (typeof job?.assignment.activeSessionId === 'string' &&
+      job.assignment.activeSessionId.length > 0
+        ? job.assignment.activeSessionId
+        : null) ??
+      outbox.photos.find(
+        (photo) => photo.companyId === companyId && photo.jobId === jobId,
+      )?.sessionId ??
+      outbox.commands.find(
+        (item) =>
+          item.companyId === companyId &&
+          item.command.type === 'field_complete' &&
+          item.command.payload.jobId === jobId &&
+          typeof item.command.payload.sessionId === 'string',
+      )?.command.payload.sessionId ??
+      sessionId;
     const command = makeWorkerCommand({
       type: 'field_complete',
       payload: {
         jobId,
-        sessionId,
+        sessionId: liveSessionId,
         ...(overrideReason ? { overrideReason } : {}),
       },
     });
     try {
-      if (jobOutboxCount > 0 || failedPhotos.length > 0) {
-        enqueueIntakeCommand(companyId, command);
-        void drainIntakeOutbox(companyId);
-      } else {
-        await sendOrQueueIntakeCommand(companyId, command);
-      }
+      enqueueIntakeCommand(companyId, command);
       setCompletedLocal(true);
       haptics.success();
+      void drainIntakeOutbox(companyId);
     } catch (error) {
       haptics.error();
       toast({

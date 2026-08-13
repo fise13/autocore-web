@@ -59,6 +59,26 @@ const ACTIVE_STATES = new Set<EngineIntakeJobState>([
   'rework',
 ]);
 
+/** Ready ≈ web "In review" — Finish clears the claim, so do not require claimer. */
+const READY_STATES = new Set<EngineIntakeJobState>([
+  'awaiting_verification',
+  'quarantine',
+]);
+
+/** All ≈ web "All" — include released / cancelled so the bay matches desktop. */
+const ALL_STATES = new Set<EngineIntakeJobState>([
+  'open',
+  'in_session',
+  'paused',
+  'rework',
+  'awaiting_verification',
+  'quarantine',
+  'verified',
+  'closed',
+  'rejected',
+  'cancelled',
+]);
+
 type BayFilter = 'active' | 'ready' | 'all';
 
 function isPermissionError(message: string | null | undefined): boolean {
@@ -86,7 +106,12 @@ function createClaimCommand(jobId: string, sessionId: string): EngineIntakeComma
   };
 }
 
-function isWorkerScoped(
+/**
+ * Active tab: jobs this worker can pick up or is documenting.
+ * Ready / All are company-wide like the web bay — Finish clears claimedByUid,
+ * so requiring the claimer hid every Ready engine after a successful sync.
+ */
+function isActiveBayJob(
   job: EngineIntakeJob,
   uid: string | null | undefined,
   deviceId: string,
@@ -98,17 +123,12 @@ function isWorkerScoped(
         job.assignment.claimDeviceId === deviceId,
     );
   }
-  if (ACTIVE_STATES.has(job.state)) {
-    return (
-      job.assignment.assigneeUid === uid ||
-      job.assignment.claimedByUid === uid ||
-      (!job.assignment.assigneeUid && (job.state === 'open' || job.state === 'rework'))
-    );
-  }
-  if (job.state === 'awaiting_verification') {
-    return job.assignment.assigneeUid === uid || job.assignment.claimedByUid === uid;
-  }
-  return false;
+  if (!ACTIVE_STATES.has(job.state)) return false;
+  return (
+    job.assignment.assigneeUid === uid ||
+    job.assignment.claimedByUid === uid ||
+    (!job.assignment.assigneeUid && (job.state === 'open' || job.state === 'rework'))
+  );
 }
 
 function sortJobs(left: EngineIntakeJob, right: EngineIntakeJob): number {
@@ -135,22 +155,20 @@ export function EngineIntakeJobsScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  const scopedJobs = useMemo(() => {
-    return jobs
-      .filter((job) => isWorkerScoped(job, uid, deviceId))
-      .sort(sortJobs);
-  }, [deviceId, jobs, uid]);
-
   const activeJobs = useMemo(
-    () => scopedJobs.filter((job) => ACTIVE_STATES.has(job.state)),
-    [scopedJobs],
+    () => jobs.filter((job) => isActiveBayJob(job, uid, deviceId)).sort(sortJobs),
+    [deviceId, jobs, uid],
   );
   const readyJobs = useMemo(
-    () => scopedJobs.filter((job) => job.state === 'awaiting_verification'),
-    [scopedJobs],
+    () => jobs.filter((job) => READY_STATES.has(job.state)).sort(sortJobs),
+    [jobs],
+  );
+  const allJobs = useMemo(
+    () => jobs.filter((job) => ALL_STATES.has(job.state)).sort(sortJobs),
+    [jobs],
   );
   const visibleJobs =
-    filter === 'active' ? activeJobs : filter === 'ready' ? readyJobs : scopedJobs;
+    filter === 'active' ? activeJobs : filter === 'ready' ? readyJobs : allJobs;
 
   const openCreateSheet = useCallback(() => {
     createSheetRef.current?.present();
@@ -467,7 +485,7 @@ export function EngineIntakeJobsScreen() {
     filter === 'ready'
       ? `${readyJobs.length} ready for review`
       : filter === 'all'
-        ? `${scopedJobs.length} in intake`
+        ? `${allJobs.length} in intake`
         : `${activeJobs.length} documenting`;
 
   const listHeader = (
@@ -588,7 +606,7 @@ export function EngineIntakeJobsScreen() {
             segments={[
               { value: 'active', label: `Active ${activeJobs.length}` },
               { value: 'ready', label: `Ready ${readyJobs.length}` },
-              { value: 'all', label: `All ${scopedJobs.length}` },
+              { value: 'all', label: `All ${allJobs.length}` },
             ]}
           />
         </View>

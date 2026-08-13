@@ -1,19 +1,21 @@
 import { useCallback, useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 
-import { LayoutGridIcon } from '@/assets/icons';
+import { LayoutGridIcon, SearchIcon } from '@/assets/icons';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
 import { ProductScreenShell, ScreenScroll } from '@/components/ui';
 import { Text } from '@/components/ui/text';
 import { useAdaptiveLayout } from '@/hooks/use-adaptive-layout';
+import { useSession } from '@/hooks/use-session';
 import { useTheme } from '@/hooks/use-theme';
 import { useShellModel } from '@/lib/shell/use-shell-model';
 import { useWorkspaceContextStore } from '@/lib/shell/workspace-context-store';
+import { useAuthStore } from '@/store/auth-store';
 
 import { WorkGroup, WorkGroupRow } from './components/work-group';
+import { WorkScreenSkeleton } from './components/work-screen-skeleton';
 import { WorkTodayCard } from './components/work-today-card';
 import { useWorkCounts } from './hooks/use-work-counts';
 import { workLayout } from './layout';
@@ -28,11 +30,15 @@ import { buildWorkModel } from './lib/work-model';
  * do right now". Finance lives on its own tab and is not repeated here.
  */
 export function WorkScreen() {
+  const { profile, companyId } = useSession();
+  const isHydrating = useAuthStore((s) => s.isHydrating);
   const { workGrouped } = useShellModel();
   const setWorkspaceContext = useWorkspaceContextStore((s) => s.setWorkspaceContext);
   const router = useRouter();
   const { colors } = useTheme();
   const { isTablet, columns } = useAdaptiveLayout();
+
+  const sessionReady = Boolean(profile && companyId) && !isHydrating;
 
   // Keyed on the visible node list so the counts hook keeps a stable Set
   // identity across shell-model re-resolutions.
@@ -44,7 +50,7 @@ export function WorkScreen() {
     [nodeIdKey],
   );
 
-  const counts = useWorkCounts(nodeIds);
+  const { counts, ready: countsReady } = useWorkCounts(nodeIds);
   const model = useMemo(() => buildWorkModel(workGrouped, counts), [workGrouped, counts]);
 
   const openSearch = useCallback(() => {
@@ -53,6 +59,7 @@ export function WorkScreen() {
 
   const openNode = useCallback(
     (id: string, href: string) => {
+      if (!href) return;
       setWorkspaceContext(id);
       router.push(href as Href);
     },
@@ -63,6 +70,12 @@ export function WorkScreen() {
     if (!model.today.href) return;
     router.push(model.today.href as Href);
   }, [model.today.href, router]);
+
+  // Profile / company / live counts still settling — never flash EmptyState
+  // or mount interactive rows on half-hydrated data (that was the crash path).
+  if (!sessionReady || (nodeIds.size > 0 && !countsReady)) {
+    return <WorkScreenSkeleton />;
+  }
 
   const searchButton = (
     <Pressable
@@ -77,12 +90,7 @@ export function WorkScreen() {
         justifyContent: 'center',
       }}
     >
-      <SymbolView
-        name="magnifyingglass"
-        size={22}
-        tintColor={colors.foreground}
-        weight="medium"
-      />
+      <SearchIcon size={22} color={colors.foreground} />
     </Pressable>
   );
 

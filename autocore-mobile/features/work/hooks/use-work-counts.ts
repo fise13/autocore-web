@@ -26,12 +26,18 @@ import type { WorkOrder } from '@/types/work-order';
 
 import { EMPTY_WORK_COUNTS, isAwaitingPlacement, type WorkCounts } from '../lib/work-model';
 
+export type WorkCountsResult = {
+  counts: WorkCounts;
+  /** Session + every requested listener/query has settled (including empty). */
+  ready: boolean;
+};
+
 /**
  * @param nodeIds Work node ids currently visible for this company + role.
  *   Counts are only computed — and network-backed counts only fetched — for
  *   rows the user can actually see.
  */
-export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCounts {
+export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
   const { companyId, uid } = useSession();
   const rbac = useRbacPolicy();
 
@@ -74,7 +80,8 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCounts {
   );
 
   const defaultWarehouseId = useMemo(() => {
-    const preferred = warehouses.find((warehouse) => warehouse.isDefault) ?? warehouses[0];
+    const list = Array.isArray(warehouses) ? warehouses : [];
+    const preferred = list.find((warehouse) => warehouse.isDefault) ?? list[0];
     return preferred?.id ?? null;
   }, [warehouses]);
 
@@ -85,68 +92,81 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCounts {
 
   const intake = useEngineIntakeJobs(wantsIntake && hasCompany ? companyId : null);
 
-  const ordersReady = ordersEnabled && isRealtimeReady(ordersKey);
-  const inventoryReady = inventoryEnabled && isRealtimeReady(inventoryKey);
-  const motorsReady = motorsEnabled && isRealtimeReady(motorsKey);
+  const ordersReady = !ordersEnabled || isRealtimeReady(ordersKey);
+  const inventoryReady = !inventoryEnabled || isRealtimeReady(inventoryKey);
+  const motorsReady = !motorsEnabled || isRealtimeReady(motorsKey);
+  const warehousesReady = !warehousesEnabled || isRealtimeReady(warehousesKey);
+  // No default warehouse → treat locations as ready empty (do not block Work forever).
+  const locationsReady =
+    !warehousesEnabled ||
+    (warehousesReady &&
+      (!defaultWarehouseId ||
+        locationsQuery.isSuccess ||
+        locationsQuery.isError ||
+        locationsQuery.isFetched));
+  const intakeReady = !wantsIntake || !hasCompany || !intake.loading;
 
   const scopedOrders = useMemo(() => {
-    if (!ordersReady) return [];
-    if (rbac.scopes.workOrders !== 'assigned_work_orders' || !uid) return rawOrders;
-    return filterWorkOrdersByScope(rawOrders, uid, rbac.scopes.workOrders);
-  }, [ordersReady, rawOrders, rbac.scopes.workOrders, uid]);
+    if (!ordersEnabled || !ordersReady) return [];
+    const list = Array.isArray(rawOrders) ? rawOrders : [];
+    if (rbac.scopes.workOrders !== 'assigned_work_orders' || !uid) return list;
+    return filterWorkOrdersByScope(list, uid, rbac.scopes.workOrders);
+  }, [ordersEnabled, ordersReady, rawOrders, rbac.scopes.workOrders, uid]);
 
-  const items = useMemo(
-    () => (inventoryReady ? rawInventory.map(normalizeInventoryItem) : []),
-    [inventoryReady, rawInventory],
-  );
+  const items = useMemo(() => {
+    if (!inventoryEnabled || !inventoryReady) return [];
+    const list = Array.isArray(rawInventory) ? rawInventory : [];
+    return list.map((item) => normalizeInventoryItem(item));
+  }, [inventoryEnabled, inventoryReady, rawInventory]);
 
   const locationsData = locationsQuery.data;
-  const intakeJobs = intake.jobs;
-  const intakeReady = wantsIntake && hasCompany && !intake.loading;
+  const intakeJobs = Array.isArray(intake.jobs) ? intake.jobs : [];
+  const motorsList = Array.isArray(motors) ? motors : [];
 
-  return useMemo<WorkCounts>(() => {
-    const counts: WorkCounts = { ...EMPTY_WORK_COUNTS };
+  const counts = useMemo<WorkCounts>(() => {
+    const next: WorkCounts = { ...EMPTY_WORK_COUNTS };
 
-    if (ordersReady) {
+    if (ordersEnabled && ordersReady) {
       const open = scopedOrders.filter((order) => isOpenStatus(order.status));
-      counts.orders = {
+      next.orders = {
         total: scopedOrders.length,
         open: open.length,
         attention: open.filter((order) => order.status === 'waiting_parts').length,
       };
     }
 
-    if (motorsReady) {
-      counts.engines = { total: motors.length };
+    if (motorsEnabled && motorsReady) {
+      next.engines = { total: motorsList.length };
     }
 
-    if (inventoryReady) {
+    if (inventoryEnabled && inventoryReady) {
       const active = items.filter((item) => item.status === 'active');
       if (nodeIds.has('parts')) {
-        counts.parts = {
+        next.parts = {
           total: active.length,
           lowStock: active.filter(isWarehouseLowStock).length,
         };
       }
       if (nodeIds.has('receiving')) {
         const inStock = active.filter((item) => item.totalOnHand > 0);
-        counts.receiving = {
+        next.receiving = {
           total: inStock.length,
           awaitingPlacement: inStock.filter(isAwaitingPlacement).length,
         };
       }
     }
 
-    if (locationsData) {
-      const usable = locationsData.filter((location) => !location.isSystem);
-      counts.locations = {
+    if (warehousesEnabled && locationsReady) {
+      const list = Array.isArray(locationsData) ? locationsData : [];
+      const usable = list.filter((location) => !location.isSystem);
+      next.locations = {
         locations: usable.filter((location) => location.type !== 'bin').length,
         bins: usable.filter((location) => location.type === 'bin').length,
       };
     }
 
-    if (intakeReady) {
-      counts.intake = {
+    if (wantsIntake && hasCompany && intakeReady) {
+      next.intake = {
         total: intakeJobs.length,
         awaiting: intakeJobs.filter((job) => job.state === 'open' || job.state === 'rework').length,
         inProgress: intakeJobs.filter(
@@ -157,17 +177,34 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCounts {
       };
     }
 
-    return counts;
+    return next;
   }, [
+    hasCompany,
     intakeJobs,
     intakeReady,
+    inventoryEnabled,
     inventoryReady,
     items,
     locationsData,
-    motors.length,
+    locationsReady,
+    motorsEnabled,
+    motorsList.length,
     motorsReady,
     nodeIds,
+    ordersEnabled,
     ordersReady,
     scopedOrders,
+    warehousesEnabled,
+    wantsIntake,
   ]);
+
+  const ready =
+    hasCompany &&
+    ordersReady &&
+    inventoryReady &&
+    motorsReady &&
+    locationsReady &&
+    intakeReady;
+
+  return { counts, ready };
 }

@@ -24,6 +24,8 @@ export const SYNC_ERROR_CODES = [
   'FILE_TOO_LARGE',
   'NOT_FOUND',
   'CONFLICT',
+  /** Transient precondition — resume / wait for photos, then retry. */
+  'PRECONDITION',
   /** The captured file is gone from disk — retrying cannot bring it back. */
   'FILE_MISSING',
   /** Server is reachable but the upload API is not deployed. */
@@ -63,6 +65,8 @@ const RETRYABLE: Record<SyncErrorCode, boolean> = {
   NOT_FOUND: false,
   // Duplicate finalize / idempotency — retry until the server confirms synced.
   CONFLICT: true,
+  // Session paused / Finish-before-photos — drain resume + photo order will clear it.
+  PRECONDITION: true,
   FILE_MISSING: false,
   DEPLOY_REQUIRED: false,
   UNKNOWN: false,
@@ -83,6 +87,7 @@ const USER_MESSAGE: Record<SyncErrorCode, string> = {
   FILE_TOO_LARGE: 'This photo is too large to upload.',
   NOT_FOUND: 'This engine is no longer on the server.',
   CONFLICT: 'This photo is already on the server. Finishing sync.',
+  PRECONDITION: 'Photos are safe on this iPhone and will retry.',
   FILE_MISSING: 'That photo file is gone from this iPhone. Shoot it again.',
   DEPLOY_REQUIRED: 'The upload API is missing on the server. Deploy the web app, then retry.',
   UNKNOWN: 'Upload could not be completed. Photos are safe on this iPhone.',
@@ -93,12 +98,22 @@ export function isRetryableSyncError(code: SyncErrorCode): boolean {
 }
 
 /**
- * HTTP 409 on a photo means the server already has this capture (idempotency
- * key, a finished PUT, or a retried finalize). Showing it as "1 failed" is
- * wrong — the work is done. The local file may be deleted.
+ * Only treat a 409 as "already on the server" when the body says so.
+ *
+ * Engine intake defaults many failures to HTTP 409 (claim gone, prepare
+ * mismatch, ownership). Treating every 409 as success used to delete the
+ * local file while the server still had zero synced photos — Finish then
+ * failed and the camera looked empty.
  */
 export function isIdempotentPhotoSuccess(error: unknown): boolean {
-  return classifySyncError(error) === 'CONFLICT';
+  if (classifySyncError(error) !== 'CONFLICT') return false;
+  const text = String((error as ErrorLike).message ?? '').toLowerCase();
+  if (isPreconditionMessage(text)) return false;
+  return (
+    text.includes('already recorded') ||
+    text.includes('already on the server') ||
+    text.includes('already uploaded')
+  );
 }
 
 /**
@@ -145,6 +160,30 @@ function looksOffline(text: string): boolean {
   );
 }
 
+function isPreconditionMessage(text: string): boolean {
+  return (
+    text.includes('resume the session') ||
+    text.includes('before taking photos') ||
+    text.includes('before completing field work') ||
+    text.includes('finish needs a serial') ||
+    text.includes('at least one photo') ||
+    text.includes('session claim is no longer active') ||
+    text.includes('engine intake session was not found') ||
+    text.includes('job is not in an active intake session')
+  );
+}
+
+function isEmptyOrMissingFile(text: string): boolean {
+  return (
+    text.includes('local photo is missing') ||
+    text.includes('no longer available') ||
+    text.includes('captured photo is empty') ||
+    text.includes('photo is empty') ||
+    text.includes('retake this angle') ||
+    (text.includes('empty') && text.includes('photo'))
+  );
+}
+
 function codeFromStatus(status: number): SyncErrorCode {
   if (status === 401) return 'AUTH_EXPIRED';
   if (status === 403) return 'PERMISSION_DENIED';
@@ -163,7 +202,7 @@ export function classifySyncError(error: unknown): SyncErrorCode {
   const candidate = (error ?? {}) as ErrorLike;
   const text = String(candidate.message ?? '').toLowerCase();
 
-  // Message wins for the two cases a status cannot express.
+  // Message wins for cases a status cannot express.
   if (looksOffline(text)) return 'NETWORK_UNAVAILABLE';
   if (
     text.includes('web app needs to be deployed') ||
@@ -173,18 +212,59 @@ export function classifySyncError(error: unknown): SyncErrorCode {
   ) {
     return 'DEPLOY_REQUIRED';
   }
-  if (text.includes('local photo is missing') || text.includes('no longer available')) {
-    return 'FILE_MISSING';
+  if (isEmptyOrMissingFile(text)) return 'FILE_MISSING';
+  if (text.includes('too large') || text.includes('25 mb')) return 'FILE_TOO_LARGE';
+  if (
+    text.includes('only jpeg') ||
+    text.includes('heic') ||
+    text.includes('content type') ||
+    text.includes('unsupported')
+  ) {
+    // Unsupported type is a client payload problem — not worth retrying.
+    if (text.includes('only jpeg') || text.includes('unsupported')) return 'INVALID_REQUEST';
   }
+  if (isPreconditionMessage(text)) return 'PRECONDITION';
   if (text.includes('timeout') || text.includes('timed out') || text.includes('aborted')) {
     return 'TIMEOUT';
   }
 
   if (typeof candidate.status === 'number' && Number.isFinite(candidate.status)) {
+    // 409 body often means "already recorded" — but pause/finish preconditions
+    // also use 409. Message check above already caught those.
     return codeFromStatus(candidate.status);
   }
 
   return 'UNKNOWN';
+}
+
+/** Prefer a short, safe server/client message over the canned code copy. */
+function safeDisplayMessage(raw: string | undefined, code: SyncErrorCode): string {
+  const trimmed = raw?.trim() ?? '';
+  if (!trimmed) return syncErrorMessage(code);
+  // Never surface stacks or JSON blobs.
+  if (/stack|undefined|\[object|at\s+\S+\s+\(/i.test(trimmed)) {
+    return syncErrorMessage(code);
+  }
+  if (trimmed.length > 160) {
+    return `${trimmed.slice(0, 157)}…`;
+  }
+  // For codes with good canned copy that must reassure (offline / 5xx), keep it.
+  if (
+    code === 'NETWORK_UNAVAILABLE' ||
+    code === 'TIMEOUT' ||
+    code === 'SERVER_5XX' ||
+    code === 'RATE_LIMIT' ||
+    code === 'DEPLOY_REQUIRED' ||
+    code === 'AUTH_EXPIRED' ||
+    code === 'PERMISSION_DENIED' ||
+    code === 'FILE_MISSING' ||
+    code === 'FILE_TOO_LARGE' ||
+    code === 'CONFLICT'
+  ) {
+    return syncErrorMessage(code);
+  }
+  // INVALID_REQUEST / PRECONDITION / UNKNOWN — show the real reason.
+  return trimmed;
 }
 
 /** Full record — user copy plus everything a developer needs in diagnostics. */
@@ -193,7 +273,7 @@ export function describeSyncError(error: unknown, now = new Date()): SyncErrorIn
   const candidate = (error ?? {}) as ErrorLike;
   return {
     code,
-    message: syncErrorMessage(code),
+    message: safeDisplayMessage(candidate.message, code),
     retryable: isRetryableSyncError(code),
     ...(typeof candidate.status === 'number' ? { status: candidate.status } : {}),
     timestamp: now.toISOString(),

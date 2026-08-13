@@ -30,10 +30,14 @@ export function IntakeOutboxBanner({
   const title = needsDeploy
     ? 'Web API not deployed — sync is blocked'
     : failedCount > 0
-      ? `${failedCount} items need attention`
+      ? failedCount === 1
+        ? '1 item needs attention'
+        : `${failedCount} items need attention`
       : syncing
         ? 'Syncing Warehouse work'
-        : `${pendingCount} items waiting to sync`;
+        : pendingCount === 1
+          ? '1 item waiting to sync'
+          : `${pendingCount} items waiting to sync`;
   const actionHint = failedCount > 0 || needsDeploy ? 'Tap to clear or retry' : undefined;
 
   return (

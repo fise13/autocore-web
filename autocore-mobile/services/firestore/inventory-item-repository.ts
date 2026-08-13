@@ -35,7 +35,10 @@ export function normalizeInventoryItem(item: InventoryItem): InventoryItem {
       item.primaryLocationId != null ? coerceInventoryString(item.primaryLocationId) : undefined,
     primaryLocationCode:
       item.primaryLocationCode != null ? coerceInventoryString(item.primaryLocationCode) : undefined,
-    barcodes: item.barcodes.map((entry) => coerceInventoryString(entry)),
+    // Cached / partial rows can land without `barcodes` — never `.map` a hole.
+    barcodes: Array.isArray(item.barcodes)
+      ? item.barcodes.map((entry) => coerceInventoryString(entry))
+      : [],
   };
 }
 

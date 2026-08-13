@@ -7,25 +7,28 @@ import { resolveCommittedOnline } from '@/lib/offline/netinfo-online';
 /**
  * Reachability for the presentation surfaces (Island, Lock Screen, widgets).
  *
- * `isInternetReachable` is tri-state — `null` means "not determined yet", which
- * is not the same as offline. iOS also reports disconnected when leaving the
- * app; that must not flip the Island to "Waiting for connection".
+ * Link state only — iOS `isInternetReachable` and background disconnects must
+ * not flip the Island to "Waiting for connection".
  */
 export function useIsOnline(): boolean {
   const [online, setOnline] = useState(true);
 
   useEffect(() => {
     let lastOnline = true;
+    let offlineCandidateSinceMs: number | null = null;
     const apply = (state: {
       isConnected: boolean | null;
       isInternetReachable: boolean | null | undefined;
     }) => {
-      lastOnline = resolveCommittedOnline({
+      const next = resolveCommittedOnline({
         net: state,
         appState: AppState.currentState,
         lastOnline,
+        offlineCandidateSinceMs,
       });
-      setOnline(lastOnline);
+      offlineCandidateSinceMs = next.offlineCandidateSinceMs;
+      lastOnline = next.online;
+      setOnline(next.online);
     };
 
     void NetInfo.fetch().then(apply);

@@ -82,9 +82,7 @@ const SyncWidgetLayout = (props: AutoCoreSyncWidgetProps, environment: WidgetEnv
         : pending > 0
           ? `Syncing ${short}`
           : 'Intake synced';
-    return (
-      <Text modifiers={[widgetURL(link)]}>{inlineText}</Text>
-    );
+    return <Text modifiers={[widgetURL(link)]}>{inlineText}</Text>;
   }
 
   // ----------------------------------------------------- accessoryCircular
@@ -131,7 +129,7 @@ const SyncWidgetLayout = (props: AutoCoreSyncWidgetProps, environment: WidgetEnv
         <HStack spacing={4}>
           <Image systemName={symbol} size={11} />
           <Text modifiers={[font({ size: 12, weight: 'semibold' }), lineLimit(1)]}>
-            {caption.toUpperCase()}
+            {caption}
           </Text>
           <Spacer />
         </HStack>
@@ -156,28 +154,27 @@ const SyncWidgetLayout = (props: AutoCoreSyncWidgetProps, environment: WidgetEnv
   }
 
   // ------------------------------------------------------------ systemSmall
-  // iOS 17 requires an explicit container background or the widget renders on
-  // a plain system surface with a placeholder warning.
+  // Glyph + quiet fraction + one title line + optional bar. No ALL CAPS.
   return (
     <VStack
       alignment="leading"
       spacing={0}
       modifiers={[
         containerBackground('#0E0F13', 'widget'),
-        padding({ all: 4 }),
+        padding({ all: 12 }),
         widgetURL(link),
       ]}
     >
       <HStack spacing={6}>
-        <Image systemName={symbol} color={accent} size={15} />
+        <Image systemName={symbol} color={accent} size={14} />
         <Text
           modifiers={[
-            font({ size: 12, weight: 'semibold' }),
-            foregroundStyle(accent),
+            font({ size: 12, weight: 'medium' }),
+            foregroundStyle('#98989F'),
             lineLimit(1),
           ]}
         >
-          {caption.toUpperCase()}
+          {caption}
         </Text>
         <Spacer />
       </HStack>
@@ -186,7 +183,7 @@ const SyncWidgetLayout = (props: AutoCoreSyncWidgetProps, environment: WidgetEnv
 
       <Text
         modifiers={[
-          font({ size: 40, weight: 'semibold', design: 'rounded' }),
+          font({ size: 28, weight: 'semibold', design: 'rounded' }),
           foregroundStyle('#FFFFFF'),
           monospacedDigit(),
           lineLimit(1),

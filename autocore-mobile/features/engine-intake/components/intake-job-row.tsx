@@ -1,6 +1,12 @@
-import { useCallback } from 'react';
-import { Pressable, View } from 'react-native';
+import { useCallback, type ReactNode } from 'react';
+import { Platform, Pressable, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import {
+  Button as SwiftButton,
+  ContextMenu,
+  Host,
+  RNHostView,
+} from '@expo/ui/swift-ui';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import type { EngineIntakeJob } from '@autocore/engine-intake';
 import { warehouseLifecycleLabel } from '@autocore/engine-intake';
@@ -184,6 +190,134 @@ function IntakeJobRowBody({
   );
 }
 
+function RowPressable({
+  disabled,
+  onPress,
+  onLongPress,
+  children,
+}: {
+  disabled: boolean;
+  onPress: () => void;
+  onLongPress?: () => void;
+  children: (pressed: boolean) => ReactNode;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityHint="Hold for edit and cancel"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      delayLongPress={350}
+      onPress={onPress}
+      onLongPress={onLongPress}
+    >
+      {({ pressed }) => children(pressed)}
+    </Pressable>
+  );
+}
+
+/**
+ * Real UIKit context menu — hold, lift, blur, haptic from iOS.
+ * Row stays RN, hosted in SwiftUI via `RNHostView` (same as photos / WO).
+ */
+function NativeMenuRow({
+  job,
+  claimedByAnother,
+  claimedByName,
+  syncPending,
+  localPhotoCount,
+  canEdit,
+  onPress,
+  onEdit,
+  onCancel,
+  onCopy,
+}: {
+  job: EngineIntakeJob;
+  claimedByAnother: boolean;
+  claimedByName?: string | null;
+  syncPending: boolean;
+  localPhotoCount: number;
+  canEdit: boolean;
+  onPress: () => void;
+  onEdit: () => void;
+  onCancel: () => void;
+  onCopy: () => void;
+}) {
+  const { colors, isDark } = useTheme();
+  const showOpen = !claimedByAnother;
+  const showEdit = canEdit && !claimedByAnother && canEditIdentity(job);
+  const showCancel = canEdit && !claimedByAnother && canCancelJob(job);
+
+  return (
+    <Host
+      matchContents
+      colorScheme={isDark ? 'dark' : 'light'}
+      seedColor={colors.primary}
+      style={{ width: '100%' }}
+    >
+      <ContextMenu>
+        <ContextMenu.Trigger>
+          <RNHostView matchContents>
+            <RowPressable disabled={claimedByAnother} onPress={onPress}>
+              {(pressed) => (
+                <IntakeJobRowBody
+                  job={job}
+                  claimedByAnother={claimedByAnother}
+                  claimedByName={claimedByName}
+                  syncPending={syncPending}
+                  localPhotoCount={localPhotoCount}
+                  pressed={pressed}
+                />
+              )}
+            </RowPressable>
+          </RNHostView>
+        </ContextMenu.Trigger>
+        <ContextMenu.Items>
+          {showOpen ? (
+            <SwiftButton
+              label={openActionLabel(job)}
+              systemImage="camera.fill"
+              onPress={() => {
+                haptics.selection();
+                onPress();
+              }}
+            />
+          ) : null}
+          {showEdit ? (
+            <SwiftButton
+              label="Edit"
+              systemImage="pencil"
+              onPress={() => {
+                haptics.selection();
+                onEdit();
+              }}
+            />
+          ) : null}
+          <SwiftButton
+            label="Copy serial"
+            systemImage="doc.on.doc"
+            onPress={() => {
+              haptics.selection();
+              onCopy();
+            }}
+          />
+          {showCancel ? (
+            <SwiftButton
+              label="Cancel engine"
+              systemImage="trash"
+              role="destructive"
+              onPress={() => {
+                haptics.selection();
+                onCancel();
+              }}
+            />
+          ) : null}
+        </ContextMenu.Items>
+      </ContextMenu>
+    </Host>
+  );
+}
+
 export function IntakeJobRow({
   job,
   index,
@@ -199,6 +333,7 @@ export function IntakeJobRow({
 }: IntakeJobRowProps) {
   const reducedMotion = useReducedMotion();
   const staggerMs = useListStaggerDelay(index);
+  const rowDisabled = claimedByAnother || disabled;
 
   const entering = reducedMotion
     ? undefined
@@ -235,8 +370,8 @@ export function IntakeJobRow({
     [copySerial, job, onCancel, onEdit, onPress],
   );
 
-  const openMenu = useCallback(() => {
-    if (disabled) return;
+  const openFallbackMenu = useCallback(() => {
+    if (rowDisabled) return;
     presentNativeMenu({
       title: jobSerial(job),
       actions: [
@@ -260,30 +395,45 @@ export function IntakeJobRow({
       ],
       onPressAction: handleAction,
     });
-  }, [canEdit, claimedByAnother, disabled, handleAction, job]);
+  }, [canEdit, claimedByAnother, handleAction, job, rowDisabled]);
+
+  const useNativeMenu = Platform.OS === 'ios' && !rowDisabled;
 
   return (
     <Animated.View entering={entering}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityHint="Hold for edit and cancel"
-        accessibilityState={{ disabled: claimedByAnother || disabled }}
-        disabled={claimedByAnother || disabled}
-        delayLongPress={350}
-        onPress={onPress}
-        onLongPress={openMenu}
-      >
-        {({ pressed }) => (
-          <IntakeJobRowBody
-            job={job}
-            claimedByAnother={claimedByAnother}
-            claimedByName={claimedByName}
+      {useNativeMenu ? (
+        <NativeMenuRow
+          job={job}
+          claimedByAnother={claimedByAnother}
+          claimedByName={claimedByName}
           syncPending={syncPending}
           localPhotoCount={localPhotoCount}
-          pressed={pressed}
-          />
-        )}
-      </Pressable>
+          canEdit={canEdit}
+          onPress={onPress}
+          onEdit={() => onEdit(job)}
+          onCancel={() => onCancel(job)}
+          onCopy={() => {
+            void copySerial();
+          }}
+        />
+      ) : (
+        <RowPressable
+          disabled={rowDisabled}
+          onPress={onPress}
+          onLongPress={rowDisabled ? undefined : openFallbackMenu}
+        >
+          {(pressed) => (
+            <IntakeJobRowBody
+              job={job}
+              claimedByAnother={claimedByAnother}
+              claimedByName={claimedByName}
+              syncPending={syncPending}
+              localPhotoCount={localPhotoCount}
+              pressed={pressed}
+            />
+          )}
+        </RowPressable>
+      )}
     </Animated.View>
   );
 }

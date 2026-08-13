@@ -1,6 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
-import NetInfo from '@react-native-community/netinfo';
 import { Directory, File, Paths, UploadType } from 'expo-file-system';
 import type {
   EngineIntakeCommand,
@@ -12,10 +11,18 @@ import type {
 
 import { MobileApiError } from '@/services/api/mobile-client';
 import { getJson, setJson } from '@/lib/storage/kv';
-import { netInfoSaysOnline } from '@/lib/offline/netinfo-online';
-
-import { engineIntakeId } from '../lib/device';
+import { engineIntakeId, getEngineIntakeDeviceId, getEngineIntakeDeviceName } from '../lib/device';
 import { commandFailureAbortsDrainWave, orderIntakeDrainWork } from '../lib/intake-drain-order';
+import { normalizeIntakePhotoPayload } from '../lib/intake-photo-payload';
+import {
+  isClaimGoneError,
+  isClaimHeldByOtherMessage,
+  rebindJobSessionIds,
+} from '../lib/intake-session-recover';
+import {
+  mapPool,
+  PHOTO_UPLOAD_CONCURRENCY,
+} from '../lib/intake-upload-pool';
 import { describeSyncError, isBenignCancelError, isBenignFieldCompleteError, isIdempotentPhotoSuccess, type SyncErrorInfo } from '../lib/sync-errors';
 import {
   isJobRunnable,
@@ -156,7 +163,13 @@ function countPendingCommands(list: IntakeOutboxCommand[]): number {
 }
 
 function countPhotoPending(list: IntakeOutboxPhoto[]): number {
-  return list.filter((item) => item.state !== 'failed' && !isConflictPhoto(item)).length;
+  return list.filter(
+    (item) =>
+      item.status !== 'failed' &&
+      item.status !== 'completed' &&
+      item.state !== 'failed' &&
+      !isConflictPhoto(item),
+  ).length;
 }
 
 function countPhotoFailed(list: IntakeOutboxPhoto[]): number {
@@ -211,6 +224,18 @@ function publish(): void {
   setJson(STORAGE_KEY, { commands, photos });
   snapshot = buildSnapshot();
   for (const listener of listeners) listener();
+}
+
+/** Serialize outbox mutations while photo PUTs run in parallel. */
+let outboxMutationGate: Promise<void> = Promise.resolve();
+
+function withOutboxMutation<T>(fn: () => T): Promise<T> {
+  const run = outboxMutationGate.then(fn, fn);
+  outboxMutationGate = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
 }
 
 /** Short, actionable copy for camera / Warehouse sync failures. */
@@ -321,11 +346,22 @@ export function enqueueIntakeCommand(
     );
   }
   if (command.type === 'field_complete') {
-    commands = commands.filter(
-      (item) =>
-        item.command.type !== 'pause_session' ||
-        item.command.payload.sessionId !== command.payload.sessionId,
-    );
+    const finishJobId = command.payload.jobId;
+    commands = commands.filter((item) => {
+      if (
+        item.command.type === 'field_complete' &&
+        item.command.payload.jobId === finishJobId
+      ) {
+        return false;
+      }
+      if (
+        item.command.type === 'pause_session' &&
+        item.command.payload.jobId === finishJobId
+      ) {
+        return false;
+      }
+      return true;
+    });
   }
   commands = [
     ...commands,
@@ -425,14 +461,19 @@ function prepareRequest(
   };
 }
 
-/** iOS background URLSession PUT — survives leaving the app. JS `fetch` does not. */
+/**
+ * Native PUT — survives leaving the app when backgrounded.
+ * In the foreground use the foreground session: background URLSession is
+ * throttled by iOS and made multi-photo sync feel stuck.
+ */
 async function putPhotoBytes(file: File, uploadUrl: string, contentType: string): Promise<void> {
+  const sessionType = AppState.currentState === 'active' ? 'foreground' : 'background';
   const result = await file.upload(uploadUrl, {
     httpMethod: 'PUT',
     uploadType: UploadType.BINARY_CONTENT,
     headers: { 'Content-Type': contentType },
     mimeType: contentType,
-    sessionType: 'background',
+    sessionType,
   });
   if (result.status < 200 || result.status >= 300) {
     throw new Error(`Photo upload failed (HTTP ${result.status})`);
@@ -443,8 +484,8 @@ async function finalizePreparedPhoto(
   item: IntakeOutboxPhoto,
   prepared: PrepareIntakePhotoResponse,
   sizeBytes: number,
-): Promise<void> {
-  await finalizeEngineIntakePhoto({
+): Promise<{ photoId: string; url: string; aiInspectionId: string }> {
+  return finalizeEngineIntakePhoto({
     jobId: item.jobId,
     sessionId: item.sessionId,
     photoId: prepared.photoId,
@@ -457,46 +498,193 @@ async function finalizePreparedPhoto(
   });
 }
 
+function jobHasFinishPending(companyId: string, jobId: string): boolean {
+  return commands.some(
+    (item) =>
+      item.companyId === companyId &&
+      item.command.type === 'field_complete' &&
+      item.command.payload.jobId === jobId,
+  );
+}
+
+/** Photos still waiting on prepare/PUT/finalize — not server-confirmed rows. */
 function jobHasOpenPhotos(companyId: string, jobId: string): boolean {
   return photos.some(
     (photo) =>
       photo.companyId === companyId &&
       photo.jobId === jobId &&
-      photo.status !== 'failed',
+      photo.status !== 'failed' &&
+      photo.status !== 'completed',
   );
 }
 
-function completeUploadedPhoto(item: IntakeOutboxPhoto): void {
-  // Drop the outbox row before yielding back to the JS event loop. Finalize
-  // already bumped server `capturedCount`; if the Firestore snapshot lands
-  // while this row is still present, the camera UI double-counts the shot.
-  photos = photos.filter((candidate) => candidate.id !== item.id);
+function deleteLocalPhotoFile(localUri: string): void {
   try {
-    const file = new File(item.localUri);
+    const file = new File(localUri);
     if (file.exists) file.delete();
   } catch {
-    // Best-effort local cleanup — upload already succeeded.
+    // Best-effort local cleanup.
   }
+}
+
+/**
+ * Mark a photo as on the server. If Finish is still queued for this job, keep
+ * the local file + outbox row (`completed`) so a failed Finish can retry upload
+ * instead of wiping the camera to empty while the engine stays Active.
+ */
+function settleUploadedPhoto(item: IntakeOutboxPhoto): void {
+  if (jobHasFinishPending(item.companyId, item.jobId)) {
+    photos = photos.map((candidate) =>
+      candidate.id === item.id
+        ? {
+            ...candidate,
+            status: 'completed' as SyncJobStatus,
+            nextRetryAt: null,
+            errorInfo: null,
+            updatedAt: new Date().toISOString(),
+          }
+        : candidate,
+    );
+    publish();
+    return;
+  }
+  photos = photos.filter((candidate) => candidate.id !== item.id);
+  deleteLocalPhotoFile(item.localUri);
+  publish();
+}
+
+/** Drop server-confirmed local rows after Finish lands (or is benignly done). */
+function purgeSettledPhotos(companyId: string, jobId: string): void {
+  const settled = photos.filter(
+    (photo) =>
+      photo.companyId === companyId &&
+      photo.jobId === jobId &&
+      photo.status === 'completed',
+  );
+  if (settled.length === 0) return;
+  for (const photo of settled) {
+    deleteLocalPhotoFile(photo.localUri);
+  }
+  photos = photos.filter(
+    (photo) =>
+      !(
+        photo.companyId === companyId &&
+        photo.jobId === jobId &&
+        photo.status === 'completed'
+      ),
+  );
+  publish();
+}
+
+/** Finish said "needs photo" — put confirmed rows back in the upload queue. */
+function requeueSettledPhotos(companyId: string, jobId: string): void {
+  let touched = false;
+  photos = photos.map((photo) => {
+    if (
+      photo.companyId !== companyId ||
+      photo.jobId !== jobId ||
+      photo.status !== 'completed'
+    ) {
+      return photo;
+    }
+    touched = true;
+    return {
+      ...photo,
+      status: 'queued' as SyncJobStatus,
+      nextRetryAt: null,
+      errorInfo: null,
+      updatedAt: new Date().toISOString(),
+    };
+  });
+  if (touched) publish();
+}
+
+function applyJobSessionRebind(companyId: string, jobId: string, sessionId: string): void {
+  const next = rebindJobSessionIds({
+    companyId,
+    jobId,
+    sessionId,
+    photos,
+    commands,
+  });
+  if (next.rebound === 0) return;
+  photos = next.photos;
+  commands = next.commands;
   publish();
 }
 
 /**
- * Leaving the app pauses the session. The current production prepare API then
- * 409s every photo. Resume first so this phone's outbox can drain even before
- * the paused-upload deploy lands.
+ * Photos need a live bay claim. Leaving the app / Finish / a stale lease can
+ * clear `activeSessionId` while files are still local — resume then 409s with
+ * "Session claim is no longer active". Reclaim and rewrite outbox sessionIds.
  */
-async function resumeSessionForPhotoUpload(item: IntakeOutboxPhoto): Promise<void> {
+async function reclaimJobSession(input: {
+  companyId: string;
+  jobId: string;
+  deviceId: string;
+}): Promise<string> {
+  // Always mint a fresh session id. Reusing the dead claim's sessionId makes
+  // server `transaction.create(session)` collide with the stale/paused doc and
+  // abort reclaim — photos then look "synced" locally while Ready never flips.
+  const requestedSessionId = engineIntakeId('session');
+  const result = await sendEngineIntakeCommand({
+    type: 'claim_job',
+    idempotencyKey: engineIntakeId('reclaim'),
+    client: 'mobile',
+    clientAt: new Date().toISOString(),
+    deviceId: input.deviceId || getEngineIntakeDeviceId(),
+    payload: {
+      jobId: input.jobId,
+      sessionId: requestedSessionId,
+      deviceName: getEngineIntakeDeviceName(),
+    },
+  });
+  const sessionId =
+    typeof result.sessionId === 'string' && result.sessionId.length > 0
+      ? result.sessionId
+      : requestedSessionId;
+  applyJobSessionRebind(input.companyId, input.jobId, sessionId);
+  return sessionId;
+}
+
+async function ensureSessionForPhotoUpload(item: IntakeOutboxPhoto): Promise<void> {
   try {
     await sendEngineIntakeCommand({
       type: 'resume_session',
-      idempotencyKey: `intake-resume-for-upload:${item.sessionId}`,
+      idempotencyKey: engineIntakeId('resume-upload'),
       client: 'mobile',
       deviceId: item.deviceId,
       payload: { jobId: item.jobId, sessionId: item.sessionId },
     });
-  } catch {
-    // Already active / already finished — prepare decides.
+    return;
+  } catch (error) {
+    if (!isClaimGoneError(error)) {
+      // Already active / transient — let prepare decide.
+      return;
+    }
   }
+
+  try {
+    await reclaimJobSession({
+      companyId: item.companyId,
+      jobId: item.jobId,
+      deviceId: item.deviceId,
+    });
+  } catch (error) {
+    if (isClaimHeldByOtherMessage(error instanceof Error ? error.message : String(error))) {
+      throw error;
+    }
+    // Last resort: prepare may still succeed if claim came back.
+  }
+}
+
+function isNeedsPhotoFinishError(error: unknown): boolean {
+  const text = String(
+    error && typeof error === 'object' && 'message' in error
+      ? (error as { message?: unknown }).message ?? ''
+      : error ?? '',
+  ).toLowerCase();
+  return text.includes('at least one photo') || text.includes('finish needs a serial');
 }
 
 async function sendQueuedFieldComplete(companyId: string, jobId: string): Promise<void> {
@@ -507,68 +695,109 @@ async function sendQueuedFieldComplete(companyId: string, jobId: string): Promis
       item.command.type === 'field_complete' &&
       item.command.payload.jobId === jobId,
   );
-  if (!pending) return;
+  if (!pending) {
+    // No Finish queued — safe to drop locally retained uploads for this job.
+    purgeSettledPhotos(companyId, jobId);
+    return;
+  }
+
+  const succeed = () => {
+    commands = commands.filter((candidate) => candidate.id !== pending.id);
+    purgeSettledPhotos(companyId, jobId);
+    publish();
+  };
+
   try {
     await sendEngineIntakeCommand(pending.command);
-    commands = commands.filter((candidate) => candidate.id !== pending.id);
-    publish();
+    succeed();
   } catch (error) {
     if (isBenignFieldCompleteError(error)) {
-      commands = commands.filter((candidate) => candidate.id !== pending.id);
-      publish();
+      succeed();
+      return;
     }
+    if (isClaimGoneError(error)) {
+      try {
+        await reclaimJobSession({
+          companyId,
+          jobId,
+          deviceId: pending.command.deviceId || getEngineIntakeDeviceId(),
+        });
+        const live = commands.find((candidate) => candidate.id === pending.id);
+        if (live) {
+          await sendEngineIntakeCommand(live.command);
+          succeed();
+          return;
+        }
+      } catch {
+        // Fall through — surface the Finish failure below.
+      }
+    }
+    if (isNeedsPhotoFinishError(error)) {
+      // Server still has zero photos — put retained files back on the wire.
+      requeueSettledPhotos(companyId, jobId);
+    }
+    const info = describeSyncError(error);
+    const transition = resolveFailureTransition({
+      attemptCount: pending.attemptCount + 1,
+      retryable: info.retryable || isNeedsPhotoFinishError(error),
+      offline: info.code === 'NETWORK_UNAVAILABLE',
+    });
+    updateCommand(pending.id, {
+      status: transition.status,
+      attemptCount: transition.attemptCount,
+      nextRetryAt: transition.nextRetryAt,
+      errorInfo: info,
+    });
   }
 }
 
-async function uploadPhoto(item: IntakeOutboxPhoto): Promise<PrepareIntakePhotoResponse> {
+/**
+ * Network-only transfer. Does not touch the outbox — callers settle the row
+ * under `withOutboxMutation` so parallel PUTs cannot clobber each other.
+ * Resolves only when the server confirms a photo URL.
+ */
+async function transferPhoto(item: IntakeOutboxPhoto): Promise<{ url: string }> {
   const file = new File(item.localUri);
   if (!file.exists) {
     throw new MobileApiError('Local photo is missing. Retake this angle.', 410);
   }
-  const contentType = file.type || 'image/jpeg';
-  const sizeBytes = file.size;
-  if (!sizeBytes) {
-    throw new MobileApiError('Captured photo is empty. Retake this angle.', 400);
+  const normalized = normalizeIntakePhotoPayload({
+    localUri: item.localUri,
+    mimeType: file.type,
+    sizeBytes: file.size,
+  });
+  if (!normalized.ok) {
+    const status = normalized.error.code === 'EMPTY' ? 410 : 400;
+    throw new MobileApiError(normalized.error.message, status);
   }
+  const { contentType, sizeBytes } = normalized.value;
   const prepared = await prepareEngineIntakePhoto(prepareRequest(item, contentType, sizeBytes));
   if (!prepared.alreadyUploaded) {
+    if (!prepared.uploadUrl) {
+      throw new MobileApiError('Photo upload URL was missing from the server.', 502);
+    }
     await putPhotoBytes(file, prepared.uploadUrl, prepared.contentType);
   }
   try {
-    await finalizePreparedPhoto(item, prepared, sizeBytes);
+    const finalized = await finalizePreparedPhoto(item, prepared, sizeBytes);
+    const url = finalized.url?.trim() || prepared.url?.trim() || '';
+    if (!url) {
+      throw new MobileApiError('Server did not confirm the photo upload.', 502);
+    }
+    return { url };
   } catch (error) {
-    if (!isIdempotentPhotoSuccess(error)) throw error;
-    completeUploadedPhoto(item);
-    return prepared;
+    if (isIdempotentPhotoSuccess(error) && prepared.url?.trim()) {
+      return { url: prepared.url.trim() };
+    }
+    throw error;
   }
-  completeUploadedPhoto(item);
-  return prepared;
 }
 
 async function drain(companyId: string): Promise<void> {
-  const network = await NetInfo.fetch();
-  // iOS reports disconnected the moment we leave the foreground. Background
-  // URLSession still has the radios — try the wave. A real outage fails the
-  // PUT and parks the row in the catch path.
-  const online =
-    AppState.currentState === 'active' ? netInfoSaysOnline(network) : true;
-  if (!online) {
-    // Offline is a pause, not a failure. Park everything runnable so the UI can
-    // say "waiting for connection" instead of inventing an error.
-    let touched = false;
-    commands = commands.map((item) => {
-      if (item.companyId !== companyId || item.status === 'failed' || item.status === 'waiting_for_network') return item;
-      touched = true;
-      return { ...item, status: 'waiting_for_network' as SyncJobStatus, nextRetryAt: null };
-    });
-    photos = photos.map((item) => {
-      if (item.companyId !== companyId || item.status === 'failed' || item.status === 'waiting_for_network') return item;
-      touched = true;
-      return { ...item, status: 'waiting_for_network' as SyncJobStatus, nextRetryAt: null };
-    });
-    if (touched) publish();
-    return;
-  }
+  // Never gate the wave on NetInfo. iOS reports offline under a lit Wi‑Fi
+  // icon (and always lies in background). A real outage fails the request and
+  // parks the row via resolveFailureTransition(offline). Gating here froze
+  // reclaim on "Session claim is no longer active" while the phone was online.
 
   const blockedJobIds = new Set<string>();
   for (const item of commands) {
@@ -584,7 +813,7 @@ async function drain(companyId: string): Promise<void> {
     }
   }
 
-  const runnable = { online, now: new Date() };
+  const runnable = { online: true, now: new Date() };
   const pendingCommands = commands
     .filter((item) => item.companyId === companyId && isJobRunnable(item, runnable))
     .map((item) => ({
@@ -626,136 +855,257 @@ async function drain(companyId: string): Promise<void> {
 
   syncing = true;
   publish();
-  const resumedSessions = new Set<string>();
-  try {
-    for (const entry of work) {
-      const jobId =
-        entry.kind === 'photo'
-          ? entry.item.jobId
-          : 'jobId' in entry.item.command.payload
-            ? entry.item.command.payload.jobId
-            : undefined;
-      // Heartbeats must still run for a job even if a prior command failed.
-      const isHeartbeat =
-        entry.kind === 'command' && entry.item.command.type === 'heartbeat_session';
-      if (jobId && blockedJobIds.has(jobId) && !isHeartbeat) continue;
-      if (
-        entry.kind === 'command' &&
-        entry.item.command.type === 'field_complete' &&
-        jobId &&
-        jobHasOpenPhotos(companyId, jobId)
-      ) {
-        continue;
-      }
+  const ensureByJob = new Map<string, Promise<void>>();
+  let stopWave = false;
 
-      if (entry.kind === 'command') {
-        const item = entry.item;
-        if (!commands.some((candidate) => candidate.id === item.id)) continue;
-        updateCommand(item.id, {
-          status: 'uploading',
-          attemptCount: item.attemptCount + 1,
-          nextRetryAt: null,
-          errorInfo: null,
-        });
+  const ensureJobSession = (item: IntakeOutboxPhoto): Promise<void> => {
+    const existing = ensureByJob.get(item.jobId);
+    if (existing) return existing;
+    const pending = ensureSessionForPhotoUpload(item).catch((error) => {
+      ensureByJob.delete(item.jobId);
+      throw error;
+    });
+    ensureByJob.set(item.jobId, pending);
+    return pending;
+  };
+
+  const runCommandEntry = async (item: (typeof commands)[number]): Promise<'ok' | 'abort'> => {
+    const jobId =
+      'jobId' in item.command.payload ? item.command.payload.jobId : undefined;
+    const isHeartbeat = item.command.type === 'heartbeat_session';
+    if (jobId && blockedJobIds.has(jobId) && !isHeartbeat) return 'ok';
+    if (
+      item.command.type === 'field_complete' &&
+      jobId &&
+      jobHasOpenPhotos(companyId, jobId)
+    ) {
+      return 'ok';
+    }
+    if (!commands.some((candidate) => candidate.id === item.id)) return 'ok';
+
+    updateCommand(item.id, {
+      status: 'uploading',
+      attemptCount: item.attemptCount + 1,
+      nextRetryAt: null,
+      errorInfo: null,
+    });
+    try {
+      await sendEngineIntakeCommand(item.command);
+      commands = commands.filter((candidate) => candidate.id !== item.id);
+      if (item.command.type === 'field_complete' && jobId) {
+        purgeSettledPhotos(companyId, jobId);
+      }
+      publish();
+      return 'ok';
+    } catch (error) {
+      if (item.command.type === 'cancel_job' && isBenignCancelError(error)) {
+        commands = commands.filter((candidate) => candidate.id !== item.id);
+        publish();
+        return 'ok';
+      }
+      if (item.command.type === 'field_complete' && isBenignFieldCompleteError(error)) {
+        commands = commands.filter((candidate) => candidate.id !== item.id);
+        if (jobId) purgeSettledPhotos(companyId, jobId);
+        publish();
+        return 'ok';
+      }
+      if (
+        (item.command.type === 'field_complete' ||
+          item.command.type === 'pause_session' ||
+          item.command.type === 'resume_session') &&
+        isClaimGoneError(error) &&
+        jobId
+      ) {
         try {
-          await sendEngineIntakeCommand(item.command);
+          await reclaimJobSession({
+            companyId,
+            jobId,
+            deviceId: item.command.deviceId || getEngineIntakeDeviceId(),
+          });
+          const live = commands.find((candidate) => candidate.id === item.id);
+          if (live) {
+            await sendEngineIntakeCommand(live.command);
+            commands = commands.filter((candidate) => candidate.id !== item.id);
+            if (item.command.type === 'field_complete') {
+              purgeSettledPhotos(companyId, jobId);
+            }
+            publish();
+            return 'ok';
+          }
+        } catch {
+          // Fall through to normal failure handling.
+        }
+      }
+      if (item.command.type === 'field_complete' && jobId && isNeedsPhotoFinishError(error)) {
+        requeueSettledPhotos(companyId, jobId);
+      }
+      const info = describeSyncError(error);
+      const offline = info.code === 'NETWORK_UNAVAILABLE';
+      const transition = resolveFailureTransition({
+        attemptCount: item.attemptCount + 1,
+        retryable: info.retryable,
+        offline,
+      });
+      const terminal = transition.status === 'failed';
+      updateCommand(item.id, {
+        status: transition.status,
+        attemptCount: transition.attemptCount,
+        nextRetryAt: transition.nextRetryAt,
+        errorInfo: info,
+      });
+      if (offline) return 'abort';
+      if (isHeartbeat) {
+        if (terminal) {
           commands = commands.filter((candidate) => candidate.id !== item.id);
           publish();
-        } catch (error) {
-          if (item.command.type === 'cancel_job' && isBenignCancelError(error)) {
-            commands = commands.filter((candidate) => candidate.id !== item.id);
-            publish();
-            continue;
-          }
-          if (item.command.type === 'field_complete' && isBenignFieldCompleteError(error)) {
-            commands = commands.filter((candidate) => candidate.id !== item.id);
-            publish();
-            continue;
-          }
-          const info = describeSyncError(error);
-          const offline = info.code === 'NETWORK_UNAVAILABLE';
-          const transition = resolveFailureTransition({
-            attemptCount: item.attemptCount + 1,
-            retryable: info.retryable,
-            offline,
-          });
-          const terminal = transition.status === 'failed';
-          updateCommand(item.id, {
-            status: transition.status,
-            attemptCount: transition.attemptCount,
-            nextRetryAt: transition.nextRetryAt,
-            errorInfo: info,
-          });
-          if (offline) return;
-          // Drop a dead heartbeat instead of blocking the rest of the wave.
-          if (isHeartbeat) {
-            if (terminal) {
-              commands = commands.filter((candidate) => candidate.id !== item.id);
-              publish();
-            }
-            continue;
-          }
-          if (terminal && jobId && commandFailureBlocksJob(item.command)) {
-            blockedJobIds.add(jobId);
-            continue;
-          }
-          if (!commandFailureAbortsDrainWave(item.command.type)) {
-            continue;
-          }
-          return;
         }
-        continue;
+        return 'ok';
       }
+      if (terminal && jobId && commandFailureBlocksJob(item.command)) {
+        blockedJobIds.add(jobId);
+        return 'ok';
+      }
+      if (!commandFailureAbortsDrainWave(item.command.type)) {
+        return 'ok';
+      }
+      return 'abort';
+    }
+  };
 
-      const item = entry.item;
-      if (!photos.some((candidate) => candidate.id === item.id)) continue;
+  const runPhotoEntry = async (item: IntakeOutboxPhoto): Promise<void> => {
+    if (stopWave) return;
+    if (blockedJobIds.has(item.jobId)) return;
+
+    const stillQueued = await withOutboxMutation(() =>
+      photos.some((candidate) => candidate.id === item.id),
+    );
+    if (!stillQueued) return;
+
+    await withOutboxMutation(() => {
       updatePhoto(item.id, {
         status: 'uploading',
         attemptCount: item.attemptCount + 1,
         nextRetryAt: null,
         errorInfo: null,
       });
+    });
+
+    try {
+      await ensureJobSession(item);
+      const live = await withOutboxMutation(
+        () => photos.find((candidate) => candidate.id === item.id) ?? null,
+      );
+      if (!live) return;
       try {
-        if (!resumedSessions.has(item.sessionId)) {
-          resumedSessions.add(item.sessionId);
-          await resumeSessionForPhotoUpload(item);
-        }
-        await uploadPhoto(item);
-        // uploadPhoto already removed the outbox row + local file.
+        await transferPhoto(live);
+      } catch (firstError) {
+        if (!isClaimGoneError(firstError)) throw firstError;
+        ensureByJob.delete(item.jobId);
+        await ensureJobSession(live);
+        const retried = await withOutboxMutation(
+          () => photos.find((candidate) => candidate.id === item.id) ?? null,
+        );
+        if (!retried) return;
+        await transferPhoto(retried);
+      }
+      await withOutboxMutation(() => {
+        const row = photos.find((candidate) => candidate.id === item.id);
+        if (row) settleUploadedPhoto(row);
         noteSyncSuccess();
-        publish();
-        await sendQueuedFieldComplete(companyId, item.jobId);
-      } catch (error) {
-        if (isIdempotentPhotoSuccess(error)) {
-          completeUploadedPhoto(item);
+      });
+    } catch (error) {
+      const live =
+        (await withOutboxMutation(
+          () => photos.find((candidate) => candidate.id === item.id) ?? null,
+        )) ?? item;
+      if (isIdempotentPhotoSuccess(error)) {
+        await withOutboxMutation(() => {
+          const row = photos.find((candidate) => candidate.id === item.id) ?? live;
+          settleUploadedPhoto(row);
           noteSyncSuccess();
-          await sendQueuedFieldComplete(companyId, item.jobId);
-          continue;
-        }
-        const info = describeSyncError(error);
-        const offline = info.code === 'NETWORK_UNAVAILABLE';
-        const transition = resolveFailureTransition({
-          attemptCount: item.attemptCount + 1,
-          retryable: info.retryable,
-          offline,
         });
-        updatePhoto(item.id, {
+        return;
+      }
+      const info = describeSyncError(error);
+      const offline = info.code === 'NETWORK_UNAVAILABLE';
+      const transition = resolveFailureTransition({
+        attemptCount: item.attemptCount + 1,
+        retryable: info.retryable,
+        offline,
+      });
+      await withOutboxMutation(() => {
+        updatePhoto(live.id, {
           status: transition.status,
           attemptCount: transition.attemptCount,
           nextRetryAt: transition.nextRetryAt,
           errorInfo: info,
         });
-        // Offline: stop the wave rather than marching the rest into the same wall.
-        if (offline) return;
-        // Non-terminal photo failure: keep going so later heartbeats / photos
-        // are not permanently stuck behind one bad file.
-        continue;
+      });
+      if (offline) stopWave = true;
+    }
+  };
+
+  try {
+    const setupEntries = work.filter(
+      (entry) =>
+        entry.kind === 'command' && entry.item.command.type !== 'field_complete',
+    );
+    const photoEntries = work.filter((entry) => entry.kind === 'photo');
+    const finishEntries = work.filter(
+      (entry) =>
+        entry.kind === 'command' && entry.item.command.type === 'field_complete',
+    );
+
+    for (const entry of setupEntries) {
+      if (entry.kind !== 'command') continue;
+      const result = await runCommandEntry(entry.item);
+      if (result === 'abort') return;
+    }
+
+    // Seed claim once per job before the parallel PUT wave.
+    for (const entry of photoEntries) {
+      if (entry.kind !== 'photo') continue;
+      if (blockedJobIds.has(entry.item.jobId)) continue;
+      if (!photos.some((candidate) => candidate.id === entry.item.id)) continue;
+      try {
+        await ensureJobSession(entry.item);
+      } catch (error) {
+        if (isClaimHeldByOtherMessage(error instanceof Error ? error.message : String(error))) {
+          blockedJobIds.add(entry.item.jobId);
+        }
       }
+    }
+
+    await mapPool(
+      photoEntries.filter((entry) => entry.kind === 'photo').map((entry) => entry.item),
+      PHOTO_UPLOAD_CONCURRENCY,
+      async (item) => {
+        await runPhotoEntry(item);
+      },
+    );
+    if (stopWave) return;
+
+    const finishedJobIds = new Set(
+      photoEntries
+        .filter((entry) => entry.kind === 'photo')
+        .map((entry) => entry.item.jobId),
+    );
+    for (const jobId of finishedJobIds) {
+      await sendQueuedFieldComplete(companyId, jobId);
+    }
+
+    for (const entry of finishEntries) {
+      if (entry.kind !== 'command') continue;
+      const result = await runCommandEntry(entry.item);
+      if (result === 'abort') return;
     }
   } finally {
     syncing = false;
     const photosStillMoving = photos.some(
-      (item) => item.companyId === companyId && item.status !== 'failed',
+      (item) =>
+        item.companyId === companyId &&
+        item.status !== 'failed' &&
+        item.status !== 'completed',
     );
     if (!photosStillMoving) {
       resetSyncSession();

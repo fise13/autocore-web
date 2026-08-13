@@ -32,7 +32,10 @@ import { signInWithAppleNative } from '@/services/auth/apple-sign-in';
 import { deleteAccountForCurrentUser } from '@/services/auth/delete-account';
 import { getFirebaseAuth, isFirebaseConfigured } from '@/services/firebase';
 import { isProductionCompanyId, normalizeCompanyId } from '@/lib/company-id';
-import { resolveCommittedOnline } from '@/lib/offline/netinfo-online';
+import {
+  OFFLINE_COMMIT_GRACE_MS,
+  resolveCommittedOnline,
+} from '@/lib/offline/netinfo-online';
 import { hasEstablishedWorkspace, mergeSessionHydration, resolveSessionCompanyId } from '@/lib/session/merge-hydration';
 import { markStartup } from '@/lib/performance/startup-tracer';
 import { preloadSessionSnapshots } from '@/lib/realtime/preload-session-snapshots';
@@ -513,28 +516,54 @@ function useAuthActionsController(): AuthActions {
   }, []);
 
   useEffect(() => {
-    const unsubscribeNetwork = NetInfo.addEventListener((state) => {
+    let offlineCandidateSinceMs: number | null = null;
+    let graceTimer: ReturnType<typeof setTimeout> | null = null;
+    const applyNetwork = (
+      state: {
+        isConnected: boolean | null;
+        isInternetReachable: boolean | null;
+      },
+      appState: string,
+    ) => {
       const next = resolveCommittedOnline({
         net: state,
-        appState: AppState.currentState,
+        appState,
         lastOnline: useAuthStore.getState().isOnline,
+        offlineCandidateSinceMs,
       });
-      useAuthStore.getState().setOnline(next);
+      offlineCandidateSinceMs = next.offlineCandidateSinceMs;
+      useAuthStore.getState().setOnline(next.online);
+      if (graceTimer) {
+        clearTimeout(graceTimer);
+        graceTimer = null;
+      }
+      // Re-check after grace so a single disconnect sample can still commit
+      // offline if the link stays down (NetInfo may not fire again).
+      if (next.online && next.offlineCandidateSinceMs != null) {
+        const remaining = Math.max(
+          0,
+          next.offlineCandidateSinceMs + OFFLINE_COMMIT_GRACE_MS - Date.now(),
+        );
+        graceTimer = setTimeout(() => {
+          graceTimer = null;
+          void NetInfo.fetch().then((state) => {
+            applyNetwork(state, AppState.currentState);
+          });
+        }, remaining + 50);
+      }
+    };
+    const unsubscribeNetwork = NetInfo.addEventListener((state) => {
+      applyNetwork(state, AppState.currentState);
     });
     const appState = AppState.addEventListener('change', (next) => {
       if (next !== 'active') return;
       void NetInfo.fetch().then((state) => {
-        useAuthStore.getState().setOnline(
-          resolveCommittedOnline({
-            net: state,
-            appState: 'active',
-            lastOnline: useAuthStore.getState().isOnline,
-          }),
-        );
+        applyNetwork(state, 'active');
       });
     });
 
     return () => {
+      if (graceTimer) clearTimeout(graceTimer);
       unsubscribeNetwork();
       appState.remove();
     };

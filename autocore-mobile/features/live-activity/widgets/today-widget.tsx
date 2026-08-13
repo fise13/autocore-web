@@ -97,7 +97,7 @@ const TodayWidgetLayout = (props: AutoCoreTodayWidgetProps, environment: WidgetE
         <HStack spacing={4}>
           <Image systemName={symbol} size={11} />
           <Text modifiers={[font({ size: 12, weight: 'semibold' }), lineLimit(1)]}>
-            {urgent ? 'NEEDS YOU' : 'TODAY'}
+            {urgent ? 'Needs you' : 'Today'}
           </Text>
           <Spacer />
         </HStack>
@@ -123,7 +123,7 @@ const TodayWidgetLayout = (props: AutoCoreTodayWidgetProps, environment: WidgetE
         <Image systemName={glyph} color={tintColor} size={13} />
         <Text
           modifiers={[
-            font({ size: 26, weight: 'semibold', design: 'rounded' }),
+            font({ size: 22, weight: 'semibold', design: 'rounded' }),
             foregroundStyle('#FFFFFF'),
             monospacedDigit(),
             lineLimit(1),
@@ -148,8 +148,12 @@ const TodayWidgetLayout = (props: AutoCoreTodayWidgetProps, environment: WidgetE
     return (
       <VStack
         alignment="leading"
-        spacing={10}
-        modifiers={[containerBackground('#0E0F13', 'widget'), padding({ all: 4 }), widgetURL(link)]}
+        spacing={12}
+        modifiers={[
+          containerBackground('#0E0F13', 'widget'),
+          padding({ all: 12 }),
+          widgetURL(link),
+        ]}
       >
         <HStack spacing={6}>
           <Image systemName={symbol} color={accent} size={13} />
@@ -173,7 +177,7 @@ const TodayWidgetLayout = (props: AutoCoreTodayWidgetProps, environment: WidgetE
           ) : null}
         </HStack>
 
-        <HStack spacing={12} alignment="top">
+        <HStack spacing={14} alignment="top">
           {cell('Open orders', num(props.openOrders), 'wrench.and.screwdriver.fill', '#0A84FF')}
           {cell('To place', num(props.awaitingPlacement), 'shippingbox.fill', '#FF9F0A')}
           {cell('Engines', num(props.engines), 'engine.combustion.fill', '#30D158')}
@@ -189,18 +193,22 @@ const TodayWidgetLayout = (props: AutoCoreTodayWidgetProps, environment: WidgetE
     <VStack
       alignment="leading"
       spacing={0}
-      modifiers={[containerBackground('#0E0F13', 'widget'), padding({ all: 4 }), widgetURL(link)]}
+      modifiers={[
+        containerBackground('#0E0F13', 'widget'),
+        padding({ all: 12 }),
+        widgetURL(link),
+      ]}
     >
       <HStack spacing={6}>
-        <Image systemName={symbol} color={accent} size={15} />
+        <Image systemName={symbol} color={accent} size={14} />
         <Text
           modifiers={[
-            font({ size: 12, weight: 'semibold' }),
+            font({ size: 12, weight: 'medium' }),
             foregroundStyle(accent),
             lineLimit(1),
           ]}
         >
-          {urgent ? 'NEEDS YOU' : 'TODAY'}
+          {urgent ? 'Needs you' : 'Today'}
         </Text>
         <Spacer />
       </HStack>
@@ -209,7 +217,7 @@ const TodayWidgetLayout = (props: AutoCoreTodayWidgetProps, environment: WidgetE
 
       <Text
         modifiers={[
-          font({ size: 44, weight: 'semibold', design: 'rounded' }),
+          font({ size: 28, weight: 'semibold', design: 'rounded' }),
           foregroundStyle('#FFFFFF'),
           monospacedDigit(),
           lineLimit(1),
@@ -232,7 +240,12 @@ const TodayWidgetLayout = (props: AutoCoreTodayWidgetProps, environment: WidgetE
       <Spacer />
 
       <Text
-        modifiers={[font({ size: 11 }), foregroundStyle('#8E8E93'), lineLimit(1), minimumScaleFactor(0.8)]}
+        modifiers={[
+          font({ size: 11 }),
+          foregroundStyle('#8E8E93'),
+          lineLimit(1),
+          minimumScaleFactor(0.8),
+        ]}
       >
         {detail.length > 0 ? detail : `${num(props.engines)} engines in stock`}
       </Text>

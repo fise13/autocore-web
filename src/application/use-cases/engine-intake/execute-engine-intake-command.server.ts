@@ -463,10 +463,6 @@ async function claimJob(
   const receiptRef = companyRef
     .collection("engineIntakeCommandReceipts")
     .doc(receiptId(command.idempotencyKey));
-  const newSessionRef = command.payload.sessionId
-    ? jobRef.collection("sessions").doc(command.payload.sessionId)
-    : jobRef.collection("sessions").doc();
-
   return db.runTransaction(async (transaction) => {
     const [receiptSnapshot, jobSnapshot] = await Promise.all([
       transaction.get(receiptRef),
@@ -476,7 +472,9 @@ async function claimJob(
     if (replayed) return replayed;
 
     const job = requireJob(jobSnapshot);
-    if (!["open", "rework", "in_session"].includes(job.state)) {
+    // `paused` is reclaimable — workers leave the camera (session pause / claim
+    // lease) with photos still on the phone and must take the bay back to sync.
+    if (!["open", "rework", "in_session", "paused"].includes(job.state)) {
       throw new EngineIntakeCommandError(`Job cannot be claimed while ${job.state}`);
     }
     const assignment = jobAssignment(job);
@@ -519,6 +517,24 @@ async function claimJob(
     const previousSessionSnapshot = previousSessionRef
       ? await transaction.get(previousSessionRef)
       : null;
+
+    // Never create() on top of an existing session doc (dead claim id, or a
+    // client that reused preferSessionId). Mint a fresh id when the preferred
+    // one would collide.
+    let newSessionRef = command.payload.sessionId
+      ? jobRef.collection("sessions").doc(command.payload.sessionId)
+      : jobRef.collection("sessions").doc();
+    if (
+      previousSessionRef &&
+      newSessionRef.id === previousSessionRef.id
+    ) {
+      newSessionRef = jobRef.collection("sessions").doc();
+    } else if (command.payload.sessionId) {
+      const preferredSnapshot = await transaction.get(newSessionRef);
+      if (preferredSnapshot.exists) {
+        newSessionRef = jobRef.collection("sessions").doc();
+      }
+    }
 
     assertEngineIntakeJobTransition(job.state, "in_session");
     const mode =

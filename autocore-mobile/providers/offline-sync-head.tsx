@@ -4,7 +4,6 @@ import NetInfo from '@react-native-community/netinfo';
 
 import { drainMutationOutboxNow } from '@/lib/offline/drain-mutation-outbox';
 import { getMutationOutboxSnapshot, subscribeMutationOutbox } from '@/lib/offline/mutation-outbox';
-import { netInfoSaysOnline } from '@/lib/offline/netinfo-online';
 import { syncBackgroundTaskRegistration } from '@/lib/offline/background-sync-task';
 
 const NETWORK_DEBOUNCE_MS = 600;
@@ -29,8 +28,8 @@ export function OfflineSyncHead() {
     run();
 
     const unsubscribeOutbox = subscribeMutationOutbox(run);
-    const unsubscribeNetwork = NetInfo.addEventListener((network) => {
-      if (!netInfoSaysOnline(network)) return;
+    const unsubscribeNetwork = NetInfo.addEventListener(() => {
+      // Always nudge — NetInfo "offline" is unreliable on iOS.
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
         debounceRef.current = null;

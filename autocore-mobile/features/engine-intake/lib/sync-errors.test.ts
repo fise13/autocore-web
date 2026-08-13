@@ -51,6 +51,28 @@ describe('classifySyncError', () => {
     );
   });
 
+  it('treats an empty capture as a missing file, not a server rejection', () => {
+    assert.equal(
+      classifySyncError({ status: 400, message: 'Captured photo is empty. Retake this angle.' }),
+      'FILE_MISSING',
+    );
+  });
+
+  it('treats session-paused / Finish-before-photos as a retryable precondition', () => {
+    assert.equal(
+      classifySyncError({ status: 409, message: 'Resume the session before taking photos' }),
+      'PRECONDITION',
+    );
+    assert.equal(
+      classifySyncError({
+        status: 409,
+        message: 'Finish needs a serial number and at least one photo',
+      }),
+      'PRECONDITION',
+    );
+    assert.equal(isRetryableSyncError('PRECONDITION'), true);
+  });
+
   it('falls back to UNKNOWN rather than guessing', () => {
     assert.equal(classifySyncError(new Error('something odd')), 'UNKNOWN');
     assert.equal(classifySyncError(null), 'UNKNOWN');
@@ -59,11 +81,45 @@ describe('classifySyncError', () => {
 });
 
 describe('isIdempotentPhotoSuccess', () => {
-  it('treats a 409 as already recorded, not as a failure', () => {
-    assert.equal(isIdempotentPhotoSuccess({ status: 409 }), true);
+  it('treats an explicit already-recorded 409 as success', () => {
     assert.equal(
-      isIdempotentPhotoSuccess({ status: 409, message: 'This photo was already recorded on the server.' }),
+      isIdempotentPhotoSuccess({
+        status: 409,
+        message: 'This photo was already recorded on the server.',
+      }),
       true,
+    );
+    assert.equal(
+      isIdempotentPhotoSuccess({
+        status: 409,
+        message: 'This photo is already on the server.',
+      }),
+      true,
+    );
+  });
+
+  it('does not treat a bare or mismatch 409 as already uploaded', () => {
+    assert.equal(isIdempotentPhotoSuccess({ status: 409 }), false);
+    assert.equal(
+      isIdempotentPhotoSuccess({
+        status: 409,
+        message: 'Prepared photo upload changed before finalization',
+      }),
+      false,
+    );
+    assert.equal(
+      isIdempotentPhotoSuccess({
+        status: 409,
+        message: 'This session is active on another device',
+      }),
+      false,
+    );
+  });
+
+  it('does not treat a paused-session 409 as already uploaded', () => {
+    assert.equal(
+      isIdempotentPhotoSuccess({ status: 409, message: 'Resume the session before taking photos' }),
+      false,
     );
   });
 
@@ -81,6 +137,7 @@ describe('isRetryableSyncError', () => {
     assert.equal(isRetryableSyncError('SERVER_5XX'), true);
     assert.equal(isRetryableSyncError('RATE_LIMIT'), true);
     assert.equal(isRetryableSyncError('CONFLICT'), true);
+    assert.equal(isRetryableSyncError('PRECONDITION'), true);
   });
 
   it('does not retry what a person or a deploy has to fix', () => {
@@ -137,6 +194,23 @@ describe('describeSyncError', () => {
     const info = describeSyncError(new TypeError('Network request failed'));
     assert.equal(info.status, undefined);
     assert.equal(info.code, 'NETWORK_UNAVAILABLE');
+  });
+
+  it('keeps the real 400 body instead of the canned support line', () => {
+    const info = describeSyncError({ status: 400, message: 'Invalid intake photo' });
+    assert.equal(info.code, 'INVALID_REQUEST');
+    assert.equal(info.message, 'Invalid intake photo');
+    assert.equal(info.retryable, false);
+  });
+
+  it('surfaces a resume precondition as retryable with the server reason', () => {
+    const info = describeSyncError({
+      status: 409,
+      message: 'Resume the session before taking photos',
+    });
+    assert.equal(info.code, 'PRECONDITION');
+    assert.equal(info.retryable, true);
+    assert.equal(info.message, 'Resume the session before taking photos');
   });
 });
 

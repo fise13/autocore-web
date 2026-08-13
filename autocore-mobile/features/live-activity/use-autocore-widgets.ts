@@ -48,7 +48,7 @@ export function useAutoCoreWidgets() {
   const { companyId, can } = useSession();
   const intakeEnabled = Boolean(companyId) && can('engine_intake_view');
   const outbox = useEngineIntakeOutbox(intakeEnabled ? companyId : null);
-  const counts = useWorkCounts(WIDGET_NODE_IDS);
+  const { counts } = useWorkCounts(WIDGET_NODE_IDS);
 
   const syncKeyRef = useRef<string>('');
   const todayKeyRef = useRef<string>('');

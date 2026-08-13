@@ -6,16 +6,20 @@ import { resolveCommittedOnline } from '@/lib/offline/netinfo-online';
 
 onlineManager.setEventListener((setOnline) => {
   let lastOnline = true;
+  let offlineCandidateSinceMs: number | null = null;
   const apply = (state: {
     isConnected: boolean | null;
     isInternetReachable: boolean | null;
   }) => {
-    lastOnline = resolveCommittedOnline({
+    const next = resolveCommittedOnline({
       net: state,
       appState: AppState.currentState,
       lastOnline,
+      offlineCandidateSinceMs,
     });
-    setOnline(lastOnline);
+    offlineCandidateSinceMs = next.offlineCandidateSinceMs;
+    lastOnline = next.online;
+    setOnline(next.online);
   };
   const unsubscribeNet = NetInfo.addEventListener(apply);
   const appState = AppState.addEventListener('change', (next) => {

@@ -17,19 +17,22 @@ import { getFirebaseDb, isFirebaseConfigured } from '@/services/firebase';
 export function FirestoreNetworkHead() {
   const seenOnlineRef = useRef(false);
   const lastOnlineRef = useRef(true);
+  const offlineCandidateSinceMsRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
 
     const apply = async (connected: boolean | null, reachable: boolean | null) => {
-      const online = resolveCommittedOnline({
+      const next = resolveCommittedOnline({
         net: { isConnected: connected, isInternetReachable: reachable },
         appState: AppState.currentState,
         lastOnline: lastOnlineRef.current,
+        offlineCandidateSinceMs: offlineCandidateSinceMsRef.current,
       });
-      lastOnlineRef.current = online;
+      offlineCandidateSinceMsRef.current = next.offlineCandidateSinceMs;
+      lastOnlineRef.current = next.online;
       const db = getFirebaseDb();
-      if (online) {
+      if (next.online) {
         seenOnlineRef.current = true;
         try {
           await enableNetwork(db);
