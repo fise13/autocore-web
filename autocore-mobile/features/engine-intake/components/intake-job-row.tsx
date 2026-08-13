@@ -16,6 +16,7 @@ export type IntakeJobRowProps = {
   claimedByAnother: boolean;
   claimedByName?: string | null;
   syncPending?: boolean;
+  localPhotoCount?: number;
   disabled?: boolean;
   canEdit?: boolean;
   onPress: () => void;
@@ -86,16 +87,18 @@ function IntakeJobRowBody({
   claimedByAnother,
   claimedByName,
   syncPending = false,
+  localPhotoCount = 0,
   pressed = false,
 }: {
   job: EngineIntakeJob;
   claimedByAnother: boolean;
   claimedByName?: string | null;
   syncPending?: boolean;
+  localPhotoCount?: number;
   pressed?: boolean;
 }) {
   const { colors } = useTheme();
-  const photoCount = job.progress.capturedCount;
+  const photoCount = job.progress.capturedCount + localPhotoCount;
   const photoLine =
     photoCount > 0 ? `${photoCount} photo${photoCount === 1 ? '' : 's'}` : 'No photos';
 
@@ -187,6 +190,7 @@ export function IntakeJobRow({
   claimedByAnother,
   claimedByName,
   syncPending = false,
+  localPhotoCount = 0,
   disabled = false,
   canEdit = true,
   onPress,
@@ -274,8 +278,9 @@ export function IntakeJobRow({
             job={job}
             claimedByAnother={claimedByAnother}
             claimedByName={claimedByName}
-            syncPending={syncPending}
-            pressed={pressed}
+          syncPending={syncPending}
+          localPhotoCount={localPhotoCount}
+          pressed={pressed}
           />
         )}
       </Pressable>

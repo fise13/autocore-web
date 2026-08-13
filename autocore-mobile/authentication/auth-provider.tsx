@@ -32,6 +32,7 @@ import { signInWithAppleNative } from '@/services/auth/apple-sign-in';
 import { deleteAccountForCurrentUser } from '@/services/auth/delete-account';
 import { getFirebaseAuth, isFirebaseConfigured } from '@/services/firebase';
 import { isProductionCompanyId, normalizeCompanyId } from '@/lib/company-id';
+import { resolveCommittedOnline } from '@/lib/offline/netinfo-online';
 import { hasEstablishedWorkspace, mergeSessionHydration, resolveSessionCompanyId } from '@/lib/session/merge-hydration';
 import { markStartup } from '@/lib/performance/startup-tracer';
 import { preloadSessionSnapshots } from '@/lib/realtime/preload-session-snapshots';
@@ -513,10 +514,30 @@ function useAuthActionsController(): AuthActions {
 
   useEffect(() => {
     const unsubscribeNetwork = NetInfo.addEventListener((state) => {
-      useAuthStore.getState().setOnline(Boolean(state.isConnected && state.isInternetReachable !== false));
+      const next = resolveCommittedOnline({
+        net: state,
+        appState: AppState.currentState,
+        lastOnline: useAuthStore.getState().isOnline,
+      });
+      useAuthStore.getState().setOnline(next);
+    });
+    const appState = AppState.addEventListener('change', (next) => {
+      if (next !== 'active') return;
+      void NetInfo.fetch().then((state) => {
+        useAuthStore.getState().setOnline(
+          resolveCommittedOnline({
+            net: state,
+            appState: 'active',
+            lastOnline: useAuthStore.getState().isOnline,
+          }),
+        );
+      });
     });
 
-    return unsubscribeNetwork;
+    return () => {
+      unsubscribeNetwork();
+      appState.remove();
+    };
   }, []);
 
   useEffect(() => {

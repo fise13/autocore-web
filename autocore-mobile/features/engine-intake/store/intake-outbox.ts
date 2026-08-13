@@ -1,4 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react';
+import { AppState } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { Directory, File, Paths, UploadType } from 'expo-file-system';
 import type {
@@ -11,9 +12,11 @@ import type {
 
 import { MobileApiError } from '@/services/api/mobile-client';
 import { getJson, setJson } from '@/lib/storage/kv';
+import { netInfoSaysOnline } from '@/lib/offline/netinfo-online';
 
 import { engineIntakeId } from '../lib/device';
-import { describeSyncError, isBenignCancelError, isIdempotentPhotoSuccess, type SyncErrorInfo } from '../lib/sync-errors';
+import { commandFailureAbortsDrainWave, orderIntakeDrainWork } from '../lib/intake-drain-order';
+import { describeSyncError, isBenignCancelError, isBenignFieldCompleteError, isIdempotentPhotoSuccess, type SyncErrorInfo } from '../lib/sync-errors';
 import {
   isJobRunnable,
   reconcileOnLaunch,
@@ -317,6 +320,13 @@ export function enqueueIntakeCommand(
         item.command.payload.sessionId !== command.payload.sessionId,
     );
   }
+  if (command.type === 'field_complete') {
+    commands = commands.filter(
+      (item) =>
+        item.command.type !== 'pause_session' ||
+        item.command.payload.sessionId !== command.payload.sessionId,
+    );
+  }
   commands = [
     ...commands,
     {
@@ -384,6 +394,14 @@ export function saveIntakePhotoLocally(input: {
     updatedAt: new Date().toISOString(),
   };
   photos = [...photos, item];
+  // Pause before the PUT lands makes the current production API reject the
+  // upload ("Resume the session before taking photos"). Drop it; Finish or a
+  // later pause can run after the files are on the server.
+  commands = commands.filter(
+    (candidate) =>
+      candidate.command.type !== 'pause_session' ||
+      candidate.command.payload.sessionId !== input.sessionId,
+  );
   publish();
   return item;
 }
@@ -439,6 +457,15 @@ async function finalizePreparedPhoto(
   });
 }
 
+function jobHasOpenPhotos(companyId: string, jobId: string): boolean {
+  return photos.some(
+    (photo) =>
+      photo.companyId === companyId &&
+      photo.jobId === jobId &&
+      photo.status !== 'failed',
+  );
+}
+
 function completeUploadedPhoto(item: IntakeOutboxPhoto): void {
   // Drop the outbox row before yielding back to the JS event loop. Finalize
   // already bumped server `capturedCount`; if the Firestore snapshot lands
@@ -451,6 +478,46 @@ function completeUploadedPhoto(item: IntakeOutboxPhoto): void {
     // Best-effort local cleanup — upload already succeeded.
   }
   publish();
+}
+
+/**
+ * Leaving the app pauses the session. The current production prepare API then
+ * 409s every photo. Resume first so this phone's outbox can drain even before
+ * the paused-upload deploy lands.
+ */
+async function resumeSessionForPhotoUpload(item: IntakeOutboxPhoto): Promise<void> {
+  try {
+    await sendEngineIntakeCommand({
+      type: 'resume_session',
+      idempotencyKey: `intake-resume-for-upload:${item.sessionId}`,
+      client: 'mobile',
+      deviceId: item.deviceId,
+      payload: { jobId: item.jobId, sessionId: item.sessionId },
+    });
+  } catch {
+    // Already active / already finished — prepare decides.
+  }
+}
+
+async function sendQueuedFieldComplete(companyId: string, jobId: string): Promise<void> {
+  if (jobHasOpenPhotos(companyId, jobId)) return;
+  const pending = commands.find(
+    (item) =>
+      item.companyId === companyId &&
+      item.command.type === 'field_complete' &&
+      item.command.payload.jobId === jobId,
+  );
+  if (!pending) return;
+  try {
+    await sendEngineIntakeCommand(pending.command);
+    commands = commands.filter((candidate) => candidate.id !== pending.id);
+    publish();
+  } catch (error) {
+    if (isBenignFieldCompleteError(error)) {
+      commands = commands.filter((candidate) => candidate.id !== pending.id);
+      publish();
+    }
+  }
 }
 
 async function uploadPhoto(item: IntakeOutboxPhoto): Promise<PrepareIntakePhotoResponse> {
@@ -480,7 +547,11 @@ async function uploadPhoto(item: IntakeOutboxPhoto): Promise<PrepareIntakePhotoR
 
 async function drain(companyId: string): Promise<void> {
   const network = await NetInfo.fetch();
-  const online = Boolean(network.isConnected);
+  // iOS reports disconnected the moment we leave the foreground. Background
+  // URLSession still has the radios — try the wave. A real outage fails the
+  // PUT and parks the row in the catch path.
+  const online =
+    AppState.currentState === 'active' ? netInfoSaysOnline(network) : true;
   if (!online) {
     // Offline is a pause, not a failure. Park everything runnable so the UI can
     // say "waiting for connection" instead of inventing an error.
@@ -516,24 +587,25 @@ async function drain(companyId: string): Promise<void> {
   const runnable = { online, now: new Date() };
   const pendingCommands = commands
     .filter((item) => item.companyId === companyId && isJobRunnable(item, runnable))
-    .map((item) => ({ kind: 'command' as const, item }));
+    .map((item) => ({
+      kind: 'command' as const,
+      item,
+      createdAt: item.createdAt,
+      jobId:
+        'jobId' in item.command.payload ? item.command.payload.jobId : undefined,
+      commandType: item.command.type,
+    }));
   const pendingPhotos = photos
     .filter((item) => item.companyId === companyId && isJobRunnable(item, runnable))
-    .map((item) => ({ kind: 'photo' as const, item }));
-
-  // Heartbeats first — never let a long photo upload starve the claim and kick
-  // the worker out of the camera into a stacked `/intake` bay.
-  const heartbeats = pendingCommands
-    .filter((entry) => entry.item.command.type === 'heartbeat_session')
-    .sort((left, right) => left.item.createdAt.localeCompare(right.item.createdAt));
-  const otherCommands = pendingCommands
-    .filter((entry) => entry.item.command.type !== 'heartbeat_session')
-    .sort((left, right) => left.item.createdAt.localeCompare(right.item.createdAt));
-  const photoEntries = pendingPhotos.sort((left, right) =>
-    left.item.createdAt.localeCompare(right.item.createdAt),
-  );
-  const work = [...heartbeats, ...otherCommands, ...photoEntries];
-  const photoWorkCount = photoEntries.length;
+    .map((item) => ({
+      kind: 'photo' as const,
+      item,
+      createdAt: item.createdAt,
+      jobId: item.jobId,
+      commandType: undefined as string | undefined,
+    }));
+  const work = orderIntakeDrainWork([...pendingCommands, ...pendingPhotos]);
+  const photoWorkCount = work.filter((entry) => entry.kind === 'photo').length;
 
   if (work.length === 0) {
     if (syncedCount > 0 || sessionTotal > 0) {
@@ -554,6 +626,7 @@ async function drain(companyId: string): Promise<void> {
 
   syncing = true;
   publish();
+  const resumedSessions = new Set<string>();
   try {
     for (const entry of work) {
       const jobId =
@@ -566,9 +639,18 @@ async function drain(companyId: string): Promise<void> {
       const isHeartbeat =
         entry.kind === 'command' && entry.item.command.type === 'heartbeat_session';
       if (jobId && blockedJobIds.has(jobId) && !isHeartbeat) continue;
+      if (
+        entry.kind === 'command' &&
+        entry.item.command.type === 'field_complete' &&
+        jobId &&
+        jobHasOpenPhotos(companyId, jobId)
+      ) {
+        continue;
+      }
 
       if (entry.kind === 'command') {
         const item = entry.item;
+        if (!commands.some((candidate) => candidate.id === item.id)) continue;
         updateCommand(item.id, {
           status: 'uploading',
           attemptCount: item.attemptCount + 1,
@@ -581,6 +663,11 @@ async function drain(companyId: string): Promise<void> {
           publish();
         } catch (error) {
           if (item.command.type === 'cancel_job' && isBenignCancelError(error)) {
+            commands = commands.filter((candidate) => candidate.id !== item.id);
+            publish();
+            continue;
+          }
+          if (item.command.type === 'field_complete' && isBenignFieldCompleteError(error)) {
             commands = commands.filter((candidate) => candidate.id !== item.id);
             publish();
             continue;
@@ -612,12 +699,16 @@ async function drain(companyId: string): Promise<void> {
             blockedJobIds.add(jobId);
             continue;
           }
+          if (!commandFailureAbortsDrainWave(item.command.type)) {
+            continue;
+          }
           return;
         }
         continue;
       }
 
       const item = entry.item;
+      if (!photos.some((candidate) => candidate.id === item.id)) continue;
       updatePhoto(item.id, {
         status: 'uploading',
         attemptCount: item.attemptCount + 1,
@@ -625,14 +716,20 @@ async function drain(companyId: string): Promise<void> {
         errorInfo: null,
       });
       try {
+        if (!resumedSessions.has(item.sessionId)) {
+          resumedSessions.add(item.sessionId);
+          await resumeSessionForPhotoUpload(item);
+        }
         await uploadPhoto(item);
         // uploadPhoto already removed the outbox row + local file.
         noteSyncSuccess();
         publish();
+        await sendQueuedFieldComplete(companyId, item.jobId);
       } catch (error) {
         if (isIdempotentPhotoSuccess(error)) {
           completeUploadedPhoto(item);
           noteSyncSuccess();
+          await sendQueuedFieldComplete(companyId, item.jobId);
           continue;
         }
         const info = describeSyncError(error);

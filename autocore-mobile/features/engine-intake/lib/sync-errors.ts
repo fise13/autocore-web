@@ -116,6 +116,15 @@ export function isBenignCancelError(error: unknown): boolean {
   );
 }
 
+/** Finish that lands after the job is already Ready is success, not a retry loop. */
+export function isBenignFieldCompleteError(error: unknown): boolean {
+  const text = String((error as ErrorLike).message ?? '').toLowerCase();
+  return (
+    text.includes('cannot transition from awaiting_verification') ||
+    text.includes('cannot transition from completed')
+  );
+}
+
 export function syncErrorMessage(code: SyncErrorCode): string {
   return USER_MESSAGE[code];
 }

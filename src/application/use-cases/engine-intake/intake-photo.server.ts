@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 
 import {
   checklistHitsForCategory,
+  canAcceptIntakePhotoUpload,
   deriveEngineIntakeProgress,
   type DocumentationChecklist,
   type EngineIntakeAssignment,
@@ -74,11 +75,17 @@ function assertActivePhotoSession(
   if (session.deviceId !== deviceId) {
     throw new EngineIntakeCommandError("This session is active on another device");
   }
-  if (session.state !== "active") {
-    throw new EngineIntakeCommandError("Resume the session before taking photos");
-  }
-  if (job.state !== "in_session") {
-    throw new EngineIntakeCommandError("Job is not in an active intake session");
+  if (
+    !canAcceptIntakePhotoUpload({
+      sessionState: String(session.state ?? ""),
+      jobState: String(job.state ?? ""),
+    })
+  ) {
+    throw new EngineIntakeCommandError(
+      session.state === "active" || session.state === "paused"
+        ? "Job is not in an active intake session"
+        : "Resume the session before taking photos",
+    );
   }
   // Capture-first: serial is committed at create; free photos do not need a
   // separate physical-identity confirm gate.

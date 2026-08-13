@@ -13,6 +13,7 @@ import { nextWakeUpAt } from '@/features/engine-intake/lib/sync-schedule';
 import { reconcileIntakeSyncLocalNotification } from '@/features/engine-intake/lib/intake-sync-notifications';
 import { useSession } from '@/hooks/use-session';
 import { syncBackgroundTaskRegistration } from '@/lib/offline/background-sync-task';
+import { netInfoSaysOnline } from '@/lib/offline/netinfo-online';
 
 /** Ignore NetInfo flapping before committing to a drain. */
 const NETWORK_DEBOUNCE_MS = 600;
@@ -95,7 +96,7 @@ export function IntakeSyncHead() {
     });
 
     const unsubscribeNetwork = NetInfo.addEventListener((network) => {
-      if (!network.isConnected) return;
+      if (!netInfoSaysOnline(network)) return;
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
         debounceRef.current = null;

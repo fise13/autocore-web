@@ -4,6 +4,7 @@ import NetInfo from '@react-native-community/netinfo';
 
 import { drainMutationOutboxNow } from '@/lib/offline/drain-mutation-outbox';
 import { getMutationOutboxSnapshot, subscribeMutationOutbox } from '@/lib/offline/mutation-outbox';
+import { netInfoSaysOnline } from '@/lib/offline/netinfo-online';
 import { syncBackgroundTaskRegistration } from '@/lib/offline/background-sync-task';
 
 const NETWORK_DEBOUNCE_MS = 600;
@@ -29,7 +30,7 @@ export function OfflineSyncHead() {
 
     const unsubscribeOutbox = subscribeMutationOutbox(run);
     const unsubscribeNetwork = NetInfo.addEventListener((network) => {
-      if (!network.isConnected) return;
+      if (!netInfoSaysOnline(network)) return;
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
         debounceRef.current = null;

@@ -953,7 +953,18 @@ async function mutateWorkerSession(
       return result;
     }
 
-    if (session.state !== "active") {
+    if (
+      job.state === "awaiting_verification" &&
+      (session.state === "completed" || session.state === "completed_local")
+    ) {
+      writeReceipt(transaction, receiptRef, access, command, result);
+      return result;
+    }
+
+    if (
+      session.state !== "active" &&
+      session.state !== "paused"
+    ) {
       throw new EngineIntakeCommandError("Resume the session before completing field work");
     }
     const fieldPayload = command.payload as {

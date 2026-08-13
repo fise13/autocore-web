@@ -31,7 +31,7 @@ export {
 const JOB_TRANSITIONS: Record<EngineIntakeJobState, readonly EngineIntakeJobState[]> = {
   open: ["in_session", "paused", "cancelled"],
   in_session: ["open", "paused", "awaiting_verification", "cancelled"],
-  paused: ["open", "in_session", "cancelled"],
+  paused: ["open", "in_session", "awaiting_verification", "cancelled"],
   awaiting_verification: ["rework", "verified", "quarantine", "rejected", "cancelled"],
   rework: ["in_session", "awaiting_verification", "paused", "cancelled"],
   verified: ["closed"],
@@ -46,7 +46,7 @@ const SESSION_TRANSITIONS: Record<
   readonly EngineIntakeSessionState[]
 > = {
   active: ["paused", "completed_local", "completed", "cancelled", "stale"],
-  paused: ["active", "cancelled", "stale"],
+  paused: ["active", "completed_local", "completed", "cancelled", "stale"],
   completed_local: ["completed"],
   completed: ["merged", "archived"],
   cancelled: ["archived"],
@@ -67,6 +67,32 @@ export function canTransitionEngineIntakeSession(
   to: EngineIntakeSessionState,
 ): boolean {
   return from === to || SESSION_TRANSITIONS[from].includes(to);
+}
+
+const PHOTO_UPLOAD_SESSION_STATES: readonly EngineIntakeSessionState[] = [
+  "active",
+  "paused",
+];
+const PHOTO_UPLOAD_JOB_STATES: readonly EngineIntakeJobState[] = [
+  "in_session",
+  "paused",
+  "rework",
+];
+
+/**
+ * Photos are captured on-device, then uploaded later — often after the worker
+ * left the camera and the session was paused. Upload is transport, not a new
+ * capture, so a paused session must still accept the files.
+ */
+export function canAcceptIntakePhotoUpload(input: {
+  sessionState: string;
+  jobState: string;
+}): boolean {
+  return (
+    PHOTO_UPLOAD_SESSION_STATES.includes(
+      input.sessionState as EngineIntakeSessionState,
+    ) && PHOTO_UPLOAD_JOB_STATES.includes(input.jobState as EngineIntakeJobState)
+  );
 }
 
 export function assertEngineIntakeJobTransition(

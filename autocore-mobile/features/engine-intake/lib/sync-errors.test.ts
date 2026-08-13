@@ -5,6 +5,7 @@ import {
   classifySyncError,
   describeSyncError,
   isBenignCancelError,
+  isBenignFieldCompleteError,
   isIdempotentPhotoSuccess,
   isRetryableSyncError,
   mayDeleteLocalFile,
@@ -151,5 +152,23 @@ describe('isBenignCancelError', () => {
     assert.equal(isBenignCancelError({ status: 404, message: 'Engine intake job was not found' }), true);
     assert.equal(isBenignCancelError({ status: 409, message: 'already cancelled' }), true);
     assert.equal(isBenignCancelError({ status: 403, message: 'Insufficient engine intake permissions' }), false);
+  });
+});
+
+describe('isBenignFieldCompleteError', () => {
+  it('treats Finish on an already-Ready engine as done', () => {
+    assert.equal(
+      isBenignFieldCompleteError({
+        message: 'Engine intake job cannot transition from awaiting_verification to awaiting_verification',
+      }),
+      true,
+    );
+    assert.equal(
+      isBenignFieldCompleteError({
+        status: 409,
+        message: 'Finish needs a serial number and at least one photo',
+      }),
+      false,
+    );
   });
 });

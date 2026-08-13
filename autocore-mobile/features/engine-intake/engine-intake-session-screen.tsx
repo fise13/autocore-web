@@ -78,6 +78,10 @@ export function EngineIntakeSessionScreen() {
   const countSeededRef = useRef(false);
   /** Photos added this visit (shutter / gallery) — authoritative UI count delta. */
   const [shotsAdded, setShotsAdded] = useState(0);
+  const finishOnceRef = useRef(false);
+  const photoCountRef = useRef(0);
+  const completionLockedRef = useRef(false);
+  const finishCaptureRef = useRef<(reason?: string) => Promise<void>>(async () => undefined);
   const { jobs, loading: jobsLoading } = useEngineIntakeJobs(companyId);
   const overlay = useIntakeOverlay(companyId);
   const listedJob = jobs.find((item) => item.id === jobId);
@@ -126,6 +130,7 @@ export function EngineIntakeSessionScreen() {
   }, [companyId, job, jobId, outbox.photos, serverProgress.capturedCount]);
 
   const photoCount = (serverBaselineRef.current ?? 0) + shotsAdded;
+  photoCountRef.current = photoCount;
   const unsyncedCount = pendingLocalPhotos.length + failedPhotos.length;
   const syncError =
     failedPhotos.map((photo) => photo.lastError).find(Boolean) ??
@@ -156,6 +161,7 @@ export function EngineIntakeSessionScreen() {
     job?.state === 'verified' ||
     job?.state === 'quarantine' ||
     job?.state === 'rejected';
+  completionLockedRef.current = completionPending || isServerComplete;
   const serial =
     job?.expectedIdentity.serialCode ||
     job?.expectedIdentity.engineCode ||
@@ -170,34 +176,32 @@ export function EngineIntakeSessionScreen() {
     const subscription = AppState.addEventListener('change', (next) => {
       setAppState(next);
       if (
-        companyId &&
-        jobId &&
-        sessionId &&
-        !completionPending &&
-        !isServerComplete &&
-        previous === 'active' &&
-        next !== 'active' &&
-        sessionState === 'active'
+        !companyId ||
+        !jobId ||
+        !sessionId ||
+        previous !== 'active' ||
+        next === 'active'
       ) {
-        void sendOrQueueIntakeCommand(
-          companyId,
-          makeWorkerCommand({
-            type: 'pause_session',
-            payload: { jobId, sessionId, reason: 'App moved to background' },
-          }),
-        );
+        previous = next;
+        return;
       }
       previous = next;
+      if (completionLockedRef.current || finishOnceRef.current) return;
+      if (photoCountRef.current >= 1) {
+        finishOnceRef.current = true;
+        void finishCaptureRef.current();
+        return;
+      }
+      void sendOrQueueIntakeCommand(
+        companyId,
+        makeWorkerCommand({
+          type: 'pause_session',
+          payload: { jobId, sessionId, reason: 'App moved to background' },
+        }),
+      );
     });
     return () => subscription.remove();
-  }, [
-    sessionState,
-    companyId,
-    completionPending,
-    isServerComplete,
-    jobId,
-    sessionId,
-  ]);
+  }, [companyId, jobId, sessionId]);
 
   useEffect(() => {
     if (
@@ -472,19 +476,6 @@ export function EngineIntakeSessionScreen() {
     }
   };
 
-  const pauseAndLeave = async () => {
-    if (!completionPending && !isServerComplete) {
-      await sendOrQueueIntakeCommand(
-        companyId,
-        makeWorkerCommand({
-          type: 'pause_session',
-          payload: { jobId, sessionId, reason: 'Worker left the camera session' },
-        }),
-      ).catch(() => null);
-    }
-    openEngineIntakeBay(router);
-  };
-
   const requestCancelEngine = () => {
     if (!companyId || !job || !can('engine_intake_execute')) return;
     Alert.alert('Cancel engine?', `${serial} will leave the intake bay.`, [
@@ -545,6 +536,26 @@ export function EngineIntakeSessionScreen() {
         variant: 'destructive',
       });
     }
+  };
+  finishCaptureRef.current = finishCapture;
+
+  const pauseAndLeave = async () => {
+    if (photoCount >= 1 && !completionPending && !isServerComplete) {
+      finishOnceRef.current = true;
+      await finishCapture();
+      openEngineIntakeBay(router);
+      return;
+    }
+    if (!completionPending && !isServerComplete) {
+      await sendOrQueueIntakeCommand(
+        companyId,
+        makeWorkerCommand({
+          type: 'pause_session',
+          payload: { jobId, sessionId, reason: 'Worker left the camera session' },
+        }),
+      ).catch(() => null);
+    }
+    openEngineIntakeBay(router);
   };
 
   const requestFinish = () => {

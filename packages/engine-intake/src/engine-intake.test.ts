@@ -3,9 +3,11 @@ import test from "node:test";
 
 import {
   DEFAULT_ENGINE_INTAKE_REQUIREMENTS,
+  canAcceptIntakePhotoUpload,
   canFinishFieldDocumentation,
   canReleaseEngineForSale,
   canTransitionEngineIntakeJob,
+  canTransitionEngineIntakeSession,
   checklistWhisper,
   deriveEngineIntakeProgress,
   emptyEngineIntakeProgress,
@@ -269,4 +271,24 @@ test("warehouse lifecycle maps job states for the bay", () => {
   assert.equal(warehouseLifecycleLabel("in_session"), "Documenting");
   assert.equal(warehouseLifecycleLabel("awaiting_verification"), "Ready");
   assert.equal(warehouseLifecycleLabel("verified"), "Released");
+});
+
+test("a paused session can still finish into Ready", () => {
+  assert.equal(canTransitionEngineIntakeSession("paused", "completed"), true);
+  assert.equal(canTransitionEngineIntakeJob("paused", "awaiting_verification"), true);
+});
+
+test("paused sessions still accept photos the worker already captured", () => {
+  assert.equal(
+    canAcceptIntakePhotoUpload({ sessionState: "paused", jobState: "in_session" }),
+    true,
+  );
+  assert.equal(
+    canAcceptIntakePhotoUpload({ sessionState: "paused", jobState: "paused" }),
+    true,
+  );
+  assert.equal(
+    canAcceptIntakePhotoUpload({ sessionState: "completed", jobState: "in_session" }),
+    false,
+  );
 });

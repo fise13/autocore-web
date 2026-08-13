@@ -406,9 +406,14 @@ export function EngineIntakeJobsScreen() {
         toast({ title: 'Retrying sync…', variant: 'default' });
         return;
       }
+      if (outbox.pendingCount > 0) {
+        void drainIntakeOutbox(companyId);
+        toast({ title: 'Syncing…', variant: 'default' });
+        return;
+      }
       toast({ title: 'Nothing left to sync', variant: 'default' });
     })();
-  }, [companyId]);
+  }, [companyId, outbox.pendingCount]);
 
   const jobHasPendingSync = useCallback(
     (jobId: string) =>
@@ -631,6 +636,15 @@ export function EngineIntakeJobsScreen() {
                 claimedByAnother={claimedByAnother}
                 claimedByName={item.assignment.claimedByName}
                 syncPending={jobHasPendingSync(item.id)}
+                localPhotoCount={
+                  outbox.photos.filter(
+                    (photo) =>
+                      photo.companyId === companyId &&
+                      photo.jobId === item.id &&
+                      photo.state !== 'failed' &&
+                      photo.errorInfo?.code !== 'CONFLICT',
+                  ).length
+                }
                 disabled={starting}
                 canEdit={can('engine_intake_execute')}
                 onPress={() => void claimAndOpen(item)}
