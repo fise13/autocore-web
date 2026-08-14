@@ -199,8 +199,9 @@ export function mergeIntakeJobs(
   server: EngineIntakeJob[],
   local: EngineIntakeJob[],
   cancelledJobIds: readonly string[] = [],
+  verifiedJobIds: readonly string[] = [],
 ): EngineIntakeJob[] {
-  const hidden = new Set(cancelledJobIds);
+  const hidden = new Set([...cancelledJobIds, ...verifiedJobIds]);
   const visibleServer = hidden.size === 0
     ? server
     : server.filter((job) => !hidden.has(job.id) && job.state !== 'cancelled');

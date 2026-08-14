@@ -25,7 +25,10 @@ export type IntakeJobRowProps = {
   localPhotoCount?: number;
   disabled?: boolean;
   canEdit?: boolean;
+  canVerify?: boolean;
   onPress: () => void;
+  onAddPhotos?: (job: EngineIntakeJob) => void;
+  onRelease?: (job: EngineIntakeJob) => void;
   onEdit: (job: EngineIntakeJob) => void;
   onCancel: (job: EngineIntakeJob) => void;
 };
@@ -82,7 +85,12 @@ function canCancelJob(job: EngineIntakeJob): boolean {
   );
 }
 
-function openActionLabel(job: EngineIntakeJob): string {
+function canReleaseJob(job: EngineIntakeJob, canVerify: boolean): boolean {
+  return canVerify && job.state === 'awaiting_verification';
+}
+
+function openActionLabel(job: EngineIntakeJob, canVerify: boolean): string {
+  if (canReleaseJob(job, canVerify)) return 'Release to grid';
   if (job.state === 'awaiting_verification') return 'Add photos';
   if (job.state === 'paused' || job.state === 'in_session') return 'Continue';
   return 'Open camera';
@@ -227,7 +235,10 @@ function NativeMenuRow({
   syncPending,
   localPhotoCount,
   canEdit,
+  canVerify,
   onPress,
+  onAddPhotos,
+  onRelease,
   onEdit,
   onCancel,
   onCopy,
@@ -238,13 +249,19 @@ function NativeMenuRow({
   syncPending: boolean;
   localPhotoCount: number;
   canEdit: boolean;
+  canVerify: boolean;
   onPress: () => void;
+  onAddPhotos?: () => void;
+  onRelease?: () => void;
   onEdit: () => void;
   onCancel: () => void;
   onCopy: () => void;
 }) {
   const { colors, isDark } = useTheme();
-  const showOpen = !claimedByAnother;
+  const showRelease = !claimedByAnother && canReleaseJob(job, canVerify) && Boolean(onRelease);
+  const showAddPhotos =
+    !claimedByAnother && job.state === 'awaiting_verification' && Boolean(onAddPhotos);
+  const showOpen = !claimedByAnother && !showRelease && !showAddPhotos;
   const showEdit = canEdit && !claimedByAnother && canEditIdentity(job);
   const showCancel = canEdit && !claimedByAnother && canCancelJob(job);
 
@@ -273,9 +290,29 @@ function NativeMenuRow({
           </RNHostView>
         </ContextMenu.Trigger>
         <ContextMenu.Items>
+          {showRelease ? (
+            <SwiftButton
+              label="Release to grid"
+              systemImage="checkmark.seal.fill"
+              onPress={() => {
+                haptics.selection();
+                onRelease?.();
+              }}
+            />
+          ) : null}
+          {showAddPhotos ? (
+            <SwiftButton
+              label="Add photos"
+              systemImage="camera.fill"
+              onPress={() => {
+                haptics.selection();
+                onAddPhotos?.();
+              }}
+            />
+          ) : null}
           {showOpen ? (
             <SwiftButton
-              label={openActionLabel(job)}
+              label={openActionLabel(job, canVerify)}
               systemImage="camera.fill"
               onPress={() => {
                 haptics.selection();
@@ -327,7 +364,10 @@ export function IntakeJobRow({
   localPhotoCount = 0,
   disabled = false,
   canEdit = true,
+  canVerify = false,
   onPress,
+  onAddPhotos,
+  onRelease,
   onEdit,
   onCancel,
 }: IntakeJobRowProps) {
@@ -354,6 +394,12 @@ export function IntakeJobRow({
         case 'open':
           onPress();
           return;
+        case 'release':
+          onRelease?.(job);
+          return;
+        case 'photos':
+          onAddPhotos?.(job);
+          return;
         case 'edit':
           onEdit(job);
           return;
@@ -367,7 +413,7 @@ export function IntakeJobRow({
           return;
       }
     },
-    [copySerial, job, onCancel, onEdit, onPress],
+    [copySerial, job, onAddPhotos, onCancel, onEdit, onPress, onRelease],
   );
 
   const openFallbackMenu = useCallback(() => {
@@ -375,8 +421,14 @@ export function IntakeJobRow({
     presentNativeMenu({
       title: jobSerial(job),
       actions: [
-        ...(!claimedByAnother
-          ? [{ id: 'open', title: openActionLabel(job), systemImage: 'camera.fill' as const }]
+        ...(!claimedByAnother && canVerify && canReleaseJob(job, canVerify)
+          ? [{ id: 'release', title: 'Release to grid', systemImage: 'checkmark.seal.fill' as const }]
+          : []),
+        ...(!claimedByAnother && job.state === 'awaiting_verification' && onAddPhotos
+          ? [{ id: 'photos', title: 'Add photos', systemImage: 'camera.fill' as const }]
+          : []),
+        ...(!claimedByAnother && job.state !== 'awaiting_verification'
+          ? [{ id: 'open', title: openActionLabel(job, canVerify), systemImage: 'camera.fill' as const }]
           : []),
         ...(canEdit && !claimedByAnother && canEditIdentity(job)
           ? [{ id: 'edit', title: 'Edit', systemImage: 'pencil' as const }]
@@ -395,7 +447,7 @@ export function IntakeJobRow({
       ],
       onPressAction: handleAction,
     });
-  }, [canEdit, claimedByAnother, handleAction, job, rowDisabled]);
+  }, [canEdit, canVerify, claimedByAnother, handleAction, job, onAddPhotos, onRelease, rowDisabled]);
 
   const useNativeMenu = Platform.OS === 'ios' && !rowDisabled;
 
@@ -409,7 +461,10 @@ export function IntakeJobRow({
           syncPending={syncPending}
           localPhotoCount={localPhotoCount}
           canEdit={canEdit}
+          canVerify={canVerify}
           onPress={onPress}
+          onAddPhotos={onAddPhotos ? () => onAddPhotos(job) : undefined}
+          onRelease={onRelease ? () => onRelease(job) : undefined}
           onEdit={() => onEdit(job)}
           onCancel={() => onCancel(job)}
           onCopy={() => {

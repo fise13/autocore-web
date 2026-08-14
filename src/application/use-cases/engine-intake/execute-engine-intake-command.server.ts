@@ -11,6 +11,7 @@ import {
   canFinishWarehouseCapture,
   canReleaseEngineForSale,
   defaultEngineIntakeIdentity,
+  parseMotorQualityGrade,
   defaultEngineIntakePhotoPackage,
   deriveEngineIntakeProgress,
   emptyEngineIntakeAssignment,
@@ -1758,6 +1759,12 @@ async function mutateManagedJob(
           "Confirm a serial number before releasing to Motors Grid",
         );
       }
+      const quality = parseMotorQualityGrade(command.payload.quality ?? "");
+      if (!quality) {
+        throw new EngineIntakeCommandError(
+          "Set engine quality (1, 2, or 3) before releasing to Motors Grid",
+        );
+      }
       if (!job.location) {
         transaction.update(jobRef, {
           location: {
@@ -1848,6 +1855,7 @@ async function mutateManagedJob(
         engineCode: identity.engineCode,
         configuration: identity.configuration,
         donorVin: identity.donorVin,
+        quality,
         status: "available",
         intakeStatus: "verified",
         readyForSaleAt: FieldValue.serverTimestamp(),

@@ -23,8 +23,14 @@ import {
 } from '@/components/ui';
 import { useFloatingTabBarInset, useSession, useTheme } from '@/hooks';
 import { goBackOrReplace } from '@/lib/navigation/stack-back';
+import { EnginePhotoViewer } from '@/features/engines/components/engine-photo-viewer';
 import { haptics, rhythm, spacing } from '@/theme';
 
+import {
+  IntakeAcceptSheet,
+  type IntakeAcceptDraft,
+  type IntakeAcceptSheetRef,
+} from './components/intake-accept-sheet';
 import {
   IntakeCreateSerialSheet,
   type IntakeCreateIdentityDraft,
@@ -32,7 +38,7 @@ import {
 } from './components/intake-create-serial-sheet';
 import { IntakeJobRow } from './components/intake-job-row';
 import { IntakeOutboxBanner } from './components/intake-outbox-banner';
-import { useEngineIntakeJobs } from './hooks/use-engine-intake-data';
+import { useEngineIntakeJobDetail, useEngineIntakeJobs } from './hooks/use-engine-intake-data';
 import {
   drainIntakeOutbox,
   humanizeIntakeOutboxError,
@@ -49,6 +55,8 @@ import { openEngineIntakeSession } from './lib/open-engine-intake';
 import { cancelIntakeJob } from './lib/cancel-intake-job';
 import {
   dropOptimisticIntakeClaim,
+  markIntakeJobVerified,
+  restoreIntakeJobVerified,
   seedOptimisticIntakeClaim,
   seedOptimisticIntakeCreate,
 } from './store/intake-local-overlay';
@@ -153,6 +161,12 @@ export function EngineIntakeJobsScreen() {
   const { jobs, loading, error } = useEngineIntakeJobs(companyId);
   const outbox = useEngineIntakeOutbox(companyId);
   const createSheetRef = useRef<IntakeCreateSerialSheetRef>(null);
+  const acceptSheetRef = useRef<IntakeAcceptSheetRef>(null);
+  const acceptLockHeld = useRef(false);
+  const [reviewJob, setReviewJob] = useState<EngineIntakeJob | null>(null);
+  const [photoViewer, setPhotoViewer] = useState<{ urls: string[]; index: number } | null>(
+    null,
+  );
   const [starting, setStarting] = useState(false);
   const [claimClock, setClaimClock] = useState(() => Date.now());
   const [deviceId] = useState(getEngineIntakeDeviceId);
@@ -184,6 +198,14 @@ export function EngineIntakeJobsScreen() {
   );
   const visibleJobs =
     filter === 'active' ? activeJobs : filter === 'ready' ? readyJobs : allJobs;
+  const { photos: reviewPhotos } = useEngineIntakeJobDetail(companyId, reviewJob?.id ?? null);
+  const reviewPhotoUrls = useMemo(
+    () =>
+      reviewPhotos
+        .filter((photo) => !photo.deletedAt && Boolean(photo.url))
+        .map((photo) => photo.url as string),
+    [reviewPhotos],
+  );
 
   const openCreateSheet = useCallback(() => {
     createSheetRef.current?.present();
@@ -244,6 +266,126 @@ export function EngineIntakeJobsScreen() {
       }
     },
     [can, companyId, deviceId, openSession, profile?.displayName, uid],
+  );
+
+  const makeVerifyCommand = useCallback(
+    (
+      type: 'start_verification' | 'release_verification' | 'approve_job',
+      payload: EngineIntakeCommand['payload'],
+    ): EngineIntakeCommand =>
+      ({
+        type,
+        idempotencyKey: engineIntakeId(type.replace('_', '-')),
+        client: 'mobile',
+        clientAt: new Date().toISOString(),
+        deviceId: getEngineIntakeDeviceId(),
+        payload,
+      }) as EngineIntakeCommand,
+    [],
+  );
+
+  const openAcceptSheet = useCallback(
+    async (job: EngineIntakeJob) => {
+      if (!companyId || !can('engine_intake_verify')) return;
+      if (job.state !== 'awaiting_verification') return;
+      setStarting(true);
+      setReviewJob(job);
+      try {
+        await sendOrQueueIntakeCommand(
+          companyId,
+          makeVerifyCommand('start_verification', { jobId: job.id }),
+        );
+        acceptLockHeld.current = true;
+        acceptSheetRef.current?.present(job);
+      } catch (error) {
+        acceptLockHeld.current = false;
+        setReviewJob(null);
+        haptics.error();
+        toast({
+          title: 'Could not open review',
+          description:
+            error instanceof Error ? humanizeIntakeOutboxError(error.message) : undefined,
+          variant: 'destructive',
+        });
+      } finally {
+        setStarting(false);
+      }
+    },
+    [can, companyId, makeVerifyCommand],
+  );
+
+  const releaseAcceptLock = useCallback(() => {
+    const jobId = reviewJob?.id;
+    const held = acceptLockHeld.current;
+    acceptLockHeld.current = false;
+    setReviewJob(null);
+    setPhotoViewer(null);
+    if (!companyId || !jobId || !held) return;
+    void sendOrQueueIntakeCommand(
+      companyId,
+      makeVerifyCommand('release_verification', { jobId }),
+    ).catch(() => null);
+  }, [companyId, makeVerifyCommand, reviewJob?.id]);
+
+  const submitAccept = useCallback(
+    async (draft: IntakeAcceptDraft) => {
+      if (!companyId || !reviewJob) return;
+      const jobId = reviewJob.id;
+      const hasBlockingFlags = reviewJob.blockingAiFlags.length > 0;
+      markIntakeJobVerified(companyId, jobId);
+      setStarting(true);
+      try {
+        await sendOrQueueIntakeCommand(
+          companyId,
+          makeVerifyCommand('approve_job', {
+            jobId,
+            note: draft.note || 'Checklist ready',
+            identity: {
+              serialCode: draft.serialCode,
+              brandName: draft.brandName,
+              engineCode: draft.engineCode,
+            },
+            quality: draft.quality,
+            ...(hasBlockingFlags || draft.note
+              ? {
+                  aiOverrideReason:
+                    draft.note || 'Manager override for release',
+                }
+              : {}),
+          }),
+        );
+        acceptLockHeld.current = false;
+        acceptSheetRef.current?.dismiss();
+        setReviewJob(null);
+        setPhotoViewer(null);
+        haptics.success();
+        toast({ title: 'Released to Motors Grid', variant: 'success' });
+        void drainIntakeOutbox(companyId);
+      } catch (error) {
+        restoreIntakeJobVerified(companyId, jobId);
+        haptics.error();
+        toast({
+          title: 'Could not release engine',
+          description:
+            error instanceof Error ? humanizeIntakeOutboxError(error.message) : undefined,
+          variant: 'destructive',
+        });
+      } finally {
+        setStarting(false);
+      }
+    },
+    [companyId, makeVerifyCommand, reviewJob],
+  );
+
+  const handleRowPress = useCallback(
+    (job: EngineIntakeJob) => {
+      if (job.state === 'awaiting_verification' && can('engine_intake_verify')) {
+        void openAcceptSheet(job);
+        return;
+      }
+      void claimAndOpen(job);
+    },
+    [can, claimAndOpen, openAcceptSheet],
   );
 
   const startWithSerial = useCallback(
@@ -682,7 +824,14 @@ export function EngineIntakeJobsScreen() {
                 }
                 disabled={starting}
                 canEdit={can('engine_intake_execute')}
-                onPress={() => void claimAndOpen(item)}
+                canVerify={can('engine_intake_verify')}
+                onPress={() => handleRowPress(item)}
+                onAddPhotos={
+                  can('engine_intake_execute') ? (job) => void claimAndOpen(job) : undefined
+                }
+                onRelease={
+                  can('engine_intake_verify') ? (job) => void openAcceptSheet(job) : undefined
+                }
                 onEdit={openEditSheet}
                 onCancel={cancelJob}
               />
@@ -697,6 +846,31 @@ export function EngineIntakeJobsScreen() {
         loading={starting}
         onSubmit={handleSheetSubmit}
       />
+      <IntakeAcceptSheet
+        ref={acceptSheetRef}
+        loading={starting}
+        photoUrls={reviewPhotoUrls}
+        onOpenPhoto={(index) => {
+          if (reviewPhotoUrls.length === 0) return;
+          setPhotoViewer({ urls: reviewPhotoUrls, index });
+        }}
+        onDismiss={releaseAcceptLock}
+        onSubmit={submitAccept}
+      />
+      {photoViewer ? (
+        <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, zIndex: 120 }}>
+          <EnginePhotoViewer
+            urls={photoViewer.urls}
+            serial={
+              reviewJob?.expectedIdentity.serialCode ||
+              reviewJob?.expectedIdentity.engineCode ||
+              'Engine'
+            }
+            initialIndex={photoViewer.index}
+            onClose={() => setPhotoViewer(null)}
+          />
+        </View>
+      ) : null}
     </Screen>
   );
 }

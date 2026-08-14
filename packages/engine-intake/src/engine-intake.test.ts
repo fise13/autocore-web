@@ -12,6 +12,7 @@ import {
   deriveEngineIntakeProgress,
   emptyEngineIntakeProgress,
   normalizeDocumentationChecklist,
+  parseMotorQualityGrade,
   reconcileDocumentationChecklist,
   seedDocumentationChecklist,
   warehouseLifecycleLabel,
@@ -282,6 +283,14 @@ test("Ready engines can be reopened to add photos", () => {
   assert.equal(canTransitionEngineIntakeJob("awaiting_verification", "in_session"), true);
   assert.equal(canTransitionEngineIntakeJob("awaiting_verification", "verified"), true);
   assert.equal(canTransitionEngineIntakeJob("quarantine", "in_session"), false);
+});
+
+test("parseMotorQualityGrade reads 1 / 2 / 3 and leading-digit labels", () => {
+  assert.equal(parseMotorQualityGrade("2"), "2");
+  assert.equal(parseMotorQualityGrade(" 1 "), "1");
+  assert.equal(parseMotorQualityGrade("3 — poor"), "3");
+  assert.equal(parseMotorQualityGrade(""), null);
+  assert.equal(parseMotorQualityGrade("refurbished"), null);
 });
 
 test("paused sessions still accept photos the worker already captured", () => {

@@ -15,6 +15,7 @@ import {
   DOCUMENTATION_CHECKLIST_GROUPS,
   isDocumentationChecklistReady,
   isEngineIntakeSessionStale,
+  MOTOR_QUALITY_GRADE_OPTIONS,
   type DocumentationChecklistItem,
   type DocumentationChecklistItemState,
   type EngineIntakeCommand,
@@ -24,6 +25,7 @@ import {
   type IntakeEvent,
   type IntakePhoto,
   type IntakePhotoCategory,
+  type MotorQualityGrade,
   type PhotoRequirement,
 } from "@autocore/engine-intake";
 
@@ -117,6 +119,7 @@ export function EngineIntakeDetail({
   const [dialog, setDialog] = useState<ReviewDialog>(null);
   const [reviewNote, setReviewNote] = useState("");
   const [aiOverrideReason, setAiOverrideReason] = useState("");
+  const [quality, setQuality] = useState<MotorQualityGrade | null>(null);
   const [serialCode, setSerialCode] = useState(job.expectedIdentity.serialCode);
   const [engineCode, setEngineCode] = useState(job.expectedIdentity.engineCode);
   const [brandName, setBrandName] = useState(job.expectedIdentity.brandName);
@@ -149,6 +152,7 @@ export function EngineIntakeDetail({
     job.progress.capturedCount >= 1 &&
     job.progress.rejectedPhotoIds.length === 0 &&
     Boolean(serialCode.trim());
+  const canConfirmApprove = canApprove && quality !== null;
   const releaseNeedsOverride = !isDocumentationChecklistReady(checklist);
   const canShowRelease = canVerify && job.state === "awaiting_verification";
 
@@ -260,6 +264,7 @@ export function EngineIntakeDetail({
   const beginVerification = async (nextDialog: VerificationDialog) => {
     setReviewNote("");
     setAiOverrideReason("");
+    setQuality(null);
     const started = await run(
       managedCommand({
         type: "start_verification",
@@ -275,6 +280,7 @@ export function EngineIntakeDetail({
     setDialog(null);
     setReviewNote("");
     setAiOverrideReason("");
+    setQuality(null);
     if (current && current.kind !== "identity" && current.kind !== "cancel") {
       await sendEngineIntakeCommand(
         companyId,
@@ -295,6 +301,10 @@ export function EngineIntakeDetail({
         toast.error("Add an override note — sale checklist items are still open");
         return;
       }
+      if (!quality) {
+        toast.error("Set engine quality before releasing to Motors Grid");
+        return;
+      }
       command = managedCommand({
         type: "approve_job",
         payload: {
@@ -305,6 +315,7 @@ export function EngineIntakeDetail({
             engineCode: engineCode.trim(),
             brandName: brandName.trim(),
           },
+          quality,
           ...(job.blockingAiFlags.length > 0 || releaseNeedsOverride
             ? {
                 aiOverrideReason:
@@ -751,6 +762,34 @@ export function EngineIntakeDetail({
               {dialog.kind === "approve" ? (
                 <>
                   <Field>
+                    <FieldLabel>Quality</FieldLabel>
+                    <div className="grid grid-cols-3 gap-2">
+                      {MOTOR_QUALITY_GRADE_OPTIONS.map((option) => {
+                        const selected = quality === option.value;
+                        const tone =
+                          option.value === "2"
+                            ? "border-success-border bg-success-subtle text-success-on-subtle"
+                            : option.value === "3"
+                              ? "border-danger-border bg-danger-subtle text-danger-on-subtle"
+                              : "border-primary-border bg-primary-subtle text-primary-on-subtle";
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => setQuality(option.value)}
+                            className={cn(
+                              "flex min-h-11 flex-col items-center justify-center rounded-lg border px-2 py-2 text-sm font-semibold transition-colors",
+                              selected ? tone : "border-border bg-card text-muted-foreground",
+                            )}
+                          >
+                            <span className="font-mono text-base tabular-nums">{option.value}</span>
+                            <span>{option.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </Field>
+                  <Field>
                     <FieldLabel>Verification note</FieldLabel>
                     <Textarea
                       value={reviewNote}
@@ -801,7 +840,7 @@ export function EngineIntakeDetail({
               }
               disabled={
                 busy !== null ||
-                (dialog?.kind === "approve" && !canApprove) ||
+                (dialog?.kind === "approve" && !canConfirmApprove) ||
                 (dialog?.kind === "approve" &&
                   releaseNeedsOverride &&
                   !reviewNote.trim() &&

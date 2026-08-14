@@ -95,7 +95,12 @@ export function useEngineIntakeJobs(companyId: string | null) {
       ? (getJson<EngineIntakeJob[]>(jobsCacheKey(companyId)) ?? [])
       : [];
   const jobs = applyReadyJobOverrides(
-    mergeIntakeJobs(serverJobs, overlay.jobs, overlay.cancelledJobIds),
+    mergeIntakeJobs(
+      serverJobs,
+      overlay.jobs,
+      overlay.cancelledJobIds,
+      overlay.verifiedJobIds,
+    ),
     overlay.readyJobIds,
   );
   return {

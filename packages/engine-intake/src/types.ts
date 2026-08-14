@@ -1,3 +1,5 @@
+import type { MotorQualityGrade } from "./quality";
+
 export const ENGINE_INTAKE_JOB_STATES = [
   "open",
   "in_session",
@@ -521,6 +523,8 @@ export type EngineIntakeCommand = (
         note?: string;
         identity?: Partial<EngineIntakeIdentity>;
         aiOverrideReason?: string;
+        /** Canonical motor grade written onto the engine at release. */
+        quality?: MotorQualityGrade;
       };
     }
   | {

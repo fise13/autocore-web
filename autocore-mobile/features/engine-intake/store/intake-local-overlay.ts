@@ -16,6 +16,8 @@ type OverlayState = {
   cancelledJobIds: string[];
   /** Job ids Finish has accepted locally while Firestore may still show documenting. */
   readyJobIds: string[];
+  /** Job ids just released to Motors Grid while Firestore still shows Ready. */
+  verifiedJobIds: string[];
 };
 
 const listeners = new Set<() => void>();
@@ -30,6 +32,7 @@ const EMPTY_OVERLAY: OverlayState = {
   sessions: {},
   cancelledJobIds: [],
   readyJobIds: [],
+  verifiedJobIds: [],
 };
 
 function emptyOverlay(): OverlayState {
@@ -42,6 +45,7 @@ function normalizeOverlay(value: OverlayState | null | undefined): OverlayState 
     sessions: value?.sessions ?? {},
     cancelledJobIds: value?.cancelledJobIds ?? [],
     readyJobIds: value?.readyJobIds ?? [],
+    verifiedJobIds: value?.verifiedJobIds ?? [],
   };
 }
 
@@ -96,6 +100,7 @@ export function seedOptimisticIntakeCreate(input: {
     },
     cancelledJobIds: current.cancelledJobIds.filter((id) => id !== job.id),
     readyJobIds: current.readyJobIds.filter((id) => id !== job.id),
+    verifiedJobIds: current.verifiedJobIds.filter((id) => id !== job.id),
   });
   return { job, session };
 }
@@ -129,6 +134,7 @@ export function seedOptimisticIntakeClaim(input: {
     },
     cancelledJobIds: current.cancelledJobIds.filter((id) => id !== job.id),
     readyJobIds: current.readyJobIds.filter((id) => id !== job.id),
+    verifiedJobIds: current.verifiedJobIds.filter((id) => id !== job.id),
   });
   return { job, session };
 }
@@ -143,6 +149,7 @@ export function markIntakeJobCancelled(companyId: string, jobId: string): void {
       ? current.cancelledJobIds
       : [...current.cancelledJobIds, jobId],
     readyJobIds: current.readyJobIds.filter((id) => id !== jobId),
+    verifiedJobIds: current.verifiedJobIds.filter((id) => id !== jobId),
   });
 }
 
@@ -151,6 +158,29 @@ export function restoreIntakeJobCancelled(companyId: string, jobId: string): voi
   writeOverlay(companyId, {
     ...current,
     cancelledJobIds: current.cancelledJobIds.filter((id) => id !== jobId),
+  });
+}
+
+/** Hide a just-released engine from Ready until Firestore shows verified. */
+export function markIntakeJobVerified(companyId: string, jobId: string): void {
+  const current = readOverlay(companyId);
+  writeOverlay(companyId, {
+    jobs: current.jobs.filter((job) => job.id !== jobId),
+    sessions: current.sessions,
+    cancelledJobIds: current.cancelledJobIds.filter((id) => id !== jobId),
+    readyJobIds: current.readyJobIds.filter((id) => id !== jobId),
+    verifiedJobIds: current.verifiedJobIds.includes(jobId)
+      ? current.verifiedJobIds
+      : [...current.verifiedJobIds, jobId],
+  });
+}
+
+export function restoreIntakeJobVerified(companyId: string, jobId: string): void {
+  const current = readOverlay(companyId);
+  if (!current.verifiedJobIds.includes(jobId)) return;
+  writeOverlay(companyId, {
+    ...current,
+    verifiedJobIds: current.verifiedJobIds.filter((id) => id !== jobId),
   });
 }
 
@@ -191,12 +221,20 @@ export function dropOptimisticIntakeClaim(
     sessions,
     cancelledJobIds: current.cancelledJobIds,
     readyJobIds,
+    verifiedJobIds: current.verifiedJobIds.filter((id) => id !== jobId),
   });
 }
 
 const READY_SETTLED_STATES = new Set([
   'awaiting_verification',
   'quarantine',
+  'verified',
+  'closed',
+  'rejected',
+  'cancelled',
+]);
+
+const VERIFIED_SETTLED_STATES = new Set([
   'verified',
   'closed',
   'rejected',
@@ -241,15 +279,25 @@ export function pruneIntakeOverlay(
           return !READY_SETTLED_STATES.has(server.state);
         });
 
+  const verifiedJobIds =
+    serverJobs.length === 0
+      ? current.verifiedJobIds
+      : current.verifiedJobIds.filter((jobId) => {
+          const server = serverJobs.find((job) => job.id === jobId);
+          if (!server) return true;
+          return !VERIFIED_SETTLED_STATES.has(server.state);
+        });
+
   if (
     jobs.length === current.jobs.length &&
     Object.keys(sessions).length === Object.keys(current.sessions).length &&
     cancelledJobIds.length === current.cancelledJobIds.length &&
-    readyJobIds.length === current.readyJobIds.length
+    readyJobIds.length === current.readyJobIds.length &&
+    verifiedJobIds.length === current.verifiedJobIds.length
   ) {
     return;
   }
-  writeOverlay(companyId, { jobs, sessions, cancelledJobIds, readyJobIds });
+  writeOverlay(companyId, { jobs, sessions, cancelledJobIds, readyJobIds, verifiedJobIds });
 }
 
 export function getIntakeOverlay(companyId: string | null): OverlayState {

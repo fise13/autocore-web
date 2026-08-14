@@ -112,6 +112,22 @@ describe('mergeIntakeJobs', () => {
     const merged = mergeIntakeJobs([job], [], ['job_1']);
     assert.equal(merged.some((item) => item.id === 'job_1'), false);
   });
+
+  it('hides engines just released to Motors Grid while Firestore still shows Ready', () => {
+    const job = applyOptimisticFieldComplete(
+      buildOptimisticIntakeJob({
+        companyId: 'acme',
+        jobId: 'job_1',
+        sessionId: 'session_1',
+        uid: 'user_1',
+        displayName: null,
+        deviceId: 'device_1',
+        identity: { serialCode: 'UF1', brandName: '', engineCode: '' },
+      }),
+    );
+    const merged = mergeIntakeJobs([job], [], [], ['job_1']);
+    assert.equal(merged.some((item) => item.id === 'job_1'), false);
+  });
 });
 
 describe('applyOptimisticClaim', () => {
