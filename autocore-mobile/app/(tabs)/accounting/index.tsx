@@ -1,10 +1,10 @@
 import { AnimatedTabScreen } from '@/components/navigation/animated-tab-screen';
-import { AccountingScreen } from '@/features/accounting';
+import { FinanceScreen } from '@/features/finance';
 
-export default function AccountingRoute() {
+export default function FinanceRoute() {
   return (
     <AnimatedTabScreen tab="accounting">
-      <AccountingScreen />
+      <FinanceScreen />
     </AnimatedTabScreen>
   );
 }
