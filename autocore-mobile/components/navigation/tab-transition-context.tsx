@@ -6,13 +6,9 @@ export const TAB_ORDER = [
   'action',
   'accounting',
   'profile',
-  // Hidden drill-in routes still under (tabs)
-  'orders',
+  // Hidden routes still under (tabs)
   'ai',
   'scan',
-  'search',
-  'warehouse',
-  'my-earnings',
 ] as const;
 export type TabRouteName = (typeof TAB_ORDER)[number];
 

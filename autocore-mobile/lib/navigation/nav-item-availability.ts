@@ -36,9 +36,10 @@ const EXPO_TAB_HREFS: Record<string, string> = {
   accounting: '/(tabs)/accounting',
   search: '/search',
   scan: '/(tabs)/scan',
-  orders: '/(tabs)/orders',
+  orders: '/orders',
   profile: '/(tabs)/profile',
-  'my-earnings': '/(tabs)/profile/my-earnings',
+  'my-earnings': '/earnings',
+  earnings: '/earnings',
   ai: '/(tabs)/ai',
 };
 

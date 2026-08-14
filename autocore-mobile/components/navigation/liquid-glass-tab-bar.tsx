@@ -29,6 +29,7 @@ import { Text } from '@/components/ui/text';
 import { useReducedMotion } from '@/hooks/use-accessibility';
 import {
   DOCK_ACTION_FILL,
+  DOCK_ACTION_HIT_SIZE,
   DOCK_ACTION_ICON_SIZE,
   DOCK_ACTION_ICON_STROKE,
   DOCK_ACTION_INK,
@@ -445,9 +446,9 @@ const styles = StyleSheet.create({
     zIndex: 4,
   },
   actionHit: {
-    width: DOCK_ACTION_SIZE,
-    height: DOCK_ACTION_SIZE,
-    borderRadius: DOCK_ACTION_RADIUS,
+    width: DOCK_ACTION_HIT_SIZE,
+    height: DOCK_ACTION_HIT_SIZE,
+    borderRadius: DOCK_ACTION_HIT_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },

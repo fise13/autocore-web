@@ -25,6 +25,7 @@ function node(id: string, domain: WorkspaceDomainId, subtitle: string): WorkNode
 }
 
 const ORDERS = node('orders', 'sales', 'Work orders');
+const EARNINGS = node('earnings', 'sales', 'Shift and payouts');
 const ENGINES = node('engines', 'inventory', 'Serialized motors');
 const PARTS = node('parts', 'inventory', 'Inventory items');
 const INTAKE = node('intake', 'intake', 'Receive and photograph engines');
@@ -119,6 +120,30 @@ describe('resolveWorkRowDetail', () => {
     assert.equal(orders.attention, 3);
   });
 
+  it('surfaces payouts and claimable jobs as live earnings state', () => {
+    const live = resolveWorkRowDetail(
+      EARNINGS,
+      counts({ earnings: { pendingCount: 2, claimable: 3, myOpen: 1, payoutTotal: 8 } }),
+    );
+    assert.equal(live.detail, '2 waiting to be paid · 3 to claim');
+    assert.equal(live.attention, 5);
+    assert.equal(live.todayLabel, '2 payouts waiting · 3 to claim');
+
+    const board = resolveWorkRowDetail(
+      EARNINGS,
+      counts({ earnings: { pendingCount: 0, claimable: 0, myOpen: 2, payoutTotal: 4 } }),
+    );
+    assert.equal(board.detail, '2 open on your board');
+    assert.equal(board.attention, 0);
+
+    const clear = resolveWorkRowDetail(
+      EARNINGS,
+      counts({ earnings: { pendingCount: 0, claimable: 0, myOpen: 0, payoutTotal: 4 } }),
+    );
+    assert.equal(clear.detail, 'Caught up');
+    assert.equal(clear.detailKind, 'clear');
+  });
+
   it('reads the intake bay by state priority', () => {
     assert.equal(
       resolveWorkRowDetail(
@@ -201,7 +226,7 @@ describe('buildWorkModel', () => {
     { domain: 'intake' as const, title: 'Intake', nodes: [INTAKE] },
     { domain: 'inventory' as const, title: 'Inventory', nodes: [ENGINES, PARTS] },
     { domain: 'warehouse' as const, title: 'Warehouse', nodes: [RECEIVING, LOCATIONS] },
-    { domain: 'sales' as const, title: 'Sales', nodes: [ORDERS] },
+    { domain: 'sales' as const, title: 'Sales', nodes: [ORDERS, EARNINGS] },
     { domain: 'operations' as const, title: 'Tools', nodes: [DOCUMENTS] },
   ];
 
@@ -261,6 +286,27 @@ describe('buildWorkModel', () => {
     );
     assert.equal(model.today.count, 1);
     assert.equal(model.today.title, 'Item needs attention');
+  });
+
+  it('puts earnings in Today only when payouts or claims are waiting', () => {
+    const waiting = buildWorkModel(
+      grouped,
+      counts({
+        earnings: { pendingCount: 2, claimable: 1, myOpen: 4, payoutTotal: 6 },
+      }),
+    );
+    assert.equal(waiting.today.count, 3);
+    assert.equal(waiting.today.breakdown, '2 payouts waiting · 1 to claim');
+    assert.equal(waiting.today.href, '/earnings');
+
+    const boardOnly = buildWorkModel(
+      grouped,
+      counts({
+        earnings: { pendingCount: 0, claimable: 0, myOpen: 4, payoutTotal: 6 },
+      }),
+    );
+    assert.equal(boardOnly.today.count, 0);
+    assert.equal(boardOnly.today.href, null);
   });
 
   it('reports bootstrapping only while every row is still on its fallback', () => {

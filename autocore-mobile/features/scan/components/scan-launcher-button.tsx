@@ -40,7 +40,7 @@ export function ScanLauncherButton({
           orderLabel,
           onComplete: onScanResult,
         });
-        router.push((isOrderFlow ? '/(tabs)/orders/scan' : '/(tabs)/scan') as Href);
+        router.push((isOrderFlow ? '/orders/scan' : '/(tabs)/scan') as Href);
       }}
     >
       {buttonLabel}

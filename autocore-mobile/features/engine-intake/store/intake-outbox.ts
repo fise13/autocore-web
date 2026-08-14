@@ -35,6 +35,10 @@ import {
   prepareEngineIntakePhoto,
   sendEngineIntakeCommand,
 } from '../services/engine-intake-api';
+import {
+  markIntakeJobReady,
+  restoreIntakeJobReady,
+} from './intake-local-overlay';
 
 const STORAGE_KEY = 'engine-intake:outbox:v2';
 const LEGACY_STORAGE_KEY = 'engine-intake:outbox:v1';
@@ -139,6 +143,12 @@ function loadPersisted(): PersistedOutbox {
 const initial = loadPersisted();
 let commands = initial.commands ?? [];
 let photos = initial.photos ?? [];
+// Cold start: Finish may already be queued while the bay still reads in_session.
+for (const item of commands) {
+  if (item.command.type === 'field_complete' && item.status !== 'failed') {
+    markIntakeJobReady(item.companyId, item.command.payload.jobId);
+  }
+}
 let syncing = false;
 /** Successful photo uploads since the current drain wave started. */
 let syncedCount = 0;
@@ -362,6 +372,9 @@ export function enqueueIntakeCommand(
       }
       return true;
     });
+    // Bay Ready tab must not wait on a lagging Firestore listener — web already
+    // shows In review once field_complete lands; phone often still holds in_session.
+    markIntakeJobReady(companyId, finishJobId);
   }
   commands = [
     ...commands,
@@ -407,7 +420,12 @@ export function saveIntakePhotoLocally(input: {
     throw new Error('Captured photo is no longer available');
   }
   const destination = new File(directory, `${id}.jpg`);
-  source.copy(destination);
+  // Camera cache and picker temps are on the same volume — rename, don't copy.
+  try {
+    source.moveSync(destination);
+  } catch {
+    source.copySync(destination);
+  }
 
   const item: IntakeOutboxPhoto = {
     id,
@@ -703,6 +721,7 @@ async function sendQueuedFieldComplete(companyId: string, jobId: string): Promis
 
   const succeed = () => {
     commands = commands.filter((candidate) => candidate.id !== pending.id);
+    markIntakeJobReady(companyId, jobId);
     purgeSettledPhotos(companyId, jobId);
     publish();
   };
@@ -748,6 +767,9 @@ async function sendQueuedFieldComplete(companyId: string, jobId: string): Promis
       nextRetryAt: transition.nextRetryAt,
       errorInfo: info,
     });
+    if (transition.status === 'failed' && !isNeedsPhotoFinishError(error)) {
+      restoreIntakeJobReady(companyId, jobId);
+    }
   }
 }
 
@@ -893,6 +915,7 @@ async function drain(companyId: string): Promise<void> {
       await sendEngineIntakeCommand(item.command);
       commands = commands.filter((candidate) => candidate.id !== item.id);
       if (item.command.type === 'field_complete' && jobId) {
+        markIntakeJobReady(companyId, jobId);
         purgeSettledPhotos(companyId, jobId);
       }
       publish();
@@ -905,7 +928,10 @@ async function drain(companyId: string): Promise<void> {
       }
       if (item.command.type === 'field_complete' && isBenignFieldCompleteError(error)) {
         commands = commands.filter((candidate) => candidate.id !== item.id);
-        if (jobId) purgeSettledPhotos(companyId, jobId);
+        if (jobId) {
+          markIntakeJobReady(companyId, jobId);
+          purgeSettledPhotos(companyId, jobId);
+        }
         publish();
         return 'ok';
       }
@@ -927,6 +953,7 @@ async function drain(companyId: string): Promise<void> {
             await sendEngineIntakeCommand(live.command);
             commands = commands.filter((candidate) => candidate.id !== item.id);
             if (item.command.type === 'field_complete') {
+              markIntakeJobReady(companyId, jobId);
               purgeSettledPhotos(companyId, jobId);
             }
             publish();
@@ -953,6 +980,14 @@ async function drain(companyId: string): Promise<void> {
         nextRetryAt: transition.nextRetryAt,
         errorInfo: info,
       });
+      if (
+        terminal &&
+        item.command.type === 'field_complete' &&
+        jobId &&
+        !isNeedsPhotoFinishError(error)
+      ) {
+        restoreIntakeJobReady(companyId, jobId);
+      }
       if (offline) return 'abort';
       if (isHeartbeat) {
         if (terminal) {

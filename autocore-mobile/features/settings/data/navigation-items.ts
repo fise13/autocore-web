@@ -52,14 +52,14 @@ export const NAV_ITEM_DEFINITIONS: Record<NavItemId, NavItemDefinition> = {
     title: 'Orders',
     description: 'Work orders and statuses',
     icon: FileTextIcon,
-    route: '/(tabs)/orders',
+    route: '/orders',
   },
   my_earnings: {
     id: 'my_earnings',
-    title: 'Shift',
-    description: 'Orders, queue, and earnings',
+    title: 'Earnings',
+    description: 'Shift, queue, and payouts',
     icon: CoinsIcon,
-    route: '/(tabs)/profile/my-earnings',
+    route: '/earnings',
   },
   profile: {
     id: 'profile',

@@ -365,7 +365,7 @@ export function useScanExperience(initialContext?: ScanContext) {
         scanNavigationGuard.tryNavigate(() => {
           haptics.success();
           void rememberRecentScan({ payload: outcome.payload, label: `VIN ${outcome.vin}` });
-          router.push(`/(tabs)/orders/new?vin=${encodeURIComponent(outcome.vin)}` as Href);
+          router.push(`/orders/new?vin=${encodeURIComponent(outcome.vin)}` as Href);
           service.dismissSheet();
           scanNavigationGuard.release();
         });
@@ -640,7 +640,7 @@ export function useScanExperience(initialContext?: ScanContext) {
         if (orderId) query.set('orderId', orderId);
         if (orderLabel) query.set('orderLabel', orderLabel);
       }
-      router.push(`/(tabs)/orders/create-item?${query.toString()}` as Href);
+      router.push(`/orders/create-item?${query.toString()}` as Href);
     });
   }, [dismissSheet, router]);
 
@@ -656,9 +656,9 @@ export function useScanExperience(initialContext?: ScanContext) {
         if (router.canGoBack()) {
           router.back();
         } else if (orderId) {
-          router.navigate(`/(tabs)/orders/${encodeURIComponent(orderId)}/edit` as Href);
+          router.navigate(`/orders/${encodeURIComponent(orderId)}/edit` as Href);
         } else {
-          router.navigate('/(tabs)/orders/new' as Href);
+          router.navigate('/orders/new' as Href);
         }
         return;
       }

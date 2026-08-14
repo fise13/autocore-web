@@ -279,7 +279,7 @@ export function buildHomeToday(params: {
     facts.push({
       id: 'open',
       text: `${params.openOrders} order${params.openOrders === 1 ? '' : 's'} open`,
-      href: '/(tabs)/orders',
+      href: '/orders',
     });
   }
 
@@ -304,7 +304,7 @@ export function buildHomeToday(params: {
       primary: {
         value: params.ordersToday,
         label: params.ordersToday === 1 ? 'order' : 'orders',
-        href: '/(tabs)/orders',
+        href: '/orders',
       },
       compare,
       points: series.points,
@@ -387,7 +387,7 @@ export function buildHomeTrend(params: {
     weekAverage: series.weekAverage,
     points: series.points,
     isEmpty,
-    href: motors ? '/intake' : '/(tabs)/orders',
+    href: motors ? '/intake' : '/orders',
     accent: motors ? 'blue' : 'orange',
       sf: motors ? 'gearshape.2.fill' : 'doc.text.fill',
   };
@@ -467,7 +467,7 @@ export function buildOperationalHealth(params: {
       title: 'Orders',
       primary: `${params.openOrders} open`,
       facts,
-      href: '/(tabs)/orders',
+      href: '/orders',
       accent: 'orange',
       sf: 'doc.text.fill',
       meta: 'Today',
@@ -483,8 +483,31 @@ export function buildAttentionRows(params: {
   lowStock: number;
   staleMotors: number;
   canIntake: boolean;
+  pendingPayouts?: number;
+  claimableJobs?: number;
 }): HomeAttentionRow[] {
   const rows: HomeAttentionRow[] = [];
+
+  if ((params.pendingPayouts ?? 0) > 0) {
+    rows.push({
+      id: 'payouts-waiting',
+      title: params.pendingPayouts === 1 ? 'Payout waiting' : 'Payouts waiting',
+      subtitle: `${params.pendingPayouts} to collect`,
+      tone: 'warning',
+      actionLabel: 'Open',
+      href: '/earnings',
+    });
+  }
+  if ((params.claimableJobs ?? 0) > 0) {
+    rows.push({
+      id: 'jobs-to-claim',
+      title: 'Jobs to claim',
+      subtitle: `${params.claimableJobs} in the pool`,
+      tone: 'info',
+      actionLabel: 'Open',
+      href: '/earnings',
+    });
+  }
 
   for (const job of params.jobs) {
     const label = humanEngineLabel(job);
@@ -530,7 +553,7 @@ export function buildAttentionRows(params: {
       subtitle: `${params.waitingParts} order${params.waitingParts === 1 ? '' : 's'}`,
       tone: 'warning',
       actionLabel: 'Review',
-      href: '/(tabs)/orders',
+      href: '/orders',
     });
   }
   if (params.lowStock > 0 && rows.length < 5) {
@@ -610,7 +633,7 @@ export function mapActivityRows(items: OverviewActivity[]): HomeActivityRow[] {
     event: [item.statusLabel, item.detail].filter(Boolean).join(' · ') || item.statusLabel,
     time: item.time,
     tone: item.statusTone,
-    href: `/(tabs)/orders/${item.id}`,
+    href: `/orders/${item.id}`,
   }));
 }
 

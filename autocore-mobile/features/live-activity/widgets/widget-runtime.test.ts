@@ -250,10 +250,64 @@ const TODAY_WIDGET_STATES: Record<string, Record<string, unknown>> = {
     openOrders: 12, attentionOrders: 2, engines: 248, awaitingPlacement: 4, lowStock: 7,
     headline: '4', title: '4 items to place', detail: 'Received stock with no location yet.',
     symbol: 'shippingbox.fill', accent: '#FF9F0A', urgent: true, updatedAtMs: 1_770_000_000_000,
+    link: 'autocoremobile://scan',
   },
   unknown: {
     openOrders: -1, attentionOrders: -1, engines: -1, awaitingPlacement: -1, lowStock: -1,
     headline: '—', title: 'AutoCore', detail: 'Open the app to refresh.',
+    symbol: 'arrow.triangle.2.circlepath', accent: '#8E8E93', urgent: false, updatedAtMs: 0,
+  },
+  empty: {},
+};
+
+const INTAKE_WIDGET_STATES: Record<string, Record<string, unknown>> = {
+  ready: {
+    active: 1, ready: 3, syncing: 0, headline: '3', title: '3 engines ready for review',
+    detail: '1 engine documenting', eyebrow: 'Intake', readyLabel: 'Ready', activeLabel: 'Active',
+    openReadyLabel: 'Open Ready', continueLabel: 'Continue intake',
+    link: 'autocoremobile://intake?filter=ready', symbol: 'checkmark.seal.fill',
+    accent: '#30D158', urgent: true, updatedAtMs: 1_770_000_000_000,
+  },
+  unknown: {
+    active: -1, ready: -1, syncing: -1, headline: '—', title: 'AutoCore',
+    detail: 'Open the app to refresh.', eyebrow: 'Intake', readyLabel: 'Ready',
+    activeLabel: 'Active', openReadyLabel: 'Open Ready', continueLabel: 'Continue intake',
+    link: 'autocoremobile://intake', symbol: 'arrow.triangle.2.circlepath',
+    accent: '#8E8E93', urgent: false, updatedAtMs: 0,
+  },
+  empty: {},
+};
+
+const WORK_WIDGET_STATES: Record<string, Record<string, unknown>> = {
+  attention: {
+    openOrders: 12, attentionOrders: 3, headline: '3', title: '3 orders waiting on parts',
+    detail: '12 open in total.', eyebrow: 'Orders', openLabel: 'Open', attentionLabel: 'Waiting',
+    actionLabel: 'Open orders', link: 'autocoremobile://orders',
+    symbol: 'exclamationmark.triangle.fill', accent: '#FF9F0A', urgent: true,
+    updatedAtMs: 1_770_000_000_000,
+  },
+  unknown: {
+    openOrders: -1, attentionOrders: -1, headline: '—', title: 'AutoCore',
+    detail: 'Open the app to refresh.', eyebrow: 'Orders', openLabel: 'Open',
+    attentionLabel: 'Waiting', actionLabel: 'Open orders', link: 'autocoremobile://orders',
+    symbol: 'arrow.triangle.2.circlepath', accent: '#8E8E93', urgent: false, updatedAtMs: 0,
+  },
+  empty: {},
+};
+
+const WAREHOUSE_WIDGET_STATES: Record<string, Record<string, unknown>> = {
+  placing: {
+    awaitingPlacement: 4, lowStock: 7, engines: 248, headline: '4', title: '4 items to place',
+    detail: 'Received stock with no location yet.', eyebrow: 'Warehouse', placeLabel: 'To place',
+    lowLabel: 'Low stock', enginesLabel: 'Engines', actionLabel: 'Scan in',
+    actionTarget: 'openScan', link: 'autocoremobile://scan', symbol: 'shippingbox.fill',
+    accent: '#FF9F0A', urgent: true, updatedAtMs: 1_770_000_000_000,
+  },
+  unknown: {
+    awaitingPlacement: -1, lowStock: -1, engines: -1, headline: '—', title: 'AutoCore',
+    detail: 'Open the app to refresh.', eyebrow: 'Warehouse', placeLabel: 'To place',
+    lowLabel: 'Low stock', enginesLabel: 'Engines', actionLabel: 'Open warehouse',
+    actionTarget: 'openWarehouse', link: 'autocoremobile://warehouse',
     symbol: 'arrow.triangle.2.circlepath', accent: '#8E8E93', urgent: false, updatedAtMs: 0,
   },
   empty: {},
@@ -389,6 +443,7 @@ describe('widget runtime', { skip: runtimeAvailable ? false : 'expo-widgets runt
       assert.match(serialized, /"text":"12"/);
       assert.match(serialized, /"text":"4"/);
       assert.match(serialized, /"text":"248"/);
+      assert.match(serialized, /autocoremobile:\/\/scan/);
     });
 
     it('renders an em dash, never a fabricated zero, before counts load', () => {
@@ -399,6 +454,91 @@ describe('widget runtime', { skip: runtimeAvailable ? false : 'expo-widgets runt
       const serialized = JSON.stringify(blank);
       assert.match(serialized, /"text":"—"/);
       assert.doesNotMatch(serialized, /"text":"0"/);
+    });
+
+    it('draws the same three stats on systemLarge / StandBy', () => {
+      const large = render(context, layout, TODAY_WIDGET_STATES.urgent, {
+        widgetFamily: 'systemLarge',
+        colorScheme: 'dark',
+      });
+      const serialized = JSON.stringify(large);
+      assert.match(serialized, /containerBackground/);
+      assert.match(serialized, /"text":"12"/);
+      assert.match(serialized, /"text":"4"/);
+      assert.match(serialized, /"text":"248"/);
+    });
+  });
+
+  describe('AutoCoreIntake widget', () => {
+    const layout = serializeWidget('features/live-activity/widgets/intake-bay-widget.tsx');
+
+    for (const [name, props] of Object.entries(INTAKE_WIDGET_STATES)) {
+      for (const environment of WIDGET_ENVIRONMENTS) {
+        it(`renders ${name} on ${String(environment.widgetFamily)}${environment.isLuminanceReduced ? ' dimmed' : ''}`, () => {
+          const result = render(context, layout, props, environment) as unknown as WidgetNode;
+          assert.ok(result && typeof result.type === 'string', 'must return a single element');
+          assert.ok(hasVisibleLeaf(result), 'widget rendered nothing visible');
+        });
+      }
+    }
+
+    it('deep links Ready into the bay filter', () => {
+      const result = render(context, layout, INTAKE_WIDGET_STATES.ready, {
+        widgetFamily: 'systemSmall',
+        colorScheme: 'dark',
+      });
+      assert.match(JSON.stringify(result), /autocoremobile:\/\/intake\?filter=ready/);
+    });
+  });
+
+  describe('AutoCoreWork widget', () => {
+    const layout = serializeWidget('features/live-activity/widgets/work-orders-widget.tsx');
+
+    for (const [name, props] of Object.entries(WORK_WIDGET_STATES)) {
+      for (const environment of WIDGET_ENVIRONMENTS) {
+        it(`renders ${name} on ${String(environment.widgetFamily)}${environment.isLuminanceReduced ? ' dimmed' : ''}`, () => {
+          const result = render(context, layout, props, environment) as unknown as WidgetNode;
+          assert.ok(result && typeof result.type === 'string', 'must return a single element');
+          assert.ok(hasVisibleLeaf(result), 'widget rendered nothing visible');
+        });
+      }
+    }
+
+    it('shows open and waiting counts on the medium family', () => {
+      const medium = render(context, layout, WORK_WIDGET_STATES.attention, {
+        widgetFamily: 'systemMedium',
+        colorScheme: 'dark',
+      });
+      const serialized = JSON.stringify(medium);
+      assert.match(serialized, /"text":"12"/);
+      assert.match(serialized, /"text":"3"/);
+      assert.match(serialized, /autocoremobile:\/\/orders/);
+    });
+  });
+
+  describe('AutoCoreWarehouse widget', () => {
+    const layout = serializeWidget('features/live-activity/widgets/warehouse-widget.tsx');
+
+    for (const [name, props] of Object.entries(WAREHOUSE_WIDGET_STATES)) {
+      for (const environment of WIDGET_ENVIRONMENTS) {
+        it(`renders ${name} on ${String(environment.widgetFamily)}${environment.isLuminanceReduced ? ' dimmed' : ''}`, () => {
+          const result = render(context, layout, props, environment) as unknown as WidgetNode;
+          assert.ok(result && typeof result.type === 'string', 'must return a single element');
+          assert.ok(hasVisibleLeaf(result), 'widget rendered nothing visible');
+        });
+      }
+    }
+
+    it('shows place, low, and engines on the medium family', () => {
+      const medium = render(context, layout, WAREHOUSE_WIDGET_STATES.placing, {
+        widgetFamily: 'systemMedium',
+        colorScheme: 'dark',
+      });
+      const serialized = JSON.stringify(medium);
+      assert.match(serialized, /"text":"4"/);
+      assert.match(serialized, /"text":"7"/);
+      assert.match(serialized, /"text":"248"/);
+      assert.match(serialized, /autocoremobile:\/\/scan/);
     });
   });
 });

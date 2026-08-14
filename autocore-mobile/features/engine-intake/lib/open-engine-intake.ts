@@ -12,22 +12,33 @@ type IntakeRouter = {
 
 const INTAKE_BAY = '/intake' as Href;
 
+export type IntakeBayFilter = 'active' | 'ready' | 'all';
+
+function intakeBayHref(filter?: IntakeBayFilter): Href {
+  if (!filter) return INTAKE_BAY;
+  return { pathname: '/intake', params: { filter } } as unknown as Href;
+}
+
 /**
  * Open the Engine intake bay without stacking duplicate screens.
  * Prefer `navigate` (reuses an existing stack entry) over `push`.
  */
-export function openEngineIntakeBay(router: IntakeRouter): void {
-  const key = navigationHrefKey(INTAKE_BAY);
+export function openEngineIntakeBay(
+  router: IntakeRouter,
+  options?: { filter?: IntakeBayFilter },
+): void {
+  const href = intakeBayHref(options?.filter);
+  const key = navigationHrefKey(href);
   stackNavigationGuard.tryPush(key, () => {
     if (typeof router.dismissTo === 'function') {
       try {
-        router.dismissTo(INTAKE_BAY);
+        router.dismissTo(href);
         return;
       } catch {
         // Fall through when dismissTo cannot target this route.
       }
     }
-    router.navigate(INTAKE_BAY);
+    router.navigate(href);
   });
 }
 

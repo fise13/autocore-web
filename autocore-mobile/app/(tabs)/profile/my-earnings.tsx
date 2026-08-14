@@ -1,5 +1,6 @@
-import { MyEarningsScreen } from '@/features/profile/screens/my-earnings-screen';
+import { Redirect } from 'expo-router';
 
-export default function MyEarningsRoute() {
-  return <MyEarningsScreen />;
+/** Old Settings path — Earnings now lives on the Work stack. */
+export default function MyEarningsLegacyRedirect() {
+  return <Redirect href="/earnings" />;
 }

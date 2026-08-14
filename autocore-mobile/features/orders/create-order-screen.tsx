@@ -454,7 +454,7 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
 
       haptics.success();
       toast({ title: 'Work order created', description: `#${order.number}`, variant: 'success' });
-      router.replace(`/(tabs)/orders/${order.id}`);
+      router.replace(`/orders/${order.id}`);
     } catch (error) {
       haptics.warning();
       toast({

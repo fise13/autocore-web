@@ -7,7 +7,7 @@ type CompositionRouter = {
 };
 
 export function navigateNewOrderWithPart(router: CompositionRouter, itemId: string): void {
-  router.push(`/(tabs)/orders/new?itemId=${encodeURIComponent(itemId)}` as Href);
+  router.push(`/orders/new?itemId=${encodeURIComponent(itemId)}` as Href);
 }
 
 export function navigateNewOrderWithMotor(
@@ -16,7 +16,7 @@ export function navigateNewOrderWithMotor(
   outcome: WorkOrderMotorOutcome = 'install',
 ): void {
   router.push(
-    `/(tabs)/orders/new?motorId=${encodeURIComponent(motorId)}&outcome=${outcome}` as Href,
+    `/orders/new?motorId=${encodeURIComponent(motorId)}&outcome=${outcome}` as Href,
   );
 }
 
@@ -26,7 +26,7 @@ export function navigateEditOrderWithPart(
   itemId: string,
 ): void {
   router.push(
-    `/(tabs)/orders/${encodeURIComponent(orderId)}/edit?itemId=${encodeURIComponent(itemId)}` as Href,
+    `/orders/${encodeURIComponent(orderId)}/edit?itemId=${encodeURIComponent(itemId)}` as Href,
   );
 }
 
@@ -37,10 +37,10 @@ export function navigateEditOrderWithMotor(
   outcome: WorkOrderMotorOutcome = 'install',
 ): void {
   router.push(
-    `/(tabs)/orders/${encodeURIComponent(orderId)}/edit?motorId=${encodeURIComponent(motorId)}&outcome=${outcome}` as Href,
+    `/orders/${encodeURIComponent(orderId)}/edit?motorId=${encodeURIComponent(motorId)}&outcome=${outcome}` as Href,
   );
 }
 
 export function navigateOrderEdit(router: CompositionRouter, orderId: string): void {
-  router.push(`/(tabs)/orders/${encodeURIComponent(orderId)}/edit` as Href);
+  router.push(`/orders/${encodeURIComponent(orderId)}/edit` as Href);
 }

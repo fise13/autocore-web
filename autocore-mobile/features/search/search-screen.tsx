@@ -280,7 +280,7 @@ export function SearchScreen() {
       return;
     }
     if (action === 'new-order') {
-      router.navigate('/(tabs)/orders/new');
+      router.navigate('/orders/new');
       return;
     }
     if (action === 'parts-filter') {

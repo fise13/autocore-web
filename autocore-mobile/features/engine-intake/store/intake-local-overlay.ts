@@ -14,6 +14,8 @@ type OverlayState = {
   jobs: EngineIntakeJob[];
   sessions: Record<string, EngineIntakeSession[]>;
   cancelledJobIds: string[];
+  /** Job ids Finish has accepted locally while Firestore may still show documenting. */
+  readyJobIds: string[];
 };
 
 const listeners = new Set<() => void>();
@@ -23,7 +25,12 @@ function storageKey(companyId: string): string {
   return `engine-intake:local-overlay:${companyId}`;
 }
 
-const EMPTY_OVERLAY: OverlayState = { jobs: [], sessions: {}, cancelledJobIds: [] };
+const EMPTY_OVERLAY: OverlayState = {
+  jobs: [],
+  sessions: {},
+  cancelledJobIds: [],
+  readyJobIds: [],
+};
 
 function emptyOverlay(): OverlayState {
   return EMPTY_OVERLAY;
@@ -34,6 +41,7 @@ function normalizeOverlay(value: OverlayState | null | undefined): OverlayState 
     jobs: value?.jobs ?? [],
     sessions: value?.sessions ?? {},
     cancelledJobIds: value?.cancelledJobIds ?? [],
+    readyJobIds: value?.readyJobIds ?? [],
   };
 }
 
@@ -87,6 +95,7 @@ export function seedOptimisticIntakeCreate(input: {
       [job.id]: upsertSession(current.sessions[job.id] ?? [], session),
     },
     cancelledJobIds: current.cancelledJobIds.filter((id) => id !== job.id),
+    readyJobIds: current.readyJobIds.filter((id) => id !== job.id),
   });
   return { job, session };
 }
@@ -119,6 +128,7 @@ export function seedOptimisticIntakeClaim(input: {
       [job.id]: upsertSession(current.sessions[job.id] ?? [], session),
     },
     cancelledJobIds: current.cancelledJobIds.filter((id) => id !== job.id),
+    readyJobIds: current.readyJobIds.filter((id) => id !== job.id),
   });
   return { job, session };
 }
@@ -132,6 +142,7 @@ export function markIntakeJobCancelled(companyId: string, jobId: string): void {
     cancelledJobIds: current.cancelledJobIds.includes(jobId)
       ? current.cancelledJobIds
       : [...current.cancelledJobIds, jobId],
+    readyJobIds: current.readyJobIds.filter((id) => id !== jobId),
   });
 }
 
@@ -142,6 +153,55 @@ export function restoreIntakeJobCancelled(companyId: string, jobId: string): voi
     cancelledJobIds: current.cancelledJobIds.filter((id) => id !== jobId),
   });
 }
+
+/** Flip the bay to Ready immediately — do not wait for a live Firestore snapshot. */
+export function markIntakeJobReady(companyId: string, jobId: string): void {
+  const current = readOverlay(companyId);
+  if (current.readyJobIds.includes(jobId)) return;
+  writeOverlay(companyId, {
+    ...current,
+    cancelledJobIds: current.cancelledJobIds.filter((id) => id !== jobId),
+    readyJobIds: [...current.readyJobIds, jobId],
+  });
+}
+
+export function restoreIntakeJobReady(companyId: string, jobId: string): void {
+  const current = readOverlay(companyId);
+  if (!current.readyJobIds.includes(jobId)) return;
+  writeOverlay(companyId, {
+    ...current,
+    readyJobIds: current.readyJobIds.filter((id) => id !== jobId),
+  });
+}
+
+/** Undo a claim that never reached the server so the bay does not lie. */
+export function dropOptimisticIntakeClaim(
+  companyId: string,
+  jobId: string,
+  restoreReady = false,
+): void {
+  const current = readOverlay(companyId);
+  const { [jobId]: _dropped, ...sessions } = current.sessions;
+  const readyJobIds =
+    restoreReady && !current.readyJobIds.includes(jobId)
+      ? [...current.readyJobIds, jobId]
+      : current.readyJobIds;
+  writeOverlay(companyId, {
+    jobs: current.jobs.filter((job) => job.id !== jobId),
+    sessions,
+    cancelledJobIds: current.cancelledJobIds,
+    readyJobIds,
+  });
+}
+
+const READY_SETTLED_STATES = new Set([
+  'awaiting_verification',
+  'quarantine',
+  'verified',
+  'closed',
+  'rejected',
+  'cancelled',
+]);
 
 export function pruneIntakeOverlay(
   companyId: string,
@@ -171,14 +231,25 @@ export function pruneIntakeOverlay(
     return server.state !== 'cancelled' && server.state !== 'rejected';
   });
 
+  // Session-only prunes pass `[]` — keep Finish overrides until a jobs snapshot.
+  const readyJobIds =
+    serverJobs.length === 0
+      ? current.readyJobIds
+      : current.readyJobIds.filter((jobId) => {
+          const server = serverJobs.find((job) => job.id === jobId);
+          if (!server) return true;
+          return !READY_SETTLED_STATES.has(server.state);
+        });
+
   if (
     jobs.length === current.jobs.length &&
     Object.keys(sessions).length === Object.keys(current.sessions).length &&
-    cancelledJobIds.length === current.cancelledJobIds.length
+    cancelledJobIds.length === current.cancelledJobIds.length &&
+    readyJobIds.length === current.readyJobIds.length
   ) {
     return;
   }
-  writeOverlay(companyId, { jobs, sessions, cancelledJobIds });
+  writeOverlay(companyId, { jobs, sessions, cancelledJobIds, readyJobIds });
 }
 
 export function getIntakeOverlay(companyId: string | null): OverlayState {

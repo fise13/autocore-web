@@ -13,7 +13,7 @@ import { haptics } from '@/theme';
 import { tokens } from '@/theme/tokens';
 import { SETTINGS_HUB_SECTIONS } from '@/features/settings/data/settings-sections';
 import type { SettingsHubRouteId } from '@/features/settings/types';
-import { CoinsIcon, StoreIcon } from '@/assets/icons';
+import { StoreIcon } from '@/assets/icons';
 
 import { DeleteAccountDialog } from './components/delete-account-dialog';
 import { ProfileHeader } from './components/profile-header';
@@ -21,7 +21,7 @@ import { ProfileHeroCard } from './components/profile-hero-card';
 import { profileHubRouteHref } from './navigation';
 
 type ProfileHubRow = {
-  id: SettingsHubRouteId | 'my-earnings';
+  id: SettingsHubRouteId;
   title: string;
   icon: React.ComponentType<{ size?: 'sm' | 'md' | 'lg'; color?: string; strokeWidth?: number }>;
 };
@@ -61,42 +61,16 @@ export function ProfileScreen() {
       }),
     ).filter((section) => section.rows.length > 0);
 
-    if (rbac.nav.canAccessMyEarnings) {
-      const earningsRow: ProfileHubRow = {
-        id: 'my-earnings',
-        title: 'My Earnings',
-        icon: CoinsIcon,
-      };
-      const financeSectionIndex = next.findIndex((section) => section.id === 'finance');
-      if (financeSectionIndex >= 0) {
-        next[financeSectionIndex] = {
-          ...next[financeSectionIndex],
-          rows: [earningsRow, ...next[financeSectionIndex].rows],
-        };
-      } else {
-        next.push({
-          id: 'earnings',
-          label: 'Earnings',
-          rows: [earningsRow],
-        });
-      }
-    }
-
     return next;
   }, [
     rbac.isOwner,
-    rbac.nav.canAccessMyEarnings,
     rbac.nav.canManageSettings,
     rbac.nav.canViewEmployees,
     rbac.scopes.accounting,
   ]);
 
   const openRow = (row: ProfileHubRow) => {
-    if (row.id === 'my-earnings') {
-      router.push('/(tabs)/profile/my-earnings');
-      return;
-    }
-    router.push(profileHubRouteHref(row.id as SettingsHubRouteId));
+    router.push(profileHubRouteHref(row.id));
   };
 
   return (
@@ -125,7 +99,7 @@ export function ProfileScreen() {
                 key={row.id}
                 title={row.title}
                 icon={row.icon}
-                value={row.id === 'my-earnings' ? undefined : data.rowValues[row.id as SettingsHubRouteId]}
+                value={data.rowValues[row.id]}
                 onPress={() => openRow(row)}
               />
             ))}

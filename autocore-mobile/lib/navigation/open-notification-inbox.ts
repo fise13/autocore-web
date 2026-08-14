@@ -21,8 +21,8 @@ const RETURN_HREFS = {
   search: '/search',
   warehouse: '/warehouse',
   scan: '/(tabs)/scan',
-  orders: '/(tabs)/orders',
-  earnings: '/(tabs)/profile/my-earnings',
+  orders: '/orders',
+  earnings: '/earnings',
   notifications: '/(tabs)/profile/notifications',
   hub: '/(tabs)/profile',
 } as const satisfies Record<NotificationInboxReturnTo, string>;
@@ -30,7 +30,7 @@ const RETURN_HREFS = {
 const RETURN_TO_KEYS = new Set<string>(Object.keys(RETURN_HREFS));
 
 /** Profile-stack targets — back() is safe. Cross-tab targets must replace. */
-const SAME_STACK_RETURN = new Set<NotificationInboxReturnTo>(['hub', 'notifications', 'earnings']);
+const SAME_STACK_RETURN = new Set<NotificationInboxReturnTo>(['hub', 'notifications']);
 
 export function notificationInboxHref(returnTo: NotificationInboxReturnTo): Href {
   // Root stack (not profile tab) — push/pop slides over the active tab.
@@ -115,6 +115,8 @@ export function resolveInboxReturnToFromSegments(
   if (tabsIndex < 0) {
     if (segments.includes('search')) return 'search';
     if (segments.includes('warehouse')) return 'warehouse';
+    if (segments.includes('orders')) return 'orders';
+    if (segments.includes('earnings')) return 'earnings';
     return 'overview';
   }
 
@@ -123,7 +125,6 @@ export function resolveInboxReturnToFromSegments(
   if (tab === 'profile') {
     if (segments.includes('notifications')) return 'notifications';
     if (segments.includes('my-earnings')) return 'earnings';
-    // Already on inbox — keep hub so nested back stays in profile.
     if (segments.includes('inbox')) return 'hub';
     return 'hub';
   }

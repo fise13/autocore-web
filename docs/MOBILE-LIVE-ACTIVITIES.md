@@ -1,5 +1,7 @@
 # Live Activities — iOS (AutoCore Mobile)
 
+Widget kit (Lock Screen accessories, Home Screen, design, QA): [MOBILE-WIDGETS.md](MOBILE-WIDGETS.md).
+
 `expo-widgets` adds target **ExpoWidgetsTarget** (`com.wise.autocore.mobile.widgets`) and App Group
 `group.com.wise.autocore.mobile` on both the app and the extension.
 

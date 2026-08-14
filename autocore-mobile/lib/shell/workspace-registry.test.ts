@@ -81,6 +81,16 @@ describe('resolveShellModel', () => {
     assert.equal(owner[0], 'sales');
   });
 
+  it('shows Earnings next to Orders for mechanics, not for managers', () => {
+    const mechanic = resolveShellModel({ modules: ALL_MODULES, user: user('mechanic') });
+    const sales = mechanic.workGrouped.find((group) => group.domain === 'sales');
+    assert.deepEqual(sales?.nodes.map((n) => n.id), ['orders', 'earnings']);
+
+    const manager = resolveShellModel({ modules: ALL_MODULES, user: user('manager') });
+    const managerSales = manager.workGrouped.find((group) => group.domain === 'sales');
+    assert.deepEqual(managerSales?.nodes.map((n) => n.id), ['orders']);
+  });
+
   it('shows only what the seat can reach — a mechanic gets no inventory sections', () => {
     const model = resolveShellModel({ modules: ALL_MODULES, user: user('mechanic') });
     assert.deepEqual(

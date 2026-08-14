@@ -12,8 +12,11 @@ import {
   OPERATIONS_LIVE_ACTIVITY_LAYOUT_BUILD,
   OperationsLiveActivity,
 } from './operations-live-activity';
+import { AutoCoreIntakeWidget } from './widgets/intake-bay-widget';
 import { AutoCoreSyncWidget } from './widgets/sync-widget';
 import { AutoCoreTodayWidget } from './widgets/today-widget';
+import { AutoCoreWarehouseWidget } from './widgets/warehouse-widget';
+import { AutoCoreWorkWidget } from './widgets/work-orders-widget';
 
 export function assertLiveActivityAppGroup(): void {
   if (Platform.OS !== 'ios') return;
@@ -39,3 +42,6 @@ export function assertLiveActivityAppGroup(): void {
 void OperationsLiveActivity;
 void AutoCoreSyncWidget;
 void AutoCoreTodayWidget;
+void AutoCoreWorkWidget;
+void AutoCoreWarehouseWidget;
+void AutoCoreIntakeWidget;

@@ -422,8 +422,8 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
         const vin = doc.vin;
         router.push(
           vin
-            ? (`/(tabs)/orders/new?vin=${encodeURIComponent(vin)}` as const)
-            : ('/(tabs)/orders/new' as const),
+            ? (`/orders/new?vin=${encodeURIComponent(vin)}` as const)
+            : ('/orders/new' as const),
         );
         return;
       }

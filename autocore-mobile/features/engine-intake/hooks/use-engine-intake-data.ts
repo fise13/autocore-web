@@ -17,6 +17,7 @@ import {
 } from '@/services/firestore/engine-intake-repository';
 
 import {
+  applyReadyJobOverrides,
   mergeIntakeJobs,
   mergeIntakeSessions,
 } from '../lib/optimistic-intake-job';
@@ -93,7 +94,10 @@ export function useEngineIntakeJobs(companyId: string | null) {
     : companyId
       ? (getJson<EngineIntakeJob[]>(jobsCacheKey(companyId)) ?? [])
       : [];
-  const jobs = mergeIntakeJobs(serverJobs, overlay.jobs, overlay.cancelledJobIds);
+  const jobs = applyReadyJobOverrides(
+    mergeIntakeJobs(serverJobs, overlay.jobs, overlay.cancelledJobIds),
+    overlay.readyJobIds,
+  );
   return {
     companyId,
     jobs,

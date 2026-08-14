@@ -83,7 +83,7 @@ function canCancelJob(job: EngineIntakeJob): boolean {
 }
 
 function openActionLabel(job: EngineIntakeJob): string {
-  if (job.state === 'awaiting_verification') return 'View status';
+  if (job.state === 'awaiting_verification') return 'Add photos';
   if (job.state === 'paused' || job.state === 'in_session') return 'Continue';
   return 'Open camera';
 }

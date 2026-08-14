@@ -27,6 +27,7 @@ import {
   buildWeeklyClosedCounts,
   insightChartIsUseful,
 } from '@/features/overview/lib/insight-chart';
+import { isClaimableWorkOrder } from '@autocore/rbac';
 import { calculateCashBalance } from '@/lib/accounting/calculate-cash-balance';
 import { coerceToDate } from '@/lib/firestore-timestamp';
 import { isMotorStale, isWarehouseLowStock } from '@/lib/inventory/is-low-stock';
@@ -35,6 +36,7 @@ import { isOpenStatus, STATUS_LABELS } from '@/lib/work-order/work-order-utils';
 import type { FinancialOperation } from '@/types/financial-operation';
 import type { InventoryItem } from '@/types/inventory';
 import type { MotorEntity } from '@/types/motor';
+import type { PayrollTransaction } from '@/types/payroll-transaction';
 import type { WorkOrder, WorkOrderStatus } from '@/types/work-order';
 
 const WEEKDAY_SHORT_EN = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'] as const;
@@ -139,6 +141,12 @@ export function useOverviewData(): OverviewSnapshot {
     motorsCacheEnabled,
     [],
   );
+  const payrollEnabled = rbac.nav.canAccessMyEarnings && Boolean(companyId);
+  const rawPayroll = useSessionQueryData<PayrollTransaction[]>(
+    ['realtime', 'payroll-transactions', companyId, rbac.scopes.payroll, uid],
+    payrollEnabled,
+    [],
+  );
   const availableMotors = useMemo(
     () => motors.filter((motor) => !motor.soldDate && (motor.status ?? 'available') === 'available'),
     [motors],
@@ -185,12 +193,33 @@ export function useOverviewData(): OverviewSnapshot {
     const staleMotors = motorsEnabled ? availableMotors.filter((m) => isMotorStale(m)).length : 0;
 
     const attentionItems: OverviewAttentionItem[] = [];
+    if (rbac.nav.canAccessMyEarnings && uid) {
+      const ownPayroll = rawPayroll.filter((row) => row.employeeId === uid);
+      const pendingPayouts = ownPayroll.filter((row) => row.status === 'pending').length;
+      const claimable = domainOrders.filter((order) => isClaimableWorkOrder(order)).length;
+      if (pendingPayouts > 0) {
+        attentionItems.push({
+          count: pendingPayouts,
+          text: pendingPayouts === 1 ? 'payout waiting' : 'payouts waiting',
+          tone: 'warning',
+          route: '/earnings',
+        });
+      }
+      if (claimable > 0) {
+        attentionItems.push({
+          count: claimable,
+          text: 'open to claim',
+          tone: 'warning',
+          route: '/earnings',
+        });
+      }
+    }
     if (waitingParts > 0) {
       attentionItems.push({
         count: waitingParts,
         text: 'waiting on parts',
         tone: 'warning',
-        route: '/(tabs)/orders',
+        route: '/orders',
       });
     }
     if (lowStock > 0) {
@@ -221,7 +250,7 @@ export function useOverviewData(): OverviewSnapshot {
         value: newOrdersWeek,
         format: 'integer',
         icon: ShoppingCartIcon,
-        route: '/(tabs)/orders',
+        route: '/orders',
       });
     }
 
@@ -284,7 +313,7 @@ export function useOverviewData(): OverviewSnapshot {
             : `${openOrders.length} orders are still open — update status before end of day so the floor stays accurate overnight.`,
         cta: 'Open orders',
         tone: 'neutral',
-        route: '/(tabs)/orders',
+        route: '/orders',
         chart: null,
       };
     } else if (weekRevenue > 0 && meta.total > 0) {
@@ -312,7 +341,7 @@ export function useOverviewData(): OverviewSnapshot {
           insight: `Your close rate is ${closedShare}% this period — keep clearing waiting-parts jobs to push higher.`,
           cta: 'View orders',
           tone: 'positive',
-          route: '/(tabs)/orders',
+          route: '/orders',
           compare: {
             primary: { label: 'Closed', value: `${closedShare}%` },
             secondary: { label: 'Open', value: `${Math.max(0, 100 - closedShare)}%` },
@@ -331,7 +360,7 @@ export function useOverviewData(): OverviewSnapshot {
         insight: `${openOrders.length} orders still need an update.`,
         detail: `${openOrders.length} orders`,
         tone: 'neutral',
-        route: '/(tabs)/orders',
+        route: '/orders',
       });
     }
 
@@ -386,5 +415,7 @@ export function useOverviewData(): OverviewSnapshot {
     motorsEnabled,
     operations,
     rbac,
+    rawPayroll,
+    uid,
   ]);
 }

@@ -123,6 +123,6 @@ export function resolveOverviewRevenue(input: {
     value: input.orderWeekRevenue,
     growthPercent: input.orderWeekGrowth,
     weekBars: input.orderWeekBars,
-    route: '/(tabs)/orders',
+    route: '/orders',
   };
 }

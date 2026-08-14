@@ -474,7 +474,9 @@ async function claimJob(
     const job = requireJob(jobSnapshot);
     // `paused` is reclaimable — workers leave the camera (session pause / claim
     // lease) with photos still on the phone and must take the bay back to sync.
-    if (!["open", "rework", "in_session", "paused"].includes(job.state)) {
+    // `awaiting_verification` (Ready) can be reopened to add photos; Finish
+    // parks it in review again.
+    if (!["open", "rework", "in_session", "paused", "awaiting_verification"].includes(job.state)) {
       throw new EngineIntakeCommandError(`Job cannot be claimed while ${job.state}`);
     }
     const assignment = jobAssignment(job);

@@ -157,7 +157,7 @@ export async function openSearchResult(
   }
 
   if (item.kind === 'order') {
-    router.push(`/(tabs)/orders/${item.id}` as Href);
+    router.push(`/orders/${item.id}` as Href);
     return;
   }
 

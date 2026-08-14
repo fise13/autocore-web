@@ -26,7 +26,7 @@ export function SearchEmptyState({ query, onAction }: SearchEmptyStateProps) {
       return;
     }
     if (id === 'new-order') {
-      router.navigate('/(tabs)/orders/new');
+      router.navigate('/orders/new');
     }
   };
 

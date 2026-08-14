@@ -1,6 +1,6 @@
 import type { CompanyModuleKey } from '@/types/company-config';
 import type { UserEntity, UserRole } from '@autocore/rbac';
-import { getDataScope, hasPermission, type Permission } from '@autocore/rbac';
+import { canAccessMyEarnings, getDataScope, hasPermission, type Permission } from '@autocore/rbac';
 
 import type {
   ActionItem,
@@ -125,10 +125,19 @@ export const WORK_NODE_CATALOG: WorkNode[] = [
     domain: 'sales',
     title: 'Orders',
     subtitle: 'Work orders',
-    href: '/(tabs)/orders',
+    href: '/orders',
     sf: 'wrench.and.screwdriver',
     modules: ['workOrders'],
     permissions: ['work_orders_view'],
+  },
+  {
+    id: 'earnings',
+    domain: 'sales',
+    title: 'Earnings',
+    subtitle: 'Shift and payouts',
+    href: '/earnings',
+    sf: 'banknote',
+    modules: ['workOrders'],
   },
   // Finance is a top-level surface of its own — it is deliberately not a Work node.
   {
@@ -176,7 +185,7 @@ const ACTION_CATALOG: ActionItem[] = [
     id: 'new-order',
     title: 'New order',
     subtitle: 'Create a work order',
-    href: '/(tabs)/orders/new',
+    href: '/orders/new',
     sf: 'plus.square',
     modules: ['workOrders'],
     permissions: ['work_orders_edit'],
@@ -186,7 +195,7 @@ const ACTION_CATALOG: ActionItem[] = [
     id: 'add-item',
     title: 'Add inventory item',
     subtitle: 'Create a part record',
-    href: '/(tabs)/orders/create-item',
+    href: '/orders/create-item',
     sf: 'shippingbox.and.arrow.backward',
     modules: ['warehouse'],
     permissions: ['inventory_edit'],
@@ -275,6 +284,7 @@ function canPermission(user: UserEntity | null | undefined, permissions?: string
 function canWorkNode(user: UserEntity | null | undefined, node: WorkNode): boolean {
   if (!canPermission(user, node.permissions)) return false;
   if (node.id === 'orders') return getDataScope(user, 'work_orders') !== 'none';
+  if (node.id === 'earnings') return canAccessMyEarnings(user);
   if (node.id === 'engines' || node.id === 'parts' || node.id === 'locations' || node.id === 'receiving') {
     return getDataScope(user, 'inventory') !== 'none';
   }

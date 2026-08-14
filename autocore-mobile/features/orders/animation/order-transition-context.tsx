@@ -29,7 +29,7 @@ type OrderTransitionContextValue = {
 const OrderTransitionContext = createContext<OrderTransitionContextValue | null>(null);
 
 /**
- * Opens order detail as a page sheet over the Orders tab.
+ * Opens order detail as a page sheet over the Orders stack.
  */
 export function OrderTransitionProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -44,7 +44,7 @@ export function OrderTransitionProvider({ children }: { children: ReactNode }) {
         haptics.light();
         activeOrderIdRef.current = order.id;
         setActiveOrderId(order.id);
-        router.push(`/(tabs)/orders/${order.id}`);
+        router.push(`/orders/${order.id}`);
         activeOrderIdRef.current = null;
         setActiveOrderId(null);
         orderOpenGuard.release();

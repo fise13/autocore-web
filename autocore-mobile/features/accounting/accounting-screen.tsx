@@ -242,7 +242,7 @@ export function AccountingScreen() {
     );
   }
 
-  if (!profile?.companyId || isBootstrapping) {
+  if (!companyId || isBootstrapping) {
     return (
       <Screen>
         <AcAccountingSkeleton />

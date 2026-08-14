@@ -45,6 +45,13 @@ describe('resolveInboxReturnToFromSegments', () => {
     );
     assert.equal(resolveInboxReturnToFromSegments(['(tabs)', 'profile']), 'hub');
   });
+
+  it('resolves root-stack warehouse, orders, and earnings', () => {
+    assert.equal(resolveInboxReturnToFromSegments(['warehouse']), 'warehouse');
+    assert.equal(resolveInboxReturnToFromSegments(['orders']), 'orders');
+    assert.equal(resolveInboxReturnToFromSegments(['orders', 'wo_1']), 'orders');
+    assert.equal(resolveInboxReturnToFromSegments(['earnings']), 'earnings');
+  });
 });
 
 describe('inbox back targets', () => {
@@ -65,6 +72,7 @@ describe('inbox back targets', () => {
     assert.equal(isSameStackInboxReturn('notifications'), true);
     assert.equal(isSameStackInboxReturn('overview'), false);
     assert.equal(isSameStackInboxReturn('work'), false);
+    assert.equal(isSameStackInboxReturn('earnings'), false);
     assert.equal(isSameStackInboxReturn(undefined), false);
   });
 });

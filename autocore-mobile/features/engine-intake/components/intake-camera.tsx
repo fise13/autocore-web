@@ -16,7 +16,13 @@ import { usePreferredMacroLens } from '@/hooks/use-preferred-macro-lens';
 import { getColors, spacing } from '@/theme';
 
 export type IntakeCameraHandle = {
-  takePicture: () => Promise<CameraCapturedPicture | null>;
+  /**
+   * Issues a still immediately. Resolves when the native capture is queued —
+   * not when the JPEG is on disk. `onSaved` receives the file (or null).
+   */
+  capturePhoto: (
+    onSaved: (shot: CameraCapturedPicture | null) => void,
+  ) => Promise<void>;
 };
 
 type IntakeCameraProps = {
@@ -42,21 +48,37 @@ export const IntakeCamera = forwardRef<IntakeCameraHandle, IntakeCameraProps>(
     }, [permission, requestPermission]);
 
     useImperativeHandle(ref, () => ({
-      async takePicture() {
-        if (!cameraRef.current || !active) return null;
+      async capturePhoto(onSaved) {
+        if (!cameraRef.current || !active) {
+          onSaved(null);
+          return;
+        }
+        let delivered = false;
+        const deliver = (shot: CameraCapturedPicture | null) => {
+          if (delivered) return;
+          delivered = true;
+          onSaved(shot?.uri ? shot : null);
+        };
+        const timeout = setTimeout(() => deliver(null), 10_000);
         try {
           const shot = await cameraRef.current.takePictureAsync({
             quality: 0.7,
             skipProcessing: true,
             shutterSound: false,
+            onPictureSaved: (saved) => {
+              clearTimeout(timeout);
+              deliver(saved);
+            },
           });
+          // Unpatched iOS still waits here; patched fastMode returns {} immediately.
           if (shot?.uri) {
-            readyRef.current = true;
-            return shot;
+            clearTimeout(timeout);
+            deliver(shot);
           }
-          return null;
+          readyRef.current = true;
         } catch {
-          return null;
+          clearTimeout(timeout);
+          deliver(null);
         }
       },
     }));

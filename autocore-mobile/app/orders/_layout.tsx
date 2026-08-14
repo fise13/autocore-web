@@ -4,7 +4,6 @@ import { OrderTransitionProvider } from '@/features/orders/animation/order-trans
 import { formSheetScreenOptions, stackOptionsFor } from '@/theme/navigation-policy';
 
 export default function OrdersLayout() {
-  const tabRoot = stackOptionsFor('tabRoot');
   const modalTask = stackOptionsFor('modalTask');
 
   return (
@@ -13,7 +12,6 @@ export default function OrdersLayout() {
         <Stack.Screen
           name="index"
           options={{
-            ...tabRoot,
             headerShown: false,
             title: 'Work orders',
           }}

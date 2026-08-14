@@ -109,13 +109,13 @@ export async function interpretAiPrompt(prompt: string): Promise<AiUiBlock[]> {
       {
         type: 'action',
         label: 'Open orders',
-        href: '/(tabs)/orders',
+        href: '/orders',
         primary: true,
       },
       {
         type: 'action',
         label: 'New order',
-        href: '/(tabs)/orders/new',
+        href: '/orders/new',
       },
     ];
   }

@@ -2,8 +2,8 @@ import type { Ref } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { SearchIcon } from '@/assets/icons';
-import { Text } from '@/components/ui';
+import { ArrowLeftIcon, SearchIcon } from '@/assets/icons';
+import { IconButton, Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { rhythm, tokens } from '@/theme';
 
@@ -27,11 +27,12 @@ type OrdersHeaderProps = {
   filterLifted?: boolean;
   onExitEdit: () => void;
   onOpenFilter: () => void;
+  onBack: () => void;
   onCreate: () => void;
 };
 
 /**
- * Work-orders hub chrome — Finances-style custom header.
+ * Work-orders hub chrome — drill-in from Home / Work, not a dock tab.
  */
 export function OrdersHeader({
   metaLine,
@@ -47,6 +48,7 @@ export function OrdersHeader({
   filterLifted = false,
   onExitEdit,
   onOpenFilter,
+  onBack,
   onCreate,
 }: OrdersHeaderProps) {
   const { colors } = useTheme();
@@ -64,51 +66,46 @@ export function OrdersHeader({
       <View
         style={{
           flexDirection: 'row',
-          alignItems: 'flex-start',
-          gap: tokens.space.stack,
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          minHeight: 44,
         }}
       >
-        <View style={{ flex: 1, gap: tokens.space.micro, minWidth: 0 }}>
-          <Text
-            variant="largeTitle"
-            style={{
-              fontSize: 34,
-              lineHeight: 40,
-              fontWeight: '700',
-              letterSpacing: -0.6,
-            }}
-          >
-            Work orders
-          </Text>
-          {metaLine ? (
-            <Text variant="subheadline" color="muted" numberOfLines={1}>
-              {metaLine}
-            </Text>
-          ) : null}
-        </View>
+        <IconButton accessibilityLabel="Back" variant="ghost" size="sm" onPress={onBack}>
+          <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
+        </IconButton>
+        <OrdersToolbar
+          editing={editing}
+          canCreate={canCreate}
+          filterLabel={filterLabel}
+          filters={filters}
+          activeFilter={activeFilter}
+          onFilterChange={onFilterChange}
+          filterButtonRef={filterButtonRef}
+          filterLifted={filterLifted}
+          onExitEdit={onExitEdit}
+          onOpenFilter={onOpenFilter}
+          onCreate={onCreate}
+        />
+      </View>
 
-        <View
+      <View style={{ gap: tokens.space.micro }}>
+        <Text
+          variant="largeTitle"
           style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: tokens.space.inline,
-            paddingTop: tokens.space.micro,
+            fontSize: 34,
+            lineHeight: 40,
+            fontWeight: '700',
+            letterSpacing: -0.6,
           }}
         >
-          <OrdersToolbar
-            editing={editing}
-            canCreate={canCreate}
-            filterLabel={filterLabel}
-            filters={filters}
-            activeFilter={activeFilter}
-            onFilterChange={onFilterChange}
-            filterButtonRef={filterButtonRef}
-            filterLifted={filterLifted}
-            onExitEdit={onExitEdit}
-            onOpenFilter={onOpenFilter}
-            onCreate={onCreate}
-          />
-        </View>
+          Work orders
+        </Text>
+        {metaLine ? (
+          <Text variant="subheadline" color="muted" numberOfLines={1}>
+            {metaLine}
+          </Text>
+        ) : null}
       </View>
 
       <View

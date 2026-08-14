@@ -9,7 +9,7 @@
  */
 import { useMemo } from 'react';
 
-import { filterWorkOrdersByScope } from '@autocore/rbac';
+import { filterWorkOrdersByScope, isAssignedToWorkOrder, isClaimableWorkOrder } from '@autocore/rbac';
 import { useSession } from '@/hooks/use-session';
 import { useSessionQueryData } from '@/hooks/use-session-query-data';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
@@ -23,6 +23,7 @@ import type { InventoryItem } from '@/types/inventory';
 import type { MotorEntity } from '@/types/motor';
 import type { WarehouseEntity } from '@/types/warehouse';
 import type { WorkOrder } from '@/types/work-order';
+import type { PayrollTransaction } from '@/types/payroll-transaction';
 
 import { EMPTY_WORK_COUNTS, isAwaitingPlacement, type WorkCounts } from '../lib/work-model';
 
@@ -43,6 +44,7 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
 
   const hasCompany = Boolean(companyId);
   const wantsOrders = nodeIds.has('orders');
+  const wantsEarnings = nodeIds.has('earnings');
   const wantsEngines = nodeIds.has('engines');
   const wantsInventory = nodeIds.has('parts') || nodeIds.has('receiving');
   const wantsLocations = nodeIds.has('locations');
@@ -64,8 +66,14 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
     () => ['realtime', 'warehouses', companyId] as const,
     [companyId],
   );
+  const payrollKey = useMemo(
+    () => ['realtime', 'payroll-transactions', companyId, rbac.scopes.payroll, uid] as const,
+    [companyId, rbac.scopes.payroll, uid],
+  );
 
-  const ordersEnabled = hasCompany && wantsOrders && rbac.scopes.workOrders !== 'none';
+  const ordersEnabled =
+    hasCompany && (wantsOrders || wantsEarnings) && rbac.scopes.workOrders !== 'none';
+  const payrollEnabled = hasCompany && wantsEarnings && rbac.scopes.payroll !== 'none';
   const inventoryEnabled = hasCompany && wantsInventory && rbac.scopes.inventory !== 'none';
   const motorsEnabled = hasCompany && wantsEngines && rbac.scopes.motors !== 'none';
   const warehousesEnabled = hasCompany && wantsLocations && rbac.scopes.inventory !== 'none';
@@ -78,6 +86,7 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
     warehousesEnabled,
     [],
   );
+  const rawPayroll = useSessionQueryData<PayrollTransaction[]>(payrollKey, payrollEnabled, []);
 
   const defaultWarehouseId = useMemo(() => {
     const list = Array.isArray(warehouses) ? warehouses : [];
@@ -105,6 +114,7 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
         locationsQuery.isError ||
         locationsQuery.isFetched));
   const intakeReady = !wantsIntake || !hasCompany || !intake.loading;
+  const payrollReady = !payrollEnabled || isRealtimeReady(payrollKey);
 
   const scopedOrders = useMemo(() => {
     if (!ordersEnabled || !ordersReady) return [];
@@ -112,6 +122,12 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
     if (rbac.scopes.workOrders !== 'assigned_work_orders' || !uid) return list;
     return filterWorkOrdersByScope(list, uid, rbac.scopes.workOrders);
   }, [ordersEnabled, ordersReady, rawOrders, rbac.scopes.workOrders, uid]);
+
+  const ownPayroll = useMemo(() => {
+    if (!payrollEnabled || !payrollReady || !uid) return [];
+    const list = Array.isArray(rawPayroll) ? rawPayroll : [];
+    return list.filter((row) => row.employeeId === uid);
+  }, [payrollEnabled, payrollReady, rawPayroll, uid]);
 
   const items = useMemo(() => {
     if (!inventoryEnabled || !inventoryReady) return [];
@@ -177,6 +193,17 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
       };
     }
 
+    if (wantsEarnings && ordersReady && payrollReady && uid) {
+      next.earnings = {
+        pendingCount: ownPayroll.filter((row) => row.status === 'pending').length,
+        claimable: scopedOrders.filter((order) => isClaimableWorkOrder(order)).length,
+        myOpen: scopedOrders.filter(
+          (order) => isAssignedToWorkOrder(order, uid) && isOpenStatus(order.status),
+        ).length,
+        payoutTotal: ownPayroll.length,
+      };
+    }
+
     return next;
   }, [
     hasCompany,
@@ -195,7 +222,11 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
     ordersReady,
     scopedOrders,
     warehousesEnabled,
+    wantsEarnings,
     wantsIntake,
+    payrollReady,
+    ownPayroll,
+    uid,
   ]);
 
   const ready =

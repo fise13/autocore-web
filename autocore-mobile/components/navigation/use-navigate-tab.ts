@@ -1,4 +1,4 @@
-import { useRouter, useSegments } from 'expo-router';
+import { useRouter, useSegments, type Href } from 'expo-router';
 import { useCallback } from 'react';
 
 import {
@@ -6,7 +6,9 @@ import {
   type TabRouteName,
   useTabTransition,
 } from '@/components/navigation/tab-transition-context';
+import { guardedPush } from '@/lib/navigation/guarded-push';
 import { tabNavigationGuard } from '@/lib/navigation/navigation-guard';
+import { isRootAppHref } from '@/lib/navigation/tab-specs';
 
 export type TabNavigateTarget =
   | string
@@ -32,7 +34,15 @@ function resolveCurrentTab(segments: readonly string[]): TabRouteName | null {
   return resolveTabRouteName(name);
 }
 
-/** Tab navigation with the same slide/fade transition as the custom tab bar. */
+function hrefFromTarget(target: TabNavigateTarget): Href {
+  if (typeof target === 'string') return target as Href;
+  if (target.params) {
+    return { pathname: target.pathname, params: target.params } as Href;
+  }
+  return target.pathname as Href;
+}
+
+/** Tab switches stay on the dock; root screens (orders, intake, warehouse) push. */
 export function useNavigateTab() {
   const router = useRouter();
   const segments = useSegments();
@@ -41,7 +51,11 @@ export function useNavigateTab() {
   return useCallback(
     (target: TabNavigateTarget) => {
       const pathname = typeof target === 'string' ? target : target.pathname;
-      const params = typeof target === 'string' ? undefined : target.params;
+
+      if (isRootAppHref(pathname)) {
+        guardedPush(router, hrefFromTarget(target));
+        return;
+      }
 
       tabNavigationGuard.tryNavigate(() => {
         const fromTab = resolveCurrentTab(segments) ?? 'index';
@@ -50,11 +64,15 @@ export function useNavigateTab() {
           beginTransition(fromTab, toTab);
         }
 
-        if (params) {
-          router.navigate({ pathname, params } as never);
+        if (typeof target === 'string') {
+          router.navigate(target as never);
           return;
         }
-        router.navigate(pathname as never);
+        if (target.params) {
+          router.navigate({ pathname: target.pathname, params: target.params } as never);
+          return;
+        }
+        router.navigate(target.pathname as never);
       });
     },
     [beginTransition, router, segments],

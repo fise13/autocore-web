@@ -2,10 +2,18 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  EMPTY_INTAKE_BAY_COUNTS,
   EMPTY_TODAY_COUNTS,
+  EMPTY_WAREHOUSE_WIDGET_COUNTS,
+  EMPTY_WORK_WIDGET_COUNTS,
   UNKNOWN_COUNT,
+  buildIntakeBayWidgetProps,
   buildSyncWidgetProps,
   buildTodayWidgetProps,
+  buildWarehouseWidgetProps,
+  buildWorkWidgetProps,
+  countIntakeAwaitingFromJobs,
+  countIntakeBayFromJobs,
   widgetSnapshotKey,
   type TodayWidgetCounts,
 } from './widget-model';
@@ -19,6 +27,9 @@ function counts(partial: Partial<TodayWidgetCounts> = {}): TodayWidgetCounts {
     engines: 0,
     awaitingPlacement: 0,
     lowStock: 0,
+    earningsPending: 0,
+    earningsClaimable: 0,
+    intakeAwaiting: 0,
     ...partial,
   };
 }
@@ -40,6 +51,7 @@ describe('buildTodayWidgetProps', () => {
     assert.match(props.title, /4 items to place/);
     assert.equal(props.symbol, 'shippingbox.fill');
     assert.equal(props.urgent, true);
+    assert.match(props.link, /scan$/);
   });
 
   it('falls to orders waiting on parts next', () => {
@@ -50,16 +62,36 @@ describe('buildTodayWidgetProps', () => {
     assert.match(props.title, /2 orders waiting on parts/);
     assert.match(props.detail, /12 open in total/);
     assert.equal(props.urgent, true);
+    assert.match(props.link, /orders$/);
   });
 
-  it('then low stock, then plain open work', () => {
+  it('then low stock, pay, intake, then plain open work', () => {
     const low = buildTodayWidgetProps(counts({ lowStock: 3, openOrders: 12 }), AT);
     assert.match(low.title, /3 parts low on stock/);
+    assert.match(low.link, /warehouse$/);
+
+    const pay = buildTodayWidgetProps(
+      counts({ openOrders: 12, earningsPending: 2, earningsClaimable: 1, intakeAwaiting: 5 }),
+      AT,
+    );
+    assert.match(pay.title, /2 payouts waiting/);
+    assert.match(pay.link, /earnings$/);
+
+    const claim = buildTodayWidgetProps(
+      counts({ openOrders: 12, earningsClaimable: 3, intakeAwaiting: 5 }),
+      AT,
+    );
+    assert.match(claim.title, /3 jobs to claim/);
+
+    const intake = buildTodayWidgetProps(counts({ openOrders: 12, intakeAwaiting: 5 }), AT);
+    assert.match(intake.title, /5 engines awaiting intake/);
+    assert.match(intake.link, /intake$/);
 
     const open = buildTodayWidgetProps(counts({ openOrders: 12, engines: 248 }), AT);
     assert.match(open.title, /12 open orders/);
     assert.match(open.detail, /248 engines in stock/);
     assert.equal(open.urgent, false);
+    assert.match(open.link, /orders$/);
   });
 
   it('says the floor is clear instead of showing a bare zero', () => {
@@ -67,6 +99,7 @@ describe('buildTodayWidgetProps', () => {
     assert.equal(props.headline, '0');
     assert.equal(props.title, 'No open orders');
     assert.equal(props.symbol, 'checkmark.circle.fill');
+    assert.match(props.link, /work$/);
   });
 
   it('reads naturally in the singular', () => {
@@ -166,5 +199,137 @@ describe('widgetSnapshotKey', () => {
       widgetSnapshotKey({ a: 1, b: 2, updatedAtMs: 1 }),
       widgetSnapshotKey({ b: 2, a: 1, updatedAtMs: 2 }),
     );
+  });
+});
+
+describe('countIntakeBayFromJobs', () => {
+  it('splits Ready from documenting and ignores released engines', () => {
+    const counts = countIntakeBayFromJobs([
+      { state: 'in_session' },
+      { state: 'paused' },
+      { state: 'awaiting_verification' },
+      { state: 'quarantine' },
+      { state: 'verified' },
+    ]);
+    assert.equal(counts.active, 2);
+    assert.equal(counts.ready, 2);
+  });
+});
+
+describe('countIntakeAwaitingFromJobs', () => {
+  it('counts only engines waiting to be picked up, not in-session work', () => {
+    assert.equal(
+      countIntakeAwaitingFromJobs([
+        { state: 'open' },
+        { state: 'rework' },
+        { state: 'in_session' },
+        { state: 'paused' },
+        { state: 'awaiting_verification' },
+      ]),
+      2,
+    );
+  });
+});
+
+describe('buildIntakeBayWidgetProps', () => {
+  it('leads with Ready so Finish lands on the Lock Screen immediately', () => {
+    const props = buildIntakeBayWidgetProps(
+      { active: 1, ready: 3, syncing: 2 },
+      AT,
+    );
+    assert.equal(props.headline, '3');
+    assert.match(props.title, /ready for review/);
+    assert.match(props.link, /filter=ready/);
+    assert.equal(props.urgent, true);
+    assert.equal(props.symbol, 'checkmark.seal.fill');
+  });
+
+  it('falls to syncing photos when nothing is waiting for review', () => {
+    const props = buildIntakeBayWidgetProps(
+      { active: 2, ready: 0, syncing: 4 },
+      AT,
+    );
+    assert.equal(props.headline, '4');
+    assert.match(props.title, /photos syncing/);
+  });
+
+  it('then documenting, then a clear bay', () => {
+    const active = buildIntakeBayWidgetProps({ active: 2, ready: 0, syncing: 0 }, AT);
+    assert.match(active.title, /documenting/);
+    assert.match(active.link, /filter=active/);
+
+    const clear = buildIntakeBayWidgetProps({ active: 0, ready: 0, syncing: 0 }, AT);
+    assert.equal(clear.headline, '0');
+    assert.equal(clear.title, 'Bay is clear');
+  });
+
+  it('shows an em dash before the bay has loaded', () => {
+    const props = buildIntakeBayWidgetProps(EMPTY_INTAKE_BAY_COUNTS, AT);
+    assert.equal(props.headline, '—');
+    assert.doesNotMatch(props.title, /\b0\b/);
+  });
+});
+
+describe('buildWorkWidgetProps', () => {
+  it('leads with orders waiting on parts', () => {
+    const props = buildWorkWidgetProps({ openOrders: 12, attentionOrders: 3 }, AT);
+    assert.equal(props.headline, '3');
+    assert.match(props.title, /3 orders waiting on parts/);
+    assert.match(props.link, /orders$/);
+    assert.equal(props.urgent, true);
+  });
+
+  it('falls to open work, then a clear board', () => {
+    const open = buildWorkWidgetProps({ openOrders: 4, attentionOrders: 0 }, AT);
+    assert.match(open.title, /4 open orders/);
+    assert.equal(open.urgent, false);
+
+    const clear = buildWorkWidgetProps({ openOrders: 0, attentionOrders: 0 }, AT);
+    assert.equal(clear.headline, '0');
+    assert.equal(clear.title, 'No open orders');
+  });
+
+  it('shows an em dash before orders have loaded', () => {
+    const props = buildWorkWidgetProps(EMPTY_WORK_WIDGET_COUNTS, AT);
+    assert.equal(props.headline, '—');
+    assert.doesNotMatch(props.title, /\b0\b/);
+  });
+});
+
+describe('buildWarehouseWidgetProps', () => {
+  it('leads with stock to place and deep-links into scan', () => {
+    const props = buildWarehouseWidgetProps(
+      { awaitingPlacement: 4, lowStock: 7, engines: 248 },
+      AT,
+    );
+    assert.equal(props.headline, '4');
+    assert.match(props.title, /4 items to place/);
+    assert.match(props.link, /scan$/);
+    assert.equal(props.actionTarget, 'openScan');
+    assert.equal(props.urgent, true);
+  });
+
+  it('falls to low stock, then a placed warehouse', () => {
+    const low = buildWarehouseWidgetProps(
+      { awaitingPlacement: 0, lowStock: 2, engines: 248 },
+      AT,
+    );
+    assert.match(low.title, /2 parts low on stock/);
+    assert.match(low.link, /warehouse$/);
+    assert.equal(low.actionTarget, 'openWarehouse');
+
+    const clear = buildWarehouseWidgetProps(
+      { awaitingPlacement: 0, lowStock: 0, engines: 248 },
+      AT,
+    );
+    assert.equal(clear.headline, '0');
+    assert.equal(clear.title, 'Stock is placed');
+    assert.match(clear.detail, /248 engines/);
+  });
+
+  it('shows an em dash before warehouse counts have loaded', () => {
+    const props = buildWarehouseWidgetProps(EMPTY_WAREHOUSE_WIDGET_COUNTS, AT);
+    assert.equal(props.headline, '—');
+    assert.doesNotMatch(props.title, /\b0\b/);
   });
 });

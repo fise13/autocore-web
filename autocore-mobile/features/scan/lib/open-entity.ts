@@ -36,7 +36,7 @@ export function openEntityLink(
   router: ScanRouter,
 ): void {
   if (entity === 'order') {
-    router.push(`/(tabs)/orders/${id}` as Href);
+    router.push(`/orders/${id}` as Href);
     return;
   }
 

@@ -70,6 +70,7 @@ export type WorkRowProps = {
   title: string;
   detail: string;
   detailKind: WorkDetailKind;
+  urgent?: boolean;
   onPress: () => void;
 };
 
@@ -82,6 +83,7 @@ export const WorkGroupRow = memo(function WorkGroupRow({
   title,
   detail,
   detailKind,
+  urgent = false,
   onPress,
 }: WorkRowProps) {
   const { colors, isDark } = useTheme();
@@ -91,7 +93,7 @@ export const WorkGroupRow = memo(function WorkGroupRow({
   const pressedFill = withAlpha(colors.muted, isDark ? 0.55 : 0.85);
   const chevronColor = withAlpha(colors.mutedForeground, isDark ? 0.4 : 0.45);
   const detailColor =
-    detailKind === 'onboarding' ? colors.primary : colors.mutedForeground;
+    detailKind === 'onboarding' || urgent ? colors.primary : colors.mutedForeground;
 
   const pressStyle = useAnimatedStyle(() => {
     if (motion.reduced) {

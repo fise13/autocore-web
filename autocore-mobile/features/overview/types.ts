@@ -6,7 +6,7 @@ export type OverviewAttentionItem = {
   count: number;
   text: string;
   tone: 'warning' | 'danger';
-  route?: '/(tabs)/orders' | '/search' | '/warehouse' | '/(tabs)/accounting';
+  route?: '/orders' | '/search' | '/warehouse' | '/(tabs)/accounting' | '/earnings';
   routeParams?: Record<string, string>;
 };
 
@@ -26,7 +26,7 @@ export type OverviewTodayStat = {
   format: TodayStatFormat;
   emphasis?: StatEmphasis;
   tone?: 'default' | 'warning' | 'success';
-  route?: '/(tabs)/orders' | '/search' | '/warehouse' | '/(tabs)/accounting';
+  route?: '/orders' | '/search' | '/warehouse' | '/(tabs)/accounting';
   routeParams?: Record<string, string>;
 };
 
@@ -40,7 +40,7 @@ export type OverviewKpi = {
   format: TodayStatFormat | 'grouped';
   hint?: string;
   tone: KpiTone;
-  route?: '/(tabs)/orders' | '/search' | '/warehouse' | '/(tabs)/accounting';
+  route?: '/orders' | '/search' | '/warehouse' | '/(tabs)/accounting';
   routeParams?: Record<string, string>;
 };
 
@@ -74,7 +74,7 @@ export type OverviewInsight = {
   body?: string;
   cta?: string;
   tone: InsightTone;
-  route?: '/(tabs)/orders' | '/search' | '/warehouse' | '/(tabs)/accounting';
+  route?: '/orders' | '/search' | '/warehouse' | '/(tabs)/accounting';
   routeParams?: Record<string, string>;
   /** Dual metrics (Today vs Average) — only with real values. */
   compare?: OverviewInsightCompare | null;
@@ -112,7 +112,7 @@ export type OverviewRevenue = {
   todayNet?: number;
   todayIncome?: number;
   todayExpense?: number;
-  route?: '/(tabs)/orders' | '/search' | '/warehouse' | '/(tabs)/accounting';
+  route?: '/orders' | '/search' | '/warehouse' | '/(tabs)/accounting';
   routeParams?: Record<string, string>;
 };
 
@@ -122,7 +122,7 @@ export type OverviewStatTile = {
   value: number;
   format: 'integer' | 'grouped';
   icon: ComponentType<{ size?: 'sm' | 'md' | 'lg'; color?: string; strokeWidth?: number }>;
-  route?: '/(tabs)/orders' | '/search' | '/warehouse' | '/(tabs)/accounting';
+  route?: '/orders' | '/search' | '/warehouse' | '/(tabs)/accounting';
   routeParams?: Record<string, string>;
 };
 

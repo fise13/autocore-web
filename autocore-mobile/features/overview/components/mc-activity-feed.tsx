@@ -158,7 +158,7 @@ export const McActivityFeed = memo(function McActivityFeed({ items }: McActivity
   const openOrder = useCallback(
     (id: string) => {
       haptics.light();
-      router.push(`/(tabs)/orders/${id}`);
+      router.push(`/orders/${id}`);
     },
     [router],
   );

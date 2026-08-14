@@ -3,6 +3,7 @@ import type { Href } from 'expo-router';
 
 import { resolveInviteHref } from '@/lib/invites/resolve-invite-href';
 import { guardedPush } from '@/lib/navigation/guarded-push';
+import { parseWidgetDeepLink } from '@/features/live-activity/lib/widget-links';
 
 const SCHEME = 'autocoremobile://';
 
@@ -50,9 +51,12 @@ export function resolveNotificationDeepLink(deepLink?: string | null): Href | nu
     return `/invite/${path.slice('invite/'.length)}` as Href;
   }
   if (path.startsWith('orders/')) {
-    return `/(tabs)/orders/${path.slice('orders/'.length)}` as Href;
+    return `/orders/${path.slice('orders/'.length)}` as Href;
   }
-  if (path === 'orders') return '/(tabs)/orders' as Href;
+  if (path === 'orders') return '/orders' as Href;
+  if (path === 'earnings' || path.startsWith('earnings/') || path === 'my-earnings') {
+    return '/earnings' as Href;
+  }
   if (path === 'profile/inbox' || path === 'inbox') {
     return '/inbox' as Href;
   }
@@ -60,6 +64,9 @@ export function resolveNotificationDeepLink(deepLink?: string | null): Href | nu
     return `/(tabs)/profile/${path.slice('profile/'.length)}` as Href;
   }
   if (path === 'scan') return '/(tabs)/scan' as Href;
+  if (path === 'work' || path.startsWith('work/') || path.startsWith('work?')) {
+    return '/(tabs)/work' as Href;
+  }
   if (path.startsWith('accounting')) return '/(tabs)/accounting' as Href;
   if (path.startsWith('search')) return '/search' as Href;
   if (path.startsWith('warehouse')) return '/warehouse' as Href;
@@ -67,7 +74,7 @@ export function resolveNotificationDeepLink(deepLink?: string | null): Href | nu
     return `/(tabs)/profile/${path}` as Href;
   }
   if (path.startsWith('inventory/')) {
-    return `/(tabs)/orders/create-item` as Href;
+    return `/orders/create-item` as Href;
   }
   if (path.startsWith('imports/') || path.startsWith('import/') || path.startsWith('import?')) {
     const batchMatch = path.match(/[?&]batchId=([^&]+)/);
@@ -85,6 +92,10 @@ export function resolveNotificationDeepLink(deepLink?: string | null): Href | nu
     return '/inbox' as Href;
   }
   if (path === 'intake' || path.startsWith('intake/') || path.startsWith('intake?')) {
+    const widgetLink = parseWidgetDeepLink(`${SCHEME}${path}`);
+    if (widgetLink?.dest === 'intake' && widgetLink.filter) {
+      return { pathname: '/intake', params: { filter: widgetLink.filter } } as unknown as Href;
+    }
     return '/intake' as Href;
   }
 
@@ -111,7 +122,22 @@ export async function openNotificationDeepLink(deepLink?: string | null): Promis
       typeof deepLink === 'string' && deepLink.startsWith(SCHEME)
         ? deepLink.slice(SCHEME.length)
         : '';
-    // Intake bay / Live Activity taps must not stack duplicate `/intake` screens.
+    // Intake bay / Live Activity / widget taps must not stack duplicate `/intake`.
+    const widgetLink = parseWidgetDeepLink(deepLink ?? '');
+    if (widgetLink?.dest === 'intake') {
+      const { openEngineIntakeBay } = await import(
+        '@/features/engine-intake/lib/open-engine-intake'
+      );
+      openEngineIntakeBay(
+        router,
+        widgetLink.filter ? { filter: widgetLink.filter } : undefined,
+      );
+      return true;
+    }
+    if (widgetLink?.dest === 'work') {
+      guardedPush(router, '/(tabs)/work' as Href);
+      return true;
+    }
     if (path === 'intake' || path.startsWith('intake/') || path.startsWith('intake?')) {
       const { openEngineIntakeBay } = await import(
         '@/features/engine-intake/lib/open-engine-intake'

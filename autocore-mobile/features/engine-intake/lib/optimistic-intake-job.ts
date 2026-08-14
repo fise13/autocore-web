@@ -124,7 +124,13 @@ export function applyOptimisticClaim(
   const now = input.now ?? new Date().toISOString();
   return {
     ...job,
-    state: job.state === 'open' || job.state === 'paused' || job.state === 'rework' ? 'in_session' : job.state,
+    state:
+      job.state === 'open' ||
+      job.state === 'paused' ||
+      job.state === 'rework' ||
+      job.state === 'awaiting_verification'
+        ? 'in_session'
+        : job.state,
     updatedAt: now,
     assignment: {
       ...job.assignment,
@@ -138,6 +144,57 @@ export function applyOptimisticClaim(
   };
 }
 
+/** Mirror server field_complete — Finish clears the claim and parks the bay in Ready. */
+export function applyOptimisticFieldComplete(
+  job: EngineIntakeJob,
+  now = new Date().toISOString(),
+): EngineIntakeJob {
+  return {
+    ...job,
+    state: 'awaiting_verification',
+    updatedAt: now,
+    fieldCompletedAt: now,
+    assignment: {
+      ...job.assignment,
+      claimedByUid: null,
+      claimedByName: null,
+      activeSessionId: null,
+      claimDeviceId: null,
+      claimedAt: null,
+      claimExpiresAt: null,
+      lastHeartbeatAt: null,
+    },
+  };
+}
+
+const FIELD_COMPLETE_SETTLED = new Set([
+  'awaiting_verification',
+  'quarantine',
+  'verified',
+  'closed',
+  'rejected',
+  'cancelled',
+]);
+
+/**
+ * Finish can land on the server (web already shows In review) while the phone
+ * Firestore listener still holds `in_session`. Force Ready until the snapshot
+ * catches up — same idea as `cancelledJobIds`.
+ */
+export function applyReadyJobOverrides(
+  jobs: EngineIntakeJob[],
+  readyJobIds: readonly string[],
+  now?: string,
+): EngineIntakeJob[] {
+  if (readyJobIds.length === 0) return jobs;
+  const ready = new Set(readyJobIds);
+  const stamp = now ?? new Date().toISOString();
+  return jobs.map((job) => {
+    if (!ready.has(job.id) || FIELD_COMPLETE_SETTLED.has(job.state)) return job;
+    return applyOptimisticFieldComplete(job, stamp);
+  });
+}
+
 export function mergeIntakeJobs(
   server: EngineIntakeJob[],
   local: EngineIntakeJob[],
@@ -147,14 +204,24 @@ export function mergeIntakeJobs(
   const visibleServer = hidden.size === 0
     ? server
     : server.filter((job) => !hidden.has(job.id) && job.state !== 'cancelled');
+  const overlayById = new Map(local.map((job) => [job.id, job]));
+  const merged = visibleServer.map((job) => {
+    const overlay = overlayById.get(job.id);
+    if (!overlay) return job;
+    // A local claim the server has not echoed yet — keep the camera open.
+    const overlayClaimed = Boolean(overlay.assignment.activeSessionId);
+    const serverClaimed = Boolean(job.assignment.activeSessionId);
+    if (overlayClaimed && !serverClaimed) return overlay;
+    return job;
+  });
   const extras = local.filter(
     (job) =>
       !visibleServer.some((item) => item.id === job.id) &&
       !hidden.has(job.id) &&
       job.state !== 'cancelled',
   );
-  if (extras.length === 0) return visibleServer;
-  return [...extras, ...visibleServer];
+  if (extras.length === 0) return merged;
+  return [...extras, ...merged];
 }
 
 export function mergeIntakeSessions(

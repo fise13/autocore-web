@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, View } from 'react-native';
-import { useRouter, type Href } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import type {
   EngineIntakeCommand,
   EngineIntakeJob,
@@ -48,6 +48,7 @@ import {
 import { openEngineIntakeSession } from './lib/open-engine-intake';
 import { cancelIntakeJob } from './lib/cancel-intake-job';
 import {
+  dropOptimisticIntakeClaim,
   seedOptimisticIntakeClaim,
   seedOptimisticIntakeCreate,
 } from './store/intake-local-overlay';
@@ -136,8 +137,15 @@ function sortJobs(left: EngineIntakeJob, right: EngineIntakeJob): number {
   return rank[left.priority] - rank[right.priority];
 }
 
+function parseBayFilter(value: string | string[] | undefined): BayFilter | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (raw === 'active' || raw === 'ready' || raw === 'all') return raw;
+  return null;
+}
+
 export function EngineIntakeJobsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ filter?: string | string[] }>();
   const insets = useSafeAreaInsets();
   const { scrollBottom } = useFloatingTabBarInset();
   const { companyId, uid, profile, can } = useSession();
@@ -148,7 +156,14 @@ export function EngineIntakeJobsScreen() {
   const [starting, setStarting] = useState(false);
   const [claimClock, setClaimClock] = useState(() => Date.now());
   const [deviceId] = useState(getEngineIntakeDeviceId);
-  const [filter, setFilter] = useState<BayFilter>('active');
+  const [filter, setFilter] = useState<BayFilter>(
+    () => parseBayFilter(params.filter) ?? 'active',
+  );
+
+  useEffect(() => {
+    const next = parseBayFilter(params.filter);
+    if (next) setFilter(next);
+  }, [params.filter]);
 
   useEffect(() => {
     const timer = setInterval(() => setClaimClock(Date.now()), 30_000);
@@ -192,14 +207,15 @@ export function EngineIntakeJobsScreen() {
         openSession(job.id, job.assignment.activeSessionId);
         return;
       }
-      if (job.state === 'awaiting_verification') {
+      if (job.state === 'quarantine') {
         toast({
-          title: 'Awaiting review',
-          description: 'This engine is waiting for verification. Start a new engine to capture more.',
+          title: 'On hold',
+          description: 'This engine is in quarantine. Ask a reviewer before capturing more.',
           variant: 'default',
         });
         return;
       }
+      const wasReady = job.state === 'awaiting_verification';
       const sessionId = engineIntakeId('session');
       setStarting(true);
       try {
@@ -216,6 +232,7 @@ export function EngineIntakeJobsScreen() {
         haptics.success();
         openSession(job.id, sessionId);
       } catch (claimError) {
+        dropOptimisticIntakeClaim(companyId, job.id, wasReady);
         haptics.error();
         toast({
           title: 'Engine could not be opened',

@@ -3,17 +3,20 @@ import { spacing } from '@/theme/spacing';
 /**
  * Autocore floating dock metrics.
  * Liquid glass (iOS 26+): UIGlassEffect via expo-glass-effect.
- * Fallback: dense dark stadium. Spec 356×64 · radius 32 · action 60 · icons 22 · safe+8.
+ * Fallback: dense dark stadium. Spec 356×64 · radius 32 · action orb 48 · icons 22 · safe+8.
  */
 export const DOCK_BAR_WIDTH = 356;
 export const DOCK_VISUAL_HEIGHT = 64;
 export const DOCK_CORNER_RADIUS = 32;
 export const DOCK_ITEM_WIDTH = 71;
-export const DOCK_ACTION_SIZE = 60;
-export const DOCK_ACTION_RADIUS = 30;
+/** White plus orb — sits inside the 64pt bar with ~8pt inset, not flush. */
+export const DOCK_ACTION_SIZE = 48;
+export const DOCK_ACTION_RADIUS = 24;
+/** Tap target around the orb (orb itself stays 48). */
+export const DOCK_ACTION_HIT_SIZE = 56;
 export const DOCK_ICON_SIZE = 22;
-export const DOCK_ACTION_ICON_SIZE = 28;
-export const DOCK_ACTION_ICON_STROKE = 2.5;
+export const DOCK_ACTION_ICON_SIZE = 20;
+export const DOCK_ACTION_ICON_STROKE = 2.25;
 export const DOCK_LABEL_SIZE = 12;
 /** Side margin from screen edge. */
 export const DOCK_HORIZONTAL_INSET = 18.5;

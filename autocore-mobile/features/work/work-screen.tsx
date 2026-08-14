@@ -10,6 +10,7 @@ import { Text } from '@/components/ui/text';
 import { useAdaptiveLayout } from '@/hooks/use-adaptive-layout';
 import { useSession } from '@/hooks/use-session';
 import { useTheme } from '@/hooks/use-theme';
+import { guardedPush } from '@/lib/navigation/guarded-push';
 import { useShellModel } from '@/lib/shell/use-shell-model';
 import { useWorkspaceContextStore } from '@/lib/shell/workspace-context-store';
 import { useAuthStore } from '@/store/auth-store';
@@ -54,21 +55,21 @@ export function WorkScreen() {
   const model = useMemo(() => buildWorkModel(workGrouped, counts), [workGrouped, counts]);
 
   const openSearch = useCallback(() => {
-    router.push('/search' as Href);
+    guardedPush(router, '/search' as Href);
   }, [router]);
 
   const openNode = useCallback(
     (id: string, href: string) => {
       if (!href) return;
       setWorkspaceContext(id);
-      router.push(href as Href);
+      guardedPush(router, href as Href);
     },
     [router, setWorkspaceContext],
   );
 
   const openToday = useCallback(() => {
     if (!model.today.href) return;
-    router.push(model.today.href as Href);
+    guardedPush(router, model.today.href as Href);
   }, [model.today.href, router]);
 
   // Profile / company / live counts still settling — never flash EmptyState
@@ -153,6 +154,7 @@ export function WorkScreen() {
                         title={row.title}
                         detail={row.detail}
                         detailKind={row.detailKind}
+                        urgent={row.attention > 0}
                         onPress={() => openNode(row.id, row.href)}
                       />
                     ))}

@@ -1,5 +1,6 @@
 import { useAutoCoreWidgets } from './use-autocore-widgets';
 import { useOperationsLiveActivity } from './use-operations-live-activity';
+import { useWidgetInteractions } from './use-widget-interactions';
 
 /**
  * Mount once under the signed-in shell to drive every iOS presentation surface:
@@ -9,5 +10,6 @@ import { useOperationsLiveActivity } from './use-operations-live-activity';
 export function OperationsLiveActivityHost() {
   useOperationsLiveActivity();
   useAutoCoreWidgets();
+  useWidgetInteractions();
   return null;
 }

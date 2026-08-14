@@ -278,6 +278,12 @@ test("a paused session can still finish into Ready", () => {
   assert.equal(canTransitionEngineIntakeJob("paused", "awaiting_verification"), true);
 });
 
+test("Ready engines can be reopened to add photos", () => {
+  assert.equal(canTransitionEngineIntakeJob("awaiting_verification", "in_session"), true);
+  assert.equal(canTransitionEngineIntakeJob("awaiting_verification", "verified"), true);
+  assert.equal(canTransitionEngineIntakeJob("quarantine", "in_session"), false);
+});
+
 test("paused sessions still accept photos the worker already captured", () => {
   assert.equal(
     canAcceptIntakePhotoUpload({ sessionState: "paused", jobState: "in_session" }),

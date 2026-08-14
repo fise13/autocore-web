@@ -42,7 +42,8 @@ const TodayWidgetLayout = (props: AutoCoreTodayWidgetProps, environment: WidgetE
   const isCircular = family === 'accessoryCircular';
   const isRectangular = family === 'accessoryRectangular';
   const isInline = family === 'accessoryInline';
-  const isMedium = family === 'systemMedium' || family === 'systemLarge';
+  const isMedium = family === 'systemMedium';
+  const isLarge = family === 'systemLarge';
 
   const num = (value: unknown) =>
     typeof value === 'number' && Number.isFinite(value) && value >= 0 ? String(value) : '—';
@@ -51,6 +52,24 @@ const TodayWidgetLayout = (props: AutoCoreTodayWidgetProps, environment: WidgetE
     typeof props.headline === 'string' && props.headline.length > 0 ? props.headline : '—';
   const title = typeof props.title === 'string' && props.title.length > 0 ? props.title : 'AutoCore';
   const detail = typeof props.detail === 'string' ? props.detail : '';
+  const eyebrow =
+    typeof props.eyebrow === 'string' && props.eyebrow.length > 0
+      ? props.eyebrow
+      : Boolean(props.urgent)
+        ? 'Needs you'
+        : 'Today';
+  const ordersLabel =
+    typeof props.ordersLabel === 'string' && props.ordersLabel.length > 0
+      ? props.ordersLabel
+      : 'Open orders';
+  const placeLabel =
+    typeof props.placeLabel === 'string' && props.placeLabel.length > 0
+      ? props.placeLabel
+      : 'To place';
+  const enginesLabel =
+    typeof props.enginesLabel === 'string' && props.enginesLabel.length > 0
+      ? props.enginesLabel
+      : 'Engines';
   const symbol =
     typeof props.symbol === 'string' && props.symbol.length > 0
       ? props.symbol
@@ -60,15 +79,15 @@ const TodayWidgetLayout = (props: AutoCoreTodayWidgetProps, environment: WidgetE
   const urgent = Boolean(props.urgent);
   const updatedAtMs =
     typeof props.updatedAtMs === 'number' && props.updatedAtMs > 0 ? props.updatedAtMs : 0;
+  const link =
+    typeof props.link === 'string' && props.link.length > 0
+      ? props.link
+      : 'autocoremobile://work';
 
-  const link = 'autocoremobile://work';
-
-  // ------------------------------------------------------- accessoryInline
   if (isInline) {
     return <Text modifiers={[widgetURL(link)]}>{title}</Text>;
   }
 
-  // ----------------------------------------------------- accessoryCircular
   if (isCircular) {
     return (
       <ZStack modifiers={[widgetURL(link)]}>
@@ -90,14 +109,13 @@ const TodayWidgetLayout = (props: AutoCoreTodayWidgetProps, environment: WidgetE
     );
   }
 
-  // -------------------------------------------------- accessoryRectangular
   if (isRectangular) {
     return (
       <VStack alignment="leading" spacing={2} modifiers={[widgetURL(link)]}>
         <HStack spacing={4}>
           <Image systemName={symbol} size={11} />
           <Text modifiers={[font({ size: 12, weight: 'semibold' }), lineLimit(1)]}>
-            {urgent ? 'Needs you' : 'Today'}
+            {eyebrow}
           </Text>
           <Spacer />
         </HStack>
@@ -107,88 +125,112 @@ const TodayWidgetLayout = (props: AutoCoreTodayWidgetProps, environment: WidgetE
           {title}
         </Text>
         <Text modifiers={[font({ size: 12 }), lineLimit(1), minimumScaleFactor(0.8)]}>
-          {detail.length > 0 ? detail : `${num(props.engines)} engines in stock`}
+          {detail.length > 0 ? detail : `${num(props.engines)} ${enginesLabel}`}
         </Text>
       </VStack>
     );
   }
 
-  // ----------------------------------------------------------- systemMedium
-  // Three cells, because four is where a medium widget starts to look like a
-  // dashboard nobody reads. Open work first — it is the only one that is
-  // actionable right now.
-  if (isMedium) {
-    const cell = (label: string, value: string, glyph: TodayWidgetSymbol, tintColor: string) => (
-      <VStack alignment="leading" spacing={2} modifiers={[frame({ maxWidth: 999 })]}>
-        <Image systemName={glyph} color={tintColor} size={13} />
-        <Text
-          modifiers={[
-            font({ size: 22, weight: 'semibold', design: 'rounded' }),
-            foregroundStyle('#FFFFFF'),
-            monospacedDigit(),
-            lineLimit(1),
-            minimumScaleFactor(0.6),
-          ]}
-        >
-          {value}
-        </Text>
-        <Text
-          modifiers={[
-            font({ size: 11, weight: 'medium' }),
-            foregroundStyle('#8E8E93'),
-            lineLimit(2),
-            minimumScaleFactor(0.8),
-          ]}
-        >
-          {label}
-        </Text>
-      </VStack>
-    );
+  const cell = (label: string, value: string, glyph: TodayWidgetSymbol, tintColor: string) => (
+    <VStack alignment="leading" spacing={2} modifiers={[frame({ maxWidth: 999 })]}>
+      <Image systemName={glyph} color={tintColor} size={13} />
+      <Text
+        modifiers={[
+          font({ size: 22, weight: 'semibold', design: 'rounded' }),
+          foregroundStyle('#FFFFFF'),
+          monospacedDigit(),
+          lineLimit(1),
+          minimumScaleFactor(0.6),
+        ]}
+      >
+        {value}
+      </Text>
+      <Text
+        modifiers={[
+          font({ size: 11, weight: 'medium' }),
+          foregroundStyle('#8E8E93'),
+          lineLimit(2),
+          minimumScaleFactor(0.8),
+        ]}
+      >
+        {label}
+      </Text>
+    </VStack>
+  );
 
+  const header = (
+    <HStack spacing={6}>
+      <Image systemName={symbol} color={accent} size={13} />
+      <Text
+        modifiers={[
+          font({ size: 13, weight: 'semibold' }),
+          foregroundStyle('#FFFFFF'),
+          lineLimit(1),
+          minimumScaleFactor(0.8),
+        ]}
+      >
+        {title}
+      </Text>
+      <Spacer />
+      {updatedAtMs > 0 ? (
+        <Text
+          date={new Date(updatedAtMs)}
+          dateStyle="relative"
+          modifiers={[font({ size: 10 }), foregroundStyle('#6E6E73'), lineLimit(1)]}
+        />
+      ) : null}
+    </HStack>
+  );
+
+  const stats = (
+    <HStack spacing={14} alignment="top">
+      {cell(ordersLabel, num(props.openOrders), 'wrench.and.screwdriver.fill', '#0A84FF')}
+      {cell(placeLabel, num(props.awaitingPlacement), 'shippingbox.fill', '#FF9F0A')}
+      {cell(enginesLabel, num(props.engines), 'engine.combustion.fill', '#30D158')}
+    </HStack>
+  );
+
+  if (isMedium || isLarge) {
     return (
       <VStack
         alignment="leading"
-        spacing={12}
+        spacing={isLarge ? 16 : 12}
         modifiers={[
           containerBackground('#0E0F13', 'widget'),
-          padding({ all: 12 }),
+          padding({ all: isLarge ? 16 : 12 }),
           widgetURL(link),
         ]}
       >
-        <HStack spacing={6}>
-          <Image systemName={symbol} color={accent} size={13} />
+        {header}
+        {isLarge ? (
           <Text
             modifiers={[
-              font({ size: 13, weight: 'semibold' }),
-              foregroundStyle('#FFFFFF'),
-              lineLimit(1),
+              font({ size: 15, weight: 'medium' }),
+              foregroundStyle('#EBEBF5'),
+              lineLimit(2),
               minimumScaleFactor(0.8),
             ]}
           >
-            {title}
+            {detail.length > 0 ? detail : eyebrow}
           </Text>
-          <Spacer />
-          {updatedAtMs > 0 ? (
-            <Text
-              date={new Date(updatedAtMs)}
-              dateStyle="relative"
-              modifiers={[font({ size: 10 }), foregroundStyle('#6E6E73'), lineLimit(1)]}
-            />
-          ) : null}
-        </HStack>
-
-        <HStack spacing={14} alignment="top">
-          {cell('Open orders', num(props.openOrders), 'wrench.and.screwdriver.fill', '#0A84FF')}
-          {cell('To place', num(props.awaitingPlacement), 'shippingbox.fill', '#FF9F0A')}
-          {cell('Engines', num(props.engines), 'engine.combustion.fill', '#30D158')}
-        </HStack>
-
+        ) : null}
+        {stats}
+        {isLarge ? (
+          <Text
+            modifiers={[
+              font({ size: 12, weight: 'medium' }),
+              foregroundStyle('#8E8E93'),
+              lineLimit(1),
+            ]}
+          >
+            {urgent ? eyebrow : enginesLabel}
+          </Text>
+        ) : null}
         <Spacer />
       </VStack>
     );
   }
 
-  // ------------------------------------------------------------ systemSmall
   return (
     <VStack
       alignment="leading"
@@ -208,7 +250,7 @@ const TodayWidgetLayout = (props: AutoCoreTodayWidgetProps, environment: WidgetE
             lineLimit(1),
           ]}
         >
-          {urgent ? 'Needs you' : 'Today'}
+          {eyebrow}
         </Text>
         <Spacer />
       </HStack>
@@ -247,7 +289,7 @@ const TodayWidgetLayout = (props: AutoCoreTodayWidgetProps, environment: WidgetE
           minimumScaleFactor(0.8),
         ]}
       >
-        {detail.length > 0 ? detail : `${num(props.engines)} engines in stock`}
+        {detail.length > 0 ? detail : `${num(props.engines)} ${enginesLabel}`}
       </Text>
     </VStack>
   );

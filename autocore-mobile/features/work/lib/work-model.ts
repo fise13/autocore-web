@@ -53,6 +53,12 @@ export type WorkPartsCounts = { total: number; lowStock: number };
 export type WorkReceivingCounts = { awaitingPlacement: number; total: number };
 export type WorkLocationsCounts = { locations: number; bins: number };
 export type WorkOrdersCounts = { open: number; attention: number; total: number };
+export type WorkEarningsCounts = {
+  pendingCount: number;
+  claimable: number;
+  myOpen: number;
+  payoutTotal: number;
+};
 
 /**
  * Live counts per Work node. `null` means "not known yet" — never "zero".
@@ -66,6 +72,7 @@ export type WorkCounts = {
   receiving: WorkReceivingCounts | null;
   locations: WorkLocationsCounts | null;
   orders: WorkOrdersCounts | null;
+  earnings: WorkEarningsCounts | null;
 };
 
 export const EMPTY_WORK_COUNTS: WorkCounts = {
@@ -75,6 +82,7 @@ export const EMPTY_WORK_COUNTS: WorkCounts = {
   receiving: null,
   locations: null,
   orders: null,
+  earnings: null,
 };
 
 export type WorkRow = {
@@ -85,6 +93,8 @@ export type WorkRow = {
   href: string;
   /** Items on this row that need a person today. Feeds the Today block. */
   attention: number;
+  /** Override the Today breakdown label when the generic count is too coarse. */
+  todayLabel?: string;
 };
 
 export type WorkSection = {
@@ -126,7 +136,7 @@ function plural(count: number, one: string, many: string): string {
   return count === 1 ? one : many;
 }
 
-type ResolvedDetail = Pick<WorkRow, 'detail' | 'detailKind' | 'attention'>;
+type ResolvedDetail = Pick<WorkRow, 'detail' | 'detailKind' | 'attention' | 'todayLabel'>;
 
 function fallback(node: WorkNode): ResolvedDetail {
   return { detail: node.subtitle ?? '', detailKind: 'fallback', attention: 0 };
@@ -247,6 +257,55 @@ function resolveOrders(node: WorkNode, counts: WorkOrdersCounts | null): Resolve
   return { detail: open, detailKind: 'live', attention: 0 };
 }
 
+function earningsTodayLabel(counts: WorkEarningsCounts): string | undefined {
+  if (counts.pendingCount <= 0 && counts.claimable <= 0) return undefined;
+  const parts: string[] = [];
+  if (counts.pendingCount > 0) {
+    parts.push(
+      `${groupThousands(counts.pendingCount)} ${plural(
+        counts.pendingCount,
+        'payout waiting',
+        'payouts waiting',
+      )}`,
+    );
+  }
+  if (counts.claimable > 0) {
+    parts.push(`${groupThousands(counts.claimable)} to claim`);
+  }
+  return parts.join(' · ');
+}
+
+function resolveEarnings(node: WorkNode, counts: WorkEarningsCounts | null): ResolvedDetail {
+  if (!counts) return fallback(node);
+  const attention = counts.pendingCount + counts.claimable;
+  const todayLabel = earningsTodayLabel(counts);
+  if (counts.pendingCount > 0) {
+    const pay = `${groupThousands(counts.pendingCount)} waiting to be paid`;
+    const extra =
+      counts.claimable > 0 ? ` · ${groupThousands(counts.claimable)} to claim` : '';
+    return { detail: pay + extra, detailKind: 'live', attention, todayLabel };
+  }
+  if (counts.claimable > 0) {
+    return {
+      detail: `${groupThousands(counts.claimable)} ${plural(counts.claimable, 'job', 'jobs')} to claim`,
+      detailKind: 'live',
+      attention,
+      todayLabel,
+    };
+  }
+  if (counts.myOpen > 0) {
+    return {
+      detail: `${groupThousands(counts.myOpen)} open on your board`,
+      detailKind: 'live',
+      attention: 0,
+    };
+  }
+  if (counts.payoutTotal === 0) {
+    return { detail: 'Complete a job to earn', detailKind: 'onboarding', attention: 0 };
+  }
+  return { detail: 'Caught up', detailKind: 'clear', attention: 0 };
+}
+
 export function resolveWorkRowDetail(node: WorkNode, counts: WorkCounts): ResolvedDetail {
   switch (node.id) {
     case 'intake':
@@ -261,6 +320,8 @@ export function resolveWorkRowDetail(node: WorkNode, counts: WorkCounts): Resolv
       return resolveLocations(node, counts.locations);
     case 'orders':
       return resolveOrders(node, counts.orders);
+    case 'earnings':
+      return resolveEarnings(node, counts.earnings);
     default:
       return fallback(node);
   }
@@ -272,6 +333,7 @@ const TODAY_LABELS: Record<string, (count: number) => string> = {
   intake: (n) => `${groupThousands(n)} engine ${plural(n, 'intake', 'intakes')}`,
   receiving: (n) => `${groupThousands(n)} to place`,
   parts: (n) => `${groupThousands(n)} running low`,
+  earnings: (n) => `${groupThousands(n)} ${plural(n, 'payout', 'payouts')}`,
 };
 
 /** Breakdown stays short — Work is a catalog, not a second Home. */
@@ -282,12 +344,13 @@ export function buildWorkToday(sections: WorkSection[]): WorkToday {
 
   for (const section of sections) {
     for (const row of section.rows) {
-      const label = TODAY_LABELS[row.id];
-      if (!label || row.attention <= 0) continue;
+      if (row.attention <= 0) continue;
+      const label = row.todayLabel ?? TODAY_LABELS[row.id]?.(row.attention);
+      if (!label) continue;
       segments.push({
         id: row.id,
         count: row.attention,
-        label: label(row.attention),
+        label,
         href: row.href,
       });
     }
@@ -336,6 +399,7 @@ export function buildWorkModel(
         detail: resolved.detail,
         detailKind: resolved.detailKind,
         attention: resolved.attention,
+        todayLabel: resolved.todayLabel,
       };
     }),
   }));

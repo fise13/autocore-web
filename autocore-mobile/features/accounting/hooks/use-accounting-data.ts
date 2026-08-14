@@ -1,17 +1,16 @@
 import { useMemo } from 'react';
 
 import { useCompanyModuleEnabled } from '@/hooks/use-module-enabled';
+import { useOperationsRealtime } from '@/hooks/use-operations-realtime';
+import { usePayrollTransactionsRealtime } from '@/hooks/use-payroll-transactions-realtime';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import { useSession } from '@/hooks/use-session';
-import { useSessionQueryData } from '@/hooks/use-session-query-data';
-import { calculateCashBalance } from '@/lib/accounting/calculate-cash-balance';
+import { calculateCashBalance, type BalanceSnapshot } from '@/lib/accounting/calculate-cash-balance';
 import { computeAccountingSnapshot } from '@/lib/accounting/compute-accounting-snapshot';
-import { isRealtimeReady } from '@/lib/realtime/subscription-registry';
 import type { FinancialOperation } from '@/types/financial-operation';
 import type { PayrollTransaction } from '@/types/payroll-transaction';
 
 import type { AccountingSnapshot } from '../types';
-import type { BalanceSnapshot } from '@/lib/accounting/calculate-cash-balance';
 
 export type UseAccountingDataResult = {
   data: AccountingSnapshot;
@@ -29,9 +28,9 @@ export type UseAccountingDataResult = {
 };
 
 /**
- * Live accounting mirrored from SessionRealtimeHead keepAlive catalogs.
- * Never opens its own Firestore listeners (avoids racing the heavy delay and
- * focus flicker that previously blanked charts / showed "No workspace").
+ * Finance opens the operations listener itself (shared keepAlive registry).
+ * Mirroring SessionRealtimeHead cache alone never re-rendered when the first
+ * snapshot was empty or untrusted, so the tab stayed on skeleton forever.
  */
 export function useAccountingData(): UseAccountingDataResult {
   const { companyId, uid, can } = useSession();
@@ -39,31 +38,28 @@ export function useAccountingData(): UseAccountingDataResult {
   const accountingEnabled = useCompanyModuleEnabled('accounting');
   const canView = can('accounting_view') && accountingEnabled;
   const canEdit = can('accounting_edit');
-  const sessionReady = Boolean(companyId) && accountingEnabled;
+  const liveCompanyId = canView && companyId ? companyId : null;
 
-  const operations = useSessionQueryData<FinancialOperation[]>(
-    ['realtime', 'financial-operations', companyId],
-    sessionReady,
-    [],
-  );
-  const payroll = useSessionQueryData<PayrollTransaction[]>(
-    ['realtime', 'payroll-transactions', companyId, rbac.scopes.payroll, uid],
-    sessionReady,
-    [],
-  );
+  const {
+    operations,
+    isBootstrapping: opsBootstrapping,
+    errorMessage,
+    enabled,
+  } = useOperationsRealtime(liveCompanyId, { keepAlive: true });
 
-  const opsReady =
-    Boolean(companyId) &&
-    isRealtimeReady(['realtime', 'financial-operations', companyId]);
-  const isDemo = false;
-  const isBootstrapping = sessionReady && !opsReady && operations.length === 0;
-  const isEmpty = opsReady && operations.length === 0 && payroll.length === 0;
-  const errorMessage = null;
+  const { payroll } = usePayrollTransactionsRealtime(liveCompanyId, {
+    keepAlive: true,
+    scope: rbac.scopes.payroll,
+    employeeId: uid,
+  });
+
+  const isBootstrapping = Boolean(liveCompanyId) && opsBootstrapping;
+  const isEmpty = !opsBootstrapping && operations.length === 0 && payroll.length === 0;
 
   const balanceSnapshot = useMemo<BalanceSnapshot>(() => {
-    if (!companyId) return { cashbox: 0, kaspi: 0, total: 0 };
+    if (!liveCompanyId) return { cashbox: 0, kaspi: 0, total: 0 };
     return calculateCashBalance(operations);
-  }, [companyId, operations]);
+  }, [liveCompanyId, operations]);
 
   const data = useMemo(
     () => computeAccountingSnapshot({ operations, payroll }),
@@ -78,9 +74,9 @@ export function useAccountingData(): UseAccountingDataResult {
     balanceSnapshot,
     isBootstrapping,
     isEmpty,
-    isDemo,
+    isDemo: false,
     errorMessage,
-    enabled: sessionReady,
+    enabled,
     canView,
     canEdit,
   };

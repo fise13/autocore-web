@@ -70,7 +70,7 @@ export const McAttentionBanner = memo(function McAttentionBanner({ attention }: 
 
   const navigateItem = (item: OverviewAttentionItem) => {
     haptics.light();
-    const route = item.route ?? '/(tabs)/orders';
+    const route = item.route ?? '/orders';
     if (item.routeParams) {
       navigateTab({ pathname: route, params: item.routeParams });
       return;

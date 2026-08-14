@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { router } from 'expo-router';
 
 import {
@@ -190,6 +190,19 @@ export function NotificationsSettingsScreen() {
         >
           {error}
         </Text>
+      ) : null}
+
+      {Platform.OS === 'ios' ? (
+        <ListSection
+          title="Lock Screen"
+          footer="Widgets refresh when you leave the app. Live Activities appear on their own while intake photos upload."
+        >
+          <CollectionRow
+            title="Add Lock Screen widgets"
+            subtitle="Touch and hold the Lock Screen, tap Customise, then add Today at the shop, Work orders, Warehouse, Intake Bay, or Intake Sync."
+            showChevron={false}
+          />
+        </ListSection>
       ) : null}
     </ProfileScreenShell>
   );

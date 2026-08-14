@@ -62,7 +62,7 @@ export const TAB_ROUTE_ORDER: string[] = TAB_SPECS.map((spec) => spec.route);
  * Legacy / drill-in routes that still live under `(tabs)` but are hidden from
  * the dock. Reached from Work, Action, Search, or deep links.
  */
-export const HIDDEN_TAB_ROUTES = new Set(['orders', 'scan', 'ai']);
+export const HIDDEN_TAB_ROUTES = new Set(['scan', 'ai']);
 
 /**
  * App screens that live at the root instead of in the tab group — reached by
@@ -74,4 +74,12 @@ export const ROOT_APP_ROUTES = new Set([
   'import',
   'intake',
   'objects',
+  'orders',
+  'earnings',
+  'inbox',
 ]);
+
+export function isRootAppHref(href: string): boolean {
+  const first = href.replace(/^\//, '').split(/[/?]/)[0] ?? '';
+  return ROOT_APP_ROUTES.has(first);
+}

@@ -1,5 +1,6 @@
 import {
   AccessoryWidgetBackground,
+  Button,
   Gauge,
   HStack,
   Image,
@@ -9,7 +10,9 @@ import {
   ZStack,
 } from '@expo/ui/swift-ui';
 import {
+  buttonStyle,
   containerBackground,
+  controlSize,
   font,
   foregroundStyle,
   frame,
@@ -50,11 +53,24 @@ const SyncWidgetLayout = (props: AutoCoreSyncWidgetProps, environment: WidgetEnv
   const isRectangular = family === 'accessoryRectangular';
   const isInline = family === 'accessoryInline';
 
-  const status = typeof props.status === 'string' ? props.status : 'SYNCED';
   const title = typeof props.title === 'string' && props.title.length > 0 ? props.title : 'Synced';
   const detail = typeof props.detail === 'string' ? props.detail : '';
   const short = typeof props.short === 'string' && props.short.length > 0 ? props.short : '—';
   const caption = typeof props.caption === 'string' ? props.caption : 'photos';
+  const inlineText =
+    typeof props.inlineText === 'string' && props.inlineText.length > 0
+      ? props.inlineText
+      : title;
+  const footer =
+    typeof props.footer === 'string' && props.footer.length > 0 ? props.footer : detail;
+  const link =
+    typeof props.link === 'string' && props.link.length > 0
+      ? props.link
+      : 'autocoremobile://intake';
+  const openLabel =
+    typeof props.openLabel === 'string' && props.openLabel.length > 0
+      ? props.openLabel
+      : 'Open intake';
   const symbol =
     typeof props.symbol === 'string' && props.symbol.length > 0
       ? props.symbol
@@ -71,21 +87,10 @@ const SyncWidgetLayout = (props: AutoCoreSyncWidgetProps, environment: WidgetEnv
   const updatedAtMs =
     typeof props.updatedAtMs === 'number' && props.updatedAtMs > 0 ? props.updatedAtMs : 0;
 
-  const link = 'autocoremobile://intake';
-
-  // ------------------------------------------------------- accessoryInline
-  // One line, system font, no layout of its own. Anything richer is dropped.
   if (isInline) {
-    const inlineText =
-      blocked > 0
-        ? `${blocked} photos blocked`
-        : pending > 0
-          ? `Syncing ${short}`
-          : 'Intake synced';
     return <Text modifiers={[widgetURL(link)]}>{inlineText}</Text>;
   }
 
-  // ----------------------------------------------------- accessoryCircular
   if (isCircular) {
     if (determinate) {
       return (
@@ -122,7 +127,6 @@ const SyncWidgetLayout = (props: AutoCoreSyncWidgetProps, environment: WidgetEnv
     );
   }
 
-  // -------------------------------------------------- accessoryRectangular
   if (isRectangular) {
     return (
       <VStack alignment="leading" spacing={2} modifiers={[widgetURL(link)]}>
@@ -146,15 +150,13 @@ const SyncWidgetLayout = (props: AutoCoreSyncWidgetProps, environment: WidgetEnv
           <Gauge value={progress} min={0} max={1} modifiers={[gaugeStyle('linearCapacity')]} />
         ) : (
           <Text modifiers={[font({ size: 12 }), lineLimit(1), minimumScaleFactor(0.8)]}>
-            {detail.length > 0 ? detail : 'Nothing waiting.'}
+            {footer}
           </Text>
         )}
       </VStack>
     );
   }
 
-  // ------------------------------------------------------------ systemSmall
-  // Glyph + quiet fraction + one title line + optional bar. No ALL CAPS.
   return (
     <VStack
       alignment="leading"
@@ -214,9 +216,16 @@ const SyncWidgetLayout = (props: AutoCoreSyncWidgetProps, environment: WidgetEnv
         />
       ) : (
         <Text modifiers={[font({ size: 11 }), foregroundStyle('#8E8E93'), lineLimit(1)]}>
-          {status === 'SYNCED' ? 'Everything is backed up' : detail}
+          {footer}
         </Text>
       )}
+
+      <Button
+        label={openLabel}
+        systemImage="camera.fill"
+        target="openIntake"
+        modifiers={[buttonStyle('bordered'), controlSize('mini'), padding({ top: 6 })]}
+      />
 
       {updatedAtMs > 0 ? (
         <Text

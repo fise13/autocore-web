@@ -80,6 +80,59 @@ const plugins: ExpoConfig['plugins'] = [
       enablePushNotifications: false,
       widgets: [
         {
+          name: 'AutoCoreToday',
+          displayName: 'Today at the shop',
+          description: 'What needs a person on the floor — orders, stock, pay, intake.',
+          supportedFamilies: [
+            'accessoryCircular',
+            'accessoryRectangular',
+            'accessoryInline',
+            'systemSmall',
+            'systemMedium',
+            'systemLarge',
+          ],
+          contentMarginsDisabled: false,
+        },
+        {
+          name: 'AutoCoreWork',
+          displayName: 'Work orders',
+          description: 'Open work orders and orders waiting on parts.',
+          supportedFamilies: [
+            'accessoryCircular',
+            'accessoryRectangular',
+            'accessoryInline',
+            'systemSmall',
+            'systemMedium',
+          ],
+          contentMarginsDisabled: false,
+        },
+        {
+          name: 'AutoCoreWarehouse',
+          displayName: 'Warehouse',
+          description: 'Stock to place, parts running low, engines on hand.',
+          supportedFamilies: [
+            'accessoryCircular',
+            'accessoryRectangular',
+            'accessoryInline',
+            'systemSmall',
+            'systemMedium',
+          ],
+          contentMarginsDisabled: false,
+        },
+        {
+          name: 'AutoCoreIntake',
+          displayName: 'Intake Bay',
+          description: 'Engines ready for review and engines still documenting.',
+          supportedFamilies: [
+            'accessoryCircular',
+            'accessoryRectangular',
+            'accessoryInline',
+            'systemSmall',
+            'systemMedium',
+          ],
+          contentMarginsDisabled: false,
+        },
+        {
           // `name` must match `createWidget('AutoCoreSync', …)` exactly.
           name: 'AutoCoreSync',
           displayName: 'Intake Sync',
@@ -89,19 +142,6 @@ const plugins: ExpoConfig['plugins'] = [
             'accessoryRectangular',
             'accessoryInline',
             'systemSmall',
-          ],
-          contentMarginsDisabled: false,
-        },
-        {
-          name: 'AutoCoreToday',
-          displayName: 'Today at the shop',
-          description: 'Open work orders, stock waiting to be placed, engines on hand.',
-          supportedFamilies: [
-            'accessoryCircular',
-            'accessoryRectangular',
-            'accessoryInline',
-            'systemSmall',
-            'systemMedium',
           ],
           contentMarginsDisabled: false,
         },
@@ -125,6 +165,7 @@ plugins.push(
   withDisableSwiftUICoreAutolink,
   require('./plugins/with-ios-push-entitlements'),
   require('./plugins/with-ios-universal-links'),
+  require('./plugins/with-ios-widget-extension-sources'),
 );
 
 export default (): ExpoConfig => ({

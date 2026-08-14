@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import type { View as RNView } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, type Href } from 'expo-router';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
 import { ClipboardListIcon, FilterIcon } from '@/assets/icons';
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui';
 import { useSession, useWorkOrdersRealtime, useModuleEnabled, useTheme } from '@/hooks';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
+import { goBackOrReplace } from '@/lib/navigation/stack-back';
 import {
   filterMobileOrders,
   computeMobileOrdersMeta,
@@ -272,7 +273,8 @@ function OrdersScreenBody() {
         filterLifted={filterLifted}
         onExitEdit={exitEditing}
         onOpenFilter={openFilterMenu}
-        onCreate={() => router.push('/(tabs)/orders/new')}
+        onBack={() => goBackOrReplace(router, '/(tabs)' as Href)}
+        onCreate={() => router.push('/orders/new')}
       />
 
       {errorMessage ? (
@@ -303,7 +305,7 @@ function OrdersScreenBody() {
           isEmpty={isListEmpty}
           onCreateEmpty={
             canCreate && orders.length === 0
-              ? () => router.push('/(tabs)/orders/new')
+              ? () => router.push('/orders/new')
               : undefined
           }
         />

@@ -70,6 +70,7 @@ export function EngineIntakeSessionScreen() {
   const [torch, setTorch] = useState(false);
   const capturing = useRef(false);
   const [capturingUi, setCapturingUi] = useState(false);
+  const inFlightRef = useRef(0);
   const takePhotoRef = useRef<() => void>(() => undefined);
   const [completedLocal, setCompletedLocal] = useState(false);
   const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
@@ -79,7 +80,6 @@ export function EngineIntakeSessionScreen() {
   /** Photos added this visit (shutter / gallery) — authoritative UI count delta. */
   const [shotsAdded, setShotsAdded] = useState(0);
   const finishOnceRef = useRef(false);
-  const photoCountRef = useRef(0);
   const completionLockedRef = useRef(false);
   const finishCaptureRef = useRef<(reason?: string) => Promise<void>>(async () => undefined);
   const { jobs, loading: jobsLoading } = useEngineIntakeJobs(companyId);
@@ -150,7 +150,6 @@ export function EngineIntakeSessionScreen() {
   }, [companyId, jobId, outbox.photos, serverProgress.capturedCount]);
 
   const photoCount = (serverBaselineRef.current ?? 0) + shotsAdded;
-  photoCountRef.current = photoCount;
   const unsyncedCount = pendingLocalPhotos.length + failedPhotos.length;
   const syncError =
     failedPhotos.map((photo) => photo.lastError).find(Boolean) ??
@@ -176,12 +175,11 @@ export function EngineIntakeSessionScreen() {
           ? 'Photos stay on this phone until they sync'
           : null;
   const jobOutboxCount = unsyncedCount;
-  const isServerComplete =
-    job?.state === 'awaiting_verification' ||
+  const isTerminal =
     job?.state === 'verified' ||
     job?.state === 'quarantine' ||
     job?.state === 'rejected';
-  completionLockedRef.current = completionPending || isServerComplete;
+  completionLockedRef.current = completionPending || isTerminal;
   const serial =
     job?.expectedIdentity.serialCode ||
     job?.expectedIdentity.engineCode ||
@@ -189,7 +187,7 @@ export function EngineIntakeSessionScreen() {
 
   useVolumeShutter(() => {
     takePhotoRef.current();
-  }, appState === 'active' && !completionPending && !isServerComplete);
+  }, appState === 'active' && !completionPending && !isTerminal);
 
   useEffect(() => {
     let previous = AppState.currentState;
@@ -207,11 +205,6 @@ export function EngineIntakeSessionScreen() {
       }
       previous = next;
       if (completionLockedRef.current || finishOnceRef.current) return;
-      if (photoCountRef.current >= 1) {
-        finishOnceRef.current = true;
-        void finishCaptureRef.current();
-        return;
-      }
       void sendOrQueueIntakeCommand(
         companyId,
         makeWorkerCommand({
@@ -229,7 +222,7 @@ export function EngineIntakeSessionScreen() {
       !jobId ||
       !sessionId ||
       completionPending ||
-      isServerComplete ||
+      isTerminal ||
       appState !== 'active' ||
       sessionState !== 'paused'
     ) {
@@ -247,7 +240,7 @@ export function EngineIntakeSessionScreen() {
     appState,
     companyId,
     completionPending,
-    isServerComplete,
+    isTerminal,
     jobId,
     sessionId,
   ]);
@@ -258,7 +251,7 @@ export function EngineIntakeSessionScreen() {
       !jobId ||
       !sessionId ||
       completionPending ||
-      isServerComplete ||
+      isTerminal ||
       appState !== 'active' ||
       sessionState !== 'active'
     ) {
@@ -281,13 +274,15 @@ export function EngineIntakeSessionScreen() {
     appState,
     companyId,
     completionPending,
-    isServerComplete,
+    isTerminal,
     jobId,
     sessionId,
   ]);
 
   useEffect(() => {
     if (!job) return;
+    // Finish clears the claim on purpose — do not treat that as a lost session.
+    if (completionPending) return;
     const pendingLocalClaim = outbox.commands.some(
       (item) =>
         item.companyId === companyId &&
@@ -315,7 +310,7 @@ export function EngineIntakeSessionScreen() {
       variant: 'warning',
     });
     openEngineIntakeBay(router);
-  }, [activeSession, companyId, job, jobId, outbox.commands, router, sessionId, uid]);
+  }, [activeSession, companyId, completionPending, job, jobId, outbox.commands, router, sessionId, uid]);
 
   useEffect(() => {
     if (!jobId || !overlay.cancelledJobIds.includes(jobId)) return;
@@ -376,7 +371,10 @@ export function EngineIntakeSessionScreen() {
     }
   }
 
-  const ingestPhotoUris = (uris: string[]) => {
+  const ingestPhotoUris = (
+    uris: string[],
+    options?: { incrementCount?: boolean; feedback?: boolean },
+  ) => {
     let saved = 0;
     for (const uri of uris) {
       try {
@@ -397,35 +395,54 @@ export function EngineIntakeSessionScreen() {
     if (saved === 0) {
       throw new Error('Selected photos could not be saved');
     }
-    setShotsAdded((count) => count + saved);
-    haptics.success();
-    flashOpacity.setValue(0.55);
-    Animated.timing(flashOpacity, {
-      toValue: 0,
-      duration: 160,
-      useNativeDriver: true,
-    }).start();
-    void drainIntakeOutbox(companyId);
+    if (options?.incrementCount !== false) {
+      setShotsAdded((count) => count + saved);
+    }
+    if (options?.feedback !== false) {
+      haptics.success();
+      flashOpacity.setValue(0.55);
+      Animated.timing(flashOpacity, {
+        toValue: 0,
+        duration: 160,
+        useNativeDriver: true,
+      }).start();
+    }
+    requestAnimationFrame(() => {
+      void drainIntakeOutbox(companyId);
+    });
     return saved;
   };
 
-  const takePhoto = async () => {
-    if (capturing.current) return;
-    capturing.current = true;
-    setCapturingUi(true);
-    try {
-      const captured = await cameraRef.current?.takePicture();
-      // Unlock shutter immediately — file copy / upload must not block the next shot.
-      capturing.current = false;
-      setCapturingUi(false);
+  const takePhoto = () => {
+    if (inFlightRef.current >= 4) return;
+    const camera = cameraRef.current;
+    if (!camera) return;
+
+    inFlightRef.current += 1;
+    setShotsAdded((count) => count + 1);
+    haptics.medium();
+    flashOpacity.setValue(0.55);
+    Animated.timing(flashOpacity, {
+      toValue: 0,
+      duration: 120,
+      useNativeDriver: true,
+    }).start();
+
+    let settled = false;
+    const onSaved = (captured: { uri?: string } | null) => {
+      if (settled) return;
+      settled = true;
+      inFlightRef.current = Math.max(0, inFlightRef.current - 1);
       if (!captured?.uri) {
+        setShotsAdded((count) => Math.max(0, count - 1));
         haptics.error();
         toast({ title: 'Camera did not capture a photo', variant: 'warning' });
         return;
       }
       try {
-        ingestPhotoUris([captured.uri]);
+        ingestPhotoUris([captured.uri], { incrementCount: false, feedback: false });
       } catch (error) {
+        setShotsAdded((count) => Math.max(0, count - 1));
         haptics.error();
         toast({
           title: 'Photo could not be saved',
@@ -433,16 +450,9 @@ export function EngineIntakeSessionScreen() {
           variant: 'destructive',
         });
       }
-    } catch (error) {
-      capturing.current = false;
-      setCapturingUi(false);
-      haptics.error();
-      toast({
-        title: 'Photo could not be saved',
-        description: error instanceof Error ? error.message : undefined,
-        variant: 'destructive',
-      });
-    }
+    };
+
+    void camera.capturePhoto(onSaved);
   };
 
   takePhotoRef.current = () => {
@@ -530,6 +540,7 @@ export function EngineIntakeSessionScreen() {
 
   const finishCapture = async (overrideReason?: string) => {
     if (photoCount < 1) return;
+    finishOnceRef.current = true;
     // Prefer the live bay claim — reclaim can rewrite outbox sessionIds while
     // the camera route still carries the original param. Always enqueue so
     // drain can reclaim + retry; sendOrQueue treated 409 as terminal and
@@ -564,6 +575,7 @@ export function EngineIntakeSessionScreen() {
       haptics.success();
       void drainIntakeOutbox(companyId);
     } catch (error) {
+      finishOnceRef.current = false;
       haptics.error();
       toast({
         title: 'Could not finish',
@@ -577,13 +589,11 @@ export function EngineIntakeSessionScreen() {
   finishCaptureRef.current = finishCapture;
 
   const pauseAndLeave = async () => {
-    if (photoCount >= 1 && !completionPending && !isServerComplete) {
-      finishOnceRef.current = true;
-      await finishCapture();
-      openEngineIntakeBay(router);
+    if (completionPending) {
+      openEngineIntakeBay(router, { filter: 'ready' });
       return;
     }
-    if (!completionPending && !isServerComplete) {
+    if (!isTerminal) {
       await sendOrQueueIntakeCommand(
         companyId,
         makeWorkerCommand({
@@ -618,14 +628,17 @@ export function EngineIntakeSessionScreen() {
     void finishCapture();
   };
 
-  if (completionPending || isServerComplete) {
+  if (completionPending || isTerminal) {
     return (
       <IntakeSessionDone
-        synced={isServerComplete}
+        synced={
+          jobOutboxCount === 0 &&
+          (job.state === 'awaiting_verification' || isTerminal)
+        }
         pendingCount={jobOutboxCount}
         topInset={insets.top}
         bottomInset={insets.bottom}
-        onBack={() => openEngineIntakeBay(router)}
+        onBack={() => openEngineIntakeBay(router, { filter: 'ready' })}
       />
     );
   }
@@ -665,7 +678,7 @@ export function EngineIntakeSessionScreen() {
         onBack={() => void pauseAndLeave()}
         onToggleTorch={() => setTorch((value) => !value)}
         onSerialLongPress={
-          !completionPending && !isServerComplete && can('engine_intake_execute')
+          !completionPending && !isTerminal && can('engine_intake_execute')
             ? requestCancelEngine
             : undefined
         }

@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { Pressable, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -42,15 +41,14 @@ export function IntakeCaptureDock({
   const reducedMotion = useReducedMotion();
   const shutterScale = useSharedValue(1);
 
-  useEffect(() => {
-    if (capturing) {
-      shutterScale.value = reducedMotion
-        ? 0.94
-        : withTiming(0.92, { duration: 90 });
-      return;
-    }
+  const pressIn = () => {
+    shutterScale.value = reducedMotion
+      ? 0.94
+      : withTiming(0.92, { duration: 70 });
+  };
+  const pressOut = () => {
     shutterScale.value = reducedMotion ? 1 : withSpring(1, spring.press);
-  }, [capturing, reducedMotion, shutterScale]);
+  };
 
   const shutterStyle = useAnimatedStyle(() => ({
     transform: [{ scale: shutterScale.value }],
@@ -154,7 +152,8 @@ export function IntakeCaptureDock({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Capture photo"
-          disabled={capturing}
+          onPressIn={pressIn}
+          onPressOut={pressOut}
           onPress={onShutter}
         >
           <Animated.View
@@ -167,7 +166,6 @@ export function IntakeCaptureDock({
                 borderColor: chrome.foreground,
                 alignItems: 'center',
                 justifyContent: 'center',
-                opacity: capturing ? 0.7 : 1,
               },
               shutterStyle,
             ]}
