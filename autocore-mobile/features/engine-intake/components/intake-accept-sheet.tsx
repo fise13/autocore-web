@@ -431,8 +431,8 @@ export const IntakeAcceptSheet = forwardRef<IntakeAcceptSheetRef, IntakeAcceptSh
               ) : (
                 <Text variant="caption" style={{ color: colors.mutedForeground }}>
                   {photoCount > 0
-                    ? `${photoCount} photo${photoCount === 1 ? '' : 's'} still syncing`
-                    : 'No photos yet — add photos before releasing.'}
+                    ? `${photoCount} photo${photoCount === 1 ? '' : 's'}`
+                    : 'No photos yet — add photos before confirming.'}
                 </Text>
               )}
 
@@ -557,7 +557,7 @@ export const IntakeAcceptSheet = forwardRef<IntakeAcceptSheetRef, IntakeAcceptSh
               disabled={!canSubmit}
               onPress={() => void submit()}
             >
-              Release to Motors Grid
+              Confirm
             </Button>
           </Animated.View>
         </KeyboardStickyView>

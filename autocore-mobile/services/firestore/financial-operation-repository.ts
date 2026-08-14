@@ -106,8 +106,25 @@ export function createFinancialOperationRepository() {
       return listenQuery(
         operationsQuery,
         (snapshot) => {
+          /**
+           * `createdAt` is written as `serverTimestamp()`, and the local
+           * latency-compensated snapshot arrives before the server resolves it.
+           * Read with the default options that field comes back `null`, which
+           * `mapOperation` rejects as a malformed record — so a just-created
+           * operation stayed invisible until the round trip completed, and
+           * never appeared at all while the write was still queued.
+           *
+           * `estimate` fills the unresolved stamp with the local write time, so
+           * the row shows immediately and is replaced by the authoritative
+           * value when the server acknowledges.
+           */
           let mapped = snapshot.docs
-            .map((item) => mapOperation(item.id, item.data() as Record<string, unknown>))
+            .map((item) =>
+              mapOperation(
+                item.id,
+                item.data({ serverTimestamps: 'estimate' }) as Record<string, unknown>,
+              ),
+            )
             .filter((item): item is FinancialOperation => item != null);
 
           if (filters.type && filters.type !== 'all') {

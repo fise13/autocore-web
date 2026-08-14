@@ -557,9 +557,19 @@
   "555": "react-native",
   "556": "route.ts",
   "557": "tauri-plugin-siwa-api",
+  "558": "resend",
   "559": "react-native-gesture-handler",
   "560": "react-native-reanimated",
   "561": "@tanstack/react-query",
   "562": "zustand",
-  "564": "class-variance-authority"
+  "563": "shadcn",
+  "564": "class-variance-authority",
+  "565": "sharp",
+  "566": "@sparticuz/chromium",
+  "567": "tailwind-merge",
+  "568": "@tauri-apps/plugin-shell",
+  "569": "use-stick-to-bottom",
+  "570": "@vercel/analytics",
+  "571": "zod",
+  "572": "@assets/*"
 }

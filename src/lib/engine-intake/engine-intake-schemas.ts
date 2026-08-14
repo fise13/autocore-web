@@ -4,6 +4,7 @@ import {
   ENGINE_INTAKE_PRIORITIES,
   ENGINE_INTAKE_SOURCES,
   INTAKE_PHOTO_CATEGORIES,
+  MOTOR_QUALITY_GRADES,
   type EngineIntakeCommand,
   type FinalizeIntakePhotoRequest,
   type PrepareIntakePhotoRequest,
@@ -263,6 +264,7 @@ const engineIntakeCommandSchema = z.discriminatedUnion("type", [
           note: note.optional(),
           identity: identity.optional(),
           aiOverrideReason: note.optional(),
+          quality: z.enum(MOTOR_QUALITY_GRADES),
         })
         .strict(),
     })

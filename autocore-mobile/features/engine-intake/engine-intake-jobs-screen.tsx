@@ -202,8 +202,9 @@ export function EngineIntakeJobsScreen() {
   const reviewPhotoUrls = useMemo(
     () =>
       reviewPhotos
-        .filter((photo) => !photo.deletedAt && Boolean(photo.url))
-        .map((photo) => photo.url as string),
+        .filter((photo) => !photo.deletedAt)
+        .map((photo) => photo.url || photo.localUri)
+        .filter((uri): uri is string => Boolean(uri)),
     [reviewPhotos],
   );
 
@@ -782,7 +783,7 @@ export function EngineIntakeJobsScreen() {
           keyExtractor={(item) => item.id}
           ListHeaderComponent={listHeader}
           ListFooterComponent={
-            can('engine_intake_execute') && visibleJobs.length > 0 ? (
+            can('engine_intake_execute') && visibleJobs.length > 0 && filter !== 'ready' ? (
               <View style={{ paddingHorizontal: spacing[4], paddingTop: spacing[2] }}>
                 <Button size="xl" loading={starting} onPress={openCreateSheet}>
                   New engine

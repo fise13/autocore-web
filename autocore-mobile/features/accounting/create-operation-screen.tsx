@@ -1,6 +1,6 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 
 import { Button, KeyboardFormShell, Text, toast } from '@/components/ui';
 import { useAppDisplayCurrency, useSession, useTheme } from '@/hooks';
@@ -33,61 +33,31 @@ import { CoCategoryField } from './components/co-category-field';
 import { CoCommentField } from './components/co-comment-field';
 import { CoMixedSplit } from './components/co-mixed-split';
 import { CoCard, CoSection } from './components/co-section';
+import { CoSheetHeader, type CoSubmitPhase } from './components/co-sheet-header';
 import { CoToggleRow } from './components/co-toggle-row';
 import { CoTypeSelector } from './components/co-type-selector';
 import type { NewOperationPreset } from './navigation';
 
-/** Nav-bar text control — primary tint, 44pt hit, no ghost chrome. */
-function SheetNavButton({
-  label,
-  onPress,
-  disabled,
-  loading,
-  emphasis = false,
-}: {
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-  loading?: boolean;
-  emphasis?: boolean;
-}) {
-  const { colors } = useTheme();
-  const muted = Boolean(disabled) || Boolean(loading);
+/**
+ * How long the confirmed pill stays on screen before the sheet closes — long
+ * enough for the tick to land and be read, short enough not to add to a wait
+ * the user has already sat through.
+ */
+const SUCCESS_HOLD_MS = 420;
 
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled: muted, busy: Boolean(loading) }}
-      disabled={muted}
-      hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
-      onPress={onPress}
-      style={{
-        minHeight: tokens.control.hitTarget,
-        minWidth: tokens.control.hitTarget,
-        paddingHorizontal: tokens.space.inline,
-        alignItems: 'center',
-        justifyContent: 'center',
-        opacity: muted ? tokens.opacity.disabled : 1,
-      }}
-    >
-      {loading ? (
-        <ActivityIndicator size="small" color={colors.primary} />
-      ) : (
-        <Text
-          variant="body"
-          style={{
-            fontSize: 17,
-            lineHeight: 22,
-            fontWeight: emphasis ? '600' : '400',
-            color: colors.primary,
-          }}
-        >
-          {label}
-        </Text>
-      )}
-    </Pressable>
-  );
+/**
+ * How long the sheet waits for the server to acknowledge the write.
+ *
+ * `FirestoreNetworkHead` pauses Firestore's network on a committed offline
+ * reading so writes queue in memory rather than failing. A queued write's
+ * promise then never settles, which left the spinner running forever with no
+ * way out. Past this window the entry is already in the ledger locally, so the
+ * sheet closes and says plainly that it has not synced yet.
+ */
+const SERVER_ACK_TIMEOUT_MS = 6000;
+
+function waitFor(ms: number): Promise<'queued'> {
+  return new Promise((resolve) => setTimeout(() => resolve('queued'), ms));
 }
 
 function parseAmountInput(value: string): number {
@@ -120,7 +90,7 @@ const BUILTIN_CATEGORY_SUGGESTIONS = ACCOUNTING_CATEGORY_SUGGESTIONS.map((item) 
  * Cancel / Create live in the system header — the sheet itself is the chrome.
  */
 export function CreateOperationScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const router = useRouter();
   const { profile, can } = useSession();
   const rawParams = useLocalSearchParams<Record<string, string>>();
@@ -151,8 +121,22 @@ export function CreateOperationScreen() {
   );
   const [comment, setComment] = useState(preset.comment ?? '');
   const [markAsAdvance, setMarkAsAdvance] = useState(preset.markAsAdvance ?? false);
-  const [submitting, setSubmitting] = useState(false);
+  const [phase, setPhase] = useState<CoSubmitPhase>('idle');
+  const [scrolled, setScrolled] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (dismissTimer.current) clearTimeout(dismissTimer.current);
+    },
+    [],
+  );
+
+  const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const next = event.nativeEvent.contentOffset.y > 6;
+    setScrolled((current) => (current === next ? current : next));
+  }, []);
 
   const canEdit = can('accounting_edit');
   const direction = operationDirection(type);
@@ -205,7 +189,7 @@ export function CreateOperationScreen() {
       return;
     }
 
-    setSubmitting(true);
+    setPhase('submitting');
     setError(null);
     haptics.light();
 
@@ -224,7 +208,7 @@ export function CreateOperationScreen() {
         mixedCashPortion,
       );
 
-      await createFinancialOperation(profile.companyId, profile.id, {
+      const pending = createFinancialOperation(profile.companyId, profile.id, {
         type,
         amount: baseAmount,
         account: payment.account,
@@ -234,14 +218,46 @@ export function CreateOperationScreen() {
         comment: normalized.comment || null,
       });
 
+      const outcome = await Promise.race([
+        pending.then(() => 'acked' as const),
+        waitFor(SERVER_ACK_TIMEOUT_MS),
+      ]);
+
+      if (outcome === 'queued') {
+        // The row is already in the ledger from the local write; only the
+        // server round trip is outstanding. Claiming "Added" here would
+        // overstate it, so the sheet closes on the truth instead.
+        void pending.catch((syncError: unknown) => {
+          toast({
+            title: 'Operation failed to sync',
+            description:
+              syncError instanceof Error ? syncError.message : 'It was not saved to the server.',
+            variant: 'destructive',
+          });
+        });
+        haptics.light();
+        toast({
+          title: 'Saved on this iPhone',
+          description: 'It will sync as soon as the connection is back.',
+          variant: 'warning',
+        });
+        router.back();
+        return;
+      }
+
       haptics.success();
-      toast({ title: 'Operation saved', variant: 'success' });
-      router.back();
+      // Confirm on the control the user just pressed, then hand off to the
+      // existing dismiss + toast. The button stays disabled throughout, so the
+      // hold cannot be used to submit twice.
+      setPhase('success');
+      dismissTimer.current = setTimeout(() => {
+        toast({ title: 'Operation saved', variant: 'success' });
+        router.back();
+      }, SUCCESS_HOLD_MS);
     } catch (nextError) {
       haptics.warning();
       setError(nextError instanceof Error ? nextError.message : 'Failed to create the operation');
-    } finally {
-      setSubmitting(false);
+      setPhase('idle');
     }
   }, [
     account,
@@ -259,50 +275,32 @@ export function CreateOperationScreen() {
     type,
   ]);
 
-  const canSubmit = canEdit && amountValid && mixedValid && !submitting;
-
-  const headerLeft = useCallback(
-    () => <SheetNavButton label="Cancel" onPress={dismiss} />,
-    [dismiss],
-  );
-
-  const headerRight = useCallback(
-    () => (
-      <SheetNavButton
-        label="Add"
-        emphasis
-        disabled={!canSubmit}
-        loading={submitting}
-        onPress={() => void onSubmit()}
-      />
-    ),
-    [canSubmit, onSubmit, submitting],
-  );
+  const canSubmit = canEdit && amountValid && mixedValid && phase === 'idle';
 
   if (!canEdit) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: colors.background,
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: tokens.space.section,
-        }}
-      >
-        <Stack.Screen
-          options={{
-            title: 'New Operation',
-            headerLeft,
-            headerRight: () => null,
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <CoSheetHeader title="New Operation" onCancel={dismiss} />
+        <View
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: tokens.space.section,
           }}
-        />
-        <Text variant="body" color="muted" style={{ textAlign: 'center' }}>
-          You don't have permission to create operations
-        </Text>
-        <Button variant="outline" native={false} onPress={dismiss} style={{ marginTop: tokens.space.stack }}>
-          Close
-        </Button>
+        >
+          <Text variant="body" color="muted" style={{ textAlign: 'center' }}>
+            You don't have permission to create operations
+          </Text>
+          <Button
+            variant="outline"
+            native={false}
+            onPress={dismiss}
+            style={{ marginTop: tokens.space.stack }}
+          >
+            Close
+          </Button>
+        </View>
       </View>
     );
   }
@@ -310,7 +308,19 @@ export function CreateOperationScreen() {
   return (
     <KeyboardFormShell
       backgroundColor={colors.background}
-      contentInsetAdjustmentBehavior="automatic"
+      contentInsetAdjustmentBehavior="never"
+      onScroll={onScroll}
+      scrollEventThrottle={16}
+      header={
+        <CoSheetHeader
+          title="New Operation"
+          onCancel={dismiss}
+          onSubmit={() => void onSubmit()}
+          canSubmit={canSubmit}
+          phase={phase}
+          scrolled={scrolled}
+        />
+      }
       contentContainerStyle={{
         paddingHorizontal: tokens.space.screenX,
         paddingTop: tokens.space.stack,
@@ -318,18 +328,6 @@ export function CreateOperationScreen() {
         gap: tokens.space.stack + 2,
       }}
     >
-      <Stack.Screen
-        options={{
-          title: 'New Operation',
-          headerTintColor: colors.primary,
-          headerTitleStyle: { color: colors.foreground },
-          headerStyle: { backgroundColor: colors.background },
-          headerBlurEffect: isDark ? 'systemChromeMaterialDark' : 'systemChromeMaterialLight',
-          headerLeft,
-          headerRight,
-        }}
-      />
-
       <CoSection title="Type">
         <CoCard style={{ gap: tokens.space.stack }}>
           <CoTypeSelector
