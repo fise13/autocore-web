@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -58,6 +59,7 @@ export function CoSheetHeader({
 }: CoSheetHeaderProps) {
   const { colors } = useTheme();
   const reduced = useReducedMotion();
+  const insets = useSafeAreaInsets();
 
   const [rowWidth, setRowWidth] = useState(0);
   const [leftWidth, setLeftWidth] = useState(0);
@@ -181,7 +183,7 @@ export function CoSheetHeader({
     <View
       style={{
         // Clears the sheet's grabber, which UIKit draws in the first ~12pt.
-        paddingTop: tokens.space[4],
+        paddingTop: insets.top > 8 ? insets.top : tokens.space[4],
         paddingBottom: tokens.space[3],
         paddingHorizontal: tokens.space.screenX,
         backgroundColor: colors.background,

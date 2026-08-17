@@ -58,10 +58,22 @@ function isInternallyManaged(data: SubscriptionDoc | undefined): boolean {
   return data?.provider !== "stripe";
 }
 
-export async function refreshInternalSubscription(companyId: string): Promise<RefreshSubscriptionResult> {
+/**
+ * `uid` is required so the caller must prove membership before learning
+ * anything. The previous signature took only `companyId`, which let any
+ * signed-in user read back the plan and status of an arbitrary company by
+ * guessing its id — the one write path in this module that skipped the
+ * ownership check its siblings perform.
+ */
+export async function refreshInternalSubscription(
+  companyId: string,
+  uid: string,
+): Promise<RefreshSubscriptionResult> {
   if (companyId === DEMO_COMPANY_ID) {
     return { proActive: true, status: "trialing" };
   }
+
+  await verifyCompanyOwner(uid, companyId);
 
   const ref = getAdminFirestore()
     .collection("companies")

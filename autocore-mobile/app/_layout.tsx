@@ -10,12 +10,14 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import 'react-native-reanimated';
 
 import '@/lib/offline/background-sync-task';
+import '@/lib/firestore/ignore-sdk-assertions';
 
 import { AuthGate } from '@/authentication/auth-gate';
-import { AuthProvider } from '@/authentication/auth-provider';
+import { AuthProvider, StoreShotsAuthProvider } from '@/authentication/auth-provider';
 import { InAppBannerProvider } from '@/components/notifications';
 import { RootNavigator } from '@/components/navigation/root-navigator';
 import { ThemeProvider } from '@/hooks/use-theme';
+import { StoreShotsBootstrap } from '@/lib/store-shots/store-shots-bootstrap';
 import { ToastProvider } from '@/components/ui/toast';
 import { markStartup } from '@/lib/performance/startup-tracer';
 import { queryClient } from '@/lib/query-client';
@@ -59,13 +61,24 @@ function AppProviders({ children }: { children: React.ReactNode }) {
       }}
     >
       <ThemeProvider>
-        <AuthProvider>
-          <BottomSheetModalProvider>
-            <AuthGate>{children}</AuthGate>
-            <InAppBannerProvider />
-            <ToastProvider />
-          </BottomSheetModalProvider>
-        </AuthProvider>
+        {process.env.EXPO_PUBLIC_STORE_SHOTS === '1' ? (
+          <StoreShotsAuthProvider>
+            <StoreShotsBootstrap />
+            <BottomSheetModalProvider>
+              <RootNavigator />
+              <InAppBannerProvider />
+              <ToastProvider />
+            </BottomSheetModalProvider>
+          </StoreShotsAuthProvider>
+        ) : (
+          <AuthProvider>
+            <BottomSheetModalProvider>
+              <AuthGate>{children}</AuthGate>
+              <InAppBannerProvider />
+              <ToastProvider />
+            </BottomSheetModalProvider>
+          </AuthProvider>
+        )}
       </ThemeProvider>
     </PersistQueryClientProvider>
   );

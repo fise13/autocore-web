@@ -269,7 +269,7 @@ async function persistMigrationRowAdmin(params: {
   specificCategories: SpecificCategoryEntity[];
 }): Promise<{ created: boolean; updated: boolean; motorAdded: boolean }> {
   const { uid, companyId, row, warehouseId, skuCache, updateExisting } = params;
-  let { existingMotors, motorsBySerial } = params;
+  const { existingMotors, motorsBySerial } = params;
   const photoPath = row.photo?.path;
 
   if (row.target === "motor" || row.recordType === "engine") {

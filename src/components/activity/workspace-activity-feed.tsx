@@ -50,8 +50,8 @@ export function WorkspaceActivityFeed({ entries, limit, className }: WorkspaceAc
     <ul className={cn("flex flex-col divide-y divide-border/70", className)}>
       {items.map((entry) => {
         const resolved = resolveActivityLabel(entry.action);
-        const module = entry.module ?? resolved.module;
-        const Icon = moduleIcons[module] ?? SettingsIcon;
+        const entryModule = entry.module ?? resolved.module;
+        const Icon = moduleIcons[entryModule] ?? SettingsIcon;
         const when = entry.timestamp
           ? formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: enUS })
           : userCopy.activity.now;

@@ -10,4 +10,4 @@ declare module '*.css';
  * apply. Declaring the binding here is accurate rather than a suppression —
  * `global` genuinely exists in the RN runtime.
  */
-declare var global: typeof globalThis;
+declare let global: typeof globalThis;

@@ -44,7 +44,6 @@ const KEYBOARD_GAP = 10;
 const DISMISS_DISTANCE = 72;
 const DISMISS_VELOCITY = 700;
 const RUBBER_BAND = 0.22;
-const DISMISS_SLIDE = 420;
 const CLOSE_SETTLE_MS = 320;
 const PHOTO_TILE = 72;
 const SHEET_SPRING = {
@@ -123,7 +122,8 @@ export const IntakeAcceptSheet = forwardRef<IntakeAcceptSheetRef, IntakeAcceptSh
     const [quality, setQuality] = useState<MotorQualityGrade | null>(null);
     const [noteDraft, setNoteDraft] = useState('');
 
-    const drag = useSharedValue(DISMISS_SLIDE);
+    const hiddenY = Math.max(windowHeight, 1);
+    const drag = useSharedValue(hiddenY);
     const grabbing = useSharedValue(0);
     const backdrop = useSharedValue(0);
     const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -171,10 +171,10 @@ export const IntakeAcceptSheet = forwardRef<IntakeAcceptSheetRef, IntakeAcceptSh
       closingRef.current = true;
       Keyboard.dismiss();
       backdrop.value = withTiming(0, { duration: 140 });
-      drag.value = withTiming(DISMISS_SLIDE, { duration: 180 });
+      drag.value = withTiming(hiddenY, { duration: 180 });
       clearCloseTimer();
       closeTimerRef.current = setTimeout(finishClose, CLOSE_SETTLE_MS);
-    }, [backdrop, clearCloseTimer, drag, finishClose]);
+    }, [backdrop, clearCloseTimer, drag, finishClose, hiddenY]);
 
     const dismissApproved = useCallback(() => {
       approvedRef.current = true;
@@ -194,7 +194,7 @@ export const IntakeAcceptSheet = forwardRef<IntakeAcceptSheetRef, IntakeAcceptSh
           setEngineDraft(nextJob.expectedIdentity.engineCode ?? '');
           setQuality(null);
           setNoteDraft('');
-          drag.value = DISMISS_SLIDE;
+          drag.value = hiddenY;
           backdrop.value = 0;
           grabbing.value = 0;
           openRef.current = true;
@@ -206,7 +206,7 @@ export const IntakeAcceptSheet = forwardRef<IntakeAcceptSheetRef, IntakeAcceptSh
         },
         dismiss: dismissApproved,
       }),
-      [backdrop, clearCloseTimer, dismissApproved, drag, grabbing],
+      [backdrop, clearCloseTimer, dismissApproved, drag, grabbing, hiddenY],
     );
 
     useEffect(() => clearCloseTimer, [clearCloseTimer]);
@@ -322,7 +322,7 @@ export const IntakeAcceptSheet = forwardRef<IntakeAcceptSheetRef, IntakeAcceptSh
 
     return (
       <View
-        style={[StyleSheet.absoluteFill, styles.host]}
+        style={[StyleSheet.absoluteFill, styles.host, !open && styles.hidden]}
         pointerEvents={open ? 'box-none' : 'none'}
         accessibilityElementsHidden={!open}
         importantForAccessibility={open ? 'auto' : 'no-hide-descendants'}
@@ -570,6 +570,9 @@ const styles = StyleSheet.create({
   host: {
     zIndex: 110,
     elevation: 110,
+  },
+  hidden: {
+    opacity: 0,
   },
   sticky: {
     position: 'absolute',

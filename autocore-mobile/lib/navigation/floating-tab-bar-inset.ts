@@ -30,8 +30,11 @@ export const DOCK_BORDER = 'rgba(255, 255, 255, 0.12)';
 export const DOCK_BLUR_INTENSITY = 20;
 export const DOCK_INK = '#ffffff';
 export const DOCK_MUTED_ALPHA = 0.55;
+/** Plus orb — white on light, black on dark. */
 export const DOCK_ACTION_FILL = '#ffffff';
 export const DOCK_ACTION_INK = '#0a0a0a';
+export const DOCK_ACTION_FILL_DARK = '#111111';
+export const DOCK_ACTION_INK_DARK = '#ffffff';
 
 /** @deprecated Capsule selection removed. */
 export const DOCK_ACTIVE_CAPSULE_HEIGHT = 40;

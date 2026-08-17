@@ -1,5 +1,7 @@
-import { CreateOperationScreen } from '@/features/accounting/create-operation-screen';
+import { Redirect, useLocalSearchParams } from 'expo-router';
 
-export default function NewOperationRoute() {
-  return <CreateOperationScreen />;
+/** Legacy tab-stack path — compose lives at `/finance/new` so the dock is covered. */
+export default function LegacyNewOperationRoute() {
+  const params = useLocalSearchParams<Record<string, string>>();
+  return <Redirect href={{ pathname: '/finance/new', params }} />;
 }

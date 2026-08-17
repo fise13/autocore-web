@@ -44,6 +44,7 @@ import {
   setProductsLoading,
 } from './purchase-store';
 import { asPurchaseFailure, failure, isCancellation } from './purchase-errors';
+import { isPaywallBypassed, setPaywallBypassed } from './paywall-bypass';
 import type { PlanId, PurchaseFailure, RestoreOutcome } from './types';
 
 /** Company the manager is currently acting for. Set by the provider. */
@@ -258,7 +259,6 @@ export async function purchase(planId: PlanId): Promise<void> {
     }
     if (value.code === 'already_owned') {
       setFlow({ phase: 'already_purchased' });
-      void restore();
       return;
     }
     setFlow({ phase: 'failed', failure: value });
@@ -354,13 +354,6 @@ export async function drainPendingTransactions(): Promise<void> {
  * a silent no-op here is the most common subscription App Review rejection.
  */
 export async function restore(): Promise<RestoreOutcome> {
-  const companyId = activeCompanyId;
-  if (!companyId) {
-    const value = failure('unknown');
-    setFlow({ phase: 'failed', failure: value });
-    return { kind: 'failed', failure: value };
-  }
-
   if (isFlowBusy()) return { kind: 'empty' };
 
   if (isDevModeActive()) {
@@ -371,16 +364,21 @@ export async function restore(): Promise<RestoreOutcome> {
   setFlow({ phase: 'restoring' });
 
   try {
-    await store.sync();
-    const purchases = await store.listPurchases(true);
+    // Do not call `store.sync()` / `syncIOS()` here. That sheet backgrounds the
+    // app and Firestore 12.x hard-asserts (ca9 / b815) on the listen stream.
+    const purchases = await store.listPurchases(true).catch(() => []);
 
     if (purchases.length === 0) {
-      // Distinguish "never bought" from "bought, now expired".
-      const anyHistoric = await store.listPurchases(false);
-      if (anyHistoric.length > 0) {
-        setFlow({ phase: 'expired' });
-        return { kind: 'expired' };
+      if (isPaywallBypassed()) {
+        setFlow({ phase: 'restored', planId: 'pro_monthly' });
+        return { kind: 'restored', planId: 'pro_monthly' };
       }
+      setFlow({ phase: 'restore_empty' });
+      return { kind: 'empty' };
+    }
+
+    const companyId = activeCompanyId;
+    if (!companyId) {
       setFlow({ phase: 'restore_empty' });
       return { kind: 'empty' };
     }
@@ -416,7 +414,7 @@ export async function restore(): Promise<RestoreOutcome> {
       await store.finish(item).catch(() => undefined);
     }
 
-    await refreshLocalSubscriptions();
+    await refreshLocalSubscriptions().catch(() => undefined);
 
     const planId = (planForSku(purchases[0].productId)?.id ?? 'pro_monthly') as PlanId;
     setFlow({ phase: 'restored', planId });
@@ -516,6 +514,17 @@ export function getActiveCompanyId(): string | null {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * TEMPORARY — paywall CTA grants Pro locally, without StoreKit or the server.
+ * Remove with `paywall-bypass.ts` before charging customers.
+ */
+export async function grantComplimentaryAccess(planId: PlanId): Promise<void> {
+  setFlow({ phase: 'loading', planId });
+  await delay(400);
+  setPaywallBypassed(true);
+  setFlow({ phase: 'success', planId });
 }
 
 /**

@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getResend, getSupportFrom, isResendConfigured } from "@/lib/email/resend-client";
 import { getPlatformContacts } from "@/lib/platform/platform-contacts";
+import {
+  enforceRateLimit,
+  RateLimitError,
+  readClientIp,
+} from "@/lib/rate-limit/rate-limit.server";
 
 export const runtime = "nodejs";
 
@@ -16,6 +21,15 @@ function escapeHtml(value: string): string {
 
 export async function POST(request: NextRequest) {
   try {
+    // Unauthenticated, accepts a 15MB attachment, and sends mail on the
+    // platform's Resend quota — limited per IP before the body is even read.
+    await enforceRateLimit({
+      action: "migration-support",
+      subject: readClientIp(request),
+      limit: 3,
+      windowMs: 60 * 60_000,
+    });
+
     const form = await request.formData();
     const comment = String(form.get("comment") ?? "").trim();
     const contactEmail = String(form.get("email") ?? "").trim();
@@ -70,6 +84,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
+    if (error instanceof RateLimitError) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later.", retryAfterSec: error.retryAfterSec },
+        { status: 429, headers: { "Retry-After": String(error.retryAfterSec) } },
+      );
+    }
     console.error("[migration/support]", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Не удалось отправить запрос" },

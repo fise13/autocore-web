@@ -17,23 +17,67 @@ function ownerUidFromPath(path: string): string | undefined {
   return match?.[1];
 }
 
+function toMotorDocument(doc: {
+  id: string;
+  ref: { path: string };
+  data: () => unknown;
+}): MotorDocument | null {
+  const raw = doc.data() as Record<string, unknown>;
+  const motor = mapAdminMotor(doc.id, raw);
+  if (!motor) return null;
+  return { motor, raw, ownerUid: ownerUidFromPath(doc.ref.path) };
+}
+
+/**
+ * Resolve a single motor by id.
+ *
+ * Motors live at `users/{uid}/motors/{localId}`, so a motor cannot be addressed
+ * by path without already knowing which account created it. This used to be
+ * answered by reading every motor in the company and scanning the result in
+ * memory — meaning rendering one warranty PDF, or a warehouse worker scanning
+ * one engine, read the entire fleet.
+ *
+ * `users/{uid}/motors/{localId}` uses the local id as the document id, so an
+ * indexed `companyId + localId` lookup answers essentially every real call with
+ * a single-document read. The exhaustive scan is kept only as a fallback for
+ * records that predate that convention (legacy top-level `/motors`, or ids that
+ * are not numeric), so behaviour is unchanged where the fast path misses.
+ */
 export async function fetchMotorDocumentById(
   companyId: string,
   motorId: string,
 ): Promise<MotorDocument | null> {
   const db = getAdminFirestore();
   const normalizedCompanyId = normalizeCompanyId(companyId);
+
+  const localId = Number(motorId);
+  if (Number.isFinite(localId)) {
+    const indexed = await db
+      .collectionGroup("motors")
+      .where("companyId", "==", normalizedCompanyId)
+      .where("localId", "==", localId)
+      .limit(1)
+      .get();
+
+    const doc = indexed.docs[0];
+    if (doc) {
+      const resolved = toMotorDocument(doc);
+      if (resolved) return resolved;
+    }
+  }
+
+  // Fallback: full scan. Only reached for ids the indexed lookup cannot express.
   const groupSnapshot = await db
     .collectionGroup("motors")
     .where("companyId", "==", normalizedCompanyId)
     .get();
 
   for (const doc of groupSnapshot.docs) {
-    const raw = doc.data() as Record<string, unknown>;
-    const motor = mapAdminMotor(doc.id, raw);
-    if (!motor) continue;
+    const resolved = toMotorDocument(doc);
+    if (!resolved) continue;
+    const { motor } = resolved;
     if (motor.id === motorId || doc.id === motorId || String(motor.localId) === motorId) {
-      return { motor, raw, ownerUid: ownerUidFromPath(doc.ref.path) };
+      return resolved;
     }
   }
 

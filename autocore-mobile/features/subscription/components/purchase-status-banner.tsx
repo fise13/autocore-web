@@ -1,60 +1,44 @@
 import { View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
-import { AlertTriangleIcon, CheckCircle2Icon, ClockIcon } from '@/assets/icons';
-import type { IconProps } from '@/assets/icons';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks/use-theme';
 import type { PurchaseFlowState } from '@/lib/subscriptions/types';
-import { radius, spacing, type ToneName } from '@/theme';
-
-type BannerContent = {
-  tone: ToneName;
-  icon: React.ComponentType<IconProps>;
-  title: string;
-  body: string;
-};
+import { spacing } from '@/theme';
 
 /**
- * Every non-terminal outcome the user needs to be told about.
- *
- * `cancelled` returns null on purpose — a user who backed out of Apple's sheet
- * did not encounter an error and must not be shown one.
+ * Compact notices only. Cancellation is silent. Failed purchases sit next to
+ * the CTA as two lines — never a full-width danger card.
  */
-function contentFor(flow: PurchaseFlowState): BannerContent | null {
+function copyFor(flow: PurchaseFlowState): { title: string; body: string; tone: 'danger' | 'muted' | 'success' } | null {
   switch (flow.phase) {
     case 'failed':
       return {
         tone: 'danger',
-        icon: AlertTriangleIcon,
-        title: 'Purchase not completed',
-        body: flow.failure.message,
+        title: "Purchase couldn't be completed",
+        body: 'Please try again.',
       };
     case 'already_purchased':
       return {
-        tone: 'primary',
-        icon: CheckCircle2Icon,
+        tone: 'muted',
         title: 'Already subscribed',
-        body: 'This workspace already has an active subscription. Restore it below if you do not see it.',
+        body: 'Restore purchases if Pro is not active yet.',
       };
     case 'restore_empty':
       return {
         tone: 'muted',
-        icon: ClockIcon,
         title: 'No purchases found',
-        body: 'There are no subscriptions to restore for this Apple ID.',
+        body: 'Nothing to restore for this Apple ID.',
       };
     case 'expired':
       return {
-        tone: 'warning',
-        icon: ClockIcon,
-        title: 'Subscription expired',
-        body: 'Your previous subscription has ended. Choose a plan to continue.',
+        tone: 'muted',
+        title: 'Subscription ended',
+        body: 'Choose a plan to continue.',
       };
     case 'restored':
       return {
         tone: 'success',
-        icon: CheckCircle2Icon,
         title: 'Purchases restored',
         body: 'Your subscription is active again.',
       };
@@ -68,38 +52,32 @@ type PurchaseStatusBannerProps = {
 };
 
 export function PurchaseStatusBanner({ flow }: PurchaseStatusBannerProps) {
-  const { tones } = useTheme();
-  const content = contentFor(flow);
+  const { colors, tones } = useTheme();
+  const content = copyFor(flow);
 
   if (!content) return null;
 
-  const tone = tones[content.tone];
-  const Icon = content.icon;
+  const color =
+    content.tone === 'danger'
+      ? tones.danger.fg
+      : content.tone === 'success'
+        ? tones.success.fg
+        : colors.mutedForeground;
 
   return (
     <Animated.View
-      entering={FadeIn.duration(220)}
-      exiting={FadeOut.duration(140)}
+      entering={FadeIn.duration(180)}
+      exiting={FadeOut.duration(120)}
       accessibilityLiveRegion="polite"
-      style={{
-        flexDirection: 'row',
-        gap: spacing[3],
-        padding: spacing[3.5],
-        borderRadius: radius['2xl'],
-        backgroundColor: tone.bg,
-        borderWidth: 1,
-        borderColor: tone.border,
-      }}
+      accessibilityRole="text"
+      style={{ gap: 2, minHeight: 36, justifyContent: 'center' }}
     >
-      <Icon size="sm" color={tone.fg} />
-      <View style={{ flex: 1, gap: spacing[1] }}>
-        <Text variant="body" style={{ color: tone.fg, fontWeight: '600' }}>
-          {content.title}
-        </Text>
-        <Text variant="caption" style={{ color: tone.fg, opacity: 0.85, lineHeight: 17 }}>
-          {content.body}
-        </Text>
-      </View>
+      <Text variant="caption" style={{ color, fontWeight: '600', textAlign: 'center' }}>
+        {content.title}
+      </Text>
+      <Text variant="caption" color="muted" style={{ textAlign: 'center', lineHeight: 16 }}>
+        {content.body}
+      </Text>
     </Animated.View>
   );
 }

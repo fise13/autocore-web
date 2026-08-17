@@ -390,7 +390,7 @@ export function AccountingScreen() {
         </View>
       </ScreenScroll>
 
-      {profile?.id ? (
+      {profile?.id && profile.companyId ? (
         <AcTransferSheet
           ref={transferSheetRef}
           companyId={profile.companyId}

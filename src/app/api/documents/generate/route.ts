@@ -7,6 +7,7 @@ import {
   DocumentAccessError,
   verifyDocumentAccess,
 } from "@/lib/documents/verify-document-access";
+import { enforceRateLimit, RateLimitError } from "@/lib/rate-limit/rate-limit.server";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -19,6 +20,16 @@ type GenerateBody = {
 export async function POST(request: NextRequest) {
   try {
     const access = await verifyDocumentAccess(request);
+
+    // Each call renders PDFs through headless Chromium on a 60s/1GB function.
+    // Bounded per company so one workspace cannot saturate the region.
+    await enforceRateLimit({
+      action: "documents-generate",
+      subject: access.companyId,
+      limit: 60,
+      windowMs: 5 * 60_000,
+    });
+
     const body = (await request.json()) as GenerateBody;
     const orderId = body.orderId?.trim();
     if (!orderId) {
@@ -55,6 +66,12 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof DocumentAccessError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if (error instanceof RateLimitError) {
+      return NextResponse.json(
+        { error: error.message, retryAfterSec: error.retryAfterSec },
+        { status: 429, headers: { "Retry-After": String(error.retryAfterSec) } },
+      );
     }
     console.error("[documents/generate]", error);
     return NextResponse.json(

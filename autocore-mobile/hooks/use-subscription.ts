@@ -36,6 +36,7 @@ export type UseSubscriptionResult = {
   /** Only the workspace owner may buy. */
   canManageBilling: boolean;
   purchase: (planId: PlanId) => Promise<void>;
+  grantComplimentaryAccess: (planId: PlanId) => Promise<void>;
   restore: () => Promise<RestoreOutcome>;
   startTrial: () => Promise<boolean>;
   openManage: () => Promise<void>;
@@ -62,9 +63,9 @@ export function useSubscription(): UseSubscriptionResult {
 
   const offers = useMemo<PlanOffer[]>(
     () =>
-      purchasablePlans().map((plan) => ({
+      (purchasablePlans() ?? []).map((plan) => ({
         plan,
-        product: purchaseState.products.find((product) => product.planId === plan.id) ?? null,
+        product: (purchaseState.products ?? []).find((product) => product.planId === plan.id) ?? null,
       })),
     [purchaseState.products],
   );
@@ -88,6 +89,10 @@ export function useSubscription(): UseSubscriptionResult {
     await manager.purchase(planId);
   }, []);
 
+  const grantComplimentaryAccess = useCallback(async (planId: PlanId) => {
+    await manager.grantComplimentaryAccess(planId);
+  }, []);
+
   const restore = useCallback(() => manager.restore(), []);
   const startTrial = useCallback(() => manager.startInternalTrial(), []);
   const openManage = useCallback(() => manager.openManageSubscriptions(), []);
@@ -109,6 +114,7 @@ export function useSubscription(): UseSubscriptionResult {
     trial,
     canManageBilling,
     purchase,
+    grantComplimentaryAccess,
     restore,
     startTrial,
     openManage,

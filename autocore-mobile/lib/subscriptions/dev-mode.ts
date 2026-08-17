@@ -50,7 +50,7 @@ function base(now: number): CompanySubscription {
     currentPeriodEnd: new Date(now + 21 * DAY_MS),
     willAutoRenew: true,
     trialUsed: true,
-    appleProductId: 'com.wise.autocore.pro.monthly',
+    appleProductId: 'com.autocore.pro.monthly',
     appleEnvironment: 'Sandbox',
     updatedAt: new Date(now),
   };
@@ -107,7 +107,7 @@ export const DEV_SCENARIOS: DevScenario[] = [
       ...base(now),
       billingInterval: 'yearly',
       currentPeriodEnd: new Date(now + 210 * DAY_MS),
-      appleProductId: 'com.wise.autocore.pro.yearly',
+      appleProductId: 'com.autocore.pro.yearly',
     }),
   },
   {
@@ -258,9 +258,14 @@ export function devSubscription(now = Date.now()): CompanySubscription | null | 
 // Fake store catalog
 // ---------------------------------------------------------------------------
 
+// TEMPORARY: prices set to $39.99/mo for a paywall walkthrough. Restore to
+// 24.99 / 239.90 EUR when the review is done. `__DEV__` only — a release build
+// never reads this table, it prices from StoreKit.
 const DEV_PRICES: Record<string, { amount: number; currency: string }> = {
-  pro_monthly: { amount: 24.99, currency: 'EUR' },
-  pro_yearly: { amount: 239.9, currency: 'EUR' },
+  pro_monthly: { amount: 39.99, currency: 'USD' },
+  // Held at 20% off twelve months so the savings badge still has something
+  // truthful to compute, and both plans share a currency as the badge requires.
+  pro_yearly: { amount: 383.9, currency: 'USD' },
 };
 
 /**
@@ -269,7 +274,7 @@ const DEV_PRICES: Record<string, { amount: number; currency: string }> = {
  */
 function devDisplayPrice(amount: number, currency: string): string {
   try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(amount);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
   } catch {
     return `${amount.toFixed(2)} ${currency}`;
   }

@@ -5,6 +5,7 @@ import {
   resetDissolveVeil,
   waitForTransitionTarget,
 } from "@/lib/motion/dissolve-transition";
+import { resolvePostLoginPath } from "@/lib/auth/return-to";
 import { isTauriDesktop } from "@/lib/tauri/is-tauri-desktop";
 
 export const AUTH_SESSION_STORAGE_KEY = "autocore-auth-session";
@@ -116,20 +117,27 @@ function shouldSkipAuthMotion(): boolean {
   return prefersReducedMotion() || isTauriDesktop();
 }
 
+/**
+ * `destination` carries a deep link through sign-in (see `lib/auth/return-to`).
+ * It is re-sanitized here so no caller can hand this an off-origin URL.
+ */
 export async function navigateToAppAfterAuth(
   router: AppRouter,
   method: "push" | "replace" = "replace",
+  destination?: string | null,
 ): Promise<void> {
   if (authNavInFlight) {
     return authNavInFlight;
   }
+
+  const target = resolvePostLoginPath(destination);
 
   authNavInFlight = (async () => {
     if (shouldSkipAuthMotion()) {
       sessionStorage.removeItem(APP_AUTH_NAV_LOCK);
       sessionStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
       sessionStorage.removeItem(AUTH_JOURNEY_HANDOFF_KEY);
-      router[method]("/");
+      router[method](target);
       return;
     }
 
@@ -139,7 +147,7 @@ export async function navigateToAppAfterAuth(
 
     markAuthJourneyHandoff();
     markAuthSessionTransition("sign-in");
-    router[method]("/");
+    router[method](target);
   })();
 
   try {

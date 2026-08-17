@@ -32,6 +32,7 @@ import { signInWithAppleNative } from '@/services/auth/apple-sign-in';
 import { deleteAccountForCurrentUser } from '@/services/auth/delete-account';
 import { getFirebaseAuth, isFirebaseConfigured } from '@/services/firebase';
 import { isProductionCompanyId, normalizeCompanyId } from '@/lib/company-id';
+import { clearPendingDeepLink } from '@/lib/deep-links/pending-deep-link';
 import {
   OFFLINE_COMMIT_GRACE_MS,
   resolveCommittedOnline,
@@ -815,6 +816,8 @@ function useAuthActionsController(): AuthActions {
 
   const signOut = useCallback(async () => {
     hydratedUidRef.current = null;
+    // A link parked for the previous session must not follow the next one in.
+    clearPendingDeepLink();
     await signOutCurrentUser();
     void clearLocalSessionCaches();
     useAuthStore.getState().reset();
@@ -953,9 +956,36 @@ function useAuthActionsController(): AuthActions {
   );
 }
 
+const asyncNoop = async () => undefined;
+
+const STORE_SHOTS_AUTH_ACTIONS: AuthActions = {
+  signIn: asyncNoop,
+  signUp: asyncNoop,
+  resolveSignInMethodsForEmail: async () => ({ methods: [], apiResolved: true }),
+  signInWithGoogle: asyncNoop,
+  signInWithApple: asyncNoop,
+  sendPasswordResetForEmail: asyncNoop,
+  sendPasswordReset: asyncNoop,
+  sendEmailVerification: asyncNoop,
+  verifyEmailWithCode: async () => false,
+  createCompany: asyncNoop,
+  signOut: asyncNoop,
+  deleteAccount: asyncNoop,
+  refreshProfile: asyncNoop,
+  clearError: () => undefined,
+  isFirebaseReady: true,
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const actions = useAuthActionsController();
   return <AuthActionsContext.Provider value={actions}>{children}</AuthActionsContext.Provider>;
+}
+
+/** Actions context without Firebase — App Store screenshot mode only. */
+export function StoreShotsAuthProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthActionsContext.Provider value={STORE_SHOTS_AUTH_ACTIONS}>{children}</AuthActionsContext.Provider>
+  );
 }
 
 export function useAuthActions(): AuthActions {

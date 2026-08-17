@@ -25,8 +25,8 @@ test("no fabricated phase model is exported", async () => {
   // The old `AssistantPhase` machine was advanced by a `setTimeout` in the
   // provider, so the UI claimed reasoning was happening regardless of the
   // model. Progress now comes from real stream parts; this pins the removal.
-  const module = await import("@/domain/ai/assistant-state");
+  const assistantState = await import("@/domain/ai/assistant-state");
   for (const removed of ["assistantStateForPhase", "ASSISTANT_PHASE_ORDER"]) {
-    assert.equal(removed in module, false, `${removed} must stay removed`);
+    assert.equal(removed in assistantState, false, `${removed} must stay removed`);
   }
 });

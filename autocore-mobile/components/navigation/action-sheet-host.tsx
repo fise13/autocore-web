@@ -1,25 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Keyboard,
-  Platform,
-  Pressable,
-  StyleSheet,
-  TextInput,
-  View,
-  type TextInput as TextInputType,
-} from 'react-native';
-import { BlurView } from 'expo-blur';
-import { SymbolView } from 'expo-symbols';
-import { useRouter, type Href } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { SymbolView } from 'expo-symbols';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
-  FadeIn,
-  FadeOut,
-  SlideInDown,
-  SlideOutDown,
+  Easing,
+  Extrapolation,
+  interpolate,
   runOnJS,
+  type SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -27,393 +16,383 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
-import { GlassSheen } from '@/components/navigation/glass-sheen';
-import { interpretAiPrompt } from '@/features/ai/interpret-ai-prompt';
-import { useReducedMotion } from '@/hooks/use-accessibility';
+import { useNavigateTab } from '@/components/navigation/use-navigate-tab';
+import { Text } from '@/components/ui/text';
 import { useTheme } from '@/hooks/use-theme';
-import { useActionSheetStore } from '@/lib/shell/action-sheet-store';
-import { useShellModel } from '@/lib/shell/use-shell-model';
 import {
+  DOCK_ACTION_SIZE,
   DOCK_BOTTOM_GAP,
   DOCK_VISUAL_HEIGHT,
 } from '@/lib/navigation/floating-tab-bar-inset';
-import { withAlpha } from '@/theme/color-utils';
+import { useActionSheetStore } from '@/lib/shell/action-sheet-store';
+import type { ActionItem } from '@/lib/shell/types';
+import { useShellModel } from '@/lib/shell/use-shell-model';
 import { haptics } from '@/theme/haptics';
 import { tokens } from '@/theme/tokens';
 
-const QUICK_COUNT = 3;
-const KEYBOARD_GAP = 10;
+/** Speech-bubble body — rounder than a card, sits above the FAB. */
+const BUBBLE_W = 204;
+const BUBBLE_H = 216;
+const BUBBLE_RADIUS = 48;
+const TAIL = 18;
+const LIFT = 14;
+const DISC = 48;
+const HIT = 52;
+const COL_GAP = 16;
+const ROW_GAP = 12;
+const OPEN_MS = 420;
+const CLOSE_MS = 260;
+const DISMISS_Y = 72;
+const OPEN_EASE = Easing.bezier(0.22, 1, 0.36, 1);
 
-/** Drag distance past which the release dismisses instead of springing back. */
-const DISMISS_DISTANCE = 72;
-/** Flick velocity that dismisses regardless of distance. */
-const DISMISS_VELOCITY = 700;
-/** Resistance applied when dragging the sheet upward past its rest position. */
-const RUBBER_BAND = 0.22;
+const ACTION_ORDER = [
+  'scan',
+  'receive-engine',
+  'photograph',
+  'new-order',
+  'add-item',
+  'new-transaction',
+] as const;
+
+const FAB_SPRING = {
+  mass: 1,
+  stiffness: (2 * Math.PI / 0.32) ** 2,
+  damping: (4 * Math.PI * 0.8) / 0.32,
+} as const;
+
+function pickActions(items: ActionItem[]): ActionItem[] {
+  const byId = new Map(items.map((item) => [item.id, item]));
+  return ACTION_ORDER.map((id) => byId.get(id)).filter((item): item is ActionItem => Boolean(item));
+}
+
+type ActionDiscProps = {
+  item: ActionItem;
+  index: number;
+  progress: SharedValue<number>;
+  accent?: boolean;
+  onPick: (href?: string) => void;
+};
+
+function ActionDisc({ item, index, progress, accent, onPick }: ActionDiscProps) {
+  const { colors, isDark } = useTheme();
+  const [tip, setTip] = useState(false);
+  const hideTip = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const press = useSharedValue(1);
+  const row = Math.floor(index / 2);
+  const col = index % 2;
+  const start = 0.36 + (row * 2 + col) * 0.04;
+
+  const enterStyle = useAnimatedStyle(() => {
+    const local = interpolate(progress.value, [start, start + 0.18], [0, 1], Extrapolation.CLAMP);
+    return {
+      opacity: local,
+      transform: [
+        { translateY: interpolate(local, [0, 1], [10, 0]) },
+        { scale: interpolate(local, [0, 1], [0.78, 1]) * press.value },
+      ],
+    };
+  });
+
+  const showTip = () => {
+    haptics.light();
+    setTip(true);
+    if (hideTip.current) clearTimeout(hideTip.current);
+    hideTip.current = setTimeout(() => setTip(false), 1400);
+  };
+
+  return (
+    <View style={styles.cell}>
+      {tip ? (
+        <View pointerEvents="none" style={styles.tip}>
+          <Text numberOfLines={1} style={styles.tipText}>
+            {item.title}
+          </Text>
+        </View>
+      ) : null}
+      <Animated.View style={enterStyle}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={item.title}
+          accessibilityHint={item.subtitle}
+          delayLongPress={380}
+          onLongPress={showTip}
+          onPressIn={() => {
+            press.value = withTiming(0.96, { duration: 80 });
+          }}
+          onPressOut={() => {
+            press.value = withTiming(1, { duration: 120 });
+          }}
+          onPress={() => onPick(item.href)}
+          style={styles.hit}
+        >
+          <View
+            style={[
+              styles.disc,
+              isDark
+                ? {
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                    borderColor: 'rgba(255,255,255,0.14)',
+                  }
+                : null,
+              accent ? { borderColor: colors.primary } : null,
+            ]}
+          >
+            <SymbolView
+              name={item.sf as SFSymbol}
+              size={22}
+              tintColor={accent ? colors.primary : isDark ? '#FFFFFF' : '#1A1A1A'}
+              weight="regular"
+            />
+          </View>
+        </Pressable>
+      </Animated.View>
+    </View>
+  );
+}
 
 /**
- * New composer — tall translucent capture card docked above the keyboard:
- * grab handle · multiline field · brand send orb pinned bottom-right ·
- * quick-action pill underneath. Absolute overlay inside the tab shell (no
- * Modal) so it always paints; KeyboardStickyView keeps it flush to the keyboard.
+ * Custom action bubble that pops out above the dock FAB.
  */
 export function ActionSheetHost() {
   const open = useActionSheetStore((s) => s.open);
   const dismiss = useActionSheetStore((s) => s.dismiss);
   const { actionItems } = useShellModel();
-  const { colors, isDark } = useTheme();
+  const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const reducedMotion = useReducedMotion();
-  const inputRef = useRef<TextInputType>(null);
-  const [prompt, setPrompt] = useState('');
-  const [busy, setBusy] = useState(false);
+  const navigateTab = useNavigateTab();
+  const [shown, setShown] = useState(false);
+  const actions = useMemo(() => pickActions(actionItems), [actionItems]);
 
-  /** Grabber drag offset and its "held" progress (drives the handle's size). */
-  const drag = useSharedValue(0);
-  const grabbing = useSharedValue(0);
+  const progress = useSharedValue(0);
+  const overlay = useSharedValue(0);
+  const dragY = useSharedValue(0);
 
-  const quick = useMemo(() => actionItems.slice(0, QUICK_COUNT), [actionItems]);
+  const finishHide = useCallback(() => {
+    if (useActionSheetStore.getState().open) return;
+    setShown(false);
+    dragY.value = 0;
+  }, [dragY]);
 
   useEffect(() => {
-    if (!open) {
-      setPrompt('');
-      setBusy(false);
-      drag.value = 0;
-      grabbing.value = 0;
+    if (open) setShown(true);
+  }, [open]);
+
+  useLayoutEffect(() => {
+    if (!shown) return;
+    if (open) {
+      overlay.value = withTiming(1, { duration: 180, easing: OPEN_EASE });
+      progress.value = withTiming(1, { duration: OPEN_MS, easing: OPEN_EASE });
       return;
     }
-    const id = setTimeout(() => inputRef.current?.focus(), 40);
-    return () => clearTimeout(id);
-  }, [drag, grabbing, open]);
+    overlay.value = withTiming(0, { duration: 140, easing: OPEN_EASE });
+    progress.value = withTiming(0, { duration: CLOSE_MS, easing: OPEN_EASE }, (finished) => {
+      if (finished) runOnJS(finishHide)();
+    });
+  }, [finishHide, open, overlay, progress, shown]);
 
   const close = useCallback(() => {
     haptics.light();
-    Keyboard.dismiss();
     dismiss();
   }, [dismiss]);
 
-  const openHref = useCallback(
+  const onPick = useCallback(
     (href?: string) => {
-      if (!href) return;
-      Keyboard.dismiss();
+      haptics.medium();
       dismiss();
-      requestAnimationFrame(() => {
-        router.push(href as Href);
-      });
+      if (href) navigateTab(href);
     },
-    [dismiss, router],
+    [dismiss, navigateTab],
   );
 
-  const onSend = useCallback(async () => {
-    const trimmed = prompt.trim();
-    if (!trimmed || busy) return;
-    haptics.medium();
-    setBusy(true);
-    try {
-      const blocks = await interpretAiPrompt(trimmed);
-      let href: string | undefined;
-      for (const block of blocks) {
-        if (block.type === 'action' && block.primary) {
-          href = block.href;
-          break;
-        }
-      }
-      if (!href) {
-        for (const block of blocks) {
-          if (block.type === 'confirmation' || block.type === 'action') {
-            href = block.href;
-            break;
-          }
-        }
-      }
-      openHref(href ?? `/search?q=${encodeURIComponent(trimmed)}`);
-    } finally {
-      setBusy(false);
-    }
-  }, [busy, openHref, prompt]);
-
-  // Search-field glass — thin material, barely tinted (not an opaque card).
-  const fieldFill = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(120,120,128,0.12)';
-  const border = isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)';
-  const muted = isDark ? 'rgba(235,235,245,0.4)' : colors.mutedForeground;
-  const ink = isDark ? '#ffffff' : colors.foreground;
-  const grabberInk = isDark ? 'rgba(235,235,245,0.6)' : 'rgba(60,60,67,0.45)';
-
-  const closedOffset = insets.bottom + DOCK_BOTTOM_GAP + DOCK_VISUAL_HEIGHT;
-
-  const canSend = Boolean(prompt.trim()) && !busy;
-
-  /**
-   * Grabber drag — iOS sheet behaviour: the card tracks the finger downward,
-   * resists upward, and either springs home or dismisses on release.
-   */
-  const dragStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: drag.value }],
-  }));
-
-  const grabberStyle = useAnimatedStyle(() => ({
-    opacity: 0.45 + grabbing.value * 0.5,
-    transform: [{ scaleX: 1 + grabbing.value * 0.16 }],
-  }));
-
-  const panGesture = useMemo(
+  const pan = useMemo(
     () =>
       Gesture.Pan()
-        .activeOffsetY([-8, 8])
-        .onBegin(() => {
-          grabbing.value = withTiming(1, { duration: 120 });
-        })
+        .activeOffsetY(12)
+        .failOffsetX([-28, 28])
         .onUpdate((event) => {
-          drag.value =
-            event.translationY > 0 ? event.translationY : event.translationY * RUBBER_BAND;
+          if (event.translationY > 0) dragY.value = event.translationY;
         })
         .onEnd((event) => {
-          const shouldDismiss =
-            event.translationY > DISMISS_DISTANCE || event.velocityY > DISMISS_VELOCITY;
-          if (shouldDismiss) {
-            runOnJS(close)();
+          if (event.translationY > DISMISS_Y || event.velocityY > 1100) {
+            dragY.value = withTiming(event.translationY, { duration: 80 });
+            runOnJS(dismiss)();
             return;
           }
-          drag.value = withSpring(0, tokens.motion.springs.sheet);
-        })
-        .onFinalize(() => {
-          grabbing.value = withTiming(0, { duration: 160 });
+          dragY.value = withSpring(0, FAB_SPRING);
         }),
-    [close, drag, grabbing],
+    [dismiss, dragY],
   );
 
-  const tapGesture = useMemo(
-    () => Gesture.Tap().onEnd(() => runOnJS(close)()),
-    [close],
-  );
+  const overlayStyle = useAnimatedStyle(() => ({
+    opacity: overlay.value * 0.22,
+  }));
 
-  const grabGesture = useMemo(
-    () => Gesture.Race(panGesture, tapGesture),
-    [panGesture, tapGesture],
-  );
+  const bubbleStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 0.18, 1], [0, 1, 1]),
+    transform: [
+      { translateY: dragY.value + interpolate(progress.value, [0, 1], [36, 0]) },
+      {
+        scale: interpolate(progress.value, [0, 1], [0.22, 1], Extrapolation.CLAMP),
+      },
+    ],
+  }));
 
-  const enterAnim = reducedMotion
-    ? FadeIn.duration(120)
-    : SlideInDown.springify()
-        .damping(tokens.motion.springs.sheet.damping)
-        .stiffness(tokens.motion.springs.sheet.stiffness)
-        .mass(tokens.motion.springs.sheet.mass);
+  if (!shown) return null;
 
-  const exitAnim = reducedMotion
-    ? FadeOut.duration(100)
-    : SlideOutDown.duration(tokens.motion.duration.normal);
-
-  if (!open) return null;
+  const fabTop =
+    insets.bottom + DOCK_BOTTOM_GAP + (DOCK_VISUAL_HEIGHT - DOCK_ACTION_SIZE) / 2 + DOCK_ACTION_SIZE;
 
   return (
-    <Animated.View
-      entering={reducedMotion ? undefined : FadeIn.duration(140)}
-      exiting={reducedMotion ? undefined : FadeOut.duration(120)}
-      style={StyleSheet.absoluteFill}
-      pointerEvents="box-none"
-    >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Dismiss"
-        onPress={close}
-        style={[
-          StyleSheet.absoluteFill,
-          { backgroundColor: withAlpha('#000000', isDark ? 0.28 : 0.14) },
-        ]}
-      />
+    <View style={styles.root} pointerEvents="box-none">
+      <Animated.View style={[styles.overlay, overlayStyle]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss"
+          onPress={close}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
 
-      {/*
-        `KeyboardStickyView` applies `translateY = keyboardHeight + offset`, so
-        offsets must be negative to lift the composer. Positive values pushed it
-        down behind the dock and clipped the send orb off the bottom edge.
-      */}
-      <KeyboardStickyView
-        offset={{ closed: -closedOffset, opened: -KEYBOARD_GAP }}
-        style={styles.sticky}
-      >
-        <Animated.View entering={enterAnim} exiting={exitAnim}>
-          <Animated.View style={[styles.dragWrap, dragStyle]}>
-            <GestureDetector gesture={grabGesture}>
-              <View
-                accessibilityRole="adjustable"
-                accessibilityLabel="Composer handle"
-                accessibilityHint="Drag down or tap to close"
-                style={styles.handleHit}
-              >
-                <Animated.View
-                  style={[styles.handle, { backgroundColor: grabberInk }, grabberStyle]}
+      <GestureDetector gesture={pan}>
+        <Animated.View
+          pointerEvents={open ? 'auto' : 'none'}
+          style={[styles.anchor, { bottom: fabTop + LIFT }, bubbleStyle]}
+        >
+          <View
+            style={[
+              styles.body,
+              isDark
+                ? {
+                    backgroundColor: '#111111',
+                    borderColor: 'rgba(255,255,255,0.14)',
+                  }
+                : null,
+            ]}
+          >
+            <View style={styles.grid}>
+              {actions.map((item, index) => (
+                <ActionDisc
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  progress={progress}
+                  accent={item.id === 'scan'}
+                  onPick={onPick}
                 />
-              </View>
-            </GestureDetector>
-
-            <View style={[styles.field, { borderColor: border, backgroundColor: fieldFill }]}>
-              <BlurView
-                pointerEvents="none"
-                intensity={isDark ? 48 : 60}
-                tint={isDark ? 'systemUltraThinMaterialDark' : 'systemUltraThinMaterialLight'}
-                style={StyleSheet.absoluteFill}
-              />
-              <GlassSheen isDark={isDark} radius={FIELD_RADIUS} />
-              <TextInput
-                ref={inputRef}
-                value={prompt}
-                onChangeText={setPrompt}
-                placeholder="What's up?"
-                placeholderTextColor={muted}
-                multiline
-                textAlignVertical="top"
-                autoCorrect
-                autoCapitalize="sentences"
-                blurOnSubmit={false}
-                editable={!busy}
-                style={[styles.input, { color: ink }]}
-              />
-              {/* Footer row, not an absolute child — the orb can never drift. */}
-              <View style={styles.fieldFooter}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Send"
-                  disabled={!canSend}
-                  onPress={() => void onSend()}
-                  hitSlop={8}
-                  style={[
-                    styles.sendOrb,
-                    { backgroundColor: colors.primary, opacity: canSend ? 1 : 0.32 },
-                  ]}
-                >
-                  <SymbolView name="arrow.up" size={17} tintColor="#ffffff" weight="bold" />
-                </Pressable>
-              </View>
+              ))}
             </View>
-
-            {quick.length > 0 ? (
-              <View style={styles.quickWrap}>
-                <View
-                  style={[styles.quickPill, { borderColor: border, backgroundColor: fieldFill }]}
-                >
-                  <BlurView
-                    pointerEvents="none"
-                    intensity={isDark ? 36 : 48}
-                    tint={isDark ? 'systemUltraThinMaterialDark' : 'systemUltraThinMaterialLight'}
-                    style={StyleSheet.absoluteFill}
-                  />
-                  <GlassSheen isDark={isDark} radius={999} />
-                  {quick.map((item) => (
-                    <Pressable
-                      key={item.id}
-                      accessibilityRole="button"
-                      accessibilityLabel={item.title}
-                      onPress={() => {
-                        haptics.selection();
-                        openHref(item.href);
-                      }}
-                      hitSlop={6}
-                      style={styles.quickHit}
-                    >
-                      {Platform.OS === 'ios' ? (
-                        <SymbolView
-                          name={item.sf as SFSymbol}
-                          size={19}
-                          tintColor={ink}
-                          weight="regular"
-                        />
-                      ) : (
-                        <View
-                          style={{
-                            width: 19,
-                            height: 19,
-                            borderRadius: 9.5,
-                            borderWidth: StyleSheet.hairlineWidth,
-                            borderColor: ink,
-                          }}
-                        />
-                      )}
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-            ) : null}
-          </Animated.View>
+          </View>
+          <View
+            style={[
+              styles.tail,
+              isDark
+                ? {
+                    backgroundColor: '#111111',
+                    borderColor: 'rgba(255,255,255,0.14)',
+                  }
+                : null,
+            ]}
+          />
         </Animated.View>
-      </KeyboardStickyView>
-    </Animated.View>
+      </GestureDetector>
+    </View>
   );
 }
 
-const SEND_ORB = 36;
-const FIELD_PAD = 14;
-const FIELD_RADIUS = 22;
-
 const styles = StyleSheet.create({
-  sticky: {
+  root: {
     position: 'absolute',
-    left: 16,
-    right: 16,
+    top: 0,
+    left: 0,
+    right: 0,
     bottom: 0,
+    zIndex: 2000,
+    elevation: 2000,
   },
-  dragWrap: {
-    gap: 10,
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#000000',
   },
-  /** Wide, tall target — iOS grabbers are easy to catch with a thumb. */
-  handleHit: {
+  anchor: {
+    position: 'absolute',
     alignSelf: 'center',
-    paddingVertical: 9,
-    paddingHorizontal: 56,
+    width: BUBBLE_W,
+    alignItems: 'center',
+    transformOrigin: 'bottom',
   },
-  handle: {
-    width: 36,
-    height: 5,
-    borderRadius: 2.5,
-  },
-  field: {
-    borderRadius: FIELD_RADIUS,
+  body: {
+    width: BUBBLE_W,
+    minHeight: BUBBLE_H,
+    borderRadius: BUBBLE_RADIUS,
+    backgroundColor: '#F7F6F3',
     borderWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden',
-    padding: FIELD_PAD,
+    borderColor: 'rgba(0,0,0,0.08)',
+    paddingHorizontal: 22,
+    paddingTop: 22,
+    paddingBottom: 24,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.22,
+    shadowRadius: 24,
+    elevation: 12,
   },
-  input: {
-    fontSize: 17,
-    lineHeight: 23,
-    fontWeight: '400',
-    letterSpacing: -0.2,
-    // Grows with the draft, then scrolls — never a fixed-height box.
-    minHeight: 64,
-    maxHeight: 168,
-    paddingTop: Platform.OS === 'ios' ? 2 : 0,
-    paddingBottom: 0,
+  tail: {
+    width: TAIL,
+    height: TAIL,
+    marginTop: -TAIL / 2,
+    backgroundColor: '#F7F6F3',
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.08)',
+    transform: [{ rotate: '45deg' }],
   },
-  fieldFooter: {
+  grid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: ROW_GAP,
+    columnGap: COL_GAP,
+  },
+  cell: {
+    width: HIT,
+    height: HIT + 4,
     alignItems: 'center',
     justifyContent: 'flex-end',
-    marginTop: 8,
   },
-  sendOrb: {
-    width: SEND_ORB,
-    height: SEND_ORB,
-    borderRadius: SEND_ORB / 2,
+  hit: {
+    width: HIT,
+    height: HIT,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  quickWrap: {
-    alignSelf: 'flex-start',
-  },
-  quickPill: {
-    flexDirection: 'row',
+  disc: {
+    width: DISC,
+    height: DISC,
+    borderRadius: DISC / 2,
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 999,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(17,17,17,0.06)',
     borderWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden',
+    borderColor: 'rgba(17,17,17,0.1)',
   },
-  quickHit: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
+  tip: {
+    position: 'absolute',
+    bottom: HIT + 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: tokens.radius.control,
+    backgroundColor: 'rgba(17,19,26,0.92)',
+    maxWidth: 140,
+    zIndex: 2,
+  },
+  tipText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: -0.1,
   },
 });

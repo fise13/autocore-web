@@ -70,7 +70,7 @@ export async function commitMotorExcelImport(params: {
   let workingEngines = [...params.existingEngines];
   let workingSpecificCategories = [...params.existingSpecificCategories];
   let specificRecordsImported = 0;
-  let specificCategoriesUpdated = 0;
+  const specificCategoriesUpdated = 0;
   const createdMotorIds: string[] = [];
   const updatedMotorIds: string[] = [];
   const createdBrandIds: string[] = [];

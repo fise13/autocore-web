@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
-import { Pressable, View } from 'react-native';
+import { Keyboard, Pressable, View } from 'react-native';
 import { Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Animated, {
   FadeInLeft,
@@ -47,28 +47,17 @@ function AuthMark() {
 }
 
 function AuthBackdrop() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
 
   return (
-    <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-      <View
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 280,
-          opacity: isDark ? 0.22 : 0.35,
-          backgroundColor: toneBackground(colors.foreground, 0.04),
-        }}
-      />
-      <LinearGradient
-        colors={[toneBackground(colors.primary, isDark ? 0.08 : 0.1), 'transparent']}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 320 }}
-      />
-    </View>
+    <LinearGradient
+      pointerEvents="none"
+      colors={[colors.primarySubtle, colors.background, colors.background]}
+      locations={[0, 0.38, 1]}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+    />
   );
 }
 
@@ -136,6 +125,7 @@ export function AuthShell({
   stepDirection = 1,
 }: AuthShellProps) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion();
 
   const entering =
@@ -188,21 +178,24 @@ export function AuthShell({
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ flex: 1 }}>
-        <AuthBackdrop />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <AuthBackdrop />
+      <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }} edges={['left', 'right']}>
         <KeyboardAwareScrollView
           bottomOffset={24}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
             flexGrow: 1,
             paddingHorizontal: rhythm.pad,
-            paddingTop: spacing[6],
-            paddingBottom: spacing[8],
+            paddingTop: insets.top + spacing[6],
+            paddingBottom: insets.bottom + spacing[8],
           }}
         >
-          <View
+          <Pressable
+            accessible={false}
+            onPress={Keyboard.dismiss}
             style={{
               width: '100%',
               maxWidth: 384,
@@ -271,9 +264,9 @@ export function AuthShell({
             )}
 
             {footer ? <View style={{ paddingTop: spacing[2] }}>{footer}</View> : null}
-          </View>
+          </Pressable>
         </KeyboardAwareScrollView>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }

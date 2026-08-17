@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { authorizeCron } from "@/lib/cron/authorize-cron";
 import { expireStaleImportBatches } from "@/lib/import-batch/expire-import-batches.server";
 
 export const runtime = "nodejs";
 
-function isAuthorized(request: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) return process.env.NODE_ENV === "development";
-  return request.headers.get("x-cron-secret") === secret;
-}
-
 export async function POST(request: NextRequest) {
-  if (!isAuthorized(request)) {
+  if (!authorizeCron(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

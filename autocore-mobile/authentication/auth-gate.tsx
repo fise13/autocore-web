@@ -30,6 +30,7 @@ import { SessionRealtimeHead } from '@/providers/session-realtime-head';
 import { OfflineSessionBanner } from '@/components/offline/offline-session-banner';
 import { AutocompleteProvider } from '@/providers/autocomplete-provider';
 import { AutocompleteDataHead } from '@/providers/autocomplete-data-head';
+import { DeepLinkHead } from '@/providers/deep-link-head';
 import { MoneyFormatSync } from '@/providers/money-format-sync';
 import { NotificationProvider } from '@/providers/notification-provider';
 import { PushRegistrationHead } from '@/providers/push-registration-head';
@@ -67,6 +68,9 @@ const MemoAppTree = memo(function MemoAppTree({ children }: { children: React.Re
       <NotificationProvider enabled>
         <SessionBootstrapGate>
           {children}
+          {/* Renders only inside the authenticated tree — a parked Universal
+              Link can never open a screen ahead of the auth gate. */}
+          <DeepLinkHead />
           <OfflineSessionBanner />
         </SessionBootstrapGate>
       </NotificationProvider>
@@ -264,6 +268,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             exiting={splashExiting}
             exitMode={splashExitMode}
             onExitComplete={dismissSplash}
+            showAccountSync={
+              Boolean(firebaseUser) &&
+              status !== 'booting' &&
+              (isHydrating || journeyStep === 'loading')
+            }
           />
         </View>
       ) : null}

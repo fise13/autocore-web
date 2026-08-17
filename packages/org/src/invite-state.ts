@@ -38,9 +38,9 @@ export function inviteRequiresEmailMatch(
 }
 
 export const INVITE_STATUS_LABELS: Record<InviteStatus, string> = {
-  pending: 'Ожидает',
-  accepted: 'Принято',
-  expired: 'Истекло',
-  cancelled: 'Отменено',
-  declined: 'Отклонено',
+  pending: 'Pending',
+  accepted: 'Accepted',
+  expired: 'Expired',
+  cancelled: 'Cancelled',
+  declined: 'Declined',
 };

@@ -4,8 +4,6 @@ import { OrderTransitionProvider } from '@/features/orders/animation/order-trans
 import { formSheetScreenOptions, stackOptionsFor } from '@/theme/navigation-policy';
 
 export default function OrdersLayout() {
-  const modalTask = stackOptionsFor('modalTask');
-
   return (
     <OrderTransitionProvider>
       <Stack screenOptions={{ headerShown: false, freezeOnBlur: false }}>
@@ -52,7 +50,14 @@ export default function OrdersLayout() {
         />
         <Stack.Screen
           name="create-item"
-          options={{ presentation: 'fullScreenModal', ...modalTask }}
+          options={{
+            ...formSheetScreenOptions({
+              detents: [0.5, 1],
+              initialDetentIndex: 'last',
+            }),
+            headerShown: false,
+            title: 'Add part',
+          }}
         />
       </Stack>
     </OrderTransitionProvider>

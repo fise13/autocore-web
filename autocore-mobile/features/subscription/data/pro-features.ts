@@ -29,22 +29,22 @@ export type ProFeatureRow = {
 export const PRO_FEATURE_ROWS: ProFeatureRow[] = [
   {
     id: 'inventory',
-    label: 'Unlimited inventory',
-    detail: 'Parts, engines and locations without a record cap',
+    label: 'Inventory without limits',
+    detail: 'Parts, engines and locations with no record cap',
     icon: PackageIcon,
     feature: 'unlimited_inventory',
   },
   {
     id: 'ai',
-    label: 'Unlimited AI',
-    detail: 'Scan and import documents and photos, no monthly limit',
+    label: 'AI-powered workflows',
+    detail: 'Scan and import documents and photos',
     icon: SparklesIcon,
     feature: 'unlimited_ai',
   },
   {
     id: 'work_orders',
-    label: 'Unlimited work orders',
-    detail: 'Every job tracked, with full history',
+    label: 'Complete work orders',
+    detail: 'Track every job with full history',
     icon: ClipboardListIcon,
     feature: 'unlimited_work_orders',
   },
@@ -70,6 +70,9 @@ export const PRO_FEATURE_ROWS: ProFeatureRow[] = [
     feature: 'priority_support',
   },
 ];
+
+/** Four lines on the paywall — conversion screens do not list every gate. */
+export const PAYWALL_FEATURE_ROWS = PRO_FEATURE_ROWS.slice(0, 4);
 
 export const LEGAL_URLS = {
   terms: 'https://myautocore.com/terms',

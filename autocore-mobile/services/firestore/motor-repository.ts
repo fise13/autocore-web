@@ -187,6 +187,57 @@ export function createMotorRepository() {
       return motorId;
     },
 
+    /**
+     * Same write path as the web excel grid: `users/{uid}/motors/{localId}`.
+     * Rows show up in Work → Engines and in the desktop spreadsheet.
+     */
+    async create(
+      uid: string,
+      input: {
+        companyId: string;
+        serialCode: string;
+        brandName?: string;
+        engineCode?: string;
+        warehouseLocation?: string;
+      },
+      existingMotors: MotorEntity[] = [],
+    ): Promise<string> {
+      const serialCode = input.serialCode.trim();
+      if (!serialCode) throw new Error('Serial is required');
+
+      const companyId = normalizeCompanyId(input.companyId);
+      const localId = generateWebLocalId(existingMotors);
+      const motorId = String(localId);
+
+      await setDoc(
+        motorDocRef(uid, motorId),
+        {
+          companyId,
+          localId,
+          engineId: null,
+          serialCode,
+          configuration: '',
+          notes: '',
+          quality: '',
+          photoUrls: [],
+          quantity: 1,
+          transmission: '',
+          arrivalDate: new Date(),
+          soldDate: null,
+          deletedAt: null,
+          brandName: (input.brandName ?? '').trim() || 'Not specified',
+          engineCode: (input.engineCode ?? '').trim() || '—',
+          warehouseLocation: (input.warehouseLocation ?? '').trim() || null,
+          status: 'available',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+
+      return motorId;
+    },
+
     subscribe(
       filters: MotorFilters,
       onData: (motors: MotorEntity[]) => void,
@@ -268,6 +319,20 @@ export function createMotorRepository() {
       };
     },
   };
+}
+
+export function generateWebLocalId(existingMotors: MotorEntity[]): number {
+  const used = new Set(
+    existingMotors
+      .map((motor) => motor.localId ?? Number(motor.id))
+      .filter((value) => Number.isFinite(value)),
+  );
+
+  let candidate = -Math.floor(Date.now() % 2_000_000_000);
+  while (used.has(candidate)) {
+    candidate -= 1;
+  }
+  return candidate;
 }
 
 export const motorRepository = createMotorRepository();

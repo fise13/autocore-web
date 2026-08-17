@@ -102,18 +102,16 @@ export function FinanceScreen() {
     );
   }
 
-  if (!companyId || isBootstrapping) {
-    return (
-      <Screen>
-        <FinSkeleton />
-      </Screen>
-    );
-  }
-
-  const connected = isProductionCompanyId(companyId);
-  const subtitle = `${model.window.period.longLabel} · ${model.totals.operationCount} ${
-    model.totals.operationCount === 1 ? 'operation' : 'operations'
-  }`;
+  const connected = Boolean(companyId) && isProductionCompanyId(companyId);
+  const subtitle = !companyId
+    ? 'Loading ledger'
+    : isBootstrapping
+      ? `${model.window.period.longLabel} · syncing`
+      : connected
+        ? `${model.window.period.longLabel} · ${model.totals.operationCount} ${
+            model.totals.operationCount === 1 ? 'operation' : 'operations'
+          }`
+        : 'No company connected';
 
   return (
     <Screen>
@@ -124,13 +122,16 @@ export function FinanceScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <FinHeader
-          subtitle={connected ? subtitle : 'No company connected'}
+          subtitle={subtitle}
           canEdit={canEdit}
           onNewOperation={openNewOperation}
           onSettings={openSettings}
         />
 
-        <View style={{ paddingHorizontal: fin.pad, gap: fin.chapter }}>
+        {!companyId || isBootstrapping ? (
+          <FinSkeleton />
+        ) : (
+          <View style={{ paddingHorizontal: fin.pad, gap: fin.chapter }}>
           {(!isOnline || errorMessage || !connected) && (
             <View style={{ gap: fin.inline }}>
               {!connected ? (
@@ -187,6 +188,7 @@ export function FinanceScreen() {
             <FinanceOverview model={model} period={period} handlers={handlers} />
           )}
         </View>
+        )}
       </ScreenScroll>
     </Screen>
   );

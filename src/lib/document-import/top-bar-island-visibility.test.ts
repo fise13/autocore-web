@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 
 import {
   isDenseInventoryChromeRoute,
@@ -14,87 +15,81 @@ describe("shouldShowDocumentImportTopBarIsland", () => {
   };
 
   it("hides on warehouse when chrome is dense", () => {
-    expect(
-      shouldShowDocumentImportTopBarIsland({
-        ...base,
-        pathname: "/warehouse",
-      }),
-    ).toBe(false);
+    assert.equal(
+      shouldShowDocumentImportTopBarIsland({ ...base, pathname: "/warehouse" }),
+      false,
+    );
   });
 
   it("shows on warehouse empty space", () => {
-    expect(
+    assert.equal(
       shouldShowDocumentImportTopBarIsland({
         ...base,
         pathname: "/warehouse",
         allowOnDenseChrome: true,
       }),
-    ).toBe(true);
+      true,
+    );
   });
 
   it("hides on motors unless empty", () => {
-    expect(
-      shouldShowDocumentImportTopBarIsland({
-        ...base,
-        pathname: "/motors",
-      }),
-    ).toBe(false);
-    expect(
+    assert.equal(
+      shouldShowDocumentImportTopBarIsland({ ...base, pathname: "/motors" }),
+      false,
+    );
+    assert.equal(
       shouldShowDocumentImportTopBarIsland({
         ...base,
         pathname: "/motors",
         allowOnDenseChrome: true,
       }),
-    ).toBe(true);
+      true,
+    );
   });
 
   it("shows on spacious routes", () => {
-    expect(
-      shouldShowDocumentImportTopBarIsland({
-        ...base,
-        pathname: "/",
-      }),
-    ).toBe(true);
-    expect(
-      shouldShowDocumentImportTopBarIsland({
-        ...base,
-        pathname: "/work-orders",
-      }),
-    ).toBe(true);
+    assert.equal(
+      shouldShowDocumentImportTopBarIsland({ ...base, pathname: "/" }),
+      true,
+    );
+    assert.equal(
+      shouldShowDocumentImportTopBarIsland({ ...base, pathname: "/work-orders" }),
+      true,
+    );
   });
 
   it("hides while magic import or review is active", () => {
-    expect(
+    assert.equal(
       shouldShowDocumentImportTopBarIsland({
         ...base,
         pathname: "/",
         magicImportActive: true,
       }),
-    ).toBe(false);
-    expect(
+      false,
+    );
+    assert.equal(
       shouldShowDocumentImportTopBarIsland({
         ...base,
         pathname: "/",
         motorImportReviewActive: true,
       }),
-    ).toBe(false);
+      false,
+    );
   });
 
   it("hides on import review routes", () => {
-    expect(
-      shouldShowDocumentImportTopBarIsland({
-        ...base,
-        pathname: "/imports/abc",
-      }),
-    ).toBe(false);
+    assert.equal(
+      shouldShowDocumentImportTopBarIsland({ ...base, pathname: "/imports/abc" }),
+      false,
+    );
   });
 });
 
 describe("isDenseInventoryChromeRoute", () => {
   it("marks warehouse motors sold", () => {
-    expect(isDenseInventoryChromeRoute("/warehouse")).toBe(true);
-    expect(isDenseInventoryChromeRoute("/motors")).toBe(true);
-    expect(isDenseInventoryChromeRoute("/sold")).toBe(true);
-    expect(isDenseInventoryChromeRoute("/")).toBe(false);
+    assert.equal(isDenseInventoryChromeRoute("/warehouse"), true);
+    assert.equal(isDenseInventoryChromeRoute("/motors"), true);
+    assert.equal(isDenseInventoryChromeRoute("/sold"), true);
+    assert.equal(isDenseInventoryChromeRoute("/"), false);
   });
 });

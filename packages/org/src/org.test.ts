@@ -62,6 +62,6 @@ describe('emailsMatch', () => {
 describe('OrgError', () => {
   it('exposes copy', () => {
     const err = new OrgError('invite_expired', 410);
-    assert.equal(err.copy.title, 'Срок приглашения истёк');
+    assert.equal(err.copy.title, 'Invite expired');
   });
 });

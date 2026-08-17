@@ -426,7 +426,7 @@ export function createSpecificCategoryRepository() {
         for (const item of chunk) {
           const payload = item.data() as Record<string, unknown>;
           const record = mapRecord(item.id, payload, companyId, category.id, category.localId);
-          let nextData = { ...record.data };
+          const nextData = { ...record.data };
 
           for (const rename of ops.rename ?? []) {
             if (rename.oldKey === rename.newKey || !(rename.oldKey in nextData)) continue;

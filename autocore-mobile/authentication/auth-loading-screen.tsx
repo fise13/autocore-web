@@ -2,7 +2,7 @@ import { AuthSplashSurface, type AuthSplashSurfaceProps } from './auth-splash-su
 
 type AuthLoadingScreenProps = Pick<
   AuthSplashSurfaceProps,
-  'appear' | 'exiting' | 'exitMode' | 'onExitComplete' | 'style'
+  'appear' | 'exiting' | 'exitMode' | 'onExitComplete' | 'style' | 'showAccountSync'
 >;
 
 /**

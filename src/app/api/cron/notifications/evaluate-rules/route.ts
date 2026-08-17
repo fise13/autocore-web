@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { authorizeCron } from "@/lib/cron/authorize-cron";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import {
   runCompanyNotificationRules,
@@ -8,12 +9,6 @@ import {
 } from "@/lib/notifications/rule-evaluators.server";
 
 export const runtime = "nodejs";
-
-function authorizeCron(request: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) return false;
-  return request.headers.get("x-cron-secret") === secret;
-}
 
 export async function POST(request: NextRequest) {
   if (!authorizeCron(request)) {
@@ -37,4 +32,9 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ ok: true, evaluated, schedule });
+}
+
+/** Vercel Cron invokes schedules with GET. */
+export async function GET(request: NextRequest) {
+  return POST(request);
 }

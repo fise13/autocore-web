@@ -1,40 +1,45 @@
 import * as Linking from 'expo-linking';
 import type { Href } from 'expo-router';
 
+import {
+  deepLinkTargetToPath,
+  matchCanonicalPath,
+  parseCanonicalUrl,
+  resolveCanonicalDeepLink,
+} from '@/lib/deep-links/canonical-deep-links';
 import { resolveInviteHref } from '@/lib/invites/resolve-invite-href';
 import { guardedPush } from '@/lib/navigation/guarded-push';
 import { parseWidgetDeepLink } from '@/features/live-activity/lib/widget-links';
 
 const SCHEME = 'autocoremobile://';
 
-/** Resolve notification deep link → Expo Router href. */
+/**
+ * Resolve a notification deep link → Expo Router href.
+ *
+ * Canonical `https://app.myautocore.com/...` payloads and canonical web paths
+ * go through the same table Universal Links use, so a push and a tapped link
+ * for the same resource land on the same screen. Expo-native hrefs already in
+ * the payload (`/(tabs)/work`, `/orders/{id}`) keep working unchanged.
+ */
 export function resolveNotificationDeepLink(deepLink?: string | null): Href | null {
   if (!deepLink?.trim()) return null;
 
   const trimmed = deepLink.trim();
 
   if (trimmed.startsWith('http')) {
+    const canonical = resolveCanonicalDeepLink(trimmed);
+    if (canonical) return deepLinkTargetToPath(canonical) as Href;
+    // Off-host link (staging, custom domain) — invites still resolve.
     const inviteHref = resolveInviteHref(trimmed);
     if (inviteHref) return inviteHref;
   }
 
-  // Web import / batch deep links → mobile import capture
-  if (trimmed.startsWith('/import') || trimmed.startsWith('/imports')) {
-    try {
-      const url = new URL(trimmed, 'https://app.myautocore.com');
-      const batchId = url.searchParams.get('batchId');
-      if (batchId) {
-        return `/(tabs)/import?batchId=${encodeURIComponent(batchId)}` as Href;
-      }
-      const batchPath = url.pathname.match(/\/imports\/batch\/([^/]+)/);
-      if (batchPath?.[1]) {
-        return `/(tabs)/import?batchId=${encodeURIComponent(batchPath[1])}` as Href;
-      }
-    } catch {
-      // fall through
-    }
-    // Legacy `/imports/{jobId}` opens capture — do not treat job id as batchId.
-    return '/import' as Href;
+  // `/(group)` prefixes are already Expo Router hrefs, never canonical web paths.
+  if (trimmed.startsWith('/') && !trimmed.startsWith('/(')) {
+    const parsed = parseCanonicalUrl(trimmed);
+    const canonical = parsed ? matchCanonicalPath(parsed.path, parsed.query) : null;
+    // No canonical meaning → it is a mobile href already (`/orders/{id}`, `/inbox`).
+    if (canonical) return deepLinkTargetToPath(canonical) as Href;
   }
 
   if (trimmed.startsWith('/(tabs)') || trimmed.startsWith('/')) {
@@ -77,13 +82,14 @@ export function resolveNotificationDeepLink(deepLink?: string | null): Href | nu
     return `/orders/create-item` as Href;
   }
   if (path.startsWith('imports/') || path.startsWith('import/') || path.startsWith('import?')) {
+    // Import capture lives at `app/import.tsx` (root stack), not under (tabs).
     const batchMatch = path.match(/[?&]batchId=([^&]+)/);
     if (batchMatch?.[1]) {
-      return `/(tabs)/import?batchId=${decodeURIComponent(batchMatch[1])}` as Href;
+      return `/import?batchId=${encodeURIComponent(decodeURIComponent(batchMatch[1]))}` as Href;
     }
     const batchPath = path.match(/^imports\/batch\/([^/?#]+)/);
     if (batchPath?.[1]) {
-      return `/(tabs)/import?batchId=${decodeURIComponent(batchPath[1])}` as Href;
+      return `/import?batchId=${encodeURIComponent(decodeURIComponent(batchPath[1]))}` as Href;
     }
     // `import/{id}` used to be misread as batchId (job id ≠ batch).
     return '/import' as Href;
@@ -138,7 +144,14 @@ export async function openNotificationDeepLink(deepLink?: string | null): Promis
       guardedPush(router, '/(tabs)/work' as Href);
       return true;
     }
-    if (path === 'intake' || path.startsWith('intake/') || path.startsWith('intake?')) {
+    // Same rule for the canonical `/engine-intake` link, which resolves to the
+    // bay: reuse the existing screen rather than pushing another copy.
+    if (
+      path === 'intake' ||
+      path.startsWith('intake/') ||
+      path.startsWith('intake?') ||
+      href === '/intake'
+    ) {
       const { openEngineIntakeBay } = await import(
         '@/features/engine-intake/lib/open-engine-intake'
       );

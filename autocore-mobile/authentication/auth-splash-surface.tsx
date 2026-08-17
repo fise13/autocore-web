@@ -16,6 +16,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
+  withRepeat,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
@@ -36,6 +37,8 @@ import {
  */
 const BG_LIGHT = '#f5f7fb';
 const BG_DARK = '#0d0e12';
+const PRIMARY_LIGHT = '#0a73f2';
+const PRIMARY_DARK = '#4d96ff';
 
 /** Quiet signature — muted foreground weight on app background. */
 const SIGNATURE_LIGHT = 'rgba(17, 19, 26, 0.28)';
@@ -79,6 +82,10 @@ export type SplashExitMode = 'dissolve' | 'rise';
 
 export type AuthSplashSurfaceProps = ViewProps & {
   compact?: boolean;
+  /**
+   * Thin account-hydration track. Cold boot / returning session stays clean.
+   */
+  showAccountSync?: boolean;
   /** a11y only — never painted. */
   message?: string;
   showAppName?: boolean;
@@ -111,6 +118,7 @@ export function AuthSplashSurface({
   appear = true,
   exiting = false,
   exitMode = 'dissolve',
+  showAccountSync = false,
   onExitComplete,
   style,
   ...props
@@ -126,6 +134,8 @@ export function AuthSplashSurface({
   const lockupY = useSharedValue(0);
   const lockupScale = useSharedValue(appear ? 0.96 : 1);
   const signatureOpacity = useSharedValue(appear ? 0 : 1);
+  const syncSweep = useSharedValue(0);
+  const primary = isDark ? PRIMARY_DARK : PRIMARY_LIGHT;
 
   const reducedRef = useRef(false);
   const finishedRef = useRef(false);
@@ -150,6 +160,23 @@ export function AuthSplashSurface({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!showAccountSync || exiting) {
+      cancelAnimation(syncSweep);
+      syncSweep.value = 0;
+      return;
+    }
+    syncSweep.value = 0;
+    syncSweep.value = withRepeat(
+      withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.cubic) }),
+      -1,
+      false,
+    );
+    return () => {
+      cancelAnimation(syncSweep);
+    };
+  }, [exiting, showAccountSync, syncSweep]);
 
   // Enter — soft fade with a quiet scale settle.
   useEffect(() => {
@@ -366,6 +393,13 @@ export function AuthSplashSurface({
     opacity: signatureOpacity.value,
   }));
 
+  const windowW = Dimensions.get('window').width;
+  const trackInner = Math.max(120, windowW - 96);
+  const fillW = Math.round(trackInner * 0.36);
+  const syncFillStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: syncSweep.value * (trackInner - fillW) }],
+  }));
+
   if (compact) {
     return (
       <Animated.View
@@ -440,6 +474,25 @@ export function AuthSplashSurface({
           </Text>
         </Animated.View>
       ) : null}
+
+      {showAccountSync ? (
+        <View
+          pointerEvents="none"
+          accessibilityLabel="Syncing account data"
+          style={[
+            styles.syncTrack,
+            { bottom: insets.bottom + 10, backgroundColor: isDark ? 'rgba(77,150,255,0.18)' : 'rgba(10,115,242,0.14)' },
+          ]}
+        >
+          <Animated.View
+            style={[
+              styles.syncFill,
+              { width: fillW, backgroundColor: primary },
+              syncFillStyle,
+            ]}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -460,5 +513,17 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     alignItems: 'center',
+  },
+  syncTrack: {
+    position: 'absolute',
+    left: 48,
+    right: 48,
+    height: 2,
+    borderRadius: 1,
+    overflow: 'hidden',
+  },
+  syncFill: {
+    height: 2,
+    borderRadius: 1,
   },
 });

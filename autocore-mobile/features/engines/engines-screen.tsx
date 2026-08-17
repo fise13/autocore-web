@@ -24,6 +24,7 @@ import { isRealtimeReady } from '@/lib/realtime/subscription-registry';
 import { rhythm, spacing } from '@/theme';
 import type { MotorEntity } from '@/types/motor';
 
+import { EngineExcelAddGrid } from './components/engine-excel-add-grid';
 import { ENGINE_THUMB_SIZE, EngineThumbnail } from './components/engine-thumbnail';
 import {
   engineMatchesQuery,
@@ -105,6 +106,7 @@ export function EnginesScreen() {
   const deferredQuery = useDeferredValue(query.trim());
 
   const canView = motorsEnabled && rbac.can('inventory_view') && rbac.scopes.motors !== 'none';
+  const canEdit = motorsEnabled && rbac.can('inventory_edit');
 
   const motorsKey = useMemo(
     () => ['realtime', 'motors', companyId, uid] as const,
@@ -170,6 +172,10 @@ export function EnginesScreen() {
         }
       />
 
+      {canEdit && uid && companyId ? (
+        <EngineExcelAddGrid uid={uid} companyId={companyId} motors={motors} />
+      ) : null}
+
       {loading ? (
         <ContentState state="loading">{null}</ContentState>
       ) : rows.length === 0 ? (
@@ -180,7 +186,9 @@ export function EnginesScreen() {
           emptyDescription={
             deferredQuery
               ? 'Try the serial, the engine code, or the shelf.'
-              : 'Serialized motors show up here once they are received.'
+              : canEdit
+                ? 'Type a serial in the spreadsheet above. It shows up here and in the web excel grid.'
+                : 'Serialized motors show up here once they are received.'
           }
         >
           {null}

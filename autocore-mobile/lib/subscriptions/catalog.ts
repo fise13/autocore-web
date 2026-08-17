@@ -49,7 +49,7 @@ export const PLANS: Record<PlanId, PlanDescriptor> = {
     tier: 'pro',
     interval: 'monthly',
     rank: 10,
-    appleSku: 'com.wise.autocore.pro.monthly',
+    appleSku: 'com.autocore.pro.monthly',
     googleSku: 'autocore_pro_monthly',
     subscriptionGroupIdIOS: APPLE_SUBSCRIPTION_GROUP,
     purchasable: true,
@@ -61,12 +61,12 @@ export const PLANS: Record<PlanId, PlanDescriptor> = {
     tier: 'pro',
     interval: 'yearly',
     rank: 20,
-    appleSku: 'com.wise.autocore.pro.yearly',
+    appleSku: 'com.autocore.pro.yearly',
     googleSku: 'autocore_pro_yearly',
     subscriptionGroupIdIOS: APPLE_SUBSCRIPTION_GROUP,
     purchasable: true,
-    // Flip to 'live' once the App Store Connect product is approved.
-    availability: 'hidden',
+    // Offered when StoreKit returns the product. Hidden until then via empty catalog.
+    availability: 'live',
     label: 'AutoCore Pro',
   },
   enterprise: {
@@ -99,8 +99,15 @@ export function skuForPlan(plan: PlanDescriptor): string | null {
   return Platform.OS === 'ios' ? plan.appleSku : Platform.OS === 'android' ? plan.googleSku : null;
 }
 
+const LEGACY_APPLE_SKUS: Record<string, PlanId> = {
+  'com.wise.autocore.pro.monthly': 'pro_monthly',
+  'com.wise.autocore.pro.yearly': 'pro_yearly',
+};
+
 /** Reverse lookup from a store product identifier. */
 export function planForSku(sku: string): PlanDescriptor | null {
+  const legacy = LEGACY_APPLE_SKUS[sku];
+  if (legacy) return PLANS[legacy];
   for (const plan of Object.values(PLANS)) {
     if (plan.appleSku === sku || plan.googleSku === sku) return plan;
   }

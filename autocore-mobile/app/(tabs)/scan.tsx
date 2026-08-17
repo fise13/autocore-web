@@ -1,10 +1,10 @@
-import { StaticTabScreen } from '@/components/navigation/animated-tab-screen';
+import { AnimatedTabScreen } from '@/components/navigation/animated-tab-screen';
 import { ScanScreen } from '@/features/scan';
 
 export default function ScanRoute() {
   return (
-    <StaticTabScreen>
+    <AnimatedTabScreen tab="scan" enter="rise">
       <ScanScreen />
-    </StaticTabScreen>
+    </AnimatedTabScreen>
   );
 }

@@ -13,6 +13,7 @@ import { subscribeCompanySubscription } from '@/services/firestore/billing-repos
 import type { CompanySubscription } from '@/types/billing';
 
 import { devSubscription, subscribeDevMode } from './dev-mode';
+import { complimentaryProEntitlement, isPaywallBypassed, subscribePaywallBypass } from './paywall-bypass';
 import {
   readEntitlementCacheSync,
   writeEntitlementCache,
@@ -89,15 +90,17 @@ function markRemoteSettled(entry: RegistryEntry): void {
 
 /** Recompute an entry's snapshot; returns true when it actually changed. */
 function recompute(entry: RegistryEntry): boolean {
-  const entitlement = resolveEntitlement({
-    companyId: entry.companyId,
-    remote: entry.remote,
-    cached: entry.cached,
-    local: localSubscriptions,
-    devOverride: devSubscription(),
-  });
+  const entitlement = isPaywallBypassed()
+    ? complimentaryProEntitlement(entry.companyId)
+    : resolveEntitlement({
+        companyId: entry.companyId,
+        remote: entry.remote,
+        cached: entry.cached,
+        local: localSubscriptions,
+        devOverride: devSubscription(),
+      });
 
-  const isLoading = !entry.ready;
+  const isLoading = isPaywallBypassed() ? false : !entry.ready;
   const previous = entry.snapshot;
 
   if (
@@ -121,13 +124,16 @@ export function subscribeEntitlementRegistry(listener: () => void): () => void {
 
 // Flipping a dev scenario must repaint every subscriber immediately, exactly as
 // a server-side change would.
-subscribeDevMode(() => {
+function recomputeAll(): void {
   let changed = false;
   for (const entry of registry.values()) {
     if (recompute(entry)) changed = true;
   }
   if (changed) notify();
-});
+}
+
+subscribeDevMode(recomputeAll);
+subscribePaywallBypass(recomputeAll);
 
 export function getEntitlementSnapshot(
   companyId: string | null | undefined,

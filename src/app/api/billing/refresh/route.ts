@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "companyId is required" }, { status: 400 });
     }
 
-    const result = await refreshInternalSubscription(companyId);
+    const result = await refreshInternalSubscription(companyId, access.uid);
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof AccountAccessError) {

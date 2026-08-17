@@ -18,10 +18,10 @@ export function VersionSettingsScreen() {
     <ProfileScreenShell title="Version" subtitle="Build and support">
       <ListSection
         title="App"
-        footer="Early beta. Features may change — contact support if something isn't working."
+        footer="Release build. Contact support if something isn't working."
       >
         <CollectionRow title="Name" value={name} showChevron={false} />
-        <CollectionRow title="Version" value={`v${version} · Beta`} showChevron={false} />
+        <CollectionRow title="Version" value={`v${version} · Release`} showChevron={false} />
         <CollectionRow title="Build" value={`${build} · ${platform}`} showChevron={false} />
       </ListSection>
 

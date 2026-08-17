@@ -545,6 +545,22 @@ export function EngineIntakeSessionScreen() {
     // the camera route still carries the original param. Always enqueue so
     // drain can reclaim + retry; sendOrQueue treated 409 as terminal and
     // dropped Finish after photos had already left the phone.
+    /**
+     * `.find()` cannot carry the discriminant narrowing out of its predicate,
+     * so the sessionId is read inside a loop where `field_complete` has already
+     * been established and `payload.sessionId` is typed.
+     */
+    const queuedFieldCompleteSessionId = (): string | null => {
+      for (const item of outbox.commands) {
+        if (item.companyId !== companyId) continue;
+        const queued = item.command;
+        if (queued.type !== 'field_complete') continue;
+        if (queued.payload.jobId !== jobId) continue;
+        if (queued.payload.sessionId) return queued.payload.sessionId;
+      }
+      return null;
+    };
+
     const liveSessionId =
       (typeof job?.assignment.activeSessionId === 'string' &&
       job.assignment.activeSessionId.length > 0
@@ -553,13 +569,7 @@ export function EngineIntakeSessionScreen() {
       outbox.photos.find(
         (photo) => photo.companyId === companyId && photo.jobId === jobId,
       )?.sessionId ??
-      outbox.commands.find(
-        (item) =>
-          item.companyId === companyId &&
-          item.command.type === 'field_complete' &&
-          item.command.payload.jobId === jobId &&
-          typeof item.command.payload.sessionId === 'string',
-      )?.command.payload.sessionId ??
+      queuedFieldCompleteSessionId() ??
       sessionId;
     const command = makeWorkerCommand({
       type: 'field_complete',

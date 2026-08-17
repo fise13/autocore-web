@@ -45,21 +45,6 @@ import type { NewOperationPreset } from './navigation';
  */
 const SUCCESS_HOLD_MS = 420;
 
-/**
- * How long the sheet waits for the server to acknowledge the write.
- *
- * `FirestoreNetworkHead` pauses Firestore's network on a committed offline
- * reading so writes queue in memory rather than failing. A queued write's
- * promise then never settles, which left the spinner running forever with no
- * way out. Past this window the entry is already in the ledger locally, so the
- * sheet closes and says plainly that it has not synced yet.
- */
-const SERVER_ACK_TIMEOUT_MS = 6000;
-
-function waitFor(ms: number): Promise<'queued'> {
-  return new Promise((resolve) => setTimeout(() => resolve('queued'), ms));
-}
-
 function parseAmountInput(value: string): number {
   const normalized = value.replace(/\s/g, '').replace(',', '.');
   return Number(normalized);
@@ -189,9 +174,7 @@ export function CreateOperationScreen() {
       return;
     }
 
-    setPhase('submitting');
     setError(null);
-    haptics.light();
 
     try {
       const normalized = markAsAdvance
@@ -208,7 +191,19 @@ export function CreateOperationScreen() {
         mixedCashPortion,
       );
 
-      const pending = createFinancialOperation(profile.companyId, profile.id, {
+      // Fire and confirm — the sheet never waits on the round trip.
+      //
+      // Firestore applies the write to its cache the moment it is called, so
+      // the operations listener already has the row before this line returns;
+      // that is what puts it on the ledger instantly. Awaiting the server
+      // acknowledgement only ever delayed the UI, and it bought no durability:
+      // this app runs Firestore without a persistent cache, so a force-quit
+      // loses an unacknowledged write whether the sheet waited or not.
+      //
+      // A rejection therefore has to be reported after the fact. Firestore
+      // rolls its local write back when the server refuses it, so the row
+      // disappears from the ledger on its own and the toast says why.
+      void createFinancialOperation(profile.companyId, profile.id, {
         type,
         amount: baseAmount,
         account: payment.account,
@@ -216,42 +211,24 @@ export function CreateOperationScreen() {
         cashReceived: payment.cashReceived,
         category: normalized.category || null,
         comment: normalized.comment || null,
+      }).catch((syncError: unknown) => {
+        haptics.warning();
+        toast({
+          title: 'Operation was not saved',
+          description:
+            syncError instanceof Error
+              ? syncError.message
+              : 'The server refused the entry — it has been removed from the ledger.',
+          variant: 'destructive',
+        });
       });
 
-      const outcome = await Promise.race([
-        pending.then(() => 'acked' as const),
-        waitFor(SERVER_ACK_TIMEOUT_MS),
-      ]);
-
-      if (outcome === 'queued') {
-        // The row is already in the ledger from the local write; only the
-        // server round trip is outstanding. Claiming "Added" here would
-        // overstate it, so the sheet closes on the truth instead.
-        void pending.catch((syncError: unknown) => {
-          toast({
-            title: 'Operation failed to sync',
-            description:
-              syncError instanceof Error ? syncError.message : 'It was not saved to the server.',
-            variant: 'destructive',
-          });
-        });
-        haptics.light();
-        toast({
-          title: 'Saved on this iPhone',
-          description: 'It will sync as soon as the connection is back.',
-          variant: 'warning',
-        });
-        router.back();
-        return;
-      }
-
       haptics.success();
-      // Confirm on the control the user just pressed, then hand off to the
-      // existing dismiss + toast. The button stays disabled throughout, so the
-      // hold cannot be used to submit twice.
+      // Confirm on the control the user just pressed, then dismiss. No success
+      // toast: the tick already confirmed it and the row is on the ledger
+      // behind the sheet, so a second confirmation would only add noise.
       setPhase('success');
       dismissTimer.current = setTimeout(() => {
-        toast({ title: 'Operation saved', variant: 'success' });
         router.back();
       }, SUCCESS_HOLD_MS);
     } catch (nextError) {

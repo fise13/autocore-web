@@ -13,6 +13,7 @@ import {
   verifyMobileAccess,
 } from "@/lib/auth/verify-mobile-access.server";
 import { INVENTORY_COLLECTIONS } from "@/lib/navigation/inventory-collections";
+import { enforceRateLimit, RateLimitError } from "@/lib/rate-limit/rate-limit.server";
 import { userCopy } from "@/lib/user-copy";
 
 export const runtime = "nodejs";
@@ -59,6 +60,25 @@ export async function POST(request: NextRequest) {
 
   if (!isCoreConfigured()) {
     return NextResponse.json({ error: userCopy.ai.errorUnavailable }, { status: 503 });
+  }
+
+  // Each accepted request can run up to MAX_STEPS tool-calling rounds against a
+  // billed model, so the spend ceiling per user has to live here.
+  try {
+    await enforceRateLimit({
+      action: "assistant",
+      subject: access.uid,
+      limit: 30,
+      windowMs: 5 * 60_000,
+    });
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return NextResponse.json(
+        { error: userCopy.ai.errorRateLimited, retryAfterSec: error.retryAfterSec },
+        { status: 429, headers: { "Retry-After": String(error.retryAfterSec) } },
+      );
+    }
+    throw error;
   }
 
   const parsed = requestSchema.safeParse(await request.json().catch(() => null));

@@ -21,27 +21,19 @@ import { usePaywallEnter } from '../animation/use-paywall-enter';
 
 type PurchaseCtaProps = {
   flow: PurchaseFlowState;
-  /** "Start Free Trial" when a trial is on offer, "Subscribe" otherwise. */
   label: string;
-  /** Auto-renew disclosure, rendered directly beneath the button per HIG. */
   disclosure: string;
   disabled: boolean;
   onPress: () => void;
 };
 
-/**
- * The primary action, and the surface that carries purchase state.
- *
- * Loading, verifying, pending and success are all expressed here rather than in
- * a blocking modal, so the user never loses sight of what they tapped.
- */
 export function PurchaseCta({ flow, label, disclosure, disabled, onPress }: PurchaseCtaProps) {
   const { colors, tones } = useTheme();
   const enterStyle = usePaywallEnter({
     delay: paywallTimeline.cta,
     duration: paywallDuration.cta,
-    scale: true,
-    spring: true,
+    translateY: 16,
+    scale: false,
   });
 
   const isBusy = flow.phase === 'loading' || flow.phase === 'verifying';
@@ -60,7 +52,7 @@ export function PurchaseCta({ flow, label, disclosure, disabled, onPress }: Purc
             alignItems: 'center',
             gap: spacing[3],
             padding: spacing[4],
-            borderRadius: radius['2xl'],
+            borderRadius: radius.xl,
             backgroundColor: tones.warning.bg,
             borderWidth: 1,
             borderColor: tones.warning.border,
@@ -82,16 +74,18 @@ export function PurchaseCta({ flow, label, disclosure, disabled, onPress }: Purc
   }
 
   return (
-    <Animated.View style={[enterStyle, { gap: spacing[2.5] }]}>
+    <Animated.View style={[enterStyle, { gap: spacing[1.5] }]}>
       <Button
         native={false}
         size="xl"
+        shape="pill"
         loading={isBusy}
         disabled={disabled}
         onPress={onPress}
         accessibilityLabel={label}
+        accessibilityHint="Completes the purchase with the App Store"
       >
-        {isBusy && flow.phase === 'verifying' ? 'Confirming…' : label}
+        {isBusy && flow.phase === 'verifying' ? 'Confirming' : label}
       </Button>
 
       <Text
@@ -105,22 +99,12 @@ export function PurchaseCta({ flow, label, disclosure, disabled, onPress }: Purc
   );
 }
 
-/**
- * Purchase success.
- *
- * The one moment in the flow that earns a flourish: the mark springs in while a
- * ring expands and fades behind it, then the caption follows. Kept to ~600ms
- * total — long enough to register as a reward, short enough that it never
- * stands between the user and the app they just paid for.
- */
 function SuccessMark() {
-  const { tones } = useTheme();
+  const { colors, tones } = useTheme();
   const reduced = useReducedMotion();
 
   const scale = useSharedValue(reduced ? 1 : 0.4);
   const opacity = useSharedValue(reduced ? 1 : 0);
-  const ringScale = useSharedValue(1);
-  const ringOpacity = useSharedValue(0);
   const captionOpacity = useSharedValue(reduced ? 1 : 0);
 
   useEffect(() => {
@@ -135,33 +119,19 @@ function SuccessMark() {
 
     opacity.value = withTiming(1, { duration: paywallDuration.state, easing: paywallEase });
     scale.value = withSequence(
-      withSpring(1.08, paywallSpring.pop),
+      withSpring(1.06, paywallSpring.pop),
       withDelay(40, withSpring(1, paywallSpring.pop)),
     );
-
-    // Expanding ring — reads as the confirmation radiating outward.
-    ringOpacity.value = withSequence(
-      withTiming(0.35, { duration: 120, easing: paywallEase }),
-      withTiming(0, { duration: 420, easing: paywallEase }),
-    );
-    ringScale.value = withTiming(1.9, { duration: 540, easing: paywallEase });
-
     captionOpacity.value = withDelay(
-      220,
+      180,
       withTiming(1, { duration: paywallDuration.state, easing: paywallEase }),
     );
-  }, [captionOpacity, opacity, reduced, ringOpacity, ringScale, scale]);
+  }, [captionOpacity, opacity, reduced, scale]);
 
   const markStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
     transform: [{ scale: scale.value }],
   }));
-
-  const ringStyle = useAnimatedStyle(() => ({
-    opacity: ringOpacity.value,
-    transform: [{ scale: ringScale.value }],
-  }));
-
   const captionStyle = useAnimatedStyle(() => ({ opacity: captionOpacity.value }));
 
   return (
@@ -171,39 +141,24 @@ function SuccessMark() {
       accessible
       accessibilityLabel="Purchase complete. You're on AutoCore Pro."
     >
-      <View style={{ width: 56, height: 56, alignItems: 'center', justifyContent: 'center' }}>
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            ringStyle,
-            {
-              position: 'absolute',
-              width: 56,
-              height: 56,
-              borderRadius: radius.full,
-              backgroundColor: tones.success.solid,
-            },
-          ]}
-        />
-        <Animated.View
-          style={[
-            markStyle,
-            {
-              width: 56,
-              height: 56,
-              borderRadius: radius.full,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: tones.success.solid,
-            },
-          ]}
-        >
-          <CheckIcon size="lg" color={tones.success.onSolid} strokeWidth={3} />
-        </Animated.View>
-      </View>
+      <Animated.View
+        style={[
+          markStyle,
+          {
+            width: 48,
+            height: 48,
+            borderRadius: radius.md,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: tones.success.solid,
+          },
+        ]}
+      >
+        <CheckIcon size="lg" color={tones.success.onSolid} strokeWidth={3} />
+      </Animated.View>
 
       <Animated.View style={captionStyle}>
-        <Text variant="body" style={{ fontWeight: '600' }}>
+        <Text variant="body" style={{ fontWeight: '600', color: colors.foreground }}>
           You&apos;re on AutoCore Pro
         </Text>
       </Animated.View>

@@ -1,19 +1,20 @@
-import { useCallback, useMemo, useState } from 'react';
-import { View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 
-import { ArrowLeftIcon, BoxIcon } from '@/assets/icons';
-import { Button, AutocompleteInput, IconButton, Input, KeyboardFormShell, Screen, StickyActionBar, Surface, Text, toast } from '@/components/ui';
+import { AutocompleteInput, Button, InputField, KeyboardFormShell, Text, toast } from '@/components/ui';
+import { CoSheetHeader, type CoSubmitPhase } from '@/features/accounting/components/co-sheet-header';
 import {
-  useMobileCreateInventoryItem,
-  useSession,
-  useTheme,
-} from '@/hooks';
+  FormListRow,
+  FormListSplitRow,
+  GroupedList,
+  GroupedSection,
+} from '@/features/orders/components/create-order/grouped-form';
+import { useMobileCreateInventoryItem, useSession, useTheme } from '@/hooks';
 import { scanContextStore } from '@/services/scan';
-import { haptics, rhythm } from '@/theme';
+import { haptics, tokens } from '@/theme';
 
-import { ordersLayout } from '@/features/orders/layout';
+const SUCCESS_HOLD_MS = 420;
 
 function parseNumber(value: string): number | undefined {
   const normalized = value.replace(',', '.').trim();
@@ -22,45 +23,72 @@ function parseNumber(value: string): number | undefined {
   return Number.isFinite(next) ? next : undefined;
 }
 
+function pickParam(value: string | string[] | undefined): string {
+  if (typeof value === 'string') return value.trim();
+  if (Array.isArray(value) && typeof value[0] === 'string') return value[0].trim();
+  return '';
+}
+
+function makePartCode() {
+  return `P-${Date.now().toString(36).toUpperCase()}`;
+}
+
+/**
+ * Add-part composer opened from the dock +. Name is enough to save.
+ */
 export function CreateInventoryItemScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const { can } = useSession();
   const createItem = useMobileCreateInventoryItem();
-
   const params = useLocalSearchParams<{
     barcode?: string;
     context?: string;
-    orderId?: string;
     orderLabel?: string;
   }>();
 
-  const barcode = typeof params.barcode === 'string' ? params.barcode.trim() : '';
+  const scannedBarcode = pickParam(params.barcode);
   const pendingContext = scanContextStore.peek();
-  const orderContext =
-    params.context === 'order' || pendingContext?.mode === 'order';
+  const orderContext = params.context === 'order' || pendingContext?.mode === 'order';
   const orderLabel =
-    (typeof params.orderLabel === 'string' ? params.orderLabel.trim() : '') ||
-    (pendingContext?.mode === 'order' ? pendingContext.orderLabel : undefined) ||
-    'new work order';
+    pickParam(params.orderLabel) ||
+    (pendingContext?.mode === 'order' ? pendingContext.orderLabel : '') ||
+    'the work order';
 
-  const [sku, setSku] = useState(barcode);
   const [name, setName] = useState('');
+  const [barcode, setBarcode] = useState(scannedBarcode);
+  const [sku, setSku] = useState(scannedBarcode);
   const [brandName, setBrandName] = useState('');
   const [warehouseLocation, setWarehouseLocation] = useState('');
   const [sellPrice, setSellPrice] = useState('');
   const [purchasePrice, setPurchasePrice] = useState('');
   const [initialQuantity, setInitialQuantity] = useState('');
+  const [phase, setPhase] = useState<CoSubmitPhase>('idle');
+  const [scrolled, setScrolled] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const canEdit = can('inventory_edit');
-
+  const canSubmit = canEdit && Boolean(name.trim()) && phase === 'idle';
   const submitLabel = useMemo(
-    () => (orderContext ? 'Create and add to work order' : 'Create in warehouse'),
+    () => (orderContext ? 'Add to order' : 'Add'),
     [orderContext],
   );
 
-  const handleClose = useCallback(() => {
+  useEffect(
+    () => () => {
+      if (dismissTimer.current) clearTimeout(dismissTimer.current);
+    },
+    [],
+  );
+
+  const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const next = event.nativeEvent.contentOffset.y > 6;
+    setScrolled((current) => (current === next ? current : next));
+  }, []);
+
+  const dismiss = useCallback(() => {
+    haptics.selection();
     if (router.canGoBack()) router.back();
   }, [router]);
 
@@ -77,42 +105,29 @@ export function CreateInventoryItemScreen() {
         });
         return;
       }
-
       toast({
-        title: 'Item created',
-        description: 'The item will appear in the warehouse catalog',
+        title: 'Part added',
+        description: 'It will show up in the warehouse catalog',
         variant: 'success',
       });
-      handleClose();
+      dismiss();
     },
-    [handleClose, orderContext, router],
+    [dismiss, orderContext, router],
   );
 
-  const handleSubmit = useCallback(async () => {
-    if (!canEdit) {
-      toast({
-        title: 'No access',
-        description: 'You need warehouse edit permission to create an item',
-        variant: 'warning',
-      });
-      return;
-    }
-
+  const onSubmit = useCallback(async () => {
     const trimmedName = name.trim();
-    if (!barcode) {
-      toast({ title: 'No barcode provided', variant: 'warning' });
-      return;
-    }
-    if (!trimmedName) {
-      toast({ title: 'Enter an item name', variant: 'warning' });
-      return;
-    }
+    if (!canEdit || !trimmedName) return;
+
+    const code = barcode.trim() || sku.trim() || makePartCode();
+    setError(null);
+    setPhase('submitting');
+    haptics.light();
 
     try {
-      haptics.light();
       const result = await createItem.mutateAsync({
-        barcode,
-        sku: sku.trim() || barcode,
+        barcode: code,
+        sku: sku.trim() || code,
         name: trimmedName,
         brandName: brandName.trim() || undefined,
         warehouseLocation: warehouseLocation.trim() || undefined,
@@ -120,16 +135,13 @@ export function CreateInventoryItemScreen() {
         purchasePrice: parseNumber(purchasePrice),
         initialQuantity: parseNumber(initialQuantity),
       });
-
       haptics.success();
-      finishWithItem(result.itemId);
-    } catch (error) {
+      setPhase('success');
+      dismissTimer.current = setTimeout(() => finishWithItem(result.itemId), SUCCESS_HOLD_MS);
+    } catch (caught) {
       haptics.warning();
-      toast({
-        title: 'Could not create item',
-        description: error instanceof Error ? error.message : undefined,
-        variant: 'destructive',
-      });
+      setPhase('idle');
+      setError(caught instanceof Error ? caught.message : 'Could not add this part');
     }
   }, [
     barcode,
@@ -145,132 +157,92 @@ export function CreateInventoryItemScreen() {
     warehouseLocation,
   ]);
 
-  if (!barcode) {
-    return (
-      <Screen>
-        <View style={{ flex: 1, justifyContent: 'center', padding: rhythm.pad, gap: rhythm.stack }}>
-          <Text variant="body" color="muted" style={{ textAlign: 'center' }}>
-            No barcode was passed in. Go back to the scanner and try again.
-          </Text>
-          <Button variant="secondary" onPress={handleClose}>
-            Back
-          </Button>
-        </View>
-      </Screen>
-    );
-  }
-
   return (
-    <Screen>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <Stack.Screen options={{ headerShown: false, title: 'Add part' }} />
       <KeyboardFormShell
-        contentContainerStyle={{
-          paddingHorizontal: ordersLayout.pad,
-          paddingBottom: ordersLayout.section,
-          gap: ordersLayout.section,
-        }}
+        backgroundColor={colors.background}
+        contentInsetAdjustmentBehavior="never"
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         header={
-          <View
-            style={{
-              paddingTop: insets.top + 8,
-              paddingHorizontal: ordersLayout.pad,
-              paddingBottom: rhythm.tight,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: rhythm.inline,
-            }}
-          >
-            <IconButton
-              accessibilityLabel="Back"
-              variant="ghost"
-              size="sm"
-              systemImage="chevron.left"
-              onPress={handleClose}
-            >
-              <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={1.85} />
-            </IconButton>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="bodyStrong" style={{ fontSize: 17, fontWeight: '700' }}>
-                New item
-              </Text>
-              <Text variant="caption" color="muted" numberOfLines={1}>
-                {orderContext
-                  ? `Will be added to ${orderLabel}`
-                  : 'Creating an item in the warehouse'}
-              </Text>
-            </View>
-          </View>
+          <CoSheetHeader
+            title="Add part"
+            onCancel={dismiss}
+            onSubmit={canEdit ? () => void onSubmit() : undefined}
+            submitLabel={submitLabel}
+            successLabel="Added"
+            canSubmit={canSubmit}
+            phase={phase}
+            scrolled={scrolled}
+          />
         }
-        footer={
-          <StickyActionBar>
-            <Button
-              native={false}
-              size="xl"
-              style={{ flex: 1 }}
-              onPress={() => void handleSubmit()}
-              loading={createItem.isPending}
-              disabled={!canEdit || createItem.isPending}
-            >
-              {submitLabel}
-            </Button>
-          </StickyActionBar>
-        }
+        contentContainerStyle={{
+          paddingHorizontal: tokens.space.screenX,
+          paddingTop: tokens.space.stack,
+          paddingBottom: tokens.space.section,
+          gap: tokens.space.section - 4,
+        }}
       >
-          <Surface inset>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <View
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: `${colors.primary}14`,
-                }}
-              >
-                <BoxIcon size="sm" color={colors.primary} strokeWidth={1.85} />
-              </View>
-              <View style={{ flex: 1, gap: 4 }}>
-                <Text variant="caption" color="muted">
-                  Barcode
-                </Text>
-                <Text variant="bodyStrong" style={{ fontVariant: ['tabular-nums'] }}>
-                  {barcode}
-                </Text>
-              </View>
-            </View>
-          </Surface>
+        <Text
+          variant="footnote"
+          color="muted"
+          style={{ paddingHorizontal: tokens.space.micro, letterSpacing: -0.08 }}
+        >
+          {orderContext
+            ? `Goes onto ${orderLabel}. Name is enough — barcode is optional.`
+            : 'Warehouse card. Name is enough — barcode is optional.'}
+        </Text>
 
-          <Surface inset style={{ gap: rhythm.stack }}>
-            <Input
-              label="Name"
-              placeholder="Mann oil filter"
-              value={name}
-              onChangeText={setName}
-              autoFocus
-            />
-            <Input
-              label="SKU"
-              placeholder={barcode}
-              value={sku}
-              onChangeText={setSku}
-              helperText="Defaults to the barcode"
-            />
-            <View style={{ gap: 6 }}>
-              <Text variant="caption" color="muted">
-                Brand
-              </Text>
+        <GroupedSection title="Identity">
+          <GroupedList>
+            <FormListRow label="Name" required>
+              <InputField
+                variant="plain"
+                placeholder="Oil filter"
+                value={name}
+                onChangeText={setName}
+                autoFocus
+                returnKeyType="next"
+              />
+            </FormListRow>
+            <FormListRow label="Barcode">
+              <InputField
+                variant="plain"
+                placeholder="Type or leave empty"
+                value={barcode}
+                onChangeText={setBarcode}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="next"
+              />
+            </FormListRow>
+            <FormListRow label="SKU">
+              <InputField
+                variant="plain"
+                placeholder="Defaults to barcode"
+                value={sku}
+                onChangeText={setSku}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="next"
+              />
+            </FormListRow>
+            <FormListRow label="Brand" last>
               <AutocompleteInput
                 source="manufacturer"
                 context={{ field: 'brand' }}
-                placeholder="Mann, Bosch…"
+                placeholder="Mann, Bosch"
                 value={brandName}
                 onValueChange={setBrandName}
               />
-            </View>
-            <View style={{ gap: 6 }}>
-              <Text variant="caption" color="muted">
-                Warehouse location
-              </Text>
+            </FormListRow>
+          </GroupedList>
+        </GroupedSection>
+
+        <GroupedSection title="Stock">
+          <GroupedList>
+            <FormListRow label="Location">
               <AutocompleteInput
                 source="previousValue"
                 fieldKey="warehouseLocation"
@@ -278,37 +250,64 @@ export function CreateInventoryItemScreen() {
                 value={warehouseLocation}
                 onValueChange={setWarehouseLocation}
               />
-            </View>
-            <View style={{ flexDirection: 'row', gap: rhythm.inline }}>
-              <View style={{ flex: 1 }}>
-                <Input
-                  label="Sell price"
-                  placeholder="0"
+            </FormListRow>
+            <FormListRow label="Starting quantity" last hint="Empty = card only">
+              <InputField
+                variant="plain"
+                placeholder="0"
+                value={initialQuantity}
+                onChangeText={setInitialQuantity}
+                keyboardType="number-pad"
+              />
+            </FormListRow>
+          </GroupedList>
+        </GroupedSection>
+
+        <GroupedSection title="Price">
+          <GroupedList>
+            <FormListSplitRow
+              leftLabel="Sell"
+              rightLabel="Cost"
+              last
+              left={
+                <InputField
+                  variant="plain"
+                    placeholder="0"
                   value={sellPrice}
                   onChangeText={setSellPrice}
                   keyboardType="decimal-pad"
                 />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Input
-                  label="Purchase price"
-                  placeholder="0"
+              }
+              right={
+                <InputField
+                  variant="plain"
+                    placeholder="0"
                   value={purchasePrice}
                   onChangeText={setPurchasePrice}
                   keyboardType="decimal-pad"
                 />
-              </View>
-            </View>
-            <Input
-              label="Starting quantity"
-              placeholder="0"
-              value={initialQuantity}
-              onChangeText={setInitialQuantity}
-              keyboardType="number-pad"
-              helperText="If you enter a quantity, the item is added to stock immediately"
+              }
             />
-          </Surface>
+          </GroupedList>
+        </GroupedSection>
+
+        {error ? (
+          <Text variant="caption" color="destructive">
+            {error}
+          </Text>
+        ) : null}
+
+        {!canEdit ? (
+          <View style={{ gap: tokens.space.stack }}>
+            <Text variant="body" color="muted">
+              You don’t have permission to add parts.
+            </Text>
+            <Button variant="outline" native={false} onPress={dismiss}>
+              Close
+            </Button>
+          </View>
+        ) : null}
       </KeyboardFormShell>
-    </Screen>
+    </View>
   );
 }

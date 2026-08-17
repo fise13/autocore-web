@@ -182,27 +182,9 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
     });
   }, [domainOrder, domainOrders, employees, profile, uid]);
 
-  if (!order) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: colors.background,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Text variant="body" color="muted">
-          Work order not found
-        </Text>
-        <Button variant="outline" onPress={() => router.back()} style={{ marginTop: 16 }}>
-          Back
-        </Button>
-      </View>
-    );
-  }
 
   const setDomainStatus = async (status: WorkOrderStatus) => {
+    if (!order) return;
     if (!can('work_orders_edit')) {
       toast({ title: 'You do not have permission to edit this order', variant: 'warning' });
       return;
@@ -244,7 +226,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
     domainOrder?.laborLines.filter((line) => !line.assigneeIds.length).length ?? 0;
 
   const handleClaim = async () => {
-    if (!canClaim) return;
+    if (!order || !canClaim) return;
     setClaiming(true);
     haptics.medium();
     try {
@@ -325,6 +307,28 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
     return <HeaderTextButton label="Edit" onPress={openEdit} />;
   }, [canEditOrder, openEdit]);
 
+  // Rendered after every hook has run. Returning early above this point
+  // changed the hook count between the loading and loaded renders, which
+  // React rejects outright once the order resolves.
+  if (!order) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.background,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Text variant="body" color="muted">
+          Work order not found
+        </Text>
+        <Button variant="outline" onPress={() => router.back()} style={{ marginTop: 16 }}>
+          Back
+        </Button>
+      </View>
+    );
+  }
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Native nav bar: system back gesture and button, translucent on scroll. */}

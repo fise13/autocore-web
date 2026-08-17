@@ -14,6 +14,11 @@ export function notifyFirestoreSnapshotError(error: unknown, onError?: (error: E
     }
   }
 
+  if (normalized.message.includes('INTERNAL ASSERTION FAILED')) {
+    console.warn('[firestore]', normalized.message);
+    return;
+  }
+
   console.error('[firestore]', normalized);
   onError?.(normalized);
 }

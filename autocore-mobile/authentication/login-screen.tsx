@@ -404,7 +404,7 @@ export function LoginScreen() {
     </Text>
   );
 
-  /** Landing step — Google / Apple yield on email keyboard focus (car + mark stay). */
+  /** Landing — Google / Apple collapse when the email field has keyboard focus. */
   if (!emailStep && !inviteBootstrapping) {
     const showSocial = showGoogleSignIn || showAppleSignIn;
 

@@ -73,8 +73,10 @@ export function useAuthJourneyStep(localProfileName?: string | null): AuthJourne
       return 'verify-email';
     }
 
-    const effectiveName = localProfileName ?? profile.displayName ?? null;
-    if (!isCompleteFullName(effectiveName)) {
+    const hasFullName = [localProfileName, profile.displayName, firebaseUser.displayName].some(
+      isCompleteFullName,
+    );
+    if (!hasFullName) {
       return 'profile-name';
     }
 

@@ -39,7 +39,7 @@ export function scanStatusCopy(props: ScanStatusLineProps): string {
     case 'document':
       return 'Fill the frame, then tap the shutter';
     default:
-      return 'Ready';
+      return 'Point at a barcode';
   }
 }
 

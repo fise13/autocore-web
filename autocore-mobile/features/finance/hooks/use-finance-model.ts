@@ -90,7 +90,7 @@ export function useFinanceModel(): UseFinanceModelResult {
     setPeriod,
     operations,
     workOrderNumbers,
-    isBootstrapping: Boolean(liveCompanyId) && operationsBootstrapping,
+    isBootstrapping: Boolean(liveCompanyId) && operationsBootstrapping && operations.length === 0,
     isEmptyLedger: !operationsBootstrapping && operations.length === 0,
     errorMessage,
     isOnline,

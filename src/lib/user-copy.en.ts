@@ -3742,6 +3742,7 @@ export const userCopyEn = {
     errorInterrupted:
       "The answer was interrupted by a provider limit. You can continue from here.",
     errorUnavailable: "Core is not configured for this workspace yet.",
+    errorRateLimited: "Too many requests. Wait a moment and try again.",
     stopped: "Stopped",
     /** Live tool activity — replaces the old fabricated "Thinking…" panel. */
     tool: {

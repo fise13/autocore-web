@@ -77,6 +77,7 @@ export const ROOT_APP_ROUTES = new Set([
   'orders',
   'earnings',
   'inbox',
+  'finance',
 ]);
 
 export function isRootAppHref(href: string): boolean {

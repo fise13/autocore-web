@@ -24,7 +24,7 @@ export function newOperationHref(preset?: NewOperationPreset | CreatableOperatio
   if (options.markAsAdvance) params.markAsAdvance = '1';
 
   return {
-    pathname: '/(tabs)/accounting/new',
+    pathname: '/finance/new',
     params,
   } as Href;
 }

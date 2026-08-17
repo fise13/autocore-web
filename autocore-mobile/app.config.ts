@@ -26,8 +26,12 @@ const iosUrlScheme = googleIosUrlScheme(iosClientId);
 const appleSignInFlag = process.env.EXPO_PUBLIC_ENABLE_APPLE_SIGN_IN?.trim().toLowerCase();
 const appleSignInEnabled = appleSignInFlag !== '0' && appleSignInFlag !== 'false';
 
+// Universal Links ship by default; opt out only when signing against a profile
+// without the Associated Domains capability. Kept in sync with
+// `plugins/with-ios-universal-links.js`, which writes the entitlement.
 const universalLinksFlag = process.env.EXPO_PUBLIC_ENABLE_UNIVERSAL_LINKS?.trim().toLowerCase();
-const universalLinksEnabled = universalLinksFlag === '1' || universalLinksFlag === 'true';
+const universalLinksEnabled = universalLinksFlag !== '0' && universalLinksFlag !== 'false';
+const associatedDomains = ['applinks:app.myautocore.com', 'applinks:myautocore.com'];
 
 const plugins: ExpoConfig['plugins'] = [
   'expo-router',
@@ -179,7 +183,7 @@ export default (): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     appleTeamId: '45W7LA3QFP',
-    ...(universalLinksEnabled ? { associatedDomains: ['applinks:app.myautocore.com'] } : {}),
+    ...(universalLinksEnabled ? { associatedDomains } : {}),
     ...(appleSignInEnabled ? { usesAppleSignIn: true } : {}),
     bundleIdentifier: 'com.wise.autocore.mobile',
     icon: './assets/branding/login-logo.png',

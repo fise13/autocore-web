@@ -3,7 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
 import { useTheme } from '@/hooks/use-theme';
-import { stackOptionsFor } from '@/theme/navigation-policy';
+import { formSheetScreenOptions, stackOptionsFor } from '@/theme/navigation-policy';
 
 const RootStack = memo(function RootStack() {
   const drillIn = stackOptionsFor('drillIn');
@@ -14,12 +14,25 @@ const RootStack = memo(function RootStack() {
   return (
     <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
       <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="(auth)" />
+      <Stack.Screen
+        name="(auth)"
+        options={{ contentStyle: { backgroundColor: 'transparent' }, animation: 'fade' }}
+      />
       <Stack.Screen name="search" options={{ ...drillIn, headerShown: false }} />
       <Stack.Screen name="warehouse" options={{ ...drillIn, headerShown: false }} />
       <Stack.Screen name="import" options={{ ...drillIn, headerShown: false }} />
       <Stack.Screen name="intake" options={{ ...drillIn, headerShown: false }} />
       <Stack.Screen name="orders" options={{ ...drillIn, headerShown: false }} />
+      <Stack.Screen
+        name="finance"
+        options={{
+          ...formSheetScreenOptions({
+            detents: [0.5, 1],
+            initialDetentIndex: 'last',
+          }),
+          headerShown: false,
+        }}
+      />
       <Stack.Screen name="earnings" options={{ ...drillIn, headerShown: false }} />
       <Stack.Screen name="inbox" options={{ ...drillIn, headerShown: false }} />
       <Stack.Screen name="objects" options={{ ...drillIn, headerShown: false }} />
@@ -39,12 +52,17 @@ const RootStack = memo(function RootStack() {
         options={{ presentation: 'modal', ...modalTask, headerShown: false }}
       />
       {__DEV__ ? <Stack.Screen name="design-system" options={{ presentation: 'card' }} /> : null}
+      {process.env.EXPO_PUBLIC_STORE_SHOTS === '1' ? (
+        <Stack.Screen name="store-shots" options={{ animation: 'fade', headerShown: false }} />
+      ) : null}
     </Stack>
   );
 });
 
 function RootStatusBar() {
   const { isDark } = useTheme();
+  // `translucent` was removed from expo-status-bar — Android draws behind the
+  // status bar by default now, so the prop is both invalid and redundant.
   return <StatusBar style={isDark ? 'light' : 'dark'} />;
 }
 

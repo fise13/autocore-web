@@ -14,6 +14,7 @@
  * launch.
  */
 import { getString, remove, setString } from '@/lib/storage/kv';
+import type { Entitlement, PlanId } from './types';
 
 const STORAGE_KEY = 'autocore-mobile:paywall-bypass:v1';
 
@@ -54,4 +55,27 @@ export function setPaywallBypassed(value: boolean): void {
     remove(STORAGE_KEY);
   }
   emit();
+}
+
+/** Local Pro while StoreKit checkout is still being finished. */
+export function complimentaryProEntitlement(
+  companyId: string | null,
+  planId: PlanId = 'pro_monthly',
+): Entitlement {
+  return {
+    companyId,
+    tier: 'pro',
+    planId: planId === 'pro_yearly' ? 'pro_yearly' : 'pro_monthly',
+    status: 'active',
+    isActive: true,
+    isTrial: false,
+    trialEndsAt: null,
+    trialUsed: false,
+    renewsAt: null,
+    willAutoRenew: false,
+    inGracePeriod: false,
+    provider: 'internal',
+    managedExternally: false,
+    source: 'local_unverified',
+  };
 }

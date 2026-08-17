@@ -21,6 +21,7 @@ import { bootstrapAppleRedirect } from "@/lib/auth/apple-redirect";
 import { prepareAppleSignInSession, isAppleJsReturnLanding } from "@/lib/auth/apple-js-sign-in";
 import { completeAppleJsReturnIfNeeded } from "@/lib/auth/sign-in-with-apple-credential";
 import { navigateToAppAfterAuth } from "@/lib/motion/auth-session-transition";
+import { RETURN_TO_PARAM, resolvePostLoginPath } from "@/lib/auth/return-to";
 import { useAppLocale } from "@/components/providers/app-locale-provider";
 import {
   coerceAppLocale,
@@ -33,6 +34,8 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const { setLocale } = useAppLocale();
   const deckSource = searchParams.get("source") === "deck";
+  // Destination saved by RequireAuth when a deep link hit the app signed out.
+  const returnTo = resolvePostLoginPath(searchParams.get(RETURN_TO_PARAM));
   const { firebaseUser, profile, isLoading, isFirebaseReady, refreshProfile } = useAuth();
   const [authReady, setAuthReady] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
@@ -53,8 +56,8 @@ export default function LoginPage() {
       router.replace("/deck/callback");
       return;
     }
-    void navigateToAppAfterAuth(router, "replace");
-  }, [deckSource, router]);
+    void navigateToAppAfterAuth(router, "replace", returnTo);
+  }, [deckSource, returnTo, router]);
 
   useEffect(() => {
     logAuthDebug("login-page", "mounted");
@@ -86,9 +89,9 @@ export default function LoginPage() {
         await auth.authStateReady();
         await refreshProfile();
         if (!cancelled && auth.currentUser) {
-          logAuthDebug("login-page", "apple-js redirect complete → /");
+          logAuthDebug("login-page", `apple-js redirect complete → ${returnTo}`);
           setAppleReturnPending(false);
-          await navigateToAppAfterAuth(router, "replace");
+          await navigateToAppAfterAuth(router, "replace", returnTo);
         }
       } catch (error) {
         if (!cancelled) {
@@ -102,7 +105,7 @@ export default function LoginPage() {
     return () => {
       cancelled = true;
     };
-  }, [isFirebaseReady, refreshProfile, router]);
+  }, [isFirebaseReady, refreshProfile, returnTo, router]);
 
   useEffect(() => {
     if (!isFirebaseReady) return;
@@ -154,7 +157,7 @@ export default function LoginPage() {
     if (!isFirebaseReady || isLoading || !authReady) return;
     if (!isAuthed) return;
 
-    logAuthDebug("login-page", deckSource ? "redirect → /deck/callback" : "redirect → /", {
+    logAuthDebug("login-page", deckSource ? "redirect → /deck/callback" : `redirect → ${returnTo}`, {
       firebaseUser: firebaseUser?.uid ?? null,
       currentUser: currentUser?.uid ?? null,
     });
@@ -162,17 +165,17 @@ export default function LoginPage() {
     if (deckSource) {
       router.replace("/deck/callback");
     } else {
-      void navigateToAppAfterAuth(router, "replace");
+      void navigateToAppAfterAuth(router, "replace", returnTo);
     }
 
     const fallbackTimer = window.setTimeout(() => {
       if (window.location.pathname.startsWith("/login")) {
-        window.location.assign(deckSource ? "/deck/callback" : "/");
+        window.location.assign(deckSource ? "/deck/callback" : returnTo);
       }
     }, 4000);
 
     return () => window.clearTimeout(fallbackTimer);
-  }, [authReady, currentUser?.uid, deckSource, firebaseUser?.uid, isAuthed, isFirebaseReady, isLoading, router]);
+  }, [authReady, currentUser?.uid, deckSource, firebaseUser?.uid, isAuthed, isFirebaseReady, isLoading, returnTo, router]);
 
   const debugSnapshot = buildAuthDebugSnapshot({
     firebaseUserUid: firebaseUser?.uid ?? null,

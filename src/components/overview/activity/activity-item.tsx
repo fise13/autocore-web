@@ -49,13 +49,13 @@ function formatActivityTargetName(entry: ActivityLogEntry, module: ActivityLogEn
 export const ActivityItem = memo(function ActivityItem({ entry, isNew }: ActivityItemProps) {
   const resolved = resolveActivityLabel(entry.action);
   const actorName = entry.actorName?.trim() || userCopy.activity.actorFallback;
-  const module = entry.module ?? resolved.module;
+  const entryModule = entry.module ?? resolved.module;
   const severity = entry.severity ?? resolved.severity;
   const dateLocale = getActiveUserCopyLocale() === "ru" ? ru : enUS;
   const when = entry.timestamp
     ? formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: dateLocale })
     : userCopy.activity.now;
-  const targetName = formatActivityTargetName(entry, module);
+  const targetName = formatActivityTargetName(entry, entryModule);
 
   return (
     <article
@@ -86,10 +86,10 @@ export const ActivityItem = memo(function ActivityItem({ entry, isNew }: Activit
             <span
               className={cn(
                 "inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium",
-                moduleChip[module] ?? moduleChip.system,
+                moduleChip[entryModule] ?? moduleChip.system,
               )}
             >
-              {moduleLabel(module)}
+              {moduleLabel(entryModule)}
             </span>
             <time className="text-[10px] text-muted-foreground" dateTime={entry.timestamp?.toISOString()}>
               {when}

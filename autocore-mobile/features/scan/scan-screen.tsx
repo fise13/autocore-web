@@ -30,7 +30,6 @@ import { ScanDetectionOverlay } from './components/scan-detection-overlay';
 import { ScanDocumentSheet } from './components/scan-document-sheet';
 import { ScanFrameOverlay } from './components/scan-frame-overlay';
 import { ScanIdleIndicator } from './components/scan-idle-indicator';
-import { ScanModeControl } from './components/scan-mode-control';
 import { ScanMoveSheet, type ScanMoveTarget } from './components/scan-move-sheet';
 import { ScanNotFoundSheet } from './components/scan-not-found-sheet';
 import { ScanOrderContextBanner } from './components/scan-order-context-banner';
@@ -41,7 +40,6 @@ import {
   ScanSheetHeader,
   ScanSheetRow,
 } from './components/scan-sheet-chrome';
-import { ScanShutterButton } from './components/scan-shutter-button';
 import { ScanStatusLine } from './components/scan-status-line';
 import { ScanToolbar } from './components/scan-toolbar';
 import { ScanTopBar } from './components/scan-top-bar';
@@ -73,7 +71,14 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
   const blurTeardownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [torchOn, setTorchOn] = useState(false);
-  const [captureMode, setCaptureMode] = useState<ScanCaptureMode>('auto');
+  /**
+   * Mode switching is pinned to `auto` while the VIN/document pickers are out
+   * of the UI. Kept as the full union rather than the `'auto'` literal so the
+   * mode-conditional branches below stay type-checked instead of being read as
+   * dead comparisons — the frames for `vin` and `document` still exist and this
+   * becomes stateful again when the picker returns.
+   */
+  const captureMode = 'auto' as ScanCaptureMode;
   const captureModeRef = useRef<ScanCaptureMode>('auto');
   const [recentScans, setRecentScans] = useState<RecentScan[]>([]);
   const [moveTarget, setMoveTarget] = useState<ScanMoveTarget | null>(null);
@@ -336,24 +341,6 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
     await runOcrOnUri(uris[0]!, false);
   }, [preferDocumentOcr, runDocumentImport, runOcrOnUri]);
 
-  const handleCapture = useCallback(async () => {
-    if (ocrBusy) return;
-    const uri = await cameraRef.current?.takePicture();
-    if (!uri) {
-      toast({
-        title: 'Could not capture',
-        description: 'Try again in a moment.',
-        variant: 'warning',
-      });
-      return;
-    }
-    if (captureModeRef.current === 'document') {
-      await runDocumentImport([uri]);
-      return;
-    }
-    await runOcrOnUri(uri, false);
-  }, [ocrBusy, runDocumentImport, runOcrOnUri]);
-
   const handleLiveDetection = useCallback(
     (detection: ScanDetection) => {
       const mode = captureModeRef.current;
@@ -391,22 +378,15 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
     [onDetection, onDetections],
   );
 
-  const showShutter = captureMode === 'document' || captureMode === 'vin';
-
-  const setMode = useCallback((mode: ScanCaptureMode) => {
-    setCaptureMode(mode);
-  }, []);
-
   const replayPayload = useCallback(
     (payload: string) => {
       recentSheetRef.current?.dismiss();
       if (payload.startsWith('document:')) {
         toast({
           title: 'Document already uploaded',
-          description: 'Switch to Document mode to capture another page.',
+          description: 'Open Photos to capture another page.',
           variant: 'default',
         });
-        setCaptureMode('document');
         return;
       }
       setTimeout(() => void service.commitPayload(payload, 'camera'), 220);
@@ -530,19 +510,6 @@ export function ScanScreen({ onClose }: ScanScreenProps = {}) {
       <View
         style={[styles.footer, { paddingBottom: footerBottom, backgroundColor: chrome.stage }]}
       >
-        <ScanModeControl mode={captureMode} onChange={setMode} />
-        <View
-          pointerEvents={showShutter ? 'auto' : 'none'}
-          style={{ opacity: showShutter ? 1 : 0, height: showShutter ? undefined : 0, overflow: 'hidden' }}
-        >
-          <ScanShutterButton
-            disabled={ocrBusy || !isFocused || !showShutter}
-            onPress={() => void handleCapture()}
-            accessibilityLabel={
-              captureMode === 'vin' ? 'Capture VIN plate' : 'Capture document'
-            }
-          />
-        </View>
         <ScanToolbar
           onPhotos={() => void handleOpenPhotos()}
           onSearch={() => navigateToSearch()}

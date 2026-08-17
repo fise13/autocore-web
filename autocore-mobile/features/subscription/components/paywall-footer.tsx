@@ -1,58 +1,34 @@
 import { Linking, Pressable, View } from 'react-native';
-import Animated from 'react-native-reanimated';
 
 import { Text } from '@/components/ui';
-import { useTheme } from '@/hooks/use-theme';
 import { haptics, spacing } from '@/theme';
 
-import { paywallTimeline } from '../animation/paywall-motion';
-import { usePaywallEnter } from '../animation/use-paywall-enter';
 import { LEGAL_URLS } from '../data/pro-features';
 
-type PaywallFooterProps = {
-  onRestore: () => void;
-  restoring: boolean;
-};
-
-/**
- * Restore + legal.
- *
- * All three are App Review requirements, not decoration: a subscription paywall
- * without a visible Restore control and links to the EULA and privacy policy is
- * rejected under 3.1.2.
- */
-export function PaywallFooter({ onRestore, restoring }: PaywallFooterProps) {
-  const { colors } = useTheme();
-  const style = usePaywallEnter({ delay: paywallTimeline.footer });
-
+export function PaywallFooter() {
   const open = (url: string) => {
     haptics.light();
     void Linking.openURL(url);
   };
 
   return (
-    <Animated.View style={[style, { gap: spacing[4], alignItems: 'center' }]}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Restore purchases"
-        accessibilityState={{ busy: restoring }}
-        disabled={restoring}
-        onPress={onRestore}
-        hitSlop={12}
-      >
-        <Text
-          variant="body"
-          style={{
-            color: colors.primary,
-            fontWeight: '600',
-            opacity: restoring ? 0.5 : 1,
-          }}
+    <View style={{ alignItems: 'center', gap: spacing[2] }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing[3] }}>
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel="Terms of Service"
+          onPress={() => open(LEGAL_URLS.terms)}
+          hitSlop={10}
         >
-          {restoring ? 'Restoring…' : 'Restore Purchases'}
-        </Text>
-      </Pressable>
+          <Text variant="caption" color="muted" style={{ fontWeight: '600' }}>
+            Terms & Conditions
+          </Text>
+        </Pressable>
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
+        <Text variant="caption" color="muted">
+          {' · '}
+        </Text>
+
         <Pressable
           accessibilityRole="link"
           accessibilityLabel="Privacy Policy"
@@ -60,31 +36,10 @@ export function PaywallFooter({ onRestore, restoring }: PaywallFooterProps) {
           hitSlop={10}
         >
           <Text variant="caption" color="muted">
-            Privacy Policy
-          </Text>
-        </Pressable>
-
-        <View
-          style={{
-            width: 3,
-            height: 3,
-            borderRadius: 999,
-            backgroundColor: colors.mutedForeground,
-            opacity: 0.5,
-          }}
-        />
-
-        <Pressable
-          accessibilityRole="link"
-          accessibilityLabel="Terms of Service"
-          onPress={() => open(LEGAL_URLS.terms)}
-          hitSlop={10}
-        >
-          <Text variant="caption" color="muted">
-            Terms of Service
+            Privacy
           </Text>
         </Pressable>
       </View>
-    </Animated.View>
+    </View>
   );
 }

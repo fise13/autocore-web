@@ -1,3 +1,5 @@
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
+
 type StripeCheckoutSession = {
   id: string;
   url: string | null;
@@ -213,4 +215,31 @@ export function subscriptionPeriodEnd(subscription: StripeSubscription): number 
   if (typeof fromItem === "number") return fromItem;
   if (typeof subscription.current_period_end === "number") return subscription.current_period_end;
   return null;
+}
+
+/**
+ * Map a Stripe subscription onto the `companies/{id}/billing/subscription` doc.
+ *
+ * Shared so the interactive sync path and the webhook cannot drift into writing
+ * different shapes for the same subscription.
+ */
+export function subscriptionDocFromStripe(subscription: StripeSubscription) {
+  const priceId = subscription.items?.data?.[0]?.price?.id;
+  const status = subscription.status || "incomplete";
+  const proActive = isProStripeStatus(status);
+  const periodEnd = subscriptionPeriodEnd(subscription);
+
+  return {
+    plan: proActive ? "pro" : "free",
+    status,
+    proActive,
+    provider: "stripe" as const,
+    stripeCustomerId: stripeObjectId(subscription.customer),
+    stripeSubscriptionId: subscription.id,
+    priceId: priceId ?? null,
+    billingInterval: billingIntervalFromPriceId(priceId),
+    currentPeriodEnd: periodEnd ? Timestamp.fromMillis(periodEnd * 1000) : null,
+    stripeUpdatedAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  };
 }

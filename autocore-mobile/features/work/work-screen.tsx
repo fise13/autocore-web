@@ -1,5 +1,5 @@
-import { useCallback, useMemo } from 'react';
-import { Pressable, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 
 import { LayoutGridIcon, SearchIcon } from '@/assets/icons';
@@ -11,12 +11,13 @@ import { useAdaptiveLayout } from '@/hooks/use-adaptive-layout';
 import { useSession } from '@/hooks/use-session';
 import { useTheme } from '@/hooks/use-theme';
 import { guardedPush } from '@/lib/navigation/guarded-push';
+import { haptics } from '@/theme';
 import { useShellModel } from '@/lib/shell/use-shell-model';
 import { useWorkspaceContextStore } from '@/lib/shell/workspace-context-store';
-import { useAuthStore } from '@/store/auth-store';
 
 import { WorkGroup, WorkGroupRow } from './components/work-group';
 import { WorkScreenSkeleton } from './components/work-screen-skeleton';
+import { WorkSearchOverlay } from './components/work-search-overlay';
 import { WorkTodayCard } from './components/work-today-card';
 import { useWorkCounts } from './hooks/use-work-counts';
 import { workLayout } from './layout';
@@ -32,14 +33,13 @@ import { buildWorkModel } from './lib/work-model';
  */
 export function WorkScreen() {
   const { profile, companyId } = useSession();
-  const isHydrating = useAuthStore((s) => s.isHydrating);
   const { workGrouped } = useShellModel();
   const setWorkspaceContext = useWorkspaceContextStore((s) => s.setWorkspaceContext);
   const router = useRouter();
   const { colors } = useTheme();
   const { isTablet, columns } = useAdaptiveLayout();
 
-  const sessionReady = Boolean(profile && companyId) && !isHydrating;
+  const sessionReady = Boolean(profile && companyId);
 
   // Keyed on the visible node list so the counts hook keeps a stable Set
   // identity across shell-model re-resolutions.
@@ -51,12 +51,14 @@ export function WorkScreen() {
     [nodeIdKey],
   );
 
-  const { counts, ready: countsReady } = useWorkCounts(nodeIds);
+  const { counts } = useWorkCounts(nodeIds);
   const model = useMemo(() => buildWorkModel(workGrouped, counts), [workGrouped, counts]);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const openSearch = useCallback(() => {
-    guardedPush(router, '/search' as Href);
-  }, [router]);
+    haptics.light();
+    setSearchOpen(true);
+  }, []);
 
   const openNode = useCallback(
     (id: string, href: string) => {
@@ -72,9 +74,10 @@ export function WorkScreen() {
     guardedPush(router, model.today.href as Href);
   }, [model.today.href, router]);
 
-  // Profile / company / live counts still settling — never flash EmptyState
-  // or mount interactive rows on half-hydrated data (that was the crash path).
-  if (!sessionReady || (nodeIds.size > 0 && !countsReady)) {
+  // Hold only until the session can name the company. Live counts fill in
+  // on the real rows (`fallback` detail) — waiting for every listener was
+  // a full-screen skeleton on every tab visit.
+  if (!sessionReady) {
     return <WorkScreenSkeleton />;
   }
 
@@ -89,6 +92,7 @@ export function WorkScreen() {
         height: 40,
         alignItems: 'center',
         justifyContent: 'center',
+        opacity: searchOpen ? 0 : 1,
       }}
     >
       <SearchIcon size={22} color={colors.foreground} />
@@ -99,7 +103,9 @@ export function WorkScreen() {
 
   return (
     <ProductScreenShell animateEnter={false}>
-      <ScreenScroll tabBarInset edgeTitle="Work" edgeTrailing={searchButton}>
+      <View style={{ flex: 1 }}>
+        <View style={{ flex: 1 }} pointerEvents={searchOpen ? 'none' : 'auto'}>
+          <ScreenScroll tabBarInset edgeTitle="Work" edgeTrailing={searchButton}>
         <PageHeader title="Work" trailing={searchButton} />
 
         {model.sections.length === 0 ? (
@@ -164,7 +170,19 @@ export function WorkScreen() {
             </View>
           </>
         )}
-      </ScreenScroll>
+        </ScreenScroll>
+        </View>
+        {searchOpen ? (
+          <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+            <WorkSearchOverlay
+              model={model}
+              onClose={() => setSearchOpen(false)}
+              onOpenNode={openNode}
+              onOpenToday={openToday}
+            />
+          </View>
+        ) : null}
+      </View>
     </ProductScreenShell>
   );
 }

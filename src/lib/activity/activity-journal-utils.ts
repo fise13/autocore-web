@@ -51,12 +51,12 @@ export function filterActivityEntries(
 
   return entries.filter((entry) => {
     const resolved = resolveActivityLabel(entry.action);
-    const module = entry.module ?? resolved.module;
+    const entryModule = entry.module ?? resolved.module;
     const severity = entry.severity ?? resolved.severity;
     const actorName = entry.actorName?.trim() || "Employee";
-    const targetName = formatActivityTargetName(entry, module);
+    const targetName = formatActivityTargetName(entry, entryModule);
 
-    if (filters.module !== "all" && module !== filters.module) return false;
+    if (filters.module !== "all" && entryModule !== filters.module) return false;
     if (filters.severity !== "all" && severity !== filters.severity) return false;
 
     if (!query) return true;
@@ -65,7 +65,7 @@ export function filterActivityEntries(
       actorName,
       resolved.label,
       targetName,
-      moduleLabel(module),
+      moduleLabel(entryModule),
       entry.action,
     ]
       .filter(Boolean)

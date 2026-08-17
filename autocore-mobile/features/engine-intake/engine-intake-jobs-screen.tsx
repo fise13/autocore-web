@@ -153,7 +153,7 @@ function parseBayFilter(value: string | string[] | undefined): BayFilter | null 
 
 export function EngineIntakeJobsScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ filter?: string | string[] }>();
+  const params = useLocalSearchParams<{ filter?: string | string[]; new?: string | string[] }>();
   const insets = useSafeAreaInsets();
   const { scrollBottom } = useFloatingTabBarInset();
   const { companyId, uid, profile, can } = useSession();
@@ -211,6 +211,17 @@ export function EngineIntakeJobsScreen() {
   const openCreateSheet = useCallback(() => {
     createSheetRef.current?.present();
   }, []);
+
+  useEffect(() => {
+    const flag = Array.isArray(params.new) ? params.new[0] : params.new;
+    if (flag !== '1' && flag !== 'true') return;
+    if (!can('engine_intake_execute')) return;
+    const timer = setTimeout(() => {
+      createSheetRef.current?.present();
+      router.setParams({ new: undefined });
+    }, 160);
+    return () => clearTimeout(timer);
+  }, [can, params.new, router]);
 
   const openSession = useCallback(
     (jobId: string, sessionId: string) => {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Image, View } from 'react-native';
+import { Image, Platform, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { AppleIcon, GoogleIcon } from '@/authentication/auth-brand-icons';
@@ -98,11 +98,15 @@ export function UserAvatar({
           }}
         >
           <Text
+            allowFontScaling={false}
             style={{
               color: '#ffffff',
               fontSize: monogramFontSize[size] ?? 12,
+              lineHeight: monogramFontSize[size] ?? 12,
               fontWeight: '600',
               letterSpacing: 0.2,
+              textAlign: 'center',
+              ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
             }}
           >
             {monogram}

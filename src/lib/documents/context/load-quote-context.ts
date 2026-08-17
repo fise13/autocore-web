@@ -10,25 +10,22 @@ import {
   mapAdminClient,
   mapAdminCompany,
   mapAdminEmployee,
-  mapAdminMotor,
   mapAdminVehicle,
 } from "@/infrastructure/firestore/admin-mappers";
 import { buildDocumentContext, DocumentContext } from "@/lib/documents/document-context";
 import { resolveCompanyLogoDataUri } from "@/lib/documents/resolve-company-logo";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { fetchMotorDocumentById } from "@/lib/desktop/fetch-motor.server";
 import { formatWorkOrderLabel } from "@/lib/work-order/work-order-display";
 
+/**
+ * Rendering one quote used to read every motor in the company through a private
+ * copy of this lookup. It now shares the indexed resolver, so a quote costs a
+ * single-document read instead of scaling with fleet size.
+ */
 async function fetchMotorById(companyId: string, motorId: string): Promise<MotorEntity | null> {
-  const db = getAdminFirestore();
-  const groupSnapshot = await db.collectionGroup("motors").where("companyId", "==", companyId).get();
-  for (const doc of groupSnapshot.docs) {
-    const motor = mapAdminMotor(doc.id, doc.data() as Record<string, unknown>);
-    if (!motor) continue;
-    if (motor.id === motorId || doc.id === motorId || String(motor.localId) === motorId) {
-      return motor;
-    }
-  }
-  return null;
+  const found = await fetchMotorDocumentById(companyId, motorId);
+  return found?.motor ?? null;
 }
 
 function quoteAsWorkOrder(quote: Quote): WorkOrder {

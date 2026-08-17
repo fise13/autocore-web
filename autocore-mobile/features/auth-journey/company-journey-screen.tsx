@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 
+import { StoreIcon, UsersIcon } from '@/assets/icons';
 import { AuthShell } from '@/authentication/auth-shell';
 import { useAuth } from '@/authentication/auth-provider';
 import { Button, FormStack, Input, Skeleton, Text } from '@/components/ui';
@@ -22,6 +23,7 @@ import { useTheme } from '@/hooks';
 import { toneBackground } from '@/theme/color-utils';
 
 import { JourneyOptionCard } from './journey-option-card';
+import { WorkspacePathCard } from './workspace-path-card';
 
 type CompanyMode = 'choose' | 'create' | 'invite';
 
@@ -135,15 +137,15 @@ export function CompanyJourneyScreen() {
       <AuthShell
         stepLabel={AUTH_JOURNEY_STEP_LABELS.company}
         progressLabel={authJourneyProgressLabel('company')}
-        title="Name your workspace"
-        description="A separate space for your team, stock, and work orders."
+        title="Name this workspace"
+        description="Shown on the home screen, documents, and invites to your team."
         onBack={() => goMode('choose')}
         stepKey="company-create"
         stepDirection={direction}
       >
         <FormStack gap={form.fieldGap}>
           <Input
-            label="Company name"
+            label="Workspace name"
             size="lg"
             placeholder="e.g. North Yard Motors"
             value={companyName}
@@ -151,6 +153,9 @@ export function CompanyJourneyScreen() {
             autoCapitalize="words"
             autoFocus
           />
+          <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
+            You can change this later in settings.
+          </Text>
           {error ? (
             <Text variant="caption" color="destructive">
               {error}
@@ -158,11 +163,12 @@ export function CompanyJourneyScreen() {
           ) : null}
           <Button
             size="lg"
+            shape="pill"
             onPress={() => void handleCreate()}
             loading={loading}
             disabled={!companyName.trim()}
           >
-            Continue
+            Create workspace
           </Button>
         </FormStack>
       </AuthShell>
@@ -174,8 +180,8 @@ export function CompanyJourneyScreen() {
       <AuthShell
         stepLabel={AUTH_JOURNEY_STEP_LABELS.company}
         progressLabel={authJourneyProgressLabel('company')}
-        title="Join with an invite"
-        description="Enter the code your admin sent you."
+        title="Join with a code"
+        description="Ask the workspace owner for the short invite they can copy from Team."
         onBack={() => goMode('choose')}
         stepKey="company-invite"
         stepDirection={direction}
@@ -184,13 +190,17 @@ export function CompanyJourneyScreen() {
           <Input
             label="Invite code"
             size="lg"
-            placeholder="e.g. DUAVV5"
+            placeholder="DUAVV5"
             value={inviteCode}
             onChangeText={setInviteCode}
             autoCapitalize="characters"
             autoCorrect={false}
             autoFocus
+            textStyle={{ letterSpacing: 3, fontWeight: '700' }}
           />
+          <Text variant="caption" color="muted" style={{ lineHeight: 18 }}>
+            Codes are 6 characters. Capitalization does not matter.
+          </Text>
           {error ? (
             <Text variant="caption" color="destructive">
               {error}
@@ -198,11 +208,12 @@ export function CompanyJourneyScreen() {
           ) : null}
           <Button
             size="lg"
+            shape="pill"
             onPress={() => void handleJoin()}
             loading={loading}
             disabled={!inviteCode.trim()}
           >
-            Join team
+            Join workspace
           </Button>
         </FormStack>
       </AuthShell>
@@ -213,16 +224,25 @@ export function CompanyJourneyScreen() {
     <AuthShell
       stepLabel={AUTH_JOURNEY_STEP_LABELS.company}
       progressLabel={authJourneyProgressLabel('company')}
-      title="Welcome to AutoCore"
-      description="Create a workspace or join an existing team."
+      title="Your workshop starts here"
+      description="Open a new workspace, or join one your team already runs."
       stepKey="company-choose"
       stepDirection={direction}
+      footer={
+        <Button variant="ghost" onPress={() => void signOut()}>
+          Sign out
+        </Button>
+      }
     >
-      <View style={{ gap: rhythm.stack }}>
+      <View style={{ gap: spacing[3] }}>
         {memberships.length > 0 ? (
-          <View style={{ gap: spacing[2] }}>
-            <Text variant="caption" color="muted" style={{ fontWeight: '600' }}>
-              Your workspaces
+          <View style={{ gap: spacing[2], marginBottom: spacing[2] }}>
+            <Text
+              variant="caption"
+              color="muted"
+              style={{ fontWeight: '600', letterSpacing: 0.4, textTransform: 'uppercase' }}
+            >
+              Already a member
             </Text>
             {memberships.map((membership, index) => (
               <JourneyOptionCard
@@ -250,12 +270,21 @@ export function CompanyJourneyScreen() {
           </View>
         ) : null}
 
-        <Button size="lg" onPress={() => goMode('create')}>
-          Create a workspace
-        </Button>
-        <Button size="lg" variant="outline" onPress={() => goMode('invite')}>
-          I have an invite code
-        </Button>
+        <WorkspacePathCard
+          index={0}
+          emphasized
+          title="Create a workspace"
+          description="For owners. Inventory, work orders, and the team in one place."
+          icon={<StoreIcon size="sm" color={colors.primaryForeground} />}
+          onPress={() => goMode('create')}
+        />
+        <WorkspacePathCard
+          index={1}
+          title="I have an invite code"
+          description="Join a yard that is already set up. You will need a 6-character code."
+          icon={<UsersIcon size="sm" color={colors.primary} />}
+          onPress={() => goMode('invite')}
+        />
 
         {error ? (
           <View
@@ -270,10 +299,6 @@ export function CompanyJourneyScreen() {
             </Text>
           </View>
         ) : null}
-
-        <Button variant="ghost" onPress={() => void signOut()}>
-          Sign out
-        </Button>
       </View>
     </AuthShell>
   );

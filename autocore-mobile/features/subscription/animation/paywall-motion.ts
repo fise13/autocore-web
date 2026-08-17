@@ -1,52 +1,43 @@
 /**
  * Paywall motion.
  *
- * The app's global screen-enter animations are deliberately off
- * (`theme/screen.ts` → `screenMotion.enabled = false`) because list and
- * settings screens read better static. The paywall is the exception: it is a
- * presented modal shown a handful of times in a user's life, and the motion is
- * part of what makes it feel considered rather than transactional.
- *
- * So it carries its own tokens rather than reaching for the global ones — and
- * still collapses to opacity-only under Reduce Motion.
+ * Global screen-enter is off. This modal is shown rarely, so it owns its own
+ * tokens and still collapses to opacity-only under Reduce Motion.
  */
 import { Easing } from 'react-native-reanimated';
 
 import { tokens } from '@/theme/tokens';
 
-/** iOS-native deceleration. Matches `autocoreEase` but stated locally. */
-export const paywallEase = Easing.bezier(0.22, 1, 0.36, 1);
+export const paywallEase = Easing.bezier(0.16, 1, 0.3, 1);
 
 export const paywallDuration = {
-  hero: 620,
-  block: 520,
-  row: 460,
-  cta: 420,
-  state: 260,
+  hero: 560,
+  block: 480,
+  row: 420,
+  cta: 500,
+  state: 240,
 } as const;
 
 export const paywallSpring = {
-  /** Plan card selection + success mark — settle, no bounce (DL v3). */
   pop: tokens.motion.springs.settle,
-  /** Press feedback. */
   press: tokens.motion.springs.press,
 } as const;
 
-/** Entrance choreography, in milliseconds from mount. */
 export const paywallTimeline = {
+  chrome: 0,
   hero: 40,
-  title: 110,
-  subtitle: 170,
-  featuresStart: 230,
-  featureStagger: 62,
-  plan: 560,
-  cta: 640,
-  footer: 720,
+  title: 90,
+  subtitle: 150,
+  featuresStart: 200,
+  featureStagger: 48,
+  plan: 380,
+  cta: 460,
+  footer: 520,
 } as const;
 
 export const paywallEnter = {
-  translateY: 18,
-  scaleFrom: 0.96,
+  translateY: 12,
+  scaleFrom: 0.97,
 } as const;
 
 export function featureDelay(index: number): number {

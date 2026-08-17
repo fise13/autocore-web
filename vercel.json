@@ -1,17 +1,29 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "regions": ["fra1"],
+  "regions": [
+    "fra1"
+  ],
   "redirects": [
     {
       "source": "/:path*",
-      "has": [{ "type": "host", "value": "www.myautocore.com" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "www.myautocore.com"
+        }
+      ],
       "destination": "https://myautocore.com/:path*",
       "permanent": true
     },
     {
       "source": "/:path*",
-      "has": [{ "type": "host", "value": "www.app.myautocore.com" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "www.app.myautocore.com"
+        }
+      ],
       "destination": "https://app.myautocore.com/:path*",
       "permanent": true
     }
@@ -26,5 +38,23 @@
     "src/app/api/assistant/**/*.ts": {
       "maxDuration": 120
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/import-batches/expire",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/notifications/evaluate-rules?schedule=hourly",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/notifications/evaluate-rules?schedule=morning",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/notifications/evaluate-rules?schedule=evening",
+      "schedule": "0 18 * * *"
+    }
+  ]
 }

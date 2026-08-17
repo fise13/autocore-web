@@ -540,7 +540,7 @@ export function buildDocumentRenderModel(
     ? resolveStatusLabel(context, meta.tag)
     : meta.tag;
 
-  let footerText = documentConfig.documentFooter ?? meta.footer.replace(/AutoCore/g, company.name);
+  const footerText = documentConfig.documentFooter ?? meta.footer.replace(/AutoCore/g, company.name);
   const invoiceDays = documentConfig.invoiceValidityDays ?? 5;
   const disclaimerText =
     slug === "invoice"

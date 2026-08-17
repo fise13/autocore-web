@@ -71,3 +71,14 @@ export function describeTrialOffer(trial: TrialOffer): string | null {
       return null;
   }
 }
+
+/** CTA label when a trial is on offer, e.g. "Start 7-day free trial". */
+export function describeTrialCta(trial: TrialOffer): string | null {
+  if (trial.kind === 'apple_intro' && trial.offer.isFreeTrial) {
+    return `Try ${trial.offer.periodCount} days free`;
+  }
+  if (trial.kind === 'internal') {
+    return `Start ${trial.days}-day free trial`;
+  }
+  return null;
+}

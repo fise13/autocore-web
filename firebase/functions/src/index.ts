@@ -1,19 +1,17 @@
 import { initializeApp } from "firebase-admin/app";
-import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import * as functions from "firebase-functions/v1";
 
 import {
-  billingIntervalFromPriceId,
   checkoutSessionEmail,
   createCompanyStripeCheckout,
   createMarketingStripeCheckout,
   createStripeBillingPortal,
   createStripeCustomer,
-  isProStripeStatus,
   retrieveStripeCheckoutSession,
   retrieveStripeSubscription,
   stripeObjectId,
-  subscriptionPeriodEnd,
+  subscriptionDocFromStripe,
   type BillingInterval,
 } from "./stripe-shared";
 
@@ -97,26 +95,6 @@ async function ensureStripeCustomerId(params: {
   return customerId;
 }
 
-function subscriptionDocFromStripe(subscription: Awaited<ReturnType<typeof retrieveStripeSubscription>>) {
-  const priceId = subscription.items?.data?.[0]?.price?.id;
-  const status = subscription.status || "incomplete";
-  const proActive = isProStripeStatus(status);
-  const periodEnd = subscriptionPeriodEnd(subscription);
-
-  return {
-    plan: proActive ? "pro" : "free",
-    status,
-    proActive,
-    provider: "stripe" as const,
-    stripeCustomerId: stripeObjectId(subscription.customer),
-    stripeSubscriptionId: subscription.id,
-    priceId: priceId ?? null,
-    billingInterval: billingIntervalFromPriceId(priceId),
-    currentPeriodEnd: periodEnd ? Timestamp.fromMillis(periodEnd * 1000) : null,
-    stripeUpdatedAt: FieldValue.serverTimestamp(),
-    updatedAt: FieldValue.serverTimestamp(),
-  };
-}
 
 export const createMarketingCheckoutSession = billingFunctions.https.onCall(async (data) => {
   const interval = normalizeInterval(data?.interval);
@@ -369,3 +347,5 @@ export { onNotificationCreatedPush } from "./notification-push";
 export { onDocumentGenerationJobWrite } from "./document-job-worker";
 export { openrouterProxy } from "./openrouter-proxy";
 export { openrouterStreamProxy } from "./openrouter-stream-proxy";
+
+export { stripeWebhook } from "./stripe-webhook";

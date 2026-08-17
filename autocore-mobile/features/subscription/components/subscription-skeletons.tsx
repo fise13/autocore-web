@@ -16,30 +16,33 @@ import { usePaywallEnter } from '../animation/use-paywall-enter';
  */
 export function PlanCardSkeleton({ index = 0 }: { index?: number }) {
   const { colors } = useTheme();
-  const style = usePaywallEnter({ delay: paywallTimeline.plan + index * 70, scale: true });
+  const style = usePaywallEnter({ delay: paywallTimeline.plan + index * 60, scale: true });
 
   return (
     <Animated.View
       style={[
         style,
         {
-          padding: rhythm.cardPadX,
-          borderRadius: rhythm.panelRadius,
-          borderWidth: 1,
-          borderColor: colors.border,
-          backgroundColor: colors.card,
-          gap: spacing[2],
+          flex: 1,
+          minHeight: 64,
+          paddingHorizontal: spacing[3.5],
+          paddingVertical: spacing[3],
+          borderRadius: radius.xl,
+          borderWidth: 1.5,
+          borderColor: colors.primary,
+          backgroundColor: colors.background,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing[3],
         },
       ]}
       accessibilityRole="progressbar"
       accessibilityLabel="Loading plan"
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[3] }}>
-        <View style={{ flex: 1, gap: spacing[2] }}>
-          <Skeleton width={72} height={14} rounded="sm" />
-          <Skeleton width={132} height={26} rounded="md" />
-        </View>
-        <Skeleton width={24} height={24} rounded="full" />
+      <Skeleton width={22} height={22} rounded="full" />
+      <View style={{ flex: 1, gap: spacing[1.5] }}>
+        <Skeleton width={72} height={14} rounded="sm" />
+        <Skeleton width={120} height={12} rounded="sm" />
       </View>
     </Animated.View>
   );

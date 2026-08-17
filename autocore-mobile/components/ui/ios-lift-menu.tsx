@@ -122,7 +122,7 @@ export function IosLiftMenu({
     const bottomSafe = screenH - insets.bottom - EDGE;
 
     const previewW = Math.min(Math.max(activeAnchor.width, 120), screenW - EDGE * 2);
-    let previewX = Math.min(Math.max(EDGE, activeAnchor.x), screenW - EDGE - previewW);
+    const previewX = Math.min(Math.max(EDGE, activeAnchor.x), screenW - EDGE - previewW);
     let previewY = Math.min(Math.max(topSafe, activeAnchor.y), bottomSafe - activeAnchor.height);
 
     const estimatedMenuH = Math.max(items.length, 1) * 44 + 2;

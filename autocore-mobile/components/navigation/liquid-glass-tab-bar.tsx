@@ -1,18 +1,12 @@
 import { memo, useCallback, useEffect, useMemo } from 'react';
 import {
-  Platform,
   Pressable as RNPressable,
   StyleSheet,
   useWindowDimensions,
   View,
 } from 'react-native';
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs';
-import {
-  GlassContainer,
-  GlassView,
-  isGlassEffectAPIAvailable,
-  isLiquidGlassAvailable,
-} from 'expo-glass-effect';
+import { GlassContainer, GlassView } from 'expo-glass-effect';
 import { SymbolView } from 'expo-symbols';
 import { Pressable } from 'react-native-gesture-handler';
 import Animated, {
@@ -20,6 +14,7 @@ import Animated, {
   interpolate,
   useAnimatedStyle,
   useSharedValue,
+  withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
@@ -27,12 +22,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/ui/text';
 import { useReducedMotion } from '@/hooks/use-accessibility';
+import { useTheme } from '@/hooks/use-theme';
 import {
   DOCK_ACTION_FILL,
+  DOCK_ACTION_FILL_DARK,
   DOCK_ACTION_HIT_SIZE,
   DOCK_ACTION_ICON_SIZE,
   DOCK_ACTION_ICON_STROKE,
   DOCK_ACTION_INK,
+  DOCK_ACTION_INK_DARK,
   DOCK_ACTION_RADIUS,
   DOCK_ACTION_SIZE,
   DOCK_BAR_WIDTH,
@@ -49,8 +47,9 @@ import {
   DOCK_MUTED_ALPHA,
   DOCK_VISUAL_HEIGHT,
 } from '@/lib/navigation/floating-tab-bar-inset';
+import { canUseLiquidGlass, LIQUID_GLASS_TINT } from '@/lib/navigation/liquid-glass';
 import { TAB_SPECS, type TabSpec } from '@/lib/navigation/tab-specs';
-import { presentActionSheet } from '@/lib/shell/present-action-sheet';
+import { useActionSheetStore } from '@/lib/shell/action-sheet-store';
 import { haptics } from '@/theme/haptics';
 import { tokens } from '@/theme/tokens';
 
@@ -62,17 +61,13 @@ import {
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const FOCUS_DURATION = 200;
-const DOCK_GLASS_TINT = 'rgba(25, 28, 34, 0.45)';
 
-/** True UIGlassEffect path — iOS 26+ with API present at runtime. */
-function canUseLiquidGlass(): boolean {
-  if (Platform.OS !== 'ios') return false;
-  try {
-    return isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
-  } catch {
-    return false;
-  }
-}
+/** SwiftUI Spring(response: 0.32, dampingFraction: 0.8) → Reanimated. */
+const PLUS_TO_X_SPRING = {
+  mass: 1,
+  stiffness: (2 * Math.PI / 0.32) ** 2,
+  damping: (4 * Math.PI * 0.8) / 0.32,
+} as const;
 
 function PlusMark({ color }: { color: string }) {
   const arm = DOCK_ACTION_ICON_STROKE;
@@ -207,37 +202,66 @@ function DockItem({
 
 function CenterAction({ onPress }: { onPress: () => void }) {
   const reducedMotion = useReducedMotion();
+  const { isDark } = useTheme();
+  const open = useActionSheetStore((s) => s.open);
+  const rotation = useSharedValue(open ? 45 : 0);
   const scale = useSharedValue(1);
-  const pressStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+  const fill = isDark ? DOCK_ACTION_FILL_DARK : DOCK_ACTION_FILL;
+  const ink = isDark ? DOCK_ACTION_INK_DARK : DOCK_ACTION_INK;
+
+  useEffect(() => {
+    if (reducedMotion) {
+      rotation.value = open ? 45 : 0;
+      scale.value = 1;
+      return;
+    }
+    rotation.value = withSpring(open ? 45 : 0, PLUS_TO_X_SPRING);
+    if (open) {
+      scale.value = withSequence(
+        withTiming(1.06, { duration: 100, easing: Easing.out(Easing.cubic) }),
+        withSpring(1, PLUS_TO_X_SPRING),
+      );
+    } else {
+      scale.value = withSequence(
+        withTiming(0.96, { duration: 80, easing: Easing.out(Easing.cubic) }),
+        withSpring(1, PLUS_TO_X_SPRING),
+      );
+    }
+  }, [open, reducedMotion, rotation, scale]);
+
+  const markStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }, { scale: scale.value }],
   }));
 
   return (
-    <Animated.View style={[styles.actionSlot, pressStyle]}>
+    <View style={styles.actionSlot}>
       <RNPressable
         accessibilityRole="button"
-        accessibilityLabel="New"
-        accessibilityHint="Opens create and capture actions"
+        accessibilityLabel={open ? 'Close' : 'New'}
+        accessibilityHint={open ? 'Closes the add menu' : 'Opens things you can add'}
+        accessibilityState={{ expanded: open }}
         onPress={() => {
           haptics.medium();
           onPress();
         }}
-        onPressIn={() => {
-          scale.value = reducedMotion
-            ? 0.94
-            : withSpring(0.94, tokens.motion.springs.press);
-        }}
-        onPressOut={() => {
-          scale.value = withSpring(1, tokens.motion.springs.settle);
-        }}
         style={styles.actionHit}
         hitSlop={8}
       >
-        <View style={styles.actionOrbSolid}>
-          <PlusMark color={DOCK_ACTION_INK} />
+        <View
+          style={[
+            styles.actionOrbSolid,
+            {
+              backgroundColor: fill,
+              borderColor: isDark ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.08)',
+            },
+          ]}
+        >
+          <Animated.View style={markStyle}>
+            <PlusMark color={ink} />
+          </Animated.View>
         </View>
       </RNPressable>
-    </Animated.View>
+    </View>
   );
 }
 
@@ -264,13 +288,16 @@ function LiquidGlassTabBarInner({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const liquid = useMemo(() => canUseLiquidGlass(), []);
-  const presentAction = useCallback(() => {
-    presentActionSheet();
-  }, []);
   const { beginTransition } = useTabTransition();
 
   const navSpecs = useMemo(() => TAB_SPECS.filter((spec) => !spec.isAction), []);
   const actionSpec = useMemo(() => TAB_SPECS.find((spec) => spec.isAction), []);
+  const present = useActionSheetStore((s) => s.present);
+  const dismiss = useActionSheetStore((s) => s.dismiss);
+  const presentAction = useCallback(() => {
+    if (useActionSheetStore.getState().open) dismiss();
+    else present();
+  }, [dismiss, present]);
 
   const barWidth = Math.min(
     DOCK_BAR_WIDTH,
@@ -355,7 +382,7 @@ function LiquidGlassTabBarInner({ state, navigation }: BottomTabBarProps) {
             style={[styles.unifiedBar, { width: barWidth }]}
             glassEffectStyle="regular"
             colorScheme="dark"
-            tintColor={DOCK_GLASS_TINT}
+            tintColor={LIQUID_GLASS_TINT}
             isInteractive
           >
             {slots}
@@ -459,6 +486,8 @@ const styles = StyleSheet.create({
     backgroundColor: DOCK_ACTION_FILL,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.08)',
   },
   plusBox: {
     width: DOCK_ACTION_ICON_SIZE,

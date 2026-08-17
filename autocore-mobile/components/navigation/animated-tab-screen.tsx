@@ -18,6 +18,8 @@ const TAB_ENTER_OFFSET = 18;
 type AnimatedTabScreenProps = {
   tab: TabRouteName;
   children: ReactNode;
+  /** Scan from + rises from the dock instead of sliding sideways. */
+  enter?: 'slide' | 'rise';
 };
 
 /**
@@ -28,15 +30,17 @@ type AnimatedTabScreenProps = {
 export const AnimatedTabScreen = memo(function AnimatedTabScreen({
   tab,
   children,
+  enter = 'slide',
 }: AnimatedTabScreenProps) {
   const { takeTransitionFor } = useTabTransition();
   const { colors } = useTheme();
   const reducedMotion = useReducedMotion();
   const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
 
   const animatedStyle = useAnimatedStyle(() => ({
     flex: 1,
-    transform: [{ translateX: translateX.value }],
+    transform: [{ translateX: translateX.value }, { translateY: translateY.value }],
   }));
 
   useFocusEffect(
@@ -44,12 +48,21 @@ export const AnimatedTabScreen = memo(function AnimatedTabScreen({
       const direction = takeTransitionFor(tab);
       if (reducedMotion || direction === 0) {
         translateX.value = 0;
+        translateY.value = 0;
         return;
       }
 
+      if (enter === 'rise') {
+        translateX.value = 0;
+        translateY.value = 36;
+        translateY.value = withSpring(0, tokens.motion.springs.nav);
+        return;
+      }
+
+      translateY.value = 0;
       translateX.value = direction * TAB_ENTER_OFFSET;
       translateX.value = withSpring(0, tokens.motion.springs.nav);
-    }, [reducedMotion, tab, takeTransitionFor, translateX]),
+    }, [enter, reducedMotion, tab, takeTransitionFor, translateX, translateY]),
   );
 
   return (

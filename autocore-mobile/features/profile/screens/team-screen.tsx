@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, ScrollView, Share, View } from 'react-native';
+import Animated, { FadeInLeft, FadeInRight, FadeOutLeft, FadeOutRight } from 'react-native-reanimated';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { useLocalSearchParams } from 'expo-router';
 
@@ -24,6 +25,7 @@ import {
   useWorkOrdersRealtime,
 } from '@/hooks';
 import { useAccountingPreferences } from '@/hooks/use-accounting-preferences';
+import { useReducedMotion } from '@/hooks/use-accessibility';
 import { useTheme } from '@/hooks/use-theme';
 import {
   ALL_PERMISSIONS,
@@ -50,7 +52,7 @@ import {
 import type { Permission } from '@/types/user';
 import { haptics, rhythm } from '@/theme';
 import { tokens } from '@/theme/tokens';
-import { ROLE_PERMISSIONS, USER_ROLES } from '@/types/user';
+import { ROLE_PERMISSIONS } from '@/types/user';
 import type { CompanyEmployee, DirectoryPerson, InviteDocument } from '@/types/rbac';
 import { coerceToDate } from '@/lib/firestore-timestamp';
 
@@ -63,9 +65,8 @@ import { TeamDirectoryComposer, TeamDirectoryRow } from '../components/team/team
 import { TeamInviteStatusFilters } from '../components/team/team-invite-status-filters';
 import { TeamInviteRow } from '../components/team/team-invite-card';
 import { TeamSectionHeader } from '../components/team/team-primitives';
-import { TeamRoleCard } from '../components/team/team-role-card';
+import { TeamRolesList } from '../components/team/team-role-card';
 import { TeamSummaryCard } from '../components/team/team-summary-card';
-import { PERMISSION_GROUPS } from '@/features/settings/data/demo-data';
 import { canManageEmployees, canViewEmployees } from '@/lib/permissions';
 
 type TeamTab = 'employees' | 'roles';
@@ -97,6 +98,7 @@ function firstParam(value: string | string[] | undefined): string | undefined {
 
 export function TeamScreen() {
   const { colors } = useTheme();
+  const reducedMotion = useReducedMotion();
   const params = useLocalSearchParams<{ inviteName?: string | string[] }>();
   const { profile, companyId, uid } = useSession();
   const { isPro } = useCompanySubscription(companyId);
@@ -120,6 +122,7 @@ export function TeamScreen() {
   const { invites, isLoading: invitesLoading } = useCompanyInvites(companyId, isPro && canManage);
 
   const [tab, setTab] = useState<TeamTab>('employees');
+  const tabDirection = useRef<'forward' | 'back'>('forward');
   const [inviteStatusFilter, setInviteStatusFilter] = useState<InviteStatus | 'all'>('all');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -128,6 +131,13 @@ export function TeamScreen() {
   const [permissionsEmployee, setPermissionsEmployee] = useState<CompanyEmployee | null>(null);
   const [selectedPermissions, setSelectedPermissions] = useState<Set<Permission>>(new Set());
 
+  const roleCounts = useMemo(() => {
+    const next: Partial<Record<CompanyEmployee['role'], number>> = {};
+    for (const employee of employees) {
+      next[employee.role] = (next[employee.role] ?? 0) + 1;
+    }
+    return next;
+  }, [employees]);
   const activeEmployees = useMemo(() => employees.filter((entry) => entry.isActive), [employees]);
   const pendingInvites = useMemo(
     () => invites.filter((invite) => getInviteStatus(invite) === 'pending').length,
@@ -379,32 +389,7 @@ export function TeamScreen() {
     </View>
   );
 
-  const renderRolesTab = () => (
-    <View style={{ gap: rhythm.section }}>
-      <SettingsSectionCard title="Roles" description="Default access for each role">
-        <ListGroup inset={false}>
-          {USER_ROLES.filter((role) => role !== 'owner').map((role, index) => (
-            <TeamRoleCard key={role} role={role} index={index} />
-          ))}
-        </ListGroup>
-      </SettingsSectionCard>
-
-      <SettingsSectionCard title="Permission groups" description="What’s in each access area">
-        <View style={{ paddingHorizontal: rhythm.cardPadX, paddingBottom: rhythm.cardPadX, gap: rhythm.stack }}>
-          {(Object.keys(PERMISSION_GROUPS) as Array<keyof typeof PERMISSION_GROUPS>).map((groupId) => (
-            <View key={groupId} style={{ gap: 4 }}>
-              <Text variant="body" style={{ fontSize: 14, fontWeight: '600' }}>
-                {PERMISSION_GROUPS[groupId].title}
-              </Text>
-              <Text variant="caption" color="muted" style={{ lineHeight: 17 }}>
-                {PERMISSION_GROUPS[groupId].permissions.map((p) => p.label).join(' · ')}
-              </Text>
-            </View>
-          ))}
-        </View>
-      </SettingsSectionCard>
-    </View>
-  );
+  const renderRolesTab = () => <TeamRolesList counts={roleCounts} />;
 
   return (
     <BottomSheetModalProvider>
@@ -426,14 +411,37 @@ export function TeamScreen() {
               <View style={{ marginHorizontal: tokens.space.screenX }}>
                 <ProfileSegmentedControl
                   value={tab}
-                  onChange={setTab}
+                  onChange={(next) => {
+                    tabDirection.current = next === 'roles' ? 'forward' : 'back';
+                    setTab(next);
+                  }}
                   options={[
                     { value: 'employees', label: 'People' },
                     { value: 'roles', label: 'Roles' },
                   ]}
                 />
               </View>
-              {tab === 'employees' ? renderEmployeesTab() : renderRolesTab()}
+              {reducedMotion ? (
+                tab === 'employees' ? renderEmployeesTab() : renderRolesTab()
+              ) : (
+                <View style={{ overflow: 'hidden' }}>
+                  <Animated.View
+                    key={tab}
+                    entering={
+                      tabDirection.current === 'forward'
+                        ? FadeInRight.duration(320).springify().damping(28).stiffness(280)
+                        : FadeInLeft.duration(320).springify().damping(28).stiffness(280)
+                    }
+                    exiting={
+                      tabDirection.current === 'forward'
+                        ? FadeOutLeft.duration(180)
+                        : FadeOutRight.duration(180)
+                    }
+                  >
+                    {tab === 'employees' ? renderEmployeesTab() : renderRolesTab()}
+                  </Animated.View>
+                </View>
+              )}
             </View>
           )}
         </TeamProGate>

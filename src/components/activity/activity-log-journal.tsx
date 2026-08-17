@@ -182,13 +182,13 @@ const ActivityJournalRow = memo(function ActivityJournalRow({
 }) {
   const resolved = resolveActivityLabel(entry.action);
   const actorName = entry.actorName?.trim() || userCopy.activity.actorFallback;
-  const module = entry.module ?? resolved.module;
+  const entryModule = entry.module ?? resolved.module;
   const severity = entry.severity ?? resolved.severity;
-  const targetName = formatActivityTargetName(entry, module);
+  const targetName = formatActivityTargetName(entry, entryModule);
   const when = entry.timestamp
     ? formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: enUS })
     : userCopy.activity.now;
-  const ModuleIcon = moduleIcons[module] ?? SettingsIcon;
+  const ModuleIcon = moduleIcons[entryModule] ?? SettingsIcon;
 
   return (
     <article
@@ -220,7 +220,7 @@ const ActivityJournalRow = memo(function ActivityJournalRow({
         className="col-start-2 row-start-2 w-fit gap-1 text-muted-foreground sm:col-start-3 sm:row-start-1"
       >
         <ModuleIcon className="size-3" aria-hidden />
-        {moduleLabel(module)}
+        {moduleLabel(entryModule)}
       </Badge>
 
       <time

@@ -1,0 +1,56 @@
+rules_version = '2';
+
+/**
+ * Firebase Storage rules for AutoCore.
+ *
+ * These rules were previously not in the repository at all — `firebase.json`
+ * registered Firestore rules and indexes only, so whatever governed customer
+ * photos, avatars, logos and generated PDFs lived exclusively in the console:
+ * unreviewable, untestable, and impossible to roll back with a release.
+ *
+ * WHAT ACTUALLY TOUCHES THE BUCKET
+ *
+ * Nothing on the client. `getFirebaseStorage()` is initialised in
+ * `src/infrastructure/firebase/client.ts` but no module reads or writes through
+ * it, and the mobile app imports no Storage SDK at all. Every transfer goes
+ * through a server route using the Admin SDK:
+ *
+ *   upload   → Admin-generated resumable signed URL
+ *              (intake-photo-storage.server.ts, upload-row-photo.server.ts)
+ *   download → download token (`?alt=media&token=…`) or Admin signed URL
+ *              (upload-company-logo-utils.ts, persist-document-pdf.ts)
+ *
+ * Signed URLs and download tokens bypass these rules by design, and the Admin
+ * SDK ignores them entirely. So denying all direct client access costs nothing
+ * and removes the ability to enumerate or write the bucket with nothing but a
+ * signed-in user's ID token.
+ *
+ * IF A CLIENT UPLOAD IS EVER ADDED
+ *
+ * It will fail here, loudly, which is the intended outcome — direct client
+ * writes should be a deliberate decision. Grant the narrowest matching prefix
+ * below rather than widening the default. Note that Storage rules cannot read
+ * Firestore, so company membership can only be checked via the `companyId`
+ * custom claim, which `firestore.rules` already treats as potentially stale.
+ * Prefer keeping uploads on the server, where membership is verified properly.
+ */
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Server-managed prefixes. Listed explicitly so the layout is documented
+    // and a future rule cannot widen them by accident:
+    //
+    //   companies/{companyId}/engine-intake/{jobId}/{photoId}
+    //   companies/{companyId}/row-photos/{entityKind}/{entityId}/{fileId}
+    //   companies/{companyId}/workOrders/{workOrderId}/documents/{type}.pdf
+    //   companies/{companyId}/branding/logo.{ext}
+    //   users/{uid}/avatar.{ext}
+    //   document-imports/{companyId}/{jobId}/…
+    //   motor-imports/{companyId}/{jobId}/…
+    //   import-batches/{companyId}/{batchId}/…
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

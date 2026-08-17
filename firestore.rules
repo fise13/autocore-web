@@ -571,6 +571,22 @@ service cloud.firestore {
       return data.localId is int || data.localId is number;
     }
 
+    /**
+     * True when a motor mirror carries no real company binding — written before
+     * company scoping existed, or still on the shared onboarding placeholder.
+     *
+     * Only these may be reached by authorship alone. Everything with a real
+     * companyId goes through membership checks, so leaving a company revokes
+     * access to its stock even though the documents stay under the author's
+     * user record.
+     */
+    function motorCompanyLinkIsLegacy(data) {
+      return !('companyId' in data)
+        || data.companyId == null
+        || data.companyId == ''
+        || data.companyId == 'default';
+    }
+
     // -------------------------
     // users/{userId}
     // -------------------------
@@ -649,8 +665,17 @@ service cloud.firestore {
 
       // Incremental motor mirror (macOS / web → users/{uid}/motors/{localId}).
       match /motors/{motorDocId} {
-        // Owner always reads/writes their mirror; teammates read by companyId.
-        allow read: if isSignedIn() && request.auth.uid == userId;
+        // A motor is company inventory that happens to be stored under the
+        // account that created it. Membership — not authorship — decides access,
+        // otherwise a removed employee keeps reading and deleting a company's
+        // stock forever, since offboarding never rewrites these documents.
+        //
+        // `motorCompanyLinkIsLegacy` covers records written before company
+        // scoping existed; those stay owner-accessible so they can still be
+        // cleaned up or migrated.
+        allow read: if isSignedIn()
+          && request.auth.uid == userId
+          && motorCompanyLinkIsLegacy(resource.data);
         allow read: if isSignedIn()
           && resource.data.companyId != null
           && canAccessCompanyDoc(resource.data.companyId);
@@ -694,12 +719,30 @@ service cloud.firestore {
               ]
             )
           )
+          // companyId is immutable once set, matching every top-level
+          // collection. Validating only the incoming value let a member of two
+          // companies retag a motor from the first into the second — moving
+          // another tenant's stock across the boundary one document at a time.
+          && (
+            motorCompanyLinkIsLegacy(resource.data)
+            || request.resource.data.companyId == resource.data.companyId
+          )
           && (
             canWriteMotorMirror(request.resource.data.companyId)
             || request.resource.data.companyId == userCompanyId()
           );
-        // Owner may delete own mirror even if legacy companyId on the doc is stale ("default").
-        allow delete: if isSignedIn() && request.auth.uid == userId;
+        // Deleting company stock requires current access to that company. The
+        // author-only rule this replaces let a removed employee wipe every
+        // motor they had ever entered, with no backup to restore from.
+        //
+        // Legacy records whose companyId predates scoping ("default"/absent)
+        // stay deletable by their author so stale mirrors can still be cleared.
+        allow delete: if isSignedIn()
+          && request.auth.uid == userId
+          && motorCompanyLinkIsLegacy(resource.data);
+        allow delete: if isSignedIn()
+          && resource.data.companyId != null
+          && canInventoryDelete(resource.data.companyId);
       }
     }
 
