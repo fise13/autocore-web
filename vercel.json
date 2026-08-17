@@ -46,7 +46,7 @@
     },
     {
       "path": "/api/cron/notifications/evaluate-rules?schedule=hourly",
-      "schedule": "0 * * * *"
+      "schedule": "0 12 * * *"
     },
     {
       "path": "/api/cron/notifications/evaluate-rules?schedule=morning",
