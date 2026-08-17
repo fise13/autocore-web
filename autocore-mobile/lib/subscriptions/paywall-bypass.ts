@@ -1,17 +1,20 @@
 /**
- * TEMPORARY — paywall escape hatch.
+ * Screenshot-mode Pro.
  *
- * Lets a signed-in user without a subscription past the blocking gate and into
- * the app. It exists so the product can be walked through end to end before the
- * first release, while billing is still being wired up.
+ * This used to be a "Continue without a subscription" button on the paywall,
+ * which meant anyone — including every TestFlight tester — could tap past the
+ * gate and use the product for free, permanently, because the choice was
+ * persisted. That button is gone and the setter below is now inert in any
+ * normal build.
  *
- * This is a revenue hole once the app is live: anyone can tap it and use the
- * product for free. Delete this file and its three call sites — `AuthGate`,
- * `PaywallScreen`, and the export below — before the app has paying customers.
+ * What remains serves one purpose: `EXPO_PUBLIC_STORE_SHOTS=1` builds render
+ * the App Store screenshot fixtures, which have to show the paid product
+ * without a real subscription. That is a build-time flag, not something a user
+ * can reach.
  *
- * It is deliberately not `__DEV__`-only, because the point is to be able to walk
- * a TestFlight or review build; that is also exactly why it must not outlive the
- * launch.
+ * Anything persisted by the old button is cleared on first read, so installs
+ * that already tapped it fall back behind the paywall instead of staying free
+ * forever.
  */
 import { getString, remove, setString } from '@/lib/storage/kv';
 import type { Entitlement, PlanId } from './types';
@@ -22,9 +25,22 @@ let hydrated = false;
 let bypassed = false;
 const listeners = new Set<() => void>();
 
+/** Only screenshot builds may hold a bypass. */
+function storeShotsBuild(): boolean {
+  return process.env.EXPO_PUBLIC_STORE_SHOTS === '1';
+}
+
 function hydrate(): void {
   if (hydrated) return;
   hydrated = true;
+
+  if (!storeShotsBuild()) {
+    // Retire a value left by the old escape-hatch button.
+    remove(STORAGE_KEY);
+    bypassed = false;
+    return;
+  }
+
   bypassed = getString(STORAGE_KEY) === '1';
 }
 
@@ -47,6 +63,8 @@ export function isPaywallBypassed(): boolean {
 
 export function setPaywallBypassed(value: boolean): void {
   hydrate();
+  // Granting is screenshot-only; clearing is always allowed.
+  if (value && !storeShotsBuild()) return;
   if (bypassed === value) return;
   bypassed = value;
   if (value) {

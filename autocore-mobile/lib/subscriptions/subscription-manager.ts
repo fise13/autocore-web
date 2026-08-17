@@ -44,7 +44,6 @@ import {
   setProductsLoading,
 } from './purchase-store';
 import { asPurchaseFailure, failure, isCancellation } from './purchase-errors';
-import { isPaywallBypassed, setPaywallBypassed } from './paywall-bypass';
 import type { PlanId, PurchaseFailure, RestoreOutcome } from './types';
 
 /** Company the manager is currently acting for. Set by the provider. */
@@ -369,10 +368,6 @@ export async function restore(): Promise<RestoreOutcome> {
     const purchases = await store.listPurchases(true).catch(() => []);
 
     if (purchases.length === 0) {
-      if (isPaywallBypassed()) {
-        setFlow({ phase: 'restored', planId: 'pro_monthly' });
-        return { kind: 'restored', planId: 'pro_monthly' };
-      }
       setFlow({ phase: 'restore_empty' });
       return { kind: 'empty' };
     }
@@ -514,17 +509,6 @@ export function getActiveCompanyId(): string | null {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
- * TEMPORARY — paywall CTA grants Pro locally, without StoreKit or the server.
- * Remove with `paywall-bypass.ts` before charging customers.
- */
-export async function grantComplimentaryAccess(planId: PlanId): Promise<void> {
-  setFlow({ phase: 'loading', planId });
-  await delay(400);
-  setPaywallBypassed(true);
-  setFlow({ phase: 'success', planId });
 }
 
 /**

@@ -9,7 +9,6 @@ import { usePaywall } from '@/hooks/use-paywall';
 import { useTheme } from '@/hooks/use-theme';
 import { featureRule, type GatedFeature } from '@/lib/subscriptions/feature-gate';
 import type { PlanId } from '@/lib/subscriptions/types';
-import { setPaywallBypassed } from '@/lib/subscriptions/paywall-bypass';
 import { haptics, radius, rhythm, spacing } from '@/theme';
 
 import { paywallTimeline } from './animation/paywall-motion';
@@ -20,6 +19,7 @@ import { PaywallHero } from './components/paywall-hero';
 import { PlanCard } from './components/plan-card';
 import { PurchaseCta } from './components/purchase-cta';
 import { PurchaseStatusBanner } from './components/purchase-status-banner';
+import { TrialCta } from './components/trial-cta';
 import { OfflineNotice } from './components/sync-indicator';
 
 type PaywallScreenProps = {
@@ -51,6 +51,8 @@ export function PaywallScreen({
     purchase,
     reloadProducts,
     resetFlow,
+    trial,
+    startTrial,
   } = useSubscription();
 
   const offers = offersFromStore ?? [];
@@ -190,22 +192,8 @@ export function PaywallScreen({
             disabled={ctaDisabled}
             onPress={handlePurchase}
           />
-          {isGate ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Continue without a subscription"
-              onPress={() => {
-                haptics.light();
-                setPaywallBypassed(true);
-              }}
-              hitSlop={8}
-              style={{ minHeight: 44, justifyContent: 'center', alignItems: 'center' }}
-            >
-              <Text variant="caption" color="muted" style={{ fontWeight: '600' }}>
-                Continue without a subscription
-              </Text>
-            </Pressable>
-          ) : null}
+          {/* The trial is started here and only here — never on sign-up. */}
+          <TrialCta trial={trial} onStart={startTrial} disabled={flow.phase === 'loading'} />
           <PaywallFooter />
         </Animated.View>
       )}

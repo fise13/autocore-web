@@ -1440,6 +1440,13 @@ service cloud.firestore {
 
     // -------------------------
     // Default deny
+    //
+    // Server-only collections rely on this and must never be given a rule:
+    //   appleTransactionLinks/{originalTransactionId}
+    //     Maps an Apple subscription to the company that owns it. Written by
+    //     the Admin SDK from `apple-entitlement.server.ts`, read by the App
+    //     Store notification webhook. A client that could write it could point
+    //     someone else's paid subscription at its own workspace.
     // -------------------------
     match /{document=**} {
       allow read, write: if false;
