@@ -3,6 +3,7 @@ import { useRouter, type Href } from 'expo-router';
 
 import { CarIcon } from '@/assets/icons';
 import {
+  CatalogAddButton,
   CatalogRow,
   CatalogScreenHeader,
   CatalogSectionHeader,
@@ -24,8 +25,8 @@ import { isRealtimeReady } from '@/lib/realtime/subscription-registry';
 import { rhythm, spacing } from '@/theme';
 import type { MotorEntity } from '@/types/motor';
 
-import { EngineExcelAddGrid } from './components/engine-excel-add-grid';
 import { ENGINE_THUMB_SIZE, EngineThumbnail } from './components/engine-thumbnail';
+import { newEngineHref } from './navigation';
 import {
   engineMatchesQuery,
   engineStatusLabel,
@@ -139,6 +140,12 @@ export function EnginesScreen() {
     [router],
   );
 
+  /** Carries the active search into the composer — a serial typed to look for
+      an engine that turns out not to exist is the serial being added. */
+  const addEngine = useCallback(() => {
+    router.push(newEngineHref(deferredQuery ? { serial: deferredQuery } : undefined));
+  }, [deferredQuery, router]);
+
   if (!canView) {
     return (
       <ScreenGate
@@ -161,6 +168,11 @@ export function EnginesScreen() {
         title="Engines"
         subtitle={subtitle}
         onBack={() => goBackOrReplace(router, '/(tabs)/work' as Href)}
+        action={
+          canEdit ? (
+            <CatalogAddButton accessibilityLabel="Add an engine" onPress={addEngine} />
+          ) : null
+        }
         search={
           <SearchInput
             value={query}
@@ -171,10 +183,6 @@ export function EnginesScreen() {
           />
         }
       />
-
-      {canEdit && uid && companyId ? (
-        <EngineExcelAddGrid uid={uid} companyId={companyId} motors={motors} />
-      ) : null}
 
       {loading ? (
         <ContentState state="loading">{null}</ContentState>
@@ -187,9 +195,11 @@ export function EnginesScreen() {
             deferredQuery
               ? 'Try the serial, the engine code, or the shelf.'
               : canEdit
-                ? 'Type a serial in the spreadsheet above. It shows up here and in the web excel grid.'
+                ? 'Add the first one — serial, brand, code, shelf.'
                 : 'Serialized motors show up here once they are received.'
           }
+          onEmptyAction={canEdit ? addEngine : undefined}
+          emptyActionLabel={deferredQuery ? `Add ${deferredQuery}` : 'Add an engine'}
         >
           {null}
         </ContentState>

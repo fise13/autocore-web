@@ -30,6 +30,7 @@ export { MetaRow } from './meta-row';
 export { ListGroup } from './list-group';
 export {
   CATALOG_CARD_RADIUS,
+  CatalogAddButton,
   CatalogRow,
   CatalogScreenHeader,
   CatalogSectionHeader,

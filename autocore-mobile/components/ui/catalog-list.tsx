@@ -1,4 +1,4 @@
-import { memo, type ReactNode } from 'react';
+import { memo, useState, type ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 import Animated, {
   interpolateColor,
@@ -8,7 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ArrowLeftIcon, ChevronRightIcon } from '@/assets/icons';
+import { ArrowLeftIcon, ChevronRightIcon, PlusIcon } from '@/assets/icons';
 import { useMotion, useTheme } from '@/hooks';
 import { haptics, rhythm, spacing, tokens } from '@/theme';
 import { withAlpha } from '@/theme/color-utils';
@@ -210,11 +210,14 @@ export function CatalogScreenHeader({
   subtitle,
   onBack,
   search,
+  action,
 }: {
   title: string;
   subtitle: string;
   onBack: () => void;
   search?: ReactNode;
+  /** Primary action beside the title (e.g. Add), as on the Finance header. */
+  action?: ReactNode;
 }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -227,18 +230,83 @@ export function CatalogScreenHeader({
         </IconButton>
       </View>
 
-      <View style={{ paddingHorizontal: rhythm.pad, gap: spacing[1] }}>
-        <Text variant="displayTitle" style={{ color: colors.foreground }}>
-          {title}
-        </Text>
-        <Text variant="subheadline" color="muted" numberOfLines={1}>
-          {subtitle}
-        </Text>
+      <View
+        style={{
+          paddingHorizontal: rhythm.pad,
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          gap: tokens.space.stack,
+        }}
+      >
+        {/* The title column shrinks so a long catalog name ellipsizes rather
+            than pushing the action off the screen. */}
+        <View style={{ flex: 1, gap: spacing[1] }}>
+          <Text variant="displayTitle" numberOfLines={1} style={{ color: colors.foreground }}>
+            {title}
+          </Text>
+          <Text variant="subheadline" color="muted" numberOfLines={1}>
+            {subtitle}
+          </Text>
+        </View>
+        {action}
       </View>
 
       {search ? (
         <View style={{ paddingHorizontal: rhythm.pad, paddingTop: spacing[3] }}>{search}</View>
       ) : null}
     </View>
+  );
+}
+
+/**
+ * Accent pill for `CatalogScreenHeader`'s action slot — the same affordance
+ * Finance uses to open its composer, so "add one of these" looks and behaves
+ * identically wherever a catalog offers it.
+ */
+export function CatalogAddButton({
+  label = 'Add',
+  accessibilityLabel,
+  onPress,
+}: {
+  label?: string;
+  accessibilityLabel: string;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  const [pressed, setPressed] = useState(false);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      hitSlop={6}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      onPress={() => {
+        haptics.light();
+        onPress();
+      }}
+      // Static object, not the `({ pressed }) => …` form — this RN version
+      // drops the function style silently, as `CatalogRow` above notes.
+      style={{
+        minHeight: tokens.control.hitTarget,
+        paddingHorizontal: 14,
+        borderRadius: tokens.radius.full,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        backgroundColor: colors.primary,
+        opacity: pressed ? 0.85 : 1,
+      }}
+    >
+      <PlusIcon size={17} color={colors.primaryForeground} strokeWidth={2.5} />
+      <Text
+        variant="button"
+        maxFontSizeMultiplier={1.2}
+        style={{ color: colors.primaryForeground, fontWeight: '600' }}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 }

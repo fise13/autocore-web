@@ -91,7 +91,7 @@ export const TIER_RANK: Record<SubscriptionTier, number> = {
 };
 
 export function planById(id: PlanId): PlanDescriptor {
-  return PLANS[id];
+  return PLANS[id] ?? PLANS.free;
 }
 
 /** Platform-correct store identifier for a plan, or null if not purchasable here. */

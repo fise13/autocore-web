@@ -176,32 +176,40 @@ export function acquireEntitlement(companyId: string): () => void {
       if (recompute(current)) notify();
     }, REMOTE_SETTLE_FAILSAFE_MS);
 
-    created.unsubscribe = subscribeCompanySubscription(
-      companyId,
-      (next) => {
-        const current = registry.get(companyId);
-        if (!current) return;
-        current.remote = next;
-        current.error = null;
-        markRemoteSettled(current);
-        writeEntitlementCache(companyId, next);
-        current.cached = { subscription: next, cachedAt: Date.now() };
-        if (recompute(current)) notify();
-      },
-      (error) => {
-        const current = registry.get(companyId);
-        if (!current) return;
-        // Offline or permission-denied: fall through to cache / StoreKit rather
-        // than blocking the UI on a listener that may never arrive.
-        current.error = error.message;
-        // Treat as settled with remote=null so isLoading clears.
-        if (current.remote === undefined) {
-          current.remote = current.cached?.subscription ?? null;
-        }
-        markRemoteSettled(current);
-        if (recompute(current)) notify();
-      },
-    );
+    created.unsubscribe = isFirebaseConfigured()
+      ? subscribeCompanySubscription(
+          companyId,
+          (next) => {
+            const current = registry.get(companyId);
+            if (!current) return;
+            current.remote = next;
+            current.error = null;
+            markRemoteSettled(current);
+            writeEntitlementCache(companyId, next);
+            current.cached = { subscription: next, cachedAt: Date.now() };
+            if (recompute(current)) notify();
+          },
+          (error) => {
+            const current = registry.get(companyId);
+            if (!current) return;
+            // Offline or permission-denied: fall through to cache / StoreKit rather
+            // than blocking the UI on a listener that may never arrive.
+            current.error = error.message;
+            // Treat as settled with remote=null so isLoading clears.
+            if (current.remote === undefined) {
+              current.remote = current.cached?.subscription ?? null;
+            }
+            markRemoteSettled(current);
+            if (recompute(current)) notify();
+          },
+        )
+      : () => undefined;
+
+    if (!isFirebaseConfigured()) {
+      created.remote = created.cached?.subscription ?? null;
+      markRemoteSettled(created);
+      recompute(created);
+    }
 
     entry = created;
     notify();

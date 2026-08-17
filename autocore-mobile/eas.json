@@ -14,19 +14,24 @@
     "preview": {
       "distribution": "internal",
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "image": "macos-tahoe-26.5-xcode-26.6"
       }
     },
     "production": {
+      "autoIncrement": true,
+      "environment": "production",
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "image": "macos-tahoe-26.5-xcode-26.6"
       }
     }
   },
   "submit": {
     "production": {
       "ios": {
-        "appleTeamId": "45W7LA3QFP"
+        "appleTeamId": "45W7LA3QFP",
+        "ascAppId": "6800420625"
       }
     }
   }
