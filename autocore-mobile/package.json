@@ -83,7 +83,7 @@
     "ios": "expo run:ios",
     "ios:provision": "bash scripts/ios-refresh-provisioning.sh",
     "ios:release": "expo run:ios --device --configuration Release",
-    "postinstall": "node scripts/patch-expo-camera-shutter.mjs",
+    "postinstall": "node scripts/patch-expo-camera-shutter.mjs && node scripts/patch-openiap-purchase.mjs",
     "prebuild": "expo prebuild",
     "prebuild:ios": "expo prebuild --platform ios",
     "web": "expo start --web",

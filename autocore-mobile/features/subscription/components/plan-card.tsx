@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -10,7 +11,7 @@ import { Text } from '@/components/ui';
 import { useReducedMotion } from '@/hooks';
 import { useTheme } from '@/hooks/use-theme';
 import type { PlanOffer } from '@/hooks/use-subscription';
-import { haptics, radius, spacing } from '@/theme';
+import { haptics, tokens } from '@/theme';
 
 import { paywallSpring, paywallTimeline } from '../animation/paywall-motion';
 import { usePaywallEnter } from '../animation/use-paywall-enter';
@@ -20,17 +21,39 @@ type PlanCardProps = {
   selected: boolean;
   onSelect: (planId: PlanOffer['plan']['id']) => void;
   savingsLabel: string | null;
+  /** Apple intro terms, only when this Apple ID is eligible. */
+  introLabel?: string | null;
   index: number;
   selectable: boolean;
+  last?: boolean;
 };
+
+/** Grouped island — same language as settings CollectionRow, not inverted tiles. */
+export function PlanPicker({ children }: { children: ReactNode }) {
+  const { colors } = useTheme();
+
+  return (
+    <View
+      style={{
+        borderRadius: tokens.radius.sheet,
+        backgroundColor: colors.secondary,
+        overflow: 'hidden',
+      }}
+    >
+      {children}
+    </View>
+  );
+}
 
 export function PlanCard({
   offer,
   selected,
   onSelect,
   savingsLabel,
+  introLabel = null,
   index,
   selectable,
+  last = false,
 }: PlanCardProps) {
   const { colors, tones } = useTheme();
   const reduced = useReducedMotion();
@@ -46,14 +69,16 @@ export function PlanCard({
   const { plan, product } = offer;
   const title = plan.interval === 'yearly' ? 'Yearly' : 'Monthly';
   const period = plan.interval === 'yearly' ? 'per year' : 'per month';
-  const priceLine = product ? `${product.displayPrice} ${period}` : 'App Store price';
+  const priceLine = product ? `${product.displayPrice} ${period}` : 'Price unavailable';
+  const afterTrial =
+    introLabel && product ? `then ${product.displayPrice} ${period}` : null;
 
   return (
     <Animated.View style={enterStyle}>
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ selected }}
-        accessibilityLabel={`${title}, ${priceLine}${savingsLabel ? `, ${savingsLabel}` : ''}`}
+        accessibilityLabel={`${title}, ${priceLine}${introLabel ? `, ${introLabel}` : ''}${savingsLabel ? `, ${savingsLabel}` : ''}`}
         accessibilityHint="Selects this billing period"
         onPressIn={() => {
           if (reduced) return;
@@ -71,16 +96,15 @@ export function PlanCard({
           style={[
             pressStyle,
             {
-              minHeight: 64,
-              paddingHorizontal: spacing[3.5],
-              paddingVertical: spacing[3],
-              borderRadius: radius.xl,
-              borderWidth: selected ? 0 : 1.5,
-              borderColor: selected ? 'transparent' : colors.primary,
-              backgroundColor: selected ? colors.primary : colors.background,
+              minHeight: tokens.control.heightXl,
+              paddingHorizontal: tokens.space.stack + 4,
+              paddingVertical: tokens.space.stack,
+              backgroundColor: selected ? tones.primary.bg : 'transparent',
               flexDirection: 'row',
               alignItems: 'center',
-              gap: spacing[3],
+              gap: tokens.space.stack,
+              borderBottomWidth: last ? 0 : tokens.control.hairline,
+              borderBottomColor: colors.border,
             },
           ]}
         >
@@ -89,48 +113,41 @@ export function PlanCard({
               style={{
                 width: 22,
                 height: 22,
-                borderRadius: radius.full,
+                borderRadius: tokens.radius.full,
                 borderWidth: selected ? 0 : 1.5,
-                borderColor: selected ? colors.primaryForeground : colors.primary,
-                backgroundColor: selected ? colors.primaryForeground : 'transparent',
+                borderColor: colors.primary,
+                backgroundColor: selected ? colors.primary : 'transparent',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
               {selected ? (
-                <CheckIcon size="xs" color={colors.primary} strokeWidth={3} />
+                <CheckIcon size="xs" color={colors.primaryForeground} strokeWidth={3} />
               ) : null}
             </View>
           ) : null}
 
           <View style={{ flex: 1, gap: 2 }}>
-            <Text
-              variant="body"
-              style={{
-                fontWeight: '700',
-                color: selected ? colors.primaryForeground : colors.primary,
-              }}
-            >
+            <Text variant="body" style={{ fontWeight: '600', color: colors.foreground }}>
               {title}
             </Text>
-            <Text
-              variant="caption"
-              style={{
-                color: selected ? colors.primaryForeground : colors.mutedForeground,
-                opacity: selected ? 0.85 : 1,
-              }}
-            >
-              {priceLine}
+            <Text variant="caption" color="muted">
+              {introLabel ?? priceLine}
             </Text>
+            {afterTrial ? (
+              <Text variant="caption" color="muted">
+                {afterTrial}
+              </Text>
+            ) : null}
           </View>
 
           {plan.interval === 'yearly' && savingsLabel ? (
             <View
               style={{
-                paddingHorizontal: spacing[2],
-                paddingVertical: spacing[1],
-                borderRadius: radius.sm,
-                backgroundColor: selected ? colors.primaryForeground : tones.success.bg,
+                paddingHorizontal: tokens.space.inline,
+                paddingVertical: tokens.space.micro,
+                borderRadius: tokens.radius.full,
+                backgroundColor: selected ? colors.primary : tones.success.bg,
               }}
             >
               <Text
@@ -138,7 +155,7 @@ export function PlanCard({
                 style={{
                   fontWeight: '700',
                   fontSize: 11,
-                  color: selected ? colors.primary : tones.success.fg,
+                  color: selected ? colors.primaryForeground : tones.success.fg,
                 }}
               >
                 {savingsLabel}

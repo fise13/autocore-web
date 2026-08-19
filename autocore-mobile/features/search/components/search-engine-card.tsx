@@ -1,14 +1,14 @@
 import { Pressable, View } from 'react-native';
 import Reanimated from 'react-native-reanimated';
 
-import { Badge, Text } from '@/components/ui';
+import { Text } from '@/components/ui';
 import { usePressAnimation } from '@/animations';
 import { useTheme } from '@/hooks';
-import { haptics } from '@/theme';
-import { toneBackground } from '@/theme/color-utils';
+import { haptics, fontFamily } from '@/theme';
 
 import { searchTimeline, useSearchEnter } from '../animation';
 import { formatPrice, formatVin, inventoryCardSubtitle, normalizeInventoryCode } from '../lib/format';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 import { statusLabel, statusVariant } from '../lib/status';
 import { searchLayout } from '../layout';
 import type { SearchEngine, SearchResultItem } from '../types';
@@ -26,7 +26,16 @@ function isEngine(entity: SearchEngine | SearchResultItem): entity is SearchEngi
 
 function hasShelfValue(shelf?: string): shelf is string {
   const trimmed = shelf?.trim();
-  return Boolean(trimmed && trimmed !== '—' && trimmed !== '-');
+  return Boolean(trimmed && trimmed !== '\u2014' && trimmed !== '-');
+}
+
+function statusToneName(
+  variant: (typeof statusVariant)[keyof typeof statusVariant],
+): 'success' | 'warning' | 'danger' | 'muted' {
+  if (variant === 'success') return 'success';
+  if (variant === 'warning') return 'warning';
+  if (variant === 'destructive') return 'danger';
+  return 'muted';
 }
 
 export function SearchEngineCard({
@@ -35,7 +44,8 @@ export function SearchEngineCard({
   index = 0,
   onPress,
 }: SearchEngineCardProps) {
-  const { colors } = useTheme();
+  const { colors, tones } = useTheme();
+  useMoneyFormatRevision();
   const { style: pressStyle, onPressIn, onPressOut } = usePressAnimation(0.98);
   const enterStyle = useSearchEnter({
     delay: searchTimeline.idleViewed + index * 40,
@@ -55,12 +65,13 @@ export function SearchEngineCard({
   const vin = engine.vin;
   const showShelf = hasShelfValue(shelf);
   const showPrice = typeof price === 'number' && price > 0;
+  const chrome = tones[statusToneName(statusVariant[status])];
 
   const content = (
     <View
       style={{
-        borderRadius: searchLayout.cardRadius,
-        borderWidth: searchLayout.hairline,
+        borderRadius: 12,
+        borderWidth: 1,
         borderColor: colors.border,
         backgroundColor: colors.card,
         overflow: 'hidden',
@@ -75,7 +86,9 @@ export function SearchEngineCard({
             fontSize: compact ? 15 : 16,
             fontWeight: '700',
             letterSpacing: -0.3,
+            fontFamily: fontFamily.mono,
             fontVariant: ['tabular-nums'],
+            color: colors.foreground,
           }}
         >
           {code}
@@ -93,7 +106,28 @@ export function SearchEngineCard({
         ) : null}
 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <Badge variant={statusVariant[status]}>{statusLabel[status]}</Badge>
+          <View
+            style={{
+              minHeight: 22,
+              paddingHorizontal: 8,
+              borderRadius: 9999,
+              backgroundColor: chrome.bg,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text
+              variant="caption2"
+              style={{
+                color: chrome.fg,
+                fontWeight: '600',
+                letterSpacing: 0.6,
+                textTransform: 'uppercase',
+              }}
+            >
+              {statusLabel[status]}
+            </Text>
+          </View>
           {showShelf || showPrice ? (
             <View
               style={{
@@ -128,19 +162,13 @@ export function SearchEngineCard({
         </View>
 
         {vin ? (
-          <View
-            style={{
-              alignSelf: 'flex-start',
-              paddingHorizontal: 8,
-              paddingVertical: 3,
-              borderRadius: 6,
-              backgroundColor: toneBackground(colors.mutedForeground, 0.08),
-            }}
+          <Text
+            variant="caption"
+            color="muted"
+            style={{ fontSize: 11, fontFamily: fontFamily.mono, fontVariant: ['tabular-nums'] }}
           >
-            <Text variant="caption" color="muted" style={{ fontSize: 10, fontVariant: ['tabular-nums'] }}>
-              VIN {formatVin(vin)}
-            </Text>
-          </View>
+            VIN {formatVin(vin)}
+          </Text>
         ) : null}
       </View>
     </View>

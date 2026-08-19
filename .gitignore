@@ -23,6 +23,9 @@ node_modules/
 # misc
 .DS_Store
 *.pem
+# Apple signing keys (App Store Server API, Sign in with Apple, APNs)
+*.p8
+AuthKey_*.p8
 
 # debug
 npm-debug.log*

@@ -7,6 +7,7 @@ import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import { useSession } from '@/hooks/use-session';
 import { useWorkOrdersRealtime } from '@/hooks/use-work-orders-realtime';
 import { useAuthStore } from '@/store/auth-store';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 import type { FinancialOperation } from '@/types/financial-operation';
 
 import { buildFinanceModel } from '../lib/build-finance-model';
@@ -47,6 +48,7 @@ export function useFinanceModel(): UseFinanceModelResult {
 
   const period = useFinancePeriodStore((state) => state.period);
   const setPeriod = useFinancePeriodStore((state) => state.setPeriod);
+  const moneyRevision = useMoneyFormatRevision();
 
   const liveCompanyId = canView && companyId ? companyId : null;
 
@@ -81,7 +83,7 @@ export function useFinanceModel(): UseFinanceModelResult {
         workOrderNumbers,
         period,
       }),
-    [domainOrders, operations, payroll, period, workOrderNumbers],
+    [domainOrders, moneyRevision, operations, payroll, period, workOrderNumbers],
   );
 
   return {

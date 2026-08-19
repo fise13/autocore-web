@@ -1,4 +1,4 @@
-export const APP_DISPLAY_CURRENCIES = ['USD'] as const;
+export const APP_DISPLAY_CURRENCIES = ['USD', 'KZT'] as const;
 
 export type AppDisplayCurrency = (typeof APP_DISPLAY_CURRENCIES)[number];
 
@@ -20,10 +20,18 @@ export const APP_DISPLAY_CURRENCY_OPTIONS: AppDisplayCurrencyOption[] = [
     currency: 'USD',
     example: '$1,000',
   },
+  {
+    id: 'KZT',
+    label: 'Tenge',
+    description: 'Kazakhstan · ₸',
+    locale: 'kk-KZ',
+    currency: 'KZT',
+    example: '450 000 ₸',
+  },
 ];
 
-/** Always USD — legacy KZT/RUB preference values are coerced. */
-export function normalizeAppDisplayCurrency(_value?: unknown): AppDisplayCurrency {
+export function normalizeAppDisplayCurrency(value?: unknown): AppDisplayCurrency {
+  if (value === 'KZT') return 'KZT';
   return 'USD';
 }
 
@@ -31,14 +39,17 @@ export function appDisplayCurrencyOption(currency: AppDisplayCurrency): AppDispl
   return APP_DISPLAY_CURRENCY_OPTIONS.find((item) => item.id === currency) ?? APP_DISPLAY_CURRENCY_OPTIONS[0];
 }
 
-export function appDisplayCurrencyAffix(_currency?: AppDisplayCurrency): { prefix: string; suffix: string } {
+export function appDisplayCurrencyAffix(currency?: AppDisplayCurrency): { prefix: string; suffix: string } {
+  if (normalizeAppDisplayCurrency(currency) === 'KZT') {
+    return { prefix: '', suffix: ' ₸' };
+  }
   return { prefix: '$', suffix: '' };
 }
 
-export function formatAppMoney(value: number, _currency: AppDisplayCurrency = 'USD'): string {
-  const option = appDisplayCurrencyOption('USD');
+export function formatAppMoney(value: number, currency: AppDisplayCurrency = 'USD'): string {
+  const option = appDisplayCurrencyOption(currency);
   const safe = Number.isFinite(value) ? value : 0;
-  const fractionDigits = Math.abs(safe) < 1000 ? 2 : 0;
+  const fractionDigits = option.currency === 'KZT' ? 0 : Math.abs(safe) < 1000 ? 2 : 0;
   return new Intl.NumberFormat(option.locale, {
     style: 'currency',
     currency: option.currency,

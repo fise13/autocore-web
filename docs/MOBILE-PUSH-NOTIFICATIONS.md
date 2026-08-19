@@ -61,16 +61,17 @@ npx eas credentials -p ios
 
 Ключ создаётся в Apple Developer → **Keys** → **+** → **Apple Push Notifications service (APNs)**.
 
-## 6. Dynamic Island (intake sync) — проверка на устройстве
+## 6. Dynamic Island (intake) — проверка на устройстве
 
-Island читает intake outbox (`pendingCount` / `failedCount` / `syncing`). Presentation включена (`LIVE_ACTIVITY_PRESENTATION_ENABLED = true`).
+Island читает intake outbox и активную сессию документирования. Presentation включена (`LIVE_ACTIVITY_PRESENTATION_ENABLED = true`). Приоритет: fail / blocked → session → upload → idle.
 
 1. После `ios:release` открой Engine intake.
-2. Сфотографируй двигатель **офлайн** → Island: “Waiting offline” / “Pending sync”.
-3. Верни сеть → “Syncing”, затем Island гаснет когда outbox пуст.
-4. Спровоцируй failed upload → Island: “Sync failed”.
-5. Уведи приложение в фон с failed items → local notification “Sync failed” с deep link `autocoremobile://intake`.
-6. Очисти/почини outbox → local notification снимается, Island idle.
+2. Начни документировать двигатель → Island: камера + `4/12`, без Gauge загрузки. Тап → Active.
+3. Сфотографируй **офлайн** (без сессии) → Island: “Waiting for connection”.
+4. Верни сеть → “Syncing”, затем Island гаснет когда outbox пуст и сессии нет.
+5. Спровоцируй failed upload → Island: blocked / failed (даже если сессия ещё открыта).
+6. Уведи приложение в фон с failed items → local notification “Sync failed” с deep link `autocoremobile://intake`.
+7. Очисти/почини outbox → local notification снимается, Island idle.
 
 **Важно:** intake sync **не** шлёт remote Expo push на каждый тик — UX sync = Island + local при failed в фоне. Remote push остаётся для work orders / team / system events.
 

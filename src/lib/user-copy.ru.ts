@@ -224,6 +224,13 @@ export const userCopyRu = {
     macUnavailable: "Десктопная сборка ещё не опубликована. Напишите в поддержку — пришлём ссылку.",
     windowsUnavailable:
       "Сборка для Windows готовится. Напишите в поддержку — пришлём установщик, как только он будет готов.",
+    updates: {
+      unsupported: "Обновления недоступны в этой сборке",
+      upToDate: "Установлена последняя версия",
+      checkFailed: "Не удалось проверить обновления",
+      downloading: (version: string) => `Загружается версия ${version}…`,
+      installFailed: "Не удалось установить обновление",
+    },
   },
 
   billing: {
@@ -633,7 +640,8 @@ export const userCopyRu = {
     company: "Компания",
     displayCurrency: {
       title: "Валюта отображения",
-      description: "Суммы в финансах, на дашборде и в документах отображаются в долларах США (USD).",
+      description:
+        "Суммы в финансах, на дашборде и в документах показываются в выбранной валюте. В базе они хранятся в долларах США.",
       loadingRates: "Загрузка курсов…",
       saved: "Валюта отображения сохранена",
       saveError: "Не удалось сохранить валюту",
@@ -641,8 +649,9 @@ export const userCopyRu = {
       exampleTitle: "Пример с текущей настройкой",
       ratePrefix: "Курс:",
       fallbackRate: "Используется резервный курс — обновление с сервера недоступно.",
-      kztLabel: "Доллары",
-      kztDescription: "США · $",
+      ownerOnly: "Изменить валюту рабочего пространства может только владелец компании.",
+      kztLabel: "Тенге",
+      kztDescription: "Казахстан · ₸",
       rubLabel: "Доллары",
       rubDescription: "США · $",
       usdLabel: "Доллары",
@@ -925,6 +934,21 @@ export const userCopyRu = {
     resend: "Повтор",
     inviteDialogTitle: "Пригласить сотрудника",
     inviteDialogDescription: "Отправьте приглашение на email или создайте код для ручной передачи.",
+    inviteDialogForPerson: (name: string) => `Пригласить ${name} в AutoCore.`,
+    directory: {
+      sectionTitle: "Ещё не в AutoCore",
+      sectionDescription:
+        "Добавьте имя человека, который ещё не зарегистрирован. Пригласите, когда будет удобно.",
+      addPlaceholder: "Добавить имя",
+      addButton: "Добавить",
+      empty: "Пока нет имён — добавьте человека с площадки или из цеха.",
+      statusNamed: "Только имя",
+      statusInvited: "Приглашён",
+      statusNamedHint: "Ещё не в AutoCore",
+      statusInvitedHint: "Приглашение отправлено — ждём входа",
+      invite: "Пригласить",
+      remove: "Удалить",
+    },
     inviteEmailLabel: "Email сотрудника",
     sending: "Отправка…",
     sendEmail: "Отправить на email",
@@ -1813,6 +1837,8 @@ export const userCopyRu = {
       enginesHint: (count: number) => `${count} двигатели`,
       statMotors: "Моторов",
       toUploadHint: (count: number) => `${count} к загрузке`,
+      mergedHint: (rows: number, count: number) =>
+        `${count} к загрузке · ${rows} повторов объединено по серийнику`,
       statReady: "Готово",
       errorsHint: (count: number) => `${count} ошибок`,
       catalog: "Каталог",
@@ -2258,6 +2284,7 @@ export const userCopyRu = {
       loadError: "Ошибка загрузки",
       printFailed: "Не удалось напечатать PDF",
       downloadFailed: "Не удалось скачать PDF",
+      savedTo: (path: string) => `Сохранено: ${path}`,
       demoBanner: "Демо-данные · реальный PDF использует брендинг компании",
       opensInNewTab: "Откроется в новой вкладке",
       open: "Открыть",

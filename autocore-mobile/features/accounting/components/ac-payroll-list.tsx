@@ -7,6 +7,7 @@ import { useTheme } from '@/hooks';
 import { nextPayrollStatus, PAYROLL_STATUS_LABELS } from '@/lib/accounting/payroll-status';
 import { toneBackground } from '@/theme/color-utils';
 import { haptics } from '@/theme';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 import type { PayrollTransaction, PayrollTransactionStatus } from '@/types/payroll-transaction';
 
 import { ac } from '../layout';
@@ -108,6 +109,7 @@ function PayrollRow({
   onStatusChange?: (id: string, status: PayrollTransactionStatus) => void;
 }) {
   const { colors } = useTheme();
+  useMoneyFormatRevision();
   const employee = employeeNames[row.employeeId] ?? 'Employee';
   const workOrder = workOrderNumbers[row.workOrderId] ?? row.workOrderId;
   const isUpdating = updatingId === row.id;

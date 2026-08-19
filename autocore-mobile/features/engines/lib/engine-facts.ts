@@ -22,7 +22,11 @@ export type EngineFact = {
   value: string;
   /** Draws attention when the value is a problem rather than a datum. */
   tone?: 'default' | 'warning';
+  /** Codes a person reads off a label — rendered in the identifier face. */
+  mono?: boolean;
 };
+
+export type EngineSpecRow = EngineFact;
 
 function clean(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
@@ -40,46 +44,56 @@ export function daysOnLot(motor: MotorEntity, now = new Date()): number | null {
 }
 
 /**
- * At most three cells so the strip never wraps. Location always leads — it is
- * the one fact someone standing in the warehouse actually needs.
+ * Packing-slip rows for the object screen. Location always leads — it is the
+ * one fact someone standing in the warehouse actually needs. Empty fields are
+ * omitted rather than padded; an unplaced unit is a warning, not a blank.
  */
-export function engineFacts(motor: MotorEntity, now = new Date()): EngineFact[] {
-  const facts: EngineFact[] = [];
+export function engineSpecRows(motor: MotorEntity, now = new Date()): EngineSpecRow[] {
+  const rows: EngineSpecRow[] = [];
 
   const location = clean(motor.primaryLocationCode) ?? clean(motor.warehouseLocation);
-  facts.push({
+  rows.push({
     id: 'location',
     label: 'Location',
     value: location ?? 'Unplaced',
     tone: location ? 'default' : 'warning',
+    // A shelf code is read off a label; "Unplaced" is a sentence about one.
+    mono: Boolean(location),
   });
 
   const configuration = clean(motor.configuration);
   if (configuration) {
-    facts.push({ id: 'configuration', label: 'Configuration', value: configuration });
+    rows.push({ id: 'configuration', label: 'Configuration', value: configuration });
   }
 
   const transmission = clean(motor.transmission);
-  if (transmission && facts.length < 3) {
-    facts.push({ id: 'transmission', label: 'Transmission', value: transmission });
+  if (transmission) {
+    rows.push({ id: 'transmission', label: 'Transmission', value: transmission });
   }
 
   const days = daysOnLot(motor, now);
-  if (days != null && facts.length < 3) {
-    facts.push({
+  if (days != null) {
+    rows.push({
       id: 'age',
       label: 'On the lot',
       value: days === 0 ? 'Today' : `${days} ${days === 1 ? 'day' : 'days'}`,
     });
-  } else if (motor.arrivalDate && facts.length < 3) {
-    facts.push({
+  } else if (motor.arrivalDate) {
+    rows.push({
       id: 'arrived',
       label: 'Arrived',
       value: format(motor.arrivalDate, 'd MMM yyyy', { locale: enUS }),
     });
   }
 
-  return facts.slice(0, 3);
+  return rows;
+}
+
+/**
+ * Three-cell glance strip. Prefer `engineSpecRows` on the object screen.
+ */
+export function engineFacts(motor: MotorEntity, now = new Date()): EngineFact[] {
+  return engineSpecRows(motor, now).slice(0, 3);
 }
 
 export type DocumentationLine = {

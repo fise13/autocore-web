@@ -11,6 +11,7 @@ import type { AdvanceSnapshot } from '@/lib/accounting/advances';
 import { ac } from '../layout';
 import { acTimeline } from '../animation/timeline';
 import { formatKzt } from '../utils/format';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 
 type AcAdvancesOverviewProps = {
   snapshot: AdvanceSnapshot;
@@ -48,6 +49,7 @@ function AdvanceRow({ label, value, accent }: { label: string; value: string; ac
 
 export function AcAdvancesOverview({ snapshot }: AcAdvancesOverviewProps) {
   const style = useMcEnter({ delay: acTimeline.attention, translateY: 6 });
+  useMoneyFormatRevision();
 
   return (
     <Reanimated.View style={[{ gap: ac.sectionGap }, style]}>

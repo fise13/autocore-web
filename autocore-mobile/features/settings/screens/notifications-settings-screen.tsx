@@ -195,11 +195,11 @@ export function NotificationsSettingsScreen() {
       {Platform.OS === 'ios' ? (
         <ListSection
           title="Lock Screen"
-          footer="Widgets refresh when you leave the app. Live Activities appear on their own while intake photos upload."
+          footer="Widgets refresh when you leave the app. Live Activities appear on their own while you document an engine or photos upload."
         >
           <CollectionRow
             title="Add Lock Screen widgets"
-            subtitle="Touch and hold the Lock Screen, tap Customise, then add Today at the shop, Work orders, Warehouse, Intake Bay, or Intake Sync."
+            subtitle="Touch and hold the Lock Screen, tap Customise, then add Floor, Scan, or Intake Bay."
             showChevron={false}
           />
         </ListSection>

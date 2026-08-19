@@ -8,7 +8,7 @@ The production web application and API routes run on Vercel. Firebase remains th
 
 - Web dashboard and marketing site: Next.js 16, React 19, TypeScript, Tailwind CSS.
 - Mobile application: Expo Router and React Native under `autocore-mobile/`.
-- Desktop client: Tauri shell under `src-tauri/`, loading the hosted application.
+- Desktop client: Tauri 2 shell under `src-tauri/`, loading the hosted application. See [docs/DESKTOP-ARCHITECTURE.md](docs/DESKTOP-ARCHITECTURE.md) and [docs/DESKTOP-RELEASE.md](docs/DESKTOP-RELEASE.md).
 - Backend jobs: Firebase Functions under `firebase/functions/`.
 - Shared contracts: RBAC, organization, search, avatars, and i18n packages under `packages/`.
 

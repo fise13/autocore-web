@@ -3,7 +3,8 @@ import Animated from 'react-native-reanimated';
 
 import { Skeleton } from '@/components/ui';
 import { useTheme } from '@/hooks/use-theme';
-import { radius, rhythm, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
+import { tokens } from '@/theme/tokens';
 
 import { paywallTimeline } from '../animation/paywall-motion';
 import { usePaywallEnter } from '../animation/use-paywall-enter';
@@ -48,35 +49,43 @@ export function PlanCardSkeleton({ index = 0 }: { index?: number }) {
   );
 }
 
-/** Placeholder for the status card on the manage screen. */
+/** Placeholder matched to SubscriptionPlanSection (label + island). */
 export function StatusCardSkeleton() {
   const { colors } = useTheme();
+  const side = tokens.space.screenX;
 
   return (
     <View
-      style={{
-        padding: rhythm.cardPadX,
-        borderRadius: rhythm.cardRadius,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.card,
-        gap: spacing[3],
-      }}
+      style={{ marginBottom: tokens.space.section }}
       accessibilityRole="progressbar"
       accessibilityLabel="Loading subscription"
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[3] }}>
-        <Skeleton width={44} height={44} rounded="xl" />
-        <View style={{ flex: 1, gap: spacing[1.5] }}>
-          <Skeleton width={118} height={17} rounded="sm" />
-          <Skeleton width={168} height={13} rounded="sm" />
+      <Skeleton
+        width={72}
+        height={13}
+        rounded="sm"
+        style={{
+          marginBottom: tokens.space.inline + 2,
+          marginHorizontal: side + tokens.space.stack,
+        }}
+      />
+      <View
+        style={{
+          marginHorizontal: side,
+          paddingHorizontal: tokens.space.stack + 2,
+          paddingVertical: 14,
+          borderRadius: tokens.radius.group,
+          backgroundColor: colors.card,
+          gap: spacing[2],
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[3] }}>
+          <View style={{ flex: 1, gap: spacing[1.5] }}>
+            <Skeleton width={118} height={17} rounded="sm" />
+            <Skeleton width={168} height={13} rounded="sm" />
+          </View>
+          <Skeleton width={64} height={20} rounded="full" />
         </View>
-        <Skeleton width={64} height={20} rounded="full" />
-      </View>
-      <View style={{ height: 1, backgroundColor: colors.border }} />
-      <View style={{ gap: spacing[2] }}>
-        <Skeleton width="100%" height={13} rounded="sm" />
-        <Skeleton width="62%" height={13} rounded="sm" />
       </View>
     </View>
   );

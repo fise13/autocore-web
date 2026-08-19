@@ -5,6 +5,7 @@ import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { Text } from '@/components/ui';
 import { useModalBottomSheet, useTheme } from '@/hooks';
 import { formatPrice } from '@/features/search/lib/format';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 import { matchTypeLabel } from '@/lib/scan/map-resolve-result';
 
 import { scanStatusLabel, scanStatusTone } from '../lib/status';
@@ -35,6 +36,7 @@ export const ScanResultSheet = forwardRef<BottomSheetModal, ScanResultSheetProps
     ref,
   ) {
     const { colors } = useTheme();
+    useMoneyFormatRevision();
     const sheet = useModalBottomSheet();
     const modalProps = {
       ...sheet.sheetLayout,

@@ -35,6 +35,7 @@ import {
 } from "@/lib/accounting/mixed-payment";
 import { formatGroupedNumber } from "@/lib/money/format-number";
 import { userCopy } from "@/lib/user-copy";
+import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
 
 export type SellFinancialPayload = {
   amount: number;
@@ -69,6 +70,7 @@ function SellFinancialDialogForm({
   onCancel: () => void;
   onConfirm: (payload: SellFinancialPayload) => Promise<void>;
 }) {
+  const { toBaseAmount } = useAppDisplayCurrency();
   const [amount, setAmount] = useState(formatGroupedNumber(0));
   const [account, setAccount] = useState<OperationAccount>("cashbox");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
@@ -111,14 +113,16 @@ function SellFinancialDialogForm({
     setSubmitting(true);
     setError(null);
     try {
+      const amountUsd = toBaseAmount(parsedAmount);
+      const cashUsd = toBaseAmount(mixedCashPortion);
       const payment = buildMixedPaymentFields(
         paymentMethod,
         account,
-        parsedAmount,
-        mixedCashPortion,
+        amountUsd,
+        cashUsd,
       );
       await onConfirm({
-        amount: parsedAmount,
+        amount: amountUsd,
         account: payment.account,
         paymentMethod: payment.paymentMethod,
         cashReceived: payment.cashReceived,

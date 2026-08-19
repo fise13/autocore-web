@@ -61,3 +61,17 @@ export type InviteDocument = {
   status?: InviteStatus;
 };
 
+export type DirectoryPersonStatus = "named" | "invited";
+
+/** Name-only roster entry — not signed in yet; invite optional later. */
+export type DirectoryPerson = {
+  id: string;
+  companyId: string;
+  name: string;
+  createdBy: string;
+  createdAt?: Date;
+  status: DirectoryPersonStatus;
+  linkedInviteId?: string;
+  note?: string;
+};
+

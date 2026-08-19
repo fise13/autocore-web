@@ -18,6 +18,7 @@ import { isUnlocatedLocation } from "@/domain/warehouse-location";
 import { buildLocationEntityLink } from "@/lib/warehouse/location-entity-link";
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
+import { printCurrentPage } from "@/platform";
 
 export type LocationLabelSize = "50x30" | "70x40" | "a6";
 
@@ -119,7 +120,9 @@ export function LocationLabelPrintDialog({
   }, [open, printable, size]);
 
   function handlePrint() {
-    window.print();
+    // Routed through the platform adapter: `window.print()` has no handler in
+    // the desktop shell's WKWebView, so label sheets never reached a printer.
+    void printCurrentPage();
   }
 
   return (

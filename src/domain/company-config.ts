@@ -2,6 +2,7 @@ import { WarrantyTemplateId } from "@/domain/document-config";
 import type { InventoryGroupId, InventorySubcategoryId } from "@/domain/inventory-taxonomy";
 import { defaultKnowledgeFlags } from "@/domain/knowledge/flags";
 import type { KnowledgeFlags } from "@/domain/knowledge/types";
+import type { AppDisplayCurrency } from "@/lib/money/display-currency";
 
 export type CompanyModuleKey = "motors" | "workOrders" | "accounting" | "warehouse" | "specifics";
 
@@ -25,6 +26,8 @@ export type CompanyAppConfig = {
   taxonomyVersion?: number;
   /** Business Knowledge Engine feature flags — undefined key = enabled (gradual rollout). */
   knowledge?: KnowledgeFlags;
+  /** Workspace display currency. Stored financial amounts remain USD. */
+  displayCurrency?: AppDisplayCurrency;
   updatedAt?: Date;
 };
 
@@ -72,5 +75,6 @@ export function defaultCompanyAppConfig(): CompanyAppConfig {
     defaultWarrantyTemplate: "contract_engine",
     taxonomyVersion: 2,
     knowledge: defaultKnowledgeFlags(),
+    displayCurrency: "USD",
   };
 }

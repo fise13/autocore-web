@@ -26,10 +26,10 @@ import { createWidget, type WidgetEnvironment } from 'expo-widgets';
 import type { IntakeBayWidgetProps } from '../lib/widget-model';
 
 /**
- * "Intake Bay" — Ready / Active glance for the warehouse floor.
+ * Intake Bay — Ready / Active glance for the warehouse floor.
  *
  * Ranking (Ready → syncing photos → Active) lives in `widget-model.ts`.
- * This file only draws the family. Lock accessories stay uncolored.
+ * Lock circular always spends the numeral on Ready, even when Home ranks syncing.
  */
 export type AutoCoreIntakeWidgetProps = IntakeBayWidgetProps;
 
@@ -63,6 +63,10 @@ const IntakeBayWidgetLayout = (
     typeof props.activeLabel === 'string' && props.activeLabel.length > 0
       ? props.activeLabel
       : 'Active';
+  const lockLine =
+    typeof props.lockLine === 'string' && props.lockLine.length > 0
+      ? props.lockLine
+      : `${num(props.ready)} ${readyLabel} · ${num(props.active)} documenting`;
   const openReadyLabel =
     typeof props.openReadyLabel === 'string' && props.openReadyLabel.length > 0
       ? props.openReadyLabel
@@ -70,7 +74,7 @@ const IntakeBayWidgetLayout = (
   const continueLabel =
     typeof props.continueLabel === 'string' && props.continueLabel.length > 0
       ? props.continueLabel
-      : 'Continue intake';
+      : 'Continue';
   const symbol =
     typeof props.symbol === 'string' && props.symbol.length > 0
       ? props.symbol
@@ -84,10 +88,10 @@ const IntakeBayWidgetLayout = (
   const ready = typeof props.ready === 'number' ? props.ready : -1;
   const updatedAtMs =
     typeof props.updatedAtMs === 'number' && props.updatedAtMs > 0 ? props.updatedAtMs : 0;
-  const showReadyAction = ready > 0;
+  const readyNumeral = num(props.ready);
 
   if (isInline) {
-    return <Text modifiers={[widgetURL(link)]}>{title}</Text>;
+    return <Text modifiers={[widgetURL(link)]}>{lockLine}</Text>;
   }
 
   if (isCircular) {
@@ -95,7 +99,7 @@ const IntakeBayWidgetLayout = (
       <ZStack modifiers={[widgetURL(link)]}>
         <AccessoryWidgetBackground />
         <VStack spacing={0}>
-          <Image systemName={symbol} size={12} />
+          <Image systemName="checkmark.seal.fill" size={12} />
           <Text
             modifiers={[
               font({ size: 15, weight: 'semibold' }),
@@ -104,7 +108,7 @@ const IntakeBayWidgetLayout = (
               minimumScaleFactor(0.5),
             ]}
           >
-            {headline}
+            {readyNumeral}
           </Text>
         </VStack>
       </ZStack>
@@ -127,7 +131,7 @@ const IntakeBayWidgetLayout = (
           {title}
         </Text>
         <Text modifiers={[font({ size: 12 }), lineLimit(1), minimumScaleFactor(0.8)]}>
-          {`${num(props.ready)} ${readyLabel} · ${num(props.active)} ${activeLabel}`}
+          {lockLine}
         </Text>
       </VStack>
     );
@@ -164,6 +168,15 @@ const IntakeBayWidgetLayout = (
     </VStack>
   );
 
+  const clock =
+    updatedAtMs > 0 ? (
+      <Text
+        date={new Date(updatedAtMs)}
+        dateStyle="relative"
+        modifiers={[font({ size: 10 }), foregroundStyle('#6E6E73'), lineLimit(1)]}
+      />
+    ) : null;
+
   if (isMedium) {
     return (
       <VStack
@@ -188,13 +201,7 @@ const IntakeBayWidgetLayout = (
             {title}
           </Text>
           <Spacer />
-          {updatedAtMs > 0 ? (
-            <Text
-              date={new Date(updatedAtMs)}
-              dateStyle="relative"
-              modifiers={[font({ size: 10 }), foregroundStyle('#6E6E73'), lineLimit(1)]}
-            />
-          ) : null}
+          {clock}
         </HStack>
 
         <HStack spacing={14} alignment="top">
@@ -202,12 +209,20 @@ const IntakeBayWidgetLayout = (
           {cell(activeLabel, num(props.active), 'camera.fill', '#0A84FF')}
         </HStack>
 
-        <Button
-          label={showReadyAction ? openReadyLabel : continueLabel}
-          systemImage={showReadyAction ? 'checkmark.seal.fill' : 'camera.fill'}
-          target={showReadyAction ? 'openReady' : 'continueIntake'}
-          modifiers={[buttonStyle('bordered'), controlSize('mini')]}
-        />
+        <HStack spacing={8}>
+          <Button
+            label={openReadyLabel}
+            systemImage="checkmark.seal.fill"
+            target="openReady"
+            modifiers={[buttonStyle('bordered'), controlSize('mini')]}
+          />
+          <Button
+            label={continueLabel}
+            systemImage="camera.fill"
+            target="continueIntake"
+            modifiers={[buttonStyle('bordered'), controlSize('mini')]}
+          />
+        </HStack>
       </VStack>
     );
   }
@@ -234,6 +249,7 @@ const IntakeBayWidgetLayout = (
           {eyebrow}
         </Text>
         <Spacer />
+        {clock}
       </HStack>
 
       <Spacer />
@@ -274,9 +290,9 @@ const IntakeBayWidgetLayout = (
       </Text>
 
       <Button
-        label={showReadyAction ? openReadyLabel : continueLabel}
-        systemImage={showReadyAction ? 'checkmark.seal.fill' : 'camera.fill'}
-        target={showReadyAction ? 'openReady' : 'continueIntake'}
+        label={ready > 0 ? openReadyLabel : continueLabel}
+        systemImage={ready > 0 ? 'checkmark.seal.fill' : 'camera.fill'}
+        target={ready > 0 ? 'openReady' : 'continueIntake'}
         modifiers={[buttonStyle('bordered'), controlSize('mini'), padding({ top: 6 })]}
       />
     </VStack>

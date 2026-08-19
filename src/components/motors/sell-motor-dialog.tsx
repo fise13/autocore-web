@@ -43,6 +43,7 @@ import { createClientRepository } from "@/infrastructure/firestore/client-reposi
 import { formatWarrantyDurationLabel } from "@/lib/documents/warranty/custom-warranty";
 import type { MotorSaleWarrantyOverride } from "@/lib/documents/warranty/custom-warranty";
 import { formatGroupedNumber } from "@/lib/money/format-number";
+import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
 import { userCopy } from "@/lib/user-copy";
 
 export type MotorSellPayload = SellFinancialPayload & {
@@ -175,6 +176,7 @@ function SellMotorDialogForm({
   labels?: SellMotorDialogLabels;
 }) {
   const labels = labelsProp ?? getDefaultSellMotorLabels();
+  const { convertMoney, toBaseAmount } = useAppDisplayCurrency();
   const { profile } = useCompanyBranding(companyId);
   const { clients } = useClientsRealtime(clientRepository, companyId ?? "", mode === "sell");
   const usesCustomWarranty = profile.warrantyTemplateId === "custom" && mode === "sell";
@@ -208,7 +210,9 @@ function SellMotorDialogForm({
   const defaultKm = profile.customWarrantyKm ? String(profile.customWarrantyKm) : "10000";
 
   const [amount, setAmount] = useState(
-    formatGroupedNumber(initialValues?.amount && initialValues.amount > 0 ? initialValues.amount : 0),
+    formatGroupedNumber(
+      initialValues?.amount && initialValues.amount > 0 ? Math.round(convertMoney(initialValues.amount)) : 0,
+    ),
   );
   const [account, setAccount] = useState<OperationAccount>(initialValues?.account ?? "cashbox");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
@@ -257,7 +261,9 @@ function SellMotorDialogForm({
     setClientName(initialValues?.clientName ?? "");
     setClientPhone(initialValues?.clientPhone ?? "");
     setAmount(
-      formatGroupedNumber(initialValues?.amount && initialValues.amount > 0 ? initialValues.amount : 0),
+      formatGroupedNumber(
+        initialValues?.amount && initialValues.amount > 0 ? Math.round(convertMoney(initialValues.amount)) : 0,
+      ),
     );
     setAccount(initialValues?.account ?? "cashbox");
     setPaymentMethod(initialValues?.paymentMethod ?? "cash");
@@ -284,6 +290,7 @@ function SellMotorDialogForm({
     initialValues?.account,
     initialValues?.paymentMethod,
     initialValues?.comment,
+    convertMoney,
   ]);
 
   const parsedAmount = useMemo(() => parseGroupedNumber(amount), [amount]);
@@ -356,15 +363,17 @@ function SellMotorDialogForm({
           ? formatWarrantyDurationLabel(parsedDays, parsedKm)
           : undefined);
 
+      const amountUsd = toBaseAmount(parsedAmount);
+      const cashUsd = toBaseAmount(mixedCashPortion);
       const payment = buildMixedPaymentFields(
         paymentMethod,
         account,
-        parsedAmount,
-        mixedCashPortion,
+        amountUsd,
+        cashUsd,
       );
 
       await onConfirm({
-        amount: parsedAmount,
+        amount: amountUsd,
         account: payment.account,
         paymentMethod: payment.paymentMethod,
         cashReceived: payment.cashReceived,

@@ -4,12 +4,15 @@ import { describe, it } from 'node:test';
 import type { MotorEntity } from '@/types/motor';
 
 import {
+  engineMatchesQuery,
   engineThumbnailUrl,
   engineUnitLabel,
   engineUnitLocation,
   engineVariantKey,
   engineVariantTitle,
   groupEnginesByVariant,
+  sortEnginesForCatalog,
+  variantHeading,
   variantSubtitle,
 } from './engine-variants';
 
@@ -144,6 +147,49 @@ describe('groupEnginesByVariant', () => {
   });
 });
 
+describe('sortEnginesForCatalog', () => {
+  it('clusters the same variant, then sorts serials naturally', () => {
+    const sorted = sortEnginesForCatalog([
+      motor({ id: '1', brandName: 'Toyota', engineCode: '2AZ-FE', serialCode: 'T-10' }),
+      motor({ id: '2', brandName: 'Subaru', engineCode: 'EJ257', serialCode: 'S-1' }),
+      motor({ id: '3', brandName: 'Toyota', engineCode: '2AZ-FE', serialCode: 'T-2' }),
+      motor({ id: '4', brandName: 'Toyota', engineCode: '2AZ-FE', serialCode: 'T-1' }),
+    ]);
+    assert.deepEqual(
+      sorted.map((unit) => unit.serialCode),
+      ['S-1', 'T-1', 'T-2', 'T-10'],
+    );
+  });
+});
+
+describe('engineMatchesQuery', () => {
+  const unit = motor({
+    id: '1',
+    brandName: 'Toyota',
+    engineCode: '2AZ-FE',
+    serialCode: 'T-441',
+    primaryLocationCode: 'A-03',
+    quality: '2',
+  });
+
+  it('still matches serial, brand, code, and shelf', () => {
+    assert.equal(engineMatchesQuery(unit, 'T-441'), true);
+    assert.equal(engineMatchesQuery(unit, 'toyota'), true);
+    assert.equal(engineMatchesQuery(unit, '2az'), true);
+    assert.equal(engineMatchesQuery(unit, 'A-03'), true);
+    assert.equal(engineMatchesQuery(unit, 'missing'), false);
+  });
+
+  it('matches quality by label, alias, and the shop digit', () => {
+    assert.equal(engineMatchesQuery(unit, 'excellent'), true);
+    assert.equal(engineMatchesQuery(unit, 'отличное'), true);
+    assert.equal(engineMatchesQuery(unit, '2'), true);
+    assert.equal(engineMatchesQuery(unit, 'poor'), false);
+    assert.equal(engineMatchesQuery(motor({ id: '9', quality: '3' }), 'плохое'), true);
+    assert.equal(engineMatchesQuery(motor({ id: '9' }), 'ungraded'), true);
+  });
+});
+
 describe('variantSubtitle', () => {
   it('counts units and calls out the unplaced ones', () => {
     const variants = groupEnginesByVariant([
@@ -164,5 +210,19 @@ describe('variantSubtitle', () => {
       motor({ id: '2', brandName: 'Toyota', engineCode: '2AZ-FE' }),
     ]);
     assert.equal(variantSubtitle(unplaced[0]!), '2 units');
+  });
+});
+
+describe('variantHeading', () => {
+  it('files the motor under its code, with the brand as a kicker', () => {
+    const variants = groupEnginesByVariant([
+      motor({ id: '1', brandName: 'Toyota', engineCode: '2AZ-FE' }),
+    ]);
+    assert.deepEqual(variantHeading(variants[0]!), { kicker: 'Toyota', title: '2AZ-FE' });
+  });
+
+  it('falls back to the full title when brand or code is missing', () => {
+    const codeOnly = groupEnginesByVariant([motor({ id: '1', engineCode: 'EJ257' })]);
+    assert.deepEqual(variantHeading(codeOnly[0]!), { kicker: null, title: 'EJ257' });
   });
 });

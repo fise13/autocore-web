@@ -5,6 +5,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/hooks';
 import { withAlpha } from '@/theme/color-utils';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 
 import { fin, finFontCap, finType } from '../layout';
 import { formatMoneyAdaptive, formatSignedMoney } from '../lib/format';
@@ -32,6 +33,7 @@ const DriverRow = memo(function DriverRow({
   onPress?: (id: FinanceFlowNodeId) => void;
 }) {
   const { colors } = useTheme();
+  useMoneyFormatRevision();
   const tone = toneForValue(driver.contribution);
   const color = toneColor(tone, colors);
   const share = maxMagnitude > 0 ? Math.abs(driver.contribution) / maxMagnitude : 0;

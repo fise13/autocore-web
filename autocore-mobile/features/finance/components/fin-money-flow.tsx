@@ -4,6 +4,7 @@ import { View } from 'react-native';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { withAlpha } from '@/theme/color-utils';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 
 import { fin, finFontCap, finType } from '../layout';
 import { formatMoneyAdaptive, formatPercent } from '../lib/format';
@@ -37,6 +38,7 @@ const FlowRow = memo(function FlowRow({
   onPress?: (id: FinanceFlowNodeId) => void;
 }) {
   const { colors } = useTheme();
+  useMoneyFormatRevision();
 
   return (
     <FinPressable
@@ -88,6 +90,7 @@ function FlowStage({
   onNodePress?: (id: FinanceFlowNodeId) => void;
 }) {
   const { colors } = useTheme();
+  useMoneyFormatRevision();
   const segments = useMemo(
     () =>
       nodes.map((node, index) => ({

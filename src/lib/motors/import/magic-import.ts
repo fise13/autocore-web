@@ -1,16 +1,28 @@
+import { joinGridFragments } from "@/lib/import/ai-grid-contract";
 import { parseMotorDateInput } from "@/lib/motor-dates";
-import { requestAiMotorNormalizeBatch } from "@/infrastructure/openrouter/import-ai-client";
-
+import { callableMotorImportAiClient, type MotorImportAiClient } from "./ai-client";
 import { MotorNormalizeBatchItem } from "./ai-schemas";
 import { coerceBrandEnginePair } from "./brand-engine-intelligence";
 import { prepareMagicImportRow } from "./import-row-integrity";
+import { serialMergeKey } from "./merge-grid-rows";
+import { compactQualifierFragments } from "./qualifiers";
 import { MotorImportPreviewRow, MotorImportProgress } from "./types";
 
-const AI_BATCH_SIZE = 35;
+/**
+ * Rows per AI request. Each row answers with ~10 grid cells plus warnings, so 25 rows fit
+ * comfortably inside the importGrid token budget with room for a retry.
+ */
+const AI_BATCH_SIZE = 25;
 const AI_UNCERTAIN_THRESHOLD = 0.45;
 
 function emit(onProgress: ((progress: MotorImportProgress) => void) | undefined, progress: MotorImportProgress) {
   onProgress?.(progress);
+}
+
+/** Configuration and auth failures will not fix themselves on the next batch. */
+function isAiUnavailable(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /не настроен|Требуется авторизация|тарифе Pro|401|402|403|503/i.test(message);
 }
 
 function summarizeMotorRow(row: MotorImportPreviewRow): string {
@@ -29,6 +41,15 @@ function summarizeMotorRow(row: MotorImportPreviewRow): string {
   return parts.join(" · ").slice(0, 480);
 }
 
+/**
+ * Accept the model's answer without letting it destroy a good one.
+ *
+ * The rules engine has already read the row deterministically. The model is allowed to fill
+ * gaps and fix misreadings, but three things are enforced in code rather than trusted to the
+ * prompt: it cannot shorten configuration or notes (its text is merged in, never swapped
+ * for), it cannot replace a serial with an unrelated one (only strip a family prefix off the
+ * one already found), and it cannot overwrite a date the deterministic parser resolved.
+ */
 function applyAiMotorSuggestion(
   row: MotorImportPreviewRow,
   suggestion: MotorNormalizeBatchItem,
@@ -39,31 +60,37 @@ function applyAiMotorSuggestion(
     warnings.push("ИИ не уверен — проверьте строку перед импортом");
   }
 
-  const arrivalDate = suggestion.arrivalDate
-    ? parseMotorDateInput(suggestion.arrivalDate) ?? row.arrivalDate
-    : row.arrivalDate;
-  const soldDate = suggestion.soldDate
-    ? parseMotorDateInput(suggestion.soldDate) ?? row.soldDate
-    : row.soldDate;
+  const serialCode = resolveAiSerial(row, suggestion, warnings);
+
+  // The rules parser reads dd.mm.yyyy, m/d/yy and Excel serials deterministically; the model
+  // only gets to answer where it found nothing.
+  const arrivalDate = row.arrivalDate ?? parseMotorDateInput(suggestion.arrivalDate ?? "");
+  const soldDate = row.soldDate ?? parseMotorDateInput(suggestion.soldDate ?? "");
 
   const coerced = coerceBrandEnginePair(
-    suggestion.brand?.trim() || row.brandName,
+    suggestion.brandName?.trim() || row.brandName,
     suggestion.engineCode?.trim() || row.engineCode,
     {
-      serial: suggestion.normalizedSerial?.trim() || row.serialCode,
+      serial: serialCode,
       sheetName: row.sheetName,
-      rawBrandInput: suggestion.brand?.trim() || row.brandName,
+      rawBrandInput: suggestion.brandName?.trim() || row.brandName,
     },
   );
 
   return {
     ...row,
-    serialCode: suggestion.normalizedSerial?.trim() || row.serialCode,
+    serialCode,
     brandName: coerced.brand || row.brandName,
     engineCode: coerced.engine || row.engineCode,
-    configuration: suggestion.configuration?.trim() || row.configuration,
-    transmission: suggestion.transmission?.trim() || row.transmission,
-    notes: suggestion.notes?.trim() || row.notes,
+    configuration: compactQualifierFragments(
+      joinGridFragments([row.configuration, suggestion.configuration]),
+    ),
+    transmission: row.transmission || suggestion.transmission?.trim() || "",
+    // QUALITY and LOCATION are almost never in these files. The model may fill them when the
+    // rules engine found nothing, and may never overwrite what it did find.
+    quality: row.quality || suggestion.quality?.trim() || "",
+    warehouseLocation: row.warehouseLocation || suggestion.warehouseLocation?.trim() || "",
+    notes: joinGridFragments([row.notes, suggestion.notes]),
     arrivalDate,
     soldDate,
     confidence: suggestion.confidence,
@@ -78,14 +105,44 @@ function applyAiMotorSuggestion(
   };
 }
 
+/**
+ * A model-supplied serial is accepted only when it is the same number the rules engine
+ * already had, with a family prefix removed — or when the rules engine found none at all.
+ * Anything else would silently retag an engine.
+ */
+function resolveAiSerial(
+  row: MotorImportPreviewRow,
+  suggestion: MotorNormalizeBatchItem,
+  warnings: string[],
+): string {
+  const proposed = suggestion.serialCode?.trim() ?? "";
+  if (!proposed) return row.serialCode;
+  if (!row.serialCode.trim()) return proposed;
+
+  const current = serialMergeKey(row.serialCode);
+  const next = serialMergeKey(proposed);
+  if (next === current || current.endsWith(next) || current.startsWith(next)) {
+    return proposed;
+  }
+
+  warnings.push(`ИИ предложил другой серийник (${proposed}) — оставлен исходный`);
+  return row.serialCode;
+}
+
 export async function magicEnhanceMotorRows(
   companyId: string,
   rows: MotorImportPreviewRow[],
   options?: {
     onProgress?: (progress: MotorImportProgress) => void;
+    aiClient?: MotorImportAiClient;
   },
 ): Promise<MotorImportPreviewRow[]> {
   if (rows.length === 0) return rows;
+
+  const aiClient = options?.aiClient ?? callableMotorImportAiClient;
+  // One unavailable-AI failure means the whole pass is unavailable; stop hammering it and
+  // let the rules result stand.
+  let aiAvailable = true;
 
   const batches: MotorImportPreviewRow[][] = [];
   for (let offset = 0; offset < rows.length; offset += AI_BATCH_SIZE) {
@@ -106,25 +163,29 @@ export async function magicEnhanceMotorRows(
 
     const payload = batch.map((row) => ({
       rowKey: row.rowKey,
-      rawSerial: row.serialCode,
-      rawBrand: row.brandName,
-      rawEngine: row.engineCode,
-      rawConfiguration: row.configuration,
-      rawTransmission: row.transmission,
-      rawNotes: row.notes,
-      rawSheet: row.sheetName,
-      sheetBrand: row.brandName,
-      sheetEngine: row.engineCode,
-      rawRowCells: row.rawRowCells,
-      rawRow: summarizeMotorRow(row),
+      // The grid cells as the rules engine read them, named exactly as in the prompt.
+      brand: row.brandName,
+      engineCode: row.engineCode,
+      serialCode: row.serialCode,
+      configuration: row.configuration,
+      notes: row.notes,
+      transmission: row.transmission,
+      quantity: row.quantity,
+      arrivalDate: row.arrivalDate ? row.arrivalDate.toISOString().slice(0, 10) : "",
+      soldDate: row.soldDate ? row.soldDate.toISOString().slice(0, 10) : "",
+      sheetName: row.sheetName,
+      rawRowCells: row.rawRowCells ?? summarizeMotorRow(row),
     }));
 
     let aiByKey = new Map<string, MotorNormalizeBatchItem>();
-    try {
-      const ai = await requestAiMotorNormalizeBatch(companyId, payload);
-      aiByKey = new Map(ai.items.map((item) => [item.rowKey, item]));
-    } catch {
-      aiByKey = new Map();
+    if (aiAvailable) {
+      try {
+        const ai = await aiClient.normalizeRows(companyId, payload);
+        aiByKey = new Map(ai.items.map((item) => [item.rowKey, item]));
+      } catch (error) {
+        aiByKey = new Map();
+        if (isAiUnavailable(error)) aiAvailable = false;
+      }
     }
 
     for (const row of batch) {
@@ -174,6 +235,8 @@ export function applyMagicMotorDefaults(rows: MotorImportPreviewRow[]): MotorImp
 export function isMotorQuickImportReady(result: {
   engineRows: MotorImportPreviewRow[];
   sheetMappings: Record<string, { config: { importType: string; id: string } }>;
+  /** Sheets still represented after cross-sheet merging, directly or inside a merged row. */
+  representedSheetConfigIds?: Set<string>;
 }): boolean {
   const hasSpecific = Object.values(result.sheetMappings).some(
     (mapping) => mapping.config.importType === "specific",
@@ -186,6 +249,9 @@ export function isMotorQuickImportReady(result: {
   if (engineSheets.length === 0) return false;
 
   const emptyEngineSheet = engineSheets.some((mapping) => {
+    // A sheet whose every row was folded into another sheet's row is fully imported,
+    // not empty.
+    if (result.representedSheetConfigIds?.has(mapping.config.id)) return false;
     const rowsForSheet = result.engineRows.filter(
       (row) => row.sheetConfigId === mapping.config.id,
     );

@@ -31,6 +31,8 @@ const AI_ROLE_TO_FIELD: Record<string, EngineFieldMapping | undefined> = {
   notes: "notes",
   quantity: "quantity",
   transmission: "transmission",
+  brand_name: "brandName",
+  engine_code: "engineCode",
   arrival_date: "arrivalDate",
   sold_date: "soldDate",
   ignore: undefined,
@@ -175,7 +177,7 @@ export function buildRuleSheetMapping(
   }
 
   config = finalizeSheetConfig(config, existingCategoryNames);
-  const columnMapping = createSheetColumnMapping(sheet, config.importType);
+  const columnMapping = createSheetColumnMapping(sheet);
   const hasSerial =
     mappingHasSerialColumn(columnMapping) || inferSerialColumnIndex(sheet, columnMapping) != null;
   const warnings: string[] = [];

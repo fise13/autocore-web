@@ -10,7 +10,7 @@ import {
   useTheme,
 } from '@/hooks';
 import { useEntitlement } from '@/hooks/use-entitlement';
-import { planLabel } from '@/lib/subscriptions/format';
+import { usePaywall } from '@/hooks/use-paywall';
 import { resolveActiveCompanyName } from '@/lib/resolve-active-company-name';
 import type { CompanyModuleKey } from '@/types/company-config';
 import { presentOrganizationSwitcher } from '@/features/organization/present-organization-switcher';
@@ -19,6 +19,7 @@ import { tokens } from '@/theme/tokens';
 import { appDisplayCurrencyOption } from '@/lib/money/display-currency';
 
 import { settingsRouteHref } from '../navigation';
+import { CompanyProCard } from '../components/company-pro-card';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
 import { OrgDangerZone } from '@/features/organization/components/org-danger-zone';
 import { profileRouteHref } from '@/features/profile/navigation';
@@ -41,10 +42,10 @@ export function CompanySettingsScreen() {
   const { entitlement, isPro } = useEntitlement();
   const { employees } = useEmployeesRealtime(companyId, isPro);
   const { currency } = useAppDisplayCurrency();
+  const { present: presentPaywall } = usePaywall();
   const activeCount = employees.filter((entry) => entry.isActive).length;
 
   const displayName = isLoading ? '…' : resolveActiveCompanyName(companyId, name, []);
-  const currentPlanLabel = planLabel(entitlement);
   const currencyLabel = appDisplayCurrencyOption(currency).label;
 
   const enabledModules = config
@@ -75,28 +76,33 @@ export function CompanySettingsScreen() {
           {displayName}
         </Text>
         <Text variant="footnote" color="muted">
-          {currentPlanLabel} · {activeCount} active
+          {activeCount} active
         </Text>
       </Surface>
 
-      {memberships.length > 1 ? (
-        <ListSection title="Organizations">
-          <CollectionRow
-            title="Switch organization"
-            subtitle={displayName}
-            onPress={() => {
-              haptics.selection();
-              presentOrganizationSwitcher({
-                memberships,
-                activeCompanyId: companyId,
-                userId: firebaseUser?.uid,
-                refreshProfile,
-                router,
-              });
-            }}
-          />
-        </ListSection>
-      ) : null}
+      <CompanyProCard
+        entitlement={entitlement}
+        canManage={profile?.isCompanyOwner === true}
+        onSeePlans={() => presentPaywall()}
+        onManage={() => router.push(settingsRouteHref('subscription'))}
+      />
+
+      <ListSection title="Organizations">
+        <CollectionRow
+          title="Switch organization"
+          subtitle={displayName}
+          onPress={() => {
+            haptics.selection();
+            presentOrganizationSwitcher({
+              memberships,
+              activeCompanyId: companyId,
+              userId: firebaseUser?.uid,
+              refreshProfile,
+              router,
+            });
+          }}
+        />
+      </ListSection>
 
       <ListSection title="Workspace">
         <CollectionRow

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 
+import { AlertTriangleIcon, CheckCircle2Icon } from '@/assets/icons';
 import {
   AutocompleteInput,
   Button,
@@ -21,6 +22,10 @@ import { useSessionQueryData } from '@/hooks/use-session-query-data';
 import { motorRepository } from '@/services/firestore/motor-repository';
 import { haptics, tokens } from '@/theme';
 import type { MotorEntity } from '@/types/motor';
+
+import { EngineGlyph } from './components/engine-glyph';
+import { engineFrameStyle } from './components/engine-surface';
+import { eng } from './layout';
 
 import {
   canSaveEngineDraft,
@@ -203,7 +208,7 @@ export function CreateEngineScreen() {
           color="muted"
           style={{ paddingHorizontal: tokens.space.micro, letterSpacing: -0.08 }}
         >
-          One unit, one card. The serial is enough — brand and code decide which
+          One unit, one card. The serial is enough. Brand and code decide which
           heading it files under.
         </Text>
 
@@ -292,45 +297,61 @@ function DraftVerdict({
   if (check.status === 'duplicate' || check.status === 'similar') {
     const blocking = check.status === 'duplicate';
     const where = engineUnitLocation(check.existing);
+    const ink = blocking ? colors.dangerOnSubtle : colors.warningOnSubtle;
+
     return (
       <View
         style={{
-          padding: tokens.space.stack,
-          borderRadius: tokens.radius.group,
-          gap: tokens.space.micro,
+          flexDirection: 'row',
+          gap: eng.stack,
+          padding: eng.stack + 2,
+          ...engineFrameStyle(colors),
           backgroundColor: blocking ? colors.dangerSubtle : colors.warningSubtle,
+          borderColor: blocking ? colors.dangerBorder : colors.warningBorder,
         }}
       >
-        <Text
-          variant="footnote"
-          style={{
-            fontWeight: '600',
-            color: blocking ? colors.dangerOnSubtle : colors.warningOnSubtle,
-          }}
-        >
-          {blocking ? 'This serial is already in the catalog' : 'A very similar serial exists'}
-        </Text>
-        <Text
-          variant="caption"
-          style={{ color: blocking ? colors.dangerOnSubtle : colors.warningOnSubtle }}
-        >
-          {check.existing.serialCode}
-          {where ? ` · ${where}` : ' · no location'}
-          {blocking
-            ? '. Change the serial, or open that unit instead.'
-            : '. Add it anyway if this really is a different block.'}
-        </Text>
+        <EngineGlyph
+          sf="exclamationmark.triangle"
+          fallback={AlertTriangleIcon}
+          size={17}
+          color={ink}
+          weight="medium"
+        />
+        <View style={{ flex: 1, gap: eng.micro, minWidth: 0 }}>
+          <Text variant="footnote" style={{ fontWeight: '600', color: ink }}>
+            {blocking ? 'This serial is already in the catalog' : 'A very similar serial exists'}
+          </Text>
+          <Text variant="caption" style={{ color: ink }}>
+            {check.existing.serialCode}
+            {where ? ` · ${where}` : ' · no location'}
+            {blocking
+              ? '. Change the serial, or open that unit instead.'
+              : '. Add it anyway if this really is a different block.'}
+          </Text>
+        </View>
       </View>
     );
   }
 
   return (
-    <Text
-      variant="caption"
-      color="muted"
-      style={{ paddingHorizontal: tokens.space.micro }}
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: eng.tight,
+        paddingHorizontal: eng.micro,
+      }}
     >
-      Files under {draftVariantLabel(draft)}.
-    </Text>
+      <EngineGlyph
+        sf="checkmark.circle"
+        fallback={CheckCircle2Icon}
+        size={14}
+        color={colors.successOnSubtle}
+        weight="medium"
+      />
+      <Text variant="caption" color="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
+        Files under {draftVariantLabel(draft)}.
+      </Text>
+    </View>
   );
 }

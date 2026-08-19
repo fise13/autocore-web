@@ -2,13 +2,15 @@ import { AppDisplayCurrency } from "@/lib/money/display-currency";
 
 /**
  * Amounts in Firestore and operations are stored in USD.
- * Display is USD-only — exchange helpers are identity no-ops kept for call-site compatibility.
+ * Display currency converts from that base using the live (or fallback) KZT rate.
  */
 export const APP_MONEY_BASE_CURRENCY = "USD" as const;
 
+/** Offline / first-paint rate until `/api/money/exchange-rates` responds. */
+export const FALLBACK_KZT_PER_USD = 470;
+
 export type ExchangeRates = {
   base: typeof APP_MONEY_BASE_CURRENCY;
-  /** Retained for API payload compatibility; unused for display. */
   kztPerUsd: number;
   rubPerUsd: number;
   fetchedAt: string;
@@ -17,7 +19,7 @@ export type ExchangeRates = {
 
 export const FALLBACK_EXCHANGE_RATES: ExchangeRates = {
   base: "USD",
-  kztPerUsd: 1,
+  kztPerUsd: FALLBACK_KZT_PER_USD,
   rubPerUsd: 1,
   fetchedAt: new Date(0).toISOString(),
   source: "fallback",
@@ -39,7 +41,7 @@ export function buildExchangeRatesFromUsdPivot(input: {
 }): ExchangeRates {
   return {
     base: "USD",
-    kztPerUsd: input.kztPerUsd != null ? assertPositiveRate(input.kztPerUsd, "KZT") : 1,
+    kztPerUsd: input.kztPerUsd != null ? assertPositiveRate(input.kztPerUsd, "KZT") : FALLBACK_KZT_PER_USD,
     rubPerUsd: input.rubPerUsd != null ? assertPositiveRate(input.rubPerUsd, "RUB") : 1,
     fetchedAt: input.fetchedAt ?? new Date().toISOString(),
     source: input.source ?? "live",
@@ -48,16 +50,36 @@ export function buildExchangeRatesFromUsdPivot(input: {
 
 export function convertFromBaseCurrency(
   amountInUsd: number,
-  _target: AppDisplayCurrency = "USD",
-  _rates: ExchangeRates = FALLBACK_EXCHANGE_RATES,
+  target: AppDisplayCurrency = "USD",
+  rates: ExchangeRates = FALLBACK_EXCHANGE_RATES,
 ): number {
   if (!Number.isFinite(amountInUsd)) return 0;
+  if (target === "KZT") return amountInUsd * rates.kztPerUsd;
   return amountInUsd;
 }
 
+/** Inverse of `convertFromBaseCurrency` — used when the user types an amount. */
+export function convertToBaseCurrency(
+  amount: number,
+  source: AppDisplayCurrency = "USD",
+  rates: ExchangeRates = FALLBACK_EXCHANGE_RATES,
+): number {
+  if (!Number.isFinite(amount)) return 0;
+  if (source === "KZT") {
+    const rate = rates.kztPerUsd;
+    if (!Number.isFinite(rate) || rate <= 0) return 0;
+    return amount / rate;
+  }
+  return amount;
+}
+
 export function formatExchangeRateHint(
-  _currency: AppDisplayCurrency,
-  _rates: ExchangeRates,
+  currency: AppDisplayCurrency,
+  rates: ExchangeRates,
 ): string | null {
-  return null;
+  if (currency !== "KZT") return null;
+  const rate = rates.kztPerUsd;
+  if (!Number.isFinite(rate) || rate <= 0) return null;
+  const formatted = new Intl.NumberFormat("kk-KZ", { maximumFractionDigits: 0 }).format(Math.round(rate));
+  return `1 USD = ${formatted} ₸`;
 }

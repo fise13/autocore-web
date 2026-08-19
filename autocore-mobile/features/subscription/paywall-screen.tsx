@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { Pressable, ScrollView, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,18 +8,32 @@ import { useSubscription } from '@/hooks/use-subscription';
 import { usePaywall } from '@/hooks/use-paywall';
 import { useTheme } from '@/hooks/use-theme';
 import { featureRule, type GatedFeature } from '@/lib/subscriptions/feature-gate';
+import {
+  formatIapPaywallStatus,
+  isIapDebugEnabled,
+  subscribeIapTrace,
+} from '@/lib/subscriptions/iap-trace';
+import { setPaywallBypassed } from '@/lib/subscriptions/paywall-bypass';
+import { isConnected, isSubscriptionSkuWarmed } from '@/lib/subscriptions/purchase-manager';
+import { getPurchaseStoreSnapshot } from '@/lib/subscriptions/purchase-store';
+import {
+  describeIntroOffer,
+  describePaywallDisclosure,
+  describeTrialCta,
+  resolveTrialOffer,
+} from '@/lib/subscriptions/trial-policy';
 import type { PlanId } from '@/lib/subscriptions/types';
-import { haptics, radius, rhythm, spacing } from '@/theme';
+import { haptics, radius, rhythm, spacing, tokens } from '@/theme';
 
 import { paywallTimeline } from './animation/paywall-motion';
 import { usePaywallEnter } from './animation/use-paywall-enter';
 import { PaywallChrome } from './components/paywall-chrome';
 import { PaywallFooter } from './components/paywall-footer';
 import { PaywallHero } from './components/paywall-hero';
-import { PlanCard } from './components/plan-card';
+import { PlanCard, PlanPicker } from './components/plan-card';
 import { PurchaseCta } from './components/purchase-cta';
 import { PurchaseStatusBanner } from './components/purchase-status-banner';
-import { TrialCta } from './components/trial-cta';
+import { PurchaseSuccess } from './components/purchase-success';
 import { OfflineNotice } from './components/sync-indicator';
 
 type PaywallScreenProps = {
@@ -46,30 +60,47 @@ export function PaywallScreen({
     entitlement,
     offers: offersFromStore,
     productsError,
-    productsLoading,
     flow,
     purchase,
     reloadProducts,
     resetFlow,
-    trial,
-    startTrial,
+    introEligible,
+    restore,
+    storePrepared,
+    warmPlan,
   } = useSubscription();
 
   const offers = offersFromStore ?? [];
 
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('pro_yearly');
+  const startedTrialRef = useRef(false);
 
   useEffect(() => {
+    if (offers.some((offer) => offer.plan.id === selectedPlan)) return;
+    const first = offers[0];
+    if (first) setSelectedPlan(first.plan.id);
+  }, [offers, selectedPlan]);
+
+  useEffect(() => {
+    void warmPlan(selectedPlan);
+  }, [selectedPlan, warmPlan]);
+
+  useEffect(() => {
+    const phase = getPurchaseStoreSnapshot().flow.phase;
+    if (
+      phase === 'success' ||
+      phase === 'restored' ||
+      phase === 'loading' ||
+      phase === 'verifying' ||
+      phase === 'pending'
+    ) {
+      return;
+    }
     resetFlow();
-    void reloadProducts();
+    if (getPurchaseStoreSnapshot().products.length === 0) {
+      void reloadProducts();
+    }
   }, [reloadProducts, resetFlow]);
-
-  useEffect(() => {
-    if (isGate) return;
-    if (flow.phase !== 'success' && flow.phase !== 'restored') return;
-    const timer = setTimeout(dismiss, 1400);
-    return () => clearTimeout(timer);
-  }, [dismiss, flow.phase, isGate]);
 
   const headline = feature ? featureRule(feature).paywall.title : DEFAULT_HEADLINE;
   const subhead = feature ? featureRule(feature).paywall.body : DEFAULT_SUBHEAD;
@@ -91,19 +122,63 @@ export function PaywallScreen({
     [offers],
   );
 
-  const ctaLabel = 'Continue with Pro';
-
-  const disclosure =
-    'Payment is charged to your Apple ID. The subscription renews automatically unless cancelled at least 24 hours before the current period ends.';
-
   const selectedOffer = offers.find((offer) => offer.plan.id === selectedPlan);
   const storeReady = Boolean(selectedOffer?.product);
+  const selectedSku = selectedOffer?.product?.sku ?? selectedOffer?.plan.appleSku ?? null;
+  const ctaReady = storeReady || storePrepared;
+  const showIapDebug = isIapDebugEnabled();
+  const iapDebugLine = useSyncExternalStore(
+    subscribeIapTrace,
+    () =>
+      formatIapPaywallStatus({
+        connected: isConnected(),
+        storePrepared,
+        sku: selectedSku,
+        warmed: selectedSku ? isSubscriptionSkuWarmed(selectedSku) : false,
+        flowPhase: flow.phase,
+      }),
+    () => '',
+  );
+
+  const trial = useMemo(
+    () =>
+      resolveTrialOffer({
+        entitlement,
+        product: selectedOffer?.product ?? null,
+        introEligible,
+      }),
+    [entitlement, introEligible, selectedOffer?.product],
+  );
+
+  const ctaLabel = describeTrialCta(trial);
+  const disclosure = describePaywallDisclosure(trial, selectedOffer?.product ?? null);
 
   const handlePurchase = useCallback(() => {
-    const planId = selectedPlan ?? 'pro_monthly';
     haptics.medium();
-    void purchase(planId);
-  }, [purchase, selectedPlan]);
+    startedTrialRef.current = trial.kind === 'apple_intro' && trial.offer.isFreeTrial;
+    void purchase(selectedPlan);
+  }, [purchase, selectedPlan, trial]);
+
+  const handleSkip = useCallback(() => {
+    haptics.light();
+    if (isGate) {
+      setPaywallBypassed(true);
+      return;
+    }
+    dismiss();
+  }, [dismiss, isGate]);
+
+  const handleRestore = useCallback(() => {
+    haptics.light();
+    startedTrialRef.current = false;
+    void restore();
+  }, [restore]);
+
+  const handleContinue = useCallback(() => {
+    haptics.medium();
+    resetFlow();
+    if (!isGate) dismiss();
+  }, [dismiss, isGate, resetFlow]);
 
   const handleSelectPlan = useCallback(
     (planId: PlanId) => {
@@ -120,27 +195,42 @@ export function PaywallScreen({
   const selectable = visibleOffers.length > 1;
 
   const ctaDisabled =
-    !storeReady ||
-    productsLoading ||
+    !ctaReady ||
     flow.phase === 'loading' ||
     flow.phase === 'verifying' ||
     flow.phase === 'restoring';
 
+  if (flow.phase === 'success' || flow.phase === 'restored') {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
+        <PurchaseSuccess
+          kind={flow.phase === 'restored' ? 'restored' : 'purchased'}
+          startedTrial={startedTrialRef.current}
+          onContinue={handleContinue}
+        />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
-      <PaywallChrome showClose={!isGate} onClose={dismiss} onSignOut={isGate ? onSignOut : undefined} />
+      <PaywallChrome onSkip={handleSkip} onSignOut={isGate ? onSignOut : undefined} />
 
-      <View
-        style={{
-          flex: 1,
-          paddingHorizontal: rhythm.pad,
-          paddingTop: spacing[2],
-          gap: spacing[3],
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingHorizontal: tokens.space.screenX,
+          paddingTop: tokens.space.inline,
+          paddingBottom: tokens.space.section,
+          gap: tokens.space.section,
         }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <PaywallHero headline={headline} subhead={subhead} />
 
-        <View style={{ gap: spacing[2], flex: 1, justifyContent: 'flex-end' }}>
+        <View style={{ gap: tokens.space.stack, marginTop: 'auto' }}>
           <OfflineNotice />
 
           {productsError ? (
@@ -151,7 +241,7 @@ export function PaywallScreen({
             </Pressable>
           ) : null}
 
-          <View style={{ gap: spacing[2] }}>
+          <PlanPicker>
             {visibleOffers.map((offer, index) => (
               <PlanCard
                 key={offer.plan.id}
@@ -160,41 +250,53 @@ export function PaywallScreen({
                 selected={offer.plan.id === selectedPlan}
                 onSelect={handleSelectPlan}
                 savingsLabel={savingsLabel(offer.plan.id)}
+                introLabel={
+                  introEligible && offer.product?.introOffer
+                    ? describeIntroOffer(offer.product.introOffer)
+                    : null
+                }
                 selectable={selectable}
+                last={index === visibleOffers.length - 1}
               />
             ))}
-          </View>
+          </PlanPicker>
         </View>
 
         {entitlement.managedExternally ? <ManagedElsewhereNotice /> : null}
-      </View>
+      </ScrollView>
 
       {entitlement.managedExternally ? null : (
         <Animated.View
           style={[
             dockStyle,
             {
-              paddingHorizontal: rhythm.pad,
-              paddingTop: spacing[3],
-              paddingBottom: spacing[1],
-              gap: spacing[2],
+              paddingHorizontal: tokens.space.screenX,
+              paddingTop: tokens.space.stack,
+              paddingBottom: tokens.space.micro,
+              gap: tokens.space.stack,
               backgroundColor: colors.background,
+              borderTopWidth: tokens.control.hairline,
+              borderTopColor: colors.border,
             },
           ]}
         >
-          <View style={{ minHeight: 36, justifyContent: 'center' }}>
-            <PurchaseStatusBanner flow={flow} />
-          </View>
+          <PurchaseStatusBanner flow={flow} />
           <PurchaseCta
             flow={flow}
             label={ctaLabel}
-            disclosure={disclosure}
+            startsTrial={trial.kind === 'apple_intro' && trial.offer.isFreeTrial}
             disabled={ctaDisabled}
+            preparing={!ctaReady && !productsError}
             onPress={handlePurchase}
+            restoring={flow.phase === 'restoring'}
+            onRestore={handleRestore}
           />
-          {/* The trial is started here and only here — never on sign-up. */}
-          <TrialCta trial={trial} onStart={startTrial} disabled={flow.phase === 'loading'} />
-          <PaywallFooter />
+          {showIapDebug ? (
+            <Text variant="caption" color="muted" style={{ textAlign: 'center', lineHeight: 16 }}>
+              {iapDebugLine}
+            </Text>
+          ) : null}
+          <PaywallFooter disclosure={disclosure} />
         </Animated.View>
       )}
     </SafeAreaView>

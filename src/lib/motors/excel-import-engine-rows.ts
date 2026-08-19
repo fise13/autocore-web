@@ -1,22 +1,28 @@
+import { joinGridFragments, sanitizeGridText } from "@/lib/import/ai-grid-contract";
+import { formatMotorDate } from "@/lib/motor-dates";
 import {
   createAutoColumnMapping,
   isLikelySoldSheetName,
   SheetColumnMapping,
 } from "@/lib/motors/excel-column-mapping";
-import { parseExcelDateValue } from "@/lib/motors/excel-dates";
 import { SheetImportConfig, effectiveBrand, effectiveEngineCode } from "@/lib/motors/excel-sheet-config";
 import { ExcelSheetData, ParsedImportMotorRow } from "@/lib/motors/excel-types";
 import { coerceBrandEnginePair } from "@/lib/motors/import/brand-engine-intelligence";
+import { parseEngineNumberCell } from "@/lib/motors/import/engine-number";
+import { projectOntoMotorGrid } from "@/lib/motors/import/grid-contract";
+import { looksLikeBrokenDate, parseImportDate } from "@/lib/motors/import/import-dates";
+import {
+  compactQualifierFragments,
+  dropRedundantSheetQualifier,
+  extractQualifiers,
+  routeQualifierText,
+} from "@/lib/motors/import/qualifiers";
+import { scanMotorSheetStructure } from "@/lib/motors/import/sheet-structure";
 import { isLikelyMotorCatalogName } from "@/lib/motors/import/specific-category-intelligence";
 
 function getCell(row: string[], index: number | undefined): string {
   if (index == null || index < 0 || index >= row.length) return "";
   return row[index]?.trim() ?? "";
-}
-
-function parseQuantity(value: string): number {
-  const parsed = Number.parseInt(value.trim(), 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
 const LIKELY_SERIAL_CELL = /^[A-Z0-9][A-Z0-9\-_.]{2,}$/i;
@@ -28,7 +34,7 @@ const SERIAL_SAMPLE_ROWS = 48;
 const SERIAL_COLUMN_MIN_SCORE = 2;
 
 function rowHasMeaningfulData(row: string[], skipColumnIndex: number | null): boolean {
-  return row.some((cell, index) => index !== skipColumnIndex && cell.trim().length > 0);
+  return row.some((cell, index) => index !== skipColumnIndex && sanitizeGridText(cell).length > 0);
 }
 
 function isLikelyNonSerialCell(value: string): boolean {
@@ -97,6 +103,13 @@ function summarizeRawCells(row: string[]): string {
     .slice(0, 480);
 }
 
+function columnIndexFor(
+  mapping: SheetColumnMapping,
+  field: NonNullable<SheetColumnMapping["columnMappings"][number]["engineFieldMapping"]>,
+): number | undefined {
+  return mapping.columnMappings.find((item) => item.engineFieldMapping === field)?.columnIndex;
+}
+
 export function inferSerialColumnIndex(
   sheet: ExcelSheetData,
   mapping: SheetColumnMapping,
@@ -132,17 +145,8 @@ export function inferSerialColumnIndex(
   return bestScore >= SERIAL_COLUMN_MIN_SCORE ? bestIndex : null;
 }
 
-function columnIndexFor(
-  mapping: SheetColumnMapping,
-  field: NonNullable<SheetColumnMapping["columnMappings"][number]["engineFieldMapping"]>,
-): number | undefined {
-  return mapping.columnMappings.find((item) => item.engineFieldMapping === field)?.columnIndex;
-}
-
-export function createSheetColumnMapping(sheet: ExcelSheetData, importType: SheetImportConfig["importType"]) {
-  if (importType === "skip") {
-    return createAutoColumnMapping(sheet.rows);
-  }
+/** Column roles come from the headers alone; the import type does not change them. */
+export function createSheetColumnMapping(sheet: ExcelSheetData) {
   return createAutoColumnMapping(sheet.rows);
 }
 
@@ -161,6 +165,30 @@ function sheetHasImportableDataRows(
   return false;
 }
 
+/** Columns with a header but no grid role — kept verbatim in notes so nothing is lost. */
+function leftoverColumnNotes(row: string[], mapping: SheetColumnMapping): string[] {
+  const notes: string[] = [];
+  for (const column of mapping.columnMappings) {
+    if (column.engineFieldMapping) continue;
+    const value = sanitizeGridText(getCell(row, column.columnIndex));
+    if (!value) continue;
+    // A spreadsheet renders 12/4/23 for a date cell; spelled out, the note stays readable.
+    const asDate = parseImportDate(value);
+    const display = asDate ? formatMotorDate(asDate) : value;
+    const label = sanitizeGridText(column.headerValue);
+    notes.push(label ? `${label}: ${display}` : display);
+  }
+  return notes;
+}
+
+/**
+ * Turn one sheet into grid rows.
+ *
+ * The sheet is read structurally: title rows give the brand and engine family, section
+ * headings re-scope them mid-sheet, and each ENGINE NUMBER cell is split into ENGINE and
+ * ENGINE NUMBER. Operational qualifiers land in CONFIGURATION, anything unclaimed lands in
+ * SPECIAL NOTES, and every remaining cell stays empty rather than being guessed at.
+ */
 export function buildEngineRowsFromSheet(
   sheet: ExcelSheetData,
   config: SheetImportConfig,
@@ -173,50 +201,168 @@ export function buildEngineRowsFromSheet(
   if (serialIndex == null && !motorCatalogSheet) return [];
   if (serialIndex == null && !sheetHasImportableDataRows(sheet, mapping, null)) return [];
 
+  const structure = scanMotorSheetStructure(sheet, mapping, { serialColumnIndex: serialIndex });
   const soldSheetHint = isLikelySoldSheetName(sheet.name);
   const sheetBrand = effectiveBrand(config);
   const sheetEngine = effectiveEngineCode(config);
-  const dataStartIndex = (mapping.headerRowIndex ?? -1) + 1;
   const rows: ParsedImportMotorRow[] = [];
 
-  for (let rowIndex = dataStartIndex; rowIndex < sheet.rows.length; rowIndex += 1) {
+  const brandIndex = columnIndexFor(mapping, "brandName");
+  const engineIndex = columnIndexFor(mapping, "engineCode");
+  const configurationIndex = columnIndexFor(mapping, "configuration");
+  const notesIndex = columnIndexFor(mapping, "notes");
+  const qualityIndex = columnIndexFor(mapping, "quality");
+  const quantityIndex = columnIndexFor(mapping, "quantity");
+  const locationIndex = columnIndexFor(mapping, "warehouseLocation");
+  const transmissionIndex = columnIndexFor(mapping, "transmission");
+  const arrivalIndex = columnIndexFor(mapping, "arrivalDate");
+  const soldIndex = columnIndexFor(mapping, "soldDate");
+
+  for (let rowIndex = structure.dataStartIndex; rowIndex < sheet.rows.length; rowIndex += 1) {
+    if (structure.sectionRows.has(rowIndex)) continue;
+    if (structure.junkRows.has(rowIndex)) continue;
+
     const row = sheet.rows[rowIndex] ?? [];
-    let serialCode = serialIndex != null ? getCell(row, serialIndex) : "";
-    if (!serialCode) {
-      serialCode = extractSerialFromRow(row, { sheetName: sheet.name, skipColumnIndex: serialIndex });
+    if (!row.some((cell) => sanitizeGridText(cell))) continue;
+
+    const context = structure.contextAt(rowIndex);
+    const warnings: string[] = [];
+
+    const numberCell =
+      (serialIndex != null ? getCell(row, serialIndex) : "") ||
+      extractSerialFromRow(row, { sheetName: sheet.name, skipColumnIndex: serialIndex });
+
+    const parts = parseEngineNumberCell(numberCell, { subaruContext: context.subaruContext });
+    if (parts.serialPlaceholder) {
+      warnings.push("Номер двигателя не указан в файле — ячейка была заполнителем");
     }
 
-    if (!serialCode) {
-      if (!rowHasMeaningfulData(row, serialIndex)) continue;
-      if (!motorCatalogSheet) continue;
+    if (!parts.serialCode && !parts.engineCode && !rowHasMeaningfulData(row, serialIndex)) {
+      continue;
+    }
+    if (!parts.serialCode && !parts.engineCode && !motorCatalogSheet && serialIndex == null) {
+      continue;
     }
 
-    const arrivalDate = parseExcelDateValue(getCell(row, columnIndexFor(mapping, "arrivalDate")) || null);
-    let soldDate = parseExcelDateValue(getCell(row, columnIndexFor(mapping, "soldDate")) || null);
+    // ENGINE: the row's own prefix wins, then a section heading, then the sheet.
+    const engineFromColumn = sanitizeGridText(getCell(row, engineIndex));
+    const engineCandidate =
+      parts.engineCode || engineFromColumn || context.engineCode || sheetEngine;
 
-    if (!soldDate && soldSheetHint) {
-      soldDate = arrivalDate ?? new Date();
+    if (
+      parts.engineCode &&
+      context.families.length > 0 &&
+      !context.families.includes(parts.engineCode)
+    ) {
+      warnings.push(
+        `Код двигателя «${parts.engineCode}» не совпадает с листом (${context.families.join(", ")})`,
+      );
+    }
+    if (!parts.engineCode && !engineFromColumn && context.families.length > 1) {
+      warnings.push(
+        `Лист охватывает несколько двигателей (${context.families.join(", ")}) — проверьте колонку ENGINE`,
+      );
     }
 
-    const brandFromRow = getCell(row, columnIndexFor(mapping, "brandName"));
-    const engineFromRow = getCell(row, columnIndexFor(mapping, "engineCode"));
-    const coerced = coerceBrandEnginePair(brandFromRow || sheetBrand, engineFromRow || sheetEngine, {
-      serial: serialCode,
+    const brandFromColumn = sanitizeGridText(getCell(row, brandIndex));
+    const brandCandidate = brandFromColumn || context.brandName || sheetBrand;
+
+    const coerced = coerceBrandEnginePair(brandCandidate, engineCandidate, {
+      serial: parts.serialCode,
       sheetName: sheet.name,
     });
 
-    rows.push({
-      sheetName: sheet.name,
-      serialCode,
-      configuration: getCell(row, columnIndexFor(mapping, "configuration")),
-      notes: getCell(row, columnIndexFor(mapping, "notes")),
-      quantity: parseQuantity(getCell(row, columnIndexFor(mapping, "quantity"))),
-      transmission: getCell(row, columnIndexFor(mapping, "transmission")),
+    const arrivalRaw = getCell(row, arrivalIndex);
+    const soldRaw = getCell(row, soldIndex);
+    const arrivalDate = parseImportDate(arrivalRaw);
+    const soldDate = parseImportDate(soldRaw);
+
+    // A date column that holds prose ("СВЕРДЛОВА 29.07.24", "ПОСЛЕ ДЭНА- ВЕРНУЛИСЬ 16.08")
+    // must not evaporate just because it is not a date.
+    const arrivalResidue = arrivalDate
+      ? { configuration: "", notes: "", ids: [] as string[] }
+      : routeQualifierText(arrivalRaw);
+    const soldResidue = soldDate
+      ? { configuration: "", notes: "", ids: [] as string[] }
+      : routeQualifierText(soldRaw);
+
+    if (looksLikeBrokenDate(arrivalRaw)) {
+      warnings.push(`Дата прихода не распознана: «${sanitizeGridText(arrivalRaw)}»`);
+    }
+    if (looksLikeBrokenDate(soldRaw)) {
+      warnings.push(`Дата продажи не распознана: «${sanitizeGridText(soldRaw)}»`);
+    }
+    if (soldSheetHint && !soldDate) {
+      // Never substitute today's date — that invents a sale.
+      warnings.push("Лист продаж, но дата продажи не указана — проверьте строку");
+    }
+
+    // CONFIGURATION: equipment, then qualifiers from every free-text cell, then leftovers.
+    const configurationCell = routeQualifierText(getCell(row, configurationIndex));
+    const notesCell = routeQualifierText(getCell(row, notesIndex));
+    const transmissionRaw = sanitizeGridText(getCell(row, transmissionIndex));
+    const transmissionQualifiers = extractQualifiers(transmissionRaw);
+
+    const rowQualifierIds = [
+      ...configurationCell.ids,
+      ...notesCell.ids,
+      ...arrivalResidue.ids,
+      ...soldResidue.ids,
+      ...transmissionQualifiers.ids,
+    ];
+
+    const configuration = compactQualifierFragments(joinGridFragments([
+      configurationCell.configuration,
+      configurationCell.notes,
+      notesCell.configuration,
+      arrivalResidue.configuration,
+      soldResidue.configuration,
+      dropRedundantSheetQualifier(context.qualifier, rowQualifierIds),
+      ...parts.extras,
+      ...transmissionQualifiers.matches,
+    ]));
+
+    const notes = joinGridFragments([
+      notesCell.notes,
+      arrivalResidue.notes,
+      soldResidue.notes,
+      ...leftoverColumnNotes(row, mapping),
+    ]);
+
+    const grid = projectOntoMotorGrid({
+      brandName: coerced.brand,
+      engineCode: coerced.engine,
+      serialCode: parts.serialCode,
+      configuration,
+      notes,
+      quality: getCell(row, qualityIndex),
+      quantity: getCell(row, quantityIndex),
+      transmission: transmissionQualifiers.pureQualifier ? "" : transmissionRaw,
+      warehouseLocation: getCell(row, locationIndex),
       arrivalDate,
       soldDate,
-      brandName: coerced.brand || "Не указан",
-      engineCode: coerced.engine || "—",
+    });
+
+    if (!grid.serialCode) {
+      warnings.push("Серийник не найден в строке");
+    }
+
+    rows.push({
+      sheetName: sheet.name,
+      serialCode: grid.serialCode,
+      configuration: grid.configuration,
+      notes: grid.notes,
+      quality: grid.quality,
+      quantity: grid.quantity,
+      transmission: grid.transmission,
+      warehouseLocation: grid.warehouseLocation,
+      arrivalDate: grid.arrivalDate,
+      soldDate: grid.soldDate,
+      brandName: grid.brandName,
+      engineCode: grid.engineCode,
       rawRowCells: summarizeRawCells(row),
+      sourceRowIndex: rowIndex,
+      rowWarnings: warnings,
     });
   }
 

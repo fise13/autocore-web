@@ -8,6 +8,7 @@ import { radius } from '@/theme/radius';
 import { useMcEnter } from '@/features/overview/animation';
 import { McSectionTitle } from '@/features/overview/components/mc-primitives';
 import { mcType } from '@/features/overview/layout';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 
 import { acTimeline } from '../animation/timeline';
 import { ac } from '../layout';
@@ -33,6 +34,7 @@ function TransactionRow({
   isLast: boolean;
 }) {
   const { colors } = useTheme();
+  useMoneyFormatRevision();
   const Icon = item.icon;
   const amountColor = item.direction === 'in' ? colors.success : colors.foreground;
 
@@ -115,6 +117,7 @@ function TransactionRow({
 
 export function AcTransactions({ items, onShowAll }: AcTransactionsProps) {
   const { colors } = useTheme();
+  useMoneyFormatRevision();
   const titleStyle = useMcEnter({ delay: acTimeline.transactionsTitle, translateY: 4 });
   const cardStyle = useMcEnter({ delay: acTimeline.transactionsTitle + 40, translateY: 6 });
 

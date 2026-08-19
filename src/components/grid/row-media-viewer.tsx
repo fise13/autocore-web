@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { getFirebaseAuth, getFirestoreDb } from "@/infrastructure/firebase/client";
 import { createInventoryItemRepository } from "@/infrastructure/firestore/inventory-item-repository";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { saveFile } from "@/platform";
 import {
   filenameFromMediaUrl,
   readRowMediaViewerPayload,
@@ -39,14 +40,7 @@ async function downloadViaApi(mediaUrl: string, filename: string): Promise<void>
     throw new Error(payload.error || "Download failed");
   }
   const blob = await response.blob();
-  const objectUrl = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = objectUrl;
-  anchor.download = filename;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(objectUrl);
+  await saveFile({ filename, blob });
 }
 
 async function loadUrlsFromFirestore(input: {

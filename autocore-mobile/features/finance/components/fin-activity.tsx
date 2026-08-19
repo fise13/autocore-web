@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 
 import { fin, finFontCap, finType } from '../layout';
 import { formatSignedMoney } from '../lib/format';
@@ -25,6 +26,7 @@ const ActivityRow = memo(function ActivityRow({
   onPress?: (entry: FinanceActivityEntry) => void;
 }) {
   const { colors } = useTheme();
+  useMoneyFormatRevision();
   const incoming = entry.direction === 'in';
 
   return (
@@ -80,6 +82,7 @@ export function FinActivity({
   onEntryPress?: (entry: FinanceActivityEntry) => void;
 }) {
   const { colors } = useTheme();
+  useMoneyFormatRevision();
 
   if (days.length === 0) {
     return (

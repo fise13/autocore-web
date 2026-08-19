@@ -44,6 +44,7 @@ import {
   isValidMixedSplit,
 } from "@/lib/accounting/mixed-payment";
 import { formatGroupedNumber } from "@/lib/money/format-number";
+import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
 import {
   OPERATION_ACCOUNTS,
   PAYMENT_METHODS,
@@ -79,6 +80,7 @@ export function NewOperationDialog({
   defaultType = "expense",
   hideTrigger = false,
 }: NewOperationDialogProps) {
+  const { toBaseAmount } = useAppDisplayCurrency();
   const [internalOpen, setInternalOpen] = useState(false);
   const open = openProp ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
@@ -145,16 +147,18 @@ export function NewOperationDialog({
             comment: comment.trim(),
           };
 
+      const amountUsd = toBaseAmount(parsedAmount);
+      const cashUsd = toBaseAmount(mixedCashPortion);
       const payment = buildMixedPaymentFields(
         paymentMethod,
         account,
-        parsedAmount,
-        mixedCashPortion,
+        amountUsd,
+        cashUsd,
       );
 
       await onCreate({
         type,
-        amount: parsedAmount,
+        amount: amountUsd,
         account: payment.account,
         paymentMethod: payment.paymentMethod,
         cashReceived: payment.cashReceived,

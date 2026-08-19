@@ -5,12 +5,13 @@ import { Check, Cog, Download, RotateCcw, Save, Warehouse } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
+import { saveFile } from "@/platform";
 import { cn } from "@/lib/utils";
 
 import type { MigrationResult, ReviewRow } from "./migration-types";
 import { recordTypeIcon } from "./record-type-meta";
 
-function downloadReport(rows: ReviewRow[]) {
+async function downloadReport(rows: ReviewRow[]) {
   const header = [...userCopy.migration.complete.reportHeaders];
   const lines = rows.map((row) =>
     [
@@ -26,12 +27,11 @@ function downloadReport(rows: ReviewRow[]) {
   );
   const csv = [header.join(","), ...lines].join("\n");
   const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `autocore-migration-${new Date().toISOString().slice(0, 10)}.csv`;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  await saveFile({
+    filename: `autocore-migration-${new Date().toISOString().slice(0, 10)}.csv`,
+    blob,
+    filters: [{ name: "CSV", extensions: ["csv"] }],
+  });
 }
 
 export function MigrationCompleteView({
@@ -118,7 +118,7 @@ export function MigrationCompleteView({
         {variant === "standalone" ? (
           <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
             <div className="flex items-center gap-1.5">
-              <Button variant="outline" size="sm" onClick={() => downloadReport(result.reportRows)}>
+              <Button variant="outline" size="sm" onClick={() => void downloadReport(result.reportRows)}>
                 <Download data-icon="inline-start" />
                 {copy.downloadReport}
               </Button>

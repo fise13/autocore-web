@@ -6,6 +6,7 @@ import {
   normalizeAppDisplayCurrency,
   type AppDisplayCurrency,
 } from '@/lib/money/display-currency';
+import { readCachedDisplayCurrency } from '@/lib/money/display-currency-cache';
 import {
   convertFromBaseCurrency,
   FALLBACK_EXCHANGE_RATES,
@@ -29,10 +30,11 @@ function buildFormatters(currency: AppDisplayCurrency, rates: ExchangeRates) {
   return { ...affix, convertMoney, formatMoney };
 }
 
-const defaults = buildFormatters('USD', FALLBACK_EXCHANGE_RATES);
+const seededCurrency = readCachedDisplayCurrency();
+const defaults = buildFormatters(seededCurrency, FALLBACK_EXCHANGE_RATES);
 
 export const useMoneyFormatStore = create<MoneyFormatState>((set) => ({
-  currency: 'USD',
+  currency: seededCurrency,
   rates: FALLBACK_EXCHANGE_RATES,
   currencyPrefix: defaults.prefix,
   currencySuffix: defaults.suffix,
@@ -58,4 +60,11 @@ export function formatPrice(value: number): string {
 
 export function convertPrice(value: number): number {
   return useMoneyFormatStore.getState().convertMoney(value);
+}
+
+/** Subscribe so a screen re-renders the instant currency or the live rate changes. */
+export function useMoneyFormatRevision(): string {
+  return useMoneyFormatStore(
+    (state) => `${state.currency}:${state.rates.kztPerUsd}:${state.rates.fetchedAt}`,
+  );
 }

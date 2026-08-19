@@ -3,10 +3,13 @@ import { describe, it } from 'node:test';
 
 import {
   buildCompletionProps,
+  buildSessionLiveActivityProps,
   liveActivityContentKey,
+  pickActiveIntakeSession,
   resolveDesiredLiveActivity,
   syncCountsFromJobs,
   type LiveActivityInput,
+  type LiveActivitySession,
   type SyncJobLike,
 } from './live-activity-model';
 
@@ -107,6 +110,7 @@ describe('resolveDesiredLiveActivity', () => {
     assert.equal(desired.props.headline, '3/5');
     assert.equal(desired.props.caption, 'photos');
     assert.equal(desired.props.determinate, true);
+    assert.equal(desired.props.mode, 'sync');
     assert.equal(desired.props.symbol, 'icloud.and.arrow.up.fill');
   });
 
@@ -207,6 +211,121 @@ describe('resolveDesiredLiveActivity', () => {
   });
 });
 
+describe('pickActiveIntakeSession', () => {
+  it('prefers an in-session job over a paused one', () => {
+    const session = pickActiveIntakeSession([
+      {
+        state: 'paused',
+        locationCode: 'BAY-1',
+        serialCode: 'OLD',
+        capturedCount: 1,
+        requiredCount: 8,
+      },
+      {
+        state: 'in_session',
+        locationCode: 'BAY-3',
+        serialCode: '1NZ-FE',
+        capturedCount: 4,
+        requiredCount: 12,
+      },
+    ]);
+    assert.ok(session);
+    assert.equal(session?.paused, false);
+    assert.equal(session?.subject, 'BAY-3');
+    assert.equal(session?.captured, 4);
+    assert.equal(session?.required, 12);
+  });
+
+  it('falls through location code → serial → VIN', () => {
+    assert.equal(
+      pickActiveIntakeSession([
+        { state: 'in_session', serialCode: '1NZ-FE', donorVin: 'JT123' },
+      ])?.subject,
+      '1NZ-FE',
+    );
+    assert.equal(
+      pickActiveIntakeSession([{ state: 'paused', donorVin: 'JT123' }])?.subject,
+      'JT123',
+    );
+    assert.equal(pickActiveIntakeSession([{ state: 'in_session' }])?.subject, '');
+  });
+
+  it('returns null when nobody is documenting', () => {
+    assert.equal(
+      pickActiveIntakeSession([{ state: 'open' }, { state: 'awaiting_verification' }]),
+      null,
+    );
+  });
+});
+
+describe('resolveDesiredLiveActivity session rank', () => {
+  const documenting: LiveActivitySession = {
+    paused: false,
+    subject: '1NZ-FE',
+    captured: 4,
+    required: 12,
+  };
+
+  it('lets a live session outrank a healthy upload', () => {
+    const desired = resolveDesiredLiveActivity(
+      input({
+        photos: [job({ status: 'uploading' }), job({ status: 'queued' })],
+        completedInWave: 3,
+        waveTotal: 5,
+        session: documenting,
+      }),
+      NOW,
+    );
+    assert.equal(desired.kind, 'active');
+    if (desired.kind !== 'active') return;
+    assert.equal(desired.props.mode, 'session');
+    assert.equal(desired.props.symbol, 'camera.fill');
+    assert.equal(desired.props.headline, '4/12');
+    assert.equal(desired.props.title, 'Documenting');
+    assert.equal(desired.props.subject, '1NZ-FE');
+  });
+
+  it('lets a blocked queue outrank a live session', () => {
+    const desired = resolveDesiredLiveActivity(
+      input({
+        photos: [job({ status: 'failed', errorInfo: { code: 'AUTH_EXPIRED' } })],
+        session: documenting,
+      }),
+      NOW,
+    );
+    assert.equal(desired.kind, 'active');
+    if (desired.kind !== 'active') return;
+    assert.equal(desired.props.mode, 'sync');
+    assert.equal(desired.props.status, 'ACTION_REQUIRED');
+    assert.equal(desired.props.symbol, 'exclamationmark.circle.fill');
+  });
+
+  it('presents a session when the upload queue is empty', () => {
+    const desired = resolveDesiredLiveActivity(input({ session: documenting }), NOW);
+    assert.equal(desired.kind, 'active');
+    if (desired.kind !== 'active') return;
+    assert.equal(desired.props.mode, 'session');
+  });
+
+  it('stays idle with no session and an empty queue', () => {
+    assert.equal(resolveDesiredLiveActivity(input(), NOW).kind, 'idle');
+  });
+});
+
+describe('buildSessionLiveActivityProps', () => {
+  it('uses amber copy when the session is paused', () => {
+    const props = buildSessionLiveActivityProps({
+      paused: true,
+      subject: 'Bay 3',
+      captured: 2,
+      required: 10,
+    });
+    assert.equal(props.title, 'Intake paused');
+    assert.equal(props.accent, '#FF9F0A');
+    assert.equal(props.headline, '2/10');
+  });
+});
+
 describe('liveActivityContentKey', () => {
   it('collapses identical frames so a throttled update is not wasted', () => {
     const a = resolveDesiredLiveActivity(input({ photos: [job({ status: 'queued' })] }), NOW);
@@ -226,6 +345,21 @@ describe('liveActivityContentKey', () => {
     assert.notEqual(liveActivityContentKey(first), liveActivityContentKey(second));
   });
 
+  it('changes when the Island switches from upload to documenting', () => {
+    const upload = resolveDesiredLiveActivity(
+      input({ photos: [job({ status: 'queued' })] }),
+      NOW,
+    );
+    const session = resolveDesiredLiveActivity(
+      input({
+        photos: [job({ status: 'queued' })],
+        session: { paused: false, subject: '1NZ-FE', captured: 4, required: 12 },
+      }),
+      NOW,
+    );
+    assert.notEqual(liveActivityContentKey(upload), liveActivityContentKey(session));
+  });
+
   it('has a stable idle identity', () => {
     assert.equal(liveActivityContentKey({ kind: 'idle' }), 'idle');
   });
@@ -239,6 +373,7 @@ describe('buildCompletionProps', () => {
     assert.equal(props.progress, 1);
     assert.equal(props.pending, 0);
     assert.equal(props.symbol, 'checkmark.circle.fill');
+    assert.equal(props.mode, 'sync');
   });
 
   it('reads naturally for a single photo', () => {

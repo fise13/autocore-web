@@ -91,9 +91,18 @@ async function callAppStore<T>(path: string): Promise<T> {
     lastStatus = response.status;
     lastBody = await response.text().catch(() => "");
 
-    // 404 on production is the expected answer for a Sandbox transaction —
-    // fall through and try the sandbox host. Anything else is a real failure.
-    if (response.status !== 404) break;
+    /**
+     * Both of these mean "wrong environment", not "wrong credentials":
+     *
+     *  404 — the transaction is real but lives in the other environment.
+     *  401 — the app has no presence in this environment at all. Before the
+     *        first App Store release the production host rejects an otherwise
+     *        valid In-App Purchase key outright, which is exactly the state
+     *        every app is in while it is still on TestFlight.
+     *
+     * Anything else (400, 429, 5xx) is a genuine answer and stops the loop.
+     */
+    if (response.status !== 404 && response.status !== 401) break;
   }
 
   throw new AppStoreApiError(

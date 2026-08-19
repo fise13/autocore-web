@@ -12,6 +12,7 @@ import {
   readAiTransport,
   readNvidiaAiTransport,
 } from "@/infrastructure/openrouter/chat-completions.server";
+import { DEFAULT_GEMINI_MODEL } from "@/infrastructure/openrouter/gemini-models";
 import { resolveProxyAuthHeaders } from "@/infrastructure/openrouter/proxy-auth.server";
 import type { AiTransport } from "@/infrastructure/openrouter/transport";
 
@@ -24,7 +25,7 @@ const CORE_TITLE = "AutoCore Core";
  * `CORE_AI_MODEL` only when you explicitly want a different model (including
  * `nvidia/...:free` for cheap single-step experiments).
  */
-const DEFAULT_CORE_MODEL = "google/gemini-2.5-flash";
+const DEFAULT_CORE_MODEL = DEFAULT_GEMINI_MODEL;
 
 export const CORE_AI_NOT_CONFIGURED =
   "Core is not configured. Add NVIDIA_OPENROUTER_API_KEY (or OPENROUTER_API_KEY) to .env.local, " +

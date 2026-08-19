@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 
 import { fin, finType } from '../layout';
 import { changeHeadline } from '../lib/drivers';
@@ -43,7 +44,8 @@ export function FinanceOverview({
   period: FinancePeriodId;
   handlers: FinanceOverviewHandlers;
 }) {
-  const trends = useMemo(() => buildTrendMetrics(model), [model]);
+  const moneyRevision = useMoneyFormatRevision();
+  const trends = useMemo(() => buildTrendMetrics(model), [model, moneyRevision]);
   const range = formatWindowRange(model.window);
 
   return (

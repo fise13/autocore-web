@@ -7,6 +7,7 @@ import { ArrowDownIcon, DownloadIcon } from "lucide-react";
 import type { ComponentProps } from "react";
 import { useCallback } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
+import { saveFile } from "@/platform";
 
 export type ConversationProps = ComponentProps<typeof StickToBottom>;
 
@@ -140,14 +141,11 @@ export const ConversationDownload = ({
   const handleDownload = useCallback(() => {
     const markdown = messagesToMarkdown(messages, formatMessage);
     const blob = new Blob([markdown], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.append(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    void saveFile({
+      filename,
+      blob,
+      filters: [{ name: "Markdown", extensions: ["md"] }],
+    });
   }, [messages, filename, formatMessage]);
 
   return (

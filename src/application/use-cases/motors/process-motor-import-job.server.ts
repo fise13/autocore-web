@@ -26,6 +26,7 @@ import {
   createAdminMotorImportRepositories,
   loadMotorImportServerContext,
 } from "@/infrastructure/firestore/admin/motor-import-server-deps";
+import { serverMotorImportAiClient } from "@/infrastructure/openrouter/import-ai.server";
 import { readExcelSheetsFromBuffer } from "@/lib/motors/excel-import.server";
 import { runMotorImportPreviewPipeline } from "@/lib/motors/import/pipeline";
 import { prepareMagicImportRowsForCommit, countMagicImportRowsReady } from "@/lib/motors/import/import-row-integrity";
@@ -129,6 +130,7 @@ export async function analyzeMotorImportJobOnServer(params: {
       existingSpecificCategories: context.existingSpecificCategories,
       useAi: true,
       magicImport: true,
+      aiClient: serverMotorImportAiClient,
       onProgress: (progress) => {
         void updateMotorImportJobProgress(params.jobId, {
           phase: "analyze",
@@ -458,6 +460,7 @@ export async function reanalyzeMotorImportJobOnServer(params: {
       existingSpecificCategories: context.existingSpecificCategories,
       useAi: true,
       magicImport: true,
+      aiClient: serverMotorImportAiClient,
       manualSheetMappings: params.manualSheetMappings,
       onProgress: (progress) => {
         void updateMotorImportJobProgress(params.jobId, {

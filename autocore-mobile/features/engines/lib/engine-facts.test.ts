@@ -4,7 +4,7 @@ import { describe, it } from 'node:test';
 import type { DocumentationChecklistSummary } from '@autocore/engine-intake';
 
 import type { MotorEntity } from '../../../types/motor';
-import { daysOnLot, documentationLine, engineFacts } from './engine-facts';
+import { daysOnLot, documentationLine, engineFacts, engineSpecRows } from './engine-facts';
 
 function motor(partial: Partial<MotorEntity> = {}): MotorEntity {
   return {
@@ -104,6 +104,24 @@ describe('engineFacts', () => {
 
   it('degrades to a single cell when nothing else is known', () => {
     assert.equal(engineFacts(motor(), NOW).length, 1);
+  });
+});
+
+describe('engineSpecRows', () => {
+  it('keeps every known field, not a three-cell cap', () => {
+    const rows = engineSpecRows(
+      motor({
+        primaryLocationCode: 'A-1',
+        configuration: 'V6 3.0',
+        transmission: 'Automatic',
+        arrivalDate: new Date(2026, 7, 2),
+      }),
+      NOW,
+    );
+    assert.deepEqual(
+      rows.map((row) => row.id),
+      ['location', 'configuration', 'transmission', 'age'],
+    );
   });
 });
 

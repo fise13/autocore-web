@@ -26,9 +26,9 @@ export function PaywallHero({ headline, subhead }: PaywallHeroProps) {
   const titleLines = (headline ?? 'Your entire operation.\nOne workspace.').split('\n');
 
   return (
-    <View style={{ alignItems: 'center', gap: spacing[3], flexShrink: 0 }}>
-      <Animated.View style={[{ height: 148, width: 140, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }, markStyle]}>
-        <View style={{ transform: [{ scale: 0.78 }] }}>
+    <View style={{ alignItems: 'center', gap: spacing[2], flexShrink: 0 }}>
+      <Animated.View style={[{ height: 88, width: 88, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }, markStyle]}>
+        <View style={{ transform: [{ scale: 0.55 }] }}>
           <PaywallHeroMark />
         </View>
       </Animated.View>

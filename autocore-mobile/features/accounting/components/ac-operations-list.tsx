@@ -21,6 +21,7 @@ import { haptics, rhythm } from '@/theme';
 import type { FinancialOperation, OperationType } from '@/types/financial-operation';
 import { McSectionTitle } from '@/features/overview/components/mc-primitives';
 import { mcType } from '@/features/overview/layout';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 
 import { ac } from '../layout';
 import { formatKzt } from '../utils/format';
@@ -81,6 +82,7 @@ const OperationRow = memo(function OperationRow({
   onMotorSaleSelect?: (operation: FinancialOperation) => void;
 }) {
   const { colors } = useTheme();
+  useMoneyFormatRevision();
   const motorSale = isMotorSaleOperation(operation);
   const category = operationCategoryLabel(operation.category);
   const detail = motorSaleDetail(operation);

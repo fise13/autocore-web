@@ -32,16 +32,20 @@ export type UseSubscriptionResult = {
   productsLoading: boolean;
   productsError: string | null;
   flow: PurchaseFlowState;
+  /** Apple ID may still use the introductory offer on this subscription group. */
+  introEligible: boolean;
   trial: TrialOffer;
   /** Only the workspace owner may buy. */
   canManageBilling: boolean;
   purchase: (planId: PlanId) => Promise<void>;
   restore: () => Promise<RestoreOutcome>;
-  startTrial: () => Promise<boolean>;
   openManage: () => Promise<void>;
   refresh: () => Promise<void>;
   reloadProducts: () => Promise<void>;
   resetFlow: () => void;
+  warmPlan: (planId: PlanId) => Promise<boolean>;
+  /** Native StoreKit is connected, or the selected SKU is already cached. */
+  storePrepared: boolean;
 };
 
 /**
@@ -75,9 +79,6 @@ export function useSubscription(): UseSubscriptionResult {
         entitlement,
         product: offers.find((offer) => offer.product !== null)?.product ?? null,
         introEligible: purchaseState.introEligible,
-        // Read from the subscription document the server writes, rather than
-        // inferred — offering a trial the server will refuse is a dead end.
-        internalTrialUsed: entitlement.trialUsed,
       }),
     [entitlement, offers, purchaseState.introEligible],
   );
@@ -89,10 +90,10 @@ export function useSubscription(): UseSubscriptionResult {
   }, []);
 
   const restore = useCallback(() => manager.restore(), []);
-  const startTrial = useCallback(() => manager.startInternalTrial(), []);
   const openManage = useCallback(() => manager.openManageSubscriptions(), []);
   const reloadProducts = useCallback(() => manager.loadProducts(), []);
   const resetFlow = useCallback(() => manager.resetFlow(), []);
+  const warmPlan = useCallback((planId: PlanId) => manager.warmPlan(planId), []);
 
   const refresh = useCallback(async () => {
     await manager.reconcile(companyId);
@@ -106,15 +107,17 @@ export function useSubscription(): UseSubscriptionResult {
     productsLoading: purchaseState.productsLoading,
     productsError: purchaseState.productsError,
     flow: purchaseState.flow,
+    introEligible: purchaseState.introEligible,
     trial,
     canManageBilling,
     purchase,
     restore,
-    startTrial,
     openManage,
     refresh,
     reloadProducts,
     resetFlow,
+    warmPlan,
+    storePrepared: purchaseState.storePrepared,
   };
 }
 

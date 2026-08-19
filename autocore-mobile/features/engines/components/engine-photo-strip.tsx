@@ -13,7 +13,7 @@ import { CameraIcon } from '@/assets/icons';
 import { Skeleton, Text, toast } from '@/components/ui';
 import { presentNativeMenu } from '@/components/ui/native-context-menu';
 import { useTheme } from '@/hooks';
-import { haptics, rhythm, spacing } from '@/theme';
+import { haptics, spacing } from '@/theme';
 import { withAlpha } from '@/theme/color-utils';
 
 import { shareEnginePhoto } from '../lib/engine-photo-file';
@@ -45,9 +45,11 @@ function PhotoTile({ url, onPress }: { url: string; onPress: () => void }) {
       style={{
         width: TILE,
         height: TILE,
-        borderRadius: rhythm.cardRadius,
+        borderRadius: 8,
         overflow: 'hidden',
         backgroundColor: withAlpha(colors.muted, isDark ? 0.8 : 1),
+        borderWidth: 1,
+        borderColor: colors.border,
         opacity: pressed ? 0.85 : 1,
       }}
     >
@@ -66,7 +68,7 @@ function PhotoTile({ url, onPress }: { url: string; onPress: () => void }) {
         <Skeleton
           width={TILE}
           height={TILE}
-          style={{ position: 'absolute', top: 0, left: 0, borderRadius: rhythm.cardRadius }}
+          style={{ position: 'absolute', top: 0, left: 0, borderRadius: 8 }}
         />
       )}
     </Pressable>
@@ -190,7 +192,9 @@ export function EnginePhotoStrip({
           alignItems: 'center',
           gap: spacing[3],
           padding: spacing[3],
-          borderRadius: rhythm.cardRadius,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: colors.border,
           backgroundColor: colors.card,
         }}
       >

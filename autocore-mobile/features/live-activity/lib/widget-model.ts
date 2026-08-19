@@ -9,13 +9,6 @@
  *
  * Pure module — relative imports only, no React Native.
  */
-import type { SyncStatus } from '../../engine-intake/lib/sync-status';
-
-import {
-  liveActivityAccent,
-  liveActivitySymbol,
-  type LiveActivitySymbol,
-} from './live-activity-model';
 import { EN_WIDGET_COPY, type WidgetCopy } from './widget-copy';
 import { WIDGET_URL } from './widget-links';
 
@@ -36,17 +29,14 @@ export type IntakeBayWidgetSymbol =
   | 'arrow.triangle.2.circlepath'
   | 'engine.combustion.fill';
 
-export type WorkWidgetSymbol =
-  | 'wrench.and.screwdriver.fill'
-  | 'exclamationmark.triangle.fill'
-  | 'checkmark.circle.fill'
+export type ScanWidgetSymbol =
+  | 'barcode.viewfinder'
+  | 'shippingbox.fill'
   | 'arrow.triangle.2.circlepath';
 
-export type WarehouseWidgetSymbol =
-  | 'shippingbox.fill'
-  | 'barcode.viewfinder'
-  | 'exclamationmark.triangle.fill'
-  | 'engine.combustion.fill'
+export type PayWidgetSymbol =
+  | 'banknote.fill'
+  | 'hand.raised.fill'
   | 'checkmark.circle.fill'
   | 'arrow.triangle.2.circlepath';
 
@@ -59,31 +49,6 @@ const INTAKE_ACTIVE_STATES = new Set(['open', 'in_session', 'paused', 'rework'])
 const INTAKE_READY_STATES = new Set(['awaiting_verification', 'quarantine']);
 /** Work row "awaiting" — engines sitting in the bay waiting to be picked up. */
 const INTAKE_AWAITING_STATES = new Set(['open', 'rework']);
-
-export type SyncWidgetProps = {
-  status: SyncStatus;
-  /** "Syncing 8 of 18" */
-  title: string;
-  /** "10 photos left" */
-  detail: string;
-  /** "8/18" — the accessoryCircular / accessoryInline numeral. */
-  short: string;
-  caption: string;
-  /** Lock Screen inline line — decided here, not in the layout. */
-  inlineText: string;
-  /** Home footer when there is no progress bar. */
-  footer: string;
-  link: string;
-  openLabel: string;
-  symbol: LiveActivitySymbol;
-  accent: string;
-  /** 0–1. */
-  progress: number;
-  determinate: boolean;
-  pending: number;
-  blocked: number;
-  updatedAtMs: number;
-};
 
 export type TodayWidgetCounts = {
   /** Open work orders, or UNKNOWN_COUNT. */
@@ -138,6 +103,8 @@ export type IntakeBayWidgetProps = IntakeBayWidgetCounts & {
   eyebrow: string;
   readyLabel: string;
   activeLabel: string;
+  /** Lock rectangular line — Ready first, then documenting. */
+  lockLine: string;
   openReadyLabel: string;
   continueLabel: string;
   link: string;
@@ -147,44 +114,35 @@ export type IntakeBayWidgetProps = IntakeBayWidgetCounts & {
   updatedAtMs: number;
 };
 
-export type WorkWidgetCounts = {
-  openOrders: number;
-  attentionOrders: number;
-};
-
-export type WorkWidgetProps = WorkWidgetCounts & {
+export type ScanWidgetProps = {
+  awaitingPlacement: number;
   headline: string;
   title: string;
   detail: string;
   eyebrow: string;
-  openLabel: string;
-  attentionLabel: string;
   actionLabel: string;
   link: string;
-  symbol: WorkWidgetSymbol;
+  symbol: ScanWidgetSymbol;
   accent: string;
   urgent: boolean;
   updatedAtMs: number;
 };
 
-export type WarehouseWidgetCounts = {
-  awaitingPlacement: number;
-  lowStock: number;
-  engines: number;
+export type PayAccess = 'allowed' | 'denied' | 'unknown';
+
+export type PayWidgetCounts = {
+  pending: number;
+  claimable: number;
 };
 
-export type WarehouseWidgetProps = WarehouseWidgetCounts & {
+export type PayWidgetProps = PayWidgetCounts & {
+  access: PayAccess;
   headline: string;
   title: string;
   detail: string;
   eyebrow: string;
-  placeLabel: string;
-  lowLabel: string;
-  enginesLabel: string;
-  actionLabel: string;
-  actionTarget: 'openScan' | 'openWarehouse';
   link: string;
-  symbol: WarehouseWidgetSymbol;
+  symbol: PayWidgetSymbol;
   accent: string;
   urgent: boolean;
   updatedAtMs: number;
@@ -207,15 +165,9 @@ export const EMPTY_INTAKE_BAY_COUNTS: IntakeBayWidgetCounts = {
   syncing: UNKNOWN_COUNT,
 };
 
-export const EMPTY_WORK_WIDGET_COUNTS: WorkWidgetCounts = {
-  openOrders: UNKNOWN_COUNT,
-  attentionOrders: UNKNOWN_COUNT,
-};
-
-export const EMPTY_WAREHOUSE_WIDGET_COUNTS: WarehouseWidgetCounts = {
-  awaitingPlacement: UNKNOWN_COUNT,
-  lowStock: UNKNOWN_COUNT,
-  engines: UNKNOWN_COUNT,
+export const EMPTY_PAY_COUNTS: PayWidgetCounts = {
+  pending: UNKNOWN_COUNT,
+  claimable: UNKNOWN_COUNT,
 };
 
 function known(value: number): boolean {
@@ -245,59 +197,6 @@ export function countIntakeAwaitingFromJobs(jobs: readonly { state: string }[]):
     if (INTAKE_AWAITING_STATES.has(job.state)) awaiting += 1;
   }
   return awaiting;
-}
-
-export function buildSyncWidgetProps(
-  summary: {
-    status: SyncStatus;
-    headline: string;
-    detail: string | null;
-    progressLabel: string;
-    progress: number;
-    pending: number;
-    blocked: number;
-    total: number;
-  },
-  updatedAtMs: number,
-  copy: WidgetCopy = EN_WIDGET_COPY,
-): SyncWidgetProps {
-  const blocked = summary.status === 'FAILED' || summary.status === 'ACTION_REQUIRED';
-  const short = blocked
-    ? String(summary.blocked)
-    : summary.status === 'SYNCED'
-      ? 'All set'
-      : summary.progressLabel;
-  const detail = summary.detail ?? '';
-  const inlineText = blocked
-    ? copy.inlineBlocked(summary.blocked)
-    : summary.pending > 0
-      ? copy.inlineSyncing(short)
-      : copy.inlineIntakeSynced;
-  return {
-    status: summary.status,
-    // WidgetKit decides when this redraws, which may be minutes from now. A
-    // countdown baked into the title would be wrong by then; a state is not.
-    title: summary.status === 'RETRYING' ? copy.waitingToRetry : summary.headline,
-    detail,
-    short,
-    caption: blocked ? 'blocked' : summary.status === 'SYNCED' ? 'synced' : 'photos',
-    inlineText,
-    footer:
-      summary.status === 'SYNCED'
-        ? copy.everythingBackedUp
-        : detail.length > 0
-          ? detail
-          : copy.nothingWaiting,
-    link: WIDGET_URL.intake,
-    openLabel: copy.openIntakeLabel,
-    symbol: liveActivitySymbol(summary.status),
-    accent: liveActivityAccent(summary.status),
-    progress: summary.status === 'SYNCED' ? 1 : summary.progress,
-    determinate: summary.status === 'SYNCING' && summary.total > 0,
-    pending: summary.pending,
-    blocked: summary.blocked,
-    updatedAtMs,
-  };
 }
 
 function todayChrome(copy: WidgetCopy, urgent: boolean, link: string) {
@@ -382,7 +281,9 @@ export function buildTodayWidgetProps(
           : copy.payoutsWaiting(counts.earningsPending),
       detail:
         known(counts.earningsClaimable) && counts.earningsClaimable > 0
-          ? copy.jobsToClaim(counts.earningsClaimable)
+          ? counts.earningsClaimable === 1
+            ? copy.jobToClaim(1)
+            : copy.jobsToClaim(counts.earningsClaimable)
           : copy.earningsDetail,
       symbol: 'banknote.fill',
       accent: '#FF9F0A',
@@ -463,9 +364,17 @@ export function buildTodayWidgetProps(
   };
 }
 
+function intakeLockLine(
+  counts: IntakeBayWidgetCounts,
+  copy: WidgetCopy,
+): string {
+  if (!known(counts.ready) && !known(counts.active)) return copy.intakeRefresh;
+  return `${dash(counts.ready)} ${copy.readyLabel} · ${dash(counts.active)} ${copy.documentingLabel}`;
+}
+
 /**
  * Ready first (Finish just happened), then in-flight photos, then documenting.
- * Circular / small spend the numeral on that ranking.
+ * Circular / small spend the numeral on that ranking. Lock circular is Ready only.
  */
 export function buildIntakeBayWidgetProps(
   counts: IntakeBayWidgetCounts,
@@ -478,6 +387,7 @@ export function buildIntakeBayWidgetProps(
     eyebrow: copy.intakeEyebrow,
     readyLabel: copy.readyLabel,
     activeLabel: copy.activeLabel,
+    lockLine: intakeLockLine(counts, copy),
     openReadyLabel: copy.openReadyLabel,
     continueLabel: copy.continueIntakeLabel,
   };
@@ -550,128 +460,126 @@ export function buildIntakeBayWidgetProps(
   };
 }
 
-export function buildWorkWidgetProps(
-  counts: WorkWidgetCounts,
+export function buildScanWidgetProps(
+  awaitingPlacement: number,
   updatedAtMs: number,
   copy: WidgetCopy = EN_WIDGET_COPY,
-): WorkWidgetProps {
+): ScanWidgetProps {
   const base = {
-    ...counts,
+    awaitingPlacement,
     updatedAtMs,
-    eyebrow: copy.workEyebrow,
-    openLabel: copy.openCountLabel,
-    attentionLabel: copy.attentionLabel,
-    actionLabel: copy.openOrdersAction,
-    link: WIDGET_URL.orders,
+    eyebrow: copy.scanEyebrow,
+    title: copy.scanTitle,
+    actionLabel: copy.scanAction,
+    link: WIDGET_URL.scan,
   };
 
-  if (known(counts.attentionOrders) && counts.attentionOrders > 0) {
+  if (!known(awaitingPlacement)) {
     return {
       ...base,
-      headline: String(counts.attentionOrders),
-      title:
-        counts.attentionOrders === 1
-          ? copy.orderWaiting(1)
-          : copy.ordersWaiting(counts.attentionOrders),
-      detail: known(counts.openOrders) ? copy.openInTotal(counts.openOrders) : '',
-      symbol: 'exclamationmark.triangle.fill',
-      accent: '#FF9F0A',
-      urgent: true,
-    };
-  }
-
-  if (known(counts.openOrders) && counts.openOrders > 0) {
-    return {
-      ...base,
-      headline: String(counts.openOrders),
-      title:
-        counts.openOrders === 1 ? copy.openOrder(1) : copy.openOrders(counts.openOrders),
-      detail: copy.workClearDetail,
-      symbol: 'wrench.and.screwdriver.fill',
-      accent: '#0A84FF',
+      headline: '—',
+      detail: copy.scanRefresh,
+      symbol: 'arrow.triangle.2.circlepath',
+      accent: '#8E8E93',
       urgent: false,
     };
   }
 
-  if (known(counts.openOrders)) {
+  if (awaitingPlacement > 0) {
     return {
       ...base,
-      headline: '0',
-      title: copy.noOpenOrders,
-      detail: copy.workClearDetail,
-      symbol: 'checkmark.circle.fill',
-      accent: '#30D158',
-      urgent: false,
-    };
-  }
-
-  return {
-    ...base,
-    headline: '—',
-    title: copy.brand,
-    detail: copy.workRefresh,
-    symbol: 'arrow.triangle.2.circlepath',
-    accent: '#8E8E93',
-    urgent: false,
-  };
-}
-
-export function buildWarehouseWidgetProps(
-  counts: WarehouseWidgetCounts,
-  updatedAtMs: number,
-  copy: WidgetCopy = EN_WIDGET_COPY,
-): WarehouseWidgetProps {
-  const placing = known(counts.awaitingPlacement) && counts.awaitingPlacement > 0;
-  const labels = {
-    eyebrow: copy.warehouseEyebrow,
-    placeLabel: copy.placeLabel,
-    lowLabel: copy.lowLabel,
-    enginesLabel: copy.enginesLabel,
-    actionLabel: placing ? copy.scanAction : copy.openWarehouseAction,
-    actionTarget: placing ? ('openScan' as const) : ('openWarehouse' as const),
-    link: placing ? WIDGET_URL.scan : WIDGET_URL.warehouse,
-  };
-  const base = {
-    ...counts,
-    updatedAtMs,
-    ...labels,
-  };
-
-  if (placing) {
-    return {
-      ...base,
-      headline: String(counts.awaitingPlacement),
-      title:
-        counts.awaitingPlacement === 1
-          ? copy.itemToPlace(1)
-          : copy.itemsToPlace(counts.awaitingPlacement),
-      detail: copy.placeDetail,
+      headline: String(awaitingPlacement),
+      detail:
+        awaitingPlacement === 1 ? copy.itemToPlace(1) : copy.itemsToPlace(awaitingPlacement),
       symbol: 'shippingbox.fill',
       accent: '#FF9F0A',
       urgent: true,
     };
   }
 
-  if (known(counts.lowStock) && counts.lowStock > 0) {
+  return {
+    ...base,
+    headline: '',
+    detail: copy.scanCameraDetail,
+    symbol: 'barcode.viewfinder',
+    accent: '#0A84FF',
+    urgent: false,
+  };
+}
+
+export function buildPayWidgetProps(
+  counts: PayWidgetCounts,
+  access: PayAccess,
+  updatedAtMs: number,
+  copy: WidgetCopy = EN_WIDGET_COPY,
+): PayWidgetProps {
+  const base = {
+    ...counts,
+    access,
+    updatedAtMs,
+    eyebrow: copy.payEyebrow,
+    link: WIDGET_URL.earnings,
+  };
+
+  if (access === 'denied') {
     return {
       ...base,
-      headline: String(counts.lowStock),
-      title: counts.lowStock === 1 ? copy.partLow(1) : copy.partsLow(counts.lowStock),
-      detail: copy.belowReorder,
-      symbol: 'exclamationmark.triangle.fill',
+      headline: '—',
+      title: copy.payUnavailable,
+      detail: copy.earningsDetail,
+      symbol: 'banknote.fill',
+      accent: '#8E8E93',
+      urgent: false,
+    };
+  }
+
+  if (access !== 'allowed') {
+    return {
+      ...base,
+      headline: '—',
+      title: copy.brand,
+      detail: copy.payRefresh,
+      symbol: 'arrow.triangle.2.circlepath',
+      accent: '#8E8E93',
+      urgent: false,
+    };
+  }
+
+  if (known(counts.pending) && counts.pending > 0) {
+    return {
+      ...base,
+      headline: String(counts.pending),
+      title: counts.pending === 1 ? copy.payoutWaiting(1) : copy.payoutsWaiting(counts.pending),
+      detail:
+        known(counts.claimable) && counts.claimable > 0
+          ? counts.claimable === 1
+            ? copy.jobToClaim(1)
+            : copy.jobsToClaim(counts.claimable)
+          : copy.earningsDetail,
+      symbol: 'banknote.fill',
       accent: '#FF9F0A',
       urgent: true,
     };
   }
 
-  if (known(counts.awaitingPlacement) && known(counts.lowStock)) {
+  if (known(counts.claimable) && counts.claimable > 0) {
+    return {
+      ...base,
+      headline: String(counts.claimable),
+      title: counts.claimable === 1 ? copy.jobToClaim(1) : copy.jobsToClaim(counts.claimable),
+      detail: copy.earningsDetail,
+      symbol: 'hand.raised.fill',
+      accent: '#FF9F0A',
+      urgent: true,
+    };
+  }
+
+  if (known(counts.pending) && known(counts.claimable)) {
     return {
       ...base,
       headline: '0',
-      title: copy.warehouseClear,
-      detail: known(counts.engines)
-        ? copy.enginesInStock(String(counts.engines))
-        : copy.todayClearDetail,
+      title: copy.payClear,
+      detail: copy.earningsDetail,
       symbol: 'checkmark.circle.fill',
       accent: '#30D158',
       urgent: false,
@@ -682,7 +590,7 @@ export function buildWarehouseWidgetProps(
     ...base,
     headline: '—',
     title: copy.brand,
-    detail: copy.warehouseRefresh,
+    detail: copy.payRefresh,
     symbol: 'arrow.triangle.2.circlepath',
     accent: '#8E8E93',
     urgent: false,

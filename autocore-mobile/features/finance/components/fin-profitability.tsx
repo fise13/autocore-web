@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 
 import { fin, finFontCap, finType } from '../layout';
 import { formatCount, formatMoneyAdaptive, formatPercent } from '../lib/format';
@@ -30,6 +31,7 @@ const EngineRow = memo(function EngineRow({
   margin: number | null;
 }) {
   const { colors } = useTheme();
+  useMoneyFormatRevision();
 
   return (
     <View style={{ overflow: 'hidden' }}>
@@ -98,6 +100,7 @@ const WorkOrderRow = memo(function WorkOrderRow({
   laborRecorded: boolean;
 }) {
   const { colors } = useTheme();
+  useMoneyFormatRevision();
   const tone = toneForValue(profit);
 
   return (
@@ -191,6 +194,7 @@ export function FinProfitability({
   onShowLedger?: () => void;
 }) {
   const { colors } = useTheme();
+  useMoneyFormatRevision();
   const hasEngines = profitability.engines.models.length > 0;
   const hasOrders = profitability.workOrders.length > 0;
   const [lens, setLens] = useState<Lens>(hasEngines ? 'engines' : 'work_orders');

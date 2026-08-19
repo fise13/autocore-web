@@ -2,12 +2,10 @@ import { memo } from 'react';
 import { Pressable, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import { CarIcon } from '@/assets/icons';
 import { Text } from '@/components/ui/text';
-import { useDesignLanguage } from '@/hooks';
+import { useTheme } from '@/hooks';
 import { usePressAnimation } from '@/animations';
-import { haptics } from '@/theme';
-import { BusinessCardShell } from './business-card-shell';
+import { fontFamily, haptics } from '@/theme';
 
 export type EngineCardProps = {
   title: string;
@@ -42,31 +40,76 @@ export const EngineCard = memo(function EngineCard({
   price,
   onPress,
 }: EngineCardProps) {
-  const dl = useDesignLanguage();
-  const { style: pressStyle, onPressIn, onPressOut } = usePressAnimation();
-  const tone = dl.tones[statusTone[status]];
+  const { colors, tones } = useTheme();
+  const { style: pressStyle, onPressIn, onPressOut } = usePressAnimation(0.98);
+  const chrome = tones[statusTone[status]];
 
   const content = (
-    <BusinessCardShell
-      title={title}
-      subtitle={code}
-      elevated
-      headerRight={
-        <View style={[dl.styles.createIconBadgeStyle({ scheme: dl.scheme, colors: dl.colors }, statusTone[status])]}>
-          <CarIcon size="sm" color={tone.fg} />
+    <View
+      style={{
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: colors.card,
+        padding: 20,
+        gap: 10,
+      }}
+    >
+      <View style={{ gap: 4 }}>
+        {code ? (
+          <Text variant="caption1" color="muted" numberOfLines={1} style={{ letterSpacing: 0.3 }}>
+            {code}
+          </Text>
+        ) : null}
+        <Text
+          variant="headline"
+          numberOfLines={1}
+          style={{ color: colors.foreground, letterSpacing: -0.3 }}
+        >
+          {title}
+        </Text>
+      </View>
+
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+        <View
+          style={{
+            minHeight: 22,
+            paddingHorizontal: 8,
+            borderRadius: 9999,
+            backgroundColor: chrome.bg,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text
+            variant="caption2"
+            style={{
+              color: chrome.fg,
+              fontWeight: '600',
+              letterSpacing: 0.6,
+              textTransform: 'uppercase',
+            }}
+          >
+            {statusLabel[status]}
+          </Text>
         </View>
-      }
-      footer={
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: dl.layout.inlineGap, alignItems: 'center' }}>
-          <View style={{ paddingHorizontal: dl.layout.inlineGap, paddingVertical: dl.layout.inlineGap / 2, borderRadius: dl.corner.chip, backgroundColor: tone.bg, borderWidth: 1, borderColor: tone.border }}>
-            <Text variant="caption" style={{ color: tone.fg }}>{statusLabel[status]}</Text>
-          </View>
-          {vin ? <Text variant="caption" color="muted">VIN {vin}</Text> : null}
-          {mileage ? <Text variant="caption" color="muted">{mileage}</Text> : null}
-          {price ? <Text variant="heading" style={{ marginLeft: 'auto' }}>{price}</Text> : null}
-        </View>
-      }
-    />
+        {vin ? (
+          <Text variant="caption1" color="muted" style={{ fontFamily: fontFamily.mono }}>
+            VIN {vin}
+          </Text>
+        ) : null}
+        {mileage ? (
+          <Text variant="caption1" color="muted">
+            {mileage}
+          </Text>
+        ) : null}
+        {price ? (
+          <Text variant="headline" style={{ marginLeft: 'auto', fontVariant: ['tabular-nums'] }}>
+            {price}
+          </Text>
+        ) : null}
+      </View>
+    </View>
   );
 
   if (!onPress) return content;
@@ -74,10 +117,14 @@ export const EngineCard = memo(function EngineCard({
   return (
     <Animated.View style={pressStyle}>
       <Pressable
-        onPress={() => { haptics.light(); onPress(); }}
+        onPress={() => {
+          haptics.light();
+          onPress();
+        }}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         accessibilityRole="button"
+        accessibilityLabel={title}
       >
         {content}
       </Pressable>

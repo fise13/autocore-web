@@ -1,17 +1,29 @@
 {
   "$schema": "../gen/schemas/remote-schema.json",
-  "identifier": "remote-vercel",
-  "description": "Vercel web app inside the AutoCore desktop shell",
-  "windows": ["main"],
+  "identifier": "remote-product",
+  "description": "Native capabilities granted to the AutoCore web app running inside the desktop shell. Scoped to the production origins only, and to the smallest permission set the platform adapter in `src/platform/desktop` actually calls.",
+  "windows": [
+    "main",
+    "product-*"
+  ],
   "remote": {
     "urls": [
-      "https://autocore-web.vercel.app/*",
-      "https://*.vercel.app/*"
+      "https://app.myautocore.com/*",
+      "https://myautocore.com/*"
     ]
   },
   "permissions": [
-    "core:default",
-    "shell:default",
-    "opener:default"
+    "core:event:default",
+    "core:window:allow-set-title",
+    "core:webview:allow-set-webview-zoom",
+    "opener:allow-open-url",
+    "opener:allow-default-urls",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text",
+    "notification:default",
+    "allow-desktop-save-file",
+    "allow-desktop-print-document",
+    "allow-desktop-print-page",
+    "allow-desktop-info"
   ]
 }

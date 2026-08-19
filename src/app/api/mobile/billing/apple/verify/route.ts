@@ -27,8 +27,9 @@ export const runtime = "nodejs";
 /**
  * Honour a StoreKit purchase.
  *
- * The app sends a transaction id and its signed JWS. Neither is trusted: the
- * transaction is re-fetched from Apple's App Store Server API over an
+ * The app sends a transaction id and its signed JWS after StoreKit 2
+ * `Transaction.VerificationResult` succeeded on device. Neither is trusted:
+ * the transaction is re-fetched from Apple's App Store Server API over an
  * authenticated call, and only Apple's copy is inspected. A JWS lifted from
  * another device therefore buys nothing — the id resolves to a transaction whose
  * `appAccountToken` belongs to a different workspace, and the check below fails.

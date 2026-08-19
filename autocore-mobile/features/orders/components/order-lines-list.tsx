@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { formatPrice } from '@/features/search/lib/format';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 
 import { wo } from '../theme/wo-visual';
 
@@ -23,6 +24,7 @@ type OrderLinesListProps = {
 
 function LineRow({ label, detail, price, compact }: OrderLine & { compact?: boolean }) {
   const { colors } = useTheme();
+  useMoneyFormatRevision();
 
   return (
     <View

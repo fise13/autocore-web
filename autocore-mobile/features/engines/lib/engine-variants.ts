@@ -1,10 +1,9 @@
 /**
- * Engine catalog grouping.
+ * Engine catalog identity, status, and classification.
  *
- * A yard holds many units of the same engine. Listing 248 flat rows makes the
- * catalog unreadable, so units are folded into *variants* — brand + engine code
- * — and the variant header carries the name and code while the rows underneath
- * stay minimal: a preview, the serial, and where it sits.
+ * The yard is filed by *motor* — brand + engine code — the same way a person
+ * shouts across the warehouse: "2AZ-FE". Units sit under that heading so you
+ * see every serial without losing the type.
  *
  * Pure — no React, no Firestore.
  */
@@ -12,6 +11,13 @@
 // the `@/` alias points at the web app's src/.
 import { joinSearchFields, matchesSearchQuery } from '../../../lib/search/match-query';
 import type { MotorEntity } from '../../../types/motor';
+
+import {
+  engineQualityGrade,
+  engineQualityLabel,
+  engineQualitySearchText,
+  isExactQualityGradeQuery,
+} from './engine-quality';
 
 export type EngineVariant = {
   /** Stable list key. */
@@ -107,6 +113,9 @@ export function engineStatusTone(motor: MotorEntity): EngineStatusTone {
 }
 
 export function engineMatchesQuery(motor: MotorEntity, query: string): boolean {
+  const exactGrade = isExactQualityGradeQuery(query);
+  if (exactGrade && engineQualityGrade(motor) === exactGrade) return true;
+
   return matchesSearchQuery(
     joinSearchFields(
       motor.serialCode,
@@ -116,6 +125,8 @@ export function engineMatchesQuery(motor: MotorEntity, query: string): boolean {
       motor.transmission,
       motor.primaryLocationCode,
       motor.warehouseLocation,
+      engineQualityLabel(motor),
+      engineQualitySearchText(motor),
     ),
     query,
   );
@@ -129,9 +140,23 @@ function compareUnits(left: MotorEntity, right: MotorEntity): number {
 }
 
 /**
- * Groups units into variants, biggest variant first so the stock a yard
+ * Flat catalog order: same variant (brand + code) stays together, serials
+ * natural-sorted inside the group so a yard of 2AZ-FEs reads as a run.
+ */
+export function sortEnginesForCatalog(motors: MotorEntity[]): MotorEntity[] {
+  return [...motors].sort((left, right) => {
+    const byVariant = engineVariantTitle(left).localeCompare(engineVariantTitle(right), undefined, {
+      sensitivity: 'base',
+    });
+    if (byVariant !== 0) return byVariant;
+    return compareUnits(left, right);
+  });
+}
+
+/**
+ * Groups units into motors, biggest type first so the stock a yard
  * actually has depth in leads. `unspecified` always sinks to the bottom — it is
- * a data-quality bucket, not a real variant.
+ * a data-quality bucket, not a real motor.
  */
 export function groupEnginesByVariant(motors: MotorEntity[]): EngineVariant[] {
   const map = new Map<string, EngineVariant>();
@@ -169,4 +194,10 @@ export function variantSubtitle(variant: EngineVariant): string {
   const placed = variant.units.filter((unit) => engineUnitLocation(unit)).length;
   if (placed === 0 || placed === count) return units;
   return `${units} · ${count - placed} unplaced`;
+}
+
+/** Brand is the kicker; the code is what the yard actually files under. */
+export function variantHeading(variant: EngineVariant): { kicker: string | null; title: string } {
+  if (variant.brand && variant.code) return { kicker: variant.brand, title: variant.code };
+  return { kicker: null, title: variant.title };
 }

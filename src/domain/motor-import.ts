@@ -37,6 +37,8 @@ export type MotorImportJob = {
   columnMappings: Record<string, SheetColumnMapping>;
   engineRows: MotorImportPreviewRow[];
   stats: {
+    /** Source rows folded into an earlier row because they name the same engine. */
+    mergedRows?: number;
     totalEngineRows: number;
     validEngineRows: number;
     duplicates: number;

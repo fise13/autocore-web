@@ -8,11 +8,12 @@
  */
 import { Platform } from 'react-native';
 
+import { getString, setString } from '@/lib/storage/kv';
+
 import {
   fetchAppAccountToken,
   refreshCompanyBilling,
   restoreApplePurchases,
-  startCompanyTrial,
   verifyApplePurchase,
   type AppleVerificationRejection,
 } from '@/services/api/subscriptions';
@@ -28,22 +29,30 @@ import {
 import { clearEntitlementCaches } from './entitlement-cache';
 import {
   clearEntitlementRegistry,
+  optimisticAppleEntitlement,
   peekEntitlement,
   setLocalSubscriptions,
+  setOptimisticEntitlement,
 } from './entitlement-registry';
 import type { LocalActiveSubscription } from './entitlement-resolver';
 import * as store from './purchase-manager';
 import {
   getFlow,
+  getPurchaseStoreSnapshot,
   isFlowBusy,
   resetPurchaseStore,
   setFlow,
+  setGateCelebrationLock,
   setIntroEligible,
   setProducts,
   setProductsError,
   setProductsLoading,
+  setStorePrepared,
+  upsertProduct,
 } from './purchase-store';
-import { asPurchaseFailure, failure, isCancellation } from './purchase-errors';
+import { isPaywallBypassed } from './paywall-bypass';
+import { asPurchaseFailure, failure, isCancellation, isInFlightGhostError } from './purchase-errors';
+import { iapTrace, iapTraceReset } from './iap-trace';
 import type { PlanId, PurchaseFailure, RestoreOutcome } from './types';
 
 /** Company the manager is currently acting for. Set by the provider. */
@@ -52,12 +61,61 @@ let activeCompanyId: string | null = null;
 /** Cached app account tokens, keyed by company. */
 const tokenCache = new Map<string, string>();
 
+const APP_ACCOUNT_TOKEN_KEY = (companyId: string) =>
+  `autocore-mobile:apple-aat:v1:${companyId}`;
+
+function persistAppAccountToken(companyId: string, token: string): void {
+  tokenCache.set(companyId, token);
+  setString(APP_ACCOUNT_TOKEN_KEY(companyId), token);
+}
+
+/** Sync read — must not await. StoreKit has to run in the tap's call stack. */
+function cachedAppAccountToken(companyId: string): string | undefined {
+  const memory = tokenCache.get(companyId);
+  if (memory) return memory;
+  const disk = getString(APP_ACCOUNT_TOKEN_KEY(companyId));
+  if (disk) {
+    tokenCache.set(companyId, disk);
+    return disk;
+  }
+  return undefined;
+}
+
+/** In-flight token fetches, so bootstrap and the first tap share one round-trip. */
+const tokenRequests = new Map<string, Promise<string>>();
+
 /** Transactions already verified this session — avoids re-posting on replay. */
 const verifiedTransactions = new Set<string>();
+
+/** Verify+finish in flight — the Apple listener and the boot drain can race. */
+const settlingTransactions = new Set<string>();
 
 let detachPurchaseListener: (() => void) | null = null;
 let detachFailureListener: (() => void) | null = null;
 let reconcileInFlight: Promise<void> | null = null;
+
+/** Transactions the user started from the paywall this session. */
+let userInitiatedPurchase = false;
+
+const SHEET_WATCHDOG_MS = 6_000;
+let sheetWatchdog: ReturnType<typeof setTimeout> | null = null;
+
+function clearSheetWatchdog(): void {
+  if (!sheetWatchdog) return;
+  clearTimeout(sheetWatchdog);
+  sheetWatchdog = null;
+}
+
+function armSheetWatchdog(planId: PlanId): void {
+  clearSheetWatchdog();
+  iapTrace('watchdog:arm', { planId, ms: SHEET_WATCHDOG_MS });
+  sheetWatchdog = setTimeout(() => {
+    sheetWatchdog = null;
+    if (getFlow().phase !== 'loading') return;
+    iapTrace('watchdog:fire', { planId });
+    applyStoreFailure(failure('sheet_timeout', `no StoreKit event in ${SHEET_WATCHDOG_MS}ms`, 'sheet_timeout'));
+  }, SHEET_WATCHDOG_MS);
+}
 
 const REJECTION_FAILURE: Record<AppleVerificationRejection, PurchaseFailure> = {
   signature_invalid: failure('verification_failed'),
@@ -85,6 +143,8 @@ export function attach(companyId: string | null): void {
 
   activeCompanyId = companyId;
   verifiedTransactions.clear();
+  settlingTransactions.clear();
+  userInitiatedPurchase = false;
 
   if (!detachPurchaseListener) {
     store.installListeners();
@@ -94,16 +154,12 @@ export function attach(companyId: string | null): void {
     });
 
     detachFailureListener = store.onPurchaseFailure((value) => {
-      // A queue-level error with no purchase in flight is informational only.
-      if (isCancellation(value)) {
-        setFlow({ phase: 'cancelled' });
-        return;
-      }
-      setFlow({ phase: 'failed', failure: value });
+      applyStoreFailure(value);
     });
   }
 
   if (companyId) {
+    cachedAppAccountToken(companyId);
     void bootstrap(companyId);
   }
 }
@@ -116,7 +172,11 @@ export async function detach(): Promise<void> {
   detachFailureListener = null;
   activeCompanyId = null;
   tokenCache.clear();
+  tokenRequests.clear();
   verifiedTransactions.clear();
+  settlingTransactions.clear();
+  userInitiatedPurchase = false;
+  clearSheetWatchdog();
   clearEntitlementRegistry();
   resetPurchaseStore();
   await clearEntitlementCaches();
@@ -124,18 +184,29 @@ export async function detach(): Promise<void> {
 }
 
 async function bootstrap(companyId: string): Promise<void> {
-  // The catalog and the server reconcile do not depend on StoreKit being
-  // available, so they must run even where it is not — otherwise the paywall
-  // has nothing to show on web or in a simulator without store configuration.
+  iapTrace('bootstrap', { companyId });
   void loadProducts();
   void reconcile(companyId);
+  void appAccountToken(companyId).catch(() => undefined);
 
-  if (!store.isStoreSupported()) return;
+  if (!store.isStoreSupported()) {
+    setStorePrepared(true);
+    iapTrace('bootstrap:unsupported');
+    return;
+  }
 
-  // Order matters: refreshing local StoreKit state first means the resolver has
-  // a fallback ready before any network call is attempted.
-  await refreshLocalSubscriptions();
-  await drainPendingTransactions();
+  void store.connect().then((ok) => {
+    iapTrace('bootstrap:connected', { ok });
+    setStorePrepared(true);
+  }).catch(() => {
+    setStorePrepared(true);
+  });
+
+  void refreshLocalSubscriptions();
+  void store.ensurePurchaseReady().then((ready) => {
+    iapTrace('bootstrap:purchase-ready', { ready });
+  });
+  void drainPendingTransactions();
 }
 
 // ---------------------------------------------------------------------------
@@ -158,13 +229,15 @@ function devCatalog() {
 
 /** Fetch the live product catalog. Prices always come from the store. */
 export async function loadProducts(): Promise<void> {
-  setProductsLoading(true);
+  const alreadyHaveCatalog = getPurchaseStoreSnapshot().products.length > 0;
+  if (!alreadyHaveCatalog) setProductsLoading(true);
 
   if (!store.isStoreSupported()) {
     // Web / unsupported platform: dev gets a catalog to look at, production
     // gets an honest empty state.
     setProducts(isDevModeAvailable() ? devCatalog() : []);
     if (isDevModeAvailable()) setIntroEligible(true);
+    setStorePrepared(true);
     return;
   }
 
@@ -176,21 +249,32 @@ export async function loadProducts(): Promise<void> {
     if (products.length === 0 && isDevModeAvailable()) {
       setProducts(devCatalog());
       setIntroEligible(true);
+      setStorePrepared(true);
       return;
     }
 
     setProducts(products);
 
-    // Intro-offer eligibility is per subscription group; the live plans all
-    // share one, so the first purchasable plan answers for all of them.
-    const [first] = purchasablePlans();
-    if (first) {
-      setIntroEligible(await store.isEligibleForIntroOffer(first));
+    if (products.length === 0) {
+      setProductsError(
+        'Plans are not available from the App Store yet. This usually means the ' +
+          'store setup is still finishing.',
+      );
+      return;
     }
+
+    const groupId =
+      products.find((product) => product.subscriptionGroupIdIOS)?.subscriptionGroupIdIOS ??
+      purchasablePlans()[0]?.subscriptionGroupIdIOS ??
+      null;
+    void store.isEligibleForIntroOffer(groupId).then(setIntroEligible).catch(() => {
+      setIntroEligible(false);
+    });
   } catch (error) {
     if (isDevModeAvailable()) {
       setProducts(devCatalog());
       setIntroEligible(true);
+      setStorePrepared(true);
       return;
     }
     setProductsError(asPurchaseFailure(error).message);
@@ -202,66 +286,135 @@ export async function loadProducts(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 async function appAccountToken(companyId: string): Promise<string> {
-  const cached = tokenCache.get(companyId);
+  const cached = cachedAppAccountToken(companyId);
   if (cached) return cached;
 
-  const { appAccountToken: token } = await fetchAppAccountToken(companyId);
-  tokenCache.set(companyId, token);
-  return token;
+  const pending = tokenRequests.get(companyId);
+  if (pending) return pending;
+
+  const request = fetchAppAccountToken(companyId)
+    .then(({ appAccountToken: token }) => {
+      persistAppAccountToken(companyId, token);
+      return token;
+    })
+    .finally(() => {
+      tokenRequests.delete(companyId);
+    });
+
+  tokenRequests.set(companyId, request);
+  return request;
 }
 
 /**
- * Begin a purchase. Resolves as soon as the request is dispatched — the actual
- * outcome arrives through the transaction listener and lands in the flow state.
+ * Begin a purchase. StoreKit is invoked on this call stack — do not await
+ * network before `store.purchase`, or iOS delays the payment sheet.
  */
-export async function purchase(planId: PlanId): Promise<void> {
+export function purchase(planId: PlanId): Promise<void> {
   const companyId = activeCompanyId;
   if (!companyId) {
     setFlow({ phase: 'failed', failure: failure('unknown') });
-    return;
+    return Promise.resolve();
   }
 
-  if (isFlowBusy()) return;
+  if (isFlowBusy()) return Promise.resolve();
 
   // With a dev scenario active there is no verification endpoint to call, so
   // the simulated path is the only one that can complete.
   if (isDevModeActive()) {
-    await devSimulatePurchase(planId);
-    return;
+    return devSimulatePurchase(planId);
   }
 
   const plan = planById(planId);
   if (!plan.purchasable || !skuForPlan(plan)) {
     setFlow({ phase: 'failed', failure: failure('not_available') });
-    return;
+    return Promise.resolve();
   }
 
   // Buying while Stripe or an Enterprise contract is active would double-bill.
   const entitlement = peekEntitlement(companyId);
   if (entitlement.managedExternally) {
     setFlow({ phase: 'already_purchased' });
-    return;
+    return Promise.resolve();
   }
 
   setFlow({ phase: 'loading', planId });
+  userInitiatedPurchase = true;
+  lockGateIfUnpaid(companyId);
+  void appAccountToken(companyId).catch(() => undefined);
+  iapTraceReset('tap');
+  iapTrace('purchase', {
+    planId,
+    sku: skuForPlan(plan),
+    connected: store.isConnected(),
+    token: Boolean(cachedAppAccountToken(companyId)),
+  });
+  armSheetWatchdog(planId);
 
-  try {
-    const token = await appAccountToken(companyId);
-    await store.purchase(plan, token);
-    // Outcome continues in `handleIncomingPurchase`.
-  } catch (error) {
-    const value = asPurchaseFailure(error);
+  // Do not await `store.purchase`. Native `requestPurchase` stays pending until
+  // Apple dismisses the sheet; treating that resolve as failure painted
+  // "not available" over a completed yearly purchase. Never await connect here.
+  void store.purchase(plan, cachedAppAccountToken(companyId)).catch((error) => {
+    applyStoreFailure(asPurchaseFailure(error));
+  });
+  return Promise.resolve();
+}
 
-    if (isCancellation(value)) {
-      setFlow({ phase: 'cancelled' });
-      return;
-    }
-    if (value.code === 'already_owned') {
-      setFlow({ phase: 'already_purchased' });
-      return;
-    }
-    setFlow({ phase: 'failed', failure: value });
+function lockGateIfUnpaid(companyId: string | null): void {
+  if (isPaywallBypassed()) return;
+  if (peekEntitlement(companyId).isActive) return;
+  setGateCelebrationLock(true);
+}
+
+/**
+ * StoreKit often emits an error *and* a transaction for the same tap (sheet
+ * dismissed, then the JWS arrives). Never let the error overwrite a purchase
+ * that is already verifying or finished.
+ */
+function applyStoreFailure(value: PurchaseFailure): void {
+  const phase = getFlow().phase;
+  iapTrace('failure', { phase, code: value.code, cause: value.cause });
+  if (
+    phase === 'verifying' ||
+    phase === 'success' ||
+    phase === 'pending' ||
+    phase === 'restoring' ||
+    phase === 'restored'
+  ) {
+    return;
   }
+  if (phase !== 'loading') return;
+
+  if (isCancellation(value)) {
+    clearSheetWatchdog();
+    userInitiatedPurchase = false;
+    store.abortPurchaseInFlight();
+    setFlow({ phase: 'cancelled' });
+    return;
+  }
+  if (value.code === 'already_owned') {
+    clearSheetWatchdog();
+    userInitiatedPurchase = false;
+    store.abortPurchaseInFlight();
+    setFlow({ phase: 'already_purchased' });
+    return;
+  }
+  // OpenIAP emits QueryProduct / "not available" / a generic failure *and then*
+  // delivers the transaction. A banner here is a one-second lie — drop it.
+  // A real hang still fails via the sheet watchdog.
+  if (isInFlightGhostError(value)) {
+    iapTrace('failure:ignored', { code: value.code, cause: value.cause });
+    return;
+  }
+
+  clearSheetWatchdog();
+  store.abortPurchaseInFlight();
+  if (value.code === 'sheet_timeout') {
+    setFlow({ phase: 'failed', failure: value });
+    return;
+  }
+
+  userInitiatedPurchase = false;
+  setFlow({ phase: 'failed', failure: value });
 }
 
 /**
@@ -272,8 +425,15 @@ async function handleIncomingPurchase(purchaseValue: store.Purchase): Promise<vo
   const companyId = activeCompanyId;
   if (!companyId) return;
 
+  clearSheetWatchdog();
   const plan = planForSku(purchaseValue.productId);
   const planId: PlanId = plan?.id ?? 'pro_monthly';
+  iapTrace('incoming', {
+    id: purchaseValue.id,
+    sku: purchaseValue.productId,
+    state: purchaseValue.purchaseState,
+    planId,
+  });
 
   // A deferred purchase carries no entitlement yet; it converts later and comes
   // back through this same listener.
@@ -283,45 +443,83 @@ async function handleIncomingPurchase(purchaseValue: store.Purchase): Promise<vo
   }
 
   if (verifiedTransactions.has(purchaseValue.id)) return;
+  if (settlingTransactions.has(purchaseValue.id)) return;
+  settlingTransactions.add(purchaseValue.id);
 
   const flow = getFlow();
-  const isUserInitiated = flow.phase === 'loading' || flow.phase === 'verifying';
-  if (isUserInitiated) {
-    setFlow({ phase: 'verifying', planId });
+  const shouldCelebrate =
+    userInitiatedPurchase ||
+    flow.phase === 'loading' ||
+    flow.phase === 'verifying' ||
+    flow.phase === 'failed' ||
+    flow.phase === 'cancelled';
+
+  // StoreKit already charged (or started the trial). Flow first, then Pro —
+  // the gate must see `success` before `isPro`, or it unmounts the paywall.
+  if (shouldCelebrate) {
+    userInitiatedPurchase = false;
+    lockGateIfUnpaid(companyId);
+    setFlow({ phase: 'success', planId });
+    setIntroEligible(false);
+    setOptimisticEntitlement(optimisticAppleEntitlement(companyId, planId));
+    iapTrace('success', { planId, sku: purchaseValue.productId });
   }
 
+  void settleIncomingPurchase(purchaseValue, planId, companyId);
+}
+
+async function settleIncomingPurchase(
+  purchaseValue: store.Purchase,
+  planId: PlanId,
+  companyId: string,
+): Promise<void> {
   try {
     const token = tokenCache.get(companyId) ?? null;
+    const jws = await store.verifiedPurchaseToken(purchaseValue);
+    if (!jws) {
+      iapTrace('verify:no-jws', { transactionId: purchaseValue.id });
+      return;
+    }
+
+    // Finish before the server round-trip. Unfinished StoreKit transactions
+    // in the same subscription group block the next monthly/yearly sheet.
+    verifiedTransactions.add(purchaseValue.id);
+    await store.finish(purchaseValue).catch(() => undefined);
+    iapTrace('finish', { transactionId: purchaseValue.id });
+
+    iapTrace('verify:start', { transactionId: purchaseValue.id });
     const response = await verifyApplePurchase({
       companyId,
       transactionId: purchaseValue.id,
-      jws: purchaseValue.purchaseToken ?? null,
+      jws,
       productId: purchaseValue.productId,
       appAccountToken: token,
     });
+    iapTrace('verify:done', { accepted: response.accepted, reason: response.reason });
 
     if (!response.accepted) {
       const value = response.reason
         ? REJECTION_FAILURE[response.reason]
         : failure('verification_failed');
-      if (isUserInitiated) setFlow({ phase: 'failed', failure: value });
+      // Only yank a completed Apple purchase for a workspace conflict.
+      // Transient verify failures must not replace the celebration with
+      // "not available" / "couldn't verify".
+      if (
+        response.reason === 'bound_to_other_company' ||
+        response.reason === 'superseded_by_stripe'
+      ) {
+        setOptimisticEntitlement(null);
+        setGateCelebrationLock(false);
+        setFlow({ phase: 'failed', failure: value });
+      }
       return;
     }
 
-    // Only now is it safe to remove the transaction from the queue.
-    verifiedTransactions.add(purchaseValue.id);
-    await store.finish(purchaseValue);
     await refreshLocalSubscriptions();
-
-    if (isUserInitiated) {
-      setFlow({ phase: 'success', planId });
-    }
-  } catch (error) {
-    // Leave the transaction unfinished: StoreKit replays it on next launch and
-    // `drainPendingTransactions` retries. This is correct, not a leak.
-    if (isUserInitiated) {
-      setFlow({ phase: 'failed', failure: asPurchaseFailure(error) });
-    }
+  } catch {
+    // Keep celebration. Retry verify on the next reconcile.
+  } finally {
+    settlingTransactions.delete(purchaseValue.id);
   }
 }
 
@@ -380,11 +578,13 @@ export async function restore(): Promise<RestoreOutcome> {
 
     const response = await restoreApplePurchases({
       companyId,
-      transactions: purchases.map((item) => ({
-        transactionId: item.id,
-        jws: item.purchaseToken ?? null,
-        productId: item.productId,
-      })),
+      transactions: await Promise.all(
+        purchases.map(async (item) => ({
+          transactionId: item.id,
+          jws: (await store.verifiedPurchaseToken(item)) ?? item.purchaseToken ?? null,
+          productId: item.productId,
+        })),
+      ),
     });
 
     if (!response.restored) {
@@ -404,15 +604,20 @@ export async function restore(): Promise<RestoreOutcome> {
       return { kind: 'failed', failure: value };
     }
 
-    for (const item of purchases) {
-      verifiedTransactions.add(item.id);
-      await store.finish(item).catch(() => undefined);
-    }
-
-    await refreshLocalSubscriptions().catch(() => undefined);
-
     const planId = (planForSku(purchases[0].productId)?.id ?? 'pro_monthly') as PlanId;
+    lockGateIfUnpaid(companyId);
     setFlow({ phase: 'restored', planId });
+    setOptimisticEntitlement(optimisticAppleEntitlement(companyId, planId));
+    setIntroEligible(false);
+
+    void (async () => {
+      for (const item of purchases) {
+        verifiedTransactions.add(item.id);
+        await store.finish(item).catch(() => undefined);
+      }
+      await refreshLocalSubscriptions().catch(() => undefined);
+    })();
+
     return { kind: 'restored', planId };
   } catch (error) {
     const value = asPurchaseFailure(error);
@@ -425,7 +630,7 @@ export async function restore(): Promise<RestoreOutcome> {
 // Sync
 // ---------------------------------------------------------------------------
 
-/** Publish StoreKit's local view into the resolver's third source. */
+/** Publish StoreKit 2 `Transaction.currentEntitlements` into the resolver. */
 export async function refreshLocalSubscriptions(): Promise<void> {
   if (!store.isStoreSupported()) {
     setLocalSubscriptions([]);
@@ -469,26 +674,6 @@ export function reconcile(companyId: string | null = activeCompanyId): Promise<v
   return reconcileInFlight;
 }
 
-/** Internal 14-day trial (non-Apple). Server enforces one per company. */
-export async function startInternalTrial(): Promise<boolean> {
-  const companyId = activeCompanyId;
-  if (!companyId) return false;
-
-  setFlow({ phase: 'loading', planId: 'pro_monthly' });
-  try {
-    const result = await startCompanyTrial(companyId);
-    if (result.started || result.proActive) {
-      setFlow({ phase: 'success', planId: 'pro_monthly' });
-      return true;
-    }
-    setFlow({ phase: 'failed', failure: failure('not_available') });
-    return false;
-  } catch (error) {
-    setFlow({ phase: 'failed', failure: asPurchaseFailure(error) });
-    return false;
-  }
-}
-
 /** Apple's native manage sheet. We never build our own cancel button. */
 export async function openManageSubscriptions(): Promise<void> {
   if (Platform.OS !== 'ios') return;
@@ -496,7 +681,23 @@ export async function openManageSubscriptions(): Promise<void> {
 }
 
 export function resetFlow(): void {
+  userInitiatedPurchase = false;
+  clearSheetWatchdog();
+  setGateCelebrationLock(false);
   setFlow({ phase: 'idle' });
+}
+
+/** Prime StoreKit's subscription product cache for this plan (call on plan select). */
+export function warmPlan(planId: PlanId): Promise<boolean> {
+  const sku = skuForPlan(planById(planId));
+  if (!sku) return Promise.resolve(false);
+  iapTrace('warmPlan', { planId, sku });
+  return store.warmSubscriptionSku(sku).then((ok) => {
+    const cached = store.cachedProduct(sku);
+    if (cached) upsertProduct(cached);
+    iapTrace('warmPlan:done', { planId, sku, ok, cached: Boolean(cached) });
+    return ok;
+  });
 }
 
 export function getActiveCompanyId(): string | null {
@@ -512,22 +713,20 @@ function delay(ms: number): Promise<void> {
 }
 
 /**
- * Run a purchase end-to-end without StoreKit or the server.
- *
- * It drives the **real** flow state machine with realistic timing, so what is
- * exercised is the actual UI path — loading, verifying, success — rather than a
- * shortcut that skips straight to entitled.
+ * Run a purchase without StoreKit or the server. Same instant-success path
+ * as a real StoreKit transaction — celebration, not a fake verifying spinner.
  */
 export async function devSimulatePurchase(planId: PlanId): Promise<void> {
   if (!isDevModeAvailable()) return;
 
-  setFlow({ phase: 'loading', planId });
-  await delay(700);
-  setFlow({ phase: 'verifying', planId });
-  await delay(600);
-
-  setDevScenario(scenarioForPlan(planId));
+  const companyId = activeCompanyId;
+  lockGateIfUnpaid(companyId);
   setFlow({ phase: 'success', planId });
+  setIntroEligible(false);
+  if (companyId) {
+    setOptimisticEntitlement(optimisticAppleEntitlement(companyId, planId));
+  }
+  setDevScenario(scenarioForPlan(planId));
 }
 
 /** Simulated restore, including the "nothing to restore" branch. */
@@ -537,13 +736,12 @@ export async function devSimulateRestore(): Promise<void> {
   setFlow({ phase: 'restoring' });
   await delay(900);
 
-  if (peekEntitlement(activeCompanyId).isActive) {
-    setFlow({ phase: 'restored', planId: 'pro_monthly' });
-    return;
-  }
-
-  setDevScenario('pro_monthly');
+  lockGateIfUnpaid(activeCompanyId);
   setFlow({ phase: 'restored', planId: 'pro_monthly' });
+  if (activeCompanyId) {
+    setOptimisticEntitlement(optimisticAppleEntitlement(activeCompanyId, 'pro_monthly'));
+  }
+  setDevScenario('pro_monthly');
 }
 
 /** Every plan the dev panel can offer, for building its buttons. */

@@ -13,6 +13,7 @@ import { transferStockUseCase } from "@/application/use-cases/warehouse/transfer
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { buildWarehouseSearchSuggestions } from "@/components/layout/workspace-search-field";
 import { useToast } from "@/components/ui/toast-provider";
+import { saveFile } from "@/platform";
 import { MotorsGridSkeleton } from "@/components/motors/motors-grid-skeleton";
 import { WarehouseAdjustmentDialog } from "@/components/warehouse/warehouse-adjustment-dialog";
 import { WarehouseBarcodePanel } from "@/components/warehouse/warehouse-barcode-panel";
@@ -281,12 +282,11 @@ export function WarehouseWorkspace() {
         ].join(","),
       );
       const blob = new Blob([[header.join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = "warehouse-export.csv";
-      anchor.click();
-      URL.revokeObjectURL(url);
+      await saveFile({
+        filename: "warehouse-export.csv",
+        blob,
+        filters: [{ name: "CSV", extensions: ["csv"] }],
+      });
     } finally {
       setIoBusy(null);
     }

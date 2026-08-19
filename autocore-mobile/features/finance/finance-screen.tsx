@@ -5,9 +5,10 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { BarChart3Icon, LockIcon } from '@/assets/icons';
 import { Screen, ScreenScroll, toast } from '@/components/ui';
+import { newOperationHref } from '@/features/accounting/navigation';
 import { isProductionCompanyId } from '@/lib/company-id';
 import { openFinanceSettings } from '@/lib/navigation/open-finance-settings';
-import { newOperationHref } from '@/features/accounting/navigation';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 
 import { FinHeader } from './components/fin-header';
 import {
@@ -34,6 +35,7 @@ export function FinanceScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
+  useMoneyFormatRevision();
 
   const {
     model,

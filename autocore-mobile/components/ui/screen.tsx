@@ -14,6 +14,7 @@ import Animated, {
 import { ArrowLeftIcon } from '@/assets/icons';
 import { useFloatingTabBarInset, useReleaseStackNavigationOnFocus, useTheme } from '@/hooks';
 import { goBackOrReplace, PROFILE_SETTINGS_HUB_HREF } from '@/lib/navigation/stack-back';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 import { withAlpha } from '@/theme/color-utils';
 import { rhythm, spacing } from '@/theme';
 
@@ -29,6 +30,7 @@ type ScreenProps = {
 /** Full-bleed screen background. */
 export function Screen({ children, style }: ScreenProps) {
   const { colors } = useTheme();
+  useMoneyFormatRevision();
   return <View style={[{ flex: 1, backgroundColor: colors.background }, style]}>{children}</View>;
 }
 
@@ -66,6 +68,7 @@ export function ScreenScroll({
 }: ScreenScrollProps) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  useMoneyFormatRevision();
   const { scrollBottom } = useFloatingTabBarInset();
   const fadeEnabled = topFade ?? tabBarInset;
   const trackScroll = fadeEnabled || Boolean(edgeTitle);

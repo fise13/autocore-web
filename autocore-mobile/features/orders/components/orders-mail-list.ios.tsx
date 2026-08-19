@@ -35,6 +35,7 @@ import { EmptyState, toast } from '@/components/ui';
 import { formatPrice } from '@/features/search/lib/format';
 import { useTheme } from '@/hooks';
 import { haptics, tokens } from '@/theme';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 
 import { useOrderTransition } from '../animation/order-transition-context';
 import { buildOrderSections } from '../lib/group-orders';
@@ -251,6 +252,7 @@ export function OrdersMailList({
   onCreateEmpty,
 }: OrdersMailListProps) {
   const { colors, isDark } = useTheme();
+  useMoneyFormatRevision();
   const { openOrder } = useOrderTransition();
   const router = useRouter();
   const sections = useMemo(() => buildOrderSections(orders), [orders]);

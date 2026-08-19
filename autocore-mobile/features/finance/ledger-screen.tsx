@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import { DownloadIcon, ArrowRightIcon } from '@/assets/icons';
 import { HorizontalFilterBar, Screen, ScreenScroll, Text, toast } from '@/components/ui';
 import { useEmployeesRealtime, useSession, useTheme } from '@/hooks';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 import { usePayrollTransactionsRealtime } from '@/hooks/use-payroll-transactions-realtime';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import {
@@ -66,6 +67,7 @@ type LedgerTab = (typeof LEDGER_TABS)[number]['value'];
 export function FinanceLedgerScreen() {
   const { companyId, uid, profile } = useSession();
   const { colors } = useTheme();
+  useMoneyFormatRevision();
   const rbac = useRbacPolicy();
   const { model, operations, workOrderNumbers, canEdit } = useFinanceModel();
   const [tab, setTab] = useState<LedgerTab>('all');

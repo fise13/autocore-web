@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Copy, Trash2 } from "lucide-react";
+import { Copy, Plus, Trash2, Users } from "lucide-react";
 
 import { canManageEmployees, canViewEmployees } from "@/lib/auth/permissions";
 import { isImmutableCompanyOwner } from "@/lib/auth/company-owner";
@@ -13,11 +13,13 @@ import { EmployeeProfileSheet } from "@/components/employees/employee-profile-sh
 import { useDeepAction } from "@/hooks/use-deep-action";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { buildInviteUrl, normalizeInviteStatus, type InviteStatus } from "@autocore/org";
-import { CompanyEmployee, InviteDocument } from "@/domain/rbac";
+import { CompanyEmployee, DirectoryPerson, InviteDocument } from "@/domain/rbac";
 import { PERMISSIONS, Permission, ROLE_PERMISSIONS, USER_ROLES, UserRole } from "@/domain/user";
 import { getFirebaseAuth, getFirestoreDb } from "@/infrastructure/firebase/client";
 import { createEmployeeRbacRepository } from "@/infrastructure/firestore/employee-rbac-repository";
+import { createDirectoryRepository } from "@/infrastructure/firestore/directory-repository";
 import { createInviteRepository } from "@/infrastructure/firestore/invite-repository";
+import { useAccountingPreferences } from "@/hooks/use-accounting-preferences";
 import { doc, getDoc } from "firebase/firestore";
 import { WorkspaceSection } from "@/components/layout/workspace-section";
 import { Button } from "@/components/ui/button";
@@ -47,6 +49,7 @@ import { cn } from "@/lib/utils";
 
 const employeeRepository = createEmployeeRbacRepository();
 const inviteRepository = createInviteRepository();
+const directoryRepository = createDirectoryRepository();
 
 const INVITE_ROLES: UserRole[] = [
   "mechanic",
@@ -159,7 +162,17 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
   const [selectedPermissions, setSelectedPermissions] = useState<Set<Permission>>(new Set());
   const [inviteStatusFilter, setInviteStatusFilter] = useState<InviteStatus | "all">("all");
   const [companyOwnerId, setCompanyOwnerId] = useState<string | null>(null);
+  const [directoryPeople, setDirectoryPeople] = useState<DirectoryPerson[]>([]);
+  const [directoryLoaded, setDirectoryLoaded] = useState(false);
+  const [directoryNameDraft, setDirectoryNameDraft] = useState("");
+  const [directoryInviteContext, setDirectoryInviteContext] = useState<{
+    personId: string;
+    personName: string;
+  } | null>(null);
   const memberId = searchParams.get("member");
+
+  const { preferences: accountingPreferences, savePreferences: saveAccountingPreferences } =
+    useAccountingPreferences(profile?.id ?? "");
 
   const canView = canViewEmployees(profile);
   const canManage = canManageEmployees(profile);
@@ -216,6 +229,28 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
     );
     return () => unsubscribe();
   }, [canManage, companyId, subscriptionsEnabled]);
+
+  useEffect(() => {
+    if (!subscriptionsEnabled || !canView) {
+      setDirectoryPeople([]);
+      setDirectoryLoaded(true);
+      return;
+    }
+
+    const unsubscribe = directoryRepository.subscribeDirectory(
+      companyId,
+      (next) => {
+        setDirectoryPeople(next);
+        setDirectoryLoaded(true);
+      },
+      (nextError) => {
+        console.warn("[employees] directory subscription failed:", nextError);
+        setDirectoryPeople([]);
+        setDirectoryLoaded(true);
+      },
+    );
+    return () => unsubscribe();
+  }, [canView, companyId, subscriptionsEnabled]);
 
   const activeCount = useMemo(
     () => (subscriptionsEnabled ? employees : []).filter((employee) => employee.isActive).length,
@@ -288,13 +323,87 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
     }
   }
 
+  function resetInviteDialog() {
+    setGeneratedCode(null);
+    setInviteRole("mechanic");
+    setInviteTtlHours(72);
+    setInviteEmail("");
+    setEmailInviteSent(null);
+    setEmailInviteJoinUrl(null);
+    setDirectoryInviteContext(null);
+  }
+
   function openInviteDialog() {
     requirePro("invite", () => {
-      setGeneratedCode(null);
-      setInviteRole("mechanic");
-      setInviteTtlHours(72);
+      resetInviteDialog();
       setInviteOpen(true);
     });
+  }
+
+  function openInviteForDirectory(person: DirectoryPerson) {
+    requirePro("invite", () => {
+      resetInviteDialog();
+      setDirectoryInviteContext({ personId: person.id, personName: person.name });
+      setInviteOpen(true);
+    });
+  }
+
+  async function markDirectoryInviteSent(inviteId: string | undefined) {
+    if (!companyId || !directoryInviteContext?.personId || !inviteId) return;
+    try {
+      await directoryRepository.markDirectoryPersonInvited({
+        companyId,
+        personId: directoryInviteContext.personId,
+        inviteId,
+      });
+    } catch (nextError) {
+      console.warn("[employees] could not link directory invite:", nextError);
+    }
+  }
+
+  async function addDirectoryName() {
+    if (!profile || !companyId || !canManage) return;
+    const name = directoryNameDraft.trim();
+    if (!name) return;
+
+    setBusy(true);
+    setError(null);
+    try {
+      await directoryRepository.createDirectoryPerson({
+        companyId,
+        name,
+        createdBy: profile.id,
+      });
+      setDirectoryNameDraft("");
+
+      const alreadyListed = accountingPreferences.employees.some(
+        (entry) => entry.toLocaleLowerCase() === name.toLocaleLowerCase(),
+      );
+      if (!alreadyListed) {
+        await saveAccountingPreferences({
+          employees: [...accountingPreferences.employees, name],
+          specifics: accountingPreferences.specifics,
+          isConfigured: true,
+        }).catch(() => undefined);
+      }
+    } catch (nextError) {
+      setError(mapEmployeeError(nextError));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeDirectoryPerson(person: DirectoryPerson) {
+    if (!companyId || !canManage) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await directoryRepository.removeDirectoryPerson(companyId, person.id);
+    } catch (nextError) {
+      setError(mapEmployeeError(nextError));
+    } finally {
+      setBusy(false);
+    }
   }
 
   useDeepAction({
@@ -349,11 +458,12 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
           ttlHours: inviteTtlHours,
         }),
       });
-      const payload = (await response.json()) as { error?: string; code?: string };
+      const payload = (await response.json()) as { error?: string; code?: string; inviteId?: string };
       if (!response.ok) {
         throw new Error(payload.error ?? userCopy.employees.errorCreateInvite);
       }
       setGeneratedCode(payload.code ?? null);
+      await markDirectoryInviteSent(payload.inviteId);
     } catch (nextError) {
       setError(mapEmployeeError(nextError));
     } finally {
@@ -397,11 +507,17 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
           ttlHours: inviteTtlHours,
         }),
       });
-      const payload = (await response.json()) as { error?: string; joinUrl?: string; email?: string };
+      const payload = (await response.json()) as {
+        error?: string;
+        joinUrl?: string;
+        email?: string;
+        inviteId?: string;
+      };
       if (!response.ok) {
         if (response.status === 503 && payload.joinUrl) {
           setEmailInviteJoinUrl(payload.joinUrl);
           setEmailInviteSent(userCopy.employees.mailNotConfigured);
+          await markDirectoryInviteSent(payload.inviteId);
           return;
         }
         throw new Error(payload.error ?? userCopy.employees.errorSendInvite);
@@ -409,6 +525,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
       setEmailInviteJoinUrl(payload.joinUrl ?? null);
       setEmailInviteSent(userCopy.employees.inviteSent(payload.email ?? email));
       setInviteEmail("");
+      await markDirectoryInviteSent(payload.inviteId);
     } catch (nextError) {
       setError(mapEmployeeError(nextError));
     } finally {
@@ -510,6 +627,119 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
 
   return (
     <section className={cn("flex w-full flex-col gap-8", !embedded && "mx-auto max-w-6xl gap-4")}>
+      {error ? (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+
+      <WorkspaceSection
+        embedded={embedded}
+        title={userCopy.employees.directory.sectionTitle}
+        description={userCopy.employees.directory.sectionDescription}
+      >
+        {canManage ? (
+          <div className="mb-4 flex gap-2">
+            <Input
+              value={directoryNameDraft}
+              onChange={(event) => setDirectoryNameDraft(event.target.value)}
+              placeholder={userCopy.employees.directory.addPlaceholder}
+              disabled={busy}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void addDirectoryName();
+                }
+              }}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy || directoryNameDraft.trim().length === 0}
+              onClick={() => void addDirectoryName()}
+            >
+              <Plus className="mr-2 size-4" />
+              {userCopy.employees.directory.addButton}
+            </Button>
+          </div>
+        ) : null}
+
+        {!directoryLoaded ? (
+          <div className="space-y-3">
+            {Array.from({ length: 2 }).map((_, index) => (
+              <Skeleton key={index} className="h-14 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : directoryPeople.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{userCopy.employees.directory.empty}</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{userCopy.employees.columns.employee}</TableHead>
+                <TableHead>{userCopy.employees.columns.status}</TableHead>
+                {canManage ? (
+                  <TableHead className="text-right">{userCopy.employees.columns.actions}</TableHead>
+                ) : null}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {directoryPeople.map((person) => (
+                <TableRow key={person.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-9 items-center justify-center rounded-full bg-muted">
+                        <Users className="size-4 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{person.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {person.status === "invited"
+                            ? userCopy.employees.directory.statusInvitedHint
+                            : userCopy.employees.directory.statusNamedHint}
+                        </p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={person.status === "invited" ? "secondary" : "outline"}>
+                      {person.status === "invited"
+                        ? userCopy.employees.directory.statusInvited
+                        : userCopy.employees.directory.statusNamed}
+                    </Badge>
+                  </TableCell>
+                  {canManage ? (
+                    <TableCell className="text-right">
+                      <div className="inline-flex items-center gap-2">
+                        {person.status === "named" ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={busy}
+                            onClick={() => openInviteForDirectory(person)}
+                          >
+                            {userCopy.employees.directory.invite}
+                          </Button>
+                        ) : null}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={busy}
+                          onClick={() => void removeDirectoryPerson(person)}
+                        >
+                          <Trash2 className="size-4" />
+                          <span className="sr-only">{userCopy.employees.directory.remove}</span>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  ) : null}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </WorkspaceSection>
+
       <WorkspaceSection
         embedded={embedded}
         title={userCopy.employees.title}
@@ -750,12 +980,20 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
         </WorkspaceSection>
       ) : null}
 
-      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+      <Dialog
+        open={inviteOpen}
+        onOpenChange={(open) => {
+          setInviteOpen(open);
+          if (!open) resetInviteDialog();
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{userCopy.employees.inviteDialogTitle}</DialogTitle>
             <DialogDescription>
-              {userCopy.employees.inviteDialogDescription}
+              {directoryInviteContext
+                ? userCopy.employees.inviteDialogForPerson(directoryInviteContext.personName)
+                : userCopy.employees.inviteDialogDescription}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">

@@ -1,6 +1,4 @@
-import { httpsCallable } from "firebase/functions";
-
-import { getFirebaseFunctions } from "@/infrastructure/firebase/client";
+import { getFirebaseAuth } from "@/infrastructure/firebase/client";
 
 import {
   motorNormalizeBatchResponseSchema,
@@ -9,7 +7,6 @@ import {
   MotorSheetResolveResponse,
 } from "@/lib/motors/import/ai-schemas";
 import { MotorImportAiRequest } from "@/lib/motors/import/types";
-import { MOTOR_IMPORT_AI_PROMPTS } from "@/lib/motors/import/ai-prompts";
 import {
   ColumnMapAiResponse,
   columnMapAiResponseSchema,
@@ -20,46 +17,62 @@ import {
 } from "@/lib/warehouse/import/ai-schemas";
 import { WarehouseImportAiRequest } from "@/lib/warehouse/import/types";
 
+/**
+ * Browser-side entry point for Magic Import's AI.
+ *
+ * This used to call a Firebase callable named `warehouseImportAI`. No such function exists
+ * in this repository or in the deployed project, so every call threw `functions/not-found`,
+ * the pipelines caught it, and both importers silently ran without AI. Requests now go to
+ * `/api/import-ai`, which authenticates the user and holds the OpenRouter credential.
+ */
+
 type ImportAiRequest = WarehouseImportAiRequest | MotorImportAiRequest;
 
-type AiCallableResponse = {
-  result: unknown;
-};
+const IMPORT_AI_ENDPOINT = "/api/import-ai";
 
-function mapCallableError(error: unknown): Error {
-  const code =
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    typeof (error as { code?: unknown }).code === "string"
-      ? (error as { code: string }).code
-      : "";
+async function readAuthToken(): Promise<string | null> {
+  const auth = getFirebaseAuth();
+  return (await auth.currentUser?.getIdToken()) ?? null;
+}
 
-  if (code === "functions/not-found" || code === "functions/unimplemented") {
+function mapImportAiError(status: number, message: string): Error {
+  if (status === 402) {
+    return new Error("Magic Import доступен на тарифе Pro.");
+  }
+  if (status === 503) {
     return new Error(
-      "Magic Import не настроен на сервере. Обратитесь в поддержку или импортируйте файл вручную.",
+      message || "AI импорта не настроен на сервере. Импортируйте файл без Magic Import.",
     );
   }
-
-  if (error instanceof Error) return error;
-  return new Error("AI import request failed");
+  return new Error(message || `AI запрос не удался (${status})`);
 }
 
 export async function callImportAi<T>(
   request: ImportAiRequest,
   schema: { parse: (value: unknown) => T },
 ): Promise<T> {
-  try {
-    const functions = getFirebaseFunctions();
-    const callable = httpsCallable<ImportAiRequest, AiCallableResponse>(
-      functions,
-      "warehouseImportAI",
-    );
-    const response = await callable(request);
-    return schema.parse(response.data?.result ?? response.data);
-  } catch (error) {
-    throw mapCallableError(error);
+  const token = await readAuthToken();
+  if (!token) throw new Error("Требуется авторизация");
+
+  const response = await fetch(IMPORT_AI_ENDPOINT, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as {
+    result?: unknown;
+    error?: string;
+  };
+
+  if (!response.ok) {
+    throw mapImportAiError(response.status, payload.error ?? "");
   }
+
+  return schema.parse(payload.result);
 }
 
 export async function callWarehouseImportAi<T>(
@@ -124,7 +137,6 @@ export async function requestAiMotorSheetResolve(
       sheets,
       catalog,
       specificCategories,
-      aiPrompts: MOTOR_IMPORT_AI_PROMPTS,
     },
     motorSheetResolveResponseSchema,
   );
@@ -148,7 +160,7 @@ export async function requestAiMotorNormalizeBatch(
   }>,
 ): Promise<MotorNormalizeBatchResponse> {
   return callImportAi(
-    { kind: "motorNormalizeBatch", companyId, items, aiPrompts: MOTOR_IMPORT_AI_PROMPTS },
+    { kind: "motorNormalizeBatch", companyId, items },
     motorNormalizeBatchResponseSchema,
   );
 }

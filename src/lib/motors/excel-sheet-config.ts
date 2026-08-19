@@ -1,11 +1,7 @@
-import { normalizeHeader, parseSheetBrandEngine, isLikelySoldSheetName } from "@/lib/motors/excel-column-mapping";
-import {
-  detectBrandInSheetName,
-  detectEngineCodeInSheetName,
-  normalizeEngineCode,
-  resolveBrandDisplayName,
-} from "@/lib/motors/import-normalization";
-import { coerceBrandEnginePair, resolveSheetBrandAndEngine } from "@/lib/motors/import/brand-engine-intelligence";
+import { normalizeHeader, isLikelySoldSheetName } from "@/lib/motors/excel-column-mapping";
+import { normalizeEngineCode } from "@/lib/motors/import-normalization";
+import { coerceBrandEnginePair } from "@/lib/motors/import/brand-engine-intelligence";
+import { resolveSheetIdentity } from "@/lib/motors/import/sheet-structure";
 import {
   isLikelyMotorCatalogName,
   isLikelySpecificSheetName,
@@ -23,6 +19,10 @@ export type SheetImportConfig = {
   customBrand: string;
   customEngineCode: string;
   categoryName: string;
+  /** Every engine family the sheet covers, primary first — empty for specific sheets. */
+  engineFamilies?: string[];
+  /** Operational qualifier the whole sheet imposes, written into CONFIGURATION. */
+  sheetQualifier?: string;
 };
 
 function suggestImportType(
@@ -46,39 +46,33 @@ function suggestImportType(
   return suggested;
 }
 
+/**
+ * Read a sheet's identity from its tab name *and* its title rows.
+ *
+ * The tab name alone is not enough in real workbooks: `201-204-205` says nothing about the
+ * brand, `EJ 251` says nothing either, and the title row above the header (`SUBARU-EJ251`,
+ * `SUBARU-204`) is what actually names both.
+ */
 export function createSheetImportConfig(sheetName: string, rows: string[][]): SheetImportConfig {
-  const parsed = parseSheetBrandEngine(sheetName);
-  const resolved = parsed ?? resolveSheetBrandAndEngine(sheetName);
+  const identity = resolveSheetIdentity(sheetName, rows);
 
-  let customBrand = "";
-  let customEngineCode = "";
+  const coerced = coerceBrandEnginePair(identity.brandName, identity.engineCode, { sheetName });
+  const customBrand = coerced.brand;
+  const customEngineCode = coerced.engine;
 
-  if (parsed) {
-    customBrand = resolveBrandDisplayName(parsed.brandName);
-    customEngineCode = normalizeEngineCode(parsed.engineCode);
-  } else {
-    customBrand = detectBrandInSheetName(sheetName);
-    customEngineCode = detectEngineCodeInSheetName(sheetName);
-  }
-
-  const coerced = coerceBrandEnginePair(customBrand, customEngineCode, { sheetName });
-  customBrand = coerced.brand;
-  customEngineCode = coerced.engine;
-
-  if (!customBrand && !customEngineCode && resolved.brandName) {
-    customBrand = resolved.brandName;
-    customEngineCode = resolved.engineCode;
-  }
+  const identityHasMotorSignal = Boolean(customBrand || customEngineCode || identity.qualifier);
 
   return {
     id: crypto.randomUUID(),
     sheetName,
     rowCount: rows.length,
     previewRows: rows.slice(0, 3),
-    importType: suggestImportType(sheetName, customBrand, customEngineCode),
+    importType: suggestImportType(sheetName, customBrand, customEngineCode, identityHasMotorSignal),
     customBrand,
     customEngineCode,
     categoryName: sheetName,
+    engineFamilies: identity.families,
+    sheetQualifier: identity.qualifier,
   };
 }
 

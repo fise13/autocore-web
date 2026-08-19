@@ -850,9 +850,6 @@
   .inline {
     display: inline;
   }
-  .inline\! {
-    display: inline !important;
-  }
   .inline-block {
     display: inline-block;
   }
@@ -861,9 +858,6 @@
   }
   .table {
     display: table;
-  }
-  .table\! {
-    display: table !important;
   }
   .table-caption {
     display: table-caption;
@@ -3706,10 +3700,6 @@
   .italic {
     font-style: italic;
   }
-  .ordinal {
-    --tw-ordinal: ordinal;
-    font-variant-numeric: var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,);
-  }
   .tabular-nums {
     --tw-numeric-spacing: tabular-nums;
     font-variant-numeric: var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,);
@@ -4202,6 +4192,9 @@
   }
   .\[overflow-anchor\:none\] {
     overflow-anchor: none;
+  }
+  .\[tauri\:build\] {
+    tauri: build;
   }
   .\[tauri\:publish\] {
     tauri: publish;

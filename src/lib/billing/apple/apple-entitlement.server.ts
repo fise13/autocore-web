@@ -21,7 +21,11 @@ import {
 /**
  * Writes the entitlement Apple purchases produce.
  *
- * The document is the same one Stripe and the internal trial write —
+ * Period end and trial vs paid come from the verified StoreKit 2 transaction
+ * (`expiresDate`, `offerType`) and later App Store Server Notifications — this
+ * module never invents a trial timer or charges the customer.
+ *
+ * The document is the same one Stripe and the legacy web trial write —
  * `companies/{companyId}/billing/subscription` — so web, mobile and desktop all
  * keep reading one fact through `@autocore/billing`. Only `provider` says who
  * last owned it.
@@ -144,8 +148,8 @@ export async function applyAppleTransaction(options: {
       appleTransactionId: transaction.transactionId ?? null,
       appleEnvironment: transaction.environment ?? null,
       willAutoRenew: willAutoRenew(renewal),
-      // Buying Pro consumes the internal trial: a company should not get 14 more
-      // free days by cancelling Apple and asking for the in-app trial instead.
+      // Blocks the legacy web start-trial API. Apple introductory-offer state
+      // is `offerType` + `expiresDate` on the transaction, not this flag.
       trialUsed: true,
       ...(periodEnd ? { currentPeriodEnd: Timestamp.fromDate(periodEnd) } : {}),
       ...(revoked ? { revokedAt: FieldValue.serverTimestamp() } : {}),

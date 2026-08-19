@@ -23,6 +23,7 @@ const MESSAGES: Record<PurchaseFailureCode, string> = {
   verification_failed: 'We could not verify your purchase. No charge was applied twice — contact support if this persists.',
   bound_to_other_company: 'This Apple subscription is already used by another workspace.',
   permission_denied: 'Only the workspace owner can manage the subscription.',
+  sheet_timeout: 'Apple did not open the payment sheet. Try again.',
   unknown: 'Something went wrong with the purchase. Please try again.',
 };
 
@@ -51,8 +52,36 @@ const CODE_MAP: Partial<Record<ErrorCode, PurchaseFailureCode>> = {
   [ErrorCode.PurchaseVerificationFailed]: 'verification_failed',
 };
 
-export function failure(code: PurchaseFailureCode, debugMessage?: string): PurchaseFailure {
-  return { code, message: MESSAGES[code], debugMessage };
+export function failure(
+  code: PurchaseFailureCode,
+  debugMessage?: string,
+  cause?: string,
+): PurchaseFailure {
+  return { code, message: MESSAGES[code], debugMessage, cause };
+}
+
+const CATALOG_NOISE = new Set<string>([ErrorCode.QueryProduct, ErrorCode.SkuNotFound]);
+
+const IN_FLIGHT_GHOST_CODES = new Set<PurchaseFailureCode>([
+  'not_available',
+  'unknown',
+  'network',
+  'not_connected',
+  'store_unavailable',
+]);
+
+/** OpenIAP catalog lookups, not a failed buy. Never a paywall banner. */
+export function isCatalogNoise(value: PurchaseFailure): boolean {
+  return Boolean(value.cause && CATALOG_NOISE.has(value.cause));
+}
+
+/**
+ * OpenIAP / StoreKit often emit a failure a beat before `Transaction.updates`
+ * delivers the purchase. Painting that makes a successful buy look broken.
+ */
+export function isInFlightGhostError(value: PurchaseFailure): boolean {
+  if (isCatalogNoise(value)) return true;
+  return IN_FLIGHT_GHOST_CODES.has(value.code);
 }
 
 function readErrorCode(error: unknown): ErrorCode | null {
@@ -69,7 +98,7 @@ export function toPurchaseFailure(error: unknown): PurchaseFailure {
 
   const storeCode = readErrorCode(error);
   if (storeCode) {
-    return failure(CODE_MAP[storeCode] ?? 'unknown', debugMessage);
+    return failure(CODE_MAP[storeCode] ?? 'unknown', debugMessage, storeCode);
   }
 
   // Verification is an HTTP round-trip through our own API, not StoreKit.

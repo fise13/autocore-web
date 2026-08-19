@@ -15,6 +15,7 @@ import {
   finishTransaction,
   getActiveSubscriptions,
   getAvailablePurchases,
+  getTransactionJwsIOS,
   initConnection,
   isEligibleForIntroOfferIOS,
   purchaseErrorListener,
@@ -29,8 +30,14 @@ import {
 } from 'react-native-iap';
 
 import { allStoreSkus, planForSku, skuForPlan, type PlanDescriptor } from './catalog';
-import { failure, toPurchaseFailure } from './purchase-errors';
-import type { IntroOffer, PurchaseFailure, StoreProduct } from './types';
+import {
+  readIntroOfferFromProduct,
+  readSubscriptionGroupId,
+  type RawStoreProduct,
+} from './intro-offer';
+import { failure, isInFlightGhostError, toPurchaseFailure } from './purchase-errors';
+import { iapTrace } from './iap-trace';
+import type { PurchaseFailure, StoreProduct } from './types';
 
 type PurchaseHandler = (purchase: Purchase) => void;
 type FailureHandler = (value: PurchaseFailure) => void;
@@ -39,6 +46,10 @@ const isSupportedPlatform = Platform.OS === 'ios' || Platform.OS === 'android';
 
 let connected = false;
 let connecting: Promise<boolean> | null = null;
+let purchaseReady = false;
+let preparingPurchase: Promise<boolean> | null = null;
+/** True between a user tap and the matching StoreKit event. Blocks catalog refetches. */
+let purchaseInFlight = false;
 let listenersInstalled = false;
 let purchaseSubscription: { remove(): void } | null = null;
 let errorSubscription: { remove(): void } | null = null;
@@ -50,12 +61,141 @@ const failureHandlers = new Set<FailureHandler>();
 /** Cached normalized products, keyed by SKU. Cleared on sign-out. */
 const productCache = new Map<string, StoreProduct>();
 
+/** SKUs last fetched as `subs` this connection — native `productTypeBySku` is primed. */
+const warmedSkus = new Set<string>();
+
+/** Apple requires a UUID; anything else makes StoreKit skip the token or fail oddly. */
+const APP_ACCOUNT_TOKEN_UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function rememberFetchedSkus(ids: readonly string[]): void {
+  for (const id of ids) warmedSkus.add(id);
+}
+
+async function warmSubscriptionCatalog(): Promise<void> {
+  const skus = allStoreSkus();
+  if (skus.length === 0 || !connected || purchaseInFlight) return;
+  try {
+    const result = await fetchProducts({ skus, type: 'subs' });
+    const items = Array.isArray(result) ? result : [];
+    rememberFetchedSkus(items.map((item) => item.id));
+    for (const item of items) {
+      const normalized = normalizeProduct(item);
+      if (normalized) productCache.set(normalized.sku, normalized);
+    }
+  } catch {
+    // Next tap / foreground retries. Never throw into AppState.
+  }
+}
+
+/**
+ * Fetch this subscription SKU as `subs` so OpenIAP records `productTypeBySku`
+ * as a subscription. A cache miss at purchase time falls through to
+ * `Product.products(for:)` which, for monthly, often never returns in sandbox.
+ */
+export async function warmSubscriptionSku(sku: string): Promise<boolean> {
+  if (!sku || !isSupportedPlatform) return false;
+  if (purchaseInFlight) {
+    iapTrace('warm:skip-in-flight', { sku, warmed: warmedSkus.has(sku) });
+    return warmedSkus.has(sku);
+  }
+  if (warmedSkus.has(sku) && connected) {
+    iapTrace('warm:cached', { sku });
+    return true;
+  }
+  iapTrace('warm:start', { sku });
+  if (!(await connect())) {
+    iapTrace('warm:connect-failed', { sku });
+    return false;
+  }
+  if (purchaseInFlight) return warmedSkus.has(sku);
+  try {
+    const result = await fetchProducts({ skus: [sku], type: 'subs' });
+    const items = Array.isArray(result) ? result : [];
+    rememberFetchedSkus(items.map((item) => item.id));
+    for (const item of items) {
+      const normalized = normalizeProduct(item);
+      if (normalized) productCache.set(normalized.sku, normalized);
+    }
+    const ok = items.some((item) => item.id === sku);
+    iapTrace('warm:done', { sku, ok, count: items.length });
+    return ok;
+  } catch (error) {
+    iapTrace('warm:error', { sku, message: error instanceof Error ? error.message : String(error) });
+    return warmedSkus.has(sku);
+  }
+}
+
+export function isPurchaseInFlight(): boolean {
+  return purchaseInFlight;
+}
+
+export function isSubscriptionSkuWarmed(sku: string): boolean {
+  return warmedSkus.has(sku);
+}
+
+export function warmedSubscriptionSkus(): string[] {
+  return Array.from(warmedSkus);
+}
+
+/**
+ * Connect and cache every subscription SKU so `requestPurchase` hits StoreKit's
+ * product cache on the tap's call stack.
+ *
+ * Do not finish transactions here. Blind `finishTransaction` on every restorable
+ * purchase races the yearly/monthly listener and can stall for minutes in sandbox.
+ */
+export async function ensurePurchaseReady(): Promise<boolean> {
+  if (!isSupportedPlatform) return false;
+  if (purchaseReady && connected) return true;
+  if (preparingPurchase) return preparingPurchase;
+
+  preparingPurchase = (async () => {
+    iapTrace('ensureReady:start');
+    if (!(await connect())) {
+      iapTrace('ensureReady:connect-failed');
+      return false;
+    }
+    await warmSubscriptionCatalog();
+    purchaseReady = true;
+    iapTrace('ensureReady:done', { warmed: warmedSubscriptionSkus() });
+    return true;
+  })()
+    .catch(() => false)
+    .finally(() => {
+      preparingPurchase = null;
+    });
+
+  return preparingPurchase;
+}
+
 function emitPurchase(purchase: Purchase): void {
+  purchaseInFlight = false;
+  iapTrace('listener:purchase', {
+    id: purchase.id,
+    sku: purchase.productId,
+    state: purchase.purchaseState,
+  });
   for (const handler of purchaseHandlers) handler(purchase);
 }
 
 function emitFailure(value: PurchaseFailure): void {
+  const ghost = isInFlightGhostError(value);
+  if (!ghost) {
+    purchaseInFlight = false;
+  }
+  iapTrace('listener:error', {
+    code: value.code,
+    cause: value.cause,
+    debug: value.debugMessage,
+    ignored: ghost,
+  });
   for (const handler of failureHandlers) handler(value);
+}
+
+/** Call when a buy is abandoned (cancel / real failure) so catalog fetches may resume. */
+export function abortPurchaseInFlight(): void {
+  purchaseInFlight = false;
 }
 
 /**
@@ -75,6 +215,7 @@ export function installListeners(): void {
   // would crash here at mount. Degrade to "no store" instead — every caller
   // already handles an unavailable store.
   try {
+    // StoreKit 2 `Transaction.updates` — purchases, renewals, Ask-to-Buy, refunds.
     purchaseSubscription = purchaseUpdatedListener((purchase) => {
       emitPurchase(purchase);
     });
@@ -87,12 +228,22 @@ export function installListeners(): void {
     errorSubscription = null;
   }
 
-  // A backgrounded app can have its store connection torn down; reconnect so
-  // the first purchase after resume does not fail with `not_connected`.
+  // Warm the store and clear unfinished transactions before the paywall tap.
+  // `Product.purchase` must run in the same call stack as the press.
+  void ensurePurchaseReady();
+
+  // A backgrounded app can have its store connection torn down; reconnect and
+  // re-fetch SKUs so the next tap hits StoreKit's product cache, not a live
+  // `Product.products(for:)` round-trip that hangs in sandbox for minutes.
   appStateSubscription = AppState.addEventListener('change', (state: AppStateStatus) => {
-    if (state === 'active' && !connected) {
-      void connect().catch(() => undefined);
-    }
+    if (state !== 'active') return;
+    // Returning from Apple's sheet sets `active`. Do not fetchProducts here —
+    // that round-trip hangs in sandbox and OpenIAP emits QueryProduct onto the
+    // purchase error listener, which we used to surface as "not available".
+    if (purchaseInFlight) return;
+    if (connected) return;
+    purchaseReady = false;
+    void ensurePurchaseReady().catch(() => undefined);
   });
 }
 
@@ -120,13 +271,17 @@ export async function connect(): Promise<boolean> {
   if (connected) return true;
   if (connecting) return connecting;
 
+  iapTrace('connect:start');
+
   connecting = initConnection()
     .then((result) => {
       connected = result;
+      iapTrace('connect:done', { ok: result });
       return result;
     })
-    .catch(() => {
+    .catch((error) => {
       connected = false;
+      iapTrace('connect:error', { message: error instanceof Error ? error.message : String(error) });
       return false;
     })
     .finally(() => {
@@ -138,6 +293,9 @@ export async function connect(): Promise<boolean> {
 
 export async function disconnect(): Promise<void> {
   productCache.clear();
+  warmedSkus.clear();
+  purchaseReady = false;
+  purchaseInFlight = false;
   if (!connected) return;
   try {
     await endConnection();
@@ -166,53 +324,15 @@ export function teardown(): void {
 // Products
 // ---------------------------------------------------------------------------
 
-function periodUnit(value: string | null | undefined): IntroOffer['periodUnit'] | null {
-  switch (value) {
-    case 'day':
-    case 'week':
-    case 'month':
-    case 'year':
-      return value;
-    default:
-      return null;
-  }
-}
-
-function readIntroOffer(product: ProductSubscription): IntroOffer | null {
-  // Preferred: the cross-platform normalized offer list.
-  const offer = product.subscriptionOffers?.find((entry) => entry.type === 'introductory');
-  if (offer) {
-    const unit = periodUnit(offer.period?.unit);
-    if (unit) {
-      return {
-        displayPrice: offer.displayPrice,
-        periodCount: offer.periodCount ?? 1,
-        periodUnit: unit,
-        isFreeTrial: offer.paymentMode === 'free-trial' || offer.price === 0,
-      };
-    }
-  }
-
-  // Fallback: iOS-specific introductory fields.
-  if (product.platform === 'ios') {
-    const unit = periodUnit(product.introductoryPriceSubscriptionPeriodIOS);
-    if (unit && product.introductoryPriceIOS) {
-      const periods = Number(product.introductoryPriceNumberOfPeriodsIOS ?? '1');
-      return {
-        displayPrice: product.introductoryPriceIOS,
-        periodCount: Number.isFinite(periods) && periods > 0 ? periods : 1,
-        periodUnit: unit,
-        isFreeTrial: product.introductoryPricePaymentModeIOS === 'free-trial',
-      };
-    }
-  }
-
-  return null;
+function asRawProduct(product: Product | ProductSubscription): RawStoreProduct {
+  return product as unknown as RawStoreProduct;
 }
 
 function normalizeProduct(product: Product | ProductSubscription): StoreProduct | null {
   const plan = planForSku(product.id);
   if (!plan) return null;
+
+  const raw = asRawProduct(product);
 
   return {
     planId: plan.id,
@@ -225,7 +345,8 @@ function normalizeProduct(product: Product | ProductSubscription): StoreProduct 
     title: product.title,
     description: product.description,
     interval: plan.interval,
-    introOffer: product.type === 'subs' ? readIntroOffer(product as ProductSubscription) : null,
+    introOffer: product.type === 'subs' ? readIntroOfferFromProduct(raw) : null,
+    subscriptionGroupIdIOS: readSubscriptionGroupId(raw) ?? plan.subscriptionGroupIdIOS,
   };
 }
 
@@ -237,6 +358,7 @@ function normalizeProduct(product: Product | ProductSubscription): StoreProduct 
  */
 export async function loadProducts(): Promise<StoreProduct[]> {
   if (!isSupportedPlatform) return [];
+  if (purchaseInFlight) return Array.from(productCache.values());
   const skus = allStoreSkus();
   if (skus.length === 0) return [];
 
@@ -245,7 +367,10 @@ export async function loadProducts(): Promise<StoreProduct[]> {
   }
 
   try {
+    iapTrace('catalog:start', { skus: skus.length });
     const result = await fetchProducts({ skus, type: 'subs' });
+    if (purchaseInFlight) return Array.from(productCache.values());
+
     const items = Array.isArray(result) ? result : [];
 
     const normalized = items
@@ -254,10 +379,13 @@ export async function loadProducts(): Promise<StoreProduct[]> {
 
     for (const product of normalized) {
       productCache.set(product.sku, product);
+      warmedSkus.add(product.sku);
     }
 
+    iapTrace('catalog:done', { count: normalized.length, skus: normalized.map((item) => item.sku) });
     return normalized;
   } catch (error) {
+    iapTrace('catalog:error', { message: error instanceof Error ? error.message : String(error) });
     throw toPurchaseFailure(error);
   }
 }
@@ -267,17 +395,18 @@ export function cachedProduct(sku: string): StoreProduct | null {
 }
 
 /**
- * Whether the Apple ID is eligible for the introductory offer on this plan's
- * subscription group. Apple decides this, not us — a returning subscriber is
- * ineligible and must never be shown a "free trial" button.
+ * Whether this Apple ID may still use the introductory offer on the AutoCore
+ * Pro group — StoreKit 2 `Product.SubscriptionInfo.isEligibleForIntroOffer`.
+ *
+ * One intro per Apple ID per group: monthly and yearly share it. Returning
+ * `false` on failure so the paywall never flashes a trial Apple will refuse.
  */
-export async function isEligibleForIntroOffer(plan: PlanDescriptor): Promise<boolean> {
-  if (Platform.OS !== 'ios' || !plan.subscriptionGroupIdIOS) return false;
+export async function isEligibleForIntroOffer(groupId: string | null): Promise<boolean> {
+  if (Platform.OS !== 'ios' || !groupId) return false;
   if (!(await connect())) return false;
   try {
-    return await isEligibleForIntroOfferIOS(plan.subscriptionGroupIdIOS);
+    return await isEligibleForIntroOfferIOS(groupId);
   } catch {
-    // Eligibility is an optimization; never block the paywall on it.
     return false;
   }
 }
@@ -287,43 +416,79 @@ export async function isEligibleForIntroOffer(plan: PlanDescriptor): Promise<boo
 // ---------------------------------------------------------------------------
 
 /**
- * Start a purchase. The **result arrives through `onPurchase`**, not the return
- * value — StoreKit is event-based and a resolved promise here only means the
- * request was dispatched.
+ * Start a purchase. The **result arrives through `onPurchase` / `onPurchaseFailure`**,
+ * not this promise. `requestPurchase` stays pending until Apple dismisses the
+ * sheet — awaiting it keeps the paywall spinning after a successful yearly buy.
  *
- * `appAccountToken` binds the transaction to a (user, company) pair so the
- * server can tell which workspace a receipt belongs to.
+ * Dispatch on this call stack. Do not await connect/fetch/finish here.
  */
-export async function purchase(plan: PlanDescriptor, appAccountToken: string): Promise<void> {
+export function purchase(plan: PlanDescriptor, appAccountToken?: string | null): Promise<void> {
   const sku = skuForPlan(plan);
-  if (!sku) throw failure('not_available');
+  if (!sku) return Promise.reject(failure('not_available'));
 
-  if (!(await connect())) {
-    throw failure('not_connected');
+  const apple: {
+    sku: string;
+    appAccountToken?: string;
+  } = { sku };
+  if (appAccountToken && APP_ACCOUNT_TOKEN_UUID.test(appAccountToken)) {
+    apple.appAccountToken = appAccountToken;
   }
 
-  try {
-    await requestPurchase({
+  const dispatch = (): void => {
+    purchaseInFlight = true;
+    iapTrace('requestPurchase', { sku, hasToken: Boolean(apple.appAccountToken) });
+    void requestPurchase({
       type: 'subs',
-      request: {
-        apple: {
-          sku,
-          appAccountToken,
-          // We finish the transaction ourselves, only after the server has
-          // verified it. Auto-finishing would drop unverified purchases.
-          andDangerouslyFinishTransactionAutomatically: false,
-        },
-        google: {
-          skus: [sku],
-        },
-      },
+      request: { apple },
+    }).catch((error) => {
+      iapTrace('requestPurchase:catch', {
+        sku,
+        message: error instanceof Error ? error.message : String(error),
+        code: typeof error === 'object' && error !== null && 'code' in error ? String((error as { code?: unknown }).code) : undefined,
+      });
+      emitFailure(toPurchaseFailure(error));
     });
-  } catch (error) {
-    throw toPurchaseFailure(error);
+  };
+
+  if (connected) {
+    iapTrace('purchase:dispatch', { sku });
+    dispatch();
+    return Promise.resolve();
+  }
+
+  iapTrace('purchase:connect-then-dispatch', { sku });
+  void connect().then((ok) => {
+    if (!ok) {
+      emitFailure(failure('not_connected'));
+      return;
+    }
+    dispatch();
+  });
+  return Promise.resolve();
+}
+
+/**
+ * StoreKit 2 `Transaction.VerificationResult` plus the signed JWS.
+ *
+ * The JWS is what the server re-fetches from Apple. `isTransactionVerifiedIOS`
+ * returning false must not drop a transaction that still carries a token —
+ * sandbox and some library versions report that helper incorrectly, which
+ * left the paywall on a false "couldn't be completed".
+ */
+export async function verifiedPurchaseToken(purchase: Purchase): Promise<string | null> {
+  if (Platform.OS !== 'ios') return purchase.purchaseToken ?? null;
+
+  const attached = purchase.purchaseToken ?? null;
+  if (attached) return attached;
+
+  try {
+    return (await getTransactionJwsIOS(purchase.productId)) ?? null;
+  } catch {
+    return null;
   }
 }
 
-/** Finalize a transaction. Call only after server-side verification succeeds. */
+/** Finalize a transaction so StoreKit will present the next sheet. */
 export async function finish(value: Purchase): Promise<void> {
   try {
     await finishTransaction({ purchase: value, isConsumable: false });
@@ -349,7 +514,7 @@ export async function listPurchases(activeOnly = true): Promise<Purchase[]> {
   }
 }
 
-/** What StoreKit itself believes is active on this device, right now. */
+/** StoreKit 2 `Transaction.currentEntitlements` for our known SKUs. */
 export async function listActiveSubscriptions(): Promise<ActiveSubscription[]> {
   if (!isSupportedPlatform) return [];
   if (!(await connect())) return [];

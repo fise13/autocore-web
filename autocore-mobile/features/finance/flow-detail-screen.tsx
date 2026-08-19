@@ -7,6 +7,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { Screen, ScreenScroll, Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { operationCategoryLabel } from '@/lib/accounting/labels';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 
 import { FinDetailHeader } from './components/fin-detail-header';
 import {
@@ -45,6 +46,7 @@ const MAX_OPERATIONS = 30;
 export function FinanceFlowDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useTheme();
+  useMoneyFormatRevision();
   const { model, operations, workOrderNumbers } = useFinanceModel();
   const windowOperations = useWindowOperations(model, operations);
 

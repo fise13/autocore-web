@@ -13,10 +13,9 @@ import {
   OperationsLiveActivity,
 } from './operations-live-activity';
 import { AutoCoreIntakeWidget } from './widgets/intake-bay-widget';
-import { AutoCoreSyncWidget } from './widgets/sync-widget';
+import { AutoCorePayWidget } from './widgets/pay-widget';
+import { AutoCoreScanWidget } from './widgets/scan-widget';
 import { AutoCoreTodayWidget } from './widgets/today-widget';
-import { AutoCoreWarehouseWidget } from './widgets/warehouse-widget';
-import { AutoCoreWorkWidget } from './widgets/work-orders-widget';
 
 export function assertLiveActivityAppGroup(): void {
   if (Platform.OS !== 'ios') return;
@@ -40,8 +39,7 @@ export function assertLiveActivityAppGroup(): void {
 
 // Touch the factories so Metro does not tree-shake the modules.
 void OperationsLiveActivity;
-void AutoCoreSyncWidget;
 void AutoCoreTodayWidget;
-void AutoCoreWorkWidget;
-void AutoCoreWarehouseWidget;
+void AutoCoreScanWidget;
 void AutoCoreIntakeWidget;
+void AutoCorePayWidget;

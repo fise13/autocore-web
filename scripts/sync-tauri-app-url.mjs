@@ -61,12 +61,15 @@ function resolveDesktopAppUrl() {
   return `${DEFAULT_APP_ORIGIN}/login?desktop=1`;
 }
 
+/**
+ * Only `devUrl` is derived. Everything else in tauri.conf.json is authored by
+ * hand, and rewriting it here used to leave the committed file dirty after every
+ * build for no reason.
+ */
 function syncTauriConf(appUrl) {
   const conf = JSON.parse(readFileSync(CONF_FILE, "utf8"));
+  if (conf.build.devUrl === appUrl) return;
   conf.build.devUrl = appUrl;
-  conf.build.beforeDevCommand = "";
-  conf.build.beforeBuildCommand = "node scripts/sync-tauri-app-url.mjs";
-  delete conf.bundle.resources;
   writeFileSync(CONF_FILE, `${JSON.stringify(conf, null, 2)}\n`);
 }
 

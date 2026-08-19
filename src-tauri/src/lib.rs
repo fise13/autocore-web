@@ -1,121 +1,135 @@
-use std::time::{SystemTime, UNIX_EPOCH};
+//! AutoCore desktop shell.
+//!
+//! The shell is deliberately thin. AutoCore's UI, routing and business logic are
+//! the same Next.js application that serves the web product; this binary hosts it
+//! in a native window and adds the things a browser tab already had and a webview
+//! does not: a real menu, file save dialogs, printing, deep links, window state
+//! and updates.
+//!
+//! Nothing here reimplements product behaviour, and no product logic moves into
+//! Rust. See `docs/DESKTOP-ARCHITECTURE.md` for why the app is loaded from its
+//! hosted origin rather than bundled as static assets.
 
-use tauri::webview::NewWindowResponse;
-use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
+mod commands;
+mod config;
+mod deep_link;
+mod menu;
+mod security;
+mod updater;
+mod window;
 
-const DESKTOP_APP_URL: &str = include_str!("../desktop-app-url.txt");
-const APP_TITLE: &str = "AutoCore";
-const DESKTOP_UA_TOKEN: &str = "AutoCoreDesktop/1.0";
+// Brings `add_capability` into scope; only the debug-only calls below use it.
+#[cfg(debug_assertions)]
+use tauri::Manager;
 
-const MACOS_SAFARI_UA: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15";
-const WINDOWS_EDGE_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 Edg/127.0.0.0";
+/// Capability granted only to debug builds, so a developer can point the shell at
+/// `next dev` on localhost. Release binaries never carry it: capabilities are
+/// compiled in, so this is added at runtime under `debug_assertions` instead of
+/// living in `capabilities/`, where it would ship to users.
+#[cfg(debug_assertions)]
+const DEV_LOCALHOST_CAPABILITY: &str = r#"{
+  "identifier": "dev-localhost",
+  "description": "Local Next.js dev server inside the desktop shell (debug builds only)",
+  "windows": ["main", "product-*"],
+  "remote": { "urls": ["http://localhost:*/*", "http://127.0.0.1:*/*"] },
+  "permissions": [
+    "core:event:default",
+    "core:window:allow-set-title",
+    "core:webview:allow-set-webview-zoom",
+    "opener:allow-open-url",
+    "opener:allow-default-urls",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text",
+    "notification:default",
+    "allow-desktop-save-file",
+    "allow-desktop-print-document",
+    "allow-desktop-print-page",
+    "allow-desktop-info"
+  ]
+}"#;
 
-fn desktop_user_agent() -> String {
-    let base = if cfg!(target_os = "macos") {
-        MACOS_SAFARI_UA
-    } else {
-        WINDOWS_EDGE_UA
-    };
-    format!("{base} {DESKTOP_UA_TOKEN}")
-}
-
-fn trimmed_desktop_url() -> Result<url::Url, String> {
-    DESKTOP_APP_URL
-        .trim()
-        .parse()
-        .map_err(|error: url::ParseError| error.to_string())
-}
-
-fn is_oauth_popup_url(url: &url::Url) -> bool {
-    let host = url.host_str().unwrap_or_default().to_lowercase();
-    host.contains("appleid.apple.com")
-        || host.contains("idmsa.apple.com")
-        || host.contains("apple.com")
-        || host.contains("accounts.google.com")
-}
-
-fn oauth_window_label() -> String {
-    let millis = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_millis())
-        .unwrap_or(0);
-    format!("oauth-{millis}")
-}
-
-fn build_main_window(app: &tauri::AppHandle) -> Result<tauri::WebviewWindow, String> {
-    let app_url = trimmed_desktop_url()?;
-    let app_handle = app.clone();
-    let user_agent = desktop_user_agent();
-
-    WebviewWindowBuilder::new(app, "main", WebviewUrl::External(app_url))
-        .title(APP_TITLE)
-        .user_agent(&user_agent)
-        .inner_size(1400.0, 900.0)
-        .min_inner_size(1024.0, 700.0)
-        .center()
-        .on_new_window(move |url, features| {
-            if !is_oauth_popup_url(&url) {
-                return NewWindowResponse::Deny;
-            }
-
-            let label = oauth_window_label();
-            match WebviewWindowBuilder::new(&app_handle, &label, WebviewUrl::External(url))
-                .window_features(features)
-                .title("Sign in")
-                .user_agent(&user_agent)
-                .inner_size(520.0, 720.0)
-                .center()
-                .build()
-            {
-                Ok(window) => NewWindowResponse::Create { window },
-                Err(error) => {
-                    log::error!("Failed to open OAuth window: {error}");
-                    NewWindowResponse::Deny
-                }
-            }
-        })
-        .build()
-        .map_err(|error| error.to_string())
-}
-
-fn open_main_window(app: &tauri::AppHandle) -> Result<(), String> {
-    let app_url = trimmed_desktop_url()?;
-    log::info!("Opening {APP_TITLE} at {app_url}");
-
-    if let Some(window) = app.get_webview_window("main") {
-        window
-            .set_title(APP_TITLE)
-            .map_err(|error| error.to_string())?;
-        window
-            .navigate(app_url)
-            .map_err(|error| error.to_string())?;
-        return Ok(());
-    }
-
-    build_main_window(app)?;
-    Ok(())
-}
+/// Native Sign in with Apple against a local dev server. Separate from
+/// [`DEV_LOCALHOST_CAPABILITY`] because the `siwa` plugin only exists on macOS,
+/// and naming its permission on another platform fails ACL resolution.
+#[cfg(all(debug_assertions, target_os = "macos"))]
+const DEV_LOCALHOST_SIWA_CAPABILITY: &str = r#"{
+  "identifier": "dev-localhost-siwa",
+  "description": "Native Sign in with Apple from a local dev server (debug builds only)",
+  "platforms": ["macOS"],
+  "windows": ["main"],
+  "remote": { "urls": ["http://localhost:*/*", "http://127.0.0.1:*/*"] },
+  "permissions": ["siwa:allow-get-apple-id-credential"]
+}"#;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+
+    // Must be the first plugin: it decides whether this process continues at all.
+    // A second launch (typically the OS handing over an `autocore://` link) is
+    // folded into the running instance instead of opening a duplicate window.
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            if let Some(main) = window::main_window(app) {
+                window::focus(&main);
+            }
+            let links = deep_link::urls_from_argv(&argv);
+            if !links.is_empty() {
+                deep_link::handle_urls(app, links);
+            }
+        }));
+    }
+
+    builder
+        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_notification::init())
+        .manage(menu::ZoomLevel::default())
+        .invoke_handler(tauri::generate_handler![
+            commands::desktop_save_file,
+            commands::desktop_print_document,
+            commands::desktop_print_page,
+            commands::desktop_info,
+        ])
         .setup(|app| {
-            #[cfg(target_os = "macos")]
+            let handle = app.handle().clone();
+
+            #[cfg(debug_assertions)]
             {
-                app.handle().plugin(tauri_plugin_siwa::init())?;
+                app.handle()
+                    .plugin(
+                        tauri_plugin_log::Builder::default()
+                            .level(log::LevelFilter::Info)
+                            .build(),
+                    )?;
+
+                if let Err(error) = handle.add_capability(DEV_LOCALHOST_CAPABILITY) {
+                    log::warn!("Could not add the localhost dev capability: {error}");
+                }
             }
 
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
+            // Native Sign in with Apple. Web Apple JS is unreliable inside
+            // WKWebView, so macOS uses the system sheet instead.
+            #[cfg(target_os = "macos")]
+            handle.plugin(tauri_plugin_siwa::init())?;
+
+            #[cfg(all(debug_assertions, target_os = "macos"))]
+            if let Err(error) = handle.add_capability(DEV_LOCALHOST_SIWA_CAPABILITY) {
+                log::warn!("Could not add the localhost dev SIWA capability: {error}");
             }
 
-            open_main_window(app.handle())?;
+            updater::setup(&handle)?;
+
+            app.set_menu(menu::build(&handle)?)?;
+            app.on_menu_event(menu::handle_event);
+
+            deep_link::setup(&handle);
+            window::open_main_window(&handle, None)?;
+
             Ok(())
         })
         .build(tauri::generate_context!())

@@ -1,6 +1,6 @@
-import { requestAiNormalizeBatch } from "@/infrastructure/openrouter/import-ai-client";
 import { NormalizeBatchItem } from "@/lib/warehouse/import/ai-schemas";
 
+import { callableWarehouseImportAiClient, type WarehouseImportAiClient } from "./ai-client";
 import { normalizeImportRow } from "./normalizer";
 import { ColumnMappingResult, EnhancedImportRow, ImportProgress } from "./types";
 
@@ -74,6 +74,7 @@ export async function magicEnhanceImportRows(
   columnMapping: ColumnMappingResult,
   options?: {
     onProgress?: (progress: ImportProgress) => void;
+    aiClient?: WarehouseImportAiClient;
   },
 ): Promise<EnhancedImportRow[]> {
   const batches: EnhancedImportRow[][] = [];
@@ -105,7 +106,10 @@ export async function magicEnhanceImportRows(
 
     let aiByIndex = new Map<number, NormalizeBatchItem>();
     try {
-      const ai = await requestAiNormalizeBatch(companyId, payload);
+      const ai = await (options?.aiClient ?? callableWarehouseImportAiClient).normalizeRows(
+        companyId,
+        payload,
+      );
       aiByIndex = new Map(ai.items.map((item) => [item.rowIndex, item]));
     } catch {
       aiByIndex = new Map();

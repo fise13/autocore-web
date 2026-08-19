@@ -1,4 +1,4 @@
-import { X509Certificate, createPublicKey, createVerify } from "node:crypto";
+import { X509Certificate, createVerify } from "node:crypto";
 
 import { APPLE_ROOT_CA_G3_PEM, APPLE_ROOT_CA_G3_SHA256 } from "./apple-root-ca";
 
@@ -161,7 +161,11 @@ export function verifyAppleJws<T>(token: string, at: Date = new Date()): T {
   verifier.update(`${encodedHeader}.${encodedPayload}`);
   verifier.end();
 
-  if (!verifier.verify(createPublicKey(leaf.publicKey), signature)) {
+  // `leaf.publicKey` is already a public KeyObject. Passing it through
+  // `createPublicKey()` throws "Invalid key object type public, expected
+  // private" — that call only derives a public key from a *private* one, and
+  // wrapping it here rejected every genuine Apple notification.
+  if (!verifier.verify(leaf.publicKey, signature)) {
     throw new AppleJwsError("JWS signature does not verify");
   }
 

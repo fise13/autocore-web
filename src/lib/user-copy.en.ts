@@ -225,6 +225,13 @@ export const userCopyEn = {
       "The desktop build is not published yet. Contact support — we will send you a link.",
     windowsUnavailable:
       "The Windows build is in progress. Contact support — we will send the installer when it is ready.",
+    updates: {
+      unsupported: "Updates are not available in this build",
+      upToDate: "You are on the latest version",
+      checkFailed: "Could not check for updates",
+      downloading: (version: string) => `Downloading version ${version}…`,
+      installFailed: "Could not install the update",
+    },
   },
 
   billing: {
@@ -635,7 +642,8 @@ export const userCopyEn = {
     company: "Company",
     displayCurrency: {
       title: "Display currency",
-      description: "Amounts in finances, dashboard, and documents are shown in US dollars (USD).",
+      description:
+        "Amounts in finances, dashboard, and documents are shown in the selected currency. Values are stored in US dollars.",
       loadingRates: "Loading rates…",
       saved: "Display currency saved",
       saveError: "Could not save currency",
@@ -643,8 +651,9 @@ export const userCopyEn = {
       exampleTitle: "Example with current setting",
       ratePrefix: "Rate:",
       fallbackRate: "Using a fallback rate — server update unavailable.",
-      kztLabel: "Dollars",
-      kztDescription: "United States · $",
+      ownerOnly: "Only the company owner can change the workspace currency.",
+      kztLabel: "Tenge",
+      kztDescription: "Kazakhstan · ₸",
       rubLabel: "Dollars",
       rubDescription: "United States · $",
       usdLabel: "Dollars",
@@ -927,6 +936,21 @@ export const userCopyEn = {
     resend: "Resend",
     inviteDialogTitle: "Invite employee",
     inviteDialogDescription: "Send an email invite or create a code to share manually.",
+    inviteDialogForPerson: (name: string) => `Invite ${name} to join AutoCore.`,
+    directory: {
+      sectionTitle: "Not on AutoCore yet",
+      sectionDescription:
+        "Add a name for someone who is not signed up yet. Invite them when you are ready.",
+      addPlaceholder: "Add a name",
+      addButton: "Add",
+      empty: "No names yet — add someone from the shop floor.",
+      statusNamed: "Name only",
+      statusInvited: "Invited",
+      statusNamedHint: "Not on AutoCore yet",
+      statusInvitedHint: "Invite sent — waiting to join",
+      invite: "Invite",
+      remove: "Remove",
+    },
     inviteEmailLabel: "Employee email",
     sending: "Sending…",
     sendEmail: "Send by email",
@@ -1805,6 +1829,8 @@ export const userCopyEn = {
       enginesHint: (count: number) => `${count} engines`,
       statMotors: "Motors",
       toUploadHint: (count: number) => `${count} to upload`,
+      mergedHint: (rows: number, count: number) =>
+        `${count} to upload · ${rows} repeat rows merged by serial`,
       statReady: "Ready",
       errorsHint: (count: number) => `${count} errors`,
       catalog: "Catalog",
@@ -2248,6 +2274,7 @@ export const userCopyEn = {
       loadError: "Load error",
       printFailed: "Could not print PDF",
       downloadFailed: "Could not download PDF",
+      savedTo: (path: string) => `Saved to ${path}`,
       demoBanner: "Demo data · real PDFs use company branding",
       opensInNewTab: "Opens in a new tab",
       open: "Open",

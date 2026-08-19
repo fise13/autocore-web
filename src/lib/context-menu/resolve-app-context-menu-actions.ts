@@ -10,6 +10,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { openAppUrl, openExternalUrl, readClipboardText, writeClipboardText } from "@/platform";
+
 export type AppContextMenuAction = {
   id: string;
   label: string;
@@ -45,19 +47,11 @@ function isEditableTarget(el: Element): boolean {
 }
 
 async function writeClipboard(text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch {
-    // ignore permission errors
-  }
+  await writeClipboardText(text);
 }
 
 async function readClipboard(): Promise<string> {
-  try {
-    return await navigator.clipboard.readText();
-  } catch {
-    return "";
-  }
+  return readClipboardText();
 }
 
 function selectedText(): string {
@@ -72,6 +66,15 @@ function sameOriginPath(href: string): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * "Open in new tab" on a URL that is not ours belongs in the user's browser; a
+ * URL that is ours becomes a second app window in the desktop shell.
+ */
+function openInNewSurface(url: string): void {
+  if (sameOriginPath(url)) openAppUrl(url);
+  else void openExternalUrl(url);
 }
 
 export function resolveAppContextMenuActions(
@@ -112,7 +115,7 @@ export function resolveAppContextMenuActions(
         label: "Открыть в новой вкладке",
         icon: ExternalLink,
         run: () => {
-          window.open(href, "_blank", "noopener,noreferrer");
+          openInNewSurface(href);
         },
       },
       {
@@ -134,7 +137,7 @@ export function resolveAppContextMenuActions(
         icon: ExternalLink,
         separatorBefore: actions.length > 0,
         run: () => {
-          window.open(src, "_blank", "noopener,noreferrer");
+          openInNewSurface(src);
         },
       },
       {

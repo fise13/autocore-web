@@ -1,7 +1,13 @@
 import { appDisplayCurrencyAffix, appDisplayCurrencyOption } from '@/lib/money/display-currency';
+import { useMoneyFormatStore } from '@/store/money-format-store';
 
-const AFFIX = appDisplayCurrencyAffix();
-const OPTION = appDisplayCurrencyOption('USD');
+function currentFormat() {
+  const state = useMoneyFormatStore.getState();
+  const converted = (value: number) => state.convertMoney(Number.isFinite(value) ? value : 0);
+  const option = appDisplayCurrencyOption(state.currency);
+  const affix = appDisplayCurrencyAffix(state.currency);
+  return { converted, option, affix };
+}
 
 /**
  * Whole units, everywhere on this surface.
@@ -11,15 +17,14 @@ const OPTION = appDisplayCurrencyOption('USD');
  * decision, and a stable glyph width is worth more than the precision — the
  * ledger keeps its own exact formatting for reconciliation.
  */
-const WHOLE = new Intl.NumberFormat(OPTION.locale, {
-  style: 'currency',
-  currency: OPTION.currency,
-  maximumFractionDigits: 0,
-  minimumFractionDigits: 0,
-});
-
 export function formatMoneyExact(value: number): string {
-  return WHOLE.format(Number.isFinite(value) ? value : 0);
+  const { converted, option } = currentFormat();
+  return new Intl.NumberFormat(option.locale, {
+    style: 'currency',
+    currency: option.currency,
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  }).format(converted(value));
 }
 
 function compactParts(abs: number): { value: number; unit: string } {
@@ -39,22 +44,24 @@ function trimZero(value: string): string {
  * reflow while the user scrubs.
  */
 export function formatMoneyCompact(value: number): string {
-  const safe = Number.isFinite(value) ? value : 0;
+  const { converted, option, affix } = currentFormat();
+  const safe = converted(value);
   const abs = Math.abs(safe);
   const sign = safe < 0 ? '−' : '';
 
   if (abs < 1_000) {
-    return `${sign}${AFFIX.prefix}${Math.round(abs).toLocaleString('en-US')}${AFFIX.suffix}`;
+    return `${sign}${affix.prefix}${Math.round(abs).toLocaleString(option.locale)}${affix.suffix}`;
   }
 
   const { value: scaled, unit } = compactParts(abs);
   const decimals = scaled >= 100 ? 0 : scaled >= 10 ? 1 : 2;
-  return `${sign}${AFFIX.prefix}${trimZero(scaled.toFixed(decimals))}${unit}${AFFIX.suffix}`;
+  return `${sign}${affix.prefix}${trimZero(scaled.toFixed(decimals))}${unit}${affix.suffix}`;
 }
 
 /** Compact under six figures collapses detail that still matters — keep it exact. */
 export function formatMoneyAdaptive(value: number): string {
-  return Math.abs(value) >= 100_000 ? formatMoneyCompact(value) : formatMoneyExact(value);
+  const displayValue = useMoneyFormatStore.getState().convertMoney(Number.isFinite(value) ? value : 0);
+  return Math.abs(displayValue) >= 100_000 ? formatMoneyCompact(value) : formatMoneyExact(value);
 }
 
 export function formatSignedMoney(value: number, direction?: 'in' | 'out'): string {

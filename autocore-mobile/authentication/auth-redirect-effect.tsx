@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { useRouter } from 'expo-router';
 
 import { useAuthStore } from '@/store/auth-store';
@@ -8,7 +8,15 @@ import { resolveInitialTabHref } from '@/lib/navigation/nav-item-availability';
 import { resolveSessionCompanyId } from '@/lib/session/merge-hydration';
 import { useCompanyModuleEnabled } from '@/hooks/use-module-enabled';
 import { useCompanySubscription } from '@/hooks/use-company-subscription';
-import { isPaywallBypassed } from '@/lib/subscriptions/paywall-bypass';
+import {
+  isPaywallBypassed,
+  subscribePaywallBypass,
+} from '@/lib/subscriptions/paywall-bypass';
+import {
+  getPurchaseStoreSnapshot,
+  isCelebratingPurchasePhase,
+  subscribePurchaseStore,
+} from '@/lib/subscriptions/purchase-store';
 
 /**
  * Auth-state routing without `useSegments` in the effect deps.
@@ -35,6 +43,19 @@ export function AuthRedirectEffect() {
 
   const journeyStep = useAuthJourneyStep();
   const { isPro, isLoading: subscriptionLoading } = useCompanySubscription(companyId);
+  const paywallBypassed = useSyncExternalStore(
+    subscribePaywallBypass,
+    isPaywallBypassed,
+    isPaywallBypassed,
+  );
+  const purchaseSnapshot = useSyncExternalStore(
+    subscribePurchaseStore,
+    getPurchaseStoreSnapshot,
+    getPurchaseStoreSnapshot,
+  );
+  const holdingGateCelebration =
+    purchaseSnapshot.gateCelebrationLock &&
+    isCelebratingPurchasePhase(purchaseSnapshot.flow.phase);
   const workOrdersEnabled = useCompanyModuleEnabled('workOrders');
   const warehouseEnabled = useCompanyModuleEnabled('warehouse');
   const accountingModuleEnabled = useCompanyModuleEnabled('accounting');
@@ -51,13 +72,16 @@ export function AuthRedirectEffect() {
       target = '/(auth)/login';
     } else if (journeyStep !== 'app') {
       target = journeyPathForStep(journeyStep);
-    } else if (hasAccess && subscriptionLoading && !isPaywallBypassed()) {
+    } else if (hasAccess && subscriptionLoading && !paywallBypassed) {
       // Billing still resolving — AuthGate holds splash; do not push tabs yet.
       target = null;
-    } else if (hasAccess && !isPro && !isPaywallBypassed()) {
+    } else if (hasAccess && holdingGateCelebration) {
+      // Celebration is still on the gate paywall — tabs wait for Continue.
+      target = null;
+    } else if (hasAccess && !isPro && !paywallBypassed) {
       // Paywall is rendered by AuthGate, not a route.
       target = null;
-    } else if (hasAccess && (isPro || isPaywallBypassed())) {
+    } else if (hasAccess && (isPro || paywallBypassed)) {
       target = resolveInitialTabHref({
         profile,
         modules: {
@@ -75,9 +99,11 @@ export function AuthRedirectEffect() {
     accountingModuleEnabled,
     firebaseUser,
     hasAccess,
+    holdingGateCelebration,
     isPro,
     isReady,
     journeyStep,
+    paywallBypassed,
     profile,
     router,
     subscriptionLoading,

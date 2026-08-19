@@ -1,18 +1,19 @@
 import { MotorEntity } from "@/domain/motor";
 import { BrandEntity, EngineEntity } from "@/infrastructure/firestore/catalog-repository";
-import { requestAiMotorSheetResolve } from "@/infrastructure/openrouter/import-ai-client";
 import {
   buildEngineRowsFromSheet,
   buildSpecificRowsFromSheet,
 } from "@/lib/motors/excel-import-engine-rows";
 import { ExcelSheetData } from "@/lib/motors/excel-types";
 
+import { callableMotorImportAiClient, type MotorImportAiClient } from "./ai-client";
 import { duplicateMotorRows, enrichMotorRowsWithDuplicates } from "./duplicate-detector";
 import {
   isMotorQuickImportReady,
   magicEnhanceMotorRows,
 } from "./magic-import";
 import { prepareMagicImportRowsForCommit } from "./import-row-integrity";
+import { mergeMotorRowsBySerial, representedSheetConfigIds } from "./merge-grid-rows";
 import { preprocessMotorSheets, normalizeSerial } from "./preprocessor";
 import {
   buildSheetMappingState,
@@ -37,6 +38,8 @@ export type MotorImportPipelineOptions = {
   useAi?: boolean;
   magicImport?: boolean;
   manualSheetMappings?: Record<string, MotorSheetMappingResult>;
+  /** Injected so server routes talk to Gemini directly and tests can run without AI. */
+  aiClient?: MotorImportAiClient;
   onProgress?: (progress: MotorImportProgress) => void;
 };
 
@@ -117,6 +120,7 @@ export async function runMotorImportPreviewPipeline(
   let aiNotes = "";
 
   const useMagicImport = options.magicImport ?? options.useAi ?? false;
+  const aiClient = options.aiClient ?? callableMotorImportAiClient;
 
   if (options.useAi && !options.manualSheetMappings) {
     emit(options.onProgress, {
@@ -136,11 +140,12 @@ export async function runMotorImportPreviewPipeline(
         };
       });
 
-      const ai = await requestAiMotorSheetResolve(
+      const ai = await aiClient.resolveSheets(
         options.companyId,
         sheets.map((sheet) => ({
           sheetName: sheet.name,
-          sampleRows: sheet.rows.slice(0, 8),
+          // Enough rows to show the title row, the header and a section heading or two.
+          sampleRows: sheet.rows.slice(0, 12),
         })),
         catalog,
         existingCategoryNames,
@@ -180,9 +185,16 @@ export async function runMotorImportPreviewPipeline(
   );
   engineRows = buildEnginePreviewRows(sheets, sheetMappings);
 
+  // Fold repeat appearances of the same serial before anything expensive happens: the AI
+  // pass, the duplicate check and the commit all work on one row per engine.
+  const merge = mergeMotorRowsBySerial(engineRows);
+  engineRows = merge.rows;
+  const representedSheets = representedSheetConfigIds(engineRows);
+
   if (useMagicImport && engineRows.length > 0) {
     engineRows = await magicEnhanceMotorRows(options.companyId, engineRows, {
       onProgress: options.onProgress,
+      aiClient,
     });
   }
 
@@ -196,6 +208,7 @@ export async function runMotorImportPreviewPipeline(
   const specificSheets = buildSpecificPreview(sheets, sheetMappings);
 
   const stats = {
+    mergedRows: merge.absorbed,
     totalEngineRows: engineRows.length,
     validEngineRows: engineRows.filter((row) => row.selected).length,
     duplicates: duplicateMotorRows(engineRows).length,
@@ -223,6 +236,9 @@ export async function runMotorImportPreviewPipeline(
 
   return {
     ...previewBase,
-    quickImport: isMotorQuickImportReady(previewBase),
+    quickImport: isMotorQuickImportReady({
+      ...previewBase,
+      representedSheetConfigIds: representedSheets,
+    }),
   };
 }

@@ -23,6 +23,7 @@ import { haptics } from '@/theme';
 import { withAlpha } from '@/theme/color-utils';
 import { tokens } from '@/theme/tokens';
 import { formatPrice } from '@/features/search/lib/format';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 
 import { useOrderTransition } from '../animation/order-transition-context';
 import type { OrderRowPosition } from '../lib/group-orders';
@@ -175,6 +176,7 @@ function OrderRowBody({
   showSeparator: boolean;
 }) {
   const { colors } = useTheme();
+  useMoneyFormatRevision();
   const ink = resolveStatusInk(colors, order.status);
   const vehicleLine = formatOrderListVehicleLine(order);
 

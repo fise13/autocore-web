@@ -7,6 +7,7 @@ import { WebVitalsReporter } from "@/components/performance/web-vitals-reporter"
 import { AppContextMenuProvider } from "@/components/providers/app-context-menu-provider";
 import { AppLocaleProvider } from "@/components/providers/app-locale-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
+import { DesktopShellProvider } from "@/components/providers/desktop-shell-provider";
 import { PerformanceTierProvider } from "@/components/providers/performance-tier-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -26,6 +27,9 @@ export function AppProviders({ children }: AppProvidersProps) {
             <PageTransitionProvider>
               <WebVitalsReporter />
               <ToastProvider>
+                {/* Renders nothing on web; wires up the native menu, deep links
+                    and window title when running in the desktop shell. */}
+                <DesktopShellProvider />
                 <AppContextMenuProvider>{children}</AppContextMenuProvider>
               </ToastProvider>
             </PageTransitionProvider>

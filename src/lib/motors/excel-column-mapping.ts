@@ -4,8 +4,10 @@ export type EngineFieldMapping =
   | "serialCode"
   | "configuration"
   | "notes"
+  | "quality"
   | "quantity"
   | "transmission"
+  | "warehouseLocation"
   | "arrivalDate"
   | "soldDate"
   | "brandName"
@@ -43,7 +45,14 @@ export function detectEngineField(header: string): EngineFieldMapping | undefine
     return "serialCode";
   }
 
-  if (normalized === "БРЕНД" || normalized === "BRAND") {
+  if (
+    normalized === "БРЕНД" ||
+    normalized === "BRAND" ||
+    normalized === "МАРКА" ||
+    normalized === "ПРОИЗВОДИТЕЛЬ" ||
+    normalized === "MAKE" ||
+    normalized === "MANUFACTURER"
+  ) {
     return "brandName";
   }
 
@@ -72,9 +81,41 @@ export function detectEngineField(header: string): EngineFieldMapping | undefine
     normalized === "ЗАМЕТКИ" ||
     normalized === "NOTES" ||
     normalized === "SPECIAL NOTES" ||
-    normalized.includes("КОММЕНТ")
+    normalized.includes("КОММЕНТ") ||
+    // Movement logs label the same column ПРИЧИНА / ОПИСАНИЕ РАБОТ.
+    normalized.includes("ПРИЧИН") ||
+    normalized.includes("ОПИСАНИЕ") ||
+    normalized === "REASON" ||
+    normalized === "COMMENT" ||
+    normalized === "DESCRIPTION"
   ) {
     return "notes";
+  }
+
+  if (
+    normalized.includes("КАЧЕСТВ") ||
+    normalized.includes("СОСТОЯН") ||
+    normalized === "СОРТ" ||
+    normalized === "QUALITY" ||
+    normalized === "GRADE" ||
+    normalized === "CONDITION"
+  ) {
+    return "quality";
+  }
+
+  if (
+    normalized.includes("ЯЧЕЙК") ||
+    normalized.includes("СТЕЛЛАЖ") ||
+    normalized.includes("ПОЛКА") ||
+    normalized === "СКЛАД" ||
+    normalized === "МЕСТО" ||
+    normalized === "МЕСТО ХРАНЕНИЯ" ||
+    normalized === "LOCATION" ||
+    normalized === "WAREHOUSE" ||
+    normalized === "SHELF" ||
+    normalized === "BIN"
+  ) {
+    return "warehouseLocation";
   }
 
   if (
@@ -118,8 +159,11 @@ export function detectEngineField(header: string): EngineFieldMapping | undefine
   ) {
     return "soldDate";
   }
-  if (normalized.includes("ДАТА") && normalized.includes("ПРОДАЖ")) {
-    return "soldDate";
+
+  // A bare «ДАТА» on a movement log is the arrival. «ДАТА ВЫХОДА» (repair release) is
+  // deliberately left unmapped so it survives verbatim in the notes column.
+  if (normalized === "ДАТА" || normalized === "DATE") {
+    return "arrivalDate";
   }
 
   return undefined;

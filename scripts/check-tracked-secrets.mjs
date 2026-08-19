@@ -6,6 +6,8 @@ const forbiddenFiles = [
   /(?:^|\/)\.env(?:\.|$)/,
   /firebase-adminsdk.*\.json$/i,
   /service-account.*\.json$/i,
+  // Apple signing keys: App Store Server API, Sign in with Apple, APNs.
+  /\.p8$/i,
 ];
 
 const allowedExamples = [

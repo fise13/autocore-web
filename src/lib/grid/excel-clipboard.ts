@@ -170,32 +170,10 @@ export function buildFillWithActiveWrites(params: {
   return writes;
 }
 
-export async function writeClipboardText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    try {
-      const el = document.createElement("textarea");
-      el.value = text;
-      el.setAttribute("readonly", "");
-      el.style.position = "fixed";
-      el.style.left = "-9999px";
-      document.body.appendChild(el);
-      el.select();
-      const ok = document.execCommand("copy");
-      document.body.removeChild(el);
-      return ok;
-    } catch {
-      return false;
-    }
-  }
-}
-
-export async function readClipboardText(): Promise<string> {
-  try {
-    return await navigator.clipboard.readText();
-  } catch {
-    return "";
-  }
-}
+/**
+ * Grid copy/paste goes through the platform adapter: `navigator.clipboard.readText()`
+ * is unreliable in the desktop shell's WKWebView, and pasting a range is a core
+ * workflow here. The browser behaviour, including the `execCommand` fallback, is
+ * unchanged on web.
+ */
+export { readClipboardText, writeClipboardText } from "@/platform";

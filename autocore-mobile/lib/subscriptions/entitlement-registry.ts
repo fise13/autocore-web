@@ -13,7 +13,12 @@ import { subscribeCompanySubscription } from '@/services/firestore/billing-repos
 import type { CompanySubscription } from '@/types/billing';
 
 import { devSubscription, subscribeDevMode } from './dev-mode';
-import { complimentaryProEntitlement, isPaywallBypassed, subscribePaywallBypass } from './paywall-bypass';
+import {
+  complimentaryProEntitlement,
+  isPaywallBypassed,
+  isStoreShotsBuild,
+  subscribePaywallBypass,
+} from './paywall-bypass';
 import {
   readEntitlementCacheSync,
   writeEntitlementCache,
@@ -25,7 +30,7 @@ import {
   FREE_ENTITLEMENT,
   type LocalActiveSubscription,
 } from './entitlement-resolver';
-import type { Entitlement } from './types';
+import type { Entitlement, PlanId } from './types';
 
 export type EntitlementSnapshot = {
   entitlement: Entitlement;
@@ -73,6 +78,13 @@ const listeners = new Set<() => void>();
  */
 let localSubscriptions: LocalActiveSubscription[] = [];
 
+/**
+ * Session Pro painted the instant StoreKit accepts a purchase, before the
+ * server round-trip. Dropped when Firestore confirms, or when verification
+ * is refused.
+ */
+let optimisticEntitlement: Entitlement | null = null;
+
 function notify(): void {
   for (const listener of listeners) listener();
 }
@@ -90,17 +102,35 @@ function markRemoteSettled(entry: RegistryEntry): void {
 
 /** Recompute an entry's snapshot; returns true when it actually changed. */
 function recompute(entry: RegistryEntry): boolean {
-  const entitlement = isPaywallBypassed()
-    ? complimentaryProEntitlement(entry.companyId)
-    : resolveEntitlement({
-        companyId: entry.companyId,
-        remote: entry.remote,
-        cached: entry.cached,
-        local: localSubscriptions,
-        devOverride: devSubscription(),
-      });
+  // Screenshot builds need Pro chrome without a receipt. A user skip is free
+  // tier — the gate opens, feature paywalls still apply.
+  let entitlement =
+    isStoreShotsBuild() && isPaywallBypassed()
+      ? complimentaryProEntitlement(entry.companyId)
+      : resolveEntitlement({
+          companyId: entry.companyId,
+          remote: entry.remote,
+          cached: entry.cached,
+          local: localSubscriptions,
+          devOverride: devSubscription(),
+        });
 
-  const isLoading = isPaywallBypassed() ? false : !entry.ready;
+  if (
+    optimisticEntitlement &&
+    optimisticEntitlement.companyId === entry.companyId &&
+    !entitlement.isActive
+  ) {
+    entitlement = optimisticEntitlement;
+  } else if (
+    optimisticEntitlement &&
+    optimisticEntitlement.companyId === entry.companyId &&
+    entitlement.isActive &&
+    entitlement.source === 'authoritative'
+  ) {
+    optimisticEntitlement = null;
+  }
+
+  const isLoading = isStoreShotsBuild() && isPaywallBypassed() ? false : !entry.ready;
   const previous = entry.snapshot;
 
   if (
@@ -243,6 +273,35 @@ export function getLocalSubscriptions(): LocalActiveSubscription[] {
   return localSubscriptions;
 }
 
+export function optimisticAppleEntitlement(companyId: string, planId: PlanId): Entitlement {
+  return {
+    companyId,
+    tier: 'pro',
+    planId: planId === 'pro_yearly' ? 'pro_yearly' : 'pro_monthly',
+    status: 'active',
+    isActive: true,
+    isTrial: false,
+    trialEndsAt: null,
+    trialUsed: true,
+    renewsAt: null,
+    willAutoRenew: true,
+    inGracePeriod: false,
+    provider: 'apple',
+    managedExternally: false,
+    source: 'local_unverified',
+  };
+}
+
+/** Instant Pro after StoreKit accepts — cleared when the server confirms or refuses. */
+export function setOptimisticEntitlement(next: Entitlement | null): void {
+  optimisticEntitlement = next;
+  let changed = false;
+  for (const entry of registry.values()) {
+    if (recompute(entry)) changed = true;
+  }
+  if (changed || registry.size === 0) notify();
+}
+
 /** Current entitlement for a company without subscribing. */
 export function peekEntitlement(companyId: string | null | undefined): Entitlement {
   return getEntitlementSnapshot(companyId).entitlement;
@@ -256,5 +315,6 @@ export function clearEntitlementRegistry(): void {
   }
   registry.clear();
   localSubscriptions = [];
+  optimisticEntitlement = null;
   notify();
 }

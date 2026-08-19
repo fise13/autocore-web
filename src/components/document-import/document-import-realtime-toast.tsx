@@ -12,6 +12,7 @@ import type { DocumentImportJob } from "@/domain/document-import";
 import { formatDocumentImportToastCopy } from "@/lib/document-import/toast-copy";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { cn } from "@/lib/utils";
+import { notifyDesktop } from "@/platform";
 
 function DocumentImportToastCard({
   job,
@@ -105,6 +106,15 @@ export function DocumentImportRealtimeToast() {
       if (job.status !== "ready" && job.status !== "pending") continue;
 
       const jobId = job.id;
+
+      // Desktop: a scan arriving from the mobile app is exactly the case an
+      // in-app toast cannot cover — the window is usually not the front one.
+      // Additive and desktop-only; the toast below still fires either way.
+      if (document.visibilityState !== "visible") {
+        const { title, description } = formatDocumentImportToastCopy(job);
+        void notifyDesktop({ title, body: description });
+      }
+
       sonnerToast.custom(
         (toastId) => (
           <DocumentImportToastCard

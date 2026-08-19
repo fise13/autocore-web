@@ -1,6 +1,7 @@
 export type AiProfileId =
   | "scanOcr"
   | "scanDisambiguate"
+  | "importGrid"
   | "importVision"
   | "engineIntakeVision"
   | "documentPolish"
@@ -42,6 +43,19 @@ export const AI_PROFILES: Record<AiProfileId, AiProfile> = {
     temperature: 0,
     timeoutMs: 25_000,
   },
+  /**
+   * Spreadsheet → grid mapping (motors and warehouse). Batches of rows come back as one
+   * JSON object, so the budget is much larger than the vision profiles and the timeout
+   * allows for a slow first token on a long prompt.
+   */
+  importGrid: {
+    title: "AutoCore Import",
+    modelEnv: ["IMPORT_AI_MODEL", "OPENROUTER_MODEL"],
+    maxTokens: 6144,
+    retryMaxTokens: 8192,
+    temperature: 0,
+    timeoutMs: 120_000,
+  },
   importVision: {
     title: "AutoCore Import",
     modelEnv: ["IMPORT_AI_MODEL", "DOCUMENT_AI_MODEL", "OPENROUTER_MODEL"],
@@ -68,8 +82,10 @@ export const AI_PROFILES: Record<AiProfileId, AiProfile> = {
   },
   assistant: {
     title: "AutoCore Core",
-    // NVIDIA_AI_MODEL — local-only probe for free Nvidia OpenRouter models.
-    modelEnv: ["NVIDIA_AI_MODEL", "ASSISTANT_AI_MODEL", "OPENROUTER_MODEL", "DOCUMENT_AI_MODEL"],
+    // NVIDIA_AI_MODEL is deliberately NOT listed: it belongs to the separate nvidia lane
+    // (its own API key). Listing it here let a local probe variable pull the default lane
+    // off Gemini for every JSON call.
+    modelEnv: ["ASSISTANT_AI_MODEL", "OPENROUTER_MODEL", "DOCUMENT_AI_MODEL"],
     // Headroom for `thinking` + structured blocks in one JSON reply.
     maxTokens: 2200,
     retryMaxTokens: 3200,

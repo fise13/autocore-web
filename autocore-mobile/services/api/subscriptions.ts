@@ -13,7 +13,6 @@ export const subscriptionApi = {
   appleVerify: '/api/mobile/billing/apple/verify',
   appleRestore: '/api/mobile/billing/apple/restore',
   refresh: '/api/billing/refresh',
-  startTrial: '/api/billing/start-trial',
   activatePro: '/api/billing/activate-pro',
 } as const;
 
@@ -87,13 +86,6 @@ export function refreshCompanyBilling(
   companyId: string,
 ): Promise<{ proActive: boolean; expired?: 'trial' | 'pro' }> {
   return mobilePost(subscriptionApi.refresh, { companyId });
-}
-
-/** Internal (non-Apple) 14-day trial. Existing endpoint, unchanged. */
-export function startCompanyTrial(
-  companyId: string,
-): Promise<{ proActive: boolean; started: boolean }> {
-  return mobilePost(subscriptionApi.startTrial, { companyId });
 }
 
 /**

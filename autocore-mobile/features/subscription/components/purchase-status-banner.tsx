@@ -1,22 +1,20 @@
-import { View } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks/use-theme';
 import type { PurchaseFlowState } from '@/lib/subscriptions/types';
-import { spacing } from '@/theme';
+import { tokens } from '@/theme';
 
 /**
- * Compact notices only. Cancellation is silent. Failed purchases sit next to
- * the CTA as two lines — never a full-width danger card.
+ * Compact notices only. Cancellation is silent. Failed purchases sit above
+ * the CTA as the real StoreKit / server reason — never a generic dead-end.
  */
-function copyFor(flow: PurchaseFlowState): { title: string; body: string; tone: 'danger' | 'muted' | 'success' } | null {
+function copyFor(
+  flow: PurchaseFlowState,
+): { title: string; body?: string; tone: 'danger' | 'muted' | 'success' } | null {
   switch (flow.phase) {
     case 'failed':
       return {
         tone: 'danger',
-        title: "Purchase couldn't be completed",
-        body: 'Please try again.',
+        title: flow.failure.message,
       };
     case 'already_purchased':
       return {
@@ -27,20 +25,17 @@ function copyFor(flow: PurchaseFlowState): { title: string; body: string; tone: 
     case 'restore_empty':
       return {
         tone: 'muted',
-        title: 'No purchases found',
-        body: 'Nothing to restore for this Apple ID.',
+        title: 'No purchases found for this Apple ID.',
       };
     case 'expired':
       return {
         tone: 'muted',
-        title: 'Subscription ended',
-        body: 'Choose a plan to continue.',
+        title: 'Subscription ended. Choose a plan to continue.',
       };
     case 'restored':
       return {
         tone: 'success',
-        title: 'Purchases restored',
-        body: 'Your subscription is active again.',
+        title: 'Purchases restored.',
       };
     default:
       return null;
@@ -65,19 +60,19 @@ export function PurchaseStatusBanner({ flow }: PurchaseStatusBannerProps) {
         : colors.mutedForeground;
 
   return (
-    <Animated.View
-      entering={FadeIn.duration(180)}
-      exiting={FadeOut.duration(120)}
+    <Text
+      variant="caption"
       accessibilityLiveRegion="polite"
       accessibilityRole="text"
-      style={{ gap: 2, minHeight: 36, justifyContent: 'center' }}
+      style={{
+        color,
+        fontWeight: '600',
+        textAlign: 'center',
+        lineHeight: 18,
+        paddingHorizontal: tokens.space.inline,
+      }}
     >
-      <Text variant="caption" style={{ color, fontWeight: '600', textAlign: 'center' }}>
-        {content.title}
-      </Text>
-      <Text variant="caption" color="muted" style={{ textAlign: 'center', lineHeight: 16 }}>
-        {content.body}
-      </Text>
-    </Animated.View>
+      {content.body ? `${content.title} ${content.body}` : content.title}
+    </Text>
   );
 }

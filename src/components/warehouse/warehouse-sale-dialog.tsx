@@ -33,6 +33,7 @@ import {
 } from "@/lib/accounting/mixed-payment";
 import { formatGroupedNumber } from "@/lib/money/format-number";
 import { userCopy } from "@/lib/user-copy";
+import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
 
 type WarehouseSaleDialogProps = {
   item: InventoryItem | null;
@@ -55,6 +56,7 @@ export function WarehouseSaleDialog({
   onConfirm,
 }: WarehouseSaleDialogProps) {
   const copy = userCopy.warehouse.dialogs;
+  const { toBaseAmount } = useAppDisplayCurrency();
   const [quantity, setQuantity] = useState(formatGroupedNumber(1));
   const [amount, setAmount] = useState("");
   const [account, setAccount] = useState<OperationAccount>("cashbox");
@@ -103,15 +105,17 @@ export function WarehouseSaleDialog({
     setSubmitting(true);
     setError(null);
     try {
+      const amountUsd = toBaseAmount(parsedAmount);
+      const cashUsd = toBaseAmount(mixedCashPortion);
       const payment = buildMixedPaymentFields(
         paymentMethod,
         account,
-        parsedAmount,
-        mixedCashPortion,
+        amountUsd,
+        cashUsd,
       );
       await onConfirm({
         quantity: parsedQty,
-        amount: parsedAmount,
+        amount: amountUsd,
         account: payment.account,
         paymentMethod: payment.paymentMethod,
         cashReceived: payment.cashReceived,

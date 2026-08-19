@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 
 import { fin, finFontCap, finType } from '../layout';
 import { formatMoneyAdaptive, formatSignedMoney, formatSignedPercent } from '../lib/format';
@@ -30,6 +31,7 @@ export function FinPrimaryMetric({
   onPeriodChange: (period: FinancePeriodId) => void;
 }) {
   const { colors } = useTheme();
+  useMoneyFormatRevision();
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const onScrub = useCallback((index: number | null) => {

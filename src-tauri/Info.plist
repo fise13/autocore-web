@@ -6,5 +6,30 @@
     <string>AutoCore</string>
     <key>CFBundleName</key>
     <string>AutoCore</string>
+
+    <!-- Deep links. `autocore` is the desktop scheme; the mobile app owns
+         `autocoremobile` and the https Universal Links, so the two clients never
+         compete for the same URL. See docs/DEEP-LINKS.md. -->
+    <key>CFBundleURLTypes</key>
+    <array>
+      <dict>
+        <key>CFBundleURLName</key>
+        <string>com.wise.autocore.desktop</string>
+        <key>CFBundleTypeRole</key>
+        <string>Editor</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>autocore</string>
+        </array>
+      </dict>
+    </array>
+
+    <!-- The app talks to Firebase and the hosted product over TLS only; no ATS
+         exceptions are needed, and declaring that keeps them from creeping in. -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+      <key>NSAllowsArbitraryLoads</key>
+      <false/>
+    </dict>
   </dict>
 </plist>

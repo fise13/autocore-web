@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { formatPrice } from '@/features/search/lib/format';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 
 import { wo, woType } from '../theme/wo-visual';
 import type { OrdersListMeta } from '../types';
@@ -16,6 +17,7 @@ type OrdersSummaryProps = {
  */
 export function OrdersSummary({ meta }: OrdersSummaryProps) {
   const { colors } = useTheme();
+  useMoneyFormatRevision();
 
   const parts = [
     `${meta.openCount} open`,

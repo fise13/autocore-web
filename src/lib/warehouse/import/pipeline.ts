@@ -1,12 +1,9 @@
 import { InventoryItem } from "@/domain/inventory";
 import { InventoryItemRepository } from "@/infrastructure/firestore/inventory-item-repository";
-import {
-  requestAiColumnMapping,
-  requestAiNormalizeBatch,
-} from "@/infrastructure/openrouter/import-ai-client";
 import { buildImportDiffRows } from "@/lib/warehouse/import-rules-engine";
 import { NormalizeBatchItem } from "@/lib/warehouse/import/ai-schemas";
 
+import { callableWarehouseImportAiClient, type WarehouseImportAiClient } from "./ai-client";
 import {
   applyManualColumnMapping,
   mergeAiColumnMapping,
@@ -37,6 +34,8 @@ export type ImportPipelineOptions = {
   useAi?: boolean;
   magicImport?: boolean;
   existingItems?: InventoryItem[];
+  /** Injected so server callers reach Gemini directly and tests can run without AI. */
+  aiClient?: WarehouseImportAiClient;
   onProgress?: (progress: ImportProgress) => void;
 };
 
@@ -83,7 +82,7 @@ async function maybeEnhanceMapping(
       percent: 35,
       message: "AI is analyzing columns…",
     });
-    const ai = await requestAiColumnMapping(
+    const ai = await (options.aiClient ?? callableWarehouseImportAiClient).mapColumns(
       options.companyId,
       sheet.headers,
       sheet.rows.slice(0, 12),
@@ -121,7 +120,10 @@ async function maybeEnhanceRowsWithAi(
       percent: 55,
       message: "AI is normalizing names…",
     });
-    const ai = await requestAiNormalizeBatch(options.companyId, ambiguous);
+    const ai = await (options.aiClient ?? callableWarehouseImportAiClient).normalizeRows(
+      options.companyId,
+      ambiguous,
+    );
     const byIndex = new Map<number, NormalizeBatchItem>(
       ai.items.map((item) => [item.rowIndex, item]),
     );
@@ -191,6 +193,7 @@ export async function runImportPreviewPipeline(
   const useMagicImport = options.magicImport ?? options.useAi ?? false;
   if (useMagicImport) {
     rows = await magicEnhanceImportRows(options.companyId, rows, columnMapping, {
+      aiClient: options.aiClient,
       onProgress: options.onProgress,
     });
     rows = applyMagicImportDefaults(rows);

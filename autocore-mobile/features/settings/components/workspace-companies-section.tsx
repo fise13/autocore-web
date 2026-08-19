@@ -9,6 +9,7 @@ import { OrganizationMembershipRow } from '@/features/organization/components/or
 type WorkspaceCompaniesSectionProps = {
   memberships: UserCompanyMembership[];
   activeCompanyId: string;
+  switchingCompanyId?: string | null;
   onCreateCompany?: () => void;
   onJoinCompany?: () => void;
   onSwitchCompany: (companyId: string) => void;
@@ -17,6 +18,7 @@ type WorkspaceCompaniesSectionProps = {
 export function WorkspaceCompaniesSection({
   memberships,
   activeCompanyId,
+  switchingCompanyId = null,
   onCreateCompany,
   onJoinCompany,
   onSwitchCompany,
@@ -54,6 +56,7 @@ export function WorkspaceCompaniesSection({
             title={displayName}
             subtitle={subtitle}
             active={active}
+            busy={switchingCompanyId === membership.companyId}
             bordered
             onPress={active ? undefined : () => onSwitchCompany(membership.companyId)}
           />

@@ -41,6 +41,32 @@ export type LiveActivityInput = {
   waveTotal: number;
   /** What is being uploaded, e.g. "Bay 3" — shown as the Island's second line. */
   subject?: string | null;
+  /**
+   * In-session / paused intake on this device. Outranked by a blocked upload,
+   * outranks a healthy upload.
+   */
+  session?: LiveActivitySession | null;
+};
+
+/** One Live Activity — `sync` is the upload queue, `session` is documenting. */
+export type LiveActivityMode = 'sync' | 'session';
+
+export type LiveActivitySession = {
+  paused: boolean;
+  /** Serial, location code, or VIN — never a raw job id. */
+  subject: string;
+  captured: number;
+  required: number;
+};
+
+/** Slim job glance so the model stays free of the engine-intake package. */
+export type IntakeJobGlance = {
+  state: string;
+  locationCode?: string | null;
+  serialCode?: string | null;
+  donorVin?: string | null;
+  capturedCount?: number;
+  requiredCount?: number;
 };
 
 /**
@@ -49,6 +75,8 @@ export type LiveActivityInput = {
  */
 export type LiveActivityProps = {
   status: SyncStatus;
+  /** `sync` = photo queue. `session` = documenting an engine. */
+  mode: LiveActivityMode;
   /** Headline — "Syncing 8 of 18". */
   title: string;
   /** Supporting line — "10 photos left". */
@@ -105,7 +133,8 @@ export type LiveActivitySymbol =
   | 'wifi.slash'
   | 'arrow.clockwise'
   | 'exclamationmark.circle.fill'
-  | 'exclamationmark.triangle.fill';
+  | 'exclamationmark.triangle.fill'
+  | 'camera.fill';
 
 const SYMBOLS: Record<SyncStatus, LiveActivitySymbol> = {
   SYNCED: 'checkmark.circle.fill',
@@ -115,6 +144,26 @@ const SYMBOLS: Record<SyncStatus, LiveActivitySymbol> = {
   ACTION_REQUIRED: 'exclamationmark.circle.fill',
   FAILED: 'exclamationmark.triangle.fill',
 };
+
+export function pickActiveIntakeSession(
+  jobs: readonly IntakeJobGlance[],
+): LiveActivitySession | null {
+  const live =
+    jobs.find((job) => job.state === 'in_session') ??
+    jobs.find((job) => job.state === 'paused');
+  if (!live) return null;
+  const subject =
+    live.locationCode?.trim() ||
+    live.serialCode?.trim() ||
+    live.donorVin?.trim() ||
+    '';
+  return {
+    paused: live.state === 'paused',
+    subject,
+    captured: Math.max(0, live.capturedCount ?? 0),
+    required: Math.max(0, live.requiredCount ?? 0),
+  };
+}
 
 export function liveActivityAccent(status: SyncStatus): string {
   return ACCENTS[status] ?? ACCENTS.SYNCING;
@@ -188,6 +237,7 @@ export function buildLiveActivityProps(
 ): LiveActivityProps {
   return {
     status: summary.status,
+    mode: 'sync',
     // A retry headline carries a number ("Retrying in 30s") that is correct for
     // exactly one second. The Island renders a real countdown from `retryAtMs`,
     // so the title stays timeless and the timer does the counting.
@@ -209,6 +259,34 @@ export function buildLiveActivityProps(
   };
 }
 
+export function buildSessionLiveActivityProps(
+  session: LiveActivitySession,
+  options: { iconUri?: string } = {},
+): LiveActivityProps {
+  const required = session.required;
+  const captured = session.captured;
+  const determinate = required > 0;
+  return {
+    status: 'SYNCING',
+    mode: 'session',
+    title: session.paused ? 'Intake paused' : 'Documenting',
+    detail: session.paused ? 'Paused' : 'In session',
+    subject: session.subject,
+    headline: determinate ? `${captured}/${required}` : String(captured),
+    caption: 'photos',
+    symbol: 'camera.fill',
+    accent: session.paused ? '#FF9F0A' : '#0A84FF',
+    done: captured,
+    total: Math.max(required, captured),
+    progress: determinate ? Math.min(1, captured / required) : 0,
+    pending: 0,
+    blocked: 0,
+    retryAtMs: 0,
+    determinate,
+    iconUri: options.iconUri ?? '',
+  };
+}
+
 function parseEpoch(value: string): number {
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -226,6 +304,25 @@ export function resolveDesiredLiveActivity(
   if (!input.enabled) return { kind: 'idle' };
 
   const summary = resolveSyncSummary(syncCountsFromJobs(input), now);
+  const blocked =
+    summary.status === 'FAILED' || summary.status === 'ACTION_REQUIRED';
+
+  // Fail / blocked outranks a live session so a person sees the thing they
+  // must fix. A healthy upload yields to documenting — the Island is one slot.
+  if (blocked) {
+    return {
+      kind: 'active',
+      props: buildLiveActivityProps(summary, { subject: input.subject }),
+    };
+  }
+
+  if (input.session) {
+    return {
+      kind: 'active',
+      props: buildSessionLiveActivityProps(input.session),
+    };
+  }
+
   if (summary.status === 'SYNCED') return { kind: 'idle' };
 
   return {
@@ -245,6 +342,7 @@ export function buildCompletionProps(
   const total = Math.max(0, synced);
   return {
     status: 'SYNCED',
+    mode: 'sync',
     title: total === 1 ? '1 photo synced' : `${total} photos synced`,
     detail: 'Everything on this iPhone is backed up.',
     subject: options.subject?.trim() ?? '',
@@ -272,6 +370,20 @@ export function buildCompletionProps(
  */
 export function liveActivityContentKey(desired: DesiredLiveActivity): string {
   if (desired.kind === 'idle') return 'idle';
-  const { status, done, total, pending, blocked, retryAtMs, title, detail, subject } = desired.props;
-  return [status, done, total, pending, blocked, retryAtMs, title, detail, subject].join('|');
+  const {
+    status,
+    mode,
+    done,
+    total,
+    pending,
+    blocked,
+    retryAtMs,
+    title,
+    detail,
+    subject,
+    headline,
+  } = desired.props;
+  return [status, mode, done, total, pending, blocked, retryAtMs, title, detail, subject, headline].join(
+    '|',
+  );
 }

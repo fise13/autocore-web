@@ -1,40 +1,28 @@
-import { View } from 'react-native';
+import { usePaywall } from '@/hooks/use-paywall';
+import { useEntitlement } from '@/hooks/use-entitlement';
+import { useSession } from '@/hooks';
 
-import { Button, SettingsSectionCard, Text } from '@/components/ui';
-import { planLabel, subscriptionHint } from '@/lib/subscriptions/format';
-import type { Entitlement } from '@/lib/subscriptions/types';
-import { rhythm } from '@/theme';
+import { CompanyProCard } from './company-pro-card';
 
 type WorkspaceSubscriptionCardProps = {
-  entitlement: Entitlement;
   onManage: () => void;
 };
 
 /**
- * The "Manage on website" button is gone: on iOS that was an external purchase
- * link (guideline 3.1.1), and everywhere else the in-app subscription screen now
- * does the same job.
+ * Same island as Company settings — the plan is a workspace fact, so both
+ * surfaces must agree on status, copy, and actions.
  */
-export function WorkspaceSubscriptionCard({
-  entitlement,
-  onManage,
-}: WorkspaceSubscriptionCardProps) {
+export function WorkspaceSubscriptionCard({ onManage }: WorkspaceSubscriptionCardProps) {
+  const { entitlement } = useEntitlement();
+  const { profile } = useSession();
+  const { present } = usePaywall();
+
   return (
-    <SettingsSectionCard title="Subscription" description={subscriptionHint(entitlement)}>
-      <View
-        style={{
-          paddingHorizontal: rhythm.cardPadX,
-          paddingBottom: rhythm.cardPadX,
-          gap: rhythm.stack,
-        }}
-      >
-        <Text variant="caption" color="muted">
-          Plan: {planLabel(entitlement)}
-        </Text>
-        <Button variant="secondary" onPress={onManage}>
-          {entitlement.isActive ? 'Manage subscription' : 'View plans'}
-        </Button>
-      </View>
-    </SettingsSectionCard>
+    <CompanyProCard
+      entitlement={entitlement}
+      canManage={profile?.isCompanyOwner === true}
+      onSeePlans={() => present()}
+      onManage={onManage}
+    />
   );
 }

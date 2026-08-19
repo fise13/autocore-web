@@ -9,7 +9,6 @@ import { CollectionRow, ListSection, ProductScreenShell, ScreenScroll } from '@/
 import { useDeleteAccount, useProfileHubData, useSession } from '@/hooks';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import { presentOrganizationSwitcher } from '@/features/organization/present-organization-switcher';
-import { usePaywall } from '@/hooks/use-paywall';
 import { haptics } from '@/theme';
 import { tokens } from '@/theme/tokens';
 import { SETTINGS_HUB_SECTIONS } from '@/features/settings/data/settings-sections';
@@ -19,7 +18,6 @@ import { StoreIcon } from '@/assets/icons';
 import { DeleteAccountDialog } from './components/delete-account-dialog';
 import { ProfileHeader } from './components/profile-header';
 import { ProfileHeroCard } from './components/profile-hero-card';
-import { ProSettingsCard } from './components/pro-settings-card';
 import { profileHubRouteHref } from './navigation';
 
 type ProfileHubRow = {
@@ -36,8 +34,6 @@ export function ProfileScreen() {
   const data = useProfileHubData();
   const rbac = useRbacPolicy();
   const deleteAccount = useDeleteAccount();
-  const { present: presentPaywall } = usePaywall();
-  const canSwitchOrg = memberships.length > 1;
 
   const openOrganizationSwitcher = () => {
     haptics.selection();
@@ -87,19 +83,9 @@ export function ProfileScreen() {
 
         <View style={{ height: tokens.space.stack }} />
 
-        <ProSettingsCard
-          onOpen={(target) => {
-            if (target === 'paywall') {
-              presentPaywall();
-              return;
-            }
-            router.push(profileHubRouteHref('subscription'));
-          }}
-        />
-
         {sections.map((section) => (
           <ListSection key={section.id} title={section.label}>
-            {section.id === 'company' && canSwitchOrg ? (
+            {section.id === 'company' ? (
               <CollectionRow
                 title="Switch organization"
                 subtitle={data.user.company || 'Organization'}
@@ -119,7 +105,7 @@ export function ProfileScreen() {
           </ListSection>
         ))}
 
-        {canSwitchOrg && !sections.some((section) => section.id === 'company') ? (
+        {!sections.some((section) => section.id === 'company') ? (
           <ListSection title="Company">
             <CollectionRow
               title="Switch organization"

@@ -11,6 +11,7 @@ import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { haptics } from '@/theme';
 import { formatPrice } from '@/features/search/lib/format';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 
 import { useOrderTransition } from '../animation/order-transition-context';
 import { useOrdersEnter } from '../animation/use-orders-enter';
@@ -149,6 +150,7 @@ export const OrderCard = memo(function OrderCard({
   onCall,
 }: OrderCardProps) {
   const { colors, isDark } = useTheme();
+  useMoneyFormatRevision();
   const { openOrder } = useOrderTransition();
   const cardRef = useRef<RNView>(null);
   const animate = index < ANIMATE_FIRST;

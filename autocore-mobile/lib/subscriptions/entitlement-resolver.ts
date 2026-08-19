@@ -157,7 +157,7 @@ function fromLocal(
     isActive: true,
     isTrial: false,
     trialEndsAt: null,
-    // Unknowable offline; assume used so no trial CTA is shown speculatively.
+    // Unknowable offline; Apple intro eligibility is StoreKit's, not this flag.
     trialUsed: true,
     renewsAt: expiry ? new Date(expiry) : null,
     willAutoRenew: chosen?.willAutoRenew ?? true,

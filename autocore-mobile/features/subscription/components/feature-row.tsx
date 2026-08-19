@@ -14,13 +14,15 @@ type FeatureRowProps = {
   row: ProFeatureRow;
   index: number;
   last?: boolean;
+  /** Override the default paywall stagger. */
+  enterDelay?: number;
 };
 
 /** One value line inside the grouped list — check, label, quiet detail. */
-export function FeatureRow({ row, index, last = false }: FeatureRowProps) {
+export function FeatureRow({ row, index, last = false, enterDelay }: FeatureRowProps) {
   const { colors } = useTheme();
   const style = usePaywallEnter({
-    delay: featureDelay(index),
+    delay: enterDelay ?? featureDelay(index),
     duration: paywallDuration.row,
     translateY: 10,
   });

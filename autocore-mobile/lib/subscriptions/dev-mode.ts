@@ -297,8 +297,8 @@ export function devProducts(plans: Array<{ id: PlanId; sku: string; label: strin
       interval: plan.id === 'pro_yearly' ? 'yearly' : 'monthly',
       introOffer: {
         displayPrice: 'Free',
-        periodCount: 7,
-        periodUnit: 'day',
+        periodCount: 2,
+        periodUnit: 'week',
         isFreeTrial: true,
       },
     };

@@ -55,7 +55,9 @@ function readPeriodEnd(data: SubscriptionDoc | undefined): Date | null {
 }
 
 function isInternallyManaged(data: SubscriptionDoc | undefined): boolean {
-  return data?.provider !== "stripe";
+  // Apple and Stripe own their period ends. Expiring them here would invent a
+  // homemade timer and fight App Store Server Notifications / Stripe webhooks.
+  return data?.provider === "internal" || !data?.provider;
 }
 
 /**
@@ -133,6 +135,10 @@ export async function startInternalTrial(companyId: string, uid: string): Promis
 
   if (data.provider === "stripe" && data.proActive) {
     return { proActive: true, started: false };
+  }
+
+  if (data.provider === "apple") {
+    return { proActive: Boolean(data.proActive), started: false };
   }
 
   const periodEnd = readPeriodEnd(data);

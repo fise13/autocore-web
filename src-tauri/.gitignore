@@ -2,3 +2,7 @@
 # will have compiled files and executables
 /target/
 /gen/schemas
+
+# Staged binaries for bundling. Never commit these — a 61MB Node binary was
+# tracked here for the abandoned "bundle the Next.js server" approach.
+/resources/

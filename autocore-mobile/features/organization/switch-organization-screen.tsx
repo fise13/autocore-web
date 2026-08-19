@@ -1,7 +1,6 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -26,13 +25,15 @@ import {
 } from '@/assets/icons';
 import { useAuth } from '@/authentication/auth-provider';
 import { CompanyAvatar } from '@/components/account/company-avatar';
-import { AppLoadingScreen, Button, Text, toast } from '@/components/ui';
+import { CollectionRow, ListSection, Text, toast } from '@/components/ui';
 import { useReducedMotion } from '@/hooks/use-accessibility';
 import { useSession, useTheme } from '@/hooks';
 import { resolveActiveCompanyName } from '@/lib/resolve-active-company-name';
+import {
+  runCompanySwitch,
+  useCompanySwitchState,
+} from '@/lib/session/company-switch-controller';
 import { formatRole } from '@/lib/team/format';
-import { switchActiveCompany } from '@/services/firestore/company-membership-service';
-import { NotificationService } from '@/services/notifications';
 import { useAuthStore } from '@/store/auth-store';
 import { autocoreEase, duration, haptics, spring, tokens } from '@/theme';
 import type { UserCompanyMembership } from '@/types/rbac';
@@ -58,7 +59,7 @@ const OrganizationCard = memo(function OrganizationCard({
   onPress,
   index,
 }: OrgCardProps) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const reducedMotion = useReducedMotion();
   const title = resolveActiveCompanyName(membership.companyId, membership.name, []);
   const role = formatRole(membership.role);
@@ -115,14 +116,7 @@ const OrganizationCard = memo(function OrganizationCard({
             style={[
               styles.card,
               {
-                backgroundColor: active
-                  ? isDark
-                    ? colors.secondary
-                    : colors.card
-                  : colors.card,
-                borderColor: active || switching ? colors.primary : colors.border,
-                borderWidth: active || switching ? 1.5 : StyleSheet.hairlineWidth,
-                opacity: pressed && !active && !busy ? 0.92 : 1,
+                backgroundColor: pressed && !active && !busy ? colors.muted : 'transparent',
               },
             ]}
           >
@@ -179,8 +173,7 @@ const OrganizationCard = memo(function OrganizationCard({
 
 /**
  * Organization picker — pageSheet (formSheet blanks RN content).
- * Selecting a workspace covers the sheet with the branded loading splash,
- * switches company, then lands on the home tabs for the new org.
+ * Selecting a workspace shows the global switch overlay, then lands on home.
  */
 export function SwitchOrganizationScreen() {
   const { colors, isDark } = useTheme();
@@ -191,8 +184,7 @@ export function SwitchOrganizationScreen() {
   const storeMemberships = useAuthStore((s) => s.memberships);
   const { companyId } = useSession();
   const workspaceBlock = useAuthStore((s) => s.workspaceBlock);
-  const [switchingId, setSwitchingId] = useState<string | null>(null);
-  const [switchingName, setSwitchingName] = useState<string | null>(null);
+  const switching = useCompanySwitchState();
 
   const memberships = useMemo(() => {
     if (authMemberships.length > 0) return authMemberships;
@@ -220,13 +212,13 @@ export function SwitchOrganizationScreen() {
   }, [activeCompanyId, memberships]);
 
   const dismiss = useCallback(() => {
-    if (switchingId) return;
+    if (switching) return;
     if (router.canGoBack()) {
       router.back();
       return;
     }
     router.replace('/(tabs)/profile' as Href);
-  }, [router, switchingId]);
+  }, [router, switching]);
 
   const enterWorkspace = useCallback(() => {
     // Close the picker and land on home for the new org — no linger.
@@ -238,7 +230,7 @@ export function SwitchOrganizationScreen() {
 
   const handleSwitch = useCallback(
     async (nextCompanyId: string) => {
-      if (!firebaseUser || nextCompanyId === activeCompanyId || switchingId) return;
+      if (!firebaseUser || nextCompanyId === activeCompanyId || switching) return;
 
       const membership = memberships.find((entry) => entry.companyId === nextCompanyId);
       const nextName = resolveActiveCompanyName(
@@ -247,20 +239,20 @@ export function SwitchOrganizationScreen() {
         [],
       );
 
-      setSwitchingId(nextCompanyId);
-      setSwitchingName(nextName);
       haptics.medium();
 
       try {
-        await switchActiveCompany(firebaseUser.uid, nextCompanyId);
-        await refreshProfile();
-        await NotificationService.syncInbox();
+        await runCompanySwitch({
+          userId: firebaseUser.uid,
+          companyId: nextCompanyId,
+          companyName: nextName,
+          refreshProfile,
+          prepareSync: true,
+        });
         haptics.success();
         enterWorkspace();
       } catch (error) {
         haptics.warning();
-        setSwitchingId(null);
-        setSwitchingName(null);
         toast({
           title: "Couldn't switch organization",
           description: error instanceof Error ? error.message : undefined,
@@ -274,21 +266,21 @@ export function SwitchOrganizationScreen() {
       firebaseUser,
       memberships,
       refreshProfile,
-      switchingId,
+      switching,
     ],
   );
 
   const openJoin = useCallback(() => {
-    if (switchingId) return;
+    if (switching) return;
     haptics.selection();
     router.push(JOIN_HREF);
-  }, [router, switchingId]);
+  }, [router, switching]);
 
   const openCreate = useCallback(() => {
-    if (switchingId) return;
+    if (switching) return;
     haptics.selection();
     router.push(CREATE_HREF);
-  }, [router, switchingId]);
+  }, [router, switching]);
 
   const listEntering = reducedMotion
     ? undefined
@@ -297,7 +289,8 @@ export function SwitchOrganizationScreen() {
     ? undefined
     : FadeOut.duration(duration.instant).easing(autocoreEase);
 
-  const isSwitching = Boolean(switchingId);
+  const isSwitching = Boolean(switching);
+  const switchingId = switching?.companyId ?? null;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -340,37 +333,22 @@ export function SwitchOrganizationScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           flexGrow: 1,
-          paddingHorizontal: tokens.space.screenX,
           paddingTop: tokens.space.stack,
           paddingBottom: Math.max(insets.bottom, tokens.space.stack) + tokens.space.section,
-          gap: tokens.space.section,
           backgroundColor: colors.background,
         }}
       >
-        <View style={{ gap: tokens.space.inline }}>
-          <Text
-            variant="pageTitle"
-            style={{
-              fontSize: 28,
-              lineHeight: 34,
-              fontWeight: '700',
-              letterSpacing: -0.7,
-            }}
-          >
-            Switch organization
-          </Text>
-          <Text variant="body" color="muted" style={{ fontSize: 15, lineHeight: 21 }}>
-            Pick the workspace you want to work in. Your account stays the same.
-          </Text>
-        </View>
-
         {ordered.length === 0 ? (
           <Animated.View
             entering={listEntering}
             exiting={listExiting}
             style={[
               styles.empty,
-              { backgroundColor: colors.secondary, borderColor: colors.border },
+              {
+                backgroundColor: colors.secondary,
+                borderColor: colors.border,
+                marginHorizontal: tokens.space.screenX,
+              },
             ]}
           >
             <Text variant="body" style={{ fontWeight: '600', textAlign: 'center' }}>
@@ -381,20 +359,8 @@ export function SwitchOrganizationScreen() {
             </Text>
           </Animated.View>
         ) : (
-          <View style={{ gap: tokens.space.stack }}>
-            <Text
-              variant="meta"
-              style={{
-                color: colors.mutedForeground,
-                fontWeight: '600',
-                letterSpacing: 0.4,
-                textTransform: 'uppercase',
-                fontSize: 12,
-              }}
-            >
-              Your workspaces
-            </Text>
-            <View style={{ gap: tokens.space.stack }}>
+          <Animated.View entering={listEntering} exiting={listExiting}>
+            <ListSection title="Your workspaces">
               {ordered.map((membership, index) => (
                 <OrganizationCard
                   key={membership.companyId}
@@ -406,71 +372,27 @@ export function SwitchOrganizationScreen() {
                   onPress={() => void handleSwitch(membership.companyId)}
                 />
               ))}
-            </View>
-          </View>
+            </ListSection>
+          </Animated.View>
         )}
 
-        <View style={{ gap: tokens.space.stack }}>
-          <Text
-            variant="meta"
-            style={{
-              color: colors.mutedForeground,
-              fontWeight: '600',
-              letterSpacing: 0.4,
-              textTransform: 'uppercase',
-              fontSize: 12,
-            }}
-          >
-            Add another
-          </Text>
-          <View style={{ flexDirection: 'row', gap: tokens.space.stack }}>
-            <View style={{ flex: 1 }}>
-              <Button
-                variant="secondary"
-                leftIcon={<UsersIcon size="sm" color={colors.foreground} strokeWidth={1.85} />}
-                onPress={openJoin}
-                disabled={isSwitching}
-              >
-                Join
-              </Button>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Button
-                variant="secondary"
-                leftIcon={<PlusIcon size="sm" color={colors.foreground} strokeWidth={1.85} />}
-                onPress={openCreate}
-                disabled={isSwitching}
-              >
-                Create
-              </Button>
-            </View>
-          </View>
-        </View>
+        <ListSection title="Add another">
+          <CollectionRow
+            title="Join a company"
+            subtitle="Invite link or code"
+            icon={UsersIcon}
+            onPress={openJoin}
+            disabled={isSwitching}
+          />
+          <CollectionRow
+            title="Create a company"
+            subtitle="New workspace"
+            icon={PlusIcon}
+            onPress={openCreate}
+            disabled={isSwitching}
+          />
+        </ListSection>
       </ScrollView>
-
-      <Modal
-        visible={isSwitching}
-        animationType={reducedMotion ? 'none' : 'fade'}
-        presentationStyle="fullScreen"
-        statusBarTranslucent
-        onRequestClose={() => {
-          // Block Android back while the company swap is in flight.
-        }}
-      >
-        <AppLoadingScreen
-          appear={!reducedMotion}
-          message={
-            switchingName
-              ? `Switching to ${switchingName}`
-              : 'Switching organization'
-          }
-          accessibilityLabel={
-            switchingName
-              ? `Switching to ${switchingName}`
-              : 'Switching organization'
-          }
-        />
-      </Modal>
     </View>
   );
 }
@@ -480,10 +402,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderRadius: tokens.radius.group,
-    minHeight: 76,
+    paddingVertical: 12,
+    paddingHorizontal: tokens.space.stack,
+    minHeight: 64,
   },
   cardCopy: {
     flex: 1,

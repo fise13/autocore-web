@@ -1,5 +1,6 @@
 import type { CompanyEmployee } from '@/types/rbac';
 import type { WorkOrderAssigneeRole, WorkOrderLaborLine } from '@/types/work-order';
+import { formatPrice } from '@/store/money-format-store';
 
 import { laborLineTotal, normalizeLaborPricingMode } from './labor-pricing';
 
@@ -64,9 +65,5 @@ export function laborLineLabel(line: WorkOrderLaborLine, employees: CompanyEmplo
 }
 
 export function formatMoney(value: number): string {
-  return new Intl.NumberFormat('ru-KZ', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(value);
+  return formatPrice(value);
 }

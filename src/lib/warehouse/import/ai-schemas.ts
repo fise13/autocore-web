@@ -22,9 +22,13 @@ export const normalizeBatchItemSchema = z.object({
   warnings: z.array(z.string()).default([]),
 });
 
-export const normalizeBatchAiResponseSchema = z.object({
-  items: z.array(normalizeBatchItemSchema),
-});
+/** Accept a bare list when the model drops the documented envelope. */
+export const normalizeBatchAiResponseSchema = z.preprocess(
+  (value) => (Array.isArray(value) ? { items: value } : value),
+  z.object({
+    items: z.array(normalizeBatchItemSchema),
+  }),
+);
 
 export const duplicateClusterAiResponseSchema = z.object({
   clusterId: z.string(),

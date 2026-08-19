@@ -11,7 +11,7 @@
     "beforeBuildCommand": "node scripts/sync-tauri-app-url.mjs"
   },
   "app": {
-    "withGlobalTauri": true,
+    "withGlobalTauri": false,
     "windows": [
       {
         "label": "main",
@@ -29,6 +29,15 @@
     "security": {
       "csp": null,
       "dangerousDisableAssetCspModification": true
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": [
+          "autocore"
+        ]
+      }
     }
   },
   "bundle": {

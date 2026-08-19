@@ -1,44 +1,37 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { AppState, Platform } from 'react-native';
 
-import { resolveSyncSummary } from '@/features/engine-intake/lib/sync-status';
 import { useEngineIntakeJobs } from '@/features/engine-intake/hooks/use-engine-intake-data';
 import { useEngineIntakeOutbox } from '@/features/engine-intake/store/intake-outbox';
 import { useWorkCounts } from '@/features/work/hooks/use-work-counts';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import { useSession } from '@/hooks/use-session';
 
-import { syncCountsFromJobs } from './lib/live-activity-model';
 import {
   EMPTY_INTAKE_BAY_COUNTS,
+  EMPTY_PAY_COUNTS,
   EMPTY_TODAY_COUNTS,
-  EMPTY_WAREHOUSE_WIDGET_COUNTS,
-  EMPTY_WORK_WIDGET_COUNTS,
   UNKNOWN_COUNT,
   buildIntakeBayWidgetProps,
-  buildSyncWidgetProps,
+  buildPayWidgetProps,
+  buildScanWidgetProps,
   buildTodayWidgetProps,
-  buildWarehouseWidgetProps,
-  buildWorkWidgetProps,
   countIntakeAwaitingFromJobs,
   countIntakeBayFromJobs,
   widgetSnapshotKey,
   type IntakeBayWidgetCounts,
+  type PayAccess,
   type TodayWidgetCounts,
-  type WarehouseWidgetCounts,
-  type WorkWidgetCounts,
 } from './lib/widget-model';
-import { useIsOnline } from './use-is-online';
 import { AutoCoreIntakeWidget } from './widgets/intake-bay-widget';
-import { AutoCoreSyncWidget } from './widgets/sync-widget';
+import { AutoCorePayWidget } from './widgets/pay-widget';
+import { AutoCoreScanWidget } from './widgets/scan-widget';
 import { AutoCoreTodayWidget } from './widgets/today-widget';
-import { AutoCoreWarehouseWidget } from './widgets/warehouse-widget';
-import { AutoCoreWorkWidget } from './widgets/work-orders-widget';
 
 /**
  * Rows the shop widgets read. `locations` is skipped — a widget is not worth
  * a locations fetch the user did not ask for. Intake Bay already subscribes
- * to jobs; Today derives awaiting from that list instead of opening a second
+ * to jobs; Floor derives awaiting from that list instead of opening a second
  * `useWorkCounts` intake query.
  */
 const WIDGET_NODE_IDS: ReadonlySet<string> = new Set([
@@ -66,35 +59,23 @@ const WIDGET_NODE_IDS_WITH_EARNINGS: ReadonlySet<string> = new Set([
  * that mattered gets dropped.
  */
 export function useAutoCoreWidgets() {
-  const online = useIsOnline();
   const { companyId, can } = useSession();
   const rbac = useRbacPolicy();
   const intakeEnabled = Boolean(companyId) && can('engine_intake_view');
   const outbox = useEngineIntakeOutbox(intakeEnabled ? companyId : null);
   const intake = useEngineIntakeJobs(intakeEnabled ? companyId : null);
-  const nodeIds = rbac.nav.canAccessMyEarnings
-    ? WIDGET_NODE_IDS_WITH_EARNINGS
-    : WIDGET_NODE_IDS;
+  const payAccess: PayAccess = !companyId
+    ? 'unknown'
+    : rbac.nav.canAccessMyEarnings
+      ? 'allowed'
+      : 'denied';
+  const nodeIds = payAccess === 'allowed' ? WIDGET_NODE_IDS_WITH_EARNINGS : WIDGET_NODE_IDS;
   const { counts } = useWorkCounts(nodeIds);
 
-  const syncKeyRef = useRef<string>('');
   const todayKeyRef = useRef<string>('');
   const intakeKeyRef = useRef<string>('');
-  const workKeyRef = useRef<string>('');
-  const warehouseKeyRef = useRef<string>('');
-
-  const syncProps = useMemo(() => {
-    const summary = resolveSyncSummary(
-      syncCountsFromJobs({
-        enabled: intakeEnabled,
-        online,
-        photos: intakeEnabled ? outbox.photos : [],
-        completedInWave: outbox.syncedCount,
-        waveTotal: outbox.sessionTotal,
-      }),
-    );
-    return buildSyncWidgetProps(summary, 0);
-  }, [intakeEnabled, online, outbox.photos, outbox.sessionTotal, outbox.syncedCount]);
+  const scanKeyRef = useRef<string>('');
+  const payKeyRef = useRef<string>('');
 
   const todayProps = useMemo(() => {
     const resolved: TodayWidgetCounts = companyId
@@ -127,28 +108,24 @@ export function useAutoCoreWidgets() {
     intakeEnabled,
   ]);
 
-  const workProps = useMemo(() => {
-    const resolved: WorkWidgetCounts = companyId
-      ? {
-          openOrders: counts.orders ? counts.orders.open : UNKNOWN_COUNT,
-          attentionOrders: counts.orders ? counts.orders.attention : UNKNOWN_COUNT,
-        }
-      : EMPTY_WORK_WIDGET_COUNTS;
-    return buildWorkWidgetProps(resolved, 0);
-  }, [companyId, counts.orders]);
+  const scanProps = useMemo(() => {
+    const awaiting = companyId
+      ? counts.receiving
+        ? counts.receiving.awaitingPlacement
+        : UNKNOWN_COUNT
+      : UNKNOWN_COUNT;
+    return buildScanWidgetProps(awaiting, 0);
+  }, [companyId, counts.receiving]);
 
-  const warehouseProps = useMemo(() => {
-    const resolved: WarehouseWidgetCounts = companyId
-      ? {
-          awaitingPlacement: counts.receiving
-            ? counts.receiving.awaitingPlacement
-            : UNKNOWN_COUNT,
-          lowStock: counts.parts ? counts.parts.lowStock : UNKNOWN_COUNT,
-          engines: counts.engines ? counts.engines.total : UNKNOWN_COUNT,
-        }
-      : EMPTY_WAREHOUSE_WIDGET_COUNTS;
-    return buildWarehouseWidgetProps(resolved, 0);
-  }, [companyId, counts.engines, counts.parts, counts.receiving]);
+  const payProps = useMemo(() => {
+    if (payAccess !== 'allowed') {
+      return buildPayWidgetProps(EMPTY_PAY_COUNTS, payAccess, 0);
+    }
+    const resolved = counts.earnings
+      ? { pending: counts.earnings.pendingCount, claimable: counts.earnings.claimable }
+      : EMPTY_PAY_COUNTS;
+    return buildPayWidgetProps(resolved, 'allowed', 0);
+  }, [counts.earnings, payAccess]);
 
   const intakeProps = useMemo(() => {
     if (!intakeEnabled || !companyId) {
@@ -173,18 +150,6 @@ export function useAutoCoreWidgets() {
 
   useEffect(() => {
     if (Platform.OS !== 'ios') return;
-    const key = widgetSnapshotKey(syncProps);
-    if (key === syncKeyRef.current) return;
-    syncKeyRef.current = key;
-    try {
-      AutoCoreSyncWidget.updateSnapshot({ ...syncProps, updatedAtMs: Date.now() });
-    } catch {
-      syncKeyRef.current = '';
-    }
-  }, [syncProps]);
-
-  useEffect(() => {
-    if (Platform.OS !== 'ios') return;
     const key = widgetSnapshotKey(todayProps);
     if (key === todayKeyRef.current) return;
     todayKeyRef.current = key;
@@ -197,27 +162,27 @@ export function useAutoCoreWidgets() {
 
   useEffect(() => {
     if (Platform.OS !== 'ios') return;
-    const key = widgetSnapshotKey(workProps);
-    if (key === workKeyRef.current) return;
-    workKeyRef.current = key;
+    const key = widgetSnapshotKey(scanProps);
+    if (key === scanKeyRef.current) return;
+    scanKeyRef.current = key;
     try {
-      AutoCoreWorkWidget.updateSnapshot({ ...workProps, updatedAtMs: Date.now() });
+      AutoCoreScanWidget.updateSnapshot({ ...scanProps, updatedAtMs: Date.now() });
     } catch {
-      workKeyRef.current = '';
+      scanKeyRef.current = '';
     }
-  }, [workProps]);
+  }, [scanProps]);
 
   useEffect(() => {
     if (Platform.OS !== 'ios') return;
-    const key = widgetSnapshotKey(warehouseProps);
-    if (key === warehouseKeyRef.current) return;
-    warehouseKeyRef.current = key;
+    const key = widgetSnapshotKey(payProps);
+    if (key === payKeyRef.current) return;
+    payKeyRef.current = key;
     try {
-      AutoCoreWarehouseWidget.updateSnapshot({ ...warehouseProps, updatedAtMs: Date.now() });
+      AutoCorePayWidget.updateSnapshot({ ...payProps, updatedAtMs: Date.now() });
     } catch {
-      warehouseKeyRef.current = '';
+      payKeyRef.current = '';
     }
-  }, [warehouseProps]);
+  }, [payProps]);
 
   useEffect(() => {
     if (Platform.OS !== 'ios') return;
@@ -237,15 +202,14 @@ export function useAutoCoreWidgets() {
       if (next === 'active') return;
       try {
         const now = Date.now();
-        AutoCoreSyncWidget.updateSnapshot({ ...syncProps, updatedAtMs: now });
         AutoCoreTodayWidget.updateSnapshot({ ...todayProps, updatedAtMs: now });
-        AutoCoreWorkWidget.updateSnapshot({ ...workProps, updatedAtMs: now });
-        AutoCoreWarehouseWidget.updateSnapshot({ ...warehouseProps, updatedAtMs: now });
+        AutoCoreScanWidget.updateSnapshot({ ...scanProps, updatedAtMs: now });
+        AutoCorePayWidget.updateSnapshot({ ...payProps, updatedAtMs: now });
         AutoCoreIntakeWidget.updateSnapshot({ ...intakeProps, updatedAtMs: now });
       } catch {
         // Ignore — the next foreground pass writes again.
       }
     });
     return () => subscription.remove();
-  }, [intakeProps, syncProps, todayProps, warehouseProps, workProps]);
+  }, [intakeProps, payProps, scanProps, todayProps]);
 }

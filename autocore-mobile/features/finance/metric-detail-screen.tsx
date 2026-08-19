@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Screen, ScreenScroll, Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 
 import { FinCurveChart } from './components/fin-curve-chart';
 import { FinDetailHeader } from './components/fin-detail-header';
@@ -32,6 +33,7 @@ export function FinanceMetricDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { colors } = useTheme();
+  const moneyRevision = useMoneyFormatRevision();
   const { model, period, setPeriod } = useFinanceModel();
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
@@ -43,7 +45,7 @@ export function FinanceMetricDetailScreen() {
 
   const metric = useMemo(
     () => buildTrendMetrics(model).find((entry) => entry.id === id),
-    [id, model],
+    [id, model, moneyRevision],
   );
 
   if (id === 'health') {

@@ -1,10 +1,12 @@
-import { formatPrice } from '@/store/money-format-store';
+import { formatPrice, useMoneyFormatStore } from '@/store/money-format-store';
 
-/** Formats a USD amount for accounting surfaces. */
+/** Formats a stored USD amount for accounting surfaces. */
 export function formatKzt(value: number, compact = false): string {
-  const rounded = Math.round(value);
-  if (compact && rounded >= 1_000_000) {
-    return `$${(rounded / 1_000_000).toFixed(1).replace('.0', '')}M`;
+  const { convertMoney, currencyPrefix, currencySuffix } = useMoneyFormatStore.getState();
+  const converted = Math.round(convertMoney(Number.isFinite(value) ? value : 0));
+  if (compact && Math.abs(converted) >= 1_000_000) {
+    const millions = (converted / 1_000_000).toFixed(1).replace('.0', '');
+    return `${currencyPrefix}${millions}M${currencySuffix}`;
   }
   return formatPrice(value);
 }

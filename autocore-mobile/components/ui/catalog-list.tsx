@@ -1,5 +1,5 @@
-import { memo, useState, type ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { forwardRef, memo, useEffect, useState, type ReactNode } from 'react';
+import { Platform, Pressable, View } from 'react-native';
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -40,29 +40,48 @@ export function catalogRowPosition(index: number, total: number): CatalogRowPosi
 
 /**
  * Group heading — sits outside the card so the card reads as one object.
- * `title` carries the name, `meta` the count, right-aligned and quiet.
+ *
+ * `kicker` carries the qualifier a person says first and files under second
+ * ("Toyota" before "2AZ-FE"); `title` is the name the group is filed by, and
+ * `meta` the count, right-aligned and quiet.
  */
-export function CatalogSectionHeader({ title, meta }: { title: string; meta?: string }) {
+export function CatalogSectionHeader({
+  title,
+  meta,
+  kicker,
+}: {
+  title: string;
+  meta?: string;
+  kicker?: string;
+}) {
   const { colors } = useTheme();
 
   return (
     <View
       style={{
         flexDirection: 'row',
-        alignItems: 'baseline',
+        alignItems: 'flex-end',
         gap: spacing[3],
         marginHorizontal: rhythm.pad + spacing[1],
         marginTop: spacing[6],
         marginBottom: spacing[2],
       }}
     >
-      <Text
-        variant="headline"
-        numberOfLines={1}
-        style={{ flex: 1, color: colors.foreground }}
-      >
-        {title}
-      </Text>
+      <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
+        {kicker ? (
+          <Text
+            variant="caption1"
+            color="muted"
+            numberOfLines={1}
+            style={{ fontWeight: '500' }}
+          >
+            {kicker}
+          </Text>
+        ) : null}
+        <Text variant="headline" numberOfLines={1} style={{ color: colors.foreground }}>
+          {title}
+        </Text>
+      </View>
       {meta ? (
         <Text variant="footnote" color="muted" numberOfLines={1}>
           {meta}
@@ -78,26 +97,41 @@ export type CatalogRowProps = {
   /** Serials, bin codes — anything a person reads off a label. */
   monoTitle?: boolean;
   subtitle?: ReactNode;
-  /** Right-aligned quiet label (type, count). */
+  /** Right-aligned quiet label (type, count). Ignored when `trailing` is set. */
   value?: string;
+  /** Right-aligned node (quality chip). Wins over `value`. */
+  trailing?: ReactNode;
   /** Thumbnail or glyph. `leadingWidth` keeps the divider aligned to the text. */
   leading?: ReactNode;
   leadingWidth?: number;
   accessibilityLabel: string;
   onPress: () => void;
+  onLongPress?: () => void;
+  /** Hide the live row while the lift-menu clone is on screen. */
+  lifted?: boolean;
+  /** Inner row only — IosLiftMenu already draws the card. */
+  preview?: boolean;
 };
 
-export const CatalogRow = memo(function CatalogRow({
-  position,
-  title,
-  monoTitle = false,
-  subtitle,
-  value,
-  leading,
-  leadingWidth = 0,
-  accessibilityLabel,
-  onPress,
-}: CatalogRowProps) {
+export const CatalogRow = memo(
+  forwardRef<View, CatalogRowProps>(function CatalogRow(
+    {
+      position,
+      title,
+      monoTitle = false,
+      subtitle,
+      value,
+      trailing,
+      leading,
+      leadingWidth = 0,
+      accessibilityLabel,
+      onPress,
+      onLongPress,
+      lifted = false,
+      preview = false,
+    },
+    ref,
+  ) {
   const { colors, isDark } = useTheme();
   const motion = useMotion();
   const press = useSharedValue(0);
@@ -120,21 +154,24 @@ export const CatalogRow = memo(function CatalogRow({
     press.value = withTiming(next, { duration: motion.reduced ? 80 : motion.duration.fast });
   };
 
-  const roundTop = position === 'first' || position === 'only';
-  const roundBottom = position === 'last' || position === 'only';
-  const showDivider = position === 'middle' || position === 'last';
+  const roundTop = preview || position === 'first' || position === 'only';
+  const roundBottom = preview || position === 'last' || position === 'only';
+  const showDivider = !preview && (position === 'middle' || position === 'last');
   const dividerInset = ROW_PAD_X + (leadingWidth > 0 ? leadingWidth + spacing[3] : 0);
 
   return (
     <View
+      ref={ref}
+      collapsable={false}
       style={{
-        marginHorizontal: rhythm.pad,
-        backgroundColor: colors.card,
+        marginHorizontal: preview ? 0 : rhythm.pad,
+        backgroundColor: preview ? 'transparent' : colors.card,
         borderTopLeftRadius: roundTop ? CATALOG_CARD_RADIUS : 0,
         borderTopRightRadius: roundTop ? CATALOG_CARD_RADIUS : 0,
         borderBottomLeftRadius: roundBottom ? CATALOG_CARD_RADIUS : 0,
         borderBottomRightRadius: roundBottom ? CATALOG_CARD_RADIUS : 0,
         overflow: 'hidden',
+        opacity: lifted ? 0 : 1,
       }}
     >
       {showDivider ? (
@@ -150,12 +187,14 @@ export const CatalogRow = memo(function CatalogRow({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
+        delayLongPress={Platform.OS === 'ios' ? 380 : 450}
         onPressIn={() => setPressed(1)}
         onPressOut={() => setPressed(0)}
         onPress={() => {
           haptics.selection();
           onPress();
         }}
+        onLongPress={onLongPress}
       >
         <Animated.View
           style={[
@@ -183,27 +222,41 @@ export const CatalogRow = memo(function CatalogRow({
             {subtitle}
           </View>
 
-          {value ? (
+          {trailing ? (
+            <View style={{ flexShrink: 0 }}>{trailing}</View>
+          ) : value ? (
             <Text variant="footnote" color="muted" numberOfLines={1}>
               {value}
             </Text>
           ) : null}
 
-          <ChevronRightIcon
-            size="sm"
-            color={withAlpha(colors.mutedForeground, isDark ? 0.4 : 0.45)}
-            strokeWidth={1.75}
-          />
+          {preview ? null : (
+            <ChevronRightIcon
+              size="sm"
+              color={withAlpha(colors.mutedForeground, isDark ? 0.4 : 0.45)}
+              strokeWidth={1.75}
+            />
+          )}
         </Animated.View>
       </Pressable>
     </View>
   );
-});
+  }),
+);
+CatalogRow.displayName = 'CatalogRow';
 
 /**
- * Fixed header for a catalog screen: back affordance, large title, count, and
- * a filter field that stays put — on a 250-row catalog, search you have to
- * scroll back to find is search you do not use.
+ * Fixed header for a catalog screen.
+ *
+ * A navigation row that always holds the back affordance and the screen's one
+ * primary action, a large title under it, and a filter field that stays put —
+ * on a 250-row catalog, search you have to scroll back to find is search you
+ * do not use.
+ *
+ * `collapsed` is the Apple navigation-bar move: once the list has scrolled the
+ * large title condenses into the nav row and a hairline appears, so the field
+ * and the filter keep their place while the page title stops taking a third of
+ * the screen. Screens that do not track scroll simply never set it.
  */
 export function CatalogScreenHeader({
   title,
@@ -211,49 +264,123 @@ export function CatalogScreenHeader({
   onBack,
   search,
   action,
+  collapsed = false,
 }: {
   title: string;
   subtitle: string;
   onBack: () => void;
   search?: ReactNode;
-  /** Primary action beside the title (e.g. Add), as on the Finance header. */
+  /** Primary action for the screen (e.g. Add), pinned in the navigation row. */
   action?: ReactNode;
+  /** Condense the large title — drive it from the list's scroll offset. */
+  collapsed?: boolean;
 }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const motion = useMotion();
+  const progress = useSharedValue(collapsed ? 1 : 0);
+  // Measured from the natural (unanimated) inner block, so Dynamic Type sets
+  // the travel instead of a hardcoded height that clips at larger sizes.
+  const [titleHeight, setTitleHeight] = useState(0);
+
+  useEffect(() => {
+    const target = collapsed ? 1 : 0;
+    progress.value = motion.reduced
+      ? target
+      : withTiming(target, { duration: motion.duration.normal, easing: motion.ease });
+  }, [collapsed, motion.duration.normal, motion.ease, motion.reduced, progress]);
+
+  const largeStyle = useAnimatedStyle(() => ({
+    opacity: 1 - progress.value,
+    transform: [{ translateY: -6 * progress.value }],
+    ...(titleHeight > 0 ? { height: titleHeight * (1 - progress.value) } : null),
+  }));
+
+  const inlineStyle = useAnimatedStyle(() => ({ opacity: progress.value }));
+  const hairlineStyle = useAnimatedStyle(() => ({ opacity: progress.value }));
 
   return (
-    <View style={{ paddingTop: insets.top + tokens.space.micro }}>
-      <View style={{ paddingHorizontal: spacing[2], paddingBottom: tokens.space.micro }}>
+    <View style={{ paddingTop: insets.top + tokens.space.micro, backgroundColor: colors.background }}>
+      <View
+        style={{
+          height: tokens.control.hitTarget,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingLeft: spacing[2],
+          paddingRight: rhythm.pad,
+        }}
+      >
         <IconButton accessibilityLabel="Back" variant="ghost" size="sm" onPress={onBack}>
           <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
         </IconButton>
+
+        {/* Absolute so the condensed title is centred on the screen rather than
+            on whatever space the action leaves behind. */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            {
+              position: 'absolute',
+              left: 64,
+              right: 64,
+              top: 0,
+              bottom: 0,
+              alignItems: 'center',
+              justifyContent: 'center',
+            },
+            inlineStyle,
+          ]}
+        >
+          <Text variant="headline" numberOfLines={1} style={{ color: colors.foreground }}>
+            {title}
+          </Text>
+        </Animated.View>
+
+        {action}
       </View>
 
-      <View
-        style={{
-          paddingHorizontal: rhythm.pad,
-          flexDirection: 'row',
-          alignItems: 'flex-start',
-          gap: tokens.space.stack,
-        }}
-      >
-        {/* The title column shrinks so a long catalog name ellipsizes rather
-            than pushing the action off the screen. */}
-        <View style={{ flex: 1, gap: spacing[1] }}>
-          <Text variant="displayTitle" numberOfLines={1} style={{ color: colors.foreground }}>
+      <Animated.View style={[{ overflow: 'hidden' }, largeStyle]}>
+        <View
+          onLayout={(event) => {
+            const next = Math.round(event.nativeEvent.layout.height);
+            setTitleHeight((current) => (Math.abs(current - next) < 1 ? current : next));
+          }}
+          style={{ paddingHorizontal: rhythm.pad, paddingTop: spacing[1], gap: 2 }}
+        >
+          <Text
+            variant="displayTitle"
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.2}
+            style={{ color: colors.foreground }}
+          >
             {title}
           </Text>
           <Text variant="subheadline" color="muted" numberOfLines={1}>
             {subtitle}
           </Text>
         </View>
-        {action}
-      </View>
+      </Animated.View>
 
       {search ? (
-        <View style={{ paddingHorizontal: rhythm.pad, paddingTop: spacing[3] }}>{search}</View>
+        <View
+          style={{
+            paddingHorizontal: rhythm.pad,
+            paddingTop: spacing[3],
+            paddingBottom: spacing[2.5],
+          }}
+        >
+          {search}
+        </View>
       ) : null}
+
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          { height: tokens.control.hairline, backgroundColor: colors.border },
+          hairlineStyle,
+        ]}
+      />
     </View>
   );
 }

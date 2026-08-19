@@ -5,28 +5,87 @@ share one feed: [`OperationsLiveActivityHost`](../autocore-mobile/features/live-
 
 Provisioning / App Groups: [MOBILE-LIVE-ACTIVITIES.md](MOBILE-LIVE-ACTIVITIES.md).
 
+**One slot = one action.** Live Activity is the only live layer. Widgets are stale-honest snapshots.
+
+`createWidget` names for Floor and Intake stay `AutoCoreToday` and `AutoCoreIntake` so tiles already on a Home Screen do not vanish. Gallery titles, layouts, and the set of kinds changed.
+
 ## Surfaces
 
 | Name | Gallery title | Job | Families |
 | --- | --- | --- | --- |
-| `OperationsLiveActivity` | — | Intake photo upload, live | Island + Lock banner |
-| `AutoCoreToday` | Today at the shop | What needs a person on the floor | Lock circular / rectangular / inline · Home small / medium / large (StandBy) |
-| `AutoCoreWork` | Work orders | Open vs waiting on parts | Lock circular / rectangular / inline · Home small / medium |
-| `AutoCoreWarehouse` | Warehouse | Stock to place, low stock, engines | Lock circular / rectangular / inline · Home small / medium |
-| `AutoCoreIntake` | Intake Bay | Ready vs Active engines | Lock circular / rectangular / inline · Home small / medium |
-| `AutoCoreSync` | Intake Sync | Queue leftover after the Island ends | Lock circular / rectangular / inline · Home small |
+| `OperationsLiveActivity` | — | Fail / documenting / upload | Island + Lock banner |
+| `AutoCoreToday` | Floor | Hottest fact on the floor | Lock circular / rectangular / inline · Home small / medium / large (StandBy) |
+| `AutoCoreScan` | Scan | Open the camera | Lock circular · Home small |
+| `AutoCoreIntake` | Intake Bay | Ready vs documenting | Lock circular / rectangular / inline · Home small / medium |
+| `AutoCorePay` | Pay | Payouts waiting / jobs to claim | Home small only |
 
-Live Activity is the only frequent-update surface. Widgets are stale-honest snapshots.
+SwiftUI allows four `createWidget` kinds plus the Live Activity. That is the full set.
 
-Gallery order is shop-wide first. SwiftUI allows four widgets per `WidgetBundle`, so `index.swift` splits Today / Work / Warehouse / Intake, then Sync + the Live Activity.
+`AutoCoreWork`, `AutoCoreWarehouse`, and `AutoCoreSync` are gone. Anyone who still had those tiles loses them.
+
+Recommended first page: **Floor medium** + **Scan small**. Add **Intake small** if the person lives in intake. Add **Pay** only when they have something to claim or pay.
+
+Lock Control / Control Center (iOS 18 `ControlWidget`) is out of scope — `expo-widgets` cannot register one.
+
+## Floor (`AutoCoreToday`)
+
+Hottest fact from [`buildTodayWidgetProps`](../autocore-mobile/features/live-activity/lib/widget-model.ts), hardest first: to place → waiting on parts → low stock → pay → intake awaiting → open orders → clear.
+
+- **Small:** eyebrow `Needs you` / `Floor` → numeral → one line → relative time. Tap opens the hot URL (scan / orders / warehouse / earnings / intake).
+- **Medium:** the same hot line in the header, then **Open** / **To place** / **Engines**. No buttons — the whole tile goes to the hot screen.
+- **Large / StandBy:** hero numeral + title + detail, then the same three cells (not a second metric grid).
+
+## Scan (`AutoCoreScan`)
+
+A camera CTA, not a report.
+
+- **Small:** SF `barcode.viewfinder`, title `Scan in`, detail `Place stock` or `Open camera`. Amber badge with the to-place count when `awaitingPlacement > 0`. App Intent `openScan` → `autocoremobile://scan`.
+- **Lock circular:** symbol + to-place count, or a bare Scan glyph when the count is 0. Tap opens scan.
+
+## Intake (`AutoCoreIntake`)
+
+Rank on Home: Ready → syncing → Active. Lock circular always shows **Ready**.
+
+- **Small:** Ready count (or Active when Ready is 0) + one line + one primary button.
+- **Medium:** Ready | Active columns and buttons `Open Ready` / `Continue`.
+- **Lock circular:** Ready only. Rectangular / inline: `2 Ready · 1 documenting`.
+
+## Pay (`AutoCorePay`)
+
+Home small only. Mechanics see jobs to claim; owners / payroll see pending payouts. Tap → `autocoremobile://earnings`.
+
+If the person cannot open earnings, the tile is an honest empty (`Pay isn’t on for you`) — never someone else’s numbers.
+
+No Lock families: Floor already promotes payout as the hottest fact.
+
+## Lock Screen
+
+Three languages, not a shrunk Home tile. Lock accessories use vibrant rendering — no hex colour, only weight + SF Symbol.
+
+- **Inline:** one Floor line (`3 to place` / `Bay clear`). While an upload is live, the Island banner matters more; inline Floor does not compete with it.
+- **Circular:** Floor (hot number) and Intake Ready. Scan circular is optional.
+- **Rectangular:** Floor (eyebrow + title + detail).
+
+Do not put a Sync circle on the Lock Screen. The queue lives on the Island.
+
+## Island
+
+One `OperationsLiveActivity` instance. [`resolveDesiredLiveActivity`](../autocore-mobile/features/live-activity/lib/live-activity-model.ts) rank:
+
+1. Fail / blocked sync (`FAILED`, `ACTION_REQUIRED`)
+2. Active intake session (`in_session` / `paused`: subject + `captured/required`)
+3. Uploading / waiting / retry
+4. Idle — empty queue and no session ends immediately (success linger only after a wave that actually moved)
+
+Session frame: camera glyph, title + subject + `4/12`. **No upload Gauge.** Tap opens `autocoremobile://intake?filter=active`. Sync tap stays `autocoremobile://intake`.
+
+Always-On still greys accents. After any layout edit bump `OPERATIONS_LIVE_ACTIVITY_LAYOUT_BUILD` and ship a device Release rebuild — Babel serializes only the `'widget'` function.
 
 ## Design
 
 Home chrome: background `#0E0F13`, text white / `#EBEBF5` / muted `#8E8E93`, relative time `#6E6E73`.
 
 System accents (not brand purple): sync `#0A84FF`, success `#30D158`, warn `#FF9F0A`, fail `#FF453A`, idle `#8E8E93`.
-
-Lock accessories use vibrant rendering — no hex colour, only weight + SF Symbol.
 
 One job per widget: one headline, one supporting line. Medium may show two or three cells. Unknown counts render `—`, never a fabricated `0`.
 
@@ -36,39 +95,37 @@ Copy lives in [`widget-copy.ts`](../autocore-mobile/features/live-activity/lib/w
 
 The app process pushes snapshots into the App Group. WidgetKit redraws on its schedule. A content-keyed guard (`widgetSnapshotKey`) skips identical payloads so reload budget is not wasted on the clock.
 
-Backgrounding always writes a fresh `updatedAtMs`. Signed out / lost `engine_intake_view` publishes blanks so another company's numbers cannot sit on the Lock Screen.
+Backgrounding always writes a fresh `updatedAtMs`. Signed out / lost company / no earnings access publishes blanks so another company's numbers cannot sit on the Lock Screen.
 
-Today ranks hardest-first: stock to place → orders waiting on parts → low stock → pay waiting / jobs to claim → engines awaiting intake → open orders → clear. The tap opens that destination, not always Work. Medium still shows Orders / To place / Engines.
-
-Intake Bay reads the same merged job list as the bay UI, including optimistic Ready after Finish. Today’s intake count is `open` / `rework` only (engines waiting to be picked up), not in-session work.
+Intake Bay reads the same merged job list as the bay UI, including optimistic Ready after Finish. Floor’s intake count is `open` / `rework` only (engines waiting to be picked up), not in-session work.
 
 ## Deep links
 
 | Source | URL |
 | --- | --- |
-| Today (hottest item) | `scan` / `orders` / `warehouse` / `earnings` / `intake` / `work` |
-| Work orders | `autocoremobile://orders` |
-| Warehouse (to place) | `autocoremobile://scan` |
-| Warehouse (otherwise) | `autocoremobile://warehouse` |
-| Sync widget / Island | `autocoremobile://intake` |
-| Intake Bay (Ready) | `autocoremobile://intake?filter=ready` |
-| Intake Bay (Active) | `autocoremobile://intake?filter=active` |
+| Floor (hottest item) | `scan` / `orders` / `warehouse` / `earnings` / `intake` / `work` |
+| Scan / `openScan` | `autocoremobile://scan` |
+| Pay | `autocoremobile://earnings` |
+| Island (sync) | `autocoremobile://intake` |
+| Island (session) | `autocoremobile://intake?filter=active` |
+| Intake Bay (Ready / `openReady`) | `autocoremobile://intake?filter=ready` |
+| Intake Bay (Active / `continueIntake`) | `autocoremobile://intake?filter=active` |
 
-Home widget buttons (`openReady`, `continueIntake`, `openIntake`, `openOrders`, `openScan`, `openWarehouse`) use the same URLs via `addUserInteractionListener`.
+Home widget buttons use those URLs via `addUserInteractionListener`. Lock accessories stay tap-to-open via `widgetURL` only.
 
 ## Device QA
 
 Release rebuild is required after any `'widget'` layout change (`npm run ios:release --device`). Soft reload does not update the extension.
 
-The iOS gallery only lists widgets that are compiled into `ExpoWidgetsTarget` (`index.swift` WidgetBundle). JS `createWidget(...)` alone is not enough — each `AutoCore*.swift` file must be in that target's Sources. If they vanish after prebuild, `plugins/with-ios-widget-extension-sources.js` puts them back.
+The iOS gallery only lists widgets compiled into `ExpoWidgetsTarget` (`index.swift` WidgetBundle). JS `createWidget(...)` alone is not enough — each `AutoCore*.swift` file must be in that target's Sources. If they vanish after prebuild, `plugins/with-ios-widget-extension-sources.js` puts them back. That plugin **adds** Swift files; it does not delete leftover `AutoCoreWork` / `AutoCoreWarehouse` / `AutoCoreSync` sources from an older prebuild — remove those files from `ios/ExpoWidgetsTarget` if they linger.
 
-1. Add **Today at the shop**, **Work orders**, **Warehouse**, **Intake Bay**, and **Intake Sync** to the Lock Screen (circular + rectangular) and Home Screen (small; Today also medium / StandBy large).
-2. Shoot intake photos: Island + Sync widget match the in-app banner.
-3. Background the app mid-upload: Island keeps going; widgets show a relative timestamp.
-4. Finish: Ready count on the phone and Intake Bay widget match web **In review**. Tap Ready → bay opens on the Ready tab.
-5. Place unlocated stock / open a waiting-on-parts order: Today and the matching dedicated widget agree, and the tap lands on Scan / Orders / Warehouse — not always Work.
-6. Sign out (or switch company): Lock Screen numbers clear to `—` / AutoCore, not the previous tenant.
-7. Settings → Notifications → Lock Screen copy is present on iOS.
+1. Add **Floor** (small / medium / large + lock circular / rectangular / inline), **Scan** (small + lock circular), **Intake Bay** (small / medium + lock), and optionally **Pay** (Home small). Confirm Work / Warehouse / Intake Sync are gone from the gallery.
+2. Floor tap opens the hot screen (scan / orders / warehouse / earnings / intake) — not a generic Work hub.
+3. Scan opens the camera. To-place badge matches receiving.
+4. Intake Ready on the phone matches the bay (and web **In review**). Tap Ready → Ready tab; Continue → Active.
+5. Sign out or switch company: Lock Screen numbers clear to `—` / AutoCore, not the previous tenant. Pay without earnings access shows `Pay isn’t on for you`, not another person's totals.
+6. Document an engine: Island shows session (camera + `4/12`), not an upload Gauge. Blocked sync outranks the session. Healthy upload yields to documenting. Empty queue with no session ends the Island — it must not sit empty.
+7. Settings → Notifications → Lock Screen copy lists Floor / Scan / Intake Bay.
 
 ## After layout edits
 

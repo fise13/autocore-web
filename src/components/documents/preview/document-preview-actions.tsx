@@ -13,6 +13,7 @@ import {
   printPdfBlob,
 } from "@/lib/documents/fetch-document-pdf";
 import { mapDocumentError } from "@/lib/documents/map-document-error";
+import { registerDesktopAction } from "@/platform/desktop-actions";
 
 type DocumentPreviewActionsProps = {
   slug: DocumentSlug;
@@ -80,7 +81,12 @@ export function DocumentPreviewActions({
     try {
       const { blob } = await resolvePdfBlob();
       const filename = `${definition.slug}-${orderId}.pdf`;
-      deliverPdfToUser(blob, filename);
+      const result = await deliverPdfToUser(blob, filename);
+      // On desktop the file goes where the user chose, so say where that was.
+      // "cancelled" means they dismissed the dialog — not an error, not a notice.
+      if (result.status === "saved") {
+        onNotice?.(userCopy.documents.preview.savedTo(result.path));
+      }
     } catch (error) {
       onError?.(mapDocumentError(error, userCopy.documents.preview.downloadFailed));
     } finally {
@@ -94,13 +100,26 @@ export function DocumentPreviewActions({
     onNotice?.(null);
     try {
       const { blob } = await resolvePdfBlob();
-      await printPdfBlob(blob);
+      await printPdfBlob(blob, `${definition.slug}-${orderId}.pdf`);
     } catch (error) {
       onError?.(mapDocumentError(error, userCopy.documents.preview.printFailed));
     } finally {
       setBusy(null);
     }
   }
+
+  // Claim ⌘S / ⌘P from the desktop menu while this screen is on top. A no-op on
+  // web, where the browser owns both shortcuts.
+  useEffect(() => {
+    const releaseSave = registerDesktopAction("save", () => void handleDownload());
+    const releasePrint = registerDesktopAction("print", () => void handlePrint());
+    return () => {
+      releaseSave();
+      releasePrint();
+    };
+    // handleDownload / handlePrint close over refs and stable props only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, orderId]);
 
   return (
     <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">

@@ -24,20 +24,8 @@ export function useWidgetInteractions() {
         void openNotificationDeepLink(WIDGET_URL.intakeActive);
         return;
       }
-      if (source === 'AutoCoreSync' && target.includes('openIntake')) {
-        void openNotificationDeepLink(WIDGET_URL.intake);
-        return;
-      }
-      if (source === 'AutoCoreWork' && target.includes('openOrders')) {
-        void openNotificationDeepLink(WIDGET_URL.orders);
-        return;
-      }
-      if (source === 'AutoCoreWarehouse' && target.includes('openScan')) {
+      if (source === 'AutoCoreScan' && target.includes('openScan')) {
         void openNotificationDeepLink(WIDGET_URL.scan);
-        return;
-      }
-      if (source === 'AutoCoreWarehouse' && target.includes('openWarehouse')) {
-        void openNotificationDeepLink(WIDGET_URL.warehouse);
       }
     });
     return () => subscription.remove();

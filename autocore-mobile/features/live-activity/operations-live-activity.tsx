@@ -45,7 +45,7 @@ import type { LiveActivityProps } from './lib/live-activity-model';
 export type OperationsLiveActivityProps = LiveActivityProps;
 
 /** Bumped when Island layout changes — logged at boot to confirm the binary. */
-export const OPERATIONS_LIVE_ACTIVITY_LAYOUT_BUILD = 'island-v7-20260813';
+export const OPERATIONS_LIVE_ACTIVITY_LAYOUT_BUILD = 'island-v8-20260817';
 
 const OperationsLiveActivityLayout = (
   props: OperationsLiveActivityProps,
@@ -79,6 +79,7 @@ const OperationsLiveActivityLayout = (
       ? Math.max(0, Math.min(1, props.progress))
       : 0;
   const determinate = Boolean(props.determinate);
+  const isSession = props.mode === 'session';
   const retryAtMs =
     typeof props.retryAtMs === 'number' && Number.isFinite(props.retryAtMs) ? props.retryAtMs : 0;
   const iconUri = typeof props.iconUri === 'string' ? props.iconUri : '';
@@ -127,8 +128,9 @@ const OperationsLiveActivityLayout = (
    * indeterminate ring parked at zero looks like a stalled upload.
    * Fraction lives inside the ring so expanded trailing can stay empty.
    */
+  const showGauge = determinate && !isSession;
   const progressRing = (diameter: number, inner: ReactNode) =>
-    determinate ? (
+    showGauge ? (
       <ZStack modifiers={[frame({ width: diameter, height: diameter })]}>
         <Gauge
           value={progress}
@@ -186,20 +188,21 @@ const OperationsLiveActivityLayout = (
 
   const ringInner = showsCountdown ? (
     countdown(11)
-  ) : determinate ? (
-    numeral(11)
-  ) : (
+  ) : isSession || !determinate ? (
     <Image systemName={symbol} color={accent} size={16} />
+  ) : (
+    numeral(11)
   );
 
-  /** Thin track only. Non-syncing states get a flat rail, not a spinner. */
-  const progressBar = determinate ? (
-    <ProgressView value={progress} modifiers={[tint(accent), frame({ maxWidth: 999 })]} />
-  ) : status === 'SYNCING' ? (
-    <ProgressView modifiers={[tint(accent), frame({ maxWidth: 999 })]} />
-  ) : (
-    <Capsule modifiers={[frame({ maxWidth: 999, height: 3 }), foregroundStyle(trackColor)]} />
-  );
+  /** Thin track only. Session and parked states get a flat rail, not a spinner. */
+  const progressBar =
+    isSession || (!determinate && status !== 'SYNCING') ? (
+      <Capsule modifiers={[frame({ maxWidth: 999, height: 3 }), foregroundStyle(trackColor)]} />
+    ) : determinate ? (
+      <ProgressView value={progress} modifiers={[tint(accent), frame({ maxWidth: 999 })]} />
+    ) : (
+      <ProgressView modifiers={[tint(accent), frame({ maxWidth: 999 })]} />
+    );
 
   return {
     // ------------------------------------------------------- Lock Screen banner

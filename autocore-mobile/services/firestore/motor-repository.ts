@@ -52,6 +52,7 @@ function mapMotor(docId: string, data: Record<string, unknown>): MotorEntity | n
     serialCode,
     configuration: String(data.configuration ?? ''),
     notes: String(data.notes ?? ''),
+    quality: typeof data.quality === 'string' ? data.quality : '',
     quantity: Number(data.quantity ?? 1),
     transmission: String(data.transmission ?? ''),
     arrivalDate: toDateFromFirestore(data.arrivalDate) ?? null,
@@ -112,9 +113,9 @@ function applyMotorFilters(motors: MotorEntity[], filters: MotorFilters): MotorE
   if (filters.soldOnly) {
     mapped = mapped.filter((item) => Boolean(item.soldDate));
   } else if (filters.availability === 'available') {
-    mapped = mapped.filter(
-      (item) => !item.soldDate && (!item.status || item.status === 'available'),
-    );
+    // Live yard stock — every non-sold status. The Engines catalog is the
+    // place you browse units, not only ones currently marked available.
+    mapped = mapped.filter((item) => !item.soldDate && item.status !== 'sold');
   } else if (filters.availability === 'sold') {
     mapped = mapped.filter((item) => Boolean(item.soldDate));
   }
@@ -134,7 +135,8 @@ function applyMotorFilters(motors: MotorEntity[], filters: MotorFilters): MotorE
         item.configuration.toLowerCase().includes(q) ||
         item.notes.toLowerCase().includes(q) ||
         item.engineCode?.toLowerCase().includes(q) ||
-        item.brandName?.toLowerCase().includes(q),
+        item.brandName?.toLowerCase().includes(q) ||
+        item.quality?.toLowerCase().includes(q),
     );
   }
 

@@ -1,60 +1,54 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
+import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 
-import { Badge, Button, EmptyState, Screen, ScreenScroll, Text, toast } from '@/components/ui';
+import { EmptyState, Screen, ScreenScroll, toast } from '@/components/ui';
+import type { NativeContextMenuAction } from '@/components/ui/native-context-menu';
 import { CarIcon } from '@/assets/icons';
-import { EngineDocumentationCard, EngineFactStrip, EngineNoteCard, EngineSectionLabel } from '@/features/engines/components/engine-detail-blocks';
+import {
+  EngineActionCluster,
+  EngineChapter,
+  EngineDocumentationRow,
+  EngineIdentity,
+  EngineNoteBody,
+  EngineSpecList,
+} from '@/features/engines/components/engine-detail-blocks';
 import { EngineHero } from '@/features/engines/components/engine-hero';
-import { EnginePhotoStrip } from '@/features/engines/components/engine-photo-strip';
 import { EngineLocationSheet } from '@/features/engines/components/engine-location-sheet';
 import { EnginePhotoViewer } from '@/features/engines/components/engine-photo-viewer';
 import { SellMotorSheet, type SellMotorSheetRef } from '@/features/search/components/sell-motor-sheet';
-import { documentationLine, engineFacts } from '@/features/engines/lib/engine-facts';
-import { engineStatusLabel, engineStatusTone } from '@/features/engines/lib/engine-variants';
+import { documentationLine, engineSpecRows } from '@/features/engines/lib/engine-facts';
+import { shareEnginePhoto } from '@/features/engines/lib/engine-photo-file';
+import { engineUnitLabel, engineVariantTitle } from '@/features/engines/lib/engine-variants';
+import { eng } from '@/features/engines/layout';
 import { useEngineIntakeJobs } from '@/features/engine-intake/hooks/use-engine-intake-data';
 import { OrderPickerSheet } from '@/features/orders/components/order-picker-sheet';
 import { useAddToOrderFlow } from '@/features/orders/hooks/use-add-to-order-flow';
 import { useMobileAssignAssetLocation } from '@/hooks/use-mobile-relocate';
 import { useSession } from '@/hooks/use-session';
 import { useSessionQueryData } from '@/hooks/use-session-query-data';
-import { useTheme } from '@/hooks/use-theme';
 import { goBackOrReplace } from '@/lib/navigation/stack-back';
-import { rhythm, spacing } from '@/theme';
+import { haptics, spacing } from '@/theme';
 import type { MobileWarehouseLocation } from '@/hooks/use-mobile-relocate';
 import type { MotorEntity } from '@/types/motor';
 import type { WarehouseEntity } from '@/types/warehouse';
 
-const STATUS_VARIANT = {
-  success: 'success',
-  warning: 'warning',
-  danger: 'destructive',
-  progress: 'default',
-  muted: 'secondary',
-} as const;
-
-function engineTitle(motor: MotorEntity): string {
-  return (
-    [motor.brandName, motor.engineCode || motor.configuration].filter(Boolean).join(' ') || 'Engine'
-  );
-}
-
 /**
  * Canonical Engine object — opened from Search, Work, Engines, AI, Intake.
  *
- * Photo-led: the block itself is the headline, then identity, then three facts
- * side by side, then what you can do with it. The previous version was five
- * stacked sections of `label → one muted line`, which read as a database dump
- * and buried the photos halfway down.
+ * One document, read top to bottom: the photo is the field, the motor and its
+ * serial are the identity, the verbs sit under them as a ruled action row, and
+ * everything below is a packing slip on hairline frames.
  */
 export function EngineObjectScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { companyId, uid, can } = useSession();
   const router = useRouter();
-  const { colors } = useTheme();
   const addToOrderFlow = useAddToOrderFlow();
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [heroIndex, setHeroIndex] = useState(0);
   const sellSheetRef = useRef<SellMotorSheetRef>(null);
   const locationSheetRef = useRef<BottomSheetModal>(null);
   const assignLocation = useMobileAssignAssetLocation();
@@ -71,7 +65,6 @@ export function EngineObjectScreen() {
     [motor?.photoUrls],
   );
 
-  // Only subscribe when this engine actually came through intake.
   const intakeJobId = motor?.intakeJobId ?? null;
   const canSeeIntake = can('engine_intake_view');
   const intake = useEngineIntakeJobs(intakeJobId && canSeeIntake ? companyId : null);
@@ -118,11 +111,57 @@ export function EngineObjectScreen() {
     [assignLocation, id, warehouseId],
   );
 
-  const facts = useMemo(() => (motor ? engineFacts(motor) : []), [motor]);
+  const specs = useMemo(() => (motor ? engineSpecRows(motor) : []), [motor]);
   const closeViewer = useCallback(() => setViewerIndex(null), []);
   const goBack = useCallback(
     () => goBackOrReplace(router, '/objects/engines' as Href),
     [router],
+  );
+
+  const serial = motor ? engineUnitLabel(motor) : '';
+
+  /** Utilities for the unit and the photo on screen — the system sheet, not a menu we drew. */
+  const heroActions = useMemo<NativeContextMenuAction[]>(() => {
+    const actions: NativeContextMenuAction[] = [
+      { id: 'copy-serial', title: 'Copy Serial', systemImage: 'doc.on.doc' },
+    ];
+    if (photos.length > 0) {
+      actions.push({ id: 'share-photo', title: 'Share Photo', systemImage: 'square.and.arrow.up' });
+      actions.push({ id: 'copy-link', title: 'Copy Photo Link', systemImage: 'link' });
+    }
+    return actions;
+  }, [photos.length]);
+
+  const onHeroAction = useCallback(
+    (action: string) => {
+      const url = photos[Math.min(heroIndex, photos.length - 1)];
+      void (async () => {
+        if (action === 'copy-serial') {
+          await Clipboard.setStringAsync(serial);
+          haptics.success();
+          toast({ title: `${serial} copied`, variant: 'success' });
+          return;
+        }
+        if (!url) return;
+        if (action === 'copy-link') {
+          await Clipboard.setStringAsync(url);
+          toast({ title: 'Photo link copied', variant: 'success' });
+          return;
+        }
+        try {
+          await shareEnginePhoto(url, serial, heroIndex);
+          haptics.success();
+        } catch (error) {
+          haptics.error();
+          toast({
+            title: 'Could not share the photo',
+            description: error instanceof Error ? error.message : undefined,
+            variant: 'destructive',
+          });
+        }
+      })();
+    },
+    [heroIndex, photos, serial],
   );
 
   if (!motor) {
@@ -141,8 +180,7 @@ export function EngineObjectScreen() {
     );
   }
 
-  const serial = motor.serialCode?.trim() || motor.id;
-  const title = engineTitle(motor);
+  const title = engineVariantTitle(motor);
   const notes = motor.notes?.trim();
   const sold = Boolean(motor.soldDate) || motor.status === 'sold';
   const canAddToOrder = can('work_orders_edit') && !sold;
@@ -152,108 +190,58 @@ export function EngineObjectScreen() {
   return (
     <View style={{ flex: 1 }}>
       <Screen>
-        <ScreenScroll tabBarInset topFade={false} contentStyle={{ paddingBottom: spacing[8] }}>
-          <EngineHero urls={photos} onBack={goBack} onOpenPhoto={setViewerIndex} />
+        <ScreenScroll tabBarInset topFade={false} contentStyle={{ paddingBottom: spacing[10] }}>
+          <EngineHero
+            urls={photos}
+            onBack={goBack}
+            onOpenPhoto={setViewerIndex}
+            onIndexChange={setHeroIndex}
+            actions={heroActions}
+            onAction={onHeroAction}
+          />
 
           <View
             style={{
-              paddingHorizontal: rhythm.pad,
-              paddingTop: spacing[4],
-              paddingBottom: spacing[5],
-              gap: spacing[2],
+              paddingHorizontal: eng.pad,
+              paddingTop: photos.length > 0 ? eng.block : eng.stack + 4,
+              gap: eng.section,
             }}
           >
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'flex-start',
-                gap: spacing[3],
-              }}
-            >
-              <Text variant="title1" style={{ flex: 1, color: colors.foreground }}>
-                {title}
-              </Text>
-              <Badge variant={STATUS_VARIANT[engineStatusTone(motor)]} emphasis="subtle">
-                {engineStatusLabel(motor)}
-              </Badge>
-            </View>
-            <Text variant="identifier" color="muted">
-              {serial}
-            </Text>
-          </View>
+            <View style={{ gap: eng.block }}>
+              <EngineIdentity motor={motor} serial={serial} title={title} />
 
-          <EngineFactStrip facts={facts} />
-
-          <View
-            style={{
-              paddingHorizontal: rhythm.pad,
-              paddingTop: spacing[5],
-              gap: spacing[2],
-            }}
-          >
-            {canSell ? (
-              <Button native={false} onPress={() => sellSheetRef.current?.present(motor)}>
-                Sell engine
-              </Button>
-            ) : null}
-            <View style={{ flexDirection: 'row', gap: spacing[2] }}>
-              {canAddToOrder ? (
-                <View style={{ flex: 1 }}>
-                  <Button
-                    native={false}
-                    variant={canSell ? 'outline' : 'default'}
-                    onPress={() => addToOrderFlow.addMotorToOrder(motor.id)}
-                  >
-                    Add to order
-                  </Button>
-                </View>
-              ) : null}
-              {canRelocate ? (
-                <View style={{ flex: 1 }}>
-                  <Button
-                    native={false}
-                    variant="outline"
-                    loading={assignLocation.isPending}
-                    onPress={() => locationSheetRef.current?.present()}
-                  >
-                    Relocate
-                  </Button>
-                </View>
-              ) : null}
-            </View>
-          </View>
-
-          {docLine ? (
-            <View style={{ paddingTop: spacing[6] }}>
-              <EngineSectionLabel>Documentation</EngineSectionLabel>
-              <EngineDocumentationCard
-                line={docLine}
-                onPress={
-                  can('engine_intake_view') ? () => router.push('/intake' as Href) : undefined
-                }
+              <EngineActionCluster
+                canSell={canSell}
+                canAddToOrder={canAddToOrder}
+                canRelocate={canRelocate}
+                relocating={assignLocation.isPending}
+                onSell={() => sellSheetRef.current?.present(motor)}
+                onAddToOrder={() => addToOrderFlow.addMotorToOrder(motor.id)}
+                onRelocate={() => locationSheetRef.current?.present()}
               />
             </View>
-          ) : null}
 
-          {photos.length > 1 ? (
-            <View style={{ paddingTop: spacing[6] }}>
-              <EngineSectionLabel>All photos</EngineSectionLabel>
-              <View style={{ paddingHorizontal: rhythm.pad }}>
-                <EnginePhotoStrip urls={photos} serial={serial} onOpen={setViewerIndex} />
-              </View>
-            </View>
-          ) : null}
+            <EngineChapter title="Details">
+              <EngineSpecList rows={specs} />
+            </EngineChapter>
 
-          {notes ? (
-            <View style={{ paddingTop: spacing[6] }}>
-              <EngineSectionLabel>Condition notes</EngineSectionLabel>
-              <EngineNoteCard>
-                <Text variant="callout" style={{ color: colors.foreground }}>
-                  {notes}
-                </Text>
-              </EngineNoteCard>
-            </View>
-          ) : null}
+            {notes ? (
+              <EngineChapter title="Condition">
+                <EngineNoteBody>{notes}</EngineNoteBody>
+              </EngineChapter>
+            ) : null}
+
+            {docLine ? (
+              <EngineChapter title="Documentation">
+                <EngineDocumentationRow
+                  line={docLine}
+                  onPress={
+                    can('engine_intake_view') ? () => router.push('/intake' as Href) : undefined
+                  }
+                />
+              </EngineChapter>
+            ) : null}
+          </View>
         </ScreenScroll>
       </Screen>
 
@@ -262,8 +250,8 @@ export function EngineObjectScreen() {
         companyId={companyId}
         uid={uid ?? ''}
         userId={uid ?? ''}
-        onSold={(sold) =>
-          toast({ title: 'Engine sold', description: sold.serialCode, variant: 'success' })
+        onSold={(soldMotor) =>
+          toast({ title: 'Engine sold', description: soldMotor.serialCode, variant: 'success' })
         }
       />
 

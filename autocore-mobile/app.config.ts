@@ -8,6 +8,8 @@ const withGoogleIosUrlScheme = require('./plugins/with-google-ios-url-scheme');
 const withOptionalAppleSignIn = require('./plugins/with-optional-apple-sign-in');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const withDisableSwiftUICoreAutolink = require('./plugins/with-disable-swiftuicore-autolink');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const withOpenIapPurchasePatch = require('./plugins/with-openiap-purchase-patch');
 
 function googleIosUrlScheme(iosClientId: string): string | null {
   const trimmed = iosClientId.trim();
@@ -85,8 +87,8 @@ const plugins: ExpoConfig['plugins'] = [
       widgets: [
         {
           name: 'AutoCoreToday',
-          displayName: 'Today at the shop',
-          description: 'What needs a person on the floor — orders, stock, pay, intake.',
+          displayName: 'Floor',
+          description: 'What needs a person on the floor — stock to place, orders, pay, intake.',
           supportedFamilies: [
             'accessoryCircular',
             'accessoryRectangular',
@@ -98,29 +100,10 @@ const plugins: ExpoConfig['plugins'] = [
           contentMarginsDisabled: false,
         },
         {
-          name: 'AutoCoreWork',
-          displayName: 'Work orders',
-          description: 'Open work orders and orders waiting on parts.',
-          supportedFamilies: [
-            'accessoryCircular',
-            'accessoryRectangular',
-            'accessoryInline',
-            'systemSmall',
-            'systemMedium',
-          ],
-          contentMarginsDisabled: false,
-        },
-        {
-          name: 'AutoCoreWarehouse',
-          displayName: 'Warehouse',
-          description: 'Stock to place, parts running low, engines on hand.',
-          supportedFamilies: [
-            'accessoryCircular',
-            'accessoryRectangular',
-            'accessoryInline',
-            'systemSmall',
-            'systemMedium',
-          ],
+          name: 'AutoCoreScan',
+          displayName: 'Scan',
+          description: 'Open the camera. Shows stock waiting to be placed.',
+          supportedFamilies: ['accessoryCircular', 'systemSmall'],
           contentMarginsDisabled: false,
         },
         {
@@ -137,16 +120,10 @@ const plugins: ExpoConfig['plugins'] = [
           contentMarginsDisabled: false,
         },
         {
-          // `name` must match `createWidget('AutoCoreSync', …)` exactly.
-          name: 'AutoCoreSync',
-          displayName: 'Intake Sync',
-          description: 'Photos waiting to upload from engine intake.',
-          supportedFamilies: [
-            'accessoryCircular',
-            'accessoryRectangular',
-            'accessoryInline',
-            'systemSmall',
-          ],
+          name: 'AutoCorePay',
+          displayName: 'Pay',
+          description: 'Payouts waiting and jobs you can claim.',
+          supportedFamilies: ['systemSmall'],
           contentMarginsDisabled: false,
         },
       ],
@@ -167,6 +144,7 @@ plugins.push(
   withGoogleIosUrlScheme,
   withOptionalAppleSignIn,
   withDisableSwiftUICoreAutolink,
+  withOpenIapPurchasePatch,
   require('./plugins/with-ios-push-entitlements'),
   require('./plugins/with-ios-universal-links'),
   require('./plugins/with-ios-widget-extension-sources'),

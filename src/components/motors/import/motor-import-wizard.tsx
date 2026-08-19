@@ -873,7 +873,17 @@ function ImportStatsCards({
   return (
     <div className="grid gap-3 sm:grid-cols-4">
       <StatCard label={userCopy.motors.importWizard.statSheets} value={sheetCount} hint={userCopy.motors.importWizard.enginesHint(engineSheetCount)} />
-      <StatCard label={userCopy.motors.importWizard.statMotors} value={totalMotors} hint={userCopy.motors.importWizard.toUploadHint(selectedCount)} />
+      <StatCard
+        label={userCopy.motors.importWizard.statMotors}
+        value={totalMotors}
+        // The row count drops when the same engine appears on several sheets. Saying so
+        // turns "where did my rows go?" into "the workbook repeated them".
+        hint={
+          preview.stats.mergedRows
+            ? userCopy.motors.importWizard.mergedHint(preview.stats.mergedRows, selectedCount)
+            : userCopy.motors.importWizard.toUploadHint(selectedCount)
+        }
+      />
       <StatCard label={userCopy.motors.importWizard.statReady} value={preview.stats.validEngineRows} hint={userCopy.motors.importWizard.errorsHint(preview.stats.errors)} />
       <StatCard
         label={userCopy.motors.importWizard.catalog}

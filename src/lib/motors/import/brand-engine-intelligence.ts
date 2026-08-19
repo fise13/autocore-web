@@ -39,16 +39,28 @@ const KNOWN_BRANDS = new Set(
 
 /** Engine family prefix → manufacturer (JDM auto dismantling catalogs). */
 const ENGINE_PREFIX_TO_BRAND: Array<[RegExp, string]> = [
-  [/^EJ|^FA|^FB|^FC|^EN|^EZ|^FB25|^FA20/i, "Subaru"],
-  [/^2JZ|^1JZ|^3S|^4A|^1UZ|^2AR|^2AZ|^1AZ|^1NZ|^3MZ|^5A|^7A|^4E|^1G|^2G|^1KD|^2KD|^1ZZ|^2ZZ|^3ZR|^1TR|^2TR|^1HD|^1VD|^1MZ|^2MZ|^3SGE/i, "Toyota"],
-  [/^SR|^RB|^VQ|^QR|^KA|^MR|^HR|^CD|^GA|^VE|^QR25|^VQ35|^VQ37|^TB|^ZD|^VG|^NA|^CA|^CG|^MA|^GA16|^SR20|^RB26|^RB25/i, "Nissan"],
-  [/^4G|^6G|^4B|^4D|^4N|^3G|^6A|^4A9|^4G63|^4G64|^4G69|^6B31/i, "Mitsubishi"],
-  [/^B18|^B16|^B20|^K20|^K24|^D16|^D15|^F20|^F22|^H22|^J35|^L15|^R18|^C30|^C32|^G25|^J30/i, "Honda"],
+  // Order matters: the first match wins, so narrower families come before the broad
+  // prefixes they would otherwise be swallowed by (3GR is Toyota, not Mitsubishi's ^3G;
+  // K4M is Renault, not Subaru's ^F4 neighbourhood; H27A is Suzuki, not Honda's ^H22).
+  [/^K4M|^K4J|^K9K|^F4R|^M9R|^H4M|^H5F/i, "Renault"],
+  [/^H20A|^H25|^H27|^J20A|^J24B|^M13A|^M15A|^M16A|^G16A/i, "Suzuki"],
+  [/^EJ|^FA|^FB|^FC|^EN|^EZ|^EL1/i, "Subaru"],
+  [
+    /^2JZ|^1JZ|^3S|^4A|^1UZ|^2UZ|^3UZ|^2AR|^2AZ|^1AZ|^1NZ|^2NZ|^3MZ|^5A|^7A|^4E|^1G|^2G|^1KZ|^1KD|^2KD|^1ZZ|^2ZZ|^3ZR|^1TR|^2TR|^1HD|^1VD|^1MZ|^2MZ|^3SGE|^1GR|^2GR|^3GR|^4GR|^5GR|^1UR|^2UR|^3UR/i,
+    "Toyota",
+  ],
+  [
+    /^SR|^RB|^VQ|^VK|^VH|^QR|^KA|^MR|^HR|^CD|^GA|^VE|^TB|^ZD|^YD|^VG|^NA|^CA|^CG|^MA/i,
+    "Nissan",
+  ],
+  [/^4G|^6G|^4B|^4D|^4N|^3G|^6A|^6B31/i, "Mitsubishi"],
+  [/^B18|^B16|^B20|^K20|^K24|^D16|^D15|^F20|^F22|^H22|^H23|^J35|^L15|^R18|^C30|^C32|^G25|^J30/i, "Honda"],
   [/^13B|^20B|^26B|^FE|^FP|^FS|^RF|^L3|^PY|^SH|^LF|^MZR|^PE|^ZY/i, "Mazda"],
-  [/^G4K|^G6D|^D4H|^G4NA|^G4FC|^G4GC|^D4EA|^D4FB/i, "Hyundai"],
+  [/^G4K|^G6B|^G6D|^G6E|^D4H|^G4NA|^G4FC|^G4GC|^D4EA|^D4FB/i, "Hyundai"],
   [/^G4KD|^G4KJ|^G6DA|^G4FA/i, "Kia"],
-  [/^F4|^EJ|^EE|^ET|^EN/i, "Subaru"],
-  [/^N52|^N54|^N55|^M54|^M57|^B58/i, "BMW"],
+  [/^N20|^N45|^N46|^N52|^N54|^N55|^N62|^N63|^M54|^M57|^B48|^B58|^S65/i, "BMW"],
+  // GM small-block petrol families used in Cruze / Captiva / Astra price lists.
+  [/^F16D|^F18D|^Z16|^Z18|^A14|^A16|^A18|^B15|^LE9|^LAF/i, "Chevrolet"],
   [/^OM|^M27|^M274|^M276/i, "Mercedes"],
 ];
 

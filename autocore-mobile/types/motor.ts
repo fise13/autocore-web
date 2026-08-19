@@ -20,6 +20,8 @@ export type MotorEntity = {
   serialCode: string;
   configuration: string;
   notes: string;
+  /** Shop grade `1` / `2` / `3` (fair / excellent / poor), same field as the web grid. */
+  quality?: string;
   quantity: number;
   transmission: string;
   arrivalDate: Date | null;

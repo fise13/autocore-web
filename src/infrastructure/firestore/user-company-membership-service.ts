@@ -335,21 +335,34 @@ async function resolveCompanyAccess(
   };
 }
 
+function asSwitchCompanyError(error: unknown): Error {
+  const raw = error instanceof Error ? error.message : String(error);
+  if (/missing or insufficient permissions|permission-denied/i.test(raw)) {
+    return new Error("You do not have access to that workspace.");
+  }
+  return error instanceof Error ? error : new Error(raw);
+}
+
+/**
+ * Switch the signed-in user's active workspace.
+ *
+ * Firestore only allows this write to change `companyId` — role and
+ * permissions stay on the employee record and are merged into the session
+ * on the next profile refresh.
+ */
 export async function switchActiveCompany(userId: string, companyId: string): Promise<void> {
   const normalizedCompanyId = normalizeCompanyId(companyId);
   const db = getFirestoreDb();
   const access = await resolveCompanyAccess(userId, normalizedCompanyId);
 
-  await updateDoc(doc(db, "users", userId), {
-    companyId: normalizedCompanyId,
-    role: access.role,
-    permissions: access.permissions,
-    isActive: access.isActive,
-  });
+  // Rules require users/{uid}/memberships/{companyId} before the companyId write.
+  await recordUserCompanyMembership(userId, normalizedCompanyId, access.role);
 
-  const companySnap = await getDoc(doc(db, "companies", normalizedCompanyId));
-  const companyName = companySnap.exists() ? String(companySnap.data()?.name ?? "") : undefined;
-  await recordUserCompanyMembership(userId, normalizedCompanyId, access.role, companyName).catch(
-    () => undefined,
-  );
+  try {
+    await updateDoc(doc(db, "users", userId), {
+      companyId: normalizedCompanyId,
+    });
+  } catch (error) {
+    throw asSwitchCompanyError(error);
+  }
 }

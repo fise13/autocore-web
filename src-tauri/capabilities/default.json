@@ -1,13 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "enables the default permissions",
-  "windows": [
-    "main"
-  ],
-  "permissions": [
-    "core:default",
-    "shell:default",
-    "log:default"
-  ]
+  "description": "Baseline permissions for windows serving local shell assets. The product itself runs at a remote origin and is governed by `remote.json`.",
+  "windows": ["main", "product-*"],
+  "permissions": ["core:default", "log:default"]
 }

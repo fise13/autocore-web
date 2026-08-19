@@ -13,5 +13,7 @@ export type CompanyAppConfig = {
   }>;
   defaultWarrantyTemplate: string;
   taxonomyVersion?: number;
+  /** Workspace display currency. Stored financial amounts remain USD. */
+  displayCurrency?: 'USD' | 'KZT';
   updatedAt?: Date;
 };

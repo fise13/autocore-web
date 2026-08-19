@@ -1,16 +1,20 @@
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ArrowLeftIcon, CameraIcon } from '@/assets/icons';
+import { ArrowLeftIcon, EllipsisIcon } from '@/assets/icons';
 import { Skeleton, Text } from '@/components/ui';
+import {
+  presentNativeMenu,
+  type NativeContextMenuAction,
+} from '@/components/ui/native-context-menu';
 import { useTheme } from '@/hooks';
 import { haptics, spacing } from '@/theme';
-import { withAlpha } from '@/theme/color-utils';
 
-const CONTROL = 'rgba(0, 0, 0, 0.42)';
+import { EngineGlyph } from './engine-glyph';
+import { EngineNavButton } from './engine-surface';
+import { eng, engType } from '../layout';
 
 function HeroSlide({
   url,
@@ -58,130 +62,123 @@ function HeroSlide({
 }
 
 /**
- * The engine itself, full bleed, at the top of the card — and a gallery.
+ * The photo field.
  *
- * A photo of the block tells a person more in one glance than every field on
- * this screen combined, so it leads rather than sitting in a section halfway
- * down, and you page through the set right here instead of having to open the
- * viewer first. The back control floats over it — no separate header bar
- * stealing the first 90pt of a screen whose whole point is the image.
+ * Edge-to-edge, paged like a document, with the count sitting under the image
+ * rather than on it. Identity lives below, so the picture stays evidence
+ * someone may need to read.
  */
 export function EngineHero({
   urls,
   onBack,
   onOpenPhoto,
+  onIndexChange,
+  actions,
+  onAction,
 }: {
   urls: string[];
   onBack: () => void;
   onOpenPhoto: (index: number) => void;
+  onIndexChange?: (index: number) => void;
+  actions?: NativeContextMenuAction[];
+  onAction?: (id: string) => void;
 }) {
-  const { width } = useWindowDimensions();
+  const { width, height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const [index, setIndex] = useState(0);
 
   const empty = urls.length === 0;
-  // A photo earns a tall hero; an empty slot does not get to eat a third of
-  // the screen just to say "no photos yet".
-  const height = Math.round(width * (empty ? 0.42 : 0.78));
+  const height = empty
+    ? insets.top + eng.nav + spacing[2]
+    : Math.min(Math.round(width * 0.78), Math.round(windowHeight * 0.38));
 
   const onMomentumEnd = useCallback(
     (offsetX: number) => {
       const next = Math.round(offsetX / width);
-      setIndex(Math.min(Math.max(next, 0), Math.max(0, urls.length - 1)));
+      const clamped = Math.min(Math.max(next, 0), Math.max(0, urls.length - 1));
+      setIndex(clamped);
+      onIndexChange?.(clamped);
     },
-    [urls.length, width],
+    [onIndexChange, urls.length, width],
   );
 
+  const openMenu = useCallback(() => {
+    if (!actions || actions.length === 0 || !onAction) return;
+    presentNativeMenu({ actions, onPressAction: onAction });
+  }, [actions, onAction]);
+
   return (
-    <View style={{ width, height, backgroundColor: colors.surfaceElevated }}>
-      {empty ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing[2] }}>
-          <CameraIcon size="lg" color={withAlpha(colors.mutedForeground, 0.5)} strokeWidth={1.4} />
-          <Text variant="footnote" color="muted">
-            No photos yet
-          </Text>
-        </View>
-      ) : (
-        <ScrollView
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={(event) => onMomentumEnd(event.nativeEvent.contentOffset.x)}
-          style={{ width, height }}
-        >
-          {urls.map((url, slide) => (
-            <HeroSlide
-              key={url}
-              url={url}
-              width={width}
-              height={height}
-              onPress={() => onOpenPhoto(slide)}
-            />
-          ))}
-        </ScrollView>
-      )}
+    <View style={{ backgroundColor: colors.background }}>
+      <View style={{ width, height, backgroundColor: empty ? colors.background : colors.surface }}>
+        {empty ? null : (
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(event) => onMomentumEnd(event.nativeEvent.contentOffset.x)}
+            style={{ width, height }}
+          >
+            {urls.map((url, slide) => (
+              <HeroSlide
+                key={url}
+                url={url}
+                width={width}
+                height={height}
+                onPress={() => onOpenPhoto(slide)}
+              />
+            ))}
+          </ScrollView>
+        )}
 
-      {/* Keeps the floating back control legible over a bright photo. */}
-      <LinearGradient
-        pointerEvents="none"
-        colors={['rgba(0,0,0,0.45)', 'transparent']}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top + 72 }}
-      />
-      <LinearGradient
-        pointerEvents="none"
-        colors={['transparent', withAlpha(colors.background, isDark ? 0.9 : 0.75)]}
-        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 96 }}
-      />
-
-      <View style={{ position: 'absolute', top: insets.top + spacing[1], left: spacing[3] }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          hitSlop={10}
-          onPress={onBack}
+        <View
           style={{
-            width: 38,
-            height: 38,
-            borderRadius: 19,
+            position: 'absolute',
+            top: insets.top + spacing[2],
+            left: eng.pad,
+            right: eng.pad,
+            flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: CONTROL,
+            justifyContent: 'space-between',
           }}
         >
-          <ArrowLeftIcon size="sm" color="#ffffff" strokeWidth={2.2} />
-        </Pressable>
+          <EngineNavButton accessibilityLabel="Back" onPress={onBack}>
+            <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={1.9} />
+          </EngineNavButton>
+
+          {actions && actions.length > 0 && onAction ? (
+            <EngineNavButton accessibilityLabel="More actions" onPress={openMenu}>
+              <EngineGlyph
+                sf="ellipsis"
+                fallback={EllipsisIcon}
+                size={17}
+                color={colors.foreground}
+                weight="semibold"
+              />
+            </EngineNavButton>
+          ) : (
+            <View style={{ width: eng.nav }} />
+          )}
+        </View>
       </View>
 
-      {urls.length > 1 ? (
+      {empty || urls.length < 2 ? null : (
         <View
-          pointerEvents="none"
           accessibilityRole="text"
           accessibilityLabel={`Photo ${index + 1} of ${urls.length}`}
           style={{
-            position: 'absolute',
-            bottom: spacing[4],
-            left: 0,
-            right: 0,
+            paddingHorizontal: eng.pad,
+            paddingTop: eng.inline,
             flexDirection: 'row',
-            justifyContent: 'center',
-            gap: spacing[1.5],
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
           }}
         >
-          {urls.map((url, dot) => (
-            <View
-              key={url}
-              style={{
-                width: dot === index ? 18 : 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor:
-                  dot === index ? '#ffffff' : withAlpha('#ffffff', 0.45),
-              }}
-            />
-          ))}
+          <Text variant="caption1" color="muted" style={engType.count}>
+            Photo {index + 1} of {urls.length}
+          </Text>
         </View>
-      ) : null}
+      )}
     </View>
   );
 }

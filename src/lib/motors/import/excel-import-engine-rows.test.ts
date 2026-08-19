@@ -49,7 +49,9 @@ describe("motor excel engine rows", () => {
     const rows = buildEngineRowsFromSheet(sheet, config, mapping);
 
     assert.equal(rows.length, 2);
-    assert.equal(rows[0]?.serialCode, "FB25-184521");
+    // The family prefix belongs in the ENGINE column, not glued to the engine number.
+    assert.equal(rows[0]?.serialCode, "184521");
+    assert.equal(rows[0]?.engineCode, "fb25");
     assert.equal(rows[0]?.brandName, "Subaru");
   });
 

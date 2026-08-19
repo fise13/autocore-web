@@ -29,6 +29,7 @@ export function defaultCompanyAppConfig(): CompanyAppConfig {
     ),
     defaultWarrantyTemplate: 'contract_engine',
     taxonomyVersion: 2,
+    displayCurrency: 'USD',
   };
 }
 

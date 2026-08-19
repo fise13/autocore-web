@@ -17,6 +17,10 @@ import {
 } from "@/domain/inventory-taxonomy";
 import { toDateFromFirestore } from "@/lib/firestore-timestamp";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
+import {
+  normalizeAppDisplayCurrency,
+  type AppDisplayCurrency,
+} from "@/lib/money/display-currency";
 
 const MODULE_KEYS: CompanyModuleKey[] = [
   "motors",
@@ -100,6 +104,7 @@ function mapCompanyAppConfig(data: Record<string, unknown> | undefined): Company
     defaultWarrantyTemplate,
     taxonomyVersion: typeof data.taxonomyVersion === "number" ? data.taxonomyVersion : undefined,
     knowledge: mergeKnowledgeFlags(data.knowledge as KnowledgeFlags | undefined),
+    displayCurrency: normalizeAppDisplayCurrency(data.displayCurrency),
     updatedAt: toDateFromFirestore(data.updatedAt) ?? undefined,
   };
 }
@@ -148,6 +153,7 @@ export function createCompanyConfigRepository() {
         specificCategories: sanitizeSpecificCategories(config.specificCategories),
         defaultWarrantyTemplate: config.defaultWarrantyTemplate,
         knowledge: mergeKnowledgeFlags(config.knowledge),
+        displayCurrency: normalizeAppDisplayCurrency(config.displayCurrency),
         updatedByUserId,
         updatedAt: serverTimestamp(),
       };
@@ -155,6 +161,23 @@ export function createCompanyConfigRepository() {
         payload.taxonomyVersion = config.taxonomyVersion;
       }
       await setDoc(companyConfigRef(companyId), payload, { merge: true });
+    },
+
+    async saveCompanyDisplayCurrency(
+      companyId: string,
+      displayCurrency: AppDisplayCurrency,
+      updatedByUserId: string,
+    ) {
+      if (!companyId) return;
+      await setDoc(
+        companyConfigRef(companyId),
+        {
+          displayCurrency: normalizeAppDisplayCurrency(displayCurrency),
+          updatedByUserId,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
     },
   };
 }

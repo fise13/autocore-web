@@ -196,7 +196,7 @@ const ISLAND_STATES: Record<string, Record<string, unknown>> = {
     status: 'SYNCING', title: 'Syncing 8 of 18', detail: '10 photos left.', subject: 'Bay 3',
     headline: '8/18', caption: 'photos', symbol: 'icloud.and.arrow.up.fill', accent: '#0A84FF',
     done: 8, total: 18, progress: 0.444, pending: 10, blocked: 0, retryAtMs: 0,
-    determinate: true, iconUri: 'file:///icon.png',
+    determinate: true, iconUri: 'file:///icon.png', mode: 'sync',
   },
   offline: {
     status: 'WAITING_FOR_NETWORK', title: 'Waiting for connection',
@@ -220,28 +220,15 @@ const ISLAND_STATES: Record<string, Record<string, unknown>> = {
     status: 'SYNCED', title: '18 photos synced', detail: 'Everything on this iPhone is backed up.',
     subject: '', headline: 'Done', caption: 'synced', symbol: 'checkmark.circle.fill',
     accent: '#30D158', done: 18, total: 18, progress: 1, pending: 0, blocked: 0, retryAtMs: 0,
-    determinate: true, iconUri: 'file:///icon.png',
+    determinate: true, iconUri: 'file:///icon.png', mode: 'sync',
+  },
+  session: {
+    status: 'SYNCING', title: 'Documenting', detail: 'In session', subject: '1NZ-FE',
+    headline: '4/12', caption: 'photos', symbol: 'camera.fill', accent: '#0A84FF',
+    done: 4, total: 12, progress: 4 / 12, pending: 0, blocked: 0, retryAtMs: 0,
+    determinate: true, iconUri: 'file:///icon.png', mode: 'session',
   },
   // A activity restored from a previous build, or a truncated payload.
-  empty: {},
-};
-
-const SYNC_WIDGET_STATES: Record<string, Record<string, unknown>> = {
-  syncing: {
-    status: 'SYNCING', title: 'Syncing 8 of 18', detail: '10 photos left.', short: '8/18',
-    caption: 'photos', symbol: 'icloud.and.arrow.up.fill', accent: '#0A84FF', progress: 0.44,
-    determinate: true, pending: 10, blocked: 0, updatedAtMs: 1_770_000_000_000,
-  },
-  blocked: {
-    status: 'ACTION_REQUIRED', title: 'Action required', detail: '2 photos need you.', short: '2',
-    caption: 'blocked', symbol: 'exclamationmark.circle.fill', accent: '#FF9F0A', progress: 0,
-    determinate: false, pending: 0, blocked: 2, updatedAtMs: 0,
-  },
-  synced: {
-    status: 'SYNCED', title: 'Synced', detail: '', short: 'All set', caption: 'synced',
-    symbol: 'checkmark.circle.fill', accent: '#30D158', progress: 1, determinate: false,
-    pending: 0, blocked: 0, updatedAtMs: 1_770_000_000_000,
-  },
   empty: {},
 };
 
@@ -249,12 +236,14 @@ const TODAY_WIDGET_STATES: Record<string, Record<string, unknown>> = {
   urgent: {
     openOrders: 12, attentionOrders: 2, engines: 248, awaitingPlacement: 4, lowStock: 7,
     headline: '4', title: '4 items to place', detail: 'Received stock with no location yet.',
+    eyebrow: 'Needs you', ordersLabel: 'Open', placeLabel: 'To place', enginesLabel: 'Engines',
     symbol: 'shippingbox.fill', accent: '#FF9F0A', urgent: true, updatedAtMs: 1_770_000_000_000,
     link: 'autocoremobile://scan',
   },
   unknown: {
     openOrders: -1, attentionOrders: -1, engines: -1, awaitingPlacement: -1, lowStock: -1,
     headline: '—', title: 'AutoCore', detail: 'Open the app to refresh.',
+    eyebrow: 'Floor', ordersLabel: 'Open', placeLabel: 'To place', enginesLabel: 'Engines',
     symbol: 'arrow.triangle.2.circlepath', accent: '#8E8E93', urgent: false, updatedAtMs: 0,
   },
   empty: {},
@@ -264,51 +253,52 @@ const INTAKE_WIDGET_STATES: Record<string, Record<string, unknown>> = {
   ready: {
     active: 1, ready: 3, syncing: 0, headline: '3', title: '3 engines ready for review',
     detail: '1 engine documenting', eyebrow: 'Intake', readyLabel: 'Ready', activeLabel: 'Active',
-    openReadyLabel: 'Open Ready', continueLabel: 'Continue intake',
+    lockLine: '3 Ready · 1 documenting', openReadyLabel: 'Open Ready', continueLabel: 'Continue',
     link: 'autocoremobile://intake?filter=ready', symbol: 'checkmark.seal.fill',
     accent: '#30D158', urgent: true, updatedAtMs: 1_770_000_000_000,
+  },
+  syncing: {
+    active: 2, ready: 0, syncing: 4, headline: '4', title: '4 photos syncing',
+    detail: '2 engines documenting', eyebrow: 'Intake', readyLabel: 'Ready', activeLabel: 'Active',
+    lockLine: '0 Ready · 2 documenting', openReadyLabel: 'Open Ready', continueLabel: 'Continue',
+    link: 'autocoremobile://intake', symbol: 'arrow.triangle.2.circlepath',
+    accent: '#0A84FF', urgent: true, updatedAtMs: 1_770_000_000_000,
   },
   unknown: {
     active: -1, ready: -1, syncing: -1, headline: '—', title: 'AutoCore',
     detail: 'Open the app to refresh.', eyebrow: 'Intake', readyLabel: 'Ready',
-    activeLabel: 'Active', openReadyLabel: 'Open Ready', continueLabel: 'Continue intake',
+    activeLabel: 'Active', lockLine: 'Open the app to refresh.',
+    openReadyLabel: 'Open Ready', continueLabel: 'Continue',
     link: 'autocoremobile://intake', symbol: 'arrow.triangle.2.circlepath',
     accent: '#8E8E93', urgent: false, updatedAtMs: 0,
   },
   empty: {},
 };
 
-const WORK_WIDGET_STATES: Record<string, Record<string, unknown>> = {
-  attention: {
-    openOrders: 12, attentionOrders: 3, headline: '3', title: '3 orders waiting on parts',
-    detail: '12 open in total.', eyebrow: 'Orders', openLabel: 'Open', attentionLabel: 'Waiting',
-    actionLabel: 'Open orders', link: 'autocoremobile://orders',
-    symbol: 'exclamationmark.triangle.fill', accent: '#FF9F0A', urgent: true,
-    updatedAtMs: 1_770_000_000_000,
+const SCAN_WIDGET_STATES: Record<string, Record<string, unknown>> = {
+  placing: {
+    awaitingPlacement: 4, headline: '4', title: 'Scan in', detail: '4 items to place',
+    eyebrow: 'Scan', actionLabel: 'Scan in', link: 'autocoremobile://scan',
+    symbol: 'shippingbox.fill', accent: '#FF9F0A', urgent: true, updatedAtMs: 1_770_000_000_000,
   },
-  unknown: {
-    openOrders: -1, attentionOrders: -1, headline: '—', title: 'AutoCore',
-    detail: 'Open the app to refresh.', eyebrow: 'Orders', openLabel: 'Open',
-    attentionLabel: 'Waiting', actionLabel: 'Open orders', link: 'autocoremobile://orders',
-    symbol: 'arrow.triangle.2.circlepath', accent: '#8E8E93', urgent: false, updatedAtMs: 0,
+  clear: {
+    awaitingPlacement: 0, headline: '', title: 'Scan in', detail: 'Open camera',
+    eyebrow: 'Scan', actionLabel: 'Scan in', link: 'autocoremobile://scan',
+    symbol: 'barcode.viewfinder', accent: '#0A84FF', urgent: false, updatedAtMs: 0,
   },
   empty: {},
 };
 
-const WAREHOUSE_WIDGET_STATES: Record<string, Record<string, unknown>> = {
-  placing: {
-    awaitingPlacement: 4, lowStock: 7, engines: 248, headline: '4', title: '4 items to place',
-    detail: 'Received stock with no location yet.', eyebrow: 'Warehouse', placeLabel: 'To place',
-    lowLabel: 'Low stock', enginesLabel: 'Engines', actionLabel: 'Scan in',
-    actionTarget: 'openScan', link: 'autocoremobile://scan', symbol: 'shippingbox.fill',
-    accent: '#FF9F0A', urgent: true, updatedAtMs: 1_770_000_000_000,
+const PAY_WIDGET_STATES: Record<string, Record<string, unknown>> = {
+  pending: {
+    pending: 2, claimable: 1, access: 'allowed', headline: '2', title: '2 payouts waiting',
+    detail: '1 job to claim', eyebrow: 'Pay', link: 'autocoremobile://earnings',
+    symbol: 'banknote.fill', accent: '#FF9F0A', urgent: true, updatedAtMs: 1_770_000_000_000,
   },
-  unknown: {
-    awaitingPlacement: -1, lowStock: -1, engines: -1, headline: '—', title: 'AutoCore',
-    detail: 'Open the app to refresh.', eyebrow: 'Warehouse', placeLabel: 'To place',
-    lowLabel: 'Low stock', enginesLabel: 'Engines', actionLabel: 'Open warehouse',
-    actionTarget: 'openWarehouse', link: 'autocoremobile://warehouse',
-    symbol: 'arrow.triangle.2.circlepath', accent: '#8E8E93', urgent: false, updatedAtMs: 0,
+  denied: {
+    pending: -1, claimable: -1, access: 'denied', headline: '—', title: "Pay isn’t on for you",
+    detail: 'Pay for completed work.', eyebrow: 'Pay', link: 'autocoremobile://earnings',
+    symbol: 'banknote.fill', accent: '#8E8E93', urgent: false, updatedAtMs: 0,
   },
   empty: {},
 };
@@ -337,6 +327,22 @@ describe('widget runtime', { skip: runtimeAvailable ? false : 'expo-widgets runt
         });
       }
     }
+
+    it('does not draw an upload Gauge for an active intake session', () => {
+      const session = render(context, layout, ISLAND_STATES.session, { colorScheme: 'dark' });
+      assert.ok(
+        !typeNames(session.expandedLeading).includes('GaugeView'),
+        'session frame must not look like an upload',
+      );
+      assert.ok(
+        !typeNames(session.banner).includes('ProgressView'),
+        'session banner must not spin a progress bar',
+      );
+      assert.ok(!typeNames(session.expandedBottom).includes('ProgressView'));
+      assert.ok(typeNames(session.expandedBottom).includes('CapsuleView'));
+      assert.match(JSON.stringify(session.expandedCenter), /Documenting/);
+      assert.match(JSON.stringify(session.expandedTrailing), /4\/12/);
+    });
 
     it('draws a real progress ring only when there is progress to draw', () => {
       const syncing = render(context, layout, ISLAND_STATES.syncing, { colorScheme: 'dark' });
@@ -385,42 +391,6 @@ describe('widget runtime', { skip: runtimeAvailable ? false : 'expo-widgets runt
     });
   });
 
-  describe('AutoCoreSync widget', () => {
-    const layout = serializeWidget('features/live-activity/widgets/sync-widget.tsx');
-
-    for (const [name, props] of Object.entries(SYNC_WIDGET_STATES)) {
-      for (const environment of WIDGET_ENVIRONMENTS) {
-        it(`renders ${name} on ${String(environment.widgetFamily)}${environment.isLuminanceReduced ? ' dimmed' : ''}`, () => {
-          const result = render(context, layout, props, environment) as unknown as WidgetNode;
-          assert.ok(result && typeof result.type === 'string', 'must return a single element');
-          assert.ok(hasVisibleLeaf(result), 'widget rendered nothing visible');
-        });
-      }
-    }
-
-    it('gives Home Screen families a container background — iOS 17 requires one', () => {
-      const small = render(context, layout, SYNC_WIDGET_STATES.syncing, {
-        widgetFamily: 'systemSmall',
-        colorScheme: 'dark',
-      });
-      assert.match(JSON.stringify(small), /containerBackground/);
-    });
-
-    it('deep links every family into intake', () => {
-      for (const widgetFamily of WIDGET_FAMILIES) {
-        const result = render(context, layout, SYNC_WIDGET_STATES.syncing, {
-          widgetFamily,
-          colorScheme: 'dark',
-        });
-        assert.match(
-          JSON.stringify(result),
-          /autocoremobile:\/\/intake/,
-          `${widgetFamily} has no widgetURL — tapping it would just open the app`,
-        );
-      }
-    });
-  });
-
   describe('AutoCoreToday widget', () => {
     const layout = serializeWidget('features/live-activity/widgets/today-widget.tsx');
 
@@ -456,13 +426,14 @@ describe('widget runtime', { skip: runtimeAvailable ? false : 'expo-widgets runt
       assert.doesNotMatch(serialized, /"text":"0"/);
     });
 
-    it('draws the same three stats on systemLarge / StandBy', () => {
+    it('draws the hottest fact as the hero on systemLarge / StandBy', () => {
       const large = render(context, layout, TODAY_WIDGET_STATES.urgent, {
         widgetFamily: 'systemLarge',
         colorScheme: 'dark',
       });
       const serialized = JSON.stringify(large);
       assert.match(serialized, /containerBackground/);
+      assert.match(serialized, /4 items to place/);
       assert.match(serialized, /"text":"12"/);
       assert.match(serialized, /"text":"4"/);
       assert.match(serialized, /"text":"248"/);
@@ -489,37 +460,22 @@ describe('widget runtime', { skip: runtimeAvailable ? false : 'expo-widgets runt
       });
       assert.match(JSON.stringify(result), /autocoremobile:\/\/intake\?filter=ready/);
     });
-  });
 
-  describe('AutoCoreWork widget', () => {
-    const layout = serializeWidget('features/live-activity/widgets/work-orders-widget.tsx');
-
-    for (const [name, props] of Object.entries(WORK_WIDGET_STATES)) {
-      for (const environment of WIDGET_ENVIRONMENTS) {
-        it(`renders ${name} on ${String(environment.widgetFamily)}${environment.isLuminanceReduced ? ' dimmed' : ''}`, () => {
-          const result = render(context, layout, props, environment) as unknown as WidgetNode;
-          assert.ok(result && typeof result.type === 'string', 'must return a single element');
-          assert.ok(hasVisibleLeaf(result), 'widget rendered nothing visible');
-        });
-      }
-    }
-
-    it('shows open and waiting counts on the medium family', () => {
-      const medium = render(context, layout, WORK_WIDGET_STATES.attention, {
-        widgetFamily: 'systemMedium',
+    it('spends the Lock circular numeral on Ready, not on photos syncing', () => {
+      const circular = render(context, layout, INTAKE_WIDGET_STATES.syncing, {
+        widgetFamily: 'accessoryCircular',
         colorScheme: 'dark',
       });
-      const serialized = JSON.stringify(medium);
-      assert.match(serialized, /"text":"12"/);
-      assert.match(serialized, /"text":"3"/);
-      assert.match(serialized, /autocoremobile:\/\/orders/);
+      const serialized = JSON.stringify(circular);
+      assert.match(serialized, /"text":"0"/);
+      assert.doesNotMatch(serialized, /"text":"4"/);
     });
   });
 
-  describe('AutoCoreWarehouse widget', () => {
-    const layout = serializeWidget('features/live-activity/widgets/warehouse-widget.tsx');
+  describe('AutoCoreScan widget', () => {
+    const layout = serializeWidget('features/live-activity/widgets/scan-widget.tsx');
 
-    for (const [name, props] of Object.entries(WAREHOUSE_WIDGET_STATES)) {
+    for (const [name, props] of Object.entries(SCAN_WIDGET_STATES)) {
       for (const environment of WIDGET_ENVIRONMENTS) {
         it(`renders ${name} on ${String(environment.widgetFamily)}${environment.isLuminanceReduced ? ' dimmed' : ''}`, () => {
           const result = render(context, layout, props, environment) as unknown as WidgetNode;
@@ -529,16 +485,36 @@ describe('widget runtime', { skip: runtimeAvailable ? false : 'expo-widgets runt
       }
     }
 
-    it('shows place, low, and engines on the medium family', () => {
-      const medium = render(context, layout, WAREHOUSE_WIDGET_STATES.placing, {
-        widgetFamily: 'systemMedium',
+    it('deep links Home small into scan', () => {
+      const result = render(context, layout, SCAN_WIDGET_STATES.placing, {
+        widgetFamily: 'systemSmall',
         colorScheme: 'dark',
       });
-      const serialized = JSON.stringify(medium);
-      assert.match(serialized, /"text":"4"/);
-      assert.match(serialized, /"text":"7"/);
-      assert.match(serialized, /"text":"248"/);
-      assert.match(serialized, /autocoremobile:\/\/scan/);
+      assert.match(JSON.stringify(result), /autocoremobile:\/\/scan/);
+      assert.match(JSON.stringify(result), /containerBackground/);
+    });
+  });
+
+  describe('AutoCorePay widget', () => {
+    const layout = serializeWidget('features/live-activity/widgets/pay-widget.tsx');
+
+    for (const [name, props] of Object.entries(PAY_WIDGET_STATES)) {
+      it(`renders ${name} on systemSmall`, () => {
+        const result = render(context, layout, props, {
+          widgetFamily: 'systemSmall',
+          colorScheme: 'dark',
+        }) as unknown as WidgetNode;
+        assert.ok(result && typeof result.type === 'string', 'must return a single element');
+        assert.ok(hasVisibleLeaf(result), 'widget rendered nothing visible');
+      });
+    }
+
+    it('deep links into earnings', () => {
+      const result = render(context, layout, PAY_WIDGET_STATES.pending, {
+        widgetFamily: 'systemSmall',
+        colorScheme: 'dark',
+      });
+      assert.match(JSON.stringify(result), /autocoremobile:\/\/earnings/);
     });
   });
 });

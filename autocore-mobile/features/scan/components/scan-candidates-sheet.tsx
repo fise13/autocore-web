@@ -5,6 +5,7 @@ import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { Text } from '@/components/ui';
 import { useModalBottomSheet, useTheme } from '@/hooks';
 import { formatPrice } from '@/features/search/lib/format';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 import { haptics } from '@/theme';
 
 import { scanSheetAnimationConfigs } from '../animation/scan-sheet-motion';
@@ -28,6 +29,7 @@ type ScanCandidatesSheetProps = {
 export const ScanCandidatesSheet = forwardRef<BottomSheetModal, ScanCandidatesSheetProps>(
   function ScanCandidatesSheet({ result, payload, onPick, onSearch, onDismiss }, ref) {
     const { colors } = useTheme();
+    useMoneyFormatRevision();
     const sheet = useModalBottomSheet();
     const candidates = result?.candidates ?? [];
 

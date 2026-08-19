@@ -23,15 +23,12 @@ import { createWidget, type WidgetEnvironment } from 'expo-widgets';
 import type { TodayWidgetProps, TodayWidgetSymbol } from '../lib/widget-model';
 
 /**
- * "Today at the shop" — the glanceable state of the floor.
+ * Floor — the glanceable state of the shop floor.
  *
- * Ranking lives in `lib/widget-model.ts`, not here: the widget gets one line,
- * and which line it is has to be testable. This file only decides how each
- * family draws it.
+ * Ranking lives in `lib/widget-model.ts`. This file only decides how each
+ * family draws the hottest fact. Lock accessories stay uncolored.
  *
- * A count the app has never loaded arrives as `-1` and renders `—`. That
- * matters more than it looks: a widget confidently showing "0 open orders"
- * because a listener had not warmed up yet is worse than showing nothing.
+ * A count the app has never loaded arrives as `-1` and renders `—`.
  */
 export type AutoCoreTodayWidgetProps = TodayWidgetProps;
 
@@ -57,11 +54,11 @@ const TodayWidgetLayout = (props: AutoCoreTodayWidgetProps, environment: WidgetE
       ? props.eyebrow
       : Boolean(props.urgent)
         ? 'Needs you'
-        : 'Today';
+        : 'Floor';
   const ordersLabel =
     typeof props.ordersLabel === 'string' && props.ordersLabel.length > 0
       ? props.ordersLabel
-      : 'Open orders';
+      : 'Open';
   const placeLabel =
     typeof props.placeLabel === 'string' && props.placeLabel.length > 0
       ? props.placeLabel
@@ -76,7 +73,6 @@ const TodayWidgetLayout = (props: AutoCoreTodayWidgetProps, environment: WidgetE
       : 'wrench.and.screwdriver.fill';
   const accent =
     typeof props.accent === 'string' && props.accent.length > 0 ? props.accent : '#0A84FF';
-  const urgent = Boolean(props.urgent);
   const updatedAtMs =
     typeof props.updatedAtMs === 'number' && props.updatedAtMs > 0 ? props.updatedAtMs : 0;
   const link =
@@ -158,30 +154,6 @@ const TodayWidgetLayout = (props: AutoCoreTodayWidgetProps, environment: WidgetE
     </VStack>
   );
 
-  const header = (
-    <HStack spacing={6}>
-      <Image systemName={symbol} color={accent} size={13} />
-      <Text
-        modifiers={[
-          font({ size: 13, weight: 'semibold' }),
-          foregroundStyle('#FFFFFF'),
-          lineLimit(1),
-          minimumScaleFactor(0.8),
-        ]}
-      >
-        {title}
-      </Text>
-      <Spacer />
-      {updatedAtMs > 0 ? (
-        <Text
-          date={new Date(updatedAtMs)}
-          dateStyle="relative"
-          modifiers={[font({ size: 10 }), foregroundStyle('#6E6E73'), lineLimit(1)]}
-        />
-      ) : null}
-    </HStack>
-  );
-
   const stats = (
     <HStack spacing={14} alignment="top">
       {cell(ordersLabel, num(props.openOrders), 'wrench.and.screwdriver.fill', '#0A84FF')}
@@ -190,42 +162,105 @@ const TodayWidgetLayout = (props: AutoCoreTodayWidgetProps, environment: WidgetE
     </HStack>
   );
 
-  if (isMedium || isLarge) {
+  const clock =
+    updatedAtMs > 0 ? (
+      <Text
+        date={new Date(updatedAtMs)}
+        dateStyle="relative"
+        modifiers={[font({ size: 10 }), foregroundStyle('#6E6E73'), lineLimit(1)]}
+      />
+    ) : null;
+
+  if (isLarge) {
     return (
       <VStack
         alignment="leading"
-        spacing={isLarge ? 16 : 12}
+        spacing={12}
         modifiers={[
           containerBackground('#0E0F13', 'widget'),
-          padding({ all: isLarge ? 16 : 12 }),
+          padding({ all: 16 }),
           widgetURL(link),
         ]}
       >
-        {header}
-        {isLarge ? (
+        <HStack spacing={6}>
+          <Image systemName={symbol} color={accent} size={13} />
           <Text
             modifiers={[
-              font({ size: 15, weight: 'medium' }),
-              foregroundStyle('#EBEBF5'),
-              lineLimit(2),
-              minimumScaleFactor(0.8),
-            ]}
-          >
-            {detail.length > 0 ? detail : eyebrow}
-          </Text>
-        ) : null}
-        {stats}
-        {isLarge ? (
-          <Text
-            modifiers={[
-              font({ size: 12, weight: 'medium' }),
-              foregroundStyle('#8E8E93'),
+              font({ size: 13, weight: 'medium' }),
+              foregroundStyle(accent),
               lineLimit(1),
             ]}
           >
-            {urgent ? eyebrow : enginesLabel}
+            {eyebrow}
+          </Text>
+          <Spacer />
+          {clock}
+        </HStack>
+        <Text
+          modifiers={[
+            font({ size: 34, weight: 'semibold', design: 'rounded' }),
+            foregroundStyle('#FFFFFF'),
+            monospacedDigit(),
+            lineLimit(1),
+            minimumScaleFactor(0.5),
+          ]}
+        >
+          {headline}
+        </Text>
+        <Text
+          modifiers={[
+            font({ size: 16, weight: 'semibold' }),
+            foregroundStyle('#EBEBF5'),
+            lineLimit(2),
+            minimumScaleFactor(0.8),
+          ]}
+        >
+          {title}
+        </Text>
+        {detail.length > 0 ? (
+          <Text
+            modifiers={[
+              font({ size: 13, weight: 'medium' }),
+              foregroundStyle('#8E8E93'),
+              lineLimit(2),
+            ]}
+          >
+            {detail}
           </Text>
         ) : null}
+        {stats}
+        <Spacer />
+      </VStack>
+    );
+  }
+
+  if (isMedium) {
+    return (
+      <VStack
+        alignment="leading"
+        spacing={12}
+        modifiers={[
+          containerBackground('#0E0F13', 'widget'),
+          padding({ all: 12 }),
+          widgetURL(link),
+        ]}
+      >
+        <HStack spacing={6}>
+          <Image systemName={symbol} color={accent} size={13} />
+          <Text
+            modifiers={[
+              font({ size: 13, weight: 'semibold' }),
+              foregroundStyle('#FFFFFF'),
+              lineLimit(1),
+              minimumScaleFactor(0.8),
+            ]}
+          >
+            {title}
+          </Text>
+          <Spacer />
+          {clock}
+        </HStack>
+        {stats}
         <Spacer />
       </VStack>
     );
@@ -253,6 +288,7 @@ const TodayWidgetLayout = (props: AutoCoreTodayWidgetProps, environment: WidgetE
           {eyebrow}
         </Text>
         <Spacer />
+        {clock}
       </HStack>
 
       <Spacer />

@@ -87,8 +87,10 @@ export async function commitMotorExcelImport(params: {
       serialCode: row.serialCode,
       configuration: row.configuration,
       notes: row.notes,
+      quality: row.quality,
       quantity: row.quantity,
       transmission: row.transmission,
+      warehouseLocation: row.warehouseLocation,
       arrivalDate: row.arrivalDate,
       soldDate: row.soldDate,
       brandName: row.brandName,
@@ -112,18 +114,64 @@ export async function commitMotorExcelImport(params: {
 
   reportProgress();
 
+  /**
+   * Catalog entries are resolved per row, not per sheet.
+   *
+   * Sheets in real workbooks are not single-engine: «ПРОДАННЫЕ» holds every family, «MIX»
+   * switches brand mid-sheet under section headings, and «EJ 20X-20J-22-25D» names four
+   * families at once. Keying the catalog off the sheet forced one wrong engine onto every
+   * row — and sheets with no sheet-level brand were skipped entirely, silently dropping
+   * thousands of engines.
+   */
+  const catalogCache = new Map<string, { brandName: string; engineCode: string; engineId?: number }>();
+
+  async function resolveCatalogPair(brandInput: string, engineInput: string) {
+    const brandName = brandInput.trim();
+    const engineCode = engineInput.trim();
+    const cacheKey = `${brandName.toLowerCase()}|${engineCode.toLowerCase()}`;
+    const cached = catalogCache.get(cacheKey);
+    if (cached) return cached;
+
+    if (!brandName || !engineCode) {
+      const resolved = { brandName, engineCode, engineId: undefined };
+      catalogCache.set(cacheKey, resolved);
+      return resolved;
+    }
+
+    const brand = await params.catalogRepository.upsertBrand(
+      params.companyId,
+      brandName,
+      workingBrands,
+    );
+    if (!workingBrands.some((item) => item.localId === brand.localId)) {
+      workingBrands = [...workingBrands, brand];
+      createdBrandIds.push(brand.id);
+    }
+
+    const engine = await params.catalogRepository.upsertEngine(
+      params.companyId,
+      brand.localId,
+      engineCode,
+      workingEngines,
+    );
+    if (!workingEngines.some((item) => item.localId === engine.localId)) {
+      workingEngines = [...workingEngines, engine];
+      createdEngineIds.push(engine.id);
+    }
+
+    const resolved = { brandName: brand.name, engineCode: engine.code, engineId: engine.localId };
+    catalogCache.set(cacheKey, resolved);
+    return resolved;
+  }
+
   for (const config of params.sheetConfigs) {
     if (config.importType !== "engines") continue;
     const sheet = params.sheets.find((item) => item.name === config.sheetName);
     const mapping = params.columnMappings[config.id];
     if (!sheet || !mapping) continue;
 
-    const brandName = effectiveBrand(config);
-    const engineCode = effectiveEngineCode(config);
-    if (!brandName || !engineCode) {
-      errors.push(`${config.sheetName}: укажите бренд и код двигателя`);
-      continue;
-    }
+    const sheetBrand = effectiveBrand(config);
+    const sheetEngine = effectiveEngineCode(config);
 
     try {
       const rows = params.selectedEngineRows
@@ -133,27 +181,6 @@ export async function commitMotorExcelImport(params: {
         : buildEngineRowsFromSheet(sheet, config, mapping);
 
       if (rows.length === 0) continue;
-
-      const brand = await params.catalogRepository.upsertBrand(
-        params.companyId,
-        brandName,
-        workingBrands,
-      );
-      if (!workingBrands.some((item) => item.localId === brand.localId)) {
-        workingBrands = [...workingBrands, brand];
-        createdBrandIds.push(brand.id);
-      }
-
-      const engine = await params.catalogRepository.upsertEngine(
-        params.companyId,
-        brand.localId,
-        engineCode,
-        workingEngines,
-      );
-      if (!workingEngines.some((item) => item.localId === engine.localId)) {
-        workingEngines = [...workingEngines, engine];
-        createdEngineIds.push(engine.id);
-      }
 
       processedSheets.add(config.sheetName);
 
@@ -172,19 +199,26 @@ export async function commitMotorExcelImport(params: {
           continue;
         }
 
+        const catalog = await resolveCatalogPair(
+          row.brandName || sheetBrand,
+          row.engineCode || sheetEngine,
+        );
+
         const existing = bySerial.get(serialKey);
         const payload = {
           companyId: params.companyId,
           serialCode: row.serialCode.trim(),
           configuration: row.configuration,
           notes: row.notes,
+          quality: row.quality,
           quantity: row.quantity,
           transmission: row.transmission,
+          ...(row.warehouseLocation ? { warehouseLocation: row.warehouseLocation } : {}),
           arrivalDate: row.arrivalDate ?? new Date(),
           soldDate: row.soldDate,
-          brandName: brand.name,
-          engineCode: engine.code,
-          engineId: engine.localId,
+          brandName: catalog.brandName,
+          engineCode: catalog.engineCode,
+          ...(catalog.engineId != null ? { engineId: catalog.engineId } : {}),
         };
 
         try {
@@ -204,13 +238,15 @@ export async function commitMotorExcelImport(params: {
               serialCode: payload.serialCode,
               configuration: payload.configuration ?? "",
               notes: payload.notes ?? "",
+              quality: payload.quality ?? "",
               quantity: payload.quantity ?? 1,
               transmission: payload.transmission ?? "",
+              warehouseLocation: row.warehouseLocation || undefined,
               arrivalDate: payload.arrivalDate ?? null,
               soldDate: payload.soldDate ?? null,
               brandName: payload.brandName,
               engineCode: payload.engineCode,
-              engineId: payload.engineId,
+              engineId: catalog.engineId,
             };
             workingMotors = [...workingMotors, created];
             bySerial.set(serialKey, created);

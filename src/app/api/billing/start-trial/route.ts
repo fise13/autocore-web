@@ -5,6 +5,10 @@ import { AccountAccessError, verifyAccountAccess } from "@/lib/auth/verify-accou
 
 export const runtime = "nodejs";
 
+/**
+ * Legacy web/desktop trial. The iOS paywall does not call this — AutoCore Pro
+ * trials are App Store Connect introductory offers applied by StoreKit 2.
+ */
 export async function POST(request: NextRequest) {
   try {
     const access = await verifyAccountAccess(request);

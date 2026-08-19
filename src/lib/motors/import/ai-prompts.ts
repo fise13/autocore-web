@@ -1,102 +1,90 @@
+import { MOTOR_GRID_CONTRACT_PROMPT } from "@/lib/motors/import/grid-contract";
+
 /**
- * System prompts for Magic Import · Motors (OpenRouter / Firebase `warehouseImportAI`).
- * Keep in sync with cloud functions when updating server-side handlers.
+ * System prompts for Magic Import · Motors.
+ *
+ * Everything is layered on {@link MOTOR_GRID_CONTRACT_PROMPT}: the model's job is to fill a
+ * fixed grid, leaving cells empty when the sheet is silent. The rules engine already does a
+ * complete pass on its own — the model is there to resolve what regexes cannot, not to
+ * re-decide what has already been read correctly.
  */
+
 export const MOTOR_MAGIC_IMPORT_DOMAIN = `
-Domain: inventory of used car engines from auto dismantling yards (авторазбор) in Russia/CIS.
-Typical Excel files: one sheet per engine family (EJ251, EJ253, FB25, 2JZ…), messy headers, merged cells,
-serials like "EJ22-032900", "FB25-184521", dates as Excel numbers or dd.mm.yyyy, sold tabs "ПРОДАННЫЕ".
+Domain: used car engines in an auto dismantling yard (авторазбор), Russia/CIS.
+
+What these workbooks look like:
+- One tab per engine family (EJ251, EJ253 AVCS, FB25, EZ30, 2JZ…) or per brand (TOYOTA, BMW, MIX).
+- Plus movement logs: ПРОДАННЫЕ (sold archive), СВЕРДЛОВА (moved to a branch), ВОЗВРАТ
+  (came back), НА РЕМОНТ / РЕМОНТ ДЭН / РЕМОНТ ТОЛЯ (in repair), ПОСЛЕ ДЭНА (out of repair).
+  Those tabs list the SAME engines as the family tabs — they are events, not new stock.
+- Row 0 is a title ("SUBARU-EJ251", "MITSUBISHI- 6G72"), row 1 is the header, data follows.
+- Mid-sheet a single-cell row re-scopes what follows ("VQ40", "RENAULT", "1KZ").
+- Cells are messy: "N/A", "???", dates as 6/10/24 or 10.06.2024 or plain nonsense.
 `.trim();
 
 export const MOTOR_BRAND_VS_ENGINE_RULES = `
-Brand vs engine code (CRITICAL — most common mistake):
-- brand = car MANUFACTURER only: Toyota, Subaru, Nissan, Honda, Mitsubishi, Mazda, Suzuki, Hyundai, Kia, BMW, Mercedes-Benz, Volvo, Ford, etc.
-- engineCode = engine MODEL / family: ej20, ej25, ej251, ej253, fb20, fb25, fa20, ez30, ez36, 2jz, 1jz, 4g63, sr20det, rb26det, etc.
-- NEVER put engine codes in brand. Wrong: brand "EJ20", "EJ251", "FB25", "2JZ". Right: brand "Subaru", engine "ej251".
-- Sheet tab "EJ 251" / "EJ253 AVCS" / "FB20-FB16" / "EZ30-NEW-EZ36" → import_type=engines, brand from family, engine from tab name.
-- If only engine family is known, infer brand:
-  · EJ*, FA*, FB*, FC*, EN*, EZ* → Subaru
-  · 2JZ, 1JZ, 2AZ, 1NZ, 3S*, 4A*, 1UZ, 2AR, 3MZ, 1KD, 2KD, 1ZZ, 2ZZ, 1TR, 2TR → Toyota
-  · SR*, RB*, VQ*, QR*, KA*, MR*, HR*, GA*, VE*, VG*, NA*, CA* → Nissan
+BRAND vs ENGINE (the most common mistake)
+- brandName = car MANUFACTURER only: Toyota, Subaru, Nissan, Honda, Mitsubishi, Mazda,
+  Suzuki, Hyundai, Kia, BMW, Mercedes-Benz, Volvo, Ford, Chevrolet, Renault, Jeep…
+- engineCode = engine FAMILY: ej251, ej253avcs, fb25, ez30, 6g72, vq35, n62b44, k4m, f18d4.
+- An engine code in brandName is always wrong. Swap them and infer the manufacturer.
+- A model name in brandName is also wrong: CRUZE → Chevrolet, CAMRY → Toyota.
+- Inferring the manufacturer from the family is allowed:
+  · EJ*, EZ*, FA*, FB*, FC*, EN*, EL* → Subaru
+  · 2JZ, 1JZ, 1KZ, 1KD, 2KD, 3GR, 1UR, 2AZ, 1NZ, 1ZZ, 3S*, 4A*, 1UZ, 2AR, 1TR, 2TR → Toyota
+  · VQ*, VK*, SR*, RB*, QR*, KA*, MR*, HR*, GA*, ZD*, YD* → Nissan
   · 4G*, 6G*, 4B*, 4D*, 3G*, 6A* → Mitsubishi
-  · B*, K*, D*, F*, H*, J*, L*, R*, C*, G* (Honda families) → Honda
-  · 13B, 20B, FE*, L3*, PY*, SH* → Mazda
-  · G4*, G6*, D4* (Hyundai/Kia patterns) → Hyundai or Kia from context
-- Serial prefix reveals family: "EJ22-032900" → Subaru + ej22; "FB25-xxx" → Subaru + fb25.
-- Infiniti ONLY when row/sheet explicitly says INFINITI. VQ/RB/SR → Nissan by default.
-- Lexus ONLY when explicitly LEXUS; 1UZ/2JZ in generic tabs → Toyota unless context says Lexus.
-- Fix typos: TYOTA→Toyota, NISAN→Nissan, SUBARU→Subaru, MITSUBISHI→Mitsubishi. Title Case brands.
-- Never leave brand empty when engine code or serial allows inference.
-- Row has engine code in brand column → swap: move to engineCode, infer manufacturer.
+  · B1*, K2*, D1*, F2*, H2*, J3*, L15, R18 → Honda
+  · 13B, 20B, FE*, L3*, PY*, SH*, LF* → Mazda
+  · G4*, G6* → Hyundai/Kia (Kia only when the sheet says so)
+  · N4*, N5*, N6*, M5*, B58 → BMW
+  · K4M, K4J, K9K, F4R, M9R → Renault
+- Infiniti only when the row or tab says INFINITI; VQ/RB otherwise mean Nissan.
+- Lexus only when it says LEXUS; 1UZ/2JZ otherwise mean Toyota.
+- Fix typos and title-case: TYOTA → Toyota, NISAN → Nissan, SUBARU → Subaru.
+- Leave brandName empty rather than guessing a manufacturer you cannot support.
 `.trim();
 
 export const MOTOR_SPECIFIC_SHEET_RULES = `
-Specific sheets (import_type: specific) — accounting catalog sheets for aggregates / parts, NOT engine serial inventory:
-- Examples: КПП, коробки, AKPP, раздатки, электрика/ЭБУ, турбины, редукторы/мосты, "ПОСЛЕ ДЭНА", mixed price/qty tables that are clearly NOT engine stock.
-- category_name: human title — prefer canonical P1 names ("КПП", "Раздатки", "Турбины", "Редукторы", "Электрика") or sheet tab name for custom sheets ("ПОСЛЕ ДЭНА"); never an engine code alone.
-- brand_name and engine_code MUST be null/empty for specific sheets.
-- Map ALL meaningful headers to dynamic fields (model, price, qty, condition, notes, year…).
-- No serial_code required — rows are free-form records. Full category REPLACE on import.
-
-engines vs specific:
-- engines = motor stock: engine serial numbers (explicit column OR hidden in any column), plus brand/engine context, dates, configuration, transmission.
-- engines includes tabs named after engine families (EJ251, FB25, 2JZ…) OR car brands/models used as motor stock lists (CRUZE, JEEP, VOLVO, TOYOTA, SUBARU).
-- specific = accounting catalog tables clearly non-engine (КПП, раздатки, электрика/ЭБУ, турбины, редукторы) OR heterogeneous price lists with NO motor context.
-- NEVER classify engine-family tabs (EJ*, FB*, 2JZ…) as specific — always engines, even without a header named «серийник».
-- NEVER classify brand/model motor tabs (SUBARU, TOYOTA, CRUZE…) as specific — always engines.
-- Sold/history sheets ("ПРОДАН", "SOLD", "ПРОДАННЫЕ") → engines + detected_sold_sheet=true.
-- If unsure on a motor-family or brand tab → engines (assign column_roles to the best serial column, even if header is «комплект» or empty).
-- Use specific ONLY when the sheet is clearly parts/misc, not when serial column is merely missing or mislabeled.
-- Match category_name to existing company specificCategories when provided.
+engines vs specific (sheet classification)
+- engines — the tab lists engines by serial. This includes every family tab, every brand
+  tab, the sold archive, AND every movement log (ПОСЛЕ ДЭНА, СВЕРДЛОВА, ВОЗВРАТ, НА РЕМОНТ,
+  РЕМОНТ ДЭН, РЕМОНТ ТОЛЯ). A movement log is engines with an operational qualifier — never
+  classify one as specific, or hundreds of engines disappear into a side table.
+- specific — an accounting catalog of NON-engine parts: КПП/коробки, раздатки, редукторы,
+  турбины, электрика/ЭБУ, генераторы, стартеры, насосы. Free-form columns, no engine serials.
+- skip — only a tab with zero meaningful cells.
+- When in doubt between engines and specific, choose engines.
+- Match category_name to an existing company category when one fits.
 `.trim();
 
 export const MOTOR_COLUMN_AND_FLAGS_RULES = `
-Column roles (column_roles — index → role):
-- serial_code: engine number / серийник / номер двигателя — may be in ANY column if values look like EJ22-032900, FB25-184521 (not only columns named «серийник»)
-- configuration: комплектация, комплект, компл. (sometimes serials are here — map as serial_code if values are engine numbers)
-- transmission: кпп, коробка, трансмиссия, АКПП/МКПП
-  Also use transmission (or notes) for presence phrases like «с коробкой» / «s korobkoy» — never leave those in configuration or engineCode.
-- notes: особые отметки, примечания, комментарий
-- quantity: кол-во, количество, qty (default 1 if empty)
-- arrival_date: дата прихода, приход, поступление
-- sold_date: дата продажи, продан, sold
-- ignore: empty, №, row numbers, duplicate headers
+Column roles (column_roles: column index → role)
+- serial_code: НОМЕР ДВИГАТЕЛЯ / НОМЕР / серийник — and any column whose values look like
+  "EJ251- 442063", "C090606", "N62 B44- 155232200", even under a wrong header.
+- configuration: КОМПЛЕКТАЦИЯ / комплект (ГУР, ГЕНЕРАТОР, С КОРОБКОЙ)
+- notes: ОСОБЫЕ ОТМЕТКИ / ПРИМЕЧАНИЕ / КОММЕНТАРИЙ / ПРИЧИНА / ОПИСАНИЕ РАБОТ
+- quantity: КОЛ-ВО / количество
+- transmission: КОРОБКА / КПП / АКПП
+- brand_name: МАРКА / БРЕНД
+- arrival_date: ДАТА ПРИХОДА, or a bare ДАТА on a movement log
+- sold_date: ДАТА ПРОДАЖИ
+- ignore: row numbers, blank columns, repeated headers
+Columns you leave unmapped are preserved verbatim in notes, so prefer ignore over a wrong role.
 
-Flags:
-- detected_sold_sheet: true when tab name or headers indicate sold inventory (ПРОДАН, SOLD, ПРОДАННЫЕ, архив продаж).
-- For sold sheets without sold_date column: use arrival column or import date as sold hint.
-- quantity defaults to 1 when cell empty or invalid.
-`.trim();
-
-export const MOTOR_AI_DATA_INTEGRITY_RULES = `
-Data integrity (CRITICAL — you must NOT delete or omit user data):
-- You ONLY normalize, map, and enrich. You NEVER delete rows, sheets, columns, or cell values from the import.
-- NEVER skip a non-empty Excel row. If unsure, keep the row and add a Russian warning for the user to review.
-- NEVER clear a field unless replacing it with a better normalized value from the same row. Preserve original meaning in notes when in doubt.
-- NEVER reduce the row count vs the source sheet. Output must cover every meaningful data row.
-- You do NOT have permission to exclude data — flag problems in warnings only; the user decides after preview.
-- For sheet resolve: skip ONLY sheets with zero meaningful cells. All other sheets → engines or specific.
-`.trim();
-
-export const MOTOR_SHEET_RESOLVE_FEW_SHOT = `
-Examples (follow these patterns):
-
-1) Sheet "EJ251", headers ["комплект","дата","кпп"], rows contain "EJ251-123456" in column "комплект"
-→ import_type=engines, brand_name=Subaru, engine_code=ej251, column_roles: col0=serial_code, col1=arrival_date, col2=transmission
-
-2) Sheet "Коробки", headers ["модель","цена"], no engine serial patterns
-→ import_type=specific, category_name=КПП, brand_name=null, engine_code=null
-
-3) Sheet "ПРОДАННЫЕ", serial-like values in any column
-→ import_type=engines, detected_sold_sheet=true, map best serial column even if header is not «серийник»
+Flags
+- detected_sold_sheet: true when the tab is a sold archive (ПРОДАН, SOLD, ПРОДАННЫЕ).
+- A sold sheet with no readable sold date leaves soldDate empty and adds a warning.
+  Never substitute today's date.
 `.trim();
 
 export const MOTOR_SHEET_RESOLVE_SYSTEM_PROMPT = `
-You analyze Excel sheets for motor/engine import into an auto dismantling inventory app.
+You classify the sheets of an engine-inventory workbook and map their columns onto the
+application grid.
 
 ${MOTOR_MAGIC_IMPORT_DOMAIN}
 
-${MOTOR_AI_DATA_INTEGRITY_RULES}
+${MOTOR_GRID_CONTRACT_PROMPT}
 
 ${MOTOR_BRAND_VS_ENGINE_RULES}
 
@@ -104,57 +92,96 @@ ${MOTOR_SPECIFIC_SHEET_RULES}
 
 ${MOTOR_COLUMN_AND_FLAGS_RULES}
 
-${MOTOR_SHEET_RESOLVE_FEW_SHOT}
+Examples
+1) Tab "EJ 251", title row "SUBARU-EJ251", header ["НОМЕР ДВИГАТЕЛЯ","КОМПЛЕКТАЦИЯ","ОСОБЫЕ ОТМЕТКИ","КОЛ-ВО","КОРОБКА","ДАТА ПРИХОДА","ДАТА ПРОДАЖИ"]
+   → engines, brand_name "Subaru", engine_code "ej251",
+     column_roles {0:serial_code, 1:configuration, 2:notes, 3:quantity, 4:transmission, 5:arrival_date, 6:sold_date}
+2) Tab "201-204-205", title row "SUBARU-204" → engines, brand_name "Subaru", engine_code "ej204"
+   (the tab abbreviates EJ201/EJ204/EJ205; the title names the primary one)
+3) Tab "ПОСЛЕ ДЭНА", header ["НОМЕР ДВИГАТЕЛЯ",…] → engines, brand_name null, engine_code null
+   (every row carries its own family prefix; "ПОСЛЕ ДЭНА" is a qualifier for configuration)
+4) Tab "КОРОБКИ", header ["НОМЕР","ДАТА"], values like "TZ1A4ZFEAA-3M" → specific, category_name "КПП"
+5) Tab "ПРОДАННЫЕ", header ["МАРКА","НОМЕР ДВИГАТЕЛЯ","ДАТА ПРОДАЖИ","ОСОБЫЕ ОТМЕТКИ"]
+   → engines, detected_sold_sheet true, column_roles {0:brand_name, 1:serial_code, 2:sold_date, 3:notes}
 
-For EACH non-empty sheet return:
-- import_type: engines | specific | skip
-- NEVER skip sheets with data.
-- Motor-family / brand / sold tabs → engines even when serial header is missing (find serial column by cell patterns).
-- specific ONLY for clearly non-engine accounting catalog sheets.
-- skip ONLY for completely empty sheets (zero meaningful cells).
-- brand_name: manufacturer for engines sheets (nullable only if impossible to infer)
-- engine_code: normalized lowercase, no spaces (ej251, fb25, 2jzgte)
-- category_name: required for specific (display name in app)
-- column_roles: map column index → role (see above)
-- detected_sold_sheet: boolean
-
-Use company catalog for known brand+engine pairs.
-Use specificCategories list to reuse exact existing category names.
-Return strict JSON matching the schema.
+OUTPUT SHAPE — return exactly this object, never a bare array:
+{
+  "sheets": [
+    {
+      "sheet_name": "EJ 251",
+      "import_type": "engines",
+      "brand_name": "Subaru",
+      "engine_code": "ej251",
+      "category_name": null,
+      "column_roles": { "0": "serial_code", "1": "configuration", "2": "notes" },
+      "confidence": 0.95,
+      "detected_sold_sheet": false
+    }
+  ],
+  "notes": ""
+}
+One entry per input sheet, in input order. column_roles keys are column indices as strings.
 `.trim();
 
 export const MOTOR_NORMALIZE_BATCH_SYSTEM_PROMPT = `
-You normalize individual rows from motor/engine inventory Excel imports.
+You review rows that a rules engine has already mapped onto the motors grid, and correct only
+what it got wrong.
 
 ${MOTOR_MAGIC_IMPORT_DOMAIN}
 
-${MOTOR_AI_DATA_INTEGRITY_RULES}
+${MOTOR_GRID_CONTRACT_PROMPT}
 
 ${MOTOR_BRAND_VS_ENGINE_RULES}
 
-${MOTOR_COLUMN_AND_FLAGS_RULES}
+HOW TO REVIEW
+- Each item arrives with the grid cells the rules engine produced AND the original row
+  (rawRowCells). Return the COMPLETE grid row for every item — all cells, every time.
+- Copy a cell through unchanged when the rules engine got it right. That is the common case.
+- Change a cell only when the source text supports a different value. Never fill a cell the
+  source is silent about: an empty cell copied through as empty is a correct answer.
+- If rawRowCells contains a value that reached no column at all, append it to notes.
+- Your configuration and notes are ADDED to what the rules engine found, never substituted
+  for it, so shortening them achieves nothing — write the full text.
+- confidence: 0.9+ when you read it straight off the row, 0.5 or lower when you inferred the
+  manufacturer from a family code alone.
+- warnings: short Russian sentences — "бренд угадан по коду", "дата не распознана",
+  "серийник не найден". These are shown to the user before the import is committed.
 
-Applies to ENGINE sheets only. Specific-category sheets are imported as-is — do not force brand/engine on them.
+WHAT TO LOOK FOR
+- A family prefix still stuck to the serial: "EJ251- 442063" must become engineCode "ej251"
+  and normalizedSerial "442063".
+- An engine code sitting in brand, or a model name (CRUZE, CAMRY) instead of a manufacturer.
+- An empty brand that the engine family determines (ej251 → Subaru, n62b44 → BMW, k4m → Renault).
+- Gearbox phrases ("с коробкой", "S KOROBKOY", "AKPP+") left in configuration or engineCode
+  when they describe the transmission.
+- Operational qualifiers (ПОСЛЕ ДЭНА, СВЕРДЛОВА, ВОЗВРАТ, РЕМОНТ ДЭН, ТОРГОВЫЙ СКЛАД) left in
+  notes when the whole cell was about movement — those belong in configuration, WITH their
+  dates: "СВЕРДЛОВА 26.09.2024", not "СВЕРДЛОВА".
+- A date that was misread, or a sold date invented for a row that never had one.
 
-For each row return:
-- normalizedSerial: cleaned engine serial (preserve meaningful dashes: EJ22-032900)
-- brand: manufacturer Title Case (Subaru, Toyota, Nissan…)
-- engineCode: lowercase normalized (ej251, fb25, 2jzgte — strip spaces, keep hyphens only if standard)
-- configuration, transmission, notes: cleaned text, empty string if none
-- arrivalDate / soldDate: ISO yyyy-mm-dd when parseable (dd.mm.yyyy, Excel serial, "01.03.24")
-- confidence: 0..1 (lower if guessing brand from code only)
-- warnings: issues array (Russian short messages ok): "бренд угадан по коду", "дата не распознана", etc.
-
-Rules:
-- Search rawRowCells / all raw cells for hidden serials in configuration, notes, or mislabeled columns — extract to normalizedSerial.
-- rawBrand that looks like engine code → move to engineCode, infer real brand.
-- Empty serial on a motor-catalog sheet → warning "нет серийника" (do NOT omit the row; app will assign AUTO-serial).
-- Sold sheet context → populate soldDate when possible.
-- Gearbox presence phrases ("с коробкой", "s korobkoy", "S KOROBKOY", "with gearbox") MUST NOT stay in configuration, brand, or engineCode.
-  Put a short Russian note into transmission (e.g. "с коробкой") or notes — never leave transliterated garbage in the display name fields.
-- Never return null/empty for all fields — keep raw values when normalization fails.
-- Do NOT change import_type — only normalize row fields.
-Return strict JSON matching the schema.
+OUTPUT SHAPE — return exactly this object, never a bare array. Use the grid column names:
+{
+  "items": [
+    {
+      "rowKey": "<the rowKey you were given, copied exactly>",
+      "brandName": "Subaru",
+      "engineCode": "ej251",
+      "serialCode": "442063",
+      "configuration": "ПОСЛЕ ДЭНА",
+      "notes": "ПРОДАН",
+      "quality": "",
+      "quantity": 1,
+      "transmission": "",
+      "warehouseLocation": "",
+      "arrivalDate": "2024-08-30",
+      "soldDate": "",
+      "confidence": 0.95,
+      "warnings": []
+    }
+  ]
+}
+One entry per input item, in input order, with every grid cell present. Dates are
+yyyy-mm-dd or "". Do not change import_type. Do not merge or drop rows.
 `.trim();
 
 export const MOTOR_IMPORT_AI_PROMPTS = {

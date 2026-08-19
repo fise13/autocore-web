@@ -10,6 +10,8 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 
+import { spacing } from '@/theme';
+
 const MAX_SCALE = 6;
 const DOUBLE_TAP_SCALE = 2.5;
 /** Past this drag, letting go closes the viewer. */
@@ -34,9 +36,8 @@ export type EnginePhotoPageProps = {
 /**
  * One zoomable page of the photo viewer.
  *
- * Pinch and double-tap zoom; panning moves the image once zoomed and otherwise
- * drags the whole viewer away, which is the gesture people already expect from
- * Photos.
+ * Horizontal swipes pass through to the paging ScrollView when not zoomed.
+ * Vertical drag dismisses; pinch and double-tap zoom.
  */
 export function EnginePhotoPage({
   url,
@@ -59,13 +60,14 @@ export function EnginePhotoPage({
   // Paging away must not leave a page parked zoomed and off-centre.
   useEffect(() => {
     if (active) return;
+    runOnJS(onZoomChange)(false);
     scale.value = 1;
     savedScale.value = 1;
     tx.value = 0;
     ty.value = 0;
     savedTx.value = 0;
     savedTy.value = 0;
-  }, [active, savedScale, savedTx, savedTy, scale, tx, ty]);
+  }, [active, onZoomChange, savedScale, savedTx, savedTy, scale, tx, ty]);
 
   const pinch = Gesture.Pinch()
     .onUpdate((event) => {
@@ -87,29 +89,44 @@ export function EnginePhotoPage({
       runOnJS(onZoomChange)(true);
     });
 
-  const pan = Gesture.Pan()
-    .minDistance(6)
+  const zoomPan = Gesture.Pan()
+    .manualActivation(true)
+    .onTouchesMove((_event, state) => {
+      if (scale.value > 1) {
+        state.activate();
+      } else {
+        state.fail();
+      }
+    })
     .onStart(() => {
       savedTx.value = tx.value;
       savedTy.value = ty.value;
     })
     .onUpdate((event) => {
-      if (scale.value > 1) {
-        tx.value = savedTx.value + event.translationX;
-        ty.value = savedTy.value + event.translationY;
-        return;
-      }
-      // Not zoomed: the drag pulls the whole viewer away.
+      if (scale.value <= 1) return;
+      tx.value = savedTx.value + event.translationX;
+      ty.value = savedTy.value + event.translationY;
+    })
+    .onEnd(() => {
+      if (scale.value <= 1) return;
+      savedTx.value = tx.value;
+      savedTy.value = ty.value;
+    });
+
+  const dismissPan = Gesture.Pan()
+    .minDistance(6)
+    .activeOffsetY([-12, 12])
+    .failOffsetX([-28, 28])
+    .onStart(() => {
+      savedTy.value = ty.value;
+    })
+    .onUpdate((event) => {
+      if (scale.value > 1) return;
       ty.value = event.translationY;
-      tx.value = event.translationX * 0.35;
       dismissProgress.value = Math.min(1, Math.abs(event.translationY) / DISMISS_FADE_RANGE);
     })
     .onEnd((event) => {
-      if (scale.value > 1) {
-        savedTx.value = tx.value;
-        savedTy.value = ty.value;
-        return;
-      }
+      if (scale.value > 1) return;
       const shouldClose =
         Math.abs(event.translationY) > DISMISS_DISTANCE ||
         Math.abs(event.velocityY) > DISMISS_VELOCITY;
@@ -117,7 +134,6 @@ export function EnginePhotoPage({
         runOnJS(onRequestClose)();
         return;
       }
-      tx.value = withTiming(0, { duration: 180 });
       ty.value = withTiming(0, { duration: 180 });
       dismissProgress.value = withTiming(0, { duration: 180 });
     });
@@ -142,9 +158,7 @@ export function EnginePhotoPage({
       runOnJS(onZoomChange)(true);
     });
 
-  // No long-press here: full screen is for looking, and holding a photo you
-  // are mid-pinch on fought the zoom. Photo actions live on the strip below
-  // the card, where a hold is unambiguous.
+  const pan = Gesture.Exclusive(zoomPan, dismissPan);
   const gesture = Gesture.Simultaneous(doubleTap, Gesture.Simultaneous(pinch, pan));
 
   const imageStyle = useAnimatedStyle(() => ({
@@ -157,7 +171,7 @@ export function EnginePhotoPage({
 
   return (
     <GestureDetector gesture={gesture}>
-      <View style={{ width, height, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ width, height, alignItems: 'center', justifyContent: 'center', paddingBottom: spacing[2] }}>
         <Animated.View style={imageStyle}>
           <Image
             source={{ uri: url }}

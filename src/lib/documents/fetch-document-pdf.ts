@@ -2,6 +2,8 @@ import { waitForFirebaseUser } from "@/lib/auth/wait-for-firebase-user";
 import { mapDocumentError } from "@/lib/documents/map-document-error";
 import { DocumentSlug } from "@/lib/documents/document-types";
 import { DocumentAggregateType } from "@/lib/documents/resolve-document-context";
+import { printPdfBlob as platformPrintPdfBlob, saveFile } from "@/platform";
+import type { SaveFileResult } from "@/platform";
 import { userCopy } from "@/lib/user-copy";
 
 async function getAuthToken(): Promise<string> {
@@ -83,28 +85,35 @@ function toPdfBlob(blob: Blob): Blob {
   return new Blob([blob], { type: "application/pdf" });
 }
 
-export function downloadPdfBlob(blob: Blob, filename: string): void {
-  const pdfBlob = toPdfBlob(blob);
-  const url = URL.createObjectURL(pdfBlob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.rel = "noopener";
-  anchor.style.display = "none";
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+const PDF_FILTERS = [{ name: "PDF", extensions: ["pdf"] }];
+
+/**
+ * Where the PDF ended up. `"downloaded"` is the browser path, `"saved"` carries
+ * the desktop path the user chose, and `"cancelled"` means they dismissed the
+ * save dialog — a normal outcome callers must not report as a failure.
+ */
+export type PdfDeliveryResult = SaveFileResult;
+
+/**
+ * Hand a PDF to the user through whichever mechanism the platform has: the
+ * browser's download manager on web, a native save dialog in the desktop shell.
+ */
+export async function downloadPdfBlob(blob: Blob, filename: string): Promise<PdfDeliveryResult> {
+  return saveFile({
+    filename,
+    blob: toPdfBlob(blob),
+    filters: PDF_FILTERS,
+  });
 }
 
-export type PdfDeliveryResult = "downloaded";
-
-export function deliverPdfToUser(blob: Blob, filename: string): PdfDeliveryResult {
-  downloadPdfBlob(blob, filename);
-  return "downloaded";
+export async function deliverPdfToUser(blob: Blob, filename: string): Promise<PdfDeliveryResult> {
+  return downloadPdfBlob(blob, filename);
 }
 
-export async function downloadDocumentPdfFromUrl(downloadUrl: string, filename: string): Promise<void> {
+export async function downloadDocumentPdfFromUrl(
+  downloadUrl: string,
+  filename: string,
+): Promise<PdfDeliveryResult> {
   const errors = userCopy.documents.errors;
   const trimmed = downloadUrl.trim();
   if (!trimmed || !/^https?:\/\//i.test(trimmed)) {
@@ -119,7 +128,7 @@ export async function downloadDocumentPdfFromUrl(downloadUrl: string, filename: 
   if (blob.size === 0) {
     throw new Error(errors.emptyServerPdf);
   }
-  downloadPdfBlob(blob, filename);
+  return downloadPdfBlob(blob, filename);
 }
 
 export async function downloadDocumentPdf(
@@ -132,13 +141,12 @@ export async function downloadDocumentPdf(
   // Prefer authenticated API (redirect=0) — avoids CORS "Load failed" on Firebase Storage from localhost.
   try {
     const blob = await fetchDocumentPdf(slug, aggregateId, options);
-    return deliverPdfToUser(blob, resolvedFilename);
+    return await deliverPdfToUser(blob, resolvedFilename);
   } catch (apiError) {
     const cachedUrl = options?.cachedDownloadUrl?.trim();
     if (cachedUrl) {
       try {
-        await downloadDocumentPdfFromUrl(cachedUrl, resolvedFilename);
-        return "downloaded";
+        return await downloadDocumentPdfFromUrl(cachedUrl, resolvedFilename);
       } catch {
         // keep api error
       }
@@ -147,68 +155,13 @@ export async function downloadDocumentPdf(
   }
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
-}
-
-async function waitForPdfFrame(frame: HTMLIFrameElement, timeoutMs = 15_000): Promise<void> {
-  if (frame.contentDocument?.readyState === "complete") {
-    await sleep(900);
-    return;
-  }
-
-  await new Promise<void>((resolve, reject) => {
-    const timer = window.setTimeout(() => {
-      cleanup();
-      reject(new Error(userCopy.documents.errors.printLoadTimeout));
-    }, timeoutMs);
-
-    const onLoad = () => {
-      cleanup();
-      resolve();
-    };
-
-    const cleanup = () => {
-      window.clearTimeout(timer);
-      frame.removeEventListener("load", onLoad);
-    };
-
-    frame.addEventListener("load", onLoad, { once: true });
-  });
-
-  await sleep(900);
-}
-
-export async function printPdfBlob(blob: Blob): Promise<void> {
-  const pdfBlob = toPdfBlob(blob);
-  const url = URL.createObjectURL(pdfBlob);
-  const errors = userCopy.documents.errors;
-
-  try {
-    const frame = document.createElement("iframe");
-    frame.setAttribute("title", errors.printTitle);
-    frame.style.cssText =
-      "position:fixed;left:0;top:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none;";
-    frame.src = url;
-    document.body.appendChild(frame);
-
-    try {
-      await waitForPdfFrame(frame);
-      const printWindow = frame.contentWindow;
-      if (!printWindow) {
-        throw new Error(errors.printWindowFailed);
-      }
-
-      printWindow.focus();
-      printWindow.print();
-    } finally {
-      window.setTimeout(() => frame.remove(), 120_000);
-    }
-  } finally {
-    window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
-  }
+/**
+ * Print a PDF. The hidden-iframe implementation this used to hold now lives in
+ * `src/platform/print.ts`, alongside the desktop path — WKWebView ignores
+ * `window.print()`, so the shell needs the OS print pipeline instead.
+ */
+export async function printPdfBlob(blob: Blob, filename = "autocore-document.pdf"): Promise<void> {
+  await platformPrintPdfBlob(toPdfBlob(blob), filename);
 }
 
 export async function printDocumentPdf(
@@ -217,7 +170,7 @@ export async function printDocumentPdf(
   options?: { aggregateType?: DocumentAggregateType },
 ): Promise<void> {
   const blob = await fetchDocumentPdf(slug, aggregateId, { inline: true, ...options });
-  await printPdfBlob(blob);
+  await printPdfBlob(blob, `${slug}-${aggregateId}.pdf`);
 }
 
 export async function generateWorkOrderDocuments(orderId: string, types?: DocumentSlug[]): Promise<void> {

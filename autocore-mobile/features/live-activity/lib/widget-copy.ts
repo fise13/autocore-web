@@ -15,7 +15,6 @@ export type WidgetCopy = {
   ordersLabel: string;
   placeLabel: string;
   enginesLabel: string;
-  lowLabel: string;
   enginesInStock: (count: string) => string;
   itemToPlace: (count: number) => string;
   itemsToPlace: (count: number) => string;
@@ -37,17 +36,6 @@ export type WidgetCopy = {
   engineAwaiting: (count: number) => string;
   enginesAwaiting: (count: number) => string;
   intakeAwaitingDetail: string;
-  workEyebrow: string;
-  workRefresh: string;
-  workClearDetail: string;
-  openCountLabel: string;
-  attentionLabel: string;
-  openOrdersAction: string;
-  warehouseEyebrow: string;
-  warehouseRefresh: string;
-  warehouseClear: string;
-  scanAction: string;
-  openWarehouseAction: string;
   intakeEyebrow: string;
   intakeRefresh: string;
   readyForReview: (count: number) => string;
@@ -57,28 +45,31 @@ export type WidgetCopy = {
   waitingForReview: string;
   readyLabel: string;
   activeLabel: string;
+  documentingLabel: string;
   openReadyLabel: string;
   openIntakeLabel: string;
   continueIntakeLabel: string;
-  inlineIntakeSynced: string;
-  inlineSyncing: (short: string) => string;
-  inlineBlocked: (count: number) => string;
-  nothingWaiting: string;
-  everythingBackedUp: string;
-  waitingToRetry: string;
+  scanEyebrow: string;
+  scanTitle: string;
+  scanCameraDetail: string;
+  scanAction: string;
+  scanRefresh: string;
+  payEyebrow: string;
+  payUnavailable: string;
+  payClear: string;
+  payRefresh: string;
 };
 
 export const EN_WIDGET_COPY: WidgetCopy = {
   brand: 'AutoCore',
-  todayEyebrow: 'Today',
+  todayEyebrow: 'Floor',
   todayUrgentEyebrow: 'Needs you',
   todayRefresh: 'Open the app to refresh.',
   todayClearDetail: 'The floor is clear.',
   todayFloorClear: 'No open orders',
-  ordersLabel: 'Open orders',
+  ordersLabel: 'Open',
   placeLabel: 'To place',
   enginesLabel: 'Engines',
-  lowLabel: 'Low stock',
   enginesInStock: (count) => `${count} engines in stock.`,
   itemToPlace: (count) => `${count} item to place`,
   itemsToPlace: (count) => `${count} items to place`,
@@ -100,17 +91,6 @@ export const EN_WIDGET_COPY: WidgetCopy = {
   engineAwaiting: (count) => `${count} engine awaiting intake`,
   enginesAwaiting: (count) => `${count} engines awaiting intake`,
   intakeAwaitingDetail: 'Ready to pick up on the floor.',
-  workEyebrow: 'Orders',
-  workRefresh: 'Open the app to refresh.',
-  workClearDetail: 'Nothing waiting on parts.',
-  openCountLabel: 'Open',
-  attentionLabel: 'Waiting',
-  openOrdersAction: 'Open orders',
-  warehouseEyebrow: 'Warehouse',
-  warehouseRefresh: 'Open the app to refresh.',
-  warehouseClear: 'Stock is placed',
-  scanAction: 'Scan in',
-  openWarehouseAction: 'Open warehouse',
   intakeEyebrow: 'Intake',
   intakeRefresh: 'Open the app to refresh.',
   readyForReview: (count) =>
@@ -123,13 +103,17 @@ export const EN_WIDGET_COPY: WidgetCopy = {
   waitingForReview: 'Waiting for review',
   readyLabel: 'Ready',
   activeLabel: 'Active',
+  documentingLabel: 'documenting',
   openReadyLabel: 'Open Ready',
   openIntakeLabel: 'Open intake',
-  continueIntakeLabel: 'Continue intake',
-  inlineIntakeSynced: 'Intake synced',
-  inlineSyncing: (short) => `Syncing ${short}`,
-  inlineBlocked: (count) => `${count} photos blocked`,
-  nothingWaiting: 'Nothing waiting.',
-  everythingBackedUp: 'Everything is backed up',
-  waitingToRetry: 'Waiting to retry',
+  continueIntakeLabel: 'Continue',
+  scanEyebrow: 'Scan',
+  scanTitle: 'Scan in',
+  scanCameraDetail: 'Open camera',
+  scanAction: 'Scan in',
+  scanRefresh: 'Open the app to refresh.',
+  payEyebrow: 'Pay',
+  payUnavailable: "Pay isn’t on for you",
+  payClear: 'Nothing waiting',
+  payRefresh: 'Open the app to refresh.',
 };

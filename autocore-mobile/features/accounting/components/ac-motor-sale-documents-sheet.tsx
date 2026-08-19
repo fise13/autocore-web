@@ -10,6 +10,7 @@ import { enUS } from 'date-fns/locale';
 import { FileStackIcon, PrinterIcon, Share2Icon } from '@/assets/icons';
 import { ActionIconButton, Button, Text } from '@/components/ui';
 import { useModalBottomSheet, useTheme } from '@/hooks';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 import {
   motorSaleDetail,
   motorSaleMotorId,
@@ -52,6 +53,7 @@ export const AcMotorSaleDocumentsSheet = forwardRef<
   AcMotorSaleDocumentsSheetProps
 >(function AcMotorSaleDocumentsSheet(_props, ref) {
   const { colors } = useTheme();
+  useMoneyFormatRevision();
   const sheet = useModalBottomSheet();
   const sheetRef = useRef<BottomSheetModal>(null);
 

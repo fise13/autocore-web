@@ -9,6 +9,7 @@ import { toneBackground } from '@/theme/color-utils';
 
 import { searchTimeline, useSearchEnter } from '../animation';
 import { formatPrice } from '../lib/format';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 import { iconForSearchKind } from '../lib/result-icons';
 import { kindVisual } from '../lib/kind-visual';
 import { statusLabel, statusVariant } from '../lib/status';
@@ -42,6 +43,7 @@ function resolveIconColor(
 
 export function SearchResultRow({ item, query, index = 0, onPress }: SearchResultRowProps) {
   const { colors } = useTheme();
+  useMoneyFormatRevision();
   const Icon = iconForSearchKind(item.kind);
   const visual = kindVisual(item.kind);
   const { style: pressStyle, onPressIn, onPressOut } = usePressAnimation();

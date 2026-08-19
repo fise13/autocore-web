@@ -15,6 +15,17 @@ export type PurchaseStoreSnapshot = {
   /** Apple ID is eligible for the introductory offer (free trial). */
   introEligible: boolean;
   flow: PurchaseFlowState;
+  /**
+   * Gate paywall stays mounted through celebration. Set when a purchase starts
+   * from the unpaid gate (not a modal over an already-open app).
+   */
+  gateCelebrationLock: boolean;
+  /**
+   * Native store is connected. The purchase CTA can enable once this is true
+   * or the selected SKU is already in the product cache — do not wait for the
+   * full catalog.
+   */
+  storePrepared: boolean;
 };
 
 const EMPTY_PRODUCTS: StoreProduct[] = [];
@@ -25,6 +36,8 @@ let snapshot: PurchaseStoreSnapshot = {
   productsError: null,
   introEligible: false,
   flow: { phase: 'idle' },
+  gateCelebrationLock: false,
+  storePrepared: false,
 };
 
 const listeners = new Set<() => void>();
@@ -53,6 +66,21 @@ export function setProducts(products: StoreProduct[]): void {
   emit({ products, productsLoading: false, productsError: null });
 }
 
+/** Merge one warmed SKU into the catalog so the paywall CTA can enable before the full list returns. */
+export function upsertProduct(product: StoreProduct): void {
+  const existing = snapshot.products;
+  const index = existing.findIndex(
+    (item) => item.sku === product.sku || item.planId === product.planId,
+  );
+  if (index === -1) {
+    setProducts([...existing, product]);
+    return;
+  }
+  const next = existing.slice();
+  next[index] = product;
+  setProducts(next);
+}
+
 export function setProductsError(message: string): void {
   emit({ productsError: message, productsLoading: false });
 }
@@ -60,6 +88,16 @@ export function setProductsError(message: string): void {
 export function setIntroEligible(eligible: boolean): void {
   if (snapshot.introEligible === eligible) return;
   emit({ introEligible: eligible });
+}
+
+export function setGateCelebrationLock(locked: boolean): void {
+  if (snapshot.gateCelebrationLock === locked) return;
+  emit({ gateCelebrationLock: locked });
+}
+
+export function setStorePrepared(prepared: boolean): void {
+  if (snapshot.storePrepared === prepared) return;
+  emit({ storePrepared: prepared });
 }
 
 export function setFlow(flow: PurchaseFlowState): void {
@@ -81,6 +119,11 @@ export function isFlowBusy(): boolean {
   return phase === 'loading' || phase === 'verifying' || phase === 'restoring';
 }
 
+/** StoreKit accepted — the paywall stays up for the celebration, not a spinner. */
+export function isCelebratingPurchasePhase(phase: PurchaseFlowState['phase']): boolean {
+  return phase === 'success' || phase === 'restored';
+}
+
 export function resetPurchaseStore(): void {
   snapshot = {
     products: EMPTY_PRODUCTS,
@@ -88,6 +131,8 @@ export function resetPurchaseStore(): void {
     productsError: null,
     introEligible: false,
     flow: { phase: 'idle' },
+    gateCelebrationLock: false,
+    storePrepared: false,
   };
   for (const listener of listeners) listener();
 }

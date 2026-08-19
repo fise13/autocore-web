@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import { after } from 'expo-widgets';
 
+import { useEngineIntakeJobs } from '@/features/engine-intake/hooks/use-engine-intake-data';
 import { reconcileIntakeSyncLocalNotification } from '@/features/engine-intake/lib/intake-sync-notifications';
 import { useEngineIntakeOutbox } from '@/features/engine-intake/store/intake-outbox';
 import { useSession } from '@/hooks/use-session';
@@ -10,14 +11,16 @@ import { ensureLiveActivityAppIconUri } from './ensure-live-activity-icon';
 import {
   buildCompletionProps,
   liveActivityContentKey,
+  pickActiveIntakeSession,
   resolveDesiredLiveActivity,
   type DesiredLiveActivity,
   type LiveActivityProps,
 } from './lib/live-activity-model';
+import { WIDGET_URL } from './lib/widget-links';
 import { OperationsLiveActivity } from './operations-live-activity';
 import { useIsOnline } from './use-is-online';
 
-const INTAKE_URL = 'autocoremobile://intake';
+const INTAKE_URL = WIDGET_URL.intake;
 /** Ignore brief NetInfo blips before starting a new island. */
 const START_DEBOUNCE_MS = 350;
 /** How long "N photos synced" stays up before the system removes it. */
@@ -84,17 +87,17 @@ async function applyDesired(desired: DesiredLiveActivity): Promise<void> {
 
   // Ensure a clean single instance before start (update path may have cleared it).
   await endAllInstances();
-  OperationsLiveActivity.start(props, INTAKE_URL);
+  const url = props.mode === 'session' ? WIDGET_URL.intakeActive : INTAKE_URL;
+  OperationsLiveActivity.start(props, url);
 }
 
 /**
- * Drives the iOS Dynamic Island / Lock Screen Live Activity from intake outbox
- * state.
+ * Drives the iOS Dynamic Island / Lock Screen Live Activity from intake
+ * outbox + in-session job state.
  *
- * The Live Activity is a *view*: every word and colour it shows comes from the
- * same `resolveSyncSummary` the in-app banner reads, so the two can never tell
- * different stories about the same queue. This hook only decides *when* to
- * start, update and end — never what the state means.
+ * The Live Activity is a *view*: fail / blocked first, then an active intake
+ * session, then a healthy upload. Empty queue with no session ends. This hook
+ * only decides *when* to start, update and end — never what the state means.
  *
  * It does not own retries. `IntakeSyncHead` does, and it keeps running when
  * these screens unmount.
@@ -112,6 +115,7 @@ export function useOperationsLiveActivity() {
   const { companyId, can } = useSession();
   const intakeEnabled = Boolean(companyId) && can('engine_intake_view');
   const outbox = useEngineIntakeOutbox(intakeEnabled ? companyId : null);
+  const intake = useEngineIntakeJobs(intakeEnabled ? companyId : null);
   const lastKeyRef = useRef<string>('');
   const startTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const desiredRef = useRef<DesiredLiveActivity>({ kind: 'idle' });
@@ -144,6 +148,20 @@ export function useOperationsLiveActivity() {
     };
   }, []);
 
+  const session = useMemo(() => {
+    if (!intakeEnabled || intake.loading) return null;
+    return pickActiveIntakeSession(
+      intake.jobs.map((job) => ({
+        state: job.state,
+        locationCode: job.location?.code ?? null,
+        serialCode: job.expectedIdentity.serialCode,
+        donorVin: job.expectedIdentity.donorVin,
+        capturedCount: job.progress.capturedCount,
+        requiredCount: job.progress.requiredCount,
+      })),
+    );
+  }, [intake.jobs, intake.loading, intakeEnabled]);
+
   const desired = useMemo(
     () =>
       resolveDesiredLiveActivity({
@@ -153,8 +171,9 @@ export function useOperationsLiveActivity() {
         photos: outbox.photos,
         completedInWave: outbox.syncedCount,
         waveTotal: outbox.sessionTotal,
+        session,
       }),
-    [intakeEnabled, online, outbox.photos, outbox.sessionTotal, outbox.syncedCount],
+    [intakeEnabled, online, outbox.photos, outbox.sessionTotal, outbox.syncedCount, session],
   );
 
   /**

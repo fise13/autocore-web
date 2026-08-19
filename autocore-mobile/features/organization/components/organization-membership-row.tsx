@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { CheckCircle2Icon, ChevronRightIcon } from '@/assets/icons';
 import { CompanyAvatar } from '@/components/account/company-avatar';
@@ -12,6 +12,7 @@ type OrganizationMembershipRowProps = {
   title: string;
   subtitle: string;
   active?: boolean;
+  busy?: boolean;
   bordered?: boolean;
   onPress?: () => void;
 };
@@ -22,11 +23,12 @@ export const OrganizationMembershipRow = memo(function OrganizationMembershipRow
   title,
   subtitle,
   active = false,
+  busy = false,
   bordered = false,
   onPress,
 }: OrganizationMembershipRowProps) {
   const { colors } = useTheme();
-  const interactive = Boolean(onPress) && !active;
+  const interactive = Boolean(onPress) && !active && !busy;
 
   return (
     <View>
@@ -64,7 +66,9 @@ export const OrganizationMembershipRow = memo(function OrganizationMembershipRow
                 {subtitle}
               </Text>
             </View>
-            {active ? (
+            {busy ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : active ? (
               <CheckCircle2Icon size="sm" color={colors.primary} strokeWidth={1.85} />
             ) : interactive ? (
               <ChevronRightIcon size="sm" color={colors.mutedForeground} strokeWidth={1.85} />

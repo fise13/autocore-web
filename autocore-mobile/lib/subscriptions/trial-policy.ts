@@ -1,84 +1,87 @@
 /**
- * Trial policy — L3.
+ * Apple introductory-offer policy for the paywall.
  *
- * Two independent trial mechanisms exist and the user must never be shown
- * both:
- *  - Apple's introductory offer, granted per Apple ID per subscription group.
- *  - AutoCore's internal 14-day trial, granted per company (`trialUsed`).
- *
- * One function decides which (if either) is on offer.
+ * The only trial AutoCore advertises is StoreKit 2's introductory offer on the
+ * AutoCore Pro subscription group. There is no in-app trial product, no local
+ * timer, and no second trial when switching monthly ↔ yearly — Apple grants
+ * one intro per Apple ID per group.
  */
 import type { Entitlement, IntroOffer, StoreProduct } from './types';
 
 export type TrialOffer =
   | { kind: 'apple_intro'; offer: IntroOffer }
-  | { kind: 'internal'; days: number }
   | { kind: 'none' };
-
-export const INTERNAL_TRIAL_DAYS = 14;
 
 export type TrialPolicyInput = {
   entitlement: Entitlement;
   /** The plan the user is about to buy. */
   product: StoreProduct | null;
-  /** Apple says this Apple ID may still use the introductory offer. */
+  /**
+   * `Product.SubscriptionInfo.isEligibleForIntroOffer` for the shared
+   * AutoCore Pro group. False until StoreKit answers — never flash a trial.
+   */
   introEligible: boolean;
-  /** The company has already consumed its internal trial. */
-  internalTrialUsed: boolean;
 };
 
 export function resolveTrialOffer({
   entitlement,
   product,
   introEligible,
-  internalTrialUsed,
 }: TrialPolicyInput): TrialOffer {
-  // Already paying — a trial offer would be nonsense.
   if (entitlement.isActive) return { kind: 'none' };
-
-  // Apple's offer wins when available: it is the one the store will actually
-  // apply at purchase time, so advertising anything else would misstate terms.
-  if (introEligible && product?.introOffer) {
-    return { kind: 'apple_intro', offer: product.introOffer };
-  }
-
-  if (!internalTrialUsed) {
-    return { kind: 'internal', days: INTERNAL_TRIAL_DAYS };
-  }
-
-  return { kind: 'none' };
+  if (!introEligible || !product?.introOffer) return { kind: 'none' };
+  return { kind: 'apple_intro', offer: product.introOffer };
 }
 
-/** Human phrase for an introductory offer, e.g. "7 days free". */
-export function describeIntroOffer(offer: IntroOffer): string {
-  const unit =
-    offer.periodCount === 1
-      ? offer.periodUnit
-      : `${offer.periodUnit}s`;
+export function describePeriodUnit(unit: IntroOffer['periodUnit'], count: number): string {
+  if (count === 1) return unit;
+  return `${unit}s`;
+}
 
+/** Human phrase for an introductory offer, e.g. "2 weeks free". */
+export function describeIntroOffer(offer: IntroOffer): string {
+  const unit = describePeriodUnit(offer.periodUnit, offer.periodCount);
   return offer.isFreeTrial
     ? `${offer.periodCount} ${unit} free`
     : `${offer.displayPrice} for ${offer.periodCount} ${unit}`;
 }
 
 export function describeTrialOffer(trial: TrialOffer): string | null {
-  switch (trial.kind) {
-    case 'apple_intro':
-      return describeIntroOffer(trial.offer);
-    case 'internal':
-      return `${trial.days} days free`;
-    case 'none':
-      return null;
-  }
+  return trial.kind === 'apple_intro' ? describeIntroOffer(trial.offer) : null;
 }
 
-/** CTA label when a trial is on offer, e.g. "Start 7-day free trial". */
-export function describeTrialCta(trial: TrialOffer): string | null {
-  if (trial.kind === 'apple_intro' && trial.offer.isFreeTrial) {
-    return `Try ${trial.offer.periodCount} days free`;
-  }
-  if (trial.kind === 'internal') {
-    return `Start ${trial.days}-day free trial`;
-  }
+export function describeRenewalPeriod(interval: StoreProduct['interval']): string | null {
+  if (interval === 'yearly') return 'year';
+  if (interval === 'monthly') return 'month';
   return null;
+}
+
+export function describeSelectedPrice(product: StoreProduct | null): string | null {
+  const period = describeRenewalPeriod(product?.interval ?? null);
+  if (!product?.displayPrice || !period) return null;
+  return `${product.displayPrice} per ${period}`;
+}
+
+/** Eligible → Start Free Trial. Otherwise Subscribe — never a false trial CTA. */
+export function describeTrialCta(trial: TrialOffer): string {
+  if (trial.kind === 'apple_intro' && trial.offer.isFreeTrial) return 'Start Free Trial';
+  return 'Subscribe';
+}
+
+/**
+ * StoreKit legal line. Mentions a free period only when Apple will actually
+ * apply one. Monthly and yearly share a group, so the copy never implies a
+ * second trial after switching plans.
+ */
+export function describePaywallDisclosure(
+  trial: TrialOffer,
+  product: StoreProduct | null,
+): string {
+  const selectedPrice = describeSelectedPrice(product) ?? 'the selected plan';
+
+  if (trial.kind === 'apple_intro') {
+    return `${describeIntroOffer(trial.offer)}, then ${selectedPrice}. Auto-renews unless cancelled at least 24 hours before the period ends.`;
+  }
+
+  return `${selectedPrice}. Auto-renews unless cancelled at least 24 hours before the period ends.`;
 }

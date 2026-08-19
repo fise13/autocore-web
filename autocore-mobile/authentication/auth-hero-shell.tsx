@@ -1,8 +1,11 @@
-import { useRef } from 'react';
-import { Platform, Pressable, View, Keyboard } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Keyboard, Platform, Pressable, ScrollView, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import {
+  KeyboardAwareScrollView,
+  KeyboardAvoidingView,
+} from 'react-native-keyboard-controller';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -28,7 +31,7 @@ const HERO_TO_HEADLINE = spacing[4]; // 16
 const HEADLINE_TO_ACTIONS = spacing[8]; // 32
 /** Horizontal inset — roomier than default screen pad. */
 const PAGE_PAD_X = spacing[6]; // 24
-/** Breathing room between the email field and the keyboard accessory. */
+/** Gap between the docked email field and the keyboard accessory. */
 const KEYBOARD_FIELD_GAP = spacing[4]; // 16
 
 type AuthHeroShellProps = {
@@ -67,6 +70,16 @@ export function AuthHeroShell({
   const heading = useAuthEnter(isForm ? 120 : fromRiseHandoff ? 320 : 260);
   const actions = useAuthEnter(isForm ? 200 : fromRiseHandoff ? 470 : 420);
   const legal = useAuthEnter(isForm ? 280 : fromRiseHandoff ? 610 : 560);
+
+  const landingScrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (!compact) return;
+    const frame = requestAnimationFrame(() => {
+      landingScrollRef.current?.scrollToEnd({ animated: !reducedMotion });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [compact, reducedMotion]);
 
   const compactProgress = useDerivedValue(
     () =>
@@ -246,26 +259,36 @@ export function AuthHeroShell({
           </KeyboardAwareScrollView>
         </View>
       ) : (
-        <KeyboardAwareScrollView
-          bottomOffset={KEYBOARD_FIELD_GAP}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            flexGrow: 1,
-            paddingTop: insets.top + AUTH_HERO_BRAND_PAD_TOP,
-            paddingBottom: compact ? KEYBOARD_FIELD_GAP : insets.bottom,
-            paddingHorizontal: PAGE_PAD_X,
-          }}
-        >
-          <Pressable
-            accessible={false}
-            onPress={Keyboard.dismiss}
-            style={{ flex: 1, width: '100%', maxWidth: 400, alignSelf: 'center' }}
+        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+          <ScrollView
+            ref={landingScrollRef}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            showsVerticalScrollIndicator={false}
+            automaticallyAdjustKeyboardInsets={false}
+            automaticallyAdjustContentInsets={false}
+            contentContainerStyle={{
+              flexGrow: 1,
+              justifyContent: compact ? 'flex-end' : 'flex-start',
+              paddingTop: insets.top + AUTH_HERO_BRAND_PAD_TOP,
+              paddingBottom: compact ? KEYBOARD_FIELD_GAP : insets.bottom,
+              paddingHorizontal: PAGE_PAD_X,
+            }}
           >
-            {body}
-          </Pressable>
-        </KeyboardAwareScrollView>
+            <Pressable
+              accessible={false}
+              onPress={Keyboard.dismiss}
+              style={{
+                width: '100%',
+                maxWidth: 400,
+                alignSelf: 'center',
+                flexGrow: compact ? 0 : 1,
+              }}
+            >
+              {body}
+            </Pressable>
+          </ScrollView>
+        </KeyboardAvoidingView>
       )}
     </View>
   );

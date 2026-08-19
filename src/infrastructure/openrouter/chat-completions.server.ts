@@ -6,13 +6,14 @@ import {
   resolveProfileModel,
   type AiProfileId,
 } from "@/infrastructure/openrouter/ai-profiles";
+import { DEFAULT_GEMINI_MODEL } from "@/infrastructure/openrouter/gemini-models";
 import { parseAiJsonContent } from "@/infrastructure/openrouter/parse-ai-json";
 import { resolveProxyAuthHeaders } from "@/infrastructure/openrouter/proxy-auth.server";
 import type { AiTransport } from "@/infrastructure/openrouter/transport";
 
 export type { AiTransport };
 
-const DEFAULT_MODEL = "google/gemini-2.5-flash";
+const DEFAULT_MODEL = DEFAULT_GEMINI_MODEL;
 const ABSOLUTE_MAX_TOKENS = 8192;
 const AI_PROXY_REGION = "europe-west1";
 const AI_PROXY_FUNCTION = "openrouterProxy";
@@ -55,7 +56,11 @@ export type OpenRouterJsonResult<T> = {
   reasoning: string | null;
 };
 
-const DEFAULT_NVIDIA_MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free";
+/**
+ * The "nvidia" lane is about which OpenRouter *key* pays, not which model runs. It defaults
+ * to Gemini like every other lane; set NVIDIA_AI_MODEL to probe a different model locally.
+ */
+const DEFAULT_NVIDIA_LANE_MODEL = DEFAULT_GEMINI_MODEL;
 
 export function readOpenRouterApiKey(): string | null {
   const key =
@@ -74,7 +79,7 @@ export function resolveNvidiaAiModel(explicit?: string): string {
   return (
     explicit?.trim() ||
     process.env.NVIDIA_AI_MODEL?.trim() ||
-    DEFAULT_NVIDIA_MODEL
+    DEFAULT_NVIDIA_LANE_MODEL
   );
 }
 
@@ -255,9 +260,13 @@ async function callOpenRouterOnce<T>(
     response_format: { type: "json_object" },
     messages,
   };
-  if (params.includeReasoning) {
-    body.reasoning = { enabled: true, effort: "medium", exclude: false };
-  }
+  // Gemini 2.5 thinks by default and its thinking tokens are billed against max_tokens.
+  // Left implicit, a 6k budget was spent entirely on reasoning and the JSON came back after
+  // two characters — every structured call silently failed as "некорректный JSON". Say
+  // explicitly which mode this call wants.
+  body.reasoning = params.includeReasoning
+    ? { enabled: true, effort: "medium", exclude: false }
+    : { enabled: false };
 
   let response: Response;
   try {

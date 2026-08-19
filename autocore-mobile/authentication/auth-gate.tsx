@@ -28,8 +28,8 @@ import { IntakeSyncHead } from '@/providers/intake-sync-head';
 import { OfflineSyncHead } from '@/providers/offline-sync-head';
 import { SessionRealtimeHead } from '@/providers/session-realtime-head';
 import { OfflineSessionBanner } from '@/components/offline/offline-session-banner';
-import { AutocompleteProvider } from '@/providers/autocomplete-provider';
 import { AutocompleteDataHead } from '@/providers/autocomplete-data-head';
+import { CompanySwitchOverlay } from '@/providers/company-switch-overlay';
 import { DeepLinkHead } from '@/providers/deep-link-head';
 import { MoneyFormatSync } from '@/providers/money-format-sync';
 import { NotificationProvider } from '@/providers/notification-provider';
@@ -40,6 +40,11 @@ import {
   isPaywallBypassed,
   subscribePaywallBypass,
 } from '@/lib/subscriptions/paywall-bypass';
+import {
+  getPurchaseStoreSnapshot,
+  isCelebratingPurchasePhase,
+  subscribePurchaseStore,
+} from '@/lib/subscriptions/purchase-store';
 
 /** Hard ceiling — covers dissolve + paced Claude rise-to-login (~1.2s). */
 const SPLASH_EXIT_FAILSAFE_MS = 1600;
@@ -58,7 +63,7 @@ const WorkspaceAccessScreen = lazy(async () => {
 
 const MemoAppTree = memo(function MemoAppTree({ children }: { children: React.ReactNode }) {
   return (
-    <AutocompleteProvider>
+    <>
       <SessionRealtimeHead />
       <FirestoreNetworkHead />
       <OfflineSyncHead />
@@ -68,13 +73,14 @@ const MemoAppTree = memo(function MemoAppTree({ children }: { children: React.Re
       <NotificationProvider enabled>
         <SessionBootstrapGate>
           {children}
+          <CompanySwitchOverlay />
           {/* Renders only inside the authenticated tree — a parked Universal
               Link can never open a screen ahead of the auth gate. */}
           <DeepLinkHead />
           <OfflineSessionBanner />
         </SessionBootstrapGate>
       </NotificationProvider>
-    </AutocompleteProvider>
+    </>
   );
 });
 
@@ -103,9 +109,17 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     isPaywallBypassed,
   );
 
+  const purchaseSnapshot = useSyncExternalStore(
+    subscribePurchaseStore,
+    getPurchaseStoreSnapshot,
+    getPurchaseStoreSnapshot,
+  );
+
   const billingSettled = !subscriptionLoading || !isOnline;
 
-  const needsSubscription =
+  const celebrating = isCelebratingPurchasePhase(purchaseSnapshot.flow.phase);
+
+  const gatedWithoutPro =
     Boolean(firebaseUser) &&
     journeyStep === 'app' &&
     hasAccess &&
@@ -113,12 +127,16 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     !isPro &&
     !paywallBypassed;
 
+  const needsSubscription =
+    gatedWithoutPro || (purchaseSnapshot.gateCelebrationLock && celebrating);
+
   const canEnterApp =
     Boolean(firebaseUser) &&
     journeyStep === 'app' &&
     hasAccess &&
     billingSettled &&
-    (isPro || paywallBypassed);
+    (isPro || paywallBypassed) &&
+    !needsSubscription;
 
   /**
    * Hold splash until Firestore billing settles (not just MMKV cache) and the

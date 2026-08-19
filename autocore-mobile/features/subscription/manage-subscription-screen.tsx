@@ -1,22 +1,23 @@
-import { useCallback, useState } from 'react';
-import { Platform, Pressable, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import { useCallback, useState, type ComponentType } from 'react';
+import { Platform, View } from 'react-native';
 
-import { CheckIcon, ChevronRightIcon, ExternalLinkIcon, LockIcon } from '@/assets/icons';
+import { CheckIcon } from '@/assets/icons';
 import type { IconProps } from '@/assets/icons';
-import { Button, SettingsSectionCard, Text } from '@/components/ui';
+import { CollectionRow, ListSection, Text } from '@/components/ui';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
 import { usePaywall } from '@/hooks/use-paywall';
 import { useSubscription } from '@/hooks/use-subscription';
 import { useSubscriptionSync } from '@/hooks/use-subscription-sync';
 import { useTheme } from '@/hooks/use-theme';
-import { haptics, radius, rhythm, spacing } from '@/theme';
+import { haptics } from '@/theme';
+import { withAlpha } from '@/theme/color-utils';
+import { tokens } from '@/theme/tokens';
 
 import { DevSubscriptionPanel } from './components/dev-subscription-panel';
 import { OfflineNotice } from './components/sync-indicator';
 import { PurchaseStatusBanner } from './components/purchase-status-banner';
 import { StatusCardSkeleton } from './components/subscription-skeletons';
-import { SubscriptionStatusCard } from './components/subscription-status-card';
+import { SubscriptionPlanSection } from './components/subscription-plan-section';
 import { PRO_FEATURE_ROWS } from './data/pro-features';
 
 /**
@@ -27,7 +28,6 @@ import { PRO_FEATURE_ROWS } from './data/pro-features';
  * and drift out of sync with StoreKit's actual state.
  */
 export function ManageSubscriptionScreen() {
-  const { colors } = useTheme();
   const { present } = usePaywall();
   const sync = useSubscriptionSync();
   const {
@@ -45,7 +45,6 @@ export function ManageSubscriptionScreen() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    haptics.selection();
     try {
       await refresh();
       haptics.success();
@@ -54,125 +53,93 @@ export function ManageSubscriptionScreen() {
     }
   }, [refresh]);
 
-  const handleRestore = useCallback(() => {
-    haptics.light();
-    void restore();
-  }, [restore]);
-
   const showAppleControls = Platform.OS === 'ios' && entitlement.provider === 'apple';
   const isRestoring = flow.phase === 'restoring';
+  const showUpgrade =
+    !isPro && canManageBilling && !entitlement.managedExternally && !entitlement.inGracePeriod;
 
   return (
     <ProfileScreenShell title="Subscription">
-      <View style={{ paddingHorizontal: rhythm.pad, gap: rhythm.stack }}>
+      <View style={{ marginHorizontal: tokens.space.screenX, gap: tokens.space.stack }}>
         <OfflineNotice />
         <PurchaseStatusBanner flow={flow} />
-
-        {isLoading ? (
-          <StatusCardSkeleton />
-        ) : (
-          <Animated.View entering={FadeIn.duration(220)}>
-            <SubscriptionStatusCard entitlement={entitlement} />
-          </Animated.View>
-        )}
       </View>
 
-      {!isPro && canManageBilling && !entitlement.managedExternally ? (
-        <View style={{ paddingHorizontal: rhythm.pad }}>
-          <UpgradeCallout onPress={() => present()} />
-        </View>
-      ) : null}
-
-      <SettingsSectionCard
-        title="What's included"
-        description={isPro ? 'All features unlocked' : 'Available on AutoCore Pro'}
-      >
-        <View
-          style={{
-            paddingHorizontal: rhythm.cardPadX,
-            paddingBottom: rhythm.cardPadX,
-            gap: spacing[2.5],
-          }}
+      {isLoading ? (
+        <StatusCardSkeleton />
+      ) : (
+        <SubscriptionPlanSection
+          entitlement={entitlement}
+          title="Plan"
+          footer={
+            entitlement.managedExternally
+              ? 'Billed outside the App Store — changes are handled where it was set up.'
+              : showAppleControls
+                ? 'Billed through your Apple ID.'
+                : undefined
+          }
         >
-          {PRO_FEATURE_ROWS.map((row) => (
-            <IncludedRow key={row.id} label={row.label} icon={row.icon} unlocked={isPro} />
-          ))}
-        </View>
-      </SettingsSectionCard>
+          {showUpgrade ? (
+            <CollectionRow
+              title="Upgrade to Pro"
+              subtitle="Unlimited engines, work orders, AI and reports"
+              onPress={() => present()}
+            />
+          ) : null}
+          {entitlement.inGracePeriod && canManageBilling ? (
+            <CollectionRow
+              title="Update payment"
+              tone="danger"
+              onPress={() => void openManage()}
+            />
+          ) : null}
+        </SubscriptionPlanSection>
+      )}
 
-      <SettingsSectionCard
+      <ListSection
+        title="What's included"
+        footer={isPro ? 'All features unlocked.' : 'Available on AutoCore Pro.'}
+      >
+        {PRO_FEATURE_ROWS.map((row) => (
+          <IncludedRow key={row.id} label={row.label} detail={row.detail} icon={row.icon} unlocked={isPro} />
+        ))}
+      </ListSection>
+
+      <ListSection
         title="Manage"
-        description={
-          entitlement.managedExternally
-            ? 'Billed outside the App Store — changes are handled where it was set up.'
-            : showAppleControls
-              ? 'Billed through your Apple ID.'
+        footer={
+          !canManageBilling
+            ? 'Only the workspace owner can change the subscription.'
+            : !sync.isOnline
+              ? 'Reconnect to refresh or restore.'
               : undefined
         }
       >
-        <View
-          style={{
-            paddingHorizontal: rhythm.cardPadX,
-            paddingBottom: rhythm.cardPadX,
-            gap: rhythm.stack,
-          }}
-        >
-          {showAppleControls ? (
-            <Button
-              variant="secondary"
-              onPress={() => {
-                haptics.light();
-                void openManage();
-              }}
-              rightIcon={<ExternalLinkIcon size="xs" color={colors.secondaryForeground} />}
-            >
-              Manage in App Store
-            </Button>
-          ) : null}
+        {showAppleControls ? (
+          <CollectionRow
+            title="Manage in App Store"
+            onPress={() => {
+              void openManage();
+            }}
+          />
+        ) : null}
 
-          <Button
-            variant="secondary"
-            loading={refreshing}
-            disabled={!sync.isOnline}
-            onPress={() => void handleRefresh()}
-          >
-            Refresh status
-          </Button>
+        <CollectionRow
+          title="Refresh status"
+          value={refreshing ? 'Refreshing…' : undefined}
+          disabled={!sync.isOnline || refreshing}
+          onPress={() => void handleRefresh()}
+        />
 
-          <Button
-            variant="ghost"
-            loading={isRestoring}
-            disabled={!sync.isOnline}
-            onPress={handleRestore}
-          >
-            Restore Purchases
-          </Button>
+        <CollectionRow
+          title="Restore purchases"
+          value={isRestoring ? 'Restoring…' : undefined}
+          disabled={!sync.isOnline || isRestoring}
+          onPress={() => void restore()}
+        />
+      </ListSection>
 
-          {!sync.isOnline ? (
-            <Text variant="caption" color="muted" style={{ lineHeight: 17, textAlign: 'center' }}>
-              Reconnect to refresh or restore.
-            </Text>
-          ) : null}
-
-          {!canManageBilling ? (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: spacing[2],
-                paddingTop: spacing[1],
-              }}
-            >
-              <LockIcon size="xs" color={colors.mutedForeground} />
-              <Text variant="caption" color="muted" style={{ flex: 1, lineHeight: 17 }}>
-                Only the workspace owner can change the subscription.
-              </Text>
-            </View>
-          ) : null}
-        </View>
-      </SettingsSectionCard>
-
-      <View style={{ paddingHorizontal: rhythm.pad }}>
+      <View style={{ paddingHorizontal: tokens.space.screenX }}>
         <DevSubscriptionPanel />
       </View>
     </ProfileScreenShell>
@@ -181,76 +148,64 @@ export function ManageSubscriptionScreen() {
 
 type IncludedRowProps = {
   label: string;
-  icon: React.ComponentType<IconProps>;
+  detail: string;
+  icon: ComponentType<IconProps>;
   unlocked: boolean;
 };
 
-function IncludedRow({ label, icon: Icon, unlocked }: IncludedRowProps) {
-  const { colors, tones } = useTheme();
+function IncludedRow({ label, detail, icon: Icon, unlocked }: IncludedRowProps) {
+  const { colors, tones, isDark } = useTheme();
+  const mutedIcon = withAlpha(colors.mutedForeground, isDark ? 0.72 : 0.78);
 
   return (
     <View
-      style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2.5] }}
       accessible
       accessibilityRole="text"
-      accessibilityLabel={`${label}${unlocked ? ', included' : ', requires Pro'}`}
+      accessibilityLabel={`${label}${unlocked ? ', included' : ', requires Pro'}. ${detail}`}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: tokens.space.stack,
+        paddingHorizontal: tokens.space.stack + 2,
+        paddingVertical: 13,
+        minHeight: 52,
+      }}
     >
       <View
         style={{
-          width: 22,
-          height: 22,
-          borderRadius: radius.full,
-          backgroundColor: unlocked ? tones.success.bg : colors.muted,
+          width: 20,
+          height: 20,
+          marginTop: 1,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
         {unlocked ? (
-          <CheckIcon size="xs" color={tones.success.fg} strokeWidth={3} />
+          <CheckIcon size="lg" color={tones.success.fg} strokeWidth={1.75} />
         ) : (
-          <Icon size="xs" color={colors.mutedForeground} />
+          <Icon size="lg" color={mutedIcon} strokeWidth={1.5} />
         )}
       </View>
-      <Text variant="body" color={unlocked ? 'primary' : 'muted'} style={{ flex: 1 }}>
-        {label}
-      </Text>
-    </View>
-  );
-}
-
-/** Row-shaped upgrade entry point — the iOS "tap through to buy" pattern. */
-function UpgradeCallout({ onPress }: { onPress: () => void }) {
-  const { colors, tones } = useTheme();
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="View AutoCore Pro plans"
-      onPress={() => {
-        haptics.light();
-        onPress();
-      }}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing[3],
-        padding: rhythm.cardPadX,
-        borderRadius: rhythm.cardRadius,
-        borderWidth: 1,
-        borderColor: tones.primary.border,
-        backgroundColor: tones.primary.bg,
-        opacity: pressed ? 0.85 : 1,
-      })}
-    >
-      <View style={{ flex: 1, gap: spacing[0.5] }}>
-        <Text variant="body" style={{ fontWeight: '600', color: tones.primary.fg }}>
-          Upgrade to Pro
+      <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+        <Text
+          variant="body"
+          style={{
+            fontSize: 16,
+            lineHeight: 21,
+            letterSpacing: -0.24,
+            color: unlocked ? colors.foreground : colors.mutedForeground,
+          }}
+        >
+          {label}
         </Text>
-        <Text variant="caption" color="muted" style={{ lineHeight: 17 }}>
-          Unlimited inventory, AI and work orders
+        <Text
+          variant="footnote"
+          color="muted"
+          style={{ fontSize: 13, lineHeight: 17, letterSpacing: -0.08 }}
+        >
+          {detail}
         </Text>
       </View>
-      <ChevronRightIcon size="sm" color={colors.mutedForeground} />
-    </Pressable>
+    </View>
   );
 }

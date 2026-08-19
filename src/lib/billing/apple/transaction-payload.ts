@@ -146,7 +146,9 @@ export function assertTransactionUsable(input: TransactionCheckInput): void {
 
   if (input.expectedAppAccountToken) {
     const presented = transaction.appAccountToken?.toLowerCase() ?? null;
-    if (presented !== input.expectedAppAccountToken.toLowerCase()) {
+    // Missing token is allowed: the sheet must open before `/link` returns.
+    // A *different* token still means this receipt belongs to another workspace.
+    if (presented && presented !== input.expectedAppAccountToken.toLowerCase()) {
       throw new AppleRejectionError(
         "token_mismatch",
         "Transaction is not bound to this workspace",

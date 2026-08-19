@@ -10,9 +10,9 @@ import { createSheetImportConfig } from "@/lib/motors/excel-sheet-config";
 import { createAutoColumnMapping } from "@/lib/motors/excel-column-mapping";
 
 describe("motor sheet recovery", () => {
-  it("recovers skipped sheets as specific or engines instead of dropping them", () => {
+  it("recovers skipped sheets instead of dropping them", () => {
     const sheet: ExcelSheetData = {
-      name: "ПОСЛЕ ДЭНА",
+      name: "Прочее",
       rows: [
         ["Модель", "Цена"],
         ["ABC", "10000"],
@@ -24,6 +24,20 @@ describe("motor sheet recovery", () => {
     assert.notEqual(recovered.config.importType, "skip");
     assert.equal(recovered.config.importType, "specific");
     assert.ok(recovered.config.categoryName.length > 0);
+  });
+
+  it("keeps movement logs as engines — they list engines by serial", () => {
+    const sheet: ExcelSheetData = {
+      name: "ПОСЛЕ ДЭНА",
+      rows: [
+        ["НОМЕР ДВИГАТЕЛЯ", "КОМПЛЕКТАЦИЯ", "ОСОБЫЕ ОТМЕТКИ"],
+        ["EJ251- 442063", "", "ПРОДАН"],
+      ],
+    };
+    const base = buildRuleSheetMapping(sheet);
+    const recovered = finalizeSheetMappings([sheet], { [base.config.id]: base })[base.config.id]!;
+
+    assert.equal(recovered.config.importType, "engines");
   });
 
   it("rebalances engine sheets without serial signal into specific catalogs", () => {

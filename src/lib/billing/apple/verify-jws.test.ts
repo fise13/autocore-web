@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { X509Certificate, createSign, generateKeyPairSync } from "node:crypto";
 import { describe, it } from "node:test";
 
+import {
+  APPLE_TEST_NOTIFICATION_JWS,
+  APPLE_TEST_NOTIFICATION_SIGNED_AT,
+} from "./__fixtures__/apple-test-notification";
 import { APPLE_ROOT_CA_G3_PEM, APPLE_ROOT_CA_G3_SHA256 } from "./apple-root-ca";
 import { AppleJwsError, decodeAppleJwsUnsafe, verifyAppleJws } from "./verify-jws";
 
@@ -109,6 +113,48 @@ describe("verifyAppleJws", () => {
     assert.throws(
       () => verifyAppleJws(`${header}.${body}.${signature}`),
       (error: unknown) => error instanceof AppleJwsError,
+    );
+  });
+});
+
+describe("a genuine Apple signature", () => {
+  /**
+   * The counterpart to every rejection test above. Those pass just as happily
+   * against a verifier that refuses everything — which is exactly the bug this
+   * catches: wrapping the certificate's already-public key in
+   * `createPublicKey()` threw on real payloads while all the negative tests
+   * stayed green.
+   */
+  it("is accepted, and the payload decodes", () => {
+    const payload = verifyAppleJws<{
+      notificationType?: string;
+      data?: { bundleId?: string; environment?: string };
+    }>(APPLE_TEST_NOTIFICATION_JWS, APPLE_TEST_NOTIFICATION_SIGNED_AT);
+
+    assert.equal(payload.notificationType, "TEST");
+    assert.equal(payload.data?.bundleId, "com.wise.autocore.mobile");
+    assert.equal(payload.data?.environment, "Sandbox");
+  });
+
+  it("still fails if a single byte of the payload is altered", () => {
+    const [header, body, signature] = APPLE_TEST_NOTIFICATION_JWS.split(".");
+    const tampered = Buffer.from(
+      JSON.stringify({ notificationType: "REFUND", data: { bundleId: "com.wise.autocore.mobile" } }),
+    ).toString("base64url");
+
+    assert.throws(
+      () => verifyAppleJws(`${header}.${tampered}.${signature}`, APPLE_TEST_NOTIFICATION_SIGNED_AT),
+      (error: unknown) =>
+        error instanceof AppleJwsError && /signature does not verify/.test(error.message),
+    );
+    void body;
+  });
+
+  it("fails outside the signing certificate's validity window", () => {
+    assert.throws(
+      () => verifyAppleJws(APPLE_TEST_NOTIFICATION_JWS, new Date("2020-01-01T00:00:00Z")),
+      (error: unknown) =>
+        error instanceof AppleJwsError && /validity window/.test(error.message),
     );
   });
 });

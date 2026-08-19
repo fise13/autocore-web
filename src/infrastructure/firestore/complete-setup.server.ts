@@ -207,6 +207,9 @@ export async function completeCompanySetupAsAdmin(
   if (typeof finalConfig.taxonomyVersion === "number") {
     appPayload.taxonomyVersion = finalConfig.taxonomyVersion;
   }
+  if (finalConfig.displayCurrency) {
+    appPayload.displayCurrency = finalConfig.displayCurrency;
+  }
 
   const db = getAdminFirestore();
   await db

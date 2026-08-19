@@ -76,8 +76,8 @@ describe("assertTransactionUsable", () => {
     );
   });
 
-  it("refuses a transaction carrying no token when one was minted", () => {
-    assert.equal(rejectionOf(() => check({ appAccountToken: undefined })), "token_mismatch");
+  it("allows a missing token so StoreKit can open before /link returns", () => {
+    assert.doesNotThrow(() => check({ appAccountToken: undefined }));
   });
 
   it("matches the token case-insensitively — Apple echoes it uppercased", () => {

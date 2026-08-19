@@ -8,16 +8,19 @@ import {
 import {
   APP_MONEY_BASE_CURRENCY,
   convertFromBaseCurrency,
+  convertToBaseCurrency,
   formatExchangeRateHint,
 } from '@/lib/money/exchange-rates';
 import { useSession } from '@/hooks/use-session';
 
+import { useCompanyDisplayCurrency } from './use-company-display-currency';
 import { useExchangeRates } from './use-exchange-rates';
-import { useUserDisplayCurrency } from './use-user-display-currency';
 
 export function useAppDisplayCurrency() {
-  const { uid } = useSession();
-  const { currency, isLoading: preferencesLoading, saveCurrency } = useUserDisplayCurrency(uid);
+  const { uid, companyId } = useSession();
+  const { currency, isLoading: preferencesLoading, saveCurrency } = useCompanyDisplayCurrency(
+    companyId || null,
+  );
   const { rates, isLoading: ratesLoading } = useExchangeRates();
 
   const convertMoney = useCallback(
@@ -28,6 +31,11 @@ export function useAppDisplayCurrency() {
   const formatMoney = useCallback(
     (valueInBase: number) => formatAppMoney(convertMoney(valueInBase), currency),
     [convertMoney, currency],
+  );
+
+  const toBaseAmount = useCallback(
+    (displayAmount: number) => convertToBaseCurrency(displayAmount, currency, rates),
+    [currency, rates],
   );
 
   const formatExample = useCallback(
@@ -42,9 +50,10 @@ export function useAppDisplayCurrency() {
 
   const setCurrency = useCallback(
     async (next: AppDisplayCurrency) => {
-      await saveCurrency(next);
+      if (!uid) throw new Error('User is not authenticated');
+      await saveCurrency(next, uid);
     },
-    [saveCurrency],
+    [saveCurrency, uid],
   );
 
   return {
@@ -52,6 +61,7 @@ export function useAppDisplayCurrency() {
     currency,
     rates,
     convertMoney,
+    toBaseAmount,
     formatMoney,
     formatExample,
     exchangeRateHint,

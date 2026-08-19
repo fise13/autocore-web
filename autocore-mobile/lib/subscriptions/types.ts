@@ -39,8 +39,12 @@ export type Entitlement = {
   status: BillingStatus;
   isActive: boolean;
   isTrial: boolean;
+  /** Apple `expiresDate` while status is `trialing` — never a homemade timer. */
   trialEndsAt: Date | null;
-  /** The company has already used its one internal trial. */
+  /**
+   * Legacy flag that blocks the unused web `start-trial` API. The paywall does
+   * not read this; Apple introductory-offer eligibility is StoreKit's decision.
+   */
   trialUsed: boolean;
   renewsAt: Date | null;
   willAutoRenew: boolean;
@@ -67,8 +71,13 @@ export type StoreProduct = {
   title: string;
   description: string;
   interval: BillingInterval | null;
-  /** Introductory offer (free trial / discounted period) if the user is eligible. */
+  /**
+   * StoreKit `Product.SubscriptionInfo.introductoryOffer`, when App Store
+   * Connect configured one. Display it only together with `introEligible`.
+   */
   introOffer: IntroOffer | null;
+  /** Apple subscription group id from StoreKit, when the product carried one. */
+  subscriptionGroupIdIOS?: string | null;
 };
 
 export type IntroOffer = {
@@ -94,6 +103,7 @@ export type PurchaseFailureCode =
   | 'verification_failed'
   | 'bound_to_other_company'
   | 'permission_denied'
+  | 'sheet_timeout'
   | 'unknown';
 
 export type PurchaseFailure = {
@@ -102,6 +112,8 @@ export type PurchaseFailure = {
   message: string;
   /** Raw SDK detail, for logs only. */
   debugMessage?: string;
+  /** Raw StoreKit `ErrorCode` (or watchdog id), for diagnostics — never shown. */
+  cause?: string;
 };
 
 /** Purchase flow state machine, consumed directly by the paywall. */

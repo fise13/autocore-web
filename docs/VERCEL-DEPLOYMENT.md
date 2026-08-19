@@ -99,9 +99,17 @@ IMPORT_AI_MODEL
 DOCUMENT_AI_MODEL
 ```
 
+All optional. Every AI surface runs on Gemini and falls back to the single default
+in `src/infrastructure/openrouter/gemini-models.ts` when these are unset.
+
 The OpenRouter API key is **not** a Vercel variable. It lives only in
 `firebase/functions/.env` (`OPENROUTER_API_KEY`). Every web/API caller reaches
 OpenRouter through the deployed `openrouterProxy` Cloud Function.
+
+Magic Import (motors and warehouse) calls `POST /api/import-ai`, which verifies the
+user with the Admin SDK and then talks to OpenRouter through the same transport. If
+neither a key nor the proxy is reachable the route answers `503` and both importers
+continue rules-only rather than failing the import.
 
 - Proxy URL is derived automatically from `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
   (`https://europe-west1-<project>.cloudfunctions.net/openrouterProxy`).

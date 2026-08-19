@@ -49,6 +49,8 @@ export type MotorImportPreviewRow = ParsedImportMotorRow & {
   selected: boolean;
   duplicateOfMotorId?: string;
   duplicateReasons?: string[];
+  /** Rows from other sheets folded into this one because they share a serial. */
+  mergedFrom?: Array<{ sheetConfigId: string; sheetName: string; rowKey: string }>;
   conflictFields?: string[];
   aiMeta?: {
     confidence: number;
@@ -70,6 +72,8 @@ export type MotorImportPreviewResult = {
     previewSample: Record<string, string>[];
   }>;
   stats: {
+    /** Source rows folded into an earlier row because they share a serial. */
+    mergedRows?: number;
     totalEngineRows: number;
     validEngineRows: number;
     duplicates: number;
@@ -129,6 +133,8 @@ export type AiMotorColumnRole =
   | "notes"
   | "quantity"
   | "transmission"
+  | "brand_name"
+  | "engine_code"
   | "arrival_date"
   | "sold_date"
   | "ignore";

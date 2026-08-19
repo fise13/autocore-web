@@ -1,53 +1,71 @@
-import { useCallback, useDeferredValue, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useMemo, useRef, useState } from 'react';
+import { View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useRouter, type Href } from 'expo-router';
 
 import { CarIcon } from '@/assets/icons';
 import {
-  CatalogAddButton,
-  CatalogRow,
   CatalogScreenHeader,
-  CatalogSectionHeader,
   ContentState,
   FlashList,
   Screen,
   ScreenGate,
-  SearchInput,
-  Text,
   catalogRowPosition,
+  toast,
   type CatalogRowPosition,
 } from '@/components/ui';
-import { useFloatingTabBarInset, useSession, useTheme } from '@/hooks';
+import { useFloatingTabBarInset, useMobileAssignAssetLocation, useSession } from '@/hooks';
 import { useSessionQueryData } from '@/hooks/use-session-query-data';
 import { useCompanyModuleEnabled } from '@/hooks/use-module-enabled';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
+import type { MobileWarehouseLocation } from '@/hooks/use-mobile-relocate';
 import { goBackOrReplace } from '@/lib/navigation/stack-back';
 import { isRealtimeReady } from '@/lib/realtime/subscription-registry';
-import { rhythm, spacing } from '@/theme';
+import { rhythm } from '@/theme';
 import type { MotorEntity } from '@/types/motor';
+import type { WarehouseEntity } from '@/types/warehouse';
 
-import { ENGINE_THUMB_SIZE, EngineThumbnail } from './components/engine-thumbnail';
-import { newEngineHref } from './navigation';
+import { OrderPickerSheet } from '@/features/orders/components/order-picker-sheet';
+import { useAddToOrderFlow } from '@/features/orders/hooks/use-add-to-order-flow';
+import { SellMotorSheet, type SellMotorSheetRef } from '@/features/search/components/sell-motor-sheet';
+
+import {
+  EngineCatalogRow,
+  type EngineCatalogActions,
+} from './components/engine-catalog-row';
+import { EngineCatalogSkeleton } from './components/engine-catalog-skeleton';
+import { EngineLocationSheet } from './components/engine-location-sheet';
+import {
+  EngineQualityFilterBar,
+  type EngineQualityFilterValue,
+} from './components/engine-quality-filter-bar';
+import { EngineAddControl } from './components/engine-surface';
+import { EngineYardHeading } from './components/engine-yard-heading';
+import { EngineYardSearch } from './components/engine-yard-search';
+import { EnginesLiftProvider } from './components/engines-lift-provider';
+import { eng } from './layout';
+import { engineMatchesQualityFilter } from './lib/engine-quality';
 import {
   engineMatchesQuery,
-  engineStatusLabel,
-  engineStatusTone,
-  engineThumbnailUrl,
-  engineUnitLabel,
   engineUnitLocation,
   groupEnginesByVariant,
-  variantSubtitle,
-  type EngineStatusTone,
   type EngineVariant,
 } from './lib/engine-variants';
+import { newEngineHref } from './navigation';
 
 type EngineRow =
-  | { type: 'variant'; key: string; variant: EngineVariant }
-  | { type: 'unit'; key: string; motor: MotorEntity; position: CatalogRowPosition };
+  | { type: 'header'; key: string; variant: EngineVariant }
+  | {
+      type: 'unit';
+      key: string;
+      motor: MotorEntity;
+      position: CatalogRowPosition;
+    };
 
 function flattenVariants(variants: EngineVariant[]): EngineRow[] {
   const rows: EngineRow[] = [];
-  for (const variant of variants) {
-    rows.push({ type: 'variant', key: `v:${variant.id}`, variant });
+  variants.forEach((variant) => {
+    rows.push({ type: 'header', key: `h:${variant.id}`, variant });
     variant.units.forEach((motor, index) => {
       rows.push({
         type: 'unit',
@@ -56,54 +74,40 @@ function flattenVariants(variants: EngineVariant[]): EngineRow[] {
         position: catalogRowPosition(index, variant.units.length),
       });
     });
-  }
+  });
   return rows;
 }
 
-/** Location first, then a status word tinted by what that status means. */
-function UnitSubtitle({ motor }: { motor: MotorEntity }) {
-  const { colors } = useTheme();
-  const location = engineUnitLocation(motor);
-  const tone = engineStatusTone(motor);
-
-  const toneColor: Record<EngineStatusTone, string> = {
-    success: colors.successOnSubtle,
-    warning: colors.warningOnSubtle,
-    danger: colors.dangerOnSubtle,
-    progress: colors.primary,
-    muted: colors.mutedForeground,
-  };
-
-  return (
-    <Text variant="footnote" numberOfLines={1} style={{ color: colors.mutedForeground }}>
-      <Text
-        variant="footnote"
-        style={{ color: location ? colors.mutedForeground : colors.warningOnSubtle }}
-      >
-        {location ?? 'No location'}
-      </Text>
-      {'  ·  '}
-      <Text variant="footnote" style={{ color: toneColor[tone] }}>
-        {engineStatusLabel(motor)}
-      </Text>
-    </Text>
-  );
+function plural(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`;
 }
 
 /**
- * Engines — the serialized motor catalog.
+ * Engines — the yard, filed by motor.
  *
- * Folded by variant so a yard with depth reads as "Toyota 2AZ-FE · 12 units"
- * rather than twelve near-identical rows: the heading carries the name and
- * code, the card underneath carries the units. Tapping a unit opens its card.
+ * The chrome is a navigation bar: back, the one verb this screen owns, a large
+ * title that condenses as the catalog scrolls, and a search field plus quality
+ * tabs that never move. Quality is a document picker rather than a row of
+ * chips, because a unit has exactly one grade. Long-press is hosted here, not
+ * in FlashList — same lift menu as work orders.
  */
 export function EnginesScreen() {
+  return (
+    <EnginesLiftProvider>
+      <EnginesScreenBody />
+    </EnginesLiftProvider>
+  );
+}
+
+function EnginesScreenBody() {
   const router = useRouter();
   const { scrollBottom } = useFloatingTabBarInset();
   const { companyId, uid } = useSession();
   const rbac = useRbacPolicy();
   const motorsEnabled = useCompanyModuleEnabled('motors');
   const [query, setQuery] = useState('');
+  const [quality, setQuality] = useState<EngineQualityFilterValue>('all');
+  const [scrolled, setScrolled] = useState(false);
   const deferredQuery = useDeferredValue(query.trim());
 
   const canView = motorsEnabled && rbac.can('inventory_view') && rbac.scopes.motors !== 'none';
@@ -113,7 +117,6 @@ export function EnginesScreen() {
     () => ['realtime', 'motors', companyId, uid] as const,
     [companyId, uid],
   );
-  // Mirror SessionRealtimeHead — never open a second motors listener here.
   const motors = useSessionQueryData<MotorEntity[]>(
     motorsKey,
     Boolean(companyId && uid) && canView,
@@ -121,30 +124,115 @@ export function EnginesScreen() {
   );
   const loading = canView && motors.length === 0 && !isRealtimeReady(motorsKey);
 
-  const { rows, unitCount, variantCount } = useMemo(() => {
-    const matched = deferredQuery
-      ? motors.filter((motor) => engineMatchesQuery(motor, deferredQuery))
-      : motors;
-    const variants = groupEnginesByVariant(matched);
+  const { rows, unitCount, typeCount, unplacedCount } = useMemo(() => {
+    const matched = motors.filter((motor) => {
+      if (!engineMatchesQualityFilter(motor, quality)) return false;
+      if (!deferredQuery) return true;
+      return engineMatchesQuery(motor, deferredQuery);
+    });
+    const grouped = groupEnginesByVariant(matched);
     return {
-      rows: flattenVariants(variants),
+      rows: flattenVariants(grouped),
       unitCount: matched.length,
-      variantCount: variants.length,
+      typeCount: grouped.length,
+      unplacedCount: matched.filter((motor) => !engineUnitLocation(motor)).length,
     };
-  }, [deferredQuery, motors]);
+  }, [deferredQuery, motors, quality]);
 
-  const openEngine = useCallback(
-    (motorId: string) => {
-      router.push(`/objects/engine/${motorId}` as Href);
-    },
-    [router],
-  );
+  const openEngine = useCallback((motorId: string) => {
+    router.push(`/objects/engine/${motorId}` as Href);
+  }, [router]);
 
-  /** Carries the active search into the composer — a serial typed to look for
-      an engine that turns out not to exist is the serial being added. */
   const addEngine = useCallback(() => {
     router.push(newEngineHref(deferredQuery ? { serial: deferredQuery } : undefined));
   }, [deferredQuery, router]);
+
+  const addToOrderFlow = useAddToOrderFlow();
+  const sellSheetRef = useRef<SellMotorSheetRef>(null);
+  const locationSheetRef = useRef<BottomSheetModal>(null);
+  const relocateMotorRef = useRef<MotorEntity | null>(null);
+  const [relocateMotor, setRelocateMotor] = useState<MotorEntity | null>(null);
+  const assignLocation = useMobileAssignAssetLocation();
+
+  const warehouses = useSessionQueryData<WarehouseEntity[]>(
+    ['realtime', 'warehouses', companyId],
+    Boolean(companyId) && canView,
+    [],
+  );
+  const warehouseId = useMemo(() => {
+    const preferred = warehouses.find((warehouse) => warehouse.isDefault) ?? warehouses[0];
+    return preferred?.id ?? null;
+  }, [warehouses]);
+
+  const addMotorToOrder = addToOrderFlow.addMotorToOrder;
+  const catalogActions = useMemo<EngineCatalogActions>(
+    () => ({
+      onRelocate: (motor) => {
+        relocateMotorRef.current = motor;
+        setRelocateMotor(motor);
+        requestAnimationFrame(() => locationSheetRef.current?.present());
+      },
+      onAddToOrder: (motor) => {
+        addMotorToOrder(motor.id);
+      },
+      onSell: (motor) => {
+        sellSheetRef.current?.present(motor);
+      },
+    }),
+    [addMotorToOrder],
+  );
+
+  const relocate = useCallback(
+    async (location: MobileWarehouseLocation) => {
+      const motor = relocateMotorRef.current;
+      if (!motor) return;
+      try {
+        await assignLocation.mutateAsync({
+          entityType: 'motor',
+          entityId: motor.id,
+          toLocationId: location.id,
+          warehouseId: location.warehouseId || warehouseId || undefined,
+        });
+        locationSheetRef.current?.dismiss();
+        toast({
+          title: 'Engine moved',
+          description: location.displayCode || location.code,
+          variant: 'success',
+        });
+      } catch (error) {
+        toast({
+          title: 'Could not move the engine',
+          description: error instanceof Error ? error.message : undefined,
+          variant: 'destructive',
+        });
+      }
+    },
+    [assignLocation, warehouseId],
+  );
+
+  // Hysteresis: the title condenses a little after the list starts moving and
+  // only expands again near the top, so a nudge never flickers the chrome.
+  const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    setScrolled((current) => (current ? offsetY > 6 : offsetY > 18));
+  }, []);
+
+  const renderItem = useCallback(
+    ({ item }: { item: EngineRow }) => {
+      if (item.type === 'header') {
+        return <EngineYardHeading variant={item.variant} />;
+      }
+      return (
+        <EngineCatalogRow
+          motor={item.motor}
+          position={item.position}
+          onPress={openEngine}
+          actions={catalogActions}
+        />
+      );
+    },
+    [catalogActions, openEngine],
+  );
 
   if (!canView) {
     return (
@@ -156,85 +244,104 @@ export function EnginesScreen() {
     );
   }
 
+  const filtering = Boolean(deferredQuery) || quality !== 'all';
+
   const subtitle = loading
-    ? 'Loading catalog…'
-    : `${unitCount} ${unitCount === 1 ? 'engine' : 'engines'} · ${variantCount} ${
-        variantCount === 1 ? 'variant' : 'variants'
-      }`;
+    ? 'Loading yard…'
+    : filtering
+      ? `${plural(unitCount, 'match', 'matches')} · ${plural(typeCount, 'motor', 'motors')}`
+      : unplacedCount > 0
+        ? `${plural(unitCount, 'engine', 'engines')} · ${unplacedCount} without a shelf`
+        : `${plural(unitCount, 'engine', 'engines')} · ${plural(typeCount, 'motor', 'motors')}`;
 
   return (
-    <Screen>
-      <CatalogScreenHeader
-        title="Engines"
-        subtitle={subtitle}
-        onBack={() => goBackOrReplace(router, '/(tabs)/work' as Href)}
-        action={
-          canEdit ? (
-            <CatalogAddButton accessibilityLabel="Add an engine" onPress={addEngine} />
-          ) : null
-        }
-        search={
-          <SearchInput
-            value={query}
-            onChangeText={setQuery}
-            onClear={() => setQuery('')}
-            placeholder="Serial, brand, code, or shelf"
-            accessibilityLabel="Search engines"
-          />
-        }
-      />
-
-      {loading ? (
-        <ContentState state="loading">{null}</ContentState>
-      ) : rows.length === 0 ? (
-        <ContentState
-          state="empty"
-          emptyIcon={CarIcon}
-          emptyTitle={deferredQuery ? 'No engines match' : 'No engines yet'}
-          emptyDescription={
-            deferredQuery
-              ? 'Try the serial, the engine code, or the shelf.'
-              : canEdit
-                ? 'Add the first one — serial, brand, code, shelf.'
-                : 'Serialized motors show up here once they are received.'
+    <View style={{ flex: 1 }}>
+      <Screen>
+        <CatalogScreenHeader
+          title="Engines"
+          subtitle={subtitle}
+          collapsed={scrolled && rows.length > 0}
+          onBack={() => goBackOrReplace(router, '/(tabs)/work' as Href)}
+          action={
+            canEdit ? (
+              <EngineAddControl accessibilityLabel="Add an engine" onPress={addEngine} />
+            ) : null
           }
-          onEmptyAction={canEdit ? addEngine : undefined}
-          emptyActionLabel={deferredQuery ? `Add ${deferredQuery}` : 'Add an engine'}
-        >
-          {null}
-        </ContentState>
-      ) : (
-        <FlashList
-          data={rows}
-          keyExtractor={(row) => row.key}
-          getItemType={(row) => row.type}
-          contentContainerStyle={{
-            paddingTop: spacing[1],
-            paddingBottom: scrollBottom + rhythm.tabBarBreathing,
-          }}
-          renderItem={({ item }) =>
-            item.type === 'variant' ? (
-              <CatalogSectionHeader
-                title={item.variant.title}
-                meta={variantSubtitle(item.variant)}
-              />
-            ) : (
-              <CatalogRow
-                position={item.position}
-                title={engineUnitLabel(item.motor)}
-                monoTitle
-                subtitle={<UnitSubtitle motor={item.motor} />}
-                leading={<EngineThumbnail url={engineThumbnailUrl(item.motor)} />}
-                leadingWidth={ENGINE_THUMB_SIZE}
-                accessibilityLabel={`${engineUnitLabel(item.motor)}, ${
-                  engineUnitLocation(item.motor) ?? 'no location'
-                }, ${engineStatusLabel(item.motor)}`}
-                onPress={() => openEngine(item.motor.id)}
-              />
-            )
+          search={
+            <View style={{ gap: eng.stack }}>
+              <EngineYardSearch value={query} onChangeText={setQuery} />
+              <EngineQualityFilterBar value={quality} onChange={setQuality} />
+            </View>
           }
         />
-      )}
-    </Screen>
+
+        {loading ? (
+          <EngineCatalogSkeleton />
+        ) : rows.length === 0 ? (
+          <ContentState
+            state="empty"
+            emptyIcon={CarIcon}
+            emptyTitle={filtering ? 'Nothing in the yard matches' : 'No engines yet'}
+            emptyDescription={
+              filtering
+                ? 'Try a serial, a motor code, a shelf, or another grade.'
+                : canEdit
+                  ? 'Add the first unit — serial, motor, quality, shelf.'
+                  : 'Serialized motors show up here once they are received.'
+            }
+            onEmptyAction={canEdit ? addEngine : undefined}
+            emptyActionLabel={deferredQuery ? `Add ${deferredQuery}` : 'Add an engine'}
+          >
+            {null}
+          </ContentState>
+        ) : (
+          <FlashList
+            data={rows}
+            keyExtractor={(row) => row.key}
+            getItemType={(row) => row.type}
+            renderItem={renderItem}
+            onScroll={onScroll}
+            scrollEventThrottle={16}
+            contentContainerStyle={{
+              paddingBottom: scrollBottom + rhythm.tabBarBreathing,
+            }}
+          />
+        )}
+      </Screen>
+
+      <EngineLocationSheet
+        ref={locationSheetRef}
+        warehouseId={warehouseId}
+        currentLocationCode={
+          relocateMotor?.primaryLocationCode ?? relocateMotor?.warehouseLocation ?? null
+        }
+        busyLocationId={assignLocation.isPending ? 'pending' : null}
+        onSelect={(location) => void relocate(location)}
+        onDismiss={() => {
+          relocateMotorRef.current = null;
+          setRelocateMotor(null);
+        }}
+      />
+
+      <OrderPickerSheet
+        ref={addToOrderFlow.pickerRef}
+        drafts={addToOrderFlow.drafts}
+        onSelectNew={addToOrderFlow.handleSelectNew}
+        onSelectOrder={addToOrderFlow.handleSelectOrder}
+        onDismiss={addToOrderFlow.handlePickerDismiss}
+      />
+
+      {companyId && uid ? (
+        <SellMotorSheet
+          ref={sellSheetRef}
+          companyId={companyId}
+          uid={uid}
+          userId={uid}
+          onSold={(sold) =>
+            toast({ title: 'Engine sold', description: sold.serialCode, variant: 'success' })
+          }
+        />
+      ) : null}
+    </View>
   );
 }

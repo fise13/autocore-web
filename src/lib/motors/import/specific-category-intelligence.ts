@@ -1,8 +1,7 @@
-import {
-  isLikelyCarBrand,
-  isLikelyEngineCode,
-  resolveSheetBrandAndEngine,
-} from "@/lib/motors/import/brand-engine-intelligence";
+import { isLikelyCarBrand, isLikelyEngineCode } from "@/lib/motors/import/brand-engine-intelligence";
+import { parseEngineFamilyList } from "@/lib/motors/import/engine-number";
+import { qualifierFromSheetName } from "@/lib/motors/import/qualifiers";
+import { detectBrandInSheetName } from "@/lib/motors/import-normalization";
 
 const SPECIFIC_CATEGORY_ALIASES: Record<string, string> = {
   коробки: "КПП",
@@ -38,7 +37,7 @@ const SPECIFIC_CATEGORY_ALIASES: Record<string, string> = {
 const SPECIFIC_SHEET_HINTS =
   /короб|кпп|gearbox|transmission|раздат|transfer|эбу|ecu|генератор|стартер|турб|turbo|редуктор|мост|насос|акпп|mkpp/i;
 
-const MISC_SPECIFIC_SHEET_HINTS = /после\s|дэн|разное|прочее|проч|misc|список|каталог/i;
+const MISC_SPECIFIC_SHEET_HINTS = /разное|прочее|проч\b|misc|прайс|price\s*list/i;
 
 function isMiscSpecificSheetName(name: string): boolean {
   return MISC_SPECIFIC_SHEET_HINTS.test(name.trim());
@@ -46,7 +45,7 @@ function isMiscSpecificSheetName(name: string): boolean {
 
 /** Tab names that are motor inventory (brand/model/engine), not parts-specific catalogs. */
 const MOTOR_CATALOG_TAB_NAMES =
-  /^(cruze|camry|corolla|accord|civic|forester|outback|legacy|impreza|wrx|mix|jeep|volvo|bmw|audi|honda|toyota|nissan|subaru|mazda|mitsubishi|hyundai|kia|lexus|infiniti|mercedes|land rover|range rover)$/i;
+  /^(cruze|camry|corolla|accord|civic|forester|outback|legacy|impreza|wrx|mix|jeep|volvo|bmw|audi|honda|toyota|nissan|subaru|mazda|mitsubishi|hyundai|kia|lexus|infiniti|mercedes|renault|ford|chevrolet|opel|peugeot|mini|land rover|range rover)$/i;
 
 function normalizeCategoryKey(value: string): string {
   return value.trim().toLocaleLowerCase("ru").replace(/\s+/g, " ");
@@ -61,20 +60,38 @@ function isKnownSpecificPartsName(name: string): boolean {
 }
 
 /**
- * Sheet/category name looks like a motor brand, model line, or engine-family tab —
- * belongs in motors inventory, NOT in the accounting catalog (КПП, ПОСЛЕ ДЭНА, …).
+ * A movement log — «ПОСЛЕ ДЭНА», «СВЕРДЛОВА», «ВОЗВРАТ», «НА РЕМОНТ», «РЕМОНТ ДЭН».
+ *
+ * These tabs list engines by serial, one per row: they are motor inventory with an
+ * operational qualifier, not an accounting catalog. Treating them as «specific» buried
+ * hundreds of engines in a side table where the grid never showed them.
+ */
+export function isMotorMovementSheetName(sheetName: string): boolean {
+  return Boolean(qualifierFromSheetName(sheetName));
+}
+
+/**
+ * Sheet/category name looks like a motor brand, model line, engine-family tab, or a
+ * movement log — belongs in motors inventory, NOT in the accounting catalog.
+ *
+ * Motor signals are checked before parts keywords on purpose: «EJ 255 TURBO-EL15» names two
+ * engine families and merely contains the word TURBO.
  */
 export function isLikelyMotorCatalogName(name: string): boolean {
   const trimmed = name.trim();
   if (!trimmed) return false;
+
+  // Order matters. An engine family beats a parts keyword — «EJ 255 TURBO-EL15» names two
+  // families and merely contains the word TURBO. A parts keyword then beats a brand —
+  // «КПП TOYOTA» is a gearbox catalog for Toyota, not a list of Toyota engines.
+  if (isMotorMovementSheetName(trimmed)) return true;
+  if (parseEngineFamilyList(trimmed).length > 0) return true;
   if (isKnownSpecificPartsName(trimmed)) return false;
 
   if (MOTOR_CATALOG_TAB_NAMES.test(trimmed)) return true;
+  if (detectBrandInSheetName(trimmed)) return true;
   if (isLikelyCarBrand(trimmed)) return true;
-  if (isLikelyEngineCode(trimmed)) return true;
-
-  const { brandName, engineCode } = resolveSheetBrandAndEngine(trimmed);
-  return Boolean(brandName || engineCode);
+  return isLikelyEngineCode(trimmed);
 }
 
 export function isLikelySpecificSheetName(sheetName: string): boolean {
@@ -143,10 +160,9 @@ export function suggestSheetImportType(
     return "engines";
   }
   if (isLikelyMotorCatalogName(sheetName)) return "engines";
-  if (isLikelySpecificSheetName(sheetName) || isMiscSpecificSheetName(sheetName)) return "specific";
+  if (isLikelySpecificSheetName(sheetName)) return "specific";
   if (hasEngineBrand && hasEngineCode && hasSerialColumn) return "engines";
   if (hasSerialColumn && (hasEngineBrand || hasEngineCode)) return "engines";
   if (hasSerialColumn) return "engines";
-  if (!isLikelyMotorCatalogName(sheetName)) return "specific";
-  return "engines";
+  return "specific";
 }

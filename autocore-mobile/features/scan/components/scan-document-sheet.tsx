@@ -5,6 +5,7 @@ import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { Text } from '@/components/ui';
 import { useModalBottomSheet } from '@/hooks';
 import { formatPrice } from '@/features/search/lib/format';
+import { useMoneyFormatRevision } from '@/store/money-format-store';
 
 import { documentClassLabel } from '../lib/classify-document';
 import type { ParsedDocument } from '../lib/parse-document';
@@ -41,6 +42,7 @@ function primaryLabel(doc: ParsedDocument): string {
 export const ScanDocumentSheet = forwardRef<BottomSheetModal, ScanDocumentSheetProps>(
   function ScanDocumentSheet({ document, onPrimary, onSearchVin, onDismiss }, ref) {
     const sheet = useModalBottomSheet();
+    useMoneyFormatRevision();
     const modalProps = {
       ...sheet.sheetLayout,
       index: 0 as const,

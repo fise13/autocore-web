@@ -35,6 +35,16 @@ export const paywallTimeline = {
   footer: 520,
 } as const;
 
+/** Post-purchase celebration — same ease, a slightly longer stagger. */
+export const successTimeline = {
+  mark: 0,
+  title: 80,
+  subtitle: 140,
+  featuresStart: 200,
+  web: 520,
+  cta: 580,
+} as const;
+
 export const paywallEnter = {
   translateY: 12,
   scaleFrom: 0.97,
