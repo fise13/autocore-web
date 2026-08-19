@@ -6,7 +6,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { UserAvatar } from "@/components/account/user-avatar";
-import { CompanySwitcherMenu, JoinCompanyDialog } from "@/components/layout/company-switcher-menu";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
@@ -31,7 +30,6 @@ function AccountMenuPanel({
   isDemo,
   onClose,
   onLogout,
-  onOpenJoinDialog,
 }: {
   photoURL: string | null;
   displayName: string | null;
@@ -42,7 +40,6 @@ function AccountMenuPanel({
   isDemo: boolean;
   onClose: () => void;
   onLogout: () => void;
-  onOpenJoinDialog: () => void;
 }) {
   return (
     <>
@@ -63,12 +60,6 @@ function AccountMenuPanel({
             {accountInfo?.label ?? "—"} · {formatRole(profileRole)}
           </p>
         </div>
-      </div>
-
-      <div className="my-1 h-px bg-border/70" />
-
-      <div className="rounded-lg border border-border/60 bg-background/50 p-1">
-        <CompanySwitcherMenu variant="plain" onClose={onClose} onOpenJoinDialog={onOpenJoinDialog} />
       </div>
 
       <div className="my-1 h-px bg-border/70" />
@@ -114,7 +105,6 @@ export function AccountMenu({ compact = false }: AccountMenuProps) {
   const { firebaseUser, profile, logout } = useAuth();
   const isDemo = useDemoSession();
   const [open, setOpen] = useState(false);
-  const [joinOpen, setJoinOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -204,10 +194,6 @@ export function AccountMenu({ compact = false }: AccountMenuProps) {
         onLogout={() => {
           void logout();
         }}
-        onOpenJoinDialog={() => {
-          setOpen(false);
-          setJoinOpen(true);
-        }}
       />
     </div>
   ) : null;
@@ -250,7 +236,6 @@ export function AccountMenu({ compact = false }: AccountMenuProps) {
         </Button>
       </div>
       {menu && typeof document !== "undefined" ? createPortal(menu, document.body) : null}
-      <JoinCompanyDialog open={joinOpen} onOpenChange={setJoinOpen} />
     </>
   );
 }

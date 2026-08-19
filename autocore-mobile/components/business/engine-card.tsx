@@ -5,7 +5,7 @@ import Animated from 'react-native-reanimated';
 import { Text } from '@/components/ui/text';
 import { useTheme } from '@/hooks';
 import { usePressAnimation } from '@/animations';
-import { fontFamily, haptics } from '@/theme';
+import { fontFamily, haptics, tokens } from '@/theme';
 
 export type EngineCardProps = {
   title: string;
@@ -47,8 +47,8 @@ export const EngineCard = memo(function EngineCard({
   const content = (
     <View
       style={{
-        borderRadius: 12,
-        borderWidth: 1,
+        borderRadius: tokens.radius.group,
+        borderWidth: tokens.control.hairline,
         borderColor: colors.border,
         backgroundColor: colors.card,
         padding: 20,

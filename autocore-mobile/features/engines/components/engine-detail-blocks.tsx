@@ -3,7 +3,7 @@ import { Pressable, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 
 import { ChevronRightIcon, CopyIcon } from '@/assets/icons';
-import { Text, toast } from '@/components/ui';
+import { Button, Text, toast } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { fontFamily, haptics } from '@/theme';
 import { withAlpha } from '@/theme/color-utils';
@@ -12,19 +12,11 @@ import type { MotorEntity } from '@/types/motor';
 import { EngineGlyph } from './engine-glyph';
 import { EngineQualityPill } from './engine-quality-mark';
 import { EngineStatusPill } from './engine-status-mark';
-import { EngineInkButton, EngineLineButton, engineFrameStyle } from './engine-surface';
+import { engineFrameStyle } from './engine-surface';
 import { eng, engFontCap, engType } from '../layout';
 import { engineQualityGrade } from '../lib/engine-quality';
 import type { DocumentationLine, EngineSpecRow } from '../lib/engine-facts';
 
-/**
- * Identity — the motor it files under, the serial stamped on the block, and
- * the two states a person asks about before anything else.
- *
- * The kicker/serial pairing is the same shape the catalog uses for its section
- * headings, so arriving here from the list feels like opening the row rather
- * than landing on a different screen.
- */
 export function EngineIdentity({
   motor,
   serial,
@@ -110,13 +102,6 @@ export function EngineIdentity({
   );
 }
 
-/**
- * Specs, as one ruled sheet.
- *
- * The label states the question, the value answers it, and the rules belong
- * to the frame rather than floating on the page. Codes stay in the identifier
- * face so a shelf still reads like something printed on a shelf.
- */
 export function EngineSpecList({ rows }: { rows: EngineSpecRow[] }) {
   const { colors } = useTheme();
 
@@ -160,7 +145,6 @@ export function EngineSpecList({ rows }: { rows: EngineSpecRow[] }) {
   );
 }
 
-/** Section label over a block — sentence case, quiet, never a stamp. */
 export function EngineChapter({
   title,
   children,
@@ -182,7 +166,6 @@ export function EngineChapter({
   );
 }
 
-/** Free text the shop wrote — a ruled quote, not a caption. */
 export function EngineNoteBody({ children }: { children: ReactNode }) {
   const { colors } = useTheme();
 
@@ -200,9 +183,6 @@ export function EngineNoteBody({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * Documentation — a count and a name, never a percentage bar.
- */
 export function EngineDocumentationRow({
   line,
   onPress,
@@ -265,12 +245,6 @@ export function EngineDocumentationRow({
   );
 }
 
-/**
- * The verbs, as a document row under the identity.
- *
- * One charcoal primary, the rest hairline. Nothing is drawn disabled: a greyed
- * button on a permission boundary only teaches people to tap it twice.
- */
 export function EngineActionCluster({
   canSell,
   canAddToOrder,
@@ -293,15 +267,20 @@ export function EngineActionCluster({
   const lineButtons = (
     <>
       {canAddToOrder && canSell ? (
-        <EngineLineButton label="Add to order" flex onPress={onAddToOrder} />
+        <Button key="order" variant="outline" style={{ flex: 1 }} onPress={onAddToOrder}>
+          Add to order
+        </Button>
       ) : null}
       {canRelocate && (canSell || canAddToOrder) ? (
-        <EngineLineButton
-          label="Relocate"
-          flex
+        <Button
+          key="relocate"
+          variant="outline"
+          style={{ flex: 1 }}
           loading={relocating}
           onPress={onRelocate}
-        />
+        >
+          Relocate
+        </Button>
       ) : null}
     </>
   );
@@ -312,11 +291,17 @@ export function EngineActionCluster({
   return (
     <View style={{ gap: eng.inline }}>
       {canSell ? (
-        <EngineInkButton label="Sell" onPress={onSell} />
+        <Button size="lg" onPress={onSell}>
+          Sell
+        </Button>
       ) : canAddToOrder ? (
-        <EngineInkButton label="Add to order" onPress={onAddToOrder} />
+        <Button size="lg" onPress={onAddToOrder}>
+          Add to order
+        </Button>
       ) : (
-        <EngineInkButton label="Relocate" loading={relocating} onPress={onRelocate} />
+        <Button size="lg" loading={relocating} onPress={onRelocate}>
+          Relocate
+        </Button>
       )}
       {extras ? (
         <View style={{ flexDirection: 'row', gap: eng.inline }}>{lineButtons}</View>

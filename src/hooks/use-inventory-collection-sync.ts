@@ -51,6 +51,8 @@ export function useInventoryCollectionSync({
 
     if (parsed.brandLocalId != null) {
       setSelectedBrandLocalId(parsed.brandLocalId);
+    } else {
+      setSelectedBrandLocalId(null);
     }
 
     setAvailability(pinnedFilterToAvailability(parsed.filter));

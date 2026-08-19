@@ -1,9 +1,15 @@
 import { forwardRef, useDeferredValue, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { BottomSheetModal, BottomSheetFlatList } from '@gorhom/bottom-sheet';
 
 import { CheckIcon, MapPinIcon } from '@/assets/icons';
-import { SearchInput, Text } from '@/components/ui';
+import {
+  CatalogRow,
+  CatalogSectionHeader,
+  SearchInput,
+  Text,
+  catalogRowPosition,
+} from '@/components/ui';
 import { useModalBottomSheet, useTheme } from '@/hooks';
 import { useMobileWarehouseLocations } from '@/hooks/use-mobile-relocate';
 import {
@@ -12,12 +18,11 @@ import {
   locationTypeLabel,
   zoneTitle,
 } from '@/features/warehouse/lib/location-groups';
-import { haptics, rhythm, spacing } from '@/theme';
+import { rhythm, spacing } from '@/theme';
 import { withAlpha } from '@/theme/color-utils';
 import type { MobileWarehouseLocation } from '@/hooks/use-mobile-relocate';
 
-import { EngineGlyph } from './engine-glyph';
-import { eng, engType } from '../layout';
+const GLYPH_SIZE = 40;
 
 type Row =
   | { kind: 'zone'; key: string; title: string }
@@ -25,6 +30,7 @@ type Row =
       kind: 'place';
       key: string;
       location: MobileWarehouseLocation;
+      position: ReturnType<typeof catalogRowPosition>;
     };
 
 type EngineLocationSheetProps = {
@@ -35,83 +41,29 @@ type EngineLocationSheetProps = {
   onDismiss?: () => void;
 };
 
-function LocationPickRow({
-  location,
-  selected,
-  busy,
-  onPress,
-}: {
-  location: MobileWarehouseLocation;
-  selected: boolean;
-  busy: boolean;
-  onPress: () => void;
-}) {
-  const { colors, isDark } = useTheme();
-  const [pressed, setPressed] = useState(false);
+function LocationGlyph({ selected }: { selected: boolean }) {
+  const { colors } = useTheme();
 
   return (
-    <View style={{ opacity: busy ? 0.5 : 1 }}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ selected, busy }}
-        accessibilityLabel={`${location.displayCode || location.code}, ${locationTypeLabel(location.type)}`}
-        disabled={busy}
-        onPressIn={() => setPressed(true)}
-        onPressOut={() => setPressed(false)}
-        onPress={() => {
-          haptics.selection();
-          onPress();
-        }}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: spacing[3],
-          paddingHorizontal: eng.pad,
-          paddingVertical: eng.stack,
-          minHeight: 56,
-          backgroundColor: pressed ? withAlpha(colors.muted, isDark ? 0.55 : 0.85) : 'transparent',
-        }}
-      >
-        <EngineGlyph
-          sf="mappin"
-          fallback={MapPinIcon}
-          size={16}
-          color={selected ? colors.foreground : withAlpha(colors.mutedForeground, 0.85)}
-          weight="medium"
-        />
-
-        <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
-          <Text variant="identifier" numberOfLines={1} style={{ color: colors.foreground }}>
-            {location.displayCode || location.code}
-          </Text>
-          <Text variant="footnote" color="muted" numberOfLines={1}>
-            {locationTypeLabel(location.type)}
-            {selected ? ', current' : ''}
-          </Text>
-        </View>
-
-        {selected ? (
-          <EngineGlyph sf="checkmark" fallback={CheckIcon} size={15} color={colors.foreground} weight="semibold" />
-        ) : null}
-      </Pressable>
-      <View
-        style={{
-          height: eng.rule,
-          marginLeft: eng.pad + 16 + spacing[3],
-          backgroundColor: colors.border,
-        }}
+    <View
+      style={{
+        width: GLYPH_SIZE,
+        height: GLYPH_SIZE,
+        borderRadius: 13,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: withAlpha(selected ? colors.primary : colors.mutedForeground, 0.12),
+      }}
+    >
+      <MapPinIcon
+        size="sm"
+        color={selected ? colors.primary : colors.mutedForeground}
+        strokeWidth={1.85}
       />
     </View>
   );
 }
 
-/**
- * Pick where an engine goes.
- *
- * Relocating used to hand the worker the barcode scanner, which only helps if
- * the shelf happens to be labelled and in reach. Someone at a desk moving an
- * engine on paper needs the list.
- */
 export const EngineLocationSheet = forwardRef<BottomSheetModal, EngineLocationSheetProps>(
   function EngineLocationSheet(
     { warehouseId, currentLocationCode, busyLocationId, onSelect, onDismiss },
@@ -132,11 +84,12 @@ export const EngineLocationSheet = forwardRef<BottomSheetModal, EngineLocationSh
       const out: Row[] = [];
       for (const zone of groupLocationsByZone(matched)) {
         out.push({ kind: 'zone', key: `z:${zone.id}`, title: zoneTitle(zone) });
-        zone.locations.forEach((location) => {
+        zone.locations.forEach((location, index) => {
           out.push({
             kind: 'place',
             key: `p:${location.id}`,
             location,
+            position: catalogRowPosition(index, zone.locations.length),
           });
         });
       }
@@ -158,7 +111,7 @@ export const EngineLocationSheet = forwardRef<BottomSheetModal, EngineLocationSh
         handleIndicatorStyle={sheet.handleIndicatorStyle}
       >
         <View style={{ paddingHorizontal: rhythm.pad, gap: spacing[3], paddingBottom: spacing[2] }}>
-          <Text variant="title3" numberOfLines={1} style={{ letterSpacing: -0.3 }}>
+          <Text variant="title3" numberOfLines={1}>
             Move engine to
           </Text>
           <SearchInput
@@ -191,35 +144,35 @@ export const EngineLocationSheet = forwardRef<BottomSheetModal, EngineLocationSh
               </Text>
             </View>
           }
-          renderItem={({ item }: { item: Row }) =>
-            item.kind === 'zone' ? (
-              <Text
-                variant="sectionLabel"
-                color="muted"
-                numberOfLines={1}
-                style={{
-                  ...engType.section,
-                  marginTop: eng.block,
-                  marginBottom: eng.inline,
-                  paddingHorizontal: eng.pad,
-                }}
-              >
-                {item.title}
-              </Text>
-            ) : (
-              <LocationPickRow
-                location={item.location}
-                selected={
-                  current != null &&
-                  (item.location.displayCode || item.location.code).toUpperCase() === current
-                }
-                busy={busyLocationId != null && busyLocationId !== item.location.id}
-                onPress={() => onSelect(item.location)}
-              />
-            )
-          }
+          renderItem={({ item }: { item: Row }) => {
+            if (item.kind === 'zone') {
+              return <CatalogSectionHeader title={item.title} />;
+            }
+
+            const code = item.location.displayCode || item.location.code;
+            const selected =
+              current != null && code.toUpperCase() === current;
+            const busy = busyLocationId != null && busyLocationId !== item.location.id;
+
+            return (
+              <View style={{ opacity: busy ? 0.5 : 1 }}>
+                <CatalogRow
+                  position={item.position}
+                  title={code}
+                  monoTitle
+                  subtitle={locationTypeLabel(item.location.type)}
+                  leading={<LocationGlyph selected={selected} />}
+                  leadingWidth={GLYPH_SIZE}
+                  trailing={selected ? <CheckIcon size="sm" color={colors.primary} /> : undefined}
+                  accessibilityLabel={`${code}, ${locationTypeLabel(item.location.type)}${
+                    selected ? ', current' : ''
+                  }`}
+                  onPress={() => onSelect(item.location)}
+                />
+              </View>
+            );
+          }}
         />
-        <View style={{ height: 0, backgroundColor: colors.background }} />
       </BottomSheetModal>
     );
   },

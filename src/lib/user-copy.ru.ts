@@ -217,6 +217,10 @@ export const userCopyRu = {
     noActiveCompany: "Активная компания не выбрана. Откройте существующее рабочее пространство.",
     inviteCodePlaceholder: "Например: DUAVV5",
     joinButton: "Присоединиться",
+    importBusiness: "Импорт бизнеса",
+    importBusinessHint: "Создайте рабочее пространство и загрузите файл — мастер настройки пропускается.",
+    importBusinessNeedsName: "Сначала введите название компании.",
+    openingImport: "Открываем импорт…",
   },
 
   desktop: {

@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, View, type ViewStyle } from 'react-native
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { haptics, tokens } from '@/theme';
+import { withAlpha } from '@/theme/color-utils';
 
 import { eng, engFontCap, engType } from '../layout';
 
@@ -25,10 +26,7 @@ export function engineFrameStyle(colors: { card: string; border: string }): View
   };
 }
 
-/**
- * Pastel status / quality tag — the only colour on the page besides photos.
- * Pill is reserved for these chips; large containers stay 8–12px.
- */
+/** Pastel status / quality tag — the only colour on the page besides photos. */
 export function EngineTag({
   label,
   chrome,
@@ -218,64 +216,20 @@ export function EngineLineButton({
   );
 }
 
-/** Compact charcoal Add in the catalog navigation row. */
-export function EngineAddControl({
-  label = 'Add',
-  accessibilityLabel,
-  onPress,
-}: {
-  label?: string;
-  accessibilityLabel: string;
-  onPress: () => void;
-}) {
-  const { colors } = useTheme();
-  const [pressed, setPressed] = useState(false);
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      hitSlop={6}
-      onPressIn={() => setPressed(true)}
-      onPressOut={() => setPressed(false)}
-      onPress={() => {
-        haptics.light();
-        onPress();
-      }}
-      style={{
-        minHeight: eng.nav,
-        paddingHorizontal: 14,
-        borderRadius: eng.radius,
-        backgroundColor: colors.foreground,
-        alignItems: 'center',
-        justifyContent: 'center',
-        opacity: pressed ? tokens.opacity.pressed : 1,
-        transform: [{ scale: pressed ? 0.98 : 1 }],
-      }}
-    >
-      <Text
-        variant="headline"
-        maxFontSizeMultiplier={engFontCap.control}
-        numberOfLines={1}
-        style={{ color: colors.background, fontWeight: '600' }}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 /** Square nav chrome on a photo or a canvas. */
 export function EngineNavButton({
   onPress,
   accessibilityLabel,
   children,
+  dimmed = false,
 }: {
   onPress: () => void;
   accessibilityLabel: string;
   children: ReactNode;
+  /** Slightly translucent card for overlays on photos. */
+  dimmed?: boolean;
 }) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const [pressed, setPressed] = useState(false);
 
   return (
@@ -292,11 +246,11 @@ export function EngineNavButton({
         borderRadius: eng.radius,
         borderWidth: eng.rule,
         borderColor: colors.border,
-        backgroundColor: colors.card,
+        backgroundColor: dimmed ? withAlpha(colors.card, isDark ? 0.9 : 0.96) : colors.card,
         alignItems: 'center',
         justifyContent: 'center',
         opacity: pressed ? tokens.opacity.pressed : 1,
-        transform: [{ scale: pressed ? 0.98 : 1 }],
+        transform: [{ scale: pressed ? 0.96 : 1 }],
       }}
     >
       {children}

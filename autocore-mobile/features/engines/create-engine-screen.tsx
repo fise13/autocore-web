@@ -20,12 +20,8 @@ import {
 import { useSession, useTheme } from '@/hooks';
 import { useSessionQueryData } from '@/hooks/use-session-query-data';
 import { motorRepository } from '@/services/firestore/motor-repository';
-import { haptics, tokens } from '@/theme';
+import { haptics, spacing, tokens } from '@/theme';
 import type { MotorEntity } from '@/types/motor';
-
-import { EngineGlyph } from './components/engine-glyph';
-import { engineFrameStyle } from './components/engine-surface';
-import { eng } from './layout';
 
 import {
   canSaveEngineDraft,
@@ -303,21 +299,16 @@ function DraftVerdict({
       <View
         style={{
           flexDirection: 'row',
-          gap: eng.stack,
-          padding: eng.stack + 2,
-          ...engineFrameStyle(colors),
+          gap: spacing[3],
+          padding: spacing[3.5],
+          borderRadius: tokens.radius.modal,
+          borderWidth: tokens.control.hairline,
           backgroundColor: blocking ? colors.dangerSubtle : colors.warningSubtle,
           borderColor: blocking ? colors.dangerBorder : colors.warningBorder,
         }}
       >
-        <EngineGlyph
-          sf="exclamationmark.triangle"
-          fallback={AlertTriangleIcon}
-          size={17}
-          color={ink}
-          weight="medium"
-        />
-        <View style={{ flex: 1, gap: eng.micro, minWidth: 0 }}>
+        <AlertTriangleIcon size={17} color={ink} strokeWidth={1.85} />
+        <View style={{ flex: 1, gap: spacing[1], minWidth: 0 }}>
           <Text variant="footnote" style={{ fontWeight: '600', color: ink }}>
             {blocking ? 'This serial is already in the catalog' : 'A very similar serial exists'}
           </Text>
@@ -338,17 +329,11 @@ function DraftVerdict({
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        gap: eng.tight,
-        paddingHorizontal: eng.micro,
+        gap: spacing[1.5],
+        paddingHorizontal: spacing[1],
       }}
     >
-      <EngineGlyph
-        sf="checkmark.circle"
-        fallback={CheckCircle2Icon}
-        size={14}
-        color={colors.successOnSubtle}
-        weight="medium"
-      />
+      <CheckCircle2Icon size={14} color={colors.successOnSubtle} strokeWidth={1.85} />
       <Text variant="caption" color="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
         Files under {draftVariantLabel(draft)}.
       </Text>

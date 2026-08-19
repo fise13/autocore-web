@@ -1,9 +1,8 @@
 import { memo } from 'react';
 
-import { useTheme } from '@/hooks';
+import { Badge } from '@/components/ui';
 import type { MotorQualityGrade } from '@autocore/engine-intake';
 
-import { EngineTag } from './engine-surface';
 import {
   engineQualityGradeLabel,
   engineQualityToneForGrade,
@@ -17,36 +16,35 @@ type EngineQualityMarkProps = {
   accessibilityLabel?: string;
 };
 
-/**
- * Shop grade as a pastel tag. The word carries the meaning; the digit stays
- * in the accessibility name for anyone who still shouts "two".
- */
+function qualityBadgeVariant(
+  grade: MotorQualityGrade | null,
+): 'default' | 'secondary' | 'destructive' | 'success' {
+  const tone = engineQualityToneForGrade(grade);
+  if (tone === 'success') return 'success';
+  if (tone === 'danger') return 'destructive';
+  if (tone === 'primary') return 'default';
+  return 'secondary';
+}
+
 export const EngineQualityMark = memo(function EngineQualityMark({
   grade,
-  compact = false,
-  selected = false,
-  onPress,
   accessibilityLabel,
 }: EngineQualityMarkProps) {
-  const { tones } = useTheme();
-  const tone = engineQualityToneForGrade(grade);
   const word = grade ? engineQualityGradeLabel(grade) : 'Ungraded';
 
   return (
-    <EngineTag
-      label={word}
-      chrome={tones[tone]}
-      compact={compact}
-      selected={selected}
-      onPress={onPress}
+    <Badge
+      variant={qualityBadgeVariant(grade)}
+      emphasis="subtle"
       accessibilityLabel={
         accessibilityLabel ?? (grade ? `Quality ${grade}, ${word}` : 'Ungraded')
       }
-    />
+    >
+      {word}
+    </Badge>
   );
 });
 
-/** Detail-screen counterpart — same tag, a little more padding. */
 export const EngineQualityPill = memo(function EngineQualityPill({
   grade,
 }: {

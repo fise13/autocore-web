@@ -1,95 +1,40 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
   View,
   useWindowDimensions,
-  type ViewStyle,
 } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue, type AnimatedStyle } from 'react-native-reanimated';
+import { Gesture, GestureDetector, ScrollView } from 'react-native-gesture-handler';
+import Animated, {
+  runOnJS,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Share2Icon, XIcon } from '@/assets/icons';
-import { Text, toast } from '@/components/ui';
-import { useTheme } from '@/hooks';
+import { IconButton, Text, toast } from '@/components/ui';
+import { useMotion, useTheme } from '@/hooks';
 import { haptics, spacing } from '@/theme';
 
 import { EngineGlyph } from './engine-glyph';
-import { EngineNavButton } from './engine-surface';
+import { EnginePhotoDots } from './engine-photo-dots';
+import { EnginePhotoFilmstrip } from './engine-photo-filmstrip';
 import { EnginePhotoPage } from './engine-photo-page';
-import { eng, engType } from '../layout';
+import { eng } from '../layout';
 import { shareEnginePhoto } from '../lib/engine-photo-file';
 
-function ViewerCaption({
-  serial,
-  index,
-  total,
-  zoomed,
-  style,
-  bottomInset,
-}: {
-  serial: string;
-  index: number;
-  total: number;
-  zoomed: boolean;
-  style: AnimatedStyle<ViewStyle>;
-  bottomInset: number;
-}) {
-  const { colors } = useTheme();
-  const hint = zoomed
-    ? 'Double-tap to zoom out'
-    : total > 1
-      ? 'Swipe for more photos · swipe down to close'
-      : 'Swipe down to close';
-
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={[
-        {
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          paddingBottom: Math.max(bottomInset, spacing[2]),
-          paddingTop: spacing[3],
-          paddingHorizontal: eng.pad,
-          gap: spacing[1],
-          backgroundColor: colors.background,
-          borderTopWidth: eng.hairline,
-          borderTopColor: colors.border,
-        },
-        style,
-      ]}
-    >
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'baseline',
-          justifyContent: 'space-between',
-          gap: eng.stack,
-        }}
-      >
-        <Text variant="identifier" numberOfLines={1} maxFontSizeMultiplier={1.1} style={{ flex: 1 }}>
-          {serial}
-        </Text>
-        {total > 1 ? (
-          <Text variant="identifier" maxFontSizeMultiplier={1.1} color="muted">
-            {index + 1} / {total}
-          </Text>
-        ) : null}
-      </View>
-      <Text variant="footnote" color="muted" style={engType.hint}>
-        {hint}
-      </Text>
-    </Animated.View>
-  );
-}
+const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
+const FILMSTRIP_H = 52 + spacing[2] * 2;
+const DOTS_H = 18 + spacing[3];
+const pagerNative = Gesture.Native();
 
 /**
- * Immersive photo route — plain canvas, ruled nav chrome, caption strip.
- * No gradients (DESIGN.md v3). Gestures unchanged: pinch, swipe down to close.
+ * Immersive photo gallery — Apple Photos paging, filmstrip, pinch, swipe down.
  */
 export function EnginePhotoViewer({
   urls,
@@ -105,40 +50,70 @@ export function EnginePhotoViewer({
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  const motion = useMotion();
+  const pagerRef = useRef<Animated.ScrollView>(null);
+  const scrollX = useSharedValue(initialIndex * width);
+  const dismissProgress = useSharedValue(0);
+  const enter = useSharedValue(0);
+
   const [index, setIndex] = useState(initialIndex);
   const [saving, setSaving] = useState(false);
   const [zoomed, setZoomed] = useState(false);
-  const dismissProgress = useSharedValue(0);
 
-  const captionHeight = useMemo(
-    () => Math.max(insets.bottom, spacing[2]) + spacing[3] + 52,
-    [insets.bottom],
-  );
+  useEffect(() => {
+    enter.value = motion.reduced
+      ? 1
+      : withSpring(1, motion.springs.settle);
+  }, [enter, motion.reduced, motion.springs.settle]);
+
+  const chromeBottom = useMemo(() => {
+    if (zoomed || urls.length < 2) return Math.max(insets.bottom, spacing[2]);
+    return Math.max(insets.bottom, spacing[2]) + FILMSTRIP_H + DOTS_H;
+  }, [insets.bottom, urls.length, zoomed]);
+
   const topInset = insets.top + spacing[2];
-  const topChromeHeight = topInset + eng.control + spacing[3];
-  const imageHeight = height - topChromeHeight - captionHeight;
+  const topChromeHeight = topInset + eng.nav + spacing[2];
+  const imageHeight = height - topChromeHeight - chromeBottom;
+
+  const canvas = colors.background;
+
+  const shellStyle = useAnimatedStyle(() => ({
+    opacity: enter.value * (1 - dismissProgress.value * 0.9),
+  }));
 
   const backdropStyle = useAnimatedStyle(() => ({
-    opacity: 1 - dismissProgress.value * 0.85,
+    opacity: enter.value * (1 - dismissProgress.value * 0.85),
   }));
+
   const chromeStyle = useAnimatedStyle(() => ({
-    opacity: 1 - dismissProgress.value,
+    opacity: (1 - dismissProgress.value) * (zoomed ? 0 : 1),
   }));
 
-  const onScroll = useCallback(
-    (offsetX: number) => {
-      const next = Math.round(offsetX / width);
-      const clamped = Math.min(Math.max(next, 0), urls.length - 1);
-      setIndex((current) => (current === clamped ? current : clamped));
-    },
-    [urls.length, width],
-  );
+  const reportIndex = useCallback((next: number) => {
+    const clamped = Math.min(Math.max(next, 0), urls.length - 1);
+    setIndex((current) => (current === clamped ? current : clamped));
+  }, [urls.length]);
 
-  const onMomentumEnd = useCallback(
-    (offsetX: number) => {
-      onScroll(offsetX);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollX.value = event.contentOffset.x;
     },
-    [onScroll],
+    onMomentumEnd: (event) => {
+      const next = Math.round(event.contentOffset.x / width);
+      runOnJS(reportIndex)(next);
+    },
+  });
+
+  const jumpTo = useCallback(
+    (next: number) => {
+      const clamped = Math.min(Math.max(next, 0), urls.length - 1);
+      pagerRef.current?.scrollTo({ x: clamped * width, animated: true });
+      scrollX.value = motion.reduced
+        ? clamped * width
+        : withTiming(clamped * width, { duration: motion.duration.normal, easing: motion.ease });
+      reportIndex(clamped);
+    },
+    [motion.duration.normal, motion.ease, motion.reduced, reportIndex, scrollX, urls.length, width],
   );
 
   const close = useCallback(() => {
@@ -167,85 +142,148 @@ export function EnginePhotoViewer({
 
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 40 }]}>
-      <Animated.View
-        style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }, backdropStyle]}
-      />
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: canvas }, backdropStyle]} />
 
-      <ScrollView
-        horizontal
-        pagingEnabled
-        scrollEnabled={!zoomed}
-        showsHorizontalScrollIndicator={false}
-        contentOffset={{ x: initialIndex * width, y: 0 }}
-        scrollEventThrottle={16}
-        onScroll={(event) => onScroll(event.nativeEvent.contentOffset.x)}
-        onMomentumScrollEnd={(event) => onMomentumEnd(event.nativeEvent.contentOffset.x)}
-        style={StyleSheet.absoluteFill}
-      >
-        {urls.map((url, pageIndex) => (
-          <EnginePhotoPage
-            key={url}
-            url={url}
-            alt={`Engine ${serial}, photo ${pageIndex + 1} of ${urls.length}`}
-            width={width}
-            height={height}
-            imageHeight={imageHeight}
-            active={pageIndex === index}
-            dismissProgress={dismissProgress}
-            onZoomChange={setZoomed}
-            onRequestClose={close}
-          />
-        ))}
-      </ScrollView>
+      <Animated.View style={[StyleSheet.absoluteFill, shellStyle]}>
+        <GestureDetector gesture={pagerNative}>
+          <AnimatedScrollView
+            ref={pagerRef}
+            horizontal
+            pagingEnabled
+            scrollEnabled={!zoomed}
+            showsHorizontalScrollIndicator={false}
+            contentOffset={{ x: initialIndex * width, y: 0 }}
+            scrollEventThrottle={16}
+            decelerationRate="fast"
+            onScroll={scrollHandler}
+            style={StyleSheet.absoluteFill}
+          >
+            {urls.map((url, pageIndex) => (
+              <EnginePhotoPage
+                key={url}
+                url={url}
+                alt={`Engine ${serial}, photo ${pageIndex + 1} of ${urls.length}`}
+                width={width}
+                height={height}
+                imageHeight={imageHeight}
+                active={pageIndex === index}
+                dismissProgress={dismissProgress}
+                onZoomChange={setZoomed}
+                onRequestClose={close}
+              />
+            ))}
+          </AnimatedScrollView>
+        </GestureDetector>
 
-      <Animated.View
-        pointerEvents="box-none"
-        style={[
-          {
-            position: 'absolute',
-            top: topInset,
-            left: eng.pad,
-            right: eng.pad,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          },
-          chromeStyle,
-        ]}
-      >
-        <EngineNavButton accessibilityLabel="Close photo" onPress={close}>
-          <EngineGlyph
-            sf="xmark"
-            fallback={XIcon}
-            size={15}
-            color={colors.foreground}
-            weight="semibold"
-          />
-        </EngineNavButton>
-
-        <EngineNavButton accessibilityLabel="Share photo" onPress={() => void share()}>
-          {saving ? (
-            <ActivityIndicator size="small" color={colors.foreground} />
-          ) : (
+        <Animated.View
+          pointerEvents="box-none"
+          style={[
+            {
+              position: 'absolute',
+              top: topInset,
+              left: eng.pad,
+              right: eng.pad,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            },
+            chromeStyle,
+          ]}
+        >
+          <IconButton
+            size="sm"
+            variant="outline"
+            accessibilityLabel="Close photo"
+            onPress={close}
+            style={{ backgroundColor: colors.card }}
+          >
             <EngineGlyph
-              sf="square.and.arrow.up"
-              fallback={Share2Icon}
-              size={17}
+              sf="xmark"
+              fallback={XIcon}
+              size={15}
               color={colors.foreground}
-              weight="medium"
+              weight="semibold"
             />
-          )}
-        </EngineNavButton>
-      </Animated.View>
+          </IconButton>
 
-      <ViewerCaption
-        serial={serial}
-        index={index}
-        total={urls.length}
-        zoomed={zoomed}
-        style={chromeStyle}
-        bottomInset={insets.bottom}
-      />
+          <Text
+            variant="subheadline"
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.1}
+            style={{
+              flex: 1,
+              textAlign: 'center',
+              marginHorizontal: spacing[2],
+              color: colors.foreground,
+              fontWeight: '600',
+            }}
+          >
+            {serial}
+          </Text>
+
+          <IconButton
+            size="sm"
+            variant="outline"
+            accessibilityLabel="Share photo"
+            onPress={() => void share()}
+            style={{ backgroundColor: colors.card }}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color={colors.foreground} />
+            ) : (
+              <EngineGlyph
+                sf="square.and.arrow.up"
+                fallback={Share2Icon}
+                size={17}
+                color={colors.foreground}
+                weight="medium"
+              />
+            )}
+          </IconButton>
+        </Animated.View>
+
+        {!zoomed && urls.length > 1 ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              {
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                bottom: Math.max(insets.bottom, spacing[2]) + FILMSTRIP_H,
+                alignItems: 'center',
+              },
+              chromeStyle,
+            ]}
+          >
+            <EnginePhotoDots count={urls.length} scrollX={scrollX} pageWidth={width} />
+          </Animated.View>
+        ) : null}
+
+        {!zoomed && urls.length > 1 ? (
+          <Animated.View
+            pointerEvents="box-none"
+            style={[
+              {
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                bottom: 0,
+              },
+              chromeStyle,
+            ]}
+          >
+            <EnginePhotoFilmstrip
+              urls={urls}
+              index={index}
+              scrollX={scrollX}
+              pageWidth={width}
+              bottomInset={insets.bottom}
+              onSelect={jumpTo}
+            />
+          </Animated.View>
+        ) : null}
+      </Animated.View>
     </View>
   );
 }

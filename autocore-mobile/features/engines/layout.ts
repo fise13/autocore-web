@@ -9,27 +9,25 @@ import { typography } from '@/theme';
 import { tokens } from '@/theme/tokens';
 
 export const eng = {
-  pad: tokens.space.screenX, // 20
-  section: tokens.space.section, // 32 — between chapters
+  pad: tokens.space.screenX,
+  section: tokens.space.section,
   chapter: tokens.space.section,
-  block: tokens.space[6], // 24 — inside a chapter
-  stack: tokens.space.stack, // 12
-  inline: tokens.space.inline, // 8
-  tight: tokens.space[1.5], // 6
-  micro: tokens.space.micro, // 4
+  block: tokens.space[6],
+  stack: tokens.space.stack,
+  inline: tokens.space.inline,
+  tight: tokens.space[1.5],
+  micro: tokens.space.micro,
   hairline: tokens.control.hairline,
   /** Visible document rule — 1pt, not the iOS 0.33 hairline. */
   rule: 1,
 
-  /** Controls, search, ink buttons. */
   radius: 8,
-  /** Framed sheets — spec lists, notes, documentation. */
-  cardRadius: tokens.radius.group, // 12
-  sheetRadius: tokens.radius.sheet, // 16
+  cardRadius: tokens.radius.group,
+  sheetRadius: tokens.radius.sheet,
   pillRadius: tokens.radius.full,
 
   rowMin: tokens.control.hitTarget,
-  control: tokens.control.heightMd, // 40 visual, ≥44 via hitSlop
+  control: tokens.control.heightMd,
   hit: tokens.control.hitTarget,
 
   thumb: 52,
@@ -40,7 +38,6 @@ export const eng = {
   rail: 2,
 } as const;
 
-/** Semantic typography aliases — maps to `theme/typography`, never new sizes. */
 export const engType = {
   serial: typography.largeTitle,
   motor: typography.title2,
@@ -59,7 +56,6 @@ export const engType = {
   tag: typography.caption2,
 } as const;
 
-/** Display numerals must not wrap the layout when Dynamic Type is turned up. */
 export const engFontCap = {
   serial: 1.15,
   title: 1.2,

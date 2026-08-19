@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { ChevronsUpDown, CreditCard, LogOut, Settings, UserCircle } from "lucide-react";
 
 import { UserAvatar } from "@/components/account/user-avatar";
-import { CompanySwitcherMenu } from "@/components/layout/company-switcher-menu";
 import { useAuth } from "@/components/providers/auth-provider";
 import {
   DropdownMenu,
@@ -117,8 +116,6 @@ export function SidebarUserMenu({ collapsed = false }: SidebarUserMenuProps) {
                 </div>
               </DropdownMenuLabel>
             </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <CompanySwitcherMenu />
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem

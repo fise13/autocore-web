@@ -17,6 +17,7 @@ import { haptics, spacing } from '@/theme';
 import { withAlpha } from '@/theme/color-utils';
 
 import { shareEnginePhoto } from '../lib/engine-photo-file';
+import { eng } from '../layout';
 
 const TILE = 132;
 
@@ -45,10 +46,10 @@ function PhotoTile({ url, onPress }: { url: string; onPress: () => void }) {
       style={{
         width: TILE,
         height: TILE,
-        borderRadius: 8,
+        borderRadius: eng.radius,
         overflow: 'hidden',
         backgroundColor: withAlpha(colors.muted, isDark ? 0.8 : 1),
-        borderWidth: 1,
+        borderWidth: eng.hairline,
         borderColor: colors.border,
         opacity: pressed ? 0.85 : 1,
       }}
@@ -68,7 +69,7 @@ function PhotoTile({ url, onPress }: { url: string; onPress: () => void }) {
         <Skeleton
           width={TILE}
           height={TILE}
-          style={{ position: 'absolute', top: 0, left: 0, borderRadius: 8 }}
+          style={{ position: 'absolute', top: 0, left: 0, borderRadius: eng.radius }}
         />
       )}
     </Pressable>
@@ -192,8 +193,8 @@ export function EnginePhotoStrip({
           alignItems: 'center',
           gap: spacing[3],
           padding: spacing[3],
-          borderRadius: 12,
-          borderWidth: 1,
+          borderRadius: eng.cardRadius,
+          borderWidth: eng.hairline,
           borderColor: colors.border,
           backgroundColor: colors.card,
         }}

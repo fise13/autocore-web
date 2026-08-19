@@ -4,7 +4,7 @@ import Reanimated from 'react-native-reanimated';
 import { Text } from '@/components/ui';
 import { usePressAnimation } from '@/animations';
 import { useTheme } from '@/hooks';
-import { haptics, fontFamily } from '@/theme';
+import { haptics, fontFamily, tokens } from '@/theme';
 
 import { searchTimeline, useSearchEnter } from '../animation';
 import { formatPrice, formatVin, inventoryCardSubtitle, normalizeInventoryCode } from '../lib/format';
@@ -70,8 +70,8 @@ export function SearchEngineCard({
   const content = (
     <View
       style={{
-        borderRadius: 12,
-        borderWidth: 1,
+        borderRadius: tokens.radius.group,
+        borderWidth: tokens.control.hairline,
         borderColor: colors.border,
         backgroundColor: colors.card,
         overflow: 'hidden',

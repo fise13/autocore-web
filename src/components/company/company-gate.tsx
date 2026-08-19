@@ -2,7 +2,7 @@
 
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Users } from "lucide-react";
+import { Upload, Users } from "lucide-react";
 
 import { AppLogo } from "@/components/brand/app-logo";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
 import { clearInviteToken, readInviteToken } from "@/lib/invites/pending-invite";
+import { skipOnboardingForBusinessImport } from "@/lib/onboarding/skip-to-business-import";
 import { mapAuthError, userCopy } from "@/lib/user-copy";
 
 type CompanyGateProps = {
@@ -19,7 +20,8 @@ type CompanyGateProps = {
 };
 
 export function CompanyGate({ children }: CompanyGateProps) {
-  const { profile, createCompany, joinCompanyWithInvite, joinCompanyWithInviteToken, isLoading } = useAuth();
+  const { profile, createCompany, joinCompanyWithInvite, joinCompanyWithInviteToken, isLoading } =
+    useAuth();
   const router = useRouter();
   const [companyName, setCompanyName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
@@ -84,6 +86,21 @@ export function CompanyGate({ children }: CompanyGateProps) {
     }, userCopy.company.creatingCompany);
   }
 
+  async function onImportBusiness() {
+    if (!companyName.trim()) {
+      setError(userCopy.company.importBusinessNeedsName);
+      return;
+    }
+    if (!profile?.id) return;
+
+    await runAction(async () => {
+      const companyId = await createCompany(companyName.trim());
+      await skipOnboardingForBusinessImport(companyId, profile.id);
+      setCompanyName("");
+      router.push("/migration");
+    }, userCopy.company.openingImport);
+  }
+
   async function onJoinCompany(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!inviteCode.trim()) return;
@@ -130,6 +147,17 @@ export function CompanyGate({ children }: CompanyGateProps) {
               <Button type="submit" disabled={isSubmitting} className="w-full">
                 {userCopy.company.createButton}
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isSubmitting}
+                className="w-full"
+                onClick={() => void onImportBusiness()}
+              >
+                <Upload data-icon="inline-start" className="size-4" aria-hidden />
+                {userCopy.company.importBusiness}
+              </Button>
+              <p className="text-xs text-muted-foreground">{userCopy.company.importBusinessHint}</p>
             </form>
           </CardContent>
         </Card>

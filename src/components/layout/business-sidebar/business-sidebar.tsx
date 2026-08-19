@@ -79,10 +79,8 @@ function BusinessSidebarInner({
   const companyId = normalizeCompanyId(profile?.companyId);
   const uid = profile?.id ?? "";
 
-  const { collection: activeCollection, brandLocalId: activeBrandLocalId } = useMemo(
-    () => parseCollectionFromSearchParams(searchParams, pathname),
-    [pathname, searchParams],
-  );
+  const { collection: activeCollection, brandLocalId: activeBrandLocalId, filter: activeFilter } =
+    useMemo(() => parseCollectionFromSearchParams(searchParams, pathname), [pathname, searchParams]);
   const resolvedCollection = activeCollectionProp ?? activeCollection;
 
   const baseCounts = useSidebarCounts({
@@ -249,6 +247,7 @@ function BusinessSidebarInner({
                       brandCounts={brandCounts}
                       activeCollection={resolvedCollection}
                       activeBrandLocalId={activeBrandLocalId}
+                      activeFilter={activeFilter}
                       soldRoute={soldRoute || pathname === "/sold"}
                       collapsed={effectiveCollapsed}
                       onNavigate={onNavigate}

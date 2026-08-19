@@ -5,11 +5,14 @@ import { useRouter, type Href } from 'expo-router';
 
 import { CarIcon } from '@/assets/icons';
 import {
+  CatalogAddButton,
   CatalogScreenHeader,
+  CatalogSectionHeader,
   ContentState,
   FlashList,
   Screen,
   ScreenGate,
+  SearchInput,
   catalogRowPosition,
   toast,
   type CatalogRowPosition,
@@ -21,7 +24,7 @@ import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import type { MobileWarehouseLocation } from '@/hooks/use-mobile-relocate';
 import { goBackOrReplace } from '@/lib/navigation/stack-back';
 import { isRealtimeReady } from '@/lib/realtime/subscription-registry';
-import { rhythm } from '@/theme';
+import { rhythm, spacing } from '@/theme';
 import type { MotorEntity } from '@/types/motor';
 import type { WarehouseEntity } from '@/types/warehouse';
 
@@ -33,15 +36,11 @@ import {
   EngineCatalogRow,
   type EngineCatalogActions,
 } from './components/engine-catalog-row';
-import { EngineCatalogSkeleton } from './components/engine-catalog-skeleton';
 import { EngineLocationSheet } from './components/engine-location-sheet';
 import {
   EngineQualityFilterBar,
   type EngineQualityFilterValue,
 } from './components/engine-quality-filter-bar';
-import { EngineAddControl } from './components/engine-surface';
-import { EngineYardHeading } from './components/engine-yard-heading';
-import { EngineYardSearch } from './components/engine-yard-search';
 import { EnginesLiftProvider } from './components/engines-lift-provider';
 import { eng } from './layout';
 import { engineMatchesQualityFilter } from './lib/engine-quality';
@@ -49,12 +48,14 @@ import {
   engineMatchesQuery,
   engineUnitLocation,
   groupEnginesByVariant,
+  variantHeading,
+  variantSubtitle,
   type EngineVariant,
 } from './lib/engine-variants';
 import { newEngineHref } from './navigation';
 
 type EngineRow =
-  | { type: 'header'; key: string; variant: EngineVariant }
+  | { type: 'header'; key: string; kicker?: string; title: string; meta: string }
   | {
       type: 'unit';
       key: string;
@@ -64,8 +65,15 @@ type EngineRow =
 
 function flattenVariants(variants: EngineVariant[]): EngineRow[] {
   const rows: EngineRow[] = [];
-  variants.forEach((variant) => {
-    rows.push({ type: 'header', key: `h:${variant.id}`, variant });
+  for (const variant of variants) {
+    const heading = variantHeading(variant);
+    rows.push({
+      type: 'header',
+      key: `h:${variant.id}`,
+      kicker: heading.kicker ?? undefined,
+      title: heading.title,
+      meta: variantSubtitle(variant),
+    });
     variant.units.forEach((motor, index) => {
       rows.push({
         type: 'unit',
@@ -74,7 +82,7 @@ function flattenVariants(variants: EngineVariant[]): EngineRow[] {
         position: catalogRowPosition(index, variant.units.length),
       });
     });
-  });
+  }
   return rows;
 }
 
@@ -83,13 +91,7 @@ function plural(count: number, one: string, many: string): string {
 }
 
 /**
- * Engines — the yard, filed by motor.
- *
- * The chrome is a navigation bar: back, the one verb this screen owns, a large
- * title that condenses as the catalog scrolls, and a search field plus quality
- * tabs that never move. Quality is a document picker rather than a row of
- * chips, because a unit has exactly one grade. Long-press is hosted here, not
- * in FlashList — same lift menu as work orders.
+ * Engines — serialized motors, grouped by variant like Locations groups by zone.
  */
 export function EnginesScreen() {
   return (
@@ -210,29 +212,11 @@ function EnginesScreenBody() {
     [assignLocation, warehouseId],
   );
 
-  // Hysteresis: the title condenses a little after the list starts moving and
-  // only expands again near the top, so a nudge never flickers the chrome.
+  // Hysteresis: title collapses after the list moves, expands again near the top.
   const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetY = event.nativeEvent.contentOffset.y;
     setScrolled((current) => (current ? offsetY > 6 : offsetY > 18));
   }, []);
-
-  const renderItem = useCallback(
-    ({ item }: { item: EngineRow }) => {
-      if (item.type === 'header') {
-        return <EngineYardHeading variant={item.variant} />;
-      }
-      return (
-        <EngineCatalogRow
-          motor={item.motor}
-          position={item.position}
-          onPress={openEngine}
-          actions={catalogActions}
-        />
-      );
-    },
-    [catalogActions, openEngine],
-  );
 
   if (!canView) {
     return (
@@ -247,7 +231,7 @@ function EnginesScreenBody() {
   const filtering = Boolean(deferredQuery) || quality !== 'all';
 
   const subtitle = loading
-    ? 'Loading yard…'
+    ? 'Loading catalog…'
     : filtering
       ? `${plural(unitCount, 'match', 'matches')} · ${plural(typeCount, 'motor', 'motors')}`
       : unplacedCount > 0
@@ -264,29 +248,35 @@ function EnginesScreenBody() {
           onBack={() => goBackOrReplace(router, '/(tabs)/work' as Href)}
           action={
             canEdit ? (
-              <EngineAddControl accessibilityLabel="Add an engine" onPress={addEngine} />
+              <CatalogAddButton accessibilityLabel="Add an engine" onPress={addEngine} />
             ) : null
           }
           search={
             <View style={{ gap: eng.stack }}>
-              <EngineYardSearch value={query} onChangeText={setQuery} />
+              <SearchInput
+                value={query}
+                onChangeText={setQuery}
+                onClear={() => setQuery('')}
+                placeholder="Serial, brand, code, or shelf"
+                accessibilityLabel="Search engines"
+              />
               <EngineQualityFilterBar value={quality} onChange={setQuality} />
             </View>
           }
         />
 
         {loading ? (
-          <EngineCatalogSkeleton />
+          <ContentState state="loading">{null}</ContentState>
         ) : rows.length === 0 ? (
           <ContentState
             state="empty"
             emptyIcon={CarIcon}
-            emptyTitle={filtering ? 'Nothing in the yard matches' : 'No engines yet'}
+            emptyTitle={filtering ? 'No engines match' : 'No engines yet'}
             emptyDescription={
               filtering
-                ? 'Try a serial, a motor code, a shelf, or another grade.'
+                ? 'Try the serial, the engine code, the shelf, or another grade.'
                 : canEdit
-                  ? 'Add the first unit — serial, motor, quality, shelf.'
+                  ? 'Add the first one — serial, brand, code, shelf.'
                   : 'Serialized motors show up here once they are received.'
             }
             onEmptyAction={canEdit ? addEngine : undefined}
@@ -299,12 +289,28 @@ function EnginesScreenBody() {
             data={rows}
             keyExtractor={(row) => row.key}
             getItemType={(row) => row.type}
-            renderItem={renderItem}
             onScroll={onScroll}
             scrollEventThrottle={16}
             contentContainerStyle={{
+              paddingTop: spacing[1],
               paddingBottom: scrollBottom + rhythm.tabBarBreathing,
             }}
+            renderItem={({ item }) =>
+              item.type === 'header' ? (
+                <CatalogSectionHeader
+                  kicker={item.kicker}
+                  title={item.title}
+                  meta={item.meta}
+                />
+              ) : (
+                <EngineCatalogRow
+                  motor={item.motor}
+                  position={item.position}
+                  onPress={openEngine}
+                  actions={catalogActions}
+                />
+              )
+            }
           />
         )}
       </Screen>

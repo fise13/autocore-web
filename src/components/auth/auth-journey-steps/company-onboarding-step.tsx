@@ -1,8 +1,9 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { Building2, Loader2, Users } from "lucide-react";
+import { Building2, Loader2, Upload, Users } from "lucide-react";
 
 import { AuthJourneyReveal } from "@/components/auth/auth-journey-reveal";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -13,11 +14,14 @@ import { useUserCompanies } from "@/hooks/use-user-companies";
 import { clearInviteToken, readInviteToken } from "@/lib/invites/pending-invite";
 import { authJourneyPanelTransition } from "@/lib/motion/auth-journey-motion";
 import { prefersReducedMotion } from "@/lib/motion/cross-route-transition";
+import { skipOnboardingForBusinessImport } from "@/lib/onboarding/skip-to-business-import";
 import { mapAuthError, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 export function CompanyOnboardingStep() {
-  const { createCompany, joinCompanyWithInvite, joinCompanyWithInviteToken, switchCompany } = useAuth();
+  const router = useRouter();
+  const { profile, createCompany, joinCompanyWithInvite, joinCompanyWithInviteToken, switchCompany } =
+    useAuth();
   const { companies, isLoading: companiesLoading } = useUserCompanies();
   const [companyName, setCompanyName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
@@ -70,6 +74,21 @@ export function CompanyOnboardingStep() {
       await createCompany(companyName.trim());
       setCompanyName("");
     }, userCopy.company.creatingCompany);
+  }
+
+  async function onImportBusiness() {
+    if (!companyName.trim()) {
+      setError(userCopy.company.importBusinessNeedsName);
+      return;
+    }
+    if (!profile?.id) return;
+
+    await runAction(async () => {
+      const companyId = await createCompany(companyName.trim());
+      await skipOnboardingForBusinessImport(companyId, profile.id);
+      setCompanyName("");
+      router.push("/migration");
+    }, userCopy.company.openingImport);
   }
 
   async function onJoinCompany(event: FormEvent<HTMLFormElement>) {
@@ -172,6 +191,17 @@ export function CompanyOnboardingStep() {
             <Button type="submit" className="h-11 w-full">
               {userCopy.company.createButton}
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 w-full"
+              disabled={isSubmitting || companiesLoading}
+              onClick={() => void onImportBusiness()}
+            >
+              <Upload data-icon="inline-start" className="size-4" aria-hidden />
+              {userCopy.company.importBusiness}
+            </Button>
+            <p className="text-xs text-muted-foreground">{userCopy.company.importBusinessHint}</p>
           </form>
         </AuthJourneyReveal>
       </div>

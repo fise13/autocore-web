@@ -217,6 +217,10 @@ export const userCopyEn = {
     noActiveCompany: "No active company selected. Open an existing workspace.",
     inviteCodePlaceholder: "For example: DUAVV5",
     joinButton: "Join",
+    importBusiness: "Import business",
+    importBusinessHint: "Create a workspace and upload your legacy file — setup wizard is skipped.",
+    importBusinessNeedsName: "Enter a company name first.",
+    openingImport: "Opening import…",
   },
 
   desktop: {

@@ -190,16 +190,16 @@ export function EngineObjectScreen() {
   return (
     <View style={{ flex: 1 }}>
       <Screen>
-        <ScreenScroll tabBarInset topFade={false} contentStyle={{ paddingBottom: spacing[10] }}>
-          <EngineHero
-            urls={photos}
-            onBack={goBack}
-            onOpenPhoto={setViewerIndex}
-            onIndexChange={setHeroIndex}
-            actions={heroActions}
-            onAction={onHeroAction}
-          />
+        <EngineHero
+          urls={photos}
+          onBack={goBack}
+          onOpenPhoto={setViewerIndex}
+          onIndexChange={setHeroIndex}
+          actions={heroActions}
+          onAction={onHeroAction}
+        />
 
+        <ScreenScroll tabBarInset topFade={false} contentStyle={{ paddingBottom: spacing[10] }}>
           <View
             style={{
               paddingHorizontal: eng.pad,

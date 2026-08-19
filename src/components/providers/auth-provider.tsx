@@ -124,7 +124,7 @@ type AuthContextValue = {
   changeEmail: (newEmail: string, currentPassword: string) => Promise<void>;
   sendPasswordReset: () => Promise<void>;
   logout: () => Promise<void>;
-  createCompany: (name: string) => Promise<void>;
+  createCompany: (name: string) => Promise<string>;
   switchCompany: (companyId: string) => Promise<void>;
   joinCompanyWithInvite: (code: string) => Promise<void>;
   joinCompanyWithInviteToken: (token: string) => Promise<void>;
@@ -730,16 +730,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const user = auth.currentUser;
         if (!user) throw new Error(mapAuthError(new Error("auth/invalid-credential")));
 
-        const recoverIfLinked = async (): Promise<boolean> => {
+        const recoverIfLinked = async (): Promise<string | null> => {
           try {
             const recovered = await loadProfileForUser(user);
-            if (!recovered.companyId?.trim()) return false;
+            if (!recovered.companyId?.trim()) return null;
             applyProfile(user, recovered);
             markSyncAuthPrepared(user.uid);
-            return true;
+            return recovered.companyId.trim();
           } catch (recoveryError) {
             console.warn("[createCompany] profile recovery failed:", recoveryError);
-            return false;
+            return null;
           }
         };
 
@@ -753,7 +753,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
         } catch (error) {
           // Partial client write may have already linked users/{uid}.companyId.
-          if (await recoverIfLinked()) return;
+          const recoveredId = await recoverIfLinked();
+          if (recoveredId) return recoveredId;
           throw error;
         }
 
@@ -769,9 +770,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
           await refreshProfile();
         } catch (error) {
           // Company is already linked — don't strand the user on the form.
-          if (await recoverIfLinked()) return;
+          const recoveredId = await recoverIfLinked();
+          if (recoveredId) return recoveredId;
           throw error;
         }
+
+        return companyId;
       },
       async switchCompany(companyId) {
         if (!isFirebaseReady) throw new Error(mapAuthError(new Error("auth/operation-not-allowed")));

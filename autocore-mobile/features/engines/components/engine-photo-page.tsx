@@ -115,8 +115,8 @@ export function EnginePhotoPage({
 
   const dismissPan = Gesture.Pan()
     .minDistance(6)
-    .activeOffsetY([-12, 12])
-    .failOffsetX([-28, 28])
+    .activeOffsetY([-14, 14])
+    .failOffsetX([-10, 10])
     .onStart(() => {
       savedTy.value = ty.value;
     })
@@ -159,7 +159,12 @@ export function EnginePhotoPage({
     });
 
   const pan = Gesture.Exclusive(zoomPan, dismissPan);
-  const gesture = Gesture.Simultaneous(doubleTap, Gesture.Simultaneous(pinch, pan));
+  // Native lets the horizontal pager ScrollView win single-finger sideways pans.
+  const native = Gesture.Native();
+  const gesture = Gesture.Simultaneous(
+    native,
+    Gesture.Simultaneous(doubleTap, Gesture.Simultaneous(pinch, pan)),
+  );
 
   const imageStyle = useAnimatedStyle(() => ({
     transform: [

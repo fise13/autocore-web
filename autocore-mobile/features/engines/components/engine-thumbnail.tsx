@@ -1,38 +1,37 @@
-import { memo, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 
-import { ImagesIcon } from '@/assets/icons';
+import { CarIcon } from '@/assets/icons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTheme } from '@/hooks';
+import { tokens } from '@/theme/tokens';
 import { withAlpha } from '@/theme/color-utils';
 
-import { EngineGlyph } from './engine-glyph';
 import { eng } from '../layout';
 
 export const ENGINE_THUMB_SIZE = eng.thumb;
 
 /**
- * Engine preview.
- *
- * Photos come off Storage over the network, so the slot is skeletoned until
- * the first frame decodes — the row height never moves. Engines with no photo
- * yet get a quiet glyph rather than a permanent shimmer, otherwise a catalog
- * that has never been photographed looks like it is loading forever.
+ * Engine preview — skeleton until decode; `recyclingKey` avoids FlashList reuse flashes.
  */
 export const EngineThumbnail = memo(function EngineThumbnail({
   url,
   size = ENGINE_THUMB_SIZE,
-  radius = eng.thumbRadius,
 }: {
   url: string | null;
   size?: number;
-  radius?: number;
 }) {
   const { colors, isDark } = useTheme();
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
 
+  useEffect(() => {
+    setLoaded(false);
+    setFailed(false);
+  }, [url]);
+
+  const radius = Math.round(size * 0.26);
   const showPlaceholder = !url || failed;
 
   return (
@@ -42,29 +41,24 @@ export const EngineThumbnail = memo(function EngineThumbnail({
         height: size,
         borderRadius: radius,
         overflow: 'hidden',
-        backgroundColor: isDark ? colors.surfaceElevated : colors.muted,
-        borderWidth: eng.rule,
+        backgroundColor: isDark ? colors.surfaceElevated : withAlpha(colors.muted, 0.9),
+        borderWidth: tokens.control.hairline,
         borderColor: colors.border,
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
       {showPlaceholder ? (
-        <EngineGlyph
-          sf="photo"
-          fallback={ImagesIcon}
-          size={Math.round(size * 0.32)}
-          color={withAlpha(colors.mutedForeground, 0.55)}
-          weight="regular"
-        />
+        <CarIcon size="lg" color={withAlpha(colors.mutedForeground, 0.6)} strokeWidth={1.5} />
       ) : (
         <>
           <Image
             source={{ uri: url }}
+            recyclingKey={url}
             style={{ width: size, height: size }}
             contentFit="cover"
             cachePolicy="memory-disk"
-            transition={140}
+            transition={0}
             alt=""
             accessibilityIgnoresInvertColors
             onLoadEnd={() => setLoaded(true)}

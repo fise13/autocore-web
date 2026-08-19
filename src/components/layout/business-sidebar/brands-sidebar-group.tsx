@@ -50,6 +50,7 @@ import {
   buildCollectionHref,
   type InventoryCollectionId,
 } from "@/lib/navigation/inventory-collections";
+import type { PinnedFilterId } from "@/lib/navigation/pinned-filters";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
@@ -66,6 +67,7 @@ type BrandsSidebarGroupProps = {
   brandCounts?: Map<number, number>;
   activeCollection: InventoryCollectionId;
   activeBrandLocalId?: number;
+  activeFilter?: PinnedFilterId;
   soldRoute?: boolean;
   collapsed?: boolean;
   onNavigate?: () => void;
@@ -78,6 +80,7 @@ export function BrandsSidebarGroup({
   brandCounts,
   activeCollection,
   activeBrandLocalId,
+  activeFilter,
   soldRoute = false,
   collapsed = false,
   onNavigate,
@@ -123,6 +126,30 @@ export function BrandsSidebarGroup({
         .sort((left, right) => left.name.localeCompare(right.name, "ru")),
     [brands, pendingDeleteIds],
   );
+
+  const allBrandCount = useMemo(() => {
+    if (!brandCounts || brandCounts.size === 0) return 0;
+    let total = 0;
+    for (const count of brandCounts.values()) {
+      total += count;
+    }
+    return total;
+  }, [brandCounts]);
+
+  const allBrandsHref = useMemo(() => {
+    if (soldRoute) {
+      const params = new URLSearchParams();
+      params.set("collection", activeCollection);
+      if (activeFilter) params.set("filter", activeFilter);
+      const query = params.toString();
+      return query ? `/sold?${query}` : "/sold";
+    }
+    return buildCollectionHref({
+      collection: activeCollection,
+      filter: activeFilter,
+      brandLocalId: null,
+    });
+  }, [activeCollection, activeFilter, soldRoute]);
 
   // Drop pending markers once realtime confirms the brand is gone.
   useEffect(() => {
@@ -353,6 +380,23 @@ export function BrandsSidebarGroup({
         ) : null}
 
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              isActive={activeBrandLocalId == null}
+              tooltip={userCopy.motors.filters.allBrands}
+              render={
+                isEditing ? undefined : <Link href={allBrandsHref} onClick={() => onNavigate?.()} />
+              }
+            >
+              <span className="min-w-0 flex-1 truncate">{userCopy.motors.filters.all}</span>
+              {allBrandCount > 0 ? (
+                <span className="shrink-0 text-xs tabular-nums tracking-tight text-muted-foreground">
+                  {allBrandCount.toLocaleString("en-US")}
+                </span>
+              ) : null}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
           {displayBrands.length === 0 ? (
             <SidebarMenuItem>
               <div className="rounded-lg border border-dashed border-sidebar-border/70 px-3 py-3 text-center">
@@ -373,6 +417,7 @@ export function BrandsSidebarGroup({
               const href = buildBrandHref({
                 brandLocalId: brand.localId,
                 sold: soldRoute,
+                filter: activeFilter,
                 collection: activeCollection,
               });
               const brandCount = brandCounts?.get(brand.localId) ?? 0;
