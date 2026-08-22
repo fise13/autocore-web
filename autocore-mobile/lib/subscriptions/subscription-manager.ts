@@ -30,11 +30,13 @@ import {
 import { clearEntitlementCaches } from './entitlement-cache';
 import {
   clearEntitlementRegistry,
+  getLocalSubscriptions,
   optimisticAppleEntitlement,
   peekEntitlement,
   setLocalSubscriptions,
   setOptimisticEntitlement,
 } from './entitlement-registry';
+import { appleIdHoldsSubscription } from './apple-id-ownership';
 import type { LocalActiveSubscription } from './entitlement-resolver';
 import * as store from './purchase-manager';
 import {
@@ -63,6 +65,7 @@ import {
 } from './pending-verification';
 import { asPurchaseFailure, failure, isCancellation, isInFlightGhostError } from './purchase-errors';
 import { iapTrace, iapTraceReset } from './iap-trace';
+import { resolveTransactionReplay } from './transaction-replay';
 import type { PlanId, PurchaseFailure, RestoreOutcome } from './types';
 
 /** Company the manager is currently acting for. Set by the provider. */
@@ -98,8 +101,18 @@ function cachedAppAccountToken(companyId: string): string | undefined {
 /** In-flight token fetches, so bootstrap and the first tap share one round-trip. */
 const tokenRequests = new Map<string, Promise<string>>();
 
-/** Transactions already verified this session — avoids re-posting on replay. */
-const verifiedTransactions = new Set<string>();
+/**
+ * Transactions this session has already put to the server, and what it answered.
+ *
+ * `null` means accepted; a `PurchaseFailure` means refused for a reason that
+ * will not change. The verdict is kept, not just the fact, because StoreKit
+ * replays an owned transaction on every Buy tap — and replaying a *refused*
+ * one has to reproduce the refusal rather than quietly read as success.
+ *
+ * Cleared whenever the manager binds to another company, so a verdict is never
+ * carried across workspaces.
+ */
+const settledTransactions = new Map<string, PurchaseFailure | null>();
 
 /** Verify+finish in flight — the Apple listener and the boot drain can race. */
 const settlingTransactions = new Set<string>();
@@ -203,7 +216,7 @@ export function attach(input: string | null): void {
   if (activeCompanyId === companyId && detachPurchaseListener) return;
 
   activeCompanyId = companyId;
-  verifiedTransactions.clear();
+  settledTransactions.clear();
   settlingTransactions.clear();
   clearPurchaseIntent();
 
@@ -234,7 +247,7 @@ export async function detach(): Promise<void> {
   activeCompanyId = null;
   tokenCache.clear();
   tokenRequests.clear();
-  verifiedTransactions.clear();
+  settledTransactions.clear();
   settlingTransactions.clear();
   clearPurchaseIntent();
   clearSheetWatchdog();
@@ -399,6 +412,22 @@ export function purchase(planId: PlanId): Promise<void> {
     return Promise.resolve();
   }
 
+  /**
+   * Apple sells one subscription per group per Apple ID. If this Apple ID
+   * already holds ours and *this* workspace is not the one entitled, there is
+   * no purchase to make — the subscription has to be moved instead.
+   *
+   * Answering immediately is the whole point: running the buy anyway meant
+   * StoreKit silently declined to open a sheet, the tap sat on a spinner for
+   * twenty-five seconds, and the user was finally told Apple had failed to show
+   * a payment sheet. Apple had not failed at anything.
+   */
+  if (!entitlement.isActive && appleIdHoldsSubscription(getLocalSubscriptions(), Date.now())) {
+    iapTrace('purchase:already-owned-elsewhere', { planId });
+    setFlow({ phase: 'failed', failure: failure('already_owned') });
+    return Promise.resolve();
+  }
+
   setFlow({ phase: 'loading', planId });
   armPurchaseIntent();
   lockGateIfUnpaid(companyId);
@@ -415,10 +444,82 @@ export function purchase(planId: PlanId): Promise<void> {
   // Do not await `store.purchase`. Native `requestPurchase` stays pending until
   // Apple dismisses the sheet; treating that resolve as failure painted
   // "not available" over a completed yearly purchase. Never await connect here.
-  void store.purchase(plan, cachedAppAccountToken(companyId)).catch((error) => {
-    applyStoreFailure(asPurchaseFailure(error));
-  });
+  void store
+    .purchase(plan, cachedAppAccountToken(companyId))
+    .then(() => {
+      // The sheet is gone. That is the moment to conclude — not twenty-five
+      // seconds later, and not by guessing.
+      scheduleSheetSettle(companyId, planId);
+    })
+    .catch((error) => {
+      applyStoreFailure(asPurchaseFailure(error));
+    });
   return Promise.resolve();
+}
+
+/**
+ * How long to let a real transaction land before asking the server.
+ *
+ * `Transaction.updates` fires within a beat of the sheet closing on an actual
+ * purchase, so anything still on `loading` after this did not produce one.
+ */
+const SHEET_SETTLE_GRACE_MS = 2_500;
+
+function scheduleSheetSettle(companyId: string, planId: PlanId): void {
+  setTimeout(() => {
+    void settleAfterSheet(companyId, planId).catch(() => undefined);
+  }, SHEET_SETTLE_GRACE_MS);
+}
+
+/**
+ * Decide the outcome of a tap that produced no transaction.
+ *
+ * Apple dismissing the sheet without handing StoreKit a transaction is normal
+ * and means several different things: a crossgrade or renewal-preference change
+ * inside a group the Apple ID already subscribes to, a downgrade that Apple
+ * defers to the next renewal date, an Ask-to-Buy waiting on a parent, or a
+ * sheet the user simply closed. None of them is an error, and none of them can
+ * be told apart from the client alone.
+ *
+ * So this asks the two parties that actually know — StoreKit for what this
+ * Apple ID now holds, and our server for what this workspace is entitled to —
+ * instead of running out a timer and reporting that Apple failed to show a
+ * payment sheet it had, in fact, shown.
+ */
+async function settleAfterSheet(companyId: string, planId: PlanId): Promise<void> {
+  // A transaction arrived and already owns the outcome.
+  if (getFlow().phase !== 'loading') return;
+
+  clearSheetWatchdog();
+  setFlow({ phase: 'verifying', planId });
+  iapTrace('sheet:settle', { planId });
+
+  await refreshLocalSubscriptions().catch(() => undefined);
+  await reconcile(companyId).catch(() => undefined);
+
+  // Anything that concluded while those were in flight wins.
+  if (getFlow().phase !== 'verifying') return;
+
+  if (peekEntitlement(companyId).isActive) {
+    iapTrace('sheet:settle:active', { planId });
+    celebrate(companyId, planId);
+    return;
+  }
+
+  if (appleIdHoldsSubscription(getLocalSubscriptions(), Date.now())) {
+    // Paid for, but not for this workspace. `already_owned` names the move.
+    iapTrace('sheet:settle:owned-elsewhere', { planId });
+    clearPurchaseIntent();
+    setGateCelebrationLock(false);
+    setFlow({ phase: 'failed', failure: failure('already_owned') });
+    return;
+  }
+
+  // Nothing was bought. Not a failure — the paywall simply stays up.
+  iapTrace('sheet:settle:none', { planId });
+  clearPurchaseIntent();
+  setGateCelebrationLock(false);
+  setFlow({ phase: 'cancelled' });
 }
 
 function lockGateIfUnpaid(companyId: string | null): void {
@@ -502,7 +603,6 @@ async function handleIncomingPurchase(purchaseValue: store.Purchase): Promise<vo
   const companyId = activeCompanyId;
   if (!companyId) return;
 
-  clearSheetWatchdog();
   const plan = planForSku(purchaseValue.productId);
   const planId: PlanId = plan?.id ?? 'pro_monthly';
   iapTrace('incoming', {
@@ -515,12 +615,44 @@ async function handleIncomingPurchase(purchaseValue: store.Purchase): Promise<vo
   // A deferred purchase carries no entitlement yet; it converts later and comes
   // back through this same listener.
   if (purchaseValue.purchaseState === 'pending') {
+    clearSheetWatchdog();
     setFlow({ phase: 'pending', planId });
     return;
   }
 
-  if (verifiedTransactions.has(purchaseValue.id)) return;
-  if (settlingTransactions.has(purchaseValue.id)) return;
+  // See `transaction-replay.ts` for why a replay may not simply be ignored.
+  const replay = resolveTransactionReplay({
+    settled: settledTransactions.has(purchaseValue.id),
+    verdict: settledTransactions.get(purchaseValue.id),
+    inFlight: settlingTransactions.has(purchaseValue.id),
+    flowBusy: isFlowBusy(),
+  });
+  iapTrace('replay', { id: purchaseValue.id, kind: replay.kind });
+
+  if (replay.kind === 'ignore') {
+    if (!replay.keepWatchdog) clearSheetWatchdog();
+    return;
+  }
+
+  if (replay.kind === 'celebrate') {
+    clearSheetWatchdog();
+    clearPurchaseIntent();
+    lockGateIfUnpaid(companyId);
+    setFlow({ phase: 'verifying', planId });
+    celebrate(companyId, planId);
+    return;
+  }
+
+  if (replay.kind === 'fail') {
+    clearSheetWatchdog();
+    clearPurchaseIntent();
+    setOptimisticEntitlement(null);
+    setGateCelebrationLock(false);
+    setFlow({ phase: 'failed', failure: replay.failure });
+    return;
+  }
+
+  clearSheetWatchdog();
   settlingTransactions.add(purchaseValue.id);
 
   const flow = getFlow();
@@ -625,7 +757,7 @@ async function settleIncomingPurchase(
     iapTrace('verify:done', { accepted: response.accepted, reason: response.reason });
 
     if (response.accepted) {
-      verifiedTransactions.add(purchaseValue.id);
+      settledTransactions.set(purchaseValue.id, null);
       resolveVerification(purchaseValue.id);
       if (celebrating) celebrate(companyId, planId);
       // Finish only once the entitlement is recorded. An unfinished transaction
@@ -642,8 +774,14 @@ async function settleIncomingPurchase(
 
     if (isTerminalRejection(reason)) {
       // Settled: nothing about this transaction will change on a retry.
+      // The conflict name is folded in before the verdict is remembered, so a
+      // later replay reproduces the same sentence rather than a vaguer one.
+      const settled = response.conflictCompany
+        ? { ...value, message: `This Apple subscription is already used by ${response.conflictCompany}.` }
+        : value;
+
       resolveVerification(purchaseValue.id);
-      verifiedTransactions.add(purchaseValue.id);
+      settledTransactions.set(purchaseValue.id, settled);
       await store.finish(purchaseValue).catch(() => undefined);
 
       // Only speak up if the user is watching this purchase. The boot drain
@@ -653,12 +791,7 @@ async function settleIncomingPurchase(
       if (celebrating) {
         setOptimisticEntitlement(null);
         setGateCelebrationLock(false);
-        setFlow({
-          phase: 'failed',
-          failure: response.conflictCompany
-            ? { ...value, message: `This Apple subscription is already used by ${response.conflictCompany}.` }
-            : value,
-        });
+        setFlow({ phase: 'failed', failure: settled });
       }
       return;
     }
@@ -713,13 +846,20 @@ export async function drainPendingVerifications(
 
       if (response.accepted) {
         resolveVerification(item.transactionId);
-        verifiedTransactions.add(item.transactionId);
+        settledTransactions.set(item.transactionId, null);
         iapTrace('pending:accepted', { transactionId: item.transactionId });
         continue;
       }
 
       if (isTerminalRejection(response.reason)) {
         resolveVerification(item.transactionId);
+        // Remember the verdict, not just that we asked: if StoreKit replays
+        // this transaction into a Buy tap later, the refusal has to be shown
+        // again instead of the tap resolving as a success.
+        settledTransactions.set(
+          item.transactionId,
+          response.reason ? REJECTION_FAILURE[response.reason] : failure('verification_failed'),
+        );
         iapTrace('pending:terminal', { transactionId: item.transactionId, reason: response.reason });
         continue;
       }
@@ -834,7 +974,7 @@ export async function restore(options?: { transfer?: boolean }): Promise<Restore
 
     void (async () => {
       for (const item of purchases) {
-        verifiedTransactions.add(item.id);
+        settledTransactions.set(item.id, null);
         resolveVerification(item.id);
         await store.finish(item).catch(() => undefined);
       }

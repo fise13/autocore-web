@@ -12,6 +12,7 @@ import {
   applyAppleTransaction,
   assertNotStripeManaged,
   companyDisplayName,
+  companyForAppAccountToken,
   companyForOriginalTransaction,
   readStoredSubscription,
 } from "@/lib/billing/apple/apple-entitlement.server";
@@ -87,11 +88,35 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
+      /**
+       * Ownership is resolved *before* the token is treated as an identity
+       * check, and the order matters more than it looks.
+       *
+       * A transaction bought for another of this user's workspaces carries
+       * that workspace's `appAccountToken`. Checking the token first threw
+       * `token_mismatch`, which the app renders as "we could not confirm your
+       * purchase yet" — and the `bound_to_other_company` branch below, the one
+       * that offers to move the subscription, was unreachable. Restoring into a
+       * second workspace was a dead end with a misleading message on it.
+       *
+       * The link is authoritative once it exists; the token answers for a
+       * purchase that was never successfully verified.
+       */
+      const owner =
+        (transaction.originalTransactionId
+          ? await companyForOriginalTransaction(transaction.originalTransactionId)
+          : null) ?? (await companyForAppAccountToken(transaction.appAccountToken));
+
       try {
         assertTransactionUsable({
           transaction,
           expectedBundleId: credentials.bundleId,
-          expectedAppAccountToken: stored.appleAppAccountToken ?? null,
+          // Only used as an identity check when ownership cannot be established
+          // any other way — otherwise a mismatch means "another workspace",
+          // which is a transfer, not a forgery. With no owner and no matching
+          // token the transaction stays refused, so an arbitrary id still
+          // cannot be restored into a workspace it never belonged to.
+          expectedAppAccountToken: owner ? null : (stored.appleAppAccountToken ?? null),
           acceptedEnvironments: accepted,
           knownProductIds: APPLE_PRODUCT_IDS,
           now,
@@ -103,10 +128,6 @@ export async function POST(request: NextRequest) {
         }
         throw error;
       }
-
-      const owner = transaction.originalTransactionId
-        ? await companyForOriginalTransaction(transaction.originalTransactionId)
-        : null;
 
       if (owner && owner !== companyId && !body.transfer) {
         if (!conflict) conflict = { transaction, companyId: owner };

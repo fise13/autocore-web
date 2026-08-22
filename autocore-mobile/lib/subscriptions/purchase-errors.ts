@@ -15,7 +15,11 @@ import type { PurchaseFailure, PurchaseFailureCode } from './types';
 const MESSAGES: Record<PurchaseFailureCode, string> = {
   user_cancelled: 'Purchase cancelled.',
   network: 'No connection to the App Store. Check your network and try again.',
-  already_owned: 'You already have an active subscription for this Apple ID.',
+  // Apple sells one subscription per group per Apple ID, so this is not a dead
+  // end — it is a move. Naming the action matters: without it the reader is
+  // told what is wrong and left with no way forward.
+  already_owned:
+    'This Apple ID already has an AutoCore subscription. Tap Restore Purchases to move it to this workspace.',
   not_available: 'This subscription is not available right now. Please try again later.',
   deferred: 'Your purchase is waiting for approval.',
   store_unavailable: 'In-app purchases are unavailable on this device.',
@@ -27,7 +31,11 @@ const MESSAGES: Record<PurchaseFailureCode, string> = {
   permission_denied: 'Only an owner or admin can manage this workspace subscription.',
   server_unconfigured:
     'Your payment went through, but AutoCore cannot reach the App Store to record it. This is on our side — contact support.',
-  sheet_timeout: 'Apple did not open the payment sheet. Try again.',
+  // Only reachable when `requestPurchase` never settles at all — the sheet is
+  // genuinely stuck. A sheet that opened and closed without a transaction is a
+  // normal outcome and is resolved against the server instead, so this no
+  // longer gets blamed for crossgrades and dismissed sheets.
+  sheet_timeout: 'The App Store did not respond. Try again.',
   unknown: 'Something went wrong with the purchase. Please try again.',
 };
 
