@@ -60,6 +60,7 @@ import {
   UserRound,
   Users,
   Wrench,
+  WifiOff,
   X,
 } from 'lucide-react-native';
 
@@ -113,6 +114,7 @@ export const MapPinIcon = createIcon(MapPin, 'MapPinIcon');
 export const TagIcon = createIcon(Tag, 'TagIcon');
 export const ClockIcon = createIcon(Clock, 'ClockIcon');
 export const CloudIcon = createIcon(Cloud, 'CloudIcon');
+export const WifiOffIcon = createIcon(WifiOff, 'WifiOffIcon');
 export const ImagesIcon = createIcon(Images, 'ImagesIcon');
 export const CameraIcon = createIcon(Camera, 'CameraIcon');
 

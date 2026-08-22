@@ -3,14 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
-import { useToast } from "@/components/ui/toast-provider";
-import {
-  activateInternalProRemote,
-  refreshCompanyBillingRemote,
-} from "@/lib/billing/internal-billing.client";
-import { syncCompanyBilling } from "@/infrastructure/stripe/billing-service";
+import { usePaddleSubscribe } from "@/hooks/use-paddle-subscribe";
+import { refreshCompanyBillingRemote } from "@/lib/billing/internal-billing.client";
+import { syncCompanyBillingState } from "@/lib/billing/sync-company-billing.client";
 import { normalizeCompanyId } from "@/lib/company-id";
-import { StripeBillingInterval } from "@/lib/stripe/prices";
+import { isPaddleCheckoutConfigured } from "@/lib/paddle/config";
+import { type PaddleBillingInterval } from "@/lib/paddle/prices";
 import { userCopy } from "@/lib/user-copy";
 
 const BILLING_PORTAL_RETURN_KEY = "autocore-billing-portal-return";
@@ -29,7 +27,7 @@ export function useBillingActions({
 }: UseBillingActionsOptions) {
   const resolvedCompanyId = normalizeCompanyId(companyId);
   const { isPro, isLoading, canManageBilling } = useBillingGate();
-  const { toast } = useToast();
+  const { subscribe, ready: paddleReady, configured: paddleConfigured } = usePaddleSubscribe();
   const [pending, setPending] = useState<"sync" | "checkout" | null>(null);
 
   useEffect(() => {
@@ -38,7 +36,7 @@ export function useBillingActions({
     sessionStorage.removeItem(BILLING_PORTAL_RETURN_KEY);
 
     setPending("sync");
-    void syncCompanyBilling(resolvedCompanyId)
+    void syncCompanyBillingState(resolvedCompanyId)
       .then((active) => {
         onStatus?.(active ? userCopy.billing.proActiveHint : userCopy.billing.freeActiveHint);
       })
@@ -49,37 +47,58 @@ export function useBillingActions({
   }, [onStatus, resolvedCompanyId, syncOnPortalReturn]);
 
   const checkout = useCallback(
-    async (interval: StripeBillingInterval) => {
+    async (interval: PaddleBillingInterval) => {
       if (!canManageBilling) return;
       setPending("checkout");
       onStatus?.(null);
+
       try {
-        await activateInternalProRemote(resolvedCompanyId, interval);
+        if (!paddleConfigured) {
+          throw new Error(userCopy.billing.paymentUnavailable);
+        }
+        if (!paddleReady) {
+          throw new Error("Paddle checkout is still loading");
+        }
+
         sessionStorage.setItem(PRO_CHECKOUT_SESSION_KEY, "1");
-        onStatus?.(userCopy.billing.proActiveHint);
-        toast({
-          title: userCopy.billing.proActivation.celebrationTitle,
-          description: userCopy.billing.proActivation.celebrationSubtitle,
+        const opened = await subscribe({
+          interval,
+          companyId: resolvedCompanyId,
+          syncAfterComplete: true,
         });
+        if (!opened) {
+          throw new Error(userCopy.billing.paymentUnavailable);
+        }
       } catch (error) {
         onStatus?.(error instanceof Error ? error.message : userCopy.billing.loadError);
-        toast({
-          title: userCopy.billing.paymentUnavailableTitle,
-          description: userCopy.billing.paymentUnavailable,
-        });
       } finally {
         setPending(null);
       }
     },
-    [canManageBilling, onStatus, resolvedCompanyId, toast],
+    [canManageBilling, onStatus, paddleConfigured, paddleReady, resolvedCompanyId, subscribe],
   );
 
-  const openPortal = useCallback(() => {
-    toast({
-      title: userCopy.billing.paymentUnavailableTitle,
-      description: userCopy.billing.paymentUnavailable,
-    });
-  }, [toast]);
+  const openPortal = useCallback(async () => {
+    if (!canManageBilling) return;
+
+    if (isPaddleCheckoutConfigured()) {
+      setPending("sync");
+      onStatus?.(null);
+      try {
+        const { openPaddlePortalRemote } = await import("@/lib/billing/sync-company-billing.client");
+        const url = await openPaddlePortalRemote(resolvedCompanyId);
+        sessionStorage.setItem(BILLING_PORTAL_RETURN_KEY, "1");
+        window.location.assign(url);
+      } catch (error) {
+        onStatus?.(error instanceof Error ? error.message : userCopy.billing.loadError);
+      } finally {
+        setPending(null);
+      }
+      return;
+    }
+
+    onStatus?.(userCopy.billing.paymentUnavailable);
+  }, [canManageBilling, onStatus, resolvedCompanyId]);
 
   const syncBilling = useCallback(async () => {
     setPending("sync");
@@ -90,7 +109,7 @@ export function useBillingActions({
         onStatus?.(userCopy.billing.proActiveHint);
         return true;
       }
-      const active = await syncCompanyBilling(resolvedCompanyId);
+      const active = await syncCompanyBillingState(resolvedCompanyId);
       onStatus?.(active ? userCopy.billing.proActiveHint : userCopy.billing.freeActiveHint);
       return active;
     } catch (error) {

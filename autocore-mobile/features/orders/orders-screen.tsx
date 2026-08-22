@@ -1,7 +1,7 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import type { View as RNView } from 'react-native';
-import { Stack, useRouter, type Href } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
 import { ClipboardListIcon, FilterIcon } from '@/assets/icons';
@@ -40,6 +40,21 @@ import type { OrderFilterId, WorkOrder } from './types';
 
 const FILTER_IDS = orderFilters.map((filter) => filter.id);
 
+function parseOrderFilter(value: string | string[] | undefined): OrderFilterId | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw) return null;
+  return FILTER_IDS.includes(raw as OrderFilterId) ? (raw as OrderFilterId) : null;
+}
+
+function parseMineOnly(value: string | string[] | undefined): boolean {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw === '1';
+}
+
+function isOpenOrderStatus(status: WorkOrder['status']): boolean {
+  return status !== 'completed' && status !== 'delivered' && status !== 'cancelled';
+}
+
 const FILTER_SF: Record<OrderFilterId, SFSymbol> = {
   open: 'circle',
   in_progress: 'wrench.and.screwdriver',
@@ -59,6 +74,7 @@ export function OrdersScreen() {
 
 function OrdersScreenBody() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ filter?: string | string[]; mine?: string | string[] }>();
   const { colors } = useTheme();
   const { openLift, filterLifted } = useOrdersLift();
   const { companyId, profile, can, uid } = useSession();
@@ -73,18 +89,29 @@ function OrdersScreenBody() {
   });
 
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<OrderFilterId>('open');
+  const [filter, setFilter] = useState<OrderFilterId>(
+    () => parseOrderFilter(params.filter) ?? 'open',
+  );
+  const mineOnly = parseMineOnly(params.mine);
   const [editing, setEditing] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const filterButtonRef = useRef<RNView>(null);
 
+  useEffect(() => {
+    const next = parseOrderFilter(params.filter);
+    if (next) setFilter(next);
+  }, [params.filter]);
+
   const meta = useMemo(() => computeMobileOrdersMeta(orders), [orders]);
   const filterCounts = useMemo(() => computeMobileFilterCounts(orders, FILTER_IDS), [orders]);
 
-  const filteredOrders = useMemo(
-    () => filterMobileOrders(orders, filter, query),
-    [filter, orders, query],
-  );
+  const filteredOrders = useMemo(() => {
+    let list = filterMobileOrders(orders, filter, query);
+    if (mineOnly) {
+      list = list.filter((order) => order.isAssignedToMe && isOpenOrderStatus(order.status));
+    }
+    return list;
+  }, [filter, mineOnly, orders, query]);
 
   const activeFilterLabel =
     orderFilters.find((entry) => entry.id === filter)?.label ?? 'Active';

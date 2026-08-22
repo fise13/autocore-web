@@ -75,21 +75,3 @@ export function formatIapTraceLines(limit = 12): string[] {
     return `+${event.deltaMs}ms ${event.step}${extra}`;
   });
 }
-
-export function formatIapPaywallStatus(input: {
-  connected: boolean;
-  storePrepared: boolean;
-  sku: string | null;
-  warmed: boolean;
-  flowPhase: string;
-}): string {
-  const last = events[events.length - 1];
-  return [
-    input.connected ? 'connected' : 'disconnected',
-    input.storePrepared ? 'ready' : 'preparing',
-    input.sku ?? 'no-sku',
-    input.warmed ? 'warm' : 'cold',
-    input.flowPhase,
-    last ? `+${last.deltaMs}ms ${last.step}` : 'no-trace',
-  ].join(' · ');
-}

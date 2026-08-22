@@ -21,14 +21,17 @@ type PlanCardProps = {
   selected: boolean;
   onSelect: (planId: PlanOffer['plan']['id']) => void;
   savingsLabel: string | null;
-  /** Apple intro terms, only when this Apple ID is eligible. */
-  introLabel?: string | null;
   index: number;
   selectable: boolean;
   last?: boolean;
 };
 
-/** Grouped island — same language as settings CollectionRow, not inverted tiles. */
+/**
+ * Outlined group rather than a filled island.
+ *
+ * The paywall now has one heavy element — the engine — and the plan list reads
+ * as a quiet control under it instead of competing for attention.
+ */
 export function PlanPicker({ children }: { children: ReactNode }) {
   const { colors } = useTheme();
 
@@ -36,7 +39,8 @@ export function PlanPicker({ children }: { children: ReactNode }) {
     <View
       style={{
         borderRadius: tokens.radius.sheet,
-        backgroundColor: colors.secondary,
+        borderWidth: tokens.control.hairline,
+        borderColor: colors.border,
         overflow: 'hidden',
       }}
     >
@@ -45,12 +49,19 @@ export function PlanPicker({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * One plan, one line: name on the left, store price on the right.
+ *
+ * The introductory terms deliberately do not appear here. They used to add two
+ * more lines per row ("2 weeks free" replacing the price, then "then €24,99 per
+ * month" under it), which pushed the same sentence onto the screen three times —
+ * the row, the CTA, and the disclosure Apple requires anyway.
+ */
 export function PlanCard({
   offer,
   selected,
   onSelect,
   savingsLabel,
-  introLabel = null,
   index,
   selectable,
   last = false,
@@ -68,17 +79,15 @@ export function PlanCard({
 
   const { plan, product } = offer;
   const title = plan.interval === 'yearly' ? 'Yearly' : 'Monthly';
-  const period = plan.interval === 'yearly' ? 'per year' : 'per month';
-  const priceLine = product ? `${product.displayPrice} ${period}` : 'Price unavailable';
-  const afterTrial =
-    introLabel && product ? `then ${product.displayPrice} ${period}` : null;
+  const period = plan.interval === 'yearly' ? 'year' : 'month';
+  const price = product ? `${product.displayPrice} / ${period}` : 'Unavailable';
 
   return (
     <Animated.View style={enterStyle}>
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ selected }}
-        accessibilityLabel={`${title}, ${priceLine}${introLabel ? `, ${introLabel}` : ''}${savingsLabel ? `, ${savingsLabel}` : ''}`}
+        accessibilityLabel={`${title}, ${price}${savingsLabel ? `, ${savingsLabel}` : ''}`}
         accessibilityHint="Selects this billing period"
         onPressIn={() => {
           if (reduced) return;
@@ -111,11 +120,11 @@ export function PlanCard({
           {selectable ? (
             <View
               style={{
-                width: 22,
-                height: 22,
+                width: 20,
+                height: 20,
                 borderRadius: tokens.radius.full,
                 borderWidth: selected ? 0 : 1.5,
-                borderColor: colors.primary,
+                borderColor: colors.border,
                 backgroundColor: selected ? colors.primary : 'transparent',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -127,41 +136,39 @@ export function PlanCard({
             </View>
           ) : null}
 
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text variant="body" style={{ fontWeight: '600', color: colors.foreground }}>
-              {title}
-            </Text>
-            <Text variant="caption" color="muted">
-              {introLabel ?? priceLine}
-            </Text>
-            {afterTrial ? (
-              <Text variant="caption" color="muted">
-                {afterTrial}
-              </Text>
-            ) : null}
-          </View>
+          <Text
+            variant="body"
+            style={{ fontWeight: '600', color: colors.foreground, fontSize: 16 }}
+          >
+            {title}
+          </Text>
 
-          {plan.interval === 'yearly' && savingsLabel ? (
+          {savingsLabel ? (
             <View
               style={{
                 paddingHorizontal: tokens.space.inline,
-                paddingVertical: tokens.space.micro,
+                paddingVertical: 2,
                 borderRadius: tokens.radius.full,
-                backgroundColor: selected ? colors.primary : tones.success.bg,
+                backgroundColor: tones.success.bg,
               }}
             >
               <Text
                 variant="caption"
-                style={{
-                  fontWeight: '700',
-                  fontSize: 11,
-                  color: selected ? colors.primaryForeground : tones.success.fg,
-                }}
+                style={{ fontWeight: '700', fontSize: 11, color: tones.success.fg }}
               >
                 {savingsLabel}
               </Text>
             </View>
           ) : null}
+
+          <Text
+            variant="body"
+            color="muted"
+            numberOfLines={1}
+            style={{ marginLeft: 'auto', fontSize: 15 }}
+          >
+            {price}
+          </Text>
         </Animated.View>
       </Pressable>
     </Animated.View>

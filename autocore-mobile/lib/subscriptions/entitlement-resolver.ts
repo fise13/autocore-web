@@ -37,6 +37,11 @@ export type ResolverInput = {
   remote: CompanySubscription | null | undefined;
   cached: CachedEntitlement | undefined;
   local: LocalActiveSubscription[];
+  /**
+   * A purchase this device made is paid but not yet recorded by the server.
+   * Lets StoreKit's own view outrank a remote `free`, and only then.
+   */
+  pendingVerification?: boolean;
   now?: number;
 };
 
@@ -174,7 +179,7 @@ function fromLocal(
  */
 export function resolveEntitlement(input: ResolverInput): Entitlement {
   const now = input.now ?? Date.now();
-  const { companyId, remote, cached, local, devOverride } = input;
+  const { companyId, remote, cached, local, devOverride, pendingVerification } = input;
 
   // Highest priority by design: the point of the simulator is to override
   // whatever the server and the store actually say.
@@ -186,10 +191,29 @@ export function resolveEntitlement(input: ResolverInput): Entitlement {
   }
 
   if (remote !== undefined) {
-    if (remote === null) {
-      return { ...FREE_ENTITLEMENT, companyId, source: 'authoritative' };
+    const authoritative =
+      remote === null
+        ? { ...FREE_ENTITLEMENT, companyId, source: 'authoritative' as const }
+        : fromSubscription(remote, companyId, 'authoritative', now);
+
+    /**
+     * The server says free, but StoreKit on this device holds a live
+     * subscription and we know why the two disagree: a purchase of ours is
+     * still waiting to be recorded. Believing the server here is what made a
+     * paid workspace fall back to the paywall on the next launch — the
+     * optimistic entitlement only ever lived in memory.
+     *
+     * This grants nothing server-side: every paid API stays behind
+     * `assertCompanyPro`, and the entitlement is labelled `local_unverified`
+     * so the sync indicator says "Verifying with server…" rather than
+     * claiming to be current.
+     */
+    if (!authoritative.isActive && pendingVerification) {
+      const unverified = fromLocal(local, companyId, now);
+      if (unverified) return unverified;
     }
-    return fromSubscription(remote, companyId, 'authoritative', now);
+
+    return authoritative;
   }
 
   if (cached && isCacheTrustworthy(cached, now)) {

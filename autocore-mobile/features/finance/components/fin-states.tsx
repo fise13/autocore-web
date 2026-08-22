@@ -6,14 +6,19 @@ import { useTheme } from '@/hooks';
 
 import { fin, finType } from '../layout';
 import type { FinanceDataGap } from '../types';
-import { FinPressable, FinSheet } from './fin-primitives';
+import { FinChevron, FinPressable, FinSheet } from './fin-primitives';
 
 type NoticeTone = 'offline' | 'warning' | 'danger';
 
+function toneAccent(tone: NoticeTone, colors: ReturnType<typeof useTheme>['colors']): string {
+  if (tone === 'offline') return colors.offlineOnSubtle;
+  if (tone === 'warning') return colors.warning;
+  return colors.danger;
+}
+
 /**
- * One notice component for every degraded state. It never hides the numbers
- * underneath — the figures stay readable and the strip says what is true about
- * them, because a finance screen that blanks out is worse than a stale one.
+ * Actionable state in a Health-style card — accent dot and copy, not a tinted
+ * banner that fights the numbers underneath.
  */
 export function FinNotice({
   tone,
@@ -29,48 +34,67 @@ export function FinNotice({
   onAction?: () => void;
 }) {
   const { colors } = useTheme();
-
-  const palette =
-    tone === 'offline'
-      ? { bg: colors.offlineSubtle, border: colors.offlineBorder, fg: colors.offlineOnSubtle }
-      : tone === 'warning'
-        ? { bg: colors.warningSubtle, border: colors.warningBorder, fg: colors.warningOnSubtle }
-        : { bg: colors.dangerSubtle, border: colors.dangerBorder, fg: colors.dangerOnSubtle };
-
+  const accent = toneAccent(tone, colors);
   const Icon = tone === 'offline' ? CloudIcon : AlertTriangleIcon;
 
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: fin.inline + 2,
-        padding: fin.stack - 4,
-        borderRadius: fin.rowRadius,
-        backgroundColor: palette.bg,
-        borderWidth: fin.hairline,
-        borderColor: palette.border,
-      }}
-    >
-      <Icon size={16} color={palette.fg} strokeWidth={2} />
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text style={{ ...finType.label, color: palette.fg }}>{title}</Text>
-        {detail ? (
-          <Text style={{ ...finType.caption, color: palette.fg, opacity: 0.85 }}>{detail}</Text>
-        ) : null}
-        {actionLabel && onAction ? (
-          <FinPressable
-            onPress={onAction}
-            accessibilityLabel={actionLabel}
-            style={{ paddingTop: fin.micro }}
-          >
-            <Text style={{ ...finType.label, color: palette.fg, textDecorationLine: 'underline' }}>
+    <FinSheet>
+      <FinPressable
+        onPress={onAction}
+        disabled={!onAction}
+        haptic="light"
+        accessibilityLabel={[title, detail, actionLabel].filter(Boolean).join('. ')}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          gap: fin.stack,
+          paddingHorizontal: fin.stack,
+          paddingVertical: fin.stack - 2,
+        }}
+      >
+        <View
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 10,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: colors.secondary,
+            marginTop: 1,
+          }}
+        >
+          <Icon size={16} color={accent} strokeWidth={2} />
+        </View>
+
+        <View style={{ flex: 1, gap: 3 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: fin.inline }}>
+            <View
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: 4,
+                backgroundColor: accent,
+              }}
+            />
+            <Text style={{ ...finType.rowTitle, fontWeight: '600', color: colors.foreground, flex: 1 }}>
+              {title}
+            </Text>
+          </View>
+          {detail ? (
+            <Text style={finType.caption} color="muted">
+              {detail}
+            </Text>
+          ) : null}
+          {actionLabel && onAction ? (
+            <Text style={{ ...finType.caption, fontWeight: '600', color: colors.primary }}>
               {actionLabel}
             </Text>
-          </FinPressable>
-        ) : null}
-      </View>
-    </View>
+          ) : null}
+        </View>
+
+        {onAction ? <FinChevron /> : null}
+      </FinPressable>
+    </FinSheet>
   );
 }
 
@@ -137,9 +161,6 @@ export function FinFullState({
 
 /**
  * What the ledger cannot answer, stated plainly.
- *
- * Every gap names the metric it blocks and the record that would unblock it, so
- * an absent number reads as a known limit rather than a broken screen.
  */
 export function FinGaps({ gaps }: { gaps: FinanceDataGap[] }) {
   const { colors } = useTheme();

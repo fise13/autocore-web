@@ -273,7 +273,7 @@ export function WorkSearchOverlay({
             <WorkGroup title={q ? 'Today' : 'Suggestions'}>
               <WorkGroupRow
                 title={model.today.title}
-                detail={model.today.breakdown ?? 'Nothing waiting'}
+                detail={model.today.breakdown ?? model.today.trend.insight}
                 detailKind={model.today.count > 0 ? 'live' : 'clear'}
                 urgent={model.today.count > 0}
                 onPress={() => {
@@ -307,6 +307,7 @@ export function WorkSearchOverlay({
                     detail={row.detail}
                     detailKind={row.detailKind}
                     urgent={row.attention > 0}
+                    series={row.series}
                     onPress={() => openNode(row.id, row.href)}
                   />
                 ))}

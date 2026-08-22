@@ -148,6 +148,30 @@ NEXT_PUBLIC_STRIPE_PRICE_FREE
 
 Stripe secret keys belong in Firebase Functions configuration, not public Next.js variables.
 
+Apple in-app purchases — **required for the iOS app to record a subscription at all**:
+
+```text
+APPLE_APP_STORE_KEY_ID
+APPLE_APP_STORE_ISSUER_ID
+APPLE_APP_STORE_PRIVATE_KEY
+```
+
+From App Store Connect → Users and Access → Integrations → In-App Purchase. The
+private key is the `.p8` contents; paste it with literal `\n` between lines, which
+is the form `readAppStoreCredentials()` expects.
+
+These are not optional in the way most entries on this page are. Without them
+`/api/mobile/billing/apple/verify` answers `503` for every purchase: StoreKit
+still takes the customer's money, the entitlement is never written, and the app
+retries on a backoff that reaches twelve hours. Nothing on the web shows the
+subscription, because there is no document to show. `/api/mobile/billing/apple/link`
+keeps working throughout — it only mints a UUID — so the workspace looks
+half-configured rather than unconfigured.
+
+Verify after deploy: buy in a TestFlight build and confirm a document appears at
+`appleTransactionLinks/{originalTransactionId}`. An empty collection means no
+purchase has ever been honoured.
+
 `ALLOW_INTERNAL_PRO_ACTIVATION` must be absent or `false` in normal production. Enable it only for a controlled internal licensing environment.
 
 ## Environment separation

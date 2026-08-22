@@ -44,6 +44,7 @@ export function SiteFooter() {
       title: t("footer.columns.legal.title"),
       items: [
         { href: "/legal/privacy", label: t("footer.columns.legal.items.privacy") },
+        { href: "/legal/refund", label: t("footer.columns.legal.items.refund") },
         { href: "/legal/terms", label: t("footer.columns.legal.items.terms") },
       ],
     },

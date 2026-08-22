@@ -15,6 +15,7 @@ export const marketingCleanPaths = {
   download: "/download",
   downloadMobile: "/download/mobile",
   privacy: "/legal/privacy",
+  refund: "/legal/refund",
   terms: "/legal/terms",
 } as const satisfies Record<string, MarketingPathname>;
 
@@ -31,6 +32,7 @@ export const marketingInternalPaths = {
   download: "/marketing/download",
   downloadMobile: "/marketing/download/mobile",
   privacy: "/marketing/legal/privacy",
+  refund: "/marketing/legal/refund",
   terms: "/marketing/legal/terms",
 } as const;
 
@@ -44,6 +46,7 @@ const CLEAN_TO_INTERNAL: Record<string, string> = {
   [marketingCleanPaths.download]: marketingInternalPaths.download,
   [marketingCleanPaths.downloadMobile]: marketingInternalPaths.downloadMobile,
   [marketingCleanPaths.privacy]: marketingInternalPaths.privacy,
+  [marketingCleanPaths.refund]: marketingInternalPaths.refund,
   [marketingCleanPaths.terms]: marketingInternalPaths.terms,
 };
 

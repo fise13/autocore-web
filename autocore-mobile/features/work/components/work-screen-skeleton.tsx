@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { PageHeader } from '@/components/ui/page-header';
 import { ProductScreenShell, ScreenScroll, Skeleton } from '@/components/ui';
 import { useTheme } from '@/hooks/use-theme';
+import { tokens } from '@/theme/tokens';
 
 import { workLayout } from '../layout';
 
@@ -20,19 +21,25 @@ export function WorkScreenSkeleton() {
 
         <View
           style={{
-            marginTop: workLayout.headingTop,
+            marginTop: workLayout.headingTop + workLayout.todayTop,
             marginHorizontal: workLayout.pad,
             minHeight: workLayout.todayMinHeight,
             paddingHorizontal: workLayout.todayPad,
-            paddingVertical: workLayout.todayPad - 3,
-            borderRadius: workLayout.cardRadius + 2,
+            paddingVertical: workLayout.todayPad,
+            borderRadius: tokens.radius.modal,
             backgroundColor: colors.card,
-            justifyContent: 'center',
-            gap: 8,
+            gap: 12,
           }}
         >
-          <Skeleton width="48%" height={16} />
-          <Skeleton width="70%" height={13} />
+          <Skeleton width="42%" height={15} />
+          <Skeleton width="92%" height={20} />
+          <Skeleton width="78%" height={20} />
+          <View style={{ height: tokens.control.hairline, backgroundColor: colors.border }} />
+          <Skeleton width="100%" height={120} rounded="group" />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <Skeleton width="36%" height={12} />
+            <Skeleton width="32%" height={12} />
+          </View>
         </View>
 
         <View

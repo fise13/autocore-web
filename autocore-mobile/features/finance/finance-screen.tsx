@@ -133,9 +133,9 @@ export function FinanceScreen() {
         {!companyId || isBootstrapping ? (
           <FinSkeleton />
         ) : (
-          <View style={{ paddingHorizontal: fin.pad, gap: fin.chapter }}>
+          <View style={{ gap: fin.chapter }}>
           {(!isOnline || errorMessage || !connected) && (
-            <View style={{ gap: fin.inline }}>
+            <View style={{ gap: fin.stack }}>
               {!connected ? (
                 <FinNotice
                   tone="warning"
@@ -163,7 +163,7 @@ export function FinanceScreen() {
           )}
 
           {!isEmptyLedger && model.attention.length > 0 ? (
-            <View style={{ gap: fin.inline }}>
+            <View style={{ gap: fin.stack }}>
               {model.attention.map((item) => (
                 <FinNotice
                   key={item.id}

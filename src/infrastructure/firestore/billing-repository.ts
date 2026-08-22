@@ -3,6 +3,7 @@ import { FirebaseError } from "firebase/app";
 
 import { BillingPlan, BillingStatus, CompanySubscription } from "@/domain/billing";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
+import { billingIntervalFromPaddlePriceId } from "@/lib/paddle/prices";
 import { stripePriceIds } from "@/lib/stripe/prices";
 import { resolveProActive } from "@autocore/billing";
 
@@ -10,9 +11,11 @@ type SubscriptionDoc = {
   plan?: BillingPlan;
   status?: BillingStatus;
   proActive?: boolean;
-  provider?: "internal" | "stripe";
+  provider?: "internal" | "stripe" | "paddle" | "apple";
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
+  paddleCustomerId?: string;
+  paddleSubscriptionId?: string;
   priceId?: string;
   billingInterval?: "monthly" | "yearly" | null;
   currentPeriodEnd?: Timestamp;
@@ -28,6 +31,8 @@ function toDate(value: unknown): Date | null {
 
 function billingIntervalFromPriceId(priceId: string | undefined): CompanySubscription["billingInterval"] {
   if (!priceId) return null;
+  const paddleInterval = billingIntervalFromPaddlePriceId(priceId);
+  if (paddleInterval) return paddleInterval;
   if (priceId === stripePriceIds.proYearly) return "yearly";
   if (priceId === stripePriceIds.proMonthly) return "monthly";
   return null;
@@ -52,6 +57,8 @@ function mapSubscription(data: SubscriptionDoc | undefined): CompanySubscription
     provider: data.provider ?? "internal",
     stripeCustomerId: data.stripeCustomerId,
     stripeSubscriptionId: data.stripeSubscriptionId,
+    paddleCustomerId: data.paddleCustomerId,
+    paddleSubscriptionId: data.paddleSubscriptionId,
     priceId: data.priceId,
     billingInterval: data.billingInterval ?? billingIntervalFromPriceId(data.priceId),
     currentPeriodEnd: toDate(data.currentPeriodEnd),

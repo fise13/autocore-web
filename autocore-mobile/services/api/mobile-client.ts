@@ -107,6 +107,12 @@ function bodyAsString(body: BodyInit | null | undefined): string | undefined {
 function defaultQueueWhenOffline(path: string, method: string): boolean {
   const verb = method.toUpperCase();
   if (verb === 'GET' || verb === 'HEAD') return false;
+  // Billing is never "saved on this iPhone". Queueing a purchase verification
+  // resolved it as `{ ok: true, queued: true }`, which the caller read as a
+  // refusal, dropped, and never retried — while showing the user an offline
+  // toast in the middle of paying. These calls fail loudly and are retried by
+  // `lib/subscriptions/pending-verification`, which knows what it is retrying.
+  if (path.includes('/billing/')) return false;
   if (path.includes('/engine-intake')) return false;
   if (path.includes('/subscriptions')) return false;
   if (path.includes('/invites')) return false;

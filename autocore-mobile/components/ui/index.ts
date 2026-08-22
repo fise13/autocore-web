@@ -18,6 +18,7 @@ export {
   CardAction,
 } from './card';
 export { Surface, type SurfaceVariant } from './surface';
+export { BrandBackdrop, TabDockVignette } from './brand-backdrop';
 export { Screen, ScreenScroll, StackScreen } from './screen';
 export { ScrollEdgeChrome, SCROLL_EDGE_BAR_HEIGHT } from './scroll-edge-chrome';
 export { ProductScreenShell } from './product-screen-shell';

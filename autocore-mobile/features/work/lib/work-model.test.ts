@@ -84,7 +84,7 @@ describe('resolveWorkRowDetail', () => {
     );
     assert.equal(
       resolveWorkRowDetail(PARTS, counts({ parts: { total: 1284, lowStock: 0 } })).detail,
-      '1,284 inventory items',
+      '1,284 items',
     );
   });
 
@@ -201,7 +201,7 @@ describe('resolveWorkRowDetail', () => {
     );
     assert.equal(
       resolveWorkRowDetail(PARTS, counts({ parts: { total: 1, lowStock: 0 } })).detail,
-      '1 inventory item',
+      '1 item',
     );
     assert.equal(
       resolveWorkRowDetail(RECEIVING, counts({ receiving: { awaitingPlacement: 1, total: 4 } }))
@@ -248,9 +248,15 @@ describe('buildWorkModel', () => {
     );
 
     assert.equal(model.today.count, 3);
-    assert.equal(model.today.title, 'Items need attention');
+    assert.equal(model.today.title, 'Open work');
     assert.equal(model.today.breakdown, '2 orders · 1 engine intake');
     assert.equal(model.today.href, '/orders');
+    assert.equal(model.today.segments.length, 2);
+    assert.equal(model.today.segments[0]?.id, 'orders');
+    assert.equal(model.today.segments[0]?.count, 2);
+    assert.equal(model.today.trend.points.length, 18);
+    assert.equal(model.today.trend.shortWeeks, 8);
+    assert.equal(model.today.trend.longWeeks, 18);
   });
 
   it('caps the breakdown so Work does not become a second Home', () => {
@@ -274,18 +280,20 @@ describe('buildWorkModel', () => {
       counts({ orders: { open: 4, attention: 0, total: 40 } }),
     );
     assert.equal(model.today.count, 0);
-    assert.equal(model.today.title, 'Everything is up to date');
+    assert.equal(model.today.title, 'Open work');
     assert.equal(model.today.breakdown, null);
     assert.equal(model.today.href, null);
+    assert.deepEqual(model.today.segments, []);
+    assert.match(model.today.trend.insight, /open work/i);
   });
 
-  it('uses the singular headline for a single item', () => {
+  it('keeps Open work as the Health metric title for a single attention item', () => {
     const model = buildWorkModel(
       grouped,
       counts({ orders: { open: 4, attention: 1, total: 40 } }),
     );
     assert.equal(model.today.count, 1);
-    assert.equal(model.today.title, 'Item needs attention');
+    assert.equal(model.today.title, 'Open work');
   });
 
   it('puts earnings in Today only when payouts or claims are waiting', () => {

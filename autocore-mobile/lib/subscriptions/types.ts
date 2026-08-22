@@ -103,6 +103,8 @@ export type PurchaseFailureCode =
   | 'verification_failed'
   | 'bound_to_other_company'
   | 'permission_denied'
+  /** The server cannot reach the App Store at all — a deployment problem. */
+  | 'server_unconfigured'
   | 'sheet_timeout'
   | 'unknown';
 
@@ -135,7 +137,12 @@ export type RestoreOutcome =
   | { kind: 'restored'; planId: PlanId }
   | { kind: 'empty' }
   | { kind: 'expired' }
-  | { kind: 'conflict'; message: string }
+  /**
+   * The Apple ID's subscription belongs to another workspace. `canTransfer`
+   * says the move is offered — accepting it revokes Pro from `company`, so it
+   * is always a deliberate second step, never part of a plain restore.
+   */
+  | { kind: 'conflict'; message: string; company: string | null; canTransfer: boolean }
   | { kind: 'failed'; failure: PurchaseFailure };
 
 /** Why a gated feature was denied. Each maps to a different UI, never one wall. */

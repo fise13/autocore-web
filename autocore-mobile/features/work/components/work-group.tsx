@@ -16,6 +16,8 @@ import { withAlpha } from '@/theme/color-utils';
 
 import { workLayout } from '../layout';
 import type { WorkDetailKind } from '../lib/work-model';
+import type { WorkspaceSeries } from '../lib/workspace-series';
+import { WorkspaceSpark } from './workspace-spark';
 
 /** Section label + its grouped card. */
 export function WorkGroup({
@@ -72,12 +74,24 @@ export type WorkRowProps = {
   detailKind: WorkDetailKind;
   urgent?: boolean;
   onPress: () => void;
+  /**
+   * Omit entirely for rows that are not workspaces — they keep the original
+   * text-to-chevron gap. Pass `null` for a workspace whose data cannot draw a
+   * shape: the slot is still reserved so every chart in a card shares one
+   * right-hand column.
+   */
+  series?: WorkspaceSeries | null;
 };
 
 /**
  * A workspace row. The subtitle carries live state, so it gets the accent only
  * when something is genuinely waiting on a person — blue stays reserved for
  * interaction and attention.
+ *
+ * The trailing chart is sized to fit the row that already exists rather than
+ * the other way round: it is shorter than one line of title plus one line of
+ * detail, and its width comes out of the 20pt of dead space that used to sit
+ * between the text and the chevron.
  */
 export const WorkGroupRow = memo(function WorkGroupRow({
   title,
@@ -85,6 +99,7 @@ export const WorkGroupRow = memo(function WorkGroupRow({
   detailKind,
   urgent = false,
   onPress,
+  series,
 }: WorkRowProps) {
   const { colors, isDark } = useTheme();
   const motion = useMotion();
@@ -116,10 +131,15 @@ export const WorkGroupRow = memo(function WorkGroupRow({
     });
   };
 
+  const hasSlot = series !== undefined;
+  const spoken = [detail ? `${title}, ${detail}` : title, series?.caption]
+    .filter(Boolean)
+    .join('. ');
+
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={detail ? `${title}, ${detail}` : title}
+      accessibilityLabel={spoken}
       onPressIn={() => setPressed(1)}
       onPressOut={() => setPressed(0)}
       onPress={() => {
@@ -132,7 +152,6 @@ export const WorkGroupRow = memo(function WorkGroupRow({
           {
             flexDirection: 'row',
             alignItems: 'center',
-            gap: workLayout.pad,
             paddingHorizontal: workLayout.cardPadX,
             paddingVertical: workLayout.rowPadY,
             minHeight: workLayout.rowMinHeight,
@@ -154,6 +173,21 @@ export const WorkGroupRow = memo(function WorkGroupRow({
             </Text>
           ) : null}
         </View>
+
+        {hasSlot ? (
+          // The caption is already folded into the row's label above, so the
+          // canvas must not announce itself a second time.
+          <View
+            style={{ marginHorizontal: workLayout.sparkGap }}
+            importantForAccessibility="no-hide-descendants"
+            accessibilityElementsHidden
+          >
+            <WorkspaceSpark series={series ?? null} accent={detailColor} />
+          </View>
+        ) : (
+          <View style={{ width: workLayout.pad }} />
+        )}
+
         <ChevronRightIcon size="sm" color={chevronColor} strokeWidth={1.75} />
       </Animated.View>
     </Pressable>

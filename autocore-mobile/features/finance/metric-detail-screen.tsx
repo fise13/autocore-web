@@ -6,7 +6,7 @@ import { Screen, ScreenScroll, Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { useMoneyFormatRevision } from '@/store/money-format-store';
 
-import { FinCurveChart } from './components/fin-curve-chart';
+import { FinChartLegend, FinSkiaCurveChart } from './components/charts';
 import { FinDetailHeader } from './components/fin-detail-header';
 import { FinPeriodSwitch } from './components/fin-period-switch';
 import { FinDelta, FinDivider, FinSection, FinSheet } from './components/fin-primitives';
@@ -18,7 +18,7 @@ import { changeHeadline } from './lib/drivers';
 import { formatMoneyAdaptive, formatPercent, formatSignedPoints } from './lib/format';
 import { healthCoverageLabel, healthUnavailableReason } from './lib/health';
 import { formatWindowRange } from './lib/period';
-import { buildTrendMetrics } from './lib/trends';
+import { buildTrendMetrics, findMetricForDetail } from './lib/trends';
 import { bandTone, toneColor, toneForValue } from './lib/tone';
 import { financeFlowHref } from './navigation';
 import type { FinanceFlowNodeId } from './types';
@@ -26,8 +26,6 @@ import type { FinanceFlowNodeId } from './types';
 /**
  * One metric, in full: what it reads now, how it moved, the shape it took, the
  * numbers it is built from, and the sentence that says how it is calculated.
- * The method line is not documentation garnish — it is what lets an operator
- * trust the figure enough to act on it.
  */
 export function FinanceMetricDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -44,8 +42,19 @@ export function FinanceMetricDetailScreen() {
   );
 
   const metric = useMemo(
-    () => buildTrendMetrics(model).find((entry) => entry.id === id),
+    () => findMetricForDetail(model, id ?? ''),
     [id, model, moneyRevision],
+  );
+
+  const chartPoints = useMemo(
+    () =>
+      metric
+        ? model.series.map((entry, index) => ({
+            label: entry.bucket.label,
+            value: metric.series[index] ?? 0,
+          }))
+        : [],
+    [metric, model.series],
   );
 
   if (id === 'health') {
@@ -58,40 +67,42 @@ export function FinanceMetricDetailScreen() {
             subtitle={`${model.window.period.longLabel} · ${healthCoverageLabel(model.health)}`}
           />
 
-          <View style={{ paddingHorizontal: fin.pad, gap: fin.chapter }}>
-            <View style={{ gap: fin.tight }}>
-              <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: fin.stack }}>
-                <Text
-                  style={{ ...finType.score, color: colors.foreground }}
-                  maxFontSizeMultiplier={finFontCap.hero}
-                >
-                  {model.health.score ?? '—'}
-                </Text>
-                <View style={{ paddingBottom: 10, gap: 2 }}>
+          <View style={{ gap: fin.chapter }}>
+            <FinSheet padded inset={false} style={{ marginHorizontal: fin.pad }}>
+              <View style={{ gap: fin.tight }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: fin.stack }}>
                   <Text
-                    style={{ ...finType.rowTitle, fontWeight: '600', color: toneColor(tone, colors) }}
+                    style={{ ...finType.score, color: colors.foreground }}
+                    maxFontSizeMultiplier={finFontCap.hero}
                   >
-                    {model.health.bandLabel}
+                    {model.health.score ?? '—'}
                   </Text>
-                  {model.health.delta != null ? (
-                    <Text style={finType.rowMeta} color="muted">
-                      {formatSignedPoints(model.health.delta)} pts{' '}
-                      {model.window.period.comparisonLabel}
+                  <View style={{ paddingBottom: 10, gap: 2 }}>
+                    <Text
+                      style={{ ...finType.rowTitle, fontWeight: '600', color: toneColor(tone, colors) }}
+                    >
+                      {model.health.bandLabel}
                     </Text>
-                  ) : model.health.score == null ? (
-                    <Text style={finType.rowMeta} color="muted">
-                      {healthUnavailableReason(model.health)}
-                    </Text>
-                  ) : null}
+                    {model.health.delta != null ? (
+                      <Text style={finType.rowMeta} color="muted">
+                        {formatSignedPoints(model.health.delta)} pts{' '}
+                        {model.window.period.comparisonLabel}
+                      </Text>
+                    ) : model.health.score == null ? (
+                      <Text style={finType.rowMeta} color="muted">
+                        {healthUnavailableReason(model.health)}
+                      </Text>
+                    ) : null}
+                  </View>
                 </View>
-              </View>
 
-              <Text style={finType.rowMeta} color="muted">
-                A weighted read of five ledger-backed signals. Each is scored 0–100 on its own
-                measurement, then averaged by weight. Signals with nothing to measure are left out
-                of the average rather than filled in.
-              </Text>
-            </View>
+                <Text style={finType.rowMeta} color="muted">
+                  A weighted read of five ledger-backed signals. Each is scored 0–100 on its own
+                  measurement, then averaged by weight. Signals with nothing to measure are left out
+                  of the average rather than filled in.
+                </Text>
+              </View>
+            </FinSheet>
 
             <FinSection title="Signals" caption="Score, weight and what each one reads">
               <FinSignalList signals={model.health.signals} />
@@ -168,66 +179,109 @@ export function FinanceMetricDetailScreen() {
         ? formatPercent(scrubValue)
         : formatMoneyAdaptive(scrubValue);
 
+  const drawKey = `${metric.id}:${period}:${model.series.length}`;
+
+  const formatChartValue =
+    metric.id === 'margin'
+      ? (value: number) => formatPercent(value)
+      : (value: number) => formatMoneyAdaptive(value);
+
+  const previousValue =
+    metric.id === 'margin'
+      ? model.previousTotals.margin
+      : metric.id === 'revenue'
+        ? model.previousTotals.revenue
+        : metric.id === 'costs'
+          ? model.previousTotals.expense
+          : metric.id === 'net'
+            ? model.previousTotals.net
+            : model.previousTotals.net;
+
   return (
     <Screen>
       <ScreenScroll tabBarInset topFade={false}>
         <FinDetailHeader title={metric.label} subtitle={metric.meaning} />
 
-        <View style={{ paddingHorizontal: fin.pad, gap: fin.chapter }}>
-          <View style={{ gap: fin.stack }}>
-            <View style={{ width: 168 }}>
-              <FinPeriodSwitch value={period} onChange={setPeriod} />
-            </View>
-
-            <View style={{ gap: fin.micro }}>
-              <Text
-                style={{ ...finType.hero, color: colors.foreground }}
-                maxFontSizeMultiplier={finFontCap.hero}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-              >
-                {headline}
-              </Text>
-              <View style={{ minHeight: 22, justifyContent: 'center' }}>
-                {point ? (
-                  <Text style={finType.rowMeta} color="muted">
-                    {point.bucket.fullLabel}
-                  </Text>
-                ) : metric.delta ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: fin.inline }}>
-                    <FinDelta
-                      value={metric.delta}
-                      tone={metric.deltaTone}
-                      direction={metric.deltaDirection}
-                    />
-                    <Text style={finType.rowMeta} color="muted">
-                      {metric.deltaCaption}
-                    </Text>
-                  </View>
-                ) : (
-                  <Text style={finType.rowMeta} color="muted">
-                    No comparable period yet
-                  </Text>
-                )}
+        <View style={{ gap: fin.chapter }}>
+          <FinSheet padded inset={false} style={{ marginHorizontal: fin.pad }}>
+            <View style={{ gap: fin.stack }}>
+              <View style={{ width: 168 }}>
+                <FinPeriodSwitch value={period} onChange={setPeriod} />
               </View>
+
+              <View style={{ gap: fin.micro }}>
+                <Text
+                  style={{ ...finType.hero, color: colors.foreground }}
+                  maxFontSizeMultiplier={finFontCap.hero}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {headline}
+                </Text>
+                <View style={{ minHeight: 22, justifyContent: 'center' }}>
+                  {point ? (
+                    <Text style={finType.rowMeta} color="muted">
+                      {point.bucket.fullLabel}
+                    </Text>
+                  ) : metric.delta ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: fin.inline }}>
+                      <FinDelta
+                        value={metric.delta}
+                        tone={metric.deltaTone}
+                        direction={metric.deltaDirection}
+                      />
+                      <Text style={finType.rowMeta} color="muted">
+                        {metric.deltaCaption}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={finType.rowMeta} color="muted">
+                      No comparable period yet
+                    </Text>
+                  )}
+                </View>
+              </View>
+
+              <FinChartLegend
+                columns={[
+                  {
+                    label: 'This period',
+                    value: metric.value,
+                    dotColor: chartColor ?? colors.success,
+                    valueColor: colors.foreground,
+                  },
+                  {
+                    label: 'Previous',
+                    value:
+                      previousValue == null
+                        ? '—'
+                        : metric.id === 'margin'
+                          ? formatPercent(previousValue)
+                          : formatMoneyAdaptive(previousValue),
+                    dotColor: colors.mutedForeground,
+                  },
+                ]}
+              />
+
+              <FinDivider inset={0} />
+
+              <FinSkiaCurveChart
+                points={chartPoints}
+                drawKey={drawKey}
+                activeIndex={activeIndex}
+                onScrub={onScrub}
+                hasData={model.hasData}
+                color={chartColor}
+                baseline={previousValue}
+                formatBaseline={formatChartValue}
+              />
+
+              <Text style={finType.caption} color="muted">
+                {formatWindowRange(model.window)} · hold and drag to explore each{' '}
+                {model.window.period.grain}
+              </Text>
             </View>
-
-            <FinCurveChart
-              points={model.series.map((entry, index) => ({
-                label: entry.bucket.label,
-                value: metric.series[index] ?? 0,
-              }))}
-              drawKey={`${metric.id}:${period}:${model.series.length}`}
-              activeIndex={activeIndex}
-              onScrub={onScrub}
-              hasData={model.hasData}
-              color={chartColor}
-            />
-
-            <Text style={finType.caption} color="muted">
-              {formatWindowRange(model.window)}
-            </Text>
-          </View>
+          </FinSheet>
 
           <FinSection title="Behind the number">
             <FinSheet>
@@ -249,7 +303,7 @@ export function FinanceMetricDetailScreen() {
                 </View>
               ))}
             </FinSheet>
-            <Text style={finType.caption} color="muted">
+            <Text style={{ ...finType.caption, paddingHorizontal: fin.pad }} color="muted">
               {metric.method}
             </Text>
           </FinSection>

@@ -6,7 +6,6 @@ import { motion, useReducedMotion } from "motion/react";
 import { ArrowUpRight, FileText, Shield } from "lucide-react";
 
 import { useMarketingPages } from "@/components/marketing/content/use-marketing-pages";
-import { type LegalDocumentKey } from "@/components/marketing/content/legal-content";
 import { Link } from "@/i18n/navigation";
 import { getPlatformContacts } from "@/lib/platform/platform-contacts";
 
@@ -77,9 +76,12 @@ type LegalExperienceProps = {
   documentKey: LegalDocumentKey;
 };
 
+type LegalDocumentKey = "privacy" | "refund" | "terms";
+
 const HUB_LINKS = [
   { key: "security" as const, href: "/security", icon: Shield },
   { key: "privacy" as const, href: "/legal/privacy", icon: FileText },
+  { key: "refund" as const, href: "/legal/refund", icon: FileText },
   { key: "terms" as const, href: "/legal/terms", icon: FileText },
 ] as const;
 

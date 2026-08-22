@@ -70,6 +70,7 @@ function mapItem(id: string, data: Record<string, unknown>): InventoryItem {
     lowStockThreshold:
       data.lowStockThreshold == null ? undefined : Number(data.lowStockThreshold),
     status: (data.status as InventoryItemStatus) ?? 'active',
+    createdAt: toDateFromFirestore(data.createdAt) ?? undefined,
     updatedAt: toDateFromFirestore(data.updatedAt) ?? undefined,
   });
 }

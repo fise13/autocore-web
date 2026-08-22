@@ -13,6 +13,7 @@ import {
 } from "react";
 
 import { ProActivationCelebration, ProActivationPhase } from "@/components/billing/pro-activation-celebration";
+import { usePaddleCheckout } from "@/components/billing/paddle-provider";
 import { ProPaywallDialog } from "@/components/billing/pro-paywall-dialog";
 import { useToast } from "@/components/ui/toast-provider";
 import { CompanySubscription, isProSubscription } from "@/domain/billing";
@@ -25,7 +26,7 @@ import { refreshCompanyBillingRemote } from "@/lib/billing/internal-billing.clie
 import { ProBillingFeature } from "@/lib/billing/entitlements";
 import { readPendingBillingIntent } from "@/lib/marketing/pending-billing-intent";
 import { readPendingMarketingCheckout } from "@/lib/marketing/pending-checkout";
-import { syncCompanyBilling } from "@/infrastructure/stripe/billing-service";
+import { syncCompanyBillingState } from "@/lib/billing/sync-company-billing.client";
 import { userCopy } from "@/lib/user-copy";
 
 const PRO_CHECKOUT_SESSION_KEY = "autocore-pro-checkout-pending";
@@ -50,6 +51,7 @@ type BillingGateProviderProps = {
 
 export function BillingGateProvider({ companyId, children }: BillingGateProviderProps) {
   const { profile } = useAuth();
+  const { setRetainCustomerId } = usePaddleCheckout();
   const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
@@ -80,6 +82,17 @@ export function BillingGateProvider({ companyId, children }: BillingGateProvider
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
+
+  useEffect(() => {
+    setRetainCustomerId(subscription?.paddleCustomerId);
+    return () => setRetainCustomerId(null);
+  }, [setRetainCustomerId, subscription?.paddleCustomerId]);
+
+  useEffect(() => {
+    if (!companyId || !billingManager) return;
+
+    void syncCompanyBillingState(companyId).catch(() => undefined);
+  }, [billingManager, companyId]);
 
   useEffect(() => {
     if (!companyId || !canClaimMarketingCheckout || billingRefreshTriggered.current) return;
@@ -147,7 +160,7 @@ export function BillingGateProvider({ companyId, children }: BillingGateProvider
 
         setCelebrationOpen(true);
         setCelebrationPhase("celebrating");
-        await syncCompanyBilling(companyId, sessionId).catch(() => undefined);
+        await syncCompanyBillingState(companyId, sessionId).catch(() => undefined);
       })
       .catch((error) => {
         console.warn("Marketing checkout claim skipped in billing gate:", error);
@@ -165,7 +178,7 @@ export function BillingGateProvider({ companyId, children }: BillingGateProvider
     if (!billingManager || checkoutSyncTriggered.current) return;
 
     checkoutSyncTriggered.current = true;
-    void syncCompanyBilling(companyId, checkoutSessionId).catch(() => undefined);
+    void syncCompanyBillingState(companyId, checkoutSessionId).catch(() => undefined);
   }, [billingManager, checkoutResult, checkoutSessionId, companyId, subscriptionIsPro]);
 
   useEffect(() => {

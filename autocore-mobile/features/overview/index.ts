@@ -1,2 +1,3 @@
 export { OverviewScreen } from './overview-screen';
-export type { OverviewSnapshot } from './types';
+export { useHomeViewModel } from './home';
+export type { HomeViewModel } from './home';

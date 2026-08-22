@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ArrowLeftIcon } from '@/assets/icons';
@@ -11,6 +11,8 @@ import { haptics, tokens } from '@/theme';
 
 import { fin, finFontCap, finType } from '../layout';
 import { FINANCE_ROOT_HREF } from '../navigation';
+
+const HOME_TAB_HREF = '/(tabs)/' as Href;
 
 /**
  * Detail chrome for the Finance stack — the same large-title voice as the hub,
@@ -28,6 +30,17 @@ export function FinDetailHeader({
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const params = useLocalSearchParams<{ returnTo?: string | string[] }>();
+  const returnTo = Array.isArray(params.returnTo) ? params.returnTo[0] : params.returnTo;
+
+  const onBack = () => {
+    haptics.light();
+    if (returnTo === 'home') {
+      router.navigate(HOME_TAB_HREF);
+      return;
+    }
+    goBackOrReplace(router, FINANCE_ROOT_HREF);
+  };
 
   return (
     <View
@@ -43,10 +56,7 @@ export function FinDetailHeader({
           accessibilityRole="button"
           accessibilityLabel="Back"
           hitSlop={10}
-          onPress={() => {
-            haptics.light();
-            goBackOrReplace(router, FINANCE_ROOT_HREF);
-          }}
+          onPress={onBack}
           style={{
             width: 36,
             height: 36,

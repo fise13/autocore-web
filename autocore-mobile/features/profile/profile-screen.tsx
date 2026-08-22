@@ -73,7 +73,7 @@ export function ProfileScreen() {
   };
 
   return (
-    <ProductScreenShell brandWash={false} animateEnter={false}>
+    <ProductScreenShell animateEnter={false}>
       <ScreenScroll
         tabBarInset
         contentStyle={{ paddingTop: tokens.space.micro, paddingBottom: tokens.space.stack }}

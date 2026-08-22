@@ -1,7 +1,6 @@
 import { format, isToday, startOfDay, subDays } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 
-import { resolveWeekChartBars } from '@/features/overview/lib/revenue-from-operations';
 import type { OverviewWeekBar } from '@/features/overview/types';
 import type { FinancialOperation } from '@/types/financial-operation';
 import { coerceToDate } from '@/lib/firestore-timestamp';
@@ -56,7 +55,7 @@ export function buildAccountingHeroMetrics(
   const growthPercent =
     monthlyRevenue > 0 && Number.isFinite(profit) ? (profit / monthlyRevenue) * 100 : null;
 
-  const weekBars = resolveWeekChartBars(operations, buildRawWeekBars(operations, now), now);
+  const weekBars = buildRawWeekBars(operations, now);
 
   let todayIncome = 0;
   let todayExpense = 0;

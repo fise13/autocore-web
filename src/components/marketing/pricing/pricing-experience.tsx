@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
+import { MarketingPaddlePlan } from "@/components/marketing/pricing/marketing-paddle-plan";
 import { useMarketingPages } from "@/components/marketing/content/use-marketing-pages";
 import {
   Accordion,
@@ -11,15 +12,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { appDemoUrl } from "@/lib/site-urls";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -83,12 +75,11 @@ function openProductDemo() {
   window.location.href = appDemoUrl();
 }
 
-export function PricingExperience() {
+export function PricingExperience({ country }: { country: string | null }) {
   const reduced = useReducedMotion();
   const pages = useMarketingPages();
   const copy = pages.pricing;
   const [openFaq, setOpenFaq] = useState<string[]>(["faq-0"]);
-  const [buyOpen, setBuyOpen] = useState(false);
 
   function handleFaqChange(next: string[]) {
     if (next.length === 0) {
@@ -101,23 +92,6 @@ export function PricingExperience() {
 
   return (
     <div className="pricing-page">
-      <Dialog open={buyOpen} onOpenChange={setBuyOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{copy.buyModal.title}</DialogTitle>
-            <DialogDescription>
-              {copy.buyModal.body}{" "}
-              <a href={`mailto:${copy.buyModal.email}`} className="font-medium text-foreground">
-                {copy.buyModal.email}
-              </a>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>{copy.buyModal.close}</DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <section className="pricing-panel pricing-panel-hero" aria-label={pages.breadcrumbs.pricing}>
         <motion.div
           className="pricing-fragment"
@@ -143,14 +117,23 @@ export function PricingExperience() {
           </HeroReveal>
 
           <HeroReveal delay={0.55} duration={0.62} y={20}>
-            <div className="pricing-hero-price">
-              <span className="exp-display pricing-hero-amount">{copy.plan.price}</span>
-              <span className="pricing-hero-period">{copy.plan.period}</span>
-            </div>
+            <MarketingPaddlePlan
+              country={country}
+              fallbackPrice={copy.plan.price}
+              fallbackPeriod={copy.plan.period}
+              fallbackYearlyPrice={copy.plan.yearlyPrice}
+              fallbackYearlyPeriod={copy.plan.yearlyPeriod}
+              monthlyLabel={copy.plan.monthlyLabel}
+              yearlyLabel={copy.plan.yearlyLabel}
+              intervalAriaLabel={copy.plan.intervalAria}
+              note={copy.plan.note}
+              buyLabel={copy.cta.buy}
+              priceClassName="pricing-hero-amount text-6xl sm:text-7xl"
+            />
           </HeroReveal>
 
           <HeroReveal delay={0.64} duration={0.5} y={12}>
-            <p className="pricing-hero-note">{copy.plan.note}</p>
+            <p className="pricing-hero-note">{copy.cta.trialDays}. {copy.cta.noCard}.</p>
           </HeroReveal>
 
           <HeroReveal className="pricing-hero-cta" delay={0.72} duration={0.48} y={14}>
@@ -158,18 +141,7 @@ export function PricingExperience() {
               <Button size="lg" className="h-10 min-w-[11rem] px-5 text-sm" onClick={openProductDemo}>
                 {copy.cta.primary}
               </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="h-10 min-w-[11rem] px-5 text-sm"
-                onClick={() => setBuyOpen(true)}
-              >
-                {copy.cta.buy}
-              </Button>
             </div>
-            <p className="pricing-hero-trust">
-              {copy.cta.trialDays}. {copy.cta.noCard}.
-            </p>
           </HeroReveal>
         </div>
       </section>

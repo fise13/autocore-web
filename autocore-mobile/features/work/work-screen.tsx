@@ -51,8 +51,23 @@ export function WorkScreen() {
     [nodeIdKey],
   );
 
-  const { counts } = useWorkCounts(nodeIds);
-  const model = useMemo(() => buildWorkModel(workGrouped, counts), [workGrouped, counts]);
+  const { counts, orders, items, intakeJobs, earningsAttention, series } =
+    useWorkCounts(nodeIds);
+  const model = useMemo(
+    () =>
+      buildWorkModel(
+        workGrouped,
+        counts,
+        {
+          orders,
+          items,
+          intakeJobs,
+          earningsAttention,
+        },
+        series,
+      ),
+    [workGrouped, counts, orders, items, intakeJobs, earningsAttention, series],
+  );
   const [searchOpen, setSearchOpen] = useState(false);
 
   const openSearch = useCallback(() => {
@@ -116,17 +131,9 @@ export function WorkScreen() {
           />
         ) : (
           <>
-            <Text
-              variant="title3"
-              style={{
-                color: colors.foreground,
-                marginTop: workLayout.headingTop,
-                marginHorizontal: workLayout.pad,
-              }}
-            >
-              Today
-            </Text>
-            <WorkTodayCard today={model.today} onPress={openToday} />
+            <View style={{ marginTop: workLayout.headingTop }}>
+              <WorkTodayCard today={model.today} onPress={openToday} />
+            </View>
 
             <Text
               variant="title3"
@@ -161,6 +168,7 @@ export function WorkScreen() {
                         detail={row.detail}
                         detailKind={row.detailKind}
                         urgent={row.attention > 0}
+                        series={row.series}
                         onPress={() => openNode(row.id, row.href)}
                       />
                     ))}

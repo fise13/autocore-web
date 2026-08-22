@@ -82,6 +82,7 @@
         "title": "Legal",
         "items": {
           "privacy": "Privacy",
+          "refund": "Refunds",
           "terms": "Terms"
         }
       }
@@ -1015,8 +1016,13 @@
     },
     "pricing": {
       "title": "One price. The entire product.",
-      "price": "$39",
+      "price": "$40",
       "period": "/ month",
+      "yearlyPrice": "$400",
+      "yearlyPeriod": "/ year",
+      "monthlyLabel": "Monthly",
+      "yearlyLabel": "Yearly",
+      "intervalAria": "Billing interval",
       "note": "per company",
       "included": [
         "Warehouse",
@@ -1026,7 +1032,7 @@
         "Mobile",
         "Overview"
       ],
-      "risk": "14 days free · no card required · no extra fees for modules",
+      "risk": "14 days free · payment method required · no extra fees for modules",
       "trial": "Open the demo",
       "buy": "Buy now",
       "buyModal": {
@@ -1037,7 +1043,7 @@
       }
     },
     "roi": {
-      "title": "$39 versus an hour of evening reconciliations.",
+      "title": "$40 versus an hour of evening reconciliations.",
       "subtitle": "Conservative math: minutes a day on reconciliations and the occasional lost sale. No \"+300%\" fairy tale.",
       "minutesLabel": "Minutes spent reconciling per day",
       "rateLabel": "Hourly rate, $",
@@ -1090,7 +1096,7 @@
         },
         {
           "q": "What happens after 14 days? Are there extra fees for modules?",
-          "a": "It's $39 per month per company, or you can pause. Your data is kept. There are no extra fees for modules — one price unlocks the entire product."
+          "a": "It's $40 per month per company, or you can pause. Your data is kept. There are no extra fees for modules — one price unlocks the entire product."
         },
         {
           "q": "How do I buy a subscription?",
@@ -1634,22 +1640,27 @@
     "pricing": {
       "meta": {
         "title": "Pricing",
-        "description": "Salvage yard and auto recycler software: one subscription, $39 a month. Full inventory, engines, work orders. 14 days free, no card."
+        "description": "Salvage yard and auto recycler software: $40 monthly or $400 yearly per company. Full inventory, engines, and work orders. 14-day free trial; payment method required."
       },
       "hero": {
         "titleLine1": "Salvage yard software.",
         "titleLine2": "Everything included."
       },
       "plan": {
-        "price": "$39",
+        "price": "$40",
         "period": "/ month",
+        "yearlyPrice": "$400",
+        "yearlyPeriod": "/ year",
+        "monthlyLabel": "Monthly",
+        "yearlyLabel": "Yearly",
+        "intervalAria": "Billing interval",
         "note": "per company"
       },
       "cta": {
         "primary": "Open the demo",
         "buy": "Buy now",
         "trialDays": "14 days free",
-        "noCard": "No card required"
+        "noCard": "Payment method required"
       },
       "buyModal": {
         "title": "Subscribe",
@@ -1684,11 +1695,11 @@
       "faq": [
         {
           "q": "Do I need a card for the trial?",
-          "a": "No. 14 days, no card required."
+          "a": "Yes. A payment method is required to start the 14-day free trial. You can cancel before renewal."
         },
         {
           "q": "What happens after the trial?",
-          "a": "It's $39 per month per company, or you can pause. Your data is kept."
+          "a": "It's $40 per month per company, or you can pause. Your data is kept."
         },
         {
           "q": "Are there extra fees for modules?",
@@ -2077,6 +2088,10 @@
           "description": "How we handle personal and operational data"
         },
         {
+          "label": "Refund Policy",
+          "description": "Eligibility, requests, and processing"
+        },
+        {
           "label": "Terms of Use",
           "description": "Account, subscription, and acceptable use"
         }
@@ -2095,6 +2110,7 @@
           "id": "general",
           "title": "1. General provisions",
           "paragraphs": [
+            "Victor Mishkin, trading as AutoCore, Tbilisskaya 13, Almaty 050000, Kazakhstan, is the seller and controller for personal data collected through the AutoCore product and website.",
             "This policy describes how personal and operational data is processed in AutoCore, a cloud application for auto dismantlers and repair shops.",
             "By using the AutoCore web app, desktop client, or mobile app, you confirm that you have reviewed this policy. Company admins are responsible for the accuracy of data for the employees they invite into their organization."
           ]
@@ -2129,7 +2145,7 @@
           "id": "purposes",
           "title": "4. Purposes of processing",
           "paragraphs": [
-            "Data is used exclusively to provide and improve the AutoCore service."
+            "Data is used to provide and improve AutoCore, perform our contract with customers, meet legal obligations, and pursue legitimate interests in service security, fraud prevention, support, and product improvement. Consent is used where required, including for non-essential cookies or marketing."
           ],
           "bullets": [
             "Sign-up, authentication, and managing employee access",
@@ -2144,7 +2160,8 @@
           "title": "5. Storage and protection",
           "paragraphs": [
             "Data is stored on secure Google Cloud / Firebase infrastructure. Access is restricted by security rules at the company (tenant) level and by employee roles (RBAC).",
-            "Data is transferred between client and server over encrypted channels (TLS). Critical operations are additionally checked on the server, not just in the interface."
+            "Data is transferred between client and server over encrypted channels (TLS). Critical operations are additionally checked on the server, not just in the interface.",
+            "We retain account and operational data while the account is active and for as long as needed to provide the service, resolve disputes, prevent fraud, and meet legal obligations. When no longer needed, data is deleted or anonymized under our retention and backup procedures."
           ]
         },
         {
@@ -2155,15 +2172,18 @@
           ],
           "bullets": [
             "Google Firebase: authentication, database, hosting",
-            "Stripe: subscription payment processing",
-            "Email notification providers: transactional emails"
+            "Paddle: merchant of record for product sales, subscription management, payments, tax compliance, invoicing, and refunds",
+            "Stripe and app-store payment providers: legacy or platform-specific subscription processing where applicable",
+            "Email and support providers: transactional communications and customer support",
+            "Professional advisers and public authorities where required by law or needed to protect rights and safety"
           ]
         },
         {
           "id": "rights",
           "title": "7. Your rights",
           "paragraphs": [
-            "You can request access to your data, its correction, or its deletion by contacting support. A company admin manages employee access and can deactivate accounts within the organization.",
+            "Subject to applicable law, you may request access, correction, deletion, restriction, portability, or object to processing. You may withdraw consent where processing relies on consent and complain to the relevant data-protection authority.",
+            "Send privacy requests to support@myautocore.com. We may verify your identity before acting on a request. A company admin manages employee access and can deactivate accounts within the organization.",
             "When a company is deleted, operational data is removed in accordance with our internal retention and backup procedures."
           ]
         },
@@ -2185,7 +2205,63 @@
           "id": "contact",
           "title": "10. Contact",
           "paragraphs": [
-            "For questions about data processing, email the support address listed on the \"Contact\" page. Please put \"Privacy\" in the subject line."
+            "For privacy questions or rights requests, email support@myautocore.com with \"Privacy\" in the subject line, or write to Victor Mishkin, AutoCore, Tbilisskaya 13, Almaty 050000, Kazakhstan."
+          ]
+        }
+      ]
+    },
+    "refund": {
+      "title": "Refund and Cancellation Policy",
+      "description": "How AutoCore subscription cancellations and refund requests are handled.",
+      "breadcrumb": "Refunds",
+      "updated": "August 2026",
+      "contactLabel": "Questions about refunds",
+      "sections": [
+        {
+          "id": "scope",
+          "title": "1. Scope",
+          "paragraphs": [
+            "This policy applies to AutoCore subscriptions sold by Victor Mishkin, trading as AutoCore, Tbilisskaya 13, Almaty 050000, Kazakhstan.",
+            "Paddle is the merchant of record for purchases made through Paddle Checkout and handles payment collection, tax, invoicing, and approved refunds."
+          ]
+        },
+        {
+          "id": "refund-window",
+          "title": "2. 14-day refund window",
+          "paragraphs": [
+            "You may request a change-of-mind refund within 14 calendar days of the original purchase. This policy does not limit any mandatory consumer rights that apply in your country.",
+            "We do not apply an “all sales final” rule. We may ask for information needed to identify the transaction and prevent fraud, but we do not impose unreasonable conditions on eligible requests."
+          ]
+        },
+        {
+          "id": "request",
+          "title": "3. How to request a refund",
+          "paragraphs": [
+            "Submit the request through Paddle at https://paddle.net or contact support@myautocore.com with the purchase email and Paddle transaction or receipt number.",
+            "Do not send card or bank-account details to AutoCore support."
+          ]
+        },
+        {
+          "id": "cancellation",
+          "title": "4. Subscription cancellation",
+          "paragraphs": [
+            "You may cancel a subscription at any time through the billing portal. Unless the checkout or applicable law states otherwise, cancellation stops future renewals and access continues until the end of the paid billing period.",
+            "Canceling a subscription does not automatically create a refund. Refund requests are assessed under the 14-day window above and applicable law."
+          ]
+        },
+        {
+          "id": "processing",
+          "title": "5. Processing and payment method",
+          "paragraphs": [
+            "Approved refunds are issued by Paddle to the original payment method. Processing time depends on Paddle, the payment method, and the customer's bank.",
+            "Paddle may contact you for additional information and may show the refund as pending while it is reviewed or processed."
+          ]
+        },
+        {
+          "id": "contact",
+          "title": "6. Contact",
+          "paragraphs": [
+            "For help locating a transaction or understanding this policy, contact support@myautocore.com. For the refund itself, use https://paddle.net whenever possible."
           ]
         }
       ]
@@ -2194,15 +2270,16 @@
       "title": "Terms of Use",
       "description": "The rules for using the AutoCore cloud application for auto dismantlers, repair shops, and related auto businesses.",
       "breadcrumb": "Terms",
-      "updated": "July 2026",
+      "updated": "August 2026",
       "contactLabel": "Questions about this document",
       "sections": [
         {
           "id": "subject",
           "title": "1. Subject of the agreement",
           "paragraphs": [
+            "These terms are between you and Victor Mishkin, trading as AutoCore, Tbilisskaya 13, Almaty 050000, Kazakhstan (\"AutoCore\", \"we\", or \"us\").",
             "AutoCore provides software as a service (SaaS) for managing a warehouse, work orders, documents, accounting, and a team.",
-            "These terms govern the use of the AutoCore web app, desktop clients, and mobile apps."
+            "These terms govern the use of the AutoCore web app, desktop clients, and mobile apps. By creating an account or continuing to use the service, you accept these terms."
           ]
         },
         {
@@ -2217,12 +2294,14 @@
           "id": "usage",
           "title": "3. Acceptable use",
           "paragraphs": [
-            "The service is intended for the lawful operation of an auto business."
+            "The service is intended for the lawful operation of an auto business. Users are responsible for their prompts, uploaded content, and decisions based on generated or extracted output, which may be inaccurate or incomplete and must be reviewed before reliance."
           ],
           "bullets": [
-            "You may not disrupt the system, bypass access restrictions, or perform unauthorized testing",
-            "You may not upload malicious code or use the service for unlawful purposes",
-            "You may not copy, decompile, or reproduce the software without the rights holder's consent"
+            "You may not use the service unlawfully, for fraud or spam, or to infringe intellectual-property or privacy rights",
+            "You may not disrupt security, upload malware, probe or scrape without authorization, bypass safeguards, steal credentials, or attempt to jailbreak AI controls",
+            "You may not use AI features for illegal instructions, harmful or deceptive content, harassment, threats, doxxing, impersonation, or regulated professional advice without qualified oversight",
+            "You must have rights to submitted content and verify AI-assisted outputs before publishing or acting on them",
+            "You may not copy, decompile, resell, redistribute, or reproduce the software without the rights holder's consent"
           ]
         },
         {
@@ -2237,7 +2316,9 @@
           "id": "billing",
           "title": "5. Subscription and billing",
           "paragraphs": [
-            "Paid features are activated according to the selected plan. Trial, payment, and cancellation terms are described on the \"Pricing\" page and during subscription checkout in the app.",
+            "Paid features are activated according to the selected plan. Billing frequency, fees, trial terms, renewal, taxes, and cancellation details are shown on the Pricing page and at checkout.",
+            "Paddle is the merchant of record for purchases made through Paddle Checkout. Paddle collects payment, handles tax and invoicing, and applies its buyer terms at https://www.paddle.com/legal/checkout-buyer-terms.",
+            "Subscriptions renew automatically for the selected billing period until canceled. Cancellation stops future renewals and normally preserves access through the paid period. Refunds follow the AutoCore Refund and Cancellation Policy and mandatory consumer law.",
             "If payment is missed, access may be restricted, while company data is retained in accordance with the retention policy."
           ]
         },
@@ -2259,7 +2340,8 @@
           "id": "liability",
           "title": "8. Limitation of liability",
           "paragraphs": [
-            "The service is provided within reasonable technical limits. AutoCore is not liable for indirect damages, lost profits, or decisions made by the customer based solely on system data without internal verification.",
+            "The service is provided within reasonable technical limits without a guarantee that it will be uninterrupted, error-free, or suitable for every workflow. To the extent permitted by law, implied warranties are excluded.",
+            "AutoCore is not liable for indirect damages, lost profits, or decisions made by the customer based solely on system data or AI-assisted output without internal verification.",
             "The customer must verify critical financial and warehouse operations according to their own internal procedures."
           ]
         },
@@ -2267,14 +2349,15 @@
           "id": "termination",
           "title": "9. Termination of access",
           "paragraphs": [
-            "The customer may stop using the service at any time. AutoCore may restrict access for a material breach of these terms or as required by law."
+            "The customer may stop using the service at any time. AutoCore may suspend or terminate access for a material breach, non-payment, security or fraud risk, repeated or serious policy violations, or where required by law.",
+            "AutoCore may remove or restrict harmful content, refuse or filter AI-assisted output, and limit features where needed to protect users, third parties, or the service."
           ]
         },
         {
           "id": "contact",
           "title": "10. Contact",
           "paragraphs": [
-            "For legal questions and terms of use, reach out through the \"Contact\" page. Please put \"Terms of Use\" in the subject line."
+            "For legal questions, email support@myautocore.com with \"Terms of Use\" in the subject line, or write to Victor Mishkin, AutoCore, Tbilisskaya 13, Almaty 050000, Kazakhstan."
           ]
         }
       ]
@@ -2393,6 +2476,11 @@
         "salvage yard software data policy",
         "inventory management privacy policy"
       ],
+      "refund": [
+        "AutoCore refund policy",
+        "software subscription cancellation",
+        "Paddle refund request"
+      ],
       "terms": [
         "auto parts inventory software terms",
         "salvage yard software license",
@@ -2422,9 +2510,9 @@
         "ogTitle": "AutoCore modules: engines, warehouse, work orders, accounting"
       },
       "pricing": {
-        "title": "Salvage Yard & Auto Recycler Software Pricing | $39/mo — AutoCore",
-        "description": "One plan for auto parts inventory software: $39/month per company. Full warehouse, engines, work orders, and accounting. 14 days free, no card. Built for salvage yards and recyclers.",
-        "ogTitle": "AutoCore pricing — $39/mo inventory software for salvage yards"
+        "title": "Salvage Yard & Auto Recycler Software Pricing | $40/mo — AutoCore",
+        "description": "One plan for auto parts inventory software: $40/month per company. Full warehouse, engines, work orders, and accounting. 14-day free trial; payment method required. Built for salvage yards and recyclers.",
+        "ogTitle": "AutoCore pricing — $40/mo inventory software for salvage yards"
       },
       "contact": {
         "title": "Demo Auto Parts Inventory Software | Contact AutoCore",
@@ -2445,6 +2533,11 @@
         "title": "Privacy Policy | AutoCore Inventory Software",
         "description": "How AutoCore auto parts inventory software handles personal and operational data for salvage yards, recyclers, and repair shops: storage, rights, security, and contacts.",
         "ogTitle": "AutoCore privacy policy"
+      },
+      "refund": {
+        "title": "Refund and Cancellation Policy | AutoCore",
+        "description": "AutoCore's 14-day refund window, subscription cancellation terms, and how to request a refund through Paddle.",
+        "ogTitle": "AutoCore refund and cancellation policy"
       },
       "terms": {
         "title": "Terms of Use | AutoCore Inventory Software",
@@ -2467,6 +2560,7 @@
       "download": "Download",
       "downloadMobile": "Mobile App",
       "privacy": "Privacy",
+      "refund": "Refunds",
       "terms": "Terms of Use"
     }
   },

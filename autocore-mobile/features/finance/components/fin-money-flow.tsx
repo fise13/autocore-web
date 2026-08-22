@@ -125,14 +125,14 @@ function FlowStage({
       <FinRail segments={segments} />
 
       {nodes.length > 0 ? (
-        <FinSheet>
+        <View>
           {nodes.map((node, index) => (
             <View key={node.id}>
               {index > 0 ? <FinDivider inset={fin.stack + 16} /> : null}
               <FlowRow node={node} color={rampColor(base, index, ceiling)} onPress={onNodePress} />
             </View>
           ))}
-        </FinSheet>
+        </View>
       ) : (
         <Text style={{ ...finType.rowMeta, paddingHorizontal: fin.micro }} color="muted">
           Nothing recorded in this period.
@@ -169,7 +169,8 @@ export function FinMoneyFlow({
   const costCeiling = isDark ? 0.55 : 0.72;
 
   return (
-    <View style={{ gap: fin.block - 6 }}>
+    <FinSheet padded>
+      <View style={{ gap: fin.block - 6 }}>
       <FlowStage
         title="Revenue in"
         total={flow.revenue}
@@ -212,6 +213,7 @@ export function FinMoneyFlow({
           {formatMoneyAdaptive(flow.net)}
         </Text>
       </View>
-    </View>
+      </View>
+    </FinSheet>
   );
 }

@@ -151,7 +151,7 @@ export const buildFaqJsonLdFromMessages = buildFaqJsonLd;
 const SOFTWARE_COPY = {
   en: {
     trialName: "14-day free trial",
-    trialDescription: "Full access for 14 days, no card required",
+    trialDescription: "Full access for 14 days; payment method required",
     proName: "Pro subscription",
     proDescription: "Full AutoCore for one company",
     audience: "Salvage yards, auto recyclers, repair shops, used auto parts sellers",
@@ -172,7 +172,7 @@ const SOFTWARE_COPY = {
   },
   ru: {
     trialName: "Пробный период 14 дней",
-    trialDescription: "Полный доступ на 14 дней без карты",
+    trialDescription: "Полный доступ на 14 дней; требуется способ оплаты",
     proName: "Подписка Pro",
     proDescription: "Полный AutoCore для одной компании",
     audience: "Авторазборки, авторециклеры, автосервисы, магазины б/у запчастей",

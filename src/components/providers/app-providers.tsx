@@ -2,6 +2,7 @@
 
 import { ReactNode } from "react";
 
+import { PaddleProvider } from "@/components/billing/paddle-provider";
 import { PageTransitionProvider } from "@/components/motion/page-transition-provider";
 import { WebVitalsReporter } from "@/components/performance/web-vitals-reporter";
 import { AppContextMenuProvider } from "@/components/providers/app-context-menu-provider";
@@ -23,6 +24,7 @@ export function AppProviders({ children }: AppProvidersProps) {
       <PerformanceTierProvider>
       <QueryProvider>
         <AuthProvider>
+          <PaddleProvider>
           <AppLocaleProvider>
             <PageTransitionProvider>
               <WebVitalsReporter />
@@ -34,6 +36,7 @@ export function AppProviders({ children }: AppProvidersProps) {
               </ToastProvider>
             </PageTransitionProvider>
           </AppLocaleProvider>
+          </PaddleProvider>
         </AuthProvider>
       </QueryProvider>
       </PerformanceTierProvider>

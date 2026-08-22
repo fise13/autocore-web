@@ -46,6 +46,9 @@ export const marketingRoutes = {
   get privacy() {
     return resolveMarketingPath("privacy");
   },
+  get refund() {
+    return resolveMarketingPath("refund");
+  },
   get terms() {
     return resolveMarketingPath("terms");
   },

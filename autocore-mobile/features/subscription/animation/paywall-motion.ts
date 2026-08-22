@@ -35,14 +35,19 @@ export const paywallTimeline = {
   footer: 520,
 } as const;
 
-/** Post-purchase celebration — same ease, a slightly longer stagger. */
+/**
+ * Post-purchase celebration.
+ *
+ * Paced against the engine start-up rather than against itself: the mark turns
+ * over for the first ~400ms, so the copy lands as the engine catches instead of
+ * competing with it.
+ */
 export const successTimeline = {
   mark: 0,
-  title: 80,
-  subtitle: 140,
-  featuresStart: 200,
-  web: 520,
-  cta: 580,
+  title: 420,
+  subtitle: 500,
+  hint: 620,
+  cta: 700,
 } as const;
 
 export const paywallEnter = {

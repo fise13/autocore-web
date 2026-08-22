@@ -9,6 +9,7 @@ import { BillingIntervalToggle } from "@/components/billing/billing-interval-tog
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { Badge } from "@/components/ui/badge";
 import { useBillingActions } from "@/hooks/use-billing-actions";
+import { usePaddleSubscribe } from "@/hooks/use-paddle-subscribe";
 import { formatNextBillingDate } from "@/lib/billing/format-renewal";
 import { cn } from "@/lib/utils";
 import { StripeBillingInterval } from "@/lib/stripe/prices";
@@ -59,6 +60,7 @@ export function PlanComparisonTable({
     onStatus,
     syncOnPortalReturn: false,
   });
+  const { ready: paddleReady, configured: paddleConfigured } = usePaddleSubscribe();
   const [interval, setInterval] = useState<StripeBillingInterval>("monthly");
   const renewalDate = formatNextBillingDate(subscription?.currentPeriodEnd);
   const rows = userCopy.billing.planComparison.rows;
@@ -200,7 +202,7 @@ export function PlanComparisonTable({
               <AnimatedUpgradeCta
                 animated
                 className="w-full justify-center"
-                disabled={pending !== null || isLoading}
+                disabled={pending !== null || isLoading || !paddleConfigured || !paddleReady}
                 onClick={() => void checkout(interval)}
               >
                 {copy.upgradeCta}

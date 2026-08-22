@@ -15,6 +15,7 @@ export const marketingPathnames = {
   "/download": "/download",
   "/download/mobile": "/download/mobile",
   "/legal/privacy": "/legal/privacy",
+  "/legal/refund": "/legal/refund",
   "/legal/terms": "/legal/terms",
 } as const;
 

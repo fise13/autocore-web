@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { Keyboard, Pressable, View } from 'react-native';
 import { Image } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Animated, {
@@ -15,6 +14,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { ArrowLeftIcon } from '@/assets/icons';
+import { BrandBackdrop } from '@/components/ui/brand-backdrop';
 import { Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/hooks';
 import { autocoreEase, duration, form, rhythm, spacing } from '@/theme';
@@ -42,21 +42,6 @@ function AuthMark() {
       style={{ width: 28, height: 28 }}
       resizeMode="contain"
       accessibilityLabel="AutoCore"
-    />
-  );
-}
-
-function AuthBackdrop() {
-  const { colors } = useTheme();
-
-  return (
-    <LinearGradient
-      pointerEvents="none"
-      colors={[colors.primarySubtle, colors.background, colors.background]}
-      locations={[0, 0.38, 1]}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
     />
   );
 }
@@ -179,7 +164,7 @@ export function AuthShell({
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <AuthBackdrop />
+      <BrandBackdrop />
       <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }} edges={['left', 'right']}>
         <KeyboardAwareScrollView
           bottomOffset={24}

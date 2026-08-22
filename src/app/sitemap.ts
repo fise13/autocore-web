@@ -18,6 +18,7 @@ const SITEMAP_PRIORITY: Record<MarketingPathKey, number> = {
   download: 0.8,
   downloadMobile: 0.6,
   privacy: 0.3,
+  refund: 0.3,
   terms: 0.3,
 };
 
@@ -31,6 +32,7 @@ const SITEMAP_CHANGE_FREQUENCY: Record<MarketingPathKey, "weekly" | "monthly" | 
   download: "weekly",
   downloadMobile: "monthly",
   privacy: "yearly",
+  refund: "yearly",
   terms: "yearly",
 };
 

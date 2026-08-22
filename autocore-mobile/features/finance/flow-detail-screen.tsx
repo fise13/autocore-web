@@ -114,53 +114,55 @@ export function FinanceFlowDetailScreen() {
           subtitle={`${income ? 'Revenue channel' : 'Cost group'} · ${model.window.period.longLabel}`}
         />
 
-        <View style={{ paddingHorizontal: fin.pad, gap: fin.chapter }}>
-          <View style={{ gap: fin.stack }}>
-            <View style={{ gap: fin.micro }}>
-              <Text
-                style={{ ...finType.hero, color: colors.foreground }}
-                maxFontSizeMultiplier={finFontCap.hero}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-              >
-                {formatMoneyAdaptive(node.amount)}
-              </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: fin.inline }}>
-                {change != null ? (
-                  <FinDelta
-                    value={formatSignedPercent(change)}
-                    tone={tone}
-                    direction={deltaDirection(change)}
-                  />
-                ) : null}
-                <Text style={finType.rowMeta} color="muted">
-                  {change != null
-                    ? model.window.period.comparisonLabel
-                    : 'No comparable period yet'}
+        <View style={{ gap: fin.chapter }}>
+          <FinSheet padded inset={false} style={{ marginHorizontal: fin.pad }}>
+            <View style={{ gap: fin.stack }}>
+              <View style={{ gap: fin.micro }}>
+                <Text
+                  style={{ ...finType.hero, color: colors.foreground }}
+                  maxFontSizeMultiplier={finFontCap.hero}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {formatMoneyAdaptive(node.amount)}
                 </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: fin.inline }}>
+                  {change != null ? (
+                    <FinDelta
+                      value={formatSignedPercent(change)}
+                      tone={tone}
+                      direction={deltaDirection(change)}
+                    />
+                  ) : null}
+                  <Text style={finType.rowMeta} color="muted">
+                    {change != null
+                      ? model.window.period.comparisonLabel
+                      : 'No comparable period yet'}
+                  </Text>
+                </View>
+              </View>
+
+              <View
+                style={{
+                  flexDirection: 'row',
+                  gap: fin.stack,
+                  paddingTop: fin.stack,
+                  borderTopWidth: fin.hairline,
+                  borderTopColor: colors.borderMuted,
+                }}
+              >
+                <Stat
+                  label={income ? 'Share of revenue' : 'Share of costs'}
+                  value={formatPercent(sideTotal > 0 ? node.amount / sideTotal : null, 0)}
+                />
+                <Stat label="Operations" value={String(node.count)} />
+                <Stat
+                  label="Average"
+                  value={node.count > 0 ? formatMoneyAdaptive(node.amount / node.count) : '—'}
+                />
               </View>
             </View>
-
-            <View
-              style={{
-                flexDirection: 'row',
-                gap: fin.stack,
-                paddingTop: fin.stack,
-                borderTopWidth: fin.hairline,
-                borderTopColor: colors.borderMuted,
-              }}
-            >
-              <Stat
-                label={income ? 'Share of revenue' : 'Share of costs'}
-                value={formatPercent(sideTotal > 0 ? node.amount / sideTotal : null, 0)}
-              />
-              <Stat label="Operations" value={String(node.count)} />
-              <Stat
-                label="Average"
-                value={node.count > 0 ? formatMoneyAdaptive(node.amount / node.count) : '—'}
-              />
-            </View>
-          </View>
+          </FinSheet>
 
           {groups.length > 0 ? (
             <FinSection

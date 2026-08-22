@@ -33,6 +33,9 @@ export const fin = {
   chartPadBottom: 22,
   /** Keeps the end-point marker and its halo inside the canvas. */
   chartPadX: 9,
+
+  pressScale: 0.98,
+  pressInMs: 140,
 } as const;
 
 /**

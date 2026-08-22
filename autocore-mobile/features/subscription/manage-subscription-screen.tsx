@@ -1,5 +1,5 @@
 import { useCallback, useState, type ComponentType } from 'react';
-import { Platform, View } from 'react-native';
+import { Alert, Platform, View } from 'react-native';
 
 import { CheckIcon } from '@/assets/icons';
 import type { IconProps } from '@/assets/icons';
@@ -18,6 +18,7 @@ import { OfflineNotice } from './components/sync-indicator';
 import { PurchaseStatusBanner } from './components/purchase-status-banner';
 import { StatusCardSkeleton } from './components/subscription-skeletons';
 import { SubscriptionPlanSection } from './components/subscription-plan-section';
+import { VerificationMonitor } from './components/verification-monitor';
 import { PRO_FEATURE_ROWS } from './data/pro-features';
 
 /**
@@ -36,12 +37,31 @@ export function ManageSubscriptionScreen() {
     isLoading,
     flow,
     canManageBilling,
+    hasUnconfirmedPurchase,
+    unconfirmedReason,
     restore,
     openManage,
     refresh,
   } = useSubscription();
 
   const [refreshing, setRefreshing] = useState(false);
+
+  const handleRestore = useCallback(async () => {
+    const outcome = await restore();
+    if (outcome.kind !== 'conflict' || !outcome.canTransfer) return;
+    Alert.alert(
+      'Subscription in use',
+      `${outcome.message} Move it to this workspace? The other workspace loses Pro immediately.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Move it here',
+          style: 'destructive',
+          onPress: () => void restore({ transfer: true }),
+        },
+      ],
+    );
+  }, [restore]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -63,6 +83,7 @@ export function ManageSubscriptionScreen() {
       <View style={{ marginHorizontal: tokens.space.screenX, gap: tokens.space.stack }}>
         <OfflineNotice />
         <PurchaseStatusBanner flow={flow} />
+        {hasUnconfirmedPurchase ? <UnconfirmedPurchaseNotice reason={unconfirmedReason} /> : null}
       </View>
 
       {isLoading ? (
@@ -109,7 +130,7 @@ export function ManageSubscriptionScreen() {
         title="Manage"
         footer={
           !canManageBilling
-            ? 'Only the workspace owner can change the subscription.'
+            ? 'Only an owner or admin can change the subscription.'
             : !sync.isOnline
               ? 'Reconnect to refresh or restore.'
               : undefined
@@ -135,14 +156,74 @@ export function ManageSubscriptionScreen() {
           title="Restore purchases"
           value={isRestoring ? 'Restoring…' : undefined}
           disabled={!sync.isOnline || isRestoring}
-          onPress={() => void restore()}
+          onPress={() => void handleRestore()}
         />
       </ListSection>
+
+      <VerificationMonitor />
 
       <View style={{ paddingHorizontal: tokens.space.screenX }}>
         <DevSubscriptionPanel />
       </View>
     </ProfileScreenShell>
+  );
+}
+
+/**
+ * A purchase this device made that the server has not recorded yet.
+ *
+ * Surfaced rather than hidden: the retry is automatic, but a user who paid and
+ * sees nothing needs to know the payment was registered somewhere.
+ *
+ * The copy splits on whether waiting can actually help. "Nothing to do" is true
+ * of a dropped connection; said over a server that has no App Store credentials
+ * it is a promise the retry loop cannot keep, and it kept a paid subscription
+ * looking like it was seconds from arriving for as long as anyone was patient.
+ */
+function UnconfirmedPurchaseNotice({
+  reason,
+}: {
+  reason: 'server_unconfigured' | 'permission_denied' | null;
+}) {
+  const { colors, tones } = useTheme();
+
+  const { title, detail } =
+    reason === 'server_unconfigured'
+      ? {
+          title: 'Payment taken, not recorded',
+          detail:
+            'Apple has your payment, but AutoCore cannot reach the App Store to record it. Pro stays on here — please contact support so we can fix it on our side.',
+        }
+      : reason === 'permission_denied'
+        ? {
+            title: 'Payment taken, not recorded',
+            detail:
+              'Apple has your payment, but this account cannot manage the workspace subscription. Ask an owner or admin to complete it.',
+          }
+        : {
+            title: 'Confirming your payment',
+            detail:
+              'Apple has taken the payment and we are still recording it. Pro stays on while we retry — nothing to do.',
+          };
+
+  return (
+    <View
+      style={{
+        padding: tokens.space.stack,
+        borderRadius: tokens.radius.group,
+        backgroundColor: tones.warning.bg,
+        borderWidth: 1,
+        borderColor: tones.warning.border,
+        gap: 4,
+      }}
+    >
+      <Text variant="body" style={{ color: tones.warning.fg, fontWeight: '600' }}>
+        {title}
+      </Text>
+      <Text variant="caption" style={{ color: colors.mutedForeground, lineHeight: 18 }}>
+        {detail}
+      </Text>
+    </View>
   );
 }
 

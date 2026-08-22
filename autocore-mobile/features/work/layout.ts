@@ -35,8 +35,22 @@ export const workLayout = {
   rowPadY: 16,
   rowGap: 3,
 
-  todayMinHeight: 80,
-  todayPad: 19,
+  /**
+   * Trailing spark.
+   *
+   * Sized to sit inside the row that already exists: 32pt is shorter than the
+   * 46pt of content a single-line row already holds, so the chart never drives
+   * the row's height. The two 12pt gaps replace the single 20pt gap that used
+   * to separate the text from the chevron, which is where most of the width
+   * comes from.
+   */
+  sparkWidth: 52,
+  sparkHeight: 32,
+  sparkGap: 12,
+
+  /** Health Highlights Today card. */
+  todayMinHeight: 280,
+  todayPad: 16,
 
   /** Hairline is deliberately 1pt: `colors.border` is already ~8% alpha. */
   dividerHeight: 1,

@@ -30,6 +30,11 @@ import {
   FREE_ENTITLEMENT,
   type LocalActiveSubscription,
 } from './entitlement-resolver';
+import {
+  clearVerificationsFor,
+  hasPendingVerification,
+  subscribePendingVerification,
+} from './pending-verification';
 import type { Entitlement, PlanId } from './types';
 
 export type EntitlementSnapshot = {
@@ -112,6 +117,7 @@ function recompute(entry: RegistryEntry): boolean {
           remote: entry.remote,
           cached: entry.cached,
           local: localSubscriptions,
+          pendingVerification: hasPendingVerification(entry.companyId),
           devOverride: devSubscription(),
         });
 
@@ -164,6 +170,9 @@ function recomputeAll(): void {
 
 subscribeDevMode(recomputeAll);
 subscribePaywallBypass(recomputeAll);
+// A purchase entering or leaving the unconfirmed queue changes which source
+// wins, exactly as a server write would.
+subscribePendingVerification(recomputeAll);
 
 export function getEntitlementSnapshot(
   companyId: string | null | undefined,
@@ -214,6 +223,15 @@ export function acquireEntitlement(companyId: string): () => void {
             if (!current) return;
             current.remote = next;
             current.error = null;
+            // The pending queue exists to get the server to record a purchase.
+            // Once the server answers with an active Apple subscription for
+            // this company, there is nothing left to retry — and an entry left
+            // behind keeps "payment taken, not recorded" on screen forever,
+            // including in the case where the purchase was recovered by the
+            // App Store notification or by hand rather than by this device.
+            if (next?.provider === 'apple' && next.proActive) {
+              clearVerificationsFor(companyId);
+            }
             markRemoteSettled(current);
             writeEntitlementCache(companyId, next);
             current.cached = { subscription: next, cachedAt: Date.now() };

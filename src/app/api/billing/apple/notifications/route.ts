@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAppStoreCredentials } from "@/lib/billing/apple/apple-config";
 import {
   applyAppleTransaction,
+  companyForAppAccountToken,
   companyForOriginalTransaction,
 } from "@/lib/billing/apple/apple-entitlement.server";
 import {
@@ -10,6 +11,7 @@ import {
   verifyAppleJws,
 } from "@/lib/billing/apple/verify-jws";
 import {
+  AppleRejectionError,
   isIgnorableNotification,
   isTerminalNotification,
   type AppleNotificationPayload,
@@ -89,9 +91,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, skipped: "no original transaction id" });
     }
 
-    const companyId = await companyForOriginalTransaction(originalTransactionId);
+    // The link is the fast path. Falling back to the `appAccountToken` is what
+    // lets a *first* purchase land without the buying device: the token was
+    // minted by us and stored on the workspace before the purchase, and Apple
+    // echoes it inside the signed transaction, so this notification carries
+    // everything needed to record the entitlement on its own.
+    const companyId =
+      (await companyForOriginalTransaction(originalTransactionId)) ??
+      (await companyForAppAccountToken(transaction.appAccountToken));
+
     if (!companyId) {
-      // A purchase we never saw verified — nothing to update. Answering 200
+      // Genuinely ours-to-ignore: no link and no token we minted. Answering 200
       // stops Apple retrying for three days over a notification we can never act on.
       console.warn(
         "[billing/apple/notifications] no company for original transaction",
@@ -114,6 +124,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, proActive: result.proActive });
   } catch (error) {
+    if (error instanceof AppleRejectionError) {
+      // The link moved to another workspace between the notification and now.
+      // Retrying for three days cannot change that — acknowledge and drop it.
+      console.warn("[billing/apple/notifications] rejected:", error.reason);
+      return NextResponse.json({ ok: true, skipped: error.reason });
+    }
     // 500 makes Apple retry, which is what we want for a transient failure.
     console.error("[billing/apple/notifications]", error);
     return NextResponse.json({ error: "Failed to process notification" }, { status: 500 });

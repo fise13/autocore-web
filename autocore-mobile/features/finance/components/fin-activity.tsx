@@ -9,7 +9,7 @@ import { fin, finFontCap, finType } from '../layout';
 import { formatSignedMoney } from '../lib/format';
 import { toneColor, toneForValue } from '../lib/tone';
 import type { FinanceActivityDay, FinanceActivityEntry } from '../types';
-import { FinPressable } from './fin-primitives';
+import { FinPressable, FinSheet } from './fin-primitives';
 
 /**
  * Activity as a timeline, not a transactions table.
@@ -86,14 +86,16 @@ export function FinActivity({
 
   if (days.length === 0) {
     return (
-      <Text style={finType.rowMeta} color="muted">
-        No money moved in this period.
-      </Text>
+      <FinSheet padded>
+        <Text style={finType.rowMeta} color="muted">
+          No money moved in this period.
+        </Text>
+      </FinSheet>
     );
   }
 
   return (
-    <View style={{ gap: fin.block - 8 }}>
+    <FinSheet padded>
       {days.map((day) => (
         <View key={day.key} style={{ gap: fin.micro }}>
           <View
@@ -124,6 +126,6 @@ export function FinActivity({
           ))}
         </View>
       ))}
-    </View>
+    </FinSheet>
   );
 }

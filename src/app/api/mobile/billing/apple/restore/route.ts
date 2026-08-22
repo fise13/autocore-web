@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { AccountAccessError, verifyAccountAccess } from "@/lib/auth/verify-account-access";
-import { verifyCompanyOwner } from "@/lib/auth/verify-company-manager.server";
+import { verifyCompanyBillingManager } from "@/lib/auth/verify-company-manager.server";
 import {
   AppStoreNotConfiguredError,
   appleEnvironmentsAccepted,
@@ -11,6 +11,8 @@ import {
 import {
   applyAppleTransaction,
   assertNotStripeManaged,
+  companyDisplayName,
+  companyForOriginalTransaction,
   readStoredSubscription,
 } from "@/lib/billing/apple/apple-entitlement.server";
 import { fetchTransaction } from "@/lib/billing/apple/app-store-server-api";
@@ -30,12 +32,19 @@ export const runtime = "nodejs";
  * independently and the first one that still entitles wins. Every entry failing
  * is a normal outcome, not an error: it means this Apple ID holds nothing for
  * this workspace.
+ *
+ * A subscription already bound to a different workspace is reported as such
+ * rather than quietly re-pointed. Restoring one Apple ID into a second company
+ * used to leave both companies marked Pro off a single payment; the caller now
+ * has to ask for a transfer explicitly (`transfer: true`), which moves the
+ * entitlement and revokes it from the previous workspace in one transaction.
  */
 export async function POST(request: NextRequest) {
   try {
     const access = await verifyAccountAccess(request);
     const body = (await request.json()) as {
       companyId?: string;
+      transfer?: boolean;
       transactions?: Array<{ transactionId?: string }>;
     };
 
@@ -44,7 +53,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "companyId is required" }, { status: 400 });
     }
 
-    await verifyCompanyOwner(access.uid, companyId);
+    await verifyCompanyBillingManager(access.uid, companyId);
 
     const stored = await readStoredSubscription(companyId);
     assertNotStripeManaged(stored);
@@ -63,8 +72,11 @@ export async function POST(request: NextRequest) {
 
     // The most recent usable transaction is the one worth writing; a lapsed
     // older term must not overwrite a live one, so all are checked first.
+    // Transactions belonging to another workspace are set aside rather than
+    // discarded — if nothing else restores, that conflict is the real answer.
     let best: AppleTransaction | null = null;
     let lastReason: AppleRejectionError | null = null;
+    let conflict: { transaction: AppleTransaction; companyId: string } | null = null;
 
     for (const transactionId of ids) {
       let transaction: AppleTransaction;
@@ -92,6 +104,15 @@ export async function POST(request: NextRequest) {
         throw error;
       }
 
+      const owner = transaction.originalTransactionId
+        ? await companyForOriginalTransaction(transaction.originalTransactionId)
+        : null;
+
+      if (owner && owner !== companyId && !body.transfer) {
+        if (!conflict) conflict = { transaction, companyId: owner };
+        continue;
+      }
+
       const currentEnd = best?.expiresDate ?? 0;
       if ((transaction.expiresDate ?? 0) >= currentEnd) {
         best = transaction;
@@ -99,18 +120,32 @@ export async function POST(request: NextRequest) {
     }
 
     if (!best) {
+      if (conflict) {
+        return NextResponse.json({
+          restored: false,
+          reason: "bound_to_other_company",
+          conflictCompany: await companyDisplayName(conflict.companyId),
+        });
+      }
       return NextResponse.json({
         restored: false,
         ...(lastReason ? { reason: lastReason.reason } : {}),
       });
     }
 
-    const result = await applyAppleTransaction({ companyId, transaction: best, renewal: null });
+    const result = await applyAppleTransaction({
+      companyId,
+      transaction: best,
+      renewal: null,
+      uid: access.uid,
+      allowTransfer: body.transfer === true,
+    });
 
     return NextResponse.json({
       restored: true,
       proActive: result.proActive,
       planId: result.planId ?? undefined,
+      transferred: result.transferred,
     });
   } catch (error) {
     if (error instanceof AppleRejectionError) {

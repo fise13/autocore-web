@@ -8,8 +8,9 @@ import { fin, finType } from '../layout';
 import { changeHeadline } from '../lib/drivers';
 import { formatMoneyAdaptive } from '../lib/format';
 import { formatWindowRange } from '../lib/period';
-import { buildTrendMetrics, type FinanceTrendId } from '../lib/trends';
+import { buildTrendMetrics } from '../lib/trends';
 import type { FinanceFlowNodeId, FinanceModel, FinancePeriodId } from '../types';
+import type { FinanceMetricRouteId } from '../navigation';
 import { FinActivity } from './fin-activity';
 import { FinHealth } from './fin-health';
 import { FinMoneyFlow } from './fin-money-flow';
@@ -23,7 +24,7 @@ import { FinWhatChanged } from './fin-what-changed';
 export type FinanceOverviewHandlers = {
   onPeriodChange: (period: FinancePeriodId) => void;
   onOpenHealth: () => void;
-  onOpenMetric: (id: FinanceTrendId) => void;
+  onOpenMetric: (id: FinanceMetricRouteId) => void;
   onOpenFlow: (id: FinanceFlowNodeId) => void;
   onOpenLedger: () => void;
 };
@@ -60,10 +61,15 @@ export function FinanceOverview({
         model={model}
         period={period}
         onPeriodChange={handlers.onPeriodChange}
+        onPress={() => handlers.onOpenMetric('net')}
       />
 
       <FinSection title="Trends" caption={`Measured over ${range}`}>
-        <FinTrends metrics={trends} onSelect={handlers.onOpenMetric} />
+        <FinTrends
+          metrics={trends}
+          comparisonLabel={model.window.period.comparisonLabel}
+          onSelect={handlers.onOpenMetric}
+        />
       </FinSection>
 
       <FinSection
@@ -102,7 +108,7 @@ export function FinanceOverview({
       </FinSection>
 
       <View style={{ gap: fin.stack }}>
-        <Text style={finType.label} color="muted">
+        <Text style={{ ...finType.label, paddingHorizontal: fin.pad }} color="muted">
           What Finance can’t see yet
         </Text>
         <FinGaps gaps={model.gaps} />

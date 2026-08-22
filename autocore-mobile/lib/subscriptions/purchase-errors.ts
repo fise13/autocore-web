@@ -9,6 +9,7 @@ import { ErrorCode } from 'react-native-iap';
 
 import { MobileApiError } from '@/services/api/mobile-client';
 
+import { verificationFailureForStatus } from './api-failure';
 import type { PurchaseFailure, PurchaseFailureCode } from './types';
 
 const MESSAGES: Record<PurchaseFailureCode, string> = {
@@ -20,9 +21,12 @@ const MESSAGES: Record<PurchaseFailureCode, string> = {
   store_unavailable: 'In-app purchases are unavailable on this device.',
   not_connected: 'Could not reach the App Store. Please try again.',
   payment_not_allowed: 'Purchases are restricted on this device. Check Screen Time settings.',
-  verification_failed: 'We could not verify your purchase. No charge was applied twice — contact support if this persists.',
+  verification_failed:
+    'We could not confirm your purchase yet. It will turn on automatically once we reach the App Store.',
   bound_to_other_company: 'This Apple subscription is already used by another workspace.',
-  permission_denied: 'Only the workspace owner can manage the subscription.',
+  permission_denied: 'Only an owner or admin can manage this workspace subscription.',
+  server_unconfigured:
+    'Your payment went through, but AutoCore cannot reach the App Store to record it. This is on our side — contact support.',
   sheet_timeout: 'Apple did not open the payment sheet. Try again.',
   unknown: 'Something went wrong with the purchase. Please try again.',
 };
@@ -103,12 +107,7 @@ export function toPurchaseFailure(error: unknown): PurchaseFailure {
 
   // Verification is an HTTP round-trip through our own API, not StoreKit.
   if (error instanceof MobileApiError) {
-    if (error.status === 409) return failure('bound_to_other_company', debugMessage);
-    if (error.status === 403) return failure('permission_denied', debugMessage);
-    if (error.status === 402 || error.status === 400) {
-      return failure('verification_failed', debugMessage);
-    }
-    return failure('network', debugMessage);
+    return failure(verificationFailureForStatus(error.status), debugMessage);
   }
 
   return failure('unknown', debugMessage);

@@ -7,6 +7,11 @@ import {
   getPurchaseStoreSnapshot,
   subscribePurchaseStore,
 } from '@/lib/subscriptions/purchase-store';
+import {
+  hasFailedVerification,
+  permanentVerificationFailure,
+  subscribePendingVerification,
+} from '@/lib/subscriptions/pending-verification';
 import * as manager from '@/lib/subscriptions/subscription-manager';
 import { resolveTrialOffer, type TrialOffer } from '@/lib/subscriptions/trial-policy';
 import type {
@@ -35,10 +40,21 @@ export type UseSubscriptionResult = {
   /** Apple ID may still use the introductory offer on this subscription group. */
   introEligible: boolean;
   trial: TrialOffer;
-  /** Only the workspace owner may buy. */
+  /** Owner or admin — anyone else sees an explanation instead of a CTA. */
   canManageBilling: boolean;
+  /**
+   * A purchase from this device is paid but not recorded by the server yet.
+   * The UI must acknowledge the payment rather than showing a plain paywall.
+   */
+  hasUnconfirmedPurchase: boolean;
+  /**
+   * Set when retrying cannot help — the server has no App Store credentials, or
+   * this seat may not manage billing. The banner has to say so instead of
+   * promising an automatic recovery that will never arrive.
+   */
+  unconfirmedReason: 'server_unconfigured' | 'permission_denied' | null;
   purchase: (planId: PlanId) => Promise<void>;
-  restore: () => Promise<RestoreOutcome>;
+  restore: (options?: { transfer?: boolean }) => Promise<RestoreOutcome>;
   openManage: () => Promise<void>;
   refresh: () => Promise<void>;
   reloadProducts: () => Promise<void>;
@@ -83,13 +99,34 @@ export function useSubscription(): UseSubscriptionResult {
     [entitlement, offers, purchaseState.introEligible],
   );
 
-  const canManageBilling = Boolean(profile?.isCompanyOwner);
+  // Only surfaced once a confirmation has actually failed — the happy path
+  // spends about a second in the queue and needs no explanation.
+  const hasUnconfirmedPurchase = useSyncExternalStore(
+    subscribePendingVerification,
+    () => hasFailedVerification(companyId),
+    () => hasFailedVerification(companyId),
+  );
+
+  const unconfirmedReason = useSyncExternalStore(
+    subscribePendingVerification,
+    () => permanentVerificationFailure(companyId),
+    () => permanentVerificationFailure(companyId),
+  );
+
+  // Mirrors `isCompanyBillingManager` in firestore.rules and the server check
+  // in `/api/mobile/billing/apple/*`. Showing Buy to anyone else meant StoreKit
+  // charged them and the server then refused the receipt.
+  const canManageBilling =
+    profile?.isCompanyOwner === true || profile?.role === 'owner' || profile?.role === 'admin';
 
   const purchase = useCallback(async (planId: PlanId) => {
     await manager.purchase(planId);
   }, []);
 
-  const restore = useCallback(() => manager.restore(), []);
+  const restore = useCallback(
+    (options?: { transfer?: boolean }) => manager.restore(options),
+    [],
+  );
   const openManage = useCallback(() => manager.openManageSubscriptions(), []);
   const reloadProducts = useCallback(() => manager.loadProducts(), []);
   const resetFlow = useCallback(() => manager.resetFlow(), []);
@@ -110,6 +147,8 @@ export function useSubscription(): UseSubscriptionResult {
     introEligible: purchaseState.introEligible,
     trial,
     canManageBilling,
+    hasUnconfirmedPurchase,
+    unconfirmedReason,
     purchase,
     restore,
     openManage,

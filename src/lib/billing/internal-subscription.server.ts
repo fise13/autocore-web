@@ -5,7 +5,10 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { BillingInterval } from "@/domain/billing";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { DEMO_COMPANY_ID } from "@/lib/demo/demo-config";
-import { verifyCompanyOwner } from "@/lib/auth/verify-company-manager.server";
+import {
+  verifyCompanyMembership,
+  verifyCompanyOwner,
+} from "@/lib/auth/verify-company-manager.server";
 
 export const TRIAL_DAYS = 14;
 
@@ -55,8 +58,8 @@ function readPeriodEnd(data: SubscriptionDoc | undefined): Date | null {
 }
 
 function isInternallyManaged(data: SubscriptionDoc | undefined): boolean {
-  // Apple and Stripe own their period ends. Expiring them here would invent a
-  // homemade timer and fight App Store Server Notifications / Stripe webhooks.
+  // Apple, Stripe, and Paddle own their period ends. Expiring them here would
+  // invent a homemade timer and fight provider webhooks.
   return data?.provider === "internal" || !data?.provider;
 }
 
@@ -75,7 +78,12 @@ export async function refreshInternalSubscription(
     return { proActive: true, status: "trialing" };
   }
 
-  await verifyCompanyOwner(uid, companyId);
+  // Membership, not ownership. Every signed-in user calls this on foreground;
+  // requiring the owner made the reconcile a guaranteed 403 for the rest of the
+  // team, so a lapsed internal trial was never noticed on their devices. The
+  // only write here expires a term that has already ended — idempotent, and
+  // never a grant.
+  await verifyCompanyMembership(uid, companyId);
 
   const ref = getAdminFirestore()
     .collection("companies")
@@ -133,7 +141,7 @@ export async function startInternalTrial(companyId: string, uid: string): Promis
   const snap = await ref.get();
   const data = (snap.data() as SubscriptionDoc | undefined) ?? {};
 
-  if (data.provider === "stripe" && data.proActive) {
+  if ((data.provider === "stripe" || data.provider === "paddle") && data.proActive) {
     return { proActive: true, started: false };
   }
 
@@ -191,7 +199,14 @@ export async function activateInternalPro(
   const snap = await ref.get();
   const data = (snap.data() as SubscriptionDoc | undefined) ?? {};
 
-  if (data.provider === "stripe" && data.proActive) {
+  // Apple belongs here with the other paid providers. Without it this grant
+  // rewrote a paid App Store subscription to `provider: "internal"`, which
+  // orphaned the Apple link — every later renewal notification then landed on a
+  // document that no longer claimed to be Apple's.
+  if (
+    (data.provider === "stripe" || data.provider === "paddle" || data.provider === "apple") &&
+    data.proActive
+  ) {
     return { proActive: true };
   }
 

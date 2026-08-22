@@ -26,9 +26,20 @@ import type { WorkOrder } from '@/types/work-order';
 import type { PayrollTransaction } from '@/types/payroll-transaction';
 
 import { EMPTY_WORK_COUNTS, isAwaitingPlacement, type WorkCounts } from '../lib/work-model';
+import { buildWorkspaceSeries, type WorkspaceSeriesMap } from '../lib/workspace-series';
 
 export type WorkCountsResult = {
   counts: WorkCounts;
+  /** Scoped work orders — feeds Work → Today Health trend. */
+  orders: WorkOrder[];
+  /** Normalized inventory — unplaced + low-stock trend. */
+  items: InventoryItem[];
+  /** Intake jobs in the bay. */
+  intakeJobs: Array<{ state: string; createdAt?: unknown; updatedAt?: unknown }>;
+  /** Pending payroll + claimable jobs. */
+  earningsAttention: number;
+  /** Eight-week shape per Work node — feeds the trailing spark on each row. */
+  series: WorkspaceSeriesMap;
   /** Session + every requested listener/query has settled (including empty). */
   ready: boolean;
 };
@@ -136,8 +147,13 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
   }, [inventoryEnabled, inventoryReady, rawInventory]);
 
   const locationsData = locationsQuery.data;
-  const intakeJobs = Array.isArray(intake.jobs) ? intake.jobs : [];
-  const motorsList = Array.isArray(motors) ? motors : [];
+  // Memoized because both feed downstream `useMemo`s: a fresh `[]` on every
+  // render would rebuild the counts and the eight-week series each time.
+  const intakeJobs = useMemo(
+    () => (Array.isArray(intake.jobs) ? intake.jobs : []),
+    [intake.jobs],
+  );
+  const motorsList = useMemo(() => (Array.isArray(motors) ? motors : []), [motors]);
 
   const counts = useMemo<WorkCounts>(() => {
     const next: WorkCounts = { ...EMPTY_WORK_COUNTS };
@@ -229,6 +245,39 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
     uid,
   ]);
 
+  /**
+   * `null` per source, not `[]` — a listener that has not answered yet is
+   * unknown, and an unknown queue must draw no chart rather than a flat zero.
+   */
+  const series = useMemo<WorkspaceSeriesMap>(
+    () =>
+      buildWorkspaceSeries({
+        orders: ordersEnabled && ordersReady ? scopedOrders : null,
+        items: inventoryEnabled && inventoryReady ? items : null,
+        motors: motorsEnabled && motorsReady ? motorsList : null,
+        intakeJobs: wantsIntake && hasCompany && intakeReady ? intakeJobs : null,
+        payroll: payrollEnabled && payrollReady ? ownPayroll : null,
+      }),
+    [
+      hasCompany,
+      intakeJobs,
+      intakeReady,
+      inventoryEnabled,
+      inventoryReady,
+      items,
+      motorsEnabled,
+      motorsList,
+      motorsReady,
+      ordersEnabled,
+      ordersReady,
+      ownPayroll,
+      payrollEnabled,
+      payrollReady,
+      scopedOrders,
+      wantsIntake,
+    ],
+  );
+
   const ready =
     hasCompany &&
     ordersReady &&
@@ -237,5 +286,16 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
     locationsReady &&
     intakeReady;
 
-  return { counts, ready };
+  const earningsAttention =
+    (counts.earnings?.pendingCount ?? 0) + (counts.earnings?.claimable ?? 0);
+
+  return {
+    counts,
+    orders: scopedOrders,
+    items,
+    intakeJobs,
+    earningsAttention,
+    series,
+    ready,
+  };
 }

@@ -2,8 +2,8 @@ import type { Href } from 'expo-router';
 
 import type { FinanceFlowNodeId } from './types';
 
-/** Metric detail ids — the four trends plus the health index itself. */
-export type FinanceMetricRouteId = 'health' | 'margin' | 'revenue' | 'costs' | 'cash';
+/** Metric detail ids — trends, net profit, and the health index itself. */
+export type FinanceMetricRouteId = 'health' | 'margin' | 'revenue' | 'costs' | 'cash' | 'net';
 
 export function financeMetricHref(id: FinanceMetricRouteId): Href {
   return { pathname: '/(tabs)/accounting/metric/[id]', params: { id } } as Href;

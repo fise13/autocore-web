@@ -21,6 +21,11 @@ export function useMarketingPages() {
         plan: {
           price: t("pricing.plan.price"),
           period: t("pricing.plan.period"),
+          yearlyPrice: t("pricing.plan.yearlyPrice"),
+          yearlyPeriod: t("pricing.plan.yearlyPeriod"),
+          monthlyLabel: t("pricing.plan.monthlyLabel"),
+          yearlyLabel: t("pricing.plan.yearlyLabel"),
+          intervalAria: t("pricing.plan.intervalAria"),
           note: t("pricing.plan.note"),
         },
         cta: {
@@ -247,6 +252,7 @@ export function useMarketingPages() {
         product: tSeo("breadcrumbs.product"),
         modules: tSeo("breadcrumbs.modules"),
         privacy: tSeo("breadcrumbs.privacy"),
+        refund: tSeo("breadcrumbs.refund"),
         terms: tSeo("breadcrumbs.terms"),
       };
     },

@@ -169,3 +169,46 @@ export function findTrendMetric(
 ): FinanceTrendMetric | undefined {
   return buildTrendMetrics(model).find((metric) => metric.id === id);
 }
+
+/** Detail routes include net profit, which only lives in the headline card — not Trends. */
+export type FinanceDetailMetric = Omit<FinanceTrendMetric, 'id'> & {
+  id: FinanceTrendId | 'net';
+};
+
+function buildNetDetailMetric(model: FinanceModel): FinanceDetailMetric {
+  const { totals, previousTotals, growth, series, window } = model;
+  const comparison = window.period.comparisonLabel;
+
+  let cumulativeNet = 0;
+  const netSeries = series.map((point) => {
+    cumulativeNet += point.net;
+    return cumulativeNet;
+  });
+
+  return {
+    id: 'net',
+    label: 'Net profit',
+    value: formatMoneyAdaptive(totals.net),
+    delta: growth.net == null ? null : formatSignedPercent(growth.net),
+    deltaTone: toneForValue(growth.net),
+    deltaDirection: deltaDirection(growth.net),
+    deltaCaption: comparison,
+    series: netSeries,
+    chartColor: 'auto',
+    meaning: 'What is left after every cost in this period — revenue minus expenses.',
+    method: 'Sum of net from each bucket in this window (revenue minus expense per bucket).',
+    facts: [
+      { label: 'Revenue', value: formatMoneyAdaptive(totals.revenue) },
+      { label: 'Operating costs', value: formatMoneyAdaptive(totals.expense) },
+      { label: 'Previous period', value: formatMoneyAdaptive(previousTotals.net) },
+    ],
+  };
+}
+
+export function findMetricForDetail(
+  model: FinanceModel,
+  id: string,
+): FinanceDetailMetric | undefined {
+  if (id === 'net') return buildNetDetailMetric(model);
+  return buildTrendMetrics(model).find((metric) => metric.id === id);
+}

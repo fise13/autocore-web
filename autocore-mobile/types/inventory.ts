@@ -33,6 +33,8 @@ export type InventoryItem = {
   totalAvailable: number;
   lowStockThreshold?: number;
   status: InventoryItemStatus;
+  /** When the SKU was created — preferred for Work Today trend windows. */
+  createdAt?: Date;
   updatedAt?: Date;
 };
 

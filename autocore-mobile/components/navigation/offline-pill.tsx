@@ -1,6 +1,6 @@
 /**
- * Removed — operational status now uses the real iOS Dynamic Island
- * (`features/live-activity`). Kept as an empty stub so old imports do not break.
+ * Removed — connectivity chrome is `OfflineSessionBanner` under the auth gate
+ * (and Live Activity / island for intake sync). Kept so old imports stay green.
  */
 export function OfflinePill() {
   return null;

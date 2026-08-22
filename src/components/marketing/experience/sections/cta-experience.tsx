@@ -1,24 +1,19 @@
 "use client";
 
-import { useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
 import { useLandingContent } from "@/components/marketing/experience/content/use-landing-content";
-import { BuyModal } from "@/components/marketing/experience/ui/buy-modal";
+import { PaddleBuyButton } from "@/components/marketing/pricing/paddle-buy-button";
 import { TrialButton } from "@/components/marketing/experience/ui/trial-button";
-import { Button } from "@/components/ui/button";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 export function CtaExperience() {
   const reduced = useReducedMotion();
-  const [buyOpen, setBuyOpen] = useState(false);
   const { cta: copy } = useLandingContent();
 
   return (
     <section className="exp-cta" aria-labelledby="cta-heading">
-      <BuyModal open={buyOpen} onOpenChange={setBuyOpen} />
-
       <div className="exp-cta-inner">
         <motion.h2
           id="cta-heading"
@@ -40,14 +35,9 @@ export function CtaExperience() {
           transition={{ duration: 0.55, delay: 0.08, ease: EASE }}
         >
           <TrialButton className="exp-cta-primary">{copy.primary}</TrialButton>
-          <Button
-            type="button"
-            variant="outline"
-            className="exp-cta-secondary"
-            onClick={() => setBuyOpen(true)}
-          >
+          <PaddleBuyButton variant="outline" className="exp-cta-secondary">
             {copy.buy}
-          </Button>
+          </PaddleBuyButton>
         </motion.div>
       </div>
     </section>

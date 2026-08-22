@@ -7,6 +7,7 @@ import Animated, {
   useSharedValue,
   withDelay,
   withRepeat,
+  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
@@ -57,10 +58,38 @@ function counterweightD(cycle: number): string {
   return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 0 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
 }
 
+/** Milliseconds per revolution at rest — slow enough to read as mechanism. */
+const IDLE_MS = 5400;
+
+type PaywallHeroMarkProps = {
+  enterDelayMs?: number;
+  /**
+   * Uniform scale. The SVG scales natively through its viewBox and the layout
+   * box scales with it, so the drawing is never clipped — the mark used to be
+   * squeezed into an 88pt box with `overflow: 'hidden'`, which cut off the
+   * cylinder head and the crankcase feet.
+   */
+  scale?: number;
+  /**
+   * Start the engine rather than idle it: a slow turn, a catch, a rev, then a
+   * settle back to idle speed. Used once, on the post-purchase screen, where
+   * the engine turning over *is* the celebration.
+   */
+  celebrate?: boolean;
+};
+
 /**
- * Single-cylinder line drawing with a slow crank–rod–piston cycle.
+ * Single-cylinder line drawing with a crank–rod–piston cycle.
+ *
+ * `cycle` counts revolutions instead of wrapping at 1, so the animation can
+ * accelerate and then hand over to a repeating idle with no visible jump —
+ * every worklet reads it through `sin`/`cos`, which are periodic in it.
  */
-export function PaywallHeroMark({ enterDelayMs = 80 }: { enterDelayMs?: number }) {
+export function PaywallHeroMark({
+  enterDelayMs = 80,
+  scale = 1,
+  celebrate = false,
+}: PaywallHeroMarkProps) {
   const { colors } = useTheme();
   const reduced = useReducedMotion();
 
@@ -75,11 +104,27 @@ export function PaywallHeroMark({ enterDelayMs = 80 }: { enterDelayMs?: number }
     }
 
     enter.value = withDelay(enterDelayMs, withTiming(1, { duration: 640, easing: autocoreEase }));
+
+    if (celebrate) {
+      cycle.value = withDelay(
+        enterDelayMs + 120,
+        withSequence(
+          // Turning over.
+          withTiming(0.35, { duration: 420, easing: Easing.in(Easing.quad) }),
+          // Catches and revs, decelerating into idle speed.
+          withTiming(3.2, { duration: 1600, easing: Easing.out(Easing.cubic) }),
+          // 3.2 → 4.2 is exactly one revolution, so the loop reset is invisible.
+          withRepeat(withTiming(4.2, { duration: IDLE_MS, easing: Easing.linear }), -1, false),
+        ),
+      );
+      return;
+    }
+
     cycle.value = withDelay(
       enterDelayMs + 280,
-      withRepeat(withTiming(1, { duration: 5400, easing: Easing.linear }), -1, false),
+      withRepeat(withTiming(1, { duration: IDLE_MS, easing: Easing.linear }), -1, false),
     );
-  }, [cycle, enter, enterDelayMs, reduced]);
+  }, [celebrate, cycle, enter, enterDelayMs, reduced]);
 
   const wrapStyle = useAnimatedStyle(() => ({
     opacity: enter.value,
@@ -88,8 +133,10 @@ export function PaywallHeroMark({ enterDelayMs = 80 }: { enterDelayMs?: number }
 
   const pistonStyle = useAnimatedStyle(() => {
     const pin = pistonPinY(cycle.value);
+    // The piston lives outside the SVG, so it does not get the viewBox scale
+    // for free — its travel is in drawing units and has to be scaled by hand.
     return {
-      transform: [{ translateY: pin - PISTON_H * 0.62 }],
+      transform: [{ translateY: (pin - PISTON_H * 0.62) * scale }],
     };
   });
 
@@ -137,13 +184,13 @@ export function PaywallHeroMark({ enterDelayMs = 80 }: { enterDelayMs?: number }
       accessibilityRole="image"
       accessibilityLabel="Engine piston"
       style={[
-        { width: MARK_WIDTH, height: MARK_HEIGHT, alignItems: 'center' },
+        { width: MARK_WIDTH * scale, height: MARK_HEIGHT * scale, alignItems: 'center' },
         wrapStyle,
       ]}
     >
       <Svg
-        width={MARK_WIDTH}
-        height={MARK_HEIGHT}
+        width={MARK_WIDTH * scale}
+        height={MARK_HEIGHT * scale}
         viewBox={`0 0 ${MARK_WIDTH} ${MARK_HEIGHT}`}
         style={{ position: 'absolute' }}
       >
@@ -218,15 +265,19 @@ export function PaywallHeroMark({ enterDelayMs = 80 }: { enterDelayMs?: number }
         style={[
           {
             position: 'absolute',
-            left: CX - PISTON_W / 2,
+            left: (CX - PISTON_W / 2) * scale,
             top: 0,
-            width: PISTON_W,
-            height: PISTON_H,
+            width: PISTON_W * scale,
+            height: PISTON_H * scale,
           },
           pistonStyle,
         ]}
       >
-        <Svg width={PISTON_W} height={PISTON_H} viewBox={`0 0 ${PISTON_W} ${PISTON_H}`}>
+        <Svg
+          width={PISTON_W * scale}
+          height={PISTON_H * scale}
+          viewBox={`0 0 ${PISTON_W} ${PISTON_H}`}
+        >
           <Rect
             x={1.1}
             y={1.1}

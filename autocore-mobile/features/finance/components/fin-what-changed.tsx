@@ -11,7 +11,7 @@ import { fin, finFontCap, finType } from '../layout';
 import { formatMoneyAdaptive, formatSignedMoney } from '../lib/format';
 import { toneColor, toneForValue } from '../lib/tone';
 import type { FinanceChange, FinanceDriver, FinanceFlowNodeId } from '../types';
-import { FinPressable } from './fin-primitives';
+import { FinPressable, FinSheet } from './fin-primitives';
 
 const VISIBLE_BY_DEFAULT = 3;
 
@@ -120,18 +120,22 @@ export function FinWhatChanged({
 
   if (change.noBaseline) {
     return (
-      <Text style={finType.rowMeta} color="muted">
-        No comparable period yet — once a second period of operations exists, this section explains
-        every dollar of the difference.
-      </Text>
+      <FinSheet padded>
+        <Text style={finType.rowMeta} color="muted">
+          No comparable period yet — once a second period of operations exists, this section explains
+          every dollar of the difference.
+        </Text>
+      </FinSheet>
     );
   }
 
   if (change.drivers.length === 0) {
     return (
-      <Text style={finType.rowMeta} color="muted">
-        Nothing moved materially {comparisonLabel}.
-      </Text>
+      <FinSheet padded>
+        <Text style={finType.rowMeta} color="muted">
+          Nothing moved materially {comparisonLabel}.
+        </Text>
+      </FinSheet>
     );
   }
 
@@ -141,7 +145,8 @@ export function FinWhatChanged({
   const tone = toneForValue(change.delta);
 
   return (
-    <View style={{ gap: fin.stack }}>
+    <FinSheet padded>
+      <View style={{ gap: fin.stack }}>
       <Text style={{ ...finType.rowTitle, fontSize: 17, lineHeight: 23 }}>
         <Text style={{ ...finType.rowTitle, fontSize: 17, lineHeight: 23, fontWeight: '600', color: toneColor(tone, colors) }}>
           {headline}
@@ -174,6 +179,7 @@ export function FinWhatChanged({
           </Text>
         </FinPressable>
       ) : null}
-    </View>
+      </View>
+    </FinSheet>
   );
 }

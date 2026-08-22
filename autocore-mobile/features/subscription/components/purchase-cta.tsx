@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { ClockIcon } from '@/assets/icons';
@@ -34,7 +34,7 @@ export function PurchaseCta({
   preparing = false,
   onRestore,
 }: PurchaseCtaProps) {
-  const { tones } = useTheme();
+  const { colors, tones } = useTheme();
   const enterStyle = usePaywallEnter({
     delay: paywallTimeline.cta,
     duration: paywallDuration.cta,
@@ -45,6 +45,7 @@ export function PurchaseCta({
   const isBusy = flow.phase === 'loading' || flow.phase === 'verifying';
   const isPending = flow.phase === 'pending';
   const showLoading = isBusy || preparing;
+  const restoreDisabled = restoring || isBusy;
 
   if (isPending) {
     return (
@@ -97,19 +98,34 @@ export function PurchaseCta({
       </Button>
 
       {onRestore ? (
-        <Button
-          native={false}
-          variant="ghost"
-          size="lg"
-          shape="pill"
-          disabled={restoring || flow.phase === 'loading' || flow.phase === 'verifying'}
-          loading={restoring}
-          onPress={onRestore}
+        /**
+         * A quiet link, not a second button. App Review requires restore to be
+         * reachable, not to compete with the purchase — as a full-width ghost
+         * button it read as an equal choice and pushed the disclosure and the
+         * legal links off the fold on smaller phones.
+         */
+        <Pressable
+          accessibilityRole="button"
           accessibilityLabel="Restore purchases"
           accessibilityHint="Restores an AutoCore Pro subscription already bought with this Apple ID"
+          accessibilityState={{ disabled: restoreDisabled, busy: restoring }}
+          disabled={restoreDisabled}
+          hitSlop={12}
+          onPress={onRestore}
+          style={{
+            minHeight: tokens.control.hitTarget,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: tokens.space.inline,
+            opacity: restoreDisabled ? 0.5 : 1,
+          }}
         >
-          {restoring ? 'Restoring…' : restoreLabel}
-        </Button>
+          {restoring ? <ActivityIndicator size="small" color={colors.mutedForeground} /> : null}
+          <Text variant="body" style={{ fontSize: 15, color: colors.mutedForeground }}>
+            {restoring ? 'Restoring…' : restoreLabel}
+          </Text>
+        </Pressable>
       ) : null}
     </Animated.View>
   );

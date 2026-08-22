@@ -12,6 +12,7 @@ export const subscriptionApi = {
   appleLink: '/api/mobile/billing/apple/link',
   appleVerify: '/api/mobile/billing/apple/verify',
   appleRestore: '/api/mobile/billing/apple/restore',
+  appleReconcile: '/api/mobile/billing/apple/reconcile',
   refresh: '/api/billing/refresh',
   activatePro: '/api/billing/activate-pro',
 } as const;
@@ -48,6 +49,8 @@ export type VerifyApplePurchaseRequest = {
 export type VerifyApplePurchaseResponse = {
   accepted: boolean;
   reason?: AppleVerificationRejection;
+  /** Name of the workspace holding this subscription, on a conflict. */
+  conflictCompany?: string | null;
   /** Echo of the entitlement the server wrote, for optimistic UI only. */
   proActive?: boolean;
   planId?: string;
@@ -66,11 +69,19 @@ export type RestoreApplePurchasesRequest = {
     jws: string | null;
     productId: string;
   }>;
+  /**
+   * Move a subscription that is currently attached to another workspace.
+   * Never sent implicitly — the user has to confirm the move, because it
+   * revokes Pro from the workspace that holds it today.
+   */
+  transfer?: boolean;
 };
 
 export type RestoreApplePurchasesResponse = {
   restored: boolean;
   reason?: AppleVerificationRejection;
+  conflictCompany?: string | null;
+  transferred?: boolean;
   planId?: string;
   proActive?: boolean;
 };
@@ -79,6 +90,19 @@ export function restoreApplePurchases(
   body: RestoreApplePurchasesRequest,
 ): Promise<RestoreApplePurchasesResponse> {
   return mobilePost<RestoreApplePurchasesResponse>(subscriptionApi.appleRestore, body);
+}
+
+/**
+ * Pull the workspace's Apple subscription state from Apple.
+ *
+ * The push side (App Store Server Notifications) can be unconfigured, delayed
+ * or lost; without a pull the stored document freezes at the last successful
+ * write and the app shows a subscription that no longer matches reality.
+ */
+export function reconcileAppleSubscription(
+  companyId: string,
+): Promise<{ reconciled: boolean; proActive?: boolean; reason?: string }> {
+  return mobilePost(subscriptionApi.appleReconcile, { companyId });
 }
 
 /** Force server-side expiry evaluation. Existing endpoint, unchanged. */

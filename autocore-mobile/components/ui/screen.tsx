@@ -18,6 +18,7 @@ import { useMoneyFormatRevision } from '@/store/money-format-store';
 import { withAlpha } from '@/theme/color-utils';
 import { rhythm, spacing } from '@/theme';
 
+import { BrandBackdrop, TabDockVignette } from './brand-backdrop';
 import { IconButton } from './icon-button';
 import { ScrollEdgeChrome } from './scroll-edge-chrome';
 import { Text } from './text';
@@ -25,13 +26,29 @@ import { Text } from './text';
 type ScreenProps = {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
+  /** Soft primary glow at the top of the page (default on). */
+  brandWash?: boolean;
+  /** Darken the strip under the floating dock (default on with brandWash). */
+  tabVignette?: boolean;
 };
 
-/** Full-bleed screen background. */
-export function Screen({ children, style }: ScreenProps) {
+/** Full-bleed screen — top glow behind content, dock vignette over content. */
+export function Screen({
+  children,
+  style,
+  brandWash = true,
+  tabVignette,
+}: ScreenProps) {
   const { colors } = useTheme();
   useMoneyFormatRevision();
-  return <View style={[{ flex: 1, backgroundColor: colors.background }, style]}>{children}</View>;
+  const showVignette = tabVignette ?? brandWash;
+  return (
+    <View style={[{ flex: 1, backgroundColor: colors.background }, style]}>
+      {brandWash ? <BrandBackdrop /> : null}
+      {children}
+      {showVignette ? <TabDockVignette /> : null}
+    </View>
+  );
 }
 
 type ScreenScrollProps = ScrollViewProps & {

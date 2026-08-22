@@ -1,12 +1,21 @@
-import { memo, useCallback, useState, type ReactNode } from 'react';
+import { memo, useCallback, type ReactNode } from 'react';
 import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
+import Animated, {
+  interpolate,
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { ChevronRightIcon } from '@/assets/icons';
 import { Text } from '@/components/ui';
-import { useTheme } from '@/hooks';
+import { useMotion, useTheme } from '@/hooks';
 import { haptics } from '@/theme';
 import { withAlpha } from '@/theme/color-utils';
+
+import { typography } from '@/theme';
 
 import { fin, finFontCap, finType } from '../layout';
 import {
@@ -18,11 +27,11 @@ import {
 } from '../lib/tone';
 
 /**
- * Press feedback is a static style swap driven by state.
+ * Press feedback — scale plus a quiet fill, same language as Work and Home rows.
  *
  * RN 0.85 / New Architecture silently drops `Pressable`'s function-form `style`
- * in this app, taking layout with it — see the icon-button regression. Every
- * pressable on this surface therefore keeps a plain object style.
+ * in this app, taking layout with it — see the icon-button regression. The
+ * animated surface lives on an inner `Animated.View` with plain object styles.
  */
 export const FinPressable = memo(function FinPressable({
   children,
@@ -41,8 +50,35 @@ export const FinPressable = memo(function FinPressable({
   disabled?: boolean;
   haptic?: 'selection' | 'light' | 'none';
 }) {
-  const { colors } = useTheme();
-  const [pressed, setPressed] = useState(false);
+  const { colors, isDark } = useTheme();
+  const motion = useMotion();
+  const press = useSharedValue(0);
+
+  const pressedFill = withAlpha(colors.foreground, isDark ? 0.06 : 0.045);
+
+  const pressStyle = useAnimatedStyle(() => {
+    if (motion.reduced) {
+      return {
+        backgroundColor: press.value > 0.5 ? pressedFill : 'transparent',
+        transform: [{ scale: 1 }],
+      };
+    }
+    return {
+      backgroundColor: interpolateColor(press.value, [0, 1], ['transparent', pressedFill]),
+      transform: [
+        { scale: interpolate(press.value, [0, 1], [1, fin.pressScale]) },
+      ],
+    };
+  });
+
+  const setPressed = useCallback(
+    (next: number) => {
+      press.value = withTiming(next, {
+        duration: motion.reduced ? 80 : fin.pressInMs,
+      });
+    },
+    [motion.reduced, press],
+  );
 
   const handlePress = useCallback(() => {
     if (!onPress) return;
@@ -51,21 +87,21 @@ export const FinPressable = memo(function FinPressable({
     onPress();
   }, [haptic, onPress]);
 
+  if (!onPress || disabled) {
+    return <View style={style}>{children}</View>;
+  }
+
   return (
     <Pressable
-      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
-      disabled={disabled || !onPress}
-      onPressIn={() => setPressed(true)}
-      onPressOut={() => setPressed(false)}
+      disabled={disabled}
+      onPressIn={() => setPressed(1)}
+      onPressOut={() => setPressed(0)}
       onPress={handlePress}
-      style={[
-        style,
-        pressed && onPress ? { backgroundColor: withAlpha(colors.foreground, 0.045) } : null,
-      ]}
     >
-      {children}
+      <Animated.View style={[style, pressStyle]}>{children}</Animated.View>
     </Pressable>
   );
 });
@@ -100,10 +136,14 @@ export function FinSection({
           alignItems: 'flex-end',
           justifyContent: 'space-between',
           gap: fin.stack,
+          paddingHorizontal: fin.pad,
         }}
       >
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={finType.sectionTitle} maxFontSizeMultiplier={finFontCap.metric}>
+          <Text
+            style={{ ...typography.title2, color: colors.foreground }}
+            maxFontSizeMultiplier={finFontCap.metric}
+          >
             {title}
           </Text>
           {caption ? (
@@ -136,10 +176,13 @@ export function FinSheet({
   children,
   style,
   padded = false,
+  inset = true,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   padded?: boolean;
+  /** When false, the sheet spans edge to edge (detail screens with outer pad). */
+  inset?: boolean;
 }) {
   const { colors } = useTheme();
 
@@ -147,6 +190,7 @@ export function FinSheet({
     <View
       style={[
         {
+          marginHorizontal: inset ? fin.pad : 0,
           backgroundColor: colors.card,
           borderRadius: fin.sheetRadius,
           borderWidth: fin.hairline,

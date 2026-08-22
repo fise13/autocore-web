@@ -8,7 +8,6 @@ export { PurchaseSuccess } from './components/purchase-success';
 export { PurchaseStatusBanner } from './components/purchase-status-banner';
 export { PaywallFooter } from './components/paywall-footer';
 export { PaywallChrome } from './components/paywall-chrome';
-export { FeatureRow } from './components/feature-row';
 export { SubscriptionStatusCard } from './components/subscription-status-card';
 export { SubscriptionPlanSection } from './components/subscription-plan-section';
 export { TrialCountdown } from './components/trial-countdown';
@@ -23,8 +22,7 @@ export { DevSubscriptionPanel } from './components/dev-subscription-panel';
 
 export {
   PRO_FEATURE_ROWS,
-  PAYWALL_FEATURE_ROWS,
-  WEB_WORKSPACE_ROW,
+  WEB_WORKSPACE_HINT,
   LEGAL_URLS,
   type ProFeatureRow,
 } from './data/pro-features';

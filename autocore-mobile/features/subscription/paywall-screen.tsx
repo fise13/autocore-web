@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,16 +8,9 @@ import { useSubscription } from '@/hooks/use-subscription';
 import { usePaywall } from '@/hooks/use-paywall';
 import { useTheme } from '@/hooks/use-theme';
 import { featureRule, type GatedFeature } from '@/lib/subscriptions/feature-gate';
-import {
-  formatIapPaywallStatus,
-  isIapDebugEnabled,
-  subscribeIapTrace,
-} from '@/lib/subscriptions/iap-trace';
 import { setPaywallBypassed } from '@/lib/subscriptions/paywall-bypass';
-import { isConnected, isSubscriptionSkuWarmed } from '@/lib/subscriptions/purchase-manager';
 import { getPurchaseStoreSnapshot } from '@/lib/subscriptions/purchase-store';
 import {
-  describeIntroOffer,
   describePaywallDisclosure,
   describeTrialCta,
   resolveTrialOffer,
@@ -45,7 +38,6 @@ type PaywallScreenProps = {
 };
 
 const DEFAULT_HEADLINE = 'Your entire operation.\nOne workspace.';
-const DEFAULT_SUBHEAD = 'Inventory, work orders, AI and reports, all in one workspace.';
 
 export function PaywallScreen({
   feature,
@@ -58,6 +50,8 @@ export function PaywallScreen({
   const dismiss = isGate ? () => undefined : routerDismiss;
   const {
     entitlement,
+    canManageBilling,
+    hasUnconfirmedPurchase,
     offers: offersFromStore,
     productsError,
     flow,
@@ -82,8 +76,12 @@ export function PaywallScreen({
   }, [offers, selectedPlan]);
 
   useEffect(() => {
+    // Priming StoreKit's product cache is only useful before a tap, and doing
+    // it mid-purchase is what makes OpenIAP emit QueryProduct errors onto the
+    // purchase listener while Apple's sheet is open.
+    if (flow.phase === 'loading' || flow.phase === 'verifying') return;
     void warmPlan(selectedPlan);
-  }, [selectedPlan, warmPlan]);
+  }, [flow.phase, selectedPlan, warmPlan]);
 
   useEffect(() => {
     const phase = getPurchaseStoreSnapshot().flow.phase;
@@ -103,7 +101,10 @@ export function PaywallScreen({
   }, [reloadProducts, resetFlow]);
 
   const headline = feature ? featureRule(feature).paywall.title : DEFAULT_HEADLINE;
-  const subhead = feature ? featureRule(feature).paywall.body : DEFAULT_SUBHEAD;
+  // Only a feature-seeded paywall gets a second sentence: there it explains
+  // which locked thing the user just reached for. The default screen said the
+  // headline again in different words.
+  const subhead = feature ? featureRule(feature).paywall.body : null;
 
   const savingsLabel = useCallback(
     (planId: PlanId): string | null => {
@@ -124,21 +125,7 @@ export function PaywallScreen({
 
   const selectedOffer = offers.find((offer) => offer.plan.id === selectedPlan);
   const storeReady = Boolean(selectedOffer?.product);
-  const selectedSku = selectedOffer?.product?.sku ?? selectedOffer?.plan.appleSku ?? null;
   const ctaReady = storeReady || storePrepared;
-  const showIapDebug = isIapDebugEnabled();
-  const iapDebugLine = useSyncExternalStore(
-    subscribeIapTrace,
-    () =>
-      formatIapPaywallStatus({
-        connected: isConnected(),
-        storePrepared,
-        sku: selectedSku,
-        warmed: selectedSku ? isSubscriptionSkuWarmed(selectedSku) : false,
-        flowPhase: flow.phase,
-      }),
-    () => '',
-  );
 
   const trial = useMemo(
     () =>
@@ -171,7 +158,23 @@ export function PaywallScreen({
   const handleRestore = useCallback(() => {
     haptics.light();
     startedTrialRef.current = false;
-    void restore();
+    void restore().then((outcome) => {
+      if (outcome.kind !== 'conflict' || !outcome.canTransfer) return;
+      // Moving a subscription revokes Pro from the workspace that holds it.
+      // That is never something to do on the user's behalf.
+      Alert.alert(
+        'Subscription in use',
+        `${outcome.message} Move it to this workspace? The other workspace loses Pro immediately.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Move it here',
+            style: 'destructive',
+            onPress: () => void restore({ transfer: true }),
+          },
+        ],
+      );
+    });
   }, [restore]);
 
   const handleContinue = useCallback(() => {
@@ -206,11 +209,17 @@ export function PaywallScreen({
         <PurchaseSuccess
           kind={flow.phase === 'restored' ? 'restored' : 'purchased'}
           startedTrial={startedTrialRef.current}
+          unconfirmed={hasUnconfirmedPurchase}
           onContinue={handleContinue}
         />
       </SafeAreaView>
     );
   }
+
+  // Everyone in the workspace hits this gate, but only an owner or admin can
+  // buy. Showing them the CTA meant StoreKit charged their personal Apple ID
+  // and the server then refused the receipt with a 403.
+  const purchasable = canManageBilling && !entitlement.managedExternally;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
@@ -221,16 +230,20 @@ export function PaywallScreen({
         contentContainerStyle={{
           flexGrow: 1,
           paddingHorizontal: tokens.space.screenX,
-          paddingTop: tokens.space.inline,
-          paddingBottom: tokens.space.section,
-          gap: tokens.space.section,
+          paddingTop: tokens.space.stack,
+          paddingBottom: tokens.space.stack,
+          gap: tokens.space.stack,
         }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <PaywallHero headline={headline} subhead={subhead} />
+        {/* The engine and the headline own the free space; the plan list sits
+            directly above the dock rather than floating in the middle. */}
+        <View style={{ flex: 1, justifyContent: 'center', paddingVertical: tokens.space.stack }}>
+          <PaywallHero headline={headline} subhead={subhead} />
+        </View>
 
-        <View style={{ gap: tokens.space.stack, marginTop: 'auto' }}>
+        <View style={{ gap: tokens.space.inline }}>
           <OfflineNotice />
 
           {productsError ? (
@@ -250,11 +263,6 @@ export function PaywallScreen({
                 selected={offer.plan.id === selectedPlan}
                 onSelect={handleSelectPlan}
                 savingsLabel={savingsLabel(offer.plan.id)}
-                introLabel={
-                  introEligible && offer.product?.introOffer
-                    ? describeIntroOffer(offer.product.introOffer)
-                    : null
-                }
                 selectable={selectable}
                 last={index === visibleOffers.length - 1}
               />
@@ -263,9 +271,10 @@ export function PaywallScreen({
         </View>
 
         {entitlement.managedExternally ? <ManagedElsewhereNotice /> : null}
+        {!canManageBilling && !entitlement.managedExternally ? <AskOwnerNotice /> : null}
       </ScrollView>
 
-      {entitlement.managedExternally ? null : (
+      {!purchasable ? null : (
         <Animated.View
           style={[
             dockStyle,
@@ -273,10 +282,8 @@ export function PaywallScreen({
               paddingHorizontal: tokens.space.screenX,
               paddingTop: tokens.space.stack,
               paddingBottom: tokens.space.micro,
-              gap: tokens.space.stack,
+              gap: tokens.space.inline,
               backgroundColor: colors.background,
-              borderTopWidth: tokens.control.hairline,
-              borderTopColor: colors.border,
             },
           ]}
         >
@@ -291,15 +298,40 @@ export function PaywallScreen({
             restoring={flow.phase === 'restoring'}
             onRestore={handleRestore}
           />
-          {showIapDebug ? (
-            <Text variant="caption" color="muted" style={{ textAlign: 'center', lineHeight: 16 }}>
-              {iapDebugLine}
-            </Text>
-          ) : null}
           <PaywallFooter disclosure={disclosure} />
         </Animated.View>
       )}
     </SafeAreaView>
+  );
+}
+
+/**
+ * Shown to a member who cannot buy. A dead paywall with no explanation is the
+ * worst version of this screen: the user taps Buy, Apple charges them, and the
+ * server refuses the receipt because the workspace is not theirs to pay for.
+ */
+function AskOwnerNotice() {
+  const { colors, tones } = useTheme();
+
+  return (
+    <View
+      style={{
+        padding: rhythm.cardPadX,
+        borderRadius: radius.xl,
+        backgroundColor: tones.primary.bg,
+        borderWidth: 1,
+        borderColor: tones.primary.border,
+        gap: spacing[1.5],
+      }}
+    >
+      <Text variant="body" style={{ color: tones.primary.fg, fontWeight: '600' }}>
+        Ask an owner to subscribe
+      </Text>
+      <Text variant="caption" style={{ color: colors.mutedForeground, lineHeight: 18 }}>
+        Only the workspace owner or an admin can buy AutoCore Pro. Once they do, Pro turns on for
+        everyone here — no action needed on your side.
+      </Text>
+    </View>
   );
 }
 

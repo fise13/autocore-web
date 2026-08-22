@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
-import { CheckCircle2Icon, CloudIcon, Loader2Icon, SparklesIcon } from '@/assets/icons';
+import { CheckCircle2Icon, CloudIcon, Loader2Icon } from '@/assets/icons';
 import { Text } from '@/components/ui';
 import { useSubscriptionSync } from '@/hooks/use-subscription-sync';
 import { useTheme } from '@/hooks/use-theme';
@@ -20,20 +20,13 @@ type SyncIndicatorProps = {
  * worse than showing it with a qualifier.
  */
 export function SyncIndicator({ quiet = true }: SyncIndicatorProps) {
-  const { colors, tones } = useTheme();
+  const { colors } = useTheme();
   const sync = useSubscriptionSync();
 
-  const isReassuring = !sync.isStale && sync.isOnline && !sync.isSimulated;
+  const isReassuring = !sync.isStale && sync.isOnline;
   if (quiet && isReassuring) return null;
 
-  const tone = tones[sync.tone];
-  const Icon = sync.isSimulated
-    ? SparklesIcon
-    : !sync.isOnline
-      ? CloudIcon
-      : sync.isStale
-        ? Loader2Icon
-        : CheckCircle2Icon;
+  const Icon = !sync.isOnline ? CloudIcon : sync.isStale ? Loader2Icon : CheckCircle2Icon;
 
   return (
     <Animated.View
@@ -50,19 +43,17 @@ export function SyncIndicator({ quiet = true }: SyncIndicatorProps) {
         paddingHorizontal: spacing[2],
         paddingVertical: spacing[1],
         borderRadius: radius.full,
-        backgroundColor: sync.isSimulated ? tone.bg : colors.muted,
-        borderWidth: sync.isSimulated ? 1 : 0,
-        borderColor: tone.border,
+        backgroundColor: colors.muted,
       }}
     >
-      <Icon size="xs" color={sync.isSimulated ? tone.fg : colors.mutedForeground} />
+      <Icon size="xs" color={colors.mutedForeground} />
       <Text
         variant="caption"
         style={{
           fontSize: 11,
           lineHeight: 14,
           fontWeight: '600',
-          color: sync.isSimulated ? tone.fg : colors.mutedForeground,
+          color: colors.mutedForeground,
         }}
       >
         {sync.label}

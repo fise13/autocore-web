@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { AccountAccessError, verifyAccountAccess } from "@/lib/auth/verify-account-access";
-import { verifyCompanyOwner } from "@/lib/auth/verify-company-manager.server";
+import { verifyCompanyBillingManager } from "@/lib/auth/verify-company-manager.server";
 import {
   AppStoreNotConfiguredError,
   appleEnvironmentsAccepted,
@@ -11,6 +11,8 @@ import {
 import {
   applyAppleTransaction,
   assertNotStripeManaged,
+  companyDisplayName,
+  companyForOriginalTransaction,
   readStoredSubscription,
 } from "@/lib/billing/apple/apple-entitlement.server";
 import {
@@ -35,6 +37,9 @@ export const runtime = "nodejs";
  * `appAccountToken` belongs to a different workspace, and the check below fails.
  */
 export async function POST(request: NextRequest) {
+  /** Remembered across the catch so a conflict can name the other workspace. */
+  let originalTransactionId: string | null = null;
+
   try {
     const access = await verifyAccountAccess(request);
     const body = (await request.json()) as {
@@ -52,14 +57,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Only the workspace owner can attach a subscription to the workspace.
-    await verifyCompanyOwner(access.uid, companyId);
+    // Owner or admin — mirrors `isCompanyBillingManager` in firestore.rules.
+    // Owner-only here meant an admin who tapped Buy was charged by StoreKit and
+    // then refused with a 403 the app swallowed: money out, no entitlement.
+    await verifyCompanyBillingManager(access.uid, companyId);
 
     const stored = await readStoredSubscription(companyId);
     assertNotStripeManaged(stored);
 
     const credentials = requireAppStoreCredentials();
     const transaction = await fetchTransaction(transactionId);
+    originalTransactionId = transaction.originalTransactionId ?? null;
 
     assertTransactionUsable({
       transaction,
@@ -85,7 +93,12 @@ export async function POST(request: NextRequest) {
           .catch(() => null)
       : null;
 
-    const result = await applyAppleTransaction({ companyId, transaction, renewal });
+    const result = await applyAppleTransaction({
+      companyId,
+      transaction,
+      renewal,
+      uid: access.uid,
+    });
 
     return NextResponse.json({
       accepted: true,
@@ -96,7 +109,13 @@ export async function POST(request: NextRequest) {
     if (error instanceof AppleRejectionError) {
       // 200 with `accepted: false` — the request was well-formed, the purchase
       // simply does not entitle. The app renders a reason for each of these.
-      return NextResponse.json({ accepted: false, reason: error.reason });
+      return NextResponse.json({
+        accepted: false,
+        reason: error.reason,
+        ...(error.reason === "bound_to_other_company"
+          ? { conflictCompany: await conflictCompanyName(originalTransactionId) }
+          : {}),
+      });
     }
     if (error instanceof AccountAccessError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
@@ -108,4 +127,16 @@ export async function POST(request: NextRequest) {
     console.error("[mobile/billing/apple/verify]", error);
     return NextResponse.json({ error: "Could not verify the purchase" }, { status: 502 });
   }
+}
+
+/**
+ * Name of the workspace an Apple subscription is already attached to.
+ *
+ * Purely for the message the app shows — "already used by Petrov Motors" is
+ * actionable where "could not verify" sends the user to support.
+ */
+async function conflictCompanyName(originalTransactionId: string | null): Promise<string | null> {
+  if (!originalTransactionId) return null;
+  const owner = await companyForOriginalTransaction(originalTransactionId);
+  return owner ? await companyDisplayName(owner) : null;
 }

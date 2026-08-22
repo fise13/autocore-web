@@ -11,6 +11,10 @@
  */
 import type { WorkNode, WorkspaceDomainId } from '@/lib/shell/types';
 import type { InventoryItem } from '@/types/inventory';
+import type { WorkOrder } from '@/types/work-order';
+
+import { buildWorkTodayTrend, type WorkTodayTrend, type WorkTodayTrendSources } from './work-today-trend';
+import type { WorkspaceSeries, WorkspaceSeriesMap } from './workspace-series';
 
 /** System leaf every warehouse keeps for stock with no assigned place. */
 export const UNLOCATED_LOCATION_CODE = 'UNLOCATED';
@@ -95,6 +99,12 @@ export type WorkRow = {
   attention: number;
   /** Override the Today breakdown label when the generic count is too coarse. */
   todayLabel?: string;
+  /**
+   * Eight-week shape drawn at the end of the row. `null` when this workspace's
+   * data cannot support one — the row then draws a placeholder rather than a
+   * guess. See `workspace-series.ts`.
+   */
+  series: WorkspaceSeries | null;
 };
 
 export type WorkSection = {
@@ -117,6 +127,13 @@ export type WorkToday = {
   breakdown: string | null;
   /** Deep link to the largest contributor. */
   href: string | null;
+  /**
+   * Ranked attention queues (largest first).
+   * Empty when everything is clear.
+   */
+  segments: WorkTodaySegment[];
+  /** Apple Health Highlights–style open-work trend. */
+  trend: WorkTodayTrend;
 };
 
 export type WorkModel = {
@@ -188,7 +205,11 @@ function resolveParts(node: WorkNode, counts: WorkPartsCounts | null): ResolvedD
   if (counts.total === 0) {
     return { detail: 'Add your first part', detailKind: 'onboarding', attention: 0 };
   }
-  const base = `${groupThousands(counts.total)} inventory ${plural(counts.total, 'item', 'items')}`;
+  // "inventory" is already said twice above this line — by the row title and by
+  // its section header — and it was the one detail long enough to wrap once the
+  // row carries a chart. Dropping the redundant word keeps every row one line
+  // tall, which is what keeps the card the size it was.
+  const base = `${groupThousands(counts.total)} ${plural(counts.total, 'item', 'items')}`;
   if (counts.lowStock > 0) {
     return {
       detail: `${base} · ${groupThousands(counts.lowStock)} running low`,
@@ -339,7 +360,11 @@ const TODAY_LABELS: Record<string, (count: number) => string> = {
 /** Breakdown stays short — Work is a catalog, not a second Home. */
 const TODAY_MAX_SEGMENTS = 3;
 
-export function buildWorkToday(sections: WorkSection[]): WorkToday {
+export function buildWorkToday(
+  sections: WorkSection[],
+  trendSources: WorkTodayTrendSources | WorkOrder[] = [],
+): WorkToday {
+  const trend = buildWorkTodayTrend(trendSources);
   const segments: WorkTodaySegment[] = [];
 
   for (const section of sections) {
@@ -359,9 +384,11 @@ export function buildWorkToday(sections: WorkSection[]): WorkToday {
   if (segments.length === 0) {
     return {
       count: 0,
-      title: 'Everything is up to date',
+      title: 'Open work',
       breakdown: null,
       href: null,
+      segments: [],
+      trend,
     };
   }
 
@@ -377,15 +404,19 @@ export function buildWorkToday(sections: WorkSection[]): WorkToday {
 
   return {
     count,
-    title: count === 1 ? 'Item needs attention' : 'Items need attention',
+    title: 'Open work',
     breakdown: shown.map((segment) => segment.label).join(' · '),
     href: ranked[0]?.href ?? null,
+    segments: shown,
+    trend,
   };
 }
 
 export function buildWorkModel(
   grouped: Array<{ domain: WorkspaceDomainId; title: string; nodes: WorkNode[] }>,
   counts: WorkCounts,
+  trendSources: WorkTodayTrendSources | WorkOrder[] = [],
+  series: WorkspaceSeriesMap = {},
 ): WorkModel {
   const sections: WorkSection[] = grouped.map((group) => ({
     id: group.domain,
@@ -400,6 +431,7 @@ export function buildWorkModel(
         detailKind: resolved.detailKind,
         attention: resolved.attention,
         todayLabel: resolved.todayLabel,
+        series: series[node.id] ?? null,
       };
     }),
   }));
@@ -407,7 +439,7 @@ export function buildWorkModel(
   const rows = sections.flatMap((section) => section.rows);
 
   return {
-    today: buildWorkToday(sections),
+    today: buildWorkToday(sections, trendSources),
     sections,
     isBootstrapping: rows.length > 0 && rows.every((row) => row.detailKind === 'fallback'),
   };

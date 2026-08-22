@@ -10,7 +10,6 @@ import {
   BarChart3Icon,
   CloudIcon,
   ClipboardListIcon,
-  LayoutGridIcon,
   LifeBuoyIcon,
   PackageIcon,
   SparklesIcon,
@@ -72,17 +71,14 @@ export const PRO_FEATURE_ROWS: ProFeatureRow[] = [
   },
 ];
 
-/** Four lines on the paywall — conversion screens do not list every gate. */
-export const PAYWALL_FEATURE_ROWS = PRO_FEATURE_ROWS.slice(0, 4);
-
-/** Same company on desktop — told after purchase, not as a conversion row. */
-export const WEB_WORKSPACE_ROW: ProFeatureRow = {
-  id: 'web',
+/**
+ * Same company on a computer — the one piece of new information the
+ * post-purchase screen carries, so it is a line of copy rather than a card.
+ */
+export const WEB_WORKSPACE_HINT = {
   label: 'Same workspace on the web',
-  detail: 'Open app.myautocore.com on a computer for inventory, reports, and your team.',
-  icon: LayoutGridIcon,
-  feature: null,
-};
+  domain: 'app.myautocore.com',
+} as const;
 
 export const LEGAL_URLS = {
   terms: 'https://myautocore.com/terms',

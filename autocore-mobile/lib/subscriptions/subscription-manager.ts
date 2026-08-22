@@ -12,6 +12,7 @@ import { getString, setString } from '@/lib/storage/kv';
 
 import {
   fetchAppAccountToken,
+  reconcileAppleSubscription,
   refreshCompanyBilling,
   restoreApplePurchases,
   verifyApplePurchase,
@@ -51,6 +52,15 @@ import {
   upsertProduct,
 } from './purchase-store';
 import { isPaywallBypassed } from './paywall-bypass';
+import {
+  clearAllVerifications,
+  dueVerifications,
+  hasPendingVerification,
+  pendingVerificationsFor,
+  markVerificationFailed,
+  resolveVerification,
+  trackVerification,
+} from './pending-verification';
 import { asPurchaseFailure, failure, isCancellation, isInFlightGhostError } from './purchase-errors';
 import { iapTrace, iapTraceReset } from './iap-trace';
 import type { PlanId, PurchaseFailure, RestoreOutcome } from './types';
@@ -65,6 +75,10 @@ const APP_ACCOUNT_TOKEN_KEY = (companyId: string) =>
   `autocore-mobile:apple-aat:v1:${companyId}`;
 
 function persistAppAccountToken(companyId: string, token: string): void {
+  // The link endpoint used to resolve to `{ ok: true, queued: true }` when the
+  // device was offline, which put `undefined` into MMKV and threw. Billing no
+  // longer queues, but a malformed response must still not corrupt the cache.
+  if (typeof token !== 'string' || token.length === 0) return;
   tokenCache.set(companyId, token);
   setString(APP_ACCOUNT_TOKEN_KEY(companyId), token);
 }
@@ -97,13 +111,56 @@ let reconcileInFlight: Promise<void> | null = null;
 /** Transactions the user started from the paywall this session. */
 let userInitiatedPurchase = false;
 
-const SHEET_WATCHDOG_MS = 6_000;
+/**
+ * How long to wait for StoreKit before letting the user tap Buy again.
+ *
+ * The old value was six seconds, which is inside the normal range for Apple's
+ * sheet on a cold StoreKit connection or in sandbox. It fired constantly, and
+ * because the real transaction arrived afterwards the user was shown a failure
+ * and then a success for the same purchase. This is now long enough that
+ * firing means something is genuinely wrong.
+ */
+const SHEET_WATCHDOG_MS = 25_000;
+
+/**
+ * How long a tap keeps counting as "the user is buying right now".
+ *
+ * Separate from the watchdog on purpose. The watchdog governs the button; this
+ * governs whether an incoming transaction is celebrated. Conflating them meant
+ * a watchdog timeout left `userInitiatedPurchase` stuck true forever, so the
+ * next renewal StoreKit replayed — days later, in the middle of the app — was
+ * presented as a purchase the user had just made.
+ */
+const PURCHASE_INTENT_MS = 5 * 60_000;
+
 let sheetWatchdog: ReturnType<typeof setTimeout> | null = null;
+let intentTimer: ReturnType<typeof setTimeout> | null = null;
 
 function clearSheetWatchdog(): void {
   if (!sheetWatchdog) return;
   clearTimeout(sheetWatchdog);
   sheetWatchdog = null;
+}
+
+function clearPurchaseIntent(): void {
+  if (intentTimer) {
+    clearTimeout(intentTimer);
+    intentTimer = null;
+  }
+  userInitiatedPurchase = false;
+}
+
+function armPurchaseIntent(): void {
+  if (intentTimer) clearTimeout(intentTimer);
+  userInitiatedPurchase = true;
+  intentTimer = setTimeout(() => {
+    intentTimer = null;
+    userInitiatedPurchase = false;
+    // The sheet cannot still be open this long after the tap; releasing the
+    // in-flight latch lets catalog refreshes resume.
+    store.abortPurchaseInFlight();
+    iapTrace('intent:expired');
+  }, PURCHASE_INTENT_MS);
 }
 
 function armSheetWatchdog(planId: PlanId): void {
@@ -138,13 +195,17 @@ const REJECTION_FAILURE: Record<AppleVerificationRejection, PurchaseFailure> = {
  * Called by `SubscriptionProvider` once the session resolves. Switching
  * companies re-binds; entitlement is never carried across workspaces.
  */
-export function attach(companyId: string | null): void {
+export function attach(input: string | null): void {
+  // `useSession()` yields '' before the workspace resolves. Treated as a real
+  // id it left the manager bound to a company that does not exist, so the first
+  // tap failed with a generic "something went wrong".
+  const companyId = input && input.trim() ? input : null;
   if (activeCompanyId === companyId && detachPurchaseListener) return;
 
   activeCompanyId = companyId;
   verifiedTransactions.clear();
   settlingTransactions.clear();
-  userInitiatedPurchase = false;
+  clearPurchaseIntent();
 
   if (!detachPurchaseListener) {
     store.installListeners();
@@ -175,8 +236,9 @@ export async function detach(): Promise<void> {
   tokenRequests.clear();
   verifiedTransactions.clear();
   settlingTransactions.clear();
-  userInitiatedPurchase = false;
+  clearPurchaseIntent();
   clearSheetWatchdog();
+  clearAllVerifications();
   clearEntitlementRegistry();
   resetPurchaseStore();
   await clearEntitlementCaches();
@@ -184,7 +246,7 @@ export async function detach(): Promise<void> {
 }
 
 async function bootstrap(companyId: string): Promise<void> {
-  iapTrace('bootstrap', { companyId });
+  iapTrace('bootstrap', { companyId, pending: hasPendingVerification(companyId) });
   void loadProducts();
   void reconcile(companyId);
   void appAccountToken(companyId).catch(() => undefined);
@@ -338,7 +400,7 @@ export function purchase(planId: PlanId): Promise<void> {
   }
 
   setFlow({ phase: 'loading', planId });
-  userInitiatedPurchase = true;
+  armPurchaseIntent();
   lockGateIfUnpaid(companyId);
   void appAccountToken(companyId).catch(() => undefined);
   iapTraceReset('tap');
@@ -386,16 +448,25 @@ function applyStoreFailure(value: PurchaseFailure): void {
 
   if (isCancellation(value)) {
     clearSheetWatchdog();
-    userInitiatedPurchase = false;
+    clearPurchaseIntent();
     store.abortPurchaseInFlight();
+    // The gate lock is what keeps the paywall mounted through a celebration.
+    // Leaving it set after a cancel meant the next transaction StoreKit
+    // replayed swapped the running app for a celebration screen.
+    setGateCelebrationLock(false);
     setFlow({ phase: 'cancelled' });
     return;
   }
   if (value.code === 'already_owned') {
     clearSheetWatchdog();
-    userInitiatedPurchase = false;
+    clearPurchaseIntent();
     store.abortPurchaseInFlight();
+    setGateCelebrationLock(false);
     setFlow({ phase: 'already_purchased' });
+    // This Apple ID already holds the subscription — bought on another device,
+    // or on a reinstall. Telling the user to go and press Restore themselves is
+    // a dead end when the app can simply do it.
+    void restore().catch(() => undefined);
     return;
   }
   // OpenIAP emits QueryProduct / "not available" / a generic failure *and then*
@@ -407,13 +478,19 @@ function applyStoreFailure(value: PurchaseFailure): void {
   }
 
   clearSheetWatchdog();
-  store.abortPurchaseInFlight();
+
   if (value.code === 'sheet_timeout') {
+    // Free the button, but keep believing the user is buying: Apple's sheet may
+    // still be up, and the transaction that follows must still be celebrated.
+    // Do not release the in-flight latch here — a catalog fetch while the sheet
+    // is open is exactly what produces the ghost errors above.
     setFlow({ phase: 'failed', failure: value });
     return;
   }
 
-  userInitiatedPurchase = false;
+  clearPurchaseIntent();
+  store.abortPurchaseInFlight();
+  setGateCelebrationLock(false);
   setFlow({ phase: 'failed', failure: value });
 }
 
@@ -454,40 +531,90 @@ async function handleIncomingPurchase(purchaseValue: store.Purchase): Promise<vo
     flow.phase === 'failed' ||
     flow.phase === 'cancelled';
 
-  // StoreKit already charged (or started the trial). Flow first, then Pro —
-  // the gate must see `success` before `isPro`, or it unmounts the paywall.
+  // StoreKit has charged. Show the confirmation step rather than jumping
+  // straight to a celebration: `verifying` is a real state now, and the
+  // difference between "paid" and "recorded" is the difference between Pro
+  // surviving a restart and not.
   if (shouldCelebrate) {
-    userInitiatedPurchase = false;
+    clearPurchaseIntent();
     lockGateIfUnpaid(companyId);
-    setFlow({ phase: 'success', planId });
+    setFlow({ phase: 'verifying', planId });
     setIntroEligible(false);
-    setOptimisticEntitlement(optimisticAppleEntitlement(companyId, planId));
-    iapTrace('success', { planId, sku: purchaseValue.productId });
+    iapTrace('verifying', { planId, sku: purchaseValue.productId });
   }
 
-  void settleIncomingPurchase(purchaseValue, planId, companyId);
+  void settleIncomingPurchase(purchaseValue, planId, companyId, shouldCelebrate);
 }
 
+/**
+ * The confirmation round-trip must not hold the celebration hostage.
+ *
+ * Apple has already taken the money by this point. If our server is slow the
+ * honest thing is to acknowledge the purchase and keep confirming in the
+ * background, not to leave the buyer staring at a spinner.
+ */
+const VERIFY_CELEBRATION_MS = 6_000;
+
+/**
+ * Every named rejection is a settled judgement about the transaction itself —
+ * expired stays expired, a receipt bound elsewhere stays bound, a mismatched
+ * token never matches later. Queueing any of them would leave an entry
+ * retrying forever and the workspace stuck on "confirming your payment".
+ *
+ * Only two things are worth retrying: a refusal with no reason, and a call
+ * that never reached a verdict (transport, auth, App Store Server API).
+ */
+function isTerminalRejection(reason: AppleVerificationRejection | undefined): boolean {
+  return reason !== undefined;
+}
+
+function celebrate(companyId: string, planId: PlanId): void {
+  if (getFlow().phase !== 'verifying') return;
+  lockGateIfUnpaid(companyId);
+  setFlow({ phase: 'success', planId });
+  setOptimisticEntitlement(optimisticAppleEntitlement(companyId, planId));
+}
+
+/**
+ * Verify with the server, then finish the StoreKit transaction.
+ *
+ * The order used to be reversed, with the transaction marked verified *before*
+ * the round-trip and every failure swallowed by an empty `catch`. That is how a
+ * paid purchase could leave no trace anywhere: the local guard blocked the
+ * retry the comment promised, and the entitlement existed only as an in-memory
+ * optimistic value that the next launch discarded.
+ *
+ * Now: nothing is marked verified until the server says so, and a failure is
+ * written to a persistent queue keyed by `transactionId` — which Apple resolves
+ * indefinitely, so the retry works long after StoreKit stops replaying it.
+ */
 async function settleIncomingPurchase(
   purchaseValue: store.Purchase,
   planId: PlanId,
   companyId: string,
+  celebrating: boolean,
 ): Promise<void> {
+  const token = cachedAppAccountToken(companyId) ?? null;
+
+  // Record the payment before asking the server about it. A verify that never
+  // returns leaves nothing to catch, and a purchase known only to a `try` block
+  // is a purchase that disappears when the process does.
+  trackVerification({
+    transactionId: purchaseValue.id,
+    productId: purchaseValue.productId,
+    companyId,
+    appAccountToken: token,
+  });
+
+  // Promote to the celebration if the server is taking its time.
+  const celebrationTimer = celebrating
+    ? setTimeout(() => celebrate(companyId, planId), VERIFY_CELEBRATION_MS)
+    : null;
+
   try {
-    const token = tokenCache.get(companyId) ?? null;
     const jws = await store.verifiedPurchaseToken(purchaseValue);
-    if (!jws) {
-      iapTrace('verify:no-jws', { transactionId: purchaseValue.id });
-      return;
-    }
+    iapTrace('verify:start', { transactionId: purchaseValue.id, jws: Boolean(jws) });
 
-    // Finish before the server round-trip. Unfinished StoreKit transactions
-    // in the same subscription group block the next monthly/yearly sheet.
-    verifiedTransactions.add(purchaseValue.id);
-    await store.finish(purchaseValue).catch(() => undefined);
-    iapTrace('finish', { transactionId: purchaseValue.id });
-
-    iapTrace('verify:start', { transactionId: purchaseValue.id });
     const response = await verifyApplePurchase({
       companyId,
       transactionId: purchaseValue.id,
@@ -497,29 +624,110 @@ async function settleIncomingPurchase(
     });
     iapTrace('verify:done', { accepted: response.accepted, reason: response.reason });
 
-    if (!response.accepted) {
-      const value = response.reason
-        ? REJECTION_FAILURE[response.reason]
-        : failure('verification_failed');
-      // Only yank a completed Apple purchase for a workspace conflict.
-      // Transient verify failures must not replace the celebration with
-      // "not available" / "couldn't verify".
-      if (
-        response.reason === 'bound_to_other_company' ||
-        response.reason === 'superseded_by_stripe'
-      ) {
+    if (response.accepted) {
+      verifiedTransactions.add(purchaseValue.id);
+      resolveVerification(purchaseValue.id);
+      if (celebrating) celebrate(companyId, planId);
+      // Finish only once the entitlement is recorded. An unfinished transaction
+      // is StoreKit's own retry channel, and giving it up before the server
+      // agreed threw away the last safety net.
+      await store.finish(purchaseValue).catch(() => undefined);
+      iapTrace('finish', { transactionId: purchaseValue.id });
+      await refreshLocalSubscriptions();
+      return;
+    }
+
+    const reason = response.reason;
+    const value = reason ? REJECTION_FAILURE[reason] : failure('verification_failed');
+
+    if (isTerminalRejection(reason)) {
+      // Settled: nothing about this transaction will change on a retry.
+      resolveVerification(purchaseValue.id);
+      verifiedTransactions.add(purchaseValue.id);
+      await store.finish(purchaseValue).catch(() => undefined);
+
+      // Only speak up if the user is watching this purchase. The boot drain
+      // replays every restorable transaction the Apple ID holds, including
+      // long-expired ones — a failure banner for those would appear from
+      // nowhere on an otherwise idle paywall.
+      if (celebrating) {
         setOptimisticEntitlement(null);
         setGateCelebrationLock(false);
-        setFlow({ phase: 'failed', failure: value });
+        setFlow({
+          phase: 'failed',
+          failure: response.conflictCompany
+            ? { ...value, message: `This Apple subscription is already used by ${response.conflictCompany}.` }
+            : value,
+        });
       }
       return;
     }
 
+    // Refused with no reason given — worth another round through the queue.
+    markVerificationFailed(purchaseValue.id, 'not_accepted');
+    if (celebrating) celebrate(companyId, planId);
     await refreshLocalSubscriptions();
-  } catch {
-    // Keep celebration. Retry verify on the next reconcile.
+  } catch (error) {
+    // Transport, auth, or App Store Server API failure. The purchase is real —
+    // record it so the queue keeps trying, and let the entitlement resolver
+    // fall back to StoreKit's own view in the meantime.
+    const value = asPurchaseFailure(error);
+    iapTrace('verify:error', { transactionId: purchaseValue.id, code: value.code });
+    markVerificationFailed(purchaseValue.id, value.code);
+    if (celebrating) celebrate(companyId, planId);
+    await refreshLocalSubscriptions().catch(() => undefined);
   } finally {
+    if (celebrationTimer) clearTimeout(celebrationTimer);
     settlingTransactions.delete(purchaseValue.id);
+  }
+}
+
+/**
+ * Re-post purchases the server has not acknowledged yet.
+ *
+ * Runs on every foreground and on boot. Each entry carries its own backoff, so
+ * a workspace whose server is missing its App Store credentials retries at a
+ * sane rate instead of on every app switch.
+ */
+export async function drainPendingVerifications(
+  companyId: string,
+  options?: { force?: boolean },
+): Promise<void> {
+  // `force` is the monitor's Retry button. The backoff is right for automatic
+  // drains — it reaches twelve hours, which is correct for a server that is
+  // simply not configured — but a person who just tapped Retry should not be
+  // told to come back tomorrow.
+  const due = options?.force ? pendingVerificationsFor(companyId) : dueVerifications(companyId);
+  if (due.length === 0) return;
+  iapTrace('pending:drain', { count: due.length, force: options?.force === true });
+
+  for (const item of due) {
+    try {
+      const response = await verifyApplePurchase({
+        companyId: item.companyId,
+        transactionId: item.transactionId,
+        jws: null,
+        productId: item.productId,
+        appAccountToken: item.appAccountToken,
+      });
+
+      if (response.accepted) {
+        resolveVerification(item.transactionId);
+        verifiedTransactions.add(item.transactionId);
+        iapTrace('pending:accepted', { transactionId: item.transactionId });
+        continue;
+      }
+
+      if (isTerminalRejection(response.reason)) {
+        resolveVerification(item.transactionId);
+        iapTrace('pending:terminal', { transactionId: item.transactionId, reason: response.reason });
+        continue;
+      }
+
+      markVerificationFailed(item.transactionId, 'not_accepted');
+    } catch (error) {
+      markVerificationFailed(item.transactionId, asPurchaseFailure(error).code);
+    }
   }
 }
 
@@ -549,8 +757,13 @@ export async function drainPendingTransactions(): Promise<void> {
 /**
  * Explicit user-initiated restore. Every branch produces a distinct message —
  * a silent no-op here is the most common subscription App Review rejection.
+ *
+ * `transfer` moves a subscription that is currently attached to a different
+ * workspace. It is never implied: the server revokes Pro from the workspace
+ * that holds it today, so the user has to say so. Without it a conflict comes
+ * back as `kind: 'conflict'` naming the other workspace.
  */
-export async function restore(): Promise<RestoreOutcome> {
+export async function restore(options?: { transfer?: boolean }): Promise<RestoreOutcome> {
   if (isFlowBusy()) return { kind: 'empty' };
 
   if (isDevModeActive()) {
@@ -578,6 +791,7 @@ export async function restore(): Promise<RestoreOutcome> {
 
     const response = await restoreApplePurchases({
       companyId,
+      ...(options?.transfer ? { transfer: true } : {}),
       transactions: await Promise.all(
         purchases.map(async (item) => ({
           transactionId: item.id,
@@ -589,9 +803,17 @@ export async function restore(): Promise<RestoreOutcome> {
 
     if (!response.restored) {
       if (response.reason === 'bound_to_other_company') {
-        const value = REJECTION_FAILURE.bound_to_other_company;
-        setFlow({ phase: 'failed', failure: value });
-        return { kind: 'conflict', message: value.message };
+        const base = REJECTION_FAILURE.bound_to_other_company;
+        const message = response.conflictCompany
+          ? `This Apple subscription is already used by ${response.conflictCompany}.`
+          : base.message;
+        setFlow({ phase: 'failed', failure: { ...base, message } });
+        return {
+          kind: 'conflict',
+          message,
+          company: response.conflictCompany ?? null,
+          canTransfer: true,
+        };
       }
       if (response.reason === 'expired') {
         setFlow({ phase: 'expired' });
@@ -613,6 +835,7 @@ export async function restore(): Promise<RestoreOutcome> {
     void (async () => {
       for (const item of purchases) {
         verifiedTransactions.add(item.id);
+        resolveVerification(item.id);
         await store.finish(item).catch(() => undefined);
       }
       await refreshLocalSubscriptions().catch(() => undefined);
@@ -656,10 +879,34 @@ export function reconcile(companyId: string | null = activeCompanyId): Promise<v
   if (reconcileInFlight) return reconcileInFlight;
 
   reconcileInFlight = (async () => {
+    // Unconfirmed purchases first: everything downstream reads better once the
+    // server knows the workspace actually paid.
+    try {
+      await drainPendingVerifications(companyId);
+    } catch {
+      // Each entry keeps its own backoff; the next foreground retries.
+    }
     try {
       await refreshCompanyBilling(companyId);
     } catch {
       // Offline or transient; the Firestore listener remains the source of truth.
+    }
+    try {
+      // Pull the Apple side. App Store Server Notifications are a push channel
+      // and a lost or unconfigured one freezes the stored document — which
+      // either keeps a lapsed workspace on Pro or locks out a paying one.
+      await reconcileAppleSubscription(companyId);
+    } catch {
+      // Not an Apple workspace, or the endpoint is unreachable.
+    }
+    try {
+      // Defence in depth for binding a payment to this workspace. The index in
+      // `appleTransactionLinks` is the primary guarantee, but a transaction
+      // that carries the token proves ownership from Apple's own copy — and a
+      // single failed fetch at boot used to mean the token never arrived at all.
+      await appAccountToken(companyId);
+    } catch {
+      // Not fatal: the purchase still binds through the server-side index.
     }
     try {
       await refreshLocalSubscriptions();
@@ -681,7 +928,7 @@ export async function openManageSubscriptions(): Promise<void> {
 }
 
 export function resetFlow(): void {
-  userInitiatedPurchase = false;
+  clearPurchaseIntent();
   clearSheetWatchdog();
   setGateCelebrationLock(false);
   setFlow({ phase: 'idle' });
