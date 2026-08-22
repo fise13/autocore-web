@@ -48,7 +48,7 @@ export function WorkspaceScreen() {
         memberships={memberships}
         activeCompanyId={companyId}
         switchingCompanyId={switching?.companyId ?? null}
-        onCreateCompany={() => router.push('/(auth)/journey/company')}
+        onCreateCompany={() => router.push('/(tabs)/profile/create-company')}
         onJoinCompany={() => router.push('/(tabs)/profile/join-company')}
         onSwitchCompany={async (nextCompanyId) => {
           if (!firebaseUser || switching) return;

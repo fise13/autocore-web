@@ -133,6 +133,7 @@ export const userCopyRu = {
       terms: "Условиями использования",
       legalAnd: "и",
       privacy: "Политикой конфиденциальности",
+      refund: "Политикой возвратов",
       legalSuffix: ".",
       enterEmail: "Введите email.",
       enterName: "Укажите имя и фамилию.",

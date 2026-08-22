@@ -19,7 +19,6 @@ import {
 } from '@/assets/icons';
 import type { IconProps } from '@/assets/icons/create-icon';
 import { Button, Text, toast } from '@/components/ui';
-import { ScreenActionFooter } from '@/components/navigation/screen-action-footer';
 import {
   useTheme,
   useSession,
@@ -27,6 +26,7 @@ import {
   useWorkOrdersRealtime,
   useInventoryCatalog,
 } from '@/hooks';
+import { useFloatingTabBarInset } from '@/hooks/use-floating-tab-bar-inset';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import {
   canMechanicClaimWorkOrder,
@@ -35,7 +35,7 @@ import {
   DEFAULT_MAX_ACTIVE_WORK_ORDERS,
 } from '@autocore/rbac';
 import { resolveInventoryShelf } from '@/lib/inventory/resolve-shelf';
-import { haptics, spacing, tokens } from '@/theme';
+import { haptics, tokens } from '@/theme';
 import { formatPrice } from '@/features/search/lib/format';
 import { laborLineLabel } from '@/lib/work-order/composer-utils';
 import { laborLineTotal } from '@/lib/work-order/labor-pricing';
@@ -45,10 +45,7 @@ import type { WorkOrderStatus } from '@/types/work-order';
 import { openPhone } from '@/utils/open-phone';
 
 import {
-  ORDER_DETAIL_ACTION_TAB_HEIGHT,
-  ORDER_DETAIL_ACTION_TAB_MARGIN_BOTTOM,
-  ORDER_DETAIL_ACTION_TAB_MARGIN_X,
-  OrderDetailActionStrip,
+  OrderDetailActionDock,
   OrderDetailActionTab,
 } from './components/order-detail-action-tab';
 import { OrderClaimSection } from './components/order-claim-section';
@@ -157,6 +154,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
     [inventoryItems],
   );
   const rbac = useRbacPolicy();
+  const { scrollBottom: dockScrollInset } = useFloatingTabBarInset();
   const { orders, domainOrders } = useWorkOrdersRealtime(companyId, {
     scope: rbac.scopes.workOrders,
     uid,
@@ -350,11 +348,8 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          // Capsule sits on the NativeTabs plane (pageSheet — no extra safeBottom).
-          paddingBottom:
-            ORDER_DETAIL_ACTION_TAB_HEIGHT +
-            ORDER_DETAIL_ACTION_TAB_MARGIN_BOTTOM +
-            spacing[3],
+          // Clear the floating dock exactly like a tab screen does.
+          paddingBottom: dockScrollInset,
           gap: 0,
         }}
         onScrollBeginDrag={Keyboard.dismiss}
@@ -496,63 +491,50 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
         </View>
       </ScrollView>
 
-      <ScreenActionFooter
-        absolute
-        aboveTabBar={false}
-        chrome="plain"
-        horizontalPadding={ORDER_DETAIL_ACTION_TAB_MARGIN_X}
-        style={{
-          // PageSheet already clears the home indicator; full safeBottom
-          // double-pads and lifts the strip above the tab plane.
-          paddingTop: 0,
-          paddingBottom: ORDER_DETAIL_ACTION_TAB_MARGIN_BOTTOM,
-        }}
-      >
-        <OrderDetailActionStrip>
-          {order.phone ? (
-            <OrderDetailActionTab
-              contentKey="call"
-              label="Call"
-              icon={PhoneIcon}
-              accessibilityLabel={`Call ${order.customer}`}
-              onPress={() => {
-                void openPhone(order.phone);
-              }}
-            />
-          ) : null}
+      <OrderDetailActionDock>
+        {order.phone ? (
+          <OrderDetailActionTab
+            contentKey="call"
+            label="Call"
+            icon={PhoneIcon}
+            accessibilityLabel={`Call ${order.customer}`}
+            onPress={() => {
+              void openPhone(order.phone);
+            }}
+          />
+        ) : null}
 
-          {primaryStatus ? (
-            <OrderDetailActionTab
-              contentKey={primaryStatus}
-              label={footerStatusLabel(primaryStatus)}
-              icon={footerStatusIcon(primaryStatus)}
-              active
-              loading={transitioning}
-              disabled={transitioning}
-              onPress={() => void setDomainStatus(primaryStatus)}
-            />
-          ) : null}
+        {primaryStatus ? (
+          <OrderDetailActionTab
+            contentKey={primaryStatus}
+            label={footerStatusLabel(primaryStatus)}
+            icon={footerStatusIcon(primaryStatus)}
+            active
+            loading={transitioning}
+            disabled={transitioning}
+            onPress={() => void setDomainStatus(primaryStatus)}
+          />
+        ) : null}
 
-          {secondaryStatuses.length > 0 ? (
-            <OrderDetailActionTab
-              contentKey="more"
-              label="More"
-              icon={EllipsisIcon}
-              disabled={transitioning}
-              onPress={openSecondaryStatuses}
-            />
-          ) : null}
+        {secondaryStatuses.length > 0 ? (
+          <OrderDetailActionTab
+            contentKey="more"
+            label="More"
+            icon={EllipsisIcon}
+            disabled={transitioning}
+            onPress={openSecondaryStatuses}
+          />
+        ) : null}
 
-          {!canEditOrder && !primaryStatus ? (
-            <OrderDetailActionTab
-              contentKey="done"
-              label="Done"
-              icon={CheckIcon}
-              onPress={() => router.back()}
-            />
-          ) : null}
-        </OrderDetailActionStrip>
-      </ScreenActionFooter>
+        {!canEditOrder && !primaryStatus ? (
+          <OrderDetailActionTab
+            contentKey="done"
+            label="Done"
+            icon={CheckIcon}
+            onPress={() => router.back()}
+          />
+        ) : null}
+      </OrderDetailActionDock>
 
       {secondaryStatuses.length > 0 ? (
         <OrderStatusMoreSheet

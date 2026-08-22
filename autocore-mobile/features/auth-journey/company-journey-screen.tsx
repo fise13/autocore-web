@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { StoreIcon, UsersIcon } from '@/assets/icons';
 import { AuthShell } from '@/authentication/auth-shell';
@@ -31,7 +31,13 @@ export function CompanyJourneyScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { memberships, firebaseUser, refreshProfile, createCompany, signOut } = useAuth();
-  const [mode, setMode] = useState<CompanyMode>('choose');
+  // Callers that already know which half the user asked for open it directly.
+  // A button labelled "Join with invite" that lands on a chooser headlined
+  // "Create a workspace" makes the reader re-decide something they had decided.
+  const { mode: requestedMode } = useLocalSearchParams<{ mode?: string }>();
+  const [mode, setMode] = useState<CompanyMode>(
+    requestedMode === 'invite' || requestedMode === 'create' ? requestedMode : 'choose',
+  );
   const [direction, setDirection] = useState<1 | -1>(1);
   const [companyName, setCompanyName] = useState('');
   const [inviteCode, setInviteCode] = useState('');

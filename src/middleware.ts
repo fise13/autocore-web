@@ -25,6 +25,12 @@ import {
   normalizeHost,
 } from "@/lib/site-urls";
 
+const APP_HOST_LEGAL_PATHS = new Set([
+  "/legal/privacy",
+  "/legal/refund",
+  "/legal/terms",
+]);
+
 function redirectToMarketing(request: NextRequest, pathname: string): NextResponse {
   const target = new URL(pathname + request.nextUrl.search, getMarketingUrl());
   return NextResponse.redirect(target, 301);
@@ -181,6 +187,10 @@ export function middleware(request: NextRequest) {
       const clean = isLocalePrefixedPath(pathname) ? stripLocalePrefix(pathname) : cleanPathFromInternal(pathname);
       const localized = legacyPathToLocalized(clean ?? pathname, DEFAULT_LOCALE);
       return redirectToMarketing(request, localized ?? clean ?? localizedPath(DEFAULT_LOCALE, "/"));
+    }
+
+    if (APP_HOST_LEGAL_PATHS.has(pathname)) {
+      return handleMarketingRoutes(request, pathname, false);
     }
 
     if (isMarketingPublicPath(pathname) && pathname !== "/") {

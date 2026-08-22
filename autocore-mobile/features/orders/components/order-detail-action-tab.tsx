@@ -1,43 +1,43 @@
 import type { ComponentType, ReactNode } from 'react';
 import { useEffect } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { ActivityIndicator, useWindowDimensions, View } from 'react-native';
+import { Pressable } from 'react-native-gesture-handler';
 import Animated, {
   FadeInDown,
   FadeOutUp,
   LinearTransition,
   ZoomIn,
   ZoomOut,
+  interpolate,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { IconProps } from '@/assets/icons/create-icon';
+import { LiquidGlassSurface } from '@/components/navigation/liquid-glass-surface';
 import { Text } from '@/components/ui';
 import { useReducedMotion } from '@/hooks/use-accessibility';
-import { useTheme } from '@/hooks';
-import { autocoreEase, duration, haptics, spacing, spring, tokens } from '@/theme';
+import {
+  DOCK_BAR_WIDTH,
+  DOCK_BOTTOM_GAP,
+  DOCK_CORNER_RADIUS,
+  DOCK_HORIZONTAL_INSET,
+  DOCK_ICON_SIZE,
+  DOCK_INK,
+  DOCK_ITEM_WIDTH,
+  DOCK_LABEL_SIZE,
+  DOCK_MUTED_ALPHA,
+  DOCK_VISUAL_HEIGHT,
+} from '@/lib/navigation/floating-tab-bar-inset';
+import { autocoreEase, duration, haptics, spring } from '@/theme';
 
-/** Matches NativeTabs labelStyle — 10pt / semibold. */
-const TAB_LABEL_STYLE = {
-  fontSize: 10,
-  lineHeight: 12,
-  fontWeight: '600' as const,
-};
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-/** Native tab capsule row height (inner action row). */
-export const ORDER_DETAIL_ACTION_TAB_HEIGHT = 50;
-
-/** Horizontal inset so the strip floats like the iOS tab capsule. */
-export const ORDER_DETAIL_ACTION_TAB_MARGIN_X = spacing[4];
-
-/**
- * Gap under the capsule on the pageSheet.
- * Keep tiny — full `safeBottom` double-pads pageSheets and floats the strip
- * above the NativeTabs plane the user expects.
- */
-export const ORDER_DETAIL_ACTION_TAB_MARGIN_BOTTOM = spacing[1];
+/** Matches LiquidGlassTabBar focus crossfade. */
+const FOCUS_DURATION = 200;
 
 type TabIcon = ComponentType<IconProps>;
 
@@ -45,7 +45,7 @@ type OrderDetailActionTabProps = {
   label: string;
   icon: TabIcon;
   onPress: () => void;
-  /** Selected-tab tint (primary status CTA). */
+  /** Selected-tab weight (primary status CTA) — full ink instead of muted. */
   active?: boolean;
   disabled?: boolean;
   loading?: boolean;
@@ -58,8 +58,8 @@ type OrderDetailActionTabProps = {
 };
 
 /**
- * Tab-like footer action — icon above, caption below, no filled chrome.
- * Mirrors NativeTabs visual weight on the WO detail sheet.
+ * Dock item — identical metrics to LiquidGlassTabBar's DockItem: 71pt slot,
+ * 22pt glyph, 12pt caption, muted at 0.55 and full ink when selected.
  */
 export function OrderDetailActionTab({
   label,
@@ -71,13 +71,19 @@ export function OrderDetailActionTab({
   accessibilityLabel,
   contentKey,
 }: OrderDetailActionTabProps) {
-  const { colors } = useTheme();
   const reducedMotion = useReducedMotion();
-  const tint = active ? colors.primary : colors.foreground;
   const isDisabled = disabled || loading;
   const scale = useSharedValue(1);
   const pulse = useSharedValue(1);
+  const focus = useSharedValue(active ? 1 : 0);
   const identity = contentKey ?? label;
+
+  useEffect(() => {
+    const target = active ? 1 : 0;
+    focus.value = reducedMotion
+      ? target
+      : withTiming(target, { duration: FOCUS_DURATION, easing: autocoreEase });
+  }, [active, focus, reducedMotion]);
 
   useEffect(() => {
     if (!loading || !active || reducedMotion) {
@@ -99,10 +105,16 @@ export function OrderDetailActionTab({
     scale.value = withSpring(1, spring.settle);
   }, [identity, reducedMotion, scale]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
+  const pressStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
-    opacity: active && loading ? pulse.value : 1,
   }));
+
+  const contentStyle = useAnimatedStyle(() => {
+    const focused = interpolate(focus.value, [0, 1], [DOCK_MUTED_ALPHA, 1]);
+    return {
+      opacity: isDisabled && !loading ? 0.35 : focused * (active && loading ? pulse.value : 1),
+    };
+  });
 
   const iconEnter = reducedMotion
     ? undefined
@@ -131,14 +143,14 @@ export function OrderDetailActionTab({
               .stiffness(spring.list.stiffness)
               .mass(spring.list.mass)
       }
-      style={{ flex: 1, minWidth: 0 }}
+      style={{ width: DOCK_ITEM_WIDTH, height: DOCK_VISUAL_HEIGHT }}
     >
-      <Pressable
+      <AnimatedPressable
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel ?? label}
-        accessibilityState={{ disabled: isDisabled, busy: loading }}
+        accessibilityState={{ disabled: isDisabled, busy: loading, selected: active }}
         disabled={isDisabled}
-        hitSlop={{ top: 4, bottom: 4 }}
+        hitSlop={6}
         onPressIn={() => {
           if (isDisabled || reducedMotion) return;
           scale.value = withSpring(0.94, spring.press);
@@ -151,89 +163,115 @@ export function OrderDetailActionTab({
           haptics.selection();
           onPress();
         }}
+        style={[
+          {
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+          },
+          pressStyle,
+        ]}
       >
-        {({ pressed }) => (
-          <Animated.View
-            style={[
-              animatedStyle,
-              {
-                minHeight: ORDER_DETAIL_ACTION_TAB_HEIGHT,
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 3,
-                opacity: isDisabled && !loading ? 0.4 : pressed ? 0.55 : 1,
-              },
-            ]}
+        <Animated.View style={[{ alignItems: 'center', justifyContent: 'center' }, contentStyle]}>
+          <View
+            style={{
+              width: DOCK_ICON_SIZE,
+              height: DOCK_ICON_SIZE,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
             {loading ? (
               <Animated.View key="loading" entering={iconEnter} exiting={iconExit}>
-                <ActivityIndicator size="small" color={tint} />
+                <ActivityIndicator size="small" color={DOCK_INK} />
               </Animated.View>
             ) : (
-              <Animated.View
-                key={`icon-${identity}`}
-                entering={iconEnter}
-                exiting={iconExit}
-              >
-                <Icon size="md" color={tint} strokeWidth={active ? 2 : 1.75} />
+              <Animated.View key={`icon-${identity}`} entering={iconEnter} exiting={iconExit}>
+                <Icon size={DOCK_ICON_SIZE} color={DOCK_INK} strokeWidth={active ? 2 : 1.75} />
               </Animated.View>
             )}
-            <Animated.View
-              key={`label-${identity}`}
-              entering={labelEnter}
-              exiting={labelExit}
+          </View>
+
+          <Animated.View key={`label-${identity}`} entering={labelEnter} exiting={labelExit}>
+            <Text
+              variant="caption2"
+              numberOfLines={1}
+              style={{
+                marginTop: 3,
+                fontWeight: active ? '600' : '500',
+                color: DOCK_INK,
+                fontSize: DOCK_LABEL_SIZE,
+                lineHeight: 14,
+                letterSpacing: 0.1,
+              }}
             >
-              <Text
-                variant="caption"
-                numberOfLines={1}
-                style={{ ...TAB_LABEL_STYLE, color: tint }}
-              >
-                {label}
-              </Text>
-            </Animated.View>
+              {label}
+            </Text>
           </Animated.View>
-        )}
-      </Pressable>
+        </Animated.View>
+      </AnimatedPressable>
     </Animated.View>
   );
 }
 
-type OrderDetailActionStripProps = {
+type OrderDetailActionDockProps = {
   children: ReactNode;
 };
 
 /**
- * Floating capsule for WO footer actions — same visual plane as NativeTabs
- * so the strip reads as a container, not as part of the order cards above.
+ * WO footer dock — same plane as LiquidGlassTabBar: absolute bottom, centred
+ * 356pt stadium, safe-area + 8pt gap, one UIGlassEffect surface (dark chrome
+ * fallback pre-iOS 26). Positioning intentionally mirrors the tab bar so the
+ * strip reads as the shell's tab row, not as a card action bar.
  */
-export function OrderDetailActionStrip({ children }: OrderDetailActionStripProps) {
-  const { colors } = useTheme();
-  const reducedMotion = useReducedMotion();
+export function OrderDetailActionDock({ children }: OrderDetailActionDockProps) {
+  const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+
+  const barWidth = Math.min(
+    DOCK_BAR_WIDTH,
+    Math.max(280, windowWidth - DOCK_HORIZONTAL_INSET * 2),
+  );
 
   return (
-    <Animated.View
-      layout={
-        reducedMotion
-          ? undefined
-          : LinearTransition.springify()
-              .damping(spring.list.damping)
-              .stiffness(spring.list.stiffness)
-              .mass(spring.list.mass)
-      }
+    <View
+      pointerEvents="box-none"
       style={{
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'stretch',
-        minHeight: ORDER_DETAIL_ACTION_TAB_HEIGHT,
-        borderRadius: tokens.radius.full,
-        borderWidth: StyleSheet.hairlineWidth,
-        borderColor: colors.border,
-        backgroundColor: colors.secondary,
-        overflow: 'hidden',
-        paddingHorizontal: spacing[1],
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 1000,
+        elevation: 1000,
+        alignItems: 'center',
+        paddingHorizontal: DOCK_HORIZONTAL_INSET,
+        paddingBottom: insets.bottom + DOCK_BOTTOM_GAP,
       }}
     >
-      {children}
-    </Animated.View>
+      <LiquidGlassSurface
+        radius={DOCK_CORNER_RADIUS}
+        isInteractive
+        containerStyle={{
+          width: barWidth,
+          height: DOCK_VISUAL_HEIGHT,
+          alignItems: 'center',
+          justifyContent: 'center',
+          shadowColor: '#000000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.25,
+          shadowRadius: 24,
+          elevation: 8,
+        }}
+        style={{
+          width: barWidth,
+          height: DOCK_VISUAL_HEIGHT,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-evenly',
+        }}
+      >
+        {children}
+      </LiquidGlassSurface>
+    </View>
   );
 }

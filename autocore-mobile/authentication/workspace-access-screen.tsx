@@ -132,7 +132,7 @@ export function WorkspaceAccessScreen() {
           ) : null}
           <Button
             variant={isNoCompany || canSwitchCompany ? 'secondary' : 'default'}
-            onPress={() => router.push('/(auth)/journey/company' as never)}
+            onPress={() => router.push('/(auth)/journey/company?mode=invite' as never)}
           >
             {isNoCompany ? 'Join with invite' : 'Join a company'}
           </Button>

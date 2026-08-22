@@ -39,7 +39,11 @@ import { autocoreEase, duration, haptics, spring, tokens } from '@/theme';
 import type { UserCompanyMembership } from '@/types/rbac';
 
 const JOIN_HREF = '/(tabs)/profile/join-company' as Href;
-const CREATE_HREF = '/(auth)/journey/company' as Href;
+// Deliberately not `/(auth)/journey/company`: that is the onboarding step, and
+// sending someone who already has workspaces into the sign-up funnel showed
+// them a progress counter, their own workspace list again, and a Sign out
+// button. `/join-company` sits beside this one for the same reason.
+const CREATE_HREF = '/(tabs)/profile/create-company' as Href;
 const HOME_HREF = '/(tabs)' as Href;
 
 type OrgCardProps = {

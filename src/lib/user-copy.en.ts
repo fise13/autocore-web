@@ -134,6 +134,7 @@ export const userCopyEn = {
       terms: "Terms of Use",
       legalAnd: "and",
       privacy: "Privacy Policy",
+      refund: "Refund Policy",
       legalSuffix: ".",
       enterEmail: "Enter your email.",
       enterName: "Enter your first and last name.",

@@ -30,7 +30,7 @@ import {
 } from "@/lib/auth/resolve-email-sign-in-mode";
 import { getFirebaseAuth } from "@/infrastructure/firebase/client";
 import { marketingRoute } from "@/lib/marketing-routes";
-import { marketingHomeUrl, marketingPageUrl } from "@/lib/site-urls";
+import { marketingHomeUrl } from "@/lib/site-urls";
 import {
   readPendingMarketingCheckout,
   storePendingMarketingCheckout,
@@ -730,17 +730,23 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
           <p className="mt-8 text-sm text-muted-foreground">
             {copy.legalPrefix}{" "}
             <Link
-              href={marketingPageUrl(marketingRoute("terms", getActiveUserCopyLocale()))}
+              href={marketingRoute("terms", getActiveUserCopyLocale())}
               className="underline underline-offset-4 hover:text-primary"
             >
               {copy.terms}
-            </Link>{" "}
-            {copy.legalAnd}{" "}
+            </Link>,{" "}
             <Link
-              href={marketingPageUrl(marketingRoute("privacy", getActiveUserCopyLocale()))}
+              href={marketingRoute("privacy", getActiveUserCopyLocale())}
               className="underline underline-offset-4 hover:text-primary"
             >
               {copy.privacy}
+            </Link>{" "}
+            {copy.legalAnd}{" "}
+            <Link
+              href={marketingRoute("refund", getActiveUserCopyLocale())}
+              className="underline underline-offset-4 hover:text-primary"
+            >
+              {copy.refund}
             </Link>
             {copy.legalSuffix}
           </p>

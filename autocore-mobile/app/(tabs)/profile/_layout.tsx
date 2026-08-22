@@ -12,6 +12,7 @@ export default function ProfileLayout() {
       <Stack.Screen name="edit-profile" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="appearance" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="company" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="create-company" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="subscription" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="team" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="language" options={{ animation: 'slide_from_right' }} />
